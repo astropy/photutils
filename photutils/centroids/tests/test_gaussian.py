@@ -18,6 +18,9 @@ from photutils.centroids.gaussian import (_gaussian1d_moments, centroid_1dg,
 
 @pytest.fixture(name='test_data')
 def fixture_test_data():
+    """
+    Create a simple 3x3 array with a Gaussian-like peak in the center.
+    """
     xcen = 25.7
     ycen = 26.2
     data = np.zeros((3, 3))
@@ -27,12 +30,15 @@ def fixture_test_data():
     return data, xcen, ycen
 
 
-# NOTE: the fitting routines in astropy use scipy.optimize
 @pytest.mark.parametrize('x_std', [3.2, 4.0])
 @pytest.mark.parametrize('y_std', [5.7, 4.1])
 @pytest.mark.parametrize('theta', np.deg2rad([30.0, 45.0]))
 @pytest.mark.parametrize('units', [True, False])
 def test_centroids(x_std, y_std, theta, units):
+    """
+    Test the 1D and 2D Gaussian centroid functions on a simple 2D
+    Gaussian model.
+    """
     xcen = 25.7
     ycen = 26.2
 
@@ -54,13 +60,13 @@ def test_centroids(x_std, y_std, theta, units):
     xc, yc = centroid_2dg(data)
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
 
-    # test with errors
+    # Test with errors
     xc, yc = centroid_1dg(data, error=error)
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
     xc, yc = centroid_2dg(data, error=error)
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
 
-    # test with mask
+    # Test with mask
     mask = np.zeros(data.shape, dtype=bool)
     data[10, 10] = value
     mask[10, 10] = True
@@ -72,6 +78,10 @@ def test_centroids(x_std, y_std, theta, units):
 
 @pytest.mark.parametrize('use_mask', [True, False])
 def test_centroids_nan_withmask(use_mask):
+    """
+    Test that the 1D and 2D Gaussian centroid functions can handle NaN
+    values in the input data, both with and without a mask.
+    """
     xc_ref = 24.7
     yc_ref = 25.2
     model = Gaussian2D(2.4, xc_ref, yc_ref, x_stddev=5.0, y_stddev=5.0)
@@ -103,6 +113,10 @@ def test_centroids_nan_withmask(use_mask):
 
 
 def test_invalid_shapes():
+    """
+    Test that the 1D and 2D Gaussian centroid functions raise an error
+    for invalid data, mask, or error shapes.
+    """
     data = np.zeros((4, 4, 4))
     match = 'data must be a 2D array'
     with pytest.raises(ValueError, match=match):
@@ -122,6 +136,10 @@ def test_invalid_shapes():
 
 
 def test_invalid_error_shape():
+    """
+    Test that the 1D and 2D Gaussian centroid functions raise an error
+    for invalid error shapes.
+    """
     error = np.zeros((2, 2), dtype=bool)
     match = 'data and error must have the same shape'
     with pytest.raises(ValueError, match=match):
@@ -131,6 +149,10 @@ def test_invalid_error_shape():
 
 
 def test_centroid_2dg_dof():
+    """
+    Test that the 2D Gaussian centroid function raises an error if there
+    are not enough unmasked values to fit the model.
+    """
     data = np.ones((2, 2))
     match = 'Input data must have a least 6 unmasked values to fit'
     with pytest.raises(ValueError, match=match):
@@ -138,6 +160,9 @@ def test_centroid_2dg_dof():
 
 
 def test_gaussian1d_moments():
+    """
+    Test the _gaussian1d_moments function on a simple 1D Gaussian model.
+    """
     x = np.arange(100)
     desired = (75, 50, 5)
     g = Gaussian1D(*desired)
@@ -164,6 +189,10 @@ def test_gaussian1d_moments():
 
 
 def test_gaussian2d_warning():
+    """
+    Test that the 2D Gaussian centroid function raises a warning if the
+    fit may not have converged.
+    """
     yy, xx = np.mgrid[:51, :51]
     model = Gaussian2D(x_mean=24.17, y_mean=25.87, x_stddev=1.7, y_stddev=4.7)
     data = model(xx, yy)

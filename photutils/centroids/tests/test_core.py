@@ -73,7 +73,7 @@ def test_centroid_com(x_std, y_std, theta, units):
     xc, yc = centroid_com(data)
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=1.0e-3)
 
-    # test with mask
+    # Test with mask
     x0 = 11
     y0 = 15
     data[y0, x0] = 1.0e5 * u.nJy if units else 1.0e5
@@ -127,6 +127,9 @@ def test_centroid_com_allmask():
 
 
 def test_centroid_com_invalid_inputs():
+    """
+    Test centroid_com with invalid inputs.
+    """
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
     match = 'data and mask must have the same shape'
@@ -136,6 +139,10 @@ def test_centroid_com_invalid_inputs():
 
 @pytest.mark.parametrize('ndim', [1, 2, 3, 4, 5])
 def test_centroid_com_zero_sum(ndim):
+    """
+    Test centroid_com when the sum of the data is zero, which should
+    return NaN.
+    """
     data = np.zeros([10] * ndim)
     cen = centroid_com(data)
     assert cen.shape == (ndim,)
@@ -164,7 +171,7 @@ def test_centroid_quadratic(x_std, y_std, theta, units):
     xc, yc = centroid_quadratic(data)
     assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
 
-    # test with mask
+    # Test with mask
     x0 = 11
     y0 = 15
     data[y0, x0] = 1.0e5 * u.nJy if units else 1.0e5
@@ -497,8 +504,9 @@ class TestCentroidSources:
 
     def test_centroid_quadratic_mask(self):
         """
-        Regression test to check that when a mask is input the original
-        data is not alterned.
+        Test centroid_sources with centroid_quadratic and a mask.
+
+        The original data should not be altered when a mask is input.
         """
         xc_ref = 24.7
         yc_ref = 25.2
@@ -617,7 +625,7 @@ class TestCentroidQuadraticClass:
         y, x = np.mgrid[0:50, 0:47]
         data = model(x, y)
 
-        # test with default parameters
+        # Test with default parameters
         centroid_func = CentroidQuadratic()
         xc, yc = centroid_func(data)
         assert_allclose((xc, yc), (xcen, ycen), rtol=0, atol=0.015)
@@ -633,7 +641,7 @@ class TestCentroidQuadraticClass:
         y, x = np.mgrid[0:50, 0:47]
         data = model(x, y)
 
-        # add outlier
+        # Add an outlier
         x0 = 11
         y0 = 15
         data[y0, x0] = 1.0e5
@@ -666,7 +674,7 @@ class TestCentroidQuadraticClass:
         data[7, 7] = 110
         data[9, 9] = 120
 
-        # test with custom fit_boxsize
+        # Test with custom fit_boxsize
         centroid_func = CentroidQuadratic(fit_boxsize=3)
         xycen = centroid_sources(data, xpos=5, ypos=5, box_size=7,
                                  centroid_func=centroid_func)

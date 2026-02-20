@@ -52,6 +52,16 @@ def centroid_com(data, *, mask=None):
         will be returned. If the sum is close to zero, the centroid may
         be poorly defined and fall outside the array bounds.
 
+    Notes
+    -----
+    The centroid is calculated as:
+
+    .. math::
+        x_c = \\frac{\\sum x_i I_i}{\\sum I_i}, \\quad
+        y_c = \\frac{\\sum y_i I_i}{\\sum I_i}
+
+    where :math:`I_i` is the intensity at pixel :math:`(x_i, y_i)`.
+
     Examples
     --------
     >>> import numpy as np
@@ -80,21 +90,29 @@ def centroid_com(data, *, mask=None):
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
-    # preserve input data - which should be a small cutout image
-    data = data.copy()
+    data = np.asanyarray(data, dtype=float)
+    is_copied = False
 
     if mask is not None and mask is not np.ma.nomask:
         mask = np.asarray(mask, dtype=bool)
         if data.shape != mask.shape:
             msg = 'data and mask must have the same shape'
             raise ValueError(msg)
-        data[mask] = 0.0
+
+        if np.any(mask):
+            # Copy if there are masked values to preserve the input data
+            data = data.copy()
+            is_copied = True
+            data[mask] = 0.0
 
     badmask = ~np.isfinite(data)
     if np.any(badmask):
         warnings.warn('Input data contains non-finite values (e.g., NaN or '
                       'inf) that were automatically masked.',
                       AstropyUserWarning)
+
+        if not is_copied:
+            data = data.copy()
         data[badmask] = 0.0
 
     total = np.sum(data)
@@ -103,7 +121,7 @@ def centroid_com(data, *, mask=None):
 
     indices = np.ogrid[tuple(slice(0, i) for i in data.shape)]
 
-    # note the output array is reversed to give (x, y) order
+    # Output array is reversed to give (x, y) order
     return np.array([np.sum(indices[axis] * data) / total
                      for axis in range(data.ndim)])[::-1]
 
@@ -238,8 +256,9 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
-    # preserve input data - which should be a small cutout image
-    data = np.asanyarray(data, dtype=float).copy()
+    data = np.asanyarray(data, dtype=float)
+    is_copied = False
+
     if data.ndim != 2:
         msg = 'data must be a 2D array'
         raise ValueError(msg)
@@ -250,13 +269,20 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
         if data.shape != mask.shape:
             msg = 'data and mask must have the same shape'
             raise ValueError(msg)
-        data[mask] = np.nan
-        badmask &= ~mask  # exclude non-finite values in the input mask
+
+        if np.any(mask):
+            # Copy if there are masked values to preserve the input data
+            data = data.copy()
+            is_copied = True
+            data[mask] = np.nan
+        badmask &= ~mask  # Exclude non-finite values in the input mask
 
     if np.any(badmask):
         warnings.warn('Input data contains non-finite values (e.g., NaN or '
                       'inf) that were automatically masked.',
                       AstropyUserWarning)
+        if not is_copied:
+            data = data.copy()
         data[badmask] = np.nan
 
     fit_boxsize = as_pair('fit_boxsize', fit_boxsize, lower_bound=(0, 1),
@@ -297,20 +323,21 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
             xidx += slc_data[1].start
             yidx += slc_data[0].start
 
-    # if peak is at the edge of the data, return the position of the maximum
+    # Return the position of the maximum if it is at the edge of the
+    # data
     if xidx in (0, nx - 1) or yidx in (0, ny - 1):
         warnings.warn('maximum value is at the edge of the data and its '
                       'position was returned; no quadratic fit was '
                       'performed', AstropyUserWarning)
         return np.array((xidx, yidx), dtype=float)
 
-    # extract the fitting region
+    # Extract the fitting region
     slc_data, _ = overlap_slices(data.shape, fit_boxsize, (yidx, xidx),
                                  mode='trim')
     xidx0, xidx1 = (slc_data[1].start, slc_data[1].stop)
     yidx0, yidx1 = (slc_data[0].start, slc_data[0].stop)
 
-    # shift the fitting box if it was clipped by the data edge
+    # Shift the fitting box if it was clipped by the data edge
     if (xidx1 - xidx0) < fit_boxsize[1]:
         if xidx0 == 0:
             xidx1 = min(nx, xidx0 + fit_boxsize[1])
@@ -329,15 +356,23 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
                       AstropyUserWarning)
         return np.array((np.nan, np.nan))
 
-    # fit a 2D quadratic polynomial to the fitting region
+    # Fit a 2D quadratic polynomial to the fitting region
     xi = np.arange(xidx0, xidx1)
     yi = np.arange(yidx0, yidx1)
     x, y = np.meshgrid(xi, yi)
     x = x.ravel()
     y = y.ravel()
-    coeff_matrix = np.vstack((np.ones_like(x), x, y, x * y, x * x, y * y)).T
 
-    # remove NaNs from data to be fit
+    # Pre-allocate coefficient matrix for optimization
+    coeff_matrix = np.empty((x.size, 6), dtype=float)
+    coeff_matrix[:, 0] = 1
+    coeff_matrix[:, 1] = x
+    coeff_matrix[:, 2] = y
+    coeff_matrix[:, 3] = x * y
+    coeff_matrix[:, 4] = x * x
+    coeff_matrix[:, 5] = y * y
+
+    # Remove NaNs from data to be fit
     mask = ~np.isnan(cutout)
     if np.any(mask):
         coeff_matrix = coeff_matrix[mask]
@@ -349,7 +384,7 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
         warnings.warn('quadratic fit failed', AstropyUserWarning)
         return np.array((np.nan, np.nan))
 
-    # analytically find the maximum of the polynomial
+    # Analytically find the maximum of the polynomial
     _, c10, c01, c11, c20, c02 = c
     det = 4 * c20 * c02 - c11**2
 
@@ -591,23 +626,25 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
         msg = 'The input "centroid_func" must have a "mask" keyword.'
         raise ValueError(msg)
 
-    # drop any **kwargs not supported by the centroid_func
+    # Drop any **kwargs not supported by the centroid_func
     centroid_kwargs = {key: val for key, val in kwargs.items()
                        if key in spec.parameters}
 
-    xcentroids = []
-    ycentroids = []
-    for xp, yp in zip(xpos, ypos, strict=True):
+    n_sources = len(xpos)
+    xcentroids = np.zeros(n_sources, dtype=float)
+    ycentroids = np.zeros(n_sources, dtype=float)
+
+    for i, (xp, yp) in enumerate(zip(xpos, ypos, strict=True)):
         slices_large, slices_small = overlap_slices(data.shape,
                                                     footprint.shape, (yp, xp))
         data_cutout = data[slices_large]
 
         footprint_mask = np.logical_not(footprint)
-        # trim footprint mask if it has only partial overlap on the data
+        # Trim footprint mask if it has only partial overlap on the data
         footprint_mask = footprint_mask[slices_small]
 
         if mask is not None:
-            # combine the input mask cutout and footprint mask
+            # Combine the input mask cutout and footprint mask
             mask_cutout = np.logical_or(mask[slices_large], footprint_mask)
         else:
             mask_cutout = footprint_mask
@@ -639,7 +676,7 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
         except (ValueError, TypeError):
             xcen, ycen = np.nan, np.nan
 
-        xcentroids.append(xcen + slices_large[1].start)
-        ycentroids.append(ycen + slices_large[0].start)
+        xcentroids[i] = xcen + slices_large[1].start
+        ycentroids[i] = ycen + slices_large[0].start
 
-    return np.array(xcentroids), np.array(ycentroids)
+    return xcentroids, ycentroids

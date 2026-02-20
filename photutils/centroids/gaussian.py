@@ -97,12 +97,13 @@ def centroid_1dg(data, *, error=None, mask=None):
         data.mask |= error.mask
         error.mask = data.mask
 
-        xy_error = [np.sqrt(np.ma.sum(error**2, axis=i)) for i in (0, 1)]
-        xy_weights = [(1.0 / xy_error[i].clip(min=1.0e-30)) for i in (0, 1)]
+        error_squared = error**2
+        xy_error = [np.sqrt(np.ma.sum(error_squared, axis=i)) for i in (0, 1)]
+        xy_weights = [1.0 / xy_err.clip(min=1.0e-30) for xy_err in xy_error]
     else:
         xy_weights = [np.ones(data.shape[i]) for i in (1, 0)]
 
-    # assign zero weight where an entire row or column is masked
+    # Assign zero weight where an entire row or column is masked
     if np.any(data.mask):
         bad_idx = [np.all(data.mask, axis=i) for i in (0, 1)]
         for i in (0, 1):
@@ -225,7 +226,7 @@ def centroid_2dg(data, *, error=None, mask=None):
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
-    # prevent circular import
+    # Prevent circular import
     from photutils.morphology import data_properties
 
     (data, error), _ = process_quantities((data, error), ('data', 'error'))
@@ -263,7 +264,7 @@ def centroid_2dg(data, *, error=None, mask=None):
                '2D Gaussian.')
         raise ValueError(msg)
 
-    # assign zero weight to masked pixels
+    # Assign zero weight to masked pixels
     if data.mask is not np.ma.nomask:
         weights[data.mask] = 0.0
 
