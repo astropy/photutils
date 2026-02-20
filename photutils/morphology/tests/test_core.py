@@ -24,6 +24,9 @@ DATA[1, 1] = 2.0
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_data_properties():
+    """
+    Test basics of ``data_properties`` with and without a mask.
+    """
     data = np.ones((2, 2)).astype(float)
     mask = np.array([[False, False], [True, True]])
     props = data_properties(data, mask=None)
@@ -41,13 +44,47 @@ def test_data_properties():
     assert props.sky_centroid is not None
 
 
+def test_data_properties_invalid_data_shape():
+    """
+    Test that data must be a 2D array.
+    """
+    match = 'data must be a 2D array'
+    with pytest.raises(ValueError, match=match):
+        data_properties(np.ones(10))  # 1D
+
+    with pytest.raises(ValueError, match=match):
+        data_properties([1, 2, 3])  # 1D list
+
+    with pytest.raises(ValueError, match=match):
+        data_properties(np.ones((3, 3, 3)))  # 3D
+
+
+def test_data_properties_mask_invalid_shape():
+    """
+    Test that mask must have the same shape as data.
+    """
+    data = np.ones((10, 10))
+
+    match = 'mask must have the same shape as data'
+    with pytest.raises(ValueError, match=match):
+        data_properties(data, mask=np.zeros((5, 5), dtype=bool))
+
+    match = 'mask must have the same shape as data'
+    with pytest.raises(ValueError, match=match):
+        data_properties(data, mask=np.zeros((10, 5), dtype=bool))
+
+
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_data_properties_bkg():
+    """
+    Test with an input background.
+    """
     data = np.ones((3, 3)).astype(float)
     props = data_properties(data, background=1.0)
     assert props.area.value == 9.0
     assert props.background_sum == 9.0
 
+    # Test that a non-scalar background raises an error
     match = 'background must be a 2D array'
     with pytest.raises(ValueError, match=match):
         data_properties(data, background=[1.0, 2.0])

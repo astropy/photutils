@@ -42,17 +42,40 @@ def data_properties(data, mask=None, background=None, wcs=None):
     Returns
     -------
     result : `~photutils.segmentation.SourceCatalog` instance
-        A `~photutils.segmentation.SourceCatalog` object.
+        A scalar `~photutils.segmentation.SourceCatalog` object (single
+        source) containing the morphological properties.
+
+    Raises
+    ------
+    ValueError
+        If ``data`` is not a 2D array.
+
+    ValueError
+        If ``mask`` is provided and does not have the same shape as
+        ``data``.
     """
-    # prevent circular import
+    # Prevent circular import
     from photutils.segmentation import SegmentationImage, SourceCatalog
 
-    segment_image = SegmentationImage(np.ones(data.shape, dtype=int))
+    data = np.asanyarray(data)
+    if len(data.shape) != 2:
+        msg = 'data must be a 2D array'
+        raise ValueError(msg)
+
+    seg_arr = np.ones(data.shape, dtype=int)
+    if mask is not None:
+        mask = np.asarray(mask, dtype=bool)
+        if mask.shape != data.shape:
+            msg = 'mask must have the same shape as data'
+            raise ValueError(msg)
+        seg_arr[mask] = 0
+
+    segment_image = SegmentationImage(seg_arr)
 
     if background is not None:
         background = np.atleast_1d(background)
         if background.shape == (1,):
             background = np.zeros(data.shape) + background
 
-    return SourceCatalog(data, segment_image, mask=mask,
+    return SourceCatalog(data, segment_image, mask=None,
                          background=background, wcs=wcs)[0]
