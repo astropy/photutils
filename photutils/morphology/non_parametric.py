@@ -41,7 +41,10 @@ def gini(data, mask=None):
     is left for the user.
 
     Invalid values (NaN and inf) in the input are automatically excluded
-    from the calculation.
+    from the calculation. Negative pixel values are used via their
+    absolute value, consistent with the :math:`|x_i|` term in the Lotz
+    et al. formula. If only a single finite pixel remains after
+    filtering, the Gini coefficient is 0.0.
 
     Parameters
     ----------
@@ -81,11 +84,14 @@ def gini(data, mask=None):
         return np.nan
 
     npix = values.size
-    normalization = np.abs(np.mean(values)) * npix * (npix - 1)
-    if normalization == 0:
+    if npix == 1:
+        return 0.0
+
+    normalization = np.mean(np.abs(values)) * npix * (npix - 1)
+    if normalization == 0.0:
         return 0.0
 
     kernel = ((2.0 * np.arange(1, npix + 1) - npix - 1)
-              * np.abs(np.sort(values)))
+              * np.sort(np.abs(values)))
 
     return np.sum(kernel) / normalization

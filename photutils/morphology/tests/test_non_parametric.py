@@ -95,9 +95,52 @@ def test_gini_invalid_values_filtered():
     assert gini(data_one) == 0.0
 
 
-def test_gini_normalization():
+def test_gini_all_zeros():
     """
-    Test that Gini coefficient is normalized between 0 and 1.
+    Test that an all-zero array returns 0.0 (normalization
+    early-return).
     """
-    data = np.zeros((100, 100))
-    assert gini(data) == 0.0
+    assert gini(np.zeros((100, 100))) == 0.0
+    assert gini(np.zeros(10)) == 0.0
+
+
+def test_gini_bounded():
+    """
+    Test that Gini coefficient is in [0, 1] for diverse inputs.
+    """
+    rng = np.random.default_rng(seed=0)
+
+    # Uniform random values in (0, 1) — strictly between extremes
+    result = gini(rng.random((50, 50)))
+    assert 0.0 < result < 1.0
+
+    # Mixed-sign data must also be bounded
+    data_mixed_sign = np.array([-4.0, 1.0, 1.0, 1.0])
+    result_mixed = gini(data_mixed_sign)
+    assert 0.0 <= result_mixed <= 1.0
+
+    # Gradient array — monotonically increasing, result in (0, 1)
+    result_grad = gini(np.arange(1.0, 101.0))
+    assert 0.0 < result_grad < 1.0
+
+
+def test_gini_negative_values():
+    """
+    Test that negative pixel values are treated via their absolute value
+    per the Lotz et al. formula.
+    """
+    # Negating all values must give the same result because only |x_i|
+    # and |mean| enter the formula
+    data_pos = np.array([1.0, 2.0, 3.0])
+    data_neg = -data_pos
+    assert gini(data_neg) == gini(data_pos)
+
+    # Mixed sign: result must be in [0, 1]
+    data_mixed = np.array([-5.0, -1.0, 0.0, 2.0, 4.0])
+    result = gini(data_mixed)
+    assert 0.0 <= result <= 1.0
+
+    # 2D array with negative values
+    data_2d = np.array([[-3.0, -1.0], [0.0, 1.0]])
+    result_2d = gini(data_2d)
+    assert 0.0 <= result_2d <= 1.0
