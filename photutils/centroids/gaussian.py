@@ -10,68 +10,11 @@ from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.centroids.core import _process_data_mask
+from photutils.centroids._utils import (_process_data_mask,
+                                        _validate_gaussian_inputs)
 from photutils.utils._quantity_helpers import process_quantities
 
 __all__ = ['centroid_1dg', 'centroid_2dg']
-
-
-def _validate_gaussian_inputs(data, mask, error):
-    """
-    Process and validate the data, mask, and optional error inputs for
-    Gaussian centroid functions.
-
-    The input ``data`` and ``error`` arrays and the ``mask`` are not
-    mutated; copies are made only when modifications are needed.
-
-    Parameters
-    ----------
-    data : 2D `~numpy.ndarray`
-        The input data array.
-
-    mask : 2D bool `~numpy.ndarray` or `None`
-        A boolean mask where `True` indicates a masked (invalid) pixel.
-
-    error : 2D `~numpy.ndarray` or `None`
-        The 1-sigma error array.
-
-    Returns
-    -------
-    data : 2D `~numpy.ndarray`
-        Processed data with all invalid pixels (from the mask,
-        non-finite data, and non-finite error) set to zero.
-
-    combined_mask : 2D bool `~numpy.ndarray`
-        Boolean mask of all invalid pixels.
-
-    error : 2D `~numpy.ndarray` or `None`
-        Error array with all invalid pixels set to zero (copied only
-        if a modification was required), or `None` if no error was
-        provided.
-    """
-    data = _process_data_mask(data, mask)
-    combined_mask = ~np.isfinite(data)
-
-    if error is not None:
-        error = np.asanyarray(error, dtype=float)
-        if data.shape != error.shape:
-            msg = 'data and error must have the same shape'
-            raise ValueError(msg)
-
-        error_mask = ~np.isfinite(error)
-        if np.any(error_mask):
-            combined_mask |= error_mask
-
-        # Zero error at all invalid pixel positions; copy only if needed
-        if np.any(combined_mask):
-            error = error.copy()
-            error[combined_mask] = 0.0
-
-    # Apply the full combined mask to data once
-    if np.any(combined_mask):
-        data[combined_mask] = 0.0
-
-    return data, combined_mask, error
 
 
 def centroid_1dg(data, *, error=None, mask=None):

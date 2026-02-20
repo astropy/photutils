@@ -11,72 +11,13 @@ from astropy.nddata import overlap_slices
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.centroids._utils import _process_data_mask
 from photutils.utils._parameters import as_pair
 from photutils.utils._repr import make_repr
 from photutils.utils._round import py2intround
 
 __all__ = ['CentroidQuadratic', 'centroid_com', 'centroid_quadratic',
            'centroid_sources']
-
-
-def _validate_data(data, ndim=2):
-    """
-    Validate that the input data is a 2D array.
-    """
-    data = np.asanyarray(data, dtype=float)
-    if ndim is not None and data.ndim != ndim:
-        msg = f'data must be a {ndim}D array'
-        raise ValueError(msg)
-    return data
-
-
-def _validate_mask_shape(data, mask):
-    """
-    Validate that the data and mask have the same shape.
-    """
-    if mask is not None and data.shape != mask.shape:
-        msg = 'data and mask must have the same shape'
-        raise ValueError(msg)
-
-
-def _process_data_mask(data, mask, ndim=2, fill_value=np.nan):
-    """
-    Process the input data and mask.
-
-    This function validates the input data and mask, handles non-finite
-    values, and returns the processed data and mask.
-    """
-    data = _validate_data(data, ndim=ndim)
-    is_copied = False
-    _validate_mask_shape(data, mask)
-
-    badmask = ~np.isfinite(data)
-
-    if np.ma.is_masked(data):
-        mask2 = data.mask
-        mask = mask2 if mask is None else mask | mask2
-
-    if mask is not None:
-        if np.any(mask):
-            data = data.copy()
-            is_copied = True
-            data[mask] = fill_value
-        badmask &= ~mask
-
-    if np.any(badmask):
-        warnings.warn('Input data contains non-finite values (e.g., NaN or '
-                      'inf) that were automatically masked.',
-                      AstropyUserWarning)
-        if not is_copied:
-            data = data.copy()
-        data[badmask] = fill_value
-
-    # If the input was a MaskedArray, return a plain ndarray; the mask
-    # has already been applied to the data above.
-    if isinstance(data, np.ma.MaskedArray):
-        data = np.asarray(data)
-
-    return data
 
 
 def centroid_com(data, *, mask=None):
@@ -150,7 +91,6 @@ def centroid_com(data, *, mask=None):
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
-    # preserve input data - which should be a small cutout image
     data = _process_data_mask(data, mask, ndim=None, fill_value=0.0)
 
     total = np.sum(data)
@@ -674,9 +614,9 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
         if error is not None:
             centroid_kwargs['error'] = error[slices_large]
 
-        # Remove this block once xpeak and ypeak are fully deprecated
-        # remove xpeak and ypeak from the dict and add back only if both
-        # are specified and not None
+        # Remove this block once xpeak and ypeak are fully deprecated.
+        # Remove xpeak and ypeak from the dict and add back only if both
+        # are specified and not None.
         xpeak = centroid_kwargs.pop('xpeak', None)
         ypeak = centroid_kwargs.pop('ypeak', None)
         if xpeak is not None and ypeak is not None:

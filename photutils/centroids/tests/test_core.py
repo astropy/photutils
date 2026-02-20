@@ -14,9 +14,8 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose
 
-from photutils.centroids.core import (CentroidQuadratic, _process_data_mask,
-                                      centroid_com, centroid_quadratic,
-                                      centroid_sources)
+from photutils.centroids.core import (CentroidQuadratic, centroid_com,
+                                      centroid_quadratic, centroid_sources)
 from photutils.centroids.gaussian import centroid_1dg, centroid_2dg
 from photutils.datasets import make_4gaussians_image, make_noise_image
 
@@ -181,33 +180,6 @@ def test_centroid_com_masked_array():
     xc4, yc4 = centroid_com(data.data, mask=full_mask)
     assert xc3 == xc4
     assert yc3 == yc4
-
-
-def test_process_data_mask_no_mutation():
-    """
-    Test that _process_data_mask does not mutate the input mask when the
-    data is a MaskedArray.
-    """
-    masked_data = np.ma.array([[1.0, 2.0], [3.0, 4.0]],
-                              mask=[[False, True], [False, False]])
-    input_mask = np.zeros((2, 2), dtype=bool)
-    input_mask_orig = input_mask.copy()
-
-    _process_data_mask(masked_data, input_mask)
-    assert np.array_equal(input_mask, input_mask_orig)
-
-
-def test_process_data_mask_masked_array_returns_ndarray():
-    """
-    Test that _process_data_mask returns a plain ndarray (not a
-    MaskedArray) when given MaskedArray input so that callers do not
-    have to handle MaskedArray semantics.
-    """
-    masked_data = np.ma.array([[1.0, 2.0], [3.0, 4.0]],
-                              mask=[[False, True], [False, False]])
-    result = _process_data_mask(masked_data, None)
-    assert not isinstance(result, np.ma.MaskedArray)
-    assert isinstance(result, np.ndarray)
 
 
 @pytest.mark.parametrize('x_std', [3.2, 4.0])
