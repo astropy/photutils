@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.centroids.gaussian import (_gaussian1d_moments, centroid_1dg,
                                           centroid_2dg)
@@ -207,3 +207,58 @@ def test_gaussian2d_warning():
     match = 'The fit may not have converged'
     with pytest.warns(AstropyUserWarning, match=match):
         centroid_2dg(data + 100000)
+
+
+def test_no_input_mutation():
+    """
+    Test that input mask and error arrays are not mutated by
+    centroid_1dg or centroid_2dg.
+    """
+    model = Gaussian2D(2.4, 25.0, 25.0, x_stddev=5.0, y_stddev=5.0)
+    y, x = np.mgrid[0:50, 0:50]
+    data = model(x, y)
+
+    # Add a masked position and a NaN in error to exercise all
+    # copy-on-write paths without triggering data-NaN warnings
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[10, 10] = True
+    error = np.sqrt(np.abs(data))
+    error[15, 15] = np.nan
+
+    mask_orig = mask.copy()
+    error_orig = error.copy()
+
+    centroid_1dg(data, error=error, mask=mask)
+    assert_array_equal(mask, mask_orig)
+    assert_array_equal(error, error_orig)
+
+    centroid_2dg(data, error=error, mask=mask)
+    assert_array_equal(mask, mask_orig)
+    assert_array_equal(error, error_orig)
+
+
+def test_masked_array_input():
+    """
+    Test that MaskedArray inputs to centroid_1dg and centroid_2dg give
+    the same results as equivalent plain array and mask inputs.
+    """
+    xcen = 25.0
+    ycen = 25.0
+    model = Gaussian2D(2.4, xcen, ycen, x_stddev=5.0, y_stddev=5.0)
+    y, x = np.mgrid[0:50, 0:50]
+    data = model(x, y)
+
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[10, 10] = True
+
+    # Plain array with mask keyword
+    xc1, yc1 = centroid_1dg(data, mask=mask)
+    xc2, yc2 = centroid_2dg(data, mask=mask)
+
+    # MaskedArray (no mask keyword)
+    masked_data = np.ma.array(data, mask=mask)
+    xc1_ma, yc1_ma = centroid_1dg(masked_data)
+    xc2_ma, yc2_ma = centroid_2dg(masked_data)
+
+    assert_allclose([xc1_ma, yc1_ma], [xc1, yc1])
+    assert_allclose([xc2_ma, yc2_ma], [xc2, yc2])

@@ -51,6 +51,11 @@ def _process_data_mask(data, mask, ndim=2, fill_value=np.nan):
     _validate_mask_shape(data, mask)
 
     badmask = ~np.isfinite(data)
+
+    if np.ma.is_masked(data):
+        mask2 = data.mask
+        mask = mask2 if mask is None else mask | mask2
+
     if mask is not None:
         if np.any(mask):
             data = data.copy()
@@ -65,6 +70,11 @@ def _process_data_mask(data, mask, ndim=2, fill_value=np.nan):
         if not is_copied:
             data = data.copy()
         data[badmask] = fill_value
+
+    # If the input was a MaskedArray, return a plain ndarray; the mask
+    # has already been applied to the data above.
+    if isinstance(data, np.ma.MaskedArray):
+        data = np.asarray(data)
 
     return data
 

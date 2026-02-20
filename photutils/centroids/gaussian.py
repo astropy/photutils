@@ -16,6 +16,64 @@ from photutils.utils._quantity_helpers import process_quantities
 __all__ = ['centroid_1dg', 'centroid_2dg']
 
 
+def _validate_gaussian_inputs(data, mask, error):
+    """
+    Process and validate the data, mask, and optional error inputs for
+    Gaussian centroid functions.
+
+    The input ``data`` and ``error`` arrays and the ``mask`` are not
+    mutated; copies are made only when modifications are needed.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The input data array.
+
+    mask : 2D bool `~numpy.ndarray` or `None`
+        A boolean mask where `True` indicates a masked (invalid) pixel.
+
+    error : 2D `~numpy.ndarray` or `None`
+        The 1-sigma error array.
+
+    Returns
+    -------
+    data : 2D `~numpy.ndarray`
+        Processed data with all invalid pixels (from the mask,
+        non-finite data, and non-finite error) set to zero.
+
+    combined_mask : 2D bool `~numpy.ndarray`
+        Boolean mask of all invalid pixels.
+
+    error : 2D `~numpy.ndarray` or `None`
+        Error array with all invalid pixels set to zero (copied only
+        if a modification was required), or `None` if no error was
+        provided.
+    """
+    data = _process_data_mask(data, mask)
+    combined_mask = ~np.isfinite(data)
+
+    if error is not None:
+        error = np.asanyarray(error, dtype=float)
+        if data.shape != error.shape:
+            msg = 'data and error must have the same shape'
+            raise ValueError(msg)
+
+        error_mask = ~np.isfinite(error)
+        if np.any(error_mask):
+            combined_mask |= error_mask
+
+        # Zero error at all invalid pixel positions; copy only if needed
+        if np.any(combined_mask):
+            error = error.copy()
+            error[combined_mask] = 0.0
+
+    # Apply the full combined mask to data once
+    if np.any(combined_mask):
+        data[combined_mask] = 0.0
+
+    return data, combined_mask, error
+
+
 def centroid_1dg(data, *, error=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting 1D Gaussians to the
@@ -71,32 +129,22 @@ def centroid_1dg(data, *, error=None, mask=None):
         ax.legend()
     """
     (data, error), _ = process_quantities((data, error), ('data', 'error'))
-
-    data = _process_data_mask(data, mask)
-    data = np.ma.masked_invalid(data)
-    data.set_fill_value(0.0)
+    data, mask, error = _validate_gaussian_inputs(data, mask, error)
 
     if error is not None:
-        error = np.ma.masked_invalid(error)
-        if data.shape != error.shape:
-            msg = 'data and error must have the same shape'
-            raise ValueError(msg)
-        data.mask |= error.mask
-        error.mask = data.mask
-
         error_squared = error**2
-        xy_error = [np.sqrt(np.ma.sum(error_squared, axis=i)) for i in (0, 1)]
+        xy_error = [np.sqrt(np.sum(error_squared, axis=i)) for i in (0, 1)]
         xy_weights = [1.0 / xy_err.clip(min=1.0e-30) for xy_err in xy_error]
     else:
         xy_weights = [np.ones(data.shape[i]) for i in (1, 0)]
 
     # Assign zero weight where an entire row or column is masked
-    if np.any(data.mask):
-        bad_idx = [np.all(data.mask, axis=i) for i in (0, 1)]
+    if np.any(mask):
+        bad_idx = [np.all(mask, axis=i) for i in (0, 1)]
         for i in (0, 1):
             xy_weights[i][bad_idx[i]] = 0.0
 
-    xy_data = [np.ma.sum(data, axis=i).data for i in (0, 1)]
+    xy_data = [np.sum(data, axis=i) for i in (0, 1)]
 
     # Gaussian1D stddev is bounded to be strictly positive
     fitter = TRFLSQFitter()
@@ -133,10 +181,7 @@ def _gaussian1d_moments(data, *, mask=None):
     amplitude, mean, stddev : float
         The estimated parameters of a 1D Gaussian.
     """
-    data = _process_data_mask(data, mask, ndim=1)
-    data = np.ma.masked_invalid(data)
-    data.set_fill_value(0.0)
-    data = data.filled()
+    data = _process_data_mask(data, mask, ndim=1, fill_value=0.0)
 
     x = np.arange(data.size)
     x_mean = np.sum(x * data) / np.sum(data)
@@ -204,35 +249,21 @@ def centroid_2dg(data, *, error=None, mask=None):
     from photutils.morphology import data_properties
 
     (data, error), _ = process_quantities((data, error), ('data', 'error'))
-
-    data = _process_data_mask(data, mask)
-    data = np.ma.masked_invalid(data)
-    data.set_fill_value(0.0)
+    data, mask, error = _validate_gaussian_inputs(data, mask, error)
 
     if error is not None:
-        error = np.ma.masked_invalid(error)
-        if data.shape != error.shape:
-            msg = 'data and error must have the same shape'
-            raise ValueError(msg)
-        data.mask |= error.mask
         weights = 1.0 / error.clip(min=1.0e-30)
     else:
         weights = np.ones(data.shape)
 
-    if np.ma.count(data) < 6:
+    if np.count_nonzero(~mask) < 6:
         msg = ('Input data must have a least 6 unmasked values to fit a '
                '2D Gaussian.')
         raise ValueError(msg)
 
     # Assign zero weight to masked pixels
-    if data.mask is not np.ma.nomask:
-        weights[data.mask] = 0.0
-
-    # Normalize np.ma.nomask (False) to None so that data_properties
-    # does not mistake a scalar boolean for a same-shaped boolean array.
-    mask = data.mask if data.mask is not np.ma.nomask else None
-    data.fill_value = 0.0
-    data = data.filled()
+    if np.any(mask):
+        weights[mask] = 0.0
 
     # Subtract the minimum of the data to make the data values positive.
     # This prevents issues with the moment estimation in data_properties.
