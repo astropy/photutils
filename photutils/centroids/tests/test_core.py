@@ -411,6 +411,21 @@ def test_centroid_quadratic_mutation():
     assert_array_equal(mask, mask_orig)
 
 
+def test_centroid_quadratic_units():
+    """
+    Test that centroid_quadratic strips Quantity units and returns the
+    same result as a plain float array.
+    """
+    xc_ref = 25.7
+    yc_ref = 26.2
+    data = _make_gaussian_source((50, 47), 2.4, xc_ref, yc_ref, 3.2, 5.7, 0)
+
+    xc_plain, yc_plain = centroid_quadratic(data)
+    xc_unit, yc_unit = centroid_quadratic(data * u.nJy)
+    assert_allclose(xc_plain, xc_unit)
+    assert_allclose(yc_plain, yc_unit)
+
+
 def test_centroid_quadratic_fit_failed():
     """
     Test centroid_quadratic when the quadratic fit fails.
@@ -539,6 +554,10 @@ class TestCentroidSources:
         match = 'The input "centroid_func" must have a "mask" keyword'
         with pytest.raises(ValueError, match=match):
             centroid_sources(data, [25], 26, centroid_func=test_func)
+
+        match = 'data must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            centroid_sources(np.ones((3, 3, 3)), 1, 1, box_size=3)
 
     @pytest.mark.parametrize('centroid_func', [centroid_com,
                                                centroid_quadratic,

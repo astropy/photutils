@@ -85,6 +85,7 @@ def _process_data_mask(data, mask, ndim=2, fill_value=np.nan):
     """
     data = _validate_data(data, ndim=ndim)
     is_copied = False
+    is_masked_array = isinstance(data, np.ma.MaskedArray)
     _validate_mask_shape(data, mask)
 
     badmask = ~np.isfinite(data)
@@ -110,7 +111,7 @@ def _process_data_mask(data, mask, ndim=2, fill_value=np.nan):
 
     # If the input was a MaskedArray, return a plain ndarray; the mask
     # has already been applied to the data above.
-    if isinstance(data, np.ma.MaskedArray):
+    if is_masked_array:
         data = np.asarray(data)
 
     return data
@@ -169,13 +170,10 @@ def _validate_gaussian_inputs(data, mask, error):
 
     # Apply the full combined mask to data once
     if np.any(combined_mask):
-        # _process_data_mask copies data only when its own masking
-        # requires it. If combined_mask grew beyond the original
-        # non-finite positions in data (e.g., due to NaN in error), data
-        # may still be the caller's original object. Copy before writing
-        # to avoid mutating the input.
-        if np.any(np.isfinite(data[combined_mask])):
-            data = data.copy()
+        # The data array may still be the original input object if
+        # no modifications were needed above. We copy here to avoid
+        # mutating the caller's original data.
+        data = data.copy()
         data[combined_mask] = 0.0
 
     return data, combined_mask, error

@@ -242,6 +242,13 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
+    (data,), _ = process_quantities((data,), ('data',))
+
+    if ((xpeak is None and ypeak is not None)
+            or (xpeak is not None and ypeak is None)):
+        msg = 'xpeak and ypeak must both be input or "None"'
+        raise ValueError(msg)
+
     data = _process_data_mask(data, mask)
     ny, nx = data.shape
 
@@ -251,11 +258,6 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     if np.prod(fit_boxsize) < 6:
         msg = ('fit_boxsize is too small. 6 values are required to fit a '
                '2D quadratic polynomial.')
-        raise ValueError(msg)
-
-    if ((xpeak is None and ypeak is not None)
-            or (xpeak is not None and ypeak is None)):
-        msg = 'xpeak and ypeak must both be input or "None"'
         raise ValueError(msg)
 
     if xpeak is not None and ((xpeak < 0) or (xpeak > data.shape[1] - 1)):
@@ -448,6 +450,12 @@ class CentroidQuadratic:
         -------
         centroid : `~numpy.ndarray`
             The ``x, y`` coordinates of the centroid.
+
+        Notes
+        -----
+        Unlike `~photutils.centroids.centroid_1dg` and
+        `~photutils.centroids.centroid_2dg`, this method does not
+        support an error array.
         """
         kwargs = {'mask': mask,
                   'fit_boxsize': self.fit_boxsize,
@@ -558,6 +566,10 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
         plt.legend()
         plt.tight_layout()
     """
+    if np.ndim(data) != 2:
+        msg = 'data must be a 2D array'
+        raise ValueError(msg)
+
     xpos = np.atleast_1d(xpos)
     ypos = np.atleast_1d(ypos)
     if xpos.ndim != 1:
@@ -617,14 +629,14 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
     xcentroids = np.zeros(n_sources, dtype=float)
     ycentroids = np.zeros(n_sources, dtype=float)
 
+    inverted_footprint = np.logical_not(footprint)
     for i, (xp, yp) in enumerate(zip(xpos, ypos, strict=True)):
         slices_large, slices_small = overlap_slices(data.shape,
                                                     footprint.shape, (yp, xp))
         data_cutout = data[slices_large]
 
-        footprint_mask = np.logical_not(footprint)
         # Trim footprint mask if it has only partial overlap on the data
-        footprint_mask = footprint_mask[slices_small]
+        footprint_mask = inverted_footprint[slices_small]
 
         if mask is not None:
             # Combine the input mask cutout and footprint mask
