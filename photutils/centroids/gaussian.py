@@ -172,6 +172,15 @@ def centroid_2dg(data, *, error=None, mask=None):
                '2D Gaussian.')
         raise ValueError(msg)
 
+    # Subtract the minimum of the data to make the data values positive.
+    # Moments from negative data values can yield undefined Gaussian
+    # parameters, e.g., x_stddev and y_stddev.
+    shifted = data - np.min(data)
+    if np.sum(shifted) == 0:
+        msg = ('Input data must have non-constant values to fit a '
+               '2D Gaussian.')
+        raise ValueError(msg)
+
     if error is not None:
         weights = 1.0 / error.clip(min=1.0e-30)
     else:
@@ -181,11 +190,8 @@ def centroid_2dg(data, *, error=None, mask=None):
     if np.any(mask):
         weights[mask] = 0.0
 
-    # Subtract the minimum of the data to make the data values positive.
-    # Moments from negative data values can yield undefined Gaussian
-    # parameters, e.g., x_stddev and y_stddev.
     amplitude, x_mean, y_mean, x_stddev, y_stddev, theta = _gaussian2d_moments(
-        data - np.min(data))
+        shifted)
 
     g_init = Gaussian2D(amplitude=amplitude,
                         x_mean=x_mean,

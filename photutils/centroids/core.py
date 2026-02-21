@@ -115,7 +115,7 @@ def centroid_com(data, *, mask=None):
 def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
                        ypeak=None, search_boxsize=None):
     """
-    Calculate the centroid of an 2D array by fitting a 2D quadratic
+    Calculate the centroid of a 2D array by fitting a 2D quadratic
     polynomial.
 
     A second degree 2D polynomial is fit within a small region of the
@@ -172,7 +172,7 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     search_boxsize : int or tuple of int, optional
         The size (in pixels) of the box used to search for the maximum
         pixel value if ``xpeak`` and ``ypeak`` are both specified. If
-        ``fit_boxsize`` has two elements, they must be in ``(ny,
+        ``search_boxsize`` has two elements, they must be in ``(ny,
         nx)`` order. If ``search_boxsize`` is a scalar then a square
         box of size ``search_boxsize`` will be used. ``search_boxsize``
         must have odd values for both axes. This parameter is ignored
@@ -332,11 +332,11 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     coeff_matrix[:, 4] = x * x
     coeff_matrix[:, 5] = y * y
 
-    # Remove NaNs from data to be fit
-    nan_mask = ~np.isnan(cutout)
-    if np.any(nan_mask):
-        coeff_matrix = coeff_matrix[nan_mask]
-        cutout = cutout[nan_mask]
+    # Include only finite values in the fit.
+    finite_mask = np.isfinite(cutout)
+    if not np.all(finite_mask):
+        coeff_matrix = coeff_matrix[finite_mask]
+        cutout = cutout[finite_mask]
 
     try:
         c = np.linalg.lstsq(coeff_matrix, cutout, rcond=None)[0]
@@ -506,8 +506,8 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
         calculate the centroid of a 2D array. The ``centroid_func``
         must accept a 2D `~numpy.ndarray`, have a ``mask`` keyword and
         optionally an ``error`` keyword. The callable object must return
-        a tuple of two 1D `~numpy.ndarray`, representing the x and y
-        centroids. The default is `~photutils.centroids.centroid_com`.
+        two scalar values representing the (x, y) centroid. The default
+        is `~photutils.centroids.centroid_com`.
 
     **kwargs : dict, optional
         Any additional keyword arguments accepted by the
@@ -589,6 +589,10 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
             msg = 'footprint must be a 2D array'
             raise ValueError(msg)
 
+    if mask is not None and mask.shape != data.shape:
+        msg = 'mask and data must have the same shape'
+        raise ValueError(msg)
+
     spec = inspect.signature(centroid_func)
     if 'mask' not in spec.parameters:
         msg = 'The input "centroid_func" must have a "mask" keyword.'
@@ -601,6 +605,13 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
     # Save the original error array before the loop so that each
     # iteration independently slices the full-image array
     error_array = centroid_kwargs.get('error')
+
+    # Extract xpeak/ypeak before the loop so the original absolute
+    # coordinates are available for every source. The per-iteration
+    # block below re-adds them with the correct cutout offset each time.
+    # Remove this block once xpeak and ypeak are fully deprecated.
+    xpeak_orig = centroid_kwargs.pop('xpeak', None)
+    ypeak_orig = centroid_kwargs.pop('ypeak', None)
 
     n_sources = len(xpos)
     xcentroids = np.zeros(n_sources, dtype=float)
@@ -622,7 +633,7 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
             mask_cutout = footprint_mask
 
         if np.all(mask_cutout):
-            msg = (f'The cutout for the source at ({xp, yp}) is completely '
+            msg = (f'The cutout for the source at ({xp}, {yp}) is completely '
                    'masked. Please check your input mask and footprint. '
                    'Also note that footprint must be a small, local '
                    'footprint.')
@@ -634,13 +645,13 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
             centroid_kwargs['error'] = error_array[slices_large]
 
         # Remove this block once xpeak and ypeak are fully deprecated.
-        # Remove xpeak and ypeak from the dict and add back only if both
-        # are specified and not None.
-        xpeak = centroid_kwargs.pop('xpeak', None)
-        ypeak = centroid_kwargs.pop('ypeak', None)
-        if xpeak is not None and ypeak is not None:
-            centroid_kwargs['xpeak'] = xpeak - slices_large[1].start
-            centroid_kwargs['ypeak'] = ypeak - slices_large[0].start
+        # Clear any xpeak/ypeak left by the previous iteration, then
+        # re-add with the offset relative to this source's cutout.
+        centroid_kwargs.pop('xpeak', None)
+        centroid_kwargs.pop('ypeak', None)
+        if xpeak_orig is not None and ypeak_orig is not None:
+            centroid_kwargs['xpeak'] = xpeak_orig - slices_large[1].start
+            centroid_kwargs['ypeak'] = ypeak_orig - slices_large[0].start
 
         try:
             xcen, ycen = centroid_func(data_cutout, **centroid_kwargs)

@@ -210,6 +210,22 @@ class TestValidateGaussianInputs:
         _validate_gaussian_inputs(gauss_data, None, error)
         assert_array_equal(error, error_orig)
 
+    def test_data_not_mutated_when_error_nan(self, gauss_data):
+        """
+        data must not be mutated when NaN in error extends combined_mask
+        beyond the positions already handled by _process_data_mask.
+
+        When mask=None and data is clean, _process_data_mask returns
+        the original object without copying. If error then contributes
+        new NaN positions, the code must not write 0.0 directly into
+        the caller's array.
+        """
+        error = np.ones_like(gauss_data)
+        error[5, 5] = np.nan
+        data_orig = gauss_data.copy()
+        _validate_gaussian_inputs(gauss_data, None, error)
+        assert_array_equal(gauss_data, data_orig)
+
     def test_error_zeroed_at_combined_mask(self, gauss_data):
         mask = np.zeros(gauss_data.shape, dtype=bool)
         mask[2, 2] = True
@@ -221,12 +237,12 @@ class TestValidateGaussianInputs:
 
     def test_no_copy_when_no_invalids(self, gauss_data):
         """
-        error should not be copied when there is nothing to zero.
+        Test that error values are unchanged when there are no NaNs in
+        data or error, and mask is None.
         """
         error = np.ones_like(gauss_data)
         _, _, out_error = _validate_gaussian_inputs(gauss_data, None, error)
-        # No changes needed, so out_error must be the exact same object
-        assert out_error is error
+        assert_array_equal(out_error, error)
 
 
 class TestGaussian2DMoments:

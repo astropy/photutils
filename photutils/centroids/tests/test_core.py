@@ -302,6 +302,28 @@ def test_centroid_quadratic_nan_withmask(nan_data, use_mask):
             assert len(warnlist) == 1
 
 
+def test_centroid_quadratic_nan_in_fitbox():
+    """
+    Test centroid_quadratic with a NaN inside the fit box.
+
+    This tests that non-finite values are removed from the coefficient
+    matrix and cutout before the least-squares fit. The NaN pixel is
+    masked so that _process_data_mask fills it with NaN (fill_value),
+    which is then filtered out by the ``finite_mask`` check inside the
+    fit.
+    """
+    data = _make_gaussian_source((11, 11), 100.0, 5.0, 5.0, 2.0, 2.0, 0)
+    # Place a NaN adjacent to the peak; with fit_boxsize=5 centered at
+    # (5, 5) the fit box covers rows/cols [3:8], so (row=5, col=4) is
+    # inside the box and will trigger the ``if not np.all(finite_mask)``
+    # branch.
+    data[5, 4] = np.nan
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[5, 4] = True  # suppress the non-finite warning via explicit mask
+    xycen = centroid_quadratic(data, mask=mask, fit_boxsize=5)
+    assert_allclose(xycen, (5.0, 5.0), atol=0.01)
+
+
 def test_centroid_quadratic_npts():
     """
     Test centroid_quadratic with insufficient unmasked data points.
@@ -646,6 +668,54 @@ class TestCentroidSources:
                                       centroid_func=centroid_quadratic,
                                       xpeak=7, ypeak=7, fit_boxsize=3)
         assert_allclose(xycen3, ([7], [7]))
+
+    def test_mask_wrong_shape(self):
+        """
+        Test centroid_sources raises ValueError when the mask shape
+        does not match the data shape.
+        """
+        data = np.ones((50, 50))
+        mask = np.zeros((30, 30), dtype=bool)
+        match = 'mask and data must have the same shape'
+        with pytest.raises(ValueError, match=match):
+            centroid_sources(data, 25, 25, box_size=11, mask=mask)
+
+    def test_xypeak_multiple_sources(self):
+        """
+        Test that xpeak/ypeak are correctly offset for each source in
+        a multi-source centroid_sources call.
+        """
+        # Two isolated peaks close together so that xpeak=10 (absolute)
+        # lies within both source cutouts (box_size=5):
+        #   source 1 cutout: x[8:13], start=8 -> relative xpeak = 10-8 = 2
+        #   source 2 cutout: x[9:14], start=9 -> relative xpeak = 10-9 = 1
+        data = np.zeros((25, 25))
+        data[10, 10] = 100.0
+        data[10, 11] = 100.0
+
+        with pytest.warns(AstropyDeprecationWarning):
+            xc_multi, yc_multi = centroid_sources(
+                data, xpos=[10, 11], ypos=[10, 10], box_size=5,
+                centroid_func=centroid_quadratic,
+                xpeak=10, ypeak=10, fit_boxsize=3)
+
+        # Compare with individual single-source calls using the same
+        # xpeak/ypeak to get the reference values.
+        with pytest.warns(AstropyDeprecationWarning):
+            xc1, yc1 = centroid_sources(
+                data, xpos=10, ypos=10, box_size=5,
+                centroid_func=centroid_quadratic,
+                xpeak=10, ypeak=10, fit_boxsize=3)
+        with pytest.warns(AstropyDeprecationWarning):
+            xc2, yc2 = centroid_sources(
+                data, xpos=11, ypos=10, box_size=5,
+                centroid_func=centroid_quadratic,
+                xpeak=10, ypeak=10, fit_boxsize=3)
+
+        assert_allclose(xc_multi[0], xc1[0])
+        assert_allclose(yc_multi[0], yc1[0])
+        assert_allclose(xc_multi[1], xc2[0])
+        assert_allclose(yc_multi[1], yc2[0])
 
 
 def test_centroid_sources_error_multiple_sources():

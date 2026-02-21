@@ -12,8 +12,8 @@ from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.centroids.gaussian import (_gaussian1d_moments, centroid_1dg,
-                                          centroid_2dg)
+from photutils.centroids._utils import _gaussian1d_moments
+from photutils.centroids.gaussian import centroid_1dg, centroid_2dg
 
 
 def _make_gaussian_source(shape, amplitude, xc, yc, xstd, ystd, theta):
@@ -148,6 +148,23 @@ def test_centroid_2dg_dof():
     """
     data = np.ones((2, 2))
     match = 'Input data must have a least 6 unmasked values to fit'
+    with pytest.raises(ValueError, match=match):
+        centroid_2dg(data)
+
+
+@pytest.mark.parametrize('value', [0.0, 1.0, -3.7])
+def test_centroid_2dg_constant_data(value):
+    """
+    Test that centroid_2dg raises a ValueError for constant (flat) input
+    data.
+
+    After subtracting the minimum, a constant array becomes all-zero,
+    making the moment sum zero and the Gaussian parameters undefined.
+    This previously produced silent NaN results; now it raises a clear
+    error.
+    """
+    data = np.full((10, 10), value)
+    match = 'Input data must have non-constant values'
     with pytest.raises(ValueError, match=match):
         centroid_2dg(data)
 

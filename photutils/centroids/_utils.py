@@ -169,6 +169,13 @@ def _validate_gaussian_inputs(data, mask, error):
 
     # Apply the full combined mask to data once
     if np.any(combined_mask):
+        # _process_data_mask copies data only when its own masking
+        # requires it. If combined_mask grew beyond the original
+        # non-finite positions in data (e.g., due to NaN in error), data
+        # may still be the caller's original object. Copy before writing
+        # to avoid mutating the input.
+        if np.any(np.isfinite(data[combined_mask])):
+            data = data.copy()
         data[combined_mask] = 0.0
 
     return data, combined_mask, error
@@ -220,10 +227,11 @@ def _gaussian2d_moments(data):
 
     Returns
     -------
-    x_mean, y_mean, x_stddev, y_stddev, theta : float
-        The estimated centroid (``x_mean``, ``y_mean``), axis standard
-        deviations (``x_stddev``, ``y_stddev``), and rotation angle in
-        radians (``theta``) of a 2D Gaussian.
+    amplitude, x_mean, y_mean, x_stddev, y_stddev, theta : float
+        The estimated amplitude (``amplitude``), centroid (``x_mean``,
+        ``y_mean``), axis standard deviations (``x_stddev``,
+        ``y_stddev``), and rotation angle in radians (``theta``) of a 2D
+        Gaussian.
     """
     y, x = np.indices(data.shape)
     amplitude = np.max(data)
