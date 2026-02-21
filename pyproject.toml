@@ -136,8 +136,6 @@ xfail_strict = true
 remote_data_strict = true
 filterwarnings = [
     'error',  # turn warnings into exceptions
-    # Remove when https://github.com/astropy/astropy/issues/19216 is resolved
-    'ignore:The chararray class is deprecated and will be removed in a future release:DeprecationWarning',
 ]
 
 [tool.coverage.run]
