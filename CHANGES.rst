@@ -81,6 +81,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.centroids``
+
+  - Fixed a bug in ``centroid_sources`` where the input array could be
+    ignored if more than one source was input. [#2179]
+
 - ``photutils.datasets``
 
   - Fixed a bug in ``apply_poisson_noise`` where the returned image

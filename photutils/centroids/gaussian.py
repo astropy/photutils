@@ -10,6 +10,9 @@ from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.centroids._utils import (_gaussian1d_moments,
+                                        _gaussian2d_moments,
+                                        _validate_gaussian_inputs)
 from photutils.utils._quantity_helpers import process_quantities
 
 __all__ = ['centroid_1dg', 'centroid_2dg']
@@ -25,9 +28,10 @@ def centroid_1dg(data, *, error=None, mask=None):
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
-        The 2D image data. The image should be a background-subtracted
-        cutout image containing a single source.
+    data : 2D array_like
+        The 2D image data. ``data`` can be a `~numpy.ma.MaskedArray`.
+        The image should be a background-subtracted cutout image
+        containing a single source.
 
     error : 2D `~numpy.ndarray`, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -35,6 +39,8 @@ def centroid_1dg(data, *, error=None, mask=None):
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
+        If ``data`` is a `~numpy.ma.MaskedArray`, its mask will be
+        combined (using bitwise OR) with the input ``mask``.
 
     Returns
     -------
@@ -70,45 +76,22 @@ def centroid_1dg(data, *, error=None, mask=None):
         ax.legend()
     """
     (data, error), _ = process_quantities((data, error), ('data', 'error'))
-
-    data = np.ma.asanyarray(data)
-    if data.ndim != 2:
-        msg = 'data must be a 2D array'
-        raise ValueError(msg)
-
-    if mask is not None and mask is not np.ma.nomask:
-        mask = np.asanyarray(mask)
-        if data.shape != mask.shape:
-            msg = 'data and mask must have the same shape'
-            raise ValueError(msg)
-        data.mask |= mask
-
-    if np.any(~np.isfinite(data)):
-        data = np.ma.masked_invalid(data)
-        warnings.warn('Input data contains non-finite values (e.g., NaN or '
-                      'inf) that were automatically masked.',
-                      AstropyUserWarning)
+    data, mask, error = _validate_gaussian_inputs(data, mask, error)
 
     if error is not None:
-        error = np.ma.masked_invalid(error)
-        if data.shape != error.shape:
-            msg = 'data and error must have the same shape'
-            raise ValueError(msg)
-        data.mask |= error.mask
-        error.mask = data.mask
-
-        xy_error = [np.sqrt(np.ma.sum(error**2, axis=i)) for i in (0, 1)]
-        xy_weights = [(1.0 / xy_error[i].clip(min=1.0e-30)) for i in (0, 1)]
+        error_squared = error**2
+        xy_error = [np.sqrt(np.sum(error_squared, axis=i)) for i in (0, 1)]
+        xy_weights = [1.0 / xy_err.clip(min=1.0e-30) for xy_err in xy_error]
     else:
         xy_weights = [np.ones(data.shape[i]) for i in (1, 0)]
 
-    # assign zero weight where an entire row or column is masked
-    if np.any(data.mask):
-        bad_idx = [np.all(data.mask, axis=i) for i in (0, 1)]
+    # Assign zero weight where an entire row or column is masked
+    if np.any(mask):
+        bad_idx = [np.all(mask, axis=i) for i in (0, 1)]
         for i in (0, 1):
             xy_weights[i][bad_idx[i]] = 0.0
 
-    xy_data = [np.ma.sum(data, axis=i).data for i in (0, 1)]
+    xy_data = [np.sum(data, axis=i) for i in (0, 1)]
 
     # Gaussian1D stddev is bounded to be strictly positive
     fitter = TRFLSQFitter()
@@ -124,53 +107,6 @@ def centroid_1dg(data, *, error=None, mask=None):
     return np.array(centroid)
 
 
-def _gaussian1d_moments(data, *, mask=None):
-    """
-    Estimate 1D Gaussian parameters from the moments of 1D data.
-
-    This function can be useful for providing initial parameter values
-    when fitting a 1D Gaussian to the ``data``.
-
-    Parameters
-    ----------
-    data : 1D `~numpy.ndarray`
-        The 1D data array.
-
-    mask : 1D bool `~numpy.ndarray`, optional
-        A boolean mask, with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
-
-    Returns
-    -------
-    amplitude, mean, stddev : float
-        The estimated parameters of a 1D Gaussian.
-    """
-    if np.any(~np.isfinite(data)):
-        data = np.ma.masked_invalid(data)
-        warnings.warn('Input data contains non-finite values (e.g., NaN or '
-                      'inf) that were automatically masked.',
-                      AstropyUserWarning)
-    else:
-        data = np.ma.array(data)
-
-    if mask is not None and mask is not np.ma.nomask:
-        mask = np.asanyarray(mask)
-        if data.shape != mask.shape:
-            msg = 'data and mask must have the same shape'
-            raise ValueError(msg)
-        data.mask |= mask
-
-    data.fill_value = 0.0
-    data = data.filled()
-
-    x = np.arange(data.size)
-    x_mean = np.sum(x * data) / np.sum(data)
-    x_stddev = np.sqrt(abs(np.sum(data * (x - x_mean) ** 2) / np.sum(data)))
-    amplitude = np.ptp(data)
-
-    return amplitude, x_mean, x_stddev
-
-
 def centroid_2dg(data, *, error=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting a 2D Gaussian to the
@@ -181,9 +117,10 @@ def centroid_2dg(data, *, error=None, mask=None):
 
     Parameters
     ----------
-    data : 2D `~numpy.ndarray`
-        The 2D image data. The image should be a background-subtracted
-        cutout image containing a single source.
+    data : 2D array_like
+        The 2D image data. ``data`` can be a `~numpy.ma.MaskedArray`.
+        The image should be a background-subtracted cutout image
+        containing a single source.
 
     error : 2D `~numpy.ndarray`, optional
         The 2D array of the 1-sigma errors of the input ``data``.
@@ -191,6 +128,8 @@ def centroid_2dg(data, *, error=None, mask=None):
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask, with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
+        If ``data`` is a `~numpy.ma.MaskedArray`, its mask will be
+        combined (using bitwise OR) with the input ``mask``.
 
     Returns
     -------
@@ -225,77 +164,51 @@ def centroid_2dg(data, *, error=None, mask=None):
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
     """
-    # prevent circular import
-    from photutils.morphology import data_properties
-
     (data, error), _ = process_quantities((data, error), ('data', 'error'))
+    data, mask, error = _validate_gaussian_inputs(data, mask, error)
 
-    data = np.ma.asanyarray(data)
-    if data.ndim != 2:
-        msg = 'data must be a 2D array'
-        raise ValueError(msg)
-
-    if mask is not None and mask is not np.ma.nomask:
-        mask = np.asanyarray(mask)
-        if data.shape != mask.shape:
-            msg = 'data and mask must have the same shape'
-            raise ValueError(msg)
-        data.mask |= mask
-
-    if np.any(~np.isfinite(data)):
-        data = np.ma.masked_invalid(data)
-        warnings.warn('Input data contains non-finite values (e.g., NaN or '
-                      'inf) that were automatically masked.',
-                      AstropyUserWarning)
-
-    if error is not None:
-        error = np.ma.masked_invalid(error)
-        if data.shape != error.shape:
-            msg = 'data and error must have the same shape'
-            raise ValueError(msg)
-        data.mask |= error.mask
-        weights = 1.0 / error.clip(min=1.0e-30)
-    else:
-        weights = np.ones(data.shape)
-
-    if np.ma.count(data) < 6:
+    if np.count_nonzero(~mask) < 6:
         msg = ('Input data must have a least 6 unmasked values to fit a '
                '2D Gaussian.')
         raise ValueError(msg)
 
-    # assign zero weight to masked pixels
-    if data.mask is not np.ma.nomask:
-        weights[data.mask] = 0.0
-
-    # Normalize np.ma.nomask (False) to None so that data_properties
-    # does not mistake a scalar boolean for a same-shaped boolean array.
-    mask = data.mask if data.mask is not np.ma.nomask else None
-    data.fill_value = 0.0
-    data = data.filled()
-
     # Subtract the minimum of the data to make the data values positive.
-    # This prevents issues with the moment estimation in data_properties.
     # Moments from negative data values can yield undefined Gaussian
-    # parameters, e.g., x/y_stddev.
-    props = data_properties(data - np.min(data), mask=mask)
+    # parameters, e.g., x_stddev and y_stddev.
+    shifted = data - np.min(data)
+    if np.sum(shifted) == 0:
+        msg = ('Input data must have non-constant values to fit a '
+               '2D Gaussian.')
+        raise ValueError(msg)
 
-    g_init = Gaussian2D(amplitude=np.ptp(data),
-                        x_mean=props.xcentroid,
-                        y_mean=props.ycentroid,
-                        x_stddev=props.semimajor_sigma.value,
-                        y_stddev=props.semiminor_sigma.value,
-                        theta=props.orientation)
+    if error is not None:
+        weights = 1.0 / error.clip(min=1.0e-30)
+    else:
+        weights = np.ones(data.shape)
 
-    # Gaussian2D [x/y]_stddev are bounded to be strictly positive
+    # Assign zero weight to masked pixels
+    if np.any(mask):
+        weights[mask] = 0.0
+
+    amplitude, x_mean, y_mean, x_stddev, y_stddev, theta = _gaussian2d_moments(
+        shifted)
+
+    g_init = Gaussian2D(amplitude=amplitude,
+                        x_mean=x_mean,
+                        y_mean=y_mean,
+                        x_stddev=x_stddev,
+                        y_stddev=y_stddev,
+                        theta=theta)
     fitter = TRFLSQFitter()
 
     y, x = np.indices(data.shape)
 
     with warnings.catch_warnings(record=True) as fit_warnings:
+        warnings.simplefilter('always', AstropyUserWarning)
         gfit = fitter(g_init, x, y, data, weights=weights)
 
-    if len(fit_warnings) > 0:
-        warnings.warn('The fit may not have converged. Please check your '
-                      'results.', AstropyUserWarning)
+    if any(issubclass(w.category, AstropyUserWarning) for w in fit_warnings):
+        msg = 'The fit may not have converged. Please check your results.'
+        warnings.warn(msg, AstropyUserWarning)
 
     return np.array([gfit.x_mean.value, gfit.y_mean.value])
