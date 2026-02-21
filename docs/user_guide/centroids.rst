@@ -25,7 +25,7 @@ The following functions calculate the centroid of a single source:
 Masks can be input into each of these functions to mask bad pixels.
 Error arrays can be input into the two Gaussian fitting methods to
 weight the fits. Non-finite values (e.g., NaN or inf) in the data or
-error arrays are automatically masked
+error arrays are automatically masked.
 
 To calculate the centroids of many sources in an image, use the
 :func:`~photutils.centroids.centroid_sources` function. This function
@@ -61,8 +61,8 @@ part of the image::
 
     >>> data -= np.median(data[0:30, 0:125])
 
-The data is a 2D image of four Gaussian sources.  Let's extract a
-single object from the data::
+The data is a 2D image of four Gaussian sources. Let's extract a single
+object from the data::
 
     >>> data = data[40:80, 70:110]
 
@@ -91,11 +91,11 @@ centroiding functions::
     >>> print(np.array((x4, y4)))  # doctest: +FLOAT_CMP
     [19.9851944  20.01490157]
 
-The measured centroids are all very close to the true centroid of the object
-in the cutout image of ``(20, 20)``.
+The measured centroids are all very close to the object's true centroid
+at position ``(20, 20)`` in the cutout image.
 
-Now let's plot the results.  Because the centroids are all very
-similar, we also include an inset plot zoomed in near the centroid:
+Now let's plot the results. Because the centroids are all very similar,
+we also include an inset plot zoomed in near the centroid:
 
 .. plot::
 
@@ -150,10 +150,10 @@ initial guesses for their central positions. This function can be used
 with any of the above centroiding functions or a custom user-defined
 centroiding function.
 
-For each source, a cutout image is made that is centered at each initial
-position of size ``box_size``. Optionally, a non-rectangular local
-``footprint`` mask can be input instead of ``box_size``. The centroids
-for each source are then calculated within their cutout images::
+For each source, a cutout image of size ``box_size`` is made centered at
+each initial position. Optionally, a non-rectangular local ``footprint``
+mask can be input instead of ``box_size``. The centroids for each source
+are then calculated within their cutout images::
 
     >>> import numpy as np
     >>> from photutils.centroids import centroid_2dg, centroid_sources
