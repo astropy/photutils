@@ -568,7 +568,7 @@ class TestBackground2D:
         """
         bkg = Background2D(test_data, (25, 25), filter_size=(1, 1),
                            mask=np.ma.nomask)
-        assert bkg._mask is None
+        assert not bkg._has_mask
 
         bkg = Background2D(test_data, (25, 25), filter_size=(1, 1),
                            coverage_mask=np.ma.nomask)
@@ -774,3 +774,92 @@ class TestBackground2D:
                         np.median(bkg.background_mesh))
         assert_allclose(bkg.background_rms_median,
                         np.median(bkg.background_rms_mesh))
+
+    def test_input_data_not_mutated(self, test_data):
+        """
+        Test that the input data array is not modified by Background2D
+        for various combinations of mask, coverage_mask, and box sizes
+        that require padding.
+        """
+        # Basic case: no mask, no coverage_mask
+        data = test_data.copy()
+        data_orig = data.copy()
+        Background2D(data, (25, 25))
+        assert_equal(data, data_orig)
+
+        # With outliers in the data (exercises sigma-clipping path)
+        data = test_data.copy()
+        data[10, 10] = 1000.0
+        data_orig = data.copy()
+        Background2D(data, (25, 25))
+        assert_equal(data, data_orig)
+
+        # With mask
+        data = test_data.copy()
+        data_orig = data.copy()
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[10:20, 10:20] = True
+        Background2D(data, (25, 25), mask=mask)
+        assert_equal(data, data_orig)
+
+        # With coverage_mask
+        data = test_data.copy()
+        data_orig = data.copy()
+        coverage_mask = np.zeros(data.shape, dtype=bool)
+        coverage_mask[50:, 50:] = True
+        Background2D(data, (25, 25), coverage_mask=coverage_mask)
+        assert_equal(data, data_orig)
+
+        # With both mask and coverage_mask
+        data = test_data.copy()
+        data_orig = data.copy()
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[10:20, 10:20] = True
+        coverage_mask = np.zeros(data.shape, dtype=bool)
+        coverage_mask[50:, 50:] = True
+        Background2D(data, (25, 25), mask=mask, coverage_mask=coverage_mask)
+        assert_equal(data, data_orig)
+
+        # With box size that requires padding (not an integer multiple)
+        data = test_data.copy()
+        data_orig = data.copy()
+        Background2D(data, (23, 22))  # 100 / 23 and 100 / 22 are not integers
+        assert_equal(data, data_orig)
+
+        # Padding with mask
+        data = test_data.copy()
+        data_orig = data.copy()
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[5:15, 5:15] = True
+        Background2D(data, (23, 22), mask=mask)
+        assert_equal(data, data_orig)
+
+        # Padding with coverage_mask
+        data = test_data.copy()
+        data_orig = data.copy()
+        coverage_mask = np.zeros(data.shape, dtype=bool)
+        coverage_mask[60:, 60:] = True
+        Background2D(data, (23, 22), coverage_mask=coverage_mask)
+        assert_equal(data, data_orig)
+
+    def test_input_masked_array_not_mutated(self, test_data):
+        """
+        Test that a masked-array input is not modified by Background2D.
+        """
+        data_values = test_data.copy()
+        mask = np.zeros(data_values.shape, dtype=bool)
+        mask[10:20, 10:20] = True
+        data_ma = np.ma.MaskedArray(data_values, mask=mask)
+        data_values_orig = data_values.copy()
+        mask_orig = mask.copy()
+
+        Background2D(data_ma, (25, 25))
+
+        assert_equal(data_ma.data, data_values_orig)
+        assert_equal(data_ma.mask, mask_orig)
+
+        # Box size requiring padding
+        data_ma2 = np.ma.MaskedArray(data_values.copy(), mask=mask.copy())
+        Background2D(data_ma2, (23, 22))
+        assert_equal(data_ma2.data, data_values_orig)
+        assert_equal(data_ma2.mask, mask_orig)
