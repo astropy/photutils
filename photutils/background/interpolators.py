@@ -78,6 +78,12 @@ class _BkgZoomInterpolator:
         -------
         result : 2D `~numpy.ndarray`
             The resized background or background RMS image.
+
+        Notes
+        -----
+        If ``data`` is an `~astropy.units.Quantity`, units are stripped
+        before interpolation. Unit re-assignment is the caller's
+        responsibility.
         """
         data = np.asanyarray(data)
         if isinstance(data, Quantity):
@@ -202,6 +208,12 @@ class BkgIDWInterpolator:
         -------
         result : 2D `~numpy.ndarray`
             The resized background or background RMS image.
+
+        Notes
+        -----
+        If ``data`` is an `~astropy.units.Quantity`, units are stripped
+        before interpolation. Unit re-assignment is the caller's
+        responsibility.
         """
         data = np.asanyarray(data)
         if isinstance(data, Quantity):
