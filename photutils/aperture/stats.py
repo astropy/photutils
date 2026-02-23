@@ -1497,9 +1497,9 @@ class ApertureStats:
         """
         eigvals = np.empty((self.n_apertures, 2))
         eigvals.fill(np.nan)
-        # np.linalg.eivals requires finite input values
+        # np.linalg.eigvalsh requires finite input values
         idx = np.unique(np.where(np.isfinite(self._covariance))[0])
-        eigvals[idx] = np.linalg.eigvals(self._covariance[idx])
+        eigvals[idx] = np.linalg.eigvalsh(self._covariance[idx])
 
         # check for negative variance
         # (just in case covariance matrix is not positive semidefinite)
@@ -1507,7 +1507,7 @@ class ApertureStats:
         eigvals[idx2] = (np.nan, np.nan)  # pragma: no cover
 
         # sort each eigenvalue pair in descending order
-        eigvals.sort(axis=1)
+        # (eigvalsh returns values in ascending order)
         eigvals = np.fliplr(eigvals)
 
         return eigvals * u.pix**2
