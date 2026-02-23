@@ -169,13 +169,12 @@ The box size should generally be larger than the typical size of
 sources in the image, but small enough to encapsulate any background
 variations.  For best results, the box size should also be chosen so
 that the data are covered by an integer number of boxes in both
-dimensions.  If that is not the case, the ``edge_method`` keyword
-determines whether to pad or crop the image such that there is an
-integer multiple of the ``box_size`` in both dimensions.
+dimensions.  If that is not the case, the image will be padded along
+the top and/or right edges.
 
 The background level in each of the meshes is calculated using
 the function or callable object (e.g., class instance) input via
-``bkg_estimator`` keyword. Photutils provides a several background
+``bkg_estimator`` keyword. Photutils provides several background
 classes that can be used:
 
 * `~photutils.background.MeanBackground`
