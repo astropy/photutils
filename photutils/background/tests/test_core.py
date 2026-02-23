@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.stats import SigmaClip
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background.core import (BiweightLocationBackground,
                                        BiweightScaleBackgroundRMS,
@@ -544,3 +544,102 @@ class TestBackgroundRMSEstimators:
         match = 'sigma_clip must be an astropy SigmaClip instance or None'
         with pytest.raises(TypeError, match=match):
             rms_class(sigma_clip=3)
+
+
+class TestInputNotMutated:
+    """
+    Test that input data is never modified by background estimator
+    calls.
+    """
+
+    @pytest.mark.parametrize('bkg_class', BACKGROUND_CLASSES)
+    def test_background_does_not_mutate_input(self, bkg_class):
+        """
+        Test that calc_background does not modify a plain ndarray.
+        """
+        data = np.ones((100, 100))
+        data[0:5, 0:5] = 1000.0  # outliers that trigger sigma clipping
+        data_orig = data.copy()
+
+        bkg = bkg_class(sigma_clip=SigmaClip(sigma=3.0))
+        bkg.calc_background(data)
+        assert_equal(data, data_orig)
+
+    @pytest.mark.parametrize('bkg_class', BACKGROUND_CLASSES)
+    def test_background_does_not_mutate_input_no_clip(self, bkg_class):
+        """
+        Test that calc_background does not modify input when sigma
+        clipping is disabled.
+        """
+        data = np.ones((100, 100))
+        data[0:5, 0:5] = 1000.0
+        data_orig = data.copy()
+
+        bkg = bkg_class(sigma_clip=None)
+        bkg.calc_background(data)
+        assert_equal(data, data_orig)
+
+    @pytest.mark.parametrize('bkg_class', BACKGROUND_CLASSES)
+    def test_background_does_not_mutate_masked_input(self, bkg_class):
+        """
+        Test that calc_background does not modify a masked array (data
+        values or mask).
+        """
+        data = np.ones((100, 100))
+        data[0:5, 0:5] = 1000.0
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:5, 0:5] = True
+        data_ma = np.ma.MaskedArray(data.copy(), mask=mask)
+        data_values_orig = data_ma.data.copy()
+        mask_orig = mask.copy()
+
+        bkg = bkg_class(sigma_clip=None)
+        bkg.calc_background(data_ma)
+        assert_equal(data_ma.data, data_values_orig)
+        assert_equal(data_ma.mask, mask_orig)
+
+    @pytest.mark.parametrize('rms_class', BACKGROUND_RMS_CLASSES)
+    def test_background_rms_does_not_mutate_input(self, rms_class):
+        """
+        Test that calc_background_rms does not modify a plain ndarray.
+        """
+        data = np.ones((100, 100))
+        data[0:5, 0:5] = 1000.0
+        data_orig = data.copy()
+
+        bkgrms = rms_class(sigma_clip=SigmaClip(sigma=3.0))
+        bkgrms.calc_background_rms(data)
+        assert_equal(data, data_orig)
+
+    @pytest.mark.parametrize('rms_class', BACKGROUND_RMS_CLASSES)
+    def test_background_rms_does_not_mutate_input_no_clip(self, rms_class):
+        """
+        Test that calc_background_rms does not modify input when sigma
+        clipping is disabled.
+        """
+        data = np.ones((100, 100))
+        data[0:5, 0:5] = 1000.0
+        data_orig = data.copy()
+
+        bkgrms = rms_class(sigma_clip=None)
+        bkgrms.calc_background_rms(data)
+        assert_equal(data, data_orig)
+
+    @pytest.mark.parametrize('rms_class', BACKGROUND_RMS_CLASSES)
+    def test_background_rms_does_not_mutate_masked_input(self, rms_class):
+        """
+        Test that calc_background_rms does not modify a masked array
+        (data values or mask).
+        """
+        data = np.ones((100, 100))
+        data[0:5, 0:5] = 1000.0
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:5, 0:5] = True
+        data_ma = np.ma.MaskedArray(data.copy(), mask=mask)
+        data_values_orig = data_ma.data.copy()
+        mask_orig = mask.copy()
+
+        bkgrms = rms_class(sigma_clip=None)
+        bkgrms.calc_background_rms(data_ma)
+        assert_equal(data_ma.data, data_values_orig)
+        assert_equal(data_ma.mask, mask_orig)
