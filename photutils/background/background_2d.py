@@ -15,21 +15,18 @@ from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import generic_filter
 
 from photutils.aperture import RectangularAperture
-from photutils.background.core import SExtractorBackground, StdBackgroundRMS
+from photutils.background.core import (SIGMA_CLIP, SExtractorBackground,
+                                       StdBackgroundRMS)
 from photutils.background.interpolators import (BkgIDWInterpolator,
                                                 _BkgZoomInterpolator)
 from photutils.utils import ShepardIDWInterpolator
-from photutils.utils._parameters import (SigmaClipSentinelDefault, as_pair,
-                                         create_default_sigmaclip)
+from photutils.utils._parameters import as_pair, create_default_sigmaclip
 from photutils.utils._repr import make_repr
 from photutils.utils._stats import nanmedian, nanmin
 
 __all__ = ['Background2D']
 
 __doctest_skip__ = ['Background2D']
-
-
-SIGMA_CLIP = SigmaClipSentinelDefault(sigma=3.0, maxiters=10)
 
 
 class Background2D:
@@ -227,8 +224,10 @@ class Background2D:
             raise ValueError(msg)
 
         # self._mask is a temporary instance variable to store the input
-        # mask array (deleted in self._calculate_stats)
+        # mask array (deleted in self._calculate_stats); self._has_mask
+        # records whether a mask was provided for use after deletion.
         self._mask = self._validate_array(mask, 'mask')
+        self._has_mask = self._mask is not None
         self.coverage_mask = self._validate_array(coverage_mask,
                                                   'coverage_mask')
 
@@ -312,10 +311,7 @@ class Background2D:
 
         data_repr = f'<array; shape={self._interp_kwargs["shape"]}>'
 
-        if '_mask' in self.__dict__ and self._mask is None:
-            mask_repr = None
-        else:
-            mask_repr = data_repr
+        mask_repr = None if not self._has_mask else data_repr
 
         if 'coverage_mask' in self.__dict__ and self.coverage_mask is None:
             coverage_mask_repr = None
@@ -382,12 +378,7 @@ class Background2D:
         if self.coverage_mask is None:
             return self._mask
 
-        mask = np.logical_or(self._mask, self.coverage_mask)
-
-        if self._mask is not None:
-            del self._mask
-
-        return mask
+        return np.logical_or(self._mask, self.coverage_mask)
 
     def _combine_all_masks(self, mask):
         """
@@ -620,8 +611,9 @@ class Background2D:
                    'be included.')
             raise ValueError(msg)
 
-        # We no longer need the copy of the input array
+        # We no longer need the temporary input arrays
         del self._data
+        del self._mask
 
         return bkg, bkgrms, ngood
 
@@ -816,9 +808,11 @@ class Background2D:
         A 2D map of the number of pixels used to compute the statistics
         in each mesh, resized to the shape of the input image.
 
-        Note that the returned value is (re)calculated each time this
-        property is accessed. If you need to access the returned image
-        multiple times, you should store the result in a variable.
+        .. note::
+
+            The returned image is (re)calculated each time this property
+            is accessed. Store the result in a variable if you need to
+            access it more than once.
         """
         npixels_map = block_replicate(self.npixels_mesh,
                                       self._interp_kwargs['box_size'],
@@ -882,9 +876,11 @@ class Background2D:
         """
         A 2D `~numpy.ndarray` containing the background image.
 
-        Note that the returned value is (re)calculated each time this
-        property is accessed. If you need to access the background image
-        multiple times, you should store the result in a variable.
+        .. note::
+
+            The returned image is (re)calculated each time this property
+            is accessed. Store the result in a variable if you need to
+            access it more than once.
         """
         return self._calculate_image(self.background_mesh)
 
@@ -893,9 +889,11 @@ class Background2D:
         """
         A 2D `~numpy.ndarray` containing the background RMS image.
 
-        Note that the returned value is (re)calculated each time this
-        property is accessed. If you need to access the background rms
-        image multiple times, you should store the result in a variable.
+        .. note::
+
+            The returned image is (re)calculated each time this property
+            is accessed. Store the result in a variable if you need to
+            access it more than once.
         """
         return self._calculate_image(self.background_rms_mesh)
 
