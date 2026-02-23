@@ -32,6 +32,25 @@ __all__ = [
 
 SIGMA_CLIP = SigmaClipSentinelDefault(sigma=3.0, maxiters=10)
 
+_SIGMA_CLIP_PARAM_DOC = (
+    'sigma_clip : `astropy.stats.SigmaClip` or `None`, optional\n'
+    '    A `~astropy.stats.SigmaClip` object that defines the sigma\n'
+    '    clipping parameters. If `None` then no sigma clipping will be\n'
+    '    performed.'
+)
+
+
+def _insert_sigma_clip_doc(cls):
+    """
+    Class decorator that replaces the ``<sigma_clip_param>`` placeholder
+    in a class docstring with the shared ``sigma_clip`` parameter
+    description.
+    """
+    cls.__doc__ = cls.__doc__.replace(
+        '<sigma_clip_param>', _SIGMA_CLIP_PARAM_DOC,
+    )
+    return cls
+
 
 def _validate_sigma_clip(sigma_clip):
     """
@@ -123,16 +142,13 @@ def _apply_masked(result, masked):
     return result
 
 
-class BackgroundBase(metaclass=abc.ABCMeta):
+class _BackgroundCommonBase:
     """
-    Base class for classes that estimate scalar background values.
+    Internal mixin providing shared infrastructure for `BackgroundBase`
+    and `BackgroundRMSBase`.
 
-    Parameters
-    ----------
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
-        A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters. If `None` then no sigma clipping will be
-        performed.
+    This class is not part of the public API and should not be
+    instantiated directly or subclassed outside of this module.
     """
 
     def __init__(self, sigma_clip=SIGMA_CLIP):
@@ -141,14 +157,14 @@ class BackgroundBase(metaclass=abc.ABCMeta):
     def __repr__(self):
         return make_repr(self, ('sigma_clip',))
 
+
+class BackgroundBase(_BackgroundCommonBase, abc.ABC):
+    """
+    Base class for classes that estimate scalar background values.
+    """
+
     def __call__(self, data, axis=None, masked=False):
         return self.calc_background(data, axis=axis, masked=masked)
-
-    def _prepare_data(self, data, axis):
-        return _prepare_data(self.sigma_clip, data, axis)
-
-    def _apply_masked(self, result, masked):
-        return _apply_masked(result, masked)
 
     @abc.abstractmethod
     def calc_background(self, data, axis=None, masked=False):
@@ -180,32 +196,13 @@ class BackgroundBase(metaclass=abc.ABCMeta):
         raise NotImplementedError  # pragma: no cover
 
 
-class BackgroundRMSBase(metaclass=abc.ABCMeta):
+class BackgroundRMSBase(_BackgroundCommonBase, abc.ABC):
     """
     Base class for classes that estimate scalar background RMS values.
-
-    Parameters
-    ----------
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
-        A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters. If `None` then no sigma clipping will be
-        performed.
     """
-
-    def __init__(self, sigma_clip=SIGMA_CLIP):
-        self.sigma_clip = _validate_sigma_clip(sigma_clip)
-
-    def __repr__(self):
-        return make_repr(self, ('sigma_clip',))
 
     def __call__(self, data, axis=None, masked=False):
         return self.calc_background_rms(data, axis=axis, masked=masked)
-
-    def _prepare_data(self, data, axis):
-        return _prepare_data(self.sigma_clip, data, axis)
-
-    def _apply_masked(self, result, masked):
-        return _apply_masked(result, masked)
 
     @abc.abstractmethod
     def calc_background_rms(self, data, axis=None, masked=False):
@@ -237,6 +234,7 @@ class BackgroundRMSBase(metaclass=abc.ABCMeta):
         raise NotImplementedError  # pragma: no cover
 
 
+@_insert_sigma_clip_doc
 class MeanBackground(BackgroundBase):
     """
     Class to calculate the background in an array as the (sigma-clipped)
@@ -244,10 +242,7 @@ class MeanBackground(BackgroundBase):
 
     Parameters
     ----------
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
-        A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters. If `None` then no sigma clipping will be
-        performed.
+    <sigma_clip_param>
 
     Examples
     --------
@@ -273,14 +268,15 @@ class MeanBackground(BackgroundBase):
     """
 
     def calc_background(self, data, axis=None, masked=False):
-        data = self._prepare_data(data, axis)
+        data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             result = nanmean(data, axis=axis)
-        return self._apply_masked(result, masked)
+        return _apply_masked(result, masked)
 
 
+@_insert_sigma_clip_doc
 class MedianBackground(BackgroundBase):
     """
     Class to calculate the background in an array as the (sigma-clipped)
@@ -288,10 +284,7 @@ class MedianBackground(BackgroundBase):
 
     Parameters
     ----------
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
-        A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters. If `None` then no sigma clipping will be
-        performed.
+    <sigma_clip_param>
 
     Examples
     --------
@@ -317,14 +310,15 @@ class MedianBackground(BackgroundBase):
     """
 
     def calc_background(self, data, axis=None, masked=False):
-        data = self._prepare_data(data, axis)
+        data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             result = nanmedian(data, axis=axis)
-        return self._apply_masked(result, masked)
+        return _apply_masked(result, masked)
 
 
+@_insert_sigma_clip_doc
 class ModeEstimatorBackground(BackgroundBase):
     """
     Class to calculate the background in an array using a mode estimator
@@ -338,10 +332,7 @@ class ModeEstimatorBackground(BackgroundBase):
     mean_factor : float, optional
         The multiplicative factor for the mean value. Defaults to 2.
 
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
-        A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters. If `None` then no sigma clipping will be
-        performed.
+    <sigma_clip_param>
 
     Examples
     --------
@@ -378,15 +369,16 @@ class ModeEstimatorBackground(BackgroundBase):
         return make_repr(self, params)
 
     def calc_background(self, data, axis=None, masked=False):
-        data = self._prepare_data(data, axis)
+        data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             result = ((self.median_factor * nanmedian(data, axis=axis))
                       - (self.mean_factor * nanmean(data, axis=axis)))
-        return self._apply_masked(result, masked)
+        return _apply_masked(result, masked)
 
 
+@_insert_sigma_clip_doc
 class MMMBackground(ModeEstimatorBackground):
     """
     Class to calculate the background in an array using the DAOPHOT MMM
@@ -397,10 +389,7 @@ class MMMBackground(ModeEstimatorBackground):
 
     Parameters
     ----------
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
-        A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters. If `None` then no sigma clipping will be
-        performed.
+    <sigma_clip_param>
 
     Examples
     --------
@@ -411,8 +400,7 @@ class MMMBackground(ModeEstimatorBackground):
     >>> bkg = MMMBackground(sigma_clip=sigma_clip)
 
     The background value can be calculated by using the
-    `~photutils.background.core.ModeEstimatorBackground.calc_background`
-    method, e.g.:
+    `calc_background` method, e.g.:
 
     >>> bkg_value = bkg.calc_background(data)
     >>> print(bkg_value)  # doctest: +FLOAT_CMP
@@ -431,6 +419,7 @@ class MMMBackground(ModeEstimatorBackground):
                          sigma_clip=sigma_clip)
 
 
+@_insert_sigma_clip_doc
 class SExtractorBackground(BackgroundBase):
     """
     Class to calculate the background in an array using the Source
@@ -444,10 +433,7 @@ class SExtractorBackground(BackgroundBase):
 
     Parameters
     ----------
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
-        A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters. If `None` then no sigma clipping will be
-        performed.
+    <sigma_clip_param>
 
     Examples
     --------
@@ -473,7 +459,7 @@ class SExtractorBackground(BackgroundBase):
     """
 
     def calc_background(self, data, axis=None, masked=False):
-        data = self._prepare_data(data, axis)
+        data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -498,9 +484,10 @@ class SExtractorBackground(BackgroundBase):
             if result.shape == (1,) and axis is None:
                 result = result[0]
 
-        return self._apply_masked(result, masked)
+        return _apply_masked(result, masked)
 
 
+@_insert_sigma_clip_doc
 class BiweightLocationBackground(BackgroundBase):
     """
     Class to calculate the background in an array using the biweight
@@ -516,10 +503,7 @@ class BiweightLocationBackground(BackgroundBase):
         Initial guess for the biweight location. Default value is
         `None`.
 
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
-        A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters. If `None` then no sigma clipping will be
-        performed.
+    <sigma_clip_param>
 
     Examples
     --------
@@ -544,7 +528,7 @@ class BiweightLocationBackground(BackgroundBase):
     49.5
     """
 
-    def __init__(self, c=6, M=None, sigma_clip=SIGMA_CLIP):
+    def __init__(self, c=6.0, M=None, sigma_clip=SIGMA_CLIP):
         super().__init__(sigma_clip=sigma_clip)
         self.c = c
         self.M = M
@@ -554,15 +538,16 @@ class BiweightLocationBackground(BackgroundBase):
         return make_repr(self, params)
 
     def calc_background(self, data, axis=None, masked=False):
-        data = self._prepare_data(data, axis)
+        data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             result = biweight_location(data, c=self.c, M=self.M, axis=axis,
                                        ignore_nan=True)
-        return self._apply_masked(result, masked)
+        return _apply_masked(result, masked)
 
 
+@_insert_sigma_clip_doc
 class StdBackgroundRMS(BackgroundRMSBase):
     """
     Class to calculate the background RMS in an array as the (sigma-
@@ -570,10 +555,7 @@ class StdBackgroundRMS(BackgroundRMSBase):
 
     Parameters
     ----------
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
-        A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters. If `None` then no sigma clipping will be
-        performed.
+    <sigma_clip_param>
 
     Examples
     --------
@@ -599,14 +581,15 @@ class StdBackgroundRMS(BackgroundRMSBase):
     """
 
     def calc_background_rms(self, data, axis=None, masked=False):
-        data = self._prepare_data(data, axis)
+        data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             result = nanstd(data, axis=axis)
-        return self._apply_masked(result, masked)
+        return _apply_masked(result, masked)
 
 
+@_insert_sigma_clip_doc
 class MADStdBackgroundRMS(BackgroundRMSBase):
     r"""
     Class to calculate the background RMS in an array as using the
@@ -625,10 +608,7 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
 
     Parameters
     ----------
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
-        A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters. If `None` then no sigma clipping will be
-        performed.
+    <sigma_clip_param>
 
     Examples
     --------
@@ -654,14 +634,15 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
     """
 
     def calc_background_rms(self, data, axis=None, masked=False):
-        data = self._prepare_data(data, axis)
+        data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             result = mad_std(data, axis=axis, ignore_nan=True)
-        return self._apply_masked(result, masked)
+        return _apply_masked(result, masked)
 
 
+@_insert_sigma_clip_doc
 class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     """
     Class to calculate the background RMS in an array as the (sigma-
@@ -677,10 +658,7 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
         Initial guess for the biweight location. Default value is
         `None`.
 
-    sigma_clip : `astropy.stats.SigmaClip` or `None`, optional
-        A `~astropy.stats.SigmaClip` object that defines the sigma
-        clipping parameters. If `None` then no sigma clipping will be
-        performed.
+    <sigma_clip_param>
 
     Examples
     --------
@@ -715,10 +693,10 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
         return make_repr(self, params)
 
     def calc_background_rms(self, data, axis=None, masked=False):
-        data = self._prepare_data(data, axis)
+        data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             result = biweight_scale(data, c=self.c, M=self.M, axis=axis,
                                     ignore_nan=True)
-        return self._apply_masked(result, masked)
+        return _apply_masked(result, masked)
