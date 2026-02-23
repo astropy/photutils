@@ -78,6 +78,12 @@ class _BkgZoomInterpolator:
         -------
         result : 2D `~numpy.ndarray`
             The resized background or background RMS image.
+
+        Notes
+        -----
+        If ``data`` is an `~astropy.units.Quantity`, units are stripped
+        before interpolation. Unit re-assignment is the caller's
+        responsibility.
         """
         data = np.asanyarray(data)
         if isinstance(data, Quantity):
@@ -202,6 +208,12 @@ class BkgIDWInterpolator:
         -------
         result : 2D `~numpy.ndarray`
             The resized background or background RMS image.
+
+        Notes
+        -----
+        If ``data`` is an `~astropy.units.Quantity`, units are stripped
+        before interpolation. Unit re-assignment is the caller's
+        responsibility.
         """
         data = np.asanyarray(data)
         if isinstance(data, Quantity):
@@ -210,14 +222,15 @@ class BkgIDWInterpolator:
             return np.full(kwargs['shape'], np.min(data),
                            dtype=kwargs['dtype'])
 
-        # we create the interpolator from only the good mesh points
+        # Create the interpolator from only the good mesh points
         yxcen = np.column_stack(kwargs['mesh_yxcen'])
         good_idx = np.where(~kwargs['mesh_nan_mask'])
         data = data[good_idx]
         interp_func = ShepardIDWInterpolator(yxcen, data,
                                              leafsize=self.leafsize)
 
-        # the position coordinates used when calling the interpolator
+        # Define the position coordinates used when calling the
+        # interpolator
         yi, xi = np.mgrid[0:kwargs['shape'][0], 0:kwargs['shape'][1]]
         yx_indices = np.column_stack((yi.ravel(), xi.ravel()))
         data = interp_func(yx_indices, n_neighbors=self.n_neighbors,

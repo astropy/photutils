@@ -81,6 +81,17 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.background``
+
+  - Fixed ``Background2D`` raising ``AttributeError`` when passed a
+    function as ``bkg_estimator`` or ``bkgrms_estimator`` instead of a
+    class instance with a ``sigma_clip`` attribute. [#2181]
+
+  - Fixed silent truncation of background estimates when integer input
+    data were provided to ``Background2D``. Integer inputs now produce
+    ``np.float32`` output to preserve precision from interpolation.
+    [#2181]
+
 - ``photutils.centroids``
 
   - Fixed a bug in ``centroid_sources`` where the input array could be

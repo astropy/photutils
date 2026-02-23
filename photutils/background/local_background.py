@@ -29,8 +29,8 @@ class LocalBackground:
         A callable object (a function or e.g., an instance of any
         `~photutils.background.BackgroundBase` subclass) used to
         estimate the background in each aperture. The callable object
-        must take in a 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
-        and have an ``axis`` keyword. The default is an instance of
+        must take in a 1D `~numpy.ndarray` or `~numpy.ma.MaskedArray`.
+        The default is an instance of
         `~photutils.background.MedianBackground` with sigma clipping
         (i.e., sigma-clipped median).
 

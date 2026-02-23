@@ -44,6 +44,10 @@ def test_local_background_invalid_radii():
 
 
 def test_local_background():
+    """
+    Test the basic functionality of LocalBackground with a simple
+    constant data array.
+    """
     data = np.ones((101, 101))
     local_bkg = LocalBackground(5, 10, bkg_estimator=MedianBackground())
 
@@ -52,7 +56,7 @@ def test_local_background():
     bkg = local_bkg(data, x, y)
     assert_allclose(bkg, np.ones(len(x)))
 
-    # test scalar x and y
+    # Test scalar x and y
     bkg2 = local_bkg(data, x[2], y[2])
     assert not isinstance(bkg2, np.ndarray)
     assert_allclose(bkg[2], bkg2)
@@ -67,10 +71,26 @@ def test_local_background():
     cls_repr = repr(local_bkg)
     assert cls_repr.startswith(local_bkg.__class__.__name__)
 
-    # test default bkg_estimator
+    # Test default bkg_estimator
     local_bkg2 = LocalBackground(5, 10, bkg_estimator=None)
     bkg4 = local_bkg2(data, x, y)
     assert_allclose(bkg4, bkg)
+
+
+def test_local_background_estimator_1d():
+    """
+    Test that the bkg_estimator can be a 1D function that takes an array
+    and returns a scalar.
+    """
+
+    def estimator(data):
+        assert data.ndim == 1
+        return np.nanmedian(data)
+
+    data = np.ones((51, 51))
+    local_bkg = LocalBackground(3, 6, bkg_estimator=estimator)
+    bkg = local_bkg(data, [10, 20], [10, 20])
+    assert_allclose(bkg, np.ones(2))
 
 
 def test_to_aperture_scalar():
@@ -81,12 +101,12 @@ def test_to_aperture_scalar():
     r_out = 10
     local_bkg = LocalBackground(r_in, r_out)
 
-    # test scalar positions
+    # Test scalar positions
     x = 50.0
     y = 50.0
     aperture = local_bkg.to_aperture(x, y)
 
-    # check aperture type and properties
+    # Check aperture type and properties
     assert isinstance(aperture, CircularAnnulus)
     assert_allclose(aperture.positions, [[x, y]])
     assert_allclose(aperture.r_in, r_in)
@@ -101,19 +121,19 @@ def test_to_aperture_array():
     r_out = 15.2
     local_bkg = LocalBackground(r_in, r_out)
 
-    # test array positions
+    # Test array positions
     x = np.array([10.0, 20.1, 35.3])
     y = np.array([14.4, 27.2, 33.4])
     xypos = list(zip(x, y, strict=False))
     aperture = local_bkg.to_aperture(x, y)
 
-    # check aperture type and properties
+    # Check aperture type and properties
     assert isinstance(aperture, CircularAnnulus)
     assert_allclose(aperture.positions, xypos)
     assert_allclose(aperture.r_in, r_in)
     assert_allclose(aperture.r_out, r_out)
 
-    # test list positions
+    # Test list positions
     x = list(x)
     y = list(y)
     aperture2 = local_bkg.to_aperture(x, y)
