@@ -787,6 +787,28 @@ class TestBackground2D:
         Background2D(data, (25, 25))
         assert_equal(data, data_orig)
 
+        # No mask, no coverage_mask, box_size same as image shape
+        data = test_data.copy()
+        data_orig = data.copy()
+        Background2D(data, data.shape)
+        assert_equal(data, data_orig)
+
+        # With mask, box_size same as image shape
+        data = test_data.copy()
+        data_orig = data.copy()
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[10:20, 10:20] = True
+        Background2D(data, data.shape, mask=mask)
+        assert_equal(data, data_orig)
+
+        # With coverage_mask, box_size same as image shape
+        data = test_data.copy()
+        data_orig = data.copy()
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[10:20, 10:20] = True
+        Background2D(data, data.shape, coverage_mask=mask)
+        assert_equal(data, data_orig)
+
         # With outliers in the data (exercises sigma-clipping path)
         data = test_data.copy()
         data[10, 10] = 1000.0
