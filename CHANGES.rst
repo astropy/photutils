@@ -60,6 +60,15 @@ New Features
   - The ``fit_fwhm`` and ``fit_2dgaussian`` ``xypos`` value can now be
     input as a ``zip`` object. [#2164]
 
+- ``photutils.profiles``
+
+  - Added a ``EnsquaredCurveOfGrowth`` class to compute a curve of
+    growth using concentric square apertures. [#2184]
+
+  - Added a ``EllipticalCurveOfGrowth`` class to compute a curve of
+    growth using concentric elliptical apertures with a fixed axis ratio
+    and orientation. [#2184]
+
 - ``photutils.psf_matching``
 
   - Added a ``regularization`` keyword to ``make_kernel`` to regularize
@@ -110,6 +119,11 @@ Bug Fixes
 - ``photutils.morphology``
 
   - Fixed issues with negative pixel values input to ``gini``. [#2178]
+
+- ``photutils.profiles``
+
+  - Fixed an issue where the mask (input and non-finite values) was
+    not applied to the raw data profile. [#2184]
 
 - ``photutils.psf``
 
