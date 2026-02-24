@@ -301,6 +301,13 @@ class RadialProfile(ProfileBase):
     # Define y-axis label used by `~photutils.profiles.ProfileBase.plot`
     _ylabel = 'Radial Profile'
 
+    # Define the fit properties that should be invalidated when the
+    # profile normalization is changed, so they are always consistent
+    # with the current profile.
+    _fit_properties = ('_profile_nanmask', 'gaussian_fit',
+                       'gaussian_profile', 'gaussian_fwhm', 'moffat_fit',
+                       'moffat_profile', 'moffat_fwhm')
+
     @lazyproperty
     def radius(self):
         """
@@ -401,8 +408,9 @@ class RadialProfile(ProfileBase):
         The fitted 1D Gaussian to the radial profile as a
         `~astropy.modeling.functional_models.Gaussian1D` model.
 
-        The Gaussian fit will not change if the profile normalization is
-        changed after performing the fit.
+        The cached fit is automatically invalidated when the profile
+        normalization is changed, so the fit is always consistent with
+        the current profile.
         """
         profile = self.profile[self._profile_nanmask]
         radius = self.radius[self._profile_nanmask]
@@ -441,8 +449,8 @@ class RadialProfile(ProfileBase):
         The fitted 1D Gaussian profile to the radial profile as a 1D
         `~numpy.ndarray`.
 
-        The Gaussian profile will not change if the profile
-        normalization is changed after performing the fit.
+        The cached profile is automatically invalidated when the profile
+        normalization is changed.
 
         Returns `None` if the fit failed (e.g., the profile is entirely
         non-finite or masked).
@@ -457,6 +465,9 @@ class RadialProfile(ProfileBase):
         The full-width at half-maximum (FWHM) in pixels of the 1D
         Gaussian fitted to the radial profile.
 
+        The cached value is automatically invalidated when the profile
+        normalization is changed.
+
         Returns `None` if the fit failed (e.g., the profile is entirely
         non-finite or masked).
         """
@@ -470,8 +481,9 @@ class RadialProfile(ProfileBase):
         The fitted 1D Moffat to the radial profile as a
         `~astropy.modeling.functional_models.Moffat1D` model.
 
-        The Moffat fit will not change if the profile normalization is
-        changed after performing the fit.
+        The cached fit is automatically invalidated when the profile
+        normalization is changed, so the fit is always consistent with
+        the current profile.
         """
         profile = self.profile[self._profile_nanmask]
         radius = self.radius[self._profile_nanmask]
@@ -510,8 +522,8 @@ class RadialProfile(ProfileBase):
         The fitted 1D Moffat profile to the radial profile as a 1D
         `~numpy.ndarray`.
 
-        The Moffat profile will not change if the profile normalization
-        is changed after performing the fit.
+        The cached profile is automatically invalidated when the profile
+        normalization is changed.
 
         Returns `None` if the fit failed (e.g., the profile is entirely
         non-finite or masked).
@@ -525,6 +537,9 @@ class RadialProfile(ProfileBase):
         """
         The full-width at half-maximum (FWHM) in pixels of the 1D Moffat
         fitted to the radial profile.
+
+        The cached value is automatically invalidated when the profile
+        normalization is changed.
 
         Returns `None` if the fit failed (e.g., the profile is entirely
         non-finite or masked).
@@ -584,17 +599,29 @@ class RadialProfile(ProfileBase):
         """
         return self._data_profile[1]
 
+    def _invalidate_fit_cache(self):
+        """
+        Remove cached Gaussian and Moffat fit lazy properties so they
+        are recomputed on next access using the current profile.
+        """
+        for key in self._fit_properties:
+            self.__dict__.pop(key, None)
+
     def _normalize_hook(self, normalization):
         """
-        Also normalize ``data_profile`` if it has been computed.
+        Also normalize ``data_profile`` if it has been computed, and
+        invalidate fit caches so they are recomputed on next access.
         """
         if 'data_profile' in self.__dict__:
             self.__dict__['data_profile'] = self.data_profile / normalization
+        self._invalidate_fit_cache()
 
     def _unnormalize_hook(self):
         """
-        Also unnormalize ``data_profile`` if it has been computed.
+        Also unnormalize ``data_profile`` if it has been computed, and
+        invalidate fit caches so they are recomputed on next access.
         """
         if 'data_profile' in self.__dict__:
             self.__dict__['data_profile'] = (self.data_profile
                                              * self.normalization_value)
+        self._invalidate_fit_cache()

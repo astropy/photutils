@@ -557,19 +557,22 @@ class TestRadialProfile:
 
     def test_moffat_normalized(self, profile_data):
         """
-        Test that normalizing the profile *after* fitting does not
-        change the Moffat fit (lazyproperty caching).
+        Test that normalizing the profile invalidates the Moffat fit
+        cache and the fit is recomputed on the normalized profile.
         """
         xycen, data, _, _ = profile_data
 
         edge_radii = np.arange(36)
         rp = RadialProfile(data, xycen, edge_radii)
 
-        fwhm_before = rp.moffat_fwhm
+        amp_before = rp.moffat_fit.amplitude.value
         rp.normalize()
-        # Because moffat_fit is a lazyproperty computed before
-        # normalization, the FWHM should be the same.
-        assert rp.moffat_fwhm == fwhm_before
+        # After normalization, the fit should be recomputed on the
+        # normalized profile with max ~1.0, so the amplitude should
+        # differ from the unnormalized fit.
+        amp_after = rp.moffat_fit.amplitude.value
+        assert amp_after != pytest.approx(amp_before, rel=0.1)
+        assert amp_after == pytest.approx(1.0, abs=0.2)
 
     def test_moffat_with_error(self, profile_data):
         """
@@ -609,3 +612,136 @@ class TestRadialProfile:
 
         assert isinstance(rp.moffat_fit, Moffat1D)
         assert rp.moffat_fwhm > 0
+
+    def test_gaussian_fit_invalidated_on_normalize(self, profile_data):
+        """
+        Test that Gaussian fit properties are invalidated when the
+        profile is normalized, and the recomputed fit matches the
+        normalized profile.
+        """
+        xycen, data, _, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data, xycen, edge_radii)
+
+        # Access the fit before normalization
+        gfit_before = rp.gaussian_fit
+        gprof_before = rp.gaussian_profile
+        fwhm_before = rp.gaussian_fwhm
+        amp_before = gfit_before.amplitude.value
+
+        rp.normalize()
+
+        # The fit should be a new object (recomputed)
+        gfit_after = rp.gaussian_fit
+        assert gfit_after is not gfit_before
+
+        # The amplitude should be close to 1 for the normalized profile
+        assert gfit_after.amplitude.value == pytest.approx(1.0, abs=0.2)
+        assert gfit_after.amplitude.value != pytest.approx(amp_before, rel=0.1)
+
+        # The gaussian_profile should also be recomputed
+        gprof_after = rp.gaussian_profile
+        assert gprof_after is not gprof_before
+        assert_allclose(gprof_after, gfit_after(rp.radius))
+
+        # FWHM should be approximately the same (shape doesn't change)
+        fwhm_after = rp.gaussian_fwhm
+        assert_allclose(fwhm_after, fwhm_before, rtol=0.1)
+
+    def test_moffat_fit_invalidated_on_normalize(self, profile_data):
+        """
+        Test that Moffat fit properties are invalidated when the profile
+        is normalized, and the recomputed fit matches the normalized
+        profile.
+        """
+        xycen, data, _, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data, xycen, edge_radii)
+
+        # Access the fit before normalization
+        mfit_before = rp.moffat_fit
+        mprof_before = rp.moffat_profile
+        fwhm_before = rp.moffat_fwhm
+        amp_before = mfit_before.amplitude.value
+
+        rp.normalize()
+
+        # The fit should be a new object (recomputed)
+        mfit_after = rp.moffat_fit
+        assert mfit_after is not mfit_before
+
+        # The amplitude should differ from the unnormalized fit
+        assert mfit_after.amplitude.value != pytest.approx(amp_before, rel=0.1)
+
+        # The moffat_profile should also be recomputed
+        mprof_after = rp.moffat_profile
+        assert mprof_after is not mprof_before
+        assert_allclose(mprof_after, mfit_after(rp.radius))
+
+        # FWHM should be approximately the same (shape doesn't change)
+        fwhm_after = rp.moffat_fwhm
+        assert_allclose(fwhm_after, fwhm_before, rtol=0.1)
+
+    def test_fit_invalidated_on_unnormalize(self, profile_data):
+        """
+        Test that Gaussian and Moffat fits are invalidated when
+        unnormalize is called, and the recomputed fits match the
+        original (unnormalized) profile.
+        """
+        xycen, data, _, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data, xycen, edge_radii)
+
+        # Get fits on the original profile
+        gfit_orig = rp.gaussian_fit
+        mfit_orig = rp.moffat_fit
+        gfwhm_orig = rp.gaussian_fwhm
+        mfwhm_orig = rp.moffat_fwhm
+
+        # Normalize and access fits on the normalized profile
+        rp.normalize()
+        gfit_norm = rp.gaussian_fit
+        mfit_norm = rp.moffat_fit
+        assert gfit_norm is not gfit_orig
+        assert mfit_norm is not mfit_orig
+
+        # Unnormalize and verify fits are recomputed to match original
+        rp.unnormalize()
+        gfit_unnorm = rp.gaussian_fit
+        mfit_unnorm = rp.moffat_fit
+
+        # Should be new objects (not the cached normalized ones)
+        assert gfit_unnorm is not gfit_norm
+        assert mfit_unnorm is not mfit_norm
+
+        # Amplitudes should match the original fits
+        assert_allclose(gfit_unnorm.amplitude.value,
+                        gfit_orig.amplitude.value, rtol=0.01)
+        assert_allclose(mfit_unnorm.amplitude.value,
+                        mfit_orig.amplitude.value, rtol=0.01)
+
+        # FWHMs should match the originals
+        assert_allclose(rp.gaussian_fwhm, gfwhm_orig, rtol=0.01)
+        assert_allclose(rp.moffat_fwhm, mfwhm_orig, rtol=0.01)
+
+    def test_fit_not_accessed_before_normalize(self, profile_data):
+        """
+        Test that fits computed after normalization (without prior
+        access) correspond to the normalized profile.
+        """
+        xycen, data, _, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data, xycen, edge_radii)
+
+        # Normalize without ever accessing the fit first
+        rp.normalize()
+
+        # The fit should be on the normalized profile
+        assert rp.gaussian_fit.amplitude.value == pytest.approx(1.0, abs=0.2)
+        assert rp.moffat_fit.amplitude.value == pytest.approx(1.0, abs=0.2)
+        assert rp.gaussian_profile is not None
+        assert rp.moffat_profile is not None

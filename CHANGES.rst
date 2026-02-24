@@ -176,6 +176,12 @@ API Changes
   - All functions in the ``centroids`` package now require keyword-only
     arguments. [#2162]
 
+- ``photutils.profiles``
+
+  - Cached Gaussian fits to the radial profile are now automatically
+    invalidated when the profile normalization changes, so the fit is
+    always consistent with the current profile. [#2185]
+
 - ``photutils.psf``
 
   - The ``photutils.psf.matching`` subpackage has been moved to
