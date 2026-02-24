@@ -3,10 +3,12 @@
 Tests for the radial_profile module.
 """
 
+import warnings
+
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.modeling.models import Gaussian1D
+from astropy.modeling.models import Gaussian1D, Moffat1D
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
@@ -298,6 +300,33 @@ class TestRadialProfile:
         assert np.all(np.isnan(rp.profile))
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_plot(self, profile_data):
+        """
+        Test RadialProfile plot methods.
+        """
+        xycen, data, error, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp1 = RadialProfile(data, xycen, edge_radii, error=None)
+        rp1.plot()
+        match = 'Errors were not input'
+        with pytest.warns(AstropyUserWarning, match=match):
+            rp1.plot_error()
+
+        rp2 = RadialProfile(data, xycen, edge_radii, error=error)
+        rp2.plot()
+        pc1 = rp2.plot_error()
+        assert_allclose(pc1.get_facecolor(), [[0.5, 0.5, 0.5, 0.3]])
+        pc2 = rp2.plot_error(facecolor='blue')
+        assert_allclose(pc2.get_facecolor(), [[0, 0, 1, 1]])
+
+        unit = u.Jy
+        rp3 = RadialProfile(data << unit, xycen, edge_radii,
+                            error=error << unit)
+        rp3.plot()
+        rp3.plot_error()
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_error_none(self, profile_data):
         """
         Test that ``plot_error()`` returns ``None`` when no errors were
@@ -384,6 +413,8 @@ class TestRadialProfile:
         with pytest.warns(AstropyUserWarning, match=match):
             result = rp.gaussian_fit
         assert result is None
+        assert rp.gaussian_profile is None
+        assert rp.gaussian_fwhm is None
 
     def test_normalize_all_nan(self, profile_data):
         """
@@ -397,3 +428,184 @@ class TestRadialProfile:
         match = 'The profile cannot be normalized'
         with pytest.warns(AstropyUserWarning, match=match):
             rp.normalize()
+
+    def test_moffat(self, profile_data):
+        """
+        Test RadialProfile Moffat fit attributes.
+        """
+        xycen, data, _, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data, xycen, edge_radii, error=None, mask=None)
+
+        assert isinstance(rp.moffat_fit, Moffat1D)
+        assert rp.moffat_profile.shape == (35,)
+        assert rp.moffat_fwhm > 0
+        assert rp.moffat_fwhm < 30.0
+
+        # Check that x_0 is fixed at 0
+        assert rp.moffat_fit.x_0.value == 0.0
+
+        edge_radii = np.arange(201)
+        rp2 = RadialProfile(data, xycen, edge_radii, error=None, mask=None)
+        assert isinstance(rp2.moffat_fit, Moffat1D)
+        assert rp2.moffat_profile.shape == (200,)
+        assert rp2.moffat_fwhm > 0
+
+    def test_moffat_fwhm_consistency(self, profile_data):
+        """
+        Test that ``moffat_fwhm`` is consistent with
+        ``moffat_fit.fwhm``.
+        """
+        xycen, data, _, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data, xycen, edge_radii)
+        assert_allclose(rp.moffat_fwhm, rp.moffat_fit.fwhm)
+
+    def test_moffat_profile_values(self, profile_data):
+        """
+        Test that ``moffat_profile`` equals the fit model evaluated at
+        the profile radii.
+        """
+        xycen, data, _, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data, xycen, edge_radii)
+        expected = rp.moffat_fit(rp.radius)
+        assert_allclose(rp.moffat_profile, expected)
+
+    def test_moffat_zero_sum(self, profile_data):
+        """
+        Test that ``moffat_fit`` issues a warning and falls back to
+        ``gamma=1.0`` when the profile sum is zero.
+        """
+        xycen, data, _, _ = profile_data
+
+        zero_data = np.zeros_like(data)
+        edge_radii = np.arange(36)
+        rp = RadialProfile(zero_data, xycen, edge_radii)
+
+        with pytest.warns(AstropyUserWarning) as warning_list:
+            mfit = rp.moffat_fit
+
+        messages = [str(w.message) for w in warning_list]
+        assert any('The profile sum is zero' in m for m in messages)
+        assert isinstance(mfit, Moffat1D)
+
+    def test_moffat_fit_all_masked(self, profile_data):
+        """
+        Test that ``moffat_fit`` returns ``None`` when the profile is
+        entirely masked.
+        """
+        xycen, data, _, _ = profile_data
+
+        mask = np.ones(data.shape, dtype=bool)
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data, xycen, edge_radii, mask=mask)
+        match = 'The radial profile is entirely non-finite or masked'
+        with pytest.warns(AstropyUserWarning, match=match):
+            result = rp.moffat_fit
+        assert result is None
+        assert rp.moffat_profile is None
+        assert rp.moffat_fwhm is None
+
+    def test_moffat_no_above_half_max(self, profile_data):
+        """
+        Test that ``moffat_fit`` handles the case where no profile
+        values are above half the maximum (gamma fallback to 1.0).
+        """
+        xycen, data, _, _ = profile_data
+
+        # Create a near-delta-function profile so that all annular
+        # averages may be below half-max (only center pixel has flux).
+        delta = np.zeros_like(data)
+        cy, cx = round(xycen[1]), round(xycen[0])
+        delta[cy, cx] = 1.0
+
+        edge_radii = np.arange(36)
+        rp = RadialProfile(delta, xycen, edge_radii)
+        # The fit may warn about convergence for such a narrow profile.
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyUserWarning)
+            mfit = rp.moffat_fit
+        assert isinstance(mfit, Moffat1D)
+        assert mfit.gamma.value > 0
+        assert mfit.alpha.value >= 1
+
+    def test_moffat_lazyproperty(self, profile_data):
+        """
+        Test that ``moffat_fit``, ``moffat_profile``, and
+        ``moffat_fwhm`` are lazily computed and cached.
+        """
+        xycen, data, _, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data, xycen, edge_radii)
+
+        fit1 = rp.moffat_fit
+        fit2 = rp.moffat_fit
+        assert fit1 is fit2
+
+        prof1 = rp.moffat_profile
+        prof2 = rp.moffat_profile
+        assert prof1 is prof2
+
+        fwhm1 = rp.moffat_fwhm
+        fwhm2 = rp.moffat_fwhm
+        assert fwhm1 == fwhm2
+
+    def test_moffat_normalized(self, profile_data):
+        """
+        Test that normalizing the profile *after* fitting does not
+        change the Moffat fit (lazyproperty caching).
+        """
+        xycen, data, _, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data, xycen, edge_radii)
+
+        fwhm_before = rp.moffat_fwhm
+        rp.normalize()
+        # Because moffat_fit is a lazyproperty computed before
+        # normalization, the FWHM should be the same.
+        assert rp.moffat_fwhm == fwhm_before
+
+    def test_moffat_with_error(self, profile_data):
+        """
+        Test Moffat fit with error input.
+        """
+        xycen, data, error, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data, xycen, edge_radii, error=error)
+        assert isinstance(rp.moffat_fit, Moffat1D)
+        assert rp.moffat_profile.shape == rp.profile.shape
+        assert rp.moffat_fwhm > 0
+
+    def test_moffat_with_mask(self, profile_data):
+        """
+        Test Moffat fit with a partial mask.
+        """
+        xycen, data, _, mask = profile_data
+
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data, xycen, edge_radii, mask=mask)
+        assert isinstance(rp.moffat_fit, Moffat1D)
+        assert rp.moffat_fwhm > 0
+
+    def test_moffat_nonfinite_data(self, profile_data):
+        """
+        Test Moffat fit with non-finite data values.
+        """
+        xycen, data, error, _ = profile_data
+
+        data2 = data.copy()
+        data2[40, 40] = np.nan
+        edge_radii = np.arange(36)
+        match = 'Input data contains non-finite values'
+        with pytest.warns(AstropyUserWarning, match=match):
+            rp = RadialProfile(data2, xycen, edge_radii, error=error)
+
+        assert isinstance(rp.moffat_fit, Moffat1D)
+        assert rp.moffat_fwhm > 0
