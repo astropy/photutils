@@ -227,6 +227,25 @@ class TestBackground2D:
         # Both should still give sensible results
         assert_allclose(mesh[1, 2], 1.0, atol=0.01)
 
+    def test_rms_mesh_before_mesh_no_filter_threshold(self):
+        """
+        Test that accessing background_rms_mesh before background_mesh
+        does not crash when filter_threshold is None (the default).
+
+        _try_free_bkg_stats must not free _bkg_stats before
+        background_mesh has been computed, otherwise _interpolate_grid
+        receives None and raises a TypeError on np.isnan.
+        """
+        data = np.ones((101, 101))
+        coverage_mask = np.zeros(data.shape, dtype=bool)
+        coverage_mask[50:, 50:] = True
+        bkg = Background2D(data, 50, coverage_mask=coverage_mask)
+
+        # Access rms_mesh first, then the regular mesh
+        rms_mesh = bkg.background_rms_mesh
+        mesh = bkg.background_mesh
+        assert rms_mesh.shape == mesh.shape
+
     def test_no_sigma_clipping(self, test_data):
         """
         Test bkg_estimator inputs without sigma clipping.

@@ -754,17 +754,19 @@ class Background2D:
         """
         Free ``_bkg_stats`` when it is safe to do so.
 
-        ``_bkg_stats`` can be freed once neither ``background_mesh``
-        nor ``background_rms_mesh`` needs it anymore. It is needed by
-        ``_selective_filter`` (called from ``_filter_grid``) only when
-        ``filter_threshold`` is not ``None``. It is therefore safe to
-        free it after both lazyproperty results have been cached, or
-        immediately when ``filter_threshold`` is ``None`` (because
-        ``_selective_filter`` will never be called).
+        ``_bkg_stats`` is always needed by ``background_mesh``
+        (via ``_interpolate_grid``). It is also needed by
+        ``_selective_filter`` (called from ``_filter_grid``) when
+        ``filter_threshold`` is not ``None``. It is therefore
+        safe to free it only after ``background_mesh`` has been
+        cached and either ``filter_threshold`` is ``None``
+        (so ``background_rms_mesh`` does not need it) or
+        ``background_rms_mesh`` has also been cached.
         """
+        if 'background_mesh' not in self.__dict__:
+            return
         if (self.filter_threshold is None
-                or ('background_mesh' in self.__dict__
-                    and 'background_rms_mesh' in self.__dict__)):
+                or 'background_rms_mesh' in self.__dict__):
             self._bkg_stats = None  # delete to save memory
 
     @lazyproperty
