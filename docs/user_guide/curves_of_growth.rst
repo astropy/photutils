@@ -73,7 +73,7 @@ be computed over the radial range given by the input ``radii`` array::
 
     >>> from photutils.profiles import CurveOfGrowth
     >>> radii = np.arange(1, 26)
-    >>> cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
+    >>> cog = CurveOfGrowth(data, xycen, radii, error=error)
 
 Here, the `~photutils.profiles.CurveOfGrowth.radius` attribute values
 are identical to the input ``radii``. Because these values are the radii
@@ -163,7 +163,7 @@ its error:
 
     # Create the curve of growth
     radii = np.arange(1, 26)
-    cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
+    cog = CurveOfGrowth(data, xycen, radii, error=error)
 
     # Plot the curve of growth
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -199,7 +199,7 @@ list of the apertures. Let's plot a few of the circular apertures (the
 
     # Create the curve of growth
     radii = np.arange(1, 26)
-    cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
+    cog = CurveOfGrowth(data, xycen, radii, error=error)
 
     norm = simple_norm(data, 'sqrt')
     fig, ax = plt.subplots(figsize=(5, 5))
@@ -278,7 +278,7 @@ Here we plot the encircled energy values.
 
     # Create the curve of growth
     radii = np.arange(1, 26)
-    cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
+    cog = CurveOfGrowth(data, xycen, radii, error=error)
     cog.normalize(method='max')
     ee_rads = np.array([5, 7, 10, 15])
     ee_vals = cog.calc_ee_at_radius(ee_rads)
@@ -315,8 +315,7 @@ above::
 
     >>> from photutils.profiles import EnsquaredCurveOfGrowth
     >>> half_sizes = np.arange(1, 26)
-    >>> ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error,
-    ...                               mask=None)
+    >>> ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error)
 
 The ensquared curve of growth profile represents the total flux within
 the square aperture as a function of the square half-size::
@@ -324,6 +323,11 @@ the square aperture as a function of the square half-size::
     >>> print(ecog.half_size)  # doctest: +FLOAT_CMP
     [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
      25]
+
+The `~photutils.profiles.EnsquaredCurveOfGrowth.profile` and
+`~photutils.profiles.EnsquaredCurveOfGrowth.profile_error` attributes
+contain output 1D `~numpy.ndarray` objects containing the ensquared
+curve-of-growth profile and propagated errors::
 
     >>> print(ecog.profile)  # doctest: +FLOAT_CMP
     [ 171.35182895  640.63717997 1328.55725483 2142.84258293 2954.12152275
@@ -362,8 +366,7 @@ Here, we plot the normalized ensquared curve of growth.
 
     # Create the ensquared curve of growth
     half_sizes = np.arange(1, 26)
-    ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error,
-                                  mask=None)
+    ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error)
     ecog.normalize(method='max')
 
     # Plot the ensquared curve of growth
@@ -397,8 +400,7 @@ We can also plot a few of the square apertures on the data.
 
     # Create the ensquared curve of growth
     half_sizes = np.arange(1, 26)
-    ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error,
-                                  mask=None)
+    ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error)
 
     norm = simple_norm(data, 'sqrt')
     fig, ax = plt.subplots(figsize=(5, 5))
@@ -461,8 +463,7 @@ Here, we plot the ensquared energy values.
 
     # Create the ensquared curve of growth
     half_sizes = np.arange(1, 26)
-    ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error,
-                                  mask=None)
+    ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error)
     ecog.normalize(method='max')
     ee_half_sizes = np.array([3, 6, 9])
     ee_vals = ecog.calc_ee_at_half_size(ee_half_sizes)
@@ -515,8 +516,7 @@ with an axis ratio of 0.5 and a rotation angle of 42 degrees::
     >>> xycen = centroid_2dg(data)
     >>> radii = np.arange(1, 40)
     >>> ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-    ...                               theta=np.deg2rad(42), error=error,
-    ...                               mask=None)
+    ...                               theta=np.deg2rad(42), error=error)
 
 The elliptical curve of growth profile represents the total flux within
 the elliptical aperture as a function of semimajor-axis length::
@@ -524,6 +524,11 @@ the elliptical aperture as a function of semimajor-axis length::
     >>> print(ecog.radius)  # doctest: +FLOAT_CMP
     [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
      25 26 27 28 29 30 31 32 33 34 35 36 37 38 39]
+
+The `~photutils.profiles.EllipticalCurveOfGrowth.profile` and
+`~photutils.profiles.EllipticalCurveOfGrowth.profile_error` attributes
+contain output 1D `~numpy.ndarray` objects containing the elliptical
+curve-of-growth profile and propagated errors::
 
     >>> print(ecog.profile)  # doctest: +FLOAT_CMP
     [   67.39762867   267.711181     588.47524874  1021.31994307
@@ -573,8 +578,7 @@ Here, we plot the normalized elliptical curve of growth.
     # Create the elliptical curve of growth
     radii = np.arange(1, 40)
     ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-                                  theta=np.deg2rad(42), error=error,
-                                  mask=None)
+                                  theta=np.deg2rad(42), error=error)
     ecog.normalize(method='max')
 
     # Plot the elliptical curve of growth
@@ -609,8 +613,7 @@ We can also plot a few of the elliptical apertures on the data.
     # Create the elliptical curve of growth
     radii = np.arange(1, 40)
     ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-                                  theta=np.deg2rad(42), error=error,
-                                  mask=None)
+                                  theta=np.deg2rad(42), error=error)
 
     norm = simple_norm(data, 'sqrt')
     fig, ax = plt.subplots(figsize=(5, 5))
@@ -675,8 +678,7 @@ Here we plot the enclosed energy values.
     # Create the elliptical curve of growth
     radii = np.arange(1, 40)
     ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-                                  theta=np.deg2rad(42), error=error,
-                                  mask=None)
+                                  theta=np.deg2rad(42), error=error)
     ecog.normalize(method='max')
     ee_rads = np.array([5, 10, 15, 20])
     ee_vals = ecog.calc_ee_at_radius(ee_rads)

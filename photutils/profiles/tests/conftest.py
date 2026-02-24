@@ -12,7 +12,7 @@ from astropy.modeling.models import Gaussian2D
 def fixture_profile_data():
     """
     Fixture that generates a 2D Gaussian profile with error and mask
-    arrays for testing the curve-of-growth classes.
+    arrays for testing the profile classes.
     """
     xsize = 101
     ysize = 80

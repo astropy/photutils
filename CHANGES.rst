@@ -69,6 +69,10 @@ New Features
     growth using concentric elliptical apertures with a fixed axis ratio
     and orientation. [#2184]
 
+  - Added ``moffat_fit``, ``moffat_profile``, and ``moffat_fwhm``
+    properties to ``RadialProfile`` for fitting a 1D Moffat model to the
+    radial profile. [#2185]
+
 - ``photutils.psf_matching``
 
   - Added a ``regularization`` keyword to ``make_kernel`` to regularize
@@ -171,6 +175,12 @@ API Changes
 
   - All functions in the ``centroids`` package now require keyword-only
     arguments. [#2162]
+
+- ``photutils.profiles``
+
+  - Cached Gaussian fits to the radial profile are now automatically
+    invalidated when the profile normalization changes, so the fit is
+    always consistent with the current profile. [#2185]
 
 - ``photutils.psf``
 

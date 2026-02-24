@@ -76,7 +76,7 @@ masked pixel::
 
     >>> from photutils.profiles import RadialProfile
     >>> edge_radii = np.arange(25)
-    >>> rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+    >>> rp = RadialProfile(data, xycen, edge_radii, error=error)
 
 The output `~photutils.profiles.RadialProfile.radius` attribute values
 are defined as the arithmetic means of the input radial-bins edges
@@ -148,7 +148,7 @@ error bars:
 
     # Create the radial profile
     edge_radii = np.arange(26)
-    rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+    rp = RadialProfile(data, xycen, edge_radii, error=error)
 
     # Plot the radial profile
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -209,7 +209,7 @@ to set the plot label.
 
     # Create the radial profile
     edge_radii = np.arange(26)
-    rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+    rp = RadialProfile(data, xycen, edge_radii, error=error)
 
     # Plot the radial profile
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -246,7 +246,7 @@ instance on the data:
 
     # Create the radial profile
     edge_radii = np.arange(26)
-    rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+    rp = RadialProfile(data, xycen, edge_radii, error=error)
 
     norm = simple_norm(data, 'sqrt')
     fig, ax = plt.subplots(figsize=(5, 5))
@@ -255,36 +255,40 @@ instance on the data:
     rp.apertures[10].plot(ax=ax, color='C1', lw=2)
     rp.apertures[15].plot(ax=ax, color='C3', lw=2)
 
-Fitting the profile with a 1D Gaussian
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Fitting the profile with a 1D Gaussian or Moffat Model
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Now let's fit a 1D Gaussian to the radial profile and return the
-`~astropy.modeling.functional_models.Gaussian1D` model using the
-`~photutils.profiles.RadialProfile.gaussian_fit` attribute. The returned
-value is a 1D Gaussian model fit to the radial profile::
+The radial profile can be fitted with either a 1D Gaussian
+(`~astropy.modeling.functional_models.Gaussian1D`) or a 1D Moffat
+(`~astropy.modeling.functional_models.Moffat1D`) model. The fitted
+models are accessible via the
+`~photutils.profiles.RadialProfile.gaussian_fit` and
+`~photutils.profiles.RadialProfile.moffat_fit` attributes,
+respectively::
 
     >>> rp.gaussian_fit  # doctest: +FLOAT_CMP
     <Gaussian1D(amplitude=42.25782121, mean=0., stddev=4.67512787)>
 
-The FWHM of the fitted 1D Gaussian model is stored in the
-`~photutils.profiles.RadialProfile.gaussian_fwhm` attribute::
+    >>> rp.moffat_fit  # doctest: +ELLIPSIS
+    <Moffat1D(amplitude=..., x_0=0., gamma=..., alpha=...)>
+
+The FWHM of each fitted model is stored in the
+`~photutils.profiles.RadialProfile.gaussian_fwhm` and
+`~photutils.profiles.RadialProfile.moffat_fwhm` attributes::
 
     >>> print(rp.gaussian_fwhm)  # doctest: +FLOAT_CMP
     11.009084813327846
 
-The 1D Gaussian model evaluated at the profile radius values is stored
-in the `~photutils.profiles.RadialProfile.gaussian_profile` attribute::
+    >>> print(rp.moffat_fwhm)  # doctest: +FLOAT_CMP
+    10.868426520785151
 
-    >>> print(rp.gaussian_profile)  # doctest: +FLOAT_CMP
-    [4.20168369e+01 4.01377829e+01 3.66280188e+01 3.19303371e+01
-     2.65903224e+01 2.11530856e+01 1.60751071e+01 1.16698171e+01
-     8.09290139e+00 5.36135385e+00 3.39292860e+00 2.05118576e+00
-     1.18458244e+00 6.53515081e-01 3.44410166e-01 1.73390913e-01
-     8.33886095e-02 3.83104412e-02 1.68134796e-02 7.04900913e-03
-     2.82311500e-03 1.08008788e-03 3.94747727e-04 1.37819354e-04]
+The fitted models evaluated at the profile radius values are stored in
+the `~photutils.profiles.RadialProfile.gaussian_profile` and
+`~photutils.profiles.RadialProfile.moffat_profile` attributes.
 
-Finally, let's plot the fitted 1D Gaussian model for the
-:class:`~photutils.profiles.RadialProfile` radial profile:
+Moffat profiles have broader wings than Gaussians and are often a
+better representation of astronomical point-spread functions. Let's
+plot both fitted models on the radial profile:
 
 .. plot::
 
@@ -309,13 +313,14 @@ Finally, let's plot the fitted 1D Gaussian model for the
 
     # Create the radial profile
     edge_radii = np.arange(26)
-    rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+    rp = RadialProfile(data, xycen, edge_radii, error=error)
 
-    # Plot the radial profile
+    # Plot the radial profile with Gaussian and Moffat fits
     fig, ax = plt.subplots(figsize=(8, 6))
     rp.plot(ax=ax, label='Radial Profile')
     rp.plot_error(ax=ax)
     ax.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
+    ax.plot(rp.radius, rp.moffat_profile, label='Moffat Fit')
     ax.legend()
 
 
