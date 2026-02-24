@@ -79,6 +79,7 @@ extensions += [
 
 redirects = {
     'user_guide/epsf': 'epsf_building.html',
+    'user_guide/profiles': 'radial_profiles.html',
 }
 
 # This is added to the end of RST files - a good place to put
