@@ -17,8 +17,8 @@ of smaller improvements and bug fixes, which are described in the full
 New Profiles Subpackage
 =======================
 
-A new :ref:`profile subpackage <profiles>` was added containing tools
-for computing radial profiles and curves of growth:
+A new `photutils.profiles` subpackage was added containing tools for
+computing radial profiles and curves of growth:
 
 *  `~photutils.profiles.RadialProfile`
 *  `~photutils.profiles.CurveOfGrowth`
