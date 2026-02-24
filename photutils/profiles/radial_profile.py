@@ -7,7 +7,7 @@ import warnings
 
 import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
-from astropy.modeling.models import Gaussian1D
+from astropy.modeling.models import Gaussian1D, Moffat1D
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
@@ -26,8 +26,9 @@ class RadialProfile(ProfileBase):
     circular annuli apertures as a function of radius.
 
     For this class, the input radii represent the edges of the radial
-    bins. This differs from the `CurveOfGrowth` class, where the inputs
-    represent the centers of the radial bins.
+    bins. This differs from the `CurveOfGrowth` class, where the input
+    radii are the radii of the circular apertures used to compute the
+    cumulative flux.
 
     The output `radius` attribute represents the bin centers.
 
@@ -123,7 +124,7 @@ class RadialProfile(ProfileBase):
 
     >>> xycen = centroid_2dg(data)
     >>> edge_radii = np.arange(25)
-    >>> rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+    >>> rp = RadialProfile(data, xycen, edge_radii, error=error)
 
     >>> print(rp.radius)  # doctest: +FLOAT_CMP
     [ 0.5  1.5  2.5  3.5  4.5  5.5  6.5  7.5  8.5  9.5 10.5 11.5 12.5 13.5
@@ -142,39 +143,6 @@ class RadialProfile(ProfileBase):
      0.32860388 0.30591356 0.28735575 0.27181133 0.25854415 0.24704749
      0.23695963 0.22801451 0.22001149 0.21279603 0.20624688 0.20026744
      0.19477961 0.18971954 0.18503438 0.18068002 0.17661928 0.17282057]
-
-    Plot the radial profile.
-
-    .. plot::
-
-        import matplotlib.pyplot as plt
-        import numpy as np
-        from astropy.modeling.models import Gaussian2D
-
-        from photutils.centroids import centroid_2dg
-        from photutils.datasets import make_noise_image
-        from photutils.profiles import RadialProfile
-
-        # Create an artificial single source
-        gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
-        yy, xx = np.mgrid[0:100, 0:100]
-        data = gmodel(xx, yy)
-        bkg_sig = 2.1
-        noise = make_noise_image(data.shape, mean=0., stddev=bkg_sig, seed=0)
-        data += noise
-        error = np.zeros_like(data) + bkg_sig
-
-        # Find the source centroid
-        xycen = centroid_2dg(data)
-
-        # Create the radial profile
-        edge_radii = np.arange(26)
-        rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
-
-        # Plot the radial profile
-        fig, ax = plt.subplots(figsize=(8, 6))
-        rp.plot(ax=ax)
-        rp.plot_error(ax=ax)
 
     Plot the radial profile, including the raw data profile.
 
@@ -202,7 +170,7 @@ class RadialProfile(ProfileBase):
 
         # Create the radial profile
         edge_radii = np.arange(26)
-        rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+        rp = RadialProfile(data, xycen, edge_radii, error=error)
 
         # Plot the radial profile
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -236,7 +204,7 @@ class RadialProfile(ProfileBase):
 
         # Create the radial profile
         edge_radii = np.arange(26)
-        rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+        rp = RadialProfile(data, xycen, edge_radii, error=error)
 
         # Plot the radial profile
         rp.normalize()
@@ -271,7 +239,7 @@ class RadialProfile(ProfileBase):
 
         # Create the radial profile
         edge_radii = np.arange(26)
-        rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+        rp = RadialProfile(data, xycen, edge_radii, error=error)
 
         norm = simple_norm(data, 'sqrt')
         fig, ax = plt.subplots(figsize=(5, 5))
@@ -280,16 +248,19 @@ class RadialProfile(ProfileBase):
         rp.apertures[10].plot(ax=ax, color='C1', lw=2)
         rp.apertures[15].plot(ax=ax, color='C3', lw=2)
 
-    Fit a 1D Gaussian to the radial profile and return the Gaussian
-    model.
+    Fit 1D Gaussian and Moffat models to the normalized radial profile.
 
+    >>> rp.normalize()
     >>> rp.gaussian_fit  # doctest: +FLOAT_CMP
-    <Gaussian1D(amplitude=42.25782121, mean=0., stddev=4.67512787)>
-
+    <Gaussian1D(amplitude=0.98231088, mean=0., stddev=4.67512776)>
+    >>> rp.moffat_fit  # doctest: +ELLIPSIS
+    <Moffat1D(amplitude=..., x_0=0., gamma=..., alpha=...)>
     >>> print(rp.gaussian_fwhm)  # doctest: +FLOAT_CMP
     11.009084813327846
+    >>> print(rp.moffat_fwhm)  # doctest: +FLOAT_CMP
+    10.868426507928344
 
-    Plot the fitted 1D Gaussian on the radial profile.
+    Plot the fitted 1D Gaussian and Moffat models on the radial profile.
 
     .. plot::
 
@@ -315,7 +286,7 @@ class RadialProfile(ProfileBase):
 
         # Create the radial profile
         edge_radii = np.arange(26)
-        rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
+        rp = RadialProfile(data, xycen, edge_radii, error=error)
 
         # Plot the radial profile
         rp.normalize()
@@ -323,6 +294,7 @@ class RadialProfile(ProfileBase):
         rp.plot(ax=ax, label='Radial Profile')
         rp.plot_error(ax=ax)
         ax.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
+        ax.plot(rp.radius, rp.moffat_profile, label='Moffat Fit')
         ax.legend()
     """
 
@@ -407,6 +379,9 @@ class RadialProfile(ProfileBase):
     def profile_error(self):
         """
         The radial profile errors as a 1D `~numpy.ndarray`.
+
+        If no ``error`` array was provided, an empty array with shape
+        ``(0,)`` is returned.
         """
         if self.error is None:
             return self._fluxerr
@@ -468,7 +443,12 @@ class RadialProfile(ProfileBase):
 
         The Gaussian profile will not change if the profile
         normalization is changed after performing the fit.
+
+        Returns `None` if the fit failed (e.g., the profile is entirely
+        non-finite or masked).
         """
+        if self.gaussian_fit is None:
+            return None
         return self.gaussian_fit(self.radius)
 
     @lazyproperty
@@ -476,8 +456,82 @@ class RadialProfile(ProfileBase):
         """
         The full-width at half-maximum (FWHM) in pixels of the 1D
         Gaussian fitted to the radial profile.
+
+        Returns `None` if the fit failed (e.g., the profile is entirely
+        non-finite or masked).
         """
+        if self.gaussian_fit is None:
+            return None
         return self.gaussian_fit.stddev.value * gaussian_sigma_to_fwhm
+
+    @lazyproperty
+    def moffat_fit(self):
+        """
+        The fitted 1D Moffat to the radial profile as a
+        `~astropy.modeling.functional_models.Moffat1D` model.
+
+        The Moffat fit will not change if the profile normalization is
+        changed after performing the fit.
+        """
+        profile = self.profile[self._profile_nanmask]
+        radius = self.radius[self._profile_nanmask]
+
+        if len(profile) == 0:
+            msg = ('The radial profile is entirely non-finite or masked; '
+                   'cannot fit a Moffat.')
+            warnings.warn(msg, AstropyUserWarning)
+            return None
+
+        amplitude = np.max(profile)
+        sum_profile = np.sum(profile)
+        if sum_profile == 0:
+            warnings.warn('The profile sum is zero; the Moffat fit '
+                          'initial guess may be inaccurate.',
+                          AstropyUserWarning)
+            gamma = 1.0  # fallback to avoid zero initial guess
+        else:
+            # Estimate gamma from the half-max radius
+            half_max = amplitude / 2.0
+            above = profile >= half_max
+            gamma = (max(np.max(radius[above]), 1.0)
+                     if np.any(above) else 1.0)
+
+        m_init = Moffat1D(amplitude=amplitude, x_0=0.0, gamma=gamma,
+                          alpha=2.5)
+        m_init.x_0.fixed = True
+        m_init.gamma.bounds = (0, None)
+        m_init.alpha.bounds = (1, 25)
+        fitter = TRFLSQFitter()
+        return fitter(m_init, radius, profile)
+
+    @lazyproperty
+    def moffat_profile(self):
+        """
+        The fitted 1D Moffat profile to the radial profile as a 1D
+        `~numpy.ndarray`.
+
+        The Moffat profile will not change if the profile normalization
+        is changed after performing the fit.
+
+        Returns `None` if the fit failed (e.g., the profile is entirely
+        non-finite or masked).
+        """
+        if self.moffat_fit is None:
+            return None
+        return self.moffat_fit(self.radius)
+
+    @lazyproperty
+    def moffat_fwhm(self):
+        """
+        The full-width at half-maximum (FWHM) in pixels of the 1D Moffat
+        fitted to the radial profile.
+
+        Returns `None` if the fit failed (e.g., the profile is entirely
+        non-finite or masked).
+        """
+        if self.moffat_fit is None:
+            return None
+        return self.moffat_fit.fwhm
 
     @lazyproperty
     def _data_profile(self):
