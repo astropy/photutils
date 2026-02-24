@@ -67,6 +67,147 @@ did not converge). The number of excluded stars and their indices are
 reported in the :class:`~photutils.psf.EPSFBuildResult`.
 
 
+Improved PSF Matching Tools
+===========================
+
+The PSF matching module has been significantly improved with better
+validation, regularization, and documentation.
+
+New regularization parameter
+-----------------------------
+
+The :func:`~photutils.psf_matching.make_kernel` function now includes a
+``regularization`` parameter to regularize division by near-zero values
+in the Fourier domain. This prevents numerical instabilities when the
+source PSF has very small Fourier coefficients::
+
+    >>> from photutils.psf_matching import make_kernel
+    >>> kernel = make_kernel(source_psf, target_psf, regularization=1e-4)
+
+The default value of ``1e-4`` provides good regularization for most
+cases, but can be adjusted based on the noise characteristics of your
+PSFs.
+
+Improved validation
+-------------------
+
+Both :func:`~photutils.psf_matching.make_kernel` and
+:func:`~photutils.psf_matching.resize_psf` now validate their inputs:
+
+* PSFs must be 2D arrays with odd dimensions
+* Window functions must return valid 2D arrays with values between [0, 1]
+* Pixel scales must be positive
+
+New PSF Matching Function with Wiener Regularization
+----------------------------------------------------
+
+A new :func:`~photutils.psf_matching.make_wiener_kernel`
+function has been added to the ``psf_matching`` subpackage.
+
+This function computes a Wiener-regularized PSF-matching kernel in the
+Fourier domain. The denominator includes a regularization term that
+stabilizes inversion of the source OTF (Optical Transfer Function, the
+Fourier transform of the PSF) by preventing division by small values,
+thereby suppressing noise amplification at spatial frequencies where the
+source response is weak.
+
+This method is particularly useful when working with PSFs
+that have near-zero power at high spatial frequencies (e.g.,
+diffraction-limited PSFs), where the hard amplitude thresholding
+used by :func:`~photutils.psf_matching.make_kernel` can introduce
+discontinuities in Fourier space. Wiener regularization instead smoothly
+down-weights those frequencies, producing matching kernels with less
+ringing and often eliminating the need to carefully tune a window
+function.
+
+When no ``penalty`` is provided (default), the regularization is a
+frequency-independent (zero-order scalar) Tikhonov term expressed as a
+fraction of the peak power in the source OTF::
+
+    >>> from photutils.psf_matching import make_wiener_kernel
+    >>> kernel = make_wiener_kernel(source_psf, target_psf)
+
+The function also supports a ``penalty`` parameter for
+frequency-dependent regularization. Setting ``penalty='laplacian'`` uses
+a discrete Laplacian operator that penalizes high spatial frequencies
+more heavily, reproducing the regularization approach used by the
+``pypher`` package (`Boucaud et al. 2016`_)::
+
+    >>> kernel = make_wiener_kernel(source_psf, target_psf,
+    ...                             penalty='laplacian')
+
+.. _Boucaud et al. 2016:
+    https://ui.adsabs.harvard.edu/abs/2016A%26A...596A..63B/abstract
+
+
+New Curve of Growth Classes
+===========================
+
+Two new curve-of-growth classes have been added to the
+`~photutils.profiles` subpackage:
+
+* :class:`~photutils.profiles.EnsquaredCurveOfGrowth`: Computes a curve
+  of growth using concentric square apertures. The profile is measured
+  as a function of half the square's side length.
+
+* :class:`~photutils.profiles.EllipticalCurveOfGrowth`: Computes a
+  curve of growth using concentric elliptical apertures with a
+  user-defined fixed axis ratio and orientation. The profile is measured
+  as a function of the semimajor-axis length.
+
+These complement the existing :class:`~photutils.profiles.CurveOfGrowth`
+class, which uses concentric circular apertures.
+
+:class:`~photutils.profiles.EnsquaredCurveOfGrowth` example::
+
+    >>> from photutils.profiles import EnsquaredCurveOfGrowth
+    >>> half_sizes = np.arange(1, 26)  # half-sizes of the square apertures
+    >>> ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error,
+    ...                               mask=None)
+    >>> ecog.normalize()
+    >>> ee_vals = ecog.calc_ee_at_half_size(np.array([3, 6, 9]))
+
+:class:`~photutils.profiles.EllipticalCurveOfGrowth` example::
+
+    >>> from photutils.profiles import EllipticalCurveOfGrowth
+    >>> radii = np.arange(1, 26)  # semimajor-axis lengths
+    >>> ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
+    ...                               theta=0.0, error=error, mask=None)
+    >>> ecog.normalize()
+    >>> ee_vals = ecog.calc_ee_at_radius(np.array([5, 10, 15]))
+
+
+Moffat Fitting for Radial Profiles
+==================================
+
+:class:`~photutils.profiles.RadialProfile` now supports fitting a 1D
+Moffat model (using `~astropy.modeling.functional_models.Moffat1D`) to
+the radial profile, complementing the existing Gaussian fitting
+capability. Three new properties are available:
+
+* ``moffat_fit``: The fitted
+  `~astropy.modeling.functional_models.Moffat1D` model.
+* ``moffat_profile``: The fitted 1D Moffat evaluated at the profile
+  radii.
+* ``moffat_fwhm``: The FWHM from the fitted Moffat model.
+
+Moffat profiles have broader wings than Gaussians and are often a
+better representation of astronomical point-spread functions::
+
+    >>> rp = RadialProfile(data, xycen, edge_radii, error=error)
+    >>> rp.moffat_fit
+    <Moffat1D(...)>
+    >>> print(rp.moffat_fwhm)  # doctest: +SKIP
+    11.2
+
+Plot the fitted Moffat on the radial profile::
+
+    >>> fig, ax = plt.subplots()
+    >>> rp.plot(ax=ax, label='Radial Profile')
+    >>> ax.plot(rp.radius, rp.moffat_profile, label='Moffat Fit')
+    >>> ax.legend()
+
+
 New SourceGroups class
 ======================
 
@@ -189,148 +330,6 @@ New ImagePSF shape property
 returns the shape of the (oversampled) PSF data array.
 
 
-New Curve of Growth Classes
-===========================
-
-Two new curve-of-growth classes have been added to the
-`~photutils.profiles` subpackage:
-
-* :class:`~photutils.profiles.EnsquaredCurveOfGrowth`: Computes a curve
-  of growth using concentric square apertures. The profile is measured
-  as a function of half the square's side length.
-
-* :class:`~photutils.profiles.EllipticalCurveOfGrowth`: Computes a
-  curve of growth using concentric elliptical apertures with a
-  user-defined fixed axis ratio and orientation. The profile is measured
-  as a function of the semimajor-axis length.
-
-These complement the existing :class:`~photutils.profiles.CurveOfGrowth`
-class, which uses concentric circular apertures.
-
-:class:`~photutils.profiles.EnsquaredCurveOfGrowth` example::
-
-    >>> from photutils.profiles import EnsquaredCurveOfGrowth
-    >>> half_sizes = np.arange(1, 26)  # half-sizes of the square apertures
-    >>> ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error,
-    ...                               mask=None)
-    >>> ecog.normalize()
-    >>> ee_vals = ecog.calc_ee_at_half_size(np.array([3, 6, 9]))
-
-:class:`~photutils.profiles.EllipticalCurveOfGrowth` example::
-
-    >>> from photutils.profiles import EllipticalCurveOfGrowth
-    >>> radii = np.arange(1, 26)  # semimajor-axis lengths
-    >>> ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-    ...                               theta=0.0, error=error, mask=None)
-    >>> ecog.normalize()
-    >>> ee_vals = ecog.calc_ee_at_radius(np.array([5, 10, 15]))
-
-
-Moffat Fitting for Radial Profiles
-==================================
-
-:class:`~photutils.profiles.RadialProfile` now supports fitting a 1D
-Moffat model (using `~astropy.modeling.functional_models.Moffat1D`) to
-the radial profile, complementing the existing Gaussian fitting
-capability. Three new properties are available:
-
-* ``moffat_fit``: The fitted
-  `~astropy.modeling.functional_models.Moffat1D` model.
-* ``moffat_profile``: The fitted 1D Moffat evaluated at the profile
-  radii.
-* ``moffat_fwhm``: The FWHM from the fitted Moffat model.
-
-Moffat profiles have broader wings than Gaussians and are often a
-better representation of astronomical point-spread functions::
-
-    >>> rp = RadialProfile(data, xycen, edge_radii, error=error)
-    >>> rp.moffat_fit
-    <Moffat1D(...)>
-    >>> print(rp.moffat_fwhm)  # doctest: +SKIP
-    11.2
-
-Plot the fitted Moffat on the radial profile::
-
-    >>> fig, ax = plt.subplots()
-    >>> rp.plot(ax=ax, label='Radial Profile')
-    >>> ax.plot(rp.radius, rp.moffat_profile, label='Moffat Fit')
-    >>> ax.legend()
-
-
-Improved PSF Matching Tools
-===========================
-
-The PSF matching module has been significantly improved with better
-validation, regularization, and documentation.
-
-New regularization parameter
------------------------------
-
-The :func:`~photutils.psf_matching.make_kernel` function now includes a
-``regularization`` parameter to regularize division by near-zero values
-in the Fourier domain. This prevents numerical instabilities when the
-source PSF has very small Fourier coefficients::
-
-    >>> from photutils.psf_matching import make_kernel
-    >>> kernel = make_kernel(source_psf, target_psf, regularization=1e-4)
-
-The default value of ``1e-4`` provides good regularization for most
-cases, but can be adjusted based on the noise characteristics of your
-PSFs.
-
-Improved validation
--------------------
-
-Both :func:`~photutils.psf_matching.make_kernel` and
-:func:`~photutils.psf_matching.resize_psf` now validate their inputs:
-
-* PSFs must be 2D arrays with odd dimensions
-* Window functions must return valid 2D arrays with values between [0, 1]
-* Pixel scales must be positive
-* PSFs should be centered (a warning is issued if not)
-
-New PSF Matching Function with Wiener Regularization
-----------------------------------------------------
-
-A new :func:`~photutils.psf_matching.make_wiener_kernel`
-function has been added to the ``psf_matching`` subpackage.
-
-This function computes a Wiener-regularized PSF-matching kernel in the
-Fourier domain. The denominator includes a regularization term that
-stabilizes inversion of the source OTF (Optical Transfer Function, the
-Fourier transform of the PSF) by preventing division by small values,
-thereby suppressing noise amplification at spatial frequencies where the
-source response is weak.
-
-This method is particularly useful when working with PSFs
-that have near-zero power at high spatial frequencies (e.g.,
-diffraction-limited PSFs), where the hard amplitude thresholding
-used by :func:`~photutils.psf_matching.make_kernel` can introduce
-discontinuities in Fourier space. Wiener regularization instead smoothly
-down-weights those frequencies, producing matching kernels with less
-ringing and often eliminating the need to carefully tune a window
-function.
-
-When no ``penalty`` is provided (default), the regularization is a
-frequency-independent (zero-order scalar) Tikhonov term expressed as a
-fraction of the peak power in the source OTF::
-
-    >>> from photutils.psf_matching import make_wiener_kernel
-    >>> kernel = make_wiener_kernel(source_psf, target_psf)
-
-The function also supports a ``penalty`` parameter for
-frequency-dependent regularization. Setting ``penalty='laplacian'`` uses
-a discrete Laplacian operator that penalizes high spatial frequencies
-more heavily, reproducing the regularization approach used by the
-``pypher`` package (`Boucaud et al. 2016`_)::
-
-    >>> kernel = make_wiener_kernel(source_psf, target_psf,
-    ...                             penalty='laplacian')
-
-.. _Boucaud et al. 2016:
-    https://ui.adsabs.harvard.edu/abs/2016A%26A...596A..63B/abstract
-
-
 Removed Deprecations
 ====================
 
@@ -374,6 +373,19 @@ for :func:`~photutils.centroids.centroid_quadratic` function are now
 deprecated. Use the :func:`~photutils.centroids.centroid_sources`
 function to centroid sources at specific positions.
 
+PSF Package
+-----------
+
+The ``grid_from_epsfs`` helper function is now deprecated. This function
+creates a ``GriddedPSFModel`` from a list of ePSFs. Instead, use the
+``GriddedPSFModel`` class directly.
+
+The :class:`~photutils.psf.EPSFFitter` class is now deprecated.
+To customize the ePSF fitting process, use the ``fitter``,
+``fit_shape``, and ``fitter_maxiters`` parameters of
+:class:`~photutils.psf.EPSFBuilder` directly instead of creating an
+``EPSFFitter`` instance.
+
 PSF Matching Package
 --------------------
 
@@ -405,19 +417,6 @@ a future version. Update your code to use the new name::
 
     # New
     from photutils.psf_matching import make_kernel
-
-PSF Package
------------
-
-The ``grid_from_epsfs`` helper function is now deprecated. This function
-creates a ``GriddedPSFModel`` from a list of ePSFs. Instead, use the
-``GriddedPSFModel`` class directly.
-
-The :class:`~photutils.psf.EPSFFitter` class is now deprecated.
-To customize the ePSF fitting process, use the ``fitter``,
-``fit_shape``, and ``fitter_maxiters`` parameters of
-:class:`~photutils.psf.EPSFBuilder` directly instead of creating an
-``EPSFFitter`` instance.
 
 
 Breaking Changes
