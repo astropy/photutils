@@ -39,9 +39,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
     error : 2D `~numpy.ndarray`, optional
         The 1-sigma errors of the input ``data``. ``error`` is assumed
-        to include all sources of error, including the Poisson error
-        of the sources (see `~photutils.utils.calc_total_error`) .
-        ``error`` must have the same shape as the input ``data``.
+        to include all sources of error, including the Poisson error of
+        the sources (see `~photutils.utils.calc_total_error`). ``error``
+        must have the same shape as the input ``data``.
 
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -78,6 +78,11 @@ class ProfileBase(metaclass=abc.ABCMeta):
         ``method='subpixel'``.
     """
 
+    # Define axis labels used by `~photutils.profiles.ProfileBase.plot`.
+    # Subclasses may override these.
+    _xlabel = 'Radius (pixels)'
+    _ylabel = 'Profile'
+
     def __init__(self, data, xycen, radii, *, error=None, mask=None,
                  method='exact', subpixels=5):
 
@@ -99,6 +104,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         self.normalization_value = 1.0
 
     def _validate_radii(self, radii):
+        """Validate and return the radii array."""
         radii = np.array(radii)
         if radii.ndim != 1 or radii.size < 2:
             msg = 'radii must be a 1D array and have at least two values'
@@ -125,25 +131,25 @@ class ProfileBase(metaclass=abc.ABCMeta):
             if mask.shape != data.shape:
                 msg = 'mask must have the same shape as data'
                 raise ValueError(msg)
-            badmask &= ~mask  # non-finite values not in input mask
-            mask |= badmask  # all masked pixels
+            # Keep only non-finite values not already masked by the user
+            badmask &= ~mask
+            combined_mask = mask | badmask  # all masked pixels
         else:
-            mask = badmask
+            combined_mask = badmask
 
         if np.any(badmask):
             warnings.warn('Input data contains non-finite values (e.g., NaN '
                           'or inf) that were automatically masked.',
                           AstropyUserWarning)
 
-        return mask
+        return combined_mask
 
-    @lazyproperty
+    @property
+    @abc.abstractmethod
     def radius(self):
         """
         The profile radius in pixels as a 1D `~numpy.ndarray`.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
     @property
     @abc.abstractmethod
@@ -151,8 +157,6 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         The radial profile as a 1D `~numpy.ndarray`.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
     @property
     @abc.abstractmethod
@@ -160,8 +164,6 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         The radial profile errors as a 1D `~numpy.ndarray`.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
     @lazyproperty
     def _circular_apertures(self):
@@ -180,16 +182,33 @@ class ProfileBase(metaclass=abc.ABCMeta):
                 apertures.append(CircularAperture(self.xycen, radius))
         return apertures
 
-    @lazyproperty
-    def _photometry(self):
+    def _compute_photometry(self, apertures):
         """
-        The aperture fluxes, flux errors, and areas as a function of
-        radius.
+        Compute aperture fluxes, flux errors, and areas for the given
+        apertures.
+
+        Parameters
+        ----------
+        apertures : list
+            A list of aperture objects. Elements may be `None`, in which
+            case the corresponding flux, error, and area are set to
+            zero.
+
+        Returns
+        -------
+        fluxes : `~numpy.ndarray`
+            The aperture fluxes.
+
+        fluxerrs : `~numpy.ndarray`
+            The aperture flux errors.
+
+        areas : `~numpy.ndarray`
+            The aperture areas.
         """
         fluxes = []
         fluxerrs = []
         areas = []
-        for aperture in self._circular_apertures:
+        for aperture in apertures:
             if aperture is None:
                 flux, fluxerr = [0.0], [0.0]
                 area = 0.0
@@ -214,6 +233,14 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         return fluxes, fluxerrs, areas
 
+    @lazyproperty
+    def _photometry(self):
+        """
+        The aperture fluxes, flux errors, and areas as a function of
+        radius.
+        """
+        return self._compute_photometry(self._circular_apertures)
+
     def normalize(self, method='max'):
         """
         Normalize the profile.
@@ -232,28 +259,44 @@ class ProfileBase(metaclass=abc.ABCMeta):
               1.
         """
         if method == 'max':
-            normalization = nanmax(self.profile)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                normalization = nanmax(self.profile)
         elif method == 'sum':
-            normalization = nansum(self.profile)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                normalization = nansum(self.profile)
         else:
             msg = 'invalid method, must be "max" or "sum"'
             raise ValueError(msg)
 
-        # NOTE: max and sum will never be NaN (automatically masked)
-        if normalization == 0:
-            warnings.warn('The profile cannot be normalized because the '
-                          'max or sum is zero.', AstropyUserWarning)
+        if normalization == 0 or not np.isfinite(normalization):
+            msg = ('The profile cannot be normalized because the max or '
+                   'sum is zero or non-finite.')
+            warnings.warn(msg, AstropyUserWarning)
         else:
             # normalization_values accumulate if normalize is run
             # multiple times (e.g., different methods)
             self.normalization_value *= normalization
 
-            # need to use __dict__ as these are lazy properties
+            # Need to use __dict__ as these are lazy properties
             self.__dict__['profile'] = self.profile / normalization
             self.__dict__['profile_error'] = self.profile_error / normalization
-            if 'data_profile' in self.__dict__:
-                self.__dict__['data_profile'] = (self.data_profile
-                                                 / normalization)
+            self._normalize_hook(normalization)
+
+    def _normalize_hook(self, normalization):  # noqa: B027
+        """
+        Hook called by `normalize` after normalizing ``profile`` and
+        ``profile_error``.
+
+        Subclasses can override this to normalize additional lazy
+        properties (e.g., ``data_profile``).
+
+        Parameters
+        ----------
+        normalization : float
+            The normalization value applied to the profile.
+        """
 
     def unnormalize(self):
         """
@@ -263,10 +306,80 @@ class ProfileBase(metaclass=abc.ABCMeta):
         self.__dict__['profile'] = self.profile * self.normalization_value
         self.__dict__['profile_error'] = (self.profile_error
                                           * self.normalization_value)
-        if 'data_profile' in self.__dict__:
-            self.__dict__['data_profile'] = (self.data_profile
-                                             * self.normalization_value)
+        self._unnormalize_hook()
         self.normalization_value = 1.0
+
+    def _unnormalize_hook(self):  # noqa: B027
+        """
+        Hook called by `unnormalize` after unnormalizing ``profile`` and
+        ``profile_error``, but before resetting ``normalization_value``.
+
+        Subclasses can override this to unnormalize additional lazy
+        properties (e.g., ``data_profile``).
+        """
+
+    @staticmethod
+    def _trim_to_monotonic(xarr, profile, name):
+        """
+        Trim arrays to the first monotonically increasing region.
+
+        This is used by interpolation methods that require a
+        monotonically increasing profile.
+
+        Parameters
+        ----------
+        xarr : 1D `~numpy.ndarray`
+            The x-axis values (e.g., radius or half-size).
+
+        profile : 1D `~numpy.ndarray`
+            The profile values.
+
+        name : str
+            A descriptive name for the profile used in the error
+            message.
+
+        Returns
+        -------
+        xarr, profile : tuple of `~numpy.ndarray`
+            The trimmed arrays.
+        """
+        finite_mask = np.isfinite(profile)
+        if not np.all(finite_mask):
+            # Keep only the leading finite segment
+            first_nonfinite = np.argmin(finite_mask)
+            xarr = xarr[:first_nonfinite]
+            profile = profile[:first_nonfinite]
+
+        # np.diff produces an array of length n-1: diff[i] represents
+        # the step from profile[i] to profile[i+1]. A value <= 0 means
+        # the profile stopped increasing at that step.
+        diff = np.diff(profile) <= 0
+        if np.any(diff):
+            # idx is an index into the *diff* array, not the profile
+            # array. diff[idx] <= 0 means the drop occurs between
+            # profile[idx] and profile[idx+1], so profile[idx] is
+            # the last good value. We therefore need profile[:idx+1]
+            # (inclusive) to retain it.
+            idx = np.argmax(diff)  # first non-monotonic step in diff-space
+            xarr = xarr[:idx + 1]
+            profile = profile[:idx + 1]
+
+        if len(xarr) < 2:
+            msg = (f'The {name} profile is not monotonically '
+                   'increasing even at the smallest values -- cannot '
+                   'interpolate. Try using different input values '
+                   '(especially the starting values) and/or using the '
+                   '"exact" aperture overlap method.')
+            raise ValueError(msg)
+
+        return xarr, profile
+
+    def __repr__(self):
+        cls_name = self.__class__.__name__
+        n_radii = len(self.radii)
+        normalized = self.normalization_value != 1.0
+        return (f'{cls_name}(xycen={self.xycen}, n_radii={n_radii}, '
+                f'normalized={normalized})')
 
     def plot(self, ax=None, **kwargs):
         """
@@ -292,8 +405,8 @@ class ProfileBase(metaclass=abc.ABCMeta):
             ax = plt.gca()
 
         lines = ax.plot(self.radius, self.profile, **kwargs)
-        ax.set_xlabel('Radius (pixels)')
-        ylabel = 'Profile'
+        ax.set_xlabel(self._xlabel)
+        ylabel = self._ylabel
         if self.unit is not None:
             ylabel = f'{ylabel} ({self.unit})'
         ax.set_ylabel(ylabel)
@@ -316,11 +429,11 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         Returns
         -------
-        lines : `matplotlib.collections.PolyCollection`
+        poly : `matplotlib.collections.PolyCollection` or `None`
             A `~matplotlib.collections.PolyCollection` containing the
-            plotted polygons.
+            plotted polygons, or `None` if no errors were input.
         """
-        if self.profile_error.shape == (0,):
+        if len(self.profile_error) == 0:
             warnings.warn('Errors were not input', AstropyUserWarning)
             return None
 
@@ -329,9 +442,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
         if ax is None:
             ax = plt.gca()
 
-        # set default fill_between facecolor
-        # facecolor must be first key, otherwise it will override color kwarg
-        # (i.e., cannot use setdefault here)
+        # Set default fill_between facecolor.
+        # facecolor must be first key, otherwise it will override color
+        # kwarg (i.e., cannot use setdefault here)
         if 'facecolor' not in kwargs:
             kws = {'facecolor': (0.5, 0.5, 0.5, 0.3)}
             kws.update(kwargs)

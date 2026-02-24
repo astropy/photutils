@@ -69,12 +69,13 @@ PSF Matching
 
     psf_matching.rst
 
-Radial Profiles
----------------
+Profiles
+--------
 .. toctree::
     :maxdepth: 1
 
-    profiles.rst
+    radial_profiles.rst
+    curves_of_growth.rst
 
 Elliptical Isophotes
 --------------------

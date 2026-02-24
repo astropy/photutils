@@ -1,7 +1,7 @@
 
-===========================================
-Radial Profiles (:mod:`photutils.profiles`)
-===========================================
+====================================
+Profiles (:mod:`photutils.profiles`)
+====================================
 
 .. automodapi:: photutils.profiles
     :no-heading:

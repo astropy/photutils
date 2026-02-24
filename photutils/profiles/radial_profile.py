@@ -10,6 +10,7 @@ from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian1D
 from astropy.stats import gaussian_sigma_to_fwhm
 from astropy.utils import lazyproperty
+from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.profiles.core import ProfileBase
 
@@ -49,11 +50,11 @@ class RadialProfile(ProfileBase):
 
     error : 2D `~numpy.ndarray`, optional
         The 1-sigma errors of the input ``data``. ``error`` is assumed
-        to include all sources of error, including the Poisson error
-        of the sources (see `~photutils.utils.calc_total_error`) .
-        ``error`` must have the same shape as the input ``data``.
-        Non-finite values (e.g., NaN or inf) in the ``data`` or
-        ``error`` array are automatically masked.
+        to include all sources of error, including the Poisson error of
+        the sources (see `~photutils.utils.calc_total_error`). ``error``
+        must have the same shape as the input ``data``. Non-finite
+        values (e.g., NaN or inf) in the ``data`` or ``error`` array are
+        automatically masked.
 
     mask : 2D bool `~numpy.ndarray`, optional
         A boolean mask with the same shape as ``data`` where a `True`
@@ -154,7 +155,7 @@ class RadialProfile(ProfileBase):
         from photutils.datasets import make_noise_image
         from photutils.profiles import RadialProfile
 
-        # create an artificial single source
+        # Create an artificial single source
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
@@ -163,14 +164,14 @@ class RadialProfile(ProfileBase):
         data += noise
         error = np.zeros_like(data) + bkg_sig
 
-        # find the source centroid
+        # Find the source centroid
         xycen = centroid_2dg(data)
 
-        # create the radial profile
+        # Create the radial profile
         edge_radii = np.arange(26)
         rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
-        # plot the radial profile
+        # Plot the radial profile
         fig, ax = plt.subplots(figsize=(8, 6))
         rp.plot(ax=ax)
         rp.plot_error(ax=ax)
@@ -187,7 +188,7 @@ class RadialProfile(ProfileBase):
         from photutils.datasets import make_noise_image
         from photutils.profiles import RadialProfile
 
-        # create an artificial single source
+        # Create an artificial single source
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
@@ -196,14 +197,14 @@ class RadialProfile(ProfileBase):
         data += noise
         error = np.zeros_like(data) + bkg_sig
 
-        # find the source centroid
+        # Find the source centroid
         xycen = centroid_2dg(data)
 
-        # create the radial profile
+        # Create the radial profile
         edge_radii = np.arange(26)
         rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
-        # plot the radial profile
+        # Plot the radial profile
         fig, ax = plt.subplots(figsize=(8, 6))
         rp.plot(ax=ax, color='C0')
         rp.plot_error(ax=ax)
@@ -221,7 +222,7 @@ class RadialProfile(ProfileBase):
         from photutils.datasets import make_noise_image
         from photutils.profiles import RadialProfile
 
-        # create an artificial single source
+        # Create an artificial single source
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
@@ -230,14 +231,14 @@ class RadialProfile(ProfileBase):
         data += noise
         error = np.zeros_like(data) + bkg_sig
 
-        # find the source centroid
+        # Find the source centroid
         xycen = centroid_2dg(data)
 
-        # create the radial profile
+        # Create the radial profile
         edge_radii = np.arange(26)
         rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
-        # plot the radial profile
+        # Plot the radial profile
         rp.normalize()
         fig, ax = plt.subplots(figsize=(8, 6))
         rp.plot(ax=ax)
@@ -256,7 +257,7 @@ class RadialProfile(ProfileBase):
         from photutils.datasets import make_noise_image
         from photutils.profiles import RadialProfile
 
-        # create an artificial single source
+        # Create an artificial single source
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
@@ -265,10 +266,10 @@ class RadialProfile(ProfileBase):
         data += noise
         error = np.zeros_like(data) + bkg_sig
 
-        # find the source centroid
+        # Find the source centroid
         xycen = centroid_2dg(data)
 
-        # create the radial profile
+        # Create the radial profile
         edge_radii = np.arange(26)
         rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
@@ -300,7 +301,7 @@ class RadialProfile(ProfileBase):
         from photutils.datasets import make_noise_image
         from photutils.profiles import RadialProfile
 
-        # create an artificial single source
+        # Create an artificial single source
         gmodel = Gaussian2D(42.1, 47.8, 52.4, 4.7, 4.7, 0)
         yy, xx = np.mgrid[0:100, 0:100]
         data = gmodel(xx, yy)
@@ -309,14 +310,14 @@ class RadialProfile(ProfileBase):
         data += noise
         error = np.zeros_like(data) + bkg_sig
 
-        # find the source centroid
+        # Find the source centroid
         xycen = centroid_2dg(data)
 
-        # create the radial profile
+        # Create the radial profile
         edge_radii = np.arange(26)
         rp = RadialProfile(data, xycen, edge_radii, error=error, mask=None)
 
-        # plot the radial profile
+        # Plot the radial profile
         rp.normalize()
         fig, ax = plt.subplots(figsize=(8, 6))
         rp.plot(ax=ax, label='Radial Profile')
@@ -324,6 +325,9 @@ class RadialProfile(ProfileBase):
         ax.plot(rp.radius, rp.gaussian_profile, label='Gaussian Fit')
         ax.legend()
     """
+
+    # Define y-axis label used by `~photutils.profiles.ProfileBase.plot`
+    _ylabel = 'Radial Profile'
 
     @lazyproperty
     def radius(self):
@@ -338,20 +342,21 @@ class RadialProfile(ProfileBase):
         use a radius array defined using the geometric mean of the bin
         edges, i.e. ``np.sqrt(radii[:-1] * radii[1:])``.
         """
-        # define the radial bin centers from the radial bin edges
+        # Define the radial bin centers from the radial bin edges
         return (self.radii[:-1] + self.radii[1:]) / 2
 
     @lazyproperty
     def apertures(self):
         """
         A list of the circular annulus apertures used to measure the
-        radial profile.
+        radial profile, as `~photutils.aperture.CircularAnnulus`
+        objects.
 
-        If the ``min_radius`` is less than or equal to half the
-        ``radius_step``, then a circular aperture with radius equal
-        to ``min_radius + 0.5 * radius_step`` will be used for the
-        innermost aperture.
+        If the minimum of ``radii`` is zero, then the innermost element
+        will be a `~photutils.aperture.CircularAperture` with radius
+        equal to ``radii[1]``.
         """
+        # Prevent circular imports
         from photutils.aperture import CircularAnnulus, CircularAperture
 
         apertures = []
@@ -393,7 +398,7 @@ class RadialProfile(ProfileBase):
         """
         The radial profile as a 1D `~numpy.ndarray`.
         """
-        # ignore divide-by-zero RuntimeWarning
+        # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             return self._flux / self.area
@@ -406,7 +411,7 @@ class RadialProfile(ProfileBase):
         if self.error is None:
             return self._fluxerr
 
-        # ignore divide-by-zero RuntimeWarning
+        # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             return self._fluxerr / self.area
@@ -427,12 +432,33 @@ class RadialProfile(ProfileBase):
         profile = self.profile[self._profile_nanmask]
         radius = self.radius[self._profile_nanmask]
 
+        if len(profile) == 0:
+            msg = ('The radial profile is entirely non-finite or masked; '
+                   'cannot fit a Gaussian.')
+            warnings.warn(msg, AstropyUserWarning)
+            return None
+
         amplitude = np.max(profile)
-        std = np.sqrt(abs(np.sum(profile * radius**2) / np.sum(profile)))
+        sum_profile = np.sum(profile)
+        if sum_profile == 0:
+            warnings.warn('The profile sum is zero; the Gaussian fit '
+                          'initial guess may be inaccurate.',
+                          AstropyUserWarning)
+            std = 1.0  # fallback to avoid zero initial guess
+        else:
+            std = np.sqrt(abs(np.sum(profile * radius**2) / sum_profile))
+            std = max(std, 1.0)  # guard against near-zero initial guess
         g_init = Gaussian1D(amplitude=amplitude, mean=0.0, stddev=std)
         g_init.mean.fixed = True
         fitter = TRFLSQFitter()
-        return fitter(g_init, radius, profile)
+        gaussian_fit = fitter(g_init, radius, profile)
+
+        if radius.min() > 0.3 * gaussian_fit.stddev.value:
+            msg = ('Gaussian fit may be unreliable because the input '
+                   'radii do not extend close to the source center.')
+            warnings.warn(msg, AstropyUserWarning)
+
+        return gaussian_fit
 
     @lazyproperty
     def gaussian_profile(self):
@@ -456,11 +482,13 @@ class RadialProfile(ProfileBase):
     @lazyproperty
     def _data_profile(self):
         """
-        The raw data profile returned as a 1D arrays (`~numpy.ndarray`)
-        of radii and data values.
+        The raw data profile returned as 1D arrays (`~numpy.ndarray`) of
+        radii and data values.
 
-        This method returns the radii and values of the data points
-        within the maximum radius defined by the input radii.
+        Returns the radii and values of the unmasked data points within
+        the maximum radius defined by the input radii. Pixels flagged
+        in ``self.mask`` (including auto-masked non-finite values) are
+        excluded.
         """
         shape = self.data.shape
         max_radius = np.max(self.radii)
@@ -471,10 +499,20 @@ class RadialProfile(ProfileBase):
         yidx, xidx = np.indices((y_max - y_min, x_max - x_min))
         xidx += x_min
         yidx += y_min
+
+        # Calculate the radii of the pixels from the center and select
+        # those within the maximum radius defined by the input radii
         radii = np.hypot(xidx - self.xycen[0], yidx - self.xycen[1])
-        mask = radii <= max_radius
-        radii = radii[mask]
-        data_values = self.data[yidx[mask], xidx[mask]]
+        within = radii <= max_radius
+        radii = radii[within]
+        yidx_sub = yidx[within]
+        xidx_sub = xidx[within]
+
+        # Exclude masked pixels (user mask and auto-masked non-finite
+        # values)
+        valid = ~self.mask[yidx_sub, xidx_sub]
+        radii = radii[valid]
+        data_values = self.data[yidx_sub[valid], xidx_sub[valid]]
 
         return radii, data_values
 
@@ -491,3 +529,18 @@ class RadialProfile(ProfileBase):
         The raw data profile as a 1D `~numpy.ndarray`.
         """
         return self._data_profile[1]
+
+    def _normalize_hook(self, normalization):
+        """
+        Also normalize ``data_profile`` if it has been computed.
+        """
+        if 'data_profile' in self.__dict__:
+            self.__dict__['data_profile'] = self.data_profile / normalization
+
+    def _unnormalize_hook(self):
+        """
+        Also unnormalize ``data_profile`` if it has been computed.
+        """
+        if 'data_profile' in self.__dict__:
+            self.__dict__['data_profile'] = (self.data_profile
+                                             * self.normalization_value)
