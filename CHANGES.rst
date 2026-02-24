@@ -26,6 +26,19 @@ New Features
   - Added a ``CentroidQuadratic`` class to provide an object-oriented
     interface to the ``centroid_quadratic`` function. [#2163, #2169]
 
+- ``photutils.profiles``
+
+  - Added a ``EnsquaredCurveOfGrowth`` class to compute a curve of
+    growth using concentric square apertures. [#2184]
+
+  - Added a ``EllipticalCurveOfGrowth`` class to compute a curve of
+    growth using concentric elliptical apertures with a fixed axis ratio
+    and orientation. [#2184]
+
+  - Added ``moffat_fit``, ``moffat_profile``, and ``moffat_fwhm``
+    properties to ``RadialProfile`` for fitting a 1D Moffat model to the
+    radial profile. [#2185]
+
 - ``photutils.psf``
 
   - Added a ``SourceGroups`` class that stores the results of grouping
@@ -59,19 +72,6 @@ New Features
 
   - The ``fit_fwhm`` and ``fit_2dgaussian`` ``xypos`` value can now be
     input as a ``zip`` object. [#2164]
-
-- ``photutils.profiles``
-
-  - Added a ``EnsquaredCurveOfGrowth`` class to compute a curve of
-    growth using concentric square apertures. [#2184]
-
-  - Added a ``EllipticalCurveOfGrowth`` class to compute a curve of
-    growth using concentric elliptical apertures with a fixed axis ratio
-    and orientation. [#2184]
-
-  - Added ``moffat_fit``, ``moffat_profile``, and ``moffat_fwhm``
-    properties to ``RadialProfile`` for fitting a 1D Moffat model to the
-    radial profile. [#2185]
 
 - ``photutils.psf_matching``
 
