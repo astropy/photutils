@@ -29,13 +29,11 @@ class ProfileBase(metaclass=abc.ABCMeta):
         The ``(x, y)`` pixel coordinate of the source center.
 
     radii : 1D float `~numpy.ndarray`
-        An array of radii defining the radial bins. ``radii``
-        must be strictly increasing with a minimum value greater
-        than or equal to zero, and contain at least 2 values.
-        The radial spacing does not need to be constant. For
-        `~photutils.profiles.RadialProfile`, the input radii are the
-        *edges* of the radial annulus bins, and the output `radius`
-        represents the bin centers.
+        An array of radii defining the profile apertures. ``radii`` must
+        be strictly increasing with a minimum value greater than or
+        equal to zero, and contain at least 2 values. The radial spacing
+        does not need to be constant. See the subclass documentation for
+        details on how ``radii`` is interpreted.
 
     error : 2D `~numpy.ndarray`, optional
         The 1-sigma errors of the input ``data``. ``error`` is assumed
@@ -162,7 +160,10 @@ class ProfileBase(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def profile_error(self):
         """
-        The radial profile errors as a 1D `~numpy.ndarray`.
+        The profile errors as a 1D `~numpy.ndarray`.
+
+        If no ``error`` array was provided, an empty array with shape
+        ``(0,)`` is returned.
         """
 
     @lazyproperty
@@ -288,6 +289,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         Hook called by `normalize` after normalizing ``profile`` and
         ``profile_error``.
+
+        This hook is only called when normalization succeeds (i.e., when
+        the normalization value is non-zero and finite).
 
         Subclasses can override this to normalize additional lazy
         properties (e.g., ``data_profile``).

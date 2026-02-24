@@ -106,7 +106,7 @@ class CurveOfGrowth(ProfileBase):
 
     >>> xycen = centroid_2dg(data)
     >>> radii = np.arange(1, 26)
-    >>> cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
+    >>> cog = CurveOfGrowth(data, xycen, radii, error=error)
 
     >>> print(cog.radius)  # doctest: +FLOAT_CMP
     [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
@@ -152,7 +152,7 @@ class CurveOfGrowth(ProfileBase):
 
         # Create the curve of growth
         radii = np.arange(1, 26)
-        cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
+        cog = CurveOfGrowth(data, xycen, radii, error=error)
 
         # Plot the curve of growth
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -185,7 +185,7 @@ class CurveOfGrowth(ProfileBase):
 
         # Create the curve of growth
         radii = np.arange(1, 26)
-        cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
+        cog = CurveOfGrowth(data, xycen, radii, error=error)
 
         # Plot the curve of growth
         cog.normalize()
@@ -220,7 +220,7 @@ class CurveOfGrowth(ProfileBase):
 
         # Create the curve of growth
         radii = np.arange(1, 26)
-        cog = CurveOfGrowth(data, xycen, radii, error=error, mask=None)
+        cog = CurveOfGrowth(data, xycen, radii, error=error)
 
         norm = simple_norm(data, 'sqrt')
         fig, ax = plt.subplots(figsize=(5, 5))
@@ -266,6 +266,14 @@ class CurveOfGrowth(ProfileBase):
         return self._circular_apertures
 
     @lazyproperty
+    def _photometry(self):
+        """
+        The aperture fluxes, flux errors, and areas as a function of
+        radius.
+        """
+        return self._compute_photometry(self.apertures)
+
+    @lazyproperty
     def profile(self):
         """
         The curve-of-growth profile as a 1D `~numpy.ndarray`.
@@ -276,6 +284,9 @@ class CurveOfGrowth(ProfileBase):
     def profile_error(self):
         """
         The curve-of-growth profile errors as a 1D `~numpy.ndarray`.
+
+        If no ``error`` array was provided, an empty array with shape
+        ``(0,)`` is returned.
         """
         return self._photometry[1]
 
@@ -437,8 +448,7 @@ class EnsquaredCurveOfGrowth(ProfileBase):
 
     >>> xycen = centroid_2dg(data)
     >>> half_sizes = np.arange(1, 26)
-    >>> ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error,
-    ...                               mask=None)
+    >>> ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error)
 
     >>> print(ecog.half_size)  # doctest: +FLOAT_CMP
     [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
@@ -483,8 +493,7 @@ class EnsquaredCurveOfGrowth(ProfileBase):
 
         # Create the ensquared curve of growth
         half_sizes = np.arange(1, 26)
-        ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error,
-                                      mask=None)
+        ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error)
 
         # Plot the ensquared curve of growth
         ecog.normalize()
@@ -519,8 +528,7 @@ class EnsquaredCurveOfGrowth(ProfileBase):
 
         # Create the ensquared curve of growth
         half_sizes = np.arange(1, 26)
-        ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error,
-                                      mask=None)
+        ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error)
 
         norm = simple_norm(data, 'sqrt')
         fig, ax = plt.subplots(figsize=(5, 5))
@@ -537,7 +545,6 @@ class EnsquaredCurveOfGrowth(ProfileBase):
     def __init__(self, data, xycen, half_sizes, *, error=None, mask=None,
                  method='exact', subpixels=5):
 
-        half_sizes = np.asarray(half_sizes)
         if np.min(half_sizes) <= 0:
             msg = 'half_sizes must be > 0'
             raise ValueError(msg)
@@ -587,13 +594,6 @@ class EnsquaredCurveOfGrowth(ProfileBase):
         A list of `~photutils.aperture.RectangularAperture` objects used
         to measure the profile.
         """
-        return self._rectangular_apertures
-
-    @lazyproperty
-    def _rectangular_apertures(self):
-        """
-        A list of `~photutils.aperture.RectangularAperture` objects.
-        """
         from photutils.aperture import RectangularAperture
 
         return [RectangularAperture(self.xycen, 2 * hs, 2 * hs)
@@ -605,7 +605,7 @@ class EnsquaredCurveOfGrowth(ProfileBase):
         The aperture fluxes, flux errors, and areas as a function of
         size.
         """
-        return self._compute_photometry(self._rectangular_apertures)
+        return self._compute_photometry(self.apertures)
 
     @lazyproperty
     def profile(self):
@@ -619,6 +619,9 @@ class EnsquaredCurveOfGrowth(ProfileBase):
         """
         The ensquared curve-of-growth profile errors as a 1D
         `~numpy.ndarray`.
+
+        If no ``error`` array was provided, an empty array with shape
+        ``(0,)`` is returned.
         """
         return self._photometry[1]
 
@@ -793,8 +796,7 @@ class EllipticalCurveOfGrowth(ProfileBase):
     >>> xycen = centroid_2dg(data)
     >>> radii = np.arange(1, 40)
     >>> ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-    ...                               theta=np.deg2rad(42), error=error,
-    ...                               mask=None)
+    ...                               theta=np.deg2rad(42), error=error)
 
     >>> print(ecog.radius)  # doctest: +FLOAT_CMP
     [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
@@ -850,8 +852,7 @@ class EllipticalCurveOfGrowth(ProfileBase):
         # Create the elliptical curve of growth
         radii = np.arange(1, 40)
         ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-                                      theta=np.deg2rad(42), error=error,
-                                      mask=None)
+                                      theta=np.deg2rad(42), error=error)
 
         # Plot the elliptical curve of growth
         ecog.normalize()
@@ -887,8 +888,7 @@ class EllipticalCurveOfGrowth(ProfileBase):
         # Create the elliptical curve of growth
         radii = np.arange(1, 40)
         ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-                                      theta=np.deg2rad(42), error=error,
-                                      mask=None)
+                                      theta=np.deg2rad(42), error=error)
 
         norm = simple_norm(data, 'sqrt')
         fig, ax = plt.subplots(figsize=(5, 5))
@@ -939,13 +939,6 @@ class EllipticalCurveOfGrowth(ProfileBase):
         A list of `~photutils.aperture.EllipticalAperture` objects used
         to measure the profile.
         """
-        return self._elliptical_apertures
-
-    @lazyproperty
-    def _elliptical_apertures(self):
-        """
-        A list of `~photutils.aperture.EllipticalAperture` objects.
-        """
         from photutils.aperture import EllipticalAperture
 
         return [EllipticalAperture(self.xycen, a, a * self.axis_ratio,
@@ -958,7 +951,7 @@ class EllipticalCurveOfGrowth(ProfileBase):
         The aperture fluxes, flux errors, and areas as a function of
         semimajor axis.
         """
-        return self._compute_photometry(self._elliptical_apertures)
+        return self._compute_photometry(self.apertures)
 
     @lazyproperty
     def profile(self):
@@ -972,6 +965,9 @@ class EllipticalCurveOfGrowth(ProfileBase):
         """
         The elliptical curve-of-growth profile errors as a 1D
         `~numpy.ndarray`.
+
+        If no ``error`` array was provided, an empty array with shape
+        ``(0,)`` is returned.
         """
         return self._photometry[1]
 
