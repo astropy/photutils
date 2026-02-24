@@ -69,6 +69,10 @@ New Features
     growth using concentric elliptical apertures with a fixed axis ratio
     and orientation. [#2184]
 
+  - Added ``moffat_fit``, ``moffat_profile``, and ``moffat_fwhm``
+    properties to ``RadialProfile`` for fitting a 1D Moffat model to the
+    radial profile. [#2185]
+
 - ``photutils.psf_matching``
 
   - Added a ``regularization`` keyword to ``make_kernel`` to regularize

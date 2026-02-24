@@ -189,6 +189,74 @@ New ImagePSF shape property
 returns the shape of the (oversampled) PSF data array.
 
 
+New Curve of Growth Classes
+===========================
+
+Two new curve-of-growth classes have been added to the
+`~photutils.profiles` subpackage:
+
+* :class:`~photutils.profiles.EnsquaredCurveOfGrowth`: Computes a curve
+  of growth using concentric square apertures. The profile is measured
+  as a function of half the square's side length.
+
+* :class:`~photutils.profiles.EllipticalCurveOfGrowth`: Computes a
+  curve of growth using concentric elliptical apertures with a
+  user-defined fixed axis ratio and orientation. The profile is measured
+  as a function of the semimajor-axis length.
+
+These complement the existing :class:`~photutils.profiles.CurveOfGrowth`
+class, which uses concentric circular apertures.
+
+:class:`~photutils.profiles.EnsquaredCurveOfGrowth` example::
+
+    >>> from photutils.profiles import EnsquaredCurveOfGrowth
+    >>> half_sizes = np.arange(1, 26)  # half-sizes of the square apertures
+    >>> ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error,
+    ...                               mask=None)
+    >>> ecog.normalize()
+    >>> ee_vals = ecog.calc_ee_at_half_size(np.array([3, 6, 9]))
+
+:class:`~photutils.profiles.EllipticalCurveOfGrowth` example::
+
+    >>> from photutils.profiles import EllipticalCurveOfGrowth
+    >>> radii = np.arange(1, 26)  # semimajor-axis lengths
+    >>> ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
+    ...                               theta=0.0, error=error, mask=None)
+    >>> ecog.normalize()
+    >>> ee_vals = ecog.calc_ee_at_radius(np.array([5, 10, 15]))
+
+
+Moffat Fitting for Radial Profiles
+==================================
+
+:class:`~photutils.profiles.RadialProfile` now supports fitting a 1D
+Moffat model (using `~astropy.modeling.functional_models.Moffat1D`) to
+the radial profile, complementing the existing Gaussian fitting
+capability. Three new properties are available:
+
+* ``moffat_fit``: The fitted
+  `~astropy.modeling.functional_models.Moffat1D` model.
+* ``moffat_profile``: The fitted 1D Moffat evaluated at the profile
+  radii.
+* ``moffat_fwhm``: The FWHM from the fitted Moffat model.
+
+Moffat profiles have broader wings than Gaussians and are often a
+better representation of astronomical point-spread functions::
+
+    >>> rp = RadialProfile(data, xycen, edge_radii, error=error)
+    >>> rp.moffat_fit
+    <Moffat1D(...)>
+    >>> print(rp.moffat_fwhm)  # doctest: +SKIP
+    11.2
+
+Plot the fitted Moffat on the radial profile::
+
+    >>> fig, ax = plt.subplots()
+    >>> rp.plot(ax=ax, label='Radial Profile')
+    >>> ax.plot(rp.radius, rp.moffat_profile, label='Moffat Fit')
+    >>> ax.legend()
+
+
 Improved PSF Matching Tools
 ===========================
 
