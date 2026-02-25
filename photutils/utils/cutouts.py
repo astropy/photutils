@@ -26,11 +26,11 @@ class CutoutImage:
     data : `~numpy.ndarray`
         The 2D data array from which to extract the cutout array.
 
-    position : 2 tuple
+    position : tuple of 2 ints
         The ``(y, x)`` position of the center of the cutout array with
         respect to the ``data`` array.
 
-    shape : 2 tuple of int
+    shape : tuple of 2 ints
         The shape of the cutout array along each axis in ``(ny, nx)``
         order.
 
@@ -99,6 +99,19 @@ class CutoutImage:
         self.shape = self.data.shape
 
     def _make_cutout(self, data):
+        """
+        Create the cutout data array.
+
+        Parameters
+        ----------
+        data : `~numpy.ndarray`
+            The 2D data array from which to extract the cutout array.
+
+        Returns
+        -------
+        cutout_data : `~numpy.ndarray`
+            The 2D cutout data array.
+        """
         cutout_data = extract_array(data, self.input_shape, self.position,
                                     mode=self.mode, fill_value=self.fill_value,
                                     return_position=False)
@@ -106,7 +119,7 @@ class CutoutImage:
             cutout_data = np.copy(cutout_data)
         return cutout_data
 
-    def __array__(self, dtype=None):
+    def __array__(self, dtype=None, copy=None):
         """
         Array representation of the cutout data array (e.g., for
         matplotlib).
@@ -116,8 +129,12 @@ class CutoutImage:
         dtype : `~numpy.dtype`, optional
             The data type of the output array. If `None`, then the
             data type of the cutout data array is used.
+
+        copy : bool, optional
+            If `True`, then a copy of the underlying data array
+            is returned.
         """
-        return np.asarray(self.data, dtype=dtype)
+        return np.array(self.data, dtype=dtype, copy=copy)
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
@@ -125,7 +142,8 @@ class CutoutImage:
         return f'{cls_name}\n' + props
 
     def __repr__(self):
-        return self.__str__()
+        return (f'{self.__class__.__name__}(position={self.position}, '
+                f'shape={self.shape})')
 
     @lazyproperty
     def slices_original(self):
