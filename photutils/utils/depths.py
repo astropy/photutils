@@ -90,8 +90,8 @@ class ImageDepth:
     apertures : list of `~photutils.aperture.CircularAperture`
         A list of circular apertures for each iteration.
 
-    napers_used : int
-        A list of the number of apertures used for each iteration.
+    napers_used : 1D `~numpy.ndarray`
+        An array of the number of apertures used for each iteration.
 
     fluxes : list of `~numpy.ndarray`
         A list of arrays containing the flux measurements for each
@@ -158,7 +158,7 @@ class ImageDepth:
     .. plot::
         :include-source:
 
-        # plot the random apertures for the first iteration
+        # Plot the random apertures for the first iteration
 
         import matplotlib.pyplot as plt
         from astropy.convolution import convolve
@@ -218,6 +218,9 @@ class ImageDepth:
         if sigma_clip is SIGMA_CLIP:
             sigma_clip = create_default_sigmaclip(sigma=SIGMA_CLIP.sigma,
                                                   maxiters=SIGMA_CLIP.maxiters)
+        if sigma_clip is not None and not callable(sigma_clip):
+            msg = 'sigma_clip must be a callable (e.g., SigmaClip) or None'
+            raise TypeError(msg)
         self.sigma_clip = sigma_clip
         self.progress_bar = progress_bar
 
@@ -261,7 +264,7 @@ class ImageDepth:
             the same units as the input ``data``. The magnitude limit is
             calculated from the flux limit and the input ``zeropoint``.
         """
-        # prevent circular import
+        # Prevent circular import
         from photutils.aperture import CircularAperture
 
         if mask is None or not np.any(mask):
@@ -283,16 +286,15 @@ class ImageDepth:
         if self.progress_bar:
             desc = 'Image Depths'
             iter_range = add_progress_bar(iter_range,
-                                          desc=desc)  # pragma: no cover
+                                          desc=desc)
 
-        fluxes = []
         flux_limits = []
         apertures = []
         for _ in iter_range:
             if self.overlap:
                 xycoords = self._make_coords(all_xycoords, napers)
             else:
-                # cut the number of coords (only need to input ~10x)
+                # Cut the number of coords (only need to input ~10x)
                 xycoords = self._make_coords(all_xycoords, napers * 10)
                 min_separation = self.aper_radius * 2.0
                 xycoords = apply_separation(xycoords, min_separation)
@@ -331,7 +333,7 @@ class ImageDepth:
                           'likely due to constant image values. Check the '
                           'input mask.', AstropyUserWarning)
 
-        # ignore divide-by-zero RuntimeWarning in log10
+        # Ignore divide-by-zero RuntimeWarning in log10
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             flux_limits = self.flux_limits
@@ -436,6 +438,7 @@ class ImageDepth:
         mask : 2D bool `~numpy.ndarray`
             Dilated boolean mask array.
         """
+        mask = np.asarray(mask, dtype=bool).copy()
         if np.any(mask):
             mask = binary_dilation(mask, structure=self.dilate_footprint)
 
@@ -459,7 +462,7 @@ class ImageDepth:
         """
         ny, nx = shape
 
-        # remove the image borders
+        # Remove the image borders
         border = self.dilate_radius
         border2 = 2 * border
         ny -= border2
@@ -469,7 +472,7 @@ class ImageDepth:
         xi = xi.ravel()
         yi = yi.ravel()
 
-        # shift back to coordinates to the original image
+        # Shift back to coordinates to the original image
         xi += border
         yi += border
 
@@ -495,7 +498,7 @@ class ImageDepth:
         mask_slc = self._find_slices(mask_inv)
         yi, xi = np.nonzero(mask_inv[mask_slc])
 
-        # shift back to coordinates to the original (unsliced) image
+        # Shift back to coordinates to the original (unsliced) image
         xi += mask_slc[1].start
         yi += mask_slc[0].start
 
