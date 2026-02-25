@@ -146,7 +146,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     if border_width is not None:
         border_width = as_pair('border_width', border_width,
-                               lower_bound=(0, 0), upper_bound=data.shape)
+                               lower_bound=(0, 1), upper_bound=data.shape)
 
     # remove NaN values to avoid runtime warnings
     nan_mask = np.isnan(data)

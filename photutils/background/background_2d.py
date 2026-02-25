@@ -232,7 +232,7 @@ class Background2D:
                                                   'coverage_mask')
 
         # box_size cannot be larger than the data array size
-        self.box_size = as_pair('box_size', box_size, lower_bound=(0, 1),
+        self.box_size = as_pair('box_size', box_size, lower_bound=(0, 0),
                                 upper_bound=data.shape)
 
         self.fill_value = fill_value
@@ -241,7 +241,7 @@ class Background2D:
             raise ValueError(msg)
         self.exclude_percentile = exclude_percentile
         self.filter_size = as_pair('filter_size', filter_size,
-                                   lower_bound=(0, 1), check_odd=True)
+                                   lower_bound=(0, 0), check_odd=True)
         self.filter_threshold = filter_threshold
 
         if sigma_clip is SIGMA_CLIP:

@@ -258,7 +258,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
             raise ValueError(msg)
 
     if model_shape is not None:
-        model_shape = as_pair('model_shape', model_shape, lower_bound=(0, 1))
+        model_shape = as_pair('model_shape', model_shape, lower_bound=(0, 0))
 
     variable_shape = False
     if 'model_shape' in params_table.colnames:

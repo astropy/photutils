@@ -120,8 +120,8 @@ def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
       4 11.322 14.685 469.41 1.0405 0.015992
       5 75.062 36.889 206.45  1.732  0.75795
     """
-    shape = as_pair('shape', shape, lower_bound=(0, 1))
-    border_size = as_pair('border_size', border_size, lower_bound=(0, 0))
+    shape = as_pair('shape', shape, lower_bound=(0, 0))
+    border_size = as_pair('border_size', border_size, lower_bound=(0, 1))
 
     xrange = (border_size[1], shape[1] - border_size[1])
     yrange = (border_size[0], shape[0] - border_size[0])

@@ -953,7 +953,7 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
     _validate_nddata_list(data)
     _validate_catalog_list(catalogs)
     _validate_coordinate_consistency(data, catalogs)
-    size = as_pair('size', size, lower_bound=(3, 0), check_odd=True)
+    size = as_pair('size', size, lower_bound=(3, 1), check_odd=True)
 
     if len(catalogs) == 1:  # may include linked stars
         stars_out, overlap_fail_count = _extract_linked_stars(
