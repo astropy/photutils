@@ -25,7 +25,7 @@ from photutils.psf.utils import _interpolate_missing_data
 from photutils.utils._parameters import (SigmaClipSentinelDefault, as_pair,
                                          create_default_sigmaclip)
 from photutils.utils._progress_bars import add_progress_bar
-from photutils.utils._round import py2intround
+from photutils.utils._round import round_half_away
 from photutils.utils._stats import nanmedian
 
 __all__ = ['EPSFBuildResult', 'EPSFBuilder', 'EPSFFitter']
@@ -421,8 +421,10 @@ class _CoordinateTransformer:
 
         # Add ePSF center offset
         epsf_xcenter, epsf_ycenter = epsf_origin
-        epsf_x = py2intround(x_oversampled + epsf_xcenter).astype(int)
-        epsf_y = py2intround(y_oversampled + epsf_ycenter).astype(int)
+        epsf_x = round_half_away(
+            x_oversampled + epsf_xcenter).astype(int)
+        epsf_y = round_half_away(
+            y_oversampled + epsf_ycenter).astype(int)
 
         return epsf_x, epsf_y
 

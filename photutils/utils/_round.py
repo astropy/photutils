@@ -6,11 +6,10 @@ Tools for rounding numpy arrays.
 import numpy as np
 
 
-def py2intround(a):
+def round_half_away(a):
     """
-    Round the input to the nearest integer.
-
-    If two integers are equally close, rounding is done away from 0.
+    Round a float or array of floats to the nearest integer, rounding
+    half away from zero.
 
     Parameters
     ----------
@@ -19,14 +18,28 @@ def py2intround(a):
 
     Returns
     -------
-    result : float or array_like
-        The integer-rounded values.
+    result : int, float, or array_like
+        The rounded values. Finite inputs are returned as integers.
+        Non-finite inputs (NaN or infinity) are returned as floats,
+        preserving the NaN or infinity value.
+
+    Notes
+    -----
+    NaN and infinity values are preserved in the output. Arrays
+    containing any non-finite value are returned as float arrays;
+    all-finite arrays are returned as integer arrays.
     """
-    data = np.atleast_1d(a)
-    value = np.where(data >= 0, np.floor(data + 0.5),
-                     np.ceil(data - 0.5)).astype(int)
+    data = np.atleast_1d(np.asarray(a, dtype=float))
+    rounded = np.where(data >= 0, np.floor(data + 0.5),
+                       np.ceil(data - 0.5))
 
     if np.isscalar(a):
-        value = value[0]
+        val = rounded[0]
+        if not np.isfinite(a):
+            return val
+        return int(val)
 
-    return value
+    if np.isfinite(data).all():
+        return rounded.astype(int)
+
+    return rounded

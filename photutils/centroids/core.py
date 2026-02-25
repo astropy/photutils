@@ -15,7 +15,7 @@ from photutils.centroids._utils import _process_data_mask
 from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
-from photutils.utils._round import py2intround
+from photutils.utils._round import round_half_away
 
 __all__ = ['CentroidQuadratic', 'centroid_com', 'centroid_quadratic',
            'centroid_sources']
@@ -270,8 +270,8 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     if xpeak is None or ypeak is None:
         yidx, xidx = np.unravel_index(np.nanargmax(data), data.shape)
     else:
-        xidx = py2intround(xpeak)
-        yidx = py2intround(ypeak)
+        xidx = round_half_away(xpeak)
+        yidx = round_half_away(ypeak)
 
         if search_boxsize is not None:
             search_boxsize = as_pair('search_boxsize', search_boxsize,
