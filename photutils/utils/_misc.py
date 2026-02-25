@@ -48,7 +48,12 @@ def _get_date(utc=False):
     result : str
         The current date/time.
     """
-    now = datetime.now().astimezone() if not utc else datetime.now(UTC)
+    try:
+        now = datetime.now().astimezone() if not utc else datetime.now(UTC)
+    except OSError:
+        # System timezone may be unavailable on some configurations;
+        # fall back to UTC
+        now = datetime.now(UTC)
     return now.strftime('%Y-%m-%d %H:%M:%S %Z')
 
 
