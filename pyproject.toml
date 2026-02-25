@@ -157,12 +157,8 @@ omit = [
 [tool.coverage.report]
 exclude_lines = [
     'pragma: no cover',
-    'except ImportError',
-    'raise AssertionError',
     'raise NotImplementedError',
     'def main\\(.*\\):',
-    'pragma: py{ignore_python_version}',
-    'def _ipython_key_completions_',
 ]
 
 [tool.isort]
