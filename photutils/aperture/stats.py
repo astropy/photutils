@@ -21,7 +21,7 @@ from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture.core import _aperture_metadata
 from photutils.morphology import gini as gini_func
 from photutils.utils._misc import _get_meta
-from photutils.utils._moments import _moments, _moments_central
+from photutils.utils._moments import _image_moments
 from photutils.utils._quantity_helpers import process_quantities
 
 __all__ = ['ApertureStats']
@@ -1005,8 +1005,8 @@ class ApertureStats:
         """
         Spatial moments up to 3rd order of the source.
         """
-        return np.array([_moments(arr, order=3) for arr in
-                         self._moment_data_cutout])
+        return np.array([_image_moments(arr, order=3)
+                         for arr in self._moment_data_cutout])
 
     @lazyproperty
     @as_scalar
@@ -1018,7 +1018,7 @@ class ApertureStats:
         cutout_centroid = self.cutout_centroid
         if self.isscalar:
             cutout_centroid = cutout_centroid[np.newaxis, :]
-        return np.array([_moments_central(arr, center=(xcen_, ycen_), order=3)
+        return np.array([_image_moments(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
                          zip(self._moment_data_cutout, cutout_centroid[:, 0],
                              cutout_centroid[:, 1], strict=True)])

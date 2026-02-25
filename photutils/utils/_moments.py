@@ -6,9 +6,9 @@ Tools for calculating image moments.
 import numpy as np
 
 
-def _moments_central(data, center=None, order=1):
+def _image_moments(data, center=(0, 0), order=1):
     """
-    Calculate the central image moments up to the specified order.
+    Calculate the image moments up to the specified order.
 
     Parameters
     ----------
@@ -17,7 +17,8 @@ def _moments_central(data, center=None, order=1):
 
     center : tuple of two floats or `None`, optional
         The ``(x, y)`` center position. If `None` it will be calculated
-        as the "center of mass" of the input ``data``.
+        as the "center of mass" of the input ``data``. The default is
+        ``(0, 0)``, which gives the raw image moments.
 
     order : int, optional
         The maximum order of the moments to calculate.
@@ -25,7 +26,7 @@ def _moments_central(data, center=None, order=1):
     Returns
     -------
     moments : 2D `~numpy.ndarray`
-        The central image moments.
+        The image moments.
     """
     data = np.asarray(data).astype(float)
 
@@ -47,23 +48,3 @@ def _moments_central(data, center=None, order=1):
     xpowers = np.transpose(indices[1] - center[0]) ** np.arange(order + 1)
 
     return np.dot(np.dot(np.transpose(ypowers), data), xpowers)
-
-
-def _moments(data, order=1):
-    """
-    Calculate the raw image moments up to the specified order.
-
-    Parameters
-    ----------
-    data : 2D array_like
-        The input 2D array.
-
-    order : int, optional
-        The maximum order of the moments to calculate.
-
-    Returns
-    -------
-    moments : 2D `~numpy.ndarray`
-        The raw image moments.
-    """
-    return _moments_central(data, center=(0, 0), order=order)

@@ -16,7 +16,7 @@ from photutils.detection.core import (StarFinderBase, _StarFinderKernel,
                                       _validate_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._misc import _get_meta
-from photutils.utils._moments import _moments, _moments_central
+from photutils.utils._moments import _image_moments
 from photutils.utils._quantity_helpers import isscalar, process_quantities
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -472,7 +472,8 @@ class _IRAFStarFinderCatalog:
 
     @lazyproperty
     def moments(self):
-        return np.array([_moments(arr, order=1) for arr in self.cutout_data])
+        return np.array([_image_moments(arr, order=1)
+                         for arr in self.cutout_data])
 
     @lazyproperty
     def cutout_centroid(self):
@@ -532,11 +533,11 @@ class _IRAFStarFinderCatalog:
 
     @lazyproperty
     def moments_central(self):
-        moments = np.array([_moments_central(arr, center=(xcen_, ycen_),
-                                             order=2)
-                            for arr, xcen_, ycen_ in
-                            zip(self.cutout_data, self.cutout_xcentroid,
-                                self.cutout_ycentroid, strict=True)])
+        moments = np.array(
+            [_image_moments(arr, center=(xcen_, ycen_), order=2)
+             for arr, xcen_, ycen_ in
+             zip(self.cutout_data, self.cutout_xcentroid,
+                 self.cutout_ycentroid, strict=True)])
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]

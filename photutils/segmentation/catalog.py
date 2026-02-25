@@ -25,7 +25,7 @@ from photutils.centroids import centroid_quadratic
 from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
 from photutils.utils._misc import _get_meta
-from photutils.utils._moments import _moments, _moments_central
+from photutils.utils._moments import _image_moments
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import CutoutImage
@@ -1255,8 +1255,8 @@ class SourceCatalog:
         """
         Spatial moments up to 3rd order of the source.
         """
-        return np.array([_moments(arr, order=3) for arr in
-                         self._moment_data_cutouts])
+        return np.array([_image_moments(arr, order=3)
+                         for arr in self._moment_data_cutouts])
 
     @lazyproperty
     @use_detcat
@@ -1269,7 +1269,7 @@ class SourceCatalog:
         cutout_centroid = self.cutout_centroid
         if self.isscalar:
             cutout_centroid = cutout_centroid[np.newaxis, :]
-        return np.array([_moments_central(arr, center=(xcen_, ycen_), order=3)
+        return np.array([_image_moments(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
                          zip(self._moment_data_cutouts, cutout_centroid[:, 0],
                              cutout_centroid[:, 1], strict=True)])
@@ -1453,8 +1453,8 @@ class SourceCatalog:
                     data = data * aperture_weights * gweight
                     data[mask] = 0.0
 
-                    moments = _moments_central(data, center=cutout_xycen,
-                                               order=1)
+                    moments = _image_moments(data, center=cutout_xycen,
+                                             order=1)
                     dy = moments[1, 0] / moments[0, 0]
                     dx = moments[0, 1] / moments[0, 0]
                     dcen = np.sqrt(dx**2 + dy**2)
