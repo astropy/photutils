@@ -2,7 +2,7 @@
 Photutils
 =========
 
-|PyPI Version| |Conda Version| |PyPI Downloads| |Astropy|
+|PyPI Version| |Conda Version| |Astropy|
 
 |CI Status| |Codecov Status| |Latest RTD Status|
 
