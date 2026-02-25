@@ -13,6 +13,9 @@ from photutils.utils._quantity_helpers import isscalar, process_quantities
 
 @pytest.mark.parametrize('all_units', [False, True])
 def test_units(all_units):
+    """
+    Test process_quantities with uniform units.
+    """
     unit = u.Jy if all_units else 1.0
     arrs = (np.ones(3) * unit, np.ones(3) * unit, np.ones(3) * unit)
     names = ('a', 'b', 'c')
@@ -28,6 +31,9 @@ def test_units(all_units):
 
 
 def test_mixed_units():
+    """
+    Test that process_quantities with mixed units raises ValueError.
+    """
     arrs = (np.ones(3) * u.Jy, np.ones(3) * u.km)
     names = ('a', 'b')
 
@@ -53,13 +59,29 @@ def test_mixed_units():
         _, _ = process_quantities(arrs, names)
 
 
+def test_process_quantities_all_none():
+    """
+    Test that process_quantities with all None inputs returns None
+    unit.
+    """
+    values, unit = process_quantities([None, None], ['a', 'b'])
+    assert values == [None, None]
+    assert unit is None
+
+
 def test_inputs():
+    """
+    Test that mismatched values and names lengths raises ValueError.
+    """
     match = 'The number of values must match the number of names'
     with pytest.raises(ValueError, match=match):
         _, _ = process_quantities([1, 2, 3], ['a', 'b'])
 
 
 def test_isscalar():
+    """
+    Test isscalar with scalar and array inputs.
+    """
     assert isscalar(1)
     assert isscalar(1.0 * u.m)
     assert not isscalar([1, 2, 3])
