@@ -5,8 +5,6 @@ Tools for calculating image moments.
 
 import numpy as np
 
-__all__ = ['_moments', '_moments_central']
-
 
 def _moments_central(data, center=None, order=1):
     """
@@ -18,8 +16,8 @@ def _moments_central(data, center=None, order=1):
         The input 2D array.
 
     center : tuple of two floats or `None`, optional
-        The ``(x, y)`` center position. If `None` it will calculated as
-        the "center of mass" of the input ``data``.
+        The ``(x, y)`` center position. If `None` it will be calculated
+        as the "center of mass" of the input ``data``.
 
     order : int, optional
         The maximum order of the moments to calculate.
@@ -33,6 +31,10 @@ def _moments_central(data, center=None, order=1):
 
     if data.ndim != 2:
         msg = 'data must be a 2D array'
+        raise ValueError(msg)
+
+    if order < 0:
+        msg = 'order must be non-negative'
         raise ValueError(msg)
 
     if center is None:
