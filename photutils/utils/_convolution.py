@@ -37,7 +37,10 @@ def _filter_data(data, kernel, mode='constant', fill_value=0.0,
 
     fill_value : scalar, optional
         Value to fill data values beyond the array borders if ``mode``
-        is ``'constant'``. The default is ``0.0``.
+        is ``'constant'``. The default is ``0.0``. When ``data`` is a
+        `~astropy.units.Quantity`, the result has the same unit; the
+        numerical value of ``fill_value`` is used as-is (it is not
+        converted to the data unit).
 
     check_normalization : bool, optional
         If `True` then a warning will be issued if the kernel is not
@@ -45,8 +48,9 @@ def _filter_data(data, kernel, mode='constant', fill_value=0.0,
 
     Returns
     -------
-    result : `~numpy.ndarray`
-        The convolved image.
+    result : `~numpy.ndarray` or `~astropy.units.Quantity`
+        The convolved image. A `~astropy.units.Quantity` is returned if
+        ``data`` has units; otherwise a `~numpy.ndarray`.
     """
     if kernel is None:
         return data
@@ -73,7 +77,7 @@ def _filter_data(data, kernel, mode='constant', fill_value=0.0,
     # (used in findstars) (cf. astropy #1647)
     result = ndi_convolve(data, kernel_array, mode=mode, cval=fill_value)
 
-    # reapply the input unit
+    # Reapply the input unit
     if unit is not None:
         result <<= unit
 
