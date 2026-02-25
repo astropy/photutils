@@ -19,13 +19,13 @@ appropriate.
 BibTex files for all Photutils versions can be found at
 https://doi.org/10.5281/zenodo.596036.
 
-For example, for Photutils v2.2.0, one should
+For example, for Photutils v2.3.0, one should
 cite Bradley et al. 2025 with the BibTeX entry
-(https://zenodo.org/records/14889440/export/bibtex):
+(https://zenodo.org/records/17129028/export/bibtex):
 
 .. code-block:: text
 
-    @software{larry_bradley_2025_14889440,
+    @software{larry_bradley_2025_17129028,
       author       = {Larry Bradley and
                       Brigitta Sip{\H o}cz and
                       Thomas Robitaille and
@@ -40,31 +40,31 @@ cite Bradley et al. 2025 with the BibTeX entry
                       Mihai Cara and
                       P. L. Lim and
                       Sebastian Me{\ss}linger and
-                      Zach Burnett and
                       Simon Conseil and
                       Michael Droettboom and
                       Azalee Bostroem and
                       E. M. Bray and
                       Lars Andersen Bratholm and
+                      Zach Burnett and
                       William Jamieson and
                       Adam Ginsburg and
+                      Dan Taranu and
                       Geert Barentsen and
                       Matt Craig and
-                      Sergio Pascual and
-                      Shivangee Rathi and
+                      Brett M. Morris and
                       Marshall Perrin and
-                      Brett M. Morris},
-      title        = {astropy/photutils: 2.2.0},
-      month        = feb,
+                      Shivangee Rathi},
+      title        = {astropy/photutils: 2.3.0},
+      month        = sep,
       year         = 2025,
       publisher    = {Zenodo},
-      version      = {2.2.0},
-      doi          = {10.5281/zenodo.14889440},
-      url          = {https://doi.org/10.5281/zenodo.14889440},
-      swhid        = {swh:1:dir:11159107f27a28985192ed1118b1f2055709d093
+      version      = {2.3.0},
+      doi          = {10.5281/zenodo.17129028},
+      url          = {https://doi.org/10.5281/zenodo.17129028},
+      swhid        = {swh:1:dir:dd51869167d76d722ba87e3f80f9f4199ec08c3f
                        ;origin=https://doi.org/10.5281/zenodo.596036;visi
-                       t=swh:1:snp:ae8c4a55d349d43e53cfe9ce92e678fcfe840f
-                       3b;anchor=swh:1:rel:0117f67e8888adcdfc85308287dd9c
-                       854b466389;path=astropy-photutils-ffb96c5
+                       t=swh:1:snp:30a5f50b0586911dc674668853d9abc352a2bc
+                       22;anchor=swh:1:rel:e97861da904cf010c499a4211cd8a6
+                       12373e912a;path=astropy-photutils-2294e35
                       },
     }
