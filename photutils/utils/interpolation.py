@@ -263,34 +263,51 @@ class ShepardIDWInterpolator:
         if dtype is None:
             dtype = self.values.dtype
 
-        interp_values = np.zeros(npositions, dtype=dtype)
-        for k in range(npositions):
-            valid_idx = np.isfinite(distances[k])
-            idk = idx[k][valid_idx]
-            dk = distances[k][valid_idx]
+        # distances and idx have shape (npositions, n_neighbors). Mask
+        # for valid (finite) distances; invalid entries arise when
+        # n_neighbors exceeds the number of known data points.
+        valid = np.isfinite(distances)
 
-            if dk.shape[0] == 0:
-                interp_values[k] = np.nan
-                continue
+        # Replace non-finite distances and out-of-bound indices with
+        # safe values so that vectorized indexing and arithmetic do not
+        # raise errors; the ``valid`` mask zeroes them out later.
+        safe_distances = np.where(valid, distances, 1.0)
+        safe_idx = np.where(valid, idx, 0)
 
-            if conf_dist is not None:
-                # Check if we are close to a known data point
-                confused = (dk <= conf_dist)
-                if np.any(confused):
-                    interp_values[k] = self.values[idk[confused][0]]
-                    continue
+        # Inverse distance weights: w_i = 1 / (d_i^power + reg) The
+        # errstate context suppresses divide-by-zero warnings that occur
+        # when a query point coincides with a data point (distance = 0
+        # and reg = 0); these are handled by the conf_dist override.
+        with np.errstate(invalid='ignore', divide='ignore'):
+            w = np.where(valid, 1.0 / (safe_distances ** power + reg), 0.0)
 
-            w = 1.0 / ((dk**power) + reg)
+            # Apply external (user-supplied) weights
             if self.weights is not None:
-                w *= self.weights[idk]
+                w *= np.where(valid, self.weights[safe_idx], 0.0)
 
-            wtot = np.sum(w)
-            if wtot > 0.0:
-                interp_values[k] = np.dot(w, self.values[idk]) / wtot
-            else:
-                interp_values[k] = np.nan
+            # Gather neighbor values and compute the weighted average
+            neighbor_values = self.values[safe_idx]
+            wtot = np.sum(w, axis=1)
+            weighted_sum = np.sum(w * neighbor_values, axis=1)
 
-        if len(interp_values) == 1:
+            # Where total weight is positive, compute interpolation;
+            # otherwise return NaN (covers both the "no valid
+            # neighbours" and "all-zero external weights" cases).
+            interp_values = np.where(wtot > 0.0, weighted_sum / wtot,
+                                     np.nan).astype(dtype)
+
+        # Confusion-distance override: if the nearest neighbour is
+        # closer than ``conf_dist``, return its value directly instead
+        # of interpolating (avoids singularities when reg == 0).
+        if conf_dist is not None:
+            min_dist = distances[:, 0]
+            confused = np.isfinite(min_dist) & (min_dist <= conf_dist)
+            if np.any(confused):
+                interp_values[confused] = self.values[
+                    idx[confused, 0]
+                ].astype(dtype)
+
+        if npositions == 1:
             return interp_values[0]
 
         return interp_values
