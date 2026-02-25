@@ -91,6 +91,11 @@ New Features
     ``SplitCosineBellWindow``, ``TopHatWindow``, and ``TukeyWindow``
     classes. [#2176]
 
+- ``photutils.utils``
+
+  - Significantly improved the performance (by factors of 3 or more) of
+    ``ShepardIDWInterpolator`` [#2187].
+
 Bug Fixes
 ^^^^^^^^^
 
