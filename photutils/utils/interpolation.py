@@ -214,6 +214,13 @@ class ShepardIDWInterpolator:
             then the type will be inferred from the type of the
             ``values`` parameter used during the initialization of the
             interpolator.
+
+        Returns
+        -------
+        result : float or `~numpy.ndarray`
+            The interpolated value(s). A scalar is returned when a
+            single position is provided; otherwise a 1D array is
+            returned.
         """
         n_neighbors = int(n_neighbors)
         if n_neighbors < 1:
@@ -225,14 +232,14 @@ class ShepardIDWInterpolator:
 
         positions = np.asanyarray(positions)
         if positions.ndim == 0:
-            # assume we have a single 1D coordinate
+            # Assume we have a single 1D coordinate
             if self.coords_ndim != 1:
                 msg = ('The dimensionality of the input position does '
                        'not match the dimensionality of the coordinates '
                        'used to initialize the interpolator.')
                 raise ValueError(msg)
         elif positions.ndim == 1:
-            # assume we have a single point
+            # Assume we have a single point
             if self.coords_ndim not in (1, positions.shape[-1]):
                 msg = ('The input position was provided as a 1D array, '
                        'but its length does not match the dimensionality '
@@ -250,7 +257,8 @@ class ShepardIDWInterpolator:
         distances, idx = self.kdtree.query(positions, k=n_neighbors, eps=eps)
 
         if n_neighbors == 1:
-            return self.values[idx]
+            result = self.values[idx]
+            return result.item() if npositions == 1 else result
 
         if dtype is None:
             dtype = self.values.dtype
@@ -266,7 +274,7 @@ class ShepardIDWInterpolator:
                 continue
 
             if conf_dist is not None:
-                # check if we are close to a known data point
+                # Check if we are close to a known data point
                 confused = (dk <= conf_dist)
                 if np.any(confused):
                     interp_values[k] = self.values[idk[confused][0]]
