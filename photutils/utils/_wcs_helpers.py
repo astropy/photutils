@@ -58,7 +58,12 @@ def _pixel_scale_angle_at_skycoord(skycoord, wcs, offset=1 * u.arcsec):
 
     dx = x_offset - xpos
     dy = y_offset - ypos
-    scale = offset.to(u.arcsec) / (np.hypot(dx, dy) * u.pixel)
+    pixel_sep = np.asarray(np.hypot(dx, dy))
+    if not np.all(np.isfinite(pixel_sep)) or np.any(pixel_sep == 0):
+        msg = ('Cannot compute pixel scale: WCS has degenerate or zero '
+               'pixel scale at the requested position.')
+        raise ValueError(msg)
+    scale = offset.to(u.arcsec) / (pixel_sep * u.pixel)
     angle = (np.arctan2(dy, dx) * u.radian).to(u.deg)
 
     return (xpos, ypos), scale, angle

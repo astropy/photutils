@@ -45,16 +45,15 @@ def make_repr(instance, params, *, brackets=False, overrides=None, long=False):
     if isinstance(params, str):
         params = [params]
 
-    if (overrides is not None
-            and not set(overrides.keys()).issubset(set(params))):
+    if overrides is not None and not set(overrides).issubset(params):
         msg = 'The overrides keys must be a subset of the params list.'
         raise ValueError(msg)
 
     cls_info = []
     for param in params:
         if overrides is not None and param in overrides:
-            # overrides may contain input parameters that are not
-            # stored long-term in the instance (e.g., Background2D)
+            # Note that overrides may contain input parameters that are
+            # not stored long-term in the instance (e.g., Background2D)
             if param in instance.__dict__ and instance.__dict__[param] is None:
                 value = None
             else:

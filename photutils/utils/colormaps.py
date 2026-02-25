@@ -1,6 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 Tools for generating matplotlib colormaps.
+
+This module requires matplotlib to be installed.
 """
 
 import numpy as np
@@ -17,7 +19,8 @@ def make_random_cmap(ncolors=256, seed=None):
     Parameters
     ----------
     ncolors : int, optional
-        The number of colors in the colormap. The default is 256.
+        The number of colors in the colormap. The default is 256. Must
+        be at least 1.
 
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
@@ -30,6 +33,10 @@ def make_random_cmap(ncolors=256, seed=None):
     cmap : `matplotlib.colors.ListedColormap`
         The matplotlib colormap with random colors in RGBA format.
     """
+    if ncolors < 1:
+        msg = 'ncolors must be at least 1'
+        raise ValueError(msg)
+
     from matplotlib import colors
 
     rng = np.random.default_rng(seed)

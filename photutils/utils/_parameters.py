@@ -43,12 +43,12 @@ def as_pair(name, value, lower_bound=None, upper_bound=None, check_odd=False):
     value : int or int array_like
         The input value.
 
-    lower_bound : int or int array_like, optional
+    lower_bound : tuple of 2 int, optional
         A tuple defining the allowed lower bound of the value. The first
-        element is the bound and the second element indicates whether
-        the bound is exclusive (0) or inclusive (1).
+        element is the bound; the second is 0 for exclusive or 1 for
+        inclusive (e.g. (0, 1) means value must be >= 0).
 
-    upper_bound : (2,) int tuple, optional
+    upper_bound : tuple of 2 int, optional
         A tuple defining the allowed upper bounds of the value along
         each axis. For each axis, if ``value`` is larger than the bound,
         it is reset to the bound. ``upper_bound`` is typically set to an
@@ -73,7 +73,7 @@ def as_pair(name, value, lower_bound=None, upper_bound=None, check_odd=False):
     >>> as_pair('myparam', (3, 4))
     array([3, 4])
 
-    >>> as_pair('myparam', 0, lower_bound=(0, 0))
+    >>> as_pair('myparam', 0, lower_bound=(0, 1))
     array([0, 0])
     """
     value = np.atleast_1d(value)
@@ -93,7 +93,7 @@ def as_pair(name, value, lower_bound=None, upper_bound=None, check_odd=False):
     if value.dtype.kind != 'i':
         msg = f'{name} must have integer values'
         raise ValueError(msg)
-    if check_odd and np.all(value % 2) != 1:
+    if check_odd and np.any(value % 2 != 1):
         msg = f'{name} must have an odd value for both axes'
         raise ValueError(msg)
 
@@ -102,18 +102,18 @@ def as_pair(name, value, lower_bound=None, upper_bound=None, check_odd=False):
             msg = 'lower_bound must contain only 2 elements'
             raise ValueError(msg)
         bound, inclusive = lower_bound
-        if inclusive == 1:
-            oper = '>'
-            mask = value <= bound
-        else:
+        if inclusive:
             oper = '>='
             mask = value < bound
+        else:
+            oper = '>'
+            mask = value <= bound
         if np.any(mask):
             msg = f'{name} must be {oper} {bound}'
             raise ValueError(msg)
 
     if upper_bound is not None:
-        # if value is larger than upper_bound, set to upper_bound;
+        # If value is larger than upper_bound, set to upper_bound;
         # upper_bound is typically set to an image shape
         value = np.array((min(value[0], upper_bound[0]),
                           min(value[1], upper_bound[1])))

@@ -31,8 +31,9 @@ def process_quantities(values, names):
         A list of values, where units have been removed.
 
     unit : `~astropy.unit.Unit`
-        The common unit for the input values. `None` will be returned if
-        all the input values do not have units.
+        The common unit for the input values. `None` will be returned
+        if all the input values do not have units (including when all
+        values are `None`).
 
     Raises
     ------
@@ -49,8 +50,8 @@ def process_quantities(values, names):
     unit = set(all_units.values())
 
     if len(unit) > 1:
-        values = list(all_units.keys())
-        msg = [f'The inputs {values} must all have the same units:']
+        param_names = list(all_units.keys())
+        msg = [f'The inputs {param_names} must all have the same units:']
         indent = ' ' * 4
         for key, value in all_units.items():
             if value is None:
@@ -60,7 +61,12 @@ def process_quantities(values, names):
         msg = '\n'.join(msg)
         raise ValueError(msg)
 
-    # extract the unit and remove it from the return values
+    # When all values are None, all_units is empty; return unchanged
+    # with unit=None
+    if len(unit) == 0:
+        return values, None
+
+    # Extract the unit and remove it from the return values
     unit = unit.pop()
     if unit is not None:
         values = [val.value if val is not None else val for val in values]

@@ -56,7 +56,7 @@ def make_2dgaussian_kernel(fwhm, size, mode='oversample', oversampling=10):
     kernel : `astropy.convolution.Kernel2D`
         The output smoothing kernel, normalized such that it sums to 1.
     """
-    ysize, xsize = as_pair('size', size, lower_bound=(0, 1), check_odd=True)
+    ysize, xsize = as_pair('size', size, lower_bound=(0, 0), check_odd=True)
 
     kernel = Gaussian2DKernel(fwhm * gaussian_fwhm_to_sigma,
                               x_size=xsize, y_size=ysize, mode=mode,

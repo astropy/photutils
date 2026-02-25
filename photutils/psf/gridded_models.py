@@ -135,7 +135,7 @@ class GriddedPSFModel(Fittable2DModel):
         self._meta = nddata.meta.copy()  # _meta to avoid the meta descriptor
         self._oversampling = as_pair('oversampling',
                                      nddata.meta['oversampling'],
-                                     lower_bound=(0, 1))
+                                     lower_bound=(0, 0))
         self.fill_value = fill_value
 
         self._xgrid = np.unique(self.grid_xypos[:, 0])  # sorted
@@ -390,7 +390,7 @@ class GriddedPSFModel(Fittable2DModel):
             axes. If ``oversampling`` has two elements, they must be in
             ``(y, x)`` order.
         """
-        self._oversampling = as_pair('oversampling', value, lower_bound=(0, 1))
+        self._oversampling = as_pair('oversampling', value, lower_bound=(0, 0))
 
     def _calc_bounding_box(self):
         """
@@ -711,7 +711,7 @@ class STDPSFGrid:
         oversampling = 4  # assumption for STDPSF files
         self.grid_xypos = xy_grid
         self.oversampling = as_pair('oversampling', oversampling,
-                                    lower_bound=(0, 1))
+                                    lower_bound=(0, 0))
         meta = {'grid_shape': (len(self._ygrid), len(self._xgrid)),
                 'grid_xypos': xy_grid,
                 'oversampling': oversampling}

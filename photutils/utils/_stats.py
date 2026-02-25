@@ -2,6 +2,11 @@
 """
 Nan-ignoring statistical functions, using bottleneck for performance if
 available.
+
+When bottleneck is installed, it is used only for float64 arrays. For
+other dtypes (e.g., float32), NumPy is used instead to work around known
+accuracy issues in bottleneck (see bottleneck issues #379 and #462, and
+astropy issues #17185 and #11492).
 """
 
 from functools import partial
@@ -10,6 +15,10 @@ import numpy as np
 from astropy.units import Quantity
 
 from photutils.utils._optional_deps import HAS_BOTTLENECK
+
+_STAT_NAMES = (
+    'nansum', 'nanmin', 'nanmax', 'nanmean', 'nanmedian', 'nanstd', 'nanvar',
+)
 
 if HAS_BOTTLENECK:
     import bottleneck as bn
@@ -93,33 +102,19 @@ if HAS_BOTTLENECK:
         return result
 
     bn_funcs = {
-        'nansum': partial(_apply_bottleneck, bn.nansum),
-        'nanmin': partial(_apply_bottleneck, bn.nanmin),
-        'nanmax': partial(_apply_bottleneck, bn.nanmax),
-        'nanmean': partial(_apply_bottleneck, bn.nanmean),
-        'nanmedian': partial(_apply_bottleneck, bn.nanmedian),
-        'nanstd': partial(_apply_bottleneck, bn.nanstd),
-        'nanvar': partial(_apply_bottleneck, bn.nanvar),
+        name: partial(_apply_bottleneck, getattr(bn, name))
+        for name in _STAT_NAMES
     }
-
-    np_funcs = {
-        'nansum': np.nansum,
-        'nanmin': np.nanmin,
-        'nanmax': np.nanmax,
-        'nanmean': np.nanmean,
-        'nanmedian': np.nanmedian,
-        'nanstd': np.nanstd,
-        'nanvar': np.nanvar,
-    }
+    np_funcs = {name: getattr(np, name) for name in _STAT_NAMES}
 
     def _dtype_dispatch(func_name):
-        # dispatch to bottleneck or numpy depending on the input array dtype
-        # this is done to workaround known accuracy bugs in bottleneck
-        # affecting float32 calculations
-        # see https://github.com/pydata/bottleneck/issues/379
-        # see https://github.com/pydata/bottleneck/issues/462
-        # see https://github.com/astropy/astropy/issues/17185
-        # see https://github.com/astropy/astropy/issues/11492
+        # Dispatch to bottleneck or numpy depending on the input array
+        # dtype. This is done to workaround known accuracy bugs in
+        # bottleneck affecting float32 calculations.
+        # See https://github.com/pydata/bottleneck/issues/379
+        # See https://github.com/pydata/bottleneck/issues/462
+        # See https://github.com/astropy/astropy/issues/17185
+        # See https://github.com/astropy/astropy/issues/11492
         def wrapped(*args, **kwargs):
             if args[0].dtype.str[1:] == 'f8':
                 return bn_funcs[func_name](*args, **kwargs)
@@ -127,19 +122,11 @@ if HAS_BOTTLENECK:
 
         return wrapped
 
-    nansum = _dtype_dispatch('nansum')
-    nanmin = _dtype_dispatch('nanmin')
-    nanmax = _dtype_dispatch('nanmax')
-    nanmean = _dtype_dispatch('nanmean')
-    nanmedian = _dtype_dispatch('nanmedian')
-    nanstd = _dtype_dispatch('nanstd')
-    nanvar = _dtype_dispatch('nanvar')
+    (nansum, nanmin, nanmax, nanmean, nanmedian, nanstd, nanvar) = (
+        _dtype_dispatch(name) for name in _STAT_NAMES
+    )
 
 else:
-    nansum = np.nansum
-    nanmin = np.nanmin
-    nanmax = np.nanmax
-    nanmean = np.nanmean
-    nanmedian = np.nanmedian
-    nanstd = np.nanstd
-    nanvar = np.nanvar
+    (nansum, nanmin, nanmax, nanmean, nanmedian, nanstd, nanvar) = (
+        getattr(np, name) for name in _STAT_NAMES
+    )

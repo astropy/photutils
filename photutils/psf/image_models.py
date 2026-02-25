@@ -140,7 +140,7 @@ class ImagePSF(Fittable2DModel):
         self.data = data
         self.origin = origin
         self.oversampling = as_pair('oversampling', oversampling,
-                                    lower_bound=(0, 1))
+                                    lower_bound=(0, 0))
         self.fill_value = fill_value
 
         super().__init__(flux, x_0, y_0, **kwargs)

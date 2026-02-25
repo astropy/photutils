@@ -146,7 +146,7 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
     main_params = _get_psf_model_main_params(psf_model)
 
     if model_shape is not None:
-        model_shape = as_pair('model_shape', model_shape, lower_bound=(0, 1))
+        model_shape = as_pair('model_shape', model_shape, lower_bound=(0, 0))
     else:
         try:
             model_shape = _model_shape_from_bbox(psf_model)

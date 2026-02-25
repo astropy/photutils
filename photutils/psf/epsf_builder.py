@@ -25,7 +25,7 @@ from photutils.psf.utils import _interpolate_missing_data
 from photutils.utils._parameters import (SigmaClipSentinelDefault, as_pair,
                                          create_default_sigmaclip)
 from photutils.utils._progress_bars import add_progress_bar
-from photutils.utils._round import py2intround
+from photutils.utils._round import round_half_away
 from photutils.utils._stats import nanmedian
 
 __all__ = ['EPSFBuildResult', 'EPSFBuilder', 'EPSFFitter']
@@ -157,7 +157,7 @@ class _EPSFValidator:
 
         try:
             oversampling = as_pair('oversampling', oversampling,
-                                   lower_bound=(0, 1))
+                                   lower_bound=(0, 0))
         except (TypeError, ValueError) as e:
             msg = f'Invalid oversampling parameter - {e}'
             if context:
@@ -421,8 +421,10 @@ class _CoordinateTransformer:
 
         # Add ePSF center offset
         epsf_xcenter, epsf_ycenter = epsf_origin
-        epsf_x = py2intround(x_oversampled + epsf_xcenter).astype(int)
-        epsf_y = py2intround(y_oversampled + epsf_ycenter).astype(int)
+        epsf_x = round_half_away(
+            x_oversampled + epsf_xcenter).astype(int)
+        epsf_y = round_half_away(
+            y_oversampled + epsf_ycenter).astype(int)
 
         return epsf_x, epsf_y
 
@@ -756,7 +758,7 @@ class EPSFFitter:
         self.fitter_has_fit_info = hasattr(self.fitter, 'fit_info')
         if fit_boxsize is not None:
             self.fit_boxsize = as_pair('fit_boxsize', fit_boxsize,
-                                       lower_bound=(3, 0), check_odd=True)
+                                       lower_bound=(3, 1), check_odd=True)
         else:
             self.fit_boxsize = None
 
@@ -1047,7 +1049,7 @@ class EPSFBuilder:
         self.coord_transformer = _CoordinateTransformer(self.oversampling)
 
         if shape is not None:
-            self.shape = as_pair('shape', shape, lower_bound=(0, 1))
+            self.shape = as_pair('shape', shape, lower_bound=(0, 0))
         else:
             self.shape = shape
 
@@ -1055,7 +1057,7 @@ class EPSFBuilder:
         self.recentering_maxiters = recentering_maxiters
         self.recentering_boxsize = as_pair('recentering_boxsize',
                                            recentering_boxsize,
-                                           lower_bound=(3, 0), check_odd=True)
+                                           lower_bound=(3, 1), check_odd=True)
         self.smoothing_kernel = smoothing_kernel
 
         # Handle fitter parameter - accept both astropy Fitter and
@@ -1081,7 +1083,7 @@ class EPSFBuilder:
             # Validate fit_shape
             if fit_shape is not None:
                 self.fit_shape = as_pair('fit_shape', fit_shape,
-                                         lower_bound=(3, 0),
+                                         lower_bound=(3, 1),
                                          check_odd=True)
             else:
                 self.fit_shape = None
@@ -1238,7 +1240,7 @@ class EPSFBuilder:
 
         # Define the ePSF shape using coordinate transformer
         if shape is not None:
-            shape = as_pair('shape', shape, lower_bound=(0, 1), check_odd=True)
+            shape = as_pair('shape', shape, lower_bound=(0, 0), check_odd=True)
         else:
             # Use coordinate transformer to compute shape from star
             # dimensions

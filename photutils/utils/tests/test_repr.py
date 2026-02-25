@@ -16,6 +16,9 @@ class ExampleClass:
 
 
 def test_make_repr():
+    """
+    Test make_repr with various parameter and override combinations.
+    """
     obj = ExampleClass(1, 2)
     params = ('x', 'y', 'z')
     repr_str = make_repr(obj, params)
@@ -71,3 +74,13 @@ def test_make_repr():
     obj = ExampleClass(None, 2)
     repr_str = make_repr(obj, params, overrides=overrides)
     assert repr_str == 'ExampleClass(x=None, y=2, z=1)'
+
+
+def test_make_repr_brackets():
+    """
+    Test make_repr with brackets=True.
+    """
+    obj = ExampleClass(1, 2)
+    params = ('x', 'y', 'z')
+    repr_str = make_repr(obj, params, brackets=True)
+    assert repr_str == '<ExampleClass(x=1, y=2, z=1)>'

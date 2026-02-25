@@ -29,24 +29,35 @@ def add_progress_bar(iterable=None, desc=None, total=None, text=False):
 
     Returns
     -------
-    result : tqdm iterable
-        A tqdm progress bar. If in a notebook and ipywidgets is
-        installed, it will return an ipywidgets-based progress bar.
-        Otherwise it will return a text-based progress bar.
+    result : tqdm iterable, iterable, or `None`
+        When tqdm is installed, a tqdm progress bar (ipywidgets-based in
+        a notebook if available, otherwise text-based). When tqdm is not
+        installed, the original iterable is returned unchanged (which
+        may be `None`).
+
+    Notes
+    -----
+    When ``iterable=None`` and ``total`` is provided, the returned tqdm
+    object is a manually-managed progress bar. The caller is responsible
+    for advancing it by calling ``.update()`` and closing it when
+    finished. This mode is used when the caller drives the loop directly
+    (e.g., with a ``while`` loop) rather than iterating over a sequence.
+    When tqdm is not installed, `None` is returned in this case and the
+    caller must guard against it.
     """
     if HAS_TQDM:
         if text:
             from tqdm import tqdm
         else:
-            try:  # pragma: no cover
+            try:
                 # pylint: disable-next=W0611
                 from ipywidgets import FloatProgress  # noqa: F401
                 from tqdm.auto import tqdm
-            except ImportError:  # pragma: no cover
+            except ImportError:
                 from tqdm import tqdm
 
         iterable = tqdm(iterable=iterable, desc=desc,
-                        total=total)  # pragma: no cover
+                        total=total)
 
     return iterable
 

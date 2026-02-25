@@ -14,6 +14,9 @@ from photutils.utils.cutouts import CutoutImage
 
 
 def test_cutout():
+    """
+    Test CutoutImage with basic parameters.
+    """
     data = make_100gaussians_image()
     shape = (24, 57)
     yxpos = (100, 51)
@@ -38,11 +41,15 @@ def test_cutout():
     cutouts2 = CutoutImage(data, yxpos, np.array(shape))
     assert cutouts2.input_shape == shape
 
-    assert f'Shape: {shape}' in repr(cutout)
+    assert 'CutoutImage(' in repr(cutout)
+    assert f'shape={shape}' in repr(cutout)
     assert f'Shape: {shape}' in str(cutout)
 
 
 def test_cutout_partial_overlap():
+    """
+    Test CutoutImage with partial overlap modes.
+    """
     data = make_100gaussians_image()
     shape = (24, 57)
 
@@ -71,7 +78,7 @@ def test_cutout_partial_overlap():
 
     assert_equal(cutout.xyorigin, np.array((-18, -1)))
 
-    # regression test for xyorgin in partial mode when cutout extends
+    # Regression test for xyorgin in partial mode when cutout extends
     # beyond right or top edge
     data = make_100gaussians_image()
     shape = (54, 57)
@@ -88,6 +95,9 @@ def test_cutout_partial_overlap():
 
 
 def test_cutout_copy():
+    """
+    Test CutoutImage with copy=True and copy=False.
+    """
     data = make_100gaussians_image()
 
     cutout1 = CutoutImage(data, (1, 1), (3, 3), copy=True)

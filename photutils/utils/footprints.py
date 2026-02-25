@@ -19,8 +19,9 @@ def circular_footprint(radius, dtype=int):
 
     Parameters
     ----------
-    radius : int
-        The radius of the circular footprint.
+    radius : int or float
+        The radius of the circular footprint. If float, must be a
+        positive finite whole number (e.g., 2.0 is accepted).
 
     dtype : data-type, optional
         The data type of the output `~numpy.ndarray`.
@@ -41,7 +42,7 @@ def circular_footprint(radius, dtype=int):
            [0, 1, 1, 1, 0],
            [0, 0, 1, 0, 0]])
     """
-    if ~np.isfinite(radius) or radius <= 0 or int(radius) != radius:
+    if not np.isfinite(radius) or radius <= 0 or int(radius) != radius:
         msg = 'radius must be a positive, finite integer greater than 0'
         raise ValueError(msg)
 

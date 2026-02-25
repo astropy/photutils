@@ -34,8 +34,7 @@ def apply_separation(xycoords, min_separation):
     tree = KDTree(xycoords)
     pairs = tree.query_pairs(min_separation, output_type='ndarray')
 
-    # create a dictionary of nearest neighbors (within min_separation)
-    nn = {}
+    # Create a dictionary of nearest neighbors (within min_separation)
     nn = defaultdict(set)
     for i, j in pairs:
         nn[i].add(j)
@@ -46,14 +45,14 @@ def apply_separation(xycoords, min_separation):
     for idx in range(xycoords.shape[0]):
         if idx not in discard_idx:
             keep_idx.append(idx)
-            # remove nearest neighbors from the output
+            # Remove nearest neighbors from the output
             discard_idx.update(nn.get(idx, set()))
 
     return xycoords[keep_idx]
 
 
 def make_random_xycoords(size, x_range, y_range, min_separation=0.0,
-                         seed=None):
+                         seed=None, oversample=10):
     """
     Make random (x, y) coordinates.
 
@@ -75,16 +74,33 @@ def make_random_xycoords(size, x_range, y_range, min_separation=0.0,
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
         then fresh, unpredictable entropy will be pulled from the OS.
 
+    oversample : int, optional
+        The oversampling factor used when ``min_separation`` > 0 to
+        generate extra candidate coordinates before filtering by
+        separation. Higher values increase the chance of producing the
+        requested number of coordinates in crowded conditions, at the
+        cost of speed. The default is 10.
+
     Returns
     -------
     xycoords : `~numpy.ndarray`
-        The (x, y) random coordinates with shape ``(size, 2)``.
+        The (x, y) random coordinates with shape ``(size, 2)``. When
+        ``min_separation`` > 0, fewer than ``size`` coordinates may be
+        returned if the range and separation cannot be satisfied. A
+        warning is issued in that case.
     """
+    if size == 0:
+        return np.empty((0, 2))
+
+    if x_range[0] >= x_range[1] or y_range[0] >= y_range[1]:
+        msg = 'x_range and y_range must be (min, max) with min < max.'
+        raise ValueError(msg)
+
     ncoords = size
     if min_separation > 0:
-        # scale the number of random coordinates to account for
+        # Scale the number of random coordinates to account for
         # some being discarded due to min_separation
-        ncoords *= 10
+        ncoords *= oversample
 
     rng = np.random.default_rng(seed)
     xc = rng.uniform(x_range[0], x_range[1], ncoords)

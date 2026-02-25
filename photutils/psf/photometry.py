@@ -384,7 +384,7 @@ class PSFPhotometry:
         self.psf_model = _validate_psf_model(psf_model)
         self._param_mapper = _PSFParameterMapper(self.psf_model)
 
-        self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(1, 0),
+        self.fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(1, 1),
                                  check_odd=True)
         self.finder = self._validate_callable(finder, 'finder')
         self.grouper = self._validate_callable(grouper, 'grouper')

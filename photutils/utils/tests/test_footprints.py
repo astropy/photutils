@@ -11,6 +11,9 @@ from photutils.utils.footprints import circular_footprint
 
 
 def test_footprints():
+    """
+    Test circular_footprint with various radii and invalid inputs.
+    """
     footprint = circular_footprint(1)
     result = np.array([[0, 1, 0],
                        [1, 1, 1],

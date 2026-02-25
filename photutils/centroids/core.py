@@ -15,7 +15,7 @@ from photutils.centroids._utils import _process_data_mask
 from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
-from photutils.utils._round import py2intround
+from photutils.utils._round import round_half_away
 
 __all__ = ['CentroidQuadratic', 'centroid_com', 'centroid_quadratic',
            'centroid_sources']
@@ -252,7 +252,7 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     data = _process_data_mask(data, mask)
     ny, nx = data.shape
 
-    fit_boxsize = as_pair('fit_boxsize', fit_boxsize, lower_bound=(0, 1),
+    fit_boxsize = as_pair('fit_boxsize', fit_boxsize, lower_bound=(0, 0),
                           upper_bound=data.shape, check_odd=True)
 
     if np.prod(fit_boxsize) < 6:
@@ -270,12 +270,12 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     if xpeak is None or ypeak is None:
         yidx, xidx = np.unravel_index(np.nanargmax(data), data.shape)
     else:
-        xidx = py2intround(xpeak)
-        yidx = py2intround(ypeak)
+        xidx = round_half_away(xpeak)
+        yidx = round_half_away(ypeak)
 
         if search_boxsize is not None:
             search_boxsize = as_pair('search_boxsize', search_boxsize,
-                                     lower_bound=(0, 1),
+                                     lower_bound=(0, 0),
                                      upper_bound=data.shape, check_odd=True)
 
             slc_data, _ = overlap_slices(data.shape, search_boxsize,
@@ -592,7 +592,7 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
         if box_size is None:
             msg = 'box_size or footprint must be defined'
             raise ValueError(msg)
-        box_size = as_pair('box_size', box_size, lower_bound=(0, 1),
+        box_size = as_pair('box_size', box_size, lower_bound=(0, 0),
                            check_odd=True)
         footprint = np.ones(box_size, dtype=bool)
     else:

@@ -224,7 +224,7 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
                f'Using fit_shape={fit_shape}.')
         warnings.warn(msg, AstropyUserWarning)
     else:
-        fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(1, 0),
+        fit_shape = as_pair('fit_shape', fit_shape, lower_bound=(1, 1),
                             check_odd=True)
 
     flux_init = []
