@@ -3,20 +3,14 @@
 IRAFStarFinder class.
 """
 
-import inspect
 import warnings
 
-import astropy.units as u
 import numpy as np
-from astropy.nddata import extract_array
-from astropy.table import QTable
 from astropy.utils import lazyproperty
 
-from photutils.detection.core import (StarFinderBase, _StarFinderKernel,
-                                      _validate_brightest)
+from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
+                                      _StarFinderKernel, _validate_brightest)
 from photutils.utils._convolution import _filter_data
-from photutils.utils._misc import _get_meta
-from photutils.utils._moments import _image_moments
 from photutils.utils._quantity_helpers import isscalar, process_quantities
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -267,7 +261,7 @@ class IRAFStarFinder(StarFinderBase):
         return cat.to_table()
 
 
-class _IRAFStarFinderCatalog:
+class _IRAFStarFinderCatalog(StarFinderCatalogBase):
     """
     Class to create a catalog of the properties of each detected star,
     as defined by IRAF's ``starfind`` task.
@@ -330,90 +324,27 @@ class _IRAFStarFinderCatalog:
         names = ('data', 'convolved_data', 'peakmax')
         _ = process_quantities(inputs, names)
 
-        self.data = data
-        unit = data.unit if isinstance(data, u.Quantity) else None
-        self.unit = unit
+        super().__init__(data, xypos, kernel,
+                         brightest=brightest,
+                         peakmax=peakmax)
 
         self.convolved_data = convolved_data
-        self.xypos = xypos
-        self.kernel = kernel
         self.sharplo = sharplo
         self.sharphi = sharphi
         self.roundlo = roundlo
         self.roundhi = roundhi
-        self.brightest = brightest
-        self.peakmax = peakmax
 
-        self.id = np.arange(len(self)) + 1
-        self.cutout_shape = kernel.shape
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'sharpness', 'roundness', 'pa', 'npix',
                                 'peak', 'flux', 'mag')
 
-    def __len__(self):
-        return len(self.xypos)
-
-    def __getitem__(self, index):
-        # NOTE: we allow indexing/slicing of scalar (self.isscalar = True)
-        #       instances in order to perform catalog filtering even for
-        #       a single source
-
-        newcls = object.__new__(self.__class__)
-
-        # copy these attributes to the new instance
-        init_attr = ('data', 'unit', 'convolved_data', 'kernel',
-                     'sharplo', 'sharphi', 'roundlo', 'roundhi', 'brightest',
-                     'peakmax', 'cutout_shape', 'default_columns')
-        for attr in init_attr:
-            setattr(newcls, attr, getattr(self, attr))
-
-        # xypos determines ordering and isscalar
-        # NOTE: always keep as a 2D array, even for a single source
-        attr = 'xypos'
-        value = getattr(self, attr)[index]
-        setattr(newcls, attr, np.atleast_2d(value))
-
-        # index/slice the remaining attributes
-        keys = set(self.__dict__.keys()) & set(self._lazyproperties)
-        keys.add('id')
-        for key in keys:
-            value = self.__dict__[key]
-
-            # do not insert lazy attributes that are always scalar (e.g.,
-            # isscalar), i.e., not an array/list for each source
-            if np.isscalar(value):
-                continue
-
-            # value is always at least a 1D array, even for a single source
-            value = np.atleast_1d(value[index])
-
-            newcls.__dict__[key] = value
-        return newcls
-
-    @lazyproperty
-    def isscalar(self):
+    def _get_init_attributes(self) -> tuple:
         """
-        Whether the instance is scalar (e.g., a single source).
+        Return a tuple of attribute names to copy during slicing.
         """
-        return self.xypos.shape == (1, 2)
-
-    @property
-    def _lazyproperties(self):
-        """
-        Return all lazyproperties (even in superclasses).
-        """
-
-        def islazyproperty(obj):
-            return isinstance(obj, lazyproperty)
-
-        return [i[0] for i in inspect.getmembers(self.__class__,
-                                                 predicate=islazyproperty)]
-
-    def reset_ids(self):
-        """
-        Reset the ID column to be consecutive integers.
-        """
-        self.id = np.arange(len(self)) + 1
+        return ('data', 'unit', 'convolved_data', 'kernel',
+                'sharplo', 'sharphi', 'roundlo', 'roundhi', 'brightest',
+                'peakmax', 'cutout_shape', 'default_columns')
 
     @lazyproperty
     def sky(self):
@@ -439,17 +370,6 @@ class _IRAFStarFinderCatalog:
 
         return sky
 
-    def make_cutouts(self, data):
-        cutouts = []
-        for xpos, ypos in self.xypos:
-            cutouts.append(extract_array(data, self.cutout_shape, (ypos, xpos),
-                                         fill_value=0.0))
-        value = np.array(cutouts)
-        if self.unit is not None:
-            value <<= self.unit
-
-        return value
-
     @lazyproperty
     def cutout_data_nosub(self):
         return self.make_cutouts(self.data)
@@ -471,30 +391,6 @@ class _IRAFStarFinderCatalog:
         return np.count_nonzero(self.cutout_data, axis=(1, 2))
 
     @lazyproperty
-    def moments(self):
-        return np.array([_image_moments(arr, order=1)
-                         for arr in self.cutout_data])
-
-    @lazyproperty
-    def cutout_centroid(self):
-        moments = self.moments
-
-        # ignore divide-by-zero RuntimeWarning
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
-            xcentroid = moments[:, 0, 1] / moments[:, 0, 0]
-        return np.transpose((ycentroid, xcentroid))
-
-    @lazyproperty
-    def cutout_xcentroid(self):
-        return np.transpose(self.cutout_centroid)[1]
-
-    @lazyproperty
-    def cutout_ycentroid(self):
-        return np.transpose(self.cutout_centroid)[0]
-
-    @lazyproperty
     def cutout_xorigin(self):
         return np.transpose(self.xypos)[0] - self.kernel.xradius
 
@@ -511,50 +407,6 @@ class _IRAFStarFinderCatalog:
         return self.cutout_ycentroid + self.cutout_yorigin
 
     @lazyproperty
-    def peak(self):
-        peaks = [np.max(arr) for arr in self.cutout_data]
-        return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
-
-    @lazyproperty
-    def flux(self):
-        fluxes = [np.sum(arr) for arr in self.cutout_data]
-        if self.unit is not None:
-            fluxes = u.Quantity(fluxes)
-        else:
-            fluxes = np.array(fluxes)
-        return fluxes
-
-    @lazyproperty
-    def mag(self):
-        flux = self.flux
-        if isinstance(flux, u.Quantity):
-            flux = flux.value
-        return -2.5 * np.log10(flux)
-
-    @lazyproperty
-    def moments_central(self):
-        moments = np.array(
-            [_image_moments(arr, center=(xcen_, ycen_), order=2)
-             for arr, xcen_, ycen_ in
-             zip(self.cutout_data, self.cutout_xcentroid,
-                 self.cutout_ycentroid, strict=True)])
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
-
-    @lazyproperty
-    def mu_sum(self):
-        return self.moments_central[:, 0, 2] + self.moments_central[:, 2, 0]
-
-    @lazyproperty
-    def mu_diff(self):
-        return self.moments_central[:, 0, 2] - self.moments_central[:, 2, 0]
-
-    @lazyproperty
-    def fwhm(self):
-        return 2.0 * np.sqrt(np.log(2.0) * self.mu_sum)
-
-    @lazyproperty
     def roundness(self):
         # ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
@@ -566,12 +418,6 @@ class _IRAFStarFinderCatalog:
     @lazyproperty
     def sharpness(self):
         return self.fwhm / self.kernel.fwhm
-
-    @lazyproperty
-    def pa(self):
-        pa = np.rad2deg(0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
-                                         self.mu_diff))
-        return np.where(pa < 0, pa + 180, pa)
 
     def apply_filters(self):
         """
@@ -606,35 +452,3 @@ class _IRAFStarFinderCatalog:
             return None
 
         return newcat
-
-    def select_brightest(self):
-        """
-        Sort the catalog by the brightest fluxes and select the top
-        brightest sources.
-        """
-        newcat = self
-        if self.brightest is not None:
-            idx = np.argsort(self.flux)[::-1][:self.brightest]
-            newcat = self[idx]
-        return newcat
-
-    def apply_all_filters(self):
-        """
-        Apply all filters, select the brightest, and reset the source
-        IDs.
-        """
-        cat = self.apply_filters()
-        if cat is None:
-            return None
-        cat = cat.select_brightest()
-        cat.reset_ids()
-        return cat
-
-    def to_table(self, columns=None):
-        table = QTable()
-        table.meta.update(_get_meta())  # keep table.meta type
-        if columns is None:
-            columns = self.default_columns
-        for column in columns:
-            table[column] = getattr(self, column)
-        return table
