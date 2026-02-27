@@ -4,7 +4,6 @@ Tools for generating random (x, y) coordinates.
 """
 
 import warnings
-from collections import defaultdict
 
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
@@ -34,21 +33,29 @@ def apply_separation(xycoords, min_separation):
     tree = KDTree(xycoords)
     pairs = tree.query_pairs(min_separation, output_type='ndarray')
 
-    # Create a dictionary of nearest neighbors (within min_separation)
-    nn = defaultdict(set)
-    for i, j in pairs:
-        nn[i].add(j)
-        nn[j].add(i)
+    if len(pairs) == 0:
+        return xycoords
 
-    keep_idx = []
-    discard_idx = set()
-    for idx in range(xycoords.shape[0]):
-        if idx not in discard_idx:
-            keep_idx.append(idx)
-            # Remove nearest neighbors from the output
-            discard_idx.update(nn.get(idx, set()))
+    n = xycoords.shape[0]
+    keep = np.ones(n, dtype=bool)
 
-    return xycoords[keep_idx]
+    # Group pairs by first index for vectorized neighbor removal. Each
+    # pair has i < j (guaranteed by KDTree). Process groups in ascending
+    # first-index order (greedy independent set algorithm): for each
+    # kept point, discard all its higher-index neighbors.
+    sorted_idx = pairs[:, 0].argsort(kind='stable')
+    pairs_sorted = pairs[sorted_idx]
+    unique_i, group_start = np.unique(pairs_sorted[:, 0],
+                                      return_index=True)
+    group_end = np.append(group_start[1:], len(pairs_sorted))
+
+    for k in range(len(unique_i)):
+        i = unique_i[k]
+        if keep[i]:
+            js = pairs_sorted[group_start[k]:group_end[k], 1]
+            keep[js] = False
+
+    return xycoords[keep]
 
 
 def make_random_xycoords(size, x_range, y_range, min_separation=0.0,
