@@ -185,8 +185,8 @@ class TestEPSFValidator:
         """
         Test oversampling validation with context and invalid input.
         """
-        msg = 'test_context: Invalid oversampling parameter'
-        with pytest.raises(ValueError, match=msg):
+        match = 'test_context: Invalid oversampling parameter'
+        with pytest.raises(ValueError, match=match):
             _EPSFValidator.validate_oversampling('invalid',
                                                  context='test_context')
 
@@ -197,9 +197,9 @@ class TestEPSFValidator:
         with pytest.raises(ValueError, match='oversampling must be > 0'):
             _EPSFValidator.validate_oversampling((0, 2))
 
-        msg = ('test_context: Invalid oversampling parameter - '
-               'oversampling must be > 0')
-        with pytest.raises(ValueError, match=msg):
+        match = ('test_context: Invalid oversampling parameter - '
+                 'oversampling must be > 0')
+        with pytest.raises(ValueError, match=match):
             _EPSFValidator.validate_oversampling((0, 2),
                                                  context='test_context')
 
@@ -208,8 +208,8 @@ class TestEPSFValidator:
         Test oversampling validation when as_pair raises exception.
         """
         # Use a tuple with wrong number of elements to trigger as_pair error
-        msg = 'test_ctx: Invalid oversampling parameter'
-        with pytest.raises(ValueError, match=msg):
+        match = 'test_ctx: Invalid oversampling parameter'
+        with pytest.raises(ValueError, match=match):
             _EPSFValidator.validate_oversampling((1, 2, 3),
                                                  context='test_ctx')
 
