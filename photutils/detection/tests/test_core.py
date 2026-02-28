@@ -216,6 +216,20 @@ class TestStarFinderCatalogBase:
         with pytest.raises(AttributeError, match=match):
             cat.to_table()
 
+    def test_to_table_explicit_columns(self, minimal_catalog_cls):
+        """
+        Test that to_table works with explicit column names.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 10.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        columns = ('id', 'xcentroid', 'ycentroid')
+        tbl = cat.to_table(columns=columns)
+        assert len(tbl) == 1
+        assert tbl.colnames == list(columns)
+
     def test_getitem_integer_index(self, minimal_catalog_cls):
         """
         Test indexing the catalog with an integer index.
@@ -312,6 +326,47 @@ class TestStarFinderCatalogBase:
         s = str(cat)
         assert '_MinimalCatalog' in s
         assert 'nsources: 1' in s
+
+    def test_make_cutouts_partial_overlap(self, minimal_catalog_cls):
+        """
+        Test that make_cutouts pads with zeros for sources at image
+        edges that only partially overlap the data.
+        """
+        data = np.ones((10, 10)) * 5.0
+        kernel = np.ones((5, 5))
+        # corners and edges: each cutout partially extends outside
+        xypos = np.array([[0, 0], [9, 9], [0, 9], [9, 0]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        cutouts = cat.make_cutouts(data)
+
+        assert cutouts.shape == (4, 5, 5)
+
+        # corner (0,0): only bottom-right 3x3 quadrant is inside image
+        c00 = cutouts[0]
+        assert np.all(c00[:2, :] == 0.0)  # top rows outside
+        assert np.all(c00[:, :2] == 0.0)  # left cols outside
+        assert np.all(c00[2:, 2:] == 5.0)  # bottom-right inside
+
+        # corner (9,9): only top-left 3x3 quadrant is inside image
+        c99 = cutouts[1]
+        assert np.all(c99[3:, :] == 0.0)  # bottom rows outside
+        assert np.all(c99[:, 3:] == 0.0)  # right cols outside
+        assert np.all(c99[:3, :3] == 5.0)  # top-left inside
+
+    def test_make_cutouts_fully_inside(self, minimal_catalog_cls):
+        """
+        Test that make_cutouts returns exact data for a fully inside
+        source.
+        """
+        data = np.arange(100, dtype=float).reshape(10, 10)
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        cutouts = cat.make_cutouts(data)
+
+        assert cutouts.shape == (1, 3, 3)
+        expected = data[4:7, 4:7]
+        np.testing.assert_array_equal(cutouts[0], expected)
 
 
 class TestStarFinderBaseCall:

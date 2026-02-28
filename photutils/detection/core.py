@@ -14,7 +14,6 @@ import warnings
 
 import astropy.units as u
 import numpy as np
-from astropy.nddata import extract_array
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
@@ -27,6 +26,55 @@ from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['StarFinderBase', 'StarFinderCatalogBase']
+
+
+def _make_cutouts(data, xpos, ypos, cutout_shape):
+    """
+    Make 2D cutouts from a data array at the given positions.
+
+    Positions are rounded to the nearest integer pixel.  Pixels that
+    fall outside the image boundary are filled with 0.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The 2D image array.
+
+    xpos : 1D `~numpy.ndarray`
+        The x pixel positions of the cutout centers.
+
+    ypos : 1D `~numpy.ndarray`
+        The y pixel positions of the cutout centers.
+
+    cutout_shape : tuple of int
+        The ``(ny, nx)`` shape of each cutout.
+
+    Returns
+    -------
+    cutouts : 3D `~numpy.ndarray`
+        A 3D array of shape ``(n_sources, ny, nx)`` containing the
+        cutout data.
+    """
+    ky, kx = cutout_shape
+    hy, hx = ky // 2, kx // 2
+
+    yc = np.round(ypos).astype(int)
+    xc = np.round(xpos).astype(int)
+
+    # build index grids: shape (n_sources, ky, kx)
+    dy = np.arange(ky) - hy
+    dx = np.arange(kx) - hx
+    y_idx = yc[:, np.newaxis, np.newaxis] + dy[np.newaxis, :, np.newaxis]
+    x_idx = xc[:, np.newaxis, np.newaxis] + dx[np.newaxis, np.newaxis, :]
+
+    # clip out-of-bounds indices to valid range; pixels outside the
+    # image boundary are filled with 0.0 below
+    valid = ((y_idx >= 0) & (y_idx < data.shape[0])
+             & (x_idx >= 0) & (x_idx < data.shape[1]))
+    y_safe = np.clip(y_idx, 0, data.shape[0] - 1)
+    x_safe = np.clip(x_idx, 0, data.shape[1] - 1)
+
+    return np.where(valid, data[y_safe, x_safe], 0.0)
 
 
 class StarFinderBase(metaclass=abc.ABCMeta):
@@ -56,10 +104,10 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             The absolute image value above which to select sources. The
             exact value depends on the calling star finder class (e.g.,
             `DAOStarFinder` multiplies the ``threshold`` by the kernel
-            relerr, whereas `IRAFStarFinder` and `StarFinder` directly
-            use the input ``threshold``). If ``convolved_data`` is a
-            `~astropy.units.Quantity` array, then ``threshold`` must
-            have the same units.
+            relative error, whereas `IRAFStarFinder` and `StarFinder`
+            directly use the input ``threshold``). If ``convolved_data``
+            is a `~astropy.units.Quantity` array, then ``threshold``
+            must have the same units.
 
         min_separation : float, optional
             The minimum separation for detected objects in pixels.
@@ -193,6 +241,37 @@ class _StarFinderKernel:
     .. math::
         g(x, y) = a (x - x_0)^{2} + 2 b (x - x_0)(y - y_0)
                    + c (y - y_0)^{2}
+
+    Attributes
+    ----------
+    data : 2D `~numpy.ndarray`
+        The kernel data array, used for convolution.
+
+    shape : tuple of int
+        The ``(ny, nx)`` shape of ``data``.
+
+    mask : 2D `~numpy.ndarray` of int
+        Binary mask (1 inside the kernel footprint, 0 outside).
+        Used for the peak-finding footprint, sharpness computation
+        in `_DAOStarFinderCatalog`, and sky estimation in
+        `_IRAFStarFinderCatalog`.
+
+    relerr : float
+        The kernel relative error, used by `DAOStarFinder` to scale the
+        detection threshold.
+
+    gaussian_kernel_unmasked : 2D `~numpy.ndarray`
+        The unmasked Gaussian kernel (peak normalized to 1), used by
+        `_DAOStarFinderCatalog` for marginal fitting.
+
+    xsigma, ysigma : float
+        Standard deviations along the major and minor axes.
+
+    xradius, yradius : int
+        Half-widths of the kernel array in pixels.
+
+    npixels : int
+        Total number of pixels within the kernel ``mask``.
 
     References
     ----------
@@ -479,15 +558,15 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         cutouts : 3D `~numpy.ndarray`
             The cutout arrays.
         """
-        cutouts = []
-        for xpos, ypos in self.xypos:
-            cutouts.append(extract_array(data, self.cutout_shape, (ypos, xpos),
-                                         fill_value=0.0))
-        value = np.array(cutouts)
-        if self.unit is not None:
-            value <<= self.unit
+        data_arr = data.value if isinstance(data, u.Quantity) else data
 
-        return value
+        cutouts = _make_cutouts(data_arr, self.xypos[:, 0],
+                                self.xypos[:, 1], self.cutout_shape)
+
+        if self.unit is not None:
+            cutouts <<= self.unit
+
+        return cutouts
 
     @lazyproperty
     def cutout_data(self):
@@ -600,16 +679,16 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         ``inspect.getmembers`` calls.
         """
         cls = self.__class__
-        try:
+        if '_lazyproperties_cache' in cls.__dict__:
             return cls._lazyproperties_cache
-        except AttributeError:
-            def islazyproperty(obj):
-                return isinstance(obj, lazyproperty)
 
-            result = [i[0] for i in
-                      inspect.getmembers(cls, predicate=islazyproperty)]
-            cls._lazyproperties_cache = result
-            return result
+        def islazyproperty(obj):
+            return isinstance(obj, lazyproperty)
+
+        result = [i[0] for i in
+                  inspect.getmembers(cls, predicate=islazyproperty)]
+        cls._lazyproperties_cache = result
+        return result
 
     def reset_ids(self):
         """
