@@ -132,6 +132,10 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     data, threshold, error = arrays
     data = np.asanyarray(data)
 
+    if centroid_func is not None and not callable(centroid_func):
+        msg = 'centroid_func must be a callable object'
+        raise TypeError(msg)
+
     if np.all(data == data.flat[0]):
         warnings.warn('Input data is constant. No local peaks can be found.',
                       NoDetectionsWarning)
@@ -217,10 +221,6 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     if centroid_func is not None:
         # prevent circular import
         from photutils.centroids import centroid_sources
-
-        if not callable(centroid_func):
-            msg = 'centroid_func must be a callable object'
-            raise TypeError(msg)
 
         x_centroids, y_centroids = centroid_sources(
             data, x_peaks, y_peaks, box_size=box_size,

@@ -198,7 +198,7 @@ class _StarFinderKernel:
     def __init__(self, fwhm, *, ratio=1.0, theta=0.0, sigma_radius=1.5,
                  normalize_zerosum=True):
 
-        if fwhm < 0:
+        if fwhm <= 0:
             msg = 'fwhm must be positive'
             raise ValueError(msg)
 

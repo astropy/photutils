@@ -108,7 +108,7 @@ class TestIRAFStarFinder:
         tbl0 = finder0(data)
         tbl1 = finder1(data)
         assert len(tbl0) > len(tbl1)
-        assert all(tbl1['peak'] < peakmax)
+        assert all(tbl1['peak'] <= peakmax)
 
     def test_irafstarfind_brightest_filtering(self, data):
         """

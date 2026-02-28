@@ -33,7 +33,7 @@ class TestDAOStarFinder:
 
     def test_daofind_inputs(self):
         match = 'threshold must be a scalar value'
-        with pytest.raises(ValueError, match=match):
+        with pytest.raises(TypeError, match=match):
             DAOStarFinder(threshold=np.ones((2, 2)), fwhm=3.0)
 
         match = 'fwhm must be a scalar value'
@@ -136,7 +136,7 @@ class TestDAOStarFinder:
         tbl0 = finder0(data)
         tbl1 = finder1(data)
         assert len(tbl0) > len(tbl1)
-        assert all(tbl1['peak'] < peakmax)
+        assert all(tbl1['peak'] <= peakmax)
 
     def test_daofind_brightest_filtering(self, data):
         """

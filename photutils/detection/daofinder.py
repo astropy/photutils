@@ -168,7 +168,7 @@ class DAOStarFinder(StarFinderBase):
 
         if not isscalar(threshold):
             msg = 'threshold must be a scalar value'
-            raise ValueError(msg)
+            raise TypeError(msg)
 
         if not np.isscalar(fwhm):
             msg = 'fwhm must be a scalar value'
