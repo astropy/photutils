@@ -242,3 +242,45 @@ class TestFindPeaks:
         mask[0:50] = True
         find_peaks(data, 0.1, box_size=3, mask=mask)
         assert_equal(data, data_copy)
+
+    @pytest.mark.parametrize('box_size', [3, 5, 7, 11])
+    def test_box_size_min_separation(self, box_size):
+        """
+        Test that box_size imposes a minimum separation of ``box_size //
+        2 + 1`` pixels between detected peaks.
+        """
+        min_sep = box_size // 2 + 1
+        size = 10 * box_size
+        img = np.zeros((size, size))
+
+        # place two peaks exactly at the minimum allowed separation
+        cy = size // 2
+        cx1 = size // 2
+        cx2 = cx1 + min_sep
+        img[cy, cx1] = 10.0
+        img[cy, cx2] = 10.0
+
+        tbl = find_peaks(img, 1.0, box_size=box_size)
+        assert len(tbl) == 2
+
+    @pytest.mark.parametrize('box_size', [3, 5, 7, 11])
+    def test_box_size_below_min_separation(self, box_size):
+        """
+        Test that peaks separated by less than ``box_size // 2 + 1``
+        pixels are merged (only the brighter one survives).
+        """
+        min_sep = box_size // 2 + 1
+        size = 10 * box_size
+        img = np.zeros((size, size))
+
+        # place two peaks one pixel closer than the minimum separation;
+        # only the brighter peak should survive
+        cy = size // 2
+        cx1 = size // 2
+        cx2 = cx1 + min_sep - 1
+        img[cy, cx1] = 10.0
+        img[cy, cx2] = 8.0
+
+        tbl = find_peaks(img, 1.0, box_size=box_size)
+        assert len(tbl) == 1
+        assert tbl['peak_value'][0] == 10.0
