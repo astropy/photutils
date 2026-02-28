@@ -132,12 +132,11 @@ Let's plot the image and mark the location of detected sources:
 Masking Regions
 ^^^^^^^^^^^^^^^
 
-Regions of the input image can be masked by using the ``mask`` keyword
-with the :class:`~photutils.detection.DAOStarFinder` or
-:class:`~photutils.detection.IRAFStarFinder` instance.  This simple
-examples uses :class:`~photutils.detection.DAOStarFinder` and masks
-two rectangular regions.  No sources will be detected in the masked
-regions:
+Regions of the input image can be masked by using the ``mask``
+keyword with the :class:`~photutils.detection.DAOStarFinder` or
+:class:`~photutils.detection.IRAFStarFinder` instance. This simple
+example uses :class:`~photutils.detection.DAOStarFinder` and masks two
+rectangular regions. No sources will be detected in the masked regions:
 
 .. doctest-skip::
 

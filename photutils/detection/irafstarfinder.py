@@ -40,9 +40,9 @@ class IRAFStarFinder(StarFinderBase):
         kernel in units of pixels.
 
     sigma_radius : float, optional
-        The truncation radius of the Gaussian kernel in units
-        of sigma (standard deviation) [``1 sigma = FWHM /
-        2.0*sqrt(2.0*log(2.0))``].
+        The truncation radius of the Gaussian kernel in units of sigma
+        (standard deviation) (:math:`\\sigma = \\mbox{FWHM} / (2
+        \\sqrt{2 \\log(2)})`).
 
     minsep_fwhm : float, optional
         The separation (in units of ``fwhm``) for detected objects. The

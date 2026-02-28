@@ -39,7 +39,7 @@ class TestStarFinder:
         match = 'min_separation must be >= 0'
         with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, min_separation=-1)
-        match = 'brightest must be >= 0'
+        match = 'brightest must be > 0'
         with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, brightest=-1)
         match = 'brightest must be an integer'

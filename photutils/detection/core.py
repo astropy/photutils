@@ -78,8 +78,9 @@ class StarFinderBase(metaclass=abc.ABCMeta):
 
         Returns
         -------
-        result : Nx2 `~numpy.ndarray`
-            An Nx2 array containing the (x, y) pixel coordinates.
+        result : Nx2 `~numpy.ndarray` or `None`
+            An Nx2 array containing the (x, y) pixel coordinates. `None`
+            is returned if no sources are found.
         """
         # define a local footprint for the peak finder
         if min_separation == 0.0:  # DAOStarFinder
@@ -171,10 +172,10 @@ class _StarFinderKernel:
     sigma_radius : float, optional
         The truncation radius of the Gaussian kernel in units
         of sigma (standard deviation) [``1 sigma = FWHM /
-        2.0*sqrt(2.0*log(2.0))``]. The default is 1.5.
+        (2.0 * sqrt(2.0 * log(2.0)))``]. The default is 1.5.
 
     normalize_zerosum : bool, optional
-        Whether to normalize the Gaussian kernel to have zero sum, The
+        Whether to normalize the Gaussian kernel to have zero sum. The
         default is `True`, which generates a density-enhancement kernel.
 
     Notes
@@ -282,7 +283,7 @@ def _validate_brightest(brightest):
     """
     if brightest is not None:
         if brightest <= 0:
-            msg = 'brightest must be >= 0'
+            msg = 'brightest must be > 0'
             raise ValueError(msg)
         bright_int = int(brightest)
         if bright_int != brightest:

@@ -52,7 +52,7 @@ class TestDAOStarFinder:
         with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=3.0, fwhm=2, sigma_radius=-10)
 
-        match = 'brightest must be >= 0'
+        match = 'brightest must be > 0'
         with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=10, fwhm=1.5, brightest=-1)
 

@@ -34,7 +34,7 @@ class TestIRAFStarFinder:
         with pytest.raises(TypeError, match=match):
             IRAFStarFinder(threshold=3.0, fwhm=np.ones((2, 2)))
 
-        match = 'brightest must be >= 0'
+        match = 'brightest must be > 0'
         with pytest.raises(ValueError, match=match):
             IRAFStarFinder(10, 1.5, brightest=-1)
 
