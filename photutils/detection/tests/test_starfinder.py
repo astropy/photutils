@@ -42,6 +42,9 @@ class TestStarFinder:
         """
         Test that invalid inputs raise appropriate errors.
         """
+        match = 'threshold must be a scalar value'
+        with pytest.raises(TypeError, match=match):
+            StarFinder(np.ones((2, 2)), kernel)
         match = 'min_separation must be >= 0'
         with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, min_separation=-1)

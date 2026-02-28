@@ -704,38 +704,18 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         Filter the catalog.
         """
-        # remove all non-finite values - consider these non-detections
         attrs = ('xcentroid', 'ycentroid', 'hx', 'hy', 'sharpness',
                  'roundness1', 'roundness2', 'peak', 'flux')
-        mask = np.ones(len(self), dtype=bool)
-        for attr in attrs:
-            # if threshold_eff == 0, flux will be np.inf, but
-            # coordinates can still be used
-            if self.threshold_eff == 0 and attr == 'flux':
-                continue
-            mask &= np.isfinite(getattr(self, attr))
-        newcat = self[mask]
-
-        if len(newcat) == 0:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
+        skip = ()
+        if self.threshold_eff == 0:
+            skip = ('flux',)
+        newcat = self._filter_finite(attrs, skip_attrs=skip)
+        if newcat is None:
             return None
 
-        # keep sources that are within the sharpness, roundness, and
-        # peakmax (inclusive) bounds
-        mask = ((newcat.sharpness >= newcat.sharplo)
-                & (newcat.sharpness <= newcat.sharphi)
-                & (newcat.roundness1 >= newcat.roundlo)
-                & (newcat.roundness1 <= newcat.roundhi)
-                & (newcat.roundness2 >= newcat.roundlo)
-                & (newcat.roundness2 <= newcat.roundhi))
-        if newcat.peakmax is not None:
-            mask &= (newcat.peak <= newcat.peakmax)
-        newcat = newcat[mask]
-
-        if len(newcat) == 0:
-            warnings.warn('Sources were found, but none pass the sharpness, '
-                          'roundness, or peakmax criteria',
-                          NoDetectionsWarning)
-            return None
-
-        return newcat
+        bounds = [
+            ('sharpness', 'sharplo', 'sharphi'),
+            ('roundness1', 'roundlo', 'roundhi'),
+            ('roundness2', 'roundlo', 'roundhi'),
+        ]
+        return newcat._filter_bounds(bounds)

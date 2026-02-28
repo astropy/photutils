@@ -108,6 +108,60 @@ class TestMakeCutouts:
         # no overlap
         assert not mask[2].any()
 
+    def test_even_shaped_cutout(self):
+        """
+        Test _make_cutouts with an even-shaped cutout.
+        """
+        xpos = np.array([5.0])
+        ypos = np.array([5.0])
+        cutouts, mask = _make_cutouts(self.data, xpos, ypos, (4, 4))
+        assert cutouts.shape == (1, 4, 4)
+        assert mask[0].all()  # fully inside
+        # half-widths: hy=2, hx=2; cutout rows [3..6], cols [3..6]
+        expected = self.data[3:7, 3:7]
+        np.testing.assert_array_equal(cutouts[0], expected)
+
+    def test_even_shaped_cutout_at_edge(self):
+        """
+        Test _make_cutouts with an even-shaped cutout at the image edge.
+        """
+        xpos = np.array([0.0])
+        ypos = np.array([0.0])
+        cutouts, mask = _make_cutouts(self.data, xpos, ypos, (4, 4))
+        assert cutouts.shape == (1, 4, 4)
+        # some pixels should be outside
+        assert not mask[0].all()
+        assert mask[0].any()
+        # outside pixels should be zero (default fill_value)
+        assert np.all(cutouts[0][~mask[0]] == 0.0)
+
+    def test_data_not_2d(self):
+        """
+        Test that a non-2D data array raises ValueError.
+        """
+        match = 'data must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            _make_cutouts(np.ones(10), np.array([5.0]),
+                          np.array([5.0]), (3, 3))
+
+    def test_xpos_not_1d(self):
+        """
+        Test that non-1D xpos/ypos arrays raise ValueError.
+        """
+        match = 'xpos and ypos must be 1D arrays'
+        with pytest.raises(ValueError, match=match):
+            _make_cutouts(self.data, np.ones((2, 2)),
+                          np.array([5.0]), (3, 3))
+
+    def test_cutout_shape_wrong_length(self):
+        """
+        Test that cutout_shape with != 2 elements raises ValueError (I5).
+        """
+        match = 'cutout_shape must have exactly 2 elements'
+        with pytest.raises(ValueError, match=match):
+            _make_cutouts(self.data, np.array([5.0]),
+                          np.array([5.0]), (3, 3, 3))
+
 
 class TestStarFinderKernel:
     """
@@ -465,6 +519,117 @@ class TestStarFinderCatalogBase:
         assert cutouts.shape == (1, 3, 3)
         expected = data[4:7, 4:7]
         np.testing.assert_array_equal(cutouts[0], expected)
+
+    def test_select_brightest(self, minimal_catalog_cls):
+        """
+        Test select_brightest selects the top sources by flux.
+        """
+        data = np.zeros((21, 21))
+        data[5, 5] = 10.0
+        data[10, 10] = 50.0
+        data[15, 15] = 30.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5], [10, 10], [15, 15]])
+        cat = minimal_catalog_cls(data, xypos, kernel, brightest=2)
+        newcat = cat.select_brightest()
+        assert len(newcat) == 2
+        # brightest first
+        assert newcat.flux[0] >= newcat.flux[1]
+
+    def test_select_brightest_none(self, minimal_catalog_cls):
+        """
+        Test that select_brightest with brightest=None keeps all sources.
+        """
+        data = np.zeros((21, 21))
+        data[5, 5] = 10.0
+        data[10, 10] = 50.0
+        data[15, 15] = 30.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5], [10, 10], [15, 15]])
+        cat = minimal_catalog_cls(data, xypos, kernel, brightest=None)
+        newcat = cat.select_brightest()
+        assert len(newcat) == 3
+
+    def test_reset_ids(self, minimal_catalog_cls):
+        """
+        Test that reset_ids renumbers the catalog consecutively.
+        """
+        data = np.zeros((21, 21))
+        data[5, 5] = 10.0
+        data[10, 10] = 50.0
+        data[15, 15] = 30.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5], [10, 10], [15, 15]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        # slice to drop the first source
+        sub = cat[1:]
+        assert sub.id[0] == 2
+        sub.reset_ids()
+        np.testing.assert_array_equal(sub.id, [1, 2])
+
+    def test_apply_all_filters(self, minimal_catalog_cls):
+        """
+        Test apply_all_filters chains apply_filters, select_brightest,
+        and reset_ids.
+        """
+        data = np.zeros((21, 21))
+        data[5, 5] = 10.0
+        data[10, 10] = 50.0
+        data[15, 15] = 30.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5], [10, 10], [15, 15]])
+        cat = minimal_catalog_cls(data, xypos, kernel, brightest=2)
+        result = cat.apply_all_filters()
+        assert result is not None
+        assert len(result) == 2
+        # IDs should be reset to [1, 2]
+        np.testing.assert_array_equal(result.id, [1, 2])
+
+    def test_getitem_negative_index(self, minimal_catalog_cls):
+        """
+        Test indexing with a negative integer index.
+        """
+        data = np.zeros((21, 21))
+        data[5, 5] = 10.0
+        data[10, 10] = 50.0
+        data[15, 15] = 30.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5], [10, 10], [15, 15]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        sub = cat[-1]
+        assert len(sub) == 1
+        assert sub.xypos[0, 0] == 15
+
+    def test_getitem_empty_boolean_mask(self, minimal_catalog_cls):
+        """
+        Test indexing with an all-False boolean mask.
+        """
+        data = np.zeros((21, 21))
+        data[5, 5] = 10.0
+        data[10, 10] = 50.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5], [10, 10]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        mask = np.array([False, False])
+        sub = cat[mask]
+        assert len(sub) == 0
+
+    def test_getitem_integer_array(self, minimal_catalog_cls):
+        """
+        Test indexing with an integer array (fancy indexing).
+        """
+        data = np.zeros((21, 21))
+        data[5, 5] = 10.0
+        data[10, 10] = 50.0
+        data[15, 15] = 30.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5], [10, 10], [15, 15]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        idx = np.array([2, 0])
+        sub = cat[idx]
+        assert len(sub) == 2
+        assert sub.xypos[0, 0] == 15
+        assert sub.xypos[1, 0] == 5
 
 
 class TestStarFinderBaseCall:

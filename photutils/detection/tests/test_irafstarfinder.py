@@ -306,3 +306,40 @@ class TestIRAFStarFinder:
                                 xycoords=xycoords)
         r = repr(finder)
         assert '<array; shape=(2, 2)>' in r
+
+    def test_catalog_intermediate_properties(self, data):
+        """
+        Test IRAF catalog intermediate properties: sky,
+        cutout_data_nosub, cutout_xorigin, cutout_yorigin,
+        sharpness.
+        """
+        finder = IRAFStarFinder(threshold=1.0, fwhm=2.0, sharplo=-np.inf,
+                                sharphi=np.inf, roundlo=-np.inf,
+                                roundhi=np.inf)
+        cat = finder._get_raw_catalog(data)
+        assert cat is not None
+        nsrc = len(cat)
+
+        # sky should be finite and have same length as nsources
+        sky = cat.sky
+        assert sky.shape == (nsrc,)
+        assert np.all(np.isfinite(sky))
+
+        # cutout_data_nosub should have shape (nsrc, ky, kx) with no
+        # sky subtraction
+        cdata = cat.cutout_data_nosub
+        assert cdata.ndim == 3
+        assert cdata.shape[0] == nsrc
+
+        # cutout_xorigin/cutout_yorigin should be finite 1D arrays
+        xorig = cat.cutout_xorigin
+        yorig = cat.cutout_yorigin
+        assert xorig.shape == (nsrc,)
+        assert yorig.shape == (nsrc,)
+        assert np.all(np.isfinite(xorig))
+        assert np.all(np.isfinite(yorig))
+
+        # sharpness should be finite for detected sources
+        sharpness = cat.sharpness
+        assert sharpness.shape == (nsrc,)
+        assert np.all(np.isfinite(sharpness))

@@ -146,7 +146,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     if not np.isscalar(threshold):
         threshold = np.asanyarray(threshold)
         if data.shape != threshold.shape:
-            msg = ('A threshold array must have the same shape as the '
+            msg = ('threshold array must have the same shape as the '
                    'input data')
             raise ValueError(msg)
 

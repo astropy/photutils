@@ -378,7 +378,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         calculation as the average value in the non-masked regions
         within the kernel footprint.
         """
-        skymask = ~self.kernel.mask.astype(bool)  # 1=sky, 0=obj
+        skymask = ~self.kernel.mask.astype(bool)  # True=sky, False=obj
         # nsky is always > 0 because the kernel mask never covers the
         # entire footprint (the Gaussian kernel is always truncated
         # within the array, leaving unmasked border pixels).
@@ -433,32 +433,15 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         """
         Filter the catalog.
         """
-        # remove all non-finite values - consider these non-detections
         attrs = ('xcentroid', 'ycentroid', 'sharpness', 'roundness', 'pa',
                  'sky', 'peak', 'flux')
-        mask = np.count_nonzero(self.cutout_data, axis=(1, 2)) > 1
-        for attr in attrs:
-            mask &= np.isfinite(getattr(self, attr))
-        newcat = self[mask]
-
-        if len(newcat) == 0:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
+        initial_mask = np.count_nonzero(self.cutout_data, axis=(1, 2)) > 1
+        newcat = self._filter_finite(attrs, initial_mask=initial_mask)
+        if newcat is None:
             return None
 
-        # keep sources that are within the sharpness, roundness, and
-        # peakmax (inclusive) bounds
-        mask = ((newcat.sharpness >= newcat.sharplo)
-                & (newcat.sharpness <= newcat.sharphi)
-                & (newcat.roundness >= newcat.roundlo)
-                & (newcat.roundness <= newcat.roundhi))
-        if newcat.peakmax is not None:
-            mask &= (newcat.peak <= newcat.peakmax)
-        newcat = newcat[mask]
-
-        if len(newcat) == 0:
-            warnings.warn('Sources were found, but none pass the sharpness, '
-                          'roundness, or peakmax criteria',
-                          NoDetectionsWarning)
-            return None
-
-        return newcat
+        bounds = [
+            ('sharpness', 'sharplo', 'sharphi'),
+            ('roundness', 'roundlo', 'roundhi'),
+        ]
+        return newcat._filter_bounds(bounds)

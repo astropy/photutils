@@ -73,6 +73,21 @@ def _make_cutouts(data, xpos, ypos, cutout_shape, *, fill_value=0.0):
         * No overlap (entirely outside): ``~overlap_mask[i].any()``
         * Partial overlap: neither of the above
     """
+    data = np.asarray(data)
+    if data.ndim != 2:
+        msg = 'data must be a 2D array'
+        raise ValueError(msg)
+
+    xpos = np.atleast_1d(np.asarray(xpos))
+    ypos = np.atleast_1d(np.asarray(ypos))
+    if xpos.ndim != 1 or ypos.ndim != 1:
+        msg = 'xpos and ypos must be 1D arrays'
+        raise ValueError(msg)
+
+    if len(cutout_shape) != 2:
+        msg = 'cutout_shape must have exactly 2 elements'
+        raise ValueError(msg)
+
     ky, kx = cutout_shape
     hy, hx = ky // 2, kx // 2
 
@@ -433,8 +448,6 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     * `_get_init_attributes` -- Return attribute names to copy
       during slicing. The override should include
       ``'default_columns'`` in the returned tuple.
-    * `_get_list_attributes` -- Return attribute names that are
-      Python lists instead of arrays (for correct slicing).
     * `make_cutouts` -- Customize how cutout arrays are extracted.
     * `cutout_data` -- Customize the cutouts used for photometry
       (e.g., zeroing negative pixels).
@@ -524,9 +537,6 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         # index/slice the remaining attributes
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
         keys.add('id')
-        scalar_index = np.isscalar(index)
-        # cache to avoid repeated calls
-        list_attrs = self._get_list_attributes()
         for key in keys:
             value = self.__dict__[key]
 
@@ -535,14 +545,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             if np.isscalar(value):
                 continue
 
-            if key in list_attrs:
-                # apply fancy indices to list properties
-                value = np.array([*value, None], dtype=object)[:-1][index]
-                value = [value] if scalar_index else value.tolist()
-            else:
-                # value is always at least a 1D array, even for a single
-                # source
-                value = np.atleast_1d(value[index])
+            # value is always at least a 1D array, even for a single
+            # source
+            value = np.atleast_1d(value[index])
 
             newcls.__dict__[key] = value
 
@@ -556,15 +561,6 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         """
         return ('data', 'unit', 'kernel', 'brightest', 'peakmax',
                 'cutout_shape')
-
-    def _get_list_attributes(self) -> tuple:
-        """
-        Return a tuple of attribute names that are lists instead of arrays.
-
-        This method should be overridden in subclasses if they have
-        list attributes.
-        """
-        return ()
 
     def make_cutouts(self, data):
         """
@@ -679,11 +675,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     @lazyproperty
     def peak(self):
         """The peak pixel values."""
-        cutout_data = self.cutout_data
-        if not isinstance(cutout_data, list):
-            return np.max(cutout_data, axis=(1, 2))
-        peaks = [np.max(arr) for arr in cutout_data]
-        return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
+        return np.max(self.cutout_data, axis=(1, 2))
 
     @lazyproperty
     def isscalar(self):
@@ -721,13 +713,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     @lazyproperty
     def flux(self):
         """The instrumental fluxes."""
-        cutout_data = self.cutout_data
-        if not isinstance(cutout_data, list):
-            return np.sum(cutout_data, axis=(1, 2))
-        fluxes = [np.sum(arr) for arr in cutout_data]
-        if self.unit is not None:
-            return u.Quantity(fluxes)
-        return np.array(fluxes)
+        return np.sum(self.cutout_data, axis=(1, 2))
 
     @lazyproperty
     def mag(self):
@@ -767,6 +753,84 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         if self.brightest is not None:
             idx = np.argsort(self.flux)[::-1][:self.brightest]
             newcat = self[idx]
+        return newcat
+
+    def _filter_finite(self, attrs, *, initial_mask=None,
+                       skip_attrs=()):
+        """
+        Filter the catalog by removing sources with non-finite values.
+
+        Parameters
+        ----------
+        attrs : tuple of str
+            Attribute names to check for finiteness.
+
+        initial_mask : 1D `~numpy.ndarray` of bool or `None`, optional
+            A pre-existing boolean mask to combine with. If `None`,
+            starts with all `True`.
+
+        skip_attrs : tuple of str, optional
+            Attribute names to skip during finiteness checking.
+
+        Returns
+        -------
+        catalog : ``self.__class__`` or `None`
+            The filtered catalog, or `None` if no sources remain.
+        """
+        if initial_mask is None:
+            mask = np.ones(len(self), dtype=bool)
+        else:
+            mask = initial_mask.copy()
+
+        for attr in attrs:
+            if attr in skip_attrs:
+                continue
+            mask &= np.isfinite(getattr(self, attr))
+        newcat = self[mask]
+
+        if len(newcat) == 0:
+            warnings.warn('No sources were found.', NoDetectionsWarning)
+            return None
+
+        return newcat
+
+    def _filter_bounds(self, bounds, *, peakattr='peak'):
+        """
+        Filter the catalog by sharpness, roundness, and peakmax bounds.
+
+        Parameters
+        ----------
+        bounds : list of tuple
+            Each tuple is ``(attr_name, lo_attr, hi_attr)`` giving the
+            attribute to check and the names of the lower/upper bound
+            attributes on ``self``.
+
+        peakattr : str, optional
+            The attribute name for the peak value used for peakmax
+            filtering. The default is ``'peak'``.
+
+        Returns
+        -------
+        catalog : ``self.__class__`` or `None`
+            The filtered catalog, or `None` if no sources remain.
+        """
+        mask = np.ones(len(self), dtype=bool)
+        for attr, lo_attr, hi_attr in bounds:
+            values = getattr(self, attr)
+            mask &= (values >= getattr(self, lo_attr))
+            mask &= (values <= getattr(self, hi_attr))
+
+        if self.peakmax is not None:
+            mask &= (getattr(self, peakattr) <= self.peakmax)
+
+        newcat = self[mask]
+
+        if len(newcat) == 0:
+            warnings.warn('Sources were found, but none pass the '
+                          'sharpness, roundness, or peakmax criteria',
+                          NoDetectionsWarning)
+            return None
+
         return newcat
 
     @abc.abstractmethod
