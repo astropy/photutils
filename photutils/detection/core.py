@@ -223,54 +223,55 @@ class _StarFinderKernel:
         xsigma2 = self.xsigma**2
         ysigma2 = self.ysigma**2
 
-        self.a = (cost**2 / (2.0 * xsigma2)) + (sint**2 / (2.0 * ysigma2))
+        a = (cost**2 / (2.0 * xsigma2)) + (sint**2 / (2.0 * ysigma2))
         # CCW
-        self.b = 0.5 * cost * sint * ((1.0 / xsigma2) - (1.0 / ysigma2))
-        self.c = (sint**2 / (2.0 * xsigma2)) + (cost**2 / (2.0 * ysigma2))
+        b = 0.5 * cost * sint * ((1.0 / xsigma2) - (1.0 / ysigma2))
+        c = (sint**2 / (2.0 * xsigma2)) + (cost**2 / (2.0 * ysigma2))
 
         # find the extent of an ellipse with radius = sigma_radius*sigma;
         # solve for the horizontal and vertical tangents of an ellipse
         # defined by g(x,y) = f
-        self.f = self.sigma_radius**2 / 2.0
-        denom = (self.a * self.c) - self.b**2
+        f = self.sigma_radius**2 / 2.0
+        denom = (a * c) - b**2
 
         # nx and ny are always odd
         # minimum kernel size is 5x5
-        self.nx = 2 * int(max(2, math.sqrt(self.c * self.f / denom))) + 1
-        self.ny = 2 * int(max(2, math.sqrt(self.a * self.f / denom))) + 1
+        nx = 2 * int(max(2, math.sqrt(c * f / denom))) + 1
+        ny = 2 * int(max(2, math.sqrt(a * f / denom))) + 1
 
-        self.xc = self.xradius = self.nx // 2
-        self.yc = self.yradius = self.ny // 2
+        self.xradius = nx // 2
+        self.yradius = ny // 2
 
         # define the kernel on a 2D grid
-        yy, xx = np.mgrid[0:self.ny, 0:self.nx]
-        self.circular_radius = np.sqrt((xx - self.xc)**2 + (yy - self.yc)**2)
-        self.elliptical_radius = (self.a * (xx - self.xc)**2
-                                  + 2.0 * self.b * (xx - self.xc)
-                                  * (yy - self.yc)
-                                  + self.c * (yy - self.yc)**2)
+        xc = self.xradius
+        yc = self.yradius
+        yy, xx = np.mgrid[0:ny, 0:nx]
+        circular_radius = np.sqrt((xx - xc)**2 + (yy - yc)**2)
+        elliptical_radius = (a * (xx - xc)**2
+                             + 2.0 * b * (xx - xc) * (yy - yc)
+                             + c * (yy - yc)**2)
 
         self.mask = np.where(
-            (self.elliptical_radius <= self.f)
-            | (self.circular_radius <= 2.0), 1, 0).astype(int)
+            (elliptical_radius <= f)
+            | (circular_radius <= 2.0), 1, 0).astype(int)
         self.npixels = self.mask.sum()
 
         # NOTE: the central (peak) pixel of gaussian_kernel has a value of 1.0
-        self.gaussian_kernel_unmasked = np.exp(-self.elliptical_radius)
-        self.gaussian_kernel = self.gaussian_kernel_unmasked * self.mask
+        self.gaussian_kernel_unmasked = np.exp(-elliptical_radius)
+        gaussian_kernel = self.gaussian_kernel_unmasked * self.mask
 
         # The denom represents (variance * npixels)
-        denom = ((self.gaussian_kernel**2).sum()
-                 - (self.gaussian_kernel.sum()**2 / self.npixels))
+        denom = ((gaussian_kernel**2).sum()
+                 - (gaussian_kernel.sum()**2 / self.npixels))
         self.relerr = 1.0 / np.sqrt(denom)
 
         # normalize the kernel to zero sum
         if normalize_zerosum:
-            self.data = ((self.gaussian_kernel
-                          - (self.gaussian_kernel.sum() / self.npixels))
+            self.data = ((gaussian_kernel
+                          - (gaussian_kernel.sum() / self.npixels))
                          / denom) * self.mask
         else:  # pragma: no cover
-            self.data = self.gaussian_kernel
+            self.data = gaussian_kernel
 
         self.shape = self.data.shape
 
@@ -350,9 +351,6 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         self.id = np.arange(len(self)) + 1
 
-        self.default_columns = ('id', 'xcentroid', 'ycentroid',
-                                'fwhm', 'flux', 'mag')
-
     def __len__(self):
         return len(self.xypos)
 
@@ -414,7 +412,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         This method should be overridden in subclasses.
         """
         return ('data', 'unit', 'kernel', 'brightest', 'peakmax',
-                'cutout_shape', 'default_columns')
+                'cutout_shape')
 
     def _get_list_attributes(self) -> tuple:
         """
@@ -523,7 +521,10 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     @lazyproperty
     def peak(self):
         """The peak pixel values."""
-        peaks = [np.max(arr) for arr in self.cutout_data]
+        cutout_data = self.cutout_data
+        if not isinstance(cutout_data, list):
+            return np.max(cutout_data, axis=(1, 2))
+        peaks = [np.max(arr) for arr in cutout_data]
         return u.Quantity(peaks) if self.unit is not None else np.array(peaks)
 
     @lazyproperty
@@ -554,12 +555,13 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     @lazyproperty
     def flux(self):
         """The instrumental fluxes."""
-        fluxes = [np.sum(arr) for arr in self.cutout_data]
+        cutout_data = self.cutout_data
+        if not isinstance(cutout_data, list):
+            return np.sum(cutout_data, axis=(1, 2))
+        fluxes = [np.sum(arr) for arr in cutout_data]
         if self.unit is not None:
-            fluxes = u.Quantity(fluxes)
-        else:
-            fluxes = np.array(fluxes)
-        return fluxes
+            return u.Quantity(fluxes)
+        return np.array(fluxes)
 
     @lazyproperty
     def mag(self):
@@ -572,24 +574,24 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
                 flux = flux.value
             return -2.5 * np.log10(flux)
 
+    @property
     @abc.abstractmethod
     def xcentroid(self):
         """
         Object centroid in the x direction.
 
-        This method must be implemented in subclasses to apply
-        algorithm-specific filtering criteria.
+        This property must be implemented in subclasses.
         """
         msg = 'Needs to be implemented in a subclass'
         raise NotImplementedError(msg)
 
+    @property
     @abc.abstractmethod
     def ycentroid(self):
         """
         Object centroid in the y direction.
 
-        This method must be implemented in subclasses to apply
-        algorithm-specific filtering criteria.
+        This property must be implemented in subclasses.
         """
         msg = 'Needs to be implemented in a subclass'
         raise NotImplementedError(msg)

@@ -141,3 +141,28 @@ class TestStarFinder:
         assert len(tbl1) == 25
         assert len(tbl2) == 13
         assert min(tbl2['ycentroid']) > 50
+
+    def test_repeated_calls(self, data, kernel):
+        """Test that calling find_stars twice gives identical results."""
+        finder = StarFinder(1, kernel)
+        tbl1 = finder(data)
+        tbl2 = finder(data)
+        assert len(tbl1) == len(tbl2)
+        for col in tbl1.colnames:
+            assert_equal(tbl1[col], tbl2[col])
+
+    def test_quantity_units_mismatch(self, kernel):
+        """Test that mismatched data/threshold units raise an error."""
+        data = np.ones((11, 11))
+        finder = StarFinder(1 * u.Jy, kernel)
+        match = 'must all have the same units'
+        with pytest.raises(ValueError, match=match):
+            finder(data << u.m)
+
+    def test_data_not_mutated(self, data, kernel):
+        """Test that input data is not mutated by find_stars."""
+        data = data - 5.0  # create some negative pixel values
+        data_copy = data.copy()
+        finder = StarFinder(1, kernel)
+        finder(data)
+        assert_equal(data, data_copy)

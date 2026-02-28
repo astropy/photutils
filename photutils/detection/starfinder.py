@@ -90,8 +90,7 @@ class StarFinder(StarFinderBase):
         self.peakmax = peakmax
 
     def _get_raw_catalog(self, data, *, mask=None):
-        kernel = self.kernel
-        kernel /= np.max(kernel)  # normalize max value to 1.0
+        kernel = self.kernel / np.max(self.kernel)  # normalize max to 1.0
         denom = np.sum(kernel**2) - (np.sum(kernel)**2 / kernel.size)
         if denom > 0:
             kernel = (kernel - np.sum(kernel) / kernel.size) / denom
@@ -232,12 +231,15 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         return np.array([slc[0].start for slc in self.slices])
 
     def make_cutouts(self, data):
-        cutout = []
-        for slc in self.slices:
-            cdata = data[slc]
+        return [data[slc].copy() for slc in self.slices]
+
+    @lazyproperty
+    def cutout_data(self):
+        """The cutout data arrays with negative values set to zero."""
+        cutouts = self.make_cutouts(self.data)
+        for cdata in cutouts:
             cdata[cdata < 0] = 0.0  # exclude negative pixels
-            cutout.append(cdata)
-        return cutout
+        return cutouts
 
     @lazyproperty
     def max_value(self):
