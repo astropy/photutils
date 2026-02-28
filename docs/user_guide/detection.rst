@@ -48,6 +48,12 @@ centroid, roundness, and sharpness using image moments.
 of a custom user-defined kernel as a 2D array. This allows for more
 generalization beyond simple Gaussian kernels.
 
+The usage of :class:`~photutils.detection.IRAFStarFinder` and
+:class:`~photutils.detection.StarFinder` follows the same pattern as
+:class:`~photutils.detection.DAOStarFinder` shown below. Replace the
+class name and adjust the parameters (e.g., ``fwhm`` and ``kernel``) as
+needed.
+
 As an example, let's load an image from the bundled datasets and select
 a subset of the image. We will estimate the background and background
 noise using sigma-clipped statistics::
@@ -64,8 +70,8 @@ noise using sigma-clipped statistics::
 Now we will subtract the background and use an instance of
 :class:`~photutils.detection.DAOStarFinder` to find the stars in the
 image that have FWHMs of around 3 pixels and have peaks approximately
-5-sigma above the background. Running this class on the data yields an
-astropy `~astropy.table.Table` containing the results of the star
+5-sigma above the background. Running this class on the data yields
+an astropy `~astropy.table.QTable` containing the results of the star
 finder::
 
     >>> from photutils.detection import DAOStarFinder
@@ -221,7 +227,7 @@ sigma above the background and are separated by at least 5 pixels::
       9    471     37  24.141928
      10    358     39  18.671565
 
-And let's plot the location of the detected peaks in the image:
+Let's plot the location of the detected peaks in the image:
 
 .. doctest-skip::
 
