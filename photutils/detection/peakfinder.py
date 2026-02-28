@@ -48,10 +48,12 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         The 2D array of the image.
 
     threshold : float, scalar `~astropy.units.Quantity` or array_like
-        The data value or pixel-wise data values to be used for the
-        detection threshold. If ``data`` is a `~astropy.units.Quantity`
-        array, then ``threshold`` must have the same units as ``data``.
-        A 2D ``threshold`` must have the same shape as ``data``. See
+        The data value or pixel-wise data values to be used
+        for the detection threshold. A peak is detected only
+        if it is strictly greater than the ``threshold``. If
+        ``data`` is a `~astropy.units.Quantity` array, then
+        ``threshold`` must have the same units as ``data``. A 2D
+        ``threshold`` must have the same shape as ``data``. See
         `~photutils.segmentation.detect_threshold` for one way to create
         a ``threshold`` image.
 

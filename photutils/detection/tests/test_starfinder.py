@@ -52,6 +52,16 @@ class TestStarFinder:
         with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, brightest=3.1)
 
+    @pytest.mark.parametrize('ndim', [1, 3])
+    def test_kernel_not_2d(self, ndim):
+        """
+        Test that non-2D kernels raise ValueError.
+        """
+        bad_kernel = np.ones(5) if ndim == 1 else np.ones((3, 3, 3))
+        match = 'kernel must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            StarFinder(1, bad_kernel)
+
     def test_nosources(self, data, kernel):
         """
         Test that no sources returns None with a warning.
@@ -223,3 +233,24 @@ class TestStarFinder:
         finder = StarFinder(1, kernel)
         finder(data, mask=mask)
         assert_equal(data, data_copy)
+
+    def test_repr(self, kernel):
+        """
+        Test the __repr__ of StarFinder.
+        """
+        finder = StarFinder(threshold=5.0, kernel=kernel)
+        r = repr(finder)
+        assert 'StarFinder(' in r
+        assert 'threshold=5.0' in r
+        assert '<array; shape=' in r
+        assert 'brightest=None' in r
+
+    def test_str(self, kernel):
+        """
+        Test the __str__ of StarFinder.
+        """
+        finder = StarFinder(threshold=5.0, kernel=kernel)
+        s = str(finder)
+        assert 'StarFinder' in s
+        assert 'threshold: 5.0' in s
+        assert '<array; shape=' in s

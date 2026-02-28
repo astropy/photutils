@@ -23,6 +23,7 @@ from photutils.detection.peakfinder import find_peaks
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _image_moments
 from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['StarFinderBase', 'StarFinderCatalogBase']
@@ -276,6 +277,14 @@ class _StarFinderKernel:
 
         self.shape = self.data.shape
 
+    def __repr__(self):
+        params = ('fwhm', 'ratio', 'theta', 'sigma_radius')
+        return make_repr(self, params)
+
+    def __str__(self):
+        params = ('fwhm', 'ratio', 'theta', 'sigma_radius')
+        return make_repr(self, params, long=True)
+
 
 def _validate_brightest(brightest):
     """
@@ -368,6 +377,16 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         self.peakmax = peakmax
 
         self.id = np.arange(len(self)) + 1
+
+    def __repr__(self):
+        params = ('nsources',)
+        overrides = {'nsources': len(self)}
+        return make_repr(self, params, brackets=True, overrides=overrides)
+
+    def __str__(self):
+        params = ('nsources',)
+        overrides = {'nsources': len(self)}
+        return make_repr(self, params, overrides=overrides, long=True)
 
     def __len__(self):
         return len(self.xypos)
@@ -467,7 +486,13 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     @lazyproperty
     def cutout_data(self):
-        """The cutout data arrays."""
+        """
+        The cutout data arrays.
+
+        Subclasses may override this property to customize the cutouts
+        used for moment-based photometry calculations (e.g., zeroing
+        negative pixels or subtracting a local sky background).
+        """
         return self.make_cutouts(self.data)
 
     @lazyproperty
@@ -535,6 +560,15 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
                 2.0 * self.moments_central[:, 1, 1],
                 self.mu_diff))
         return np.where(pa < 0, pa + 180, pa)
+
+    @lazyproperty
+    def roundness(self):
+        """The roundness of the sources."""
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return (np.sqrt(self.mu_diff**2
+                            + 4.0 * self.moments_central[:, 1, 1]**2)
+                    / self.mu_sum)
 
     @lazyproperty
     def peak(self):

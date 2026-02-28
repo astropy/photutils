@@ -36,11 +36,12 @@ lower and upper bounds can be specified.
 
 :class:`~photutils.detection.IRAFStarFinder` is a class that
 implements IRAF's `starfind`_ algorithm. It is fundamentally
-similar to :class:`~photutils.detection.DAOStarFinder`,
-but :class:`~photutils.detection.DAOStarFinder` can use
-an elliptical Gaussian kernel. One other difference in
-:class:`~photutils.detection.IRAFStarFinder` is that it calculates the
-objects' centroid, roundness, and sharpness using image moments.
+similar to :class:`~photutils.detection.DAOStarFinder`, but
+:class:`~photutils.detection.IRAFStarFinder` always uses a circular
+Gaussian kernel whereas :class:`~photutils.detection.DAOStarFinder`
+can use an elliptical Gaussian kernel. Another difference is that
+:class:`~photutils.detection.IRAFStarFinder` calculates the objects'
+centroid, roundness, and sharpness using image moments.
 
 :class:`~photutils.detection.StarFinder` is a class similar to
 :class:`~photutils.detection.IRAFStarFinder`, but which allows input
@@ -133,9 +134,10 @@ Masking Regions
 ^^^^^^^^^^^^^^^
 
 Regions of the input image can be masked by using the ``mask``
-keyword with the :class:`~photutils.detection.DAOStarFinder` or
-:class:`~photutils.detection.IRAFStarFinder` instance. This simple
-example uses :class:`~photutils.detection.DAOStarFinder` and masks two
+keyword with the :class:`~photutils.detection.DAOStarFinder`,
+:class:`~photutils.detection.IRAFStarFinder`, or
+:class:`~photutils.detection.StarFinder` instance. This simple example
+uses :class:`~photutils.detection.DAOStarFinder` and masks two
 rectangular regions. No sources will be detected in the masked regions:
 
 .. doctest-skip::

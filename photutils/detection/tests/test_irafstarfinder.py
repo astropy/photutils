@@ -53,6 +53,10 @@ class TestIRAFStarFinder:
         with pytest.raises(ValueError, match=match):
             IRAFStarFinder(10, 1.5, brightest=3.1)
 
+        match = 'minsep_fwhm must be >= 0'
+        with pytest.raises(ValueError, match=match):
+            IRAFStarFinder(10, 1.5, minsep_fwhm=-1)
+
         xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
         match = 'xycoords must be shaped as an Nx2 array'
         with pytest.raises(ValueError, match=match):
@@ -270,3 +274,35 @@ class TestIRAFStarFinder:
         finder = IRAFStarFinder(threshold=1.0, fwhm=1.5)
         finder(data, mask=mask)
         assert_array_equal(data, data_copy)
+
+    def test_repr(self):
+        """
+        Test the __repr__ of IRAFStarFinder.
+        """
+        finder = IRAFStarFinder(threshold=5.0, fwhm=3.0)
+        r = repr(finder)
+        assert 'IRAFStarFinder(' in r
+        assert 'threshold=5.0' in r
+        assert 'fwhm=3.0' in r
+        assert 'minsep_fwhm=2.5' in r
+        assert 'xycoords=None' in r
+
+    def test_str(self):
+        """
+        Test the __str__ of IRAFStarFinder.
+        """
+        finder = IRAFStarFinder(threshold=5.0, fwhm=3.0)
+        s = str(finder)
+        assert 'IRAFStarFinder' in s
+        assert 'threshold: 5.0' in s
+        assert 'fwhm: 3.0' in s
+
+    def test_repr_with_xycoords(self):
+        """
+        Test that __repr__ shows array shape when xycoords are provided.
+        """
+        xycoords = np.array([[5, 5], [10, 10]])
+        finder = IRAFStarFinder(threshold=5.0, fwhm=3.0,
+                                xycoords=xycoords)
+        r = repr(finder)
+        assert '<array; shape=(2, 2)>' in r

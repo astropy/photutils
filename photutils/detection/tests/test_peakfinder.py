@@ -126,6 +126,17 @@ class TestFindPeaks:
         with pytest.raises(TypeError, match=match):
             find_peaks(data, 0.1, box_size=2, centroid_func=True)
 
+    def test_centroid_func_with_error(self, data):
+        """
+        Test find_peaks with a centroid_func and an error array.
+        """
+        error = np.ones_like(data) * 0.1
+        tbl = find_peaks(data, 0.1, box_size=3, centroid_func=centroid_com,
+                         error=error)
+        assert 'x_centroid' in tbl.colnames
+        assert 'y_centroid' in tbl.colnames
+        assert len(tbl) > 0
+
     def test_wcs(self, data):
         """
         Test with astropy WCS.

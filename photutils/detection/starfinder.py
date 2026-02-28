@@ -13,6 +13,7 @@ from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _validate_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['StarFinder']
@@ -80,7 +81,13 @@ class StarFinder(StarFinderBase):
         _ = process_quantities(inputs, names)
 
         self.threshold = threshold
+
+        kernel = np.asarray(kernel)
+        if kernel.ndim != 2:
+            msg = 'kernel must be a 2D array'
+            raise ValueError(msg)
         self.kernel = kernel
+
         if min_separation < 0:
             msg = 'min_separation must be >= 0'
             raise ValueError(msg)
@@ -88,6 +95,18 @@ class StarFinder(StarFinderBase):
         self.exclude_border = exclude_border
         self.brightest = _validate_brightest(brightest)
         self.peakmax = peakmax
+
+    def __repr__(self):
+        params = ('threshold', 'kernel', 'min_separation',
+                  'exclude_border', 'brightest', 'peakmax')
+        overrides = {'kernel': f'<array; shape={self.kernel.shape}>'}
+        return make_repr(self, params, overrides=overrides)
+
+    def __str__(self):
+        params = ('threshold', 'kernel', 'min_separation',
+                  'exclude_border', 'brightest', 'peakmax')
+        overrides = {'kernel': f'<array; shape={self.kernel.shape}>'}
+        return make_repr(self, params, overrides=overrides, long=True)
 
     def _get_raw_catalog(self, data, *, mask=None):
         kernel = self.kernel / np.max(self.kernel)  # normalize max to 1.0
@@ -252,13 +271,6 @@ class _StarFinderCatalog(StarFinderCatalogBase):
     @lazyproperty
     def ycentroid(self):
         return self.cutout_ycentroid + self.bbox_ymin
-
-    @lazyproperty
-    def roundness(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            factor = self.mu_diff**2 + 4.0 * self.moments_central[:, 1, 1]**2
-            return np.sqrt(factor) / self.mu_sum
 
     def apply_filters(self):
         """

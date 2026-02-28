@@ -12,6 +12,7 @@ from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _StarFinderKernel, _validate_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._quantity_helpers import isscalar, process_quantities
+from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['IRAFStarFinder']
@@ -146,13 +147,17 @@ class IRAFStarFinder(StarFinderBase):
             msg = 'threshold must be a scalar value'
             raise TypeError(msg)
 
-        if not np.isscalar(fwhm):
+        if not isscalar(fwhm):
             msg = 'fwhm must be a scalar value'
             raise TypeError(msg)
 
         self.threshold = threshold
         self.fwhm = fwhm
         self.sigma_radius = sigma_radius
+
+        if minsep_fwhm < 0:
+            msg = 'minsep_fwhm must be >= 0'
+            raise ValueError(msg)
         self.minsep_fwhm = minsep_fwhm
         self.sharplo = sharplo
         self.sharphi = sharphi
@@ -180,6 +185,24 @@ class IRAFStarFinder(StarFinderBase):
         else:
             self.min_separation = max(2, int((self.fwhm * self.minsep_fwhm)
                                              + 0.5))
+
+    def _repr_str_params(self):
+        params = ('threshold', 'fwhm', 'sigma_radius', 'minsep_fwhm',
+                  'sharplo', 'sharphi', 'roundlo', 'roundhi',
+                  'exclude_border', 'brightest', 'peakmax', 'xycoords',
+                  'min_separation')
+        overrides = {}
+        if self.xycoords is not None:
+            overrides['xycoords'] = f'<array; shape={self.xycoords.shape}>'
+        return params, overrides or None
+
+    def __repr__(self):
+        params, overrides = self._repr_str_params()
+        return make_repr(self, params, overrides=overrides)
+
+    def __str__(self):
+        params, overrides = self._repr_str_params()
+        return make_repr(self, params, overrides=overrides, long=True)
 
     def _get_raw_catalog(self, data, *, mask=None):
         convolved_data = _filter_data(data, self.kernel.data, mode='constant',
@@ -396,15 +419,6 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
     @lazyproperty
     def ycentroid(self):
         return self.cutout_ycentroid + self.cutout_yorigin
-
-    @lazyproperty
-    def roundness(self):
-        # ignore divide-by-zero RuntimeWarning
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            return (np.sqrt(self.mu_diff**2
-                            + 4.0 * self.moments_central[:, 1, 1]**2)
-                    / self.mu_sum)
 
     @lazyproperty
     def sharpness(self):

@@ -13,6 +13,7 @@ from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _StarFinderKernel, _validate_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._quantity_helpers import isscalar, process_quantities
+from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['DAOStarFinder']
@@ -170,7 +171,7 @@ class DAOStarFinder(StarFinderBase):
             msg = 'threshold must be a scalar value'
             raise TypeError(msg)
 
-        if not np.isscalar(fwhm):
+        if not isscalar(fwhm):
             msg = 'fwhm must be a scalar value'
             raise TypeError(msg)
 
@@ -204,6 +205,25 @@ class DAOStarFinder(StarFinderBase):
                                         theta=self.theta,
                                         sigma_radius=self.sigma_radius)
         self.threshold_eff = self.threshold * self.kernel.relerr
+
+    def _repr_str_params(self):
+        params = ('threshold', 'fwhm', 'ratio', 'theta', 'sigma_radius',
+                  'sharplo', 'sharphi', 'roundlo', 'roundhi',
+                  'exclude_border', 'brightest', 'peakmax', 'xycoords',
+                  'min_separation')
+        overrides = {}
+        if self.xycoords is not None:
+            overrides['xycoords'] = (
+                f'<array; shape={self.xycoords.shape}>')
+        return params, overrides or None
+
+    def __repr__(self):
+        params, overrides = self._repr_str_params()
+        return make_repr(self, params, overrides=overrides)
+
+    def __str__(self):
+        params, overrides = self._repr_str_params()
+        return make_repr(self, params, overrides=overrides, long=True)
 
     def _get_raw_catalog(self, data, *, mask=None):
         convolved_data = _filter_data(data, self.kernel.data, mode='constant',
@@ -481,8 +501,19 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
             x or y (depending on ``axis`` value) distribution of the
             unconvolved source data.
         """
-        # define triangular weighting functions along each axis, peaked
-        # in the middle and equal to one at the edge
+        wt, wts, size, center, sigma, dxx = (
+            self._marginal_weights(axis))
+        kern_sums = self._marginal_kernel_sums(wt, wts, axis, center,
+                                               size)
+        data_sums = self._marginal_data_sums(wt, wts, axis, dxx,
+                                             kern_sums)
+        return self._marginal_lstsq(kern_sums, data_sums, sigma, size)
+
+    def _marginal_weights(self, axis):
+        """Compute triangular weighting functions for the given axis.
+
+        Returns ``(wt, wts, size, center, sigma, dxx)``.
+        """
         ycen, xcen = self.cutout_center
         xx = xcen - np.abs(np.arange(self.cutout_shape[1]) - xcen) + 1
         yy = ycen - np.abs(np.arange(self.cutout_shape[0]) - ycen) + 1
@@ -503,13 +534,18 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
             sigma = self.kernel.ysigma
             dxx = np.arange(size) - center
 
-        # compute marginal sums for given axis
-        wt_sum = np.sum(wt)
+        return wt, wts, size, center, sigma, dxx
+
+    def _marginal_kernel_sums(self, wt, wts, axis, center, size):
+        """Compute weighted marginal kernel sums.
+
+        Returns a dict of precomputed kernel-side quantities.
+        """
         dx = center - np.arange(size)
 
-        # weighted marginal sums
         kern_sum_1d = np.sum(self.kernel.gaussian_kernel_unmasked * wts,
                              axis=axis)
+        wt_sum = np.sum(wt)
         kern_sum = np.sum(kern_sum_1d * wt)
         kern2_sum = np.sum(kern_sum_1d**2 * wt)
 
@@ -518,15 +554,50 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         dkern_dx2_sum = np.sum(dkern_dx**2 * wt)
         kern_dkern_dx_sum = np.sum(kern_sum_1d * dkern_dx * wt)
 
+        return {'wt_sum': wt_sum, 'kern_sum': kern_sum,
+                'kern2_sum': kern2_sum, 'kern_sum_1d': kern_sum_1d,
+                'dkern_dx': dkern_dx, 'dkern_dx_sum': dkern_dx_sum,
+                'dkern_dx2_sum': dkern_dx2_sum,
+                'kern_dkern_dx_sum': kern_dkern_dx_sum}
+
+    def _marginal_data_sums(self, wt, wts, axis, dxx, kern_sums):
+        """Compute weighted marginal data sums.
+
+        Returns a dict of precomputed data-side quantities.
+        """
         cutout_data = self.cutout_data
         if isinstance(cutout_data, u.Quantity):
             cutout_data = cutout_data.value
 
         data_sum_1d = np.sum(cutout_data * wts, axis=axis + 1)
         data_sum = np.sum(data_sum_1d * wt, axis=1)
-        data_kern_sum = np.sum(data_sum_1d * kern_sum_1d * wt, axis=1)
-        data_dkern_dx_sum = np.sum(data_sum_1d * dkern_dx * wt, axis=1)
+        data_kern_sum = np.sum(
+            data_sum_1d * kern_sums['kern_sum_1d'] * wt, axis=1)
+        data_dkern_dx_sum = np.sum(
+            data_sum_1d * kern_sums['dkern_dx'] * wt, axis=1)
         data_dx_sum = np.sum(data_sum_1d * dxx * wt, axis=1)
+
+        return {'data_sum': data_sum, 'data_kern_sum': data_kern_sum,
+                'data_dkern_dx_sum': data_dkern_dx_sum,
+                'data_dx_sum': data_dx_sum}
+
+    @staticmethod
+    def _marginal_lstsq(kern_sums, data_sums, sigma, size):
+        """Perform the marginal least-squares fit and apply masks.
+
+        Returns an Nx2 array of ``(dx, hx)`` pairs.
+        """
+        wt_sum = kern_sums['wt_sum']
+        kern_sum = kern_sums['kern_sum']
+        kern2_sum = kern_sums['kern2_sum']
+        dkern_dx_sum = kern_sums['dkern_dx_sum']
+        dkern_dx2_sum = kern_sums['dkern_dx2_sum']
+        kern_dkern_dx_sum = kern_sums['kern_dkern_dx_sum']
+
+        data_sum = data_sums['data_sum']
+        data_kern_sum = data_sums['data_kern_sum']
+        data_dkern_dx_sum = data_sums['data_dkern_dx_sum']
+        data_dx_sum = data_sums['data_dx_sum']
 
         # perform linear least-squares fit (where data = hx*kernel)
         # to find the amplitude (hx)

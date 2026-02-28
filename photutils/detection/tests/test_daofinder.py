@@ -275,3 +275,35 @@ class TestDAOStarFinder:
         finder = DAOStarFinder(threshold=1.0, fwhm=1.5)
         finder(data, mask=mask)
         assert_array_equal(data, data_copy)
+
+    def test_repr(self):
+        """
+        Test the __repr__ of DAOStarFinder.
+        """
+        finder = DAOStarFinder(threshold=5.0, fwhm=3.0)
+        r = repr(finder)
+        assert 'DAOStarFinder(' in r
+        assert 'threshold=5.0' in r
+        assert 'fwhm=3.0' in r
+        assert 'ratio=1.0' in r
+        assert 'xycoords=None' in r
+
+    def test_str(self):
+        """
+        Test the __str__ of DAOStarFinder.
+        """
+        finder = DAOStarFinder(threshold=5.0, fwhm=3.0)
+        s = str(finder)
+        assert 'DAOStarFinder' in s
+        assert 'threshold: 5.0' in s
+        assert 'fwhm: 3.0' in s
+
+    def test_repr_with_xycoords(self):
+        """
+        Test that __repr__ shows array shape when xycoords are provided.
+        """
+        xycoords = np.array([[5, 5], [10, 10]])
+        finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
+                               xycoords=xycoords)
+        r = repr(finder)
+        assert '<array; shape=(2, 2)>' in r
