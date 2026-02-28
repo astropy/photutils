@@ -11,22 +11,30 @@ from photutils.detection.core import (StarFinderCatalogBase, _StarFinderKernel,
 
 
 class TestStarFinderKernel:
-    """Tests for the _StarFinderKernel class."""
+    """
+    Tests for the _StarFinderKernel class.
+    """
 
     def test_fwhm_zero(self):
-        """Test that fwhm=0 raises a ValueError."""
+        """
+        Test that fwhm=0 raises a ValueError.
+        """
         match = 'fwhm must be positive'
         with pytest.raises(ValueError, match=match):
             _StarFinderKernel(fwhm=0)
 
     def test_fwhm_negative(self):
-        """Test that a negative fwhm raises a ValueError."""
+        """
+        Test that a negative fwhm raises a ValueError.
+        """
         match = 'fwhm must be positive'
         with pytest.raises(ValueError, match=match):
             _StarFinderKernel(fwhm=-1)
 
     def test_normalize_zerosum_false(self):
-        """Test kernel with normalize_zerosum=False."""
+        """
+        Test kernel with normalize_zerosum=False.
+        """
         kernel = _StarFinderKernel(fwhm=2.0, normalize_zerosum=False)
         # without zero-sum normalization, the kernel sums to a positive value
         assert kernel.data.sum() > 0
@@ -39,31 +47,41 @@ class TestValidateBrightest:
 
     @pytest.mark.parametrize('brightest', [-1, -0.5, -100])
     def test_brightest_negative(self, brightest):
-        """Test that negative brightest values raise ValueError."""
+        """
+        Test that negative brightest values raise ValueError.
+        """
         match = 'brightest must be > 0'
         with pytest.raises(ValueError, match=match):
             _validate_brightest(brightest)
 
     def test_brightest_zero(self):
-        """Test that brightest=0 raises ValueError."""
+        """
+        Test that brightest=0 raises ValueError.
+        """
         match = 'brightest must be > 0'
         with pytest.raises(ValueError, match=match):
             _validate_brightest(0)
 
     @pytest.mark.parametrize('brightest', [3.1, 2.5, 1.9])
     def test_brightest_not_integer(self, brightest):
-        """Test that non-integer brightest values raise ValueError."""
+        """
+        Test that non-integer brightest values raise ValueError.
+        """
         match = 'brightest must be an integer'
         with pytest.raises(ValueError, match=match):
             _validate_brightest(brightest)
 
     @pytest.mark.parametrize('brightest', [1, 5, 100])
     def test_brightest_valid(self, brightest):
-        """Test that valid brightest values are returned unchanged."""
+        """
+        Test that valid brightest values are returned unchanged.
+        """
         assert _validate_brightest(brightest) == brightest
 
     def test_brightest_none(self):
-        """Test that None is a valid brightest value."""
+        """
+        Test that None is a valid brightest value.
+        """
         assert _validate_brightest(None) is None
 
 
@@ -92,10 +110,14 @@ def _make_minimal_catalog_class():
 
 
 class TestStarFinderCatalogBase:
-    """Tests for the StarFinderCatalogBase base-class methods."""
+    """
+    Tests for the StarFinderCatalogBase base-class methods.
+    """
 
     def test_get_init_attributes(self):
-        """Test base _get_init_attributes returns expected tuple."""
+        """
+        Test base _get_init_attributes returns expected tuple.
+        """
         catalog_cls = _make_minimal_catalog_class()
         data = np.zeros((11, 11))
         data[5, 5] = 10.0
@@ -107,7 +129,9 @@ class TestStarFinderCatalogBase:
         assert cat._get_init_attributes() == expected
 
     def test_to_table_missing_default_columns(self):
-        """Test that to_table raises when default_columns is not set."""
+        """
+        Test that to_table raises when default_columns is not set.
+        """
         catalog_cls = _make_minimal_catalog_class()
         data = np.zeros((11, 11))
         data[5, 5] = 10.0

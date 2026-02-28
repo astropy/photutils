@@ -206,13 +206,17 @@ class TestFindPeaks:
         find_peaks(data, 0.1)
 
     def test_data_not_mutated(self, data):
-        """Test that input data is not mutated by find_peaks."""
+        """
+        Test that input data is not mutated by find_peaks.
+        """
         data_copy = data.copy()
         find_peaks(data, 0.1, box_size=3)
         assert_equal(data, data_copy)
 
     def test_data_not_mutated_with_mask(self, data):
-        """Test that input data is not mutated when a mask is used."""
+        """
+        Test that input data is not mutated when a mask is used.
+        """
         data_copy = data.copy()
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50] = True
