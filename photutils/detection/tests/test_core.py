@@ -7,8 +7,106 @@ import numpy as np
 import pytest
 
 from photutils.detection import DAOStarFinder
-from photutils.detection.core import (StarFinderCatalogBase, _StarFinderKernel,
-                                      _validate_brightest)
+from photutils.detection.core import (StarFinderCatalogBase, _make_cutouts,
+                                      _StarFinderKernel, _validate_brightest)
+
+
+class TestMakeCutouts:
+    """
+    Tests for the _make_cutouts utility function.
+    """
+
+    def setup_method(self):
+        self.data = np.arange(100, dtype=float).reshape(10, 10)
+
+    def test_fully_inside(self):
+        """
+        Test a source fully inside the image.
+        """
+        xpos = np.array([5.0])
+        ypos = np.array([5.0])
+        cutouts, mask = _make_cutouts(self.data, xpos, ypos, (3, 3))
+        assert cutouts.shape == (1, 3, 3)
+        np.testing.assert_array_equal(cutouts[0], self.data[4:7, 4:7])
+        assert mask[0].all()
+
+    def test_partial_overlap_corners(self):
+        """
+        Test sources at image corners that partially overlap.
+        """
+        xpos = np.array([0.0, 9.0])
+        ypos = np.array([0.0, 9.0])
+        _, mask = _make_cutouts(self.data, xpos, ypos, (5, 5))
+
+        # corner (0, 0): top-left 2 rows and 2 cols are outside
+        assert not mask[0].all()  # not fully inside
+        assert mask[0].any()  # not fully outside
+        assert not mask[0, 0, 0]  # outside pixel
+        assert mask[0, 2, 2]  # center pixel (the position itself)
+
+        # corner (9, 9): bottom-right 2 rows and 2 cols are outside
+        assert not mask[1].all()
+        assert mask[1].any()
+        assert mask[1, 2, 2]  # center pixel
+        assert not mask[1, 4, 4]  # outside pixel
+
+    def test_no_overlap(self):
+        """
+        Test a source completely outside the image.
+        """
+        xpos = np.array([-10.0])
+        ypos = np.array([-10.0])
+        cutouts, mask = _make_cutouts(self.data, xpos, ypos, (3, 3))
+        assert not mask[0].any()
+        assert np.all(cutouts[0] == 0.0)
+
+    def test_fill_value_nan(self):
+        """
+        Test that fill_value=NaN fills out-of-bounds pixels with NaN.
+        """
+        xpos = np.array([0.0])
+        ypos = np.array([0.0])
+        cutouts, mask = _make_cutouts(self.data, xpos, ypos, (5, 5),
+                                      fill_value=np.nan)
+        # outside pixels should be NaN
+        assert np.all(np.isnan(cutouts[0][~mask[0]]))
+        # inside pixels should not be NaN
+        assert np.all(np.isfinite(cutouts[0][mask[0]]))
+
+    def test_fill_value_custom(self):
+        """
+        Test that a custom fill_value is used for out-of-bounds pixels.
+        """
+        xpos = np.array([0.0])
+        ypos = np.array([0.0])
+        cutouts, mask = _make_cutouts(self.data, xpos, ypos, (3, 3),
+                                      fill_value=-99.0)
+        assert np.all(cutouts[0][~mask[0]] == -99.0)
+
+    def test_overlap_mask_dtype(self):
+        """
+        Test that overlap_mask is a boolean array.
+        """
+        xpos = np.array([5.0])
+        ypos = np.array([5.0])
+        _, mask = _make_cutouts(self.data, xpos, ypos, (3, 3))
+        assert mask.dtype == bool
+
+    def test_mixed_sources(self):
+        """
+        Test a mix of fully-inside, partial, and outside sources.
+        """
+        xpos = np.array([5.0, 0.0, -10.0])
+        ypos = np.array([5.0, 0.0, -10.0])
+        _, mask = _make_cutouts(self.data, xpos, ypos, (3, 3))
+
+        # fully inside
+        assert mask[0].all()
+        # partial overlap
+        assert mask[1].any()
+        assert not mask[1].all()
+        # no overlap
+        assert not mask[2].any()
 
 
 class TestStarFinderKernel:

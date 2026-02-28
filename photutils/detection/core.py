@@ -28,12 +28,12 @@ from photutils.utils.exceptions import NoDetectionsWarning
 __all__ = ['StarFinderBase', 'StarFinderCatalogBase']
 
 
-def _make_cutouts(data, xpos, ypos, cutout_shape):
+def _make_cutouts(data, xpos, ypos, cutout_shape, *, fill_value=0.0):
     """
     Make 2D cutouts from a data array at the given positions.
 
-    Positions are rounded to the nearest integer pixel.  Pixels that
-    fall outside the image boundary are filled with 0.
+    Positions are rounded to the nearest integer pixel. Pixels that fall
+    outside the image boundary are filled with ``fill_value``.
 
     Parameters
     ----------
@@ -49,11 +49,29 @@ def _make_cutouts(data, xpos, ypos, cutout_shape):
     cutout_shape : tuple of int
         The ``(ny, nx)`` shape of each cutout.
 
+    fill_value : float, optional
+        The value used to fill pixels that fall outside the image
+        boundary. The default is 0.0. Use ``np.nan`` when out-of-bounds
+        pixels must be distinguishable from real data (e.g., for
+        sigma-clipped statistics on partial cutouts).
+
     Returns
     -------
     cutouts : 3D `~numpy.ndarray`
         A 3D array of shape ``(n_sources, ny, nx)`` containing the
         cutout data.
+
+    overlap_mask : 3D `~numpy.ndarray` of bool
+        A boolean array with the same shape as ``cutouts``. `True`
+        indicates a pixel that came from ``data``. `False` indicates
+        a pixel that was filled with ``fill_value`` because it fell
+        outside the image boundary.
+
+        Per-source overlap status can be derived from this mask:
+
+        * Fully inside the image: ``overlap_mask[i].all()``
+        * No overlap (entirely outside): ``~overlap_mask[i].any()``
+        * Partial overlap: neither of the above
     """
     ky, kx = cutout_shape
     hy, hx = ky // 2, kx // 2
@@ -67,14 +85,18 @@ def _make_cutouts(data, xpos, ypos, cutout_shape):
     y_idx = yc[:, np.newaxis, np.newaxis] + dy[np.newaxis, :, np.newaxis]
     x_idx = xc[:, np.newaxis, np.newaxis] + dx[np.newaxis, np.newaxis, :]
 
-    # clip out-of-bounds indices to valid range; pixels outside the
-    # image boundary are filled with 0.0 below
-    valid = ((y_idx >= 0) & (y_idx < data.shape[0])
-             & (x_idx >= 0) & (x_idx < data.shape[1]))
+    # Mask of pixels inside the image boundary
+    overlap_mask = ((y_idx >= 0) & (y_idx < data.shape[0])
+                    & (x_idx >= 0) & (x_idx < data.shape[1]))
+
+    # Clip out-of-bounds indices to valid range so numpy indexing
+    # doesn't raise. The out-of-bounds pixels are replaced below.
     y_safe = np.clip(y_idx, 0, data.shape[0] - 1)
     x_safe = np.clip(x_idx, 0, data.shape[1] - 1)
 
-    return np.where(valid, data[y_safe, x_safe], 0.0)
+    cutouts = np.where(overlap_mask, data[y_safe, x_safe], fill_value)
+
+    return cutouts, overlap_mask
 
 
 class StarFinderBase(metaclass=abc.ABCMeta):
@@ -560,8 +582,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         """
         data_arr = data.value if isinstance(data, u.Quantity) else data
 
-        cutouts = _make_cutouts(data_arr, self.xypos[:, 0],
-                                self.xypos[:, 1], self.cutout_shape)
+        cutouts, _ = _make_cutouts(data_arr, self.xypos[:, 0],
+                                   self.xypos[:, 1], self.cutout_shape)
 
         if self.unit is not None:
             cutouts <<= self.unit
