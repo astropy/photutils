@@ -605,12 +605,10 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         ky, kx = data.shape[1], data.shape[2]
         y = np.arange(ky, dtype=float)
         x = np.arange(kx, dtype=float)
-        # ypowers shape (ky, 2): columns are [1, y]
-        # xpowers shape (kx, 2): columns are [1, x]
-        ypowers = np.column_stack([np.ones(ky), y])
-        xpowers = np.column_stack([np.ones(kx), x])
+        ypowers = np.column_stack([np.ones(ky), y])  # (ky, 2)
+        xpowers = np.column_stack([np.ones(kx), x])  # (kx, 2)
         # M[n, p, q] = sum_jk data[n,j,k] * y[j]^p * x[k]^q
-        return np.einsum('njk,jp,kq->npq', data, ypowers, xpowers)
+        return ypowers.T @ data @ xpowers
 
     @lazyproperty
     def cutout_centroid(self):
@@ -643,16 +641,14 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         ky, kx = data.shape[1], data.shape[2]
         y = np.arange(ky, dtype=float)
         x = np.arange(kx, dtype=float)
-        # per-source shifted coordinates: shape (n, ky) and (n, kx)
-        ycen = self.cutout_ycentroid[:, np.newaxis]
-        xcen = self.cutout_xcentroid[:, np.newaxis]
-        dy = y[np.newaxis, :] - ycen  # (n, ky)
-        dx = x[np.newaxis, :] - xcen  # (n, kx)
-        # build per-source power arrays up to order 2
+        # per-source shifted coordinates
+        dy = y[np.newaxis, :] - self.cutout_ycentroid[:, np.newaxis]
+        dx = x[np.newaxis, :] - self.cutout_xcentroid[:, np.newaxis]
+        # per-source power arrays: (n, ky, 3) and (n, kx, 3)
         ypowers = np.stack([np.ones_like(dy), dy, dy**2], axis=-1)
         xpowers = np.stack([np.ones_like(dx), dx, dx**2], axis=-1)
-        # M[n, p, q] = sum_jk data[n,j,k] * dy[n,j]^p * dx[n,k]^q
-        moments = np.einsum('njk,njp,nkq->npq', data, ypowers, xpowers)
+        # batched matmul: ypowers^T @ data @ xpowers per source
+        moments = (np.transpose(ypowers, (0, 2, 1)) @ data @ xpowers)
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
