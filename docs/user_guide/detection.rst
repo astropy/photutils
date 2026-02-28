@@ -202,8 +202,14 @@ However, a centroiding function can be input via the ``centroid_func``
 keyword to :func:`~photutils.detection.find_peaks` to also compute
 centroid coordinates with subpixel precision.
 
+The ``box_size`` parameter also effectively imposes a minimum separation
+between detected peaks, since only one peak can be found within each box
+of that size. Specifically, two peaks must differ by at least ``box_size
+// 2 + 1`` pixels along each axis. For example, a ``box_size`` of 11
+imposes a minimum separation of 6 pixels.
+
 As a simple example, let's find the local peaks in an image that are 5
-sigma above the background and are separated by at least 5 pixels::
+sigma above the background using a box size of 11 pixels::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.datasets import make_100gaussians_image

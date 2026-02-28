@@ -114,7 +114,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     Returns
     -------
-    output : `~astropy.table.Table` or `None`
+    output : `~astropy.table.QTable` or `None`
         A table containing the x and y pixel location of the peaks and
         their values. If ``centroid_func`` is input, then the table will
         also contain the centroid position. If no peaks are found then

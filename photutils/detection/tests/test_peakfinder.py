@@ -137,6 +137,15 @@ class TestFindPeaks:
         assert 'y_centroid' in tbl.colnames
         assert len(tbl) > 0
 
+    def test_error_without_centroid_func(self, data):
+        """
+        Test that error is silently ignored when centroid_func is None.
+        """
+        error = np.ones_like(data) * 0.1
+        tbl1 = find_peaks(data, 0.1, box_size=3)
+        tbl2 = find_peaks(data, 0.1, box_size=3, error=error)
+        assert_array_equal(tbl1, tbl2)
+
     def test_wcs(self, data):
         """
         Test with astropy WCS.
