@@ -20,7 +20,6 @@ from astropy.utils import lazyproperty
 
 from photutils.detection.peakfinder import find_peaks
 from photutils.utils._misc import _get_meta
-from photutils.utils._moments import _image_moments
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -600,8 +599,18 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     @lazyproperty
     def moments(self):
         """The raw image moments."""
-        return np.array([_image_moments(arr, order=1)
-                         for arr in self.cutout_data])
+        data = self.cutout_data
+        if isinstance(data, u.Quantity):
+            data = data.value
+        ky, kx = data.shape[1], data.shape[2]
+        y = np.arange(ky, dtype=float)
+        x = np.arange(kx, dtype=float)
+        # ypowers shape (ky, 2): columns are [1, y]
+        # xpowers shape (kx, 2): columns are [1, x]
+        ypowers = np.column_stack([np.ones(ky), y])
+        xpowers = np.column_stack([np.ones(kx), x])
+        # M[n, p, q] = sum_jk data[n,j,k] * y[j]^p * x[k]^q
+        return np.einsum('njk,jp,kq->npq', data, ypowers, xpowers)
 
     @lazyproperty
     def cutout_centroid(self):
@@ -628,11 +637,22 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     @lazyproperty
     def moments_central(self):
         """The central image moments."""
-        moments = np.array(
-            [_image_moments(arr, center=(xcen_, ycen_), order=2)
-             for arr, xcen_, ycen_ in
-             zip(self.cutout_data, self.cutout_xcentroid,
-                 self.cutout_ycentroid, strict=True)])
+        data = self.cutout_data
+        if isinstance(data, u.Quantity):
+            data = data.value
+        ky, kx = data.shape[1], data.shape[2]
+        y = np.arange(ky, dtype=float)
+        x = np.arange(kx, dtype=float)
+        # per-source shifted coordinates: shape (n, ky) and (n, kx)
+        ycen = self.cutout_ycentroid[:, np.newaxis]
+        xcen = self.cutout_xcentroid[:, np.newaxis]
+        dy = y[np.newaxis, :] - ycen  # (n, ky)
+        dx = x[np.newaxis, :] - xcen  # (n, kx)
+        # build per-source power arrays up to order 2
+        ypowers = np.stack([np.ones_like(dy), dy, dy**2], axis=-1)
+        xpowers = np.stack([np.ones_like(dx), dx, dx**2], axis=-1)
+        # M[n, p, q] = sum_jk data[n,j,k] * dy[n,j]^p * dx[n,k]^q
+        moments = np.einsum('njk,njp,nkq->npq', data, ypowers, xpowers)
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
