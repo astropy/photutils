@@ -6,6 +6,7 @@ Tests for the photutils.detection.core module.
 import numpy as np
 import pytest
 
+from photutils.detection import DAOStarFinder
 from photutils.detection.core import (StarFinderCatalogBase, _StarFinderKernel,
                                       _validate_brightest)
 
@@ -82,6 +83,24 @@ class TestStarFinderKernel:
         assert 'theta: 30.0' in s
         assert 'sigma_radius: 1.5' in s
 
+    @pytest.mark.parametrize('ratio', [0, -0.5, 1.5])
+    def test_invalid_ratio(self, ratio):
+        """
+        Test that invalid ratio values raise ValueError.
+        """
+        match = 'ratio must be > 0 and <= 1.0'
+        with pytest.raises(ValueError, match=match):
+            _StarFinderKernel(fwhm=3.0, ratio=ratio)
+
+    @pytest.mark.parametrize('sigma_radius', [0, -1])
+    def test_invalid_sigma_radius(self, sigma_radius):
+        """
+        Test that non-positive sigma_radius raises ValueError.
+        """
+        match = 'sigma_radius must be positive'
+        with pytest.raises(ValueError, match=match):
+            _StarFinderKernel(fwhm=3.0, sigma_radius=sigma_radius)
+
 
 class TestValidateBrightest:
     """
@@ -127,6 +146,15 @@ class TestValidateBrightest:
         """
         assert _validate_brightest(None) is None
 
+    @pytest.mark.parametrize('brightest', [True, False])
+    def test_brightest_bool(self, brightest):
+        """
+        Test that boolean brightest values raise TypeError.
+        """
+        match = 'brightest must be an integer'
+        with pytest.raises(TypeError, match=match):
+            _validate_brightest(brightest)
+
 
 def _make_minimal_catalog_class():
     """
@@ -152,68 +180,69 @@ def _make_minimal_catalog_class():
     return _MinimalCatalog
 
 
+@pytest.fixture(name='minimal_catalog_cls')
+def fixture_minimal_catalog_cls():
+    return _make_minimal_catalog_class()
+
+
 class TestStarFinderCatalogBase:
     """
     Tests for the StarFinderCatalogBase base-class methods.
     """
 
-    def test_get_init_attributes(self):
+    def test_get_init_attributes(self, minimal_catalog_cls):
         """
         Test base _get_init_attributes returns expected tuple.
         """
-        catalog_cls = _make_minimal_catalog_class()
         data = np.zeros((11, 11))
         data[5, 5] = 10.0
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5]])
-        cat = catalog_cls(data, xypos, kernel)
+        cat = minimal_catalog_cls(data, xypos, kernel)
         expected = ('data', 'unit', 'kernel', 'brightest', 'peakmax',
                     'cutout_shape')
         assert cat._get_init_attributes() == expected
 
-    def test_to_table_missing_default_columns(self):
+    def test_to_table_missing_default_columns(self, minimal_catalog_cls):
         """
         Test that to_table raises when default_columns is not set.
         """
-        catalog_cls = _make_minimal_catalog_class()
         data = np.zeros((11, 11))
         data[5, 5] = 10.0
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5]])
-        cat = catalog_cls(data, xypos, kernel)
+        cat = minimal_catalog_cls(data, xypos, kernel)
         match = 'default_columns attribute is not set'
         with pytest.raises(AttributeError, match=match):
             cat.to_table()
 
-    def test_getitem_integer_index(self):
+    def test_getitem_integer_index(self, minimal_catalog_cls):
         """
         Test indexing the catalog with an integer index.
         """
-        catalog_cls = _make_minimal_catalog_class()
         data = np.zeros((11, 11))
         data[3, 3] = 10.0
         data[7, 7] = 20.0
         kernel = np.ones((3, 3))
         xypos = np.array([[3, 3], [7, 7]])
-        cat = catalog_cls(data, xypos, kernel)
+        cat = minimal_catalog_cls(data, xypos, kernel)
         assert len(cat) == 2
 
         sub = cat[0]
         assert len(sub) == 1
         assert sub.xypos[0, 0] == 3
 
-    def test_getitem_slice(self):
+    def test_getitem_slice(self, minimal_catalog_cls):
         """
         Test slicing the catalog.
         """
-        catalog_cls = _make_minimal_catalog_class()
         data = np.zeros((11, 11))
         data[3, 3] = 10.0
         data[5, 5] = 15.0
         data[7, 7] = 20.0
         kernel = np.ones((3, 3))
         xypos = np.array([[3, 3], [5, 5], [7, 7]])
-        cat = catalog_cls(data, xypos, kernel)
+        cat = minimal_catalog_cls(data, xypos, kernel)
         assert len(cat) == 3
 
         sub = cat[1:]
@@ -221,18 +250,17 @@ class TestStarFinderCatalogBase:
         assert sub.xypos[0, 0] == 5
         assert sub.xypos[1, 0] == 7
 
-    def test_getitem_fancy_index(self):
+    def test_getitem_fancy_index(self, minimal_catalog_cls):
         """
         Test indexing with a boolean mask (fancy indexing).
         """
-        catalog_cls = _make_minimal_catalog_class()
         data = np.zeros((11, 11))
         data[3, 3] = 10.0
         data[5, 5] = 15.0
         data[7, 7] = 20.0
         kernel = np.ones((3, 3))
         xypos = np.array([[3, 3], [5, 5], [7, 7]])
-        cat = catalog_cls(data, xypos, kernel)
+        cat = minimal_catalog_cls(data, xypos, kernel)
 
         # Force evaluation of a lazyproperty before slicing
         _ = cat.flux
@@ -243,11 +271,10 @@ class TestStarFinderCatalogBase:
         assert sub.xypos[0, 0] == 3
         assert sub.xypos[1, 0] == 7
 
-    def test_roundness(self):
+    def test_roundness(self, minimal_catalog_cls):
         """
         Test roundness computed on a symmetric source via base class.
         """
-        catalog_cls = _make_minimal_catalog_class()
         data = np.zeros((11, 11))
         data[5, 5] = 100.0
         data[4, 5] = 50.0
@@ -256,34 +283,49 @@ class TestStarFinderCatalogBase:
         data[5, 6] = 50.0
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5]])
-        cat = catalog_cls(data, xypos, kernel)
+        cat = minimal_catalog_cls(data, xypos, kernel)
         # roundness should be finite for a well-defined source
         assert np.isfinite(cat.roundness[0])
 
-    def test_repr(self):
+    def test_repr(self, minimal_catalog_cls):
         """
         Test the __repr__ of StarFinderCatalogBase subclass.
         """
-        catalog_cls = _make_minimal_catalog_class()
         data = np.zeros((11, 11))
         data[5, 5] = 10.0
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5], [3, 3]])
-        cat = catalog_cls(data, xypos, kernel)
+        cat = minimal_catalog_cls(data, xypos, kernel)
         r = repr(cat)
         assert '_MinimalCatalog(' in r
         assert 'nsources=2' in r
 
-    def test_str(self):
+    def test_str(self, minimal_catalog_cls):
         """
         Test the __str__ of StarFinderCatalogBase subclass.
         """
-        catalog_cls = _make_minimal_catalog_class()
         data = np.zeros((11, 11))
         data[5, 5] = 10.0
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5]])
-        cat = catalog_cls(data, xypos, kernel)
+        cat = minimal_catalog_cls(data, xypos, kernel)
         s = str(cat)
         assert '_MinimalCatalog' in s
         assert 'nsources: 1' in s
+
+
+class TestStarFinderBaseCall:
+    """
+    Test that StarFinderBase.__call__ delegates to find_stars.
+    """
+
+    def test_call_delegates_to_find_stars(self, data):
+        """
+        Test that __call__ returns the same result as find_stars.
+        """
+        finder = DAOStarFinder(threshold=5.0, fwhm=2.0)
+        tbl_call = finder(data)
+        tbl_find = finder.find_stars(data)
+        assert len(tbl_call) == len(tbl_find)
+        for col in tbl_call.colnames:
+            np.testing.assert_array_equal(tbl_call[col], tbl_find[col])

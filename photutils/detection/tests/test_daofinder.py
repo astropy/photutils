@@ -51,7 +51,7 @@ class TestDAOStarFinder:
             with pytest.raises(ValueError, match=match):
                 DAOStarFinder(threshold=3.0, fwhm=fwhm)
 
-        match = 'ratio must be positive and less than or equal to 1'
+        match = 'ratio must be > 0 and <= 1.0'
         with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=3.0, fwhm=2, ratio=-10)
 

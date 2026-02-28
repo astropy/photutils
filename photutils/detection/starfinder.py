@@ -96,16 +96,18 @@ class StarFinder(StarFinderBase):
         self.brightest = _validate_brightest(brightest)
         self.peakmax = peakmax
 
-    def __repr__(self):
+    def _repr_str_params(self):
         params = ('threshold', 'kernel', 'min_separation',
                   'exclude_border', 'brightest', 'peakmax')
         overrides = {'kernel': f'<array; shape={self.kernel.shape}>'}
+        return params, overrides
+
+    def __repr__(self):
+        params, overrides = self._repr_str_params()
         return make_repr(self, params, overrides=overrides)
 
     def __str__(self):
-        params = ('threshold', 'kernel', 'min_separation',
-                  'exclude_border', 'brightest', 'peakmax')
-        overrides = {'kernel': f'<array; shape={self.kernel.shape}>'}
+        params, overrides = self._repr_str_params()
         return make_repr(self, params, overrides=overrides, long=True)
 
     def _get_raw_catalog(self, data, *, mask=None):

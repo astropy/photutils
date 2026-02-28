@@ -394,6 +394,8 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
 
     @lazyproperty
     def cutout_data(self):
+        # This is a freshly computed array, so in-place modification is
+        # safe.
         data = ((self.cutout_data_nosub - self.sky[:, np.newaxis, np.newaxis])
                 * self.kernel.mask)
         # IRAF starfind discards negative pixels

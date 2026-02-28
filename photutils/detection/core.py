@@ -53,11 +53,13 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             as a 2D array.
 
         threshold : float
-            The absolute image value above which to select sources. This
-            threshold should be the threshold input to the star finder
-            class multiplied by the kernel relerr. If ``convolved_data``
-            is a `~astropy.units.Quantity` array, then ``threshold``
-            must have the same units.
+            The absolute image value above which to select sources. The
+            exact value depends on the calling star finder class (e.g.,
+            `DAOStarFinder` multiplies the ``threshold`` by the kernel
+            relerr, whereas `IRAFStarFinder` and `StarFinder` directly
+            use the input ``threshold``). If ``convolved_data`` is a
+            `~astropy.units.Quantity` array, then ``threshold`` must
+            have the same units.
 
         min_separation : float, optional
             The minimum separation for detected objects in pixels.
@@ -205,7 +207,7 @@ class _StarFinderKernel:
             raise ValueError(msg)
 
         if ratio <= 0 or ratio > 1:
-            msg = 'ratio must be positive and less than or equal to 1'
+            msg = 'ratio must be > 0 and <= 1.0'
             raise ValueError(msg)
 
         if sigma_radius <= 0:
@@ -293,6 +295,9 @@ def _validate_brightest(brightest):
     It must be >0 and an integer.
     """
     if brightest is not None:
+        if isinstance(brightest, bool):
+            msg = 'brightest must be an integer'
+            raise TypeError(msg)
         if brightest <= 0:
             msg = 'brightest must be > 0'
             raise ValueError(msg)
@@ -596,14 +601,14 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         """
         cls = self.__class__
         try:
-            return cls.__lazyproperties_cache
+            return cls._lazyproperties_cache
         except AttributeError:
             def islazyproperty(obj):
                 return isinstance(obj, lazyproperty)
 
             result = [i[0] for i in
                       inspect.getmembers(cls, predicate=islazyproperty)]
-            cls.__lazyproperties_cache = result
+            cls._lazyproperties_cache = result
             return result
 
     def reset_ids(self):
