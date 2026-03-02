@@ -31,6 +31,34 @@ from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,
 from photutils.utils.cutouts import CutoutImage
 
 
+@pytest.fixture
+def progress_bar_catalog():
+    """
+    A two-source SourceCatalog on a 101x101 grid with progress_bar=True.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    g2 = Gaussian2D(80, 30, 30, 4, 4)
+    data = g1(xx, yy) + g2(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    return SourceCatalog(data, segm, progress_bar=True)
+
+
+@pytest.fixture
+def single_source_catalog():
+    """
+    A single-source SourceCatalog from a Gaussian on a 51x51 grid.
+
+    Returns ``(data, segm, cat)``.
+    """
+    yy, xx = np.mgrid[0:51, 0:51]
+    g1 = Gaussian2D(100, 25, 25, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    cat = SourceCatalog(data, segm)
+    return data, segm, cat
+
+
 class TestSourceCatalog:
     @pytest.fixture(autouse=True)
     def setup(self):
@@ -1377,91 +1405,60 @@ def test_make_cutouts_trim_mode():
     assert any(s == shape for s in shapes)
 
 
-def test_progress_bar_centroid_win():
+def test_progress_bar_centroid_win(progress_bar_catalog):
     """
     Test that centroid_win works with progress_bar=True.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    g2 = Gaussian2D(80, 30, 30, 4, 4)
-    data = g1(xx, yy) + g2(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm, progress_bar=True)
+    cat = progress_bar_catalog
     cwin = cat.centroid_win
     assert cwin.shape == (cat.nlabels, 2)
     assert np.all(np.isfinite(cwin))
 
 
-def test_progress_bar_centroid_quad():
+def test_progress_bar_centroid_quad(progress_bar_catalog):
     """
     Test that centroid_quad works with progress_bar=True.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    g2 = Gaussian2D(80, 30, 30, 4, 4)
-    data = g1(xx, yy) + g2(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm, progress_bar=True)
+    cat = progress_bar_catalog
     cquad = cat.centroid_quad
     assert cquad.shape == (cat.nlabels, 2)
     assert np.all(np.isfinite(cquad))
 
 
-def test_progress_bar_kron_radius():
+def test_progress_bar_kron_radius(progress_bar_catalog):
     """
     Test that kron_radius works with progress_bar=True.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    g2 = Gaussian2D(80, 30, 30, 4, 4)
-    data = g1(xx, yy) + g2(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm, progress_bar=True)
+    cat = progress_bar_catalog
     kr = cat.kron_radius
     assert len(kr) == cat.nlabels
 
 
-def test_progress_bar_kron_photometry():
+def test_progress_bar_kron_photometry(progress_bar_catalog):
     """
     Test that kron_photometry (aperture photometry) works with
     progress_bar=True.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    g2 = Gaussian2D(80, 30, 30, 4, 4)
-    data = g1(xx, yy) + g2(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm, progress_bar=True)
+    cat = progress_bar_catalog
     flux, _fluxerr = cat.kron_photometry((2.5, 1.4))
     assert len(flux) == cat.nlabels
 
 
-def test_progress_bar_fluxfrac_radius():
+def test_progress_bar_fluxfrac_radius(progress_bar_catalog):
     """
     Test that fluxfrac_radius and its prep work with progress_bar=True.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    g2 = Gaussian2D(80, 30, 30, 4, 4)
-    data = g1(xx, yy) + g2(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm, progress_bar=True)
+    cat = progress_bar_catalog
     r = cat.fluxfrac_radius(0.5)
     assert len(r) == cat.nlabels
 
 
-def test_negative_covariance_eigvals():
+def test_negative_covariance_eigvals(single_source_catalog):
     """
     Test that negative eigenvalues in the covariance matrix are
     replaced with NaN.
     """
-    from unittest.mock import patch
-
-    yy, xx = np.mgrid[0:51, 0:51]
-    g1 = Gaussian2D(100, 25, 25, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)
+    _data, _segm, cat = single_source_catalog
 
     # Patch np.linalg.eigvalsh to return negative eigenvalues
     real_eigvalsh = np.linalg.eigvalsh
@@ -1512,72 +1509,53 @@ def test_validate_kron_params_wrong_element_count():
         SourceCatalog._validate_kron_params([2.5])
 
 
-def test_error_values_with_error():
+def test_error_values_with_error(single_source_catalog):
     """
     Test that _error_values returns null objects when error is None.
     """
-    yy, xx = np.mgrid[0:51, 0:51]
-    g1 = Gaussian2D(100, 25, 25, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)  # no error provided
+    _data, _segm, cat = single_source_catalog
     err_vals = cat._error_values
     assert err_vals is cat._null_objects
 
 
-def test_background_values_with_background():
+def test_background_values_with_background(single_source_catalog):
     """
     Test that _background_values returns null objects when background is
     None.
     """
-    yy, xx = np.mgrid[0:51, 0:51]
-    g1 = Gaussian2D(100, 25, 25, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)  # no background provided
+    _data, _segm, cat = single_source_catalog
     bkg_vals = cat._background_values
     assert bkg_vals is cat._null_objects
 
 
-def test_sky_centroid_quad_with_wcs():
+def test_sky_centroid_quad_with_wcs(single_source_catalog):
     """
     Test that sky_centroid_quad returns a coordinate when wcs is
     provided.
     """
-    yy, xx = np.mgrid[0:51, 0:51]
-    g1 = Gaussian2D(100, 25, 25, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
+    data, segm, _cat = single_source_catalog
     wcs = make_wcs(data.shape)
     cat = SourceCatalog(data, segm, wcs=wcs)
     sky_quad = cat.sky_centroid_quad
     assert sky_quad is not None
 
 
-def test_sky_centroid_quad_no_wcs():
+def test_sky_centroid_quad_no_wcs(single_source_catalog):
     """
     Test that sky_centroid_quad returns None when wcs is not provided.
     """
-    yy, xx = np.mgrid[0:51, 0:51]
-    g1 = Gaussian2D(100, 25, 25, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)
+    _data, _segm, cat = single_source_catalog
     sky_quad = cat.sky_centroid_quad
     # Single source returns scalar None (from _null_objects)
     assert sky_quad is None or np.all(sky_quad == np.array(None))
 
 
-def test_fluxfrac_radius_no_solution():
+def test_fluxfrac_radius_no_solution(single_source_catalog):
     """
     Test that fluxfrac_radius returns NaN when no solution is found
     (root_scalar always raises ValueError).
     """
-    yy, xx = np.mgrid[0:51, 0:51]
-    g1 = Gaussian2D(100, 25, 25, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)
+    _data, _segm, cat = single_source_catalog
 
     # Make root_scalar always raise ValueError so no solution is found
     def mock_root_scalar(*_args, **_kwargs):

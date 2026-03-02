@@ -3,6 +3,8 @@
 Tests for the deblend module.
 """
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
@@ -513,10 +515,6 @@ def test_nmarkers_fallback_returns_none():
     None on the linear-mode fallback (second attempt after >200
     markers).
     """
-    from unittest.mock import patch
-
-    from photutils.segmentation.deblend import _SingleSourceDeblender
-
     # Create a source with varying data values so source_min != source_max
     data = np.ones((20, 20)) * 10.0
     data[5:15, 5:15] = 50.0
