@@ -205,7 +205,7 @@ class SourceFinder:
         if segment_img is None:
             return None
 
-        # source deblending requires scikit-image
+        # Source deblending requires scikit-image
         if self.deblend:
             segment_img = deblend_sources(data, segment_img, self.npixels[1],
                                           nlevels=self.nlevels,

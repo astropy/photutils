@@ -12,6 +12,9 @@ from photutils.segmentation.utils import (_make_binary_structure,
 
 
 def test_make_2dgaussian_kernel():
+    """
+    Test make 2dgaussian kernel.
+    """
     kernel = make_2dgaussian_kernel(1.0, size=3)
     expected = np.array([[0.01411809, 0.0905834, 0.01411809],
                          [0.0905834, 0.58119403, 0.0905834],
@@ -21,6 +24,9 @@ def test_make_2dgaussian_kernel():
 
 
 def test_make_2dgaussian_kernel_modes():
+    """
+    Test make 2dgaussian kernel modes.
+    """
     kernel = make_2dgaussian_kernel(3.0, 5)
     assert_allclose(kernel.array.sum(), 1.0)
 
@@ -35,6 +41,9 @@ def test_make_2dgaussian_kernel_modes():
 
 
 def test_make_binary_structure():
+    """
+    Test make binary structure.
+    """
     footprint = _make_binary_structure(1, 4)
     assert_allclose(footprint, np.array([1, 1, 1]))
 
@@ -53,6 +62,9 @@ def test_make_binary_structure():
 
 
 def test_mask_to_mirrored_value():
+    """
+    Test mask to mirrored value.
+    """
     center = (2.0, 2.0)
     data = np.arange(25).reshape(5, 5)
     mask = np.zeros(data.shape, dtype=bool)

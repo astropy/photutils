@@ -199,7 +199,7 @@ def _detect_sources(data, threshold, npixels, footprint, inverse_mask, *,
         is `False`, then a 2D `~numpy.ndarray` segmentation image is
         returned. If no sources are found then `None` is returned.
     """
-    # ignore RuntimeWarning caused by > comparison when data contains NaNs
+    # Ignore RuntimeWarning caused by > comparison when data contains NaNs
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', category=RuntimeWarning)
         segment_img = data > threshold
@@ -207,7 +207,7 @@ def _detect_sources(data, threshold, npixels, footprint, inverse_mask, *,
     if inverse_mask is not None:
         segment_img &= inverse_mask
 
-    # return None if threshold was too high to detect any sources
+    # Return None if threshold was too high to detect any sources
     if np.count_nonzero(segment_img) == 0:
         return None
 
@@ -216,7 +216,7 @@ def _detect_sources(data, threshold, npixels, footprint, inverse_mask, *,
     segment_img, nlabels = ndi_label(segment_img, structure=footprint)
     labels = np.arange(nlabels, dtype=segment_img.dtype) + 1
 
-    # remove objects with less than npixels
+    # Remove objects with less than npixels
     # NOTE: making cutout images and setting their pixels to 0 is
     # ~10x faster than using segment_img directly and ~50% faster
     # than using ndimage.sum_labels.
@@ -236,7 +236,7 @@ def _detect_sources(data, threshold, npixels, footprint, inverse_mask, *,
         return None
 
     if relabel:
-        # relabel the segmentation image with consecutive numbers;
+        # Relabel the segmentation image with consecutive numbers;
         # ndimage.label returns segment_img with dtype = np.int32
         # unless the input array has more than 2**31 - 1 pixels
         nlabels = len(segm_labels)
@@ -257,7 +257,7 @@ def _detect_sources(data, threshold, npixels, footprint, inverse_mask, *,
         segm.__dict__['_deblend_label_map'] = {}
         return segm
 
-    # this is used by deblend_sources
+    # This is used by deblend_sources
     if len(labels) == 1:
         return None
 

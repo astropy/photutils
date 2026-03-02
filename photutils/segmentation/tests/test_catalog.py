@@ -73,6 +73,9 @@ class TestSourceCatalog:
 
     @pytest.mark.parametrize('with_units', [True, False])
     def test_catalog(self, with_units):
+        """
+        Test catalog.
+        """
         if with_units:
             cat1 = self.cat_units.copy()
             cat2 = self.cat_units.copy()
@@ -82,7 +85,7 @@ class TestSourceCatalog:
 
         props = self.cat.properties
 
-        # add extra properties
+        # Add extra properties
         cat1.circular_photometry(5.0, name='circ5')
         cat1.kron_photometry((2.5, 1.4), name='kron2')
         cat1.fluxfrac_radius(0.5, name='r_hl')
@@ -93,12 +96,12 @@ class TestSourceCatalog:
 
         idx = 1  # no NaN values
 
-        # evaluate (cache) catalog properties before slice
+        # Evaluate (cache) catalog properties before slice
         obj = cat1[idx]
         for prop in props:
             assert_equal(getattr(cat1, prop)[idx], getattr(obj, prop))
 
-        # slice catalog before evaluating catalog properties
+        # Slice catalog before evaluating catalog properties
         obj = cat2[idx]
         obj.circular_photometry(5.0, name='circ5')
         obj.kron_photometry((2.5, 1.4), name='kron2')
@@ -145,7 +148,7 @@ class TestSourceCatalog:
                                  detection_cat=cat1)
 
         assert_equal(cat1.kron_radius, cat3.kron_radius)
-        # assert not equal
+        # Assert not equal
         match = 'Arrays are not equal'
         with pytest.raises(AssertionError, match=match):
             assert_equal(cat1.kron_radius, cat2.kron_radius)
@@ -194,6 +197,9 @@ class TestSourceCatalog:
         assert len(cat4.kron_radius) == 1
 
     def test_minimal_catalog(self):
+        """
+        Test minimal catalog.
+        """
         cat = SourceCatalog(self.data, self.segm)
         obj = cat[4]
         props = ('background', 'background_ma', 'error', 'error_ma')
@@ -213,6 +219,9 @@ class TestSourceCatalog:
         assert obj.local_background == 0.0
 
     def test_slicing(self):
+        """
+        Test slicing.
+        """
         self.cat.to_table()  # evaluate and cache several properties
 
         obj1 = self.cat[0]
@@ -242,7 +251,7 @@ class TestSourceCatalog:
         assert len(obj5) == 3
         assert_equal(obj5.label, labels)
 
-        # test get_labels when labels are not sorted
+        # Test get_labels when labels are not sorted
         obj5 = self.cat[[3, 2, 1]]
         labels2 = (3, 4)
         obj5b = obj5.get_labels(labels2)
@@ -268,10 +277,16 @@ class TestSourceCatalog:
             self.cat.get_labels([1, 2, 1000])
 
     def test_iter(self):
+        """
+        Test iter.
+        """
         labels = [obj.label for obj in self.cat]
         assert len(labels) == len(self.cat)
 
     def test_table(self):
+        """
+        Test table.
+        """
         columns = ['label', 'xcentroid', 'ycentroid']
         tbl = self.cat.to_table(columns=columns)
         assert len(tbl) == 7
@@ -288,12 +303,15 @@ class TestSourceCatalog:
             assert not isinstance(col, np.str_)
 
     def test_invalid_inputs(self):
+        """
+        Test invalid inputs.
+        """
         segm = SegmentationImage(np.zeros(self.data.shape, dtype=int))
         match = 'segment_img must have at least one non-zero label'
         with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, segm)
 
-        # test 1D arrays
+        # Test 1D arrays
         img1d = np.arange(4)
         segm = SegmentationImage(img1d)
         match = 'data must be a 2D array'
@@ -366,6 +384,9 @@ class TestSourceCatalog:
             SourceCatalog(self.data, self.segm, kron_params=kron_params)
 
     def test_invalid_units(self):
+        """
+        Test invalid units.
+        """
         unit = u.uJy
         wrong_unit = u.km
 
@@ -378,7 +399,7 @@ class TestSourceCatalog:
             SourceCatalog(self.data << unit, self.segm,
                           background=self.background << wrong_unit)
 
-        # all array inputs must have the same unit
+        # All array inputs must have the same unit
         with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data << unit, self.segm, error=self.error)
 
@@ -387,6 +408,9 @@ class TestSourceCatalog:
                           background=self.background << unit)
 
     def test_wcs(self):
+        """
+        Test wcs.
+        """
         mywcs = make_wcs(self.data.shape)
         cat = SourceCatalog(self.data, self.segm, wcs=mywcs)
         obj = cat[0]
@@ -400,6 +424,9 @@ class TestSourceCatalog:
 
     @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
     def test_gwcs(self):
+        """
+        Test gwcs.
+        """
         mywcs = make_gwcs(self.data.shape)
         cat = SourceCatalog(self.data, self.segm, wcs=mywcs)
         obj = cat[1]
@@ -412,6 +439,9 @@ class TestSourceCatalog:
         assert obj.sky_bbox_ur is not None
 
     def test_nowcs(self):
+        """
+        Test nowcs.
+        """
         cat = SourceCatalog(self.data, self.segm, wcs=None)
         obj = cat[2]
         assert obj.sky_centroid is None
@@ -423,6 +453,9 @@ class TestSourceCatalog:
         assert obj.sky_bbox_ur is None
 
     def test_to_table(self):
+        """
+        Test to table.
+        """
         cat = SourceCatalog(self.data, self.segm)
         assert len(cat) == 7
         tbl = cat.to_table()
@@ -461,12 +494,15 @@ class TestSourceCatalog:
         for prop in props:
             assert np.all(np.isfinite(getattr(objs, prop)))
 
-        # test that mask=None is the same as mask=np.ma.nomask
+        # Test that mask=None is the same as mask=np.ma.nomask
         cat1 = SourceCatalog(data, self.segm, mask=None)
         cat2 = SourceCatalog(data, self.segm, mask=np.ma.nomask)
         assert cat1[0].xcentroid == cat2[0].xcentroid
 
     def test_repr_str(self):
+        """
+        Test repr str.
+        """
         cat = SourceCatalog(self.data, self.segm)
         assert repr(cat) == str(cat)
 
@@ -475,6 +511,9 @@ class TestSourceCatalog:
             assert line in repr(cat)
 
     def test_detection_cat(self):
+        """
+        Test detection cat.
+        """
         data2 = self.data - 5
         cat1 = SourceCatalog(data2, self.segm)
         cat2 = SourceCatalog(data2, self.segm, detection_cat=self.cat)
@@ -496,6 +535,9 @@ class TestSourceCatalog:
             SourceCatalog(self.data, self.segm, detection_cat=cat)
 
     def test_kron_minradius(self):
+        """
+        Test kron minradius.
+        """
         kron_params = (2.5, 2.5)
         cat = SourceCatalog(self.data, self.segm, mask=self.mask,
                             apermask_method='none', kron_params=kron_params)
@@ -509,6 +551,9 @@ class TestSourceCatalog:
         assert isinstance(cat.kron_params, tuple)
 
     def test_kron_masking(self):
+        """
+        Test kron masking.
+        """
         apermask_method = 'none'
         cat1 = SourceCatalog(self.data, self.segm,
                              apermask_method=apermask_method)
@@ -524,10 +569,16 @@ class TestSourceCatalog:
         assert cat1[idx].kron_flux > cat3[idx].kron_flux
 
     def test_kron_negative(self):
+        """
+        Test kron negative.
+        """
         cat = SourceCatalog(self.data - 10, self.segm)
         assert_allclose(cat.kron_radius.value, cat.kron_params[1])
 
     def test_kron_photometry(self):
+        """
+        Test kron photometry.
+        """
         flux0, fluxerr0 = self.cat.kron_photometry((2.5, 1.4))
         assert_allclose(flux0, self.cat.kron_flux)
         assert_allclose(fluxerr0, self.cat.kron_fluxerr)
@@ -543,7 +594,7 @@ class TestSourceCatalog:
         assert np.all((fluxerr2 > fluxerr1)
                       | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
 
-        # test different min Kron radius
+        # Test different min Kron radius
         flux3, fluxerr3 = self.cat.kron_photometry((2.5, 2.5))
         assert np.all((flux3 > flux0) | (np.isnan(flux3) & np.isnan(flux0)))
         assert np.all((fluxerr3 > fluxerr0)
@@ -575,6 +626,9 @@ class TestSourceCatalog:
             self.cat.kron_photometry((2.5, 0.0, 1.5))
 
     def test_circular_photometry(self):
+        """
+        Test circular photometry.
+        """
         flux1, fluxerr1 = self.cat.circular_photometry(1.0, name='circ1')
         flux2, fluxerr2 = self.cat.circular_photometry(5.0, name='circ5')
         assert_allclose(flux1, self.cat.circ1_flux)
@@ -598,7 +652,7 @@ class TestSourceCatalog:
         _, fluxerr = cat.circular_photometry(1.0)
         assert np.all(np.isnan(fluxerr))
 
-        # with "center" mode, tiny apertures that do not overlap any
+        # With "center" mode, tiny apertures that do not overlap any
         # center should return NaN
         cat2 = self.cat.copy()
         cat2._set_semode()  # sets "center" mode
@@ -618,6 +672,9 @@ class TestSourceCatalog:
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plots(self):
+        """
+        Test plots.
+        """
         from matplotlib.patches import Patch
 
         patches = self.cat.plot_circular_apertures(5.0)
@@ -635,7 +692,7 @@ class TestSourceCatalog:
         for patch_ in patches2:
             assert isinstance(patch_, Patch)
 
-        # test scalar
+        # Test scalar
         obj = self.cat[1]
         patch1 = obj.plot_kron_apertures()
         assert isinstance(patch1, Patch)
@@ -763,6 +820,9 @@ class TestSourceCatalog:
         assert np.isfinite(r.value)
 
     def test_fluxfrac_radius(self):
+        """
+        Test fluxfrac radius.
+        """
         radius1 = self.cat.fluxfrac_radius(0.1, name='fluxfrac_r1')
         radius2 = self.cat.fluxfrac_radius(0.5, name='fluxfrac_r5')
         assert_allclose(radius1, self.cat.fluxfrac_r1)
@@ -789,6 +849,9 @@ class TestSourceCatalog:
         assert np.isnan(radius_hl[0])
 
     def test_cutout_units(self):
+        """
+        Test cutout units.
+        """
         obj = self.cat_units[0]
         quantities = (obj.data, obj.error, obj.background)
         ndarray = (obj.segment, obj.segment_ma, obj.data_ma, obj.error_ma,
@@ -800,6 +863,9 @@ class TestSourceCatalog:
 
     @pytest.mark.parametrize('scalar', [True, False])
     def test_extra_properties(self, scalar):
+        """
+        Test extra properties.
+        """
         cat = SourceCatalog(self.data, self.segm)
         if scalar:
             cat = cat[1]
@@ -808,20 +874,20 @@ class TestSourceCatalog:
 
         match = 'cannot be set because it is a built-in attribute'
         with pytest.raises(ValueError, match=match):
-            # built-in attribute
+            # Built-in attribute
             cat.add_extra_property('_data', segment_snr)
         with pytest.raises(ValueError, match=match):
-            # built-in property
+            # Built-in property
             cat.add_extra_property('label', segment_snr)
         with pytest.raises(ValueError, match=match):
-            # built-in lazyproperty
+            # Built-in lazyproperty
             cat.add_extra_property('area', segment_snr)
 
         cat.add_extra_property('segment_snr', segment_snr)
 
         match = 'already exists as an attribute'
         with pytest.raises(ValueError, match=match):
-            # already exists
+            # Already exists
             cat.add_extra_property('segment_snr', segment_snr)
 
         cat.add_extra_property('segment_snr', 2.0 * segment_snr,
@@ -849,7 +915,7 @@ class TestSourceCatalog:
         cat.rename_extra_property('segment_snr', new_name)
         assert new_name in cat.extra_properties
 
-        # key in extra_properties, but not a defined attribute
+        # Key in extra_properties, but not a defined attribute
         cat._extra_properties.append('invalid')
         match = 'already exists in the extra_properties attribute'
         with pytest.raises(ValueError, match=match):
@@ -863,6 +929,9 @@ class TestSourceCatalog:
         cat.add_extra_property('segment_snr4', segment_snr, overwrite=True)
 
     def test_extra_properties_invalid(self):
+        """
+        Test extra properties invalid.
+        """
         cat = SourceCatalog(self.data, self.segm)
         match = 'value must have the same number of elements as the catalog'
         with pytest.raises(ValueError, match=match):
@@ -883,12 +952,18 @@ class TestSourceCatalog:
             obj.add_extra_property('invalid', coord)
 
     def test_properties(self):
+        """
+        Test properties.
+        """
         attrs = ('label', 'labels', 'slices', 'xcentroid',
                  'segment_flux', 'kron_flux')
         for attr in attrs:
             assert attr in self.cat.properties
 
     def test_copy(self):
+        """
+        Test copy.
+        """
         cat = SourceCatalog(self.data, self.segm)
         cat2 = cat.copy()
         _ = cat.kron_flux
@@ -898,8 +973,8 @@ class TestSourceCatalog:
 
     def test_data_dtype(self):
         """
-        Regression test that input ``data`` with int dtype does not
-        raise UFuncTypeError due to subtraction of float array from int
+        Test that input ``data`` with int dtype does not raise
+        UFuncTypeError due to subtraction of float array from int
         array.
         """
         data = np.zeros((25, 25), dtype=np.uint16)
@@ -912,6 +987,9 @@ class TestSourceCatalog:
         assert cat.max_value == 10
 
     def test_make_circular_apertures(self):
+        """
+        Test make circular apertures.
+        """
         radius = 10
         aper = self.cat.make_circular_apertures(radius)
         assert len(aper) == len(self.cat)
@@ -924,6 +1002,9 @@ class TestSourceCatalog:
         assert aper.r == radius
 
     def test_make_kron_apertures(self):
+        """
+        Test make kron apertures.
+        """
         aper = self.cat.make_kron_apertures()
         assert len(aper) == len(self.cat)
         assert isinstance(aper[1], EllipticalAperture)
@@ -937,6 +1018,9 @@ class TestSourceCatalog:
 
     @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_make_cutouts(self):
+        """
+        Test make cutouts.
+        """
         data = make_100gaussians_image()
         bkg_estimator = MedianBackground()
         bkg = Background2D(data, (50, 50), filter_size=(3, 3),
@@ -972,7 +1056,7 @@ class TestSourceCatalog:
         for cutout in cutouts:
             assert cutout.data.shape == shape
 
-        # test making cutouts from an input image
+        # Test making cutouts from an input image
         image = np.ones(data.shape)
         cutouts = cat.make_cutouts(shape, array=image, mode='partial')
         for cutout in cutouts:
@@ -991,11 +1075,14 @@ class TestSourceCatalog:
         cutouts = cat.make_cutouts(shape, mode='partial', fill_value=-100)
         assert cutouts[0].data[0, 0] == -100
 
-        # cutout will be None if source is completely masked
+        # Cutout will be None if source is completely masked
         cutouts = self.cat.make_cutouts(shape)
         assert cutouts[0] is None
 
     def test_meta(self):
+        """
+        Test meta.
+        """
         meta = self.cat.meta
         attrs = ['localbkg_width', 'apermask_method', 'kron_params']
         for attr in attrs:
@@ -1007,15 +1094,21 @@ class TestSourceCatalog:
         out = StringIO()
         tbl.write(out, format='ascii.ecsv')
         tbl2 = QTable.read(out.getvalue(), format='ascii.ecsv')
-        # check order of meta keys
+        # Check order of meta keys
         assert list(tbl2.meta.keys()) == list(tbl.meta.keys())
 
     def test_semode(self):
+        """
+        Test semode.
+        """
         self.cat._set_semode()
         tbl = self.cat.to_table()
         assert len(tbl) == 7
 
     def test_tiny_sources(self):
+        """
+        Test tiny sources.
+        """
         data = np.zeros((11, 11))
         data[5, 5] = 1.0
         data[8, 8] = 1.0
@@ -1031,6 +1124,9 @@ class TestSourceCatalog:
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_kron_params():
+    """
+    Test kron params.
+    """
     data = make_100gaussians_image()
     bkg_estimator = MedianBackground()
     bkg = Background2D(data, (50, 50), filter_size=(3, 3),
@@ -1085,6 +1181,9 @@ def test_kron_params():
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win():
+    """
+    Test centroid win.
+    """
     g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
     g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
     m = g1 + g2
@@ -1128,3 +1227,82 @@ def test_centroid_win_migrate():
     indices = (0, 3, 14, 30)
     for idx in indices:
         assert_equal(cat.centroid_win[idx], cat.centroid[idx])
+
+
+def test_background_centroid_coordinate_order():
+    """
+    Test that the background_centroid property correctly passes (y, x)
+    coordinates to map_coordinates.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    # Background varies only along y (rows)
+    background = yy.astype(float)
+
+    g1 = Gaussian2D(200, 50, 25, 5, 5)
+    g2 = Gaussian2D(200, 50, 75, 5, 5)
+    data = g1(xx, yy) + g2(xx, yy)
+    segm = detect_sources(data, 30.0, npixels=5)
+
+    cat = SourceCatalog(data, segm, background=background)
+    bkg_cen = cat.background_centroid
+
+    # The expected value at each centroid is approximately y_centroid
+    # (since background = y)
+    for i in range(cat.nlabels):
+        xcen = cat.xcentroid[i]
+        ycen = cat.ycentroid[i]
+        if np.isfinite(xcen) and np.isfinite(ycen):
+            # The interpolated background at the centroid should be
+            # close to ycen (not xcen)
+            assert_allclose(bkg_cen[i], ycen, atol=0.5)
+            # If x != y, the wrong order would give a value close to
+            # xcen instead
+            if abs(xcen - ycen) > 5:
+                assert abs(bkg_cen[i] - xcen) > 2
+
+
+def test_apermask_method_none():
+    """
+    Test that circular_photometry with apermask_method='none' does not
+    mask neighboring sources.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    # Two overlapping sources
+    g1 = Gaussian2D(200, 40, 50, 8, 8)
+    g2 = Gaussian2D(200, 60, 50, 8, 8)
+    data = g1(xx, yy) + g2(xx, yy)
+    segm = detect_sources(data, 20.0, npixels=5)
+
+    cat_none = SourceCatalog(data, segm, apermask_method='none')
+    cat_mask = SourceCatalog(data, segm, apermask_method='mask')
+
+    # Use a large aperture that overlaps both sources
+    flux_none, _ = cat_none.circular_photometry(20.0)
+    flux_mask, _ = cat_mask.circular_photometry(20.0)
+
+    # 'none' should include neighbor flux, so should be >= 'mask'
+    for i in range(cat_none.nlabels):
+        if np.isfinite(flux_none[i]) and np.isfinite(flux_mask[i]):
+            assert flux_none[i] >= flux_mask[i]
+
+
+def test_fluxfrac_radius_nan_fallback():
+    """
+    Test that fluxfrac_radius returns NaN when no root can be found
+    (e.g., when the source has all-negative Kron flux within the search
+    bracket or zero Kron flux).
+    """
+    # Create a source with negative total flux by subtracting a
+    # large constant. The Kron flux will be zero/negative, causing
+    # fluxfrac_radius to return NaN.
+    yy, xx = np.mgrid[0:51, 0:51]
+    g1 = Gaussian2D(10, 25, 25, 3, 3)
+    data = g1(xx, yy) - 50.0  # all negative
+    segm_data = np.zeros((51, 51), dtype=int)
+    segm_data[20:31, 20:31] = 1
+    segm = SegmentationImage(segm_data)
+
+    cat = SourceCatalog(data, segm)
+    radius = cat.fluxfrac_radius(0.5)
+    # Should be NaN since there's no meaningful flux
+    assert np.isnan(radius.value)
