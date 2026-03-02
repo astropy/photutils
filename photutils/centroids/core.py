@@ -23,8 +23,8 @@ __all__ = ['CentroidQuadratic', 'centroid_com', 'centroid_quadratic',
 
 def centroid_com(data, *, mask=None):
     """
-    Calculate the centroid of an n-dimensional array as
-    its "center of mass" determined from `image moments
+    Calculate the centroid of an array as the flux-weighted
+    center of mass derived from `image moments
     <https://en.wikipedia.org/wiki/Image_moment>`_.
 
     Non-finite values (e.g., NaN or inf) in the ``data`` array are
@@ -108,7 +108,7 @@ def centroid_com(data, *, mask=None):
 
     indices = np.ogrid[tuple(slice(0, i) for i in data.shape)]
 
-    # Output array is reversed to give (x, y) order
+    # Output array is reversed to give (x, y) order (e.g., for 2D data)
     return np.array([np.sum(indices[axis] * data) / total
                      for axis in range(data.ndim)])[::-1]
 

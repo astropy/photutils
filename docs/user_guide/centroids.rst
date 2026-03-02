@@ -9,8 +9,8 @@ centroid of one or more sources.
 
 The following functions calculate the centroid of a single source:
 
-* :func:`~photutils.centroids.centroid_com`: Calculates the object
-  "center of mass" from 2D image moments.
+* :func:`~photutils.centroids.centroid_com`: Calculates the centroid as
+  the flux-weighted center of mass derived from image moments.
 
 * :func:`~photutils.centroids.centroid_quadratic`: Calculates the
   centroid by fitting a 2D quadratic polynomial to the data.
