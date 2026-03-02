@@ -23,12 +23,16 @@ __all__ = ['CentroidQuadratic', 'centroid_com', 'centroid_quadratic',
 
 def centroid_com(data, *, mask=None):
     """
-    Calculate the centroid of an n-dimensional array as
-    its "center of mass" determined from `image moments
+    Calculate the centroid of an array as the flux-weighted
+    center of mass derived from `image moments
     <https://en.wikipedia.org/wiki/Image_moment>`_.
 
     Non-finite values (e.g., NaN or inf) in the ``data`` array are
-    automatically masked.
+    automatically masked. The final mask is a logical OR combination
+    of the input ``mask``, the automatically generated mask for
+    non-finite values, and the mask of the input ``data`` if it is a
+    `~numpy.ma.MaskedArray`. The centroid is calculated using only the
+    unmasked data values.
 
     Parameters
     ----------
@@ -104,7 +108,7 @@ def centroid_com(data, *, mask=None):
 
     indices = np.ogrid[tuple(slice(0, i) for i in data.shape)]
 
-    # Output array is reversed to give (x, y) order
+    # Output array is reversed to give (x, y) order (e.g., for 2D data)
     return np.array([np.sum(indices[axis] * data) / total
                      for axis in range(data.ndim)])[::-1]
 
@@ -117,6 +121,13 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     """
     Calculate the centroid of a 2D array by fitting a 2D quadratic
     polynomial.
+
+    Non-finite values (e.g., NaN or inf) in the ``data`` array are
+    automatically masked. The final mask is a logical OR combination
+    of the input ``mask``, the automatically generated mask for
+    non-finite values, and the mask of the input ``data`` if it is a
+    `~numpy.ma.MaskedArray`. The centroid is calculated using only the
+    unmasked data values.
 
     A second degree 2D polynomial is fit within a small region of the
     data defined by ``fit_boxsize`` to calculate the centroid position.
@@ -431,6 +442,12 @@ class CentroidQuadratic:
         """
         Calculate the centroid.
 
+        Non-finite values (e.g., NaN or inf) in the ``data`` array
+        are automatically masked. The automatically masked values are
+        combined (using bitwise OR) with the input ``mask``. If ``data``
+        is a `~numpy.ma.MaskedArray`, its mask will also be combined
+        (using bitwise OR) with the input ``mask``.
+
         Parameters
         ----------
         data : 2D array_like
@@ -466,12 +483,24 @@ class CentroidQuadratic:
 def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
                      mask=None, centroid_func=centroid_com, **kwargs):
     """
-    Calculate the centroid of sources at the defined positions.
+    Calculate the centroid of sources at the defined positions in a 2D
+    array using a specified centroid function.
 
     A cutout image centered on each input position will be used to
     calculate the centroid position. The cutout image is defined either
     using the ``box_size`` or ``footprint`` keyword. The ``footprint``
     keyword can be used to create a non-rectangular cutout image.
+
+    Masks and non-finite values are handled by the input
+    ``centroid_func``. When using a centroid function provided by
+    Photutils, non-finite values (e.g., NaN or inf) in the ``data``
+    array are automatically masked. The ``centroid_1dg`` and
+    ``centroid_2dg`` functions also automatically mask any pixels with
+    non-finite ``error`` array values. The final mask is a logical OR
+    combination of the input ``mask``, the automatically generated
+    mask(s) for non-finite values, and the mask of the input ``data`` if
+    it is a `~numpy.ma.MaskedArray`. The centroid is calculated using
+    only the unmasked data values.
 
     Parameters
     ----------

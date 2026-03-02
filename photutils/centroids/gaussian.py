@@ -24,7 +24,11 @@ def centroid_1dg(data, *, error=None, mask=None):
     marginal ``x`` and ``y`` distributions of the array.
 
     Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
-    arrays are automatically masked. These masks are combined.
+    arrays are automatically masked. The final mask is a logical OR
+    combination of the input ``mask``, the automatically generated mask
+    for non-finite values, and the mask of the input ``data`` if it is a
+    `~numpy.ma.MaskedArray`. The centroid is calculated using only the
+    unmasked data values.
 
     Parameters
     ----------
@@ -113,7 +117,11 @@ def centroid_2dg(data, *, error=None, mask=None):
     array.
 
     Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
-    arrays are automatically masked. These masks are combined.
+    arrays are automatically masked. The final mask is a logical OR
+    combination of the input ``mask``, the automatically generated mask
+    for non-finite values, and the mask of the input ``data`` if it is a
+    `~numpy.ma.MaskedArray`. The centroid is calculated using only the
+    unmasked data values.
 
     Parameters
     ----------
