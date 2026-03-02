@@ -680,6 +680,7 @@ class TestSegmentationImage:
         assert isinstance(patches[0], PathPatch)
 
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_patches_corners(self):
@@ -701,6 +702,7 @@ class TestSegmentationImage:
         assert len(segm.to_regions()) == 1
 
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_polygons_complex(self):
