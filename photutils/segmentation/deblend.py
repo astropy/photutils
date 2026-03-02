@@ -169,7 +169,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         labels = np.atleast_1d(labels)
         segment_img.check_labels(labels)
 
-    # include only sources that have at least (2 * npixels);
+    # Include only sources that have at least (2 * npixels);
     # this is required for a source to be deblended into multiple
     # sources, each with a minimum of npixels
     mask = (segment_img.areas[segment_img.get_indices(labels)]
@@ -224,7 +224,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     else:
         # Use multiprocessing to deblend sources
 
-        # Prepare the arguments for the worker function
+        # prepare the arguments for the worker function
         all_source_data = []
         all_source_segments = []
         all_source_slices = []
@@ -288,7 +288,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
                 deblend_label_map[label] = new_labels
                 max_label += len(new_labels)
 
-    # process any warnings during deblending
+    # Process any warnings during deblending
     warning_info = {}
     if nonposmin_labels or nmarkers_labels:
         msg = ('The deblending mode of one or more source labels from the '
@@ -322,7 +322,7 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     segm_img._data = segm_deblended
     segm_img._deblend_label_map = deblend_label_map
 
-    # store the warnings in the output SegmentationImage info attribute
+    # Store the warnings in the output SegmentationImage info attribute
     if warning_info:
         segm_img.info = {'warnings': warning_info}
 
@@ -568,14 +568,14 @@ class _SingleSourceDeblender:
         markers = segment_lower.astype(bool)
         for label in labels:
             mask = (segment_lower == label)
-            # find label mapping from the lower to upper level
+            # Find label mapping from the lower to upper level
             upper_labels = _get_labels(segment_upper[mask])
             if upper_labels.size >= 2:  # new child markers found
                 new_markers = True
                 markers[mask] = segment_upper[mask].astype(bool)
 
         if new_markers:
-            # convert bool markers to integer labels
+            # Convert bool markers to integer labels
             return ndi_label(markers, structure=self.footprint)[0]
 
         return segment_lower
@@ -617,7 +617,7 @@ class _SingleSourceDeblender:
                 remove_marker = any(flux_frac < self.contrast)
 
                 if remove_marker:
-                    # remove only the faintest source (one at a time)
+                    # Remove only the faintest source (one at a time)
                     # because several faint sources could combine to meet
                     # the contrast criterion
                     markers[markers == labels[np.argmin(flux_frac)]] = 0.0
@@ -637,7 +637,7 @@ class _SingleSourceDeblender:
         if self.source_min == self.source_max:  # no deblending
             return None
 
-        # define the markers (possible sources) for the watershed algorithm
+        # Define the markers (possible sources) for the watershed algorithm
         markers = self.make_markers()
         if markers is None:
             return None
@@ -657,7 +657,7 @@ class _SingleSourceDeblender:
             if markers is None:
                 return None
 
-        # deblend using the watershed algorithm using the markers as seeds
+        # Deblend using the watershed algorithm using the markers as seeds
         markers = self.apply_watershed(markers)
 
         if not np.array_equal(self.segment_mask, markers.astype(bool)):
@@ -669,7 +669,7 @@ class _SingleSourceDeblender:
         if len(_get_labels(markers)) == 1:  # no deblending
             return None
 
-        # markers may not be consecutive if a label was removed due to
+        # Markers may not be consecutive if a label was removed due to
         # the contrast criterion
         relabel_map = _create_relabel_map(markers, start_label=1)
         if relabel_map is not None:
@@ -719,7 +719,7 @@ def _create_relabel_map(array, start_label=1):
     """
     labels = _get_labels(array)
 
-    # check if the labels are already consecutive starting from
+    # Check if the labels are already consecutive starting from
     # start_label
     if (labels[0] == start_label
             and (labels[-1] - start_label + 1) == len(labels)):

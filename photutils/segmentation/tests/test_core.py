@@ -26,9 +26,15 @@ class TestSegmentationImage:
         self.segm = SegmentationImage(self.data)
 
     def test_array(self):
+        """
+        Test array.
+        """
         assert_allclose(self.segm.data, self.segm.__array__())
 
     def test_copy(self):
+        """
+        Test copy.
+        """
         segm = SegmentationImage(self.data.copy())
         segm2 = segm.copy()
         assert segm.data is not segm2.data
@@ -37,6 +43,9 @@ class TestSegmentationImage:
         assert segm.data[0, 0] != segm2.data[0, 0]
 
     def test_slicing(self):
+        """
+        Test slicing.
+        """
         segm2 = self.segm[1:5, 2:5]
         assert segm2.shape == (4, 3)
         assert_equal(segm2.labels, [3, 5])
@@ -51,6 +60,9 @@ class TestSegmentationImage:
             self.segm[1:1, 2:4]
 
     def test_data_all_zeros(self):
+        """
+        Test data all zeros.
+        """
         data = np.zeros((5, 5), dtype=int)
         segm = SegmentationImage(data)
         assert segm.max_label == 0
@@ -61,24 +73,30 @@ class TestSegmentationImage:
             segm.relabel_consecutive()
 
     def test_data_reassignment(self):
+        """
+        Test data reassignment.
+        """
         segm = SegmentationImage(self.data.copy())
         segm.data = self.data[0:3, :].copy()
         assert_equal(segm.labels, [1, 3, 4])
 
     def test_invalid_data(self):
-        # is float dtype
+        """
+        Test invalid data.
+        """
+        # Is float dtype
         data = np.zeros((3, 3), dtype=float)
         match = 'data must have integer type'
         with pytest.raises(TypeError, match=match):
             SegmentationImage(data)
 
-        # contains a negative value
+        # Contains a negative value
         data = np.arange(-1, 8).reshape(3, 3).astype(int)
         match = 'The segmentation image cannot contain negative integers'
         with pytest.raises(ValueError, match=match):
             SegmentationImage(data)
 
-        # is not ndarray
+        # Is not ndarray
         data = [[1, 1], [0, 1]]
         match = 'Input data must be a numpy array'
         with pytest.raises(TypeError, match=match):
@@ -86,7 +104,9 @@ class TestSegmentationImage:
 
     @pytest.mark.parametrize('label', [0, -1, 2])
     def test_invalid_label(self, label):
-        # test with scalar labels
+        """
+        Test invalid label.
+        """
         match = 'is invalid'
         with pytest.raises(ValueError, match=match):
             self.segm.check_label(label)
@@ -94,17 +114,25 @@ class TestSegmentationImage:
             self.segm.check_labels(label)
 
     def test_invalid_label_array(self):
-        # test with array of labels
+        """
+        Test invalid label array.
+        """
         match = 'are invalid'
         with pytest.raises(ValueError, match=match):
             self.segm.check_labels([0, -1, 2])
 
     def test_data_ma(self):
+        """
+        Test data ma.
+        """
         assert isinstance(self.segm.data_ma, np.ma.MaskedArray)
         assert np.ma.count(self.segm.data_ma) == 18
         assert np.ma.count_masked(self.segm.data_ma) == 18
 
     def test_segments(self):
+        """
+        Test segments.
+        """
         assert isinstance(self.segm.segments[0], Segment)
         assert_allclose(self.segm.segments[0].data,
                         self.segm.segments[0].__array__())
@@ -122,6 +150,9 @@ class TestSegmentationImage:
         assert self.segm.segments[idx].bbox == self.segm.bbox[idx]
 
     def test_repr_str(self):
+        """
+        Test repr str.
+        """
         assert repr(self.segm) == str(self.segm)
 
         props = ['shape', 'nlabels']
@@ -129,15 +160,24 @@ class TestSegmentationImage:
             assert f'{prop}:' in repr(self.segm)
 
     def test_segment_repr_str(self):
+        """
+        Test segment repr str.
+        """
         props = ['label', 'slices', 'area']
         for prop in props:
             assert f'{prop}:' in repr(self.segm.segments[0])
 
     def test_segment_data(self):
+        """
+        Test segment data.
+        """
         assert_allclose(self.segm.segments[3].data.shape, (3, 3))
         assert_allclose(np.unique(self.segm.segments[3].data), [0, 5])
 
     def test_segment_make_cutout(self):
+        """
+        Test segment make cutout.
+        """
         cutout = self.segm.segments[3].make_cutout(self.data,
                                                    masked_array=False)
         assert not np.ma.is_masked(cutout)
@@ -149,20 +189,57 @@ class TestSegmentationImage:
         assert_allclose(cutout.shape, (3, 3))
 
     def test_segment_make_cutout_input(self):
+        """
+        Test segment make cutout input.
+        """
         match = 'data must have the same shape as the segmentation array'
         with pytest.raises(ValueError, match=match):
             self.segm.segments[0].make_cutout(np.arange(10))
 
+    def test_segment_no_full_array_reference(self):
+        """
+        Test that Segment stores only a cutout copy, not a reference
+        to the full segmentation array.
+        """
+        import sys
+
+        large = np.zeros((1000, 1000), dtype=np.int32)
+        large[10:20, 10:20] = 1
+        segm = SegmentationImage(large)
+        segment = segm.segments[0]
+
+        # The cutout should be much smaller than the full array
+        assert segment._segment_data_cutout.shape == (10, 10)
+        assert segment._segment_data_shape == (1000, 1000)
+
+        # Delete the SegmentationImage; the segment should not keep
+        # the full array alive
+        full_refcount = sys.getrefcount(large)
+        del segm
+        assert sys.getrefcount(large) < full_refcount
+
     def test_labels(self):
+        """
+        Test labels.
+        """
         assert_allclose(self.segm.labels, [1, 3, 4, 5, 7])
 
     def test_nlabels(self):
+        """
+        Test nlabels.
+        """
         assert self.segm.nlabels == 5
 
     def test_max_label(self):
+        """
+        Test max label.
+        """
         assert self.segm.max_label == 7
 
     def test_areas(self):
+        """
+        Test areas.
+        """
         expected = np.array([2, 2, 3, 6, 5])
         assert_allclose(self.segm.areas, expected)
 
@@ -172,9 +249,15 @@ class TestSegmentationImage:
                         self.segm.areas)
 
     def test_background_area(self):
+        """
+        Test background area.
+        """
         assert self.segm.background_area == 18
 
     def test_is_consecutive(self):
+        """
+        Test is consecutive.
+        """
         assert not self.segm.is_consecutive
 
         data = np.array([[2, 2, 0], [0, 3, 3], [0, 0, 4]], dtype=np.int32)
@@ -187,9 +270,15 @@ class TestSegmentationImage:
         assert segm.data.dtype == dtype
 
     def test_missing_labels(self):
+        """
+        Test missing labels.
+        """
         assert_allclose(self.segm.missing_labels, [2, 6])
 
     def test_check_labels(self):
+        """
+        Test check labels.
+        """
         match = 'is invalid'
         with pytest.raises(ValueError, match=match):
             self.segm.check_label(2)
@@ -201,6 +290,9 @@ class TestSegmentationImage:
             self.segm.check_labels([2, 6])
 
     def test_bbox_1d(self):
+        """
+        Test bbox 1d.
+        """
         segm = SegmentationImage(np.array([0, 0, 1, 1, 0, 2, 2, 0]))
         match = 'The "bbox" attribute requires a 2D segmentation image'
         with pytest.raises(ValueError, match=match):
@@ -208,6 +300,9 @@ class TestSegmentationImage:
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_reset_cmap(self):
+        """
+        Test reset cmap.
+        """
         segm = self.segm.copy()
         cmap = segm.cmap.copy()
         segm.reset_cmap(seed=123)
@@ -215,6 +310,9 @@ class TestSegmentationImage:
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_make_cmap(self):
+        """
+        Test make cmap.
+        """
         cmap = self.segm.make_cmap()
         assert len(cmap.colors) == (self.segm.max_label + 1)
         assert_allclose(cmap.colors[0], [0, 0, 0, 1])
@@ -230,10 +328,16 @@ class TestSegmentationImage:
                                                   ('#000000C0', 192 / 255),
                                                   ('#000000FF', 1.0)])
     def test_make_cmap_alpha(self, color, alpha):
+        """
+        Test make cmap alpha.
+        """
         cmap = self.segm.make_cmap(background_color=color)
         assert_allclose(cmap.colors[0], (0, 0, 0, alpha))
 
     def test_reassign_labels(self):
+        """
+        Test reassign labels.
+        """
         segm = SegmentationImage(self.data.copy())
         segm.reassign_labels(labels=[1, 7], new_label=2)
         ref_data = np.array([[2, 2, 0, 0, 4, 4],
@@ -247,6 +351,9 @@ class TestSegmentationImage:
 
     @pytest.mark.parametrize('start_label', [1, 5])
     def test_relabel_consecutive(self, start_label):
+        """
+        Test relabel consecutive.
+        """
         segm = SegmentationImage(self.data.copy())
         ref_data = np.array([[1, 1, 0, 0, 3, 3],
                              [0, 0, 0, 0, 0, 3],
@@ -263,7 +370,7 @@ class TestSegmentationImage:
         assert_allclose(segm.data, ref_data)
         assert segm.nlabels == len(segm.slices) - segm.slices.count(None)
 
-        # test slices caching
+        # Test slices caching
         segm = SegmentationImage(self.data.copy())
         slc1 = segm.slices
         segm.relabel_consecutive()
@@ -271,12 +378,18 @@ class TestSegmentationImage:
 
     @pytest.mark.parametrize('start_label', [0, -1])
     def test_relabel_consecutive_start_invalid(self, start_label):
+        """
+        Test relabel consecutive start invalid.
+        """
         segm = SegmentationImage(self.data.copy())
         match = 'start_label must be > 0'
         with pytest.raises(ValueError, match=match):
             segm.relabel_consecutive(start_label=start_label)
 
     def test_keep_labels(self):
+        """
+        Test keep labels.
+        """
         ref_data = np.array([[0, 0, 0, 0, 0, 0],
                              [0, 0, 0, 0, 0, 0],
                              [0, 0, 3, 3, 0, 0],
@@ -288,6 +401,9 @@ class TestSegmentationImage:
         assert_allclose(segm.data, ref_data)
 
     def test_keep_labels_relabel(self):
+        """
+        Test keep labels relabel.
+        """
         ref_data = np.array([[0, 0, 0, 0, 0, 0],
                              [0, 0, 0, 0, 0, 0],
                              [0, 0, 1, 1, 0, 0],
@@ -299,6 +415,9 @@ class TestSegmentationImage:
         assert_allclose(segm.data, ref_data)
 
     def test_remove_labels(self):
+        """
+        Test remove labels.
+        """
         ref_data = np.array([[1, 1, 0, 0, 4, 4],
                              [0, 0, 0, 0, 0, 4],
                              [0, 0, 0, 0, 0, 0],
@@ -316,6 +435,9 @@ class TestSegmentationImage:
         assert segm2.data.dtype == dtype
 
     def test_remove_labels_relabel(self):
+        """
+        Test remove labels relabel.
+        """
         ref_data = np.array([[1, 1, 0, 0, 2, 2],
                              [0, 0, 0, 0, 0, 2],
                              [0, 0, 0, 0, 0, 0],
@@ -327,6 +449,9 @@ class TestSegmentationImage:
         assert_allclose(segm.data, ref_data)
 
     def test_remove_border_labels(self):
+        """
+        Test remove border labels.
+        """
         ref_data = np.array([[0, 0, 0, 0, 0, 0],
                              [0, 0, 0, 0, 0, 0],
                              [0, 0, 3, 3, 0, 0],
@@ -338,12 +463,18 @@ class TestSegmentationImage:
         assert_allclose(segm.data, ref_data)
 
     def test_remove_border_labels_border_width(self):
+        """
+        Test remove border labels border width.
+        """
         segm = SegmentationImage(self.data.copy())
         match = 'border_width must be smaller than half the array size'
         with pytest.raises(ValueError, match=match):
             segm.remove_border_labels(border_width=3)
 
     def test_remove_border_labels_no_remaining_segments(self):
+        """
+        Test remove border labels no remaining segments.
+        """
         alt_data = self.data.copy()
         alt_data[alt_data == 3] = 0
         segm = SegmentationImage(alt_data)
@@ -351,6 +482,9 @@ class TestSegmentationImage:
         assert segm.nlabels == 0
 
     def test_remove_masked_labels(self):
+        """
+        Test remove masked labels.
+        """
         ref_data = np.array([[0, 0, 0, 0, 0, 0],
                              [0, 0, 0, 0, 0, 0],
                              [0, 0, 3, 3, 0, 0],
@@ -364,6 +498,9 @@ class TestSegmentationImage:
         assert_allclose(segm.data, ref_data)
 
     def test_remove_masked_labels_without_partial_overlap(self):
+        """
+        Test remove masked labels without partial overlap.
+        """
         ref_data = np.array([[0, 0, 0, 0, 4, 4],
                              [0, 0, 0, 0, 0, 4],
                              [0, 0, 3, 3, 0, 0],
@@ -377,6 +514,9 @@ class TestSegmentationImage:
         assert_allclose(segm.data, ref_data)
 
     def test_remove_masked_segments_mask_shape(self):
+        """
+        Test remove masked segments mask shape.
+        """
         segm = SegmentationImage(np.ones((5, 5), dtype=int))
         mask = np.zeros((3, 3), dtype=bool)
         match = 'mask must have the same shape as the segmentation array'
@@ -384,6 +524,9 @@ class TestSegmentationImage:
             segm.remove_masked_labels(mask)
 
     def test_make_source_mask(self):
+        """
+        Test make source mask.
+        """
         segm_array = np.zeros((7, 7)).astype(int)
         segm_array[3, 3] = 1
         segm = SegmentationImage(segm_array)
@@ -419,6 +562,9 @@ class TestSegmentationImage:
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_imshow(self):
+        """
+        Test imshow.
+        """
         from matplotlib.image import AxesImage
 
         axim = self.segm.imshow(figsize=(5, 5))
@@ -430,6 +576,9 @@ class TestSegmentationImage:
     @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     def test_polygons(self):
+        """
+        Test polygons.
+        """
         from shapely.geometry.polygon import Polygon
 
         polygons = self.segm.polygons
@@ -450,6 +599,9 @@ class TestSegmentationImage:
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     def test_polygon_hole(self):
 
+        """
+        Test polygon hole.
+        """
         data = np.zeros((11, 11), dtype=int)
         data[3:8, 3:8] = 10
         data[5, 5] = 0  # hole
@@ -465,6 +617,9 @@ class TestSegmentationImage:
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     def test_regions(self):
+        """
+        Test regions.
+        """
         from regions import PolygonPixelRegion, Regions
         regions = self.segm.to_regions()
 
@@ -494,6 +649,9 @@ class TestSegmentationImage:
     @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_patches(self):
+        """
+        Test patches.
+        """
         from matplotlib.patches import PathPatch
 
         patches = self.segm.to_patches(edgecolor='blue')
@@ -526,8 +684,7 @@ class TestSegmentationImage:
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_patches_corners(self):
         """
-        Regression test for a bug where patches were not generated for
-        "invalid" Shapely polygons.
+        Test that patches are generated for "invalid" Shapely polygons.
 
         This occurs when two pixels within a segment intersect only at a
         corner.
@@ -557,11 +714,11 @@ class TestSegmentationImage:
 
         image = np.zeros((150, 150), dtype=np.uint32)
 
-        # polygon with one hole
+        # Polygon with one hole
         image[10:90, 10:90] = 1
         image[30:70, 30:70] = 0
 
-        # simple Polygon
+        # Simple Polygon
         image[15:25, 110:140] = 2
         image[25:55, 110:120] = 2
 
@@ -570,13 +727,13 @@ class TestSegmentationImage:
         image[105:120, 45:55] = 3
         image[114:130, 60:80] = 3
 
-        # single polygon with multiple holes
+        # Single polygon with multiple holes
         image[85:145, 95:145] = 4
         image[105:115, 105:115] = 0
         image[125:135, 125:138] = 0
         image[120:125, 100:120] = 0
 
-        # simple Polygon
+        # Simple Polygon
         image[5, 125:145] = 5
 
         segm = SegmentationImage(image)
@@ -609,7 +766,7 @@ class TestSegmentationImage:
             assert isinstance(region, (Regions, PolygonPixelRegion))
         assert isinstance(regions[2], Regions)
 
-        # combine all segments into a single segment;
+        # Combine all segments into a single segment;
         # now have multipolygon objects, some with holes
         segm.reassign_labels(segm.labels, new_label=4)
         polygons = segm.polygons
@@ -631,6 +788,9 @@ class TestSegmentationImage:
         assert len(regions[0]) == 7
 
     def test_deblended_labels(self):
+        """
+        Test deblended labels.
+        """
         data = np.array([[1, 1, 0, 0, 4, 4],
                          [0, 0, 0, 0, 0, 4],
                          [0, 0, 7, 8, 0, 0],

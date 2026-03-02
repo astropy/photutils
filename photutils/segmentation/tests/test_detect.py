@@ -39,11 +39,17 @@ class TestDetectThreshold:
         assert_allclose(threshold, ref)
 
     def test_background(self):
+        """
+        Test background.
+        """
         threshold = detect_threshold(DATA, nsigma=1.0, background=1)
         ref = (5.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_background_image(self):
+        """
+        Test background image.
+        """
         background = np.ones((3, 3))
         threshold = detect_threshold(DATA, nsigma=1.0, background=background)
         ref = (5.0 / 3.0) * np.ones((3, 3))
@@ -55,17 +61,26 @@ class TestDetectThreshold:
         assert_allclose(threshold.value, ref)
 
     def test_background_badshape(self):
+        """
+        Test background badshape.
+        """
         wrong_shape = np.zeros((2, 2))
         match = 'input background is 2D, then it must have the same shape'
         with pytest.raises(ValueError, match=match):
             detect_threshold(DATA, nsigma=2.0, background=wrong_shape)
 
     def test_error(self):
+        """
+        Test error.
+        """
         threshold = detect_threshold(DATA, nsigma=1.0, error=1)
         ref = (4.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
     def test_error_image(self):
+        """
+        Test error image.
+        """
         error = np.ones((3, 3))
         threshold = detect_threshold(DATA, nsigma=1.0, error=error)
         ref = (4.0 / 3.0) * np.ones((3, 3))
@@ -77,12 +92,18 @@ class TestDetectThreshold:
         assert_allclose(threshold.value, ref)
 
     def test_error_badshape(self):
+        """
+        Test error badshape.
+        """
         wrong_shape = np.zeros((2, 2))
         match = 'If input error is 2D, then it must have the same shape'
         with pytest.raises(ValueError, match=match):
             detect_threshold(DATA, nsigma=2.0, error=wrong_shape)
 
     def test_background_error(self):
+        """
+        Test background error.
+        """
         threshold = detect_threshold(DATA, nsigma=2.0, background=10.0,
                                      error=1.0)
         ref = 12.0 * np.ones((3, 3))
@@ -103,6 +124,9 @@ class TestDetectThreshold:
                              error=1.0 * u.Jy)
 
     def test_background_error_images(self):
+        """
+        Test background error images.
+        """
         background = np.ones((3, 3)) * 10.0
         error = np.ones((3, 3))
         threshold = detect_threshold(DATA, nsigma=2.0, background=background,
@@ -125,6 +149,9 @@ class TestDetectThreshold:
         assert_equal(threshold, ref)
 
     def test_invalid_sigma_clip(self):
+        """
+        Test invalid sigma clip.
+        """
         match = 'sigma_clip must be a SigmaClip object'
         with pytest.raises(TypeError, match=match):
             detect_threshold(DATA, 1.0, sigma_clip=10)
@@ -185,7 +212,7 @@ class TestDetectSources:
         assert segm.nlabels == 2
         assert segm.data.dtype == np.int32
 
-        # removal of labels with size less than npixels
+        # Removal of labels with size less than npixels
         # dtype should still be np.int32
         segm = detect_sources(data, 0, npixels=8)
         assert segm.nlabels == 1
@@ -269,6 +296,9 @@ class TestDetectSources:
             detect_sources(self.data, threshold=1, npixels=1, connectivity=10)
 
     def test_mask(self):
+        """
+        Test mask.
+        """
         data = np.zeros((11, 11))
         data[3:8, 3:8] = 5.0
         mask = np.zeros(data.shape, dtype=bool)
@@ -277,13 +307,16 @@ class TestDetectSources:
         segm2 = detect_sources(data, 1.0, 1.0, mask=mask)
         assert segm2.areas[0] == segm1.areas[0] - mask.sum()
 
-        # mask with all True
+        # Mask with all True
         mask = np.ones(data.shape, dtype=bool)
         match = 'mask must not be True for every pixel'
         with pytest.raises(ValueError, match=match):
             detect_sources(data, 1.0, 1.0, mask=mask)
 
     def test_mask_shape(self):
+        """
+        Test mask shape.
+        """
         match = 'mask must have the same shape as the input image'
         with pytest.raises(ValueError, match=match):
             detect_sources(self.data, 1.0, 1.0, mask=np.ones((5, 5)))

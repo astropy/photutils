@@ -163,10 +163,10 @@ Bug Fixes
   - Fixed a bug in ``SourceCatalog`` where the (x, y) coordinates were
     swapped in the ``map_coordinates`` call used to interpolate the
     background at source centroids, causing ``background_centroid`` to
-    return incorrect values. [#2176]
+    return incorrect values. [#2198]
 
   - Fixed an issue in ``SourceCatalog`` where incorrect masking behavior
-    could occur when ``apermask_method='none'``. [#2176]
+    could occur when ``apermask_method='none'``. [#2198]
 
 API Changes
 ^^^^^^^^^^^

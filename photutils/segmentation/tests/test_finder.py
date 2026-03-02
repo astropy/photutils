@@ -25,6 +25,9 @@ class TestSourceFinder:
 
     @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_deblend(self):
+        """
+        Test deblend.
+        """
         finder = SourceFinder(npixels=self.npixels, progress_bar=False)
         segm1 = finder(self.convolved_data, self.threshold)
         assert segm1.nlabels == 94
@@ -34,6 +37,9 @@ class TestSourceFinder:
         assert np.all(segm1.data == segm2.data)
 
     def test_invalid_units(self):
+        """
+        Test invalid units.
+        """
         finder = SourceFinder(npixels=self.npixels, progress_bar=False)
         match = 'must all have the same units'
         with pytest.raises(ValueError, match=match):
@@ -44,12 +50,18 @@ class TestSourceFinder:
             finder(self.convolved_data << u.uJy, self.threshold * u.m)
 
     def test_no_deblend(self):
+        """
+        Test no deblend.
+        """
         finder = SourceFinder(npixels=self.npixels, deblend=False,
                               progress_bar=False)
         segm = finder(self.convolved_data, self.threshold)
         assert segm.nlabels == 87
 
     def test_no_sources(self):
+        """
+        Test no sources.
+        """
         finder = SourceFinder(npixels=self.npixels, deblend=True,
                               progress_bar=False)
 
@@ -60,6 +72,9 @@ class TestSourceFinder:
 
     @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_npixels_tuple(self):
+        """
+        Test npixels tuple.
+        """
         g1 = Gaussian2D(10, 35, 45, 5, 5)
         g2 = Gaussian2D(10, 50, 50, 5, 5)
         g3 = Gaussian2D(10, 66, 55, 5, 5)
@@ -75,6 +90,9 @@ class TestSourceFinder:
         assert segm2.nlabels == 3
 
     def test_repr(self):
+        """
+        Test repr.
+        """
         finder = SourceFinder(npixels=self.npixels, deblend=False,
                               progress_bar=False)
         cls_repr = repr(finder)

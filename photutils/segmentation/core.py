@@ -221,7 +221,7 @@ class SegmentationImage:
             raise ValueError(msg)
 
         if '_data' in self.__dict__:
-            # reset cached properties when data is reassigned, but not on init
+            # Reset cached properties when data is reassigned, but not on init
             self._reset_lazyproperties()
 
         self._data = value  # pylint: disable=attribute-defined-outside-init
@@ -258,7 +258,7 @@ class SegmentationImage:
         if '_raw_slices' in self.__dict__:
             labels_all = np.arange(len(self._raw_slices)) + 1
             labels = []
-            # if a label is missing, raw_slices will be None instead of a slice
+            # If a label is missing, raw_slices will be None instead of a slice
             for label, slc in zip(labels_all, self._raw_slices, strict=True):
                 if slc is not None:
                     labels.append(label)
@@ -483,12 +483,12 @@ class SegmentationImage:
         labels = np.atleast_1d(labels)
         bad_labels = set()
 
-        # check for positive label numbers
+        # Check for positive label numbers
         idx = np.where(labels <= 0)[0]
         if idx.size > 0:
             bad_labels.update(labels[idx])
 
-        # check if label is in the segmentation array
+        # Check if label is in the segmentation array
         bad_labels.update(np.setdiff1d(labels, self.labels))
 
         if bad_labels:  # bad_labels is a set
@@ -1345,7 +1345,7 @@ class SegmentationImage:
                                np.dtype('uint16'), np.dtype('int16'),
                                np.dtype('int32')}
 
-        # try to convert the data to int32 if it has an unsupported
+        # Try to convert the data to int32 if it has an unsupported
         # dtype
         if self.data.dtype not in rasterio_int_dtypes:
             min_val, max_val = self.data.min(), self.data.max()
@@ -1364,7 +1364,7 @@ class SegmentationImage:
         else:
             dtype = self.data.dtype
 
-        # shift the vertices so that the (0, 0) origin is at the
+        # Shift the vertices so that the (0, 0) origin is at the
         # center of the lower-left pixel
         transform = Affine(1.0, 0.0, -0.5, 0.0, 1.0, -0.5)
 
@@ -1374,7 +1374,7 @@ class SegmentationImage:
 
         polygons.sort(key=lambda x: x[1])  # sort in label order
 
-        # group polygons by label
+        # Group polygons by label
         polygon_dict = defaultdict(list)
         for polygon, label in polygons:
             polygon_dict[int(label)].append(polygon)
@@ -1412,7 +1412,7 @@ class SegmentationImage:
             if len(geo_polys) == 1:
                 polygons.append(shape(geo_polys[0]))
             elif len(geo_polys) > 1:
-                # merge multiple polygons for the same label
+                # Merge multiple polygons for the same label
                 polys = [shape(poly) for poly in geo_polys]
                 polygons.append(MultiPolygon(polys))
 
@@ -1840,7 +1840,7 @@ class SegmentationImage:
         vmin = -0.5
         vmax = np.max(idx) + 0.5
 
-        # keep the original cmap colors for the labels
+        # Keep the original cmap colors for the labels
         if cmap is None:
             cmap = ListedColormap(self.cmap.colors[data])
 
@@ -1892,11 +1892,18 @@ class Segment:
     polygon : Shapely polygon, optional
         The outline of the segment as a `Shapely
         <https://shapely.readthedocs.io/en/stable/>`_ polygon.
+
+    Notes
+    -----
+    Only the minimal bounding-box cutout of the segmentation array is
+    stored (as a copy), so `Segment` instances do not prevent garbage
+    collection of the parent array.
     """
 
     def __init__(self, segment_data, label, slices, bbox, area, *,
                  polygon=None):
-        self._segment_data = segment_data
+        self._segment_data_cutout = np.copy(segment_data[slices])
+        self._segment_data_shape = segment_data.shape
         self.label = label
         self.slices = slices
         self.bbox = bbox
@@ -1936,7 +1943,7 @@ class Segment:
         neighboring segments within the rectangular cutout array are not
         shown).
         """
-        cutout = np.copy(self._segment_data[self.slices])
+        cutout = np.copy(self._segment_data_cutout)
         cutout[cutout != self.label] = 0
 
         return cutout
@@ -1951,8 +1958,8 @@ class Segment:
         neighboring segments within the rectangular cutout array are
         masked).
         """
-        mask = (self._segment_data[self.slices] != self.label)
-        return np.ma.masked_array(self._segment_data[self.slices], mask=mask)
+        mask = (self._segment_data_cutout != self.label)
+        return np.ma.masked_array(self._segment_data_cutout, mask=mask)
 
     def make_cutout(self, data, masked_array=False):
         """
@@ -1986,12 +1993,12 @@ class Segment:
         result : 2D `~numpy.ndarray` or `~numpy.ma.MaskedArray`
             The cutout array.
         """
-        if data.shape != self._segment_data.shape:
+        if data.shape != self._segment_data_shape:
             msg = 'data must have the same shape as the segmentation array'
             raise ValueError(msg)
 
         if masked_array:
-            mask = (self._segment_data[self.slices] != self.label)
+            mask = (self._segment_data_cutout != self.label)
             return np.ma.masked_array(data[self.slices], mask=mask)
 
         return data[self.slices]

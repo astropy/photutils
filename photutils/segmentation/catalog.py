@@ -34,7 +34,7 @@ from photutils.utils.cutouts import CutoutImage
 __all__ = ['SourceCatalog']
 
 
-# default table columns for `to_table()` output
+# Default table columns for `to_table()` output
 DEFAULT_COLUMNS = ['label', 'xcentroid', 'ycentroid', 'sky_centroid',
                    'bbox_xmin', 'bbox_xmax', 'bbox_ymin', 'bbox_ymax',
                    'area', 'semimajor_sigma', 'semiminor_sigma',
@@ -325,7 +325,7 @@ class SourceCatalog:
         self.kron_params = self._validate_kron_params(kron_params)
         self.progress_bar = progress_bar
 
-        # needed for ordering and isscalar
+        # Needed for ordering and isscalar
         # NOTE: calculate slices before labels for performance.
         #       _labels is initially always a non-scalar array, but
         #       it can become a numpy scalar after indexing/slicing.
@@ -492,7 +492,7 @@ class SourceCatalog:
 
         newcls = object.__new__(self.__class__)
 
-        # attributes defined in __init__ that are copied directly to the
+        # Attributes defined in __init__ that are copied directly to the
         # new class
         init_attr = ('_data', '_segment_img', '_error', '_mask', '_background',
                      'wcs', '_data_unit', '_convolved_data', 'localbkg_width',
@@ -506,7 +506,7 @@ class SourceCatalog:
         attr = '_labels'
         setattr(newcls, attr, getattr(self, attr)[index])
 
-        # need to slice detection_cat, if input
+        # Need to slice detection_cat, if input
         attr = '_detection_cat'
         if getattr(self, attr) is None:
             setattr(newcls, attr, None)
@@ -529,20 +529,20 @@ class SourceCatalog:
                                   for key, value
                                   in self._fluxfrac_cache.items()}
 
-        # evaluated lazyproperty objects and extra properties
+        # Evaluated lazyproperty objects and extra properties
         keys = (set(self.__dict__.keys())
                 & (set(self._lazyproperties) | set(self._extra_properties)))
         for key in keys:
             value = self.__dict__[key]
 
-            # do not insert attributes that are always scalar (e.g.,
+            # Do not insert attributes that are always scalar (e.g.,
             # isscalar, nlabels), i.e., not an array/list for each
             # source
             if np.isscalar(value):
                 continue
 
             try:
-                # keep _<attr> lazyproperties as length-1 iterables;
+                # Keep _<attr> lazyproperties as length-1 iterables;
                 # _<attr> lazyproperties should not have @as_scalar applied
                 if newcls.isscalar and key.startswith('_'):
                     if isinstance(value, np.ndarray):
@@ -552,7 +552,7 @@ class SourceCatalog:
                 else:
                     val = value[index]
             except TypeError:
-                # apply fancy indices (e.g., array/list or bool
+                # Apply fancy indices (e.g., array/list or bool
                 # mask) to lists
                 val = (np.array([*value, None],
                                 dtype=object)[:-1][index]).tolist()
@@ -658,7 +658,7 @@ class SourceCatalog:
 
         property_error = False
         if self.isscalar:
-            # this allows fluxfrac_radius to add len-1 array values for
+            # This allows fluxfrac_radius to add len-1 array values for
             # scalar self
             if self._has_len(value) and len(value) == 1:
                 value = value[0]
@@ -711,7 +711,7 @@ class SourceCatalog:
         if isinstance(names, str):
             names = [names]
 
-        # we copy the list here to prevent changing the list in-place
+        # We copy the list here to prevent changing the list in-place
         # during the for loop below, e.g., in case a user inputs
         # self.extra_properties to ``names``
         extra_properties = self._extra_properties.copy()
@@ -743,7 +743,7 @@ class SourceCatalog:
         self.add_extra_property(new_name, getattr(self, name))
         idx = self.extra_properties.index(name)
         self.remove_extra_property(name)
-        # preserve the order of self.extra_properties
+        # Preserve the order of self.extra_properties
         self.extra_properties.remove(new_name)
         self.extra_properties.insert(idx, new_name)
 
@@ -1010,7 +1010,7 @@ class SourceCatalog:
         for column in table_columns:
             values = getattr(self, column)
 
-            # column assignment requires an object with a length
+            # Column assignment requires an object with a length
             if self.isscalar:
                 values = (values,)
 
@@ -1292,7 +1292,7 @@ class SourceCatalog:
         if self.isscalar:
             moments = moments[np.newaxis, :]
 
-        # ignore divide-by-zero RuntimeWarning
+        # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
@@ -1427,14 +1427,14 @@ class SourceCatalog:
                 aperture = CircularAperture((xcen, ycen), radius)
                 aperture_mask = aperture.to_mask(**kwargs)
 
-                # for consistency with the isophotal centroid, a local
+                # For consistency with the isophotal centroid, a local
                 # background is not subtracted here
                 data, _, mask, cutout_xycen, slc_sm = self._make_aperture_data(
                     label, xcen, ycen, aperture_mask.bbox, 0.0,
                     make_error=False)
 
                 if data is None:
-                    # return NaN if centroid moves the aperture
+                    # Return NaN if centroid moves the aperture
                     # completely off the image
                     xcen = np.nan
                     ycen = np.nan
@@ -1442,14 +1442,14 @@ class SourceCatalog:
 
                 aperture_weights = aperture_mask.data[slc_sm]
 
-                # define a 2D Gaussian weight array
+                # Define a 2D Gaussian weight array
                 xvals = np.arange(data.shape[1]) - cutout_xycen[0]
                 yvals = np.arange(data.shape[0]) - cutout_xycen[1]
                 xx, yy = np.meshgrid(xvals, yvals)
                 rr2 = xx**2 + yy**2
                 gweight = np.exp(-rr2 / (2.0 * sigma2))
 
-                # ignore multiplication with non-finite values
+                # Ignore multiplication with non-finite values
                 # and ignore divide-by-zero if moments[0, 0] = 0
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', RuntimeWarning)
@@ -1471,7 +1471,7 @@ class SourceCatalog:
         xcen_win = np.array(xcen_win)
         ycen_win = np.array(ycen_win)
 
-        # reset to the isophotal centroid if the windowed centroid is
+        # Reset to the isophotal centroid if the windowed centroid is
         # outside the 1-sigma ellipse
         dx = self._xcentroid - xcen_win
         dy = self._ycentroid - ycen_win
@@ -1573,7 +1573,7 @@ class SourceCatalog:
         """
         centroid_quad = []
         with warnings.catch_warnings():
-            # ignore fit warnings:
+            # Ignore fit warnings:
             #   - quadratic fit failed
             #   - quadratic fit does not have a maximum
             #   - quadratic fit maximum falls outside image
@@ -1597,7 +1597,7 @@ class SourceCatalog:
 
         centroid_quad = np.array(centroid_quad)
 
-        # use the segment barycenter if fit returned NaN
+        # Use the segment barycenter if fit returned NaN
         nan_mask = (np.isnan(centroid_quad[:, 0])
                     | np.isnan(centroid_quad[:, 1]))
         if np.any(nan_mask):
@@ -2315,7 +2315,7 @@ class SourceCatalog:
         moments = self.moments_central
         if self.isscalar:
             moments = moments[np.newaxis, :]
-        # ignore divide-by-zero RuntimeWarning
+        # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             mu_norm = moments / moments[:, 0, 0][:, np.newaxis, np.newaxis]
@@ -2329,12 +2329,12 @@ class SourceCatalog:
         # incrementally increasing the diagonal elements by 1/12.
         delta = 1.0 / 12
         delta2 = delta**2
-        # ignore RuntimeWarning from NaN values in covar
+        # Ignore RuntimeWarning from NaN values in covar
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             covar_det = np.linalg.det(covar)
 
-            # covariance should be positive semidefinite
+            # Covariance should be positive semidefinite
             idx = np.where(covar_det < 0)[0]
             covar[idx] = np.array([[np.nan, np.nan], [np.nan, np.nan]])
 
@@ -2370,12 +2370,12 @@ class SourceCatalog:
         idx = np.unique(np.where(np.isfinite(self._covariance))[0])
         eigvals[idx] = np.linalg.eigvalsh(self._covariance[idx])
 
-        # check for negative variance
+        # Check for negative variance
         # (just in case covariance matrix is not positive semidefinite)
         idx2 = np.unique(np.where(eigvals < 0)[0])  # pragma: no cover
         eigvals[idx2] = (np.nan, np.nan)  # pragma: no cover
 
-        # sort each eigenvalue pair in descending order
+        # Sort each eigenvalue pair in descending order
         # (eigvalsh returns values in ascending order)
         eigvals = np.fliplr(eigvals)
 
@@ -2393,7 +2393,7 @@ class SourceCatalog:
         eigvals = self.covariance_eigvals
         if self.isscalar:
             eigvals = eigvals[np.newaxis, :]
-        # this matches SourceExtractor's A parameter
+        # This matches SourceExtractor's A parameter
         return np.sqrt(eigvals[:, 0])
 
     @lazyproperty
@@ -2408,7 +2408,7 @@ class SourceCatalog:
         eigvals = self.covariance_eigvals
         if self.isscalar:
             eigvals = eigvals[np.newaxis, :]
-        # this matches SourceExtractor's B parameter
+        # This matches SourceExtractor's B parameter
         return np.sqrt(eigvals[:, 1])
 
     @lazyproperty
@@ -2696,7 +2696,7 @@ class SourceCatalog:
                     self._data.shape)
 
                 data_cutout = self._data[slc_lg].astype(float, copy=True)
-                # all non-zero segment labels are masked
+                # All non-zero segment labels are masked
                 segm_mask_cutout = self._segment_img.data[slc_lg].astype(bool)
                 if self._mask is None:
                     mask_cutout = None
@@ -2712,7 +2712,7 @@ class SourceCatalog:
                 data_cutout *= aperweight_cutout
                 data_values = data_cutout[good_mask]  # 1D array
 
-                # check not enough unmasked pixels
+                # Check not enough unmasked pixels
                 if len(data_values) < 10:  # pragma: no cover
                     local_bkgs.append(0.0)
                     continue
@@ -2743,7 +2743,7 @@ class SourceCatalog:
         Neighboring sources can be included, masked, or corrected based
         on the ``apermask_method`` keyword.
         """
-        # make cutouts of the data based on the aperture bbox
+        # Make cutouts of the data based on the aperture bbox
         slc_lg, slc_sm = aperture_bbox.get_overlap_slices(self._data.shape)
         if slc_lg is None:
             return (None,) * 5
@@ -2758,11 +2758,11 @@ class SourceCatalog:
         else:
             error = None
 
-        # calculate cutout centroid position
+        # Calculate cutout centroid position
         cutout_xycen = (xcentroid - max(0, aperture_bbox.ixmin),
                         ycentroid - max(0, aperture_bbox.iymin))
 
-        # mask or correct neighboring sources
+        # Mask or correct neighboring sources
         if self.apermask_method == 'none':
             mask = data_mask
         else:
@@ -3046,10 +3046,10 @@ class SourceCatalog:
                 continue
 
             xcen, ycen = aperture.positions
-            # use 'center' (whole pixels) to compute Kron radius
+            # Use 'center' (whole pixels) to compute Kron radius
             aperture_mask = aperture.to_mask(method='center')
 
-            # prepare cutouts of the data based on the aperture size
+            # Prepare cutouts of the data based on the aperture size
             # local background explicitly set to zero for SE agreement
             data, _, mask, xycen, slc_sm = self._make_aperture_data(
                 label, xcen, ycen, aperture_mask.bbox, 0.0, make_error=False)
@@ -3062,13 +3062,13 @@ class SourceCatalog:
             aperture_weights = aperture_mask.data[slc_sm]
             pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
 
-            # ignore RuntimeWarning for invalid data values
+            # Ignore RuntimeWarning for invalid data values
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', RuntimeWarning)
                 flux_numer = np.sum((aperture_weights * data * rr)[pixel_mask])
                 flux_denom = np.sum((aperture_weights * data)[pixel_mask])
 
-            # set Kron radius to the minimum Kron radius if numerator or
+            # Set Kron radius to the minimum Kron radius if numerator or
             # denominator is negative
             if flux_numer <= 0 or flux_denom <= 0:
                 kron_radius.append(self.kron_params[1])
@@ -3088,10 +3088,10 @@ class SourceCatalog:
         pixel units.
         """
         kron_radius = self._measured_kron_radius.copy()
-        # set minimum (unscaled) kron radius
+        # Set minimum (unscaled) kron radius
         kron_radius[kron_radius < kron_params[1]] = kron_params[1]
 
-        # check for minimum circular radius
+        # Check for minimum circular radius
         if len(kron_params) == 3:
             major_sigma = self.semimajor_sigma.value
             minor_sigma = self.semiminor_sigma.value
@@ -3346,7 +3346,7 @@ class SourceCatalog:
         fluxerr = []
         for label, aperture, bkg in zip(labels, apertures,
                                         self._local_background, strict=True):
-            # return NaN for completely masked sources or sources where
+            # Return NaN for completely masked sources or sources where
             # the centroid is not finite
             if aperture is None:
                 flux.append(np.nan)
@@ -3356,13 +3356,13 @@ class SourceCatalog:
             xcen, ycen = aperture.positions
             aperture_mask = aperture.to_mask(**kwargs)
 
-            # prepare cutouts of the data based on the aperture size
+            # Prepare cutouts of the data based on the aperture size
             data, error, mask, _, slc_sm = self._make_aperture_data(
                 label, xcen, ycen, aperture_mask.bbox, bkg)
 
             aperture_weights = aperture_mask.data[slc_sm]
             pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
-            # ignore RuntimeWarning for invalid data or error values
+            # Ignore RuntimeWarning for invalid data or error values
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', RuntimeWarning)
                 values = (aperture_weights * data)[pixel_mask]
@@ -3584,7 +3584,7 @@ class SourceCatalog:
             aperture = CircularAperture((xcen, ycen), r=max_radius_)
             aperture_mask = aperture.to_mask(**kwargs)
 
-            # prepare cutouts of the data based on the maximum aperture size
+            # Prepare cutouts of the data based on the maximum aperture size
             data, _, mask, xycen, _ = self._make_aperture_data(
                 label, xcen, ycen, aperture_mask.bbox, bkg,
                 make_error=False)
@@ -3628,7 +3628,7 @@ class SourceCatalog:
             msg = 'fluxfrac must be > 0 and <= 1'
             raise ValueError(msg)
 
-        # return cached result if available
+        # Return cached result if available
         if fluxfrac in self._fluxfrac_cache:
             result = self._fluxfrac_cache[fluxfrac]
             if name is not None:
@@ -3678,7 +3678,7 @@ class SourceCatalog:
                     # have different signs
                     max_radius -= max_radius_delta
 
-            # no solution found between min_radius and max_radius
+            # No solution found between min_radius and max_radius
             if found is False:
                 result = np.nan
 
