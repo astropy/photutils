@@ -91,6 +91,17 @@ New Features
     ``SplitCosineBellWindow``, ``TopHatWindow``, and ``TukeyWindow``
     classes. [#2176]
 
+- ``photutils.segmentation``
+
+  - `~photutils.segmentation.SourceCatalog.fluxfrac_radius` now caches
+    results by ``fluxfrac`` value. Repeated calls with the same
+    ``fluxfrac`` return the cached result without recomputation. [#2197]
+
+  - The radial step used when searching for a bracketing interval in
+    `~photutils.segmentation.SourceCatalog.fluxfrac_radius` is now set to
+    10% of the current ``max_radius``, bounding the fallback loop to at
+    most ~10 iterations regardless of source size. [#2197]
+
 - ``photutils.utils``
 
   - Significantly improved the performance (by factors of 3 or more) of

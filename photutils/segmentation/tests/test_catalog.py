@@ -4,6 +4,7 @@ Tests for the catalog module.
 """
 
 from io import StringIO
+from unittest.mock import patch
 
 import astropy.units as u
 import numpy as np
@@ -13,6 +14,7 @@ from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
 from numpy.testing import assert_allclose, assert_equal
+from scipy.optimize import root_scalar
 
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture)
@@ -620,18 +622,18 @@ class TestSourceCatalog:
 
         patches = self.cat.plot_circular_apertures(5.0)
         assert isinstance(patches, list)
-        for patch in patches:
-            assert isinstance(patch, Patch)
+        for patch_ in patches:
+            assert isinstance(patch_, Patch)
 
         patches = self.cat.plot_kron_apertures()
         assert isinstance(patches, list)
-        for patch in patches:
-            assert isinstance(patch, Patch)
+        for patch_ in patches:
+            assert isinstance(patch_, Patch)
 
         patches2 = self.cat.plot_kron_apertures((2.0, 1.2))
         assert isinstance(patches2, list)
-        for patch in patches2:
-            assert isinstance(patch, Patch)
+        for patch_ in patches2:
+            assert isinstance(patch_, Patch)
 
         # test scalar
         obj = self.cat[1]
@@ -639,6 +641,126 @@ class TestSourceCatalog:
         assert isinstance(patch1, Patch)
         patch2 = obj.plot_kron_apertures((2.0, 1.2))
         assert isinstance(patch2, Patch)
+
+    def test_fluxfrac_cache(self):
+        """
+        Test that fluxfrac_radius caches results and reuses them on
+        repeated calls with the same fluxfrac value.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+
+        # Cache must start empty
+        assert cat._fluxfrac_cache == {}
+
+        # First call computes and stores in cache
+        r1 = cat.fluxfrac_radius(0.5)
+        assert 0.5 in cat._fluxfrac_cache
+        assert r1 is cat._fluxfrac_cache[0.5]
+
+        # Second call returns the identical cached object
+        r2 = cat.fluxfrac_radius(0.5)
+        assert r2 is r1
+
+        # Different fluxfrac values are cached independently
+        r3 = cat.fluxfrac_radius(0.3)
+        assert 0.3 in cat._fluxfrac_cache
+        assert np.all(r1.value >= r3.value)
+
+        # Test "name"= still works on a cache hit and stores the
+        # attribute
+        cat2 = SourceCatalog(self.data, self.segm)
+        cat2.fluxfrac_radius(0.5)  # populate cache
+        cat2.fluxfrac_radius(0.5, name='r_hl')  # cache hit with name
+        assert hasattr(cat2, 'r_hl')
+        assert_allclose(cat2.r_hl, cat2._fluxfrac_cache[0.5])
+
+    def test_fluxfrac_cache_getitem(self):
+        """
+        Test that sliced SourceCatalog objects preserve the
+        fluxfrac_radius cache and produce correct results.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+
+        # Sliced object without a populated parent cache has an empty
+        # cache
+        obj = cat[1]
+        assert obj._fluxfrac_cache == {}
+
+        # Populate the parent cache with two fluxfrac values
+        r_parent_05 = cat.fluxfrac_radius(0.5)
+        r_parent_03 = cat.fluxfrac_radius(0.3)
+        assert 0.5 in cat._fluxfrac_cache
+        assert 0.3 in cat._fluxfrac_cache
+
+        # Scalar slice preserves the cache
+        obj = cat[1]
+        assert 0.5 in obj._fluxfrac_cache
+        assert 0.3 in obj._fluxfrac_cache
+        r_sliced = obj.fluxfrac_radius(0.5)
+        assert_allclose(r_sliced.value, r_parent_05[1].value)
+        r_sliced_03 = obj.fluxfrac_radius(0.3)
+        assert_allclose(r_sliced_03.value, r_parent_03[1].value)
+
+        # Range slice preserves the cache
+        sub = cat[1:3]
+        assert 0.5 in sub._fluxfrac_cache
+        assert 0.3 in sub._fluxfrac_cache
+        r_sub = sub.fluxfrac_radius(0.5)
+        assert_allclose(r_sub.value, r_parent_05[1:3].value)
+
+        # Fancy index slice preserves the cache
+        sub2 = cat[[0, 2]]
+        assert 0.5 in sub2._fluxfrac_cache
+        r_sub2 = sub2.fluxfrac_radius(0.5)
+        assert_allclose(r_sub2.value, r_parent_05[[0, 2]].value)
+
+        # Boolean mask slice preserves the cache
+        mask = np.array([True, False, True, False, True, False, True])
+        sub3 = cat[mask]
+        assert 0.5 in sub3._fluxfrac_cache
+        r_sub3 = sub3.fluxfrac_radius(0.5)
+        assert_allclose(r_sub3.value, r_parent_05[mask].value)
+
+        # Modifying the parent cache does not affect the sliced cache
+        cat.fluxfrac_radius(0.7)
+        assert 0.7 not in obj._fluxfrac_cache
+
+    def test_fluxfrac_max_radius_delta(self):
+        """
+        Test that the max_radius_delta fallback loop reduces max_radius
+        by 10 percent on each failed bracketing attempt and still
+        returns a valid result when the second (reduced) bracket
+        succeeds.
+        """
+        # Use a single-source scalar catalog to keep the mock simple
+        cat = SourceCatalog(self.data, self.segm)[1]
+        assert cat.isscalar
+
+        brackets_seen = []
+        call_count = [0]
+
+        def mock_root_scalar(fcn, args, bracket, method):
+            call_count[0] += 1
+            brackets_seen.append(list(bracket))
+            if call_count[0] == 1:
+                # Simulate a bracket with no sign change
+                msg = 'no sign change in bracket'
+                raise ValueError(msg)
+            return root_scalar(fcn, args=args, bracket=bracket, method=method)
+
+        with patch('photutils.segmentation.catalog.root_scalar',
+                   mock_root_scalar):
+            r = cat.fluxfrac_radius(0.5)
+
+        # Fallback triggered once then succeeded
+        assert call_count[0] == 2
+
+        # Second bracket max_radius must be 10% smaller than the first
+        assert_allclose(brackets_seen[1][1], 0.9 * brackets_seen[0][1],
+                        rtol=1e-10)
+
+        # Result is a valid radius (not NaN)
+        assert np.isfinite(r.value)
 
     def test_fluxfrac_radius(self):
         radius1 = self.cat.fluxfrac_radius(0.1, name='fluxfrac_r1')

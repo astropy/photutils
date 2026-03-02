@@ -255,19 +255,15 @@ class SourceCatalog:
     surface-brightness units should be performed before using this
     class.
 
-    function returns the sum of the (weighted) input
-    ``data`` values within the aperture. It does not convert data in
-    surface brightness units to flux or counts.
-
     `SourceExtractor`_'s centroid and morphological parameters are
     always calculated from a convolved, or filtered, "detection"
     image (``convolved_data``), i.e., the image used to define the
     segmentation image. The usual downside of the filtering is the
     sources will be made more circular than they actually are. If
     you wish to reproduce `SourceExtractor`_ centroid and morphology
-    results, then input the ``convolved_data`` If ``convolved_data`` and
-    ``kernel`` are both `None`, then the unfiltered ``data`` will be
-    used for the source centroid and morphological parameters.
+    results, then input the ``convolved_data``. If ``convolved_data``
+    is `None`, then the unfiltered ``data`` will be used for the source
+    centroid and morphological parameters.
 
     Negative data values within the source segment are set to zero
     when calculating morphological properties based on image moments.
@@ -357,6 +353,7 @@ class SourceCatalog:
 
         self.default_columns = DEFAULT_COLUMNS
         self._extra_properties = []
+        self._fluxfrac_cache = {}
         self.meta = _get_meta()
         self._update_meta()
 
@@ -525,6 +522,11 @@ class SourceCatalog:
         if not newcls.isscalar:
             value = value.tolist()
         setattr(newcls, attr, value)
+
+        # Slice the fluxfrac_radius cache values
+        newcls._fluxfrac_cache = {key: value[index]
+                                  for key, value
+                                  in self._fluxfrac_cache.items()}
 
         # evaluated lazyproperty objects and extra properties
         keys = (set(self.__dict__.keys())
@@ -797,7 +799,7 @@ class SourceCatalog:
         """
         A list of error cutouts using the segmentation image slices.
 
-        If the input ``mask`` is None then a list of None is returned.
+        If the input ``error`` is None then a list of None is returned.
         """
         if self._error is None:
             return self._null_objects
@@ -1379,7 +1381,7 @@ class SourceCatalog:
         within a circular aperture of ``4 * sigma`` from the current
         position, weighting pixel values with a 2D Gaussian with a
         standard deviation of ``sigma``. ``sigma`` is the half-light
-        radius (i.e., ``flucfrac_radius(0.5)``) times (2.0 / 2.35). A
+        radius (i.e., ``fluxfrac_radius(0.5)``) times (2.0 / 2.35). A
         minimum half-light radius of 0.5 pixels is used. Iteration stops
         when the change in centroid position falls below a pre-defined
         threshold or a maximum number of iterations is reached.
@@ -2113,10 +2115,10 @@ class SourceCatalog:
 
             \Delta F = \sqrt{\sum_{i \in S} \sigma_{\mathrm{tot}, i}^2}
 
-        where :math:`\Delta F` is the `segment_flux`,
-        :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total
-        errors (``error``), and :math:`S` are the unmasked pixels in the
-        source segment.
+        where :math:`\Delta F` is the `segment_fluxerr`,
+        :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total errors
+        (``error``), and :math:`S` are the unmasked pixels in the source
+        segment.
 
         Pixel values that are masked in the input ``data``, including
         any non-finite pixel values (NaN and inf) that are automatically
@@ -3624,6 +3626,13 @@ class SourceCatalog:
             msg = 'fluxfrac must be > 0 and <= 1'
             raise ValueError(msg)
 
+        # return cached result if available
+        if fluxfrac in self._fluxfrac_cache:
+            result = self._fluxfrac_cache[fluxfrac]
+            if name is not None:
+                self.add_extra_property(name, result, overwrite=overwrite)
+            return result
+
         args = self._fluxfrac_optimizer_args
         if self.progress_bar:  # pragma: no cover
             desc = 'fluxfrac_radius'
@@ -3654,7 +3663,7 @@ class SourceCatalog:
             # returned as the result.
             found = False
             min_radius = 0.1
-            max_radius_delta = 1.0
+            max_radius_delta = 0.1 * max_radius
             while max_radius > min_radius and found is False:
                 try:
                     bracket = [min_radius, max_radius]
@@ -3662,7 +3671,7 @@ class SourceCatalog:
                                          bracket=bracket, method='brentq')
                     result = result.root
                     found = True
-                except ValueError:  # pragma: no cover
+                except ValueError:
                     # ValueError is raised if the bracket points do not
                     # have different signs
                     max_radius -= max_radius_delta
@@ -3674,6 +3683,7 @@ class SourceCatalog:
             radius.append(result)
 
         result = np.array(radius) << u.pix
+        self._fluxfrac_cache[fluxfrac] = result
 
         if name is not None:
             self.add_extra_property(name, result, overwrite=overwrite)
