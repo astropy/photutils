@@ -24,6 +24,7 @@ from photutils.background import SExtractorBackground
 from photutils.centroids import centroid_quadratic
 from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
+from photutils.segmentation.utils import _mask_to_mirrored_value
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _image_moments
 from photutils.utils._progress_bars import add_progress_bar
@@ -2191,7 +2192,7 @@ class SourceCatalog:
         else:
             xcen = self._xcentroid
             ycen = self._ycentroid
-            bkg = map_coordinates(self._background, (xcen, ycen), order=1,
+            bkg = map_coordinates(self._background, (ycen, xcen), order=1,
                                   mode='nearest')
 
             mask = np.isfinite(xcen) & np.isfinite(ycen)
@@ -2762,17 +2763,18 @@ class SourceCatalog:
                         ycentroid - max(0, aperture_bbox.iymin))
 
         # mask or correct neighboring sources
-        if self.apermask_method != 'none':
+        if self.apermask_method == 'none':
+            mask = data_mask
+        else:
             segment_img = self._segment_img.data[slc_lg]
             segm_mask = np.logical_and(segment_img != label,
                                        segment_img != 0)
-        if self.apermask_method == 'mask':
-            mask = data_mask | segm_mask
-        else:
-            mask = data_mask
+            if self.apermask_method == 'mask':
+                mask = data_mask | segm_mask
+            else:
+                mask = data_mask
 
         if self.apermask_method == 'correct':
-            from photutils.segmentation.utils import _mask_to_mirrored_value
             data = _mask_to_mirrored_value(data, segm_mask, cutout_xycen,
                                            mask=mask)
             if error is not None:

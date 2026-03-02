@@ -158,6 +158,16 @@ Bug Fixes
     being applied in oversampled space instead of the original star pixel
     space. [#2168]
 
+- ``photutils.segmentation``
+
+  - Fixed a bug in ``SourceCatalog`` where the (x, y) coordinates were
+    swapped in the ``map_coordinates`` call used to interpolate the
+    background at source centroids, causing ``background_centroid`` to
+    return incorrect values. [#2176]
+
+  - Fixed an issue in ``SourceCatalog`` where incorrect masking behavior
+    could occur when ``apermask_method='none'``. [#2176]
+
 API Changes
 ^^^^^^^^^^^
 

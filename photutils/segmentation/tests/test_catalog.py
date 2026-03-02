@@ -1128,3 +1128,82 @@ def test_centroid_win_migrate():
     indices = (0, 3, 14, 30)
     for idx in indices:
         assert_equal(cat.centroid_win[idx], cat.centroid[idx])
+
+
+def test_background_centroid_coordinate_order():
+    """
+    Test that the background_centroid property correctly passes (y, x)
+    coordinates to map_coordinates.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    # Background varies only along y (rows)
+    background = yy.astype(float)
+
+    g1 = Gaussian2D(200, 50, 25, 5, 5)
+    g2 = Gaussian2D(200, 50, 75, 5, 5)
+    data = g1(xx, yy) + g2(xx, yy)
+    segm = detect_sources(data, 30.0, npixels=5)
+
+    cat = SourceCatalog(data, segm, background=background)
+    bkg_cen = cat.background_centroid
+
+    # The expected value at each centroid is approximately y_centroid
+    # (since background = y)
+    for i in range(cat.nlabels):
+        xcen = cat.xcentroid[i]
+        ycen = cat.ycentroid[i]
+        if np.isfinite(xcen) and np.isfinite(ycen):
+            # The interpolated background at the centroid should be
+            # close to ycen (not xcen)
+            assert_allclose(bkg_cen[i], ycen, atol=0.5)
+            # If x != y, the wrong order would give a value close to
+            # xcen instead
+            if abs(xcen - ycen) > 5:
+                assert abs(bkg_cen[i] - xcen) > 2
+
+
+def test_apermask_method_none():
+    """
+    Test that circular_photometry with apermask_method='none' does not
+    mask neighboring sources.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    # Two overlapping sources
+    g1 = Gaussian2D(200, 40, 50, 8, 8)
+    g2 = Gaussian2D(200, 60, 50, 8, 8)
+    data = g1(xx, yy) + g2(xx, yy)
+    segm = detect_sources(data, 20.0, npixels=5)
+
+    cat_none = SourceCatalog(data, segm, apermask_method='none')
+    cat_mask = SourceCatalog(data, segm, apermask_method='mask')
+
+    # Use a large aperture that overlaps both sources
+    flux_none, _ = cat_none.circular_photometry(20.0)
+    flux_mask, _ = cat_mask.circular_photometry(20.0)
+
+    # 'none' should include neighbor flux, so should be >= 'mask'
+    for i in range(cat_none.nlabels):
+        if np.isfinite(flux_none[i]) and np.isfinite(flux_mask[i]):
+            assert flux_none[i] >= flux_mask[i]
+
+
+def test_fluxfrac_radius_nan_fallback():
+    """
+    Test that fluxfrac_radius returns NaN when no root can be found
+    (e.g., when the source has all-negative Kron flux within the search
+    bracket or zero Kron flux).
+    """
+    # Create a source with negative total flux by subtracting a
+    # large constant. The Kron flux will be zero/negative, causing
+    # fluxfrac_radius to return NaN.
+    yy, xx = np.mgrid[0:51, 0:51]
+    g1 = Gaussian2D(10, 25, 25, 3, 3)
+    data = g1(xx, yy) - 50.0  # all negative
+    segm_data = np.zeros((51, 51), dtype=int)
+    segm_data[20:31, 20:31] = 1
+    segm = SegmentationImage(segm_data)
+
+    cat = SourceCatalog(data, segm)
+    radius = cat.fluxfrac_radius(0.5)
+    # Should be NaN since there's no meaningful flux
+    assert np.isnan(radius.value)
