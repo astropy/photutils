@@ -483,19 +483,24 @@ class CentroidQuadratic:
 def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
                      mask=None, centroid_func=centroid_com, **kwargs):
     """
-    Calculate the centroid of sources at the defined positions.
+    Calculate the centroid of sources at the defined positions in a 2D
+    array using a specified centroid function.
 
     A cutout image centered on each input position will be used to
     calculate the centroid position. The cutout image is defined either
     using the ``box_size`` or ``footprint`` keyword. The ``footprint``
     keyword can be used to create a non-rectangular cutout image.
 
-    Non-finite values (e.g., NaN or inf) in the ``data`` array are
-    automatically masked. The final mask is a logical OR combination
-    of the input ``mask``, the automatically generated mask for
-    non-finite values, and the mask of the input ``data`` if it is a
-    `~numpy.ma.MaskedArray`. The centroid is calculated using only the
-    unmasked data values.
+    Masks and non-finite values are handled by the input
+    ``centroid_func``. When using a centroid function provided by
+    Photutils, non-finite values (e.g., NaN or inf) in the ``data``
+    array are automatically masked. The ``centroid_1dg`` and
+    ``centroid_2dg`` functions also automatically mask any pixels with
+    non-finite ``error`` array values. The final mask is a logical OR
+    combination of the input ``mask``, the automatically generated
+    mask(s) for non-finite values, and the mask of the input ``data`` if
+    it is a `~numpy.ma.MaskedArray`. The centroid is calculated using
+    only the unmasked data values.
 
     Parameters
     ----------
