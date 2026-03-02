@@ -338,23 +338,23 @@ def detect_sources(data, threshold, npixels, *, connectivity=8, mask=None):
         from photutils.segmentation import (detect_sources,
                                             make_2dgaussian_kernel)
 
-        # make a simulated image
+        # Make a simulated image
         data = make_100gaussians_image()
 
-        # use sigma-clipped statistics to (roughly) estimate the background
+        # Use sigma-clipped statistics to (roughly) estimate the background
         # background noise levels
         mean, _, std = sigma_clipped_stats(data)
 
-        # subtract the background
+        # Subtract the background
         data -= mean
 
-        # detect the sources
+        # Detect the sources
         threshold = 3. * std
         kernel = make_2dgaussian_kernel(3.0, size=3)  # FWHM = 3.
         convolved_data = convolve(data, kernel)
         segm = detect_sources(convolved_data, threshold, npixels=5)
 
-        # plot the image and the segmentation image
+        # Plot the image and the segmentation image
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
         norm = simple_norm(data, 'sqrt', percent=99.)
         ax1.imshow(data, origin='lower', interpolation='nearest',

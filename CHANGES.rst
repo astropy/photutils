@@ -102,6 +102,10 @@ New Features
     10% of the current ``max_radius``, bounding the fallback loop to at
     most ~10 iterations regardless of source size. [#2197]
 
+  - Improved the performance (~6-9x speedup) of ``SourceCatalog``
+    ``min_value``, ``max_value``, ``segment_flux``, ``segment_fluxerr``,
+    ``background_sum``, and ``background_mean``. [#2199]
+
 - ``photutils.utils``
 
   - Significantly improved the performance (by factors of 3 or more) of

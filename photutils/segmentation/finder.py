@@ -122,25 +122,25 @@ class SourceFinder:
         from photutils.segmentation import (SourceFinder,
                                             make_2dgaussian_kernel)
 
-        # make a simulated image
+        # Make a simulated image
         data = make_100gaussians_image()
 
-        # subtract the background
+        # Subtract the background
         bkg_estimator = MedianBackground()
         bkg = Background2D(data, (50, 50), filter_size=(3, 3),
                            bkg_estimator=bkg_estimator)
         data -= bkg.background
 
-        # convolve the data
+        # Convolve the data
         kernel = make_2dgaussian_kernel(3., size=5)  # FWHM = 3.
         convolved_data = convolve(data, kernel)
 
-        # detect the sources
+        # Detect the sources
         threshold = 1.5 * bkg.background_rms  # per-pixel threshold
         finder = SourceFinder(npixels=10, progress_bar=False)
         segm = finder(convolved_data, threshold)
 
-        # plot the image and the segmentation image
+        # Plot the image and the segmentation image
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
         norm = simple_norm(data, 'sqrt', percent=99.)
         ax1.imshow(data, origin='lower', interpolation='nearest',

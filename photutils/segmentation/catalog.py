@@ -1217,6 +1217,45 @@ class SourceCatalog:
         return [arr.compressed() if len(arr.compressed()) > 0
                 else np.array([np.nan]) for arr in array]
 
+    @staticmethod
+    def _reduceat(values, ufunc, transform=None):
+        """
+        Apply ``ufunc.reduceat`` to a list of arrays.
+
+        This is significantly faster than a list comprehension with
+        individual NumPy calls for each array.
+
+        Parameters
+        ----------
+        values : list of 1D `~numpy.ndarray`
+            A list of 1D arrays.
+
+        ufunc : `~numpy.ufunc`
+            The NumPy ufunc to apply (e.g., `~numpy.add`,
+            `~numpy.minimum`, `~numpy.maximum`).
+
+        transform : callable or None, optional
+            An optional transformation to apply to the concatenated
+            array before reducing (e.g., `~numpy.square`).
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            The reduceat result.
+
+        sizes : `~numpy.ndarray`
+            The sizes of the input arrays.
+        """
+        if not values:
+            return np.array([]), np.array([], dtype=int)
+
+        sizes = np.array([len(arr) for arr in values])
+        splits = np.concatenate(([0], np.cumsum(sizes[:-1])))
+        concat = np.concatenate(values)
+        if transform is not None:
+            concat = transform(concat)
+        return ufunc.reduceat(concat, splits), sizes
+
     @lazyproperty
     def _data_values(self):
         """
@@ -1400,7 +1439,7 @@ class SourceCatalog:
         kwargs = self._apermask_kwargs['cen_win']
 
         labels = self.labels
-        if self.progress_bar:  # pragma: no cover
+        if self.progress_bar:
             desc = 'centroid_win'
             labels = add_progress_bar(labels, desc=desc)
 
@@ -1582,7 +1621,7 @@ class SourceCatalog:
             warnings.simplefilter('ignore', AstropyUserWarning)
 
             cutouts = self._data_cutouts
-            if self.progress_bar:  # pragma: no cover
+            if self.progress_bar:
                 desc = 'centroid_quad'
                 cutouts = add_progress_bar(cutouts, desc=desc)
 
@@ -1914,7 +1953,7 @@ class SourceCatalog:
         The minimum pixel value of the ``data`` within the source
         segment.
         """
-        values = np.array([np.min(array) for array in self._data_values])
+        values, _ = self._reduceat(self._data_values, np.minimum)
         values -= self._local_background
         if self._data_unit is not None:
             values <<= self._data_unit
@@ -1927,7 +1966,7 @@ class SourceCatalog:
         The maximum pixel value of the ``data`` within the source
         segment.
         """
-        values = np.array([np.max(array) for array in self._data_values])
+        values, _ = self._reduceat(self._data_values, np.maximum)
         values -= self._local_background
         if self._data_unit is not None:
             values <<= self._data_unit
@@ -2096,7 +2135,7 @@ class SourceCatalog:
         localbkg = self._local_background
         if self.isscalar:
             localbkg = localbkg[0]
-        source_sum = np.array([np.sum(arr) for arr in self._data_values])
+        source_sum, _ = self._reduceat(self._data_values, np.add)
         source_sum -= self.area.value * localbkg
         if self._data_unit is not None:
             source_sum <<= self._data_unit
@@ -2128,8 +2167,9 @@ class SourceCatalog:
         if self._error is None:
             err = self._null_values
         else:
-            err = np.sqrt(np.array([np.sum(arr**2)
-                                    for arr in self._error_values]))
+            err_sq, _ = self._reduceat(self._error_values, np.add,
+                                       transform=np.square)
+            err = np.sqrt(err_sq)
 
         if self._data_unit is not None:
             err <<= self._data_unit
@@ -2148,8 +2188,8 @@ class SourceCatalog:
         if self._background is None:
             bkg_sum = self._null_values
         else:
-            bkg_sum = np.array([np.sum(arr)
-                                for arr in self._background_values])
+            bkg_sum, _ = self._reduceat(
+                self._background_values, np.add)
 
         if self._data_unit is not None:
             bkg_sum <<= self._data_unit
@@ -2168,8 +2208,9 @@ class SourceCatalog:
         if self._background is None:
             bkg_mean = self._null_values
         else:
-            bkg_mean = np.array([np.mean(arr)
-                                 for arr in self._background_values])
+            bkg_sum, sizes = self._reduceat(
+                self._background_values, np.add)
+            bkg_mean = bkg_sum / sizes
 
         if self._data_unit is not None:
             bkg_mean <<= self._data_unit
@@ -2372,8 +2413,8 @@ class SourceCatalog:
 
         # Check for negative variance
         # (just in case covariance matrix is not positive semidefinite)
-        idx2 = np.unique(np.where(eigvals < 0)[0])  # pragma: no cover
-        eigvals[idx2] = (np.nan, np.nan)  # pragma: no cover
+        idx2 = np.unique(np.where(eigvals < 0)[0])
+        eigvals[idx2] = (np.nan, np.nan)
 
         # Sort each eigenvalue pair in descending order
         # (eigvalsh returns values in ascending order)
@@ -2713,7 +2754,7 @@ class SourceCatalog:
                 data_values = data_cutout[good_mask]  # 1D array
 
                 # Check not enough unmasked pixels
-                if len(data_values) < 10:  # pragma: no cover
+                if len(data_values) < 10:
                     local_bkgs.append(0.0)
                     continue
                 local_bkgs.append(bkg_func(data_values))
@@ -3033,7 +3074,7 @@ class SourceCatalog:
             cyy = (cyy,)
 
         labels = self.labels
-        if self.progress_bar:  # pragma: no cover
+        if self.progress_bar:
             desc = 'kron_radius'
             labels = add_progress_bar(labels, desc=desc)
 
@@ -3339,7 +3380,7 @@ class SourceCatalog:
             The flux and flux error arrays.
         """
         labels = self.labels
-        if self.progress_bar:  # pragma: no cover
+        if self.progress_bar:
             labels = add_progress_bar(labels, desc=desc)
 
         flux = []
@@ -3567,7 +3608,7 @@ class SourceCatalog:
         kwargs = self._apermask_kwargs['fluxfrac']
 
         labels = self.labels
-        if self.progress_bar:  # pragma: no cover
+        if self.progress_bar:
             desc = 'fluxfrac_radius prep'
             labels = add_progress_bar(labels, desc=desc)
 
@@ -3636,7 +3677,7 @@ class SourceCatalog:
             return result
 
         args = self._fluxfrac_optimizer_args
-        if self.progress_bar:  # pragma: no cover
+        if self.progress_bar:
             desc = 'fluxfrac_radius'
             args = add_progress_bar(args, desc=desc)
 
