@@ -4,27 +4,34 @@ Morphological Properties (`photutils.morphology`)
 Introduction
 ------------
 
-The :func:`~photutils.morphology.data_properties` function can
-be used to calculate the basic morphological properties (e.g.,
-elliptical shape properties) of a single source in a cutout image.
-:func:`~photutils.morphology.data_properties` returns a scalar
-:class:`~photutils.segmentation.SourceCatalog` object (single source).
-Please see :class:`~photutils.segmentation.SourceCatalog` for the list
-of the many properties that are calculated.
+The `photutils.morphology` subpackage provides tools to calculate the
+morphological properties of sources in an image. These properties
+include the shape, size, and orientation of sources, as well as the Gini
+coefficient of the flux distribution. The morphological properties can
+be used to characterize sources and to define apertures for photometry.
+For example, the shape and orientation of a source can be used to define
+an elliptical aperture that approximates the isophotal extent of the
+source.
 
-The `photutils.morphology` subpackage also includes the
-:func:`~photutils.morphology.gini` function, which calculates the Gini
-coefficient of a source in an image.
-
-If you have a segmentation image, the
-:class:`~photutils.segmentation.SourceCatalog` class can be used
-to calculate the properties for all (or a specified subset) of the
-segmented sources. Please see :ref:`Source Photometry and Properties
-from Image Segmentation <image_segmentation>` for more details.
+The two main functions in the `photutils.morphology` subpackage
+are :func:`~photutils.morphology.data_properties` and
+:func:`~photutils.morphology.gini`. The former calculates the basic
+morphological properties of a source in a cutout image, while the latter
+calculates the Gini coefficient of the distribution of absolute flux
+values in a cutout image. Both functions can be used with an optional
+boolean mask to exclude pixels from the calculation.
 
 
-Getting Started
+Data Properties
 ---------------
+
+The :func:`~photutils.morphology.data_properties` function can be
+used to calculate the basic morphological properties (e.g., centroid,
+semimajor and semiminor axis lengths, orientation) of a single source in
+a cutout image. :func:`~photutils.morphology.data_properties` returns
+a scalar :class:`~photutils.segmentation.SourceCatalog` object (single
+source). Please see :class:`~photutils.segmentation.SourceCatalog` for
+the list of the many properties that are calculated.
 
 Let's extract a single object from a synthetic dataset and calculate
 its morphological properties. For this example, we will subtract the
@@ -38,12 +45,20 @@ First, we create the source image and subtract its background::
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)
     >>> data -= median  # subtract background
 
-Then, calculate its properties. We define a mask to isolate the source
-pixels by excluding pixels below a flux threshold::
+Then, use :func:`~photutils.morphology.data_properties` to calculate its
+properties. We define a mask to isolate the source pixels by excluding
+pixels below a flux threshold::
 
     >>> from photutils.morphology import data_properties
     >>> mask = data < 50  # isolate source pixels
     >>> cat = data_properties(data, mask=mask)
+
+The morphological properties are stored in a scalar
+:class:`~photutils.segmentation.SourceCatalog` object, which can be
+converted to an `astropy.table.Table` object for easier access and
+display. For example, we can display the centroid, semimajor and
+semiminor axis lengths, and orientation of the source::
+
     >>> columns = ['label', 'xcentroid', 'ycentroid', 'semimajor_sigma',
     ...            'semiminor_sigma', 'orientation']
     >>> tbl = cat.to_table(columns=columns)
@@ -57,23 +72,8 @@ pixels by excluding pixels below a flux threshold::
     ----- ------------- ------------- ... --------------- -------------
         1 15.0203353055 20.0876025118 ...    3.2260911267 59.6896286141
 
-
 Now let's use the measured morphological properties to define an
 approximate isophotal ellipse for the source:
-
-.. doctest-skip::
-
-    >>> import astropy.units as u
-    >>> from photutils.aperture import EllipticalAperture
-    >>> xypos = (cat.xcentroid, cat.ycentroid)
-    >>> r = 2.5  # approximate isophotal extent
-    >>> a = cat.semimajor_sigma.value * r
-    >>> b = cat.semiminor_sigma.value * r
-    >>> theta = cat.orientation.to(u.rad).value
-    >>> apertures = EllipticalAperture(xypos, a, b, theta=theta)
-    >>> plt.imshow(data, origin='lower', cmap='viridis',
-    ...            interpolation='nearest')
-    >>> apertures.plot(color='C3')
 
 .. plot::
 
@@ -118,18 +118,25 @@ approximate isophotal ellipse for the source:
 Gini Coefficient
 ----------------
 
-The Gini coefficient is a measure of the inequality in the distribution
-of flux values in an image. The Gini coefficient ranges from 0 to 1,
-where 0 indicates that the flux is equally distributed among all pixels
-and 1 indicates that the flux is concentrated in a single pixel.
+The :func:`~photutils.morphology.gini` function can be used to calculate
+the Gini coefficient of a source in an image. The Gini coefficient is
+a measure of the inequality in the distribution of flux values in an
+image. The Gini coefficient ranges from 0 to 1, where 0 indicates that
+the flux is equally distributed among all pixels and 1 indicates that
+the flux is concentrated in a single pixel. The Gini coefficient can
+be used to characterize the concentration of flux in a source and to
+compare the morphological properties of different sources. For example,
+a source with a high Gini coefficient may be more compact and have
+a more concentrated flux distribution than a source with a low Gini
+coefficient.
 
 The :func:`~photutils.morphology.gini` function calculates the Gini
-coefficient of a single source using the values in a cutout image.
-The input array may be 1D or 2D. Invalid values (NaN and inf) are
-automatically excluded from the calculation. Negative pixel values are
-used via their absolute value, consistent with the :math:`|x_i|` term in
-the Lotz et al. formula. An optional boolean mask can be used to exclude
-pixels from the calculation.
+coefficient of the distribution of absolute flux values of a single
+source using the values in a cutout image. The input array may be
+1D or 2D. Negative pixel values are used via their absolute value.
+Invalid values (NaN and inf) are automatically excluded from the
+calculation. An optional boolean mask can be used to exclude pixels from
+the calculation.
 
 Let's calculate the Gini coefficient of the source in the above
 example::

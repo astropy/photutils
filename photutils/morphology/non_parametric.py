@@ -13,19 +13,19 @@ def gini(data, mask=None):
     Calculate the `Gini coefficient
     <https://en.wikipedia.org/wiki/Gini_coefficient>`_ of an array.
 
-    The Gini coefficient is calculated using the prescription from `Lotz
-    et al. 2004
+    The Gini coefficient of the distribution of absolute flux values
+    is calculated using the prescription from `Lotz et al. 2004
     <https://ui.adsabs.harvard.edu/abs/2004AJ....128..163L/abstract>`_
-    as:
+    (Eq. 6) as:
 
     .. math::
 
-        G = \frac{1}{\left | \bar{x} \right | n (n - 1)}
+        G = \frac{1}{\overline{|x|} \, n \, (n - 1)}
             \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
-    where :math:`\bar{x}` is the mean over all pixel values :math:`x_i`.
-    If the sum of all pixel values is zero, the Gini coefficient is
-    zero.
+    where :math:`\overline{|x|}` is the mean of the absolute value of
+    all pixel values :math:`x_i`. If the sum of all pixel values is
+    zero, the Gini coefficient is zero.
 
     The Gini coefficient is a way of measuring the inequality in a given
     set of values. In the context of galaxy morphology, it measures how
@@ -40,10 +40,9 @@ def gini(data, mask=None):
     input data. As there is not a general standard for doing this, this
     is left for the user.
 
-    Invalid values (NaN and inf) in the input are automatically excluded
-    from the calculation. Negative pixel values are used via their
-    absolute value, consistent with the :math:`|x_i|` term in the Lotz
-    et al. formula. If only a single finite pixel remains after
+    Negative pixel values are used via their absolute value. Invalid
+    values (NaN and inf) in the input are automatically excluded from
+    the calculation. If only a single finite pixel remains after
     filtering, the Gini coefficient is 0.0.
 
     Parameters
@@ -79,19 +78,18 @@ def gini(data, mask=None):
         values = np.ravel(data)
 
     # Exclude invalid values (NaN, inf)
-    values = values[np.isfinite(values)]
-    if values.size == 0:
+    values = np.abs(values[np.isfinite(values)])
+    npix = values.size
+    if npix == 0:
         return np.nan
 
-    npix = values.size
     if npix == 1:
         return 0.0
 
-    normalization = np.mean(np.abs(values)) * npix * (npix - 1)
+    normalization = np.mean(values) * npix * (npix - 1)
     if normalization == 0.0:
         return 0.0
 
-    kernel = ((2.0 * np.arange(1, npix + 1) - npix - 1)
-              * np.sort(np.abs(values)))
+    kernel = (2.0 * np.arange(1, npix + 1) - npix - 1) * np.sort(values)
 
     return np.sum(kernel) / normalization
