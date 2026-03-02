@@ -28,7 +28,11 @@ def centroid_com(data, *, mask=None):
     <https://en.wikipedia.org/wiki/Image_moment>`_.
 
     Non-finite values (e.g., NaN or inf) in the ``data`` array are
-    automatically masked.
+    automatically masked. The final mask is a logical OR combination
+    of the input ``mask``, the automatically generated mask for
+    non-finite values, and the mask of the input ``data`` if it is a
+    `~numpy.ma.MaskedArray`. The centroid is calculated using only the
+    unmasked data values.
 
     Parameters
     ----------
@@ -117,6 +121,13 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     """
     Calculate the centroid of a 2D array by fitting a 2D quadratic
     polynomial.
+
+    Non-finite values (e.g., NaN or inf) in the ``data`` array are
+    automatically masked. The final mask is a logical OR combination
+    of the input ``mask``, the automatically generated mask for
+    non-finite values, and the mask of the input ``data`` if it is a
+    `~numpy.ma.MaskedArray`. The centroid is calculated using only the
+    unmasked data values.
 
     A second degree 2D polynomial is fit within a small region of the
     data defined by ``fit_boxsize`` to calculate the centroid position.
@@ -431,6 +442,12 @@ class CentroidQuadratic:
         """
         Calculate the centroid.
 
+        Non-finite values (e.g., NaN or inf) in the ``data`` array
+        are automatically masked. The automatically masked values are
+        combined (using bitwise OR) with the input ``mask``. If ``data``
+        is a `~numpy.ma.MaskedArray`, its mask will also be combined
+        (using bitwise OR) with the input ``mask``.
+
         Parameters
         ----------
         data : 2D array_like
@@ -472,6 +489,13 @@ def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
     calculate the centroid position. The cutout image is defined either
     using the ``box_size`` or ``footprint`` keyword. The ``footprint``
     keyword can be used to create a non-rectangular cutout image.
+
+    Non-finite values (e.g., NaN or inf) in the ``data`` array are
+    automatically masked. The final mask is a logical OR combination
+    of the input ``mask``, the automatically generated mask for
+    non-finite values, and the mask of the input ``data`` if it is a
+    `~numpy.ma.MaskedArray`. The centroid is calculated using only the
+    unmasked data values.
 
     Parameters
     ----------
