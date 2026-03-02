@@ -1733,25 +1733,23 @@ class ApertureStats:
         <https://en.wikipedia.org/wiki/Gini_coefficient>`_ of the
         unmasked pixel values within the aperture.
 
-        The Gini coefficient is calculated using the prescription from
-        `Lotz et al. 2004
+        The Gini coefficient of the distribution of absolute flux values
+        is calculated using the prescription from `Lotz et al. 2004
         <https://ui.adsabs.harvard.edu/abs/2004AJ....128..163L/abstract>`_
-        as:
+        (Eq. 6) as:
 
         .. math::
 
-            G = \frac{1}{\left | \bar{x} \right | n (n - 1)}
+            G = \frac{1}{\overline{|x|} \, n \, (n - 1)}
                 \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
-        where :math:`\bar{x}` is the mean over pixel values :math:`x_i`
-        within the aperture.
+        where :math:`\overline{|x|}` is the mean of the absolute value
+        of all pixel values :math:`x_i`. If the sum of all pixel values
+        is zero, the Gini coefficient is zero.
 
-        The Gini coefficient is a way of measuring the inequality in a
-        given set of values. In the context of galaxy morphology, it
-        measures how the light of a galaxy image is distributed among
-        its pixels. A Gini coefficient value of 0 corresponds to a
-        galaxy image with the light evenly distributed over all pixels
-        while a Gini coefficient value of 1 represents a galaxy image
-        with all its light concentrated in just one pixel.
+        Negative pixel values are used via their absolute value. Invalid
+        values (NaN and inf) in the input are automatically excluded
+        from the calculation. If only a single finite pixel remains
+        after filtering, the Gini coefficient is 0.0.
         """
         return np.array([gini_func(arr) for arr in self._data_values_center])
