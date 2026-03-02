@@ -56,7 +56,7 @@ class TestSegmentationImage:
         assert segm.max_label == 0
         assert not segm.is_consecutive
         assert segm.cmap is None
-        match = 'segmentation image of all zeros'
+        match = 'Cannot relabel a segmentation image with no non-zero labels'
         with pytest.warns(AstropyUserWarning, match=match):
             segm.relabel_consecutive()
 
@@ -68,7 +68,7 @@ class TestSegmentationImage:
     def test_invalid_data(self):
         # is float dtype
         data = np.zeros((3, 3), dtype=float)
-        match = 'data must be have integer type'
+        match = 'data must have integer type'
         with pytest.raises(TypeError, match=match):
             SegmentationImage(data)
 

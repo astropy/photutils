@@ -108,7 +108,6 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         from 1.
 
     nproc : int, optional
-
         The number of processes to use for multiprocessing (if larger
         than 1). If set to 1, then a serial implementation is used
         instead of a parallel one. If `None`, then the number of

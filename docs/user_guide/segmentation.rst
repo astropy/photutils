@@ -6,6 +6,7 @@ Image Segmentation (`photutils.segmentation`)
 
 Introduction
 ------------
+
 Photutils includes general-use functions to detect sources (both
 point-like and extended) in an image using a process called `image
 segmentation <https://en.wikipedia.org/wiki/Image_segmentation>`_. After
@@ -15,6 +16,7 @@ photometry, centroids, and shape properties.
 
 Source Extraction Using Image Segmentation
 ------------------------------------------
+
 Image segmentation is a process of assigning a label to every pixel
 in an image such that pixels with the same label are part of the same
 source. Detected sources must have a minimum number of connected pixels
@@ -133,6 +135,7 @@ image showing the detected sources:
 
 Source Deblending
 -----------------
+
 In the example above, overlapping sources are detected as single
 sources. Separating those sources requires a deblending procedure,
 such as a multi-thresholding technique used by `SourceExtractor`_.
@@ -250,6 +253,7 @@ Let's plot one of the deblended sources:
 
 SourceFinder
 ------------
+
 The :class:`~photutils.segmentation.SourceFinder` class
 is a convenience class that combines the functionality
 of `~photutils.segmentation.detect_sources` and
@@ -271,6 +275,7 @@ the background-subtracted (convolved) image and threshold:
 
 Modifying a Segmentation Image
 ------------------------------
+
 The :class:`~photutils.segmentation.SegmentationImage` object provides
 several methods that can be used to modify itself (e.g.,
 combining labels, removing labels, removing border segments) prior to
@@ -298,6 +303,7 @@ measuring source photometry and other source properties, including:
 
 Photometry, Centroids, and Shape Properties
 -------------------------------------------
+
 The :class:`~photutils.segmentation.SourceCatalog` class is the primary
 tool for measuring the photometry, centroids, and shape/morphological
 properties of sources defined in a segmentation image. In its most
@@ -475,6 +481,7 @@ calculated.
 
 Background Properties
 ^^^^^^^^^^^^^^^^^^^^^
+
 Like with :func:`~photutils.aperture.aperture_photometry`, the ``data``
 array that is input to :class:`~photutils.segmentation.SourceCatalog`
 should be background subtracted. If you input the background image
@@ -508,6 +515,7 @@ properties for each source will also be calculated:
 
 Photometric Errors
 ^^^^^^^^^^^^^^^^^^
+
 :class:`~photutils.segmentation.SourceCatalog` requires inputting a
 *total* error array, i.e., the background-only error plus Poisson noise
 due to individual sources. The :func:`~photutils.utils.calc_total_error`
@@ -565,6 +573,7 @@ instrumental flux and propagated flux error within the source segments:
 
 Pixel Masking
 ^^^^^^^^^^^^^
+
 Pixels can be completely ignored/excluded (e.g., bad pixels) when
 measuring the source properties by providing a boolean mask image
 via the ``mask`` keyword (`True` pixel values are masked) to the
@@ -574,16 +583,17 @@ non-finite ``data`` values (NaN and inf) are automatically masked.
 
 Filtering
 ^^^^^^^^^
+
 `SourceExtractor`_'s centroid and morphological parameters are
 always calculated from a convolved, or filtered, "detection" image
 (``convolved_data``), i.e., the image used to define the segmentation
 image. The usual downside of the filtering is the sources will be
 made more circular than they actually are. If you wish to reproduce
 `SourceExtractor`_ centroid and morphology results, then input the
-``convolved_data`` (or ``kernel``, but not both). If ``convolved_data``
-and ``kernel`` are both `None`, then the unfiltered ``data`` will be
-used for the source centroid and morphological parameters. Note that
-photometry is *always* performed on the unfiltered ``data``.
+``convolved_data``. If ``convolved_data`` is `None`, then the unfiltered
+``data`` will be used for the source centroid and morphological
+parameters. Note that photometry is *always* performed on the unfiltered
+``data``.
 
 
 API Reference

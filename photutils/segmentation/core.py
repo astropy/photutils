@@ -212,7 +212,7 @@ class SegmentationImage:
     @data.setter
     def data(self, value):
         if not np.issubdtype(value.dtype, np.integer):
-            msg = 'data must be have integer type'
+            msg = 'data must have integer type'
             raise TypeError(msg)
 
         labels = self._get_labels(value)  # array([]) if value all zeros
@@ -816,8 +816,8 @@ class SegmentationImage:
                [5, 5, 0, 0, 4, 4]])
         """
         if self.nlabels == 0:
-            warnings.warn('Cannot relabel a segmentation image of all zeros',
-                          AstropyUserWarning)
+            msg = 'Cannot relabel a segmentation image with no non-zero labels'
+            warnings.warn(msg, AstropyUserWarning)
             return
 
         if start_label <= 0:
@@ -1857,9 +1857,9 @@ class SegmentationImage:
                 cbar.ax.yaxis.set_tick_params(labelsize=cbar_labelsize)
             cbar_info = (cbar, cbar_ticks, cbar_labels)
         else:
-            warnings.warn('The colorbar was not plotted because the number of '
-                          f'labels is greater than {max_labels=}.',
-                          AstropyUserWarning)
+            msg = ('The colorbar was not plotted because the number of '
+                   f'labels is greater than {max_labels=}.')
+            warnings.warn(msg, AstropyUserWarning)
 
         return im, cbar_info
 

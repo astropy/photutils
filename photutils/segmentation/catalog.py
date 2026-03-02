@@ -255,19 +255,15 @@ class SourceCatalog:
     surface-brightness units should be performed before using this
     class.
 
-    function returns the sum of the (weighted) input
-    ``data`` values within the aperture. It does not convert data in
-    surface brightness units to flux or counts.
-
     `SourceExtractor`_'s centroid and morphological parameters are
     always calculated from a convolved, or filtered, "detection"
     image (``convolved_data``), i.e., the image used to define the
     segmentation image. The usual downside of the filtering is the
     sources will be made more circular than they actually are. If
     you wish to reproduce `SourceExtractor`_ centroid and morphology
-    results, then input the ``convolved_data`` If ``convolved_data`` and
-    ``kernel`` are both `None`, then the unfiltered ``data`` will be
-    used for the source centroid and morphological parameters.
+    results, then input the ``convolved_data``. If ``convolved_data``
+    is `None`, then the unfiltered ``data`` will be used for the source
+    centroid and morphological parameters.
 
     Negative data values within the source segment are set to zero
     when calculating morphological properties based on image moments.
@@ -803,7 +799,7 @@ class SourceCatalog:
         """
         A list of error cutouts using the segmentation image slices.
 
-        If the input ``mask`` is None then a list of None is returned.
+        If the input ``error`` is None then a list of None is returned.
         """
         if self._error is None:
             return self._null_objects
@@ -2119,10 +2115,10 @@ class SourceCatalog:
 
             \Delta F = \sqrt{\sum_{i \in S} \sigma_{\mathrm{tot}, i}^2}
 
-        where :math:`\Delta F` is the `segment_flux`,
-        :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total
-        errors (``error``), and :math:`S` are the unmasked pixels in the
-        source segment.
+        where :math:`\Delta F` is the `segment_fluxerr`,
+        :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total errors
+        (``error``), and :math:`S` are the unmasked pixels in the source
+        segment.
 
         Pixel values that are masked in the input ``data``, including
         any non-finite pixel values (NaN and inf) that are automatically
