@@ -111,15 +111,14 @@ def test_regression(name):
         # data from Isophote
         sma_i = iso.sample.geometry.sma
         intens_i = iso.intens
-        int_err_i = iso.int_err if iso.int_err else 0.0
-        pix_stddev_i = iso.pix_stddev if iso.pix_stddev else 0.0
-        rms_i = iso.rms if iso.rms else 0.0
-        ellip_i = iso.sample.geometry.eps if iso.sample.geometry.eps else 0.0
-        pa_i = iso.sample.geometry.pa if iso.sample.geometry.pa else 0.0
+        int_err_i = iso.int_err or 0.0
+        pix_stddev_i = iso.pix_stddev or 0.0
+        rms_i = iso.rms or 0.0
+        ellip_i = iso.sample.geometry.eps or 0.0
+        pa_i = iso.sample.geometry.pa or 0.0
         x0_i = iso.sample.geometry.x0
         y0_i = iso.sample.geometry.y0
-        rerr_i = (iso.sample.gradient_relative_error
-                  if iso.sample.gradient_relative_error else 0.0)
+        rerr_i = (iso.sample.gradient_relative_error or 0.0)
         ndata_i = iso.ndata
         nflag_i = iso.nflag
         niter_i = iso.niter
