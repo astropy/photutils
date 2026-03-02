@@ -18,7 +18,8 @@ from photutils.utils._optional_deps import HAS_SKIMAGE
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 class TestDeblendSources:
-    def setup_class(self):
+    @pytest.fixture(autouse=True)
+    def setup(self):
         g1 = Gaussian2D(100, 50, 50, 5, 5)
         g2 = Gaussian2D(100, 35, 50, 5, 5)
         g3 = Gaussian2D(30, 70, 50, 5, 5)
@@ -415,6 +416,23 @@ class TestDeblendSources:
         markers = single_debl.make_markers(return_all=True)
         assert len(markers) == 19
 
+    def test_deblend_progress_bar(self):
+        """
+        Test deblend_sources with progress_bar=True (serial).
+        """
+        result = deblend_sources(self.data, self.segm, self.npixels,
+                                 mode='linear', progress_bar=True)
+        assert result.nlabels == 2
+
+    def test_deblend_nproc_none(self):
+        """
+        Test deblend_sources with nproc=None (auto-detect CPU count).
+        """
+        result = deblend_sources(self.data, self.segm, self.npixels,
+                                 mode='linear', progress_bar=False,
+                                 nproc=None)
+        assert result.nlabels == 2
+
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_nmarkers_fallback():
@@ -441,3 +459,92 @@ def test_nmarkers_fallback():
     assert segm2.info['warnings']['nmarkers']['input_labels'][0] == 1
     mesg = segm2.info['warnings']['nmarkers']['message']
     assert mesg.startswith('Deblending mode changed')
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_nmarkers_fallback_multiproc():
+    """
+    Test the nmarkers fallback warning via multiprocessing (nproc=2).
+    This covers the multiprocessing result-processing block for nmarkers.
+    """
+    size = 51
+    data1 = np.resize([0, 0, 1, 1], size)
+    data1 = np.abs(data1 - np.atleast_2d(data1).T) + 2
+
+    for i in range(size):
+        if i % 2 == 0:
+            data1[i, :] = 1
+            data1[:, i] = 1
+
+    data = np.zeros((101, 101))
+    data[25:25 + size, 25:25 + size] = data1
+    data[50:60, 50:60] = 10.0
+
+    segm = detect_sources(data, 0.01, 10)
+    match = 'The deblending mode of one or more source labels from the'
+    with pytest.warns(AstropyUserWarning, match=match):
+        segm2 = deblend_sources(data, segm, 1, mode='exponential', nproc=2)
+    assert segm2.info['warnings']['nmarkers']['input_labels'][0] == 1
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_nonposmin_multiproc():
+    """
+    Test nonposmin warning via multiprocessing (nproc=2).
+    This covers the multiprocessing result-processing block for
+    nonposmin.
+    """
+    g1 = Gaussian2D(100, 50, 50, 8, 8)
+    g2 = Gaussian2D(100, 35, 50, 8, 8)
+    yy, xx = np.mgrid[0:101, 0:101]
+    data = g1(xx, yy) + g2(xx, yy) - 20  # negative values
+
+    segm = detect_sources(data + 20, 10, 5)  # detect sources on positive data
+    match = 'The deblending mode of one or more source labels from the'
+    with pytest.warns(AstropyUserWarning, match=match):
+        segm2 = deblend_sources(data, segm, 5, progress_bar=False, nproc=2)
+    assert 'nonposmin' in segm2.info['warnings']
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_nmarkers_fallback_returns_none():
+    """
+    Test that deblend_source returns None when make_markers returns
+    None on the linear-mode fallback (second attempt after >200
+    markers).
+    """
+    from unittest.mock import patch
+
+    from photutils.segmentation.deblend import _SingleSourceDeblender
+
+    # Create a source with varying data values so source_min != source_max
+    data = np.ones((20, 20)) * 10.0
+    data[5:15, 5:15] = 50.0
+    data[8:12, 8:12] = 100.0  # peak in center
+    segment = np.zeros((20, 20), dtype=int)
+    segment[5:15, 5:15] = 1
+
+    deblend_params = _DeblendParams(5, np.ones((3, 3)), 32, 0.001,
+                                    'exponential')
+
+    deblender = _SingleSourceDeblender(data, segment, 1, deblend_params)
+
+    call_count = [0]
+
+    def mock_make_markers(_return_all=False):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            # First call: return markers with > 200 labels
+            markers = np.zeros((20, 20), dtype=int)
+            for i in range(201):
+                r, c = divmod(i, 20)
+                if r < 20 and c < 20:
+                    markers[r, c] = i + 1
+            return markers
+        # Second call (linear fallback): return None
+        return None
+
+    with patch.object(deblender, 'make_markers', mock_make_markers):
+        result = deblender.deblend_source()
+
+    assert result is None

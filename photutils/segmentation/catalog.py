@@ -1439,7 +1439,7 @@ class SourceCatalog:
         kwargs = self._apermask_kwargs['cen_win']
 
         labels = self.labels
-        if self.progress_bar:  # pragma: no cover
+        if self.progress_bar:
             desc = 'centroid_win'
             labels = add_progress_bar(labels, desc=desc)
 
@@ -1621,7 +1621,7 @@ class SourceCatalog:
             warnings.simplefilter('ignore', AstropyUserWarning)
 
             cutouts = self._data_cutouts
-            if self.progress_bar:  # pragma: no cover
+            if self.progress_bar:
                 desc = 'centroid_quad'
                 cutouts = add_progress_bar(cutouts, desc=desc)
 
@@ -2413,8 +2413,8 @@ class SourceCatalog:
 
         # Check for negative variance
         # (just in case covariance matrix is not positive semidefinite)
-        idx2 = np.unique(np.where(eigvals < 0)[0])  # pragma: no cover
-        eigvals[idx2] = (np.nan, np.nan)  # pragma: no cover
+        idx2 = np.unique(np.where(eigvals < 0)[0])
+        eigvals[idx2] = (np.nan, np.nan)
 
         # Sort each eigenvalue pair in descending order
         # (eigvalsh returns values in ascending order)
@@ -2754,7 +2754,7 @@ class SourceCatalog:
                 data_values = data_cutout[good_mask]  # 1D array
 
                 # Check not enough unmasked pixels
-                if len(data_values) < 10:  # pragma: no cover
+                if len(data_values) < 10:
                     local_bkgs.append(0.0)
                     continue
                 local_bkgs.append(bkg_func(data_values))
@@ -3074,7 +3074,7 @@ class SourceCatalog:
             cyy = (cyy,)
 
         labels = self.labels
-        if self.progress_bar:  # pragma: no cover
+        if self.progress_bar:
             desc = 'kron_radius'
             labels = add_progress_bar(labels, desc=desc)
 
@@ -3380,7 +3380,7 @@ class SourceCatalog:
             The flux and flux error arrays.
         """
         labels = self.labels
-        if self.progress_bar:  # pragma: no cover
+        if self.progress_bar:
             labels = add_progress_bar(labels, desc=desc)
 
         flux = []
@@ -3608,7 +3608,7 @@ class SourceCatalog:
         kwargs = self._apermask_kwargs['fluxfrac']
 
         labels = self.labels
-        if self.progress_bar:  # pragma: no cover
+        if self.progress_bar:
             desc = 'fluxfrac_radius prep'
             labels = add_progress_bar(labels, desc=desc)
 
@@ -3677,7 +3677,7 @@ class SourceCatalog:
             return result
 
         args = self._fluxfrac_optimizer_args
-        if self.progress_bar:  # pragma: no cover
+        if self.progress_bar:
             desc = 'fluxfrac_radius'
             args = add_progress_bar(args, desc=desc)
 

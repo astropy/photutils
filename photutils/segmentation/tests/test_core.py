@@ -3,6 +3,10 @@
 Tests for the core module.
 """
 
+import sys
+from collections import defaultdict
+from unittest.mock import PropertyMock, patch
+
 import numpy as np
 import pytest
 from astropy.utils import lazyproperty
@@ -15,14 +19,23 @@ from photutils.utils._optional_deps import (HAS_MATPLOTLIB, HAS_RASTERIO,
                                             HAS_REGIONS, HAS_SHAPELY)
 
 
+@pytest.fixture
+def segm_data():
+    """
+    Reusable 6x6 segmentation data array.
+    """
+    return np.array([[1, 1, 0, 0, 4, 4],
+                     [0, 0, 0, 0, 0, 4],
+                     [0, 0, 3, 3, 0, 0],
+                     [7, 0, 0, 0, 0, 5],
+                     [7, 7, 0, 5, 5, 5],
+                     [7, 7, 0, 0, 5, 5]])
+
+
 class TestSegmentationImage:
-    def setup_class(self):
-        self.data = np.array([[1, 1, 0, 0, 4, 4],
-                              [0, 0, 0, 0, 0, 4],
-                              [0, 0, 3, 3, 0, 0],
-                              [7, 0, 0, 0, 0, 5],
-                              [7, 7, 0, 5, 5, 5],
-                              [7, 7, 0, 0, 5, 5]])
+    @pytest.fixture(autouse=True)
+    def setup(self, segm_data):
+        self.data = segm_data
         self.segm = SegmentationImage(self.data)
 
     def test_array(self):
@@ -167,6 +180,29 @@ class TestSegmentationImage:
         for prop in props:
             assert f'{prop}:' in repr(self.segm.segments[0])
 
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+    def test_segment_repr_svg_with_polygon(self):
+        """
+        Test _repr_svg_ returns SVG string when polygon is present.
+        """
+        segment = self.segm.segments[0]
+        assert segment.polygon is not None
+        svg = segment._repr_svg_()
+        assert svg is not None
+        assert isinstance(svg, str)
+
+    def test_segment_repr_svg_without_polygon(self):
+        """
+        Test _repr_svg_ returns None when polygon is None.
+        """
+        segment = self.segm.segments[0]
+        # Create a Segment without a polygon
+        seg_no_poly = Segment(self.segm.data, segment.label,
+                              segment.slices, segment.bbox,
+                              segment.area, polygon=None)
+        assert seg_no_poly._repr_svg_() is None
+
     def test_segment_data(self):
         """
         Test segment data.
@@ -201,8 +237,6 @@ class TestSegmentationImage:
         Test that Segment stores only a cutout copy, not a reference
         to the full segmentation array.
         """
-        import sys
-
         large = np.zeros((1000, 1000), dtype=np.int32)
         large[10:20, 10:20] = 1
         segm = SegmentationImage(large)
@@ -621,6 +655,7 @@ class TestSegmentationImage:
         Test regions.
         """
         from regions import PolygonPixelRegion, Regions
+
         regions = self.segm.to_regions()
 
         assert isinstance(regions, Regions)
@@ -752,8 +787,8 @@ class TestSegmentationImage:
 
         patches = segm.to_patches()
         assert len(patches) == 5
-        for patch in patches:
-            assert isinstance(patch, PathPatch)
+        for patch_ in patches:
+            assert isinstance(patch_, PathPatch)
 
         regions = segm.to_regions()
         assert len(regions) == 7
@@ -854,18 +889,12 @@ class CustomSegm(SegmentationImage):
         return np.median(self.data)
 
 
-def test_subclass():
+def test_subclass(segm_data):
     """
     Test that cached properties are reset in SegmentationImage
     subclasses.
     """
-    data = np.array([[1, 1, 0, 0, 4, 4],
-                     [0, 0, 0, 0, 0, 4],
-                     [0, 0, 3, 3, 0, 0],
-                     [7, 0, 0, 0, 0, 5],
-                     [7, 7, 0, 5, 5, 5],
-                     [7, 7, 0, 0, 5, 5]])
-    segm = CustomSegm(data)
+    segm = CustomSegm(segm_data)
     _ = segm.slices, segm.labels, segm.value, segm.areas
 
     data2 = np.array([[10, 10, 0, 40],
@@ -875,3 +904,192 @@ def test_subclass():
     segm.data = data2
     assert len(segm.__dict__) == 3
     assert_equal(segm.areas, [1, 2, 2, 4])
+
+
+def test_segments_no_rasterio(segm_data, monkeypatch):
+    """
+    Test that segments property works without rasterio/shapely by
+    creating Segment objects without polygon info.
+    """
+    import photutils.segmentation.core as core_mod
+
+    monkeypatch.setattr(core_mod, 'HAS_RASTERIO', False)
+
+    segm = SegmentationImage(segm_data)
+    segments = segm.segments
+    assert len(segments) == segm.nlabels
+    assert isinstance(segments[0], Segment)
+    # Without rasterio, segments should not have polygon attribute set
+    assert segments[0].polygon is None
+
+
+def test_reassign_labels_empty(segm_data):
+    """
+    Test reassign_labels with an empty labels array returns early.
+    """
+    segm = SegmentationImage(segm_data.copy())
+    original = segm.data.copy()
+    segm.reassign_labels(labels=[], new_label=99)
+    assert_equal(segm.data, original)
+
+
+def test_keep_label(segm_data):
+    """
+    Test that keep_label delegates to keep_labels correctly.
+    """
+    segm = SegmentationImage(segm_data.copy())
+    segm.keep_label(3, relabel=True)
+    assert segm.nlabels == 1
+    assert_equal(segm.labels, [1])
+    # Only label 3 (now relabeled to 1) should remain
+    assert segm.data[2, 2] == 1
+    assert segm.data[0, 0] == 0
+
+
+@pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+@pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+def test_geojson_polygons_int64_dtype():
+    """
+    Test _geojson_polygons with int64 dtype data that fits in int32.
+    """
+    data = np.array([[0, 0, 0],
+                     [0, 1, 0],
+                     [0, 0, 0]], dtype=np.int64)
+    segm = SegmentationImage(data)
+    polygons = segm._geojson_polygons
+    assert 1 in polygons
+    assert len(polygons[1]) >= 1
+
+
+@pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+@pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+def test_geojson_polygons_int64_out_of_range():
+    """
+    Test _geojson_polygons raises ValueError when int64 values exceed
+    int32 range.
+    """
+    data = np.array([[0, 0, 0],
+                     [0, np.iinfo(np.int32).max + 1, 0],
+                     [0, 0, 0]], dtype=np.int64)
+    segm = SegmentationImage.__new__(SegmentationImage)
+    segm._data = data
+    match = 'values outside the safe np.int32 range'
+    with pytest.raises(ValueError, match=match):
+        _ = segm._geojson_polygons
+
+
+@pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+@pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+def test_geojson_polygons_label_mismatch():
+    """
+    Test _geojson_polygons raises ValueError when polygon labels don't
+    match segmentation labels.
+    """
+    data = np.array([[0, 0, 0],
+                     [0, 1, 0],
+                     [0, 0, 0]], dtype=np.int32)
+    segm = SegmentationImage(data)
+
+    # Mock rasterio.features.shapes to return a wrong label
+    def fake_shapes(_data, **_kwargs):
+        from shapely.geometry import mapping
+        from shapely.geometry.polygon import Polygon
+
+        poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
+        yield mapping(poly), 999  # wrong label
+
+    with patch('rasterio.features.shapes', fake_shapes):
+        match = 'labels do not match'
+        with pytest.raises(ValueError, match=match):
+            _ = segm._geojson_polygons
+
+
+@pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+@pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+def test_polygons_empty_geopolys():
+    """
+    Test polygons property raises ValueError when _geojson_polygons
+    returns an empty polygon list for a label.
+    """
+    data = np.array([[0, 0, 0],
+                     [0, 1, 0],
+                     [0, 0, 0]], dtype=np.int32)
+    segm = SegmentationImage(data)
+
+    # Mock _geojson_polygons to return a dict with an empty list
+    empty_dict = defaultdict(list)
+    empty_dict[1] = []  # label 1 has no polygons
+
+    with patch.object(type(segm), '_geojson_polygons',
+                      new_callable=PropertyMock, return_value=empty_dict):
+        match = 'Could not create a polygon for label'
+        with pytest.raises(ValueError, match=match):
+            _ = segm.polygons
+
+
+@pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+def test_convert_shapely_to_pathpatch_empty():
+    """
+    Test _convert_shapely_to_pathpatch returns None for empty geometry.
+    """
+    from shapely.geometry import Point
+
+    data = np.array([[0, 0, 0],
+                     [0, 1, 0],
+                     [0, 0, 0]], dtype=np.int32)
+    segm = SegmentationImage(data)
+
+    # An empty geometry
+    empty_geom = Point()  # empty point
+    result = segm._convert_shapely_to_pathpatch(empty_geom)
+    assert result is None
+
+
+@pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+def test_convert_shapely_to_pathpatch_empty_geom_collection():
+    """
+    Test _convert_shapely_to_pathpatch returns None for a non-Polygon
+    geometry type that yields no polygons (empty all_vertices).
+    """
+    from shapely.geometry import GeometryCollection
+
+    data = np.array([[0, 0, 0],
+                     [0, 1, 0],
+                     [0, 0, 0]], dtype=np.int32)
+    segm = SegmentationImage(data)
+
+    # A GeometryCollection that is not empty according to the
+    # is_empty attribute but contains no polygon geometries.
+    # We use a mock to make is_empty=False but geoms=[]
+    geom = GeometryCollection()
+    with patch.object(type(geom), 'is_empty',
+                      new_callable=PropertyMock, return_value=False):
+        result = segm._convert_shapely_to_pathpatch(geom)
+    assert result is None
+
+
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+def test_imshow_map_too_many_labels():
+    """
+    Test imshow_map warns when there are more labels than max_labels.
+    """
+    # Create segmentation with many labels
+    data = np.arange(1, 31, dtype=int).reshape(5, 6)
+    segm = SegmentationImage(data)
+
+    match = 'The colorbar was not plotted'
+    with pytest.warns(AstropyUserWarning, match=match):
+        _im, cbar_info = segm.imshow_map(max_labels=5)
+    assert cbar_info is None
+
+
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+def test_imshow_map_cbar_labelsize(segm_data):
+    """
+    Test imshow_map with cbar_labelsize parameter.
+    """
+    segm = SegmentationImage(segm_data)
+    _im, cbar_info = segm.imshow_map(cbar_labelsize=8)
+    assert cbar_info is not None
