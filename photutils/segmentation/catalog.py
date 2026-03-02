@@ -3667,7 +3667,7 @@ class SourceCatalog:
             # returned as the result.
             found = False
             min_radius = 0.1
-            max_radius_delta = 1.0
+            max_radius_delta = 0.1 * max_radius
             while max_radius > min_radius and found is False:
                 try:
                     bracket = [min_radius, max_radius]
@@ -3675,7 +3675,7 @@ class SourceCatalog:
                                          bracket=bracket, method='brentq')
                     result = result.root
                     found = True
-                except ValueError:  # pragma: no cover
+                except ValueError:
                     # ValueError is raised if the bracket points do not
                     # have different signs
                     max_radius -= max_radius_delta

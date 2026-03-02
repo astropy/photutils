@@ -4,6 +4,7 @@ Tests for the catalog module.
 """
 
 from io import StringIO
+from unittest.mock import patch
 
 import astropy.units as u
 import numpy as np
@@ -13,6 +14,7 @@ from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
 from numpy.testing import assert_allclose, assert_equal
+from scipy.optimize import root_scalar
 
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture)
@@ -620,18 +622,18 @@ class TestSourceCatalog:
 
         patches = self.cat.plot_circular_apertures(5.0)
         assert isinstance(patches, list)
-        for patch in patches:
-            assert isinstance(patch, Patch)
+        for patch_ in patches:
+            assert isinstance(patch_, Patch)
 
         patches = self.cat.plot_kron_apertures()
         assert isinstance(patches, list)
-        for patch in patches:
-            assert isinstance(patch, Patch)
+        for patch_ in patches:
+            assert isinstance(patch_, Patch)
 
         patches2 = self.cat.plot_kron_apertures((2.0, 1.2))
         assert isinstance(patches2, list)
-        for patch in patches2:
-            assert isinstance(patch, Patch)
+        for patch_ in patches2:
+            assert isinstance(patch_, Patch)
 
         # test scalar
         obj = self.cat[1]
@@ -722,6 +724,43 @@ class TestSourceCatalog:
         # Modifying the parent cache does not affect the sliced cache
         cat.fluxfrac_radius(0.7)
         assert 0.7 not in obj._fluxfrac_cache
+
+    def test_fluxfrac_max_radius_delta(self):
+        """
+        Test that the max_radius_delta fallback loop reduces max_radius
+        by 10 percent on each failed bracketing attempt and still
+        returns a valid result when the second (reduced) bracket
+        succeeds.
+        """
+        # Use a single-source scalar catalog to keep the mock simple
+        cat = SourceCatalog(self.data, self.segm)[1]
+        assert cat.isscalar
+
+        brackets_seen = []
+        call_count = [0]
+
+        def mock_root_scalar(fcn, args, bracket, method):
+            call_count[0] += 1
+            brackets_seen.append(list(bracket))
+            if call_count[0] == 1:
+                # Simulate a bracket with no sign change
+                msg = 'no sign change in bracket'
+                raise ValueError(msg)
+            return root_scalar(fcn, args=args, bracket=bracket, method=method)
+
+        with patch('photutils.segmentation.catalog.root_scalar',
+                   mock_root_scalar):
+            r = cat.fluxfrac_radius(0.5)
+
+        # Fallback triggered once then succeeded
+        assert call_count[0] == 2
+
+        # Second bracket max_radius must be 10% smaller than the first
+        assert_allclose(brackets_seen[1][1], 0.9 * brackets_seen[0][1],
+                        rtol=1e-10)
+
+        # Result is a valid radius (not NaN)
+        assert np.isfinite(r.value)
 
     def test_fluxfrac_radius(self):
         radius1 = self.cat.fluxfrac_radius(0.1, name='fluxfrac_r1')
