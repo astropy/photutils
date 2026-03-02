@@ -23,10 +23,10 @@ def centroid_1dg(data, *, error=None, mask=None):
     Calculate the centroid of a 2D array by fitting 1D Gaussians to the
     marginal ``x`` and ``y`` distributions of the array.
 
-    Non-finite values (e.g., NaN or inf) in the ``data`` array are
-    automatically masked. The final mask is a logical OR combination
-    of the input ``mask``, the automatically generated mask for
-    non-finite values, and the mask of the input ``data`` if it is a
+    Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
+    arrays are automatically masked. The final mask is a logical OR
+    combination of the input ``mask``, the automatically generated mask
+    for non-finite values, and the mask of the input ``data`` if it is a
     `~numpy.ma.MaskedArray`. The centroid is calculated using only the
     unmasked data values.
 
@@ -116,10 +116,10 @@ def centroid_2dg(data, *, error=None, mask=None):
     Calculate the centroid of a 2D array by fitting a 2D Gaussian to the
     array.
 
-    Non-finite values (e.g., NaN or inf) in the ``data`` array are
-    automatically masked. The final mask is a logical OR combination
-    of the input ``mask``, the automatically generated mask for
-    non-finite values, and the mask of the input ``data`` if it is a
+    Non-finite values (e.g., NaN or inf) in the ``data`` or ``error``
+    arrays are automatically masked. The final mask is a logical OR
+    combination of the input ``mask``, the automatically generated mask
+    for non-finite values, and the mask of the input ``data`` if it is a
     `~numpy.ma.MaskedArray`. The centroid is calculated using only the
     unmasked data values.
 
