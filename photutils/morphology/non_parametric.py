@@ -79,19 +79,18 @@ def gini(data, mask=None):
         values = np.ravel(data)
 
     # Exclude invalid values (NaN, inf)
-    values = values[np.isfinite(values)]
-    if values.size == 0:
+    values = np.abs(values[np.isfinite(values)])
+    npix = values.size
+    if npix == 0:
         return np.nan
 
-    npix = values.size
     if npix == 1:
         return 0.0
 
-    normalization = np.mean(np.abs(values)) * npix * (npix - 1)
+    normalization = np.mean(values) * npix * (npix - 1)
     if normalization == 0.0:
         return 0.0
 
-    kernel = ((2.0 * np.arange(1, npix + 1) - npix - 1)
-              * np.sort(np.abs(values)))
+    kernel = (2.0 * np.arange(1, npix + 1) - npix - 1) * np.sort(values)
 
     return np.sum(kernel) / normalization
