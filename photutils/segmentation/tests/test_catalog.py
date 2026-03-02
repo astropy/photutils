@@ -1306,3 +1306,71 @@ def test_fluxfrac_radius_nan_fallback():
     radius = cat.fluxfrac_radius(0.5)
     # Should be NaN since there's no meaningful flux
     assert np.isnan(radius.value)
+
+
+def test_reduceat_empty_input():
+    """
+    Test that _reduceat returns empty arrays when given an empty list.
+    """
+    result, sizes = SourceCatalog._reduceat([], np.add)
+    assert len(result) == 0
+    assert len(sizes) == 0
+    assert sizes.dtype == int
+
+
+def test_reduceat_negative_data():
+    """
+    Test that the _reduceat optimization gives correct results for
+    min_value, max_value, and segment_flux when data contains negative
+    pixel values.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 30, 30, 5, 5)
+    g2 = Gaussian2D(80, 70, 70, 4, 4)
+    data = g1(xx, yy) + g2(xx, yy) - 20.0  # shift so many pixels negative
+    segm = detect_sources(data, 0.5, npixels=5)
+
+    cat = SourceCatalog(data, segm)
+    for i in range(cat.nlabels):
+        obj = cat[i]
+        vals = obj._data_values[0]
+        expected_min = np.min(vals) - obj._local_background
+        expected_max = np.max(vals) - obj._local_background
+        expected_flux = np.sum(vals) - obj._local_background * len(vals)
+        assert_allclose(obj.min_value, expected_min)
+        assert_allclose(obj.max_value, expected_max)
+        assert_allclose(obj.segment_flux, expected_flux)
+
+
+def test_make_cutouts_trim_mode():
+    """
+    Test that make_cutouts with mode='trim' returns cutouts that are
+    correctly trimmed when they extend beyond the array boundary.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    # Source near the edge
+    g1 = Gaussian2D(100, 5, 5, 3, 3)
+    # Source in the center
+    g2 = Gaussian2D(100, 50, 50, 3, 3)
+    data = g1(xx, yy) + g2(xx, yy)
+    segm = detect_sources(data, 10, npixels=5)
+
+    cat = SourceCatalog(data, segm)
+    shape = (40, 40)
+    cutouts = cat.make_cutouts(shape, mode='trim')
+
+    for cutout in cutouts:
+        if cutout is None:
+            continue
+        # Trim mode: cutout shape should be <= requested shape
+        assert cutout.data.shape[0] <= shape[0]
+        assert cutout.data.shape[1] <= shape[1]
+        assert isinstance(cutout, CutoutImage)
+
+    # At least one near-edge source should be trimmed (smaller than
+    # shape)
+    shapes = [c.data.shape for c in cutouts if c is not None]
+    assert any(s != shape for s in shapes)
+
+    # Center source should be full size
+    assert any(s == shape for s in shapes)

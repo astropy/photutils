@@ -1217,6 +1217,45 @@ class SourceCatalog:
         return [arr.compressed() if len(arr.compressed()) > 0
                 else np.array([np.nan]) for arr in array]
 
+    @staticmethod
+    def _reduceat(values, ufunc, transform=None):
+        """
+        Apply ``ufunc.reduceat`` to a list of arrays.
+
+        This is significantly faster than a list comprehension with
+        individual NumPy calls for each array.
+
+        Parameters
+        ----------
+        values : list of 1D `~numpy.ndarray`
+            A list of 1D arrays.
+
+        ufunc : `~numpy.ufunc`
+            The NumPy ufunc to apply (e.g., `~numpy.add`,
+            `~numpy.minimum`, `~numpy.maximum`).
+
+        transform : callable or None, optional
+            An optional transformation to apply to the concatenated
+            array before reducing (e.g., `~numpy.square`).
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            The reduceat result.
+
+        sizes : `~numpy.ndarray`
+            The sizes of the input arrays.
+        """
+        if not values:
+            return np.array([]), np.array([], dtype=int)
+
+        sizes = np.array([len(arr) for arr in values])
+        splits = np.concatenate(([0], np.cumsum(sizes[:-1])))
+        concat = np.concatenate(values)
+        if transform is not None:
+            concat = transform(concat)
+        return ufunc.reduceat(concat, splits), sizes
+
     @lazyproperty
     def _data_values(self):
         """
@@ -1914,7 +1953,7 @@ class SourceCatalog:
         The minimum pixel value of the ``data`` within the source
         segment.
         """
-        values = np.array([np.min(array) for array in self._data_values])
+        values, _ = self._reduceat(self._data_values, np.minimum)
         values -= self._local_background
         if self._data_unit is not None:
             values <<= self._data_unit
@@ -1927,7 +1966,7 @@ class SourceCatalog:
         The maximum pixel value of the ``data`` within the source
         segment.
         """
-        values = np.array([np.max(array) for array in self._data_values])
+        values, _ = self._reduceat(self._data_values, np.maximum)
         values -= self._local_background
         if self._data_unit is not None:
             values <<= self._data_unit
@@ -2096,7 +2135,7 @@ class SourceCatalog:
         localbkg = self._local_background
         if self.isscalar:
             localbkg = localbkg[0]
-        source_sum = np.array([np.sum(arr) for arr in self._data_values])
+        source_sum, _ = self._reduceat(self._data_values, np.add)
         source_sum -= self.area.value * localbkg
         if self._data_unit is not None:
             source_sum <<= self._data_unit
@@ -2128,8 +2167,9 @@ class SourceCatalog:
         if self._error is None:
             err = self._null_values
         else:
-            err = np.sqrt(np.array([np.sum(arr**2)
-                                    for arr in self._error_values]))
+            err_sq, _ = self._reduceat(self._error_values, np.add,
+                                       transform=np.square)
+            err = np.sqrt(err_sq)
 
         if self._data_unit is not None:
             err <<= self._data_unit
@@ -2148,8 +2188,8 @@ class SourceCatalog:
         if self._background is None:
             bkg_sum = self._null_values
         else:
-            bkg_sum = np.array([np.sum(arr)
-                                for arr in self._background_values])
+            bkg_sum, _ = self._reduceat(
+                self._background_values, np.add)
 
         if self._data_unit is not None:
             bkg_sum <<= self._data_unit
@@ -2168,8 +2208,9 @@ class SourceCatalog:
         if self._background is None:
             bkg_mean = self._null_values
         else:
-            bkg_mean = np.array([np.mean(arr)
-                                 for arr in self._background_values])
+            bkg_sum, sizes = self._reduceat(
+                self._background_values, np.add)
+            bkg_mean = bkg_sum / sizes
 
         if self._data_unit is not None:
             bkg_mean <<= self._data_unit
