@@ -130,8 +130,9 @@ class DAOStarFinder(StarFinderBase):
         algorithm will skip the source-finding step.
 
     min_separation : float, optional
-        The minimum separation (in pixels) for detected objects. Note
-        that large values may result in long run times.
+        The minimum separation (in pixels) for detected objects. The
+        default is 0.0 (i.e., no minimum separation). Note that large
+        values may result in long run times.
 
     scale_threshold : bool, optional
         If `True` (default), the input ``threshold`` is multiplied by
@@ -461,23 +462,13 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         return self.make_cutouts(self.convolved_data)
 
     @lazyproperty
-    def data_peak(self):
+    def peak(self):
         """
         The peak pixel value of the source in the original (unconvolved)
         data.
         """
         return self.cutout_data[:, self.cutout_center[0],
                                 self.cutout_center[1]]
-
-    @lazyproperty
-    def peak(self):
-        """
-        The peak pixel value of the source in the original (unconvolved)
-        data.
-
-        This is the same as ``data_peak``.
-        """
-        return self.data_peak
 
     @lazyproperty
     def convdata_peak(self):
@@ -543,12 +534,12 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         # Mean value of the unconvolved data (excluding the peak)
         cutout_data_masked = self.cutout_data * self.kernel.mask
-        data_mean = ((np.sum(cutout_data_masked, axis=(1, 2)) - self.data_peak)
+        data_mean = ((np.sum(cutout_data_masked, axis=(1, 2)) - self.peak)
                      / (self.kernel.npixels - 1))
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            return (self.data_peak - data_mean) / self.convdata_peak
+            return (self.peak - data_mean) / self.convdata_peak
 
     def _marginal_weights(self, axis):
         """

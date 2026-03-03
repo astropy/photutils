@@ -35,8 +35,9 @@ class StarFinder(StarFinderBase):
         A 2D array of the PSF kernel.
 
     min_separation : float, optional
-        The minimum separation (in pixels) for detected objects. Note
-        that large values may result in long run times.
+        The minimum separation (in pixels) for detected objects. The
+        default is 5.0. Note that large values may result in long run
+        times.
 
     exclude_border : bool, optional
         Whether to exclude sources found within half the size of the
@@ -293,13 +294,4 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         if newcat is None:
             return None
 
-        if newcat.peakmax is not None:
-            mask = (newcat.max_value <= newcat.peakmax)
-            newcat = newcat[mask]
-
-        if len(newcat) == 0:
-            msg = 'Sources were found, but none pass the peakmax criterion.'
-            warnings.warn(msg, NoDetectionsWarning)
-            return None
-
-        return newcat
+        return newcat._filter_bounds([], peakattr='max_value')

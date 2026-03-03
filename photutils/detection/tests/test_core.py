@@ -162,6 +162,15 @@ class TestMakeCutouts:
             _make_cutouts(self.data, np.array([5.0]),
                           np.array([5.0]), (3, 3, 3))
 
+    def test_xpos_ypos_length_mismatch(self):
+        """
+        Test that mismatched xpos/ypos lengths raise ValueError.
+        """
+        match = 'xpos and ypos must have the same length'
+        with pytest.raises(ValueError, match=match):
+            _make_cutouts(self.data, np.array([5.0, 6.0]),
+                          np.array([5.0]), (3, 3))
+
 
 class TestStarFinderKernel:
     """
@@ -359,6 +368,20 @@ class TestStarFinderCatalogBase:
         expected = ('data', 'unit', 'kernel', 'brightest', 'peakmax',
                     'cutout_shape')
         assert cat._get_init_attributes() == expected
+
+    def test_lazyproperties_cache_hit(self, minimal_catalog_cls):
+        """
+        Test that accessing _lazyproperties twice returns the cached
+        result.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 10.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        result1 = cat._lazyproperties
+        result2 = cat._lazyproperties  # hits the cache branch
+        assert result1 is result2
 
     def test_to_table_missing_default_columns(self, minimal_catalog_cls):
         """

@@ -20,9 +20,9 @@ and extended sources, please see :ref:`Image Segmentation
 Detecting Stars
 ---------------
 
-Photutils includes two widely-used tools that are used to detect stars
-in an image, `DAOFIND`_ and IRAF's `starfind`_, plus a third tool that
-allows input of a custom user-defined kernel.
+Photutils includes two widely-used tools for detecting stars in an
+image, `DAOFIND`_ and IRAF's `starfind`_, plus a third tool that allows
+input of a custom user-defined kernel.
 
 :class:`~photutils.detection.DAOStarFinder` implements
 the `DAOFIND`_ algorithm (`Stetson 1987, PASP 99, 191

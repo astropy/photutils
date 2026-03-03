@@ -94,9 +94,9 @@ class IRAFStarFinder(StarFinderBase):
 
     min_separation : `None` or float, optional
         The minimum separation (in pixels) for detected objects. If
-        `None` then ``minsep_fwhm`` will be used, otherwise this keyword
-        overrides ``minsep_fwhm``. Note that large values may result in
-        long run times.
+        `None` (default) then ``minsep_fwhm`` will be used, otherwise
+        this keyword overrides ``minsep_fwhm``. Note that large values
+        may result in long run times.
 
     See Also
     --------

@@ -83,6 +83,10 @@ def _make_cutouts(data, xpos, ypos, cutout_shape, *, fill_value=0.0):
         msg = 'xpos and ypos must be 1D arrays'
         raise ValueError(msg)
 
+    if len(xpos) != len(ypos):
+        msg = 'xpos and ypos must have the same length'
+        raise ValueError(msg)
+
     if len(cutout_shape) != 2:
         msg = 'cutout_shape must have exactly 2 elements'
         raise ValueError(msg)
@@ -468,8 +472,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         An Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
-    kernel : 2D `~numpy.ndarray` or `_StarFinderKernel`
-        A 2D array of the PSF kernel or a `_StarFinderKernel` object.
+    kernel : 2D `~numpy.ndarray`
+        A 2D array of the PSF kernel. Internally, the star finder
+        classes may also pass a kernel object.
 
     brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
@@ -735,19 +740,19 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         """
         Return all lazyproperties (even in superclasses).
 
-        The result is cached per class to avoid repeated
+        The result is cached per instance to avoid repeated
         ``inspect.getmembers`` calls.
         """
-        cls = self.__class__
-        if '_lazyproperties_cache' in cls.__dict__:
-            return cls._lazyproperties_cache
+        if '_lazyproperties_cache' in self.__dict__:
+            return self.__dict__['_lazyproperties_cache']
 
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
 
         result = [i[0] for i in
-                  inspect.getmembers(cls, predicate=islazyproperty)]
-        cls._lazyproperties_cache = result
+                  inspect.getmembers(self.__class__,
+                                     predicate=islazyproperty)]
+        self.__dict__['_lazyproperties_cache'] = result
         return result
 
     def reset_ids(self):
@@ -877,8 +882,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         newcat = self[mask]
 
         if len(newcat) == 0:
-            msg = ('Sources were found, but none pass the sharpness, '
-                   'roundness, or peakmax criteria')
+            msg = 'Sources were found, but none pass the filtering criteria'
             warnings.warn(msg, NoDetectionsWarning)
             return None
 
