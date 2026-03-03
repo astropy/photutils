@@ -30,9 +30,10 @@ class IRAFStarFinder(StarFinderBase):
 
     Parameters
     ----------
-    threshold : float
-        The absolute image value above which to select sources.
-        If the star finder is run on an image that is a
+    threshold : float or 2D `~numpy.ndarray`
+        The absolute image value above which to select sources. If
+        ``threshold`` is a 2D array, it must have the same shape as the
+        input ``data``. If the star finder is run on an image that is a
         `~astropy.units.Quantity` array, then ``threshold`` must have
         the same units.
 
@@ -93,9 +94,9 @@ class IRAFStarFinder(StarFinderBase):
 
     min_separation : `None` or float, optional
         The minimum separation (in pixels) for detected objects. If
-        `None` then ``minsep_fwhm`` will be used, otherwise this keyword
-        overrides ``minsep_fwhm``. Note that large values may result in
-        long run times.
+        `None` (default) then ``minsep_fwhm`` will be used, otherwise
+        this keyword overrides ``minsep_fwhm``. Note that large values
+        may result in long run times.
 
     See Also
     --------
@@ -138,14 +139,10 @@ class IRAFStarFinder(StarFinderBase):
                  exclude_border=False, brightest=None, peakmax=None,
                  xycoords=None, min_separation=None):
 
-        # here we validate the units, but do not strip them
+        # Validate the units, but do not strip them
         inputs = (threshold, peakmax)
         names = ('threshold', 'peakmax')
         _ = process_quantities(inputs, names)
-
-        if not isscalar(threshold):
-            msg = 'threshold must be a scalar value'
-            raise TypeError(msg)
 
         if not isscalar(fwhm):
             msg = 'fwhm must be a scalar value'
@@ -192,6 +189,9 @@ class IRAFStarFinder(StarFinderBase):
                   'exclude_border', 'brightest', 'peakmax', 'xycoords',
                   'min_separation')
         overrides = {}
+        if not isscalar(self.threshold):
+            overrides['threshold'] = (
+                f'<array; shape={np.shape(self.threshold)}>')
         if self.xycoords is not None:
             overrides['xycoords'] = f'<array; shape={self.xycoords.shape}>'
         return params, overrides or None
@@ -205,6 +205,27 @@ class IRAFStarFinder(StarFinderBase):
         return make_repr(self, params, overrides=overrides, long=True)
 
     def _get_raw_catalog(self, data, *, mask=None):
+        """
+        Get the raw catalog of sources from the input data.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D image array. The image should be
+            background-subtracted.
+
+        mask : 2D bool array, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked. Masked pixels are ignored when searching for
+            stars.
+
+        Returns
+        -------
+        cat : `_IRAFStarFinderCatalog` or `None`
+            A catalog of sources found in the input data. `None` is
+            returned if no sources are found.
+        """
         convolved_data = _filter_data(data, self.kernel.data, mode='constant',
                                       fill_value=0.0,
                                       check_normalization=False)
@@ -219,7 +240,8 @@ class IRAFStarFinder(StarFinderBase):
             xypos = self.xycoords
 
         if xypos is None:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
+            msg = 'No sources were found.'
+            warnings.warn(msg, NoDetectionsWarning)
             return None
 
         return _IRAFStarFinderCatalog(data, convolved_data, xypos, self.kernel,
@@ -275,12 +297,12 @@ class IRAFStarFinder(StarFinderBase):
         if cat is None:
             return None
 
-        # apply all selection filters
+        # Apply all selection filters
         cat = cat.apply_all_filters()
         if cat is None:
             return None
 
-        # create the output table
+        # Create the output table
         return cat.to_table()
 
 
@@ -342,7 +364,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
                  sharphi=1.0, roundlo=-1.0, roundhi=1.0, brightest=None,
                  peakmax=None):
 
-        # here we validate the units, but do not strip them
+        # Validate the units, but do not strip them
         inputs = (data, convolved_data, peakmax)
         names = ('data', 'convolved_data', 'peakmax')
         _ = process_quantities(inputs, names)
@@ -361,7 +383,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
                                 'sharpness', 'roundness', 'pa', 'npix',
                                 'peak', 'flux', 'mag')
 
-    def _get_init_attributes(self) -> tuple:
+    def _get_init_attributes(self):
         """
         Return a tuple of attribute names to copy during slicing.
         """
@@ -393,10 +415,16 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
 
     @lazyproperty
     def cutout_data_nosub(self):
+        """
+        The cutout data without sky subtraction or masking.
+        """
         return self.make_cutouts(self.data)
 
     @lazyproperty
     def cutout_data(self):
+        """
+        The cutout data with sky subtraction and masking applied.
+        """
         # This is a freshly computed array, so in-place modification is
         # safe.
         data = ((self.cutout_data_nosub - self.sky[:, np.newaxis, np.newaxis])
@@ -407,26 +435,45 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
 
     @lazyproperty
     def npix(self):
+        """
+        The total number of (positive) unmasked pixels in the cutout
+        data.
+        """
         return np.count_nonzero(self.cutout_data, axis=(1, 2))
 
     @lazyproperty
     def cutout_xorigin(self):
+        """
+        The x pixel coordinate of the cutout origin.
+        """
         return np.transpose(self.xypos)[0] - self.kernel.xradius
 
     @lazyproperty
     def cutout_yorigin(self):
+        """
+        The y pixel coordinate of the cutout origin.
+        """
         return np.transpose(self.xypos)[1] - self.kernel.yradius
 
     @lazyproperty
     def xcentroid(self):
+        """
+        The x pixel coordinate of the object centroid.
+        """
         return self.cutout_xcentroid + self.cutout_xorigin
 
     @lazyproperty
     def ycentroid(self):
+        """
+        The y pixel coordinate of the object centroid.
+        """
         return self.cutout_ycentroid + self.cutout_yorigin
 
     @lazyproperty
     def sharpness(self):
+        """
+        The sharpness of the object.
+        """
         return self.fwhm / self.kernel.fwhm
 
     def apply_filters(self):

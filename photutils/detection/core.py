@@ -83,6 +83,10 @@ def _make_cutouts(data, xpos, ypos, cutout_shape, *, fill_value=0.0):
         msg = 'xpos and ypos must be 1D arrays'
         raise ValueError(msg)
 
+    if len(xpos) != len(ypos):
+        msg = 'xpos and ypos must have the same length'
+        raise ValueError(msg)
+
     if len(cutout_shape) != 2:
         msg = 'cutout_shape must have exactly 2 elements'
         raise ValueError(msg)
@@ -93,7 +97,7 @@ def _make_cutouts(data, xpos, ypos, cutout_shape, *, fill_value=0.0):
     yc = np.round(ypos).astype(int)
     xc = np.round(xpos).astype(int)
 
-    # build index grids: shape (n_sources, ky, kx)
+    # Build index grids: shape (n_sources, ky, kx)
     dy = np.arange(ky) - hy
     dx = np.arange(kx) - hx
     y_idx = yc[:, np.newaxis, np.newaxis] + dy[np.newaxis, :, np.newaxis]
@@ -136,14 +140,15 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             The convolution kernel. ``StarFinder`` inputs the kernel
             as a 2D array.
 
-        threshold : float
+        threshold : float or 2D array_like
             The absolute image value above which to select sources. The
             exact value depends on the calling star finder class (e.g.,
             `DAOStarFinder` multiplies the ``threshold`` by the kernel
             relative error, whereas `IRAFStarFinder` and `StarFinder`
-            directly use the input ``threshold``). If ``convolved_data``
-            is a `~astropy.units.Quantity` array, then ``threshold``
-            must have the same units.
+            directly use the input ``threshold``). A 2D ``threshold``
+            must have the same shape as ``convolved_data``. If
+            ``convolved_data`` is a `~astropy.units.Quantity` array,
+            then ``threshold`` must have the same units.
 
         min_separation : float, optional
             The minimum separation for detected objects in pixels.
@@ -169,20 +174,20 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             An Nx2 array containing the (x, y) pixel coordinates. `None`
             is returned if no sources are found.
         """
-        # define a local footprint for the peak finder
+        # Define a local footprint for the peak finder
         if min_separation == 0.0:  # DAOStarFinder
             if isinstance(kernel, np.ndarray):
                 footprint = np.ones(kernel.shape)
             else:
                 footprint = kernel.mask.astype(bool)
         else:
-            # define a local circular footprint for the peak finder
+            # Define a local circular footprint for the peak finder
             idx = np.arange(-min_separation, min_separation + 1)
             xx, yy = np.meshgrid(idx, idx)
             footprint = np.array((xx**2 + yy**2) <= min_separation**2,
                                  dtype=int)
 
-        # define the border exclusion region
+        # Define the border exclusion region
         if exclude_border:
             if isinstance(kernel, np.ndarray):
                 yborder = (kernel.shape[0] - 1) // 2
@@ -194,8 +199,8 @@ class StarFinderBase(metaclass=abc.ABCMeta):
         else:
             border_width = None
 
-        # find local peaks in the convolved data
-        # suppress any NoDetectionsWarning from find_peaks
+        # Find local peaks in the convolved data.
+        # Suppress any NoDetectionsWarning from find_peaks.
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=NoDetectionsWarning)
             tbl = find_peaks(convolved_data, threshold, footprint=footprint,
@@ -343,25 +348,25 @@ class _StarFinderKernel:
         ysigma2 = self.ysigma**2
 
         a = (cost**2 / (2.0 * xsigma2)) + (sint**2 / (2.0 * ysigma2))
-        # CCW
+        # Counterclockwise rotation
         b = 0.5 * cost * sint * ((1.0 / xsigma2) - (1.0 / ysigma2))
         c = (sint**2 / (2.0 * xsigma2)) + (cost**2 / (2.0 * ysigma2))
 
-        # find the extent of an ellipse with radius = sigma_radius*sigma;
-        # solve for the horizontal and vertical tangents of an ellipse
-        # defined by g(x,y) = f
+        # Find the extent of an ellipse with radius = sigma_radius*sigma.
+        # Solve for the horizontal and vertical tangents of an ellipse
+        # defined by g(x,y) = f.
         f = self.sigma_radius**2 / 2.0
         denom = (a * c) - b**2
 
-        # nx and ny are always odd
-        # minimum kernel size is 5x5
+        # Ensure nx and ny are always odd.
+        # The minimum kernel size is 5x5.
         nx = 2 * int(max(2, math.sqrt(c * f / denom))) + 1
         ny = 2 * int(max(2, math.sqrt(a * f / denom))) + 1
 
         self.xradius = nx // 2
         self.yradius = ny // 2
 
-        # define the kernel on a 2D grid
+        # Define the kernel on a 2D grid
         xc = self.xradius
         yc = self.yradius
         yy, xx = np.mgrid[0:ny, 0:nx]
@@ -375,7 +380,7 @@ class _StarFinderKernel:
             | (circular_radius <= 2.0), 1, 0).astype(int)
         self.npixels = self.mask.sum()
 
-        # NOTE: the central (peak) pixel of gaussian_kernel has a value of 1.0
+        # Central (peak) pixel of gaussian_kernel has a value of 1.0
         self.gaussian_kernel_unmasked = np.exp(-elliptical_radius)
         gaussian_kernel = self.gaussian_kernel_unmasked * self.mask
 
@@ -384,7 +389,7 @@ class _StarFinderKernel:
                  - (gaussian_kernel.sum()**2 / self.npixels))
         self.relerr = 1.0 / np.sqrt(denom)
 
-        # normalize the kernel to zero sum
+        # Normalize the kernel to zero sum
         if normalize_zerosum:
             self.data = ((gaussian_kernel
                           - (gaussian_kernel.sum() / self.npixels))
@@ -408,6 +413,13 @@ def _validate_brightest(brightest):
     Validate the ``brightest`` parameter.
 
     It must be >0 and an integer.
+
+    Parameters
+    ----------
+    brightest : int, None, or bool
+        The number of brightest sources to select. If `None`, all
+        sources are selected. If a boolean is passed, a `TypeError` is
+        raised.
     """
     if brightest is not None:
         if isinstance(brightest, bool):
@@ -460,8 +472,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         An Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
-    kernel : 2D `~numpy.ndarray` or `_StarFinderKernel`
-        A 2D array of the PSF kernel or a `_StarFinderKernel` object.
+    kernel : 2D `~numpy.ndarray`
+        A 2D array of the PSF kernel. Internally, the star finder
+        classes may also pass a kernel object.
 
     brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
@@ -479,7 +492,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, data, xypos, kernel, *, brightest=None, peakmax=None):
-        # here we validate the units, but do not strip them
+        # Validate the units, but do not strip them
         inputs = (data, peakmax)
         names = ('data', 'peakmax')
         _ = process_quantities(inputs, names)
@@ -533,26 +546,26 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         value = getattr(self, attr)[index]
         setattr(newcls, attr, np.atleast_2d(value))
 
-        # index/slice the remaining attributes
+        # Index/slice the remaining attributes
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
         keys.add('id')
         for key in keys:
             value = self.__dict__[key]
 
-            # do not insert lazy attributes that are always scalar (e.g.,
+            # Do not insert lazy attributes that are always scalar (e.g.,
             # isscalar), i.e., not an array/list for each source
             if np.isscalar(value):
                 continue
 
-            # value is always at least a 1D array, even for a single
-            # source
+            # Ensure value is always at least a 1D array, even for a
+            # single source
             value = np.atleast_1d(value[index])
 
             newcls.__dict__[key] = value
 
         return newcls
 
-    def _get_init_attributes(self) -> tuple:
+    def _get_init_attributes(self):
         """
         Return a tuple of attribute names to copy during slicing.
 
@@ -598,7 +611,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     @lazyproperty
     def moments(self):
-        """The raw image moments."""
+        """
+        The raw image moments.
+        """
         data = self.cutout_data
         if isinstance(data, u.Quantity):
             data = data.value
@@ -612,10 +627,12 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     @lazyproperty
     def cutout_centroid(self):
-        """The cutout centroids."""
+        """
+        The cutout centroids.
+        """
         moments = self.moments
 
-        # ignore divide-by-zero RuntimeWarning
+        # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
@@ -624,30 +641,36 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     @lazyproperty
     def cutout_xcentroid(self):
-        """The cutout x centroids."""
+        """
+        The cutout x centroids.
+        """
         return np.transpose(self.cutout_centroid)[1]
 
     @lazyproperty
     def cutout_ycentroid(self):
-        """The cutout y centroids."""
+        """
+        The cutout y centroids.
+        """
         return np.transpose(self.cutout_centroid)[0]
 
     @lazyproperty
     def moments_central(self):
-        """The central image moments."""
+        """
+        The central image moments.
+        """
         data = self.cutout_data
         if isinstance(data, u.Quantity):
             data = data.value
         ky, kx = data.shape[1], data.shape[2]
         y = np.arange(ky, dtype=float)
         x = np.arange(kx, dtype=float)
-        # per-source shifted coordinates
+        # Per-source shifted coordinates
         dy = y[np.newaxis, :] - self.cutout_ycentroid[:, np.newaxis]
         dx = x[np.newaxis, :] - self.cutout_xcentroid[:, np.newaxis]
-        # per-source power arrays: (n, ky, 3) and (n, kx, 3)
+        # Per-source power arrays: (n, ky, 3) and (n, kx, 3)
         ypowers = np.stack([np.ones_like(dy), dy, dy**2], axis=-1)
         xpowers = np.stack([np.ones_like(dx), dx, dx**2], axis=-1)
-        # batched matmul: ypowers^T @ data @ xpowers per source
+        # Batched matmul: ypowers^T @ data @ xpowers per source
         moments = (np.transpose(ypowers, (0, 2, 1)) @ data @ xpowers)
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -655,24 +678,32 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     @lazyproperty
     def mu_sum(self):
-        """The sum of the central moments."""
+        """
+        The sum of the central moments.
+        """
         return (self.moments_central[:, 0, 2]
                 + self.moments_central[:, 2, 0])
 
     @lazyproperty
     def mu_diff(self):
-        """The difference of the central moments."""
+        """
+        The difference of the central moments.
+        """
         return (self.moments_central[:, 0, 2]
                 - self.moments_central[:, 2, 0])
 
     @lazyproperty
     def fwhm(self):
-        """The FWHM of the sources."""
+        """
+        The FWHM of the sources.
+        """
         return 2.0 * np.sqrt(np.log(2.0) * self.mu_sum)
 
     @lazyproperty
     def pa(self):
-        """The position angle of the sources."""
+        """
+        The position angle of the sources.
+        """
         pa = np.rad2deg(
             0.5 * np.arctan2(
                 2.0 * self.moments_central[:, 1, 1],
@@ -681,7 +712,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     @lazyproperty
     def roundness(self):
-        """The roundness of the sources."""
+        """
+        The roundness of the sources.
+        """
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             return (np.sqrt(self.mu_diff**2
@@ -690,7 +723,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     @lazyproperty
     def peak(self):
-        """The peak pixel values."""
+        """
+        The peak pixel values.
+        """
         return np.max(self.cutout_data, axis=(1, 2))
 
     @lazyproperty
@@ -705,19 +740,19 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         """
         Return all lazyproperties (even in superclasses).
 
-        The result is cached per class to avoid repeated
+        The result is cached per instance to avoid repeated
         ``inspect.getmembers`` calls.
         """
-        cls = self.__class__
-        if '_lazyproperties_cache' in cls.__dict__:
-            return cls._lazyproperties_cache
+        if '_lazyproperties_cache' in self.__dict__:
+            return self.__dict__['_lazyproperties_cache']
 
         def islazyproperty(obj):
             return isinstance(obj, lazyproperty)
 
         result = [i[0] for i in
-                  inspect.getmembers(cls, predicate=islazyproperty)]
-        cls._lazyproperties_cache = result
+                  inspect.getmembers(self.__class__,
+                                     predicate=islazyproperty)]
+        self.__dict__['_lazyproperties_cache'] = result
         return result
 
     def reset_ids(self):
@@ -728,13 +763,17 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     @lazyproperty
     def flux(self):
-        """The instrumental fluxes."""
+        """
+        The instrumental fluxes.
+        """
         return np.sum(self.cutout_data, axis=(1, 2))
 
     @lazyproperty
     def mag(self):
-        """The instrumental magnitudes."""
-        # ignore RuntimeWarning if flux is <= 0
+        """
+        The instrumental magnitudes.
+        """
+        # Ignore RuntimeWarning if flux is <= 0
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             flux = self.flux
@@ -805,7 +844,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         newcat = self[mask]
 
         if len(newcat) == 0:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
+            msg = 'No sources were found.'
+            warnings.warn(msg, NoDetectionsWarning)
             return None
 
         return newcat
@@ -842,9 +882,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         newcat = self[mask]
 
         if len(newcat) == 0:
-            warnings.warn('Sources were found, but none pass the '
-                          'sharpness, roundness, or peakmax criteria',
-                          NoDetectionsWarning)
+            msg = 'Sources were found, but none pass the filtering criteria'
+            warnings.warn(msg, NoDetectionsWarning)
             return None
 
         return newcat

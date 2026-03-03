@@ -32,10 +32,6 @@ class TestIRAFStarFinder:
         """
         Test that invalid inputs raise appropriate errors.
         """
-        match = 'threshold must be a scalar value'
-        with pytest.raises(TypeError, match=match):
-            IRAFStarFinder(threshold=np.ones((2, 2)), fwhm=3.0)
-
         match = 'fwhm must be a scalar value'
         with pytest.raises(TypeError, match=match):
             IRAFStarFinder(threshold=3.0, fwhm=np.ones((2, 2)))
@@ -280,22 +276,22 @@ class TestIRAFStarFinder:
         Test the __repr__ of IRAFStarFinder.
         """
         finder = IRAFStarFinder(threshold=5.0, fwhm=3.0)
-        r = repr(finder)
-        assert 'IRAFStarFinder(' in r
-        assert 'threshold=5.0' in r
-        assert 'fwhm=3.0' in r
-        assert 'minsep_fwhm=2.5' in r
-        assert 'xycoords=None' in r
+        repr_ = repr(finder)
+        assert 'IRAFStarFinder(' in repr_
+        assert 'threshold=5.0' in repr_
+        assert 'fwhm=3.0' in repr_
+        assert 'minsep_fwhm=2.5' in repr_
+        assert 'xycoords=None' in repr_
 
     def test_str(self):
         """
         Test the __str__ of IRAFStarFinder.
         """
         finder = IRAFStarFinder(threshold=5.0, fwhm=3.0)
-        s = str(finder)
-        assert 'IRAFStarFinder' in s
-        assert 'threshold: 5.0' in s
-        assert 'fwhm: 3.0' in s
+        str_ = str(finder)
+        assert 'IRAFStarFinder' in str_
+        assert 'threshold: 5.0' in str_
+        assert 'fwhm: 3.0' in str_
 
     def test_repr_with_xycoords(self):
         """
@@ -304,8 +300,61 @@ class TestIRAFStarFinder:
         xycoords = np.array([[5, 5], [10, 10]])
         finder = IRAFStarFinder(threshold=5.0, fwhm=3.0,
                                 xycoords=xycoords)
-        r = repr(finder)
-        assert '<array; shape=(2, 2)>' in r
+        assert '<array; shape=(2, 2)>' in repr(finder)
+
+    def test_threshold_2d_uniform(self, data):
+        """
+        Test that a uniform 2D threshold gives the same results
+        as a scalar threshold.
+        """
+        threshold = 5.0
+        fwhm = 1.0
+        finder_scalar = IRAFStarFinder(threshold, fwhm)
+        finder_2d = IRAFStarFinder(np.full(data.shape, threshold), fwhm)
+        tbl_scalar = finder_scalar(data)
+        tbl_2d = finder_2d(data)
+        assert_array_equal(tbl_scalar, tbl_2d)
+
+    def test_threshold_2d_varying(self, data):
+        """
+        Test that a varying 2D threshold detects fewer sources in
+        regions with a higher threshold.
+        """
+        fwhm = 1.0
+        threshold_low = 1.0
+        threshold_high = 100.0
+        threshold_2d = np.full(data.shape, threshold_low)
+        threshold_2d[0:50, :] = threshold_high
+
+        finder_low = IRAFStarFinder(threshold_low, fwhm)
+        finder_2d = IRAFStarFinder(threshold_2d, fwhm)
+
+        tbl_low = finder_low(data)
+        tbl_2d = finder_2d(data)
+        assert len(tbl_low) > len(tbl_2d)
+        # All 2D sources should be in the lower half
+        assert all(tbl_2d['ycentroid'] >= 50)
+
+    def test_threshold_2d_repr(self):
+        """
+        Test repr with a 2D threshold array.
+        """
+        threshold = np.ones((10, 10))
+        finder = IRAFStarFinder(threshold=threshold, fwhm=3.0)
+        assert '<array; shape=(10, 10)>' in repr(finder)
+        assert '<array; shape=(10, 10)>' in str(finder)
+
+    def test_threshold_2d_with_units(self, data):
+        """
+        Test that a 2D threshold with units works correctly.
+        """
+        units = u.Jy
+        threshold = 5.0
+        fwhm = 1.0
+        threshold_2d = np.full(data.shape, threshold) * units
+        finder = IRAFStarFinder(threshold_2d, fwhm)
+        tbl = finder(data << units)
+        assert len(tbl) > 0
 
     def test_catalog_intermediate_properties(self, data):
         """

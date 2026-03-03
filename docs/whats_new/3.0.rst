@@ -333,6 +333,35 @@ returns the shape of the (oversampled) PSF data array.
 Detection Improvements
 ======================
 
+Spatially varying detection thresholds
+--------------------------------------
+
+The ``threshold`` parameter in
+:class:`~photutils.detection.DAOStarFinder`,
+:class:`~photutils.detection.IRAFStarFinder`, and
+:class:`~photutils.detection.StarFinder` now accepts a 2D array in
+addition to a scalar value, allowing for spatially varying detection
+thresholds across the image. This is useful, for example, when the
+noise level varies across the field or when combining the threshold
+with a 2D background RMS map.
+
+Unscaled threshold option for DAOStarFinder
+-------------------------------------------
+
+:class:`~photutils.detection.DAOStarFinder` now accepts a
+``scale_threshold`` keyword (default `True`). When set to `False`, the
+input ``threshold`` is applied directly to the convolved data without
+the default DAOFIND kernel-based scaling factor.
+
+Performance improvements
+------------------------
+
+Source detection with :class:`~photutils.detection.DAOStarFinder`,
+:class:`~photutils.detection.IRAFStarFinder`, and
+:class:`~photutils.detection.StarFinder` is now significantly faster.
+Cutout extraction and image moment computation have been fully
+vectorized.
+
 Public StarFinderCatalogBase class
 ----------------------------------
 
@@ -344,15 +373,6 @@ produced by :class:`~photutils.detection.DAOStarFinder`,
 finders can subclass ``StarFinderCatalogBase`` to leverage all the
 built-in catalog infrastructure (table conversion, filtering, slicing,
 etc.).
-
-Performance improvements
-------------------------
-
-Source detection with :class:`~photutils.detection.DAOStarFinder`,
-:class:`~photutils.detection.IRAFStarFinder`, and
-:class:`~photutils.detection.StarFinder` is now significantly faster.
-Cutout extraction and image moment computation have been fully
-vectorized.
 
 
 Removed Deprecations

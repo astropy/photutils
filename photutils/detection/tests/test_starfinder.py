@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.table import Table
-from numpy.testing import assert_equal
+from numpy.testing import assert_array_equal, assert_equal
 
 from photutils.detection import StarFinder
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -42,9 +42,6 @@ class TestStarFinder:
         """
         Test that invalid inputs raise appropriate errors.
         """
-        match = 'threshold must be a scalar value'
-        with pytest.raises(TypeError, match=match):
-            StarFinder(np.ones((2, 2)), kernel)
         match = 'min_separation must be >= 0'
         with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, min_separation=-1)
@@ -242,18 +239,69 @@ class TestStarFinder:
         Test the __repr__ of StarFinder.
         """
         finder = StarFinder(threshold=5.0, kernel=kernel)
-        r = repr(finder)
-        assert 'StarFinder(' in r
-        assert 'threshold=5.0' in r
-        assert '<array; shape=' in r
-        assert 'brightest=None' in r
+        repr_ = repr(finder)
+        assert 'StarFinder(' in repr_
+        assert 'threshold=5.0' in repr_
+        assert '<array; shape=' in repr_
+        assert 'brightest=None' in repr_
 
     def test_str(self, kernel):
         """
         Test the __str__ of StarFinder.
         """
         finder = StarFinder(threshold=5.0, kernel=kernel)
-        s = str(finder)
-        assert 'StarFinder' in s
-        assert 'threshold: 5.0' in s
-        assert '<array; shape=' in s
+        str_ = str(finder)
+        assert 'StarFinder' in str_
+        assert 'threshold: 5.0' in str_
+        assert '<array; shape=' in str_
+
+    def test_threshold_2d_uniform(self, data, kernel):
+        """
+        Test that a uniform 2D threshold gives the same results
+        as a scalar threshold.
+        """
+        threshold = 1.0
+        finder_scalar = StarFinder(threshold, kernel)
+        finder_2d = StarFinder(np.full(data.shape, threshold), kernel)
+        tbl_scalar = finder_scalar(data)
+        tbl_2d = finder_2d(data)
+        assert_array_equal(tbl_scalar, tbl_2d)
+
+    def test_threshold_2d_varying(self, data, kernel):
+        """
+        Test that a varying 2D threshold detects fewer sources in
+        regions with a higher threshold.
+        """
+        threshold_low = 1.0
+        threshold_high = 100.0
+        threshold_2d = np.full(data.shape, threshold_low)
+        threshold_2d[0:50, :] = threshold_high
+
+        finder_low = StarFinder(threshold_low, kernel)
+        finder_2d = StarFinder(threshold_2d, kernel)
+
+        tbl_low = finder_low(data)
+        tbl_2d = finder_2d(data)
+        assert len(tbl_low) > len(tbl_2d)
+        # All 2D sources should be in the lower half
+        assert all(tbl_2d['ycentroid'] >= 50)
+
+    def test_threshold_2d_repr(self, kernel):
+        """
+        Test repr with a 2D threshold array.
+        """
+        threshold = np.ones((10, 10))
+        finder = StarFinder(threshold=threshold, kernel=kernel)
+        assert '<array; shape=(10, 10)>' in repr(finder)
+        assert '<array; shape=(10, 10)>' in str(finder)
+
+    def test_threshold_2d_with_units(self, data, kernel):
+        """
+        Test that a 2D threshold with units works correctly.
+        """
+        unit = u.Jy
+        threshold = 1.0
+        threshold_2d = np.full(data.shape, threshold) * unit
+        finder = StarFinder(threshold_2d, kernel)
+        tbl = finder(data << unit)
+        assert len(tbl) > 0

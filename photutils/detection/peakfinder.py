@@ -139,8 +139,8 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         raise TypeError(msg)
 
     if np.all(data == data.flat[0]):
-        warnings.warn('Input data is constant. No local peaks can be found.',
-                      NoDetectionsWarning)
+        msg = 'Input data is constant. No local peaks can be found.'
+        warnings.warn(msg, NoDetectionsWarning)
         return None
 
     if not np.isscalar(threshold):
@@ -154,7 +154,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         border_width = as_pair('border_width', border_width,
                                lower_bound=(0, 1), upper_bound=data.shape)
 
-    # remove NaN values to avoid runtime warnings
+    # Remove NaN values to avoid runtime warnings
     nan_mask = np.isnan(data)
     if np.any(nan_mask):
         data = np.copy(data)  # ndarray
@@ -204,10 +204,11 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         peak_values = peak_values[idx]
 
     if nxpeaks == 0:
-        warnings.warn('No local peaks were found.', NoDetectionsWarning)
+        msg = 'No local peaks were found.'
+        warnings.warn(msg, NoDetectionsWarning)
         return None
 
-    # construct the output table
+    # Construct the output table
     ids = np.arange(len(x_peaks)) + 1
     colnames = ['id', 'x_peak', 'y_peak', 'peak_value']
     coldata = [ids, x_peaks, y_peaks, peak_values]
@@ -219,9 +220,9 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         idx = table.colnames.index('y_peak') + 1
         table.add_column(skycoord_peaks, name='skycoord_peak', index=idx)
 
-    # perform centroiding
+    # Perform centroiding
     if centroid_func is not None:
-        # prevent circular import
+        # Prevent circular import
         from photutils.centroids import centroid_sources
 
         x_centroids, y_centroids = centroid_sources(

@@ -38,10 +38,6 @@ class TestDAOStarFinder:
         """
         Test that invalid inputs raise appropriate errors.
         """
-        match = 'threshold must be a scalar value'
-        with pytest.raises(TypeError, match=match):
-            DAOStarFinder(threshold=np.ones((2, 2)), fwhm=3.0)
-
         match = 'fwhm must be a scalar value'
         with pytest.raises(TypeError, match=match):
             DAOStarFinder(threshold=3.0, fwhm=np.ones((2, 2)))
@@ -281,22 +277,22 @@ class TestDAOStarFinder:
         Test the __repr__ of DAOStarFinder.
         """
         finder = DAOStarFinder(threshold=5.0, fwhm=3.0)
-        r = repr(finder)
-        assert 'DAOStarFinder(' in r
-        assert 'threshold=5.0' in r
-        assert 'fwhm=3.0' in r
-        assert 'ratio=1.0' in r
-        assert 'xycoords=None' in r
+        repr_ = repr(finder)
+        assert 'DAOStarFinder(' in repr_
+        assert 'threshold=5.0' in repr_
+        assert 'fwhm=3.0' in repr_
+        assert 'ratio=1.0' in repr_
+        assert 'xycoords=None' in repr_
 
     def test_str(self):
         """
         Test the __str__ of DAOStarFinder.
         """
         finder = DAOStarFinder(threshold=5.0, fwhm=3.0)
-        s = str(finder)
-        assert 'DAOStarFinder' in s
-        assert 'threshold: 5.0' in s
-        assert 'fwhm: 3.0' in s
+        str_ = str(finder)
+        assert 'DAOStarFinder' in str_
+        assert 'threshold: 5.0' in str_
+        assert 'fwhm: 3.0' in str_
 
     def test_repr_with_xycoords(self):
         """
@@ -305,5 +301,120 @@ class TestDAOStarFinder:
         xycoords = np.array([[5, 5], [10, 10]])
         finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
                                xycoords=xycoords)
-        r = repr(finder)
-        assert '<array; shape=(2, 2)>' in r
+        assert '<array; shape=(2, 2)>' in repr(finder)
+
+    def test_threshold_2d_uniform(self, data):
+        """
+        Test that a uniform 2D threshold gives the same results
+        as a scalar threshold.
+        """
+        threshold = 5.0
+        fwhm = 1.0
+        finder_scalar = DAOStarFinder(threshold, fwhm)
+        finder_2d = DAOStarFinder(np.full(data.shape, threshold), fwhm)
+        tbl_scalar = finder_scalar(data)
+        tbl_2d = finder_2d(data)
+        assert_array_equal(tbl_scalar, tbl_2d)
+
+    def test_threshold_2d_varying(self, data):
+        """
+        Test that a varying 2D threshold detects fewer sources in
+        regions with a higher threshold.
+        """
+        fwhm = 1.0
+        threshold_low = 1.0
+        threshold_high = 100.0
+        threshold_2d = np.full(data.shape, threshold_low)
+        threshold_2d[0:50, :] = threshold_high
+
+        finder_low = DAOStarFinder(threshold_low, fwhm)
+        finder_2d = DAOStarFinder(threshold_2d, fwhm)
+
+        tbl_low = finder_low(data)
+        tbl_2d = finder_2d(data)
+        assert len(tbl_low) > len(tbl_2d)
+        # All 2D sources should be in the lower half
+        assert all(tbl_2d['ycentroid'] >= 50)
+
+    def test_threshold_2d_repr(self):
+        """
+        Test repr with a 2D threshold array.
+        """
+        threshold = np.ones((10, 10))
+        finder = DAOStarFinder(threshold=threshold, fwhm=3.0)
+        assert '<array; shape=(10, 10)>' in repr(finder)
+        assert '<array; shape=(10, 10)>' in str(finder)
+
+    def test_threshold_2d_with_units(self, data):
+        """
+        Test that a 2D threshold with units works correctly.
+        """
+        units = u.Jy
+        threshold = 5.0
+        fwhm = 1.0
+        threshold_2d = np.full(data.shape, threshold) * units
+        finder = DAOStarFinder(threshold_2d, fwhm)
+        tbl = finder(data << units)
+        assert len(tbl) > 0
+
+    def test_scale_threshold_default(self, data):
+        """
+        Test that scale_threshold=True (default) applies relerr scaling.
+        """
+        threshold = 5.0
+        fwhm = 1.5
+        finder_default = DAOStarFinder(threshold, fwhm)
+        finder_explicit = DAOStarFinder(threshold, fwhm,
+                                        scale_threshold=True)
+        tbl_default = finder_default(data)
+        tbl_explicit = finder_explicit(data)
+        assert_array_equal(tbl_default, tbl_explicit)
+        # Verify the effective threshold is scaled
+        assert finder_default.threshold_eff != threshold
+
+    def test_scale_threshold_false(self, data):
+        """
+        Test that scale_threshold=False uses the threshold directly.
+        """
+        threshold = 5.0
+        fwhm = 1.5
+        finder = DAOStarFinder(threshold, fwhm, scale_threshold=False)
+        assert finder.threshold_eff == threshold
+        tbl = finder(data)
+        assert len(tbl) > 0
+
+    def test_scale_threshold_false_different_results(self, data):
+        """
+        Test that scale_threshold=False gives different results
+        than the default.
+        """
+        threshold = 5.0
+        fwhm = 1.5
+        finder_scaled = DAOStarFinder(threshold, fwhm,
+                                      scale_threshold=True)
+        finder_unscaled = DAOStarFinder(threshold, fwhm,
+                                        scale_threshold=False)
+        tbl_scaled = finder_scaled(data)
+        tbl_unscaled = finder_unscaled(data)
+        # Different numbers of sources because effective thresholds
+        # differ
+        assert len(tbl_scaled) != len(tbl_unscaled)
+
+    def test_scale_threshold_false_with_2d(self, data):
+        """
+        Test that scale_threshold=False works with a 2D threshold array.
+        """
+        fwhm = 1.5
+        threshold_2d = np.full(data.shape, 5.0)
+        finder = DAOStarFinder(threshold_2d, fwhm, scale_threshold=False)
+        tbl = finder(data)
+        assert len(tbl) > 0
+
+    def test_scale_threshold_in_repr(self):
+        """
+        Test that scale_threshold appears in repr.
+        """
+        finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
+                               scale_threshold=False)
+        assert 'scale_threshold=False' in repr(finder)
+        assert 'scale_threshold: False' in str(finder)

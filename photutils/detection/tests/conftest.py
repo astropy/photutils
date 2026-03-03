@@ -12,6 +12,9 @@ from photutils.psf import CircularGaussianPRF, make_psf_model_image
 
 @pytest.fixture(name='kernel')
 def fixture_kernel():
+    """
+    A 2D Gaussian kernel.
+    """
     size = 5
     cen = (size - 1) / 2
     y, x = np.mgrid[0:size, 0:size]
@@ -21,6 +24,10 @@ def fixture_kernel():
 
 @pytest.fixture(name='data')
 def fixture_data():
+    """
+    A 2D image with 25 sources generated using a circular Gaussian PRF
+    model.
+    """
     shape = (101, 101)
     model_shape = (11, 11)
     fwhm = 1.5 * 2.0 * np.sqrt(2.0 * np.log(2.0))

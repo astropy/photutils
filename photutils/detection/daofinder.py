@@ -56,11 +56,18 @@ class DAOStarFinder(StarFinderBase):
 
     Parameters
     ----------
-    threshold : float
-        The absolute image value above which to select sources.
-        If the star finder is run on an image that is a
+    threshold : float or 2D `~numpy.ndarray`
+        The absolute image value above which to select sources. If
+        ``threshold`` is a 2D array, it must have the same shape as the
+        input ``data``. If the star finder is run on an image that is a
         `~astropy.units.Quantity` array, then ``threshold`` must have
         the same units.
+
+        By default, ``threshold`` is internally scaled by a factor
+        derived from the Gaussian kernel, so the effective threshold
+        applied to the convolved data may differ from the input value.
+        Set ``scale_threshold=False`` to apply the value exactly as
+        given.
 
     fwhm : float
         The full-width half-maximum (FWHM) of the major axis of the
@@ -123,8 +130,16 @@ class DAOStarFinder(StarFinderBase):
         algorithm will skip the source-finding step.
 
     min_separation : float, optional
-        The minimum separation (in pixels) for detected objects. Note
-        that large values may result in long run times.
+        The minimum separation (in pixels) for detected objects. The
+        default is 0.0 (i.e., no minimum separation). Note that large
+        values may result in long run times.
+
+    scale_threshold : bool, optional
+        If `True` (default), the input ``threshold`` is multiplied by
+        the kernel relative error before being applied to the convolved
+        data. This is the behavior of the original DAOFIND algorithm. If
+        `False`, the input ``threshold`` is used directly without any
+        scaling.
 
     See Also
     --------
@@ -160,16 +175,13 @@ class DAOStarFinder(StarFinderBase):
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
                  sigma_radius=1.5, sharplo=0.2, sharphi=1.0, roundlo=-1.0,
                  roundhi=1.0, exclude_border=False, brightest=None,
-                 peakmax=None, xycoords=None, min_separation=0.0):
+                 peakmax=None, xycoords=None, min_separation=0.0,
+                 scale_threshold=True):
 
-        # here we validate the units, but do not strip them
+        # Validate the units, but do not strip them
         inputs = (threshold, peakmax)
         names = ('threshold', 'peakmax')
         _ = process_quantities(inputs, names)
-
-        if not isscalar(threshold):
-            msg = 'threshold must be a scalar value'
-            raise TypeError(msg)
 
         if not isscalar(fwhm):
             msg = 'fwhm must be a scalar value'
@@ -199,19 +211,26 @@ class DAOStarFinder(StarFinderBase):
                 msg = 'xycoords must be shaped as an Nx2 array'
                 raise ValueError(msg)
         self.xycoords = xycoords
+        self.scale_threshold = scale_threshold
 
         self.kernel = _StarFinderKernel(self.fwhm,
                                         ratio=self.ratio,
                                         theta=self.theta,
                                         sigma_radius=self.sigma_radius)
-        self.threshold_eff = self.threshold * self.kernel.relerr
+        if self.scale_threshold:
+            self.threshold_eff = self.threshold * self.kernel.relerr
+        else:
+            self.threshold_eff = self.threshold
 
     def _repr_str_params(self):
         params = ('threshold', 'fwhm', 'ratio', 'theta', 'sigma_radius',
                   'sharplo', 'sharphi', 'roundlo', 'roundhi',
                   'exclude_border', 'brightest', 'peakmax', 'xycoords',
-                  'min_separation')
+                  'min_separation', 'scale_threshold')
         overrides = {}
+        if not isscalar(self.threshold):
+            overrides['threshold'] = (
+                f'<array; shape={np.shape(self.threshold)}>')
         if self.xycoords is not None:
             overrides['xycoords'] = (
                 f'<array; shape={self.xycoords.shape}>')
@@ -226,6 +245,27 @@ class DAOStarFinder(StarFinderBase):
         return make_repr(self, params, overrides=overrides, long=True)
 
     def _get_raw_catalog(self, data, *, mask=None):
+        """
+        Get the raw catalog of sources from the input data.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D image array. The image should be
+            background-subtracted.
+
+        mask : 2D bool array, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked. Masked pixels are ignored when searching for
+            stars.
+
+        Returns
+        -------
+        cat : `_DAOStarFinderCatalog` or `None`
+            A catalog of sources found in the input data. `None` is
+            returned if no sources are found.
+        """
         convolved_data = _filter_data(data, self.kernel.data, mode='constant',
                                       fill_value=0.0,
                                       check_normalization=False)
@@ -239,7 +279,8 @@ class DAOStarFinder(StarFinderBase):
             xypos = self.xycoords
 
         if xypos is None:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
+            msg = 'No sources were found.'
+            warnings.warn(msg, NoDetectionsWarning)
             return None
 
         return _DAOStarFinderCatalog(data, convolved_data, xypos,
@@ -250,7 +291,8 @@ class DAOStarFinder(StarFinderBase):
                                      roundlo=self.roundlo,
                                      roundhi=self.roundhi,
                                      brightest=self.brightest,
-                                     peakmax=self.peakmax)
+                                     peakmax=self.peakmax,
+                                     scale_threshold=self.scale_threshold)
 
     def find_stars(self, data, mask=None):
         """
@@ -295,7 +337,7 @@ class DAOStarFinder(StarFinderBase):
               output. It should not be interpreted as a magnitude
               derived from an integrated flux.
         """
-        # here we validate the units, but do not strip them
+        # Validate the units, but do not strip them
         inputs = (data, self.threshold, self.peakmax)
         names = ('data', 'threshold', 'peakmax')
         _ = process_quantities(inputs, names)
@@ -304,12 +346,12 @@ class DAOStarFinder(StarFinderBase):
         if cat is None:
             return None
 
-        # apply all selection filters
+        # Apply all selection filters
         cat = cat.apply_all_filters()
         if cat is None:
             return None
 
-        # create the output table
+        # Create the output table
         return cat.to_table()
 
 
@@ -332,9 +374,10 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         An Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
-    threshold : float
-        The absolute image value above which sources were selected.
-        If ``data`` is a `~astropy.units.Quantity` array, then
+    threshold : float or 2D `~numpy.ndarray`
+        The absolute image value above which sources were selected. If
+        ``threshold`` is a 2D array, it must have the same shape as
+        ``data``. If ``data`` is a `~astropy.units.Quantity` array, then
         ``threshold`` must have the same units.
 
     kernel : `_StarFinderKernel`
@@ -374,9 +417,9 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
 
     def __init__(self, data, convolved_data, xypos, threshold, kernel, *,
                  sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
-                 brightest=None, peakmax=None):
+                 brightest=None, peakmax=None, scale_threshold=True):
 
-        # here we validate the units, but do not strip them
+        # Validate the units, but do not strip them
         inputs = (data, convolved_data, threshold, peakmax)
         names = ('data', 'convolved_data', 'threshold', 'peakmax')
         _ = process_quantities(inputs, names)
@@ -392,13 +435,16 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         self.roundlo = roundlo
         self.roundhi = roundhi
 
-        self.threshold_eff = threshold * kernel.relerr
+        if scale_threshold:
+            self.threshold_eff = threshold * kernel.relerr
+        else:
+            self.threshold_eff = threshold
         self.cutout_center = tuple((size - 1) // 2 for size in kernel.shape)
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'sharpness',
                                 'roundness1', 'roundness2', 'npix', 'peak',
                                 'flux', 'mag', 'daofind_mag')
 
-    def _get_init_attributes(self) -> tuple:
+    def _get_init_attributes(self):
         """
         Return a tuple of attribute names to copy during slicing.
         """
@@ -409,30 +455,46 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
 
     @lazyproperty
     def cutout_convdata(self):
+        """
+        The cutout of the convolved data centered on the source
+        position.
+        """
         return self.make_cutouts(self.convolved_data)
 
     @lazyproperty
-    def data_peak(self):
+    def peak(self):
+        """
+        The peak pixel value of the source in the original (unconvolved)
+        data.
+        """
         return self.cutout_data[:, self.cutout_center[0],
                                 self.cutout_center[1]]
 
     @lazyproperty
-    def peak(self):
-        return self.data_peak
-
-    @lazyproperty
     def convdata_peak(self):
+        """
+        The peak pixel value of the source in the convolved data.
+        """
         return self.cutout_convdata[:, self.cutout_center[0],
                                     self.cutout_center[1]]
 
     @lazyproperty
     def roundness1(self):
-        # set the central (peak) pixel to zero for the sum4 calculation
+        """
+        The roundness of the source based on symmetry, defined as
+        the ratio of a measure of the object's bilateral (2-fold) to
+        four-fold symmetry.
+
+        A circular source will have a zero roundness. A source
+        extended in x or y will have a negative or positive roundness,
+        respectively.
+        """
+        # Set the central (peak) pixel to zero for the sum4 calculation
         cutout_conv = self.cutout_convdata.copy()
         cutout_conv[:, self.cutout_center[0], self.cutout_center[1]] = 0.0
 
-        # calculate the four roundness quadrants.
-        # the cutout size always matches the kernel size, which has odd
+        # Calculate the four roundness quadrants.
+        # The cutout size always matches the kernel size, which has odd
         # dimensions.
         # quad1 = bottom right
         # quad2 = bottom left
@@ -457,21 +519,288 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
                 - quad3.sum(axis=axis) + quad4.sum(axis=axis))
         sum4 = np.abs(cutout_conv).sum(axis=axis)
 
-        # ignore divide-by-zero RuntimeWarning
+        # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             return 2.0 * sum2 / sum4
 
     @lazyproperty
     def sharpness(self):
-        # mean value of the unconvolved data (excluding the peak)
+        """
+        The sharpness of the source, defined as the ratio of the
+        difference between the height of the central pixel and the mean
+        of the surrounding non-bad pixels in the convolved image, to the
+        height of the best fitting Gaussian function at that point.
+        """
+        # Mean value of the unconvolved data (excluding the peak)
         cutout_data_masked = self.cutout_data * self.kernel.mask
-        data_mean = ((np.sum(cutout_data_masked, axis=(1, 2)) - self.data_peak)
+        data_mean = ((np.sum(cutout_data_masked, axis=(1, 2)) - self.peak)
                      / (self.kernel.npixels - 1))
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            return (self.data_peak - data_mean) / self.convdata_peak
+            return (self.peak - data_mean) / self.convdata_peak
+
+    def _marginal_weights(self, axis):
+        """
+        Compute triangular weighting functions for the given axis.
+
+        Parameters
+        ----------
+        axis : {0, 1}
+            The axis for which the marginal weights are computed:
+                * 0: for the x axis
+                * 1: for the y axis
+
+        Returns
+        -------
+        wt : 1D `~numpy.ndarray`
+            The 1D weighting function for the given axis.
+
+        wts : 2D `~numpy.ndarray`
+            The 2D weighting function for the given axis.
+
+        size : int
+            The size of the cutout along the given axis.
+
+        center : int
+            The center pixel position of the cutout along the given axis.
+
+        sigma : float
+            The standard deviation of the Gaussian kernel along the given
+            axis.
+
+        dxx : 1D `~numpy.ndarray`
+            The array of pixel offsets from the center pixel along the
+            given axis.
+        """
+        ycen, xcen = self.cutout_center
+        xx = xcen - np.abs(np.arange(self.cutout_shape[1]) - xcen) + 1
+        yy = ycen - np.abs(np.arange(self.cutout_shape[0]) - ycen) + 1
+        xwt, ywt = np.meshgrid(xx, yy)
+
+        if axis == 0:  # marginal distributions along x axis
+            wt = xwt[0]  # 1D
+            wts = ywt  # 2D
+            size = self.cutout_shape[1]
+            center = xcen
+            sigma = self.kernel.xsigma
+            dxx = center - np.arange(size)
+        elif axis == 1:  # marginal distributions along y axis
+            wt = np.transpose(ywt)[0]  # 1D
+            wts = xwt  # 2D
+            size = self.cutout_shape[0]
+            center = ycen
+            sigma = self.kernel.ysigma
+            dxx = np.arange(size) - center
+
+        return wt, wts, size, center, sigma, dxx
+
+    def _marginal_kernel_sums(self, wt, wts, axis, center, size):
+        """
+        Compute weighted marginal kernel sums.
+
+        Parameters
+        ----------
+        wt : 1D `~numpy.ndarray`
+            The 1D weighting function for the given axis.
+
+        wts : 2D `~numpy.ndarray`
+            The 2D weighting function for the given axis.
+
+        axis : {0, 1}
+            The axis for which the marginal sums are computed:
+                * 0: for the x axis
+                * 1: for the y axis
+
+        center : int
+            The center pixel position of the cutout along the given axis.
+
+        size : int
+            The size of the cutout along the given axis.
+
+        Returns
+        -------
+        result : dict
+            A dict containing the following precomputed kernel-side
+            quantities:
+                * ``wt_sum``: the sum of the 1D weighting function.
+                * ``kern_sum``: the sum of the 1D kernel distribution
+                  weighted by the 1D weighting function.
+                * ``kern2_sum``: the sum of the square of the 1D kernel
+                  distribution weighted by the 1D weighting function.
+                * ``kern_sum_1d``: the 1D kernel distribution weighted
+                  by the 2D weighting function.
+                * ``dkern_dx``: the derivative of the 1D kernel
+                  distribution weighted by the 2D weighting function.
+                * ``dkern_dx_sum``: the sum of the derivative of the
+                  1D kernel distribution weighted by the 2D weighting
+                  function.
+                * ``dkern_dx2_sum``: the sum of the square of the
+                  derivative of the 1D kernel distribution weighted by the
+                  2D weighting function.
+                * ``kern_dkern_dx_sum``: the sum of the product of the
+                  1D kernel distribution and its derivative, weighted by
+                  the 2D weighting function.
+        """
+        dx = center - np.arange(size)
+
+        kern_sum_1d = np.sum(self.kernel.gaussian_kernel_unmasked * wts,
+                             axis=axis)
+        wt_sum = np.sum(wt)
+        kern_sum = np.sum(kern_sum_1d * wt)
+        kern2_sum = np.sum(kern_sum_1d**2 * wt)
+
+        dkern_dx = kern_sum_1d * dx
+        dkern_dx_sum = np.sum(dkern_dx * wt)
+        dkern_dx2_sum = np.sum(dkern_dx**2 * wt)
+        kern_dkern_dx_sum = np.sum(kern_sum_1d * dkern_dx * wt)
+
+        return {'wt_sum': wt_sum,
+                'kern_sum': kern_sum,
+                'kern2_sum': kern2_sum,
+                'kern_sum_1d': kern_sum_1d,
+                'dkern_dx': dkern_dx,
+                'dkern_dx_sum': dkern_dx_sum,
+                'dkern_dx2_sum': dkern_dx2_sum,
+                'kern_dkern_dx_sum': kern_dkern_dx_sum}
+
+    def _marginal_data_sums(self, wt, wts, axis, dxx, kern_sums):
+        """
+        Compute weighted marginal data sums.
+
+        Parameters
+        ----------
+        wt : 1D `~numpy.ndarray`
+            The 1D weighting function for the given axis.
+
+        wts : 2D `~numpy.ndarray`
+            The 2D weighting function for the given axis.
+
+        axis : {0, 1}
+            The axis for which the marginal sums are computed:
+                * 0: for the x axis
+                * 1: for the y axis
+
+        dxx : 1D `~numpy.ndarray`
+            The array of pixel offsets from the center pixel along the
+            given axis.
+
+        kern_sums : dict
+            The precomputed kernel-side quantities returned by
+            ``_marginal_kernel_sums``.
+
+        Returns
+        -------
+        result : dict
+            A dict containing the following precomputed data-side
+            quantities:
+                * ``data_sum``: the sum of the 1D data distribution
+                  weighted by the 1D weighting function.
+                * ``data_kern_sum``: the sum of the 1D data distribution
+                  weighted by the 1D kernel distribution and the 1D
+                  weighting function.
+                * ``data_dkern_dx_sum``: the sum of the 1D data
+                  distribution weighted by the derivative of the 1D kernel
+                  distribution and the 2D weighting function.
+                * ``data_dx_sum``: the sum of the 1D data distribution
+                  weighted by the pixel offsets and the 2D weighting
+                  function.
+        """
+        cutout_data = self.cutout_data
+        if isinstance(cutout_data, u.Quantity):
+            cutout_data = cutout_data.value
+
+        data_sum_1d = np.sum(cutout_data * wts, axis=axis + 1)
+        data_sum = np.sum(data_sum_1d * wt, axis=1)
+        data_kern_sum = np.sum(
+            data_sum_1d * kern_sums['kern_sum_1d'] * wt, axis=1)
+        data_dkern_dx_sum = np.sum(
+            data_sum_1d * kern_sums['dkern_dx'] * wt, axis=1)
+        data_dx_sum = np.sum(data_sum_1d * dxx * wt, axis=1)
+
+        return {'data_sum': data_sum,
+                'data_kern_sum': data_kern_sum,
+                'data_dkern_dx_sum': data_dkern_dx_sum,
+                'data_dx_sum': data_dx_sum}
+
+    @staticmethod
+    def _marginal_lstsq(kern_sums, data_sums, sigma, size):
+        """
+        Perform the marginal least-squares fit and apply masks.
+
+        Parameters
+        ----------
+        kern_sums : dict
+            The precomputed kernel-side quantities returned by
+            ``_marginal_kernel_sums``.
+
+        data_sums : dict
+            The precomputed data-side quantities returned by
+            ``_marginal_data_sums``.
+
+        sigma : float
+            The standard deviation of the Gaussian kernel along the given
+            axis.
+
+        size : int
+            The size of the cutout along the given axis.
+
+        Returns
+        -------
+        result : Nx2 `~numpy.ndarray`
+            An array of shape Nx2, where N is the number of detected
+            sources, and each row contains the fitted fractional shift
+            (dx) and amplitude (hx) for each source.
+        """
+        wt_sum = kern_sums['wt_sum']
+        kern_sum = kern_sums['kern_sum']
+        kern2_sum = kern_sums['kern2_sum']
+        dkern_dx_sum = kern_sums['dkern_dx_sum']
+        dkern_dx2_sum = kern_sums['dkern_dx2_sum']
+        kern_dkern_dx_sum = kern_sums['kern_dkern_dx_sum']
+
+        data_sum = data_sums['data_sum']
+        data_kern_sum = data_sums['data_kern_sum']
+        data_dkern_dx_sum = data_sums['data_dkern_dx_sum']
+        data_dx_sum = data_sums['data_dx_sum']
+
+        # Perform linear least-squares fit (where data = hx*kernel)
+        # to find the amplitude (hx)
+        hx_numer = data_kern_sum - (data_sum * kern_sum) / wt_sum
+        hx_denom = kern2_sum - (kern_sum**2 / wt_sum)
+
+        # Reject the star if the fit amplitude is not positive
+        mask1 = (hx_numer <= 0.0) | (hx_denom <= 0.0)
+
+        # Ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            # Compute fit amplitude
+            hx = hx_numer / hx_denom
+
+            # Compute centroid shift
+            dx = ((kern_dkern_dx_sum
+                   - (data_dkern_dx_sum - dkern_dx_sum * data_sum))
+                  / (hx * dkern_dx2_sum / sigma**2))
+
+            dx2 = data_dx_sum / data_sum
+
+        hsize = size / 2.0
+        mask2 = (np.abs(dx) > hsize)
+        mask3 = (data_sum == 0.0)
+        mask4 = (mask2 & mask3)
+        mask5 = (mask2 & ~mask3)
+
+        dx[mask4] = 0.0
+        dx[mask5] = dx2[mask5]
+        mask6 = (np.abs(dx) > hsize)
+        dx[mask6] = 0.0
+
+        hx[mask1] = np.nan
+        dx[mask1] = np.nan
+
+        return np.transpose((dx, hx))
 
     def daofind_marginal_fit(self, axis=0):
         """
@@ -509,163 +838,70 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
                                              kern_sums)
         return self._marginal_lstsq(kern_sums, data_sums, sigma, size)
 
-    def _marginal_weights(self, axis):
-        """Compute triangular weighting functions for the given axis.
-
-        Returns ``(wt, wts, size, center, sigma, dxx)``.
-        """
-        ycen, xcen = self.cutout_center
-        xx = xcen - np.abs(np.arange(self.cutout_shape[1]) - xcen) + 1
-        yy = ycen - np.abs(np.arange(self.cutout_shape[0]) - ycen) + 1
-        xwt, ywt = np.meshgrid(xx, yy)
-
-        if axis == 0:  # marginal distributions along x axis
-            wt = xwt[0]  # 1D
-            wts = ywt  # 2D
-            size = self.cutout_shape[1]
-            center = xcen
-            sigma = self.kernel.xsigma
-            dxx = center - np.arange(size)
-        elif axis == 1:  # marginal distributions along y axis
-            wt = np.transpose(ywt)[0]  # 1D
-            wts = xwt  # 2D
-            size = self.cutout_shape[0]
-            center = ycen
-            sigma = self.kernel.ysigma
-            dxx = np.arange(size) - center
-
-        return wt, wts, size, center, sigma, dxx
-
-    def _marginal_kernel_sums(self, wt, wts, axis, center, size):
-        """Compute weighted marginal kernel sums.
-
-        Returns a dict of precomputed kernel-side quantities.
-        """
-        dx = center - np.arange(size)
-
-        kern_sum_1d = np.sum(self.kernel.gaussian_kernel_unmasked * wts,
-                             axis=axis)
-        wt_sum = np.sum(wt)
-        kern_sum = np.sum(kern_sum_1d * wt)
-        kern2_sum = np.sum(kern_sum_1d**2 * wt)
-
-        dkern_dx = kern_sum_1d * dx
-        dkern_dx_sum = np.sum(dkern_dx * wt)
-        dkern_dx2_sum = np.sum(dkern_dx**2 * wt)
-        kern_dkern_dx_sum = np.sum(kern_sum_1d * dkern_dx * wt)
-
-        return {'wt_sum': wt_sum, 'kern_sum': kern_sum,
-                'kern2_sum': kern2_sum, 'kern_sum_1d': kern_sum_1d,
-                'dkern_dx': dkern_dx, 'dkern_dx_sum': dkern_dx_sum,
-                'dkern_dx2_sum': dkern_dx2_sum,
-                'kern_dkern_dx_sum': kern_dkern_dx_sum}
-
-    def _marginal_data_sums(self, wt, wts, axis, dxx, kern_sums):
-        """Compute weighted marginal data sums.
-
-        Returns a dict of precomputed data-side quantities.
-        """
-        cutout_data = self.cutout_data
-        if isinstance(cutout_data, u.Quantity):
-            cutout_data = cutout_data.value
-
-        data_sum_1d = np.sum(cutout_data * wts, axis=axis + 1)
-        data_sum = np.sum(data_sum_1d * wt, axis=1)
-        data_kern_sum = np.sum(
-            data_sum_1d * kern_sums['kern_sum_1d'] * wt, axis=1)
-        data_dkern_dx_sum = np.sum(
-            data_sum_1d * kern_sums['dkern_dx'] * wt, axis=1)
-        data_dx_sum = np.sum(data_sum_1d * dxx * wt, axis=1)
-
-        return {'data_sum': data_sum, 'data_kern_sum': data_kern_sum,
-                'data_dkern_dx_sum': data_dkern_dx_sum,
-                'data_dx_sum': data_dx_sum}
-
-    @staticmethod
-    def _marginal_lstsq(kern_sums, data_sums, sigma, size):
-        """Perform the marginal least-squares fit and apply masks.
-
-        Returns an Nx2 array of ``(dx, hx)`` pairs.
-        """
-        wt_sum = kern_sums['wt_sum']
-        kern_sum = kern_sums['kern_sum']
-        kern2_sum = kern_sums['kern2_sum']
-        dkern_dx_sum = kern_sums['dkern_dx_sum']
-        dkern_dx2_sum = kern_sums['dkern_dx2_sum']
-        kern_dkern_dx_sum = kern_sums['kern_dkern_dx_sum']
-
-        data_sum = data_sums['data_sum']
-        data_kern_sum = data_sums['data_kern_sum']
-        data_dkern_dx_sum = data_sums['data_dkern_dx_sum']
-        data_dx_sum = data_sums['data_dx_sum']
-
-        # perform linear least-squares fit (where data = hx*kernel)
-        # to find the amplitude (hx)
-        hx_numer = data_kern_sum - (data_sum * kern_sum) / wt_sum
-        hx_denom = kern2_sum - (kern_sum**2 / wt_sum)
-
-        # reject the star if the fit amplitude is not positive
-        mask1 = (hx_numer <= 0.0) | (hx_denom <= 0.0)
-
-        # ignore divide-by-zero RuntimeWarning
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            # compute fit amplitude
-            hx = hx_numer / hx_denom
-
-            # compute centroid shift
-            dx = ((kern_dkern_dx_sum
-                   - (data_dkern_dx_sum - dkern_dx_sum * data_sum))
-                  / (hx * dkern_dx2_sum / sigma**2))
-
-            dx2 = data_dx_sum / data_sum
-
-        hsize = size / 2.0
-        mask2 = (np.abs(dx) > hsize)
-        mask3 = (data_sum == 0.0)
-        mask4 = (mask2 & mask3)
-        mask5 = (mask2 & ~mask3)
-
-        dx[mask4] = 0.0
-        dx[mask5] = dx2[mask5]
-        mask6 = (np.abs(dx) > hsize)
-        dx[mask6] = 0.0
-
-        hx[mask1] = np.nan
-        dx[mask1] = np.nan
-
-        return np.transpose((dx, hx))
-
     @lazyproperty
     def dx_hx(self):
+        """
+        The fitted fractional shift (dx) and amplitude (hx) from the
+        marginal Gaussian fit along the x axis.
+        """
         return self.daofind_marginal_fit(axis=0)
 
     @lazyproperty
     def dy_hy(self):
+        """
+        The fitted fractional shift (dy) and amplitude (hy) from the
+        marginal Gaussian fit along the y axis.
+        """
         return self.daofind_marginal_fit(axis=1)
 
     @lazyproperty
     def dx(self):
+        """
+        The fitted fractional shift in x of the image centroid relative
+        to the maximum pixel.
+        """
         return np.transpose(self.dx_hx)[0]
 
     @lazyproperty
     def dy(self):
+        """
+        The fitted fractional shift in y of the image centroid relative
+        to the maximum pixel.
+        """
         return np.transpose(self.dy_hy)[0]
 
     @lazyproperty
     def hx(self):
+        """
+        The height of the best-fitting Gaussian to the marginal x
+        distribution of the unconvolved source data.
+        """
         return np.transpose(self.dx_hx)[1]
 
     @lazyproperty
     def hy(self):
+        """
+        The height of the best-fitting Gaussian to the marginal y
+        distribution of the unconvolved source data.
+        """
         return np.transpose(self.dy_hy)[1]
 
     @lazyproperty
     def xcentroid(self):
+        """
+        The fitted x centroid of the source, calculated as the sum of
+        the x position of the maximum pixel and the fitted fractional
+        shift in x from the marginal Gaussian fit.
+        """
         return np.transpose(self.xypos)[0] + self.dx
 
     @lazyproperty
     def ycentroid(self):
+        """
+        The fitted y centroid of the source, calculated as the sum of
+        the y position of the maximum pixel and the fitted fractional
+        shift in y from the marginal Gaussian fit.
+        """
         return np.transpose(self.xypos)[1] + self.dy
 
     @lazyproperty
@@ -683,6 +919,25 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
 
     @lazyproperty
+    def _threshold_eff_per_source(self):
+        """
+        Per-source effective threshold values.
+
+        If the input ``threshold`` is a scalar, then this returns an
+        array of the same length as the number of sources, where each
+        value is the same as the input ``threshold_eff``. If the input
+        ``threshold`` is a 2D array, then this returns an array of the
+        same length as the number of sources, where each value is the
+        value of the input ``threshold_eff`` at the rounded (x, y)
+        position of each source.
+        """
+        if np.ndim(self.threshold_eff) < 2:
+            return np.ones(len(self)) * self.threshold_eff
+        xpos = np.round(self.xypos[:, 0]).astype(int)
+        ypos = np.round(self.xypos[:, 1]).astype(int)
+        return self.threshold_eff[ypos, xpos]
+
+    @lazyproperty
     def daofind_mag(self):
         """
         The "mag" parameter returned by the original DAOFIND algorithm.
@@ -691,13 +946,17 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         best fitting Gaussian function at the object position to the
         detection threshold.
         """
-        # ignore RuntimeWarning if flux is <= 0
+        # Ignore RuntimeWarning if flux is <= 0
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
-            return -2.5 * np.log10(self.convdata_peak / self.threshold_eff)
+            return -2.5 * np.log10(self.convdata_peak
+                                   / self._threshold_eff_per_source)
 
     @lazyproperty
     def npix(self):
+        """
+        The total number of pixels in the Gaussian kernel array.
+        """
         return np.full(len(self), fill_value=self.kernel.data.size)
 
     def apply_filters(self):
@@ -707,7 +966,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         attrs = ('xcentroid', 'ycentroid', 'hx', 'hy', 'sharpness',
                  'roundness1', 'roundness2', 'peak', 'flux')
         skip = ()
-        if self.threshold_eff == 0:
+        if np.all(self._threshold_eff_per_source == 0):
             skip = ('flux',)
         newcat = self._filter_finite(attrs, skip_attrs=skip)
         if newcat is None:
