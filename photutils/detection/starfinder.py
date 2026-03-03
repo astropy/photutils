@@ -75,7 +75,7 @@ class StarFinder(StarFinderBase):
     def __init__(self, threshold, kernel, min_separation=5.0,
                  exclude_border=False, brightest=None, peakmax=None):
 
-        # here we validate the units, but do not strip them
+        # Validate the units, but do not strip them
         inputs = (threshold, peakmax)
         names = ('threshold', 'peakmax')
         _ = process_quantities(inputs, names)
@@ -114,6 +114,27 @@ class StarFinder(StarFinderBase):
         return make_repr(self, params, overrides=overrides, long=True)
 
     def _get_raw_catalog(self, data, *, mask=None):
+        """
+        Get the raw catalog of sources from the input data.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D image array. The image should be
+            background-subtracted.
+
+        mask : 2D bool array, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked. Masked pixels are ignored when searching for
+            stars.
+
+        Returns
+        -------
+        cat : `_StarFinderCatalog` or `None`
+            A catalog of sources found in the input data. `None` is
+            returned if no sources are found.
+        """
         kernel = self.kernel / np.max(self.kernel)  # normalize max to 1.0
         denom = np.sum(kernel**2) - (np.sum(kernel)**2 / kernel.size)
         if denom > 0:
@@ -128,7 +149,8 @@ class StarFinder(StarFinderBase):
                                  mask=mask, exclude_border=self.exclude_border)
 
         if xypos is None:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
+            msg = 'No sources were found.'
+            warnings.warn(msg, NoDetectionsWarning)
             return None
 
         return _StarFinderCatalog(data, xypos, self.kernel,
@@ -174,12 +196,12 @@ class StarFinder(StarFinderBase):
         if cat is None:
             return None
 
-        # apply all selection filters
+        # Apply all selection filters
         cat = cat.apply_all_filters()
         if cat is None:
             return None
 
-        # create the output table
+        # Create the output table
         return cat.to_table()
 
 
@@ -222,7 +244,7 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'roundness', 'pa', 'max_value', 'flux', 'mag')
 
-    def _get_init_attributes(self) -> tuple:
+    def _get_init_attributes(self):
         """
         Return a tuple of attribute names to copy during slicing.
         """
@@ -231,22 +253,33 @@ class _StarFinderCatalog(StarFinderCatalogBase):
 
     @lazyproperty
     def cutout_data(self):
-        """The cutout data arrays with negative values set to zero."""
+        """
+        The cutout data arrays with negative values set to zero.
+        """
         cutouts = self.make_cutouts(self.data)
         cutouts[cutouts < 0] = 0.0  # exclude negative pixels
         return cutouts
 
     @lazyproperty
     def max_value(self):
+        """
+        The maximum pixel value in the cutout data.
+        """
         return self.peak
 
     @lazyproperty
     def xcentroid(self):
+        """
+        The x centroid of the source.
+        """
         xoff = self.cutout_shape[1] // 2
         return self.cutout_xcentroid + self.xypos[:, 0] - xoff
 
     @lazyproperty
     def ycentroid(self):
+        """
+        The y centroid of the source.
+        """
         yoff = self.cutout_shape[0] // 2
         return self.cutout_ycentroid + self.xypos[:, 1] - yoff
 
@@ -265,8 +298,8 @@ class _StarFinderCatalog(StarFinderCatalogBase):
             newcat = newcat[mask]
 
         if len(newcat) == 0:
-            warnings.warn('Sources were found, but none pass the peakmax '
-                          'criterion.', NoDetectionsWarning)
+            msg = 'Sources were found, but none pass the peakmax criterion.'
+            warnings.warn(msg, NoDetectionsWarning)
             return None
 
         return newcat

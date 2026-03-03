@@ -332,7 +332,7 @@ class TestIRAFStarFinder:
         tbl_low = finder_low(data)
         tbl_2d = finder_2d(data)
         assert len(tbl_low) > len(tbl_2d)
-        # all 2D sources should be in the lower half
+        # All 2D sources should be in the lower half
         assert all(tbl_2d['ycentroid'] >= 50)
 
     def test_threshold_2d_repr(self):

@@ -38,13 +38,13 @@ class TestMakeCutouts:
         ypos = np.array([0.0, 9.0])
         _, mask = _make_cutouts(self.data, xpos, ypos, (5, 5))
 
-        # corner (0, 0): top-left 2 rows and 2 cols are outside
+        # Corner (0, 0): top-left 2 rows and 2 cols are outside
         assert not mask[0].all()  # not fully inside
         assert mask[0].any()  # not fully outside
         assert not mask[0, 0, 0]  # outside pixel
         assert mask[0, 2, 2]  # center pixel (the position itself)
 
-        # corner (9, 9): bottom-right 2 rows and 2 cols are outside
+        # Corner (9, 9): bottom-right 2 rows and 2 cols are outside
         assert not mask[1].all()
         assert mask[1].any()
         assert mask[1, 2, 2]  # center pixel
@@ -68,9 +68,9 @@ class TestMakeCutouts:
         ypos = np.array([0.0])
         cutouts, mask = _make_cutouts(self.data, xpos, ypos, (5, 5),
                                       fill_value=np.nan)
-        # outside pixels should be NaN
+        # Outside pixels should be NaN
         assert np.all(np.isnan(cutouts[0][~mask[0]]))
-        # inside pixels should not be NaN
+        # Inside pixels should not be NaN
         assert np.all(np.isfinite(cutouts[0][mask[0]]))
 
     def test_fill_value_custom(self):
@@ -100,12 +100,12 @@ class TestMakeCutouts:
         ypos = np.array([5.0, 0.0, -10.0])
         _, mask = _make_cutouts(self.data, xpos, ypos, (3, 3))
 
-        # fully inside
+        # Fully inside
         assert mask[0].all()
-        # partial overlap
+        # Partial overlap
         assert mask[1].any()
         assert not mask[1].all()
-        # no overlap
+        # No overlap
         assert not mask[2].any()
 
     def test_even_shaped_cutout(self):
@@ -117,7 +117,7 @@ class TestMakeCutouts:
         cutouts, mask = _make_cutouts(self.data, xpos, ypos, (4, 4))
         assert cutouts.shape == (1, 4, 4)
         assert mask[0].all()  # fully inside
-        # half-widths: hy=2, hx=2; cutout rows [3..6], cols [3..6]
+        # Half-widths: hy=2, hx=2; cutout rows [3..6], cols [3..6]
         expected = self.data[3:7, 3:7]
         np.testing.assert_array_equal(cutouts[0], expected)
 
@@ -129,10 +129,10 @@ class TestMakeCutouts:
         ypos = np.array([0.0])
         cutouts, mask = _make_cutouts(self.data, xpos, ypos, (4, 4))
         assert cutouts.shape == (1, 4, 4)
-        # some pixels should be outside
+        # Some pixels should be outside
         assert not mask[0].all()
         assert mask[0].any()
-        # outside pixels should be zero (default fill_value)
+        # Outside pixels should be zero (default fill_value)
         assert np.all(cutouts[0][~mask[0]] == 0.0)
 
     def test_data_not_2d(self):
@@ -189,7 +189,8 @@ class TestStarFinderKernel:
         Test kernel with normalize_zerosum=False.
         """
         kernel = _StarFinderKernel(fwhm=2.0, normalize_zerosum=False)
-        # without zero-sum normalization, the kernel sums to a positive value
+        # Without zero-sum normalization, the kernel sums to a positive
+        # value
         assert kernel.data.sum() > 0
 
     @pytest.mark.parametrize(('ratio', 'theta'), [
@@ -205,9 +206,9 @@ class TestStarFinderKernel:
         kernel = _StarFinderKernel(fwhm=3.0, ratio=ratio, theta=theta)
         assert kernel.data.shape[0] >= 5
         assert kernel.data.shape[1] >= 5
-        # zero-sum kernel
+        # Zero-sum kernel
         assert abs(kernel.data.sum()) < 1.0e-10
-        # check stored attributes
+        # Check stored attributes
         assert kernel.ratio == ratio
         assert kernel.theta == theta
 
@@ -334,6 +335,10 @@ def _make_minimal_catalog_class():
 
 @pytest.fixture(name='minimal_catalog_cls')
 def fixture_minimal_catalog_cls():
+    """
+    Fixture that provides a minimal concrete subclass of
+    StarFinderCatalogBase.
+    """
     return _make_minimal_catalog_class()
 
 
@@ -486,20 +491,20 @@ class TestStarFinderCatalogBase:
         """
         data = np.ones((10, 10)) * 5.0
         kernel = np.ones((5, 5))
-        # corners and edges: each cutout partially extends outside
+        # Corners and edges: each cutout partially extends outside
         xypos = np.array([[0, 0], [9, 9], [0, 9], [9, 0]])
         cat = minimal_catalog_cls(data, xypos, kernel)
         cutouts = cat.make_cutouts(data)
 
         assert cutouts.shape == (4, 5, 5)
 
-        # corner (0,0): only bottom-right 3x3 quadrant is inside image
+        # Corner (0,0): only bottom-right 3x3 quadrant is inside image
         c00 = cutouts[0]
         assert np.all(c00[:2, :] == 0.0)  # top rows outside
         assert np.all(c00[:, :2] == 0.0)  # left cols outside
         assert np.all(c00[2:, 2:] == 5.0)  # bottom-right inside
 
-        # corner (9,9): only top-left 3x3 quadrant is inside image
+        # Corner (9,9): only top-left 3x3 quadrant is inside image
         c99 = cutouts[1]
         assert np.all(c99[3:, :] == 0.0)  # bottom rows outside
         assert np.all(c99[:, 3:] == 0.0)  # right cols outside
@@ -533,7 +538,7 @@ class TestStarFinderCatalogBase:
         cat = minimal_catalog_cls(data, xypos, kernel, brightest=2)
         newcat = cat.select_brightest()
         assert len(newcat) == 2
-        # brightest first
+        # Brightest first
         assert newcat.flux[0] >= newcat.flux[1]
 
     def test_select_brightest_none(self, minimal_catalog_cls):
@@ -561,7 +566,7 @@ class TestStarFinderCatalogBase:
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5], [10, 10], [15, 15]])
         cat = minimal_catalog_cls(data, xypos, kernel)
-        # slice to drop the first source
+        # Slice to drop the first source
         sub = cat[1:]
         assert sub.id[0] == 2
         sub.reset_ids()

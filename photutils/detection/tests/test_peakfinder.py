@@ -32,7 +32,7 @@ class TestFindPeaks:
         assert np.max(tbl['y_peak']) < 101
         assert np.max(tbl['peak_value']) < 13.2
 
-        # test with units
+        # Test with units
         unit = u.Jy
         tbl2 = find_peaks(data << unit, 0.1 << unit, box_size=3)
         columns = ['id', 'x_peak', 'y_peak']
@@ -174,6 +174,9 @@ class TestFindPeaks:
 
     @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
     def test_wcs_values(self, data):
+        """
+        Test that WCS and GWCS give the same sky coordinates.
+        """
         fits_wcs = make_wcs(data.shape)
         gwcs_obj = make_gwcs(data.shape)
         tbl1 = find_peaks(data, 1, wcs=fits_wcs, centroid_func=centroid_com)
@@ -253,7 +256,7 @@ class TestFindPeaks:
         size = 10 * box_size
         img = np.zeros((size, size))
 
-        # place two peaks exactly at the minimum allowed separation
+        # Place two peaks exactly at the minimum allowed separation
         cy = size // 2
         cx1 = size // 2
         cx2 = cx1 + min_sep
@@ -273,7 +276,7 @@ class TestFindPeaks:
         size = 10 * box_size
         img = np.zeros((size, size))
 
-        # place two peaks one pixel closer than the minimum separation;
+        # Place two peaks one pixel closer than the minimum separation;
         # only the brighter peak should survive
         cy = size // 2
         cx1 = size // 2
