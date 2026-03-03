@@ -388,7 +388,7 @@ def detect_sources(data, threshold, npixels, *, connectivity=8, mask=None):
 
     if segm is None:
         msg = ('No sources were found. Try lowering the threshold or '
-               ' pixels parameters.')
+               'pixels parameters.')
         warnings.warn(msg, NoDetectionsWarning)
 
     return segm

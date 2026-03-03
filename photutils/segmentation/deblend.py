@@ -357,38 +357,8 @@ class _SingleSourceDeblender:
         The label of the source to deblend. This is needed because there
         may be more than one source label within the cutout.
 
-    npixels : int
-        The number of connected pixels, each greater than ``threshold``,
-        that an object must have to be detected. ``npixels`` must be a
-        positive integer.
-
-    nlevels : int
-        The number of multi-thresholding levels to use. Each source
-        will be re-thresholded at ``nlevels`` levels spaced between its
-        minimum and maximum values within the source segment. See the
-        ``mode`` keyword for how the levels are spaced.
-
-    contrast : float
-        The fraction of the total (blended) source flux that a local
-        peak must have (at any one of the multi-thresholds) to be
-        considered as a separate object. ``contrast`` must be between 0
-        and 1, inclusive. If ``contrast = 0`` then every local peak will
-        be made a separate object (maximum deblending). If ``contrast =
-        1`` then no deblending will occur. The default is 0.001, which
-        will deblend sources with a 7.5 magnitude difference.
-
-    mode : {'exponential', 'linear', 'sinh'}
-        The mode used in defining the spacing between the
-        multi-thresholding levels (see the ``nlevels`` keyword).
-
-    Returns
-    -------
-    segment_image : `~photutils.segmentation.SegmentationImage`
-        A segmentation image, with the same shape as ``data``, where
-        sources are marked by different positive integer values. A value
-        of zero is reserved for the background. Note that the returned
-        `SegmentationImage` will have consecutive labels starting with
-        1.
+    deblend_params : `_DeblendParams`
+        The parameters for deblending the source.
     """
 
     def __init__(self, data, segment_data, label, deblend_params):
