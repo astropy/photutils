@@ -26,6 +26,19 @@ New Features
   - Added a ``CentroidQuadratic`` class to provide an object-oriented
     interface to the ``centroid_quadratic`` function. [#2163, #2169]
 
+- ``photutils.detection``
+
+  - Added a public ``StarFinderCatalogBase`` class that provides
+    a common base for the catalogs in the ``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``StarFinder`` classes. [#2149, #2201]
+
+  - Added ``__repr__`` and ``__str__`` methods to ``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``StarFinder``. [#2201]
+
+  - Significantly improved the performance of ``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``StarFinder`` by vectorizing cutout
+    extraction and image moment computation. [#2201]
+
 - ``photutils.profiles``
 
   - Added a ``EnsquaredCurveOfGrowth`` class to compute a curve of
@@ -135,6 +148,11 @@ Bug Fixes
   - Fixed a bug in ``apply_poisson_noise`` where the returned image
     could have a different dtype than the input. [#2173]
 
+- ``photutils.detection``
+
+  - Fixed ``StarFinder`` mutating the input ``kernel`` array during
+    normalization. [#2201]
+
 - ``photutils.isophote``
 
   - ``build_ellipse_model`` now integrates over all angles instead of
@@ -205,6 +223,11 @@ API Changes
 
   - All functions in the ``centroids`` package now require keyword-only
     arguments. [#2162]
+
+- ``photutils.detection``
+
+  - ``find_peaks`` now returns a ``QTable`` instead of a ``Table``.
+    [#2201]
 
 - ``photutils.profiles``
 
