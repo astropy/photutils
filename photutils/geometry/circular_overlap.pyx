@@ -126,8 +126,10 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
 cdef double circular_overlap_single_subpixel(double x0, double y0,
                                              double x1, double y1,
                                              double r, int subpixels):
-    """Return the fraction of overlap between a circle and a single pixel
-    with given extent, using a sub-pixel sampling method."""
+    """
+    Return the fraction of overlap between a circle and a single pixel
+    with given extent, using a sub-pixel sampling method.
+    """
 
     cdef unsigned int i, j
     cdef double x, y, dx, dy, r_squared

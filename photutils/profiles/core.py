@@ -102,7 +102,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
         self.normalization_value = 1.0
 
     def _validate_radii(self, radii):
-        """Validate and return the radii array."""
+        """
+        Validate and return the radii array.
+        """
         radii = np.array(radii)
         if radii.ndim != 1 or radii.size < 2:
             msg = 'radii must be a 1D array and have at least two values'
