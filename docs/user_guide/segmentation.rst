@@ -329,6 +329,54 @@ Note that using a square footprint (via the ``size`` keyword) is much
 faster than using other shapes (e.g., a circular footprint).
 
 
+Polygons and Regions
+--------------------
+
+The :class:`~photutils.segmentation.SegmentationImage` class
+provides several methods for converting source segments into
+polygon representations and `regions`_ objects. These are useful
+for visualization and for exporting source segments to other tools.
+Note that these methods require the `rasterio`_, `shapely`_, and/or
+`regions`_ optional packages.
+
+The :attr:`~photutils.segmentation.SegmentationImage.polygons` property
+returns a list of `Shapely`_ polygon objects representing each source
+segment:
+
+.. doctest-skip::
+
+    >>> polygons = segment_map.polygons
+
+The :meth:`~photutils.segmentation.SegmentationImage.to_patches` method
+returns a list of `~matplotlib.patches.PathPatch` objects for the source
+segments, which can be overlaid on plots:
+
+.. doctest-skip::
+
+    >>> patches = segment_map.to_patches(edgecolor='white', lw=1.5)
+
+For convenience, the
+:meth:`~photutils.segmentation.SegmentationImage.plot_patches` method
+will plot these patches directly on an existing matplotlib axes:
+
+.. doctest-skip::
+
+    >>> segment_map.plot_patches(edgecolor='white', lw=1.5)
+
+To convert the source segments to `regions`_
+`~regions.PolygonPixelRegion` objects, use the
+:meth:`~photutils.segmentation.SegmentationImage.to_regions` method:
+
+.. doctest-skip::
+
+    >>> regions = segment_map.to_regions()
+
+
+.. _rasterio: https://rasterio.readthedocs.io/en/stable/
+.. _shapely: https://shapely.readthedocs.io/en/stable/
+.. _regions: https://astropy-regions.readthedocs.io/en/stable/
+
+
 Photometry, Centroids, and Shape Properties
 -------------------------------------------
 
