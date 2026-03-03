@@ -39,6 +39,16 @@ New Features
     ``IRAFStarFinder``, and ``StarFinder`` by vectorizing cutout
     extraction and image moment computation. [#2201]
 
+  - The ``threshold`` parameter in ``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``StarFinder`` now accepts a 2D array
+    in addition to a scalar value, allowing for spatially varying
+    detection thresholds. [#2202]
+
+  - Added a ``scale_threshold`` parameter to ``DAOStarFinder``.
+    When set to `False`, the input ``threshold`` is applied directly
+    to the convolved data without the default kernel-based scaling.
+    [#2202]
+
 - ``photutils.profiles``
 
   - Added a ``EnsquaredCurveOfGrowth`` class to compute a curve of
