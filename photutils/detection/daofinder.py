@@ -63,6 +63,12 @@ class DAOStarFinder(StarFinderBase):
         `~astropy.units.Quantity` array, then ``threshold`` must have
         the same units.
 
+        By default, ``threshold`` is internally scaled by a factor
+        derived from the Gaussian kernel, so the effective threshold
+        applied to the convolved data may differ from the input value.
+        Set ``scale_threshold=False`` to apply the value exactly as
+        given.
+
     fwhm : float
         The full-width half-maximum (FWHM) of the major axis of the
         Gaussian kernel in units of pixels.
@@ -127,6 +133,13 @@ class DAOStarFinder(StarFinderBase):
         The minimum separation (in pixels) for detected objects. Note
         that large values may result in long run times.
 
+    scale_threshold : bool, optional
+        If `True` (default), the input ``threshold`` is multiplied by
+        the kernel relative error before being applied to the convolved
+        data. This is the behavior of the original DAOFIND algorithm. If
+        `False`, the input ``threshold`` is used directly without any
+        scaling.
+
     See Also
     --------
     IRAFStarFinder
@@ -161,7 +174,8 @@ class DAOStarFinder(StarFinderBase):
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
                  sigma_radius=1.5, sharplo=0.2, sharphi=1.0, roundlo=-1.0,
                  roundhi=1.0, exclude_border=False, brightest=None,
-                 peakmax=None, xycoords=None, min_separation=0.0):
+                 peakmax=None, xycoords=None, min_separation=0.0,
+                 scale_threshold=True):
 
         # here we validate the units, but do not strip them
         inputs = (threshold, peakmax)
@@ -196,18 +210,22 @@ class DAOStarFinder(StarFinderBase):
                 msg = 'xycoords must be shaped as an Nx2 array'
                 raise ValueError(msg)
         self.xycoords = xycoords
+        self.scale_threshold = scale_threshold
 
         self.kernel = _StarFinderKernel(self.fwhm,
                                         ratio=self.ratio,
                                         theta=self.theta,
                                         sigma_radius=self.sigma_radius)
-        self.threshold_eff = self.threshold * self.kernel.relerr
+        if self.scale_threshold:
+            self.threshold_eff = self.threshold * self.kernel.relerr
+        else:
+            self.threshold_eff = self.threshold
 
     def _repr_str_params(self):
         params = ('threshold', 'fwhm', 'ratio', 'theta', 'sigma_radius',
                   'sharplo', 'sharphi', 'roundlo', 'roundhi',
                   'exclude_border', 'brightest', 'peakmax', 'xycoords',
-                  'min_separation')
+                  'min_separation', 'scale_threshold')
         overrides = {}
         if not isscalar(self.threshold):
             overrides['threshold'] = (
@@ -250,7 +268,8 @@ class DAOStarFinder(StarFinderBase):
                                      roundlo=self.roundlo,
                                      roundhi=self.roundhi,
                                      brightest=self.brightest,
-                                     peakmax=self.peakmax)
+                                     peakmax=self.peakmax,
+                                     scale_threshold=self.scale_threshold)
 
     def find_stars(self, data, mask=None):
         """
@@ -375,7 +394,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
 
     def __init__(self, data, convolved_data, xypos, threshold, kernel, *,
                  sharplo=0.2, sharphi=1.0, roundlo=-1.0, roundhi=1.0,
-                 brightest=None, peakmax=None):
+                 brightest=None, peakmax=None, scale_threshold=True):
 
         # here we validate the units, but do not strip them
         inputs = (data, convolved_data, threshold, peakmax)
@@ -393,7 +412,10 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         self.roundlo = roundlo
         self.roundhi = roundhi
 
-        self.threshold_eff = threshold * kernel.relerr
+        if scale_threshold:
+            self.threshold_eff = threshold * kernel.relerr
+        else:
+            self.threshold_eff = threshold
         self.cutout_center = tuple((size - 1) // 2 for size in kernel.shape)
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'sharpness',
                                 'roundness1', 'roundness2', 'npix', 'peak',
