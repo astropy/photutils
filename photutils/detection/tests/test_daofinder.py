@@ -356,3 +356,65 @@ class TestDAOStarFinder:
         finder = DAOStarFinder(threshold_2d, fwhm)
         tbl = finder(data << units)
         assert len(tbl) > 0
+
+    def test_scale_threshold_default(self, data):
+        """
+        Test that scale_threshold=True (default) applies relerr scaling.
+        """
+        threshold = 5.0
+        fwhm = 1.5
+        finder_default = DAOStarFinder(threshold, fwhm)
+        finder_explicit = DAOStarFinder(threshold, fwhm,
+                                        scale_threshold=True)
+        tbl_default = finder_default(data)
+        tbl_explicit = finder_explicit(data)
+        assert_array_equal(tbl_default, tbl_explicit)
+        # Verify the effective threshold is scaled
+        assert finder_default.threshold_eff != threshold
+
+    def test_scale_threshold_false(self, data):
+        """
+        Test that scale_threshold=False uses the threshold directly.
+        """
+        threshold = 5.0
+        fwhm = 1.5
+        finder = DAOStarFinder(threshold, fwhm, scale_threshold=False)
+        assert finder.threshold_eff == threshold
+        tbl = finder(data)
+        assert len(tbl) > 0
+
+    def test_scale_threshold_false_different_results(self, data):
+        """
+        Test that scale_threshold=False gives different results
+        than the default.
+        """
+        threshold = 5.0
+        fwhm = 1.5
+        finder_scaled = DAOStarFinder(threshold, fwhm,
+                                      scale_threshold=True)
+        finder_unscaled = DAOStarFinder(threshold, fwhm,
+                                        scale_threshold=False)
+        tbl_scaled = finder_scaled(data)
+        tbl_unscaled = finder_unscaled(data)
+        # Different numbers of sources because effective thresholds
+        # differ
+        assert len(tbl_scaled) != len(tbl_unscaled)
+
+    def test_scale_threshold_false_with_2d(self, data):
+        """
+        Test that scale_threshold=False works with a 2D threshold array.
+        """
+        fwhm = 1.5
+        threshold_2d = np.full(data.shape, 5.0)
+        finder = DAOStarFinder(threshold_2d, fwhm, scale_threshold=False)
+        tbl = finder(data)
+        assert len(tbl) > 0
+
+    def test_scale_threshold_in_repr(self):
+        """
+        Test that scale_threshold appears in repr.
+        """
+        finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
+                               scale_threshold=False)
+        assert 'scale_threshold=False' in repr(finder)
+        assert 'scale_threshold: False' in str(finder)
