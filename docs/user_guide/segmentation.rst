@@ -711,6 +711,40 @@ parameters. Note that photometry is *always* performed on the unfiltered
 ``data``.
 
 
+Dual-Image Mode (Detection Catalog)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In many astronomical workflows, source detection and deblending
+are performed on one image (e.g., a deep detection image or
+coadd) while photometry is measured on a different image
+(e.g., a single-band image). The ``detection_cat`` keyword of
+:class:`~photutils.segmentation.SourceCatalog` enables this dual-image
+mode.
+
+When ``detection_cat`` is input, the source centroids and
+morphological/shape properties are taken from the detection
+catalog, while photometry is measured on the input ``data``. For
+circular-aperture and Kron photometry, the aperture centers are based
+on the centroids from the detection catalog. For Kron photometry, the
+Kron apertures are based on the shape properties from the detection
+catalog. The ``wcs``, ``apermask_method``, and ``kron_params`` keywords
+are inherited from the ``detection_cat`` and are therefore ignored
+when ``detection_cat`` is input. Note that the segmentation image used
+to create the detection catalog must be the same one input to the
+measurement catalog:
+
+.. doctest-requires:: skimage
+
+    >>> det_cat = SourceCatalog(data, segm_deblend,
+    ...                         convolved_data=convolved_data)
+    >>> measurement_cat = SourceCatalog(data, segm_deblend,
+    ...                                 detection_cat=det_cat)
+
+In this example, ``measurement_cat`` uses the centroids and shape
+properties (and Kron apertures) from ``det_cat`` while measuring
+photometry on ``data``.
+
+
 API Reference
 -------------
 
