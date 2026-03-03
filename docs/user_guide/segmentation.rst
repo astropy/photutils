@@ -154,7 +154,7 @@ peak must have to be considered as a separate object.
 
 Here's a simple example of source deblending:
 
-.. doctest-requires:: skimage<=0.24
+.. doctest-requires:: skimage
 
     >>> from photutils.segmentation import deblend_sources
     >>> segm_deblend = deblend_sources(convolved_data, segment_map,
@@ -261,7 +261,7 @@ of `~photutils.segmentation.detect_sources` and
 with the desired detection and deblending parameters, you call it with
 the background-subtracted (convolved) image and threshold:
 
-.. doctest-requires:: skimage<=0.24
+.. doctest-requires:: skimage
 
     >>> from photutils.segmentation import SourceFinder
     >>> finder = SourceFinder(npixels=10, progress_bar=False)
@@ -315,7 +315,7 @@ measured (if not input, the unconvolved image is used instead).
 Let's continue our example from above and measure the properties of the
 detected sources:
 
-.. doctest-requires:: skimage<=0.24
+.. doctest-requires:: skimage
 
     >>> from photutils.segmentation import SourceCatalog
     >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
@@ -340,7 +340,7 @@ properties. The ``label`` column corresponds to the label value in the
 input segmentation image. Note that only a small subset of the source
 properties are shown below:
 
-.. doctest-requires:: skimage<=0.24
+.. doctest-requires:: skimage
 
     >>> tbl = cat.to_table()
     >>> tbl['xcentroid'].info.format = '.2f'  # optional format
@@ -427,7 +427,7 @@ We can also create a `~photutils.segmentation.SourceCatalog` object
 containing only a specific subset of sources, defined by their
 label numbers in the segmentation image:
 
-.. doctest-requires:: skimage<=0.24
+.. doctest-requires:: skimage
 
     >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
     >>> labels = [1, 5, 20, 50, 75, 80]
@@ -452,7 +452,7 @@ includes only a small subset of source properties. The output table
 properties can be customized in the `~astropy.table.QTable` using the
 ``columns`` keyword:
 
-.. doctest-requires:: skimage<=0.24
+.. doctest-requires:: skimage
 
     >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
     >>> labels = [1, 5, 20, 50, 75, 80]
@@ -489,7 +489,7 @@ that was subtracted from the data into the ``background`` keyword
 of :class:`~photutils.segmentation.SourceCatalog`, the background
 properties for each source will also be calculated:
 
-.. doctest-requires:: skimage<=0.24
+.. doctest-requires:: skimage
 
     >>> cat = SourceCatalog(data, segm_deblend, background=bkg.background)
     >>> labels = [1, 5, 20, 50, 75, 80]
@@ -503,12 +503,12 @@ properties for each source will also be calculated:
     >>> print(tbl4)
     label background_centroid background_mean background_sum
     ----- ------------------- --------------- --------------
-        1        5.2383296240    5.1952756242 244.1779543392
-        5        5.2926300845    5.2065435089 437.3496547461
-       20        5.2901502015    5.2182858995 537.4834476464
-       50        5.0822645472    5.2277566101 261.3878305070
-       75        5.1889235577    5.2203644547 344.5440540106
-       80        5.2014082564    5.2174773439 453.9205289152
+        1        5.1950688712    5.1952756242 244.1779543392
+        5        5.2065576425    5.2065435089 437.3496547461
+       20        5.2185224692    5.2182858995 537.4834476464
+       50        5.2278578177    5.2277566101 261.3878305070
+       75        5.2200812075    5.2203644547 344.5440540106
+       80        5.2177773028    5.2174773439 453.9205289152
 
 
 .. _photutils-segmentation_errors:
@@ -543,7 +543,7 @@ calculated. `~photutils.segmentation.SourceCatalog.segment_flux`
 and `~photutils.segmentation.SourceCatalog.segment_fluxerr` are the
 instrumental flux and propagated flux error within the source segments:
 
-.. doctest-requires:: skimage<=0.24
+.. doctest-requires:: skimage
 
     >>> from photutils.utils import calc_total_error
     >>> effective_gain = 500.0
