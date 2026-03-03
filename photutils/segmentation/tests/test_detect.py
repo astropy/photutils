@@ -287,13 +287,15 @@ class TestDetectSources:
         with pytest.raises(ValueError, match=match):
             detect_sources(self.data, threshold=1, npixels=-1)
 
-    def test_connectivity_invalid(self):
+    @pytest.mark.parametrize('connectivity', [0, -1, 3, 6, 10])
+    def test_connectivity_invalid(self, connectivity):
         """
         Test if an error is raised when connectivity is invalid.
         """
-        match = 'Invalid connectivity=10 -- options are 4 or 8'
+        match = f'Invalid connectivity={connectivity}'
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data, threshold=1, npixels=1, connectivity=10)
+            detect_sources(self.data, threshold=1, npixels=1,
+                           connectivity=connectivity)
 
     def test_mask(self):
         """
