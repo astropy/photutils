@@ -363,6 +363,45 @@ will plot these patches directly on an existing matplotlib axes:
 
     >>> segment_map.plot_patches(edgecolor='white', lw=1.5)
 
+Here's an example showing the source polygons overlaid on both the
+segmentation image and the science image:
+
+.. plot::
+
+    import matplotlib.pyplot as plt
+    from astropy.convolution import convolve
+    from astropy.visualization import simple_norm
+    from photutils.background import Background2D, MedianBackground
+    from photutils.datasets import make_100gaussians_image
+    from photutils.segmentation import (SourceFinder,
+                                        make_2dgaussian_kernel)
+
+    data = make_100gaussians_image()
+
+    bkg_estimator = MedianBackground()
+    bkg = Background2D(data, (50, 50), filter_size=(3, 3),
+                       bkg_estimator=bkg_estimator)
+    data -= bkg.background
+
+    threshold = 1.5 * bkg.background_rms
+
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+
+    finder = SourceFinder(npixels=10, progress_bar=False)
+    segment_map = finder(convolved_data, threshold)
+
+    norm = simple_norm(data, 'sqrt')
+    fig, (ax1, ax2) = plt.subplots(ncols=1, nrows=2, figsize=(10, 12.5))
+    ax1.imshow(segment_map, origin='lower', cmap=segment_map.cmap,
+               interpolation='nearest')
+    ax1.set_title('Segmentation Image')
+    segment_map.plot_patches(ax=ax1, edgecolor='white', lw=1)
+    ax2.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
+    ax2.set_title('Background-subtracted Data')
+    segment_map.plot_patches(ax=ax2, edgecolor='white', lw=1)
+    plt.tight_layout()
+
 To convert the source segments to `regions`_
 `~regions.PolygonPixelRegion` objects, use the
 :meth:`~photutils.segmentation.SegmentationImage.to_regions` method:
