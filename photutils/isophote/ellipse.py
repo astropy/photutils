@@ -398,8 +398,8 @@ class Ellipse:
         else:
             linear = self._geometry.linear_growth
         if fix_center and fix_pa and fix_eps:
-            warnings.warn(': Everything is fixed. Fit not possible.',
-                          AstropyUserWarning)
+            msg = ': Everything is fixed. Fit not possible.'
+            warnings.warn(msg, AstropyUserWarning)
             return IsophoteList([])
         if fix_center or fix_pa or fix_eps:
             # Note that this overrides the geometry instance for good.
@@ -429,8 +429,8 @@ class Ellipse:
                 # the fitting algorithm to find any meaningful solution.
 
                 if len(isophote_list) == 1:
-                    warnings.warn('No meaningful fit was possible.',
-                                  AstropyUserWarning)
+                    msg = 'No meaningful fit was possible.'
+                    warnings.warn(msg, AstropyUserWarning)
                     return IsophoteList([])
 
                 self._fix_last_isophote(isophote_list, -1)

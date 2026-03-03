@@ -312,14 +312,14 @@ class ImageDepth:
         napers_used = np.array([len(apers) for apers in apertures])
         self.napers_used = napers_used
         if np.any(napers_used < self.napers):
-            warnings.warn(f'Unable to generate {self.napers} non-overlapping '
-                          'apertures in unmasked regions. The number of '
-                          f'apertures used was less than {self.napers} (see '
-                          'the "napers_used" ImageDepth object attribute). '
-                          'To fix this, decrease the number of apertures '
-                          'and/or aperture size, or increase '
-                          '`overlap_maxiters`. Alternatively, you may set '
-                          'overlap=True', AstropyUserWarning)
+            msg = (f'Unable to generate {self.napers} non-overlapping '
+                   'apertures in unmasked regions. The number of apertures '
+                   f'used was less than {self.napers} (see the '
+                   '"napers_used" ImageDepth object attribute). To fix '
+                   'this, decrease the number of apertures and/or '
+                   'aperture size, or increase `overlap_maxiters`. '
+                   'Alternatively, you may set overlap=True')
+            warnings.warn(msg, AstropyUserWarning)
 
         if isinstance(flux_limits[0], u.Quantity):
             units = True
@@ -329,9 +329,10 @@ class ImageDepth:
             self.flux_limits = np.array(flux_limits)
         flux_limit = np.mean(self.flux_limits)
         if np.any(self.flux_limits == 0):
-            warnings.warn('One or more flux_limit values was zero. This is '
-                          'likely due to constant image values. Check the '
-                          'input mask.', AstropyUserWarning)
+            msg = ('One or more flux_limit values was zero. This is '
+                   'likely due to constant image values. Check the '
+                   'input mask.')
+            warnings.warn(msg, AstropyUserWarning)
 
         # Ignore divide-by-zero RuntimeWarning in log10
         with warnings.catch_warnings():

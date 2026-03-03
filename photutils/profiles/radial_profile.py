@@ -424,9 +424,9 @@ class RadialProfile(ProfileBase):
         amplitude = np.max(profile)
         sum_profile = np.sum(profile)
         if sum_profile == 0:
-            warnings.warn('The profile sum is zero; the Gaussian fit '
-                          'initial guess may be inaccurate.',
-                          AstropyUserWarning)
+            msg = ('The profile sum is zero; the Gaussian fit initial '
+                   'guess may be inaccurate.')
+            warnings.warn(msg, AstropyUserWarning)
             std = 1.0  # fallback to avoid zero initial guess
         else:
             std = np.sqrt(abs(np.sum(profile * radius**2) / sum_profile))
@@ -497,9 +497,9 @@ class RadialProfile(ProfileBase):
         amplitude = np.max(profile)
         sum_profile = np.sum(profile)
         if sum_profile == 0:
-            warnings.warn('The profile sum is zero; the Moffat fit '
-                          'initial guess may be inaccurate.',
-                          AstropyUserWarning)
+            msg = ('The profile sum is zero; the Moffat fit initial '
+                   'guess may be inaccurate.')
+            warnings.warn(msg, AstropyUserWarning)
             gamma = 1.0  # fallback to avoid zero initial guess
         else:
             # Estimate gamma from the half-max radius

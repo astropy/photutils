@@ -1573,9 +1573,9 @@ class PSFResultsAssembler:
         # Check for fit convergence warnings before cleaning up state
         fit_error_indices = state.get('fit_error_indices')
         if (fit_error_indices is not None and len(fit_error_indices) > 0):
-            warnings.warn('One or more fit(s) may not have converged. Please '
-                          'check the "flags" column in the output table.',
-                          AstropyUserWarning)
+            msg = ('One or more fit(s) may not have converged. Please '
+                   'check the "flags" column in the output table.')
+            warnings.warn(msg, AstropyUserWarning)
 
         # Clean up flag-related state data after use
         state.pop('fit_error_indices', None)

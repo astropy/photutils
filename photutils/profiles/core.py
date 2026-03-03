@@ -138,9 +138,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
             combined_mask = badmask
 
         if np.any(badmask):
-            warnings.warn('Input data contains non-finite values (e.g., NaN '
-                          'or inf) that were automatically masked.',
-                          AstropyUserWarning)
+            msg = ('Input data contains non-finite values (e.g., NaN '
+                   'or inf) that were automatically masked.')
+            warnings.warn(msg, AstropyUserWarning)
 
         return combined_mask
 
@@ -440,7 +440,8 @@ class ProfileBase(metaclass=abc.ABCMeta):
             plotted polygons, or `None` if no errors were input.
         """
         if len(self.profile_error) == 0:
-            warnings.warn('Errors were not input', AstropyUserWarning)
+            msg = 'Errors were not input'
+            warnings.warn(msg, AstropyUserWarning)
             return None
 
         import matplotlib.pyplot as plt

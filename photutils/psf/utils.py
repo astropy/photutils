@@ -44,9 +44,9 @@ def _make_mask(image, mask):
         corresponding element of ``image`` is masked.
     """
     def warn_nonfinite():
-        warnings.warn('Input data contains unmasked non-finite values '
-                      '(NaN or inf), which were automatically ignored.',
-                      AstropyUserWarning)
+        msg = ('Input data contains unmasked non-finite values '
+               '(NaN or inf), which were automatically ignored.')
+        warnings.warn(msg, AstropyUserWarning)
 
     # if NaNs are in the data, no actual fitting takes place
     # https://github.com/astropy/astropy/pull/12811
@@ -370,10 +370,10 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
             other_warnings = True
 
     if other_warnings and not fit_shape_warning:
-        warnings.warn('One or more fit(s) may not have converged. Please '
-                      'carefully check your results. You may need to change '
-                      'the input "xypos" and "fit_shape" parameters.',
-                      AstropyUserWarning)
+        msg = ('One or more fit(s) may not have converged. Please '
+               'carefully check your results. You may need to change '
+               'the input "xypos" and "fit_shape" parameters.')
+        warnings.warn(msg, AstropyUserWarning)
 
     return np.array(phot.results['fwhm_fit'])
 
