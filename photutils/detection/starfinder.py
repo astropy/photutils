@@ -11,7 +11,7 @@ from astropy.utils import lazyproperty
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _validate_brightest)
 from photutils.utils._convolution import _filter_data
-from photutils.utils._quantity_helpers import isscalar, process_quantities
+from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -24,9 +24,10 @@ class StarFinder(StarFinderBase):
 
     Parameters
     ----------
-    threshold : float
-        The absolute image value above which to select sources.
-        If the star finder is run on an image that is a
+    threshold : float or 2D `~numpy.ndarray`
+        The absolute image value above which to select sources. If
+        ``threshold`` is a 2D array, it must have the same shape as the
+        input ``data``. If the star finder is run on an image that is a
         `~astropy.units.Quantity` array, then ``threshold`` must have
         the same units.
 
@@ -79,10 +80,6 @@ class StarFinder(StarFinderBase):
         names = ('threshold', 'peakmax')
         _ = process_quantities(inputs, names)
 
-        if not isscalar(threshold):
-            msg = 'threshold must be a scalar value'
-            raise TypeError(msg)
-
         self.threshold = threshold
 
         kernel = np.asarray(kernel)
@@ -103,6 +100,9 @@ class StarFinder(StarFinderBase):
         params = ('threshold', 'kernel', 'min_separation',
                   'exclude_border', 'brightest', 'peakmax')
         overrides = {'kernel': f'<array; shape={self.kernel.shape}>'}
+        if not np.isscalar(self.threshold):
+            overrides['threshold'] = (
+                f'<array; shape={np.shape(self.threshold)}>')
         return params, overrides
 
     def __repr__(self):

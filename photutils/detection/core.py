@@ -136,14 +136,15 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             The convolution kernel. ``StarFinder`` inputs the kernel
             as a 2D array.
 
-        threshold : float
+        threshold : float or 2D array_like
             The absolute image value above which to select sources. The
             exact value depends on the calling star finder class (e.g.,
             `DAOStarFinder` multiplies the ``threshold`` by the kernel
             relative error, whereas `IRAFStarFinder` and `StarFinder`
-            directly use the input ``threshold``). If ``convolved_data``
-            is a `~astropy.units.Quantity` array, then ``threshold``
-            must have the same units.
+            directly use the input ``threshold``). A 2D ``threshold``
+            must have the same shape as ``convolved_data``. If
+            ``convolved_data`` is a `~astropy.units.Quantity` array,
+            then ``threshold`` must have the same units.
 
         min_separation : float, optional
             The minimum separation for detected objects in pixels.

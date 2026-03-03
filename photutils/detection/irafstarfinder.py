@@ -30,9 +30,10 @@ class IRAFStarFinder(StarFinderBase):
 
     Parameters
     ----------
-    threshold : float
-        The absolute image value above which to select sources.
-        If the star finder is run on an image that is a
+    threshold : float or 2D `~numpy.ndarray`
+        The absolute image value above which to select sources. If
+        ``threshold`` is a 2D array, it must have the same shape as the
+        input ``data``. If the star finder is run on an image that is a
         `~astropy.units.Quantity` array, then ``threshold`` must have
         the same units.
 
@@ -143,10 +144,6 @@ class IRAFStarFinder(StarFinderBase):
         names = ('threshold', 'peakmax')
         _ = process_quantities(inputs, names)
 
-        if not isscalar(threshold):
-            msg = 'threshold must be a scalar value'
-            raise TypeError(msg)
-
         if not isscalar(fwhm):
             msg = 'fwhm must be a scalar value'
             raise TypeError(msg)
@@ -192,6 +189,9 @@ class IRAFStarFinder(StarFinderBase):
                   'exclude_border', 'brightest', 'peakmax', 'xycoords',
                   'min_separation')
         overrides = {}
+        if not isscalar(self.threshold):
+            overrides['threshold'] = (
+                f'<array; shape={np.shape(self.threshold)}>')
         if self.xycoords is not None:
             overrides['xycoords'] = f'<array; shape={self.xycoords.shape}>'
         return params, overrides or None
