@@ -36,16 +36,23 @@ lower and upper bounds can be specified.
 
 :class:`~photutils.detection.IRAFStarFinder` is a class that
 implements IRAF's `starfind`_ algorithm. It is fundamentally
-similar to :class:`~photutils.detection.DAOStarFinder`,
-but :class:`~photutils.detection.DAOStarFinder` can use
-an elliptical Gaussian kernel. One other difference in
-:class:`~photutils.detection.IRAFStarFinder` is that it calculates the
-objects' centroid, roundness, and sharpness using image moments.
+similar to :class:`~photutils.detection.DAOStarFinder`, but
+:class:`~photutils.detection.IRAFStarFinder` always uses a circular
+Gaussian kernel whereas :class:`~photutils.detection.DAOStarFinder`
+can use an elliptical Gaussian kernel. Another difference is that
+:class:`~photutils.detection.IRAFStarFinder` calculates the objects'
+centroid, roundness, and sharpness using image moments.
 
 :class:`~photutils.detection.StarFinder` is a class similar to
 :class:`~photutils.detection.IRAFStarFinder`, but which allows input
 of a custom user-defined kernel as a 2D array. This allows for more
 generalization beyond simple Gaussian kernels.
+
+The usage of :class:`~photutils.detection.IRAFStarFinder` and
+:class:`~photutils.detection.StarFinder` follows the same pattern as
+:class:`~photutils.detection.DAOStarFinder` shown below. Replace the
+class name and adjust the parameters (e.g., ``fwhm`` and ``kernel``) as
+needed.
 
 As an example, let's load an image from the bundled datasets and select
 a subset of the image. We will estimate the background and background
@@ -63,8 +70,8 @@ noise using sigma-clipped statistics::
 Now we will subtract the background and use an instance of
 :class:`~photutils.detection.DAOStarFinder` to find the stars in the
 image that have FWHMs of around 3 pixels and have peaks approximately
-5-sigma above the background. Running this class on the data yields an
-astropy `~astropy.table.Table` containing the results of the star
+5-sigma above the background. Running this class on the data yields
+an astropy `~astropy.table.QTable` containing the results of the star
 finder::
 
     >>> from photutils.detection import DAOStarFinder
@@ -132,12 +139,12 @@ Let's plot the image and mark the location of detected sources:
 Masking Regions
 ^^^^^^^^^^^^^^^
 
-Regions of the input image can be masked by using the ``mask`` keyword
-with the :class:`~photutils.detection.DAOStarFinder` or
-:class:`~photutils.detection.IRAFStarFinder` instance.  This simple
-examples uses :class:`~photutils.detection.DAOStarFinder` and masks
-two rectangular regions.  No sources will be detected in the masked
-regions:
+Regions of the input image can be masked by using the ``mask``
+keyword with the :class:`~photutils.detection.DAOStarFinder`,
+:class:`~photutils.detection.IRAFStarFinder`, or
+:class:`~photutils.detection.StarFinder` instance. This simple example
+uses :class:`~photutils.detection.DAOStarFinder` and masks two
+rectangular regions. No sources will be detected in the masked regions:
 
 .. doctest-skip::
 
@@ -195,8 +202,14 @@ However, a centroiding function can be input via the ``centroid_func``
 keyword to :func:`~photutils.detection.find_peaks` to also compute
 centroid coordinates with subpixel precision.
 
+The ``box_size`` parameter also effectively imposes a minimum separation
+between detected peaks, since only one peak can be found within each box
+of that size. Specifically, two peaks must differ by at least ``box_size
+// 2 + 1`` pixels along each axis. For example, a ``box_size`` of 11
+imposes a minimum separation of 6 pixels.
+
 As a simple example, let's find the local peaks in an image that are 5
-sigma above the background and are separated by at least 5 pixels::
+sigma above the background using a box size of 11 pixels::
 
     >>> from astropy.stats import sigma_clipped_stats
     >>> from photutils.datasets import make_100gaussians_image
@@ -220,7 +233,7 @@ sigma above the background and are separated by at least 5 pixels::
       9    471     37  24.141928
      10    358     39  18.671565
 
-And let's plot the location of the detected peaks in the image:
+Let's plot the location of the detected peaks in the image:
 
 .. doctest-skip::
 

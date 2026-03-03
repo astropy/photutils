@@ -14,7 +14,10 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 
 class TestStarFinder:
-    def test_starfind(self, data, kernel):
+    def test_find(self, data, kernel):
+        """
+        Test basic source detection and unit handling.
+        """
         finder1 = StarFinder(1, kernel)
         finder2 = StarFinder(10, kernel)
         tbl1 = finder1(data)
@@ -23,7 +26,7 @@ class TestStarFinder:
         assert len(tbl1) == 25
         assert len(tbl2) == 9
 
-        # test with units
+        # Test with units
         unit = u.Jy
         finder3 = StarFinder(1 * unit, kernel)
         tbl3 = finder3(data << unit)
@@ -36,29 +39,36 @@ class TestStarFinder:
                 assert_equal(tbl3[col], tbl1[col])
 
     def test_inputs(self, kernel):
+        """
+        Test that invalid inputs raise appropriate errors.
+        """
+        match = 'threshold must be a scalar value'
+        with pytest.raises(TypeError, match=match):
+            StarFinder(np.ones((2, 2)), kernel)
         match = 'min_separation must be >= 0'
         with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, min_separation=-1)
-        match = 'brightest must be >= 0'
+        match = 'brightest must be > 0'
         with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, brightest=-1)
         match = 'brightest must be an integer'
         with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, brightest=3.1)
 
-    def test_exclude_border(self, data, kernel):
-        data = np.zeros((12, 12))
-        data[0:2, 0:2] = 1
-        data[9:12, 9:12] = 1
-        kernel = np.ones((3, 3))
-
-        finder0 = StarFinder(1, kernel, exclude_border=False)
-        finder1 = StarFinder(1, kernel, exclude_border=True)
-        tbl0 = finder0(data)
-        tbl1 = finder1(data)
-        assert len(tbl0) > len(tbl1)
+    @pytest.mark.parametrize('ndim', [1, 3])
+    def test_kernel_not_2d(self, ndim):
+        """
+        Test that non-2D kernels raise ValueError.
+        """
+        bad_kernel = np.ones(5) if ndim == 1 else np.ones((3, 3, 3))
+        match = 'kernel must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            StarFinder(1, bad_kernel)
 
     def test_nosources(self, data, kernel):
+        """
+        Test that no sources returns None with a warning.
+        """
         match = 'No sources were found'
         finder = StarFinder(100, kernel)
         with pytest.warns(NoDetectionsWarning, match=match):
@@ -72,7 +82,38 @@ class TestStarFinder:
             tbl = finder(-data)
         assert tbl is None
 
+    def test_exclude_border(self, data, kernel):
+        """
+        Test that border sources are excluded.
+        """
+        data = np.zeros((12, 12))
+        data[0:2, 0:2] = 1
+        data[9:12, 9:12] = 1
+        kernel = np.ones((3, 3))
+
+        finder0 = StarFinder(1, kernel, exclude_border=False)
+        finder1 = StarFinder(1, kernel, exclude_border=True)
+        tbl0 = finder0(data)
+        tbl1 = finder1(data)
+        assert len(tbl0) > len(tbl1)
+
+    def test_mask(self, data, kernel):
+        """
+        Test source detection with a mask.
+        """
+        starfinder = StarFinder(1, kernel)
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:50] = True
+        tbl1 = starfinder(data)
+        tbl2 = starfinder(data, mask=mask)
+        assert len(tbl1) == 25
+        assert len(tbl2) == 13
+        assert min(tbl2['ycentroid']) > 50
+
     def test_min_separation(self, data, kernel):
+        """
+        Test the min_separation parameter.
+        """
         finder1 = StarFinder(1, kernel, min_separation=0)
         finder2 = StarFinder(1, kernel, min_separation=10)
         tbl1 = finder1(data)
@@ -80,7 +121,20 @@ class TestStarFinder:
         assert len(tbl1) == 25
         assert len(tbl2) == 20
 
+    def test_brightest(self, data, kernel):
+        """
+        Test the brightest parameter.
+        """
+        finder = StarFinder(1, kernel, brightest=10)
+        tbl = finder(data)
+        assert len(tbl) == 10
+        fluxes = tbl['flux']
+        assert fluxes[0] == np.max(fluxes)
+
     def test_peakmax(self, data, kernel):
+        """
+        Test the peakmax parameter.
+        """
         finder1 = StarFinder(1, kernel, peakmax=None)
         finder2 = StarFinder(1, kernel, peakmax=11)
         tbl1 = finder1(data)
@@ -112,32 +166,94 @@ class TestStarFinder:
         assert len(tbl) == 1
         assert tbl[0]['max_value'] == 0.8
 
-    def test_brightest(self, data, kernel):
-        finder = StarFinder(1, kernel, brightest=10)
-        tbl = finder(data)
-        assert len(tbl) == 10
-        fluxes = tbl['flux']
-        assert fluxes[0] == np.max(fluxes)
-
     def test_single_detected_source(self, data, kernel):
+        """
+        Test detection and slicing with a single source.
+        """
         finder = StarFinder(11.5, kernel, brightest=1)
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50] = True
         tbl = finder(data, mask=mask)
         assert len(tbl) == 1
 
-        # test slicing with scalar catalog to improve coverage
+        # Test slicing with scalar catalog to improve coverage
         cat = finder._get_raw_catalog(data, mask=mask)
         assert cat.isscalar
         flux = cat.flux[0]  # evaluate the flux so it can be sliced
         assert cat[0].flux == flux
 
-    def test_mask(self, data, kernel):
-        starfinder = StarFinder(1, kernel)
+    def test_repeated_calls(self, data, kernel):
+        """
+        Test that calling find_stars twice gives identical results.
+        """
+        finder = StarFinder(1, kernel)
+        tbl1 = finder(data)
+        tbl2 = finder(data)
+        assert len(tbl1) == len(tbl2)
+        for col in tbl1.colnames:
+            assert_equal(tbl1[col], tbl2[col])
+
+    def test_quantity_units_mismatch(self, kernel):
+        """
+        Test that mismatched data/threshold units raise an error.
+        """
+        data = np.ones((11, 11))
+        finder = StarFinder(1 * u.Jy, kernel)
+        match = 'must all have the same units'
+        with pytest.raises(ValueError, match=match):
+            finder(data << u.m)
+
+    def test_quantity_with_negatives(self, data, kernel):
+        """
+        Test detection with Quantity data containing negatives.
+        """
+        unit = u.Jy
+        data_neg = (data - 5.0) << unit
+        finder = StarFinder(1 * unit, kernel)
+        tbl = finder(data_neg)
+        assert isinstance(tbl, Table)
+        assert len(tbl) > 0
+        assert tbl['flux'].unit == unit
+
+    def test_data_not_mutated(self, data, kernel):
+        """
+        Test that input data is not mutated by find_stars.
+        """
+        data = data - 5.0  # create some negative pixel values
+        data_copy = data.copy()
+        finder = StarFinder(1, kernel)
+        finder(data)
+        assert_equal(data, data_copy)
+
+    def test_data_not_mutated_with_mask(self, data, kernel):
+        """
+        Test that input data is not mutated when a mask is used.
+        """
+        data = data - 5.0
+        data_copy = data.copy()
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50] = True
-        tbl1 = starfinder(data)
-        tbl2 = starfinder(data, mask=mask)
-        assert len(tbl1) == 25
-        assert len(tbl2) == 13
-        assert min(tbl2['ycentroid']) > 50
+        finder = StarFinder(1, kernel)
+        finder(data, mask=mask)
+        assert_equal(data, data_copy)
+
+    def test_repr(self, kernel):
+        """
+        Test the __repr__ of StarFinder.
+        """
+        finder = StarFinder(threshold=5.0, kernel=kernel)
+        r = repr(finder)
+        assert 'StarFinder(' in r
+        assert 'threshold=5.0' in r
+        assert '<array; shape=' in r
+        assert 'brightest=None' in r
+
+    def test_str(self, kernel):
+        """
+        Test the __str__ of StarFinder.
+        """
+        finder = StarFinder(threshold=5.0, kernel=kernel)
+        s = str(finder)
+        assert 'StarFinder' in s
+        assert 'threshold: 5.0' in s
+        assert '<array; shape=' in s

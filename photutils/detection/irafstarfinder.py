@@ -12,6 +12,7 @@ from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _StarFinderKernel, _validate_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._quantity_helpers import isscalar, process_quantities
+from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['IRAFStarFinder']
@@ -40,9 +41,9 @@ class IRAFStarFinder(StarFinderBase):
         kernel in units of pixels.
 
     sigma_radius : float, optional
-        The truncation radius of the Gaussian kernel in units
-        of sigma (standard deviation) [``1 sigma = FWHM /
-        2.0*sqrt(2.0*log(2.0))``].
+        The truncation radius of the Gaussian kernel in units of sigma
+        (standard deviation) (:math:`\\sigma = \\mbox{FWHM} / (2
+        \\sqrt{2 \\log(2)})`).
 
     minsep_fwhm : float, optional
         The separation (in units of ``fwhm``) for detected objects. The
@@ -146,13 +147,17 @@ class IRAFStarFinder(StarFinderBase):
             msg = 'threshold must be a scalar value'
             raise TypeError(msg)
 
-        if not np.isscalar(fwhm):
+        if not isscalar(fwhm):
             msg = 'fwhm must be a scalar value'
             raise TypeError(msg)
 
         self.threshold = threshold
         self.fwhm = fwhm
         self.sigma_radius = sigma_radius
+
+        if minsep_fwhm < 0:
+            msg = 'minsep_fwhm must be >= 0'
+            raise ValueError(msg)
         self.minsep_fwhm = minsep_fwhm
         self.sharplo = sharplo
         self.sharphi = sharphi
@@ -180,6 +185,24 @@ class IRAFStarFinder(StarFinderBase):
         else:
             self.min_separation = max(2, int((self.fwhm * self.minsep_fwhm)
                                              + 0.5))
+
+    def _repr_str_params(self):
+        params = ('threshold', 'fwhm', 'sigma_radius', 'minsep_fwhm',
+                  'sharplo', 'sharphi', 'roundlo', 'roundhi',
+                  'exclude_border', 'brightest', 'peakmax', 'xycoords',
+                  'min_separation')
+        overrides = {}
+        if self.xycoords is not None:
+            overrides['xycoords'] = f'<array; shape={self.xycoords.shape}>'
+        return params, overrides or None
+
+    def __repr__(self):
+        params, overrides = self._repr_str_params()
+        return make_repr(self, params, overrides=overrides)
+
+    def __str__(self):
+        params, overrides = self._repr_str_params()
+        return make_repr(self, params, overrides=overrides, long=True)
 
     def _get_raw_catalog(self, data, *, mask=None):
         convolved_data = _filter_data(data, self.kernel.data, mode='constant',
@@ -355,15 +378,13 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         calculation as the average value in the non-masked regions
         within the kernel footprint.
         """
-        skymask = ~self.kernel.mask.astype(bool)  # 1=sky, 0=obj
+        skymask = ~self.kernel.mask.astype(bool)  # True=sky, False=obj
+        # nsky is always > 0 because the kernel mask never covers the
+        # entire footprint (the Gaussian kernel is always truncated
+        # within the array, leaving unmasked border pixels).
         nsky = np.count_nonzero(skymask)
         axis = (1, 2)
-        if nsky == 0.0:  # pragma: no cover
-            sky = (np.max(self.cutout_data_nosub, axis=axis)
-                   - np.max(self.cutout_convdata, axis=axis))
-        else:
-            sky = (np.sum(self.cutout_data_nosub * skymask, axis=axis)
-                   / nsky)
+        sky = np.sum(self.cutout_data_nosub * skymask, axis=axis) / nsky
 
         if self.unit is not None:
             sky <<= self.unit
@@ -376,15 +397,13 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
 
     @lazyproperty
     def cutout_data(self):
+        # This is a freshly computed array, so in-place modification is
+        # safe.
         data = ((self.cutout_data_nosub - self.sky[:, np.newaxis, np.newaxis])
                 * self.kernel.mask)
         # IRAF starfind discards negative pixels
         data[data < 0] = 0.0
         return data
-
-    @lazyproperty
-    def cutout_convdata(self):  # pragma: no cover
-        return self.make_cutouts(self.convolved_data)
 
     @lazyproperty
     def npix(self):
@@ -407,15 +426,6 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         return self.cutout_ycentroid + self.cutout_yorigin
 
     @lazyproperty
-    def roundness(self):
-        # ignore divide-by-zero RuntimeWarning
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            return (np.sqrt(self.mu_diff**2
-                            + 4.0 * self.moments_central[:, 1, 1]**2)
-                    / self.mu_sum)
-
-    @lazyproperty
     def sharpness(self):
         return self.fwhm / self.kernel.fwhm
 
@@ -423,32 +433,15 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         """
         Filter the catalog.
         """
-        # remove all non-finite values - consider these non-detections
         attrs = ('xcentroid', 'ycentroid', 'sharpness', 'roundness', 'pa',
                  'sky', 'peak', 'flux')
-        mask = np.count_nonzero(self.cutout_data, axis=(1, 2)) > 1
-        for attr in attrs:
-            mask &= np.isfinite(getattr(self, attr))
-        newcat = self[mask]
-
-        if len(newcat) == 0:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
+        initial_mask = np.count_nonzero(self.cutout_data, axis=(1, 2)) > 1
+        newcat = self._filter_finite(attrs, initial_mask=initial_mask)
+        if newcat is None:
             return None
 
-        # keep sources that are within the sharpness, roundness, and
-        # peakmax (inclusive) bounds
-        mask = ((newcat.sharpness >= newcat.sharplo)
-                & (newcat.sharpness <= newcat.sharphi)
-                & (newcat.roundness >= newcat.roundlo)
-                & (newcat.roundness <= newcat.roundhi))
-        if newcat.peakmax is not None:
-            mask &= (newcat.peak <= newcat.peakmax)
-        newcat = newcat[mask]
-
-        if len(newcat) == 0:
-            warnings.warn('Sources were found, but none pass the sharpness, '
-                          'roundness, or peakmax criteria',
-                          NoDetectionsWarning)
-            return None
-
-        return newcat
+        bounds = [
+            ('sharpness', 'sharplo', 'sharphi'),
+            ('roundness', 'roundlo', 'roundhi'),
+        ]
+        return newcat._filter_bounds(bounds)

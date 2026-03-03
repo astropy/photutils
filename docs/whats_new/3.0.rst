@@ -330,6 +330,31 @@ New ImagePSF shape property
 returns the shape of the (oversampled) PSF data array.
 
 
+Detection Improvements
+======================
+
+Public StarFinderCatalogBase class
+----------------------------------
+
+A new public :class:`~photutils.detection.StarFinderCatalogBase`
+class provides a common base for the source catalogs
+produced by :class:`~photutils.detection.DAOStarFinder`,
+:class:`~photutils.detection.IRAFStarFinder`, and
+:class:`~photutils.detection.StarFinder`. Users building custom star
+finders can subclass ``StarFinderCatalogBase`` to leverage all the
+built-in catalog infrastructure (table conversion, filtering, slicing,
+etc.).
+
+Performance improvements
+------------------------
+
+Source detection with :class:`~photutils.detection.DAOStarFinder`,
+:class:`~photutils.detection.IRAFStarFinder`, and
+:class:`~photutils.detection.StarFinder` is now significantly faster.
+Cutout extraction and image moment computation have been fully
+vectorized.
+
+
 Removed Deprecations
 ====================
 

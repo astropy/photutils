@@ -48,10 +48,12 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         The 2D array of the image.
 
     threshold : float, scalar `~astropy.units.Quantity` or array_like
-        The data value or pixel-wise data values to be used for the
-        detection threshold. If ``data`` is a `~astropy.units.Quantity`
-        array, then ``threshold`` must have the same units as ``data``.
-        A 2D ``threshold`` must have the same shape as ``data``. See
+        The data value or pixel-wise data values to be used
+        for the detection threshold. A peak is detected only
+        if it is strictly greater than the ``threshold``. If
+        ``data`` is a `~astropy.units.Quantity` array, then
+        ``threshold`` must have the same units as ``data``. A 2D
+        ``threshold`` must have the same shape as ``data``. See
         `~photutils.segmentation.detect_threshold` for one way to create
         a ``threshold`` image.
 
@@ -112,7 +114,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     Returns
     -------
-    output : `~astropy.table.Table` or `None`
+    output : `~astropy.table.QTable` or `None`
         A table containing the x and y pixel location of the peaks and
         their values. If ``centroid_func`` is input, then the table will
         also contain the centroid position. If no peaks are found then
@@ -132,6 +134,10 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     data, threshold, error = arrays
     data = np.asanyarray(data)
 
+    if centroid_func is not None and not callable(centroid_func):
+        msg = 'centroid_func must be a callable object'
+        raise TypeError(msg)
+
     if np.all(data == data.flat[0]):
         warnings.warn('Input data is constant. No local peaks can be found.',
                       NoDetectionsWarning)
@@ -140,7 +146,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     if not np.isscalar(threshold):
         threshold = np.asanyarray(threshold)
         if data.shape != threshold.shape:
-            msg = ('A threshold array must have the same shape as the '
+            msg = ('threshold array must have the same shape as the '
                    'input data')
             raise ValueError(msg)
 
@@ -217,10 +223,6 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     if centroid_func is not None:
         # prevent circular import
         from photutils.centroids import centroid_sources
-
-        if not callable(centroid_func):
-            msg = 'centroid_func must be a callable object'
-            raise TypeError(msg)
 
         x_centroids, y_centroids = centroid_sources(
             data, x_peaks, y_peaks, box_size=box_size,

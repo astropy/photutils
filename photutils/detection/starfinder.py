@@ -6,13 +6,13 @@ StarFinder class.
 import warnings
 
 import numpy as np
-from astropy.nddata import overlap_slices
 from astropy.utils import lazyproperty
 
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _validate_brightest)
 from photutils.utils._convolution import _filter_data
-from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._quantity_helpers import isscalar, process_quantities
+from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['StarFinder']
@@ -79,8 +79,18 @@ class StarFinder(StarFinderBase):
         names = ('threshold', 'peakmax')
         _ = process_quantities(inputs, names)
 
+        if not isscalar(threshold):
+            msg = 'threshold must be a scalar value'
+            raise TypeError(msg)
+
         self.threshold = threshold
+
+        kernel = np.asarray(kernel)
+        if kernel.ndim != 2:
+            msg = 'kernel must be a 2D array'
+            raise ValueError(msg)
         self.kernel = kernel
+
         if min_separation < 0:
             msg = 'min_separation must be >= 0'
             raise ValueError(msg)
@@ -89,9 +99,22 @@ class StarFinder(StarFinderBase):
         self.brightest = _validate_brightest(brightest)
         self.peakmax = peakmax
 
+    def _repr_str_params(self):
+        params = ('threshold', 'kernel', 'min_separation',
+                  'exclude_border', 'brightest', 'peakmax')
+        overrides = {'kernel': f'<array; shape={self.kernel.shape}>'}
+        return params, overrides
+
+    def __repr__(self):
+        params, overrides = self._repr_str_params()
+        return make_repr(self, params, overrides=overrides)
+
+    def __str__(self):
+        params, overrides = self._repr_str_params()
+        return make_repr(self, params, overrides=overrides, long=True)
+
     def _get_raw_catalog(self, data, *, mask=None):
-        kernel = self.kernel
-        kernel /= np.max(kernel)  # normalize max value to 1.0
+        kernel = self.kernel / np.max(self.kernel)  # normalize max to 1.0
         denom = np.sum(kernel**2) - (np.sum(kernel)**2 / kernel.size)
         if denom > 0:
             kernel = (kernel - np.sum(kernel) / kernel.size) / denom
@@ -206,38 +229,12 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         return ('data', 'unit', 'kernel', 'brightest', 'peakmax',
                 'cutout_shape', 'default_columns')
 
-    def _get_list_attributes(self) -> tuple:
-        """
-        Return a tuple of attribute names that are lists instead of arrays.
-        """
-        return ('slices', 'cutout_data')
-
     @lazyproperty
-    def slices(self):
-        slices = []
-        for xpos, ypos in self.xypos:
-            slc, _ = overlap_slices(self.data.shape,
-                                    self.cutout_shape,
-                                    (ypos, xpos),
-                                    mode='trim')
-            slices.append(slc)
-        return slices
-
-    @lazyproperty
-    def bbox_xmin(self):
-        return np.array([slc[1].start for slc in self.slices])
-
-    @lazyproperty
-    def bbox_ymin(self):
-        return np.array([slc[0].start for slc in self.slices])
-
-    def make_cutouts(self, data):
-        cutout = []
-        for slc in self.slices:
-            cdata = data[slc]
-            cdata[cdata < 0] = 0.0  # exclude negative pixels
-            cutout.append(cdata)
-        return cutout
+    def cutout_data(self):
+        """The cutout data arrays with negative values set to zero."""
+        cutouts = self.make_cutouts(self.data)
+        cutouts[cutouts < 0] = 0.0  # exclude negative pixels
+        return cutouts
 
     @lazyproperty
     def max_value(self):
@@ -245,36 +242,24 @@ class _StarFinderCatalog(StarFinderCatalogBase):
 
     @lazyproperty
     def xcentroid(self):
-        return self.cutout_xcentroid + self.bbox_xmin
+        xoff = self.cutout_shape[1] // 2
+        return self.cutout_xcentroid + self.xypos[:, 0] - xoff
 
     @lazyproperty
     def ycentroid(self):
-        return self.cutout_ycentroid + self.bbox_ymin
-
-    @lazyproperty
-    def roundness(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            factor = self.mu_diff**2 + 4.0 * self.moments_central[:, 1, 1]**2
-            return np.sqrt(factor) / self.mu_sum
+        yoff = self.cutout_shape[0] // 2
+        return self.cutout_ycentroid + self.xypos[:, 1] - yoff
 
     def apply_filters(self):
         """
         Filter the catalog.
         """
-        # remove all non-finite values - consider these non-detections
         attrs = ('xcentroid', 'ycentroid', 'fwhm', 'roundness', 'pa',
                  'max_value', 'flux')
-        mask = np.ones(len(self), dtype=bool)
-        for attr in attrs:
-            mask &= np.isfinite(getattr(self, attr))
-        newcat = self[mask]
-
-        if len(newcat) == 0:
-            warnings.warn('No sources were found.', NoDetectionsWarning)
+        newcat = self._filter_finite(attrs)
+        if newcat is None:
             return None
 
-        # keep sources with peak pixel values less than or equal to peakmax
         if newcat.peakmax is not None:
             mask = (newcat.max_value <= newcat.peakmax)
             newcat = newcat[mask]
