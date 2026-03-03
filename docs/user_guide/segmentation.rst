@@ -301,6 +301,34 @@ measuring source photometry and other source properties, including:
   Remove labeled segments located within a masked region.
 
 
+Source Masks
+------------
+
+The :meth:`~photutils.segmentation.SegmentationImage.make_source_mask`
+method can be used to create a boolean source mask from a segmentation
+image. The source mask can be used, for example, to mask sources
+when estimating the background level. The source mask can optionally
+be dilated using the ``size`` or ``footprint`` keyword to mask a
+larger area around each source. Dilating the source mask is useful for
+excluding the faint wings of sources when estimating the background:
+
+.. doctest-requires:: skimage
+
+    >>> mask = segment_map.make_source_mask()
+    >>> dilated_mask = segment_map.make_source_mask(size=11)
+
+A circular footprint can also be used to dilate the source mask:
+
+.. doctest-requires:: skimage
+
+    >>> from photutils.utils import circular_footprint
+    >>> footprint = circular_footprint(radius=5)
+    >>> dilated_mask2 = segment_map.make_source_mask(footprint=footprint)
+
+Note that using a square footprint (via the ``size`` keyword) is much
+faster than using other shapes (e.g., a circular footprint).
+
+
 Photometry, Centroids, and Shape Properties
 -------------------------------------------
 
