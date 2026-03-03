@@ -24,15 +24,18 @@ Photutils includes two widely-used tools that are used to detect stars
 in an image, `DAOFIND`_ and IRAF's `starfind`_, plus a third tool that
 allows input of a custom user-defined kernel.
 
-:class:`~photutils.detection.DAOStarFinder` is a class that provides an
-implementation of the `DAOFIND`_ algorithm (`Stetson 1987, PASP 99, 191
+:class:`~photutils.detection.DAOStarFinder` implements
+the `DAOFIND`_ algorithm (`Stetson 1987, PASP 99, 191
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_).
 It searches images for local density maxima that have a peak amplitude
-greater than a specified threshold (the threshold is applied to a
-convolved image) and have a size and shape similar to a defined 2D
-Gaussian kernel. :class:`~photutils.detection.DAOStarFinder` also
-provides an estimate of the objects' roundness and sharpness, whose
-lower and upper bounds can be specified.
+above a specified threshold (applied to a convolved image) and with
+size and shape similar to a defined 2D Gaussian kernel. To match the
+original DAOFIND algorithm, the input ``threshold`` is internally scaled
+by a factor derived from the convolution kernel. To apply the threshold
+exactly as given (e.g., when supplying a spatial background-RMS map),
+set ``scale_threshold=False``. The class also computes roundness and
+sharpness statistics for detected sources, with configurable lower and
+upper bounds.
 
 :class:`~photutils.detection.IRAFStarFinder` is a class that
 implements IRAF's `starfind`_ algorithm. It is fundamentally
