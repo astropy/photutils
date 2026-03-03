@@ -56,9 +56,10 @@ class DAOStarFinder(StarFinderBase):
 
     Parameters
     ----------
-    threshold : float
-        The absolute image value above which to select sources.
-        If the star finder is run on an image that is a
+    threshold : float or 2D `~numpy.ndarray`
+        The absolute image value above which to select sources. If
+        ``threshold`` is a 2D array, it must have the same shape as the
+        input ``data``. If the star finder is run on an image that is a
         `~astropy.units.Quantity` array, then ``threshold`` must have
         the same units.
 
@@ -167,10 +168,6 @@ class DAOStarFinder(StarFinderBase):
         names = ('threshold', 'peakmax')
         _ = process_quantities(inputs, names)
 
-        if not isscalar(threshold):
-            msg = 'threshold must be a scalar value'
-            raise TypeError(msg)
-
         if not isscalar(fwhm):
             msg = 'fwhm must be a scalar value'
             raise TypeError(msg)
@@ -212,6 +209,9 @@ class DAOStarFinder(StarFinderBase):
                   'exclude_border', 'brightest', 'peakmax', 'xycoords',
                   'min_separation')
         overrides = {}
+        if not isscalar(self.threshold):
+            overrides['threshold'] = (
+                f'<array; shape={np.shape(self.threshold)}>')
         if self.xycoords is not None:
             overrides['xycoords'] = (
                 f'<array; shape={self.xycoords.shape}>')
@@ -332,9 +332,10 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         An Nx2 array of (x, y) pixel coordinates denoting the central
         positions of the stars.
 
-    threshold : float
-        The absolute image value above which sources were selected.
-        If ``data`` is a `~astropy.units.Quantity` array, then
+    threshold : float or 2D `~numpy.ndarray`
+        The absolute image value above which sources were selected. If
+        ``threshold`` is a 2D array, it must have the same shape as
+        ``data``. If ``data`` is a `~astropy.units.Quantity` array, then
         ``threshold`` must have the same units.
 
     kernel : `_StarFinderKernel`
@@ -683,6 +684,25 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
 
     @lazyproperty
+    def _threshold_eff_per_source(self):
+        """
+        Per-source effective threshold values.
+
+        If the input ``threshold`` is a scalar, then this returns an
+        array of the same length as the number of sources, where each
+        value is the same as the input ``threshold_eff``. If the input
+        ``threshold`` is a 2D array, then this returns an array of the
+        same length as the number of sources, where each value is the
+        value of the input ``threshold_eff`` at the rounded (x, y)
+        position of each source.
+        """
+        if np.ndim(self.threshold_eff) < 2:
+            return np.ones(len(self)) * self.threshold_eff
+        xpos = np.round(self.xypos[:, 0]).astype(int)
+        ypos = np.round(self.xypos[:, 1]).astype(int)
+        return self.threshold_eff[ypos, xpos]
+
+    @lazyproperty
     def daofind_mag(self):
         """
         The "mag" parameter returned by the original DAOFIND algorithm.
@@ -694,7 +714,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         # ignore RuntimeWarning if flux is <= 0
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
-            return -2.5 * np.log10(self.convdata_peak / self.threshold_eff)
+            return -2.5 * np.log10(self.convdata_peak
+                                   / self._threshold_eff_per_source)
 
     @lazyproperty
     def npix(self):
@@ -707,7 +728,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         attrs = ('xcentroid', 'ycentroid', 'hx', 'hy', 'sharpness',
                  'roundness1', 'roundness2', 'peak', 'flux')
         skip = ()
-        if self.threshold_eff == 0:
+        if np.all(self._threshold_eff_per_source == 0):
             skip = ('flux',)
         newcat = self._filter_finite(attrs, skip_attrs=skip)
         if newcat is None:
