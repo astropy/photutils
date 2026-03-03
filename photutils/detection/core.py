@@ -141,8 +141,6 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             A table of found stars. If no stars are found then `None` is
             returned.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
 
 class _StarFinderKernel:
@@ -184,11 +182,14 @@ class _StarFinderKernel:
     and the coefficients of a 2D elliptical Gaussian function expressed
     as:
 
-        ``f(x,y) = A * exp(-g(x,y))``
+    .. math::
+        f(x, y) = A \\exp\\bigl(-g(x, y)\\bigr)
 
-        where
+    where
 
-        ``g(x,y) = a*(x-x0)**2 + 2*b*(x-x0)*(y-y0) + c*(y-y0)**2``
+    .. math::
+        g(x, y) = a (x - x_0)^{2} + 2 b (x - x_0)(y - y_0)
+                   + c (y - y_0)^{2}
 
     References
     ----------
@@ -270,7 +271,7 @@ class _StarFinderKernel:
             self.data = ((gaussian_kernel
                           - (gaussian_kernel.sum() / self.npixels))
                          / denom) * self.mask
-        else:  # pragma: no cover
+        else:
             self.data = gaussian_kernel
 
         self.shape = self.data.shape
@@ -299,12 +300,29 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     Abstract base class for star finder catalogs.
 
     This class provides common functionality for catalog classes that
-    calculate properties of detected stars.
+    store and compute properties of detected sources. External packages
+    may subclass it to create custom star finder catalogs.
 
-    Subclasses must implement the following:
+    Subclasses **must** implement:
 
-    * ``apply_filters`` method: Filter the catalog using algorithm-specific
-      criteria.
+    * `xcentroid` property -- Object centroid in the x direction.
+    * `ycentroid` property -- Object centroid in the y direction.
+    * `apply_filters` method -- Filter the catalog using
+      algorithm-specific criteria.
+    * ``default_columns`` attribute -- A tuple of column names used
+      by `to_table` when no explicit columns are given. This should
+      be set in the subclass ``__init__``.
+
+    Subclasses **may** override:
+
+    * `_get_init_attributes` -- Return attribute names to copy
+      during slicing. The override should include
+      ``'default_columns'`` in the returned tuple.
+    * `_get_list_attributes` -- Return attribute names that are
+      Python lists instead of arrays (for correct slicing).
+    * `make_cutouts` -- Customize how cutout arrays are extracted.
+    * `cutout_data` -- Customize the cutouts used for photometry
+      (e.g., zeroing negative pixels).
 
     Parameters
     ----------
@@ -538,13 +556,21 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     def _lazyproperties(self):
         """
         Return all lazyproperties (even in superclasses).
+
+        The result is cached per class to avoid repeated
+        ``inspect.getmembers`` calls.
         """
+        cls = self.__class__
+        try:
+            return cls.__lazyproperties_cache
+        except AttributeError:
+            def islazyproperty(obj):
+                return isinstance(obj, lazyproperty)
 
-        def islazyproperty(obj):
-            return isinstance(obj, lazyproperty)
-
-        return [i[0] for i in inspect.getmembers(self.__class__,
-                                                 predicate=islazyproperty)]
+            result = [i[0] for i in
+                      inspect.getmembers(cls, predicate=islazyproperty)]
+            cls.__lazyproperties_cache = result
+            return result
 
     def reset_ids(self):
         """
@@ -582,8 +608,6 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         This property must be implemented in subclasses.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
     @property
     @abc.abstractmethod
@@ -593,8 +617,6 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         This property must be implemented in subclasses.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
     def select_brightest(self):
         """
@@ -615,8 +637,6 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         This method must be implemented in subclasses to apply
         algorithm-specific filtering criteria.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
     def apply_all_filters(self):
         """
@@ -648,6 +668,11 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         table = QTable()
         table.meta.update(_get_meta())  # keep table.meta type
         if columns is None:
+            if not hasattr(self, 'default_columns'):
+                msg = ('default_columns attribute is not set; either '
+                       'pass explicit column names or set '
+                       'default_columns in the subclass __init__')
+                raise AttributeError(msg)
             columns = self.default_columns
         for column in columns:
             table[column] = getattr(self, column)

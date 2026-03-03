@@ -41,8 +41,9 @@ class TestDAOStarFinder:
             DAOStarFinder(threshold=3.0, fwhm=np.ones((2, 2)))
 
         match = 'fwhm must be positive'
-        with pytest.raises(ValueError, match=match):
-            DAOStarFinder(threshold=3.0, fwhm=-10)
+        for fwhm in (-10, 0):
+            with pytest.raises(ValueError, match=match):
+                DAOStarFinder(threshold=3.0, fwhm=fwhm)
 
         match = 'ratio must be positive and less than or equal to 1'
         with pytest.raises(ValueError, match=match):
@@ -232,3 +233,19 @@ class TestDAOStarFinder:
         assert tbl[0]['roundness1'] < 1.e-15
         assert tbl[0]['roundness2'] == 0.0
         assert tbl[0]['peak'] == 1.0e20
+
+    def test_data_not_mutated(self, data):
+        """Test that input data is not mutated by find_stars."""
+        data_copy = data.copy()
+        finder = DAOStarFinder(threshold=1.0, fwhm=1.5)
+        finder(data)
+        assert_array_equal(data, data_copy)
+
+    def test_data_not_mutated_with_mask(self, data):
+        """Test that input data is not mutated when a mask is used."""
+        data_copy = data.copy()
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:50] = True
+        finder = DAOStarFinder(threshold=1.0, fwhm=1.5)
+        finder(data, mask=mask)
+        assert_array_equal(data, data_copy)

@@ -34,6 +34,11 @@ class TestIRAFStarFinder:
         with pytest.raises(TypeError, match=match):
             IRAFStarFinder(threshold=3.0, fwhm=np.ones((2, 2)))
 
+        match = 'fwhm must be positive'
+        for fwhm in (-10, 0):
+            with pytest.raises(ValueError, match=match):
+                IRAFStarFinder(threshold=3.0, fwhm=fwhm)
+
         match = 'brightest must be > 0'
         with pytest.raises(ValueError, match=match):
             IRAFStarFinder(10, 1.5, brightest=-1)
@@ -223,3 +228,19 @@ class TestIRAFStarFinder:
         assert len(tbl) == 1
         assert tbl[0]['roundness'] < 1.e-15
         assert tbl[0]['peak'] == 0.8
+
+    def test_data_not_mutated(self, data):
+        """Test that input data is not mutated by find_stars."""
+        data_copy = data.copy()
+        finder = IRAFStarFinder(threshold=1.0, fwhm=1.5)
+        finder(data)
+        assert_array_equal(data, data_copy)
+
+    def test_data_not_mutated_with_mask(self, data):
+        """Test that input data is not mutated when a mask is used."""
+        data_copy = data.copy()
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:50] = True
+        finder = IRAFStarFinder(threshold=1.0, fwhm=1.5)
+        finder(data, mask=mask)
+        assert_array_equal(data, data_copy)

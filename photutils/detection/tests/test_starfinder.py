@@ -166,3 +166,23 @@ class TestStarFinder:
         finder = StarFinder(1, kernel)
         finder(data)
         assert_equal(data, data_copy)
+
+    def test_data_not_mutated_with_mask(self, data, kernel):
+        """Test that input data is not mutated when a mask is used."""
+        data = data - 5.0
+        data_copy = data.copy()
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0:50] = True
+        finder = StarFinder(1, kernel)
+        finder(data, mask=mask)
+        assert_equal(data, data_copy)
+
+    def test_quantity_with_negatives(self, data, kernel):
+        """Test StarFinder with Quantity data containing negatives."""
+        unit = u.Jy
+        data_neg = (data - 5.0) << unit
+        finder = StarFinder(1 * unit, kernel)
+        tbl = finder(data_neg)
+        assert isinstance(tbl, Table)
+        assert len(tbl) > 0
+        assert tbl['flux'].unit == unit
