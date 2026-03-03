@@ -484,6 +484,38 @@ class SourceCatalog:
         return [i[0] for i in inspect.getmembers(self.__class__,
                                                  predicate=islazyproperty)]
 
+    @staticmethod
+    def _index_object_list(lst, index):
+        """
+        Index a list of heterogeneous objects using numpy-style
+        indexing.
+
+        A numpy object array is used to support fancy and boolean
+        indices on lists of tuples or other structured objects.
+
+        A sentinel ``None`` is appended (and then removed) to prevent
+        numpy from recursing into nested sequences (e.g., tuples of
+        slices).
+
+        Parameters
+        ----------
+        lst : list
+            The list of objects to index.
+
+        index : int, slice, list, or array
+            The index to apply to the list.
+
+        Returns
+        -------
+        result : list or object
+            A list for array results or the element itself for scalar
+            (integer) indices.
+        """
+        result = np.array([*lst, None], dtype=object)[:-1][index]
+        if isinstance(result, np.ndarray):
+            return result.tolist()
+        return result
+
     def __getitem__(self, index):
         if self.isscalar:
             msg = (f'A scalar {self.__class__.__name__!r} object cannot '
@@ -514,14 +546,7 @@ class SourceCatalog:
             setattr(newcls, attr, getattr(self, attr)[index])
 
         attr = '_slices'
-        # Use a numpy object array to allow for fancy and bool indices.
-        # NOTE: None is appended to the list (and then removed) to keep
-        # the array only on the outer level (i.e., prevents recursion).
-        # Otherwise, the tuple of (y, x) slices are not preserved.
-        value = np.array([*getattr(self, attr), None],
-                         dtype=object)[:-1][index]
-        if not newcls.isscalar:
-            value = value.tolist()
+        value = self._index_object_list(getattr(self, attr), index)
         setattr(newcls, attr, value)
 
         # Slice the fluxfrac_radius cache values
@@ -554,8 +579,7 @@ class SourceCatalog:
             except TypeError:
                 # Apply fancy indices (e.g., array/list or bool
                 # mask) to lists
-                val = (np.array([*value, None],
-                                dtype=object)[:-1][index]).tolist()
+                val = self._index_object_list(value, index)
 
             newcls.__dict__[key] = val
         return newcls
