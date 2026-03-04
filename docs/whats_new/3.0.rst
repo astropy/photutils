@@ -470,9 +470,6 @@ a future version. Update your code to use the new name::
 Breaking Changes
 ----------------
 
-The ``EPSFBuilder.build_epsf()`` method has been removed. Use the
-``EPSFBuilder`` callable interface instead (i.e., ``builder(stars)``).
-
 The ``norm_radius`` keyword has been removed from
 :class:`~photutils.psf.EPSFBuilder`. This keyword is no
 longer relevant because the ePSF is now built directly as an
