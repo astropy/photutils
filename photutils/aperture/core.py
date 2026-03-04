@@ -155,8 +155,6 @@ class Aperture(metaclass=abc.ABCMeta):
         The aperture positions, as an array of (x, y) coordinates or a
         `~astropy.coordinates.SkyCoord`.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
     @lazyproperty
     def shape(self):
@@ -229,8 +227,6 @@ class PixelAperture(Aperture):
         In other words, the (x, y) extents are half of the aperture
         minimal bounding box size in each dimension.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
     @lazyproperty
     def _positions(self):
@@ -308,8 +304,6 @@ class PixelAperture(Aperture):
         --------
         area_overlap
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
     def area_overlap(self, data, *, mask=None, method='exact', subpixels=5):
         """
@@ -452,8 +446,6 @@ class PixelAperture(Aperture):
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
     def do_photometry(self, data, error=None, mask=None, method='exact',
                       subpixels=5):
@@ -678,8 +670,6 @@ class PixelAperture(Aperture):
             single `~matplotlib.patches.Patch` is returned, otherwise a
             list of `~matplotlib.patches.Patch` is returned.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
     def plot(self, ax=None, origin=(0, 0), **kwargs):
         """
@@ -792,8 +782,6 @@ class PixelAperture(Aperture):
         aperture : `SkyAperture` object
             A `SkyAperture` object.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
 
 class SkyAperture(Aperture):
@@ -876,8 +864,6 @@ class SkyAperture(Aperture):
         aperture : `PixelAperture` object
             A `PixelAperture` object.
         """
-        msg = 'Needs to be implemented in a subclass'
-        raise NotImplementedError(msg)
 
 
 def _aperture_metadata(aperture, index=''):
