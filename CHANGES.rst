@@ -237,6 +237,10 @@ API Changes
 
 - ``photutils.detection``
 
+  - Passing optional positional arguments positionally to functions
+    in the ``detection`` package is now deprecated. Instead, pass
+    optional arguments as keyword arguments. [#2215]
+
   - ``find_peaks`` now returns a ``QTable`` instead of a ``Table``.
     [#2201]
 
