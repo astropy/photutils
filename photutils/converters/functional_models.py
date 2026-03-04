@@ -15,10 +15,10 @@ class AiryDiskPSFConverter(TransformConverterBase):
     Converter for AiryDiskPSF.
     """
 
-    tags = ['tag:astropy.org:photutils/psf/airy_disk_psf-*']
-    types = ['photutils.psf.AiryDiskPSF']
+    tags = ['tag:astropy.org:photutils/psf/airy_disk_psf-*']  # noqa: RUF012
+    types = ['photutils.psf.AiryDiskPSF']  # noqa: RUF012
 
-    def to_yaml_tree_transform(self, model, tag, ctx):
+    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
         return {
             'flux': parameter_to_value(model.flux),
             'x_0': parameter_to_value(model.x_0),
@@ -27,7 +27,7 @@ class AiryDiskPSFConverter(TransformConverterBase):
             'bbox_factor': model.bbox_factor,
         }
 
-    def from_yaml_tree_transform(self, node, tag, ctx):
+    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
         from photutils.psf import AiryDiskPSF
 
         return AiryDiskPSF(
