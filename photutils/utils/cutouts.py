@@ -237,3 +237,93 @@ class CutoutImage:
         overlaps.
         """
         return self._calc_xyorigin(self.slices_original)
+
+
+def _make_cutouts(data, xpos, ypos, cutout_shape, *, fill_value=0.0):
+    """
+    Make 2D cutouts from a data array at the given positions.
+
+    Positions are rounded to the nearest integer pixel. Pixels that fall
+    outside the image boundary are filled with ``fill_value``.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The 2D image array.
+
+    xpos : 1D `~numpy.ndarray`
+        The x pixel positions of the cutout centers.
+
+    ypos : 1D `~numpy.ndarray`
+        The y pixel positions of the cutout centers.
+
+    cutout_shape : tuple of int
+        The ``(ny, nx)`` shape of each cutout.
+
+    fill_value : float, optional
+        The value used to fill pixels that fall outside the image
+        boundary. The default is 0.0. Use ``np.nan`` when out-of-bounds
+        pixels must be distinguishable from real data (e.g., for
+        sigma-clipped statistics on partial cutouts).
+
+    Returns
+    -------
+    cutouts : 3D `~numpy.ndarray`
+        A 3D array of shape ``(n_sources, ny, nx)`` containing the
+        cutout data.
+
+    overlap_mask : 3D `~numpy.ndarray` of bool
+        A boolean array with the same shape as ``cutouts``. `True`
+        indicates a pixel that came from ``data``. `False` indicates
+        a pixel that was filled with ``fill_value`` because it fell
+        outside the image boundary.
+
+        Per-source overlap status can be derived from this mask:
+
+        * Fully inside the image: ``overlap_mask[i].all()``
+        * No overlap (entirely outside): ``~overlap_mask[i].any()``
+        * Partial overlap: neither of the above
+    """
+    data = np.asarray(data)
+    if data.ndim != 2:
+        msg = 'data must be a 2D array'
+        raise ValueError(msg)
+
+    xpos = np.atleast_1d(np.asarray(xpos))
+    ypos = np.atleast_1d(np.asarray(ypos))
+    if xpos.ndim != 1 or ypos.ndim != 1:
+        msg = 'xpos and ypos must be 1D arrays'
+        raise ValueError(msg)
+
+    if len(xpos) != len(ypos):
+        msg = 'xpos and ypos must have the same length'
+        raise ValueError(msg)
+
+    if len(cutout_shape) != 2:
+        msg = 'cutout_shape must have exactly 2 elements'
+        raise ValueError(msg)
+
+    ky, kx = cutout_shape
+    hy, hx = ky // 2, kx // 2
+
+    yc = np.round(ypos).astype(int)
+    xc = np.round(xpos).astype(int)
+
+    # Build index grids: shape (n_sources, ky, kx)
+    dy = np.arange(ky) - hy
+    dx = np.arange(kx) - hx
+    y_idx = yc[:, np.newaxis, np.newaxis] + dy[np.newaxis, :, np.newaxis]
+    x_idx = xc[:, np.newaxis, np.newaxis] + dx[np.newaxis, np.newaxis, :]
+
+    # Mask of pixels inside the image boundary
+    overlap_mask = ((y_idx >= 0) & (y_idx < data.shape[0])
+                    & (x_idx >= 0) & (x_idx < data.shape[1]))
+
+    # Clip out-of-bounds indices to valid range so numpy indexing
+    # doesn't raise. The out-of-bounds pixels are replaced below.
+    y_safe = np.clip(y_idx, 0, data.shape[0] - 1)
+    x_safe = np.clip(x_idx, 0, data.shape[1] - 1)
+
+    cutouts = np.where(overlap_mask, data[y_safe, x_safe], fill_value)
+
+    return cutouts, overlap_mask

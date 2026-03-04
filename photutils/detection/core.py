@@ -22,99 +22,10 @@ from photutils.detection.peakfinder import find_peaks
 from photutils.utils._misc import _get_meta
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
+from photutils.utils.cutouts import _make_cutouts
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['StarFinderBase', 'StarFinderCatalogBase']
-
-
-def _make_cutouts(data, xpos, ypos, cutout_shape, *, fill_value=0.0):
-    """
-    Make 2D cutouts from a data array at the given positions.
-
-    Positions are rounded to the nearest integer pixel. Pixels that fall
-    outside the image boundary are filled with ``fill_value``.
-
-    Parameters
-    ----------
-    data : 2D `~numpy.ndarray`
-        The 2D image array.
-
-    xpos : 1D `~numpy.ndarray`
-        The x pixel positions of the cutout centers.
-
-    ypos : 1D `~numpy.ndarray`
-        The y pixel positions of the cutout centers.
-
-    cutout_shape : tuple of int
-        The ``(ny, nx)`` shape of each cutout.
-
-    fill_value : float, optional
-        The value used to fill pixels that fall outside the image
-        boundary. The default is 0.0. Use ``np.nan`` when out-of-bounds
-        pixels must be distinguishable from real data (e.g., for
-        sigma-clipped statistics on partial cutouts).
-
-    Returns
-    -------
-    cutouts : 3D `~numpy.ndarray`
-        A 3D array of shape ``(n_sources, ny, nx)`` containing the
-        cutout data.
-
-    overlap_mask : 3D `~numpy.ndarray` of bool
-        A boolean array with the same shape as ``cutouts``. `True`
-        indicates a pixel that came from ``data``. `False` indicates
-        a pixel that was filled with ``fill_value`` because it fell
-        outside the image boundary.
-
-        Per-source overlap status can be derived from this mask:
-
-        * Fully inside the image: ``overlap_mask[i].all()``
-        * No overlap (entirely outside): ``~overlap_mask[i].any()``
-        * Partial overlap: neither of the above
-    """
-    data = np.asarray(data)
-    if data.ndim != 2:
-        msg = 'data must be a 2D array'
-        raise ValueError(msg)
-
-    xpos = np.atleast_1d(np.asarray(xpos))
-    ypos = np.atleast_1d(np.asarray(ypos))
-    if xpos.ndim != 1 or ypos.ndim != 1:
-        msg = 'xpos and ypos must be 1D arrays'
-        raise ValueError(msg)
-
-    if len(xpos) != len(ypos):
-        msg = 'xpos and ypos must have the same length'
-        raise ValueError(msg)
-
-    if len(cutout_shape) != 2:
-        msg = 'cutout_shape must have exactly 2 elements'
-        raise ValueError(msg)
-
-    ky, kx = cutout_shape
-    hy, hx = ky // 2, kx // 2
-
-    yc = np.round(ypos).astype(int)
-    xc = np.round(xpos).astype(int)
-
-    # Build index grids: shape (n_sources, ky, kx)
-    dy = np.arange(ky) - hy
-    dx = np.arange(kx) - hx
-    y_idx = yc[:, np.newaxis, np.newaxis] + dy[np.newaxis, :, np.newaxis]
-    x_idx = xc[:, np.newaxis, np.newaxis] + dx[np.newaxis, np.newaxis, :]
-
-    # Mask of pixels inside the image boundary
-    overlap_mask = ((y_idx >= 0) & (y_idx < data.shape[0])
-                    & (x_idx >= 0) & (x_idx < data.shape[1]))
-
-    # Clip out-of-bounds indices to valid range so numpy indexing
-    # doesn't raise. The out-of-bounds pixels are replaced below.
-    y_safe = np.clip(y_idx, 0, data.shape[0] - 1)
-    x_safe = np.clip(x_idx, 0, data.shape[1] - 1)
-
-    cutouts = np.where(overlap_mask, data[y_safe, x_safe], fill_value)
-
-    return cutouts, overlap_mask
 
 
 class StarFinderBase(metaclass=abc.ABCMeta):
@@ -233,6 +144,508 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             A table of found stars. If no stars are found then `None` is
             returned.
         """
+
+
+class StarFinderCatalogBase(metaclass=abc.ABCMeta):
+    """
+    Abstract base class for star finder catalogs.
+
+    This class provides common functionality for catalog classes that
+    store and compute properties of detected sources. External packages
+    may subclass it to create custom star finder catalogs.
+
+    Subclasses **must** implement:
+
+    * :attr:`xcentroid` property -- Object centroid in the x direction.
+    * :attr:`ycentroid` property -- Object centroid in the y direction.
+    * `apply_filters` method -- Filter the catalog using
+      algorithm-specific criteria.
+    * ``default_columns`` attribute -- A tuple of column names used
+      by `to_table` when no explicit columns are given. This should
+      be set in the subclass ``__init__``.
+
+    Subclasses **may** override:
+
+    * `_get_init_attributes` -- Return attribute names to copy
+      during slicing. The override should include
+      ``'default_columns'`` in the returned tuple.
+    * `make_cutouts` -- Customize how cutout arrays are extracted.
+    * `cutout_data` -- Customize the cutouts used for photometry
+      (e.g., zeroing negative pixels).
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The 2D image. The image should be background-subtracted.
+
+    xypos : Nx2 `~numpy.ndarray`
+        An Nx2 array of (x, y) pixel coordinates denoting the central
+        positions of the stars.
+
+    kernel : 2D `~numpy.ndarray`
+        A 2D array of the PSF kernel. Internally, the star finder
+        classes may also pass a kernel object.
+
+    brightest : int, None, optional
+        The number of brightest objects to keep after sorting the source
+        list by flux. If ``brightest`` is set to `None`, all objects
+        will be selected.
+
+    peakmax : float, None, optional
+        The maximum allowed peak pixel value in an object. Objects with
+        peak pixel values greater than ``peakmax`` will be rejected.
+        This keyword may be used, for example, to exclude saturated
+        sources. If the star finder is run on an image that is a
+        `~astropy.units.Quantity` array, then ``peakmax`` must have the
+        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        value filtering will be performed.
+    """
+
+    def __init__(self, data, xypos, kernel, *, brightest=None, peakmax=None):
+        # Validate the units, but do not strip them
+        inputs = (data, peakmax)
+        names = ('data', 'peakmax')
+        _ = process_quantities(inputs, names)
+
+        self.data = data
+        unit = data.unit if isinstance(data, u.Quantity) else None
+        self.unit = unit
+        self.kernel = kernel
+        self.cutout_shape = kernel.shape
+
+        self.xypos = np.atleast_2d(xypos)
+        self.brightest = brightest
+        self.peakmax = peakmax
+
+        self.id = np.arange(len(self)) + 1
+
+    def __repr__(self):
+        params = ('nsources',)
+        overrides = {'nsources': len(self)}
+        return make_repr(self, params, brackets=True, overrides=overrides)
+
+    def __str__(self):
+        params = ('nsources',)
+        overrides = {'nsources': len(self)}
+        return make_repr(self, params, overrides=overrides, long=True)
+
+    def __len__(self):
+        return len(self.xypos)
+
+    def __getitem__(self, index):
+        """
+        Index or slice the catalog.
+
+        This method should be overridden in subclasses to handle
+        class-specific attributes.
+        """
+        # NOTE: we allow indexing/slicing of scalar (self.isscalar = True)
+        #       instances in order to perform catalog filtering even for
+        #       a single source
+
+        newcls = object.__new__(self.__class__)
+
+        # Get attributes to copy from subclass
+        init_attr = self._get_init_attributes()
+        for attr in init_attr:
+            setattr(newcls, attr, getattr(self, attr))
+
+        # xypos determines ordering and isscalar
+        # NOTE: always keep as 2D array, even for a single source
+        attr = 'xypos'
+        value = getattr(self, attr)[index]
+        setattr(newcls, attr, np.atleast_2d(value))
+
+        # Index/slice the remaining attributes
+        keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        keys.add('id')
+        for key in keys:
+            value = self.__dict__[key]
+
+            # Do not insert lazy attributes that are always scalar (e.g.,
+            # isscalar), i.e., not an array/list for each source
+            if np.isscalar(value):
+                continue
+
+            # Ensure value is always at least a 1D array, even for a
+            # single source
+            value = np.atleast_1d(value[index])
+
+            newcls.__dict__[key] = value
+
+        return newcls
+
+    def _get_init_attributes(self):
+        """
+        Return a tuple of attribute names to copy during slicing.
+
+        This method should be overridden in subclasses.
+        """
+        return ('data', 'unit', 'kernel', 'brightest', 'peakmax',
+                'cutout_shape')
+
+    @property
+    def _lazyproperties(self):
+        """
+        Return all lazyproperties (even in superclasses).
+
+        The result is cached per instance to avoid repeated
+        ``inspect.getmembers`` calls.
+        """
+        if '_lazyproperties_cache' in self.__dict__:
+            return self.__dict__['_lazyproperties_cache']
+
+        def islazyproperty(obj):
+            return isinstance(obj, lazyproperty)
+
+        result = [i[0] for i in
+                  inspect.getmembers(self.__class__,
+                                     predicate=islazyproperty)]
+        self.__dict__['_lazyproperties_cache'] = result
+        return result
+
+    @lazyproperty
+    def isscalar(self):
+        """
+        Whether the instance is scalar (e.g., a single source).
+        """
+        return self.xypos.shape == (1, 2)
+
+    def reset_ids(self):
+        """
+        Reset the ID column to be consecutive integers.
+        """
+        self.id = np.arange(len(self)) + 1
+
+    def make_cutouts(self, data):
+        """
+        Make cutouts from the data array.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The 2D image array.
+
+        Returns
+        -------
+        cutouts : 3D `~numpy.ndarray`
+            The cutout arrays.
+        """
+        data_arr = data.value if isinstance(data, u.Quantity) else data
+
+        cutouts, _ = _make_cutouts(data_arr, self.xypos[:, 0],
+                                   self.xypos[:, 1], self.cutout_shape)
+
+        if self.unit is not None:
+            cutouts <<= self.unit
+
+        return cutouts
+
+    @lazyproperty
+    def cutout_data(self):
+        """
+        The cutout data arrays.
+
+        Subclasses may override this property to customize the cutouts
+        used for moment-based photometry calculations (e.g., zeroing
+        negative pixels or subtracting a local sky background).
+        """
+        return self.make_cutouts(self.data)
+
+    @lazyproperty
+    def moments(self):
+        """
+        The raw image moments.
+        """
+        data = self.cutout_data
+        if isinstance(data, u.Quantity):
+            data = data.value
+        ky, kx = data.shape[1], data.shape[2]
+        y = np.arange(ky, dtype=float)
+        x = np.arange(kx, dtype=float)
+        ypowers = np.column_stack([np.ones(ky), y])  # (ky, 2)
+        xpowers = np.column_stack([np.ones(kx), x])  # (kx, 2)
+        # M[n, p, q] = sum_jk data[n,j,k] * y[j]^p * x[k]^q
+        return ypowers.T @ data @ xpowers
+
+    @lazyproperty
+    def moments_central(self):
+        """
+        The central image moments.
+        """
+        data = self.cutout_data
+        if isinstance(data, u.Quantity):
+            data = data.value
+        ky, kx = data.shape[1], data.shape[2]
+        y = np.arange(ky, dtype=float)
+        x = np.arange(kx, dtype=float)
+        # Per-source shifted coordinates
+        dy = y[np.newaxis, :] - self.cutout_ycentroid[:, np.newaxis]
+        dx = x[np.newaxis, :] - self.cutout_xcentroid[:, np.newaxis]
+        # Per-source power arrays: (n, ky, 3) and (n, kx, 3)
+        ypowers = np.stack([np.ones_like(dy), dy, dy**2], axis=-1)
+        xpowers = np.stack([np.ones_like(dx), dx, dx**2], axis=-1)
+        # Batched matmul: ypowers^T @ data @ xpowers per source
+        moments = (np.transpose(ypowers, (0, 2, 1)) @ data @ xpowers)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
+
+    @lazyproperty
+    def cutout_centroid(self):
+        """
+        The cutout centroids.
+        """
+        moments = self.moments
+
+        # Ignore divide-by-zero RuntimeWarning
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
+            xcentroid = moments[:, 0, 1] / moments[:, 0, 0]
+        return np.transpose((ycentroid, xcentroid))
+
+    @lazyproperty
+    def cutout_xcentroid(self):
+        """
+        The cutout x centroids.
+        """
+        return np.transpose(self.cutout_centroid)[1]
+
+    @lazyproperty
+    def cutout_ycentroid(self):
+        """
+        The cutout y centroids.
+        """
+        return np.transpose(self.cutout_centroid)[0]
+
+    @property
+    @abc.abstractmethod
+    def xcentroid(self):
+        """
+        Object centroid in the x direction.
+
+        This property must be implemented in subclasses.
+        """
+
+    @property
+    @abc.abstractmethod
+    def ycentroid(self):
+        """
+        Object centroid in the y direction.
+
+        This property must be implemented in subclasses.
+        """
+
+    @lazyproperty
+    def mu_sum(self):
+        """
+        The sum of the central moments.
+        """
+        return (self.moments_central[:, 0, 2]
+                + self.moments_central[:, 2, 0])
+
+    @lazyproperty
+    def mu_diff(self):
+        """
+        The difference of the central moments.
+        """
+        return (self.moments_central[:, 0, 2]
+                - self.moments_central[:, 2, 0])
+
+    @lazyproperty
+    def fwhm(self):
+        """
+        The FWHM of the sources.
+        """
+        return 2.0 * np.sqrt(np.log(2.0) * self.mu_sum)
+
+    @lazyproperty
+    def pa(self):
+        """
+        The position angle of the sources.
+        """
+        pa = np.rad2deg(
+            0.5 * np.arctan2(
+                2.0 * self.moments_central[:, 1, 1],
+                self.mu_diff))
+        return np.where(pa < 0, pa + 180, pa)
+
+    @lazyproperty
+    def roundness(self):
+        """
+        The roundness of the sources.
+        """
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return (np.sqrt(self.mu_diff**2
+                            + 4.0 * self.moments_central[:, 1, 1]**2)
+                    / self.mu_sum)
+
+    @lazyproperty
+    def peak(self):
+        """
+        The peak pixel values.
+        """
+        return np.max(self.cutout_data, axis=(1, 2))
+
+    @lazyproperty
+    def flux(self):
+        """
+        The instrumental fluxes.
+        """
+        return np.sum(self.cutout_data, axis=(1, 2))
+
+    @lazyproperty
+    def mag(self):
+        """
+        The instrumental magnitudes.
+        """
+        # Ignore RuntimeWarning if flux is <= 0
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            flux = self.flux
+            if isinstance(flux, u.Quantity):
+                flux = flux.value
+            return -2.5 * np.log10(flux)
+
+    def select_brightest(self):
+        """
+        Sort the catalog by the brightest fluxes and select the top
+        brightest sources.
+        """
+        newcat = self
+        if self.brightest is not None:
+            idx = np.argsort(self.flux)[::-1][:self.brightest]
+            newcat = self[idx]
+        return newcat
+
+    def _filter_finite(self, attrs, *, initial_mask=None,
+                       skip_attrs=()):
+        """
+        Filter the catalog by removing sources with non-finite values.
+
+        Parameters
+        ----------
+        attrs : tuple of str
+            Attribute names to check for finiteness.
+
+        initial_mask : 1D `~numpy.ndarray` of bool or `None`, optional
+            A pre-existing boolean mask to combine with. If `None`,
+            starts with all `True`.
+
+        skip_attrs : tuple of str, optional
+            Attribute names to skip during finiteness checking.
+
+        Returns
+        -------
+        catalog : ``self.__class__`` or `None`
+            The filtered catalog, or `None` if no sources remain.
+        """
+        if initial_mask is None:
+            mask = np.ones(len(self), dtype=bool)
+        else:
+            mask = initial_mask.copy()
+
+        for attr in attrs:
+            if attr in skip_attrs:
+                continue
+            mask &= np.isfinite(getattr(self, attr))
+        newcat = self[mask]
+
+        if len(newcat) == 0:
+            msg = 'No sources were found.'
+            warnings.warn(msg, NoDetectionsWarning)
+            return None
+
+        return newcat
+
+    def _filter_bounds(self, bounds, *, peakattr='peak'):
+        """
+        Filter the catalog by sharpness, roundness, and peakmax bounds.
+
+        Parameters
+        ----------
+        bounds : list of tuple
+            Each tuple is ``(attr_name, lo_attr, hi_attr)`` giving the
+            attribute to check and the names of the lower/upper bound
+            attributes on ``self``.
+
+        peakattr : str, optional
+            The attribute name for the peak value used for peakmax
+            filtering. The default is ``'peak'``.
+
+        Returns
+        -------
+        catalog : ``self.__class__`` or `None`
+            The filtered catalog, or `None` if no sources remain.
+        """
+        mask = np.ones(len(self), dtype=bool)
+        for attr, lo_attr, hi_attr in bounds:
+            values = getattr(self, attr)
+            mask &= (values >= getattr(self, lo_attr))
+            mask &= (values <= getattr(self, hi_attr))
+
+        if self.peakmax is not None:
+            mask &= (getattr(self, peakattr) <= self.peakmax)
+
+        newcat = self[mask]
+
+        if len(newcat) == 0:
+            msg = 'Sources were found, but none pass the filtering criteria'
+            warnings.warn(msg, NoDetectionsWarning)
+            return None
+
+        return newcat
+
+    @abc.abstractmethod
+    def apply_filters(self):
+        """
+        Filter the catalog.
+
+        This method must be implemented in subclasses to apply
+        algorithm-specific filtering criteria.
+        """
+
+    def apply_all_filters(self):
+        """
+        Apply all filters, select the brightest, and reset the source
+        IDs.
+        """
+        cat = self.apply_filters()
+        if cat is None:
+            return None
+        cat = cat.select_brightest()
+        cat.reset_ids()
+        return cat
+
+    def to_table(self, columns=None):
+        """
+        Create a QTable of catalog properties.
+
+        Parameters
+        ----------
+        columns : list of str, optional
+            List of column names to include in the table. If `None`,
+            uses ``self.default_columns``.
+
+        Returns
+        -------
+        table : `~astropy.table.QTable`
+            A table of the catalog properties.
+        """
+        table = QTable()
+        table.meta.update(_get_meta())  # keep table.meta type
+        if columns is None:
+            if not hasattr(self, 'default_columns'):
+                msg = ('default_columns attribute is not set; either '
+                       'pass explicit column names or set '
+                       'default_columns in the subclass __init__')
+                raise AttributeError(msg)
+            columns = self.default_columns
+        for column in columns:
+            table[column] = getattr(self, column)
+        return table
 
 
 class _StarFinderKernel:
@@ -434,505 +847,3 @@ def _validate_brightest(brightest):
             raise ValueError(msg)
         brightest = bright_int
     return brightest
-
-
-class StarFinderCatalogBase(metaclass=abc.ABCMeta):
-    """
-    Abstract base class for star finder catalogs.
-
-    This class provides common functionality for catalog classes that
-    store and compute properties of detected sources. External packages
-    may subclass it to create custom star finder catalogs.
-
-    Subclasses **must** implement:
-
-    * :attr:`xcentroid` property -- Object centroid in the x direction.
-    * :attr:`ycentroid` property -- Object centroid in the y direction.
-    * `apply_filters` method -- Filter the catalog using
-      algorithm-specific criteria.
-    * ``default_columns`` attribute -- A tuple of column names used
-      by `to_table` when no explicit columns are given. This should
-      be set in the subclass ``__init__``.
-
-    Subclasses **may** override:
-
-    * `_get_init_attributes` -- Return attribute names to copy
-      during slicing. The override should include
-      ``'default_columns'`` in the returned tuple.
-    * `make_cutouts` -- Customize how cutout arrays are extracted.
-    * `cutout_data` -- Customize the cutouts used for photometry
-      (e.g., zeroing negative pixels).
-
-    Parameters
-    ----------
-    data : 2D `~numpy.ndarray`
-        The 2D image. The image should be background-subtracted.
-
-    xypos : Nx2 `~numpy.ndarray`
-        An Nx2 array of (x, y) pixel coordinates denoting the central
-        positions of the stars.
-
-    kernel : 2D `~numpy.ndarray`
-        A 2D array of the PSF kernel. Internally, the star finder
-        classes may also pass a kernel object.
-
-    brightest : int, None, optional
-        The number of brightest objects to keep after sorting the source
-        list by flux. If ``brightest`` is set to `None`, all objects
-        will be selected.
-
-    peakmax : float, None, optional
-        The maximum allowed peak pixel value in an object. Objects with
-        peak pixel values greater than ``peakmax`` will be rejected.
-        This keyword may be used, for example, to exclude saturated
-        sources. If the star finder is run on an image that is a
-        `~astropy.units.Quantity` array, then ``peakmax`` must have the
-        same units. If ``peakmax`` is set to `None`, then no peak pixel
-        value filtering will be performed.
-    """
-
-    def __init__(self, data, xypos, kernel, *, brightest=None, peakmax=None):
-        # Validate the units, but do not strip them
-        inputs = (data, peakmax)
-        names = ('data', 'peakmax')
-        _ = process_quantities(inputs, names)
-
-        self.data = data
-        unit = data.unit if isinstance(data, u.Quantity) else None
-        self.unit = unit
-        self.kernel = kernel
-        self.cutout_shape = kernel.shape
-
-        self.xypos = np.atleast_2d(xypos)
-        self.brightest = brightest
-        self.peakmax = peakmax
-
-        self.id = np.arange(len(self)) + 1
-
-    def __repr__(self):
-        params = ('nsources',)
-        overrides = {'nsources': len(self)}
-        return make_repr(self, params, brackets=True, overrides=overrides)
-
-    def __str__(self):
-        params = ('nsources',)
-        overrides = {'nsources': len(self)}
-        return make_repr(self, params, overrides=overrides, long=True)
-
-    def __len__(self):
-        return len(self.xypos)
-
-    def __getitem__(self, index):
-        """
-        Index or slice the catalog.
-
-        This method should be overridden in subclasses to handle
-        class-specific attributes.
-        """
-        # NOTE: we allow indexing/slicing of scalar (self.isscalar = True)
-        #       instances in order to perform catalog filtering even for
-        #       a single source
-
-        newcls = object.__new__(self.__class__)
-
-        # Get attributes to copy from subclass
-        init_attr = self._get_init_attributes()
-        for attr in init_attr:
-            setattr(newcls, attr, getattr(self, attr))
-
-        # xypos determines ordering and isscalar
-        # NOTE: always keep as 2D array, even for a single source
-        attr = 'xypos'
-        value = getattr(self, attr)[index]
-        setattr(newcls, attr, np.atleast_2d(value))
-
-        # Index/slice the remaining attributes
-        keys = set(self.__dict__.keys()) & set(self._lazyproperties)
-        keys.add('id')
-        for key in keys:
-            value = self.__dict__[key]
-
-            # Do not insert lazy attributes that are always scalar (e.g.,
-            # isscalar), i.e., not an array/list for each source
-            if np.isscalar(value):
-                continue
-
-            # Ensure value is always at least a 1D array, even for a
-            # single source
-            value = np.atleast_1d(value[index])
-
-            newcls.__dict__[key] = value
-
-        return newcls
-
-    def _get_init_attributes(self):
-        """
-        Return a tuple of attribute names to copy during slicing.
-
-        This method should be overridden in subclasses.
-        """
-        return ('data', 'unit', 'kernel', 'brightest', 'peakmax',
-                'cutout_shape')
-
-    def make_cutouts(self, data):
-        """
-        Make cutouts from the data array.
-
-        Parameters
-        ----------
-        data : 2D `~numpy.ndarray`
-            The 2D image array.
-
-        Returns
-        -------
-        cutouts : 3D `~numpy.ndarray`
-            The cutout arrays.
-        """
-        data_arr = data.value if isinstance(data, u.Quantity) else data
-
-        cutouts, _ = _make_cutouts(data_arr, self.xypos[:, 0],
-                                   self.xypos[:, 1], self.cutout_shape)
-
-        if self.unit is not None:
-            cutouts <<= self.unit
-
-        return cutouts
-
-    @lazyproperty
-    def cutout_data(self):
-        """
-        The cutout data arrays.
-
-        Subclasses may override this property to customize the cutouts
-        used for moment-based photometry calculations (e.g., zeroing
-        negative pixels or subtracting a local sky background).
-        """
-        return self.make_cutouts(self.data)
-
-    @lazyproperty
-    def moments(self):
-        """
-        The raw image moments.
-        """
-        data = self.cutout_data
-        if isinstance(data, u.Quantity):
-            data = data.value
-        ky, kx = data.shape[1], data.shape[2]
-        y = np.arange(ky, dtype=float)
-        x = np.arange(kx, dtype=float)
-        ypowers = np.column_stack([np.ones(ky), y])  # (ky, 2)
-        xpowers = np.column_stack([np.ones(kx), x])  # (kx, 2)
-        # M[n, p, q] = sum_jk data[n,j,k] * y[j]^p * x[k]^q
-        return ypowers.T @ data @ xpowers
-
-    @lazyproperty
-    def cutout_centroid(self):
-        """
-        The cutout centroids.
-        """
-        moments = self.moments
-
-        # Ignore divide-by-zero RuntimeWarning
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
-            xcentroid = moments[:, 0, 1] / moments[:, 0, 0]
-        return np.transpose((ycentroid, xcentroid))
-
-    @lazyproperty
-    def cutout_xcentroid(self):
-        """
-        The cutout x centroids.
-        """
-        return np.transpose(self.cutout_centroid)[1]
-
-    @lazyproperty
-    def cutout_ycentroid(self):
-        """
-        The cutout y centroids.
-        """
-        return np.transpose(self.cutout_centroid)[0]
-
-    @lazyproperty
-    def moments_central(self):
-        """
-        The central image moments.
-        """
-        data = self.cutout_data
-        if isinstance(data, u.Quantity):
-            data = data.value
-        ky, kx = data.shape[1], data.shape[2]
-        y = np.arange(ky, dtype=float)
-        x = np.arange(kx, dtype=float)
-        # Per-source shifted coordinates
-        dy = y[np.newaxis, :] - self.cutout_ycentroid[:, np.newaxis]
-        dx = x[np.newaxis, :] - self.cutout_xcentroid[:, np.newaxis]
-        # Per-source power arrays: (n, ky, 3) and (n, kx, 3)
-        ypowers = np.stack([np.ones_like(dy), dy, dy**2], axis=-1)
-        xpowers = np.stack([np.ones_like(dx), dx, dx**2], axis=-1)
-        # Batched matmul: ypowers^T @ data @ xpowers per source
-        moments = (np.transpose(ypowers, (0, 2, 1)) @ data @ xpowers)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
-
-    @lazyproperty
-    def mu_sum(self):
-        """
-        The sum of the central moments.
-        """
-        return (self.moments_central[:, 0, 2]
-                + self.moments_central[:, 2, 0])
-
-    @lazyproperty
-    def mu_diff(self):
-        """
-        The difference of the central moments.
-        """
-        return (self.moments_central[:, 0, 2]
-                - self.moments_central[:, 2, 0])
-
-    @lazyproperty
-    def fwhm(self):
-        """
-        The FWHM of the sources.
-        """
-        return 2.0 * np.sqrt(np.log(2.0) * self.mu_sum)
-
-    @lazyproperty
-    def pa(self):
-        """
-        The position angle of the sources.
-        """
-        pa = np.rad2deg(
-            0.5 * np.arctan2(
-                2.0 * self.moments_central[:, 1, 1],
-                self.mu_diff))
-        return np.where(pa < 0, pa + 180, pa)
-
-    @lazyproperty
-    def roundness(self):
-        """
-        The roundness of the sources.
-        """
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            return (np.sqrt(self.mu_diff**2
-                            + 4.0 * self.moments_central[:, 1, 1]**2)
-                    / self.mu_sum)
-
-    @lazyproperty
-    def peak(self):
-        """
-        The peak pixel values.
-        """
-        return np.max(self.cutout_data, axis=(1, 2))
-
-    @lazyproperty
-    def isscalar(self):
-        """
-        Whether the instance is scalar (e.g., a single source).
-        """
-        return self.xypos.shape == (1, 2)
-
-    @property
-    def _lazyproperties(self):
-        """
-        Return all lazyproperties (even in superclasses).
-
-        The result is cached per instance to avoid repeated
-        ``inspect.getmembers`` calls.
-        """
-        if '_lazyproperties_cache' in self.__dict__:
-            return self.__dict__['_lazyproperties_cache']
-
-        def islazyproperty(obj):
-            return isinstance(obj, lazyproperty)
-
-        result = [i[0] for i in
-                  inspect.getmembers(self.__class__,
-                                     predicate=islazyproperty)]
-        self.__dict__['_lazyproperties_cache'] = result
-        return result
-
-    def reset_ids(self):
-        """
-        Reset the ID column to be consecutive integers.
-        """
-        self.id = np.arange(len(self)) + 1
-
-    @lazyproperty
-    def flux(self):
-        """
-        The instrumental fluxes.
-        """
-        return np.sum(self.cutout_data, axis=(1, 2))
-
-    @lazyproperty
-    def mag(self):
-        """
-        The instrumental magnitudes.
-        """
-        # Ignore RuntimeWarning if flux is <= 0
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            flux = self.flux
-            if isinstance(flux, u.Quantity):
-                flux = flux.value
-            return -2.5 * np.log10(flux)
-
-    @property
-    @abc.abstractmethod
-    def xcentroid(self):
-        """
-        Object centroid in the x direction.
-
-        This property must be implemented in subclasses.
-        """
-
-    @property
-    @abc.abstractmethod
-    def ycentroid(self):
-        """
-        Object centroid in the y direction.
-
-        This property must be implemented in subclasses.
-        """
-
-    def select_brightest(self):
-        """
-        Sort the catalog by the brightest fluxes and select the top
-        brightest sources.
-        """
-        newcat = self
-        if self.brightest is not None:
-            idx = np.argsort(self.flux)[::-1][:self.brightest]
-            newcat = self[idx]
-        return newcat
-
-    def _filter_finite(self, attrs, *, initial_mask=None,
-                       skip_attrs=()):
-        """
-        Filter the catalog by removing sources with non-finite values.
-
-        Parameters
-        ----------
-        attrs : tuple of str
-            Attribute names to check for finiteness.
-
-        initial_mask : 1D `~numpy.ndarray` of bool or `None`, optional
-            A pre-existing boolean mask to combine with. If `None`,
-            starts with all `True`.
-
-        skip_attrs : tuple of str, optional
-            Attribute names to skip during finiteness checking.
-
-        Returns
-        -------
-        catalog : ``self.__class__`` or `None`
-            The filtered catalog, or `None` if no sources remain.
-        """
-        if initial_mask is None:
-            mask = np.ones(len(self), dtype=bool)
-        else:
-            mask = initial_mask.copy()
-
-        for attr in attrs:
-            if attr in skip_attrs:
-                continue
-            mask &= np.isfinite(getattr(self, attr))
-        newcat = self[mask]
-
-        if len(newcat) == 0:
-            msg = 'No sources were found.'
-            warnings.warn(msg, NoDetectionsWarning)
-            return None
-
-        return newcat
-
-    def _filter_bounds(self, bounds, *, peakattr='peak'):
-        """
-        Filter the catalog by sharpness, roundness, and peakmax bounds.
-
-        Parameters
-        ----------
-        bounds : list of tuple
-            Each tuple is ``(attr_name, lo_attr, hi_attr)`` giving the
-            attribute to check and the names of the lower/upper bound
-            attributes on ``self``.
-
-        peakattr : str, optional
-            The attribute name for the peak value used for peakmax
-            filtering. The default is ``'peak'``.
-
-        Returns
-        -------
-        catalog : ``self.__class__`` or `None`
-            The filtered catalog, or `None` if no sources remain.
-        """
-        mask = np.ones(len(self), dtype=bool)
-        for attr, lo_attr, hi_attr in bounds:
-            values = getattr(self, attr)
-            mask &= (values >= getattr(self, lo_attr))
-            mask &= (values <= getattr(self, hi_attr))
-
-        if self.peakmax is not None:
-            mask &= (getattr(self, peakattr) <= self.peakmax)
-
-        newcat = self[mask]
-
-        if len(newcat) == 0:
-            msg = 'Sources were found, but none pass the filtering criteria'
-            warnings.warn(msg, NoDetectionsWarning)
-            return None
-
-        return newcat
-
-    @abc.abstractmethod
-    def apply_filters(self):
-        """
-        Filter the catalog.
-
-        This method must be implemented in subclasses to apply
-        algorithm-specific filtering criteria.
-        """
-
-    def apply_all_filters(self):
-        """
-        Apply all filters, select the brightest, and reset the source
-        IDs.
-        """
-        cat = self.apply_filters()
-        if cat is None:
-            return None
-        cat = cat.select_brightest()
-        cat.reset_ids()
-        return cat
-
-    def to_table(self, columns=None):
-        """
-        Create a QTable of catalog properties.
-
-        Parameters
-        ----------
-        columns : list of str, optional
-            List of column names to include in the table. If `None`,
-            uses ``self.default_columns``.
-
-        Returns
-        -------
-        table : `~astropy.table.QTable`
-            A table of the catalog properties.
-        """
-        table = QTable()
-        table.meta.update(_get_meta())  # keep table.meta type
-        if columns is None:
-            if not hasattr(self, 'default_columns'):
-                msg = ('default_columns attribute is not set; either '
-                       'pass explicit column names or set '
-                       'default_columns in the subclass __init__')
-                raise AttributeError(msg)
-            columns = self.default_columns
-        for column in columns:
-            table[column] = getattr(self, column)
-        return table
