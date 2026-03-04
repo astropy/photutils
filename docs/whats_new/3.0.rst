@@ -450,6 +450,11 @@ for :class:`~photutils.detection.DAOStarFinder` and
 :class:`~photutils.detection.IRAFStarFinder` are now deprecated. Use the
 ``sharpness_range=(lower, upper)`` tuple keyword instead.
 
+The ``roundlo`` and ``roundhi`` keyword arguments
+for :class:`~photutils.detection.DAOStarFinder` and
+:class:`~photutils.detection.IRAFStarFinder` are now deprecated. Use the
+``roundness_range=(lower, upper)`` tuple keyword instead.
+
 PSF Package
 ^^^^^^^^^^^
 

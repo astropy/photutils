@@ -145,8 +145,8 @@ class TestDAOStarFinder:
         Test that only the top brightest sources are selected.
         """
         brightest = 10
-        finder = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
-                               roundhi=np.inf,
+        finder = DAOStarFinder(threshold=1.0, fwhm=1.5,
+                               roundness_range=(-np.inf, np.inf),
                                sharpness_range=(-np.inf, np.inf),
                                brightest=brightest)
         tbl = finder(data)
@@ -154,8 +154,8 @@ class TestDAOStarFinder:
 
         # Combined with peakmax
         peakmax = 8
-        finder = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
-                               roundhi=np.inf,
+        finder = DAOStarFinder(threshold=1.0, fwhm=1.5,
+                               roundness_range=(-np.inf, np.inf),
                                sharpness_range=(-np.inf, np.inf),
                                brightest=brightest,
                                peakmax=peakmax)
@@ -185,10 +185,18 @@ class TestDAOStarFinder:
         Test that no sources pass the roundness criteria.
         """
         match = 'Sources were found, but none pass'
-        finder = DAOStarFinder(threshold=1, fwhm=1.0, roundlo=1.0)
+        finder = DAOStarFinder(threshold=1, fwhm=1.0,
+                               roundness_range=(1.0, 1.0))
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
+
+    @pytest.mark.parametrize('roundness_range', [0.5, (0.5,), (1, 2, 3)])
+    def test_invalid_roundness_range(self, data, roundness_range):
+        match = 'roundness_range must be a 2-element .* tuple'
+        with pytest.raises(ValueError, match=match):
+            DAOStarFinder(threshold=1, fwhm=1.0,
+                          roundness_range=roundness_range)
 
     def test_peakmax(self, data):
         """
@@ -205,11 +213,11 @@ class TestDAOStarFinder:
         Test that sources with peak >= peakmax are filtered out.
         """
         peakmax = 8
-        finder0 = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
-                                roundhi=np.inf,
+        finder0 = DAOStarFinder(threshold=1.0, fwhm=1.5,
+                                roundness_range=(-np.inf, np.inf),
                                 sharpness_range=(-np.inf, np.inf))
-        finder1 = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
-                                roundhi=np.inf,
+        finder1 = DAOStarFinder(threshold=1.0, fwhm=1.5,
+                                roundness_range=(-np.inf, np.inf),
                                 sharpness_range=(-np.inf, np.inf),
                                 peakmax=peakmax)
 
@@ -253,7 +261,7 @@ class TestDAOStarFinder:
         finder = DAOStarFinder(
             threshold=0,
             fwhm=2.5,
-            roundlo=0,
+            roundness_range=(0, 1.0),
             sharpness_range=(0.2, 1.407913491884342),
             peakmax=1.0e20,
         )
@@ -449,3 +457,22 @@ class TestDAOStarFinder:
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
                                    sharplo=0.1, sharphi=2.0)
         assert finder.sharpness_range == (0.1, 2.0)
+
+    def test_deprecated_roundlo_roundhi(self):
+        """
+        Test that the deprecated 'roundlo'/'roundhi' keywords raise a
+        warning and still work.
+        """
+        match = "The 'roundlo' and 'roundhi' parameters are deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0, roundlo=-0.5)
+        assert finder.roundness_range == (-0.5, 1.0)
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0, roundhi=0.5)
+        assert finder.roundness_range == (-1.0, 0.5)
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
+                                   roundlo=-0.5, roundhi=0.5)
+        assert finder.roundness_range == (-0.5, 0.5)

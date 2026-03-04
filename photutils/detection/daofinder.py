@@ -41,7 +41,7 @@ class DAOStarFinder(StarFinderBase):
     and y distributions of the input (unconvolved) ``data`` image.
 
     ``DAOStarFinder`` calculates the object roundness using two methods.
-    The ``roundlo`` and ``roundhi`` bounds are applied to both measures
+    The ``roundness_range`` bounds are applied to both measures
     of roundness. The first method (``roundness1``; called ``SROUND``
     in DAOFIND) is based on the source symmetry and is the ratio of a
     measure of the object's bilateral (2-fold) to four-fold symmetry.
@@ -98,13 +98,11 @@ class DAOStarFinder(StarFinderBase):
         detection. Objects with sharpness outside this range will be
         rejected. The default is ``(0.2, 1.0)``.
 
-    roundlo : float, optional
-        The lower bound on roundness for object detection. Objects
-        with roundness less than ``roundlo`` will be rejected.
-
-    roundhi : float, optional
-        The upper bound on roundness for object detection. Objects
-        with roundness greater than ``roundhi`` will be rejected.
+    roundness_range : tuple of 2 floats, optional
+        The ``(lower, upper)`` inclusive bounds on roundness for object
+        detection. Objects with roundness outside this range will be
+        rejected. Both ``roundness1`` and ``roundness2`` are tested
+        against this range. The default is ``(-1.0, 1.0)``.
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
@@ -154,6 +152,18 @@ class DAOStarFinder(StarFinderBase):
         .. deprecated:: 3.0
             Use ``sharpness_range=(lower, upper)`` instead.
 
+    roundlo : float, optional
+        The lower bound on roundness for object detection.
+
+        .. deprecated:: 3.0
+            Use ``roundness_range=(lower, upper)`` instead.
+
+    roundhi : float, optional
+        The upper bound on roundness for object detection.
+
+        .. deprecated:: 3.0
+            Use ``roundness_range=(lower, upper)`` instead.
+
     See Also
     --------
     IRAFStarFinder
@@ -187,11 +197,12 @@ class DAOStarFinder(StarFinderBase):
 
     @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
-                 sigma_radius=1.5, sharpness_range=(0.2, 1.0), roundlo=-1.0,
-                 roundhi=1.0, exclude_border=False, brightest=None,
-                 peakmax=None, xycoords=None, min_separation=0.0,
-                 scale_threshold=True, sharplo=_NODEFAULT,
-                 sharphi=_NODEFAULT):
+                 sigma_radius=1.5, sharpness_range=(0.2, 1.0),
+                 roundness_range=(-1.0, 1.0), exclude_border=False,
+                 brightest=None, peakmax=None, xycoords=None,
+                 min_separation=0.0, scale_threshold=True,
+                 sharplo=_NODEFAULT, sharphi=_NODEFAULT,
+                 roundlo=_NODEFAULT, roundhi=_NODEFAULT):
 
         # Validate the units, but do not strip them
         inputs = (threshold, peakmax)
@@ -214,10 +225,27 @@ class DAOStarFinder(StarFinderBase):
                      else sharpness_range[1])
             sharpness_range = (lower, upper)
 
+        # Handle deprecated roundlo/roundhi parameters
+        if roundlo is not _NODEFAULT or roundhi is not _NODEFAULT:
+            msg = ("The 'roundlo' and 'roundhi' parameters are deprecated "
+                   'and will be removed in a future version. Use '
+                   "'roundness_range=(lower, upper)' instead.")
+            warnings.warn(msg, AstropyDeprecationWarning)
+            lower = (roundlo if roundlo is not _NODEFAULT
+                     else roundness_range[0])
+            upper = (roundhi if roundhi is not _NODEFAULT
+                     else roundness_range[1])
+            roundness_range = (lower, upper)
+
         if np.ndim(sharpness_range) != 1 or np.size(sharpness_range) != 2:
             msg = 'sharpness_range must be a 2-element (lower, upper) tuple'
             raise ValueError(msg)
         sharpness_range = tuple(sharpness_range)
+
+        if np.ndim(roundness_range) != 1 or np.size(roundness_range) != 2:
+            msg = 'roundness_range must be a 2-element (lower, upper) tuple'
+            raise ValueError(msg)
+        roundness_range = tuple(roundness_range)
 
         self.threshold = threshold
         self.fwhm = fwhm
@@ -225,8 +253,7 @@ class DAOStarFinder(StarFinderBase):
         self.theta = theta
         self.sigma_radius = sigma_radius
         self.sharpness_range = sharpness_range
-        self.roundlo = roundlo
-        self.roundhi = roundhi
+        self.roundness_range = roundness_range
         self.exclude_border = exclude_border
         self.brightest = _validate_brightest(brightest)
         self.peakmax = peakmax
@@ -255,7 +282,7 @@ class DAOStarFinder(StarFinderBase):
 
     def _repr_str_params(self):
         params = ('threshold', 'fwhm', 'ratio', 'theta', 'sigma_radius',
-                  'sharpness_range', 'roundlo', 'roundhi',
+                  'sharpness_range', 'roundness_range',
                   'exclude_border', 'brightest', 'peakmax', 'xycoords',
                   'min_separation', 'scale_threshold')
         overrides = {}
@@ -318,8 +345,7 @@ class DAOStarFinder(StarFinderBase):
                                      self.threshold,
                                      self.kernel,
                                      sharpness_range=self.sharpness_range,
-                                     roundlo=self.roundlo,
-                                     roundhi=self.roundhi,
+                                     roundness_range=self.roundness_range,
                                      brightest=self.brightest,
                                      peakmax=self.peakmax,
                                      scale_threshold=self.scale_threshold)
@@ -420,13 +446,11 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         detection. Objects with sharpness outside this range will be
         rejected. The default is ``(0.2, 1.0)``.
 
-    roundlo : float, optional
-        The lower bound on roundness for object detection. Objects
-        with roundness less than ``roundlo`` will be rejected.
-
-    roundhi : float, optional
-        The upper bound on roundness for object detection. Objects
-        with roundness greater than ``roundhi`` will be rejected.
+    roundness_range : tuple of 2 floats, optional
+        The ``(lower, upper)`` inclusive bounds on roundness for object
+        detection. Objects with roundness outside this range will be
+        rejected. Both ``roundness1`` and ``roundness2`` are tested
+        against this range.
 
     brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
@@ -444,7 +468,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
     """
 
     def __init__(self, data, convolved_data, xypos, threshold, kernel, *,
-                 sharpness_range=(0.2, 1.0), roundlo=-1.0, roundhi=1.0,
+                 sharpness_range=(0.2, 1.0), roundness_range=(-1.0, 1.0),
                  brightest=None, peakmax=None, scale_threshold=True):
 
         # Validate the units, but do not strip them
@@ -459,8 +483,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         self.convolved_data = convolved_data
         self.threshold = threshold
         self.sharpness_range = sharpness_range
-        self.roundlo = roundlo
-        self.roundhi = roundhi
+        self.roundness_range = roundness_range
 
         if scale_threshold:
             self.threshold_eff = threshold * kernel.relerr
@@ -476,7 +499,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         Return a tuple of attribute names to copy during slicing.
         """
         return ('data', 'unit', 'convolved_data', 'kernel', 'threshold',
-                'sharpness_range', 'roundlo', 'roundhi', 'brightest',
+                'sharpness_range', 'roundness_range', 'brightest',
                 'peakmax', 'threshold_eff', 'cutout_shape',
                 'cutout_center', 'default_columns')
 
@@ -1001,7 +1024,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
 
         bounds = [
             ('sharpness', self.sharpness_range),
-            ('roundness1', (self.roundlo, self.roundhi)),
-            ('roundness2', (self.roundlo, self.roundhi)),
+            ('roundness1', self.roundness_range),
+            ('roundness2', self.roundness_range),
         ]
         return newcat._filter_bounds(bounds)

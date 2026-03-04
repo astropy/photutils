@@ -126,8 +126,8 @@ class TestIRAFStarFinder:
         Test that only the top brightest sources are selected.
         """
         brightest = 10
-        finder = IRAFStarFinder(threshold=1.0, fwhm=2, roundlo=-np.inf,
-                                roundhi=np.inf,
+        finder = IRAFStarFinder(threshold=1.0, fwhm=2,
+                                roundness_range=(-np.inf, np.inf),
                                 sharpness_range=(-np.inf, np.inf),
                                 brightest=brightest)
         tbl = finder(data)
@@ -156,10 +156,18 @@ class TestIRAFStarFinder:
         Test that no sources pass the roundness criteria.
         """
         match = 'Sources were found, but none pass'
-        finder = IRAFStarFinder(threshold=1, fwhm=1.0, roundlo=1.0)
+        finder = IRAFStarFinder(threshold=1, fwhm=1.0,
+                                roundness_range=(1.0, np.inf))
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
+
+    @pytest.mark.parametrize('roundness_range', [0.5, (0.5,), (1, 2, 3)])
+    def test_invalid_roundness_range(self, data, roundness_range):
+        match = 'roundness_range must be a 2-element .* tuple'
+        with pytest.raises(ValueError, match=match):
+            IRAFStarFinder(threshold=1, fwhm=1.0,
+                           roundness_range=roundness_range)
 
     def test_peakmax(self, data):
         """
@@ -176,11 +184,11 @@ class TestIRAFStarFinder:
         Test that sources with peak >= peakmax are filtered out.
         """
         peakmax = 8
-        finder0 = IRAFStarFinder(threshold=1.0, fwhm=2, roundlo=-np.inf,
-                                 roundhi=np.inf,
+        finder0 = IRAFStarFinder(threshold=1.0, fwhm=2,
+                                 roundness_range=(-np.inf, np.inf),
                                  sharpness_range=(-np.inf, np.inf))
-        finder1 = IRAFStarFinder(threshold=1.0, fwhm=2, roundlo=-np.inf,
-                                 roundhi=np.inf,
+        finder1 = IRAFStarFinder(threshold=1.0, fwhm=2,
+                                 roundness_range=(-np.inf, np.inf),
                                  sharpness_range=(-np.inf, np.inf),
                                  peakmax=peakmax)
 
@@ -218,7 +226,8 @@ class TestIRAFStarFinder:
         data = model1(xx, yy)
 
         # Test single source within the border region
-        finder = IRAFStarFinder(threshold=threshold, fwhm=2.0, roundlo=-0.1,
+        finder = IRAFStarFinder(threshold=threshold, fwhm=2.0,
+                                roundness_range=(-0.1, 0.2),
                                 exclude_border=True)
         with pytest.warns(NoDetectionsWarning):
             tbl = finder(data)
@@ -253,7 +262,7 @@ class TestIRAFStarFinder:
         finder = IRAFStarFinder(
             threshold=0,
             fwhm=2.5,
-            roundlo=0,
+            roundness_range=(0, 0.2),
             peakmax=0.8,
         )
         tbl = finder.find_stars(data)
@@ -375,8 +384,7 @@ class TestIRAFStarFinder:
         """
         finder = IRAFStarFinder(threshold=1.0, fwhm=2.0,
                                 sharpness_range=(-np.inf, np.inf),
-                                roundlo=-np.inf,
-                                roundhi=np.inf)
+                                roundness_range=(-np.inf, np.inf))
         cat = finder._get_raw_catalog(data)
         assert cat is not None
         nsrc = len(cat)
@@ -418,3 +426,17 @@ class TestIRAFStarFinder:
         with pytest.warns(AstropyDeprecationWarning, match=match):
             finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, sharphi=3.0)
         assert finder.sharpness_range == (0.5, 3.0)
+
+    def test_deprecated_roundlo_roundhi(self):
+        """
+        Test that the deprecated 'roundlo'/'roundhi' keywords raise a
+        warning and still work.
+        """
+        match = "The 'roundlo' and 'roundhi' parameters are deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, roundlo=-0.1)
+        assert finder.roundness_range == (-0.1, 0.2)
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, roundhi=0.5)
+        assert finder.roundness_range == (0.0, 0.5)
