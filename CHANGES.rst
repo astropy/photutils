@@ -252,6 +252,10 @@ API Changes
     ``DAOStarFinder`` and ``IRAFStarFinder`` are now deprecated. Use the
     ``roundness_range=(lower, upper)`` tuple keyword instead. [#2216]
 
+  - The ``peakmax`` keyword argument for ``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``StarFinder`` is now deprecated. Use
+    ``peak_max`` instead. [#2216]
+
 - ``photutils.profiles``
 
   - Cached Gaussian fits to the radial profile are now automatically

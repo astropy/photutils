@@ -152,13 +152,13 @@ class TestDAOStarFinder:
         tbl = finder(data)
         assert len(tbl) == brightest
 
-        # Combined with peakmax
-        peakmax = 8
+        # Combined with peak_max
+        peak_max = 8
         finder = DAOStarFinder(threshold=1.0, fwhm=1.5,
                                roundness_range=(-np.inf, np.inf),
                                sharpness_range=(-np.inf, np.inf),
                                brightest=brightest,
-                               peakmax=peakmax)
+                               peak_max=peak_max)
         tbl = finder(data)
         assert len(tbl) == 5
 
@@ -198,33 +198,33 @@ class TestDAOStarFinder:
             DAOStarFinder(threshold=1, fwhm=1.0,
                           roundness_range=roundness_range)
 
-    def test_peakmax(self, data):
+    def test_peak_max(self, data):
         """
-        Test that no sources pass the peakmax criteria.
+        Test that no sources pass the peak_max criteria.
         """
         match = 'Sources were found, but none pass'
-        finder = DAOStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
+        finder = DAOStarFinder(threshold=1, fwhm=1.0, peak_max=1.0)
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
 
-    def test_peakmax_filtering(self, data):
+    def test_peak_max_filtering(self, data):
         """
-        Test that sources with peak >= peakmax are filtered out.
+        Test that sources with peak >= peak_max are filtered out.
         """
-        peakmax = 8
+        peak_max = 8
         finder0 = DAOStarFinder(threshold=1.0, fwhm=1.5,
                                 roundness_range=(-np.inf, np.inf),
                                 sharpness_range=(-np.inf, np.inf))
         finder1 = DAOStarFinder(threshold=1.0, fwhm=1.5,
                                 roundness_range=(-np.inf, np.inf),
                                 sharpness_range=(-np.inf, np.inf),
-                                peakmax=peakmax)
+                                peak_max=peak_max)
 
         tbl0 = finder0(data)
         tbl1 = finder1(data)
         assert len(tbl0) > len(tbl1)
-        assert all(tbl1['peak'] <= peakmax)
+        assert all(tbl1['peak'] <= peak_max)
 
     def test_single_detected_source(self, data):
         """
@@ -263,7 +263,7 @@ class TestDAOStarFinder:
             fwhm=2.5,
             roundness_range=(0, 1.0),
             sharpness_range=(0.2, 1.407913491884342),
-            peakmax=1.0e20,
+            peak_max=1.0e20,
         )
         tbl = finder.find_stars(data)
 
@@ -476,3 +476,13 @@ class TestDAOStarFinder:
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
                                    roundlo=-0.5, roundhi=0.5)
         assert finder.roundness_range == (-0.5, 0.5)
+
+    def test_deprecated_peakmax(self):
+        """
+        Test that the deprecated 'peakmax' keyword raises a warning
+        and still works.
+        """
+        match = '"peakmax" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0, peakmax=100.0)
+        assert finder.peak_max == 100.0

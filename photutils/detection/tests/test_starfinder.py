@@ -7,6 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.table import Table
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_array_equal, assert_equal
 
 from photutils.detection import StarFinder
@@ -128,26 +129,26 @@ class TestStarFinder:
         fluxes = tbl['flux']
         assert fluxes[0] == np.max(fluxes)
 
-    def test_peakmax(self, data, kernel):
+    def test_peak_max(self, data, kernel):
         """
-        Test the peakmax parameter.
+        Test the peak_max parameter.
         """
-        finder1 = StarFinder(1, kernel, peakmax=None)
-        finder2 = StarFinder(1, kernel, peakmax=11)
+        finder1 = StarFinder(1, kernel, peak_max=None)
+        finder2 = StarFinder(1, kernel, peak_max=11)
         tbl1 = finder1(data)
         tbl2 = finder2(data)
         assert len(tbl1) == 25
         assert len(tbl2) == 16
 
         match = 'Sources were found, but none pass'
-        starfinder = StarFinder(10, kernel, peakmax=5)
+        starfinder = StarFinder(10, kernel, peak_max=5)
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = starfinder(data)
         assert tbl is None
 
-    def test_peakmax_limit(self):
+    def test_peak_max_limit(self):
         """
-        Test that the peakmax limit is inclusive.
+        Test that the peak_max limit is inclusive.
         """
         data = np.zeros((11, 11))
         x = 5
@@ -157,7 +158,7 @@ class TestStarFinder:
                            [0.1, 0.6, 0.1]])
         data[y - 1: y + 2, x - 1: x + 2] = kernel
 
-        finder = StarFinder(threshold=0, kernel=kernel, peakmax=0.8)
+        finder = StarFinder(threshold=0, kernel=kernel, peak_max=0.8)
         tbl = finder.find_stars(data)
 
         assert len(tbl) == 1
@@ -305,3 +306,13 @@ class TestStarFinder:
         finder = StarFinder(threshold_2d, kernel)
         tbl = finder(data << unit)
         assert len(tbl) > 0
+
+    def test_deprecated_peakmax(self, kernel):
+        """
+        Test that the deprecated 'peakmax' keyword raises a warning
+        and still works.
+        """
+        match = '"peakmax" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = StarFinder(threshold=5.0, kernel=kernel, peakmax=100.0)
+        assert finder.peak_max == 100.0

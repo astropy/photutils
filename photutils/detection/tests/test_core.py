@@ -204,7 +204,7 @@ class TestStarFinderCatalogBase:
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5]])
         cat = minimal_catalog_cls(data, xypos, kernel)
-        expected = ('data', 'unit', 'kernel', 'brightest', 'peakmax',
+        expected = ('data', 'unit', 'kernel', 'brightest', 'peak_max',
                     'cutout_shape')
         assert cat._get_init_attributes() == expected
 

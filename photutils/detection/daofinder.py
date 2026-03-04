@@ -8,6 +8,7 @@ import warnings
 import astropy.units as u
 import numpy as np
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
@@ -114,13 +115,13 @@ class DAOStarFinder(StarFinderBase):
         list by flux. If ``brightest`` is set to `None`, all objects
         will be selected.
 
-    peakmax : float, None, optional
+    peak_max : float, None, optional
         The maximum allowed peak pixel value in an object. Objects with
-        peak pixel values greater than ``peakmax`` will be rejected.
+        peak pixel values greater than ``peak_max`` will be rejected.
         This keyword may be used, for example, to exclude saturated
         sources. If the star finder is run on an image that is a
-        `~astropy.units.Quantity` array, then ``peakmax`` must have the
-        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        `~astropy.units.Quantity` array, then ``peak_max`` must have the
+        same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
 
     xycoords : `None` or Nx2 `~numpy.ndarray`, optional
@@ -171,7 +172,7 @@ class DAOStarFinder(StarFinderBase):
     Notes
     -----
     If the star finder is run on an image that is a
-    `~astropy.units.Quantity` array, then ``threshold`` and ``peakmax``
+    `~astropy.units.Quantity` array, then ``threshold`` and ``peak_max``
     must have the same units as the image.
 
     For the convolution step, this routine sets pixels beyond the
@@ -196,17 +197,18 @@ class DAOStarFinder(StarFinderBase):
     """
 
     @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
                  sigma_radius=1.5, sharpness_range=(0.2, 1.0),
                  roundness_range=(-1.0, 1.0), exclude_border=False,
-                 brightest=None, peakmax=None, xycoords=None,
+                 brightest=None, peak_max=None, xycoords=None,
                  min_separation=0.0, scale_threshold=True,
                  sharplo=_NODEFAULT, sharphi=_NODEFAULT,
                  roundlo=_NODEFAULT, roundhi=_NODEFAULT):
 
         # Validate the units, but do not strip them
-        inputs = (threshold, peakmax)
-        names = ('threshold', 'peakmax')
+        inputs = (threshold, peak_max)
+        names = ('threshold', 'peak_max')
         _ = process_quantities(inputs, names)
 
         if not isscalar(fwhm):
@@ -256,7 +258,7 @@ class DAOStarFinder(StarFinderBase):
         self.roundness_range = roundness_range
         self.exclude_border = exclude_border
         self.brightest = _validate_brightest(brightest)
-        self.peakmax = peakmax
+        self.peak_max = peak_max
 
         if min_separation < 0:
             msg = 'min_separation must be >= 0'
@@ -283,7 +285,7 @@ class DAOStarFinder(StarFinderBase):
     def _repr_str_params(self):
         params = ('threshold', 'fwhm', 'ratio', 'theta', 'sigma_radius',
                   'sharpness_range', 'roundness_range',
-                  'exclude_border', 'brightest', 'peakmax', 'xycoords',
+                  'exclude_border', 'brightest', 'peak_max', 'xycoords',
                   'min_separation', 'scale_threshold')
         overrides = {}
         if not isscalar(self.threshold):
@@ -347,7 +349,7 @@ class DAOStarFinder(StarFinderBase):
                                      sharpness_range=self.sharpness_range,
                                      roundness_range=self.roundness_range,
                                      brightest=self.brightest,
-                                     peakmax=self.peakmax,
+                                     peak_max=self.peak_max,
                                      scale_threshold=self.scale_threshold)
 
     @warn_positional_kwargs(since='3.0', until='4.0')
@@ -395,8 +397,8 @@ class DAOStarFinder(StarFinderBase):
               derived from an integrated flux.
         """
         # Validate the units, but do not strip them
-        inputs = (data, self.threshold, self.peakmax)
-        names = ('data', 'threshold', 'peakmax')
+        inputs = (data, self.threshold, self.peak_max)
+        names = ('data', 'threshold', 'peak_max')
         _ = process_quantities(inputs, names)
 
         cat = self._get_raw_catalog(data, mask=mask)
@@ -457,28 +459,28 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         list by flux. If ``brightest`` is set to `None`, all objects
         will be selected.
 
-    peakmax : float, None, optional
+    peak_max : float, None, optional
         The maximum allowed peak pixel value in an object. Objects with
-        peak pixel values greater than ``peakmax`` will be rejected.
+        peak pixel values greater than ``peak_max`` will be rejected.
         This keyword may be used, for example, to exclude saturated
         sources. If the star finder is run on an image that is a
-        `~astropy.units.Quantity` array, then ``peakmax`` must have the
-        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        `~astropy.units.Quantity` array, then ``peak_max`` must have the
+        same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
     """
 
     def __init__(self, data, convolved_data, xypos, threshold, kernel, *,
                  sharpness_range=(0.2, 1.0), roundness_range=(-1.0, 1.0),
-                 brightest=None, peakmax=None, scale_threshold=True):
+                 brightest=None, peak_max=None, scale_threshold=True):
 
         # Validate the units, but do not strip them
-        inputs = (data, convolved_data, threshold, peakmax)
-        names = ('data', 'convolved_data', 'threshold', 'peakmax')
+        inputs = (data, convolved_data, threshold, peak_max)
+        names = ('data', 'convolved_data', 'threshold', 'peak_max')
         _ = process_quantities(inputs, names)
 
         super().__init__(data, xypos, kernel,
                          brightest=brightest,
-                         peakmax=peakmax)
+                         peak_max=peak_max)
 
         self.convolved_data = convolved_data
         self.threshold = threshold
@@ -500,7 +502,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         return ('data', 'unit', 'convolved_data', 'kernel', 'threshold',
                 'sharpness_range', 'roundness_range', 'brightest',
-                'peakmax', 'threshold_eff', 'cutout_shape',
+                'peak_max', 'threshold_eff', 'cutout_shape',
                 'cutout_center', 'default_columns')
 
     @lazyproperty

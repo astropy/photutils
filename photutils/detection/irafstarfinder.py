@@ -7,6 +7,7 @@ import warnings
 
 import numpy as np
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
@@ -76,13 +77,13 @@ class IRAFStarFinder(StarFinderBase):
         list by flux. If ``brightest`` is set to `None`, all objects
         will be selected.
 
-    peakmax : float, None, optional
+    peak_max : float, None, optional
         The maximum allowed peak pixel value in an object. Objects with
-        peak pixel values greater than ``peakmax`` will be rejected.
+        peak pixel values greater than ``peak_max`` will be rejected.
         This keyword may be used, for example, to exclude saturated
         sources. If the star finder is run on an image that is a
-        `~astropy.units.Quantity` array, then ``peakmax`` must have the
-        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        `~astropy.units.Quantity` array, then ``peak_max`` must have the
+        same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
 
     xycoords : `None` or Nx2 `~numpy.ndarray`, optional
@@ -127,7 +128,7 @@ class IRAFStarFinder(StarFinderBase):
     Notes
     -----
     If the star finder is run on an image that is a
-    `~astropy.units.Quantity` array, then ``threshold`` and ``peakmax``
+    `~astropy.units.Quantity` array, then ``threshold`` and ``peak_max``
     must have the same units as the image.
 
     For the convolution step, this routine sets pixels beyond the image
@@ -157,16 +158,17 @@ class IRAFStarFinder(StarFinderBase):
     """
 
     @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
                  sharpness_range=(0.5, 2.0), roundness_range=(0.0, 0.2),
-                 exclude_border=False, brightest=None, peakmax=None,
+                 exclude_border=False, brightest=None, peak_max=None,
                  xycoords=None, min_separation=None,
                  sharplo=_NODEFAULT, sharphi=_NODEFAULT,
                  roundlo=_NODEFAULT, roundhi=_NODEFAULT):
 
         # Validate the units, but do not strip them
-        inputs = (threshold, peakmax)
-        names = ('threshold', 'peakmax')
+        inputs = (threshold, peak_max)
+        names = ('threshold', 'peak_max')
         _ = process_quantities(inputs, names)
 
         if not isscalar(fwhm):
@@ -219,7 +221,7 @@ class IRAFStarFinder(StarFinderBase):
         self.roundness_range = roundness_range
         self.exclude_border = exclude_border
         self.brightest = _validate_brightest(brightest)
-        self.peakmax = peakmax
+        self.peak_max = peak_max
 
         if xycoords is not None:
             xycoords = np.asarray(xycoords)
@@ -243,7 +245,7 @@ class IRAFStarFinder(StarFinderBase):
     def _repr_str_params(self):
         params = ('threshold', 'fwhm', 'sigma_radius', 'minsep_fwhm',
                   'sharpness_range', 'roundness_range',
-                  'exclude_border', 'brightest', 'peakmax', 'xycoords',
+                  'exclude_border', 'brightest', 'peak_max', 'xycoords',
                   'min_separation')
         overrides = {}
         if not isscalar(self.threshold):
@@ -308,7 +310,7 @@ class IRAFStarFinder(StarFinderBase):
                                       sharpness_range=self.sharpness_range,
                                       roundness_range=self.roundness_range,
                                       brightest=self.brightest,
-                                      peakmax=self.peakmax)
+                                      peak_max=self.peak_max)
 
     @warn_positional_kwargs(since='3.0', until='4.0')
     def find_stars(self, data, mask=None):
@@ -348,8 +350,8 @@ class IRAFStarFinder(StarFinderBase):
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.
         """
-        inputs = (data, self.threshold, self.peakmax)
-        names = ('data', 'threshold', 'peakmax')
+        inputs = (data, self.threshold, self.peak_max)
+        names = ('data', 'threshold', 'peak_max')
         _ = process_quantities(inputs, names)
 
         cat = self._get_raw_catalog(data, mask=mask)
@@ -403,28 +405,28 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         list by flux. If ``brightest`` is set to `None`, all objects
         will be selected.
 
-    peakmax : float, None, optional
+    peak_max : float, None, optional
         The maximum allowed peak pixel value in an object. Objects with
-        peak pixel values greater than ``peakmax`` will be rejected.
+        peak pixel values greater than ``peak_max`` will be rejected.
         This keyword may be used, for example, to exclude saturated
         sources. If the star finder is run on an image that is a
-        `~astropy.units.Quantity` array, then ``peakmax`` must have the
-        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        `~astropy.units.Quantity` array, then ``peak_max`` must have the
+        same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
     """
 
     def __init__(self, data, convolved_data, xypos, kernel, *,
                  sharpness_range=(0.2, 1.0), roundness_range=(-1.0, 1.0),
-                 brightest=None, peakmax=None):
+                 brightest=None, peak_max=None):
 
         # Validate the units, but do not strip them
-        inputs = (data, convolved_data, peakmax)
-        names = ('data', 'convolved_data', 'peakmax')
+        inputs = (data, convolved_data, peak_max)
+        names = ('data', 'convolved_data', 'peak_max')
         _ = process_quantities(inputs, names)
 
         super().__init__(data, xypos, kernel,
                          brightest=brightest,
-                         peakmax=peakmax)
+                         peak_max=peak_max)
 
         self.convolved_data = convolved_data
         self.sharpness_range = sharpness_range
@@ -440,7 +442,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         """
         return ('data', 'unit', 'convolved_data', 'kernel',
                 'sharpness_range', 'roundness_range', 'brightest',
-                'peakmax', 'cutout_shape', 'default_columns')
+                'peak_max', 'cutout_shape', 'default_columns')
 
     @lazyproperty
     def sky(self):

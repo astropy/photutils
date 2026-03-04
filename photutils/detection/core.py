@@ -17,6 +17,7 @@ import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 
 from photutils.detection.peakfinder import find_peaks
 from photutils.utils._misc import _get_meta
@@ -193,20 +194,21 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         list by flux. If ``brightest`` is set to `None`, all objects
         will be selected.
 
-    peakmax : float, None, optional
+    peak_max : float, None, optional
         The maximum allowed peak pixel value in an object. Objects with
-        peak pixel values greater than ``peakmax`` will be rejected.
+        peak pixel values greater than ``peak_max`` will be rejected.
         This keyword may be used, for example, to exclude saturated
         sources. If the star finder is run on an image that is a
-        `~astropy.units.Quantity` array, then ``peakmax`` must have the
-        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        `~astropy.units.Quantity` array, then ``peak_max`` must have the
+        same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
     """
 
-    def __init__(self, data, xypos, kernel, *, brightest=None, peakmax=None):
+    @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
+    def __init__(self, data, xypos, kernel, *, brightest=None, peak_max=None):
         # Validate the units, but do not strip them
-        inputs = (data, peakmax)
-        names = ('data', 'peakmax')
+        inputs = (data, peak_max)
+        names = ('data', 'peak_max')
         _ = process_quantities(inputs, names)
 
         self.data = data
@@ -217,7 +219,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         self.xypos = np.atleast_2d(xypos)
         self.brightest = brightest
-        self.peakmax = peakmax
+        self.peak_max = peak_max
 
         self.id = np.arange(len(self)) + 1
 
@@ -283,7 +285,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         This method should be overridden in subclasses.
         """
-        return ('data', 'unit', 'kernel', 'brightest', 'peakmax',
+        return ('data', 'unit', 'kernel', 'brightest', 'peak_max',
                 'cutout_shape')
 
     @property
@@ -564,7 +566,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     def _filter_bounds(self, bounds, *, peakattr='peak'):
         """
-        Filter the catalog by sharpness, roundness, and peakmax bounds.
+        Filter the catalog by sharpness, roundness, and peak_max bounds.
 
         Parameters
         ----------
@@ -574,7 +576,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             of the form ``(lower_bound, upper_bound)``.
 
         peakattr : str, optional
-            The attribute name for the peak value used for peakmax
+            The attribute name for the peak value used for peak_max
             filtering. The default is ``'peak'``.
 
         Returns
@@ -588,8 +590,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             mask &= (values >= min_val)
             mask &= (values <= max_val)
 
-        if self.peakmax is not None:
-            mask &= (getattr(self, peakattr) <= self.peakmax)
+        if self.peak_max is not None:
+            mask &= (getattr(self, peakattr) <= self.peak_max)
 
         newcat = self[mask]
 

@@ -169,33 +169,33 @@ class TestIRAFStarFinder:
             IRAFStarFinder(threshold=1, fwhm=1.0,
                            roundness_range=roundness_range)
 
-    def test_peakmax(self, data):
+    def test_peak_max(self, data):
         """
-        Test that no sources pass the peakmax criteria.
+        Test that no sources pass the peak_max criteria.
         """
         match = 'Sources were found, but none pass'
-        finder = IRAFStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
+        finder = IRAFStarFinder(threshold=1, fwhm=1.0, peak_max=1.0)
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
 
-    def test_peakmax_filtering(self, data):
+    def test_peak_max_filtering(self, data):
         """
-        Test that sources with peak >= peakmax are filtered out.
+        Test that sources with peak >= peak_max are filtered out.
         """
-        peakmax = 8
+        peak_max = 8
         finder0 = IRAFStarFinder(threshold=1.0, fwhm=2,
                                  roundness_range=(-np.inf, np.inf),
                                  sharpness_range=(-np.inf, np.inf))
         finder1 = IRAFStarFinder(threshold=1.0, fwhm=2,
                                  roundness_range=(-np.inf, np.inf),
                                  sharpness_range=(-np.inf, np.inf),
-                                 peakmax=peakmax)
+                                 peak_max=peak_max)
 
         tbl0 = finder0(data)
         tbl1 = finder1(data)
         assert len(tbl0) > len(tbl1)
-        assert all(tbl1['peak'] <= peakmax)
+        assert all(tbl1['peak'] <= peak_max)
 
     def test_single_detected_source(self, data):
         """
@@ -263,7 +263,7 @@ class TestIRAFStarFinder:
             threshold=0,
             fwhm=2.5,
             roundness_range=(0, 0.2),
-            peakmax=0.8,
+            peak_max=0.8,
         )
         tbl = finder.find_stars(data)
 
@@ -440,3 +440,13 @@ class TestIRAFStarFinder:
         with pytest.warns(AstropyDeprecationWarning, match=match):
             finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, roundhi=0.5)
         assert finder.roundness_range == (0.0, 0.5)
+
+    def test_deprecated_peakmax(self):
+        """
+        Test that the deprecated 'peakmax' keyword raises a warning
+        and still works.
+        """
+        match = '"peakmax" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, peakmax=100.0)
+        assert finder.peak_max == 100.0
