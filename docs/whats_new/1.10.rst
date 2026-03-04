@@ -47,9 +47,3 @@ function.
 The `~photutils.psf.GriddedPSFModel` oversampling can now be different
 in the x and y directions. The ``oversampling`` attribute is now stored
 as a 1D `numpy.ndarray` with two elements.
-
-
-Other changes
-=============
-
-Please see the :ref:`changelog` for the complete list of changes.

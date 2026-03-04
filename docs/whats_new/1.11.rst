@@ -60,9 +60,3 @@ causes issues if the ``psf_shape`` of sources overlap. This is
 a backwards-incompatible change. These methods now accept an
 ``include_localbkg`` keyword . If the previous behavior is desired, set
 ``include_localbkg=True``.
-
-
-Other changes
-=============
-
-Please see the :ref:`changelog` for the complete list of changes.

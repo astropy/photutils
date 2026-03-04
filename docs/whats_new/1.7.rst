@@ -56,10 +56,5 @@ A number of significant performance improvements have been made:
 * :meth:`~photutils.segmentation.SegmentationImage.make_source_mask`
 
 
-Other changes
-=============
-
-Please see the :ref:`changelog` for the complete list of changes.
-
 .. _Rasterio: https://rasterio.readthedocs.io/en/stable/
 .. _Shapely: https://shapely.readthedocs.io/en/stable/

@@ -15,7 +15,7 @@ of smaller improvements and bug fixes, which are described in the full
 
 
 API changes to ``RadialProfile`` and ``CurveOfGrowth``
-------------------------------------------------------
+======================================================
 
 The API for defining the radial bins for
 the `~photutils.profiles.RadialProfile` and
@@ -26,9 +26,3 @@ to the nature of this change, it was not possible to have a deprecation
 phase for the inputs to these classes. Because the changes are not
 backwards-compatible, one will need to update how these classes are
 created.
-
-
-Other changes
-=============
-
-Please see the :ref:`changelog` for the complete list of changes.

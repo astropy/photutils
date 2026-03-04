@@ -81,9 +81,3 @@ Similarly, the `~photutils.psf.STDPSFGrid` class was added to read
 STDPSF FITS files. This class can read and plot multi-detector ePSF
 grids. Note that it is merely a container for STDPDF files. It cannot be
 used as a PSF model in the photometry classes.
-
-
-Other changes
-=============
-
-Please see the :ref:`changelog` for the complete list of changes.

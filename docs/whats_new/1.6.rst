@@ -92,9 +92,3 @@ residual image. Previously, the PSF-subtraction region was always
 defined by the ``fitshape`` keyword. By default (and for backwards
 compatibility), ``subshape`` is set to `None`, which means the
 ``fitshape`` value will be used.
-
-
-Other changes
-=============
-
-Please see the :ref:`changelog` for the complete list of changes.

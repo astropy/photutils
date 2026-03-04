@@ -11,6 +11,7 @@ What's New in Photutils 1.1?
 
 Overview
 ========
+
 Photutils 1.1 is a major release that adds new functionality since the
 1.0 release. Here we highlight some of the major changes. Please see the
 :ref:`changelog` for the complete list of changes.
@@ -18,6 +19,7 @@ Photutils 1.1 is a major release that adds new functionality since the
 
 New SourceCatalog class
 =======================
+
 A new, significantly faster, `~photutils.segmentation.SourceCatalog`
 class was implemented. This new class simplifies the API and takes the
 place of the ``source_properties`` function and the ``SourceProperties``
@@ -34,6 +36,7 @@ inputs and their allowed values.
 
 Renamed properties
 ------------------
+
 Note that many of the source properties have been slightly renamed
 in the new `~photutils.segmentation.SourceCatalog` class, e.g.,
 
@@ -63,6 +66,7 @@ centroids in (x, y) order to be consistent with the tools in
 
 New methods and attributes
 --------------------------
+
 The new `~photutils.segmentation.SourceCatalog` class has the following
 new methods:
 

@@ -303,9 +303,3 @@ New Sphinx Theme
 The documentation now uses the `PyData Sphinx
 <https://pydata-sphinx-theme.readthedocs.io/>`_ theme, which is a
 modern, responsive theme that is easy to read and navigate.
-
-
-Other changes
-=============
-
-Please see the :ref:`changelog` for the complete list of changes.

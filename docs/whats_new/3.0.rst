@@ -375,8 +375,11 @@ built-in catalog infrastructure (table conversion, filtering, slicing,
 etc.).
 
 
+API Changes
+===========
+
 Removed Deprecations
-====================
+--------------------
 
 The following previously deprecated features from the
 ``background`` package have been removed:
@@ -392,10 +395,10 @@ For the ``psf`` package, the previously deprecated
 
 
 New Deprecations
-================
+----------------
 
 Background Package
-------------------
+^^^^^^^^^^^^^^^^^^
 
 The ``interpolator`` keyword argument for ``Background2D`` is
 now deprecated. When ``interpolator`` is eventually removed, the
@@ -411,7 +414,7 @@ is also significantly slower than the default interpolator based on
 be preserved in the default resizing behavior of ``Background2D``.
 
 Centroids Package
------------------
+^^^^^^^^^^^^^^^^^
 
 The ``xpeak``, ``ypeak``, and ``search_boxsize`` keyword arguments
 for :func:`~photutils.centroids.centroid_quadratic` function are now
@@ -419,7 +422,7 @@ deprecated. Use the :func:`~photutils.centroids.centroid_sources`
 function to centroid sources at specific positions.
 
 PSF Package
------------
+^^^^^^^^^^^
 
 The ``grid_from_epsfs`` helper function is now deprecated. This function
 creates a ``GriddedPSFModel`` from a list of ePSFs. Instead, use the
@@ -432,7 +435,7 @@ To customize the ePSF fitting process, use the ``fitter``,
 ``EPSFFitter`` instance.
 
 PSF Matching Package
---------------------
+^^^^^^^^^^^^^^^^^^^^
 
 The ``photutils.psf.matching`` subpackage has been moved to be a
 top-level package at ``photutils.psf_matching``. This change improves
@@ -465,7 +468,7 @@ a future version. Update your code to use the new name::
 
 
 Breaking Changes
-================
+----------------
 
 The ``EPSFBuilder.build_epsf()`` method has been removed. Use the
 ``EPSFBuilder`` callable interface instead (i.e., ``builder(stars)``).
