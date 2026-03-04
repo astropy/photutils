@@ -42,8 +42,13 @@ dependencies = [
 Homepage = 'https://github.com/astropy/photutils'
 Documentation = 'https://photutils.readthedocs.io/en/stable/'
 
+[project.entry-points]
+'asdf.extensions' = {photutils = 'photutils.extension:get_extensions'}
+'asdf.resource_mappings' = {photutils = 'photutils.extension:get_resource_mappings'}
+
 [project.optional-dependencies]
 all = [
+    'asdf-astropy',
     'bottleneck >= 1.4',
     'gwcs >= 0.20',
     'matplotlib >= 3.9',
@@ -57,6 +62,7 @@ test = [
     'pytest-astropy >= 0.11',
     'pytest-xdist >= 3.5',
     'tox >= 4.12',
+    'pytest-asdf-plugin'
 ]
 docs = [
     'photutils[all]',
@@ -94,6 +100,13 @@ include-package-data = false
 namespaces = false
 
 [tool.setuptools.package-data]
+'photutils' = [
+    'CITATION.rst',
+]
+
+'photutils.resources' = [
+    '**/**/*.yaml']
+
 'photutils.datasets' = [
     'data/*',
 ]
@@ -134,6 +147,8 @@ remote_data_strict = true
 filterwarnings = [
     'error',  # turn warnings into exceptions
 ]
+asdf_schema_root = 'photutils/resources/schemas'
+asdf_schema_tests_enabled = true
 
 [tool.coverage.run]
 omit = [
