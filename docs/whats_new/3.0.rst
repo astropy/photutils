@@ -140,8 +140,11 @@ more heavily, reproducing the regularization approach used by the
     https://ui.adsabs.harvard.edu/abs/2016A%26A...596A..63B/abstract
 
 
+Improved Profile Tools
+======================
+
 New Curve of Growth Classes
-===========================
+---------------------------
 
 Two new curve-of-growth classes have been added to the
 `~photutils.profiles` subpackage:
@@ -178,7 +181,7 @@ class, which uses concentric circular apertures.
 
 
 Moffat Fitting for Radial Profiles
-==================================
+----------------------------------
 
 :class:`~photutils.profiles.RadialProfile` now supports fitting a 1D
 Moffat model (using `~astropy.modeling.functional_models.Moffat1D`) to
@@ -208,8 +211,11 @@ Plot the fitted Moffat on the radial profile::
     >>> ax.legend()
 
 
+Improved PSF Photometry Tools
+==============================
+
 New SourceGroups class
-======================
+----------------------
 
 A new :class:`~photutils.psf.SourceGroups` class provides a convenient
 and feature-rich interface for working with source grouping results. It
@@ -238,38 +244,8 @@ IDs::
     >>> from photutils.psf import SourceGroups
     >>> groups = SourceGroups(x, y, group_ids)
 
-
-New CentroidQuadratic class
-============================
-
-A new :class:`~photutils.centroids.CentroidQuadratic`
-class provides a callable object interface to the
-:func:`~photutils.centroids.centroid_quadratic` function. This
-class allows users to create a centroid function with specific
-fit parameters that can be reused multiple times. This is
-particularly useful when passing customized centroid functions to
-:func:`~photutils.centroids.centroid_sources` or other functions that
-accept a centroid function as an argument.
-
-The class is initialized with the desired ``fit_boxsize`` parameter,
-and then can be called with ``data`` and optional ``mask`` parameter::
-
-    >>> from photutils.centroids import CentroidQuadratic
-    >>> centroid_func = CentroidQuadratic(fit_boxsize=7)
-    >>> x, y = centroid_func(data, mask=mask)
-
-This is especially beneficial when using
-:func:`~photutils.centroids.centroid_sources` with fine-tuned centroid
-parameters::
-
-    >>> from photutils.centroids import centroid_sources
-    >>> centroid_func = CentroidQuadratic(fit_boxsize=11)
-    >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
-    ...                         centroid_func=centroid_func)
-
-
 Improved Handling of Non-Finite Local Background Values in PSF Photometry
-=========================================================================
+-------------------------------------------------------------------------
 
 :class:`~photutils.psf.PSFPhotometry` and
 :class:`~photutils.psf.IterativePSFPhotometry` now gracefully handle
@@ -290,7 +266,7 @@ appropriately while still obtaining PSF fitting results where possible.
 
 
 Enhanced PSF Photometry Result Conversion Methods
-==================================================
+-------------------------------------------------
 
 The :meth:`~photutils.psf.PSFPhotometry.results_to_init_params` and
 :meth:`~photutils.psf.PSFPhotometry.results_to_model_params` methods
@@ -312,7 +288,7 @@ results for use in subsequent fitting iterations or other analyses.
 
 
 New PSF decode_flags convenience method
-=======================================
+---------------------------------------
 
 The :class:`~photutils.psf.PSFPhotometry` and
 :class:`~photutils.psf.IterativePSFPhotometry` classes now have a
@@ -324,7 +300,7 @@ were encountered during PSF fitting for each source.
 
 
 New ImagePSF shape property
-===========================
+---------------------------
 
 :class:`~photutils.psf.ImagePSF` now has a ``shape`` property that
 returns the shape of the (oversampled) PSF data array.
@@ -373,6 +349,35 @@ produced by :class:`~photutils.detection.DAOStarFinder`,
 finders can subclass ``StarFinderCatalogBase`` to leverage all the
 built-in catalog infrastructure (table conversion, filtering, slicing,
 etc.).
+
+
+New CentroidQuadratic class
+============================
+
+A new :class:`~photutils.centroids.CentroidQuadratic`
+class provides a callable object interface to the
+:func:`~photutils.centroids.centroid_quadratic` function. This
+class allows users to create a centroid function with specific
+fit parameters that can be reused multiple times. This is
+particularly useful when passing customized centroid functions to
+:func:`~photutils.centroids.centroid_sources` or other functions that
+accept a centroid function as an argument.
+
+The class is initialized with the desired ``fit_boxsize`` parameter,
+and then can be called with ``data`` and optional ``mask`` parameter::
+
+    >>> from photutils.centroids import CentroidQuadratic
+    >>> centroid_func = CentroidQuadratic(fit_boxsize=7)
+    >>> x, y = centroid_func(data, mask=mask)
+
+This is especially beneficial when using
+:func:`~photutils.centroids.centroid_sources` with fine-tuned centroid
+parameters::
+
+    >>> from photutils.centroids import centroid_sources
+    >>> centroid_func = CentroidQuadratic(fit_boxsize=11)
+    >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
+    ...                         centroid_func=centroid_func)
 
 
 API Changes
