@@ -66,7 +66,6 @@ class ApertureAttribute:
 
         An exception is raised if the value is invalid.
         """
-        raise NotImplementedError  # pragma: no cover
 
 
 class PixelPositions(ApertureAttribute):

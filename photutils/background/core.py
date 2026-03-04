@@ -193,7 +193,6 @@ class BackgroundBase(_BackgroundCommonBase, abc.ABC):
             `~numpy.ma.MaskedArray` is returned. A scalar result is
             always returned as a float.
         """
-        raise NotImplementedError  # pragma: no cover
 
 
 class BackgroundRMSBase(_BackgroundCommonBase, abc.ABC):
@@ -231,7 +230,6 @@ class BackgroundRMSBase(_BackgroundCommonBase, abc.ABC):
             `~numpy.ma.MaskedArray` is returned. A scalar result is
             always returned as a float.
         """
-        raise NotImplementedError  # pragma: no cover
 
 
 @_insert_sigma_clip_doc
