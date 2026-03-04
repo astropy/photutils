@@ -3,11 +3,17 @@
 Tests for the parameters module.
 """
 
+import warnings
+
 import numpy as np
 import pytest
+from astropy.stats import SigmaClip
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_equal
 
-from photutils.utils._parameters import SigmaClipSentinelDefault, as_pair
+from photutils.utils._parameters import (SigmaClipSentinelDefault, as_pair,
+                                         create_default_sigmaclip,
+                                         warn_positional_kwargs)
 
 
 def test_as_pair():
@@ -80,3 +86,92 @@ def test_sigmaclip_sentinel_repr():
     assert 'SigmaClip' in result
     assert '3.0' in result
     assert '10' in result
+
+
+def test_create_default_sigmaclip():
+    """
+    Test that create_default_sigmaclip returns a SigmaClip with the
+    expected default parameters.
+    """
+    sc = create_default_sigmaclip()
+    assert isinstance(sc, SigmaClip)
+    assert sc.sigma == 3.0
+    assert sc.maxiters == 10
+
+
+def test_create_default_sigmaclip_custom():
+    """
+    Test that create_default_sigmaclip respects custom parameters.
+    """
+    sc = create_default_sigmaclip(sigma=2.5, maxiters=5)
+    assert isinstance(sc, SigmaClip)
+    assert sc.sigma == 2.5
+    assert sc.maxiters == 5
+
+
+@warn_positional_kwargs(1, '1.0', '2.0')
+def _example_func(a, b=10, c=20):
+    """
+    Example function for testing warn_positional_kwargs.
+    """
+    return a + b + c
+
+
+class TestWarnPositionalKwargs:
+    """
+    Tests for the warn_positional_kwargs decorator.
+    """
+
+    def test_no_warning_at_limit(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            result = _example_func(1)
+        assert result == 31
+
+    def test_no_warning_keyword_only(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            result = _example_func(1, b=5, c=3)
+        assert result == 9
+
+    def test_warns_when_exceeded(self):
+        match = '_example_func'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            result = _example_func(1, 2)
+        assert result == 23
+
+    def test_warning_message_versions(self):
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _example_func(1, 2, 3)
+        msg = str(record[0].message)
+        assert '1.0' in msg
+        assert '2.0' in msg
+
+    def test_return_value_preserved(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            assert _example_func(5, 3, 2) == 10
+        assert _example_func(5) == 35
+
+    def test_preserves_metadata(self):
+        assert _example_func.__name__ == '_example_func'
+        assert 'Example function' in _example_func.__doc__
+
+    def test_zero_positional(self):
+        @warn_positional_kwargs(0, '1.5', '2.5')
+        def _no_pos(x=0):
+            return x
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            result = _no_pos(x=42)
+        assert result == 42
+
+        with pytest.warns(AstropyDeprecationWarning):
+            result = _no_pos(42)
+        assert result == 42
+
+    def test_negative_n_positional_raises(self):
+        match = 'n_positional must be >= 0'
+        with pytest.raises(ValueError, match=match):
+            warn_positional_kwargs(-1, '1.0', '2.0')
