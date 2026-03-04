@@ -6,6 +6,7 @@ Tests for the irafstarfinder module.
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_array_equal
 
 from photutils.detection import IRAFStarFinder
@@ -126,8 +127,9 @@ class TestIRAFStarFinder:
         """
         brightest = 10
         finder = IRAFStarFinder(threshold=1.0, fwhm=2, roundlo=-np.inf,
-                                roundhi=np.inf, sharplo=-np.inf,
-                                sharphi=np.inf, brightest=brightest)
+                                roundhi=np.inf,
+                                sharpness_range=(-np.inf, np.inf),
+                                brightest=brightest)
         tbl = finder(data)
         assert len(tbl) == brightest
 
@@ -136,10 +138,18 @@ class TestIRAFStarFinder:
         Test that no sources pass the sharpness criteria.
         """
         match = 'Sources were found, but none pass'
-        finder = IRAFStarFinder(threshold=1, fwhm=1.0, sharplo=2.0)
+        finder = IRAFStarFinder(threshold=1, fwhm=1.0,
+                                sharpness_range=(2.0, 2.0))
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
+
+    @pytest.mark.parametrize('sharpness_range', [0.5, (0.5,), (1, 2, 3)])
+    def test_invalid_sharpness_range(self, data, sharpness_range):
+        match = 'sharpness_range must be a 2-element .* tuple'
+        with pytest.raises(ValueError, match=match):
+            IRAFStarFinder(threshold=1, fwhm=1.0,
+                          sharpness_range=sharpness_range)
 
     def test_roundness(self, data):
         """
@@ -167,11 +177,12 @@ class TestIRAFStarFinder:
         """
         peakmax = 8
         finder0 = IRAFStarFinder(threshold=1.0, fwhm=2, roundlo=-np.inf,
-                                 roundhi=np.inf, sharplo=-np.inf,
-                                 sharphi=np.inf)
+                                 roundhi=np.inf,
+                                 sharpness_range=(-np.inf, np.inf))
         finder1 = IRAFStarFinder(threshold=1.0, fwhm=2, roundlo=-np.inf,
-                                 roundhi=np.inf, sharplo=-np.inf,
-                                 sharphi=np.inf, peakmax=peakmax)
+                                 roundhi=np.inf,
+                                 sharpness_range=(-np.inf, np.inf),
+                                 peakmax=peakmax)
 
         tbl0 = finder0(data)
         tbl1 = finder1(data)
@@ -362,8 +373,9 @@ class TestIRAFStarFinder:
         cutout_data_nosub, cutout_xorigin, cutout_yorigin,
         sharpness.
         """
-        finder = IRAFStarFinder(threshold=1.0, fwhm=2.0, sharplo=-np.inf,
-                                sharphi=np.inf, roundlo=-np.inf,
+        finder = IRAFStarFinder(threshold=1.0, fwhm=2.0,
+                                sharpness_range=(-np.inf, np.inf),
+                                roundlo=-np.inf,
                                 roundhi=np.inf)
         cat = finder._get_raw_catalog(data)
         assert cat is not None
@@ -392,3 +404,17 @@ class TestIRAFStarFinder:
         sharpness = cat.sharpness
         assert sharpness.shape == (nsrc,)
         assert np.all(np.isfinite(sharpness))
+
+    def test_deprecated_sharplo_sharphi(self):
+        """
+        Test that the deprecated 'sharplo'/'sharphi' keywords raise a
+        warning and still work.
+        """
+        match = "The 'sharplo' and 'sharphi' parameters are deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, sharplo=0.3)
+        assert finder.sharpness_range == (0.3, 2.0)
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, sharphi=3.0)
+        assert finder.sharpness_range == (0.5, 3.0)

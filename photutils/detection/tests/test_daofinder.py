@@ -6,6 +6,7 @@ Tests for the daofinder module.
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_array_equal
 
 from photutils.detection.daofinder import DAOStarFinder
@@ -145,16 +146,18 @@ class TestDAOStarFinder:
         """
         brightest = 10
         finder = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
-                               roundhi=np.inf, sharplo=-np.inf,
-                               sharphi=np.inf, brightest=brightest)
+                               roundhi=np.inf,
+                               sharpness_range=(-np.inf, np.inf),
+                               brightest=brightest)
         tbl = finder(data)
         assert len(tbl) == brightest
 
         # Combined with peakmax
         peakmax = 8
         finder = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
-                               roundhi=np.inf, sharplo=-np.inf,
-                               sharphi=np.inf, brightest=brightest,
+                               roundhi=np.inf,
+                               sharpness_range=(-np.inf, np.inf),
+                               brightest=brightest,
                                peakmax=peakmax)
         tbl = finder(data)
         assert len(tbl) == 5
@@ -163,11 +166,19 @@ class TestDAOStarFinder:
         """
         Test that no sources pass the sharpness criteria.
         """
+        finder = DAOStarFinder(threshold=1, fwhm=1.0,
+                               sharpness_range=(1.0, 1.0))
         match = 'Sources were found, but none pass'
-        finder = DAOStarFinder(threshold=1, fwhm=1.0, sharplo=1.0)
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
+
+    @pytest.mark.parametrize('sharpness_range', [0.5, (0.5,), (1, 2, 3)])
+    def test_invalid_sharpness_range(self, data, sharpness_range):
+        match = 'sharpness_range must be a 2-element .* tuple'
+        with pytest.raises(ValueError, match=match):
+            DAOStarFinder(threshold=1, fwhm=1.0,
+                          sharpness_range=sharpness_range)
 
     def test_roundness(self, data):
         """
@@ -195,11 +206,12 @@ class TestDAOStarFinder:
         """
         peakmax = 8
         finder0 = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
-                                roundhi=np.inf, sharplo=-np.inf,
-                                sharphi=np.inf)
+                                roundhi=np.inf,
+                                sharpness_range=(-np.inf, np.inf))
         finder1 = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
-                                roundhi=np.inf, sharplo=-np.inf,
-                                sharphi=np.inf, peakmax=peakmax)
+                                roundhi=np.inf,
+                                sharpness_range=(-np.inf, np.inf),
+                                peakmax=peakmax)
 
         tbl0 = finder0(data)
         tbl1 = finder1(data)
@@ -242,7 +254,7 @@ class TestDAOStarFinder:
             threshold=0,
             fwhm=2.5,
             roundlo=0,
-            sharphi=1.407913491884342,
+            sharpness_range=(0.2, 1.407913491884342),
             peakmax=1.0e20,
         )
         tbl = finder.find_stars(data)
@@ -418,3 +430,22 @@ class TestDAOStarFinder:
                                scale_threshold=False)
         assert 'scale_threshold=False' in repr(finder)
         assert 'scale_threshold: False' in str(finder)
+
+    def test_deprecated_sharplo_sharphi(self):
+        """
+        Test that the deprecated 'sharplo'/'sharphi' keywords raise a
+        warning and still work.
+        """
+        match = "The 'sharplo' and 'sharphi' parameters are deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0, sharplo=0.1)
+        assert finder.sharpness_range == (0.1, 1.0)
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0, sharphi=2.0)
+        assert finder.sharpness_range == (0.2, 2.0)
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
+                                   sharplo=0.1, sharphi=2.0)
+        assert finder.sharpness_range == (0.1, 2.0)

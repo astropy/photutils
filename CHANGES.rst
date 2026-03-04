@@ -244,6 +244,10 @@ API Changes
   - ``find_peaks`` now returns a ``QTable`` instead of a ``Table``.
     [#2201]
 
+  - The ``sharplo`` and ``sharphi`` keyword arguments for
+    ``DAOStarFinder`` and ``IRAFStarFinder`` are now deprecated. Use the
+    ``sharpness_range=(lower, upper)`` tuple keyword instead. [#2216]
+
 - ``photutils.profiles``
 
   - Cached Gaussian fits to the radial profile are now automatically

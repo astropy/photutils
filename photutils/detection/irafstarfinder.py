@@ -7,6 +7,7 @@ import warnings
 
 import numpy as np
 from astropy.utils import lazyproperty
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _StarFinderKernel, _validate_brightest)
@@ -17,6 +18,8 @@ from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['IRAFStarFinder']
+
+_NODEFAULT = object()
 
 
 class IRAFStarFinder(StarFinderBase):
@@ -53,13 +56,10 @@ class IRAFStarFinder(StarFinderBase):
         0.5)`` and is clipped to a minimum value of 2. Note that large
         values may result in long run times.
 
-    sharplo : float, optional
-        The lower bound on sharpness for object detection. Objects
-        with sharpness less than ``sharplo`` will be rejected.
-
-    sharphi : float, optional
-        The upper bound on sharpness for object detection. Objects
-        with sharpness greater than ``sharphi`` will be rejected.
+    sharpness_range : tuple of 2 floats, optional
+        The ``(lower, upper)`` inclusive bounds on sharpness for object
+        detection. Objects with sharpness outside this range will be
+        rejected. The default is ``(0.5, 2.0)``.
 
     roundlo : float, optional
         The lower bound on roundness for object detection. Objects
@@ -99,6 +99,18 @@ class IRAFStarFinder(StarFinderBase):
         this keyword overrides ``minsep_fwhm``. Note that large values
         may result in long run times.
 
+    sharplo : float, optional
+        The lower bound on sharpness for object detection.
+
+        .. deprecated:: 3.0
+            Use ``sharpness_range=(lower, upper)`` instead.
+
+    sharphi : float, optional
+        The upper bound on sharpness for object detection.
+
+        .. deprecated:: 3.0
+            Use ``sharpness_range=(lower, upper)`` instead.
+
     See Also
     --------
     DAOStarFinder
@@ -137,9 +149,10 @@ class IRAFStarFinder(StarFinderBase):
 
     @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
-                 sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2,
+                 sharpness_range=(0.5, 2.0), roundlo=0.0, roundhi=0.2,
                  exclude_border=False, brightest=None, peakmax=None,
-                 xycoords=None, min_separation=None):
+                 xycoords=None, min_separation=None,
+                 sharplo=_NODEFAULT, sharphi=_NODEFAULT):
 
         # Validate the units, but do not strip them
         inputs = (threshold, peakmax)
@@ -150,6 +163,23 @@ class IRAFStarFinder(StarFinderBase):
             msg = 'fwhm must be a scalar value'
             raise TypeError(msg)
 
+        # Handle deprecated sharplo/sharphi parameters
+        if sharplo is not _NODEFAULT or sharphi is not _NODEFAULT:
+            msg = ("The 'sharplo' and 'sharphi' parameters are deprecated "
+                   'and will be removed in a future version. Use '
+                   "'sharpness_range=(lower, upper)' instead.")
+            warnings.warn(msg, AstropyDeprecationWarning)
+            lower = (sharplo if sharplo is not _NODEFAULT
+                     else sharpness_range[0])
+            upper = (sharphi if sharphi is not _NODEFAULT
+                     else sharpness_range[1])
+            sharpness_range = (lower, upper)
+
+        if np.ndim(sharpness_range) != 1 or np.size(sharpness_range) != 2:
+            msg = 'sharpness_range must be a 2-element (lower, upper) tuple'
+            raise ValueError(msg)
+        sharpness_range = tuple(sharpness_range)
+
         self.threshold = threshold
         self.fwhm = fwhm
         self.sigma_radius = sigma_radius
@@ -158,8 +188,7 @@ class IRAFStarFinder(StarFinderBase):
             msg = 'minsep_fwhm must be >= 0'
             raise ValueError(msg)
         self.minsep_fwhm = minsep_fwhm
-        self.sharplo = sharplo
-        self.sharphi = sharphi
+        self.sharpness_range = sharpness_range
         self.roundlo = roundlo
         self.roundhi = roundhi
         self.exclude_border = exclude_border
@@ -187,7 +216,7 @@ class IRAFStarFinder(StarFinderBase):
 
     def _repr_str_params(self):
         params = ('threshold', 'fwhm', 'sigma_radius', 'minsep_fwhm',
-                  'sharplo', 'sharphi', 'roundlo', 'roundhi',
+                  'sharpness_range', 'roundlo', 'roundhi',
                   'exclude_border', 'brightest', 'peakmax', 'xycoords',
                   'min_separation')
         overrides = {}
@@ -246,9 +275,11 @@ class IRAFStarFinder(StarFinderBase):
             warnings.warn(msg, NoDetectionsWarning)
             return None
 
-        return _IRAFStarFinderCatalog(data, convolved_data, xypos, self.kernel,
-                                      sharplo=self.sharplo,
-                                      sharphi=self.sharphi,
+        return _IRAFStarFinderCatalog(data,
+                                      convolved_data,
+                                      xypos,
+                                      self.kernel,
+                                      sharpness_range=self.sharpness_range,
                                       roundlo=self.roundlo,
                                       roundhi=self.roundhi,
                                       brightest=self.brightest,
@@ -332,13 +363,10 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         The convolution kernel. This kernel must match the kernel used
         to create the ``convolved_data``.
 
-    sharplo : float, optional
-        The lower bound on sharpness for object detection. Objects
-        with sharpness less than ``sharplo`` will be rejected.
-
-    sharphi : float, optional
-        The upper bound on sharpness for object detection. Objects
-        with sharpness greater than ``sharphi`` will be rejected.
+    sharpness_range : tuple of 2 floats, optional
+        The ``(lower, upper)`` inclusive bounds on sharpness for object
+        detection. Objects with sharpness outside this range will be
+        rejected.
 
     roundlo : float, optional
         The lower bound on roundness for object detection. Objects
@@ -363,9 +391,9 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         value filtering will be performed.
     """
 
-    def __init__(self, data, convolved_data, xypos, kernel, *, sharplo=0.2,
-                 sharphi=1.0, roundlo=-1.0, roundhi=1.0, brightest=None,
-                 peakmax=None):
+    def __init__(self, data, convolved_data, xypos, kernel, *,
+                 sharpness_range=(0.2, 1.0), roundlo=-1.0, roundhi=1.0,
+                 brightest=None, peakmax=None):
 
         # Validate the units, but do not strip them
         inputs = (data, convolved_data, peakmax)
@@ -377,8 +405,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
                          peakmax=peakmax)
 
         self.convolved_data = convolved_data
-        self.sharplo = sharplo
-        self.sharphi = sharphi
+        self.sharpness_range = sharpness_range
         self.roundlo = roundlo
         self.roundhi = roundhi
 
@@ -391,7 +418,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         Return a tuple of attribute names to copy during slicing.
         """
         return ('data', 'unit', 'convolved_data', 'kernel',
-                'sharplo', 'sharphi', 'roundlo', 'roundhi', 'brightest',
+                'sharpness_range', 'roundlo', 'roundhi', 'brightest',
                 'peakmax', 'cutout_shape', 'default_columns')
 
     @lazyproperty
@@ -491,7 +518,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
             return None
 
         bounds = [
-            ('sharpness', 'sharplo', 'sharphi'),
-            ('roundness', 'roundlo', 'roundhi'),
+            ('sharpness', self.sharpness_range),
+            ('roundness', (self.roundlo, self.roundhi)),
         ]
         return newcat._filter_bounds(bounds)

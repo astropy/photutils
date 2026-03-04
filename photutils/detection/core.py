@@ -569,9 +569,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         Parameters
         ----------
         bounds : list of tuple
-            Each tuple is ``(attr_name, lo_attr, hi_attr)`` giving the
-            attribute to check and the names of the lower/upper bound
-            attributes on ``self``.
+            Each tuple is ``(attr_name, range)`` giving the attribute to
+            check and the range of allowed values. The range is a tuple
+            of the form ``(lower_bound, upper_bound)``.
 
         peakattr : str, optional
             The attribute name for the peak value used for peakmax
@@ -583,10 +583,10 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             The filtered catalog, or `None` if no sources remain.
         """
         mask = np.ones(len(self), dtype=bool)
-        for attr, lo_attr, hi_attr in bounds:
+        for attr, (min_val, max_val) in bounds:
             values = getattr(self, attr)
-            mask &= (values >= getattr(self, lo_attr))
-            mask &= (values <= getattr(self, hi_attr))
+            mask &= (values >= min_val)
+            mask &= (values <= max_val)
 
         if self.peakmax is not None:
             mask &= (getattr(self, peakattr) <= self.peakmax)

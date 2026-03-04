@@ -442,6 +442,14 @@ for :func:`~photutils.centroids.centroid_quadratic` function are now
 deprecated. Use the :func:`~photutils.centroids.centroid_sources`
 function to centroid sources at specific positions.
 
+Detection Package
+^^^^^^^^^^^^^^^^^
+
+The ``sharplo`` and ``sharphi`` keyword arguments
+for :class:`~photutils.detection.DAOStarFinder` and
+:class:`~photutils.detection.IRAFStarFinder` are now deprecated. Use the
+``sharpness_range=(lower, upper)`` tuple keyword instead.
+
 PSF Package
 ^^^^^^^^^^^
 
