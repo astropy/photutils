@@ -42,13 +42,13 @@ class TestIRAFStarFinder:
             with pytest.raises(ValueError, match=match):
                 IRAFStarFinder(threshold=3.0, fwhm=fwhm)
 
-        match = 'brightest must be > 0'
+        match = 'n_brightest must be > 0'
         with pytest.raises(ValueError, match=match):
-            IRAFStarFinder(10, 1.5, brightest=-1)
+            IRAFStarFinder(10, 1.5, n_brightest=-1)
 
-        match = 'brightest must be an integer'
+        match = 'n_brightest must be an integer'
         with pytest.raises(ValueError, match=match):
-            IRAFStarFinder(10, 1.5, brightest=3.1)
+            IRAFStarFinder(10, 1.5, n_brightest=3.1)
 
         match = 'minsep_fwhm must be >= 0'
         with pytest.raises(ValueError, match=match):
@@ -121,17 +121,17 @@ class TestIRAFStarFinder:
         with pytest.raises(ValueError, match=match):
             IRAFStarFinder(threshold=10, fwhm=1.5, min_separation=-1.0)
 
-    def test_brightest_filtering(self, data):
+    def test_n_brightest_filtering(self, data):
         """
-        Test that only the top brightest sources are selected.
+        Test that only the top n_brightest sources are selected.
         """
-        brightest = 10
+        n_brightest = 10
         finder = IRAFStarFinder(threshold=1.0, fwhm=2,
                                 roundness_range=(-np.inf, np.inf),
                                 sharpness_range=(-np.inf, np.inf),
-                                brightest=brightest)
+                                n_brightest=n_brightest)
         tbl = finder(data)
-        assert len(tbl) == brightest
+        assert len(tbl) == n_brightest
 
     def test_sharpness(self, data):
         """
@@ -201,7 +201,7 @@ class TestIRAFStarFinder:
         """
         Test detection and slicing with a single source.
         """
-        finder = IRAFStarFinder(8.4, 2, brightest=1)
+        finder = IRAFStarFinder(8.4, 2, n_brightest=1)
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50] = True
         tbl = finder(data, mask=mask)
@@ -440,6 +440,16 @@ class TestIRAFStarFinder:
         with pytest.warns(AstropyDeprecationWarning, match=match):
             finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, roundhi=0.5)
         assert finder.roundness_range == (0.0, 0.5)
+
+    def test_deprecated_brightest(self):
+        """
+        Test that the deprecated 'brightest' keyword raises a warning
+        and still works.
+        """
+        match = '"brightest" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, brightest=5)
+        assert finder.n_brightest == 5
 
     def test_deprecated_peakmax(self):
         """

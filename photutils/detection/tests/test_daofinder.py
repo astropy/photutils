@@ -56,13 +56,13 @@ class TestDAOStarFinder:
         with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=3.0, fwhm=2, sigma_radius=-10)
 
-        match = 'brightest must be > 0'
+        match = 'n_brightest must be > 0'
         with pytest.raises(ValueError, match=match):
-            DAOStarFinder(threshold=10, fwhm=1.5, brightest=-1)
+            DAOStarFinder(threshold=10, fwhm=1.5, n_brightest=-1)
 
-        match = 'brightest must be an integer'
+        match = 'n_brightest must be an integer'
         with pytest.raises(ValueError, match=match):
-            DAOStarFinder(threshold=10, fwhm=1.5, brightest=3.1)
+            DAOStarFinder(threshold=10, fwhm=1.5, n_brightest=3.1)
 
         xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
         match = 'xycoords must be shaped as an Nx2 array'
@@ -144,20 +144,20 @@ class TestDAOStarFinder:
         """
         Test that only the top brightest sources are selected.
         """
-        brightest = 10
+        n_brightest = 10
         finder = DAOStarFinder(threshold=1.0, fwhm=1.5,
                                roundness_range=(-np.inf, np.inf),
                                sharpness_range=(-np.inf, np.inf),
-                               brightest=brightest)
+                               n_brightest=n_brightest)
         tbl = finder(data)
-        assert len(tbl) == brightest
+        assert len(tbl) == n_brightest
 
         # Combined with peak_max
         peak_max = 8
         finder = DAOStarFinder(threshold=1.0, fwhm=1.5,
                                roundness_range=(-np.inf, np.inf),
                                sharpness_range=(-np.inf, np.inf),
-                               brightest=brightest,
+                               n_brightest=n_brightest,
                                peak_max=peak_max)
         tbl = finder(data)
         assert len(tbl) == 5
@@ -230,7 +230,7 @@ class TestDAOStarFinder:
         """
         Test detection and slicing with a single source.
         """
-        finder = DAOStarFinder(7.9, 2, brightest=1)
+        finder = DAOStarFinder(7.9, 2, n_brightest=1)
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50] = True
         tbl = finder(data, mask=mask)
@@ -476,6 +476,16 @@ class TestDAOStarFinder:
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
                                    roundlo=-0.5, roundhi=0.5)
         assert finder.roundness_range == (-0.5, 0.5)
+
+    def test_deprecated_brightest(self):
+        """
+        Test that the deprecated 'brightest' keyword raises a warning
+        and still works.
+        """
+        match = '"brightest" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0, brightest=5)
+        assert finder.n_brightest == 5
 
     def test_deprecated_peakmax(self):
         """

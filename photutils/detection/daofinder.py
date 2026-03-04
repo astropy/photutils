@@ -12,7 +12,7 @@ from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
-                                      _StarFinderKernel, _validate_brightest)
+                                      _StarFinderKernel, _validate_n_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import isscalar, process_quantities
@@ -110,9 +110,9 @@ class DAOStarFinder(StarFinderBase):
         the convolution kernel from the image borders. The default is
         `False`, which is the mode used by DAOFIND.
 
-    brightest : int, None, optional
+    n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
-        list by flux. If ``brightest`` is set to `None`, all objects
+        list by flux. If ``n_brightest`` is set to `None`, all objects
         will be selected.
 
     peak_max : float, None, optional
@@ -197,11 +197,12 @@ class DAOStarFinder(StarFinderBase):
     """
 
     @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
     @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
                  sigma_radius=1.5, sharpness_range=(0.2, 1.0),
                  roundness_range=(-1.0, 1.0), exclude_border=False,
-                 brightest=None, peak_max=None, xycoords=None,
+                 n_brightest=None, peak_max=None, xycoords=None,
                  min_separation=0.0, scale_threshold=True,
                  sharplo=_NODEFAULT, sharphi=_NODEFAULT,
                  roundlo=_NODEFAULT, roundhi=_NODEFAULT):
@@ -257,7 +258,7 @@ class DAOStarFinder(StarFinderBase):
         self.sharpness_range = sharpness_range
         self.roundness_range = roundness_range
         self.exclude_border = exclude_border
-        self.brightest = _validate_brightest(brightest)
+        self.n_brightest = _validate_n_brightest(n_brightest)
         self.peak_max = peak_max
 
         if min_separation < 0:
@@ -285,7 +286,7 @@ class DAOStarFinder(StarFinderBase):
     def _repr_str_params(self):
         params = ('threshold', 'fwhm', 'ratio', 'theta', 'sigma_radius',
                   'sharpness_range', 'roundness_range',
-                  'exclude_border', 'brightest', 'peak_max', 'xycoords',
+                  'exclude_border', 'n_brightest', 'peak_max', 'xycoords',
                   'min_separation', 'scale_threshold')
         overrides = {}
         if not isscalar(self.threshold):
@@ -348,7 +349,7 @@ class DAOStarFinder(StarFinderBase):
                                      self.kernel,
                                      sharpness_range=self.sharpness_range,
                                      roundness_range=self.roundness_range,
-                                     brightest=self.brightest,
+                                     n_brightest=self.n_brightest,
                                      peak_max=self.peak_max,
                                      scale_threshold=self.scale_threshold)
 
@@ -454,9 +455,9 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         rejected. Both ``roundness1`` and ``roundness2`` are tested
         against this range.
 
-    brightest : int, None, optional
+    n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
-        list by flux. If ``brightest`` is set to `None`, all objects
+        list by flux. If ``n_brightest`` is set to `None`, all objects
         will be selected.
 
     peak_max : float, None, optional
@@ -471,7 +472,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
 
     def __init__(self, data, convolved_data, xypos, threshold, kernel, *,
                  sharpness_range=(0.2, 1.0), roundness_range=(-1.0, 1.0),
-                 brightest=None, peak_max=None, scale_threshold=True):
+                 n_brightest=None, peak_max=None, scale_threshold=True):
 
         # Validate the units, but do not strip them
         inputs = (data, convolved_data, threshold, peak_max)
@@ -479,7 +480,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         _ = process_quantities(inputs, names)
 
         super().__init__(data, xypos, kernel,
-                         brightest=brightest,
+                         n_brightest=n_brightest,
                          peak_max=peak_max)
 
         self.convolved_data = convolved_data
@@ -501,7 +502,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         Return a tuple of attribute names to copy during slicing.
         """
         return ('data', 'unit', 'convolved_data', 'kernel', 'threshold',
-                'sharpness_range', 'roundness_range', 'brightest',
+                'sharpness_range', 'roundness_range', 'n_brightest',
                 'peak_max', 'threshold_eff', 'cutout_shape',
                 'cutout_center', 'default_columns')
 

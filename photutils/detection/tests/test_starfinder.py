@@ -46,12 +46,12 @@ class TestStarFinder:
         match = 'min_separation must be >= 0'
         with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, min_separation=-1)
-        match = 'brightest must be > 0'
+        match = 'n_brightest must be > 0'
         with pytest.raises(ValueError, match=match):
-            StarFinder(1, kernel, brightest=-1)
-        match = 'brightest must be an integer'
+            StarFinder(1, kernel, n_brightest=-1)
+        match = 'n_brightest must be an integer'
         with pytest.raises(ValueError, match=match):
-            StarFinder(1, kernel, brightest=3.1)
+            StarFinder(1, kernel, n_brightest=3.1)
 
     @pytest.mark.parametrize('ndim', [1, 3])
     def test_kernel_not_2d(self, ndim):
@@ -119,11 +119,11 @@ class TestStarFinder:
         assert len(tbl1) == 25
         assert len(tbl2) == 20
 
-    def test_brightest(self, data, kernel):
+    def test_n_brightest(self, data, kernel):
         """
-        Test the brightest parameter.
+        Test the n_brightest parameter.
         """
-        finder = StarFinder(1, kernel, brightest=10)
+        finder = StarFinder(1, kernel, n_brightest=10)
         tbl = finder(data)
         assert len(tbl) == 10
         fluxes = tbl['flux']
@@ -168,7 +168,7 @@ class TestStarFinder:
         """
         Test detection and slicing with a single source.
         """
-        finder = StarFinder(11.5, kernel, brightest=1)
+        finder = StarFinder(11.5, kernel, n_brightest=1)
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50] = True
         tbl = finder(data, mask=mask)
@@ -244,7 +244,7 @@ class TestStarFinder:
         assert 'StarFinder(' in repr_
         assert 'threshold=5.0' in repr_
         assert '<array; shape=' in repr_
-        assert 'brightest=None' in repr_
+        assert 'n_brightest=None' in repr_
 
     def test_str(self, kernel):
         """
@@ -306,6 +306,16 @@ class TestStarFinder:
         finder = StarFinder(threshold_2d, kernel)
         tbl = finder(data << unit)
         assert len(tbl) > 0
+
+    def test_deprecated_brightest(self, kernel):
+        """
+        Test that the deprecated 'brightest' keyword raises a warning
+        and still works.
+        """
+        match = '"brightest" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = StarFinder(threshold=5.0, kernel=kernel, brightest=5)
+        assert finder.n_brightest == 5
 
     def test_deprecated_peakmax(self, kernel):
         """

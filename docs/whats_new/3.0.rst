@@ -461,6 +461,12 @@ The ``peakmax`` keyword argument for
 :class:`~photutils.detection.StarFinder` is now deprecated. Use
 ``peak_max`` instead.
 
+The ``brightest`` keyword argument for
+:class:`~photutils.detection.DAOStarFinder`,
+:class:`~photutils.detection.IRAFStarFinder`, and
+:class:`~photutils.detection.StarFinder` is now deprecated. Use
+``n_brightest`` instead.
+
 PSF Package
 ^^^^^^^^^^^
 

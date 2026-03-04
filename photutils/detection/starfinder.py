@@ -10,7 +10,7 @@ from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
 
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
-                                      _validate_brightest)
+                                      _validate_n_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import process_quantities
@@ -45,9 +45,9 @@ class StarFinder(StarFinderBase):
         Whether to exclude sources found within half the size of the
         convolution kernel from the image borders.
 
-    brightest : int, None, optional
+    n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
-        list by flux. If ``brightest`` is set to `None`, all objects
+        list by flux. If ``n_brightest`` is set to `None`, all objects
         will be selected.
 
     peak_max : float, None, optional
@@ -76,9 +76,10 @@ class StarFinder(StarFinderBase):
     """
 
     @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
     @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
     def __init__(self, threshold, kernel, min_separation=5.0,
-                 exclude_border=False, brightest=None, peak_max=None):
+                 exclude_border=False, n_brightest=None, peak_max=None):
 
         # Validate the units, but do not strip them
         inputs = (threshold, peak_max)
@@ -98,12 +99,12 @@ class StarFinder(StarFinderBase):
             raise ValueError(msg)
         self.min_separation = min_separation
         self.exclude_border = exclude_border
-        self.brightest = _validate_brightest(brightest)
+        self.n_brightest = _validate_n_brightest(n_brightest)
         self.peak_max = peak_max
 
     def _repr_str_params(self):
         params = ('threshold', 'kernel', 'min_separation',
-                  'exclude_border', 'brightest', 'peak_max')
+                  'exclude_border', 'n_brightest', 'peak_max')
         overrides = {'kernel': f'<array; shape={self.kernel.shape}>'}
         if not np.isscalar(self.threshold):
             overrides['threshold'] = (
@@ -159,7 +160,7 @@ class StarFinder(StarFinderBase):
             return None
 
         return _StarFinderCatalog(data, xypos, self.kernel,
-                                  brightest=self.brightest,
+                                  n_brightest=self.n_brightest,
                                   peak_max=self.peak_max)
 
     @warn_positional_kwargs(since='3.0', until='4.0')
@@ -227,9 +228,9 @@ class _StarFinderCatalog(StarFinderCatalogBase):
     kernel: 2D `~numpy.ndarray`
         A 2D array of the PSF kernel.
 
-    brightest : int, None, optional
+    n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
-        list by flux. If ``brightest`` is set to `None`, all objects
+        list by flux. If ``n_brightest`` is set to `None`, all objects
         will be selected.
 
     peak_max : float, None, optional
@@ -242,10 +243,10 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         value filtering will be performed.
     """
 
-    def __init__(self, data, xypos, kernel, *, brightest=None,
+    def __init__(self, data, xypos, kernel, *, n_brightest=None,
                  peak_max=None):
         super().__init__(data, xypos, kernel,
-                         brightest=brightest,
+                         n_brightest=n_brightest,
                          peak_max=peak_max)
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'roundness', 'pa', 'max_value', 'flux', 'mag')
@@ -254,7 +255,7 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         """
         Return a tuple of attribute names to copy during slicing.
         """
-        return ('data', 'unit', 'kernel', 'brightest', 'peak_max',
+        return ('data', 'unit', 'kernel', 'n_brightest', 'peak_max',
                 'cutout_shape', 'default_columns')
 
     @lazyproperty

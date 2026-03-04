@@ -189,9 +189,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         A 2D array of the PSF kernel. Internally, the star finder
         classes may also pass a kernel object.
 
-    brightest : int, None, optional
+    n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
-        list by flux. If ``brightest`` is set to `None`, all objects
+        list by flux. If ``n_brightest`` is set to `None`, all objects
         will be selected.
 
     peak_max : float, None, optional
@@ -204,8 +204,10 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         value filtering will be performed.
     """
 
+    @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
     @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
-    def __init__(self, data, xypos, kernel, *, brightest=None, peak_max=None):
+    def __init__(self, data, xypos, kernel, *, n_brightest=None,
+                 peak_max=None):
         # Validate the units, but do not strip them
         inputs = (data, peak_max)
         names = ('data', 'peak_max')
@@ -218,7 +220,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         self.cutout_shape = kernel.shape
 
         self.xypos = np.atleast_2d(xypos)
-        self.brightest = brightest
+        self.n_brightest = n_brightest
         self.peak_max = peak_max
 
         self.id = np.arange(len(self)) + 1
@@ -285,7 +287,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         This method should be overridden in subclasses.
         """
-        return ('data', 'unit', 'kernel', 'brightest', 'peak_max',
+        return ('data', 'unit', 'kernel', 'n_brightest', 'peak_max',
                 'cutout_shape')
 
     @property
@@ -519,8 +521,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         brightest sources.
         """
         newcat = self
-        if self.brightest is not None:
-            idx = np.argsort(self.flux)[::-1][:self.brightest]
+        if self.n_brightest is not None:
+            idx = np.argsort(self.flux)[::-1][:self.n_brightest]
             newcat = self[idx]
         return newcat
 
@@ -825,29 +827,29 @@ class _StarFinderKernel:
         return make_repr(self, params, long=True)
 
 
-def _validate_brightest(brightest):
+def _validate_n_brightest(n_brightest):
     """
-    Validate the ``brightest`` parameter.
+    Validate the ``n_brightest`` parameter.
 
     It must be >0 and an integer.
 
     Parameters
     ----------
-    brightest : int, None, or bool
+    n_brightest : int, None, or bool
         The number of brightest sources to select. If `None`, all
         sources are selected. If a boolean is passed, a `TypeError` is
         raised.
     """
-    if brightest is not None:
-        if isinstance(brightest, bool):
-            msg = 'brightest must be an integer'
+    if n_brightest is not None:
+        if isinstance(n_brightest, bool):
+            msg = 'n_brightest must be an integer'
             raise TypeError(msg)
-        if brightest <= 0:
-            msg = 'brightest must be > 0'
+        if n_brightest <= 0:
+            msg = 'n_brightest must be > 0'
             raise ValueError(msg)
-        bright_int = int(brightest)
-        if bright_int != brightest:
-            msg = 'brightest must be an integer'
+        bright_int = int(n_brightest)
+        if bright_int != n_brightest:
+            msg = 'n_brightest must be an integer'
             raise ValueError(msg)
-        brightest = bright_int
-    return brightest
+        n_brightest = bright_int
+    return n_brightest

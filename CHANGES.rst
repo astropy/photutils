@@ -256,6 +256,10 @@ API Changes
     ``IRAFStarFinder``, and ``StarFinder`` is now deprecated. Use
     ``peak_max`` instead. [#2216]
 
+  - The ``brightest`` keyword argument for ``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``StarFinder`` is now deprecated. Use
+    ``n_brightest`` instead. [#2216]
+
 - ``photutils.profiles``
 
   - Cached Gaussian fits to the radial profile are now automatically
