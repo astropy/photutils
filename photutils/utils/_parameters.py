@@ -14,12 +14,17 @@ from astropy.utils.exceptions import AstropyDeprecationWarning
 class SigmaClipSentinelDefault:
     """
     A sentinel object to indicate the default value for sigma_clip.
+
+    Parameters
+    ----------
+    sigma : float, optional
+        The number of standard deviations for the clipping limit.
+
+    maxiters : int, optional
+        The maximum number of sigma-clipping iterations.
     """
 
     def __init__(self, sigma=3.0, maxiters=10):
-        """
-        Initialize the sentinel with default SigmaClip parameters.
-        """
         self.sigma = sigma
         self.maxiters = maxiters
 
@@ -31,6 +36,19 @@ class SigmaClipSentinelDefault:
 def create_default_sigmaclip(sigma=3.0, maxiters=10):
     """
     Return a new, default SigmaClip instance.
+
+    Parameters
+    ----------
+    sigma : float, optional
+        The number of standard deviations for the clipping limit.
+
+    maxiters : int, optional
+        The maximum number of sigma-clipping iterations.
+
+    Returns
+    -------
+    result : `~astropy.stats.SigmaClip`
+        A new `~astropy.stats.SigmaClip` instance.
     """
     return SigmaClip(sigma=sigma, maxiters=maxiters)
 
@@ -82,18 +100,20 @@ def as_pair(name, value, lower_bound=None, upper_bound=None, check_odd=False):
     """
     value = np.atleast_1d(value)
 
+    if value.ndim != 1:
+        msg = f'{name} must be 1D'
+        raise ValueError(msg)
+
     if np.any(~np.isfinite(value)):
         msg = f'{name} must be a finite value'
         raise ValueError(msg)
 
-    if len(value) == 1:
-        value = np.array((value[0], value[0]))
-    if len(value) != 2:
+    if len(value) not in (1, 2):
         msg = f'{name} must have 1 or 2 elements'
         raise ValueError(msg)
-    if value.ndim != 1:
-        msg = f'{name} must be 1D'
-        raise ValueError(msg)
+    if len(value) == 1:
+        value = np.array((value[0], value[0]))
+
     if value.dtype.kind != 'i':
         msg = f'{name} must have integer values'
         raise ValueError(msg)
@@ -117,6 +137,9 @@ def as_pair(name, value, lower_bound=None, upper_bound=None, check_odd=False):
             raise ValueError(msg)
 
     if upper_bound is not None:
+        if len(upper_bound) != 2:
+            msg = 'upper_bound must contain only 2 elements'
+            raise ValueError(msg)
         # If value is larger than upper_bound, set to upper_bound;
         # upper_bound is typically set to an image shape
         value = np.array((min(value[0], upper_bound[0]),
