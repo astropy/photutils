@@ -33,9 +33,10 @@ classifiers = [
 dynamic = ['version']
 requires-python = '>=3.11'
 dependencies = [
-    'astropy >= 6.1.4',
+    'astropy >= 6.1.7',
     'numpy >= 2.0',
     'scipy >= 1.13',
+    'asdf-astropy>=0.10',
 ]
 
 [project.urls]
@@ -48,7 +49,6 @@ Documentation = 'https://photutils.readthedocs.io/en/stable/'
 
 [project.optional-dependencies]
 all = [
-    'asdf-astropy',
     'bottleneck >= 1.4',
     'gwcs >= 0.20',
     'matplotlib >= 3.9',
@@ -242,6 +242,8 @@ exclude = [
     '\._.*',  # private functions/methods
     '^test_*',  # test code
     '^conftest.*$',  # pytest configuration
+    'to_yaml_tree',  # ASDF converter
+    'from_yaml_tree',  # ASDF converter
 
     # PR01: private classes/functions
     'SigmaClipSentinelDefault$',
