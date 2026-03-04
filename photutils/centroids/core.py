@@ -12,7 +12,7 @@ from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.centroids._utils import _process_data_mask
-from photutils.utils._parameters import as_pair
+from photutils.utils._parameters import as_pair, warn_positional_kwargs
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
 from photutils.utils._round import round_half_away
@@ -21,7 +21,8 @@ __all__ = ['CentroidQuadratic', 'centroid_com', 'centroid_quadratic',
            'centroid_sources']
 
 
-def centroid_com(data, *, mask=None):
+@warn_positional_kwargs(since='3.0', until='4.0')
+def centroid_com(data, mask=None):
     """
     Calculate the centroid of an array as the flux-weighted
     center of mass derived from `image moments
@@ -113,10 +114,11 @@ def centroid_com(data, *, mask=None):
                      for axis in range(data.ndim)])[::-1]
 
 
+@warn_positional_kwargs(since='3.0', until='4.0')
 @deprecated_renamed_argument('xpeak', None, '3.0')
 @deprecated_renamed_argument('ypeak', None, '3.0')
 @deprecated_renamed_argument('search_boxsize', None, '3.0')
-def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
+def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
                        ypeak=None, search_boxsize=None):
     """
     Calculate the centroid of a 2D array by fitting a 2D quadratic
@@ -481,7 +483,8 @@ class CentroidQuadratic:
         return centroid_quadratic(data, **kwargs)
 
 
-def centroid_sources(data, xpos, ypos, *, box_size=11, footprint=None,
+@warn_positional_kwargs(since='3.0', until='4.0')
+def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
                      mask=None, centroid_func=centroid_com, **kwargs):
     """
     Calculate the centroid of sources at the defined positions in a 2D

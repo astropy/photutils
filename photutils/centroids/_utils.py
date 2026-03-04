@@ -9,7 +9,7 @@ import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
 
-def _validate_data(data, ndim=2):
+def _validate_data(data, *, ndim=2):
     """
     Validate and convert the input data array.
 
@@ -51,7 +51,7 @@ def _validate_mask_shape(data, mask):
         raise ValueError(msg)
 
 
-def _process_data_mask(data, mask, ndim=2, fill_value=np.nan):
+def _process_data_mask(data, mask, *, ndim=2, fill_value=np.nan):
     """
     Process the input data and mask.
 
