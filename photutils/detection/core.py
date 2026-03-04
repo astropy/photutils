@@ -446,8 +446,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     Subclasses **must** implement:
 
-    * `xcentroid` property -- Object centroid in the x direction.
-    * `ycentroid` property -- Object centroid in the y direction.
+    * :attr:`xcentroid` property -- Object centroid in the x direction.
+    * :attr:`ycentroid` property -- Object centroid in the y direction.
     * `apply_filters` method -- Filter the catalog using
       algorithm-specific criteria.
     * ``default_columns`` attribute -- A tuple of column names used
