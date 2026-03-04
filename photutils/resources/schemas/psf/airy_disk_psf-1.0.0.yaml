@@ -22,7 +22,7 @@ examples:
         radius: 5.0
         x_0: 24.3
         y_0: 25.2
-        
+
 
 allOf:
   - $ref: "http://stsci.edu/schemas/asdf/transform/transform-1.4.0"
