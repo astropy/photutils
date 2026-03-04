@@ -1,27 +1,27 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""ASDF extension for photutils.
+"""
+ASDF extension for photutils.
 """
 import importlib.resources as importlib_resources
 
 from asdf.extension import ManifestExtension
 from asdf.resource import DirectoryResourceMapping
 
-from .converters.functional_models import AiryDiskPSFConverter
-from .converters.apertures import CircularApertureConverter
-
+from .converters import apertures  # import CircularApertureConverter
+from .converters import functional_models  # import AiryDiskPSFConverter
 
 __all__ = [
-    "PHOTUTILS_PSF_CONVERTERS",
-    "PHOTUTILS_APERTURE_CONVERTERS",
-    "PHOTUTILS_MANIFEST_URIS",
+    'PHOTUTILS_APERTURE_CONVERTERS',
+    'PHOTUTILS_MANIFEST_URIS',
+    'PHOTUTILS_PSF_CONVERTERS',
 ]
 
 PHOTUTILS_PSF_CONVERTERS = [
-    AiryDiskPSFConverter(),
+    functional_models.AiryDiskPSFConverter(),
 ]
 
 PHOTUTILS_APERTURE_CONVERTERS = [
-    CircularApertureConverter(),
+    apertures.CircularApertureConverter(),
 
 ]
 
@@ -31,7 +31,7 @@ PHOTUTILS_CONVERTERS = PHOTUTILS_PSF_CONVERTERS + PHOTUTILS_APERTURE_CONVERTERS
 # The order here is important; asdf will prefer to use extensions
 # that occur earlier in the list.
 PHOTUTILS_MANIFEST_URIS = [
-    "asdf://astropy.org/photutils/manifests/photutils-1.0.0"
+    'asdf://astropy.org/photutils/manifests/photutils-1.0.0',
 ]
 
 
@@ -39,9 +39,11 @@ def get_extensions():
     """
     Get the gwcs.converters extension.
     This method is registered with the asdf.extensions entry point.
+
     Returns
     -------
-    list of asdf.extension.Extension
+    list
+        A list of ASDF extensions.
     """
     return [
         ManifestExtension.from_uri(
@@ -60,16 +62,17 @@ def get_resource_mappings():
 
     Returns
     -------
-    list of collections.abc.Mapping
+    list
+        A list of collections.abc.Mapping of ASDF resource mappings.
     """
     from . import resources
 
     resources_root = importlib_resources.files(resources)
 
     return [
-        DirectoryResourceMapping(resources_root / "schemas",
-                                 "asdf://astropy.org/photutils/schemas",
+        DirectoryResourceMapping(resources_root / 'schemas',
+                                 'asdf://astropy.org/photutils/schemas',
                                  recursive=True),
-        DirectoryResourceMapping(resources_root / "manifests",
-                                 "asdf://astropy.org/photutils/manifests"),
+        DirectoryResourceMapping(resources_root / 'manifests',
+                                 'asdf://astropy.org/photutils/manifests'),
     ]
