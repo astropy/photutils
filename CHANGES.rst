@@ -245,12 +245,14 @@ API Changes
     [#2201]
 
   - The ``sharplo`` and ``sharphi`` keyword arguments for
-    ``DAOStarFinder`` and ``IRAFStarFinder`` are now deprecated. Use the
-    ``sharpness_range=(lower, upper)`` tuple keyword instead. [#2216]
+    ``DAOStarFinder`` and ``IRAFStarFinder`` are now deprecated. Use
+    ``the sharpness_range=(lower, upper)`` tuple keyword instead. Set
+    ``sharpness_range=None`` to disable sharpness filtering. [#2216]
 
   - The ``roundlo`` and ``roundhi`` keyword arguments for
-    ``DAOStarFinder`` and ``IRAFStarFinder`` are now deprecated. Use the
-    ``roundness_range=(lower, upper)`` tuple keyword instead. [#2216]
+    ``DAOStarFinder`` and ``IRAFStarFinder`` are now deprecated. Use
+    the ``roundness_range=(lower, upper)`` tuple keyword instead. Set
+    ``roundness_range=None`` to disable roundness filtering. [#2216]
 
   - The ``peakmax`` keyword argument for ``DAOStarFinder``,
     ``IRAFStarFinder``, and ``StarFinder`` is now deprecated. Use

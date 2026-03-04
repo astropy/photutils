@@ -10,8 +10,9 @@ from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
-from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
-                                      _StarFinderKernel, _validate_n_brightest)
+from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
+                                      StarFinderCatalogBase, _StarFinderKernel,
+                                      _validate_n_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import isscalar, process_quantities
@@ -19,8 +20,6 @@ from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['IRAFStarFinder']
-
-_NODEFAULT = object()
 
 
 class IRAFStarFinder(StarFinderBase):
@@ -57,15 +56,29 @@ class IRAFStarFinder(StarFinderBase):
         0.5)`` and is clipped to a minimum value of 2. Note that large
         values may result in long run times.
 
-    sharpness_range : tuple of 2 floats, optional
-        The ``(lower, upper)`` inclusive bounds on sharpness for object
-        detection. Objects with sharpness outside this range will be
-        rejected. The default is ``(0.5, 2.0)``.
+    sharplo : float, optional
+        The lower bound on sharpness for object detection.
 
-    roundness_range : tuple of 2 floats, optional
-        The ``(lower, upper)`` inclusive bounds on roundness for object
-        detection. Objects with roundness outside this range will be
-        rejected. The default is ``(0.0, 0.2)``.
+        .. deprecated:: 3.0
+            Use ``sharpness_range=(lower, upper)`` instead.
+
+    sharphi : float, optional
+        The upper bound on sharpness for object detection.
+
+        .. deprecated:: 3.0
+            Use ``sharpness_range=(lower, upper)`` instead.
+
+    roundlo : float, optional
+        The lower bound on roundness for object detection.
+
+        .. deprecated:: 3.0
+            Use ``roundness_range=(lower, upper)`` instead.
+
+    roundhi : float, optional
+        The upper bound on roundness for object detection.
+
+        .. deprecated:: 3.0
+            Use ``roundness_range=(lower, upper)`` instead.
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
@@ -97,29 +110,17 @@ class IRAFStarFinder(StarFinderBase):
         this keyword overrides ``minsep_fwhm``. Note that large values
         may result in long run times.
 
-    sharplo : float, optional
-        The lower bound on sharpness for object detection.
+    sharpness_range : tuple of 2 floats or `None`, optional
+        The ``(lower, upper)`` inclusive bounds on sharpness for object
+        detection. Objects with sharpness outside this range will be
+        rejected. If `None`, no sharpness filtering is performed. The
+        default is ``(0.5, 2.0)``.
 
-        .. deprecated:: 3.0
-            Use ``sharpness_range=(lower, upper)`` instead.
-
-    sharphi : float, optional
-        The upper bound on sharpness for object detection.
-
-        .. deprecated:: 3.0
-            Use ``sharpness_range=(lower, upper)`` instead.
-
-    roundlo : float, optional
-        The lower bound on roundness for object detection.
-
-        .. deprecated:: 3.0
-            Use ``roundness_range=(lower, upper)`` instead.
-
-    roundhi : float, optional
-        The upper bound on roundness for object detection.
-
-        .. deprecated:: 3.0
-            Use ``roundness_range=(lower, upper)`` instead.
+    roundness_range : tuple of 2 floats or `None`, optional
+        The ``(lower, upper)`` inclusive bounds on roundness for object
+        detection. Objects with roundness outside this range will be
+        rejected. If `None`, no roundness filtering is performed. The
+        default is ``(0.0, 0.2)``.
 
     See Also
     --------
@@ -140,7 +141,7 @@ class IRAFStarFinder(StarFinderBase):
     are:
 
     * ``fwhm = hwhmpsf * 2``
-    * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
+    * ``sigma_radius = fradius * sqrt(2.0 * log(2.0))``
     * ``minsep_fwhm = 0.5 * sepmin``
 
     The main differences between `~photutils.detection.DAOStarFinder`
@@ -161,11 +162,12 @@ class IRAFStarFinder(StarFinderBase):
     @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
     @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
-                 sharpness_range=(0.5, 2.0), roundness_range=(0.0, 0.2),
+                 sharplo=_DEPR_DEFAULT, sharphi=_DEPR_DEFAULT,
+                 roundlo=_DEPR_DEFAULT, roundhi=_DEPR_DEFAULT,
                  exclude_border=False, n_brightest=None, peak_max=None,
-                 xycoords=None, min_separation=None,
-                 sharplo=_NODEFAULT, sharphi=_NODEFAULT,
-                 roundlo=_NODEFAULT, roundhi=_NODEFAULT):
+                 xycoords=None, min_separation=None, *,
+                 sharpness_range=(0.5, 2.0),
+                 roundness_range=(0.0, 0.2)):
 
         # Validate the units, but do not strip them
         inputs = (threshold, peak_max)
@@ -177,38 +179,46 @@ class IRAFStarFinder(StarFinderBase):
             raise TypeError(msg)
 
         # Handle deprecated sharplo/sharphi parameters
-        if sharplo is not _NODEFAULT or sharphi is not _NODEFAULT:
+        if sharplo is not _DEPR_DEFAULT or sharphi is not _DEPR_DEFAULT:
             msg = ("The 'sharplo' and 'sharphi' parameters are deprecated "
                    'and will be removed in a future version. Use '
                    "'sharpness_range=(lower, upper)' instead.")
             warnings.warn(msg, AstropyDeprecationWarning)
-            lower = (sharplo if sharplo is not _NODEFAULT
-                     else sharpness_range[0])
-            upper = (sharphi if sharphi is not _NODEFAULT
-                     else sharpness_range[1])
+            _default = (sharpness_range
+                        if sharpness_range is not None else (0.5, 2.0))
+            lower = (sharplo if sharplo is not _DEPR_DEFAULT
+                     else _default[0])
+            upper = (sharphi if sharphi is not _DEPR_DEFAULT
+                     else _default[1])
             sharpness_range = (lower, upper)
 
         # Handle deprecated roundlo/roundhi parameters
-        if roundlo is not _NODEFAULT or roundhi is not _NODEFAULT:
+        if roundlo is not _DEPR_DEFAULT or roundhi is not _DEPR_DEFAULT:
             msg = ("The 'roundlo' and 'roundhi' parameters are deprecated "
                    'and will be removed in a future version. Use '
                    "'roundness_range=(lower, upper)' instead.")
             warnings.warn(msg, AstropyDeprecationWarning)
-            lower = (roundlo if roundlo is not _NODEFAULT
-                     else roundness_range[0])
-            upper = (roundhi if roundhi is not _NODEFAULT
-                     else roundness_range[1])
+            _default = (roundness_range
+                        if roundness_range is not None else (0.0, 0.2))
+            lower = (roundlo if roundlo is not _DEPR_DEFAULT
+                     else _default[0])
+            upper = (roundhi if roundhi is not _DEPR_DEFAULT
+                     else _default[1])
             roundness_range = (lower, upper)
 
-        if np.ndim(sharpness_range) != 1 or np.size(sharpness_range) != 2:
-            msg = 'sharpness_range must be a 2-element (lower, upper) tuple'
-            raise ValueError(msg)
-        sharpness_range = tuple(sharpness_range)
+        if sharpness_range is not None:
+            if np.ndim(sharpness_range) != 1 or np.size(sharpness_range) != 2:
+                msg = ('sharpness_range must be a 2-element (lower, upper) '
+                       'tuple or None')
+                raise ValueError(msg)
+            sharpness_range = tuple(sharpness_range)
 
-        if np.ndim(roundness_range) != 1 or np.size(roundness_range) != 2:
-            msg = 'roundness_range must be a 2-element (lower, upper) tuple'
-            raise ValueError(msg)
-        roundness_range = tuple(roundness_range)
+        if roundness_range is not None:
+            if np.ndim(roundness_range) != 1 or np.size(roundness_range) != 2:
+                msg = ('roundness_range must be a 2-element (lower, upper) '
+                       'tuple or None')
+                raise ValueError(msg)
+            roundness_range = tuple(roundness_range)
 
         self.threshold = threshold
         self.fwhm = fwhm

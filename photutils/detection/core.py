@@ -575,7 +575,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         bounds : list of tuple
             Each tuple is ``(attr_name, range)`` giving the attribute to
             check and the range of allowed values. The range is a tuple
-            of the form ``(lower_bound, upper_bound)``.
+            of the form ``(lower_bound, upper_bound)``, or `None` to
+            skip filtering for that attribute.
 
         peakattr : str, optional
             The attribute name for the peak value used for peak_max
@@ -587,7 +588,10 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             The filtered catalog, or `None` if no sources remain.
         """
         mask = np.ones(len(self), dtype=bool)
-        for attr, (min_val, max_val) in bounds:
+        for attr, range_val in bounds:
+            if range_val is None:
+                continue
+            min_val, max_val = range_val
             values = getattr(self, attr)
             mask &= (values >= min_val)
             mask &= (values <= max_val)
@@ -853,3 +857,15 @@ def _validate_n_brightest(n_brightest):
             raise ValueError(msg)
         n_brightest = bright_int
     return n_brightest
+
+
+class _DeprecatedDefault:
+    """
+    Sentinel default value for a deprecated parameter.
+    """
+
+    def __repr__(self):
+        return '<deprecated>'
+
+
+_DEPR_DEFAULT = _DeprecatedDefault()

@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 
 from photutils.detection import DAOStarFinder
-from photutils.detection.core import (StarFinderCatalogBase, _StarFinderKernel,
-                                      _validate_n_brightest)
+from photutils.detection.core import (_DEPR_DEFAULT, StarFinderCatalogBase,
+                                      _StarFinderKernel, _validate_n_brightest)
 
 
 class TestStarFinderKernel:
@@ -514,3 +514,13 @@ class TestStarFinderBaseCall:
         assert len(tbl_call) == len(tbl_find)
         for col in tbl_call.colnames:
             np.testing.assert_array_equal(tbl_call[col], tbl_find[col])
+
+
+def test_deprecated_default():
+    """
+    Test repr for _DeprecatedDefault.
+    """
+    default = _DEPR_DEFAULT
+    result = '<deprecated>'
+    assert repr(default) == result
+    assert str(default) == result

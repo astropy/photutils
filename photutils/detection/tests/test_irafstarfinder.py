@@ -145,11 +145,30 @@ class TestIRAFStarFinder:
         assert tbl is None
 
     @pytest.mark.parametrize('sharpness_range', [0.5, (0.5,), (1, 2, 3)])
-    def test_invalid_sharpness_range(self, data, sharpness_range):
+    def test_invalid_sharpness_range(self, sharpness_range):
         match = 'sharpness_range must be a 2-element .* tuple'
         with pytest.raises(ValueError, match=match):
             IRAFStarFinder(threshold=1, fwhm=1.0,
-                          sharpness_range=sharpness_range)
+                           sharpness_range=sharpness_range)
+
+    def test_sharpness_range_none(self, data):
+        """
+        Test that sharpness_range=None disables sharpness filtering.
+        """
+        finder_none = IRAFStarFinder(threshold=1, fwhm=2,
+                                     roundness_range=None,
+                                     sharpness_range=None)
+        tbl_none = finder_none(data)
+        assert tbl_none is not None
+
+        finder_strict = IRAFStarFinder(threshold=1, fwhm=1.0,
+                                       roundness_range=None,
+                                       sharpness_range=(2.0, 2.0))
+        match = 'Sources were found, but none pass'
+        with pytest.warns(NoDetectionsWarning, match=match):
+            tbl_strict = finder_strict(data)
+        assert tbl_strict is None
+        assert len(tbl_none) >= 1
 
     def test_roundness(self, data):
         """
@@ -163,11 +182,30 @@ class TestIRAFStarFinder:
         assert tbl is None
 
     @pytest.mark.parametrize('roundness_range', [0.5, (0.5,), (1, 2, 3)])
-    def test_invalid_roundness_range(self, data, roundness_range):
+    def test_invalid_roundness_range(self, roundness_range):
         match = 'roundness_range must be a 2-element .* tuple'
         with pytest.raises(ValueError, match=match):
             IRAFStarFinder(threshold=1, fwhm=1.0,
                            roundness_range=roundness_range)
+
+    def test_roundness_range_none(self, data):
+        """
+        Test that roundness_range=None disables roundness filtering.
+        """
+        finder_none = IRAFStarFinder(threshold=1, fwhm=2,
+                                     sharpness_range=None,
+                                     roundness_range=None)
+        tbl_none = finder_none(data)
+        assert tbl_none is not None
+
+        finder_strict = IRAFStarFinder(threshold=1, fwhm=1.0,
+                                       sharpness_range=None,
+                                       roundness_range=(1.0, np.inf))
+        match = 'Sources were found, but none pass'
+        with pytest.warns(NoDetectionsWarning, match=match):
+            tbl_strict = finder_strict(data)
+        assert tbl_strict is None
+        assert len(tbl_none) >= 1
 
     def test_peak_max(self, data):
         """
