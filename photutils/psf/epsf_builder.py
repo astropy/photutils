@@ -1133,7 +1133,7 @@ class EPSFBuilder:
         result : `EPSFBuildResult`
             The result of the ePSF building process.
         """
-        return self._build_epsf(stars)
+        return self.build_epsf(stars)
 
     def _validate_fitter_maxiters(self, fitter_maxiters):
         """
@@ -1968,9 +1968,14 @@ class EPSFBuilder:
             excluded_star_indices=excluded_star_indices,
         )
 
-    def _build_epsf(self, stars, *, epsf=None):
+    def build_epsf(self, stars, *, epsf=None):
         """
         Build iteratively an ePSF from star cutouts.
+
+        This method builds an ePSF from an initial model when ``epsf``
+        is provided, or from scratch when ``epsf`` is `None`. In the
+        latter case, it is equivalent to invoking an `EPSFBuilder`
+        instance on the input ``stars``.
 
         Parameters
         ----------
@@ -1978,7 +1983,7 @@ class EPSFBuilder:
             The stars used to build the ePSF.
 
         epsf : `ImagePSF` object, optional
-            The initial ePSF model. If not input, then the ePSF will be
+            The initial ePSF model. If `None`, then the ePSF will be
             built from scratch.
 
         Returns

@@ -1649,7 +1649,7 @@ class TestEPSFBuilder:
 
     def test_build_tracks_excluded_indices(self, epsf_test_data):
         """
-        Test that _build_epsf properly tracks excluded star indices.
+        Test that build_epsf properly tracks excluded star indices.
         """
         stars = extract_stars(epsf_test_data['nddata'],
                               epsf_test_data['init_stars'][:10], size=11)
