@@ -1063,11 +1063,10 @@ class EPSFBuilder:
         # Handle fitter parameter - accept both astropy Fitter and
         # deprecated EPSFFitter for backward compatibility
         if isinstance(fitter, EPSFFitter):
-            warnings.warn('Passing an EPSFFitter instance to '
-                          'EPSFBuilder is deprecated. Use the fitter, '
-                          'fit_shape, and fitter_maxiters parameters '
-                          'instead.',
-                          AstropyDeprecationWarning)
+            msg = ('Passing an EPSFFitter instance to EPSFBuilder is '
+                   'deprecated. Use the fitter, fit_shape, and '
+                   'fitter_maxiters parameters instead.')
+            warnings.warn(msg, AstropyDeprecationWarning)
             self.fitter = fitter.fitter
             self.fit_shape = fitter.fit_boxsize
             self.fitter_maxiters = None
@@ -1156,9 +1155,9 @@ class EPSFBuilder:
                        or any(p.kind == inspect.Parameter.VAR_KEYWORD
                               for p in spec.parameters.values()))
         if not has_maxiter:
-            warnings.warn('"fitter_maxiters" will be ignored because '
-                          'it is not accepted by the input fitter',
-                          AstropyUserWarning)
+            msg = ('"fitter_maxiters" will be ignored because '
+                   'it is not accepted by the input fitter')
+            warnings.warn(msg, AstropyUserWarning)
             return None
         return fitter_maxiters
 

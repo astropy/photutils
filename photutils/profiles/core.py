@@ -102,7 +102,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
         self.normalization_value = 1.0
 
     def _validate_radii(self, radii):
-        """Validate and return the radii array."""
+        """
+        Validate and return the radii array.
+        """
         radii = np.array(radii)
         if radii.ndim != 1 or radii.size < 2:
             msg = 'radii must be a 1D array and have at least two values'
@@ -136,9 +138,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
             combined_mask = badmask
 
         if np.any(badmask):
-            warnings.warn('Input data contains non-finite values (e.g., NaN '
-                          'or inf) that were automatically masked.',
-                          AstropyUserWarning)
+            msg = ('Input data contains non-finite values (e.g., NaN '
+                   'or inf) that were automatically masked.')
+            warnings.warn(msg, AstropyUserWarning)
 
         return combined_mask
 
@@ -438,7 +440,8 @@ class ProfileBase(metaclass=abc.ABCMeta):
             plotted polygons, or `None` if no errors were input.
         """
         if len(self.profile_error) == 0:
-            warnings.warn('Errors were not input', AstropyUserWarning)
+            msg = 'Errors were not input'
+            warnings.warn(msg, AstropyUserWarning)
             return None
 
         import matplotlib.pyplot as plt

@@ -89,8 +89,9 @@ class EPSFStar:
 
             # Check for valid weight values
             if not np.all(np.isfinite(weights)):
-                warnings.warn('Non-finite weight values detected. These will '
-                              'be set to zero.', AstropyUserWarning)
+                msg = ('Non-finite weight values detected. These will '
+                       'be set to zero.')
+                warnings.warn(msg, AstropyUserWarning)
                 weights = np.where(np.isfinite(weights), weights, 0.0)
 
             # Copy to avoid modifying the input weights
@@ -106,8 +107,9 @@ class EPSFStar:
         if np.any(invalid_data):
             self.weights[invalid_data] = 0.0
             self.mask[invalid_data] = True
-            warnings.warn('Input data array contains invalid data that '
-                          'will be masked.', AstropyUserWarning)
+            msg = ('Input data array contains invalid data that will be '
+                   'masked.')
+            warnings.warn(msg, AstropyUserWarning)
 
         # Validate origin
         origin = np.asarray(origin)
@@ -150,8 +152,8 @@ class EPSFStar:
 
             # Warn if all data is zero
             if self._has_all_zero_data:
-                warnings.warn('All unmasked data values in star cutout '
-                              'are zero', AstropyUserWarning)
+                msg = 'All unmasked data values in star cutout are zero'
+                warnings.warn(msg, AstropyUserWarning)
 
             # Estimate flux
             self.flux = self.estimate_flux()
@@ -208,13 +210,14 @@ class EPSFStar:
         # Validate bounds (should be within the cutout image)
         x, y = value
         if not (0 <= x < self.shape[1]):
-            warnings.warn(f'cutout_center x-coordinate {x} is outside '
-                          f'the cutout bounds [0, {self.shape[1]})',
-                          AstropyUserWarning)
+            msg = (f'cutout_center x-coordinate {x} is outside the '
+                   f'cutout bounds [0, {self.shape[1]})')
+            warnings.warn(msg, AstropyUserWarning)
+
         if not (0 <= y < self.shape[0]):
-            warnings.warn(f'cutout_center y-coordinate {y} is outside '
-                          f'the cutout bounds [0, {self.shape[0]})',
-                          AstropyUserWarning)
+            msg = (f'cutout_center y-coordinate {y} is outside the '
+                   f'cutout bounds [0, {self.shape[0]})')
+            warnings.warn(msg, AstropyUserWarning)
 
         self._cutout_center = np.asarray(value)
 
@@ -650,9 +653,10 @@ class LinkedEPSFStar:
             return
 
         if self.all_excluded:
-            warnings.warn('Cannot constrain centers of linked stars because '
-                          'they have all been excluded during the ePSF '
-                          'build process.', AstropyUserWarning)
+            msg = ('Cannot constrain centers of linked stars because '
+                   'they have all been excluded during the ePSF '
+                   'build process.')
+            warnings.warn(msg, AstropyUserWarning)
             return
 
         # Convert pixel coordinates to sky coordinates
@@ -818,9 +822,9 @@ def _validate_catalog_list(catalogs):
                    f'Element {i} is {type(cat)}')
             raise TypeError(msg)
         if len(cat) == 0:
-            warnings.warn(f'Catalog at index {i} is empty. No stars will '
-                          'be extracted from this catalog.',
-                          AstropyUserWarning)
+            msg = (f'Catalog at index {i} is empty. No stars will '
+                   'be extracted from this catalog.')
+            warnings.warn(msg, AstropyUserWarning)
 
 
 def _validate_coordinate_consistency(data, catalogs):
@@ -963,9 +967,10 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
             data, catalogs, size)
 
     if overlap_fail_count > 0:
-        warnings.warn(f'{overlap_fail_count} star(s) were not extracted '
-                      'because their cutout region extended beyond the '
-                      'input image.', AstropyUserWarning)
+        msg = (f'{overlap_fail_count} star(s) were not extracted '
+               'because their cutout region extended beyond the '
+               'input image.')
+        warnings.warn(msg, AstropyUserWarning)
 
     return EPSFStars(stars_out)
 
@@ -1196,25 +1201,26 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
 
     # Emit consolidated warning for non-finite weights
     if nonfinite_weights_count > 0:
-        warnings.warn(f'{nonfinite_weights_count} star cutout(s) had '
-                      'non-finite weight values which were set to zero. '
-                      'Please check the input uncertainty values in the '
-                      'NDData object.', AstropyUserWarning)
+        msg = (f'{nonfinite_weights_count} star cutout(s) had '
+               'non-finite weight values which were set to zero. '
+               'Please check the input uncertainty values in the '
+               'NDData object.')
+        warnings.warn(msg, AstropyUserWarning)
 
     # Emit individual flux estimation failure warnings. These may be a
     # consequence of having all non-finite weights (data then becomes
     # completely masked), so we emit them after the non-finite weights
     # warning.
     for xcenter, ycenter, exc in flux_failures:
-        warnings.warn(f'Failed to create EPSFStar for object at '
-                      f'({xcenter:.2f}, {ycenter:.2f}): {exc}',
-                      AstropyUserWarning)
+        msg = (f'Failed to create EPSFStar for object at '
+               f'({xcenter:.2f}, {ycenter:.2f}): {exc}')
+        warnings.warn(msg, AstropyUserWarning)
 
     # Emit warnings for stars with all-zero data
     for xcenter, ycenter in all_zero_stars:
-        warnings.warn(f'Star at ({xcenter:.1f}, {ycenter:.1f}) has all '
-                      'unmasked data values equal to zero',
-                      AstropyUserWarning)
+        msg = (f'Star at ({xcenter:.1f}, {ycenter:.1f}) has all '
+               'unmasked data values equal to zero')
+        warnings.warn(msg, AstropyUserWarning)
 
     return stars, overlap_fail_count
 

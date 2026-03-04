@@ -299,9 +299,9 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     # Return the position of the maximum if it is at the edge of the
     # data
     if xidx in (0, nx - 1) or yidx in (0, ny - 1):
-        warnings.warn('maximum value is at the edge of the data and its '
-                      'position was returned; no quadratic fit was '
-                      'performed', AstropyUserWarning)
+        msg = ('maximum value is at the edge of the data and its '
+               'position was returned; no quadratic fit was performed')
+        warnings.warn(msg, AstropyUserWarning)
         return np.array((xidx, yidx), dtype=float)
 
     # Extract the fitting region
@@ -324,9 +324,9 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
 
     cutout = data[yidx0:yidx1, xidx0:xidx1].ravel()
     if np.count_nonzero(~np.isnan(cutout)) < 6:
-        warnings.warn('at least 6 unmasked data points are required to '
-                      'perform a 2D quadratic fit',
-                      AstropyUserWarning)
+        msg = ('at least 6 unmasked data points are required to '
+               'perform a 2D quadratic fit')
+        warnings.warn(msg, AstropyUserWarning)
         return np.array((np.nan, np.nan))
 
     # Fit a 2D quadratic polynomial to the fitting region
@@ -354,7 +354,8 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     try:
         c = np.linalg.lstsq(coeff_matrix, cutout, rcond=None)[0]
     except np.linalg.LinAlgError:
-        warnings.warn('quadratic fit failed', AstropyUserWarning)
+        msg = 'quadratic fit failed'
+        warnings.warn(msg, AstropyUserWarning)
         return np.array((np.nan, np.nan))
 
     # Analytically find the maximum of the polynomial
@@ -368,8 +369,8 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     # have the same sign. Therefore, we only need to check if c20 > 0
     # (or c02 > 0) to determine if the surface has a minimum.
     if det <= 0 or c20 > 0:
-        warnings.warn('quadratic fit does not have a maximum',
-                      AstropyUserWarning)
+        msg = 'quadratic fit does not have a maximum'
+        warnings.warn(msg, AstropyUserWarning)
         return np.array((np.nan, np.nan))
 
     xm = (c01 * c11 - 2.0 * c02 * c10) / det
@@ -377,8 +378,8 @@ def centroid_quadratic(data, *, mask=None, fit_boxsize=5, xpeak=None,
     if 0.0 < xm < (nx - 1.0) and 0.0 < ym < (ny - 1.0):
         xycen = np.array((xm, ym), dtype=float)
     else:
-        warnings.warn('quadratic polynomial maximum value falls outside '
-                      'of the image', AstropyUserWarning)
+        msg = 'quadratic polynomial maximum value falls outside of the image'
+        warnings.warn(msg, AstropyUserWarning)
         return np.array((np.nan, np.nan))
 
     return xycen
