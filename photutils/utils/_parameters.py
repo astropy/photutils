@@ -3,8 +3,12 @@
 Tools for parameter validation.
 """
 
+import warnings
+from functools import wraps
+
 import numpy as np
 from astropy.stats import SigmaClip
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 
 class SigmaClipSentinelDefault:
@@ -119,3 +123,46 @@ def as_pair(name, value, lower_bound=None, upper_bound=None, check_odd=False):
                           min(value[1], upper_bound[1])))
 
     return value
+
+
+def warn_positional_kwargs(n_positional, version_depr, version_remove):
+    """
+    Decorator to warn when optional arguments are passed positionally.
+
+    Parameters
+    ----------
+    n_positional : int
+        The number of allowed positional arguments. Any additional
+        positional arguments will trigger a warning.
+
+    version_depr : str
+        The version in which passing optional arguments positionally is
+        deprecated.
+
+    version_remove : str
+        The version in which passing optional arguments positionally will
+        be removed.
+
+    Returns
+    -------
+    decorator : function
+        A decorator function that can be applied to any function to warn
+        about positional arguments.
+    """
+    if n_positional < 0:
+        msg = 'n_positional must be >= 0'
+        raise ValueError(msg)
+
+    def decorator(func):  # numpydoc ignore=GL08
+        @wraps(func)
+        def wrapper(*args, **kwargs):  # numpydoc ignore=GL08
+            if len(args) > n_positional:
+                msg = ('Passing optional arguments positionally to '
+                       f'"{func.__name__}" was deprecated in version '
+                       f'{version_depr} and will be removed in version '
+                       f'{version_remove}. In the future, all optional '
+                       'arguments must be passed as keyword arguments.')
+                warnings.warn(msg, AstropyDeprecationWarning, stacklevel=2)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
