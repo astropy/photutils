@@ -226,13 +226,14 @@ API Changes
 
 - ``photutils.centroids``
 
+  - Passing optional positional arguments positionally to functions
+    in the ``centroids`` package is now deprecated. Instead, pass
+    optional arguments as keyword arguments. [#2162, #2213]
+
   - The ``xpeak``, ``ypeak``, and ``search_boxsize`` keyword arguments
     for ``centroid_quadratic`` are now deprecated. Use
     ``centroid_sources`` to centroid sources at specific positions.
     [#2160]
-
-  - All functions in the ``centroids`` package now require keyword-only
-    arguments. [#2162]
 
 - ``photutils.detection``
 

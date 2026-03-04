@@ -13,12 +13,14 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.centroids._utils import (_gaussian1d_moments,
                                         _gaussian2d_moments,
                                         _validate_gaussian_inputs)
+from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import process_quantities
 
 __all__ = ['centroid_1dg', 'centroid_2dg']
 
 
-def centroid_1dg(data, *, error=None, mask=None):
+@warn_positional_kwargs(since='3.0', until='4.0')
+def centroid_1dg(data, error=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting 1D Gaussians to the
     marginal ``x`` and ``y`` distributions of the array.
@@ -111,7 +113,8 @@ def centroid_1dg(data, *, error=None, mask=None):
     return np.array(centroid)
 
 
-def centroid_2dg(data, *, error=None, mask=None):
+@warn_positional_kwargs(since='3.0', until='4.0')
+def centroid_2dg(data, error=None, mask=None):
     """
     Calculate the centroid of a 2D array by fitting a 2D Gaussian to the
     array.

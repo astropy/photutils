@@ -397,6 +397,21 @@ For the ``psf`` package, the previously deprecated
 New Deprecations
 ----------------
 
+Keyword-only Arguments
+^^^^^^^^^^^^^^^^^^^^^^
+
+Passing **optional** arguments positionally to functions in the
+`~photutils.centroids` package is now deprecated. In the future, all
+optional arguments must be passed as keyword arguments, e.g.::
+
+    # Old (deprecated)
+    from photutils.centroids import centroid_2dg
+    xc, yc = centroid_2dg(data, error, mask)
+
+    # New
+    from photutils.centroids import centroid_2dg
+    xc, yc = centroid_2dg(data, error=error, mask=mask)
+
 Background Package
 ^^^^^^^^^^^^^^^^^^
 
@@ -475,6 +490,3 @@ The ``norm_radius`` keyword has been removed from
 longer relevant because the ePSF is now built directly as an
 :class:`~photutils.psf.ImagePSF`, which does not use a normalization
 radius.
-
-All functions in the `~photutils.centroids` package now require
-keyword-only arguments.
