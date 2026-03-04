@@ -16,13 +16,12 @@ class CircularApertureConverter(Converter):
     tags = ["tag:astropy.org:photutils/aperture/circular_aperture-*"]
     types = ["photutils.aperture.circle.CircularAperture"]
 
-
     def to_yaml_tree(self, obj, tag, ctx):
         if obj.positions.shape == (2,):
             pos = obj.positions.tolist()
         else:
             pos = obj.positions
-        
+
         return {
             "positions": pos,
             "r": obj.r,

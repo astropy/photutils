@@ -67,6 +67,9 @@ def get_resource_mappings():
     resources_root = importlib_resources.files(resources)
 
     return [
-        DirectoryResourceMapping(resources_root / "schemas", "asdf://astropy.org/photutils/schemas", recursive=True),
-        DirectoryResourceMapping(resources_root / "manifests", "asdf://astropy.org/photutils/manifests"),
+        DirectoryResourceMapping(resources_root / "schemas",
+                                 "asdf://astropy.org/photutils/schemas",
+                                 recursive=True),
+        DirectoryResourceMapping(resources_root / "manifests",
+                                 "asdf://astropy.org/photutils/manifests"),
     ]

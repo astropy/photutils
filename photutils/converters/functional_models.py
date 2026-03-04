@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """
-Converters to and from ASDF for photutils.psf.functional_models.
+Converters to and from the ASDF format for photutils.psf.functional_models.
 """
 
 from asdf_astropy.converters.transform.core import (
@@ -12,12 +12,13 @@ from asdf_astropy.converters.transform.core import (
 
 __all__ = ["AiryDiskPSFConverter"]
 
+
 class AiryDiskPSFConverter(TransformConverterBase):
     """
     Converter for AiryDiskPSF.
     """
     tags = ["tag:astropy.org:photutils/psf/airy_disk_psf-*"]
-    types = ["photutils.psf.AiryDiskPSF"]            
+    types = ["photutils.psf.AiryDiskPSF"]
 
     def to_yaml_tree_transform(self, model, tag, ctx):
         return {
@@ -32,7 +33,7 @@ class AiryDiskPSFConverter(TransformConverterBase):
         from photutils.psf import AiryDiskPSF
 
         return AiryDiskPSF(
-            flux=node["flux"], 
+            flux=node["flux"],
             x_0=node["x_0"],
             y_0=node["y_0"],
             radius=node["radius"],
