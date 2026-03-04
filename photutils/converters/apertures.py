@@ -14,10 +14,10 @@ class CircularApertureConverter(Converter):
     Base class for aperture converters.
     """
 
-    tags = ['tag:astropy.org:photutils/aperture/circular_aperture-*']
-    types = ['photutils.aperture.circle.CircularAperture']
+    tags = ['tag:astropy.org:photutils/aperture/circular_aperture-*']  # noqa: RUF012, E501
+    types = ['photutils.aperture.circle.CircularAperture']  # noqa: RUF012
 
-    def to_yaml_tree(self, obj, tag, ctx):
+    def to_yaml_tree(self, obj, tag, ctx):  # noqa: ARG002
         if obj.positions.shape == (2,):
             pos = obj.positions.tolist()
         else:
@@ -28,7 +28,7 @@ class CircularApertureConverter(Converter):
             'r': obj.r,
         }
 
-    def from_yaml_tree(self, node, tag, ctx):
+    def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
         from photutils.aperture.circle import CircularAperture
 
         return CircularAperture(
