@@ -139,9 +139,3 @@ The `~photutils.profiles.CurveOfGrowth` and
 `~photutils.profiles.RadialProfile` classes now have a ``unnormalize``
 method to return the profile to the state before any ``normalize`` calls
 were run.
-
-
-Other changes
-=============
-
-Please see the :ref:`changelog` for the complete list of changes.
