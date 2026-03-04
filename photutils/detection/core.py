@@ -20,6 +20,7 @@ from astropy.utils import lazyproperty
 
 from photutils.detection.peakfinder import find_peaks
 from photutils.utils._misc import _get_meta
+from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
 from photutils.utils.cutouts import _make_cutouts
@@ -33,6 +34,7 @@ class StarFinderBase(metaclass=abc.ABCMeta):
     Abstract base class for star finders.
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, data, mask=None):
         return self.find_stars(data, mask=mask)
 
@@ -123,7 +125,7 @@ class StarFinderBase(metaclass=abc.ABCMeta):
         return np.transpose((tbl['x_peak'], tbl['y_peak']))
 
     @abc.abstractmethod
-    def find_stars(self, data, mask=None):
+    def find_stars(self, data, *, mask=None):
         """
         Find stars in an astronomical image.
 
@@ -619,7 +621,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         cat.reset_ids()
         return cat
 
-    def to_table(self, columns=None):
+    def to_table(self, *, columns=None):
         """
         Create a QTable of catalog properties.
 

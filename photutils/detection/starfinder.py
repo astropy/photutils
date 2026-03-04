@@ -11,6 +11,7 @@ from astropy.utils import lazyproperty
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _validate_brightest)
 from photutils.utils._convolution import _filter_data
+from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -73,6 +74,7 @@ class StarFinder(StarFinderBase):
     The source properties are calculated using image moments.
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, threshold, kernel, min_separation=5.0,
                  exclude_border=False, brightest=None, peakmax=None):
 
@@ -158,6 +160,7 @@ class StarFinder(StarFinderBase):
                                   brightest=self.brightest,
                                   peakmax=self.peakmax)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def find_stars(self, data, mask=None):
         """
         Find stars in an astronomical image.
