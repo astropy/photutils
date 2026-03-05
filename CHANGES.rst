@@ -254,6 +254,9 @@ API Changes
     the ``roundness_range=(lower, upper)`` tuple keyword instead. Set
     ``roundness_range=None`` to disable roundness filtering. [#2216]
 
+  - The ``minsep_fwhm`` keyword argument for ``IRAFStarFinder`` is
+    now deprecated. Use ``min_separation`` instead. [#2216]
+
   - The ``peakmax`` keyword argument for ``DAOStarFinder``,
     ``IRAFStarFinder``, and ``StarFinder`` is now deprecated. Use
     ``peak_max`` instead. [#2216]

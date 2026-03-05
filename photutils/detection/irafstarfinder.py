@@ -56,6 +56,9 @@ class IRAFStarFinder(StarFinderBase):
         0.5)`` and is clipped to a minimum value of 2. Note that large
         values may result in long run times.
 
+        .. deprecated:: 3.0
+            Use ``min_separation`` instead.
+
     sharplo : float, optional
         The lower bound on sharpness for object detection.
 
@@ -106,8 +109,8 @@ class IRAFStarFinder(StarFinderBase):
 
     min_separation : `None` or float, optional
         The minimum separation (in pixels) for detected objects. If
-        `None` (default) then ``minsep_fwhm`` will be used, otherwise
-        this keyword overrides ``minsep_fwhm``. Note that large values
+        `None` (default) then the minimum separation is calculated
+        as ``max(2, int(fwhm * 2.5 + 0.5))``. Note that large values
         may result in long run times.
 
     sharpness_range : tuple of 2 floats or `None`, optional
@@ -161,7 +164,8 @@ class IRAFStarFinder(StarFinderBase):
     @warn_positional_kwargs(since='3.0', until='4.0')
     @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
     @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
-    def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
+    def __init__(self, threshold, fwhm, sigma_radius=1.5,
+                 minsep_fwhm=_DEPR_DEFAULT,
                  sharplo=_DEPR_DEFAULT, sharphi=_DEPR_DEFAULT,
                  roundlo=_DEPR_DEFAULT, roundhi=_DEPR_DEFAULT,
                  exclude_border=False, n_brightest=None, peak_max=None,
@@ -220,14 +224,23 @@ class IRAFStarFinder(StarFinderBase):
                 raise ValueError(msg)
             roundness_range = tuple(roundness_range)
 
+        # Handle deprecated minsep_fwhm parameter
+        if minsep_fwhm is not _DEPR_DEFAULT:
+            msg = ("The 'minsep_fwhm' parameter is deprecated "
+                   'and will be removed in a future version. Use '
+                   "'min_separation' instead.")
+            warnings.warn(msg, AstropyDeprecationWarning)
+            if minsep_fwhm < 0:
+                msg = 'minsep_fwhm must be >= 0'
+                raise ValueError(msg)
+            if min_separation is None:
+                # Use the deprecated minsep_fwhm calculation to set the
+                # min_separation
+                min_separation = max(2, int((fwhm * minsep_fwhm) + 0.5))
+
         self.threshold = threshold
         self.fwhm = fwhm
         self.sigma_radius = sigma_radius
-
-        if minsep_fwhm < 0:
-            msg = 'minsep_fwhm must be >= 0'
-            raise ValueError(msg)
-        self.minsep_fwhm = minsep_fwhm
         self.sharpness_range = sharpness_range
         self.roundness_range = roundness_range
         self.exclude_border = exclude_border
@@ -250,11 +263,10 @@ class IRAFStarFinder(StarFinderBase):
                 raise ValueError(msg)
             self.min_separation = min_separation
         else:
-            self.min_separation = max(2, int((self.fwhm * self.minsep_fwhm)
-                                             + 0.5))
+            self.min_separation = max(2, int((self.fwhm * 2.5) + 0.5))
 
     def _repr_str_params(self):
-        params = ('threshold', 'fwhm', 'sigma_radius', 'minsep_fwhm',
+        params = ('threshold', 'fwhm', 'sigma_radius',
                   'sharpness_range', 'roundness_range',
                   'exclude_border', 'n_brightest', 'peak_max', 'xycoords',
                   'min_separation')

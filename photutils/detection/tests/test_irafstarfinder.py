@@ -51,7 +51,8 @@ class TestIRAFStarFinder:
             IRAFStarFinder(10, 1.5, n_brightest=3.1)
 
         match = 'minsep_fwhm must be >= 0'
-        with pytest.raises(ValueError, match=match):
+        with (pytest.warns(AstropyDeprecationWarning),
+              pytest.raises(ValueError, match=match)):
             IRAFStarFinder(10, 1.5, minsep_fwhm=-1)
 
         xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
@@ -338,7 +339,7 @@ class TestIRAFStarFinder:
         assert 'IRAFStarFinder(' in repr_
         assert 'threshold=5.0' in repr_
         assert 'fwhm=3.0' in repr_
-        assert 'minsep_fwhm=2.5' in repr_
+        assert 'min_separation=' in repr_
         assert 'xycoords=None' in repr_
 
     def test_str(self):
@@ -498,3 +499,27 @@ class TestIRAFStarFinder:
         with pytest.warns(AstropyDeprecationWarning, match=match):
             finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, peakmax=100.0)
         assert finder.peak_max == 100.0
+
+    def test_deprecated_minsep_fwhm(self):
+        """
+        Test that the deprecated 'minsep_fwhm' keyword raises a warning
+        and still works.
+        """
+        fwhm = 3.0
+        minsep_fwhm = 2.5
+        match = "The 'minsep_fwhm' parameter is deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=fwhm,
+                                    minsep_fwhm=minsep_fwhm)
+        expected = max(2, int((fwhm * minsep_fwhm) + 0.5))
+        assert finder.min_separation == expected
+
+    def test_deprecated_minsep_fwhm_overridden(self):
+        """
+        Test that min_separation takes priority over minsep_fwhm.
+        """
+        match = "The 'minsep_fwhm' parameter is deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0,
+                                    minsep_fwhm=2.5, min_separation=7.0)
+        assert finder.min_separation == 7.0
