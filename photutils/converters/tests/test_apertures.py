@@ -3,11 +3,10 @@
 """
 Tests for the photutils aperture converters.
 """
+import asdf
 import numpy as np
 
-import asdf
 from photutils.aperture import CircularAperture
-
 
 apertures = [
     CircularAperture(positions=[(1, 2), (3, 4)], r=5),
@@ -21,7 +20,7 @@ def test_aperture_converters(tmp_path):
     """
     for aperture in apertures:
         with asdf.AsdfFile() as af:
-            af["aperture"] = aperture
+            af['aperture'] = aperture
             af.write_to(tmp_path / 'aperture.asdf')
 
         with asdf.open(tmp_path / 'aperture.asdf') as af:

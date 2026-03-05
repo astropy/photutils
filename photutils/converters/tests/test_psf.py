@@ -3,11 +3,10 @@
 """
 Tests for the photutils PSF converters.
 """
-from astropy import units as u
 import asdf
+from astropy import units as u
 
 from photutils.psf import AiryDiskPSF
-
 
 psfs = [
     AiryDiskPSF(flux=1 * u.Jy, x_0=0 * u.arcsec, y_0=0 * u.arcsec,
@@ -23,11 +22,11 @@ def test_psf_converters(tmp_path):
     """
     for psf in psfs:
         with asdf.AsdfFile() as af:
-            af["psf"] = psf
-            af.write_to(tmp_path / "psf.asdf")
+            af['psf'] = psf
+            af.write_to(tmp_path / 'psf.asdf')
 
-        with asdf.open(tmp_path / "psf.asdf") as af:
-            psf2 = af["psf"]
+        with asdf.open(tmp_path / 'psf.asdf') as af:
+            psf2 = af['psf']
 
         assert psf.flux == psf2.flux
         assert psf.x_0 == psf2.x_0
