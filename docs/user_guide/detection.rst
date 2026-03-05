@@ -101,20 +101,6 @@ finder::
 
 Let's plot the image and mark the location of detected sources:
 
-.. doctest-skip::
-
-    >>> import numpy as np
-    >>> import matplotlib.pyplot as plt
-    >>> from astropy.visualization import SqrtStretch
-    >>> from astropy.visualization.mpl_normalize import ImageNormalize
-    >>> from photutils.aperture import CircularAperture
-    >>> positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
-    >>> apertures = CircularAperture(positions, r=4.0)
-    >>> norm = ImageNormalize(stretch=SqrtStretch())
-    >>> plt.imshow(data, cmap='Greys', origin='lower', norm=norm,
-    ...            interpolation='nearest')
-    >>> apertures.plot(color='blue', lw=1.5, alpha=0.5)
-
 .. plot::
 
     import matplotlib.pyplot as plt
@@ -237,22 +223,6 @@ sigma above the background using a box size of 11 pixels::
      10    358     39  18.671565
 
 Let's plot the location of the detected peaks in the image:
-
-.. doctest-skip::
-
-    >>> import numpy as np
-    >>> import matplotlib.pyplot as plt
-    >>> from astropy.visualization import simple_norm
-    >>> from astropy.visualization.mpl_normalize import ImageNormalize
-    >>> from photutils.aperture import CircularAperture
-    >>> positions = np.transpose((tbl['x_peak'], tbl['y_peak']))
-    >>> apertures = CircularAperture(positions, r=5.0)
-    >>> norm = simple_norm(data, 'sqrt', percent=99.9)
-    >>> plt.imshow(data, cmap='Greys_r', origin='lower', norm=norm,
-    ...            interpolation='nearest')
-    >>> apertures.plot(color='#0547f9', lw=1.5)
-    >>> plt.xlim(0, data.shape[1] - 1)
-    >>> plt.ylim(0, data.shape[0] - 1)
 
 .. plot::
 
