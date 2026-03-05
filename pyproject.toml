@@ -242,6 +242,8 @@ exclude = [
     '\._.*',  # private functions/methods
     '^test_*',  # test code
     '^conftest.*$',  # pytest configuration
+    'to_yaml_tree',  # ASDF converter
+    'from_yaml_tree',  # ASDF converter
 
     # PR01: private classes/functions
     'SigmaClipSentinelDefault$',

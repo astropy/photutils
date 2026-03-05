@@ -10,10 +10,10 @@ from photutils.psf import AiryDiskPSF
 
 
 psfs = [
-    AiryDiskPSF(flux=1*u.Jy, x_0=0*u.arcsec, y_0=0*u.arcsec,
-                radius=1*u.arcsec, bbox_factor=2),
-    AiryDiskPSF(flux=2*u.Jy, x_0=1*u.arcsec, y_0=1*u.arcsec,
-                radius=2*u.arcsec, bbox_factor=3),
+    AiryDiskPSF(flux=1 * u.Jy, x_0=0 * u.arcsec, y_0=0 * u.arcsec,
+                radius=1 * u.arcsec, bbox_factor=2),
+    AiryDiskPSF(flux=2 * u.Jy, x_0=1 * u.arcsec, y_0=1 * u.arcsec,
+                radius=2 * u.arcsec, bbox_factor=3),
 ]
 
 
