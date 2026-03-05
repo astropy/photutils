@@ -36,10 +36,16 @@ class StarFinder(StarFinderBase):
     kernel : `~numpy.ndarray`
         A 2D array of the PSF kernel.
 
-    min_separation : float, optional
-        The minimum separation (in pixels) for detected objects. The
-        default is 5.0. Note that large values may result in long run
-        times.
+    min_separation : `None` or float, optional
+        The minimum separation (in pixels) for detected objects. If
+        `None` (default) then the minimum separation is set to ``2.5 *
+        (min(kernel.shape) // 2)``. Note that large values may result in
+        long run times.
+
+        .. versionchanged:: 3.0
+            The default ``min_separation`` changed from 5 to ``2.5
+            * (min(kernel.shape) // 2)``. To recover the previous
+            behavior, set ``min_separation=5``.
 
     exclude_border : bool, optional
         Whether to exclude sources found within half the size of the
@@ -78,7 +84,7 @@ class StarFinder(StarFinderBase):
     @warn_positional_kwargs(since='3.0', until='4.0')
     @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
     @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
-    def __init__(self, threshold, kernel, min_separation=5.0,
+    def __init__(self, threshold, kernel, min_separation=None,
                  exclude_border=False, n_brightest=None, peak_max=None):
 
         # Validate the units, but do not strip them
@@ -94,10 +100,13 @@ class StarFinder(StarFinderBase):
             raise ValueError(msg)
         self.kernel = kernel
 
-        if min_separation < 0:
-            msg = 'min_separation must be >= 0'
-            raise ValueError(msg)
-        self.min_separation = min_separation
+        if min_separation is not None:
+            if min_separation < 0:
+                msg = 'min_separation must be >= 0'
+                raise ValueError(msg)
+            self.min_separation = min_separation
+        else:
+            self.min_separation = 2.5 * (min(self.kernel.shape) // 2)
         self.exclude_border = exclude_border
         self.n_brightest = _validate_n_brightest(n_brightest)
         self.peak_max = peak_max

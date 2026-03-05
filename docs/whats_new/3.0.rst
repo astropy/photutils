@@ -519,6 +519,37 @@ a future version. Update your code to use the new name::
 Breaking Changes
 ----------------
 
+Consistent Default ``min_separation`` for Star Finders
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The default ``min_separation`` for
+:class:`~photutils.detection.DAOStarFinder`,
+:class:`~photutils.detection.IRAFStarFinder`, and
+:class:`~photutils.detection.StarFinder` has been unified so that all
+three star finders derive a sensible non-zero default from the PSF
+scale. The default ``min_separation`` is now `None` for all three
+classes, which triggers an automatic default based on the PSF FWHM or
+kernel size:
+
+* :class:`~photutils.detection.DAOStarFinder`: changed from ``0``
+  (no separation) to ``2.5 * fwhm``. To recover the previous behavior,
+  set ``min_separation=0``.
+* :class:`~photutils.detection.IRAFStarFinder`: changed from
+  ``max(2, int(fwhm * 2.5 + 0.5))`` to ``2.5 * fwhm``. To recover
+  the previous behavior, set
+  ``min_separation=max(2, int(fwhm * 2.5 + 0.5))``.
+* :class:`~photutils.detection.StarFinder`: changed from ``5`` to
+  ``2.5 * (min(kernel.shape) // 2)``. To recover the previous
+  behavior, set ``min_separation=5``.
+
+Passing an explicit float continues to work as before. Set
+``min_separation=0`` to disable the minimum separation requirement and
+allow sources to be detected arbitrarily close together.
+
+
+EPSFBuilder ``norm_radius`` removed
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 The ``norm_radius`` keyword has been removed from
 :class:`~photutils.psf.EPSFBuilder`. This keyword is no
 longer relevant because the ePSF is now built directly as an

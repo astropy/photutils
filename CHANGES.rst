@@ -265,6 +265,12 @@ API Changes
     ``IRAFStarFinder``, and ``StarFinder`` is now deprecated. Use
     ``n_brightest`` instead. [#2216]
 
+  - The default ``min_separation`` for ``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``StarFinder`` is now ``None``, which
+    computes a default separation of ``2.5 * fwhm`` (or ``2.5 *
+    (min(kernel.shape) // 2)`` for ``StarFinder``) consistent across all
+    three star finders. [#2216]
+
 - ``photutils.profiles``
 
   - Cached Gaussian fits to the radial profile are now automatically

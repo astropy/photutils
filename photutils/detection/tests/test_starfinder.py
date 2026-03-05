@@ -15,6 +15,10 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 
 class TestStarFinder:
+    """
+    Test the StarFinder class.
+    """
+
     def test_find(self, data, kernel):
         """
         Test basic source detection and unit handling.
@@ -118,6 +122,23 @@ class TestStarFinder:
         tbl2 = finder2(data)
         assert len(tbl1) == 25
         assert len(tbl2) == 20
+
+    def test_min_separation_default(self, kernel):
+        """
+        Test that the default min_separation (None) gives
+        2.5 * (min(kernel.shape) // 2).
+        """
+        finder = StarFinder(1, kernel)
+        assert finder.min_separation == 2.5 * (min(kernel.shape) // 2)
+
+        # Non-square kernel
+        rect_kernel = np.ones((3, 7))
+        finder2 = StarFinder(1, rect_kernel)
+        assert finder2.min_separation == 2.5 * (3 // 2)
+
+        # Previous default behavior
+        finder_old = StarFinder(1, kernel, min_separation=5)
+        assert finder_old.min_separation == 5
 
     def test_n_brightest(self, data, kernel):
         """

@@ -109,9 +109,15 @@ class IRAFStarFinder(StarFinderBase):
 
     min_separation : `None` or float, optional
         The minimum separation (in pixels) for detected objects. If
-        `None` (default) then the minimum separation is calculated
-        as ``max(2, int(fwhm * 2.5 + 0.5))``. Note that large values
-        may result in long run times.
+        `None` (default) then the minimum separation is calculated as
+        ``2.5 * fwhm``. Note that large values may result in long run
+        times.
+
+        .. versionchanged:: 3.0
+            The default ``min_separation`` changed from ``max(2,
+            int(fwhm * 2.5 + 0.5))`` to ``2.5 * fwhm``. To recover the
+            previous behavior, set ``min_separation=max(2, int(fwhm *
+            2.5 + 0.5))``.
 
     sharpness_range : tuple of 2 floats or `None`, optional
         The ``(lower, upper)`` inclusive bounds on sharpness for object
@@ -145,7 +151,7 @@ class IRAFStarFinder(StarFinderBase):
 
     * ``fwhm = hwhmpsf * 2``
     * ``sigma_radius = fradius * sqrt(2.0 * log(2.0))``
-    * ``minsep_fwhm = 0.5 * sepmin``
+    * ``min_separation = max(2, int((fwhm * sepmin) + 0.5))``
 
     The main differences between `~photutils.detection.DAOStarFinder`
     and `~photutils.detection.IRAFStarFinder` are:
@@ -263,7 +269,7 @@ class IRAFStarFinder(StarFinderBase):
                 raise ValueError(msg)
             self.min_separation = min_separation
         else:
-            self.min_separation = max(2, int((self.fwhm * 2.5) + 0.5))
+            self.min_separation = 2.5 * self.fwhm
 
     def _repr_str_params(self):
         params = ('threshold', 'fwhm', 'sigma_radius',

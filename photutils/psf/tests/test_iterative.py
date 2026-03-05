@@ -233,7 +233,7 @@ def test_iterative_psf_photometry_mode_all():
     data = make_model_image(shape, psf_model, sources, model_shape=psf_shape)
 
     fit_shape = (5, 5)
-    finder = DAOStarFinder(0.2, 6.0)
+    finder = DAOStarFinder(0.2, fwhm=6.0, min_separation=0)
     sub_shape = psf_shape
     grouper = SourceGrouper(10)
     psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -266,7 +266,7 @@ def test_iterative_psf_photometry_mode_all():
 
     # test with units and mode='all'
     unit = u.Jy
-    finderu = DAOStarFinder(0.2 * unit, 6.0)
+    finderu = DAOStarFinder(0.2 * unit, fwhm=6.0, min_separation=0)
     psfphotu = IterativePSFPhotometry(psf_model, fit_shape, finder=finderu,
                                       grouper=grouper, aperture_radius=4,
                                       sub_shape=sub_shape, mode='all',
@@ -344,7 +344,7 @@ def test_iterative_psf_photometry_overlap():
     data = data[slc]
     error = error[slc]
 
-    daofinder = DAOStarFinder(threshold=0.5, fwhm=fwhm)
+    daofinder = DAOStarFinder(threshold=0.5, fwhm=fwhm, min_separation=0)
     grouper = SourceGrouper(min_separation=1.3 * fwhm)
     fitter = TRFLSQFitter()
     fit_shape = (5, 5)

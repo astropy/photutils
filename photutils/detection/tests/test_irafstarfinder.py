@@ -15,6 +15,10 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 
 class TestIRAFStarFinder:
+    """
+    Test the IRAFStarFinder class.
+    """
+
     def test_find(self, data):
         """
         Test basic source detection and unit handling.
@@ -73,7 +77,7 @@ class TestIRAFStarFinder:
 
         data = np.ones((5, 5))
         data[2, 2] = 10.0
-        finder = IRAFStarFinder(threshold=0.1, fwhm=0.1)
+        finder = IRAFStarFinder(threshold=0.1, fwhm=0.1, min_separation=0)
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(-data)
         assert tbl is None
@@ -110,17 +114,29 @@ class TestIRAFStarFinder:
         fwhm = 1.0
         finder1 = IRAFStarFinder(threshold, fwhm)
         tbl1 = finder1(data)
-        finder2 = IRAFStarFinder(threshold, fwhm, min_separation=3.0)
-        tbl2 = finder2(data)
-        assert np.all(tbl1 == tbl2)
+        assert finder1.min_separation == 2.5 * fwhm
 
-        finder3 = IRAFStarFinder(threshold, fwhm, min_separation=10.0)
-        tbl3 = finder3(data)
-        assert len(tbl2) > len(tbl3)
+        finder2 = IRAFStarFinder(threshold, fwhm, min_separation=10.0)
+        tbl2 = finder2(data)
+        assert len(tbl1) > len(tbl2)
 
         match = 'min_separation must be >= 0'
         with pytest.raises(ValueError, match=match):
             IRAFStarFinder(threshold=10, fwhm=1.5, min_separation=-1.0)
+
+    def test_min_separation_default(self):
+        """
+        Test that the default min_separation (None) gives 2.5 * fwhm.
+        """
+        fwhm = 2.0
+        finder = IRAFStarFinder(threshold=1.0, fwhm=fwhm)
+        assert finder.min_separation == 2.5 * fwhm
+
+        # Previous (< 3.0) default behavior
+        old_default = max(2, int(fwhm * 2.5 + 0.5))
+        finder_old = IRAFStarFinder(threshold=1.0, fwhm=fwhm,
+                                    min_separation=old_default)
+        assert finder_old.min_separation == old_default
 
     def test_n_brightest_filtering(self, data):
         """

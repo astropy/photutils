@@ -141,10 +141,16 @@ class DAOStarFinder(StarFinderBase):
         positions of identified sources. If ``xycoords`` are input, the
         algorithm will skip the source-finding step.
 
-    min_separation : float, optional
-        The minimum separation (in pixels) for detected objects. The
-        default is 0.0 (i.e., no minimum separation). Note that large
-        values may result in long run times.
+    min_separation : `None` or float, optional
+        The minimum separation (in pixels) for detected objects. If
+        `None` (default) then the minimum separation is calculated as
+        ``2.5 * fwhm``. Set to 0 to disable minimum separation. Note
+        that large values may result in long run times.
+
+        .. versionchanged:: 3.0
+            The default ``min_separation`` changed from 0 to
+            ``2.5 * fwhm``. To recover the previous behavior, set
+            ``min_separation=0``.
 
     scale_threshold : bool, optional
         If `True` (default), the input ``threshold`` is multiplied by
@@ -205,7 +211,7 @@ class DAOStarFinder(StarFinderBase):
                  sharphi=_DEPR_DEFAULT, roundlo=_DEPR_DEFAULT,
                  roundhi=_DEPR_DEFAULT, exclude_border=False,
                  n_brightest=None, peak_max=None, xycoords=None,
-                 min_separation=0.0, scale_threshold=True, *,
+                 min_separation=None, scale_threshold=True, *,
                  sharpness_range=(0.2, 1.0),
                  roundness_range=(-1.0, 1.0)):
 
@@ -271,10 +277,13 @@ class DAOStarFinder(StarFinderBase):
         self.n_brightest = _validate_n_brightest(n_brightest)
         self.peak_max = peak_max
 
-        if min_separation < 0:
-            msg = 'min_separation must be >= 0'
-            raise ValueError(msg)
-        self.min_separation = min_separation
+        if min_separation is not None:
+            if min_separation < 0:
+                msg = 'min_separation must be >= 0'
+                raise ValueError(msg)
+            self.min_separation = min_separation
+        else:
+            self.min_separation = 2.5 * self.fwhm
 
         if xycoords is not None:
             xycoords = np.asarray(xycoords)

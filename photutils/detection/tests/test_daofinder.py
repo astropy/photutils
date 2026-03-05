@@ -14,6 +14,10 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 
 class TestDAOStarFinder:
+    """
+    Test the DAOStarFinder class.
+    """
+
     def test_find(self, data):
         """
         Test basic source detection and unit handling.
@@ -132,6 +136,8 @@ class TestDAOStarFinder:
         fwhm = 1.0
         finder1 = DAOStarFinder(threshold, fwhm)
         tbl1 = finder1(data)
+        assert finder1.min_separation == 2.5 * fwhm
+
         finder2 = DAOStarFinder(threshold, fwhm, min_separation=10.0)
         tbl2 = finder2(data)
         assert len(tbl1) > len(tbl2)
@@ -139,6 +145,18 @@ class TestDAOStarFinder:
         match = 'min_separation must be >= 0'
         with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=10, fwhm=1.5, min_separation=-1.0)
+
+    def test_min_separation_default(self):
+        """
+        Test that the default min_separation (None) gives 2.5 * fwhm.
+        """
+        fwhm = 2.0
+        finder = DAOStarFinder(threshold=1.0, fwhm=fwhm)
+        assert finder.min_separation == 2.5 * fwhm
+
+        finder_old = DAOStarFinder(threshold=1.0, fwhm=fwhm,
+                                   min_separation=0)
+        assert finder_old.min_separation == 0
 
     def test_brightest_filtering(self, data):
         """
