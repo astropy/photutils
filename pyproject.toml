@@ -33,10 +33,10 @@ classifiers = [
 dynamic = ['version']
 requires-python = '>=3.11'
 dependencies = [
-    'astropy >= 6.1.4',
+    'astropy >= 7.2',
     'numpy >= 2.0',
     'scipy >= 1.13',
-    'asdf-astropy',
+    'asdf-astropy>=0.10',
 ]
 
 [project.urls]
