@@ -7,6 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.table import Table
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_array_equal, assert_equal
 
 from photutils.detection import StarFinder
@@ -14,6 +15,10 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 
 class TestStarFinder:
+    """
+    Test the StarFinder class.
+    """
+
     def test_find(self, data, kernel):
         """
         Test basic source detection and unit handling.
@@ -45,12 +50,12 @@ class TestStarFinder:
         match = 'min_separation must be >= 0'
         with pytest.raises(ValueError, match=match):
             StarFinder(1, kernel, min_separation=-1)
-        match = 'brightest must be > 0'
+        match = 'n_brightest must be > 0'
         with pytest.raises(ValueError, match=match):
-            StarFinder(1, kernel, brightest=-1)
-        match = 'brightest must be an integer'
+            StarFinder(1, kernel, n_brightest=-1)
+        match = 'n_brightest must be an integer'
         with pytest.raises(ValueError, match=match):
-            StarFinder(1, kernel, brightest=3.1)
+            StarFinder(1, kernel, n_brightest=3.1)
 
     @pytest.mark.parametrize('ndim', [1, 3])
     def test_kernel_not_2d(self, ndim):
@@ -118,36 +123,53 @@ class TestStarFinder:
         assert len(tbl1) == 25
         assert len(tbl2) == 20
 
-    def test_brightest(self, data, kernel):
+    def test_min_separation_default(self, kernel):
         """
-        Test the brightest parameter.
+        Test that the default min_separation (None) gives
+        2.5 * (min(kernel.shape) // 2).
         """
-        finder = StarFinder(1, kernel, brightest=10)
+        finder = StarFinder(1, kernel)
+        assert finder.min_separation == 2.5 * (min(kernel.shape) // 2)
+
+        # Non-square kernel
+        rect_kernel = np.ones((3, 7))
+        finder2 = StarFinder(1, rect_kernel)
+        assert finder2.min_separation == 2.5 * (3 // 2)
+
+        # Previous default behavior
+        finder_old = StarFinder(1, kernel, min_separation=5)
+        assert finder_old.min_separation == 5
+
+    def test_n_brightest(self, data, kernel):
+        """
+        Test the n_brightest parameter.
+        """
+        finder = StarFinder(1, kernel, n_brightest=10)
         tbl = finder(data)
         assert len(tbl) == 10
         fluxes = tbl['flux']
         assert fluxes[0] == np.max(fluxes)
 
-    def test_peakmax(self, data, kernel):
+    def test_peak_max(self, data, kernel):
         """
-        Test the peakmax parameter.
+        Test the peak_max parameter.
         """
-        finder1 = StarFinder(1, kernel, peakmax=None)
-        finder2 = StarFinder(1, kernel, peakmax=11)
+        finder1 = StarFinder(1, kernel, peak_max=None)
+        finder2 = StarFinder(1, kernel, peak_max=11)
         tbl1 = finder1(data)
         tbl2 = finder2(data)
         assert len(tbl1) == 25
         assert len(tbl2) == 16
 
         match = 'Sources were found, but none pass'
-        starfinder = StarFinder(10, kernel, peakmax=5)
+        starfinder = StarFinder(10, kernel, peak_max=5)
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = starfinder(data)
         assert tbl is None
 
-    def test_peakmax_limit(self):
+    def test_peak_max_limit(self):
         """
-        Test that the peakmax limit is inclusive.
+        Test that the peak_max limit is inclusive.
         """
         data = np.zeros((11, 11))
         x = 5
@@ -157,7 +179,7 @@ class TestStarFinder:
                            [0.1, 0.6, 0.1]])
         data[y - 1: y + 2, x - 1: x + 2] = kernel
 
-        finder = StarFinder(threshold=0, kernel=kernel, peakmax=0.8)
+        finder = StarFinder(threshold=0, kernel=kernel, peak_max=0.8)
         tbl = finder.find_stars(data)
 
         assert len(tbl) == 1
@@ -167,7 +189,7 @@ class TestStarFinder:
         """
         Test detection and slicing with a single source.
         """
-        finder = StarFinder(11.5, kernel, brightest=1)
+        finder = StarFinder(11.5, kernel, n_brightest=1)
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50] = True
         tbl = finder(data, mask=mask)
@@ -243,7 +265,7 @@ class TestStarFinder:
         assert 'StarFinder(' in repr_
         assert 'threshold=5.0' in repr_
         assert '<array; shape=' in repr_
-        assert 'brightest=None' in repr_
+        assert 'n_brightest=None' in repr_
 
     def test_str(self, kernel):
         """
@@ -305,3 +327,23 @@ class TestStarFinder:
         finder = StarFinder(threshold_2d, kernel)
         tbl = finder(data << unit)
         assert len(tbl) > 0
+
+    def test_deprecated_brightest(self, kernel):
+        """
+        Test that the deprecated 'brightest' keyword raises a warning
+        and still works.
+        """
+        match = '"brightest" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = StarFinder(threshold=5.0, kernel=kernel, brightest=5)
+        assert finder.n_brightest == 5
+
+    def test_deprecated_peakmax(self, kernel):
+        """
+        Test that the deprecated 'peakmax' keyword raises a warning
+        and still works.
+        """
+        match = '"peakmax" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = StarFinder(threshold=5.0, kernel=kernel, peakmax=100.0)
+        assert finder.peak_max == 100.0

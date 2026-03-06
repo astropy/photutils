@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 
 from photutils.detection import DAOStarFinder
-from photutils.detection.core import (StarFinderCatalogBase, _StarFinderKernel,
-                                      _validate_brightest)
+from photutils.detection.core import (_DEPR_DEFAULT, StarFinderCatalogBase,
+                                      _StarFinderKernel, _validate_n_brightest)
 
 
 class TestStarFinderKernel:
@@ -103,58 +103,58 @@ class TestStarFinderKernel:
             _StarFinderKernel(fwhm=3.0, sigma_radius=sigma_radius)
 
 
-class TestValidateBrightest:
+class TestValidateNBrightest:
     """
-    Parametrized tests for the _validate_brightest function.
+    Parametrized tests for the _validate_n_brightest function.
     """
 
-    @pytest.mark.parametrize('brightest', [-1, -0.5, -100])
-    def test_brightest_negative(self, brightest):
+    @pytest.mark.parametrize('n_brightest', [-1, -0.5, -100])
+    def test_n_brightest_negative(self, n_brightest):
         """
-        Test that negative brightest values raise ValueError.
+        Test that negative n_brightest values raise ValueError.
         """
-        match = 'brightest must be > 0'
+        match = 'n_brightest must be > 0'
         with pytest.raises(ValueError, match=match):
-            _validate_brightest(brightest)
+            _validate_n_brightest(n_brightest)
 
-    def test_brightest_zero(self):
+    def test_n_brightest_zero(self):
         """
-        Test that brightest=0 raises ValueError.
+        Test that n_brightest=0 raises ValueError.
         """
-        match = 'brightest must be > 0'
+        match = 'n_brightest must be > 0'
         with pytest.raises(ValueError, match=match):
-            _validate_brightest(0)
+            _validate_n_brightest(0)
 
-    @pytest.mark.parametrize('brightest', [3.1, 2.5, 1.9])
-    def test_brightest_not_integer(self, brightest):
+    @pytest.mark.parametrize('n_brightest', [3.1, 2.5, 1.9])
+    def test_n_brightest_not_integer(self, n_brightest):
         """
-        Test that non-integer brightest values raise ValueError.
+        Test that non-integer n_brightest values raise ValueError.
         """
-        match = 'brightest must be an integer'
+        match = 'n_brightest must be an integer'
         with pytest.raises(ValueError, match=match):
-            _validate_brightest(brightest)
+            _validate_n_brightest(n_brightest)
 
-    @pytest.mark.parametrize('brightest', [1, 5, 100])
-    def test_brightest_valid(self, brightest):
+    @pytest.mark.parametrize('n_brightest', [1, 5, 100])
+    def test_n_brightest_valid(self, n_brightest):
         """
-        Test that valid brightest values are returned unchanged.
+        Test that valid n_brightest values are returned unchanged.
         """
-        assert _validate_brightest(brightest) == brightest
+        assert _validate_n_brightest(n_brightest) == n_brightest
 
-    def test_brightest_none(self):
+    def test_n_brightest_none(self):
         """
-        Test that None is a valid brightest value.
+        Test that None is a valid n_brightest value.
         """
-        assert _validate_brightest(None) is None
+        assert _validate_n_brightest(None) is None
 
-    @pytest.mark.parametrize('brightest', [True, False])
-    def test_brightest_bool(self, brightest):
+    @pytest.mark.parametrize('n_brightest', [True, False])
+    def test_n_brightest_bool(self, n_brightest):
         """
-        Test that boolean brightest values raise TypeError.
+        Test that boolean n_brightest values raise TypeError.
         """
-        match = 'brightest must be an integer'
+        match = 'n_brightest must be an integer'
         with pytest.raises(TypeError, match=match):
-            _validate_brightest(brightest)
+            _validate_n_brightest(n_brightest)
 
 
 def _make_minimal_catalog_class():
@@ -204,7 +204,7 @@ class TestStarFinderCatalogBase:
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5]])
         cat = minimal_catalog_cls(data, xypos, kernel)
-        expected = ('data', 'unit', 'kernel', 'brightest', 'peakmax',
+        expected = ('data', 'unit', 'kernel', 'n_brightest', 'peak_max',
                     'cutout_shape')
         assert cat._get_init_attributes() == expected
 
@@ -397,7 +397,7 @@ class TestStarFinderCatalogBase:
         data[15, 15] = 30.0
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5], [10, 10], [15, 15]])
-        cat = minimal_catalog_cls(data, xypos, kernel, brightest=2)
+        cat = minimal_catalog_cls(data, xypos, kernel, n_brightest=2)
         newcat = cat.select_brightest()
         assert len(newcat) == 2
         # Brightest first
@@ -405,7 +405,7 @@ class TestStarFinderCatalogBase:
 
     def test_select_brightest_none(self, minimal_catalog_cls):
         """
-        Test that select_brightest with brightest=None keeps all sources.
+        Test that select_brightest with n_brightest=None keeps all sources.
         """
         data = np.zeros((21, 21))
         data[5, 5] = 10.0
@@ -413,7 +413,7 @@ class TestStarFinderCatalogBase:
         data[15, 15] = 30.0
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5], [10, 10], [15, 15]])
-        cat = minimal_catalog_cls(data, xypos, kernel, brightest=None)
+        cat = minimal_catalog_cls(data, xypos, kernel, n_brightest=None)
         newcat = cat.select_brightest()
         assert len(newcat) == 3
 
@@ -445,7 +445,7 @@ class TestStarFinderCatalogBase:
         data[15, 15] = 30.0
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5], [10, 10], [15, 15]])
-        cat = minimal_catalog_cls(data, xypos, kernel, brightest=2)
+        cat = minimal_catalog_cls(data, xypos, kernel, n_brightest=2)
         result = cat.apply_all_filters()
         assert result is not None
         assert len(result) == 2
@@ -514,3 +514,13 @@ class TestStarFinderBaseCall:
         assert len(tbl_call) == len(tbl_find)
         for col in tbl_call.colnames:
             np.testing.assert_array_equal(tbl_call[col], tbl_find[col])
+
+
+def test_deprecated_default():
+    """
+    Test repr for _DeprecatedDefault.
+    """
+    default = _DEPR_DEFAULT
+    result = '<deprecated>'
+    assert repr(default) == result
+    assert str(default) == result

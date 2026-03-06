@@ -7,9 +7,12 @@ import warnings
 
 import numpy as np
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
-from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
-                                      _StarFinderKernel, _validate_brightest)
+from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
+                                      StarFinderCatalogBase, _StarFinderKernel,
+                                      _validate_n_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import isscalar, process_quantities
@@ -53,39 +56,50 @@ class IRAFStarFinder(StarFinderBase):
         0.5)`` and is clipped to a minimum value of 2. Note that large
         values may result in long run times.
 
+        .. deprecated:: 3.0
+            Use ``min_separation`` instead.
+
     sharplo : float, optional
-        The lower bound on sharpness for object detection. Objects
-        with sharpness less than ``sharplo`` will be rejected.
+        The lower bound on sharpness for object detection.
+
+        .. deprecated:: 3.0
+            Use ``sharpness_range=(lower, upper)`` instead.
 
     sharphi : float, optional
-        The upper bound on sharpness for object detection. Objects
-        with sharpness greater than ``sharphi`` will be rejected.
+        The upper bound on sharpness for object detection.
+
+        .. deprecated:: 3.0
+            Use ``sharpness_range=(lower, upper)`` instead.
 
     roundlo : float, optional
-        The lower bound on roundness for object detection. Objects
-        with roundness less than ``roundlo`` will be rejected.
+        The lower bound on roundness for object detection.
+
+        .. deprecated:: 3.0
+            Use ``roundness_range=(lower, upper)`` instead.
 
     roundhi : float, optional
-        The upper bound on roundness for object detection. Objects
-        with roundness greater than ``roundhi`` will be rejected.
+        The upper bound on roundness for object detection.
+
+        .. deprecated:: 3.0
+            Use ``roundness_range=(lower, upper)`` instead.
 
     exclude_border : bool, optional
         Set to `True` to exclude sources found within half the size of
         the convolution kernel from the image borders. The default is
         `False`, which is the mode used by starfind.
 
-    brightest : int, None, optional
+    n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
-        list by flux. If ``brightest`` is set to `None`, all objects
+        list by flux. If ``n_brightest`` is set to `None`, all objects
         will be selected.
 
-    peakmax : float, None, optional
+    peak_max : float, None, optional
         The maximum allowed peak pixel value in an object. Objects with
-        peak pixel values greater than ``peakmax`` will be rejected.
+        peak pixel values greater than ``peak_max`` will be rejected.
         This keyword may be used, for example, to exclude saturated
         sources. If the star finder is run on an image that is a
-        `~astropy.units.Quantity` array, then ``peakmax`` must have the
-        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        `~astropy.units.Quantity` array, then ``peak_max`` must have the
+        same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
 
     xycoords : `None` or Nx2 `~numpy.ndarray`, optional
@@ -95,9 +109,27 @@ class IRAFStarFinder(StarFinderBase):
 
     min_separation : `None` or float, optional
         The minimum separation (in pixels) for detected objects. If
-        `None` (default) then ``minsep_fwhm`` will be used, otherwise
-        this keyword overrides ``minsep_fwhm``. Note that large values
-        may result in long run times.
+        `None` (default) then the minimum separation is calculated as
+        ``2.5 * fwhm``. Note that large values may result in long run
+        times.
+
+        .. versionchanged:: 3.0
+            The default ``min_separation`` changed from ``max(2,
+            int(fwhm * 2.5 + 0.5))`` to ``2.5 * fwhm``. To recover the
+            previous behavior, set ``min_separation=max(2, int(fwhm *
+            2.5 + 0.5))``.
+
+    sharpness_range : tuple of 2 floats or `None`, optional
+        The ``(lower, upper)`` inclusive bounds on sharpness for object
+        detection. Objects with sharpness outside this range will be
+        rejected. If `None`, no sharpness filtering is performed. The
+        default is ``(0.5, 2.0)``.
+
+    roundness_range : tuple of 2 floats or `None`, optional
+        The ``(lower, upper)`` inclusive bounds on roundness for object
+        detection. Objects with roundness outside this range will be
+        rejected. If `None`, no roundness filtering is performed. The
+        default is ``(0.0, 0.2)``.
 
     See Also
     --------
@@ -106,7 +138,7 @@ class IRAFStarFinder(StarFinderBase):
     Notes
     -----
     If the star finder is run on an image that is a
-    `~astropy.units.Quantity` array, then ``threshold`` and ``peakmax``
+    `~astropy.units.Quantity` array, then ``threshold`` and ``peak_max``
     must have the same units as the image.
 
     For the convolution step, this routine sets pixels beyond the image
@@ -118,8 +150,8 @@ class IRAFStarFinder(StarFinderBase):
     are:
 
     * ``fwhm = hwhmpsf * 2``
-    * ``sigma_radius = fradius * sqrt(2.0*log(2.0))``
-    * ``minsep_fwhm = 0.5 * sepmin``
+    * ``sigma_radius = fradius * sqrt(2.0 * log(2.0))``
+    * ``min_separation = max(2, int((fwhm * sepmin) + 0.5))``
 
     The main differences between `~photutils.detection.DAOStarFinder`
     and `~photutils.detection.IRAFStarFinder` are:
@@ -136,35 +168,90 @@ class IRAFStarFinder(StarFinderBase):
     """
 
     @warn_positional_kwargs(since='3.0', until='4.0')
-    def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
-                 sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2,
-                 exclude_border=False, brightest=None, peakmax=None,
-                 xycoords=None, min_separation=None):
+    @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
+    @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
+    def __init__(self, threshold, fwhm, sigma_radius=1.5,
+                 minsep_fwhm=_DEPR_DEFAULT,
+                 sharplo=_DEPR_DEFAULT, sharphi=_DEPR_DEFAULT,
+                 roundlo=_DEPR_DEFAULT, roundhi=_DEPR_DEFAULT,
+                 exclude_border=False, n_brightest=None, peak_max=None,
+                 xycoords=None, min_separation=None, *,
+                 sharpness_range=(0.5, 2.0),
+                 roundness_range=(0.0, 0.2)):
 
         # Validate the units, but do not strip them
-        inputs = (threshold, peakmax)
-        names = ('threshold', 'peakmax')
+        inputs = (threshold, peak_max)
+        names = ('threshold', 'peak_max')
         _ = process_quantities(inputs, names)
 
         if not isscalar(fwhm):
             msg = 'fwhm must be a scalar value'
             raise TypeError(msg)
 
+        # Handle deprecated sharplo/sharphi parameters
+        if sharplo is not _DEPR_DEFAULT or sharphi is not _DEPR_DEFAULT:
+            msg = ("The 'sharplo' and 'sharphi' parameters are deprecated "
+                   'and will be removed in a future version. Use '
+                   "'sharpness_range=(lower, upper)' instead.")
+            warnings.warn(msg, AstropyDeprecationWarning)
+            _default = (sharpness_range
+                        if sharpness_range is not None else (0.5, 2.0))
+            lower = (sharplo if sharplo is not _DEPR_DEFAULT
+                     else _default[0])
+            upper = (sharphi if sharphi is not _DEPR_DEFAULT
+                     else _default[1])
+            sharpness_range = (lower, upper)
+
+        # Handle deprecated roundlo/roundhi parameters
+        if roundlo is not _DEPR_DEFAULT or roundhi is not _DEPR_DEFAULT:
+            msg = ("The 'roundlo' and 'roundhi' parameters are deprecated "
+                   'and will be removed in a future version. Use '
+                   "'roundness_range=(lower, upper)' instead.")
+            warnings.warn(msg, AstropyDeprecationWarning)
+            _default = (roundness_range
+                        if roundness_range is not None else (0.0, 0.2))
+            lower = (roundlo if roundlo is not _DEPR_DEFAULT
+                     else _default[0])
+            upper = (roundhi if roundhi is not _DEPR_DEFAULT
+                     else _default[1])
+            roundness_range = (lower, upper)
+
+        if sharpness_range is not None:
+            if np.ndim(sharpness_range) != 1 or np.size(sharpness_range) != 2:
+                msg = ('sharpness_range must be a 2-element (lower, upper) '
+                       'tuple or None')
+                raise ValueError(msg)
+            sharpness_range = tuple(sharpness_range)
+
+        if roundness_range is not None:
+            if np.ndim(roundness_range) != 1 or np.size(roundness_range) != 2:
+                msg = ('roundness_range must be a 2-element (lower, upper) '
+                       'tuple or None')
+                raise ValueError(msg)
+            roundness_range = tuple(roundness_range)
+
+        # Handle deprecated minsep_fwhm parameter
+        if minsep_fwhm is not _DEPR_DEFAULT:
+            msg = ("The 'minsep_fwhm' parameter is deprecated "
+                   'and will be removed in a future version. Use '
+                   "'min_separation' instead.")
+            warnings.warn(msg, AstropyDeprecationWarning)
+            if minsep_fwhm < 0:
+                msg = 'minsep_fwhm must be >= 0'
+                raise ValueError(msg)
+            if min_separation is None:
+                # Use the deprecated minsep_fwhm calculation to set the
+                # min_separation
+                min_separation = max(2, int((fwhm * minsep_fwhm) + 0.5))
+
         self.threshold = threshold
         self.fwhm = fwhm
         self.sigma_radius = sigma_radius
-
-        if minsep_fwhm < 0:
-            msg = 'minsep_fwhm must be >= 0'
-            raise ValueError(msg)
-        self.minsep_fwhm = minsep_fwhm
-        self.sharplo = sharplo
-        self.sharphi = sharphi
-        self.roundlo = roundlo
-        self.roundhi = roundhi
+        self.sharpness_range = sharpness_range
+        self.roundness_range = roundness_range
         self.exclude_border = exclude_border
-        self.brightest = _validate_brightest(brightest)
-        self.peakmax = peakmax
+        self.n_brightest = _validate_n_brightest(n_brightest)
+        self.peak_max = peak_max
 
         if xycoords is not None:
             xycoords = np.asarray(xycoords)
@@ -182,13 +269,12 @@ class IRAFStarFinder(StarFinderBase):
                 raise ValueError(msg)
             self.min_separation = min_separation
         else:
-            self.min_separation = max(2, int((self.fwhm * self.minsep_fwhm)
-                                             + 0.5))
+            self.min_separation = 2.5 * self.fwhm
 
     def _repr_str_params(self):
-        params = ('threshold', 'fwhm', 'sigma_radius', 'minsep_fwhm',
-                  'sharplo', 'sharphi', 'roundlo', 'roundhi',
-                  'exclude_border', 'brightest', 'peakmax', 'xycoords',
+        params = ('threshold', 'fwhm', 'sigma_radius',
+                  'sharpness_range', 'roundness_range',
+                  'exclude_border', 'n_brightest', 'peak_max', 'xycoords',
                   'min_separation')
         overrides = {}
         if not isscalar(self.threshold):
@@ -246,13 +332,14 @@ class IRAFStarFinder(StarFinderBase):
             warnings.warn(msg, NoDetectionsWarning)
             return None
 
-        return _IRAFStarFinderCatalog(data, convolved_data, xypos, self.kernel,
-                                      sharplo=self.sharplo,
-                                      sharphi=self.sharphi,
-                                      roundlo=self.roundlo,
-                                      roundhi=self.roundhi,
-                                      brightest=self.brightest,
-                                      peakmax=self.peakmax)
+        return _IRAFStarFinderCatalog(data,
+                                      convolved_data,
+                                      xypos,
+                                      self.kernel,
+                                      sharpness_range=self.sharpness_range,
+                                      roundness_range=self.roundness_range,
+                                      n_brightest=self.n_brightest,
+                                      peak_max=self.peak_max)
 
     @warn_positional_kwargs(since='3.0', until='4.0')
     def find_stars(self, data, mask=None):
@@ -292,8 +379,8 @@ class IRAFStarFinder(StarFinderBase):
             * ``mag``: the object instrumental magnitude calculated as
               ``-2.5 * log10(flux)``.
         """
-        inputs = (data, self.threshold, self.peakmax)
-        names = ('data', 'threshold', 'peakmax')
+        inputs = (data, self.threshold, self.peak_max)
+        names = ('data', 'threshold', 'peak_max')
         _ = process_quantities(inputs, names)
 
         cat = self._get_raw_catalog(data, mask=mask)
@@ -332,55 +419,47 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         The convolution kernel. This kernel must match the kernel used
         to create the ``convolved_data``.
 
-    sharplo : float, optional
-        The lower bound on sharpness for object detection. Objects
-        with sharpness less than ``sharplo`` will be rejected.
+    sharpness_range : tuple of 2 floats, optional
+        The ``(lower, upper)`` inclusive bounds on sharpness for object
+        detection. Objects with sharpness outside this range will be
+        rejected.
 
-    sharphi : float, optional
-        The upper bound on sharpness for object detection. Objects
-        with sharpness greater than ``sharphi`` will be rejected.
+    roundness_range : tuple of 2 floats, optional
+        The ``(lower, upper)`` inclusive bounds on roundness for object
+        detection. Objects with roundness outside this range will be
+        rejected.
 
-    roundlo : float, optional
-        The lower bound on roundness for object detection. Objects
-        with roundness less than ``roundlo`` will be rejected.
-
-    roundhi : float, optional
-        The upper bound on roundness for object detection. Objects
-        with roundness greater than ``roundhi`` will be rejected.
-
-    brightest : int, None, optional
+    n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
-        list by flux. If ``brightest`` is set to `None`, all objects
+        list by flux. If ``n_brightest`` is set to `None`, all objects
         will be selected.
 
-    peakmax : float, None, optional
+    peak_max : float, None, optional
         The maximum allowed peak pixel value in an object. Objects with
-        peak pixel values greater than ``peakmax`` will be rejected.
+        peak pixel values greater than ``peak_max`` will be rejected.
         This keyword may be used, for example, to exclude saturated
         sources. If the star finder is run on an image that is a
-        `~astropy.units.Quantity` array, then ``peakmax`` must have the
-        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        `~astropy.units.Quantity` array, then ``peak_max`` must have the
+        same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
     """
 
-    def __init__(self, data, convolved_data, xypos, kernel, *, sharplo=0.2,
-                 sharphi=1.0, roundlo=-1.0, roundhi=1.0, brightest=None,
-                 peakmax=None):
+    def __init__(self, data, convolved_data, xypos, kernel, *,
+                 sharpness_range=(0.2, 1.0), roundness_range=(-1.0, 1.0),
+                 n_brightest=None, peak_max=None):
 
         # Validate the units, but do not strip them
-        inputs = (data, convolved_data, peakmax)
-        names = ('data', 'convolved_data', 'peakmax')
+        inputs = (data, convolved_data, peak_max)
+        names = ('data', 'convolved_data', 'peak_max')
         _ = process_quantities(inputs, names)
 
         super().__init__(data, xypos, kernel,
-                         brightest=brightest,
-                         peakmax=peakmax)
+                         n_brightest=n_brightest,
+                         peak_max=peak_max)
 
         self.convolved_data = convolved_data
-        self.sharplo = sharplo
-        self.sharphi = sharphi
-        self.roundlo = roundlo
-        self.roundhi = roundhi
+        self.sharpness_range = sharpness_range
+        self.roundness_range = roundness_range
 
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'sharpness', 'roundness', 'pa', 'npix',
@@ -391,8 +470,8 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         Return a tuple of attribute names to copy during slicing.
         """
         return ('data', 'unit', 'convolved_data', 'kernel',
-                'sharplo', 'sharphi', 'roundlo', 'roundhi', 'brightest',
-                'peakmax', 'cutout_shape', 'default_columns')
+                'sharpness_range', 'roundness_range', 'n_brightest',
+                'peak_max', 'cutout_shape', 'default_columns')
 
     @lazyproperty
     def sky(self):
@@ -491,7 +570,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
             return None
 
         bounds = [
-            ('sharpness', 'sharplo', 'sharphi'),
-            ('roundness', 'roundlo', 'roundhi'),
+            ('sharpness', self.sharpness_range),
+            ('roundness', self.roundness_range),
         ]
         return newcat._filter_bounds(bounds)

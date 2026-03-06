@@ -6,6 +6,7 @@ Tests for the irafstarfinder module.
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_array_equal
 
 from photutils.detection import IRAFStarFinder
@@ -14,6 +15,10 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 
 class TestIRAFStarFinder:
+    """
+    Test the IRAFStarFinder class.
+    """
+
     def test_find(self, data):
         """
         Test basic source detection and unit handling.
@@ -41,16 +46,17 @@ class TestIRAFStarFinder:
             with pytest.raises(ValueError, match=match):
                 IRAFStarFinder(threshold=3.0, fwhm=fwhm)
 
-        match = 'brightest must be > 0'
+        match = 'n_brightest must be > 0'
         with pytest.raises(ValueError, match=match):
-            IRAFStarFinder(10, 1.5, brightest=-1)
+            IRAFStarFinder(10, 1.5, n_brightest=-1)
 
-        match = 'brightest must be an integer'
+        match = 'n_brightest must be an integer'
         with pytest.raises(ValueError, match=match):
-            IRAFStarFinder(10, 1.5, brightest=3.1)
+            IRAFStarFinder(10, 1.5, n_brightest=3.1)
 
         match = 'minsep_fwhm must be >= 0'
-        with pytest.raises(ValueError, match=match):
+        with (pytest.warns(AstropyDeprecationWarning),
+              pytest.raises(ValueError, match=match)):
             IRAFStarFinder(10, 1.5, minsep_fwhm=-1)
 
         xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
@@ -71,7 +77,7 @@ class TestIRAFStarFinder:
 
         data = np.ones((5, 5))
         data[2, 2] = 10.0
-        finder = IRAFStarFinder(threshold=0.1, fwhm=0.1)
+        finder = IRAFStarFinder(threshold=0.1, fwhm=0.1, min_separation=0)
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(-data)
         assert tbl is None
@@ -108,81 +114,149 @@ class TestIRAFStarFinder:
         fwhm = 1.0
         finder1 = IRAFStarFinder(threshold, fwhm)
         tbl1 = finder1(data)
-        finder2 = IRAFStarFinder(threshold, fwhm, min_separation=3.0)
-        tbl2 = finder2(data)
-        assert np.all(tbl1 == tbl2)
+        assert finder1.min_separation == 2.5 * fwhm
 
-        finder3 = IRAFStarFinder(threshold, fwhm, min_separation=10.0)
-        tbl3 = finder3(data)
-        assert len(tbl2) > len(tbl3)
+        finder2 = IRAFStarFinder(threshold, fwhm, min_separation=10.0)
+        tbl2 = finder2(data)
+        assert len(tbl1) > len(tbl2)
 
         match = 'min_separation must be >= 0'
         with pytest.raises(ValueError, match=match):
             IRAFStarFinder(threshold=10, fwhm=1.5, min_separation=-1.0)
 
-    def test_brightest_filtering(self, data):
+    def test_min_separation_default(self):
         """
-        Test that only the top brightest sources are selected.
+        Test that the default min_separation (None) gives 2.5 * fwhm.
         """
-        brightest = 10
-        finder = IRAFStarFinder(threshold=1.0, fwhm=2, roundlo=-np.inf,
-                                roundhi=np.inf, sharplo=-np.inf,
-                                sharphi=np.inf, brightest=brightest)
+        fwhm = 2.0
+        finder = IRAFStarFinder(threshold=1.0, fwhm=fwhm)
+        assert finder.min_separation == 2.5 * fwhm
+
+        # Previous (< 3.0) default behavior
+        old_default = max(2, int(fwhm * 2.5 + 0.5))
+        finder_old = IRAFStarFinder(threshold=1.0, fwhm=fwhm,
+                                    min_separation=old_default)
+        assert finder_old.min_separation == old_default
+
+    def test_n_brightest_filtering(self, data):
+        """
+        Test that only the top n_brightest sources are selected.
+        """
+        n_brightest = 10
+        finder = IRAFStarFinder(threshold=1.0, fwhm=2,
+                                roundness_range=(-np.inf, np.inf),
+                                sharpness_range=(-np.inf, np.inf),
+                                n_brightest=n_brightest)
         tbl = finder(data)
-        assert len(tbl) == brightest
+        assert len(tbl) == n_brightest
 
     def test_sharpness(self, data):
         """
         Test that no sources pass the sharpness criteria.
         """
         match = 'Sources were found, but none pass'
-        finder = IRAFStarFinder(threshold=1, fwhm=1.0, sharplo=2.0)
+        finder = IRAFStarFinder(threshold=1, fwhm=1.0,
+                                sharpness_range=(2.0, 2.0))
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
+
+    @pytest.mark.parametrize('sharpness_range', [0.5, (0.5,), (1, 2, 3)])
+    def test_invalid_sharpness_range(self, sharpness_range):
+        match = 'sharpness_range must be a 2-element .* tuple'
+        with pytest.raises(ValueError, match=match):
+            IRAFStarFinder(threshold=1, fwhm=1.0,
+                           sharpness_range=sharpness_range)
+
+    def test_sharpness_range_none(self, data):
+        """
+        Test that sharpness_range=None disables sharpness filtering.
+        """
+        finder_none = IRAFStarFinder(threshold=1, fwhm=2,
+                                     roundness_range=None,
+                                     sharpness_range=None)
+        tbl_none = finder_none(data)
+        assert tbl_none is not None
+
+        finder_strict = IRAFStarFinder(threshold=1, fwhm=1.0,
+                                       roundness_range=None,
+                                       sharpness_range=(2.0, 2.0))
+        match = 'Sources were found, but none pass'
+        with pytest.warns(NoDetectionsWarning, match=match):
+            tbl_strict = finder_strict(data)
+        assert tbl_strict is None
+        assert len(tbl_none) >= 1
 
     def test_roundness(self, data):
         """
         Test that no sources pass the roundness criteria.
         """
         match = 'Sources were found, but none pass'
-        finder = IRAFStarFinder(threshold=1, fwhm=1.0, roundlo=1.0)
+        finder = IRAFStarFinder(threshold=1, fwhm=1.0,
+                                roundness_range=(1.0, np.inf))
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
 
-    def test_peakmax(self, data):
+    @pytest.mark.parametrize('roundness_range', [0.5, (0.5,), (1, 2, 3)])
+    def test_invalid_roundness_range(self, roundness_range):
+        match = 'roundness_range must be a 2-element .* tuple'
+        with pytest.raises(ValueError, match=match):
+            IRAFStarFinder(threshold=1, fwhm=1.0,
+                           roundness_range=roundness_range)
+
+    def test_roundness_range_none(self, data):
         """
-        Test that no sources pass the peakmax criteria.
+        Test that roundness_range=None disables roundness filtering.
+        """
+        finder_none = IRAFStarFinder(threshold=1, fwhm=2,
+                                     sharpness_range=None,
+                                     roundness_range=None)
+        tbl_none = finder_none(data)
+        assert tbl_none is not None
+
+        finder_strict = IRAFStarFinder(threshold=1, fwhm=1.0,
+                                       sharpness_range=None,
+                                       roundness_range=(1.0, np.inf))
+        match = 'Sources were found, but none pass'
+        with pytest.warns(NoDetectionsWarning, match=match):
+            tbl_strict = finder_strict(data)
+        assert tbl_strict is None
+        assert len(tbl_none) >= 1
+
+    def test_peak_max(self, data):
+        """
+        Test that no sources pass the peak_max criteria.
         """
         match = 'Sources were found, but none pass'
-        finder = IRAFStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
+        finder = IRAFStarFinder(threshold=1, fwhm=1.0, peak_max=1.0)
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
 
-    def test_peakmax_filtering(self, data):
+    def test_peak_max_filtering(self, data):
         """
-        Test that sources with peak >= peakmax are filtered out.
+        Test that sources with peak >= peak_max are filtered out.
         """
-        peakmax = 8
-        finder0 = IRAFStarFinder(threshold=1.0, fwhm=2, roundlo=-np.inf,
-                                 roundhi=np.inf, sharplo=-np.inf,
-                                 sharphi=np.inf)
-        finder1 = IRAFStarFinder(threshold=1.0, fwhm=2, roundlo=-np.inf,
-                                 roundhi=np.inf, sharplo=-np.inf,
-                                 sharphi=np.inf, peakmax=peakmax)
+        peak_max = 8
+        finder0 = IRAFStarFinder(threshold=1.0, fwhm=2,
+                                 roundness_range=(-np.inf, np.inf),
+                                 sharpness_range=(-np.inf, np.inf))
+        finder1 = IRAFStarFinder(threshold=1.0, fwhm=2,
+                                 roundness_range=(-np.inf, np.inf),
+                                 sharpness_range=(-np.inf, np.inf),
+                                 peak_max=peak_max)
 
         tbl0 = finder0(data)
         tbl1 = finder1(data)
         assert len(tbl0) > len(tbl1)
-        assert all(tbl1['peak'] <= peakmax)
+        assert all(tbl1['peak'] <= peak_max)
 
     def test_single_detected_source(self, data):
         """
         Test detection and slicing with a single source.
         """
-        finder = IRAFStarFinder(8.4, 2, brightest=1)
+        finder = IRAFStarFinder(8.4, 2, n_brightest=1)
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50] = True
         tbl = finder(data, mask=mask)
@@ -207,7 +281,8 @@ class TestIRAFStarFinder:
         data = model1(xx, yy)
 
         # Test single source within the border region
-        finder = IRAFStarFinder(threshold=threshold, fwhm=2.0, roundlo=-0.1,
+        finder = IRAFStarFinder(threshold=threshold, fwhm=2.0,
+                                roundness_range=(-0.1, 0.2),
                                 exclude_border=True)
         with pytest.warns(NoDetectionsWarning):
             tbl = finder(data)
@@ -242,8 +317,8 @@ class TestIRAFStarFinder:
         finder = IRAFStarFinder(
             threshold=0,
             fwhm=2.5,
-            roundlo=0,
-            peakmax=0.8,
+            roundness_range=(0, 0.2),
+            peak_max=0.8,
         )
         tbl = finder.find_stars(data)
 
@@ -280,7 +355,7 @@ class TestIRAFStarFinder:
         assert 'IRAFStarFinder(' in repr_
         assert 'threshold=5.0' in repr_
         assert 'fwhm=3.0' in repr_
-        assert 'minsep_fwhm=2.5' in repr_
+        assert 'min_separation=' in repr_
         assert 'xycoords=None' in repr_
 
     def test_str(self):
@@ -362,9 +437,9 @@ class TestIRAFStarFinder:
         cutout_data_nosub, cutout_xorigin, cutout_yorigin,
         sharpness.
         """
-        finder = IRAFStarFinder(threshold=1.0, fwhm=2.0, sharplo=-np.inf,
-                                sharphi=np.inf, roundlo=-np.inf,
-                                roundhi=np.inf)
+        finder = IRAFStarFinder(threshold=1.0, fwhm=2.0,
+                                sharpness_range=(-np.inf, np.inf),
+                                roundness_range=(-np.inf, np.inf))
         cat = finder._get_raw_catalog(data)
         assert cat is not None
         nsrc = len(cat)
@@ -392,3 +467,75 @@ class TestIRAFStarFinder:
         sharpness = cat.sharpness
         assert sharpness.shape == (nsrc,)
         assert np.all(np.isfinite(sharpness))
+
+    def test_deprecated_sharplo_sharphi(self):
+        """
+        Test that the deprecated 'sharplo'/'sharphi' keywords raise a
+        warning and still work.
+        """
+        match = "The 'sharplo' and 'sharphi' parameters are deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, sharplo=0.3)
+        assert finder.sharpness_range == (0.3, 2.0)
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, sharphi=3.0)
+        assert finder.sharpness_range == (0.5, 3.0)
+
+    def test_deprecated_roundlo_roundhi(self):
+        """
+        Test that the deprecated 'roundlo'/'roundhi' keywords raise a
+        warning and still work.
+        """
+        match = "The 'roundlo' and 'roundhi' parameters are deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, roundlo=-0.1)
+        assert finder.roundness_range == (-0.1, 0.2)
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, roundhi=0.5)
+        assert finder.roundness_range == (0.0, 0.5)
+
+    def test_deprecated_brightest(self):
+        """
+        Test that the deprecated 'brightest' keyword raises a warning
+        and still works.
+        """
+        match = '"brightest" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, brightest=5)
+        assert finder.n_brightest == 5
+
+    def test_deprecated_peakmax(self):
+        """
+        Test that the deprecated 'peakmax' keyword raises a warning
+        and still works.
+        """
+        match = '"peakmax" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, peakmax=100.0)
+        assert finder.peak_max == 100.0
+
+    def test_deprecated_minsep_fwhm(self):
+        """
+        Test that the deprecated 'minsep_fwhm' keyword raises a warning
+        and still works.
+        """
+        fwhm = 3.0
+        minsep_fwhm = 2.5
+        match = "The 'minsep_fwhm' parameter is deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=fwhm,
+                                    minsep_fwhm=minsep_fwhm)
+        expected = max(2, int((fwhm * minsep_fwhm) + 0.5))
+        assert finder.min_separation == expected
+
+    def test_deprecated_minsep_fwhm_overridden(self):
+        """
+        Test that min_separation takes priority over minsep_fwhm.
+        """
+        match = "The 'minsep_fwhm' parameter is deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = IRAFStarFinder(threshold=5.0, fwhm=3.0,
+                                    minsep_fwhm=2.5, min_separation=7.0)
+        assert finder.min_separation == 7.0

@@ -17,6 +17,7 @@ import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 
 from photutils.detection.peakfinder import find_peaks
 from photutils.utils._misc import _get_meta
@@ -188,25 +189,28 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         A 2D array of the PSF kernel. Internally, the star finder
         classes may also pass a kernel object.
 
-    brightest : int, None, optional
+    n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
-        list by flux. If ``brightest`` is set to `None`, all objects
+        list by flux. If ``n_brightest`` is set to `None`, all objects
         will be selected.
 
-    peakmax : float, None, optional
+    peak_max : float, None, optional
         The maximum allowed peak pixel value in an object. Objects with
-        peak pixel values greater than ``peakmax`` will be rejected.
+        peak pixel values greater than ``peak_max`` will be rejected.
         This keyword may be used, for example, to exclude saturated
         sources. If the star finder is run on an image that is a
-        `~astropy.units.Quantity` array, then ``peakmax`` must have the
-        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        `~astropy.units.Quantity` array, then ``peak_max`` must have the
+        same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
     """
 
-    def __init__(self, data, xypos, kernel, *, brightest=None, peakmax=None):
+    @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
+    @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
+    def __init__(self, data, xypos, kernel, *, n_brightest=None,
+                 peak_max=None):
         # Validate the units, but do not strip them
-        inputs = (data, peakmax)
-        names = ('data', 'peakmax')
+        inputs = (data, peak_max)
+        names = ('data', 'peak_max')
         _ = process_quantities(inputs, names)
 
         self.data = data
@@ -216,8 +220,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         self.cutout_shape = kernel.shape
 
         self.xypos = np.atleast_2d(xypos)
-        self.brightest = brightest
-        self.peakmax = peakmax
+        self.n_brightest = n_brightest
+        self.peak_max = peak_max
 
         self.id = np.arange(len(self)) + 1
 
@@ -283,7 +287,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         This method should be overridden in subclasses.
         """
-        return ('data', 'unit', 'kernel', 'brightest', 'peakmax',
+        return ('data', 'unit', 'kernel', 'n_brightest', 'peak_max',
                 'cutout_shape')
 
     @property
@@ -517,8 +521,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         brightest sources.
         """
         newcat = self
-        if self.brightest is not None:
-            idx = np.argsort(self.flux)[::-1][:self.brightest]
+        if self.n_brightest is not None:
+            idx = np.argsort(self.flux)[::-1][:self.n_brightest]
             newcat = self[idx]
         return newcat
 
@@ -564,17 +568,18 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     def _filter_bounds(self, bounds, *, peakattr='peak'):
         """
-        Filter the catalog by sharpness, roundness, and peakmax bounds.
+        Filter the catalog by sharpness, roundness, and peak_max bounds.
 
         Parameters
         ----------
         bounds : list of tuple
-            Each tuple is ``(attr_name, lo_attr, hi_attr)`` giving the
-            attribute to check and the names of the lower/upper bound
-            attributes on ``self``.
+            Each tuple is ``(attr_name, range)`` giving the attribute to
+            check and the range of allowed values. The range is a tuple
+            of the form ``(lower_bound, upper_bound)``, or `None` to
+            skip filtering for that attribute.
 
         peakattr : str, optional
-            The attribute name for the peak value used for peakmax
+            The attribute name for the peak value used for peak_max
             filtering. The default is ``'peak'``.
 
         Returns
@@ -583,13 +588,16 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             The filtered catalog, or `None` if no sources remain.
         """
         mask = np.ones(len(self), dtype=bool)
-        for attr, lo_attr, hi_attr in bounds:
+        for attr, range_val in bounds:
+            if range_val is None:
+                continue
+            min_val, max_val = range_val
             values = getattr(self, attr)
-            mask &= (values >= getattr(self, lo_attr))
-            mask &= (values <= getattr(self, hi_attr))
+            mask &= (values >= min_val)
+            mask &= (values <= max_val)
 
-        if self.peakmax is not None:
-            mask &= (getattr(self, peakattr) <= self.peakmax)
+        if self.peak_max is not None:
+            mask &= (getattr(self, peakattr) <= self.peak_max)
 
         newcat = self[mask]
 
@@ -823,29 +831,41 @@ class _StarFinderKernel:
         return make_repr(self, params, long=True)
 
 
-def _validate_brightest(brightest):
+def _validate_n_brightest(n_brightest):
     """
-    Validate the ``brightest`` parameter.
+    Validate the ``n_brightest`` parameter.
 
     It must be >0 and an integer.
 
     Parameters
     ----------
-    brightest : int, None, or bool
+    n_brightest : int, None, or bool
         The number of brightest sources to select. If `None`, all
         sources are selected. If a boolean is passed, a `TypeError` is
         raised.
     """
-    if brightest is not None:
-        if isinstance(brightest, bool):
-            msg = 'brightest must be an integer'
+    if n_brightest is not None:
+        if isinstance(n_brightest, bool):
+            msg = 'n_brightest must be an integer'
             raise TypeError(msg)
-        if brightest <= 0:
-            msg = 'brightest must be > 0'
+        if n_brightest <= 0:
+            msg = 'n_brightest must be > 0'
             raise ValueError(msg)
-        bright_int = int(brightest)
-        if bright_int != brightest:
-            msg = 'brightest must be an integer'
+        bright_int = int(n_brightest)
+        if bright_int != n_brightest:
+            msg = 'n_brightest must be an integer'
             raise ValueError(msg)
-        brightest = bright_int
-    return brightest
+        n_brightest = bright_int
+    return n_brightest
+
+
+class _DeprecatedDefault:
+    """
+    Sentinel default value for a deprecated parameter.
+    """
+
+    def __repr__(self):
+        return '<deprecated>'
+
+
+_DEPR_DEFAULT = _DeprecatedDefault()

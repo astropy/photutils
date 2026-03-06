@@ -6,6 +6,7 @@ Tests for the daofinder module.
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_array_equal
 
 from photutils.detection.daofinder import DAOStarFinder
@@ -13,6 +14,10 @@ from photutils.utils.exceptions import NoDetectionsWarning
 
 
 class TestDAOStarFinder:
+    """
+    Test the DAOStarFinder class.
+    """
+
     def test_find(self, data):
         """
         Test basic source detection and unit handling.
@@ -55,13 +60,13 @@ class TestDAOStarFinder:
         with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=3.0, fwhm=2, sigma_radius=-10)
 
-        match = 'brightest must be > 0'
+        match = 'n_brightest must be > 0'
         with pytest.raises(ValueError, match=match):
-            DAOStarFinder(threshold=10, fwhm=1.5, brightest=-1)
+            DAOStarFinder(threshold=10, fwhm=1.5, n_brightest=-1)
 
-        match = 'brightest must be an integer'
+        match = 'n_brightest must be an integer'
         with pytest.raises(ValueError, match=match):
-            DAOStarFinder(threshold=10, fwhm=1.5, brightest=3.1)
+            DAOStarFinder(threshold=10, fwhm=1.5, n_brightest=3.1)
 
         xycoords = np.array([[1, 2, 3, 4], [5, 6, 7, 8]])
         match = 'xycoords must be shaped as an Nx2 array'
@@ -131,6 +136,8 @@ class TestDAOStarFinder:
         fwhm = 1.0
         finder1 = DAOStarFinder(threshold, fwhm)
         tbl1 = finder1(data)
+        assert finder1.min_separation == 2.5 * fwhm
+
         finder2 = DAOStarFinder(threshold, fwhm, min_separation=10.0)
         tbl2 = finder2(data)
         assert len(tbl1) > len(tbl2)
@@ -139,23 +146,37 @@ class TestDAOStarFinder:
         with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=10, fwhm=1.5, min_separation=-1.0)
 
+    def test_min_separation_default(self):
+        """
+        Test that the default min_separation (None) gives 2.5 * fwhm.
+        """
+        fwhm = 2.0
+        finder = DAOStarFinder(threshold=1.0, fwhm=fwhm)
+        assert finder.min_separation == 2.5 * fwhm
+
+        finder_old = DAOStarFinder(threshold=1.0, fwhm=fwhm,
+                                   min_separation=0)
+        assert finder_old.min_separation == 0
+
     def test_brightest_filtering(self, data):
         """
         Test that only the top brightest sources are selected.
         """
-        brightest = 10
-        finder = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
-                               roundhi=np.inf, sharplo=-np.inf,
-                               sharphi=np.inf, brightest=brightest)
+        n_brightest = 10
+        finder = DAOStarFinder(threshold=1.0, fwhm=1.5,
+                               roundness_range=(-np.inf, np.inf),
+                               sharpness_range=(-np.inf, np.inf),
+                               n_brightest=n_brightest)
         tbl = finder(data)
-        assert len(tbl) == brightest
+        assert len(tbl) == n_brightest
 
-        # Combined with peakmax
-        peakmax = 8
-        finder = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
-                               roundhi=np.inf, sharplo=-np.inf,
-                               sharphi=np.inf, brightest=brightest,
-                               peakmax=peakmax)
+        # Combined with peak_max
+        peak_max = 8
+        finder = DAOStarFinder(threshold=1.0, fwhm=1.5,
+                               roundness_range=(-np.inf, np.inf),
+                               sharpness_range=(-np.inf, np.inf),
+                               n_brightest=n_brightest,
+                               peak_max=peak_max)
         tbl = finder(data)
         assert len(tbl) == 5
 
@@ -163,54 +184,109 @@ class TestDAOStarFinder:
         """
         Test that no sources pass the sharpness criteria.
         """
+        finder = DAOStarFinder(threshold=1, fwhm=1.0,
+                               sharpness_range=(1.0, 1.0))
         match = 'Sources were found, but none pass'
-        finder = DAOStarFinder(threshold=1, fwhm=1.0, sharplo=1.0)
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
+
+    @pytest.mark.parametrize('sharpness_range', [0.5, (0.5,), (1, 2, 3)])
+    def test_invalid_sharpness_range(self, sharpness_range):
+        match = 'sharpness_range must be a 2-element .* tuple'
+        with pytest.raises(ValueError, match=match):
+            DAOStarFinder(threshold=1, fwhm=1.0,
+                          sharpness_range=sharpness_range)
+
+    def test_sharpness_range_none(self, data):
+        """
+        Test that sharpness_range=None disables sharpness filtering.
+        """
+        finder_none = DAOStarFinder(threshold=1, fwhm=1.0,
+                                    roundness_range=None,
+                                    sharpness_range=None)
+        tbl_none = finder_none(data)
+        assert tbl_none is not None
+
+        finder_strict = DAOStarFinder(threshold=1, fwhm=1.0,
+                                      roundness_range=None,
+                                      sharpness_range=(1.0, 1.0))
+        match = 'Sources were found, but none pass'
+        with pytest.warns(NoDetectionsWarning, match=match):
+            tbl_strict = finder_strict(data)
+        assert tbl_strict is None
+        assert len(tbl_none) >= 1
 
     def test_roundness(self, data):
         """
         Test that no sources pass the roundness criteria.
         """
         match = 'Sources were found, but none pass'
-        finder = DAOStarFinder(threshold=1, fwhm=1.0, roundlo=1.0)
+        finder = DAOStarFinder(threshold=1, fwhm=1.0,
+                               roundness_range=(1.0, 1.0))
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
 
-    def test_peakmax(self, data):
+    @pytest.mark.parametrize('roundness_range', [0.5, (0.5,), (1, 2, 3)])
+    def test_invalid_roundness_range(self, roundness_range):
+        match = 'roundness_range must be a 2-element .* tuple'
+        with pytest.raises(ValueError, match=match):
+            DAOStarFinder(threshold=1, fwhm=1.0,
+                          roundness_range=roundness_range)
+
+    def test_roundness_range_none(self, data):
         """
-        Test that no sources pass the peakmax criteria.
+        Test that roundness_range=None disables roundness filtering.
+        """
+        finder_none = DAOStarFinder(threshold=1, fwhm=1.0,
+                                    sharpness_range=None,
+                                    roundness_range=None)
+        tbl_none = finder_none(data)
+        assert tbl_none is not None
+
+        finder_strict = DAOStarFinder(threshold=1, fwhm=1.0,
+                                      sharpness_range=None,
+                                      roundness_range=(1.0, 1.0))
+        match = 'Sources were found, but none pass'
+        with pytest.warns(NoDetectionsWarning, match=match):
+            tbl_strict = finder_strict(data)
+        assert tbl_strict is None
+        assert len(tbl_none) >= 1
+
+    def test_peak_max(self, data):
+        """
+        Test that no sources pass the peak_max criteria.
         """
         match = 'Sources were found, but none pass'
-        finder = DAOStarFinder(threshold=1, fwhm=1.0, peakmax=1.0)
+        finder = DAOStarFinder(threshold=1, fwhm=1.0, peak_max=1.0)
         with pytest.warns(NoDetectionsWarning, match=match):
             tbl = finder(data)
         assert tbl is None
 
-    def test_peakmax_filtering(self, data):
+    def test_peak_max_filtering(self, data):
         """
-        Test that sources with peak >= peakmax are filtered out.
+        Test that sources with peak >= peak_max are filtered out.
         """
-        peakmax = 8
-        finder0 = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
-                                roundhi=np.inf, sharplo=-np.inf,
-                                sharphi=np.inf)
-        finder1 = DAOStarFinder(threshold=1.0, fwhm=1.5, roundlo=-np.inf,
-                                roundhi=np.inf, sharplo=-np.inf,
-                                sharphi=np.inf, peakmax=peakmax)
+        peak_max = 8
+        finder0 = DAOStarFinder(threshold=1.0, fwhm=1.5,
+                                roundness_range=(-np.inf, np.inf),
+                                sharpness_range=(-np.inf, np.inf))
+        finder1 = DAOStarFinder(threshold=1.0, fwhm=1.5,
+                                roundness_range=(-np.inf, np.inf),
+                                sharpness_range=(-np.inf, np.inf),
+                                peak_max=peak_max)
 
         tbl0 = finder0(data)
         tbl1 = finder1(data)
         assert len(tbl0) > len(tbl1)
-        assert all(tbl1['peak'] <= peakmax)
+        assert all(tbl1['peak'] <= peak_max)
 
     def test_single_detected_source(self, data):
         """
         Test detection and slicing with a single source.
         """
-        finder = DAOStarFinder(7.9, 2, brightest=1)
+        finder = DAOStarFinder(7.9, 2, n_brightest=1)
         mask = np.zeros(data.shape, dtype=bool)
         mask[0:50] = True
         tbl = finder(data, mask=mask)
@@ -241,9 +317,9 @@ class TestDAOStarFinder:
         finder = DAOStarFinder(
             threshold=0,
             fwhm=2.5,
-            roundlo=0,
-            sharphi=1.407913491884342,
-            peakmax=1.0e20,
+            roundness_range=(0, 1.0),
+            sharpness_range=(0.2, 1.407913491884342),
+            peak_max=1.0e20,
         )
         tbl = finder.find_stars(data)
 
@@ -418,3 +494,61 @@ class TestDAOStarFinder:
                                scale_threshold=False)
         assert 'scale_threshold=False' in repr(finder)
         assert 'scale_threshold: False' in str(finder)
+
+    def test_deprecated_sharplo_sharphi(self):
+        """
+        Test that the deprecated 'sharplo'/'sharphi' keywords raise a
+        warning and still work.
+        """
+        match = "The 'sharplo' and 'sharphi' parameters are deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0, sharplo=0.1)
+        assert finder.sharpness_range == (0.1, 1.0)
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0, sharphi=2.0)
+        assert finder.sharpness_range == (0.2, 2.0)
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
+                                   sharplo=0.1, sharphi=2.0)
+        assert finder.sharpness_range == (0.1, 2.0)
+
+    def test_deprecated_roundlo_roundhi(self):
+        """
+        Test that the deprecated 'roundlo'/'roundhi' keywords raise a
+        warning and still work.
+        """
+        match = "The 'roundlo' and 'roundhi' parameters are deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0, roundlo=-0.5)
+        assert finder.roundness_range == (-0.5, 1.0)
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0, roundhi=0.5)
+        assert finder.roundness_range == (-1.0, 0.5)
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
+                                   roundlo=-0.5, roundhi=0.5)
+        assert finder.roundness_range == (-0.5, 0.5)
+
+    def test_deprecated_brightest(self):
+        """
+        Test that the deprecated 'brightest' keyword raises a warning
+        and still works.
+        """
+        match = '"brightest" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0, brightest=5)
+        assert finder.n_brightest == 5
+
+    def test_deprecated_peakmax(self):
+        """
+        Test that the deprecated 'peakmax' keyword raises a warning
+        and still works.
+        """
+        match = '"peakmax" was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            finder = DAOStarFinder(threshold=5.0, fwhm=3.0, peakmax=100.0)
+        assert finder.peak_max == 100.0

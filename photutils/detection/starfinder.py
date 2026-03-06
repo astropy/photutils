@@ -7,9 +7,10 @@ import warnings
 
 import numpy as np
 from astropy.utils import lazyproperty
+from astropy.utils.decorators import deprecated_renamed_argument
 
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
-                                      _validate_brightest)
+                                      _validate_n_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import process_quantities
@@ -35,27 +36,33 @@ class StarFinder(StarFinderBase):
     kernel : `~numpy.ndarray`
         A 2D array of the PSF kernel.
 
-    min_separation : float, optional
-        The minimum separation (in pixels) for detected objects. The
-        default is 5.0. Note that large values may result in long run
-        times.
+    min_separation : `None` or float, optional
+        The minimum separation (in pixels) for detected objects. If
+        `None` (default) then the minimum separation is set to ``2.5 *
+        (min(kernel.shape) // 2)``. Note that large values may result in
+        long run times.
+
+        .. versionchanged:: 3.0
+            The default ``min_separation`` changed from 5 to ``2.5
+            * (min(kernel.shape) // 2)``. To recover the previous
+            behavior, set ``min_separation=5``.
 
     exclude_border : bool, optional
         Whether to exclude sources found within half the size of the
         convolution kernel from the image borders.
 
-    brightest : int, None, optional
+    n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
-        list by flux. If ``brightest`` is set to `None`, all objects
+        list by flux. If ``n_brightest`` is set to `None`, all objects
         will be selected.
 
-    peakmax : float, None, optional
+    peak_max : float, None, optional
         The maximum allowed peak pixel value in an object. Objects with
-        peak pixel values greater than ``peakmax`` will be rejected.
+        peak pixel values greater than ``peak_max`` will be rejected.
         This keyword may be used, for example, to exclude saturated
         sources. If the star finder is run on an image that is a
-        `~astropy.units.Quantity` array, then ``peakmax`` must have the
-        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        `~astropy.units.Quantity` array, then ``peak_max`` must have the
+        same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
 
     See Also
@@ -65,7 +72,7 @@ class StarFinder(StarFinderBase):
     Notes
     -----
     If the star finder is run on an image that is a
-    `~astropy.units.Quantity` array, then ``threshold`` and ``peakmax``
+    `~astropy.units.Quantity` array, then ``threshold`` and ``peak_max``
     must all have the same units as the image.
 
     For the convolution step, this routine sets pixels beyond the image
@@ -75,12 +82,14 @@ class StarFinder(StarFinderBase):
     """
 
     @warn_positional_kwargs(since='3.0', until='4.0')
-    def __init__(self, threshold, kernel, min_separation=5.0,
-                 exclude_border=False, brightest=None, peakmax=None):
+    @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
+    @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
+    def __init__(self, threshold, kernel, min_separation=None,
+                 exclude_border=False, n_brightest=None, peak_max=None):
 
         # Validate the units, but do not strip them
-        inputs = (threshold, peakmax)
-        names = ('threshold', 'peakmax')
+        inputs = (threshold, peak_max)
+        names = ('threshold', 'peak_max')
         _ = process_quantities(inputs, names)
 
         self.threshold = threshold
@@ -91,17 +100,20 @@ class StarFinder(StarFinderBase):
             raise ValueError(msg)
         self.kernel = kernel
 
-        if min_separation < 0:
-            msg = 'min_separation must be >= 0'
-            raise ValueError(msg)
-        self.min_separation = min_separation
+        if min_separation is not None:
+            if min_separation < 0:
+                msg = 'min_separation must be >= 0'
+                raise ValueError(msg)
+            self.min_separation = min_separation
+        else:
+            self.min_separation = 2.5 * (min(self.kernel.shape) // 2)
         self.exclude_border = exclude_border
-        self.brightest = _validate_brightest(brightest)
-        self.peakmax = peakmax
+        self.n_brightest = _validate_n_brightest(n_brightest)
+        self.peak_max = peak_max
 
     def _repr_str_params(self):
         params = ('threshold', 'kernel', 'min_separation',
-                  'exclude_border', 'brightest', 'peakmax')
+                  'exclude_border', 'n_brightest', 'peak_max')
         overrides = {'kernel': f'<array; shape={self.kernel.shape}>'}
         if not np.isscalar(self.threshold):
             overrides['threshold'] = (
@@ -157,8 +169,8 @@ class StarFinder(StarFinderBase):
             return None
 
         return _StarFinderCatalog(data, xypos, self.kernel,
-                                  brightest=self.brightest,
-                                  peakmax=self.peakmax)
+                                  n_brightest=self.n_brightest,
+                                  peak_max=self.peak_max)
 
     @warn_positional_kwargs(since='3.0', until='4.0')
     def find_stars(self, data, mask=None):
@@ -194,7 +206,7 @@ class StarFinder(StarFinderBase):
               ``-2.5 * log10(flux)``.
 
             `None` is returned if no stars are found or no stars meet
-            the roundness and peakmax criteria.
+            the roundness and peak_max criteria.
         """
         cat = self._get_raw_catalog(data, mask=mask)
         if cat is None:
@@ -225,26 +237,26 @@ class _StarFinderCatalog(StarFinderCatalogBase):
     kernel: 2D `~numpy.ndarray`
         A 2D array of the PSF kernel.
 
-    brightest : int, None, optional
+    n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
-        list by flux. If ``brightest`` is set to `None`, all objects
+        list by flux. If ``n_brightest`` is set to `None`, all objects
         will be selected.
 
-    peakmax : float, None, optional
+    peak_max : float, None, optional
         The maximum allowed peak pixel value in an object. Objects with
-        peak pixel values greater than ``peakmax`` will be rejected.
+        peak pixel values greater than ``peak_max`` will be rejected.
         This keyword may be used, for example, to exclude saturated
         sources. If the star finder is run on an image that is a
-        `~astropy.units.Quantity` array, then ``peakmax`` must have the
-        same units. If ``peakmax`` is set to `None`, then no peak pixel
+        `~astropy.units.Quantity` array, then ``peak_max`` must have the
+        same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
     """
 
-    def __init__(self, data, xypos, kernel, *, brightest=None,
-                 peakmax=None):
+    def __init__(self, data, xypos, kernel, *, n_brightest=None,
+                 peak_max=None):
         super().__init__(data, xypos, kernel,
-                         brightest=brightest,
-                         peakmax=peakmax)
+                         n_brightest=n_brightest,
+                         peak_max=peak_max)
         self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
                                 'roundness', 'pa', 'max_value', 'flux', 'mag')
 
@@ -252,7 +264,7 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         """
         Return a tuple of attribute names to copy during slicing.
         """
-        return ('data', 'unit', 'kernel', 'brightest', 'peakmax',
+        return ('data', 'unit', 'kernel', 'n_brightest', 'peak_max',
                 'cutout_shape', 'default_columns')
 
     @lazyproperty

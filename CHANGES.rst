@@ -244,6 +244,33 @@ API Changes
   - ``find_peaks`` now returns a ``QTable`` instead of a ``Table``.
     [#2201]
 
+  - The ``sharplo`` and ``sharphi`` keyword arguments for
+    ``DAOStarFinder`` and ``IRAFStarFinder`` are now deprecated. Use
+    ``the sharpness_range=(lower, upper)`` tuple keyword instead. Set
+    ``sharpness_range=None`` to disable sharpness filtering. [#2216]
+
+  - The ``roundlo`` and ``roundhi`` keyword arguments for
+    ``DAOStarFinder`` and ``IRAFStarFinder`` are now deprecated. Use
+    the ``roundness_range=(lower, upper)`` tuple keyword instead. Set
+    ``roundness_range=None`` to disable roundness filtering. [#2216]
+
+  - The ``minsep_fwhm`` keyword argument for ``IRAFStarFinder`` is
+    now deprecated. Use ``min_separation`` instead. [#2216]
+
+  - The ``peakmax`` keyword argument for ``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``StarFinder`` is now deprecated. Use
+    ``peak_max`` instead. [#2216]
+
+  - The ``brightest`` keyword argument for ``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``StarFinder`` is now deprecated. Use
+    ``n_brightest`` instead. [#2216]
+
+  - The default ``min_separation`` for ``DAOStarFinder``,
+    ``IRAFStarFinder``, and ``StarFinder`` is now ``None``, which
+    computes a default separation of ``2.5 * fwhm`` (or ``2.5 *
+    (min(kernel.shape) // 2)`` for ``StarFinder``) consistent across all
+    three star finders. [#2216]
+
 - ``photutils.profiles``
 
   - Cached Gaussian fits to the radial profile are now automatically
