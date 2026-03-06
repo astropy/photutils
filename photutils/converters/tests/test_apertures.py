@@ -10,7 +10,7 @@ from photutils.aperture import CircularAperture
 
 apertures = [
     CircularAperture(positions=[(1, 2), (3, 4)], r=5),
-    CircularAperture(positions=[(5, 6)], r=7),
+    CircularAperture(positions=(5, 6), r=7),
 ]
 
 
