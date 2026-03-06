@@ -11,6 +11,7 @@ from astropy.utils import lazyproperty
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _StarFinderKernel, _validate_brightest)
 from photutils.utils._convolution import _filter_data
+from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import isscalar, process_quantities
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -134,6 +135,7 @@ class IRAFStarFinder(StarFinderBase):
       centroid, roundness, and sharpness using image moments.
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, threshold, fwhm, sigma_radius=1.5, minsep_fwhm=2.5,
                  sharplo=0.5, sharphi=2.0, roundlo=0.0, roundhi=0.2,
                  exclude_border=False, brightest=None, peakmax=None,
@@ -252,6 +254,7 @@ class IRAFStarFinder(StarFinderBase):
                                       brightest=self.brightest,
                                       peakmax=self.peakmax)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def find_stars(self, data, mask=None):
         """
         Find stars in an astronomical image.

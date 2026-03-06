@@ -12,6 +12,7 @@ from astropy.utils import lazyproperty
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _StarFinderKernel, _validate_brightest)
 from photutils.utils._convolution import _filter_data
+from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import isscalar, process_quantities
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -172,6 +173,7 @@ class DAOStarFinder(StarFinderBase):
            (https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract)
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, threshold, fwhm, ratio=1.0, theta=0.0,
                  sigma_radius=1.5, sharplo=0.2, sharphi=1.0, roundlo=-1.0,
                  roundhi=1.0, exclude_border=False, brightest=None,
@@ -294,6 +296,7 @@ class DAOStarFinder(StarFinderBase):
                                      peakmax=self.peakmax,
                                      scale_threshold=self.scale_threshold)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def find_stars(self, data, mask=None):
         """
         Find stars in an astronomical image.
@@ -802,7 +805,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
 
         return np.transpose((dx, hx))
 
-    def daofind_marginal_fit(self, axis=0):
+    def daofind_marginal_fit(self, *, axis=0):
         """
         Fit 1D Gaussians, defined from the marginal x/y kernel
         distributions, to the marginal x/y distributions of the original
