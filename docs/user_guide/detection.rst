@@ -52,10 +52,17 @@ of a custom user-defined kernel as a 2D array. This allows for more
 generalization beyond simple Gaussian kernels.
 
 The usage of :class:`~photutils.detection.IRAFStarFinder` and
-:class:`~photutils.detection.StarFinder` follows the same pattern as
-:class:`~photutils.detection.DAOStarFinder` shown below. Replace the
-class name and adjust the parameters (e.g., ``fwhm`` and ``kernel``) as
-needed.
+:class:`~photutils.detection.StarFinder` follows the same pattern
+as :class:`~photutils.detection.DAOStarFinder` shown below. Replace
+the class name and adjust the parameters (e.g., ``fwhm`` and
+``kernel``) as needed. Note that the ``scale_threshold`` parameter
+is specific to :class:`~photutils.detection.DAOStarFinder`.
+Note also that each class returns different output columns.
+For example, :class:`~photutils.detection.DAOStarFinder`
+includes ``daofind_mag`` and ``sharpness`` columns, while
+:class:`~photutils.detection.IRAFStarFinder` includes ``fwhm`` and
+``pa`` (position angle) columns. See each class's API documentation for
+the full list of output columns.
 
 As an example, let's load an image from the bundled datasets and select
 a subset of the image. We will estimate the background and background
@@ -73,12 +80,25 @@ noise using sigma-clipped statistics::
 Now we will subtract the background and use an instance of
 :class:`~photutils.detection.DAOStarFinder` to find the stars in the
 image that have FWHMs of around 3 pixels and have peaks approximately
-5-sigma above the background. Running this class on the data yields
+5 times the background standard deviation above the background (i.e.,
+the threshold is ``5 * std``). Running this class on the data yields
 an astropy `~astropy.table.QTable` containing the results of the star
 finder::
 
     >>> from photutils.detection import DAOStarFinder
     >>> daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)  # doctest: +REMOTE_DATA
+
+By default, :class:`~photutils.detection.DAOStarFinder` internally
+scales the input threshold by a factor derived from the convolution
+kernel to match the original `DAOFIND`_ algorithm. To apply
+the threshold exactly as given (e.g., when supplying a spatial
+background-RMS map), set ``scale_threshold=False``::
+
+    >>> daofind_unscaled = DAOStarFinder(fwhm=3.0, threshold=5.*std,
+    ...                                  scale_threshold=False)  # doctest: +REMOTE_DATA
+
+Running the finder on the background-subtracted data::
+
     >>> sources = daofind(data - median)  # doctest: +REMOTE_DATA
     >>> for col in sources.colnames:  # doctest: +REMOTE_DATA
     ...     if col not in ('id', 'npix'):

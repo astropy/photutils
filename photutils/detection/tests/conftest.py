@@ -30,6 +30,7 @@ def fixture_data():
     """
     shape = (101, 101)
     model_shape = (11, 11)
+    # sigma=1.5 -> FWHM = sigma * 2 * sqrt(2 * ln(2))
     fwhm = 1.5 * 2.0 * np.sqrt(2.0 * np.log(2.0))
     psf_model = CircularGaussianPRF(flux=1, fwhm=fwhm)
     n_sources = 25

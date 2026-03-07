@@ -18,6 +18,7 @@ from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
 from astropy.utils.decorators import deprecated_renamed_argument
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.peakfinder import find_peaks
 from photutils.utils._misc import _get_meta
@@ -596,6 +597,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             mask &= (values >= min_val)
             mask &= (values <= max_val)
 
+        # peak_max filtering is applied separately from the bounds list
+        # because it uses a different attribute (peakattr) and is always
+        # a single upper bound, not a range.
         if self.peak_max is not None:
             mask &= (getattr(self, peakattr) <= self.peak_max)
 
@@ -745,6 +749,10 @@ class _StarFinderKernel:
     def __init__(self, fwhm, *, ratio=1.0, theta=0.0, sigma_radius=1.5,
                  normalize_zerosum=True):
 
+        if np.ndim(fwhm) != 0:
+            msg = 'fwhm must be a scalar value'
+            raise TypeError(msg)
+
         if fwhm <= 0:
             msg = 'fwhm must be positive'
             raise ValueError(msg)
@@ -759,7 +767,7 @@ class _StarFinderKernel:
 
         self.fwhm = fwhm
         self.ratio = ratio
-        self.theta = theta
+        self.theta = theta % 360.0
         self.sigma_radius = sigma_radius
         self.xsigma = self.fwhm * gaussian_fwhm_to_sigma
         self.ysigma = self.xsigma * self.ratio
@@ -857,6 +865,53 @@ def _validate_n_brightest(n_brightest):
             raise ValueError(msg)
         n_brightest = bright_int
     return n_brightest
+
+
+def _handle_deprecated_range(old_lower, old_upper, new_range,
+                             old_name, new_name, default_range):
+    """
+    Handle deprecated lower/upper bound parameters replaced by a single
+    range parameter.
+
+    Parameters
+    ----------
+    old_lower : float or `_DeprecatedDefault`
+        The deprecated lower-bound parameter value.
+
+    old_upper : float or `_DeprecatedDefault`
+        The deprecated upper-bound parameter value.
+
+    new_range : tuple of 2 floats or `None`
+        The new range parameter value.
+
+    old_name : str
+        The base name of the deprecated parameters (e.g., ``'sharp'``
+        for ``'sharplo'`` / ``'sharphi'``).
+
+    new_name : str
+        The name of the new range parameter (e.g.,
+        ``'sharpness_range'``).
+
+    default_range : tuple of 2 floats
+        The default range values when ``new_range`` is `None`.
+
+    Returns
+    -------
+    result : tuple of 2 floats or `None`
+        The resolved range.
+    """
+    if old_lower is not _DEPR_DEFAULT or old_upper is not _DEPR_DEFAULT:
+        msg = (f"The '{old_name}lo' and '{old_name}hi' parameters are "
+               'deprecated and will be removed in a future version. '
+               f"Use '{new_name}=(lower, upper)' instead.")
+        warnings.warn(msg, AstropyDeprecationWarning)
+        _default = new_range if new_range is not None else default_range
+        lower = (old_lower if old_lower is not _DEPR_DEFAULT
+                 else _default[0])
+        upper = (old_upper if old_upper is not _DEPR_DEFAULT
+                 else _default[1])
+        return (lower, upper)
+    return new_range
 
 
 class _DeprecatedDefault:

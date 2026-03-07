@@ -128,6 +128,11 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     centroiding function can be input via the ``centroid_func`` keyword
     to compute centroid coordinates with subpixel precision within the
     input ``box_size`` or ``footprint``.
+
+    The output column names (``x_peak``, ``y_peak``, ``peak_value``)
+    differ from the star finder classes (e.g.,
+    `~photutils.detection.DAOStarFinder`), which use ``xcentroid``,
+    ``ycentroid``, and ``flux``.
     """
     arrays, unit = process_quantities((data, threshold, error),
                                       ('data', 'threshold', 'error'))
@@ -197,16 +202,16 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         peak_values <<= unit
 
     nxpeaks = len(x_peaks)
+    if nxpeaks == 0:
+        msg = 'No local peaks were found.'
+        warnings.warn(msg, NoDetectionsWarning)
+        return None
+
     if nxpeaks > npeaks:
         idx = np.argsort(peak_values)[::-1][:npeaks]
         x_peaks = x_peaks[idx]
         y_peaks = y_peaks[idx]
         peak_values = peak_values[idx]
-
-    if nxpeaks == 0:
-        msg = 'No local peaks were found.'
-        warnings.warn(msg, NoDetectionsWarning)
-        return None
 
     # Construct the output table
     ids = np.arange(len(x_peaks)) + 1
@@ -225,8 +230,16 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         # Prevent circular import
         from photutils.centroids import centroid_sources
 
+        # When a footprint is provided, derive the centroid box_size
+        # from the footprint shape so they are consistent. Ensure odd
+        # dimensions for centroid_sources.
+        if footprint is not None:
+            centroid_box_size = tuple(
+                s if s % 2 else s + 1 for s in footprint.shape)
+        else:
+            centroid_box_size = box_size
         x_centroids, y_centroids = centroid_sources(
-            data, x_peaks, y_peaks, box_size=box_size,
+            data, x_peaks, y_peaks, box_size=centroid_box_size,
             footprint=footprint, error=error, mask=mask,
             centroid_func=centroid_func)
 

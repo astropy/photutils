@@ -206,8 +206,13 @@ class StarFinder(StarFinderBase):
               ``-2.5 * log10(flux)``.
 
             `None` is returned if no stars are found or no stars meet
-            the roundness and peak_max criteria.
+            the peak_max criteria.
         """
+        # Validate the units, but do not strip them
+        inputs = (data, self.threshold, self.peak_max)
+        names = ('data', 'threshold', 'peak_max')
+        _ = process_quantities(inputs, names)
+
         cat = self._get_raw_catalog(data, mask=mask)
         if cat is None:
             return None
