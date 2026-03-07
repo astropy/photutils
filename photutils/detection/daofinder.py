@@ -600,8 +600,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         ----------
         axis : {0, 1}
             The axis for which the marginal weights are computed:
-                * 0: for the x axis
-                * 1: for the y axis
+                * 0: for the y axis (rows)
+                * 1: for the x axis (columns)
 
         Returns
         -------
@@ -630,20 +630,20 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         yy = ycen - np.abs(np.arange(self.cutout_shape[0]) - ycen) + 1
         xwt, ywt = np.meshgrid(xx, yy)
 
-        if axis == 0:  # marginal distributions along x axis
-            wt = xwt[0]  # 1D
-            wts = ywt  # 2D
-            size = self.cutout_shape[1]
-            center = xcen
-            sigma = self.kernel.xsigma
-            dxx = center - np.arange(size)
-        elif axis == 1:  # marginal distributions along y axis
+        if axis == 0:  # marginal distributions along y axis (rows)
             wt = np.transpose(ywt)[0]  # 1D
             wts = xwt  # 2D
             size = self.cutout_shape[0]
             center = ycen
             sigma = self.kernel.ysigma
             dxx = np.arange(size) - center
+        elif axis == 1:  # marginal distributions along x axis (columns)
+            wt = xwt[0]  # 1D
+            wts = ywt  # 2D
+            size = self.cutout_shape[1]
+            center = xcen
+            sigma = self.kernel.xsigma
+            dxx = center - np.arange(size)
 
         return wt, wts, size, center, sigma, dxx
 
@@ -661,8 +661,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
 
         axis : {0, 1}
             The axis for which the marginal sums are computed:
-                * 0: for the x axis
-                * 1: for the y axis
+                * 0: for the y axis (rows)
+                * 1: for the x axis (columns)
 
         center : int
             The center pixel position of the cutout along the given axis.
@@ -696,8 +696,10 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         dx = center - np.arange(size)
 
+        # Marginal sum: sum over the axis perpendicular to the given
+        # axis, weighted by the 2D weighting function
         kern_sum_1d = np.sum(self.kernel.gaussian_kernel_unmasked * wts,
-                             axis=axis)
+                             axis=1 - axis)
         wt_sum = np.sum(wt)
         kern_sum = np.sum(kern_sum_1d * wt)
         kern2_sum = np.sum(kern_sum_1d**2 * wt)
@@ -730,8 +732,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
 
         axis : {0, 1}
             The axis for which the marginal sums are computed:
-                * 0: for the x axis
-                * 1: for the y axis
+                * 0: for the y axis (rows)
+                * 1: for the x axis (columns)
 
         dxx : 1D `~numpy.ndarray`
             The array of pixel offsets from the center pixel along the
@@ -762,7 +764,10 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         if isinstance(cutout_data, u.Quantity):
             cutout_data = cutout_data.value
 
-        data_sum_1d = np.sum(cutout_data * wts, axis=axis + 1)
+        # Marginal sum: sum over the axis perpendicular to the given
+        # axis, weighted by the 2D weighting function (cutout_data is
+        # 3D with shape (N_sources, cutout_size_y, cutout_size_x))
+        data_sum_1d = np.sum(cutout_data * wts, axis=2 - axis)
         data_sum = np.sum(data_sum_1d * wt, axis=1)
         data_kern_sum = np.sum(
             data_sum_1d * kern_sums['kern_sum_1d'] * wt, axis=1)
@@ -867,8 +872,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         axis : {0, 1}, optional
             The axis for which the marginal fit is performed:
 
-            * 0: for the x axis
-            * 1: for the y axis
+            * 0: for the y axis (rows)
+            * 1: for the x axis (columns)
 
         Returns
         -------
@@ -895,7 +900,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         The fitted fractional shift (dx) and amplitude (hx) from the
         marginal Gaussian fit along the x axis.
         """
-        return self.daofind_marginal_fit(axis=0)
+        return self.daofind_marginal_fit(axis=1)
 
     @lazyproperty
     def dy_hy(self):
@@ -903,7 +908,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         The fitted fractional shift (dy) and amplitude (hy) from the
         marginal Gaussian fit along the y axis.
         """
-        return self.daofind_marginal_fit(axis=1)
+        return self.daofind_marginal_fit(axis=0)
 
     @lazyproperty
     def dx(self):
