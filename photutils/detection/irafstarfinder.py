@@ -11,8 +11,9 @@ from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
-                                      StarFinderCatalogBase, _StarFinderKernel,
-                                      _validate_n_brightest)
+                                      StarFinderCatalogBase,
+                                      _handle_deprecated_range,
+                                      _StarFinderKernel, _validate_n_brightest)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import isscalar, process_quantities
@@ -188,33 +189,12 @@ class IRAFStarFinder(StarFinderBase):
             msg = 'fwhm must be a scalar value'
             raise TypeError(msg)
 
-        # Handle deprecated sharplo/sharphi parameters
-        if sharplo is not _DEPR_DEFAULT or sharphi is not _DEPR_DEFAULT:
-            msg = ("The 'sharplo' and 'sharphi' parameters are deprecated "
-                   'and will be removed in a future version. Use '
-                   "'sharpness_range=(lower, upper)' instead.")
-            warnings.warn(msg, AstropyDeprecationWarning)
-            _default = (sharpness_range
-                        if sharpness_range is not None else (0.5, 2.0))
-            lower = (sharplo if sharplo is not _DEPR_DEFAULT
-                     else _default[0])
-            upper = (sharphi if sharphi is not _DEPR_DEFAULT
-                     else _default[1])
-            sharpness_range = (lower, upper)
-
-        # Handle deprecated roundlo/roundhi parameters
-        if roundlo is not _DEPR_DEFAULT or roundhi is not _DEPR_DEFAULT:
-            msg = ("The 'roundlo' and 'roundhi' parameters are deprecated "
-                   'and will be removed in a future version. Use '
-                   "'roundness_range=(lower, upper)' instead.")
-            warnings.warn(msg, AstropyDeprecationWarning)
-            _default = (roundness_range
-                        if roundness_range is not None else (0.0, 0.2))
-            lower = (roundlo if roundlo is not _DEPR_DEFAULT
-                     else _default[0])
-            upper = (roundhi if roundhi is not _DEPR_DEFAULT
-                     else _default[1])
-            roundness_range = (lower, upper)
+        sharpness_range = _handle_deprecated_range(
+            sharplo, sharphi, sharpness_range,
+            'sharp', 'sharpness_range', (0.5, 2.0))
+        roundness_range = _handle_deprecated_range(
+            roundlo, roundhi, roundness_range,
+            'round', 'roundness_range', (0.0, 0.2))
 
         if sharpness_range is not None:
             if np.ndim(sharpness_range) != 1 or np.size(sharpness_range) != 2:
@@ -282,7 +262,7 @@ class IRAFStarFinder(StarFinderBase):
                 f'<array; shape={np.shape(self.threshold)}>')
         if self.xycoords is not None:
             overrides['xycoords'] = f'<array; shape={self.xycoords.shape}>'
-        return params, overrides or None
+        return params, overrides
 
     def __repr__(self):
         params, overrides = self._repr_str_params()
