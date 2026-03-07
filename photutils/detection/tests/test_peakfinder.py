@@ -110,6 +110,16 @@ class TestFindPeaks:
         with pytest.raises(ValueError, match=match):
             find_peaks(data, 0.1, box_size=3, border_width=3.1)
 
+    def test_border_width_excludes_all(self, data):
+        """
+        Test that a border_width encompassing the entire image returns
+        None with a NoDetectionsWarning.
+        """
+        match = 'No local peaks were found'
+        with pytest.warns(NoDetectionsWarning, match=match):
+            tbl = find_peaks(data, 0.1, box_size=3, border_width=100)
+        assert tbl is None
+
     def test_box_size_int(self, data):
         """
         Test noninteger box_size.
@@ -133,6 +143,20 @@ class TestFindPeaks:
         error = np.ones_like(data) * 0.1
         tbl = find_peaks(data, 0.1, box_size=3, centroid_func=centroid_com,
                          error=error)
+        assert 'x_centroid' in tbl.colnames
+        assert 'y_centroid' in tbl.colnames
+        assert len(tbl) > 0
+
+    def test_centroid_func_with_footprint(self, data):
+        """
+        Test find_peaks with a footprint and centroid_func.
+
+        Even-sized footprint dimensions should be rounded up to odd for
+        the centroid box_size.
+        """
+        footprint = np.ones((4, 4), dtype=bool)
+        tbl = find_peaks(data, 0.1, footprint=footprint,
+                         centroid_func=centroid_com)
         assert 'x_centroid' in tbl.colnames
         assert 'y_centroid' in tbl.colnames
         assert len(tbl) > 0

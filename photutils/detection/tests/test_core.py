@@ -32,6 +32,14 @@ class TestStarFinderKernel:
         with pytest.raises(ValueError, match=match):
             _StarFinderKernel(fwhm=-1)
 
+    def test_fwhm_nonscalar(self):
+        """
+        Test that a non-scalar fwhm raises a TypeError.
+        """
+        match = 'fwhm must be a scalar value'
+        with pytest.raises(TypeError, match=match):
+            _StarFinderKernel(fwhm=np.array([3.0]))
+
     def test_normalize_zerosum_false(self):
         """
         Test kernel with normalize_zerosum=False.
@@ -83,6 +91,19 @@ class TestStarFinderKernel:
         assert 'ratio: 0.5' in s
         assert 'theta: 30.0' in s
         assert 'sigma_radius: 1.5' in s
+
+    @pytest.mark.parametrize(('theta', 'expected'), [
+        (400.0, 40.0),
+        (-30.0, 330.0),
+        (360.0, 0.0),
+        (0.0, 0.0),
+    ])
+    def test_theta_normalization(self, theta, expected):
+        """
+        Test that theta values are normalized to [0, 360).
+        """
+        kernel = _StarFinderKernel(fwhm=3.0, ratio=0.5, theta=theta)
+        assert kernel.theta == expected
 
     @pytest.mark.parametrize('ratio', [0, -0.5, 1.5])
     def test_invalid_ratio(self, ratio):

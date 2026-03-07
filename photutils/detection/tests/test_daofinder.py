@@ -73,6 +73,19 @@ class TestDAOStarFinder:
         with pytest.raises(ValueError, match=match):
             DAOStarFinder(threshold=10, fwhm=1.5, xycoords=xycoords)
 
+    @pytest.mark.parametrize(('theta', 'expected'), [
+        (400.0, 40.0),
+        (-30.0, 330.0),
+        (360.0, 0.0),
+        (0.0, 0.0),
+    ])
+    def test_theta_normalization(self, theta, expected):
+        """
+        Test that theta values are normalized to [0, 360).
+        """
+        finder = DAOStarFinder(threshold=5.0, fwhm=3.0, theta=theta)
+        assert finder.theta == expected
+
     def test_nosources(self, data):
         """
         Test that no sources returns None with a warning.
