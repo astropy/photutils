@@ -10,7 +10,7 @@ from astropy.modeling import Model
 from astropy.nddata import NoOverlapError, overlap_slices
 from astropy.table import Table
 
-from photutils.utils._parameters import as_pair
+from photutils.utils._parameters import as_pair, warn_positional_kwargs
 from photutils.utils._progress_bars import add_progress_bar
 
 __all__ = ['make_model_image']
@@ -357,6 +357,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     return image
 
 
+@warn_positional_kwargs(since='3.0', until='4.0')
 def _model_shape_from_bbox(model, bbox_factor=None):
     """
     Calculate the model shape from the model bounding box.

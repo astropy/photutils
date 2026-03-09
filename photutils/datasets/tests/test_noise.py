@@ -57,7 +57,8 @@ def test_make_noise_image():
     Test if noise image is generated correctly.
     """
     shape = (100, 100)
-    image = make_noise_image(shape, 'gaussian', mean=0.0, stddev=2.0)
+    image = make_noise_image(shape, distribution='gaussian', mean=0.0,
+                             stddev=2.0)
     assert image.shape == shape
     assert_allclose(image.mean(), 0.0, atol=1.0)
 
@@ -67,7 +68,7 @@ def test_make_noise_image_poisson():
     Test noise image with Poisson noise.
     """
     shape = (100, 100)
-    image = make_noise_image(shape, 'poisson', mean=1.0)
+    image = make_noise_image(shape, distribution='poisson', mean=1.0)
     assert image.shape == shape
     assert_allclose(image.mean(), 1.0, atol=1.0)
 
@@ -79,15 +80,15 @@ def test_make_noise_image_nomean():
     shape = (100, 100)
     match = 'Invalid distribution:'
     with pytest.raises(ValueError, match=match):
-        make_noise_image(shape, 'invalid', mean=0, stddev=2.0)
+        make_noise_image(shape, distribution='invalid', mean=0, stddev=2.0)
 
     match = '"mean" must be input'
     with pytest.raises(ValueError, match=match):
-        make_noise_image(shape, 'gaussian', stddev=2.0)
+        make_noise_image(shape, distribution='gaussian', stddev=2.0)
 
     match = '"stddev" must be input for Gaussian noise'
     with pytest.raises(ValueError, match=match):
-        make_noise_image(shape, 'gaussian', mean=2.0)
+        make_noise_image(shape, distribution='gaussian', mean=2.0)
 
 
 def test_make_noise_image_seed():
@@ -95,8 +96,8 @@ def test_make_noise_image_seed():
     Test if noise image is reproducible with a given seed.
     """
     shape = (100, 100)
-    image1 = make_noise_image(shape, 'gaussian', mean=0.0,
+    image1 = make_noise_image(shape, distribution='gaussian', mean=0.0,
                               stddev=2.0, seed=12345)
-    image2 = make_noise_image(shape, 'gaussian', mean=0.0,
+    image2 = make_noise_image(shape, distribution='gaussian', mean=0.0,
                               stddev=2.0, seed=12345)
     assert_allclose(image1, image2)
