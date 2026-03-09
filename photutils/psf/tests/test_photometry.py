@@ -337,7 +337,7 @@ def test_model_residual_image(test_data):
     fit_shape = (5, 5)
     finder = DAOStarFinder(16.0, 2.0)
     bkgstat = MMMBackground()
-    localbkg_estimator = LocalBackground(5, 10, bkgstat)
+    localbkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4,
                             localbkg_estimator=localbkg_estimator)
@@ -872,7 +872,7 @@ def test_local_bkg(test_data):
     finder = DAOStarFinder(6.0, 2.0)
     grouper = SourceGrouper(min_separation=20)
     bkgstat = MMMBackground()
-    localbkg_estimator = LocalBackground(5, 10, bkgstat)
+    localbkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
     finder = DAOStarFinder(10.0, 2.0)
 
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -950,7 +950,7 @@ def test_local_bkg_nonfinite_measured(test_data):
     mask[70:, :20] = False  # two sources
 
     bkgstat = MMMBackground()
-    localbkg_estimator = LocalBackground(10, 25, bkgstat)
+    localbkg_estimator = LocalBackground(10, 25, bkg_estimator=bkgstat)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4,
                             localbkg_estimator=localbkg_estimator)

@@ -719,7 +719,7 @@ clipping)::
 
     >>> from photutils.background import LocalBackground, MMMBackground
     >>> bkgstat = MMMBackground()
-    >>> localbkg_estimator = LocalBackground(5, 10, bkgstat)
+    >>> localbkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
     >>> finder = DAOStarFinder(10.0, 2.0)
     >>> psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
     ...                         grouper=grouper, aperture_radius=4,
@@ -765,7 +765,7 @@ find additional sources::
     >>> fit_shape = (5, 5)
     >>> finder = DAOStarFinder(10.0, 2.0)
     >>> bkgstat = MMMBackground()
-    >>> localbkg_estimator = LocalBackground(5, 10, bkgstat)
+    >>> localbkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
     >>> init_params = QTable()
     >>> init_params['x'] = [54, 29, 80]
     >>> init_params['y'] = [8, 26, 29]

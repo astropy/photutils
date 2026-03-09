@@ -264,10 +264,10 @@ class TestBackground2D:
         Test with user-defined functions for bkg_estimator and
         bkgrms_estimator.
         """
-        def bkg_func(data, axis=None):
+        def bkg_func(data, *, axis=None):
             return np.nanmean(data, axis=axis)
 
-        def bkgrms_func(data, axis=None):
+        def bkgrms_func(data, *, axis=None):
             return np.nanstd(data, axis=axis)
 
         bkg = Background2D(test_data, (25, 25), filter_size=(1, 1),

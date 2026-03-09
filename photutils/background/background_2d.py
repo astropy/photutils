@@ -331,7 +331,7 @@ class Background2D:
         params, overrides = self._repr_str_params()
         return make_repr(self, params, overrides=overrides, long=True)
 
-    def _validate_array(self, array, name, shape=True):
+    def _validate_array(self, array, name, *, shape=True):
         """
         Validate the input data, mask, and coverage_mask arrays.
         """
@@ -457,7 +457,7 @@ class Background2D:
 
         return data
 
-    def _compute_box_statistics(self, data, axis=None):
+    def _compute_box_statistics(self, data, *, axis=None):
         """
         Compute the background and background RMS statistics in each
         box.
@@ -617,7 +617,7 @@ class Background2D:
 
         return bkg, bkgrms, ngood
 
-    def _interpolate_grid(self, data, n_neighbors=10, eps=0.0, power=1.0,
+    def _interpolate_grid(self, data, *, n_neighbors=10, eps=0.0, power=1.0,
                           reg=0.0):
         """
         Fill in any NaN values in the low-resolution 2D mesh background

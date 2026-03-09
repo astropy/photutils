@@ -2751,7 +2751,7 @@ class SourceCatalog:
             local_bkgs = np.zeros(self.nlabels)
         else:
             sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
-            bkg_func = SExtractorBackground(sigma_clip)
+            bkg_func = SExtractorBackground(sigma_clip=sigma_clip)
             bkg_apers = self._local_background_apertures
 
             local_bkgs = []
