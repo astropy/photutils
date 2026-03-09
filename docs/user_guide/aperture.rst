@@ -247,7 +247,7 @@ specify ``a``, ``b``, and ``theta``::
     >>> a = 5.0
     >>> b = 3.0
     >>> theta = Angle(45, 'deg')
-    >>> apertures = EllipticalAperture(positions, a, b, theta)
+    >>> apertures = EllipticalAperture(positions, a, b, theta=theta)
     >>> phot_table = aperture_photometry(data, apertures)
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
@@ -362,7 +362,7 @@ can have multiple positions::
     >>> print(aperstats2.sum)  # doctest: +FLOAT_CMP
     [ 8487.10695247 34963.45850824]
     >>> columns = ('id', 'mean', 'median', 'std', 'var', 'sum')
-    >>> stats_table = aperstats2.to_table(columns)
+    >>> stats_table = aperstats2.to_table(columns=columns)
     >>> for col in stats_table.colnames:
     ...     stats_table[col].info.format = '%.8g'  # for consistent table output
 

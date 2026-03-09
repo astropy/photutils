@@ -379,7 +379,7 @@ def _scalar_aperture_to_region(aperture):
     return region
 
 
-def _shapely_polygon_to_region(polygon, label=None):
+def _shapely_polygon_to_region(polygon, *, label=None):
     """
     Convert a `shapely.geometry.polygon.Polygon` object to a
     `regions.PolygonPixelRegion` object.

@@ -8,6 +8,8 @@ import warnings
 import astropy.units as u
 import numpy as np
 
+from photutils.utils._parameters import warn_positional_kwargs
+
 __all__ = ['ApertureMask']
 
 
@@ -36,7 +38,10 @@ class ApertureMask:
         self.bbox = bbox
         self._mask = (self.data == 0)
 
-    def __array__(self, dtype=None, copy=None):
+    # NumPy calls `obj.__array__(dtype)` positionally with
+    # `np.asarray(obj, dtype=int)`, so dtype must remain a positional
+    # argument.
+    def __array__(self, dtype=None, *, copy=None):
         """
         Array representation of the mask data array (e.g., for
         matplotlib).
@@ -78,6 +83,7 @@ class ApertureMask:
         """
         return self.bbox.get_overlap_slices(shape)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def to_image(self, shape, dtype=float):
         """
         Return an image of the mask in a 2D array of the given shape,
@@ -116,6 +122,7 @@ class ApertureMask:
         image[slices_large] = self.data[slices_small]
         return image
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def cutout(self, data, fill_value=0.0, copy=False):
         """
         Create a cutout from the input data over the mask bounding box,
@@ -180,6 +187,7 @@ class ApertureMask:
 
         return cutout
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def multiply(self, data, fill_value=0.0):
         """
         Multiply the aperture mask with the input data, taking any edge
@@ -220,7 +228,7 @@ class ApertureMask:
 
         return weighted_cutout
 
-    def _get_overlap_cutouts(self, shape, mask=None):
+    def _get_overlap_cutouts(self, shape, *, mask=None):
         """
         Get the aperture mask weights, pixel mask, and slice for the
         overlap with the input shape.
@@ -275,6 +283,7 @@ class ApertureMask:
 
         return slc_large, aper_weights, pixel_mask
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def get_values(self, data, mask=None):
         """
         Get the mask-weighted pixel values from the data as a 1D array.

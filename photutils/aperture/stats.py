@@ -22,6 +22,7 @@ from photutils.aperture.core import _aperture_metadata
 from photutils.morphology import gini as gini_func
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _image_moments
+from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import process_quantities
 
 __all__ = ['ApertureStats']
@@ -340,7 +341,7 @@ class ApertureStats:
             raise TypeError(msg)
         return aperture
 
-    def _validate_array(self, array, name, ndim=2, shape=True):
+    def _validate_array(self, array, name, *, ndim=2, shape=True):
         if name == 'mask' and array is np.ma.nomask:
             array = None
         if array is not None:
@@ -546,7 +547,8 @@ class ApertureStats:
         indices = sorter[np.searchsorted(self.id, id_nums, sorter=sorter)]
         return self[indices]
 
-    def to_table(self, columns=None):
+    @warn_positional_kwargs(since='3.0', until='4.0')
+    def to_table(self, *, columns=None):
         """
         Create a `~astropy.table.QTable` of source properties.
 
@@ -1201,7 +1203,7 @@ class ApertureStats:
         """
         return np.transpose(self._bbox_bounds)[3]
 
-    def _calculate_stats(self, stat_func, unit=None):
+    def _calculate_stats(self, stat_func, *, unit=None):
         """
         Apply the input ``stat_func`` to the 1D array of unmasked data
         values in the aperture.

@@ -2722,7 +2722,7 @@ class SourceCatalog:
             height_out = height_in + 2 * self.localbkg_width
             apertures.append(RectangularAnnulus((xpos, ypos), width_in,
                                                 width_out, height_out,
-                                                height_in, theta=0.0))
+                                                h_in=height_in, theta=0.0))
         return apertures
 
     @lazyproperty

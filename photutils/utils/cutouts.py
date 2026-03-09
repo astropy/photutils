@@ -7,8 +7,6 @@ import numpy as np
 from astropy.nddata import extract_array, overlap_slices
 from astropy.utils import lazyproperty
 
-from photutils.aperture import BoundingBox
-
 __all__ = ['CutoutImage']
 
 
@@ -177,6 +175,9 @@ class CutoutImage:
         slices : tuple of slice
             The slices for the bounding box.
         """
+        # Prevent circular import
+        from photutils.aperture import BoundingBox
+
         return BoundingBox(ixmin=slices[1].start, ixmax=slices[1].stop,
                            iymin=slices[0].start, iymax=slices[0].stop)
 

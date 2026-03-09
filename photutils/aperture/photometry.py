@@ -14,10 +14,12 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.aperture.converters import region_to_aperture
 from photutils.aperture.core import Aperture, SkyAperture, _aperture_metadata
 from photutils.utils._misc import _get_meta
+from photutils.utils._parameters import warn_positional_kwargs
 
 __all__ = ['aperture_photometry']
 
 
+@warn_positional_kwargs(since='3.0', until='4.0')
 def aperture_photometry(data, apertures, error=None, mask=None,
                         method='exact', subpixels=5, wcs=None):
     """
@@ -189,7 +191,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     aper_meta = {}
     for i, aperture in enumerate(apertures):
         i = '' if single_aperture else i
-        aper_meta.update(_aperture_metadata(aperture, i))
+        aper_meta.update(_aperture_metadata(aperture, index=i))
 
     # convert regions to apertures if necessary
     apertures = [region_to_aperture(aper)

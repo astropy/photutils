@@ -36,19 +36,22 @@ APERTURE_CL = [CircularAperture,
                RectangularAperture,
                RectangularAnnulus]
 
-TEST_APERTURES = list(zip(APERTURE_CL, ((3.0,),
-                                        (3.0, 5.0),
-                                        (3.0, 5.0, 1.0),
-                                        (3.0, 5.0, 4.0, 12.0 / 5.0, 1.0),
-                                        (5, 8, np.pi / 4),
-                                        (8, 12, 8, 16.0 / 3.0, np.pi / 8)),
+TEST_APERTURES = list(zip(APERTURE_CL,
+                          ({'r': 3.0},
+                           {'r_in': 3.0, 'r_out': 5.0},
+                           {'a': 3.0, 'b': 5.0, 'theta': 1.0},
+                           {'a_in': 3.0, 'a_out': 5.0, 'b_out': 4.0,
+                            'b_in': 12.0 / 5.0, 'theta': 1.0},
+                           {'w': 5, 'h': 8, 'theta': np.pi / 4},
+                           {'w_in': 8, 'w_out': 12, 'h_out': 8,
+                            'h_in': 16.0 / 3.0, 'theta': np.pi / 8}),
                           strict=True))
 
 
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
 def test_outside_array(aperture_class, params):
     data = np.ones((10, 10), dtype=float)
-    aperture = aperture_class((-60, 60), *params)
+    aperture = aperture_class((-60, 60), **params)
     fluxtable = aperture_photometry(data, aperture)
     # aperture is fully outside array:
     assert np.isnan(fluxtable['aperture_sum'])
@@ -57,7 +60,7 @@ def test_outside_array(aperture_class, params):
 @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
 def test_inside_array_simple(aperture_class, params):
     data = np.ones((40, 40), dtype=float)
-    aperture = aperture_class((20.0, 20.0), *params)
+    aperture = aperture_class((20.0, 20.0), **params)
     table1 = aperture_photometry(data, aperture, method='center',
                                  subpixels=10)
     table2 = aperture_photometry(data, aperture, method='subpixel',
@@ -77,7 +80,7 @@ def test_inside_array_simple(aperture_class, params):
 def test_aperture_plots(aperture_class, params):
     # This test should run without any errors, and there is no return
     # value.
-    aperture = aperture_class((20.0, 20.0), *params)
+    aperture = aperture_class((20.0, 20.0), **params)
     aperture.plot()
 
 
@@ -387,17 +390,17 @@ def test_wcs_based_photometry():
     photometry_skycoord_rec = aperture_photometry(
         data, SkyRectangularAperture(pos_skycoord,
                                      6 * u.arcsec, 6 * u.arcsec,
-                                     0 * u.arcsec),
+                                     theta=0 * u.arcsec),
         method='subpixel', subpixels=20, wcs=wcs)
     photometry_skycoord_rec_4 = aperture_photometry(
         data, SkyRectangularAperture(pos_skycoord,
                                      4 * u.arcsec, 4 * u.arcsec,
-                                     0 * u.arcsec),
+                                     theta=0 * u.arcsec),
         method='subpixel', subpixels=20, wcs=wcs)
     photometry_skycoord_rec_s = aperture_photometry(
         data, SkyRectangularAperture(pos_skycoord_s,
                                      6 * u.arcsec, 6 * u.arcsec,
-                                     0 * u.arcsec),
+                                     theta=0 * u.arcsec),
         method='subpixel', subpixels=20, wcs=wcs)
     photometry_skycoord_rec_ann = aperture_photometry(
         data, SkyRectangularAnnulus(pos_skycoord, 4 * u.arcsec, 6 * u.arcsec,
@@ -505,7 +508,7 @@ def test_ellipse_exact_grid(x, y, r):
     """
     data = np.ones((10, 10))
 
-    aperture = EllipticalAperture((x, y), r, r, 0.0)
+    aperture = EllipticalAperture((x, y), a=r, b=r, theta=0.0)
     t = aperture_photometry(data, aperture, method='exact')
     actual = t['aperture_sum'][0] / (np.pi * r**2)
     assert_allclose(actual, 1)
@@ -977,7 +980,7 @@ class TestEllipseAnnulusRegionPhotometry(BaseTestRegionPhotometry):
                                                 theta)
         self.aperture = EllipticalAnnulus(position,
                                           a_in, a_out,
-                                          b_out, b_in,
+                                          b_out, b_in=b_in,
                                           theta=theta)
 
 
@@ -990,7 +993,7 @@ class TestRectangleRegionPhotometry(BaseTestRegionPhotometry):
         w = 8.0
         theta = (np.pi / 4.0) * u.rad
         self.region = RectanglePixelRegion(PixCoord(*position), w, h, theta)
-        self.aperture = RectangularAperture(position, w, h, theta)
+        self.aperture = RectangularAperture(position, w, h, theta=theta)
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
@@ -1007,7 +1010,7 @@ class TestRectangleAnnulusRegionPhotometry(BaseTestRegionPhotometry):
                                                   w_in, w_out, h_in, h_out,
                                                   theta)
         self.aperture = RectangularAnnulus(position, w_in, w_out,
-                                           h_out, h_in, theta)
+                                           h_out, h_in=h_in, theta=theta)
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
