@@ -58,7 +58,7 @@ def apply_separation(xycoords, min_separation):
     return xycoords[keep]
 
 
-def make_random_xycoords(size, x_range, y_range, min_separation=0.0,
+def make_random_xycoords(size, x_range, y_range, *, min_separation=0.0,
                          seed=None, oversample=10):
     """
     Make random (x, y) coordinates.

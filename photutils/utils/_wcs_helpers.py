@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 
 
-def _pixel_scale_angle_at_skycoord(skycoord, wcs, offset=1 * u.arcsec):
+def _pixel_scale_angle_at_skycoord(skycoord, wcs, *, offset=1 * u.arcsec):
     """
     Calculate the pixel coordinate scale and WCS rotation angle at the
     position of a SkyCoord coordinate.

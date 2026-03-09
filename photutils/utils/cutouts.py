@@ -7,6 +7,8 @@ import numpy as np
 from astropy.nddata import extract_array, overlap_slices
 from astropy.utils import lazyproperty
 
+from photutils.utils._parameters import warn_positional_kwargs
+
 __all__ = ['CutoutImage']
 
 
@@ -82,6 +84,7 @@ class CutoutImage:
      [nan  4.  5.]]
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, data, position, shape, mode='trim', fill_value=np.nan,
                  copy=False):
         self.position = position
@@ -117,7 +120,10 @@ class CutoutImage:
             cutout_data = np.copy(cutout_data)
         return cutout_data
 
-    def __array__(self, dtype=None, copy=None):
+    # NumPy calls `obj.__array__(dtype)` positionally with
+    # `np.asarray(obj, dtype=int)`, so dtype must remain a positional
+    # argument.
+    def __array__(self, dtype=None, *, copy=None):
         """
         Array representation of the cutout data array (e.g., for
         matplotlib).

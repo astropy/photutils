@@ -25,7 +25,7 @@ class SigmaClipSentinelDefault:
         The maximum number of sigma-clipping iterations.
     """
 
-    def __init__(self, sigma=3.0, maxiters=10):
+    def __init__(self, *, sigma=3.0, maxiters=10):
         self.sigma = sigma
         self.maxiters = maxiters
 
@@ -34,7 +34,7 @@ class SigmaClipSentinelDefault:
                 f'maxiters={self.maxiters})>')
 
 
-def create_default_sigmaclip(sigma=3.0, maxiters=10):
+def create_default_sigmaclip(*, sigma=3.0, maxiters=10):
     """
     Return a new, default SigmaClip instance.
 
@@ -54,7 +54,8 @@ def create_default_sigmaclip(sigma=3.0, maxiters=10):
     return SigmaClip(sigma=sigma, maxiters=maxiters)
 
 
-def as_pair(name, value, lower_bound=None, upper_bound=None, check_odd=False):
+def as_pair(name, value, *, lower_bound=None, upper_bound=None,
+            check_odd=False):
     """
     Define a pair of integer values as a 1D array.
 

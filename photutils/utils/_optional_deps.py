@@ -29,7 +29,7 @@ _DIST_TO_IMPORT = {
 }
 
 
-def _get_optional_deps(dist_name, extra='all'):
+def _get_optional_deps(dist_name, *, extra='all'):
     """
     Return the optional-dependency distribution names for ``dist_name``.
 

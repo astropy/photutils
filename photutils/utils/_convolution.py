@@ -12,7 +12,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import convolve as ndi_convolve
 
 
-def _filter_data(data, kernel, mode='constant', fill_value=0.0,
+def _filter_data(data, kernel, *, mode='constant', fill_value=0.0,
                  check_normalization=False):
     """
     Convolve a 2D image with a 2D kernel.

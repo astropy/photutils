@@ -535,7 +535,7 @@ class SegmentationImage:
 
         from matplotlib import colors
 
-        cmap = make_random_cmap(ncolors, seed=seed)
+        cmap = make_random_cmap(ncolors=ncolors, seed=seed)
 
         if background_color is not None:
             cmap.colors[0] = colors.to_rgba(background_color)
