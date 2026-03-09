@@ -199,7 +199,7 @@ class GaussianPSF(Fittable2DModel):
         """
         return self.y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
 
-    def _calc_bounding_box(self, factor=5.5):
+    def _calc_bounding_box(self, *, factor=5.5):
         """
         Calculate a bounding box defining the limits of the model.
 
@@ -550,7 +550,7 @@ class CircularGaussianPSF(Fittable2DModel):
         """
         return self.fwhm * GAUSSIAN_FWHM_TO_SIGMA
 
-    def _calc_bounding_box(self, factor=5.5):
+    def _calc_bounding_box(self, *, factor=5.5):
         """
         Calculate a bounding box defining the limits of the model.
 
@@ -860,7 +860,7 @@ class GaussianPRF(Fittable2DModel):
         """
         return self.y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
 
-    def _calc_bounding_box(self, factor=5.5):
+    def _calc_bounding_box(self, *, factor=5.5):
         """
         Calculate a bounding box defining the limits of the model.
 
@@ -1127,7 +1127,7 @@ class CircularGaussianPRF(Fittable2DModel):
         """
         return self.fwhm * GAUSSIAN_FWHM_TO_SIGMA
 
-    def _calc_bounding_box(self, factor=5.5):
+    def _calc_bounding_box(self, *, factor=5.5):
         """
         Calculate a bounding box defining the limits of the model.
 
@@ -1369,7 +1369,7 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         """
         return self.sigma / GAUSSIAN_FWHM_TO_SIGMA
 
-    def _calc_bounding_box(self, factor=5.5):
+    def _calc_bounding_box(self, *, factor=5.5):
         """
         Calculate a bounding box defining the limits of the model.
 
@@ -1615,7 +1615,7 @@ class MoffatPSF(Fittable2DModel):
         """
         return 2.0 * self.alpha * np.sqrt(2 ** (1.0 / self.beta) - 1)
 
-    def _calc_bounding_box(self, factor=10.0):
+    def _calc_bounding_box(self, *, factor=10.0):
         """
         Calculate a bounding box defining the limits of the model.
 
@@ -1862,7 +1862,7 @@ class AiryDiskPSF(Fittable2DModel):
         """
         return 2.0 * 1.616339948310703 * self.radius / self._rz / np.pi
 
-    def _calc_bounding_box(self, factor=10.0):
+    def _calc_bounding_box(self, *, factor=10.0):
         """
         Calculate a bounding box defining the limits of the model.
 

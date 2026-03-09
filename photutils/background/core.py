@@ -11,7 +11,8 @@ import numpy as np
 from astropy.stats import SigmaClip, biweight_location, biweight_scale, mad_std
 
 from photutils.utils._parameters import (SigmaClipSentinelDefault,
-                                         create_default_sigmaclip)
+                                         create_default_sigmaclip,
+                                         warn_positional_kwargs)
 from photutils.utils._repr import make_repr
 from photutils.utils._stats import nanmean, nanmedian, nanstd
 
@@ -151,6 +152,7 @@ class _BackgroundCommonBase:
     instantiated directly or subclassed outside of this module.
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, sigma_clip=SIGMA_CLIP):
         self.sigma_clip = _validate_sigma_clip(sigma_clip)
 
@@ -163,11 +165,12 @@ class BackgroundBase(_BackgroundCommonBase, abc.ABC):
     Base class for classes that estimate scalar background values.
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, data, axis=None, masked=False):
         return self.calc_background(data, axis=axis, masked=masked)
 
     @abc.abstractmethod
-    def calc_background(self, data, axis=None, masked=False):
+    def calc_background(self, data, *, axis=None, masked=False):
         """
         Calculate the background value.
 
@@ -200,11 +203,12 @@ class BackgroundRMSBase(_BackgroundCommonBase, abc.ABC):
     Base class for classes that estimate scalar background RMS values.
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, data, axis=None, masked=False):
         return self.calc_background_rms(data, axis=axis, masked=masked)
 
     @abc.abstractmethod
-    def calc_background_rms(self, data, axis=None, masked=False):
+    def calc_background_rms(self, data, *, axis=None, masked=False):
         """
         Calculate the background RMS value.
 
@@ -248,7 +252,7 @@ class MeanBackground(BackgroundBase):
     >>> from photutils.background import MeanBackground
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
-    >>> bkg = MeanBackground(sigma_clip)
+    >>> bkg = MeanBackground(sigma_clip=sigma_clip)
 
     The background value can be calculated by using the
     `calc_background` method, e.g.:
@@ -265,6 +269,7 @@ class MeanBackground(BackgroundBase):
     49.5
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def calc_background(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -290,7 +295,7 @@ class MedianBackground(BackgroundBase):
     >>> from photutils.background import MedianBackground
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
-    >>> bkg = MedianBackground(sigma_clip)
+    >>> bkg = MedianBackground(sigma_clip=sigma_clip)
 
     The background value can be calculated by using the
     `calc_background` method, e.g.:
@@ -307,6 +312,7 @@ class MedianBackground(BackgroundBase):
     49.5
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def calc_background(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -356,6 +362,7 @@ class ModeEstimatorBackground(BackgroundBase):
     49.5
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, median_factor=3.0, mean_factor=2.0,
                  sigma_clip=SIGMA_CLIP):
         super().__init__(sigma_clip=sigma_clip)
@@ -366,6 +373,7 @@ class ModeEstimatorBackground(BackgroundBase):
         params = ('median_factor', 'mean_factor', 'sigma_clip')
         return make_repr(self, params)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def calc_background(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -412,6 +420,7 @@ class MMMBackground(ModeEstimatorBackground):
     49.5
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, sigma_clip=SIGMA_CLIP):
         super().__init__(median_factor=3.0, mean_factor=2.0,
                          sigma_clip=sigma_clip)
@@ -439,7 +448,7 @@ class SExtractorBackground(BackgroundBase):
     >>> from photutils.background import SExtractorBackground
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
-    >>> bkg = SExtractorBackground(sigma_clip)
+    >>> bkg = SExtractorBackground(sigma_clip=sigma_clip)
 
     The background value can be calculated by using the
     `calc_background` method, e.g.:
@@ -456,6 +465,7 @@ class SExtractorBackground(BackgroundBase):
     49.5
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def calc_background(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -526,6 +536,7 @@ class BiweightLocationBackground(BackgroundBase):
     49.5
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, c=6.0, M=None, sigma_clip=SIGMA_CLIP):
         super().__init__(sigma_clip=sigma_clip)
         self.c = c
@@ -535,6 +546,7 @@ class BiweightLocationBackground(BackgroundBase):
         params = ('c', 'M', 'sigma_clip')
         return make_repr(self, params)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def calc_background(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -561,7 +573,7 @@ class StdBackgroundRMS(BackgroundRMSBase):
     >>> from photutils.background import StdBackgroundRMS
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
-    >>> bkgrms = StdBackgroundRMS(sigma_clip)
+    >>> bkgrms = StdBackgroundRMS(sigma_clip=sigma_clip)
 
     The background RMS value can be calculated by using the
     `calc_background_rms` method, e.g.:
@@ -578,6 +590,7 @@ class StdBackgroundRMS(BackgroundRMSBase):
     28.86607004772212
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def calc_background_rms(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -614,7 +627,7 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
     >>> from photutils.background import MADStdBackgroundRMS
     >>> data = np.arange(100)
     >>> sigma_clip = SigmaClip(sigma=3.0)
-    >>> bkgrms = MADStdBackgroundRMS(sigma_clip)
+    >>> bkgrms = MADStdBackgroundRMS(sigma_clip=sigma_clip)
 
     The background RMS value can be calculated by using the
     `calc_background_rms` method, e.g.:
@@ -631,6 +644,7 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
     37.06505546264005
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def calc_background_rms(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -681,6 +695,7 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     30.09433848589339
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, c=9.0, M=None, sigma_clip=SIGMA_CLIP):
         super().__init__(sigma_clip=sigma_clip)
         self.c = c
@@ -690,6 +705,7 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
         params = ('c', 'M', 'sigma_clip')
         return make_repr(self, params)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def calc_background_rms(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN

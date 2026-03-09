@@ -9,7 +9,7 @@ from photutils.utils._repr import make_repr
 
 
 class ExampleClass:
-    def __init__(self, x, y, z=1):
+    def __init__(self, x, y, *, z=1):
         self.x = x
         self.y = y
         self.z = z

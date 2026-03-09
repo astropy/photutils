@@ -49,7 +49,7 @@ def test_get_meta(utc):
     """
     Test _get_meta returns expected keys.
     """
-    meta = _get_meta(utc)
+    meta = _get_meta(utc=utc)
     keys = ('date', 'version')
     for key in keys:
         assert key in meta

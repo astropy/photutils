@@ -458,7 +458,7 @@ class _SingleSourceDeblender:
             segms.append(segm)
         return segms
 
-    def make_markers(self, return_all=False):
+    def make_markers(self, *, return_all=False):
         """
         Make markers (possible sources) for the watershed algorithm.
 
@@ -665,7 +665,7 @@ def _get_labels(array):
     return labels[labels != 0]
 
 
-def _create_relabel_map(array, start_label=1):
+def _create_relabel_map(array, *, start_label=1):
     """
     Create a mapping of original labels to new labels that are
     consecutive integers.

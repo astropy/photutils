@@ -203,6 +203,12 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils``
+
+  - Passing optional arguments positionally to all functions, classes,
+    methods in ``photutils`` is now deprecated. In the future, all
+    optional arguments must be passed as keyword arguments. [#2219]
+
 - ``photutils.background``
 
   - Removed the deprecated ``edge_method`` keyword from ``Background2D``.

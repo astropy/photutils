@@ -129,7 +129,7 @@ def test_model_harmonics():
     data += 5 * harm
 
     geometry = EllipseGeometry(x0=x0, y0=y0, sma=30, eps=eps, pa=theta)
-    ellipse = Ellipse(data, geometry)
+    ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image(fix_center=True, fix_eps=True)
 
     model_image = build_ellipse_model(data.shape, isolist, high_harmonics=True)

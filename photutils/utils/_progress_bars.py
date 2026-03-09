@@ -7,7 +7,8 @@ Tools for progress bars.
 from photutils.utils._optional_deps import HAS_TQDM
 
 
-def add_progress_bar(iterable=None, desc=None, total=None, text=False):
+# Allow iterable to be passed positionally
+def add_progress_bar(iterable=None, *, desc=None, total=None, text=False):
     """
     Add a progress bar for an iterable.
 

@@ -6,7 +6,7 @@ Tools for calculating image moments.
 import numpy as np
 
 
-def _image_moments(data, center=(0, 0), order=1):
+def _image_moments(data, *, center=(0, 0), order=1):
     """
     Calculate the image moments up to the specified order.
 

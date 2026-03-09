@@ -191,7 +191,7 @@ class TestGridFromEPSFs:
     Tests for `photutils.psf.utils.grid_from_epsfs`.
     """
 
-    def setup_class(self, cutout_size=25):
+    def setup_class(self, *, cutout_size=25):
         # make a set of 4 EPSF models
 
         self.cutout_size = cutout_size

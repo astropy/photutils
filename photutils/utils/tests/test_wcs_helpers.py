@@ -13,7 +13,7 @@ from numpy.testing import assert_allclose
 from photutils.utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 
 
-def _make_simple_wcs(crpix=(50, 50), cdelt=(-0.001, 0.001),
+def _make_simple_wcs(*, crpix=(50, 50), cdelt=(-0.001, 0.001),
                      crval=(180.0, 45.0)):
     """
     Create a simple TAN WCS for testing.

@@ -13,6 +13,8 @@ from astropy.io import fits, registry
 from astropy.io.fits.verify import VerifyWarning
 from astropy.nddata import NDData, reshape_as_blocks
 
+from photutils.utils._parameters import warn_positional_kwargs
+
 __all__ = ['GriddedPSFModelRead', 'stdpsf_reader', 'webbpsf_reader']
 __doctest_skip__ = ['GriddedPSFModelRead']
 
@@ -429,6 +431,7 @@ def _get_metadata(filename, detector_id):
     return meta
 
 
+@warn_positional_kwargs(since='3.0', until='4.0')
 def stdpsf_reader(filename, detector_id=None):
     """
     Generate a `~photutils.psf.GriddedPSFModel` from a STScI standard-

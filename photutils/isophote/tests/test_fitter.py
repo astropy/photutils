@@ -25,7 +25,7 @@ DEFAULT_FIX = np.array([False, False, False, False])
 
 def test_gradient():
     sample = EllipseSample(DATA, 40.0)
-    sample.update(DEFAULT_FIX)
+    sample.update(fixed_parameters=DEFAULT_FIX)
 
     assert_allclose(sample.mean, 200.02, atol=0.01)
     assert_allclose(sample.gradient, -4.222, atol=0.001)
@@ -42,7 +42,7 @@ def test_fitting_raw():
     # pick first guess ellipse that is off in just
     # one of the parameters (eps).
     sample = EllipseSample(DATA, 40.0, eps=2 * 0.2)
-    sample.update(DEFAULT_FIX)
+    sample.update(fixed_parameters=DEFAULT_FIX)
     s = sample.extract()
 
     harmonics = fit_first_and_second_harmonics(s[0], s[2])
@@ -197,7 +197,7 @@ class TestM51:
         # this code finds central x and y offset by about 0.1 pixel wrt the
         # spp code. In here we use as input the position computed by this
         # code, thus this test is checking just the extraction algorithm.
-        g = EllipseGeometry(257.02, 258.1, 0.0, 0.0, 0.0, 0.1,
+        g = EllipseGeometry(257.02, 258.1, 0.0, 0.0, 0.0, astep=0.1,
                             linear_growth=False)
         sample = CentralEllipseSample(self.data, 0.0, geometry=g)
         fitter = CentralEllipseFitter(sample)

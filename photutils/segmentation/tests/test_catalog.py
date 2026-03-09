@@ -321,12 +321,12 @@ class TestSourceCatalog:
         assert len(tbl) == 7
         assert tbl.colnames == columns
 
-        tbl = self.cat.to_table(self.cat.default_columns)
+        tbl = self.cat.to_table(columns=self.cat.default_columns)
         for col in tbl.columns:
             assert isinstance(col, str)
             assert not isinstance(col, np.str_)
 
-        tbl = self.cat.to_table('label')
+        tbl = self.cat.to_table(columns='label')
         for col in tbl.columns:
             assert isinstance(col, str)
             assert not isinstance(col, np.str_)
@@ -716,7 +716,7 @@ class TestSourceCatalog:
         for patch_ in patches:
             assert isinstance(patch_, Patch)
 
-        patches2 = self.cat.plot_kron_apertures((2.0, 1.2))
+        patches2 = self.cat.plot_kron_apertures(kron_params=(2.0, 1.2))
         assert isinstance(patches2, list)
         for patch_ in patches2:
             assert isinstance(patch_, Patch)
@@ -725,7 +725,7 @@ class TestSourceCatalog:
         obj = self.cat[1]
         patch1 = obj.plot_kron_apertures()
         assert isinstance(patch1, Patch)
-        patch2 = obj.plot_kron_apertures((2.0, 1.2))
+        patch2 = obj.plot_kron_apertures(kron_params=(2.0, 1.2))
         assert isinstance(patch2, Patch)
 
     def test_fluxfrac_cache(self):
@@ -1038,7 +1038,7 @@ class TestSourceCatalog:
         assert len(aper) == len(self.cat)
         assert isinstance(aper[1], EllipticalAperture)
 
-        aper2 = self.cat.make_kron_apertures((2.0, 1.4))
+        aper2 = self.cat.make_kron_apertures(kron_params=(2.0, 1.4))
         assert len(aper2) == len(self.cat)
 
         obj = self.cat[1]

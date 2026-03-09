@@ -9,11 +9,14 @@ from astropy import coordinates as coord
 from astropy.modeling import models
 from astropy.wcs import WCS
 
+from photutils.utils._parameters import warn_positional_kwargs
+
 __all__ = ['make_gwcs', 'make_wcs']
 
 __doctest_requires__ = {'make_gwcs': ['gwcs']}
 
 
+@warn_positional_kwargs(since='3.0', until='4.0')
 def make_wcs(shape, galactic=False):
     """
     Create a simple celestial `~astropy.wcs.WCS` object in either the
@@ -77,6 +80,7 @@ def make_wcs(shape, galactic=False):
     return wcs
 
 
+@warn_positional_kwargs(since='3.0', until='4.0')
 def make_gwcs(shape, galactic=False):
     """
     Create a simple celestial gWCS object in either the ICRS or Galactic

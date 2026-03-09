@@ -40,7 +40,7 @@ def fixture_test_data():
 
 
 def make_mock_finder(x_col, y_col):
-    def finder(data, mask=None):  # noqa: ARG001
+    def finder(data, *, mask=None):  # noqa: ARG001
         source_table = Table()
         source_table[x_col] = [25.1]
         source_table[y_col] = [24.9]
@@ -140,7 +140,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     bkgstat = MMMBackground()
-    localbkg_estimator = LocalBackground(5, 10, bkgstat)
+    localbkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
     finder = DAOStarFinder(10.0, 2.0)
 
     init_params = QTable()

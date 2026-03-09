@@ -18,7 +18,7 @@ from scipy.signal import fftconvolve
 from photutils.aperture import BoundingBox
 from photutils.aperture.converters import _shapely_polygon_to_region
 from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY
-from photutils.utils._parameters import as_pair
+from photutils.utils._parameters import as_pair, warn_positional_kwargs
 from photutils.utils.colormaps import make_random_cmap
 
 __all__ = ['Segment', 'SegmentationImage']
@@ -498,7 +498,7 @@ class SegmentationImage:
             msg = f'labels {bad_labels} are invalid'
             raise ValueError(msg)
 
-    def _make_cmap(self, ncolors, background_color='#000000ff', seed=None):
+    def _make_cmap(self, ncolors, *, background_color='#000000ff', seed=None):
         """
         Define a matplotlib colormap consisting of (random) muted
         colors.
@@ -535,13 +535,14 @@ class SegmentationImage:
 
         from matplotlib import colors
 
-        cmap = make_random_cmap(ncolors, seed=seed)
+        cmap = make_random_cmap(ncolors=ncolors, seed=seed)
 
         if background_color is not None:
             cmap.colors[0] = colors.to_rgba(background_color)
 
         return cmap
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def make_cmap(self, background_color='#000000ff', seed=None):
         """
         Define a matplotlib colormap consisting of (random) muted
@@ -575,6 +576,7 @@ class SegmentationImage:
                                background_color=background_color,
                                seed=seed)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def reset_cmap(self, seed=None):
         """
         Reset the colormap (`cmap` attribute) to a new random colormap.
@@ -613,6 +615,7 @@ class SegmentationImage:
         for parent_label, child_labels in self._deblend_label_map.items():
             self._deblend_label_map[parent_label] = relabel_map[child_labels]
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def reassign_label(self, label, new_label, relabel=False):
         """
         Reassign a label number to a new number.
@@ -688,6 +691,7 @@ class SegmentationImage:
         """
         self.reassign_labels(label, new_label, relabel=relabel)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def reassign_labels(self, labels, new_label, relabel=False):
         """
         Reassign one or more label numbers.
@@ -785,6 +789,7 @@ class SegmentationImage:
         self._data = data_new  # use _data to avoid validation
         self._update_deblend_label_map(relabel_map)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def relabel_consecutive(self, start_label=1):
         """
         Reassign the label numbers consecutively starting from a given
@@ -842,6 +847,7 @@ class SegmentationImage:
             self.__dict__['slices'] = old_slices  # slice order is unchanged
         self._update_deblend_label_map(new_label_map)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def keep_label(self, label, relabel=False):
         """
         Keep only the specified label.
@@ -892,6 +898,7 @@ class SegmentationImage:
         """
         self.keep_labels(label, relabel=relabel)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def keep_labels(self, labels, relabel=False):
         """
         Keep only the specified labels.
@@ -947,6 +954,7 @@ class SegmentationImage:
         labels_tmp = list(set(self.labels) - set(labels))
         self.remove_labels(labels_tmp, relabel=relabel)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def remove_label(self, label, relabel=False):
         """
         Remove the label number.
@@ -1001,6 +1009,7 @@ class SegmentationImage:
         """
         self.remove_labels(label, relabel=relabel)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def remove_labels(self, labels, relabel=False):
         """
         Remove one or more labels.
@@ -1055,6 +1064,7 @@ class SegmentationImage:
         self.check_labels(labels)
         self.reassign_labels(labels, new_label=0, relabel=relabel)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def remove_border_labels(self, border_width, partial_overlap=True,
                              relabel=False):
         """
@@ -1130,6 +1140,7 @@ class SegmentationImage:
                                   partial_overlap=partial_overlap,
                                   relabel=relabel)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def remove_masked_labels(self, mask, partial_overlap=True,
                              relabel=False):
         """
@@ -1445,7 +1456,7 @@ class SegmentationImage:
 
         return coords, codes
 
-    def _convert_shapely_to_pathpatch(self, geometry, origin=(0, 0),
+    def _convert_shapely_to_pathpatch(self, geometry, *, origin=(0, 0),
                                       scale=1.0, **kwargs):
         """
         Create a single Matplotlib PathPatch from a Shapely geometry.
@@ -1677,6 +1688,7 @@ class SegmentationImage:
 
         return Regions(flat_regions)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def imshow(self, ax=None, figsize=None, dpi=None, cmap=None, alpha=None):
         """
         Display the segmentation image in a matplotlib
@@ -1748,6 +1760,7 @@ class SegmentationImage:
                          origin='lower', alpha=alpha, vmin=-0.5,
                          vmax=self.max_label + 0.5)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def imshow_map(self, ax=None, figsize=None, dpi=None, cmap=None,
                    alpha=None, max_labels=25, cbar_labelsize=None):
         """
@@ -1961,6 +1974,7 @@ class Segment:
         mask = (self._segment_data_cutout != self.label)
         return np.ma.masked_array(self._segment_data_cutout, mask=mask)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def make_cutout(self, data, masked_array=False):
         """
         Create a (masked) cutout array from the input ``data`` using the

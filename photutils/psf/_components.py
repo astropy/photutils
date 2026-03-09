@@ -141,7 +141,7 @@ def _create_flat_model_class(n_sources, psf_model):
     return type(class_name, (Fittable2DModel,), class_attrs)
 
 
-def _instantiate_flat_model(model_class, sources, psf_model, param_mapper,
+def _instantiate_flat_model(model_class, sources, psf_model, param_mapper, *,
                             xy_bounds=None):
     """
     Create an instance of a flat model class with source-specific
@@ -217,7 +217,7 @@ def _instantiate_flat_model(model_class, sources, psf_model, param_mapper,
 _FLAT_MODEL_CACHE = weakref.WeakValueDictionary()
 
 
-def _get_flat_model(sources, psf_model, param_mapper, xy_bounds=None):
+def _get_flat_model(sources, psf_model, param_mapper, *, xy_bounds=None):
     """
     Get or create a flat model for a group of sources.
 
@@ -267,7 +267,7 @@ def _get_flat_model(sources, psf_model, param_mapper, xy_bounds=None):
 
     # Create instance with source-specific parameter values
     return _instantiate_flat_model(model_class, sources, psf_model,
-                                   param_mapper, xy_bounds)
+                                   param_mapper, xy_bounds=xy_bounds)
 
 
 class PSFDataProcessor:
@@ -302,7 +302,7 @@ class PSFDataProcessor:
         around sources. Must have a ``__call__`` method.
     """
 
-    def __init__(self, param_mapper, fit_shape, finder=None,
+    def __init__(self, param_mapper, fit_shape, *, finder=None,
                  aperture_radius=None, localbkg_estimator=None):
         self.param_mapper = param_mapper
         self.fit_shape = fit_shape
@@ -316,7 +316,7 @@ class PSFDataProcessor:
         self._cached_offsets = None
         self._cache_key = None
 
-    def validate_array(self, array, name, data_shape=None):
+    def validate_array(self, array, name, *, data_shape=None):
         """
         Validate input arrays (data, error, mask).
 
@@ -851,7 +851,7 @@ class PSFFitter:
         Default is 25.
     """
 
-    def __init__(self, psf_model, param_mapper, fitter=None,
+    def __init__(self, psf_model, param_mapper, *, fitter=None,
                  fitter_maxiters=100, xy_bounds=None,
                  group_warning_threshold=25):
         self.psf_model = psf_model
@@ -915,7 +915,7 @@ class PSFFitter:
 
         # For multiple sources, use cached flat model class
         return _get_flat_model(sources, self.psf_model, self.param_mapper,
-                               self.xy_bounds)
+                               xy_bounds=self.xy_bounds)
 
     def _apply_bounds_to_param(self, model, param_name, param_value,
                                bound_value):
@@ -1117,7 +1117,7 @@ class PSFResultsAssembler:
         Used for flag calculations to detect sources near boundaries.
     """
 
-    def __init__(self, param_mapper, fit_shape, xy_bounds=None):
+    def __init__(self, param_mapper, fit_shape, *, xy_bounds=None):
         self.param_mapper = param_mapper
         self.fit_shape = fit_shape
         self.xy_bounds = xy_bounds
@@ -1686,7 +1686,7 @@ class _ModelImageMaker:
         Whether to display a progress bar.
     """
 
-    def __init__(self, psf_model, model_params, local_bkg=None,
+    def __init__(self, psf_model, model_params, *, local_bkg=None,
                  progress_bar=False):
         self.psf_model = psf_model
         self.model_params = model_params

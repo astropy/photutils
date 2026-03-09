@@ -34,7 +34,7 @@ def _get_version_info():
     return versions
 
 
-def _get_date(utc=False):
+def _get_date(*, utc=False):
     """
     Return a string of the current date/time.
 
@@ -57,7 +57,7 @@ def _get_date(utc=False):
     return now.strftime('%Y-%m-%d %H:%M:%S %Z')
 
 
-def _get_meta(utc=False):
+def _get_meta(*, utc=False):
     """
     Return a metadata dictionary with the package versions and current
     date/time.

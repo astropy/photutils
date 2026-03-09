@@ -7,9 +7,12 @@ This module requires matplotlib to be installed.
 
 import numpy as np
 
+from photutils.utils._parameters import warn_positional_kwargs
+
 __all__ = ['make_random_cmap']
 
 
+@warn_positional_kwargs(since='3.0', until='4.0')
 def make_random_cmap(ncolors=256, seed=None):
     """
     Make a matplotlib colormap consisting of (random) muted colors.

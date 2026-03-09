@@ -147,7 +147,7 @@ class EllipseFitter:
 
         for i in range(maxit):
             # Force the sample to compute its gradient and associated values.
-            sample.update(fixed_parameters)
+            sample.update(fixed_parameters=fixed_parameters)
 
             # The extract() method returns sampled values as a 2-d numpy
             # array with the following structure:
@@ -200,7 +200,7 @@ class EllipseFitter:
                     > np.abs(largest_harmonic)) and (i >= minit - 1):
                 # Got a valid solution and a minimum number of
                 # iterations has run
-                sample.update(fixed_parameters)
+                sample.update(fixed_parameters=fixed_parameters)
                 return Isophote(sample, i + 1, valid=True, stop_code=0)
 
             # it may not have converged yet, but the sample contains too
@@ -208,7 +208,8 @@ class EllipseFitter:
             if sample.actual_points < (sample.total_points * fflag):
                 # when too many data points were flagged, return the
                 # best fit sample instead of the current one.
-                minimum_amplitude_sample.update(fixed_parameters)
+                minimum_amplitude_sample.update(
+                    fixed_parameters=fixed_parameters)
                 return Isophote(minimum_amplitude_sample, i + 1, valid=True,
                                 stop_code=1)
 
@@ -225,7 +226,7 @@ class EllipseFitter:
             # pay a (hopefully smaller) price here, by having multiple
             # calls to the EllipseSample constructor.
             sample = corrector.correct(sample, largest_harmonic)
-            sample.update(fixed_parameters)
+            sample.update(fixed_parameters=fixed_parameters)
 
             # see if any abnormal (or unusual) conditions warrant
             # the change to non-iterative mode, or go-inwards mode.
@@ -233,13 +234,13 @@ class EllipseFitter:
                 sample, maxgerr, going_inwards, lexceed)
 
             if not proceed:
-                sample.update(fixed_parameters)
+                sample.update(fixed_parameters=fixed_parameters)
                 return Isophote(sample, i + 1, valid=True, stop_code=-1)
 
         # Got to the maximum number of iterations. Return with
         # code 2, and handle it as a valid isophote. Use the
         # best fit sample instead of the current one.
-        minimum_amplitude_sample.update(fixed_parameters)
+        minimum_amplitude_sample.update(fixed_parameters=fixed_parameters)
         return Isophote(minimum_amplitude_sample, maxit, valid=True,
                         stop_code=2)
 
@@ -400,5 +401,5 @@ class CentralEllipseFitter(EllipseFitter):
         # default values
         fixed_parameters = np.array([False, False, False, False])
 
-        self._sample.update(fixed_parameters)
+        self._sample.update(fixed_parameters=fixed_parameters)
         return CentralPixel(self._sample)

@@ -9,7 +9,7 @@ from astropy.table import QTable
 
 from photutils.utils._coords import make_random_xycoords
 from photutils.utils._misc import _get_meta
-from photutils.utils._parameters import as_pair
+from photutils.utils._parameters import as_pair, warn_positional_kwargs
 
 __all__ = ['make_model_params', 'make_random_models_table',
            'params_table_to_models']
@@ -151,6 +151,7 @@ def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
     return model_params
 
 
+@warn_positional_kwargs(since='3.0', until='4.0')
 def make_random_models_table(n_sources, param_ranges, seed=None):
     """
     Make a `~astropy.table.QTable` containing randomly generated

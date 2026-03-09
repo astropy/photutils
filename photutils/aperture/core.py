@@ -14,6 +14,7 @@ from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
 
 from photutils.aperture.bounding_box import BoundingBox
+from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 
 __all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
@@ -51,7 +52,7 @@ class Aperture(metaclass=abc.ABCMeta):
         for i in range(len(self)):
             yield self.__getitem__(i)
 
-    def _positions_str(self, prefix=None):
+    def _positions_str(self, *, prefix=None):
         if isinstance(self, PixelAperture):
             return np.array2string(self.positions, separator=', ',
                                    prefix=prefix)
@@ -67,7 +68,7 @@ class Aperture(metaclass=abc.ABCMeta):
         cls_info = []
         for param in self._params:
             if param == 'positions':
-                cls_info.append(self._positions_str(prefix))
+                cls_info.append(self._positions_str(prefix=prefix))
             else:
                 cls_info.append(f'{param}={getattr(self, param)}')
         cls_info = ', '.join(cls_info)
@@ -78,7 +79,8 @@ class Aperture(metaclass=abc.ABCMeta):
         for param in self._params:
             if param == 'positions':
                 prefix = 'positions'
-                cls_info.append((prefix, self._positions_str(prefix + ': ')))
+                cls_info.append((prefix,
+                                 self._positions_str(prefix=prefix + ': ')))
             else:
                 cls_info.append((param, getattr(self, param)))
         fmt = [f'{key}: {val}' for key, val in cls_info]
@@ -192,7 +194,7 @@ class PixelAperture(Aperture):
         return mpl_params
 
     @staticmethod
-    def _translate_mask_mode(mode, subpixels, rectangle=False):
+    def _translate_mask_mode(mode, subpixels, *, rectangle=False):
         if mode not in ('center', 'subpixel', 'exact'):
             msg = f'Invalid mask mode: {mode}'
             raise ValueError(msg)
@@ -400,7 +402,7 @@ class PixelAperture(Aperture):
         return areas
 
     @abc.abstractmethod
-    def to_mask(self, method='exact', subpixels=5):
+    def to_mask(self, *, method='exact', subpixels=5):
         """
         Return a mask for the aperture.
 
@@ -447,6 +449,7 @@ class PixelAperture(Aperture):
             returned.
         """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def do_photometry(self, data, error=None, mask=None, method='exact',
                       subpixels=5):
         """
@@ -614,7 +617,7 @@ class PixelAperture(Aperture):
 
         return mpath.Path(verts, codes)
 
-    def _define_patch_params(self, origin=(0, 0), **kwargs):
+    def _define_patch_params(self, *, origin=(0, 0), **kwargs):
         """
         Define the aperture patch position and set any default
         matplotlib patch keywords (e.g., ``fill=False``).
@@ -648,7 +651,7 @@ class PixelAperture(Aperture):
         return xy_positions, patch_params
 
     @abc.abstractmethod
-    def _to_patch(self, origin=(0, 0), **kwargs):
+    def _to_patch(self, *, origin=(0, 0), **kwargs):
         """
         Return a `~matplotlib.patches.Patch` for the aperture.
 
@@ -671,6 +674,7 @@ class PixelAperture(Aperture):
             list of `~matplotlib.patches.Patch` is returned.
         """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def plot(self, ax=None, origin=(0, 0), **kwargs):
         """
         Plot the aperture on a matplotlib `~matplotlib.axes.Axes`
@@ -866,7 +870,7 @@ class SkyAperture(Aperture):
         """
 
 
-def _aperture_metadata(aperture, index=''):
+def _aperture_metadata(aperture, *, index=''):
     """
     Return a dictionary of aperture metadata.
 

@@ -8,11 +8,12 @@ from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
 from scipy.ndimage import generate_binary_structure
 
-from photutils.utils._parameters import as_pair
+from photutils.utils._parameters import as_pair, warn_positional_kwargs
 
 __all__ = ['make_2dgaussian_kernel']
 
 
+@warn_positional_kwargs(since='3.0', until='4.0')
 def make_2dgaussian_kernel(fwhm, size, mode='oversample', oversampling=10):
     """
     Make a normalized 2D circular Gaussian kernel.
@@ -104,7 +105,7 @@ def _make_binary_structure(ndim, connectivity):
     return footprint
 
 
-def _mask_to_mirrored_value(data, replace_mask, xycenter, mask=None):
+def _mask_to_mirrored_value(data, replace_mask, xycenter, *, mask=None):
     """
     Replace masked pixels with the value of the pixel mirrored across a
     given center position.

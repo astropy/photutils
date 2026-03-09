@@ -27,6 +27,7 @@ from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _mask_to_mirrored_value
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _image_moments
+from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import CutoutImage
@@ -367,7 +368,7 @@ class SourceCatalog:
             raise ValueError(msg)
         return segment_img
 
-    def _validate_array(self, array, name, shape=True):
+    def _validate_array(self, array, name, *, shape=True):
         if name == 'mask' and array is np.ma.nomask:
             array = None
         if array is not None:
@@ -640,6 +641,7 @@ class SourceCatalog:
         """
         return self._extra_properties
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def add_extra_property(self, name, value, overwrite=False):
         """
         Add a user-defined extra property as a new attribute.
@@ -942,7 +944,8 @@ class SourceCatalog:
             cutouts.append(cutout)
         return cutouts
 
-    def _prepare_cutouts(self, arrays, units=True, masked=False, dtype=None):
+    def _prepare_cutouts(self, arrays, *, units=True, masked=False,
+                         dtype=None):
         """
         Prepare cutouts by applying optional units, masks, or dtype.
         """
@@ -1003,6 +1006,7 @@ class SourceCatalog:
         indices = sorter[np.searchsorted(self.labels, labels, sorter=sorter)]
         return self[indices]
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def to_table(self, columns=None):
         """
         Create a `~astropy.table.QTable` of source properties.
@@ -1242,7 +1246,7 @@ class SourceCatalog:
                 else np.array([np.nan]) for arr in array]
 
     @staticmethod
-    def _reduceat(values, ufunc, transform=None):
+    def _reduceat(values, ufunc, *, transform=None):
         """
         Apply ``ufunc.reduceat`` to a list of arrays.
 
@@ -2722,7 +2726,7 @@ class SourceCatalog:
             height_out = height_in + 2 * self.localbkg_width
             apertures.append(RectangularAnnulus((xpos, ypos), width_in,
                                                 width_out, height_out,
-                                                height_in, theta=0.0))
+                                                h_in=height_in, theta=0.0))
         return apertures
 
     @lazyproperty
@@ -2751,7 +2755,7 @@ class SourceCatalog:
             local_bkgs = np.zeros(self.nlabels)
         else:
             sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
-            bkg_func = SExtractorBackground(sigma_clip)
+            bkg_func = SExtractorBackground(sigma_clip=sigma_clip)
             bkg_apers = self._local_background_apertures
 
             local_bkgs = []
@@ -2800,7 +2804,7 @@ class SourceCatalog:
         return bkg
 
     def _make_aperture_data(self, label, xcentroid, ycentroid, aperture_bbox,
-                            local_background, make_error=True):
+                            local_background, *, make_error=True):
         """
         Make cutouts of data, error, and mask arrays for aperture
         photometry (e.g., circular or Kron).
@@ -2913,6 +2917,7 @@ class SourceCatalog:
         return self._make_circular_apertures(radius)
 
     @as_scalar
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def plot_circular_apertures(self, radius, ax=None, origin=(0, 0),
                                 **kwargs):
         """
@@ -2959,6 +2964,7 @@ class SourceCatalog:
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
         return patches
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def circular_photometry(self, radius, name=None, overwrite=False):
         """
         Perform circular aperture photometry for each source.
@@ -3021,7 +3027,7 @@ class SourceCatalog:
 
         return flux, fluxerr
 
-    def _make_elliptical_apertures(self, scale=6.0):
+    def _make_elliptical_apertures(self, *, scale=6.0):
         """
         Return a list of elliptical apertures based on the scaled
         isophotal shape of the sources.
@@ -3264,6 +3270,7 @@ class SourceCatalog:
         return self._make_kron_apertures(self.kron_params)
 
     @as_scalar
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def make_kron_apertures(self, kron_params=None):
         """
         Make Kron apertures for each source.
@@ -3310,6 +3317,7 @@ class SourceCatalog:
         return self._make_kron_apertures(kron_params)
 
     @as_scalar
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def plot_kron_apertures(self, kron_params=None, ax=None, origin=(0, 0),
                             **kwargs):
         """
@@ -3378,7 +3386,7 @@ class SourceCatalog:
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
         return patches
 
-    def _aperture_photometry(self, apertures, desc='', **kwargs):
+    def _aperture_photometry(self, apertures, *, desc='', **kwargs):
         """
         Perform aperture photometry on cutouts of the data and optional
         error arrays.
@@ -3449,7 +3457,7 @@ class SourceCatalog:
 
         return flux, fluxerr
 
-    def _calc_kron_photometry(self, kron_params=None):
+    def _calc_kron_photometry(self, *, kron_params=None):
         """
         Calculate the flux and flux error in the Kron aperture (without
         units).
@@ -3483,6 +3491,7 @@ class SourceCatalog:
 
         return flux, fluxerr
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def kron_photometry(self, kron_params, name=None, overwrite=False):
         """
         Perform photometry for each source using an elliptical Kron
@@ -3527,7 +3536,8 @@ class SourceCatalog:
             `centroid` position or elliptical shape parameters are not
             finite or where the source is completely masked).
         """
-        kron_flux, kron_fluxerr = self._calc_kron_photometry(kron_params)
+        kron_flux, kron_fluxerr = self._calc_kron_photometry(
+            kron_params=kron_params)
         if self._data_unit is not None:
             kron_flux <<= self._data_unit
             kron_fluxerr <<= self._data_unit
@@ -3660,6 +3670,7 @@ class SourceCatalog:
         return args
 
     @as_scalar
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def fluxfrac_radius(self, fluxfrac, name=None, overwrite=False):
         """
         Calculate the circular radius that encloses the specified
