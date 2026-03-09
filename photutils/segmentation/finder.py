@@ -5,7 +5,7 @@ Tools for detecting sources in an image.
 
 from photutils.segmentation.deblend import deblend_sources
 from photutils.segmentation.detect import detect_sources
-from photutils.utils._parameters import as_pair
+from photutils.utils._parameters import as_pair, warn_positional_kwargs
 from photutils.utils._repr import make_repr
 
 __all__ = ['SourceFinder']
@@ -168,6 +168,7 @@ class SourceFinder:
                   'mode', 'relabel', 'nproc', 'progress_bar')
         return make_repr(self, params)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, data, threshold, mask=None):
         """
         Detect sources, including deblending, in an image using

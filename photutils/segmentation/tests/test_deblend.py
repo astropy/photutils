@@ -529,7 +529,7 @@ def test_nmarkers_fallback_returns_none():
 
     call_count = [0]
 
-    def mock_make_markers(_return_all=False):
+    def mock_make_markers(*, _return_all=False):
         call_count[0] += 1
         if call_count[0] == 1:
             # First call: return markers with > 200 labels
