@@ -867,7 +867,8 @@ class TestEPSFFitter:
         # Create a mock fitter without fit_info attribute
         class MockFitter:
             def __call__(
-                self, model, x, y, z, weights=None, **kwargs,  # noqa: ARG002
+                self, model, x, y, z, *,  # noqa: ARG002
+                weights=None, **kwargs,  # noqa: ARG002
             ):
                 return model
 
@@ -1755,7 +1756,7 @@ class TestEPSFBuilder:
         call_count = [0]
         center = np.array(epsf.data.shape) / 2.0
 
-        def mock_centroid(data, mask=None):  # noqa: ARG001
+        def mock_centroid(data, *, mask=None):  # noqa: ARG001
             call_count[0] += 1
             if call_count[0] == 1:
                 # First iteration: small shift
@@ -1806,7 +1807,7 @@ class TestEPSFBuilder:
         # shape passed to the centroid function
         cutout_shapes = []
 
-        def recording_centroid(data, mask=None):  # noqa: ARG001
+        def recording_centroid(data, *, mask=None):  # noqa: ARG001
             cutout_shapes.append(data.shape)
             cy, cx = np.array(data.shape) / 2.0
             return (cx, cy)
@@ -1842,7 +1843,7 @@ class TestEPSFBuilder:
 
         cutout_shapes = []
 
-        def recording_centroid(data, mask=None):  # noqa: ARG001
+        def recording_centroid(data, *, mask=None):  # noqa: ARG001
             cutout_shapes.append(data.shape)
             cy, cx = np.array(data.shape) / 2.0
             return (cx, cy)
@@ -2258,7 +2259,8 @@ class TestEPSFBuilder:
         # Create a fitter without fit_info attribute
         class NoFitInfoFitter:
             def __call__(
-                self, model, x, y, z, weights=None, **kwargs,  # noqa: ARG002
+                self, model, x, y, z, *,  # noqa: ARG002
+                weights=None, **kwargs,  # noqa: ARG002
             ):
                 return model
 
@@ -2342,7 +2344,8 @@ class TestEPSFBuilder:
                 self.fit_info = {'ierr': 1}
 
             def __call__(
-                self, model, x, y, z, weights=None, **kwargs,  # noqa: ARG002
+                self, model, x, y, z, *,  # noqa: ARG002
+                weights=None, **kwargs,  # noqa: ARG002
             ):
                 # Set a large shift that will push the center outside
                 model.x_0 = 100.0  # Way outside an 11x11 cutout
@@ -2385,7 +2388,8 @@ class TestEPSFBuilder:
                 self.fit_info = {'ierr': 1}
 
             def __call__(
-                self, model, x, y, z, weights=None, **kwargs,  # noqa: ARG002
+                self, model, x, y, z, *,  # noqa: ARG002
+                weights=None, **kwargs,  # noqa: ARG002
             ):
                 model.x_0 = -100.0
                 model.y_0 = 0.0
@@ -2421,7 +2425,8 @@ class TestEPSFBuilder:
                 self.fit_info = {'ierr': 1}
 
             def __call__(
-                self, model, x, y, z, weights=None, **kwargs,  # noqa: ARG002
+                self, model, x, y, z, *,  # noqa: ARG002
+                weights=None, **kwargs,  # noqa: ARG002
             ):
                 model.x_0 = 0.1
                 model.y_0 = -0.1
@@ -2462,7 +2467,8 @@ class TestEPSFBuilder:
                 self.call_count = 0
 
             def __call__(
-                self, model, x, y, z, weights=None, **kwargs,  # noqa: ARG002
+                self, model, x, y, z, *,  # noqa: ARG002
+                weights=None, **kwargs,  # noqa: ARG002
             ):
                 self.call_count += 1
                 if self.call_count == 1:

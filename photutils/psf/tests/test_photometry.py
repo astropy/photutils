@@ -43,8 +43,8 @@ def fixture_test_data():
     return data, error, true_params
 
 
-def make_mock_finder(x_col, y_col, units=False):
-    def finder(data, mask=None):  # noqa: ARG001
+def make_mock_finder(x_col, y_col, *, units=False):
+    def finder(data, *, mask=None):  # noqa: ARG001
         source_table = Table()
         x_val = [25.1]
         y_val = [24.9]

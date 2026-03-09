@@ -26,7 +26,7 @@ from photutils.psf.flags import decode_psf_flags
 from photutils.psf.utils import (_create_call_docstring,
                                  _get_psf_model_main_params, _make_mask,
                                  _validate_psf_model)
-from photutils.utils._parameters import as_pair
+from photutils.utils._parameters import as_pair, warn_positional_kwargs
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
@@ -1045,8 +1045,8 @@ class PSFPhotometry:
             valid_idx += 1
 
     def _calculate_residual_metrics(self, row_indices, valid_mask,
-                                    npixfit_full, cen_index_full, error=None,
-                                    xi_all=None, yi_all=None):
+                                    npixfit_full, cen_index_full, *,
+                                    error=None, xi_all=None, yi_all=None):
         """
         Calculate residual-based fit metrics for valid sources.
 
@@ -1735,6 +1735,7 @@ class PSFPhotometry:
                                              remove_invalid=remove_invalid,
                                              reset_ids=reset_ids)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def decode_flags(self, return_bit_values=False):
         """
         Decode the PSF photometry flags from the results table.

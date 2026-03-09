@@ -134,7 +134,7 @@ class _EPSFValidator:
     """
 
     @staticmethod
-    def validate_oversampling(oversampling, context=''):
+    def validate_oversampling(oversampling, *, context=''):
         """
         Validate oversampling parameters.
 
@@ -167,7 +167,7 @@ class _EPSFValidator:
         return oversampling
 
     @staticmethod
-    def validate_shape_compatibility(stars, oversampling, shape=None):
+    def validate_shape_compatibility(stars, oversampling, *, shape=None):
         """
         Validate that ePSF shape is compatible with star dimensions.
 
@@ -252,7 +252,7 @@ class _EPSFValidator:
                 warnings.warn(msg, AstropyUserWarning)
 
     @staticmethod
-    def validate_stars(stars, context=''):
+    def validate_stars(stars, *, context=''):
         """
         Validate EPSFStars object and individual star data.
 
@@ -1043,7 +1043,7 @@ class EPSFBuilder:
 
         # Validate and store oversampling using the validator
         self.oversampling = _EPSFValidator.validate_oversampling(
-            oversampling, 'EPSFBuilder initialization')
+            oversampling, context='EPSFBuilder initialization')
 
         # Initialize coordinate transformer for consistent transformations
         self.coord_transformer = _CoordinateTransformer(self.oversampling)
@@ -1255,7 +1255,7 @@ class EPSFBuilder:
         return ImagePSF(data=data, origin=origin_xy, oversampling=oversampling,
                         fill_value=0.0)
 
-    def _resample_residual(self, star, epsf, out_image=None):
+    def _resample_residual(self, star, epsf, *, out_image=None):
         """
         Compute a normalized residual image in the oversampled ePSF
         grid.
@@ -1400,7 +1400,7 @@ class EPSFBuilder:
 
         return epsf_data * (oversampling_product / current_sum)
 
-    def _recenter_epsf(self, epsf, centroid_func=None, box_size=None,
+    def _recenter_epsf(self, epsf, *, centroid_func=None, box_size=None,
                        maxiters=None, center_accuracy=None):
         """
         Recenter the ePSF data by shifting to the array center.
@@ -1547,7 +1547,7 @@ class EPSFBuilder:
 
         return epsf_data
 
-    def _build_epsf_step(self, stars, epsf=None):
+    def _build_epsf_step(self, stars, *, epsf=None):
         """
         A single iteration of improving an ePSF.
 
@@ -2005,9 +2005,9 @@ class EPSFBuilder:
         - n_excluded_stars: Number of stars excluded due to fit failures
         - excluded_star_indices: Indices of excluded stars
         """
-        _EPSFValidator.validate_stars(stars, 'ePSF building')
+        _EPSFValidator.validate_stars(stars, context='ePSF building')
         _EPSFValidator.validate_shape_compatibility(stars, self.oversampling,
-                                                    self.shape)
+                                                    shape=self.shape)
 
         # Initialize variables for building process
         fit_failed = np.zeros(stars.n_stars, dtype=bool)

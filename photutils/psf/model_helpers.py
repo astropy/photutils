@@ -14,6 +14,8 @@ from astropy.units import Quantity
 from astropy.utils.decorators import deprecated
 from scipy.integrate import dblquad, trapezoid
 
+from photutils.utils._parameters import warn_positional_kwargs
+
 __all__ = ['grid_from_epsfs', 'make_psf_model']
 
 
@@ -222,7 +224,7 @@ class _InverseShift(Shift):
         return [d_offset]
 
 
-def _integrate_model(model, x_name=None, y_name=None, dx=50, dy=50,
+def _integrate_model(model, *, x_name=None, y_name=None, dx=50, dy=50,
                      subsample=100, use_dblquad=False):
     """
     Integrate a model over a 2D grid.
@@ -311,7 +313,7 @@ def _integrate_model(model, x_name=None, y_name=None, dx=50, dy=50,
     return int_func([int_func(row, xvals) for row in data], yvals)
 
 
-def _shift_model_param(model, param_name, shift=2):
+def _shift_model_param(model, param_name, *, shift=2):
     if isinstance(model, CompoundModel):
         # for CompoundModel, add "shift" to the parameter suffix
         out = re.search(r'(.*)_([\d]*)$', param_name)
@@ -323,6 +325,7 @@ def _shift_model_param(model, param_name, shift=2):
     return new_name
 
 
+@warn_positional_kwargs(since='3.0', until='4.0')
 @deprecated(since='3.0', alternative='`GriddedPSFModel`')
 def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     """

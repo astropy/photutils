@@ -378,7 +378,7 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     return np.array(phot.results['fwhm_fit'])
 
 
-def _interpolate_missing_data(data, mask, method='cubic'):
+def _interpolate_missing_data(data, mask, *, method='cubic'):
     """
     Interpolate missing data as identified by the ``mask`` keyword.
 
@@ -540,7 +540,7 @@ def _get_psf_model_main_params(psf_model):
     return model_params
 
 
-def _create_call_docstring(iterative=False):
+def _create_call_docstring(*, iterative=False):
     """
     Decorator factory to create the __call__ method docstring for PSF
     photometry methods.
