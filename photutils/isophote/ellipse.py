@@ -16,6 +16,7 @@ from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import BILINEAR
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.sample import CentralEllipseSample, EllipseSample
+from photutils.utils._parameters import warn_positional_kwargs
 
 __all__ = ['Ellipse']
 
@@ -180,6 +181,7 @@ class Ellipse:
     converge to any acceptable solution.
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, image, geometry=None, threshold=0.1):
         self.image = image
 
@@ -203,6 +205,7 @@ class Ellipse:
         """
         self._geometry.centerer_threshold = threshold
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def fit_image(self, sma0=None, minsma=0.0, maxsma=None, step=0.1,
                   conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
                   maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
@@ -415,9 +418,12 @@ class Ellipse:
             minit_a = 2 * minit if first_isophote else minit
             first_isophote = False
 
-            isophote = self.fit_isophote(sma, step, conver, minit_a, maxit,
-                                         fflag, maxgerr, sclip, nclip,
-                                         integrmode, linear, maxrit,
+            isophote = self.fit_isophote(sma, step=step, conver=conver,
+                                         minit=minit_a, maxit=maxit,
+                                         fflag=fflag, maxgerr=maxgerr,
+                                         sclip=sclip, nclip=nclip,
+                                         integrmode=integrmode,
+                                         linear=linear, maxrit=maxrit,
                                          noniterate=noiter,
                                          isophote_list=isophote_list)
 
@@ -473,9 +479,12 @@ class Ellipse:
 
         # now, go from initial sma inwards towards center.
         while True:
-            isophote = self.fit_isophote(sma, step, conver, minit, maxit,
-                                         fflag, maxgerr, sclip, nclip,
-                                         integrmode, linear, maxrit,
+            isophote = self.fit_isophote(sma, step=step, conver=conver,
+                                         minit=minit, maxit=maxit,
+                                         fflag=fflag, maxgerr=maxgerr,
+                                         sclip=sclip, nclip=nclip,
+                                         integrmode=integrmode,
+                                         linear=linear, maxrit=maxrit,
                                          going_inwards=True,
                                          isophote_list=isophote_list)
 
@@ -509,6 +518,7 @@ class Ellipse:
 
         return IsophoteList(isophote_list)
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def fit_isophote(self, sma, step=0.1, conver=DEFAULT_CONVERGENCE,
                      minit=DEFAULT_MINIT, maxit=DEFAULT_MAXIT,
                      fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,
@@ -646,7 +656,8 @@ class Ellipse:
         else:
             isophote = self._iterative(sma, step, linear, geometry, sclip,
                                        nclip, integrmode, conver, minit,
-                                       maxit, fflag, maxgerr, going_inwards)
+                                       maxit, fflag, maxgerr,
+                                       going_inwards=going_inwards)
 
         # store result in list
         if isophote_list is not None and isophote.valid:
@@ -655,7 +666,7 @@ class Ellipse:
         return isophote
 
     def _iterative(self, sma, step, linear, geometry, sclip, nclip,
-                   integrmode, conver, minit, maxit, fflag, maxgerr,
+                   integrmode, conver, minit, maxit, fflag, maxgerr, *,
                    going_inwards=False):
         if sma > 0.0:
             # iterative fitter
@@ -677,7 +688,7 @@ class Ellipse:
         sample = EllipseSample(self.image, sma, astep=step, sclip=sclip,
                                nclip=nclip, linear_growth=linear,
                                geometry=geometry, integrmode=integrmode)
-        sample.update(geometry.fix)
+        sample.update(fixed_parameters=geometry.fix)
 
         # build isophote without iterating with an EllipseFitter
         return Isophote(sample, 0, valid=True, stop_code=4)
@@ -695,7 +706,8 @@ class Ellipse:
             # force new extraction of raw data, since
             # geometry changed.
             isophote.sample.values = None
-            isophote.sample.update(isophote.sample.geometry.fix)
+            isophote.sample.update(
+                fixed_parameters=isophote.sample.geometry.fix)
 
             # we take the opportunity to change an eventual
             # negative stop code to its' positive equivalent.

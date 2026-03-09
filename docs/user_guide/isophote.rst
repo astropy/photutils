@@ -93,7 +93,7 @@ class, inputting the data to be fitted and the initial ellipse
 geometry object::
 
     >>> from photutils.isophote import Ellipse
-    >>> ellipse = Ellipse(data, geometry)
+    >>> ellipse = Ellipse(data, geometry=geometry)
 
 To perform the elliptical isophote fit, we run the
 :meth:`~photutils.isophote.Ellipse.fit_image` method::

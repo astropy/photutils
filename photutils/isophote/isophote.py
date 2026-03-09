@@ -11,6 +11,7 @@ from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics,
                                           fit_upper_harmonic)
 from photutils.utils._misc import _get_meta
+from photutils.utils._parameters import warn_positional_kwargs
 
 __all__ = ['Isophote', 'IsophoteList']
 
@@ -843,6 +844,7 @@ class IsophoteList:
         """
         return self._collect_as_array('b4_err')
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def to_table(self, columns='main'):
         """
         Convert an `~photutils.isophote.IsophoteList` instance to a
@@ -860,7 +862,7 @@ class IsophoteList:
         result : `~astropy.table.QTable`
             An astropy QTable with the main isophote parameters.
         """
-        return _isophote_list_to_table(self, columns)
+        return _isophote_list_to_table(self, columns=columns)
 
     def get_names(self):
         """
@@ -899,7 +901,7 @@ def _get_properties(isophote_list):
     return properties
 
 
-def _isophote_list_to_table(isophote_list, columns='main'):
+def _isophote_list_to_table(isophote_list, *, columns='main'):
     """
     Convert an `~photutils.isophote.IsophoteList` instance to a
     `~astropy.table.QTable`.
@@ -928,7 +930,7 @@ def _isophote_list_to_table(isophote_list, columns='main'):
     # A list of main parameters matching the original names of
     # the isophote_list parameters
 
-    def __rename_properties(properties,
+    def __rename_properties(properties, *,
                             orig_names=('int_err', 'eps', 'ellip_err',
                                         'grad_r_error', 'nflag'),
                             new_names=('intens_err', 'ellipticity',

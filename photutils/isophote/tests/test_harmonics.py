@@ -199,7 +199,7 @@ def test_upper_harmonics_sign():
     y, x = np.mgrid[0:ny, 0:nx]
     data = g1(x, y) + g2(x, y)
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.9, pa=angle)
-    ellipse = Ellipse(data, geometry)
+    ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
 
     # test image is "disky: disky isophotes have b4 > 0

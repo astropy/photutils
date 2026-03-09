@@ -10,7 +10,7 @@ from photutils.datasets import make_noise_image
 from photutils.isophote.geometry import EllipseGeometry
 
 
-def make_test_image(nx=512, ny=512, x0=None, y0=None,
+def make_test_image(*, nx=512, ny=512, x0=None, y0=None,
                     background=100.0, noise=1.0e-6, i0=100.0, sma=40.0,
                     eps=0.2, pa=0.0, seed=None):
     """
@@ -58,7 +58,8 @@ def make_test_image(nx=512, ny=512, x0=None, y0=None,
         xcen = x0
         ycen = y0
 
-    g = EllipseGeometry(xcen, ycen, sma, eps, pa, 0.1, linear_growth=False)
+    g = EllipseGeometry(xcen, ycen, sma, eps, pa, astep=0.1,
+                        linear_growth=False)
 
     y, x = np.mgrid[0:ny, 0:nx]
     radius, angle = g.to_polar(x, y)
@@ -79,7 +80,7 @@ def make_test_image(nx=512, ny=512, x0=None, y0=None,
     return image
 
 
-def make_fits_test_image(name, nx=512, ny=512, x0=None, y0=None,
+def make_fits_test_image(name, *, nx=512, ny=512, x0=None, y0=None,
                          background=100.0, noise=1.0e-6, i0=100.0, sma=40.0,
                          eps=0.2, pa=0.0, seed=None):
     """

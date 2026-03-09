@@ -122,9 +122,9 @@ def test_isophote_comparisons():
     sample0 = EllipseSample(data, sma1 + k)
     sample1 = EllipseSample(data, sma1 + k)
     sample2 = EllipseSample(data, sma2 + k)
-    sample0.update(DEFAULT_FIX)
-    sample1.update(DEFAULT_FIX)
-    sample2.update(DEFAULT_FIX)
+    sample0.update(fixed_parameters=DEFAULT_FIX)
+    sample1.update(fixed_parameters=DEFAULT_FIX)
+    sample2.update(fixed_parameters=DEFAULT_FIX)
     iso0 = Isophote(sample0, k, valid=True, stop_code=0)
     iso1 = Isophote(sample1, k, valid=True, stop_code=0)
     iso2 = Isophote(sample2, k, valid=True, stop_code=0)
@@ -160,11 +160,11 @@ class TestIsophoteList:
         self.data = data
 
     @staticmethod
-    def build_list(data, sma0, slen=5):
+    def build_list(data, sma0, *, slen=5):
         iso_list = []
         for k in range(slen):
             sample = EllipseSample(data, float(k + sma0))
-            sample.update(DEFAULT_FIX)
+            sample.update(fixed_parameters=DEFAULT_FIX)
             iso_list.append(Isophote(sample, k, valid=True, stop_code=0))
         return IsophoteList(iso_list)
 

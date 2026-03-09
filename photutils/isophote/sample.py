@@ -9,6 +9,7 @@ import numpy as np
 
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import INTEGRATORS
+from photutils.utils._parameters import warn_positional_kwargs
 
 __all__ = ['EllipseSample']
 
@@ -89,6 +90,7 @@ class EllipseSample:
         removed some of the points.
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, image, sma, x0=None, y0=None, astep=0.1, eps=0.2,
                  position_angle=0.0, sclip=3.0, nclip=0, linear_growth=False,
                  integrmode='bilinear', geometry=None):
@@ -111,8 +113,8 @@ class EllipseSample:
                 _y0 = image.shape[0] / 2
 
             self.geometry = EllipseGeometry(_x0, _y0, sma, eps,
-                                            position_angle, astep,
-                                            linear_growth)
+                                            position_angle, astep=astep,
+                                            linear_growth=linear_growth)
 
         # sigma-clip parameters
         self.sclip = sclip
@@ -152,7 +154,7 @@ class EllipseSample:
         self.values = s
         return s
 
-    def _extract(self, phi_min=0.05):
+    def _extract(self, *, phi_min=0.05):
         # Here the actual sampling takes place. This is called only once
         # during the life of an EllipseSample instance, because it's an
         # expensive calculation. This method should not be called from
@@ -272,6 +274,7 @@ class EllipseSample:
 
         return r_angles, r_radii, r_intensities
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def update(self, fixed_parameters=None):
         """
         Update this `~photutils.isophote.EllipseSample` instance.
@@ -380,6 +383,7 @@ class CentralEllipseSample(EllipseSample):
     the special case of the central pixel in the galaxy image.
     """
 
+    @warn_positional_kwargs(since='3.0', until='4.0')
     def update(self, fixed_parameters=None):  # noqa: ARG002
         """
         Update this `~photutils.isophote.EllipseSample` instance with

@@ -23,7 +23,7 @@ class TestData:
         self.data = hdu[0].data
         hdu.close()
 
-    def make_sample(self, masked=False, sma=40.0, integrmode=BILINEAR):
+    def make_sample(self, *, masked=False, sma=40.0, integrmode=BILINEAR):
         if masked:
             data = np.ma.masked_values(self.data, 200.0, atol=10.0, rtol=0.0)
         else:

@@ -13,8 +13,9 @@ from photutils.isophote.geometry import EllipseGeometry
 @pytest.mark.parametrize(('astep', 'linear_growth'),
                          [(0.2, False), (20.0, True)])
 def test_geometry(astep, linear_growth):
-    geometry = EllipseGeometry(255.0, 255.0, 100.0, 0.4, np.pi / 2, astep,
-                               linear_growth)
+    geometry = EllipseGeometry(255.0, 255.0, 100.0, 0.4, np.pi / 2,
+                               astep=astep,
+                               linear_growth=linear_growth)
 
     sma1, sma2 = geometry.bounding_ellipses()
     assert_allclose((sma1, sma2), (90.0, 110.0), atol=0.01)
@@ -30,7 +31,7 @@ def test_geometry(astep, linear_growth):
 
 def test_to_polar():
     # trivial case of a circle centered in (0.0, 0.0)
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, 0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=0.2,
                                linear_growth=False)
 
     r, p = geometry.to_polar(100.0, 0.0)
@@ -47,7 +48,7 @@ def test_to_polar():
     assert_allclose(p, np.pi / 4.0, atol=0.0001)
 
     # position angle tilted 45 deg from X axis
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, np.pi / 4.0, 0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, np.pi / 4.0, astep=0.2,
                                linear_growth=False)
 
     r, p = geometry.to_polar(100.0, 0.0)
@@ -66,7 +67,7 @@ def test_to_polar():
 
 def test_area():
     # circle with center at origin
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, 0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=0.2,
                                linear_growth=False)
 
     # sector at 45 deg on circle
@@ -83,7 +84,7 @@ def test_area():
 
 def test_area2():
     # circle with center at 100.0, 100.0
-    geometry = EllipseGeometry(100.0, 100.0, 100.0, 0.0, 0.0, 0.2,
+    geometry = EllipseGeometry(100.0, 100.0, 100.0, 0.0, 0.0, astep=0.2,
                                linear_growth=False)
 
     # sector at 45 deg on circle
@@ -100,13 +101,13 @@ def test_area2():
 
 
 def test_reset_sma():
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, 0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=0.2,
                                linear_growth=False)
     sma, step = geometry.reset_sma(0.2)
     assert_allclose(sma, 83.33, atol=0.01)
     assert_allclose(step, -0.1666, atol=0.001)
 
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, 20.0,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=20.0,
                                linear_growth=True)
     sma, step = geometry.reset_sma(20.0)
     assert_allclose(sma, 80.0, atol=0.01)
@@ -114,19 +115,19 @@ def test_reset_sma():
 
 
 def test_update_sma():
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, 0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=0.2,
                                linear_growth=False)
     sma = geometry.update_sma(0.2)
     assert_allclose(sma, 120.0, atol=0.01)
 
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, 20.0,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, astep=20.0,
                                linear_growth=True)
     sma = geometry.update_sma(20.0)
     assert_allclose(sma, 120.0, atol=0.01)
 
 
 def test_polar_angle_sector_limits():
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.3, np.pi / 4, 0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.3, np.pi / 4, astep=0.2,
                                linear_growth=False)
     geometry.initialize_sector_geometry(np.pi / 3)
     phi1, phi2 = geometry.polar_angle_sector_limits()
@@ -135,14 +136,14 @@ def test_polar_angle_sector_limits():
 
 
 def test_bounding_ellipses():
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.3, np.pi / 4, 0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.3, np.pi / 4, astep=0.2,
                                linear_growth=False)
     sma1, sma2 = geometry.bounding_ellipses()
     assert_allclose((sma1, sma2), (90.0, 110.0), atol=0.01)
 
 
 def test_radius():
-    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.3, np.pi / 4, 0.2,
+    geometry = EllipseGeometry(0.0, 0.0, 100.0, 0.3, np.pi / 4, astep=0.2,
                                linear_growth=False)
     r = geometry.radius(0.0)
     assert_allclose(r, 100.0, atol=0.01)

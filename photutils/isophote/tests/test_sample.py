@@ -33,7 +33,7 @@ def test_scatter(integrmode, amin, amax):
     at extraction matches this input noise.
     """
     sample = EllipseSample(DATA, 50.0, astep=0.2, integrmode=integrmode)
-    sample.update(DEFAULT_FIX)
+    sample.update(fixed_parameters=DEFAULT_FIX)
     iso = Isophote(sample, 0, valid=True, stop_code=0)
 
     assert iso.pix_stddev < amax
@@ -42,7 +42,7 @@ def test_scatter(integrmode, amin, amax):
 
 def test_coordinates():
     sample = EllipseSample(DATA, 50.0)
-    sample.update(DEFAULT_FIX)
+    sample.update(fixed_parameters=DEFAULT_FIX)
     x, y = sample.coordinates()
 
     assert isinstance(x, np.ndarray)
@@ -51,7 +51,7 @@ def test_coordinates():
 
 def test_sclip():
     sample = EllipseSample(DATA, 50.0, nclip=3)
-    sample.update(DEFAULT_FIX)
+    sample.update(fixed_parameters=DEFAULT_FIX)
     x, y = sample.coordinates()
 
     assert isinstance(x, np.ndarray)
