@@ -4,12 +4,13 @@ Tests for the _stats module.
 """
 
 import importlib
+import pickle  # nosec B403
 from unittest.mock import patch
 
 import astropy.units as u
 import numpy as np
 import pytest
-from numpy.testing import assert_equal
+from numpy.testing import assert_allclose, assert_equal
 
 from photutils.utils._optional_deps import HAS_BOTTLENECK
 from photutils.utils._stats import (nanmax, nanmean, nanmedian, nanmin, nanstd,
@@ -51,6 +52,34 @@ def test_nan_funcs_float32(func):
     assert_equal(result1, result2)
 
 
+@pytest.mark.parametrize('axis', [None, 0, 1])
+@pytest.mark.parametrize('func', funcs)
+def test_nan_function_pickle(axis, func):
+    """
+    Test that nan functions can be pickled and unpickled without error.
+
+    This should work regardless of whether Bottleneck is installed.
+    """
+    nan_func = func[0]
+    np_func = func[1]
+    pickled_func = pickle.loads(  # noqa: S301
+        pickle.dumps(nan_func))  # noqa: S301  # nosec B301
+    data = np.arange(10).reshape(2, 5) ** 2
+    result1 = nan_func(data, axis=axis)
+    result2 = pickled_func(data, axis=axis)
+    result3 = np_func(data, axis=axis)
+    assert_allclose(result1, result2)
+    assert_allclose(result2, result3)
+
+
+def test_nanmean_repr():
+    """
+    Test that the repr of nanmean is correct.
+    """
+    result = repr(nanmean)
+    assert 'nanmean' in result
+
+
 def test_nan_funcs_no_bottleneck():
     """
     Test that the functions work when bottleneck is not available by
@@ -64,6 +93,3 @@ def test_nan_funcs_no_bottleneck():
         arr = np.ones((5, 3))
         result = stats_mod.nansum(arr)
         assert_equal(result, np.nansum(arr))
-
-    # Reload again to restore the original state
-    importlib.reload(stats_mod)
