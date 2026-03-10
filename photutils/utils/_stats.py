@@ -107,23 +107,33 @@ if HAS_BOTTLENECK:
     }
     np_funcs = {name: getattr(np, name) for name in _STAT_NAMES}
 
-    def _dtype_dispatch(func_name):
-        # Dispatch to bottleneck or numpy depending on the input array
-        # dtype. This is done to workaround known accuracy bugs in
-        # bottleneck affecting float32 calculations.
-        # See https://github.com/pydata/bottleneck/issues/379
-        # See https://github.com/pydata/bottleneck/issues/462
-        # See https://github.com/astropy/astropy/issues/17185
-        # See https://github.com/astropy/astropy/issues/11492
-        def wrapped(*args, **kwargs):
-            if args[0].dtype.str[1:] == 'f8':
-                return bn_funcs[func_name](*args, **kwargs)
-            return np_funcs[func_name](*args, **kwargs)
+    class _DtypeDispatch:
+        """
+        Dispatcher that routes to bottleneck or numpy based on dtype.
 
-        return wrapped
+        This is done to workaround known accuracy bugs in Bottleneck
+        affecting float32 calculations. See the following issues for
+        more details:
+
+        * https://github.com/pydata/bottleneck/issues/379
+        * https://github.com/pydata/bottleneck/issues/462
+        * https://github.com/astropy/astropy/issues/17185
+        * https://github.com/astropy/astropy/issues/11492
+        """
+
+        def __init__(self, func_name):
+            self.func_name = func_name
+
+        def __repr__(self):
+            return f'_DtypeDispatch({self.func_name!r})'
+
+        def __call__(self, *args, **kwargs):
+            if args[0].dtype.str[1:] == 'f8':
+                return bn_funcs[self.func_name](*args, **kwargs)
+            return np_funcs[self.func_name](*args, **kwargs)
 
     (nansum, nanmin, nanmax, nanmean, nanmedian, nanstd, nanvar) = (
-        _dtype_dispatch(name) for name in _STAT_NAMES
+        _DtypeDispatch(name) for name in _STAT_NAMES
     )
 
 else:
