@@ -128,7 +128,8 @@ if HAS_BOTTLENECK:
             return f'_DtypeDispatch({self.func_name!r})'
 
         def __call__(self, *args, **kwargs):
-            if args[0].dtype.str[1:] == 'f8':
+            dt = args[0].dtype
+            if dt.kind == 'f' and dt.itemsize == 8:
                 return bn_funcs[self.func_name](*args, **kwargs)
             return np_funcs[self.func_name](*args, **kwargs)
 
