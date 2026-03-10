@@ -358,7 +358,7 @@ class RadialProfile(ProfileBase):
         return np.diff(self._photometry[0])
 
     @lazyproperty
-    def _fluxerr(self):
+    def _flux_err(self):
         """
         The flux error in a circular annulus.
         """
@@ -391,12 +391,12 @@ class RadialProfile(ProfileBase):
         ``(0,)`` is returned.
         """
         if self.error is None:
-            return self._fluxerr
+            return self._flux_err
 
         # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            return self._fluxerr / self.area
+            return self._flux_err / self.area
 
     @lazyproperty
     def _profile_nanmask(self):
