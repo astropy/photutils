@@ -5,7 +5,7 @@ Tests for the _deprecation module.
 
 import numpy as np
 import pytest
-from astropy.table import Table, TableMergeError, join, unique
+from astropy.table import QTable, Table, TableMergeError, join, unique
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.utils._deprecation import (DeprecatedColumnQTable,
@@ -332,3 +332,66 @@ def test_translate_names_non_string(raw_data, recwarn):
     groups = table.group_by(key_table)
     assert len(groups.groups) == 3
     assert len(recwarn) == 0
+
+
+class TestFutureColumnNames:
+    """
+    Tests for the ``photutils.future_column_names`` opt-in flag.
+    """
+
+    def setup_method(self):
+        import photutils
+        self._original = photutils.future_column_names
+        photutils.future_column_names = True
+
+    def teardown_method(self):
+        import photutils
+        photutils.future_column_names = self._original
+
+    def test_from_data_returns_plain_table(self, raw_data):
+        """
+        Test that create_deprecated_table_from_data returns a plain
+        Table when the flag is set.
+        """
+        table = create_deprecated_table_from_data(
+            raw_data, DEPRECATION_MAP)
+        assert type(table) is Table
+        assert set(table.colnames) == {'new', 'new_b', 'stable'}
+
+    def test_from_data_returns_plain_qtable(self, raw_data):
+        """
+        Test that create_deprecated_table_from_data returns a plain
+        QTable when the flag is set and use_qtable=True.
+        """
+        table = create_deprecated_table_from_data(
+            raw_data, DEPRECATION_MAP, use_qtable=True)
+        assert type(table) is QTable
+
+    def test_from_data_no_warnings(self, raw_data, recwarn):
+        """
+        Test that accessing columns on a plain table created with the
+        flag does not issue deprecation warnings.
+        """
+        table = create_deprecated_table_from_data(
+            raw_data, DEPRECATION_MAP)
+        _ = table['new']
+        assert len(recwarn) == 0
+
+    def test_from_data_old_name_raises(self, raw_data):
+        """
+        Test that accessing a deprecated name on a plain table created
+        with the flag raises KeyError.
+        """
+        table = create_deprecated_table_from_data(
+            raw_data, DEPRECATION_MAP)
+        with pytest.raises(KeyError):
+            table['old']
+
+    def test_empty_returns_plain_qtable(self):
+        """
+        Test that create_empty_deprecated_qtable returns a plain QTable
+        when the flag is set.
+        """
+        table = create_empty_deprecated_qtable(DEPRECATION_MAP)
+        assert type(table) is QTable
+        assert len(table) == 0

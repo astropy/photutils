@@ -323,6 +323,10 @@ def create_empty_deprecated_qtable(deprecation_map, **kwargs):
     This is useful when building a table column by column rather than
     from a complete data dictionary.
 
+    If ``photutils.future_column_names`` is `True`, a standard
+    `~astropy.table.QTable` is returned instead, with no deprecation
+    behavior.
+
     Parameters
     ----------
     deprecation_map : dict
@@ -334,15 +338,18 @@ def create_empty_deprecated_qtable(deprecation_map, **kwargs):
 
     Returns
     -------
-    table : `DeprecatedColumnQTable`
-        A new empty QTable instance with deprecation behavior.
+    table : `DeprecatedColumnQTable` or `~astropy.table.QTable`
+        A new empty QTable instance. If
+        ``photutils.future_column_names`` is `True`, a standard
+        `~astropy.table.QTable` is returned.
 
     Examples
     --------
     Create an empty table and add columns incrementally:
 
     >>> import warnings
-    >>> from photutils.utils._deprecation import create_empty_deprecated_qtable
+    >>> from photutils.utils._deprecation import (
+    ...     create_empty_deprecated_qtable)
     >>> dep_map = {'xcentroid': 'x_centroid'}
     >>> table = create_empty_deprecated_qtable(dep_map)
     >>> table['x_centroid'] = [1.0, 2.0, 3.0]
@@ -357,6 +364,11 @@ def create_empty_deprecated_qtable(deprecation_map, **kwargs):
     >>> float(col[0])
     1.0
     """
+    import photutils
+
+    if photutils.future_column_names:
+        return QTable(**kwargs)
+
     table = DeprecatedColumnQTable(**kwargs)
     table._deprecation_map = deprecation_map
     return table
@@ -372,6 +384,10 @@ def create_deprecated_table_from_data(data, deprecation_map,
     ``QTable`` subclass. All other keywords are passed directly to the
     underlying table constructor.
 
+    If ``photutils.future_column_names`` is `True`, a standard
+    `~astropy.table.QTable` or `~astropy.table.Table` is returned
+    instead, with no deprecation behavior.
+
     Parameters
     ----------
     data : dict
@@ -382,8 +398,9 @@ def create_deprecated_table_from_data(data, deprecation_map,
         A dictionary mapping old (deprecated) names to new names.
 
     use_qtable : bool, optional
-        If ``True``, a ``DeprecatedColumnQTable`` will be created.
-        Defaults to ``False``.
+        If ``True``, a ``DeprecatedColumnQTable`` (or
+        `~astropy.table.QTable` when ``photutils.future_column_names``
+        is `True`) will be created. Defaults to ``False``.
 
     **kwargs : dict, optional
         Any other keywords accepted by the ``astropy.table.Table``
@@ -392,7 +409,9 @@ def create_deprecated_table_from_data(data, deprecation_map,
     Returns
     -------
     table : `DeprecatedColumnTable` or `DeprecatedColumnQTable`
-        A new table instance with deprecation behavior.
+        A new table instance with deprecation behavior. If
+        ``photutils.future_column_names`` is `True`, a standard
+        `~astropy.table.Table` or `~astropy.table.QTable` is returned.
 
     Examples
     --------
@@ -425,13 +444,19 @@ def create_deprecated_table_from_data(data, deprecation_map,
     >>> type(qtable).__name__
     'DeprecatedColumnQTable'
     """
-    table_class = (DeprecatedColumnQTable if use_qtable
-                   else DeprecatedColumnTable)
+    import photutils
 
     # Rename the keys in the data dictionary before creation
     renamed_data = {
         deprecation_map.get(k, k): v for k, v in data.items()
     }
+
+    if photutils.future_column_names:
+        table_class = QTable if use_qtable else Table
+        return table_class(renamed_data, **kwargs)
+
+    table_class = (DeprecatedColumnQTable if use_qtable
+                   else DeprecatedColumnTable)
 
     # Create the table instance
     table = table_class(renamed_data, **kwargs)
