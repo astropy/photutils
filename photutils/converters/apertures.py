@@ -11,7 +11,7 @@ __all__ = ['CircularApertureConverter']
 
 class CircularApertureConverter(Converter):
     """
-    Base class for aperture converters.
+    ASDF converter for CircularAperture.
     """
 
     tags = ('tag:astropy.org:photutils/aperture/circular_aperture-*',)
