@@ -33,14 +33,19 @@ classifiers = [
 dynamic = ['version']
 requires-python = '>=3.11'
 dependencies = [
-    'astropy >= 6.1.4',
+    'astropy >= 6.1.7',
     'numpy >= 2.0',
     'scipy >= 1.13',
+    'asdf-astropy>=0.10',
 ]
 
 [project.urls]
 Homepage = 'https://github.com/astropy/photutils'
 Documentation = 'https://photutils.readthedocs.io/en/stable/'
+
+[project.entry-points]
+'asdf.extensions' = {photutils = 'photutils.extension:get_extensions'}
+'asdf.resource_mappings' = {photutils = 'photutils.extension:get_resource_mappings'}
 
 [project.optional-dependencies]
 all = [
@@ -57,6 +62,7 @@ test = [
     'pytest-astropy >= 0.11',
     'pytest-xdist >= 3.5',
     'tox >= 4.12',
+    'pytest-asdf-plugin'
 ]
 docs = [
     'photutils[all]',
@@ -97,6 +103,10 @@ namespaces = false
 'photutils' = [
     'CITATION.rst',
 ]
+
+'photutils.resources' = [
+    '**/**/*.yaml']
+
 'photutils.datasets' = [
     'data/*',
 ]
@@ -137,6 +147,8 @@ remote_data_strict = true
 filterwarnings = [
     'error',  # turn warnings into exceptions
 ]
+asdf_schema_root = 'photutils/resources/schemas'
+asdf_schema_tests_enabled = true
 
 [tool.coverage.run]
 omit = [
@@ -230,6 +242,8 @@ exclude = [
     '\._.*',  # private functions/methods
     '^test_*',  # test code
     '^conftest.*$',  # pytest configuration
+    'to_yaml_tree',  # ASDF converter
+    'from_yaml_tree',  # ASDF converter
 
     # PR01: private classes/functions
     'SigmaClipSentinelDefault$',

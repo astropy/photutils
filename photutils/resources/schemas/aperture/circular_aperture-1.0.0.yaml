@@ -1,0 +1,38 @@
+%YAML 1.1
+---
+$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
+id: "asdf://astropy.org/photutils/schemas/aperture/circular_aperture-1.0.0"
+title: CircularAperture
+description: |
+  ASDF schema for serializing a photutils CircularAperture.
+examples:
+  -
+    - A CircularAperture with a single position and radius of 5 pixels.
+    - |
+      !<tag:astropy.org:photutils/aperture/circular_aperture-1.0.0>
+        positions: [1.0, 2.0]
+        r: 5.0
+
+type: object
+properties:
+  positions:
+    title: Aperture position(s).
+    description: |
+      The pixel coordinates of the aperture center(s) in one of the following formats:
+
+        * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
+        * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
+    anyOf:
+      - type: array
+        items:
+          type: number
+        maxItems: 2
+        minItems: 2
+      - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+  r:
+    title: Aperture radius.
+    description: |
+      The radius of the circular aperture in pixels.
+    type: number
+required: [positions, r]
+...
