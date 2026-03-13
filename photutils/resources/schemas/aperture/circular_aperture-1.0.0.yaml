@@ -25,15 +25,9 @@ properties:
     anyOf:
       - type: array
         items:
-          anyOf:
-            - type: number
-              maxItems: 2
-              minItems: 2
-            - type: array
-              items:
-                type: number
-              maxItems: 2
-              minItems: 2
+          type: number
+        maxItems: 2
+        minItems: 2
       - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
   r:
     title: Aperture radius.
