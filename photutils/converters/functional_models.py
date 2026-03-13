@@ -15,8 +15,8 @@ class AiryDiskPSFConverter(TransformConverterBase):
     Converter for AiryDiskPSF.
     """
 
-    tags = ['tag:astropy.org:photutils/psf/airy_disk_psf-*']  # noqa: RUF012
-    types = ['photutils.psf.AiryDiskPSF']  # noqa: RUF012
+    tags = ('tag:astropy.org:photutils/psf/airy_disk_psf-*',)
+    types = ('photutils.psf.AiryDiskPSF',)
 
     def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
         return {
