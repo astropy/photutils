@@ -28,8 +28,8 @@ def test_psf_converters(tmp_path):
         with asdf.open(tmp_path / 'psf.asdf') as af:
             psf2 = af['psf']
 
-        assert psf.flux == psf2.flux
-        assert psf.x_0 == psf2.x_0
-        assert psf.y_0 == psf2.y_0
-        assert psf.radius == psf2.radius
-        assert psf.bbox_factor == psf2.bbox_factor
+            assert psf.flux == psf2.flux
+            assert psf.x_0 == psf2.x_0
+            assert psf.y_0 == psf2.y_0
+            assert psf.radius == psf2.radius
+            assert psf.bbox_factor == psf2.bbox_factor
