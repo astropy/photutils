@@ -71,8 +71,7 @@ def test_area():
                                linear_growth=False)
 
     # sector at 45 deg on circle
-    vertex_x, vertex_y = geometry.initialize_sector_geometry(
-        45.0 / 180.0 * np.pi)
+    vertex_x, vertex_y = geometry.initialize_sector_geometry(np.deg2rad(45))
     assert_allclose(vertex_x, [65.21, 79.70, 62.03, 75.81], atol=0.01)
     assert_allclose(vertex_y, [62.03, 75.81, 65.21, 79.70], atol=0.01)
 
@@ -88,14 +87,12 @@ def test_area2():
                                linear_growth=False)
 
     # sector at 45 deg on circle
-    vertex_x, vertex_y = geometry.initialize_sector_geometry(
-        45.0 / 180.0 * np.pi)
+    vertex_x, vertex_y = geometry.initialize_sector_geometry(np.deg2rad(45))
     assert_allclose(vertex_x, [165.21, 179.70, 162.03, 175.81], atol=0.01)
     assert_allclose(vertex_y, [162.03, 175.81, 165.21, 179.70], atol=0.01)
 
     # sector at 225 deg on circle
-    vertex_x, vertex_y = geometry.initialize_sector_geometry(
-        225.0 / 180.0 * np.pi)
+    vertex_x, vertex_y = geometry.initialize_sector_geometry(np.deg2rad(225))
     assert_allclose(vertex_x, [34.79, 20.30, 37.97, 24.19], atol=0.01)
     assert_allclose(vertex_y, [37.97, 24.19, 34.79, 20.30], atol=0.01)
 

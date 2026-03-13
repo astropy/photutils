@@ -165,7 +165,7 @@ class TestM51:
 
         # sample taken in high SNR region
         sample = EllipseSample(self.data, 21.44, eps=0.18,
-                               position_angle=(36.0 / 180.0 * np.pi))
+                               position_angle=np.deg2rad(36.0))
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()
 
@@ -174,7 +174,7 @@ class TestM51:
 
         # last sample taken by the original code, before turning inwards.
         sample = EllipseSample(self.data, 61.16, eps=0.219,
-                               position_angle=((77.5 + 90) / 180 * np.pi))
+                               position_angle=np.deg2rad(77.5 + 90))
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()
 
@@ -186,7 +186,7 @@ class TestM51:
         # data points lay outside the image frame. This checks
         # for the presence of gaps in the sample arrays.
         sample = EllipseSample(self.data, 330.0, eps=0.2,
-                               position_angle=((90) / 180 * np.pi),
+                               position_angle=np.deg2rad(90),
                                integrmode='median')
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()

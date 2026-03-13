@@ -27,7 +27,7 @@ def test_model():
     data = hdu[0].data[0]
     hdu.close()
 
-    g = EllipseGeometry(530.0, 511, 10.0, 0.1, 10.0 / 180.0 * np.pi)
+    g = EllipseGeometry(530.0, 511, 10.0, 0.1, np.deg2rad(10.0))
     ellipse = Ellipse(data, geometry=g, threshold=1.0e5)
 
     # NOTE: this sometimes emits warnings (e.g., py38, ubuntu), but
@@ -78,7 +78,7 @@ def test_model_minimum_radius():
     filepath = get_pkg_data_filename('data/minimum_radius_test.fits')
     with fits.open(filepath) as hdu:
         data = hdu[0].data
-        g = EllipseGeometry(50.0, 45, 530.0, 0.1, 10.0 / 180.0 * np.pi)
+        g = EllipseGeometry(50.0, 45, 530.0, 0.1, np.deg2rad(10.0))
         g.find_center(data)
         ellipse = Ellipse(data, geometry=g)
 

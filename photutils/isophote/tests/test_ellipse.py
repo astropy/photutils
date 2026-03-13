@@ -19,7 +19,7 @@ from photutils.isophote.tests.make_test_data import make_test_image
 
 # define an off-center position and a tilted sma
 POS = 384
-PA = 10.0 / 180.0 * np.pi
+PA = np.deg2rad(10.0)
 
 # build off-center test data. It's fine to have a single np array to use
 # in all tests that need it, but do not use a single instance of
@@ -138,7 +138,7 @@ class TestEllipse:
         ny = 500
         nx = 150
         g = Gaussian2D(100.0, nx / 2.0, ny / 2.0, 20, 12,
-                       theta=40.0 * np.pi / 180.0)
+                       theta=np.deg2rad(40.0))
         y, x = np.mgrid[0:ny, 0:nx]
         noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
                                  stddev=2.0, seed=0)

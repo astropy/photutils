@@ -470,13 +470,12 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     @lazyproperty
     def pa(self):
         """
-        The position angle of the sources.
+        The position angle of the sources, in the range [0, 360)
+        degrees.
         """
-        pa = np.rad2deg(
-            0.5 * np.arctan2(
-                2.0 * self.moments_central[:, 1, 1],
-                self.mu_diff))
-        return np.where(pa < 0, pa + 180, pa)
+        angle = 0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
+                                 self.mu_diff)
+        return np.rad2deg(angle) % 360
 
     @lazyproperty
     def roundness(self):

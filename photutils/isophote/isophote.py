@@ -983,6 +983,6 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
         isotable[v] = np.array([getattr(iso, k) for iso in isophote_list])
 
         if k in ('pa', 'pa_err'):
-            isotable[v] = isotable[v] * 180.0 / np.pi * u.deg
+            isotable[v] = (np.rad2deg(isotable[v]) % 360) << u.deg
 
     return isotable

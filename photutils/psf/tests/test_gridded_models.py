@@ -216,7 +216,7 @@ class TestGriddedPSFModel:
         cat = SourceCatalog(data, segm)
         orients = cat.orientation.value
         assert_allclose(orients[1], 50.0, rtol=1.0e-5)
-        assert_allclose(orients[2], -80.0, rtol=1.0e-5)
+        assert_allclose(orients[2], 280.0, rtol=1.0e-5)
         assert 88.3 < orients[0] < 88.4
         assert 64.0 < orients[3] < 64.2
 

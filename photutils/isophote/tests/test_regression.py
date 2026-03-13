@@ -125,7 +125,7 @@ def test_regression(name):
         stop_i = iso.stop_code
 
         # convert to old code reference system
-        pa_i = (pa_i - np.pi / 2) / np.pi * 180.0
+        pa_i = np.rad2deg(pa_i - np.pi / 2)
         x0_i += 1
         y0_i += 1
 
