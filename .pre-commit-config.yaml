@@ -55,7 +55,7 @@ repos:
         # Enforce that all noqa annotations always occur with specific codes.
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.15.4"
+    rev: "v0.15.6"
     hooks:
       - id: ruff-check
         args: ["--fix", "--show-fixes"]
@@ -83,7 +83,7 @@ repos:
         args: ["--ignore", "E501,W503"]
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.1
+    rev: v2.4.2
     hooks:
       - id: codespell
         args: ["--write-changes"]
