@@ -32,6 +32,7 @@ class TestIRAFStarFinder:
         tbl0 = finder0(data)
         tbl1 = finder1(data << units)
         assert_array_equal(tbl0, tbl1)
+        assert tbl0['pa'].unit == u.deg
 
     def test_inputs(self):
         """

@@ -475,7 +475,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         """
         angle = 0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
                                  self.mu_diff)
-        return np.rad2deg(angle) % 360
+        return (np.rad2deg(angle) % 360) << u.deg
 
     @lazyproperty
     def roundness(self):
