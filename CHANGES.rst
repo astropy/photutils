@@ -278,7 +278,8 @@ API Changes
     three star finders. [#2216]
 
   - The ``IRAFStarFinder`` and ``StarFinder`` ``pa`` values are now
-    always returned in the range [0, 360) degrees. [#2224]
+    always returned as a ``Quantity`` array in the range [0, 360)
+    degrees. [#2224, #2225]
 
 - ``photutils.profiles``
 
