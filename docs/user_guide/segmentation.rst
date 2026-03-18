@@ -604,6 +604,7 @@ that was subtracted from the data into the ``background`` keyword
 of :class:`~photutils.segmentation.SourceCatalog`, the background
 properties for each source will also be calculated:
 
+.. doctest-requires:: scipy >= 1.8
 .. doctest-requires:: skimage
 
     >>> cat = SourceCatalog(data, segm_deblend, background=bkg.background)
@@ -618,13 +619,12 @@ properties for each source will also be calculated:
     >>> print(tbl4)
     label background_centroid background_mean background_sum
     ----- ------------------- --------------- --------------
-        1        5.1950688712    5.1952756242 244.1779543392
-        5        5.2065576425    5.2065435089 437.3496547461
-       20        5.2185224692    5.2182858995 537.4834476464
-       50        5.2278578177    5.2277566101 261.3878305070
-       75        5.2200812075    5.2203644547 344.5440540106
-       80        5.2177773028    5.2174773439 453.9205289152
-
+        1        5.1950691156    5.1952758684 244.1779658169
+        5        5.2065578767    5.2065437428 437.3496743914
+       20        5.2185224938    5.2182859243 537.4834502022
+       50        5.2278578177    5.2277566101 261.3878305059
+       75        5.2200812077    5.2203644550 344.5440540277
+       80        5.2177773524    5.2174773951 453.9205333733
 
 .. _photutils-segmentation_errors:
 
@@ -658,6 +658,7 @@ calculated. `~photutils.segmentation.SourceCatalog.segment_flux`
 and `~photutils.segmentation.SourceCatalog.segment_fluxerr` are the
 instrumental flux and propagated flux error within the source segments:
 
+.. doctest-requires:: scipy >= 1.8
 .. doctest-requires:: skimage
 
     >>> from photutils.utils import calc_total_error
@@ -678,12 +679,12 @@ instrumental flux and propagated flux error within the source segments:
     >>> print(tbl5)
     label xcentroid ycentroid segment_flux segment_fluxerr
     ----- --------- --------- ------------ ---------------
-        1 235.24302 1.1928271    433.35463       14.167067
-        5 257.82267 12.228232    489.96534       18.998371
-       20 347.15384 66.417567    625.96683       22.475065
+        1 235.24302 1.1928271    433.35462       14.167067
+        5 257.82267 12.228232    489.96532       18.998371
+       20 347.15384 66.417567    625.96682       22.475065
        50 380.94448 174.57181    249.01701       15.261334
        75 74.413068 259.76066     836.4803       17.193721
-       80 14.920217 60.024006     666.6014       19.605394
+       80 14.920217 60.024006    666.60139       19.605394
 
 
 Pixel Masking
