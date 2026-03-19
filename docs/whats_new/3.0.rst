@@ -555,6 +555,9 @@ The ``brightest`` keyword argument for
 :class:`~photutils.detection.StarFinder` is now deprecated. Use
 ``n_brightest`` instead.
 
+The ``npeaks`` keyword argument for ``find_peaks`` is now deprecated.
+Use ``n_peaks`` instead.
+
 The ``minsep_fwhm`` keyword argument for ``IRAFStarFinder`` is now
 deprecated. Use ``min_separation`` instead.
 

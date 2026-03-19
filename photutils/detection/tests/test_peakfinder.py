@@ -76,11 +76,11 @@ class TestFindPeaks:
         with pytest.raises(ValueError, match=match):
             find_peaks(data, np.ones((2, 2)))
 
-    def test_npeaks(self, data):
+    def test_n_peaks(self, data):
         """
-        Test npeaks.
+        Test n_peaks.
         """
-        tbl = find_peaks(data, 0.1, box_size=3, npeaks=1)
+        tbl = find_peaks(data, 0.1, box_size=3, n_peaks=1)
         assert len(tbl) == 1
 
     def test_border_width(self, data):
