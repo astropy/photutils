@@ -116,14 +116,14 @@ New Features
 
 - ``photutils.segmentation``
 
-  - `~photutils.segmentation.SourceCatalog.fluxfrac_radius` now caches
-    results by ``fluxfrac`` value. Repeated calls with the same
-    ``fluxfrac`` return the cached result without recomputation. [#2197]
+  - The ``SourceCatalog`` ``fluxfrac_radius`` now caches results by
+    ``fluxfrac`` value. Repeated calls with the same ``fluxfrac`` return
+    the cached result without recomputation. [#2197]
 
   - The radial step used when searching for a bracketing interval in
-    `~photutils.segmentation.SourceCatalog.fluxfrac_radius` is now set to
-    10% of the current ``max_radius``, bounding the fallback loop to at
-    most ~10 iterations regardless of source size. [#2197]
+    ``SourceCatalog`` ``fluxfrac_radius`` is now set to 10% of the current
+    ``max_radius``, bounding the fallback loop to at most ~10 iterations
+    regardless of source size. [#2197]
 
   - Improved the performance (~6-9x speedup) of ``SourceCatalog``
     ``min_value``, ``max_value``, ``segment_flux``, ``segment_fluxerr``,
@@ -150,8 +150,8 @@ Bug Fixes
 
 - ``photutils.centroids``
 
-  - Fixed a bug in ``centroid_sources`` where the input array could be
-    ignored if more than one source was input. [#2179]
+  - Fixed a bug in ``centroid_sources`` where the input error array
+    could be ignored if more than one source was input. [#2179]
 
 - ``photutils.datasets``
 
@@ -232,20 +232,12 @@ API Changes
 
 - ``photutils.centroids``
 
-  - Passing optional positional arguments positionally to functions
-    in the ``centroids`` package is now deprecated. Instead, pass
-    optional arguments as keyword arguments. [#2162, #2213]
-
   - The ``xpeak``, ``ypeak``, and ``search_boxsize`` keyword arguments
     for ``centroid_quadratic`` are now deprecated. Use
     ``centroid_sources`` to centroid sources at specific positions.
     [#2160]
 
 - ``photutils.detection``
-
-  - Passing optional positional arguments positionally to functions
-    in the ``detection`` package is now deprecated. Instead, pass
-    optional arguments as keyword arguments. [#2215]
 
   - ``find_peaks`` now returns a ``QTable`` instead of a ``Table``.
     [#2201]
@@ -308,9 +300,6 @@ API Changes
   - Removed the ``ModelGridPlotMixin`` class. [#2137]
 
   - Removed the ``norm_radius`` keyword from ``EPSFBuilder``. [#2158]
-
-  - Removed the ``build_epsf`` method from ``EPSFBuilder``. Use the
-    callable interface (``builder(stars)``) instead. [#2158]
 
   - Removed the deprecated ``FittableImageModel`` and ``EPSFModel``
     classes. Use ``ImagePSF`` instead. [#2158]
