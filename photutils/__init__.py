@@ -28,3 +28,13 @@ def _get_bibtex():
 __citation__ = __bibtex__ = _get_bibtex()
 
 del _get_bibtex
+
+
+future_column_names = False
+"""
+If `True`, all photutils functions return standard
+`~astropy.table.QTable` (or `~astropy.table.Table`) instances with the
+new column names instead of deprecated-column subclasses. Set this to
+`True` after updating your code to use the new column names to verify
+compatibility with the 4.0 behavior.
+"""
