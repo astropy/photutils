@@ -350,8 +350,9 @@ class IRAFStarFinder(StarFinderBase):
             * ``fwhm``: object FWHM.
             * ``sharpness``: object sharpness.
             * ``roundness``: object roundness.
-            * ``pa``: object position angle (degrees counter clockwise from
-              the positive x axis).
+            * ``orientation``: the angle between the ``x`` axis and the
+              major axis source measured counter-clockwise in the range
+              [0, 360) degrees.
             * ``npix``: the total number of (positive) unmasked pixels.
             * ``peak``: the peak, sky-subtracted, pixel value of the object.
             * ``flux``: the object instrumental flux calculated as the
@@ -443,8 +444,8 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         self.roundness_range = roundness_range
 
         self.default_columns = ('id', 'x_centroid', 'y_centroid', 'fwhm',
-                                'sharpness', 'roundness', 'pa', 'npix',
-                                'peak', 'flux', 'mag')
+                                'sharpness', 'roundness', 'orientation',
+                                'npix', 'peak', 'flux', 'mag')
 
     def _get_init_attributes(self):
         """
@@ -543,8 +544,8 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         """
         Filter the catalog.
         """
-        attrs = ('x_centroid', 'y_centroid', 'sharpness', 'roundness', 'pa',
-                 'sky', 'peak', 'flux')
+        attrs = ('x_centroid', 'y_centroid', 'sharpness', 'roundness',
+                 'orientation', 'sky', 'peak', 'flux')
         initial_mask = np.count_nonzero(self.cutout_data, axis=(1, 2)) > 1
         newcat = self._filter_finite(attrs, initial_mask=initial_mask)
         if newcat is None:

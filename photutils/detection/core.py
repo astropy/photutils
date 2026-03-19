@@ -37,6 +37,7 @@ _DEPRECATED_ATTRIBUTES: dict = {
     'ycentroid': 'y_centroid',
     'cutout_xcentroid': 'cutout_x_centroid',
     'cutout_ycentroid': 'cutout_y_centroid',
+    'pa': 'orientation',
 }
 
 
@@ -482,10 +483,14 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         return 2.0 * np.sqrt(np.log(2.0) * self.mu_sum)
 
     @lazyproperty
-    def pa(self):
+    def orientation(self):
         """
-        The position angle of the sources, in the range [0, 360)
-        degrees.
+        The angle between the ``x`` axis and the major axis of the 2D
+        Gaussian function that has the same second-order moments as the
+        source.
+
+        The angle increases in the counter-clockwise direction and
+        will be in the range [0, 360) degrees.
         """
         angle = 0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
                                  self.mu_diff)

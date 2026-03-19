@@ -199,8 +199,9 @@ class StarFinder(StarFinderBase):
             * ``x_centroid, y_centroid``: object centroid.
             * ``fwhm``: object FWHM.
             * ``roundness``: object roundness.
-            * ``pa``: object position angle (degrees counter clockwise from
-              the positive x axis).
+            * ``orientation``: the angle between the ``x`` axis and the
+              major axis source measured counter-clockwise in the range
+              [0, 360) degrees.
             * ``max_value``: the maximum pixel value in the source
             * ``flux``: the source instrumental flux.
             * ``mag``: the source instrumental magnitude calculated as
@@ -264,7 +265,8 @@ class _StarFinderCatalog(StarFinderCatalogBase):
                          n_brightest=n_brightest,
                          peak_max=peak_max)
         self.default_columns = ('id', 'x_centroid', 'y_centroid', 'fwhm',
-                                'roundness', 'pa', 'max_value', 'flux', 'mag')
+                                'roundness', 'orientation', 'max_value',
+                                'flux', 'mag')
 
     def _get_init_attributes(self):
         """
@@ -309,8 +311,8 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         """
         Filter the catalog.
         """
-        attrs = ('x_centroid', 'y_centroid', 'fwhm', 'roundness', 'pa',
-                 'max_value', 'flux')
+        attrs = ('x_centroid', 'y_centroid', 'fwhm', 'roundness',
+                 'orientation', 'max_value', 'flux')
         newcat = self._filter_finite(attrs)
         if newcat is None:
             return None
