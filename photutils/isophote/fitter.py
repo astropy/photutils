@@ -249,9 +249,9 @@ class EllipseFitter:
         proceed = True
 
         # check if an acceptable gradient value could be computed.
-        if sample.gradient_error and sample.gradient_relative_error:
+        if sample.gradient_err and sample.gradient_rel_err:
             if not going_inwards and (
-                    sample.gradient_relative_error > maxgerr
+                    sample.gradient_rel_err > maxgerr
                     or sample.gradient >= 0.0):
                 if lexceed:
                     proceed = False

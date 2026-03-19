@@ -9,7 +9,14 @@ import numpy as np
 
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import INTEGRATORS
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_getattr,
+                                          deprecated_positional_kwargs)
+
+# Remove in 4.0
+_DEPRECATED_SAMPLE_ATTRIBUTES = {
+    'gradient_error': 'gradient_err',
+    'gradient_relative_error': 'gradient_rel_err',
+}
 
 __all__ = ['EllipseSample']
 
@@ -72,9 +79,9 @@ class EllipseSample:
         The geometry of the elliptical path.
     gradient : float
         The local radial intensity gradient.
-    gradient_error : float
+    gradient_err : float
         The error associated with the local radial intensity gradient.
-    gradient_relative_error : float
+    gradient_rel_err : float
         The relative error associated with the local radial intensity
         gradient.
     sector_area : float
@@ -124,8 +131,8 @@ class EllipseSample:
         self.values = None
         self.mean = None
         self.gradient = None
-        self.gradient_error = None
-        self.gradient_relative_error = None
+        self.gradient_err = None
+        self.gradient_rel_err = None
         self.sector_area = None
 
         # total_points reports the total number of pairs angle-radius that
@@ -133,6 +140,10 @@ class EllipseSample:
         # pairs angle-radius that resulted in valid values.
         self.total_points = 0
         self.actual_points = 0
+
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, _DEPRECATED_SAMPLE_ATTRIBUTES)
 
     def extract(self):
         """
@@ -303,7 +314,7 @@ class EllipseSample:
 
         # Get sample with same geometry but at a different distance from
         # center. Estimate gradient from there.
-        gradient, gradient_error = self._get_gradient(step)
+        gradient, gradient_err = self._get_gradient(step)
 
         # Check for meaningful gradient. If no meaningful gradient, try
         # another sample, this time using larger radius. Meaningful
@@ -313,10 +324,10 @@ class EllipseSample:
         # current gradient.
         previous_gradient = self.gradient
         if not previous_gradient:
-            previous_gradient = gradient + gradient_error
+            previous_gradient = gradient + gradient_err
 
         if gradient >= (previous_gradient / 3.0):  # gradient is negative!
-            gradient, gradient_error = self._get_gradient(2 * step)
+            gradient, gradient_err = self._get_gradient(2 * step)
 
         # If still no meaningful gradient can be measured, try with
         # previous one, slightly shallower. A factor 0.8 is not too far
@@ -326,14 +337,14 @@ class EllipseSample:
         # case.
         if gradient >= (previous_gradient / 3.0):
             gradient = previous_gradient * 0.8
-            gradient_error = None
+            gradient_err = None
 
         self.gradient = gradient
-        self.gradient_error = gradient_error
-        if gradient_error and gradient < 0.0:
-            self.gradient_relative_error = gradient_error / np.abs(gradient)
+        self.gradient_err = gradient_err
+        if gradient_err and gradient < 0.0:
+            self.gradient_rel_err = gradient_err / np.abs(gradient)
         else:
-            self.gradient_relative_error = None
+            self.gradient_rel_err = None
 
     def _get_gradient(self, step):
         gradient_sma = (1.0 + step) * self.geometry.sma
@@ -354,11 +365,11 @@ class EllipseSample:
         sigma = np.std(s[2])
         sigma_g = np.std(sg[2])
 
-        gradient_error = (np.sqrt(sigma**2 / len(s[2])
-                                  + sigma_g**2 / len(sg[2]))
-                          / self.geometry.sma / step)
+        gradient_err = (np.sqrt(sigma**2 / len(s[2])
+                                + sigma_g**2 / len(sg[2]))
+                        / self.geometry.sma / step)
 
-        return gradient, gradient_error
+        return gradient, gradient_err
 
     def coordinates(self):
         """
@@ -401,8 +412,8 @@ class CentralEllipseSample(EllipseSample):
         self.mean = s[2][0]
 
         self.gradient = None
-        self.gradient_error = None
-        self.gradient_relative_error = None
+        self.gradient_err = None
+        self.gradient_rel_err = None
 
     def _extract(self):
         angles = []

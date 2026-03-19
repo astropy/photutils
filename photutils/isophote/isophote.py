@@ -5,15 +5,22 @@ Tools for storing the results of isophote fits.
 
 import astropy.units as u
 import numpy as np
-from astropy.table import QTable
 
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics,
                                           fit_upper_harmonic)
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (create_empty_deprecated_qtable,
+                                          deprecated_getattr,
+                                          deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
 
 __all__ = ['Isophote', 'IsophoteList']
+
+# Remove in 4.0
+_DEPRECATED_ATTRIBUTES = {
+    'grad_error': 'gradient_err',
+    'grad_r_error': 'gradient_rel_err',
+}
 
 
 class Isophote:
@@ -77,9 +84,9 @@ class Isophote:
         sector integration area)).
     grad : float
         The local radial intensity gradient.
-    grad_error : float
+    gradient_err : float
         The measurement error of the local radial intensity gradient.
-    grad_r_error : float
+    gradient_rel_err : float
         The relative error of local radial intensity gradient.
     tflux_e : float
         The sum of all pixels inside the ellipse.
@@ -125,9 +132,9 @@ class Isophote:
             self.int_err = self.rms / np.sqrt(sample.actual_points)
             self.pix_stddev = self.rms * np.sqrt(sample.sector_area)
             self.grad = sample.gradient
-            self.grad_error = sample.gradient_error
+            self.gradient_err = sample.gradient_err
 
-            self.grad_r_error = sample.gradient_relative_error
+            self.gradient_rel_err = sample.gradient_rel_err
             self.sarea = sample.sector_area
             self.ndata = sample.actual_points
             self.nflag = sample.total_points - sample.actual_points
@@ -143,6 +150,10 @@ class Isophote:
              self.b3_err) = self._compute_deviations(sample, 3)
             (self.a4, self.b4, self.a4_err,
              self.b4_err) = self._compute_deviations(sample, 4)
+
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES)
 
     @staticmethod
     def _raise_sma_error(err):
@@ -302,7 +313,8 @@ class Isophote:
             # this comes from the old code. Likely it was based on
             # empirical experience with the STSDAS task, so we leave
             # it here without too much thought.
-            gre = self.grad_r_error if self.grad_r_error is not None else 0.8
+            gre = (self.gradient_rel_err
+                   if self.gradient_rel_err is not None else 0.8)
 
             a_err = abs(a) * np.sqrt((ce[1] / up_coeffs[1])**2 + gre**2)
             b_err = abs(b) * np.sqrt((ce[2] / up_coeffs[2])**2 + gre**2)
@@ -421,8 +433,8 @@ class CentralPixel(Isophote):
         self.int_err = 0.0
         self.pix_stddev = None
         self.grad = 0.0
-        self.grad_error = None
-        self.grad_r_error = None
+        self.gradient_err = None
+        self.gradient_rel_err = None
         self.sarea = None
         self.ndata = sample.actual_points
         self.nflag = sample.total_points - sample.actual_points
@@ -482,6 +494,10 @@ class IsophoteList:
 
     def __init__(self, iso_list):
         self._list = iso_list
+
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES)
 
     def __len__(self):
         return len(self._list)
@@ -683,18 +699,18 @@ class IsophoteList:
         return self._collect_as_array('grad')
 
     @property
-    def grad_error(self):
+    def gradient_err(self):
         """
         The measurement error of the local radial intensity gradient.
         """
-        return self._collect_as_array('grad_error')
+        return self._collect_as_array('gradient_err')
 
     @property
-    def grad_r_error(self):
+    def gradient_rel_err(self):
         """
         The relative error of local radial intensity gradient.
         """
-        return self._collect_as_array('grad_r_error')
+        return self._collect_as_array('gradient_rel_err')
 
     @property
     def sarea(self):
@@ -923,7 +939,16 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
         An astropy QTable with the selected or all isophote parameters.
     """
     properties = {}
-    isotable = QTable()
+
+    # Remove in 4.0
+    _deprecation_map = {
+        'grad_error': 'gradient_err',
+        'grad_rerror': 'gradient_rel_err',
+    }
+
+    # Replace with QTable in 4.0
+    isotable = create_empty_deprecated_qtable(_deprecation_map)
+
     isotable.meta.update(_get_meta())  # keep isotable.meta type
 
     # main_properties: `List`
@@ -932,10 +957,9 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
 
     def __rename_properties(properties, *,
                             orig_names=('int_err', 'eps', 'ellip_err',
-                                        'grad_r_error', 'nflag'),
+                                        'nflag'),
                             new_names=('intens_err', 'ellipticity',
-                                       'ellipticity_err', 'grad_rerror',
-                                       'nflag')):
+                                       'ellipticity_err', 'nflag')):
         """
         Simple renaming for some of the isophote_list parameters.
 
@@ -958,9 +982,10 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
             parameters.
         """
         main_properties = ['sma', 'intens', 'int_err', 'eps', 'ellip_err',
-                           'pa', 'pa_err', 'grad', 'grad_error',
-                           'grad_r_error', 'x0', 'x0_err', 'y0', 'y0_err',
-                           'ndata', 'nflag', 'niter', 'stop_code']
+                           'pa', 'pa_err', 'grad', 'gradient_err',
+                           'gradient_rel_err', 'x0', 'x0_err', 'y0',
+                           'y0_err', 'ndata', 'nflag', 'niter',
+                           'stop_code']
 
         for an_item in main_properties:
             if an_item in orig_names:

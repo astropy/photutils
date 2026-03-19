@@ -29,8 +29,8 @@ def test_gradient():
 
     assert_allclose(sample.mean, 200.02, atol=0.01)
     assert_allclose(sample.gradient, -4.222, atol=0.001)
-    assert_allclose(sample.gradient_error, 0.0003, atol=0.0001)
-    assert_allclose(sample.gradient_relative_error, 7.45e-05, atol=1.0e-5)
+    assert_allclose(sample.gradient_err, 0.0003, atol=0.0001)
+    assert_allclose(sample.gradient_rel_err, 7.45e-05, atol=1.0e-5)
     assert_allclose(sample.sector_area, 2.00, atol=0.01)
 
 

@@ -118,7 +118,7 @@ def test_regression(name):
         pa_i = iso.sample.geometry.pa or 0.0
         x0_i = iso.sample.geometry.x0
         y0_i = iso.sample.geometry.y0
-        rerr_i = (iso.sample.gradient_relative_error or 0.0)
+        rerr_i = (iso.sample.gradient_rel_err or 0.0)
         ndata_i = iso.ndata
         nflag_i = iso.nflag
         niter_i = iso.niter
