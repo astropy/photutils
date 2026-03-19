@@ -11,7 +11,7 @@ from astropy.table import Table
 from astropy.utils.data import (download_file, get_pkg_data_filename,
                                 is_url_in_cache)
 
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = [
     'get_path',
@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def get_path(filename, location='local', cache=True, show_progress=False):
     """
     Get the local path for a given file.
@@ -111,7 +111,7 @@ def _load_fits_as_imagehdu(path):
     return fits.ImageHDU(data, header)
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def load_spitzer_image(show_progress=False):
     """
     Load a 4.5 micron Spitzer image.
@@ -150,7 +150,7 @@ def load_spitzer_image(show_progress=False):
     return _load_fits_as_imagehdu(path)
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def load_spitzer_catalog(show_progress=False):
     """
     Load a 4.5 micron Spitzer catalog.
@@ -193,7 +193,7 @@ def load_spitzer_catalog(show_progress=False):
     return Table.read(path)
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def load_irac_psf(channel, show_progress=False):
     """
     Load a Spitzer IRAC PSF image.
@@ -259,7 +259,7 @@ def load_irac_psf(channel, show_progress=False):
     return _load_fits_as_imagehdu(path)
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def load_star_image(show_progress=False):
     """
     Load an optical image of stars.
@@ -297,7 +297,7 @@ def load_star_image(show_progress=False):
     return _load_fits_as_imagehdu(path)
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def load_simulated_hst_star_image(show_progress=False):
     """
     Load a simulated HST WFC3/IR F160W image of stars.

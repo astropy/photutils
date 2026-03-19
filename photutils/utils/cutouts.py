@@ -7,7 +7,7 @@ import numpy as np
 from astropy.nddata import extract_array, overlap_slices
 from astropy.utils import lazyproperty
 
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['CutoutImage']
 
@@ -84,7 +84,7 @@ class CutoutImage:
      [nan  4.  5.]]
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, data, position, shape, mode='trim', fill_value=np.nan,
                  copy=False):
         self.position = position

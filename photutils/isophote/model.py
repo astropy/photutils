@@ -7,14 +7,14 @@ isophotes.
 import numpy as np
 from scipy.interpolate import LSQUnivariateSpline
 
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 from .ellipse_model import build_ellipse_model_c
 
 __all__ = ['build_ellipse_model']
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def build_ellipse_model(
     shape,
     isolist,

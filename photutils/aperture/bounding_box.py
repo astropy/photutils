@@ -7,7 +7,7 @@ import math
 
 import numpy as np
 
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['BoundingBox']
 
@@ -278,7 +278,7 @@ class BoundingBox:
         height, width = self.shape
         return RectangularAperture(xypos, w=width, h=height, theta=0.0)
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def plot(self, ax=None, origin=(0, 0), **kwargs):
         """
         Plot the `BoundingBox` on a matplotlib `~matplotlib.axes.Axes`

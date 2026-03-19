@@ -25,9 +25,9 @@ from photutils.centroids import centroid_quadratic
 from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _mask_to_mirrored_value
+from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _image_moments
-from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import CutoutImage
@@ -641,7 +641,7 @@ class SourceCatalog:
         """
         return self._extra_properties
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def add_extra_property(self, name, value, overwrite=False):
         """
         Add a user-defined extra property as a new attribute.
@@ -1006,7 +1006,7 @@ class SourceCatalog:
         indices = sorter[np.searchsorted(self.labels, labels, sorter=sorter)]
         return self[indices]
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_table(self, columns=None):
         """
         Create a `~astropy.table.QTable` of source properties.
@@ -2918,7 +2918,7 @@ class SourceCatalog:
         return self._make_circular_apertures(radius)
 
     @as_scalar
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def plot_circular_apertures(self, radius, ax=None, origin=(0, 0),
                                 **kwargs):
         """
@@ -2965,7 +2965,7 @@ class SourceCatalog:
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
         return patches
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def circular_photometry(self, radius, name=None, overwrite=False):
         """
         Perform circular aperture photometry for each source.
@@ -3271,7 +3271,7 @@ class SourceCatalog:
         return self._make_kron_apertures(self.kron_params)
 
     @as_scalar
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def make_kron_apertures(self, kron_params=None):
         """
         Make Kron apertures for each source.
@@ -3318,7 +3318,7 @@ class SourceCatalog:
         return self._make_kron_apertures(kron_params)
 
     @as_scalar
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def plot_kron_apertures(self, kron_params=None, ax=None, origin=(0, 0),
                             **kwargs):
         """
@@ -3492,7 +3492,7 @@ class SourceCatalog:
 
         return flux, fluxerr
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def kron_photometry(self, kron_params, name=None, overwrite=False):
         """
         Perform photometry for each source using an elliptical Kron
@@ -3671,7 +3671,7 @@ class SourceCatalog:
         return args
 
     @as_scalar
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def fluxfrac_radius(self, fluxfrac, name=None, overwrite=False):
         """
         Calculate the circular radius that encloses the specified

@@ -10,9 +10,9 @@ import warnings
 import numpy as np
 from astropy.stats import SigmaClip, biweight_location, biweight_scale, mad_std
 
+from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._parameters import (SigmaClipSentinelDefault,
-                                         create_default_sigmaclip,
-                                         warn_positional_kwargs)
+                                         create_default_sigmaclip)
 from photutils.utils._repr import make_repr
 from photutils.utils._stats import nanmean, nanmedian, nanstd
 
@@ -152,7 +152,7 @@ class _BackgroundCommonBase:
     instantiated directly or subclassed outside of this module.
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, sigma_clip=SIGMA_CLIP):
         self.sigma_clip = _validate_sigma_clip(sigma_clip)
 
@@ -165,7 +165,7 @@ class BackgroundBase(_BackgroundCommonBase, abc.ABC):
     Base class for classes that estimate scalar background values.
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, data, axis=None, masked=False):
         return self.calc_background(data, axis=axis, masked=masked)
 
@@ -203,7 +203,7 @@ class BackgroundRMSBase(_BackgroundCommonBase, abc.ABC):
     Base class for classes that estimate scalar background RMS values.
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, data, axis=None, masked=False):
         return self.calc_background_rms(data, axis=axis, masked=masked)
 
@@ -269,7 +269,7 @@ class MeanBackground(BackgroundBase):
     49.5
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def calc_background(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -312,7 +312,7 @@ class MedianBackground(BackgroundBase):
     49.5
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def calc_background(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -362,7 +362,7 @@ class ModeEstimatorBackground(BackgroundBase):
     49.5
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, median_factor=3.0, mean_factor=2.0,
                  sigma_clip=SIGMA_CLIP):
         super().__init__(sigma_clip=sigma_clip)
@@ -373,7 +373,7 @@ class ModeEstimatorBackground(BackgroundBase):
         params = ('median_factor', 'mean_factor', 'sigma_clip')
         return make_repr(self, params)
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def calc_background(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -420,7 +420,7 @@ class MMMBackground(ModeEstimatorBackground):
     49.5
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, sigma_clip=SIGMA_CLIP):
         super().__init__(median_factor=3.0, mean_factor=2.0,
                          sigma_clip=sigma_clip)
@@ -465,7 +465,7 @@ class SExtractorBackground(BackgroundBase):
     49.5
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def calc_background(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -536,7 +536,7 @@ class BiweightLocationBackground(BackgroundBase):
     49.5
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, c=6.0, M=None, sigma_clip=SIGMA_CLIP):
         super().__init__(sigma_clip=sigma_clip)
         self.c = c
@@ -546,7 +546,7 @@ class BiweightLocationBackground(BackgroundBase):
         params = ('c', 'M', 'sigma_clip')
         return make_repr(self, params)
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def calc_background(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -590,7 +590,7 @@ class StdBackgroundRMS(BackgroundRMSBase):
     28.86607004772212
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def calc_background_rms(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -644,7 +644,7 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
     37.06505546264005
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def calc_background_rms(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN
@@ -695,7 +695,7 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
     30.09433848589339
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, c=9.0, M=None, sigma_clip=SIGMA_CLIP):
         super().__init__(sigma_clip=sigma_clip)
         self.c = c
@@ -705,7 +705,7 @@ class BiweightScaleBackgroundRMS(BackgroundRMSBase):
         params = ('c', 'M', 'sigma_clip')
         return make_repr(self, params)
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def calc_background_rms(self, data, axis=None, masked=False):
         data = _prepare_data(self.sigma_clip, data, axis)
         # Ignore RuntimeWarning where axis is all NaN

@@ -15,7 +15,7 @@ from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
                                       _handle_deprecated_range,
                                       _StarFinderKernel, _validate_n_brightest)
 from photutils.utils._convolution import _filter_data
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._quantity_helpers import isscalar, process_quantities
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -168,7 +168,7 @@ class IRAFStarFinder(StarFinderBase):
       centroid, roundness, and sharpness using image moments.
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
     @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
     def __init__(self, threshold, fwhm, sigma_radius=1.5,
@@ -321,7 +321,7 @@ class IRAFStarFinder(StarFinderBase):
                                       n_brightest=self.n_brightest,
                                       peak_max=self.peak_max)
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def find_stars(self, data, mask=None):
         """
         Find stars in an astronomical image.

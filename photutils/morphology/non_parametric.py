@@ -5,12 +5,12 @@ Tools for measuring non-parametric morphologies of sources.
 
 import numpy as np
 
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['gini']
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def gini(data, mask=None):
     r"""
     Calculate the `Gini coefficient

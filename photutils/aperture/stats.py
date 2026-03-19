@@ -20,9 +20,9 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture.core import _aperture_metadata
 from photutils.morphology import gini as gini_func
+from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _image_moments
-from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import process_quantities
 
 __all__ = ['ApertureStats']
@@ -547,7 +547,7 @@ class ApertureStats:
         indices = sorter[np.searchsorted(self.id, id_nums, sorter=sorter)]
         return self[indices]
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_table(self, *, columns=None):
         """
         Create a `~astropy.table.QTable` of source properties.

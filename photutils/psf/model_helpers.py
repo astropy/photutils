@@ -14,7 +14,7 @@ from astropy.units import Quantity
 from astropy.utils.decorators import deprecated
 from scipy.integrate import dblquad, trapezoid
 
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['grid_from_epsfs', 'make_psf_model']
 
@@ -325,7 +325,7 @@ def _shift_model_param(model, param_name, *, shift=2):
     return new_name
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 @deprecated(since='3.0', alternative='`GriddedPSFModel`')
 def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
     """

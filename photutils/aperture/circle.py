@@ -14,7 +14,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import circular_overlap_grid
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = [
     'CircularAnnulus',
@@ -31,7 +31,7 @@ class CircularMaskMixin:
     aperture objects.
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         """
         Return a mask for the aperture.
@@ -200,7 +200,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
         return patches
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         return CircularMaskMixin.to_mask(self, method=method,
                                          subpixels=subpixels)
@@ -334,7 +334,7 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
         return patches
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         return CircularMaskMixin.to_mask(self, method=method,
                                          subpixels=subpixels)
