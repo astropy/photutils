@@ -437,8 +437,8 @@ def test_residual_image_localbkg_invalid_sources(test_data):
     sources['local_bkg'][1] = np.inf
     sources['local_bkg'][2] = -np.inf
     # Add an invalid source outside the image
-    sources['xcentroid'][-3] = 1000
-    sources['ycentroid'][-3] = 1000
+    sources['x_centroid'][-3] = 1000
+    sources['y_centroid'][-3] = 1000
 
     # Perform PSF photometry with init_params containing non-finite local_bkg
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,

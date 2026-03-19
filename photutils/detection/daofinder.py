@@ -376,7 +376,7 @@ class DAOStarFinder(StarFinderBase):
             found. The table contains the following parameters:
 
             * ``id``: unique object identification number.
-            * ``xcentroid, ycentroid``: object centroid.
+            * ``x_centroid, y_centroid``: object centroid.
             * ``sharpness``: object sharpness.
             * ``roundness1``: object roundness based on symmetry.
             * ``roundness2``: object roundness based on marginal Gaussian
@@ -492,7 +492,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         else:
             self.threshold_eff = threshold
         self.cutout_center = tuple((size - 1) // 2 for size in kernel.shape)
-        self.default_columns = ('id', 'xcentroid', 'ycentroid', 'sharpness',
+        self.default_columns = ('id', 'x_centroid', 'y_centroid', 'sharpness',
                                 'roundness1', 'roundness2', 'npix', 'peak',
                                 'flux', 'mag', 'daofind_mag')
 
@@ -944,7 +944,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         return np.transpose(self.dy_hy)[1]
 
     @lazyproperty
-    def xcentroid(self):
+    def x_centroid(self):
         """
         The fitted x centroid of the source, calculated as the sum of
         the x position of the maximum pixel and the fitted fractional
@@ -953,7 +953,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         return np.transpose(self.xypos)[0] + self.dx
 
     @lazyproperty
-    def ycentroid(self):
+    def y_centroid(self):
         """
         The fitted y centroid of the source, calculated as the sum of
         the y position of the maximum pixel and the fitted fractional
@@ -1020,7 +1020,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         Filter the catalog.
         """
-        attrs = ('xcentroid', 'ycentroid', 'hx', 'hy', 'sharpness',
+        attrs = ('x_centroid', 'y_centroid', 'hx', 'hy', 'sharpness',
                  'roundness1', 'roundness2', 'peak', 'flux')
         skip = ()
         if np.all(self._threshold_eff_per_source == 0):

@@ -131,8 +131,8 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     The output column names (``x_peak``, ``y_peak``, ``peak_value``)
     differ from the star finder classes (e.g.,
-    `~photutils.detection.DAOStarFinder`), which use ``xcentroid``,
-    ``ycentroid``, and ``flux``.
+    `~photutils.detection.DAOStarFinder`), which use ``x_centroid``,
+    ``y_centroid``, and ``flux``.
     """
     arrays, unit = process_quantities((data, threshold, error),
                                       ('data', 'threshold', 'error'))
@@ -201,13 +201,13 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     if unit is not None:
         peak_values <<= unit
 
-    nxpeaks = len(x_peaks)
-    if nxpeaks == 0:
+    n_x_peaks = len(x_peaks)
+    if n_x_peaks == 0:
         msg = 'No local peaks were found.'
         warnings.warn(msg, NoDetectionsWarning)
         return None
 
-    if nxpeaks > npeaks:
+    if n_x_peaks > npeaks:
         idx = np.argsort(peak_values)[::-1][:npeaks]
         x_peaks = x_peaks[idx]
         y_peaks = y_peaks[idx]

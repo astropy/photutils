@@ -111,17 +111,17 @@ Running the finder on the background-subtracted data::
     ...     if col not in ('id', 'npix'):
     ...         sources[col].info.format = '%.2f'  # for consistent table output
     >>> sources.pprint(max_lines=12, max_width=76)  # doctest: +REMOTE_DATA, +FLOAT_CMP
-     id xcentroid ycentroid sharpness ...   peak    flux   mag   daofind_mag
-    --- --------- --------- --------- ... ------- ------- ------ -----------
-      1    848.57      2.15      0.89 ... 1051.78 3999.02  -9.00       -3.80
-      2    181.85      3.75      0.97 ... 1711.87 5568.78  -9.36       -4.28
-      3    323.88      3.70      0.96 ... 3005.97 9992.14 -10.00       -4.90
-      4     99.89      8.95      1.07 ... 1134.12 3236.12  -8.78       -3.77
-    ...       ...       ...       ... ...     ...     ...    ...         ...
-    497    114.16    993.47      0.84 ... 1577.91 6550.22  -9.54       -4.26
-    498    298.44    993.87      0.83 ...  644.97 2719.64  -8.59       -3.31
-    499    207.21    998.15      0.97 ... 2800.62 8406.16  -9.81       -4.83
-    500    691.03    998.77      1.15 ... 2600.83 5612.72  -9.37       -4.64
+     id x_centroid y_centroid sharpness ...   peak    flux   mag   daofind_mag
+    --- ---------- ---------- --------- ... ------- ------- ------ -----------
+      1     848.57       2.15      0.89 ... 1051.78 3999.02  -9.00       -3.80
+      2     181.85       3.75      0.97 ... 1711.87 5568.78  -9.36       -4.28
+      3     323.88       3.70      0.96 ... 3005.97 9992.14 -10.00       -4.90
+      4      99.89       8.95      1.07 ... 1134.12 3236.12  -8.78       -3.77
+    ...        ...        ...       ... ...     ...     ...    ...         ...
+    497     114.16     993.47      0.84 ... 1577.91 6550.22  -9.54       -4.26
+    498     298.44     993.87      0.83 ...  644.97 2719.64  -8.59       -3.31
+    499     207.21     998.15      0.97 ... 2800.62 8406.16  -9.81       -4.83
+    500     691.03     998.77      1.15 ... 2600.83 5612.72  -9.37       -4.64
     Length = 500 rows
 
 Let's plot the image and mark the location of detected sources:
@@ -145,12 +145,11 @@ Let's plot the image and mark the location of detected sources:
     threshold = 5.0 * std
     daofind = DAOStarFinder(threshold, fwhm=2.5, sharpness_range=(0.2, 1.5))
     sources = daofind(data - median)
-    positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
+    positions = np.transpose((sources['x_centroid'], sources['y_centroid']))
     apertures = CircularAperture(positions, r=10.0)
     norm = simple_norm(data, 'sqrt', percent=99)
     fig, ax = plt.subplots()
-    axim = ax.imshow(data, origin='lower', norm=norm,
-               interpolation='nearest')
+    axim = ax.imshow(data, origin='lower', norm=norm, interpolation='nearest')
     patches = apertures.plot(ax=ax, color='red')
 
 
@@ -195,7 +194,7 @@ rectangular regions. No sources will be detected in the masked regions:
     mask[650:851, 600:851] = True
     mask[250:451, 150:551] = True
     sources = daofind(data - median, mask=mask)
-    positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
+    positions = np.transpose((sources['x_centroid'], sources['y_centroid']))
     apertures = CircularAperture(positions, r=10.0)
     fig, ax = plt.subplots()
     norm = simple_norm(data, 'sqrt', percent=99)

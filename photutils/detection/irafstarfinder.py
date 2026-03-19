@@ -346,7 +346,7 @@ class IRAFStarFinder(StarFinderBase):
             found. The table contains the following parameters:
 
             * ``id``: unique object identification number.
-            * ``xcentroid, ycentroid``: object centroid.
+            * ``x_centroid, y_centroid``: object centroid.
             * ``fwhm``: object FWHM.
             * ``sharpness``: object sharpness.
             * ``roundness``: object roundness.
@@ -442,7 +442,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         self.sharpness_range = sharpness_range
         self.roundness_range = roundness_range
 
-        self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
+        self.default_columns = ('id', 'x_centroid', 'y_centroid', 'fwhm',
                                 'sharpness', 'roundness', 'pa', 'npix',
                                 'peak', 'flux', 'mag')
 
@@ -519,18 +519,18 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         return np.transpose(self.xypos)[1] - self.kernel.yradius
 
     @lazyproperty
-    def xcentroid(self):
+    def x_centroid(self):
         """
         The x pixel coordinate of the object centroid.
         """
-        return self.cutout_xcentroid + self.cutout_xorigin
+        return self.cutout_x_centroid + self.cutout_xorigin
 
     @lazyproperty
-    def ycentroid(self):
+    def y_centroid(self):
         """
         The y pixel coordinate of the object centroid.
         """
-        return self.cutout_ycentroid + self.cutout_yorigin
+        return self.cutout_y_centroid + self.cutout_yorigin
 
     @lazyproperty
     def sharpness(self):
@@ -543,7 +543,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         """
         Filter the catalog.
         """
-        attrs = ('xcentroid', 'ycentroid', 'sharpness', 'roundness', 'pa',
+        attrs = ('x_centroid', 'y_centroid', 'sharpness', 'roundness', 'pa',
                  'sky', 'peak', 'flux')
         initial_mask = np.count_nonzero(self.cutout_data, axis=(1, 2)) > 1
         newcat = self._filter_finite(attrs, initial_mask=initial_mask)

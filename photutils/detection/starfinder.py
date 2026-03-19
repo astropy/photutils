@@ -196,7 +196,7 @@ class StarFinder(StarFinderBase):
             A table of found objects with the following parameters:
 
             * ``id``: unique object identification number.
-            * ``xcentroid, ycentroid``: object centroid.
+            * ``x_centroid, y_centroid``: object centroid.
             * ``fwhm``: object FWHM.
             * ``roundness``: object roundness.
             * ``pa``: object position angle (degrees counter clockwise from
@@ -263,7 +263,7 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         super().__init__(data, xypos, kernel,
                          n_brightest=n_brightest,
                          peak_max=peak_max)
-        self.default_columns = ('id', 'xcentroid', 'ycentroid', 'fwhm',
+        self.default_columns = ('id', 'x_centroid', 'y_centroid', 'fwhm',
                                 'roundness', 'pa', 'max_value', 'flux', 'mag')
 
     def _get_init_attributes(self):
@@ -290,26 +290,26 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         return self.peak
 
     @lazyproperty
-    def xcentroid(self):
+    def x_centroid(self):
         """
         The x centroid of the source.
         """
         xoff = self.cutout_shape[1] // 2
-        return self.cutout_xcentroid + self.xypos[:, 0] - xoff
+        return self.cutout_x_centroid + self.xypos[:, 0] - xoff
 
     @lazyproperty
-    def ycentroid(self):
+    def y_centroid(self):
         """
         The y centroid of the source.
         """
         yoff = self.cutout_shape[0] // 2
-        return self.cutout_ycentroid + self.xypos[:, 1] - yoff
+        return self.cutout_y_centroid + self.xypos[:, 1] - yoff
 
     def apply_filters(self):
         """
         Filter the catalog.
         """
-        attrs = ('xcentroid', 'ycentroid', 'fwhm', 'roundness', 'pa',
+        attrs = ('x_centroid', 'y_centroid', 'fwhm', 'roundness', 'pa',
                  'max_value', 'flux')
         newcat = self._filter_finite(attrs)
         if newcat is None:
