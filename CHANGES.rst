@@ -277,6 +277,9 @@ API Changes
     (min(kernel.shape) // 2)`` for ``StarFinder``) consistent across all
     three star finders. [#2216]
 
+  - The ``IRAFStarFinder`` and ``StarFinder`` ``pa`` values are now
+    always returned in the range [0, 360) degrees. [#2224]
+
 - ``photutils.profiles``
 
   - Cached Gaussian fits to the radial profile are now automatically
@@ -332,6 +335,10 @@ API Changes
   - ``make_kernel`` now raises ``TypeError`` if the
     ``window`` parameter is not callable. [#2170]
 
+- ``photutils.segmentation``
+
+  - The ``SourceCatalog`` ``orientation`` property is now always
+    returned in the range [0, 360) degrees. [#2224]
 
 2.3.0 (2025-09-15)
 ------------------
