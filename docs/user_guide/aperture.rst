@@ -305,8 +305,8 @@ and :attr:`~photutils.aperture.ApertureStats.sum`. It
 also can be used to calculate morphological properties
 like :attr:`~photutils.aperture.ApertureStats.centroid`,
 :attr:`~photutils.aperture.ApertureStats.fwhm`,
-:attr:`~photutils.aperture.ApertureStats.semimajor_sigma`,
-:attr:`~photutils.aperture.ApertureStats.semiminor_sigma`,
+:attr:`~photutils.aperture.ApertureStats.semimajor_axis`,
+:attr:`~photutils.aperture.ApertureStats.semiminor_axis`,
 :attr:`~photutils.aperture.ApertureStats.orientation`, and
 :attr:`~photutils.aperture.ApertureStats.eccentricity`. Please see
 :class:`~photutils.aperture.ApertureStats` for the complete

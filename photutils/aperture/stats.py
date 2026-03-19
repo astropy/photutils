@@ -13,14 +13,15 @@ import numpy as np
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.stats import (SigmaClip, biweight_location, biweight_midvariance,
                            mad_std)
-from astropy.table import QTable
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture.core import _aperture_metadata
 from photutils.morphology import gini as gini_func
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (create_empty_deprecated_qtable,
+                                          deprecated_getattr,
+                                          deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _image_moments
 from photutils.utils._quantity_helpers import process_quantities
@@ -33,8 +34,14 @@ DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
                    'sum', 'sum_err', 'sum_aper_area', 'center_aper_area',
                    'min', 'max', 'mean', 'median', 'mode', 'std',
                    'mad_std', 'var', 'biweight_location',
-                   'biweight_midvariance', 'fwhm', 'semimajor_sigma',
-                   'semiminor_sigma', 'orientation', 'eccentricity']
+                   'biweight_midvariance', 'fwhm', 'semimajor_axis',
+                   'semiminor_axis', 'orientation', 'eccentricity']
+
+# Remove in 4.0
+_DEPRECATED_ATTRIBUTES: dict = {
+    'semimajor_sigma': 'semimajor_axis',
+    'semiminor_sigma': 'semiminor_axis',
+}
 
 
 def as_scalar(method):
@@ -459,6 +466,10 @@ class ApertureStats:
         for item in range(len(self)):
             yield self.__getitem__(item)
 
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES)
+
     @lazyproperty
     def isscalar(self):
         """
@@ -582,7 +593,8 @@ class ApertureStats:
         else:
             table_columns = columns
 
-        tbl = QTable()
+        # Replace with QTable in 4.0
+        tbl = create_empty_deprecated_qtable(_DEPRECATED_ATTRIBUTES)
         tbl.meta.update(self.meta)  # keep tbl.meta type
 
         for column in table_columns:
@@ -1525,7 +1537,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def semimajor_sigma(self):
+    def semimajor_axis(self):
         """
         The 1-sigma standard deviation along the semimajor axis of the
         2D Gaussian function that has the same second-order central
@@ -1539,7 +1551,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def semiminor_sigma(self):
+    def semiminor_axis(self):
         """
         The 1-sigma standard deviation along the semiminor axis of the
         2D Gaussian function that has the same second-order central
@@ -1566,11 +1578,11 @@ class ApertureStats:
                          & = 2 \sqrt{\ln(2) \ (a^2 + b^2)}
 
         where :math:`a` and :math:`b` are the 1-sigma lengths of the
-        semimajor (`semimajor_sigma`) and semiminor (`semiminor_sigma`)
+        semimajor (`semimajor_axis`) and semiminor (`semiminor_axis`)
         axes, respectively.
         """
-        return 2.0 * np.sqrt(np.log(2.0) * (self.semimajor_sigma**2
-                                            + self.semiminor_sigma**2))
+        return 2.0 * np.sqrt(np.log(2.0) * (self.semimajor_axis**2
+                                            + self.semiminor_axis**2))
 
     @lazyproperty
     @as_scalar
@@ -1620,7 +1632,7 @@ class ApertureStats:
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
         """
-        return self.semimajor_sigma / self.semiminor_sigma
+        return self.semimajor_axis / self.semiminor_axis
 
     @lazyproperty
     @as_scalar
@@ -1636,7 +1648,7 @@ class ApertureStats:
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
         """
-        return 1.0 - (self.semiminor_sigma / self.semimajor_sigma)
+        return 1.0 - (self.semiminor_axis / self.semimajor_axis)
 
     @lazyproperty
     @as_scalar
@@ -1686,8 +1698,8 @@ class ApertureStats:
         `SourceExtractor`_ reports that the isophotal limit of a source
         is well represented by :math:`R \approx 3`.
         """
-        return ((np.cos(self.orientation) / self.semimajor_sigma)**2
-                + (np.sin(self.orientation) / self.semiminor_sigma)**2)
+        return ((np.cos(self.orientation) / self.semimajor_axis)**2
+                + (np.sin(self.orientation) / self.semiminor_axis)**2)
 
     @lazyproperty
     @as_scalar
@@ -1709,8 +1721,8 @@ class ApertureStats:
         `SourceExtractor`_ reports that the isophotal limit of a source
         is well represented by :math:`R \approx 3`.
         """
-        return ((np.sin(self.orientation) / self.semimajor_sigma)**2
-                + (np.cos(self.orientation) / self.semiminor_sigma)**2)
+        return ((np.sin(self.orientation) / self.semimajor_axis)**2
+                + (np.cos(self.orientation) / self.semiminor_axis)**2)
 
     @lazyproperty
     @as_scalar
@@ -1733,8 +1745,8 @@ class ApertureStats:
         is well represented by :math:`R \approx 3`.
         """
         return (2.0 * np.cos(self.orientation) * np.sin(self.orientation)
-                * ((1.0 / self.semimajor_sigma**2)
-                   - (1.0 / self.semiminor_sigma**2)))
+                * ((1.0 / self.semimajor_axis**2)
+                   - (1.0 / self.semiminor_axis**2)))
 
     @lazyproperty
     @as_scalar
