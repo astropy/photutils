@@ -7,7 +7,7 @@ import numpy as np
 
 from photutils.aperture import CircularAnnulus
 from photutils.background import MedianBackground
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._repr import make_repr
 
 __all__ = ['LocalBackground']
@@ -53,7 +53,7 @@ class LocalBackground:
     [1. 1. 1.]
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, inner_radius, outer_radius, bkg_estimator=None):
         if inner_radius <= 0:
             msg = 'inner_radius must be positive.'
@@ -115,7 +115,7 @@ class LocalBackground:
         return CircularAnnulus(positions, self.inner_radius,
                                self.outer_radius)
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, data, x, y, mask=None):
         """
         Measure the local background in a circular annulus.

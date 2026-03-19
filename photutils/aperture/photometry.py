@@ -13,13 +13,13 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture.converters import region_to_aperture
 from photutils.aperture.core import Aperture, SkyAperture, _aperture_metadata
+from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._misc import _get_meta
-from photutils.utils._parameters import warn_positional_kwargs
 
 __all__ = ['aperture_photometry']
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def aperture_photometry(data, apertures, error=None, mask=None,
                         method='exact', subpixels=5, wcs=None):
     """

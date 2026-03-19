@@ -8,7 +8,7 @@ import math
 import numpy as np
 from astropy import log
 
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['EllipseGeometry']
 
@@ -122,7 +122,7 @@ class EllipseGeometry:
         Keep ellipticity of ellipse fixed during fit? The default is False.
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, x0, y0, sma, eps, pa, astep=0.1, linear_growth=False,
                  fix_center=False, fix_pa=False, fix_eps=False):
         self.x0 = x0
@@ -155,7 +155,7 @@ class EllipseGeometry:
             self.initial_polar_angle = self.sector_angular_width / 2.0
             self.initial_polar_radius = self.radius(self.initial_polar_angle)
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def find_center(self, image, threshold=0.1, verbose=True):
         """
         Find the center of a galaxy.

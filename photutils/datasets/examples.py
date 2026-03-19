@@ -12,7 +12,7 @@ from astropy.table import QTable
 from astropy.utils.data import get_pkg_data_path
 
 from photutils.datasets import make_model_image
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['make_4gaussians_image', 'make_100gaussians_image']
 
@@ -61,7 +61,7 @@ def _make_gaussians_image(filename, shape, noise, noise_stddev,
     return data
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def make_4gaussians_image(noise=True):
     """
     Make an example image containing four 2D Gaussians plus a constant
@@ -102,7 +102,7 @@ def make_4gaussians_image(noise=True):
                                  noise, noise_stddev=5.0)
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def make_100gaussians_image(noise=True):
     """
     Make an example image containing 100 2D Gaussians plus a constant

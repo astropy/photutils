@@ -5,12 +5,12 @@ Tools for measuring morphological properties of sources.
 
 import numpy as np
 
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['data_properties']
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def data_properties(data, mask=None, background=None, wcs=None):
     """
     Calculate the morphological properties (and centroid) of a 2D array

@@ -10,8 +10,8 @@ from astropy.table import QTable
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics,
                                           fit_upper_harmonic)
+from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._misc import _get_meta
-from photutils.utils._parameters import warn_positional_kwargs
 
 __all__ = ['Isophote', 'IsophoteList']
 
@@ -844,7 +844,7 @@ class IsophoteList:
         """
         return self._collect_as_array('b4_err')
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_table(self, columns='main'):
         """
         Convert an `~photutils.isophote.IsophoteList` instance to a

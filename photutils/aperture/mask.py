@@ -8,7 +8,7 @@ import warnings
 import astropy.units as u
 import numpy as np
 
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['ApertureMask']
 
@@ -83,7 +83,7 @@ class ApertureMask:
         """
         return self.bbox.get_overlap_slices(shape)
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_image(self, shape, dtype=float):
         """
         Return an image of the mask in a 2D array of the given shape,
@@ -122,7 +122,7 @@ class ApertureMask:
         image[slices_large] = self.data[slices_small]
         return image
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def cutout(self, data, fill_value=0.0, copy=False):
         """
         Create a cutout from the input data over the mask bounding box,
@@ -187,7 +187,7 @@ class ApertureMask:
 
         return cutout
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def multiply(self, data, fill_value=0.0):
         """
         Multiply the aperture mask with the input data, taking any edge
@@ -283,7 +283,7 @@ class ApertureMask:
 
         return slc_large, aper_weights, pixel_mask
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def get_values(self, data, mask=None):
         """
         Get the mask-weighted pixel values from the data as a 1D array.

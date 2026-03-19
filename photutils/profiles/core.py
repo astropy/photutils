@@ -10,7 +10,7 @@ import numpy as np
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._stats import nanmax, nansum
 
@@ -245,7 +245,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         return self._compute_photometry(self._circular_apertures)
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def normalize(self, method='max'):
         """
         Normalize the profile.
@@ -389,7 +389,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         return (f'{cls_name}(xycen={self.xycen}, n_radii={n_radii}, '
                 f'normalized={normalized})')
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def plot(self, ax=None, **kwargs):
         """
         Plot the profile.
@@ -422,7 +422,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         return lines
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def plot_error(self, ax=None, **kwargs):
         """
         Plot the profile errors.

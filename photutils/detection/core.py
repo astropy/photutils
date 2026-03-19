@@ -21,8 +21,8 @@ from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.peakfinder import find_peaks
+from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._misc import _get_meta
-from photutils.utils._parameters import warn_positional_kwargs
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
 from photutils.utils.cutouts import _make_cutouts
@@ -36,7 +36,7 @@ class StarFinderBase(metaclass=abc.ABCMeta):
     Abstract base class for star finders.
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, data, mask=None):
         return self.find_stars(data, mask=mask)
 

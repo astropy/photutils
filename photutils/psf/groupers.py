@@ -11,7 +11,7 @@ from scipy.cluster.hierarchy import fclusterdata
 
 from photutils.aperture import CircularAperture
 from photutils.utils import make_random_cmap
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._repr import make_repr
 
 __all__ = ['SourceGrouper', 'SourceGroups']
@@ -372,7 +372,7 @@ class SourceGrouper:
         mapping = defaultdict(lambda: len(mapping) + 1)
         return np.array([mapping[label] for label in cluster_labels])
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, x, y, return_groups_object=False):
         """
         Group sources into clusters based on a minimum distance

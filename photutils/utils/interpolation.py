@@ -6,7 +6,7 @@ Tools for interpolating data.
 import numpy as np
 from scipy.spatial import cKDTree
 
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['ShepardIDWInterpolator']
 
@@ -118,7 +118,7 @@ class ShepardIDWInterpolator:
         0.8912073600614354
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, coordinates, values, weights=None, leafsize=10):
         coordinates = np.asarray(coordinates)
         if coordinates.ndim == 0:  # scalar coordinate
@@ -158,7 +158,7 @@ class ShepardIDWInterpolator:
         self.weights = weights
         self.kdtree = cKDTree(coordinates, leafsize=leafsize)
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, positions, n_neighbors=8, eps=0.0, power=1.0, reg=0.0,
                  conf_dist=1.0e-12, dtype=float):
         """

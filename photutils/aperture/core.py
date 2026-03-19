@@ -14,7 +14,7 @@ from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
 
 from photutils.aperture.bounding_box import BoundingBox
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 
 __all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
@@ -449,7 +449,7 @@ class PixelAperture(Aperture):
             returned.
         """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def do_photometry(self, data, error=None, mask=None, method='exact',
                       subpixels=5):
         """
@@ -674,7 +674,7 @@ class PixelAperture(Aperture):
             list of `~matplotlib.patches.Patch` is returned.
         """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def plot(self, ax=None, origin=(0, 0), **kwargs):
         """
         Plot the aperture on a matplotlib `~matplotlib.axes.Axes`

@@ -16,7 +16,7 @@ from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import BILINEAR
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.sample import CentralEllipseSample, EllipseSample
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['Ellipse']
 
@@ -181,7 +181,7 @@ class Ellipse:
     converge to any acceptable solution.
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, image, geometry=None, threshold=0.1):
         self.image = image
 
@@ -205,7 +205,7 @@ class Ellipse:
         """
         self._geometry.centerer_threshold = threshold
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def fit_image(self, sma0=None, minsma=0.0, maxsma=None, step=0.1,
                   conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
                   maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
@@ -518,7 +518,7 @@ class Ellipse:
 
         return IsophoteList(isophote_list)
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def fit_isophote(self, sma, step=0.1, conver=DEFAULT_CONVERGENCE,
                      minit=DEFAULT_MINIT, maxit=DEFAULT_MAXIT,
                      fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,

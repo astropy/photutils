@@ -8,12 +8,13 @@ from astropy.convolution import Gaussian2DKernel
 from astropy.stats import gaussian_fwhm_to_sigma
 from scipy.ndimage import generate_binary_structure
 
-from photutils.utils._parameters import as_pair, warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._parameters import as_pair
 
 __all__ = ['make_2dgaussian_kernel']
 
 
-@warn_positional_kwargs(since='3.0', until='4.0')
+@deprecated_positional_kwargs(since='3.0', until='4.0')
 def make_2dgaussian_kernel(fwhm, size, mode='oversample', oversampling=10):
     """
     Make a normalized 2D circular Gaussian kernel.

@@ -16,7 +16,7 @@ from photutils.psf._components import (_make_model_image_docstring,
 from photutils.psf.flags import decode_psf_flags
 from photutils.psf.photometry import PSFPhotometry
 from photutils.psf.utils import _create_call_docstring
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -617,7 +617,7 @@ class IterativePSFPhotometry:
             self.results, self._psfphot._param_mapper,
             remove_invalid=remove_invalid, reset_ids=reset_ids)
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def decode_flags(self, return_bit_values=False):
         """
         Decode the PSF photometry flags from the results table.

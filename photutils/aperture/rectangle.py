@@ -16,7 +16,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import rectangular_overlap_grid
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = [
     'RectangularAnnulus',
@@ -33,7 +33,7 @@ class RectangularMaskMixin:
     aperture objects.
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         """
         Return a mask for the aperture.
@@ -212,7 +212,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
                                'angular Quantity or a value in radians from '
                                'the positive x axis.')
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w, h, theta=0.0):
         self.positions = positions
         self.w = w
@@ -269,7 +269,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
         return patches
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         return RectangularMaskMixin.to_mask(self, method=method,
                                             subpixels=subpixels)
@@ -375,7 +375,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
                                'angular Quantity or a value in radians from '
                                'the positive x axis.')
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.0):
         if not w_out > w_in:
             msg = '"w_out" must be greater than "w_in"'
@@ -456,7 +456,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         return patches
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         return RectangularMaskMixin.to_mask(self, method=method,
                                             subpixels=subpixels)
@@ -524,7 +524,7 @@ class SkyRectangularAperture(SkyAperture):
     theta = ScalarAngle('The position angle (in angular units) of the '
                         'rectangle "width" side.')
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w, h, theta=0.0 * u.deg):
         self.positions = positions
         self.w = w
@@ -613,7 +613,7 @@ class SkyRectangularAnnulus(SkyAperture):
     theta = ScalarAngle('The position angle (in angular units) of the '
                         'rectangle "width" side.')
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w_in, w_out, h_out, h_in=None,
                  theta=0.0 * u.deg):
         if not w_out > w_in:

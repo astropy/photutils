@@ -16,7 +16,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import elliptical_overlap_grid
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = [
     'EllipticalAnnulus',
@@ -33,7 +33,7 @@ class EllipticalMaskMixin:
     aperture objects.
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         """
         Return a mask for the aperture.
@@ -189,7 +189,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
                                'angular Quantity or value in radians from '
                                'the positive x axis.')
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, a, b, theta=0.0):
         self.positions = positions
         self.a = a
@@ -244,7 +244,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
         return patches
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         return EllipticalMaskMixin.to_mask(self, method=method,
                                            subpixels=subpixels)
@@ -346,7 +346,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
                                'angular Quantity or value in radians from '
                                'the positive x axis.')
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, a_in, a_out, b_out, b_in=None, theta=0.0):
         if not a_out > a_in:
             msg = '"a_out" must be greater than "a_in"'
@@ -419,7 +419,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
         return patches
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         return EllipticalMaskMixin.to_mask(self, method=method,
                                            subpixels=subpixels)
@@ -485,7 +485,7 @@ class SkyEllipticalAperture(SkyAperture):
     theta = ScalarAngle('The position angle in angular units of the ellipse '
                         'semimajor axis.')
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, a, b, theta=0.0 * u.deg):
         self.positions = positions
         self.a = a
@@ -567,7 +567,7 @@ class SkyEllipticalAnnulus(SkyAperture):
     theta = ScalarAngle('The position angle in angular units of the ellipse '
                         'semimajor axis.')
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, a_in, a_out, b_out, b_in=None,
                  theta=0.0 * u.deg):
         if not a_out > a_in:

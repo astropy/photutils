@@ -9,7 +9,7 @@ import numpy as np
 
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import INTEGRATORS
-from photutils.utils._parameters import warn_positional_kwargs
+from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['EllipseSample']
 
@@ -90,7 +90,7 @@ class EllipseSample:
         removed some of the points.
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, image, sma, x0=None, y0=None, astep=0.1, eps=0.2,
                  position_angle=0.0, sclip=3.0, nclip=0, linear_growth=False,
                  integrmode='bilinear', geometry=None):
@@ -274,7 +274,7 @@ class EllipseSample:
 
         return r_angles, r_radii, r_intensities
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def update(self, fixed_parameters=None):
         """
         Update this `~photutils.isophote.EllipseSample` instance.
@@ -383,7 +383,7 @@ class CentralEllipseSample(EllipseSample):
     the special case of the central pixel in the galaxy image.
     """
 
-    @warn_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def update(self, fixed_parameters=None):  # noqa: ARG002
         """
         Update this `~photutils.isophote.EllipseSample` instance with

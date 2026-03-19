@@ -77,7 +77,7 @@ SKY_TEST_APERTURES = list(zip(SKY_APERTURE_CL,
 
 TEST_APERTURES = PIXEL_TEST_APERTURES + SKY_TEST_APERTURES
 
-# Apertures with @warn_positional_kwargs on __init__
+# Apertures with @deprecated_positional_kwargs on __init__
 # (excludes circular apertures which have no optional kwargs)
 INIT_WARN_APERTURES = [
     (cls, POSITION, params)
