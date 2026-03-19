@@ -165,14 +165,14 @@ here as an array of all ones::
     >>> phot_table = aperture_photometry(data, aperture)
     >>> phot_table['aperture_sum'].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id xcenter ycenter aperture_sum
-    --- ------- ------- ------------
-      1    30.0    30.0    28.274334
-      2    40.0    40.0    28.274334
+     id x_center y_center aperture_sum
+    --- -------- -------- ------------
+      1     30.0     30.0    28.274334
+      2     40.0     40.0    28.274334
 
 This function returns the results of the photometry in an Astropy
 `~astropy.table.QTable`.  In this example, the table has four columns,
-named ``'id'``, ``'xcenter'``, ``'ycenter'``, and ``'aperture_sum'``.
+named ``'id'``, ``'x_center'``, ``'y_center'``, and ``'aperture_sum'``.
 
 Since all the data values are 1.0, the aperture sums are equal to the
 area of a circle with a radius of 3::
@@ -203,10 +203,10 @@ by a factor of 5 (``subpixels=5``) in each dimension::
     >>> phot_table = aperture_photometry(data, aperture, method='subpixel',
     ...                                  subpixels=5)
     >>> print(phot_table)  # doctest: +SKIP
-     id xcenter ycenter aperture_sum
-    --- ------- ------- ------------
-      1    30.0    30.0        27.96
-      2    40.0    40.0        27.96
+     id x_center y_center aperture_sum
+    --- -------- -------- ------------
+      1     30.0     30.0        27.96
+      2     40.0     40.0        27.96
 
 Note that the results differ from the exact value of 28.274333 (see
 above).
@@ -241,10 +241,10 @@ Suppose that we wish to use three circular apertures, with radii of 3,
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id xcenter ycenter aperture_sum_0 aperture_sum_1 aperture_sum_2
-    --- ------- ------- -------------- -------------- --------------
-      1      30      30      28.274334      50.265482      78.539816
-      2      40      40      28.274334      50.265482      78.539816
+     id x_center y_center aperture_sum_0 aperture_sum_1 aperture_sum_2
+    --- -------- -------- -------------- -------------- --------------
+      1       30       30      28.274334      50.265482      78.539816
+      2       40       40      28.274334      50.265482      78.539816
 
 For multiple apertures, the output table column names are appended
 with the ``positions`` index.
@@ -263,10 +263,10 @@ specify ``a``, ``b``, and ``theta``::
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id xcenter ycenter aperture_sum
-    --- ------- ------- ------------
-      1      30      30     47.12389
-      2      40      40     47.12389
+     id x_center y_center aperture_sum
+    --- -------- -------- ------------
+      1       30       30     47.12389
+      2       40       40     47.12389
 
 Again, for multiple apertures one should input a list of aperture
 objects, each with identical positions::
@@ -280,10 +280,10 @@ objects, each with identical positions::
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id xcenter ycenter aperture_sum_0 aperture_sum_1 aperture_sum_2
-    --- ------- ------- -------------- -------------- --------------
-      1      30      30       47.12389      75.398224      109.95574
-      2      40      40       47.12389      75.398224      109.95574
+     id x_center y_center aperture_sum_0 aperture_sum_1 aperture_sum_2
+    --- -------- -------- -------------- -------------- --------------
+      1       30       30       47.12389      75.398224      109.95574
+      2       40       40       47.12389      75.398224      109.95574
 
 
 .. _photutils-aperture-stats:
@@ -493,11 +493,11 @@ the photometry in the circular aperture (in the next example, we'll use
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id xcenter ycenter aperture_sum
-    --- ------- ------- ------------
-      1   145.1   168.3    1128.1245
-      2    84.5   224.1      735.739
-      3    48.3   200.3    1299.6341
+     id x_center y_center aperture_sum
+    --- -------- -------- ------------
+      1    145.1    168.3    1128.1245
+      2     84.5    224.1      735.739
+      3     48.3    200.3    1299.6341
 
 The total background within the circular aperture is the mean local
 per-pixel background times the circular aperture area. If you are
@@ -538,11 +538,11 @@ Finally, let's add these as columns to the photometry table::
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id xcenter ycenter aperture_sum total_bkg aperture_sum_bkgsub
-    --- ------- ------- ------------ --------- -------------------
-      1   145.1   168.3    1128.1245 392.23708           735.88739
-      2    84.5   224.1      735.739  403.2968           332.44219
-      3    48.3   200.3    1299.6341 382.40618           917.22792
+     id x_center y_center aperture_sum total_bkg aperture_sum_bkgsub
+    --- -------- -------- ------------ --------- -------------------
+      1    145.1    168.3    1128.1245 392.23708           735.88739
+      2     84.5    224.1      735.739  403.2968           332.44219
+      3     48.3    200.3    1299.6341 382.40618           917.22792
 
 Sigma-clipped median within a circular annulus
 """"""""""""""""""""""""""""""""""""""""""""""
@@ -614,10 +614,10 @@ pixel value and saved it in the array ``error``::
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id xcenter ycenter aperture_sum aperture_sum_err
-    --- ------- ------- ------------ ----------------
-      1      30      30    28.274334       0.53173616
-      2      40      40    28.274334       0.53173616
+     id x_center y_center aperture_sum aperture_sum_err
+    --- -------- -------- ------------ ----------------
+      1       30       30    28.274334       0.53173616
+      2       40       40    28.274334       0.53173616
 
 ``'aperture_sum_err'`` values are given by:
 

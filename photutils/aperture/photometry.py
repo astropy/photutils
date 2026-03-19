@@ -8,15 +8,22 @@ import warnings
 import astropy.units as u
 import numpy as np
 from astropy.nddata import NDData, StdDevUncertainty
-from astropy.table import QTable
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture.converters import region_to_aperture
 from photutils.aperture.core import Aperture, SkyAperture, _aperture_metadata
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (create_empty_deprecated_qtable,
+                                          deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
 
 __all__ = ['aperture_photometry']
+
+
+# Remove in 4.0
+_DEPRECATED_COLUMNS: dict = {
+    'xcenter': 'x_center',
+    'ycenter': 'y_center',
+}
 
 
 @deprecated_positional_kwargs(since='3.0', until='4.0')
@@ -115,7 +122,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         * ``'id'``:
           The source ID.
 
-        * ``'xcenter'``, ``'ycenter'``:
+        * ``'x_center'``, ``'y_center'``:
           The ``x`` and ``y`` pixel coordinates of the input aperture
           center(s).
 
@@ -225,15 +232,17 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     meta['aperture_photometry_args'] = calling_args
     meta.update(aper_meta)
 
-    tbl = QTable()
+    # Replace with QTable in 4.0
+    tbl = create_empty_deprecated_qtable(_DEPRECATED_COLUMNS)
+
     tbl.meta.update(meta)  # keep tbl.meta type
 
     positions = np.atleast_2d(apertures[0].positions)
     tbl['id'] = np.arange(positions.shape[0], dtype=int) + 1
 
     xypos_pixel = np.transpose(positions)
-    tbl['xcenter'] = xypos_pixel[0]
-    tbl['ycenter'] = xypos_pixel[1]
+    tbl['x_center'] = xypos_pixel[0]
+    tbl['y_center'] = xypos_pixel[1]
 
     if skyaper:
         if skycoord_pos.isscalar:

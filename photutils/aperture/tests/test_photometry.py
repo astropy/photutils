@@ -246,9 +246,9 @@ class BaseTestDifferentData:
         assert_allclose(table['aperture_sum'].value, self.true_flux)
         assert table['aperture_sum'].unit, self.fluxunit
 
-        assert np.all(table['xcenter'].value
+        assert np.all(table['x_center'].value
                       == np.transpose(self.position)[0])
-        assert np.all(table['ycenter'].value
+        assert np.all(table['y_center'].value
                       == np.transpose(self.position)[1])
 
 
@@ -737,15 +737,15 @@ def test_scalar_aperture():
 
     ap = CircularAperture((10, 10), r=3.0)
     colnames1 = aperture_photometry(data, ap, error=data).colnames
-    assert (colnames1 == ['id', 'xcenter', 'ycenter', 'aperture_sum',
+    assert (colnames1 == ['id', 'x_center', 'y_center', 'aperture_sum',
                           'aperture_sum_err'])
 
     colnames2 = aperture_photometry(data, [ap], error=data).colnames
-    assert (colnames2 == ['id', 'xcenter', 'ycenter', 'aperture_sum_0',
+    assert (colnames2 == ['id', 'x_center', 'y_center', 'aperture_sum_0',
                           'aperture_sum_err_0'])
 
     colnames3 = aperture_photometry(data, [ap, ap], error=data).colnames
-    assert (colnames3 == ['id', 'xcenter', 'ycenter', 'aperture_sum_0',
+    assert (colnames3 == ['id', 'x_center', 'y_center', 'aperture_sum_0',
                           'aperture_sum_err_0', 'aperture_sum_1',
                           'aperture_sum_err_1'])
 
