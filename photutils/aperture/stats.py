@@ -29,8 +29,8 @@ from photutils.utils._quantity_helpers import process_quantities
 __all__ = ['ApertureStats']
 
 
-# default table columns for `to_table()` output
-DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
+# Default table columns for `to_table()` output
+DEFAULT_COLUMNS = ['id', 'x_centroid', 'y_centroid', 'sky_centroid',
                    'sum', 'sum_err', 'sum_aper_area', 'center_aper_area',
                    'min', 'max', 'mean', 'median', 'mode', 'std',
                    'mad_std', 'var', 'biweight_location',
@@ -41,6 +41,8 @@ DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
 _DEPRECATED_ATTRIBUTES: dict = {
     'semimajor_sigma': 'semimajor_axis',
     'semiminor_sigma': 'semiminor_axis',
+    'xcentroid': 'x_centroid',
+    'ycentroid': 'y_centroid',
 }
 
 
@@ -218,9 +220,9 @@ class ApertureStats:
     >>> data = make_4gaussians_image()
     >>> aper = CircularAperture((150, 25), 8)
     >>> aperstats = ApertureStats(data, aper)
-    >>> print(aperstats.xcentroid)  # doctest: +FLOAT_CMP
+    >>> print(aperstats.x_centroid)  # doctest: +FLOAT_CMP
     149.99080259251238
-    >>> print(aperstats.ycentroid)  # doctest: +FLOAT_CMP
+    >>> print(aperstats.y_centroid)  # doctest: +FLOAT_CMP
     24.97484633000507
     >>> print(aperstats.centroid)  # doctest: +FLOAT_CMP
     [149.99080259  24.97484633]
@@ -240,7 +242,7 @@ class ApertureStats:
     >>> # more than one aperture position
     >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
     >>> aperstats2 = ApertureStats(data, aper2)
-    >>> print(aperstats2.xcentroid)  # doctest: +FLOAT_CMP
+    >>> print(aperstats2.x_centroid)  # doctest: +FLOAT_CMP
     [149.98470724  89.97893946]
     >>> print(aperstats2.sum)  # doctest: +FLOAT_CMP
     [10177.62548482 36653.97704059]
@@ -595,6 +597,7 @@ class ApertureStats:
 
         # Replace with QTable in 4.0
         tbl = create_empty_deprecated_qtable(_DEPRECATED_ATTRIBUTES)
+
         tbl.meta.update(self.meta)  # keep tbl.meta type
 
         for column in table_columns:
@@ -1063,9 +1066,9 @@ class ApertureStats:
         # ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
-            xcentroid = moments[:, 0, 1] / moments[:, 0, 0]
-        return np.transpose((xcentroid, ycentroid))
+            y_centroid = moments[:, 1, 0] / moments[:, 0, 0]
+            x_centroid = moments[:, 0, 1] / moments[:, 0, 0]
+        return np.transpose((x_centroid, y_centroid))
 
     @lazyproperty
     @as_scalar
@@ -1080,46 +1083,46 @@ class ApertureStats:
         return self.cutout_centroid + origin
 
     @lazyproperty
-    def _xcentroid(self):
+    def _x_centroid(self):
         """
         The ``x`` coordinate of the centroid, always as an iterable.
         """
-        xcentroid = np.transpose(self.centroid)[0]
+        x_centroid = np.transpose(self.centroid)[0]
         if self.isscalar:
-            xcentroid = (xcentroid,)
-        return xcentroid
+            x_centroid = (x_centroid,)
+        return x_centroid
 
     @lazyproperty
     @as_scalar
-    def xcentroid(self):
+    def x_centroid(self):
         """
         The ``x`` coordinate of the centroid.
 
         The centroid is computed as the center of mass of the unmasked
         pixels within the aperture.
         """
-        return self._xcentroid
+        return self._x_centroid
 
     @lazyproperty
-    def _ycentroid(self):
+    def _y_centroid(self):
         """
         The ``y`` coordinate of the centroid, always as an iterable.
         """
-        ycentroid = np.transpose(self.centroid)[1]
+        y_centroid = np.transpose(self.centroid)[1]
         if self.isscalar:
-            ycentroid = (ycentroid,)
-        return ycentroid
+            y_centroid = (y_centroid,)
+        return y_centroid
 
     @lazyproperty
     @as_scalar
-    def ycentroid(self):
+    def y_centroid(self):
         """
         The ``y`` coordinate of the centroid.
 
         The centroid is computed as the center of mass of the unmasked
         pixels within the aperture.
         """
-        return self._ycentroid
+        return self._y_centroid
 
     @lazyproperty
     @as_scalar
@@ -1135,7 +1138,7 @@ class ApertureStats:
         """
         if self._wcs is None:
             return self._null_object
-        return self._wcs.pixel_to_world(self.xcentroid, self.ycentroid)
+        return self._wcs.pixel_to_world(self.x_centroid, self.y_centroid)
 
     @lazyproperty
     @as_scalar

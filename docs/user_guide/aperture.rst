@@ -350,9 +350,9 @@ background as the sigma-clipped median value::
     >>> data -= median  # subtract background from the data
     >>> aper = CircularAperture((150, 25), 8)
     >>> aperstats = ApertureStats(data, aper)  # doctest: +FLOAT_CMP
-    >>> print(aperstats.xcentroid)  # doctest: +FLOAT_CMP
+    >>> print(aperstats.x_centroid)  # doctest: +FLOAT_CMP
     149.98963482915323
-    >>> print(aperstats.ycentroid)  # doctest: +FLOAT_CMP
+    >>> print(aperstats.y_centroid)  # doctest: +FLOAT_CMP
     24.97165265459083
     >>> print(aperstats.centroid)  # doctest: +FLOAT_CMP
     [149.98963483  24.97165265]
@@ -368,7 +368,7 @@ can have multiple positions::
 
     >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
     >>> aperstats2 = ApertureStats(data, aper2)
-    >>> print(aperstats2.xcentroid)  # doctest: +FLOAT_CMP
+    >>> print(aperstats2.x_centroid)  # doctest: +FLOAT_CMP
     [149.98175939  89.97793821]
     >>> print(aperstats2.sum)  # doctest: +FLOAT_CMP
     [ 8487.10695247 34963.45850824]

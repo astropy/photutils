@@ -336,8 +336,8 @@ class TestApertureStats:
         assert apstats.min == 1.0
         assert apstats.max == 1.0
         assert apstats.mean == 1.0
-        assert apstats.xcentroid == 12.0
-        assert apstats.ycentroid == 12.0
+        assert apstats.x_centroid == 12.0
+        assert apstats.y_centroid == 12.0
 
     @pytest.mark.parametrize('with_units', [True, False])
     def test_nddata_input(self, with_units):
@@ -361,8 +361,8 @@ class TestApertureStats:
                         wcs=self.wcs, unit=unit)
         apstats2 = ApertureStats(nddata, self.aperture, sigma_clip=None)
 
-        assert_allclose(apstats1.xcentroid, apstats2.xcentroid)
-        assert_allclose(apstats1.ycentroid, apstats2.ycentroid)
+        assert_allclose(apstats1.x_centroid, apstats2.x_centroid)
+        assert_allclose(apstats1.y_centroid, apstats2.y_centroid)
         assert_allclose(apstats1.sum, apstats2.sum)
 
         if with_units:
