@@ -560,3 +560,12 @@ The ``norm_radius`` keyword has been removed from
 longer relevant because the ePSF is now built directly as an
 :class:`~photutils.psf.ImagePSF`, which does not use a normalization
 radius.
+
+
+Star Finder ``pa`` Column Units
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``pa`` (position angle) column in the output tables
+from :class:`~photutils.detection.IRAFStarFinder` and
+:class:`~photutils.detection.StarFinder` is now a ``Quantity`` array in
+in the range of [0, 360) degrees.
