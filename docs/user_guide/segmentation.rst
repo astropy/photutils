@@ -539,20 +539,20 @@ properties are shown below:
     >>> tbl['ycentroid'].info.format = '.2f'
     >>> tbl['kron_flux'].info.format = '.2f'
     >>> print(tbl)
-    label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
+    label xcentroid ycentroid ... segment_flux_err kron_flux kron_flux_err
                               ...
-    ----- --------- --------- ... --------------- --------- ------------
-        1    235.38      1.44 ...             nan    490.35          nan
-        2    493.78      5.84 ...             nan    489.37          nan
-        3    207.29     10.26 ...             nan    694.24          nan
-        4    364.87     11.13 ...             nan    681.20          nan
-        5    257.85     12.18 ...             nan    748.18          nan
-      ...       ...       ... ...             ...       ...          ...
-       89    292.77    244.93 ...             nan    792.63          nan
-       90     32.66    241.24 ...             nan    930.77          nan
-       91     42.60    249.43 ...             nan    580.54          nan
-       92    433.80    280.74 ...             nan    663.44          nan
-       93    434.03    288.88 ...             nan    879.64          nan
+    ----- --------- --------- ... ---------------- --------- -------------
+        1    235.38      1.44 ...              nan    490.35           nan
+        2    493.78      5.84 ...              nan    489.37           nan
+        3    207.29     10.26 ...              nan    694.24           nan
+        4    364.87     11.13 ...              nan    681.20           nan
+        5    257.85     12.18 ...              nan    748.18           nan
+      ...       ...       ... ...              ...       ...           ...
+       89    292.77    244.93 ...              nan    792.63           nan
+       90     32.66    241.24 ...              nan    930.77           nan
+       91     42.60    249.43 ...              nan    580.54           nan
+       92    433.80    280.74 ...              nan    663.44           nan
+       93    434.03    288.88 ...              nan    879.64           nan
     Length = 93 rows
 
 The error columns are NaN because we did not input an error array (see
@@ -627,15 +627,15 @@ label numbers in the segmentation image:
     >>> tbl2['ycentroid'].info.format = '.2f'
     >>> tbl2['kron_flux'].info.format = '.2f'
     >>> print(tbl2)
-    label xcentroid ycentroid ... segment_fluxerr kron_flux kron_fluxerr
+    label xcentroid ycentroid ... segment_flux_err kron_flux kron_flux_err
                               ...
-    ----- --------- --------- ... --------------- --------- ------------
-        1    235.38      1.44 ...             nan    490.35          nan
-        5    257.85     12.18 ...             nan    748.18          nan
-       20    347.17     66.45 ...             nan    855.34          nan
-       50    381.02    174.67 ...             nan    438.55          nan
-       75     74.44    259.78 ...             nan    876.02          nan
-       80     14.93     60.06 ...             nan    878.52          nan
+    ----- --------- --------- ... ---------------- --------- -------------
+        1    235.38      1.44 ...              nan    490.35           nan
+        5    257.85     12.18 ...              nan    748.18           nan
+       20    347.17     66.45 ...              nan    855.34           nan
+       50    381.02    174.67 ...              nan    438.55           nan
+       75     74.44    259.78 ...              nan    876.02           nan
+       80     14.93     60.06 ...              nan    878.52           nan
 
 By default, the :meth:`~photutils.segmentation.SourceCatalog.to_table`
 includes only a small subset of source properties. The output table
@@ -727,10 +727,10 @@ exposure time (here we set it to 500 seconds). Here we use
 :func:`~photutils.utils.calc_total_error` to calculate the total error
 and input it into the :class:`~photutils.segmentation.SourceCatalog`
 class. When a total ``error`` is input, the
-`~photutils.segmentation.SourceCatalog.segment_fluxerr` and
-`~photutils.segmentation.SourceCatalog.kron_fluxerr` properties are
+`~photutils.segmentation.SourceCatalog.segment_flux_err` and
+`~photutils.segmentation.SourceCatalog.kron_flux_err` properties are
 calculated. `~photutils.segmentation.SourceCatalog.segment_flux`
-and `~photutils.segmentation.SourceCatalog.segment_fluxerr` are the
+and `~photutils.segmentation.SourceCatalog.segment_flux_err` are the
 instrumental flux and propagated flux error within the source segments:
 
 .. doctest-requires:: scipy >= 1.8
@@ -743,23 +743,23 @@ instrumental flux and propagated flux error within the source segments:
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> cat_subset = cat.get_labels(labels)  # select a subset of objects
     >>> columns = ['label', 'xcentroid', 'ycentroid', 'segment_flux',
-    ...            'segment_fluxerr']
+    ...            'segment_flux_err']
     >>> tbl5 = cat_subset.to_table(columns=columns)
     >>> tbl5['xcentroid'].info.format = '{:.4f}'  # optional format
     >>> tbl5['ycentroid'].info.format = '{:.4f}'
     >>> tbl5['segment_flux'].info.format = '{:.4f}'
-    >>> tbl5['segment_fluxerr'].info.format = '{:.4f}'
+    >>> tbl5['segment_flux_err'].info.format = '{:.4f}'
     >>> for col in tbl5.colnames:
     ...     tbl5[col].info.format = '%.8g'  # for consistent table output
     >>> print(tbl5)
-    label xcentroid ycentroid segment_flux segment_fluxerr
-    ----- --------- --------- ------------ ---------------
-        1 235.24302 1.1928271    433.35462       14.167067
-        5 257.82267 12.228232    489.96532       18.998371
-       20 347.15384 66.417567    625.96682       22.475065
-       50 380.94448 174.57181    249.01701       15.261334
-       75 74.413068 259.76066     836.4803       17.193721
-       80 14.920217 60.024006    666.60139       19.605394
+    label xcentroid ycentroid segment_flux segment_flux_err
+    ----- --------- --------- ------------ ----------------
+        1 235.24302 1.1928271    433.35463        14.167067
+        5 257.82267 12.228232    489.96534        18.998371
+       20 347.15384 66.417567    625.96683        22.475065
+       50 380.94448 174.57181    249.01701        15.261334
+       75 74.413068 259.76066     836.4803        17.193721
+       80 14.920217 60.024006     666.6014        19.605394
 
 
 Pixel Masking

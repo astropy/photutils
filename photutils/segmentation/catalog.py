@@ -13,7 +13,6 @@ from copy import deepcopy
 import astropy.units as u
 import numpy as np
 from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
-from astropy.table import QTable
 from astropy.utils import lazyproperty
 from scipy.ndimage import map_coordinates
 from scipy.optimize import root_scalar
@@ -25,7 +24,9 @@ from photutils.geometry import circular_overlap_grid, elliptical_overlap_grid
 from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _mask_to_mirrored_value
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (create_empty_deprecated_qtable,
+                                          deprecated_getattr,
+                                          deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
@@ -39,8 +40,14 @@ DEFAULT_COLUMNS = ['label', 'xcentroid', 'ycentroid', 'sky_centroid',
                    'bbox_xmin', 'bbox_xmax', 'bbox_ymin', 'bbox_ymax',
                    'area', 'semimajor_sigma', 'semiminor_sigma',
                    'orientation', 'eccentricity', 'min_value', 'max_value',
-                   'local_background', 'segment_flux', 'segment_fluxerr',
-                   'kron_flux', 'kron_fluxerr']
+                   'local_background', 'segment_flux', 'segment_flux_err',
+                   'kron_flux', 'kron_flux_err']
+
+# Remove in 4.0
+_DEPRECATED_ATTRIBUTES = {
+    'segment_fluxerr': 'segment_flux_err',
+    'kron_fluxerr': 'kron_flux_err',
+}
 
 
 def as_scalar(method):
@@ -276,7 +283,7 @@ class SourceCatalog:
 
     The input ``error`` array is assumed to include *all* sources
     of error, including the Poisson error of the sources.
-    `~photutils.segmentation.SourceCatalog.segment_fluxerr` is simply
+    `~photutils.segmentation.SourceCatalog.segment_flux_err` is simply
     the quadrature sum of the pixel-wise total errors over the
     unmasked pixels within the source segment:
 
@@ -286,7 +293,7 @@ class SourceCatalog:
             \\sigma_{\\mathrm{tot}, i}^2}
 
     where :math:`\\Delta F` is
-    `~photutils.segmentation.SourceCatalog.segment_fluxerr`,
+    `~photutils.segmentation.SourceCatalog.segment_flux_err`,
     :math:`S` are the unmasked pixels in the source segment, and
     :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
 
@@ -634,6 +641,10 @@ class SourceCatalog:
     def __iter__(self):
         for item in range(len(self)):
             yield self.__getitem__(item)
+
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES)
 
     @lazyproperty
     def isscalar(self):
@@ -1064,7 +1075,9 @@ class SourceCatalog:
         else:
             table_columns = columns
 
-        tbl = QTable()
+        # Replace with QTable() in 4.0
+        tbl = create_empty_deprecated_qtable(_DEPRECATED_ATTRIBUTES)
+
         tbl.meta.update(self.meta)  # keep tbl.meta type
         for column in table_columns:
             values = getattr(self, column)
@@ -2389,19 +2402,19 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def segment_fluxerr(self):
+    def segment_flux_err(self):
         r"""
         The uncertainty of `segment_flux`, propagated from the input
         ``error`` array.
 
-        ``segment_fluxerr`` is the quadrature sum of the total errors
+        ``segment_flux_err`` is the quadrature sum of the total errors
         over the unmasked pixels within the source segment:
 
         .. math::
 
             \Delta F = \sqrt{\sum_{i \in S} \sigma_{\mathrm{tot}, i}^2}
 
-        where :math:`\Delta F` is the `segment_fluxerr`,
+        where :math:`\Delta F` is the `segment_flux_err`,
         :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total errors
         (``error``), and :math:`S` are the unmasked pixels in the source
         segment.
@@ -3244,7 +3257,7 @@ class SourceCatalog:
         name : str or `None`, optional
             The prefix name which will be used to define attribute
             names for the flux and flux error. The attribute names
-            ``[name]_flux`` and ``[name]_fluxerr`` will store the
+            ``[name]_flux`` and ``[name]_flux_err`` will store the
             photometry results. For example, these names can then be
             included in the `to_table` ``columns`` keyword list to
             output the results in the table.
@@ -3254,7 +3267,7 @@ class SourceCatalog:
 
         Returns
         -------
-        flux, fluxerr : float or `~numpy.ndarray` of floats
+        flux, flux_err : float or `~numpy.ndarray` of floats
             The aperture fluxes and flux errors. NaN will be returned
             where the aperture is `None` (e.g., where the source
             `centroid` position is not finite or the source is
@@ -3266,26 +3279,26 @@ class SourceCatalog:
 
         apertures = self._make_circular_apertures(radius)
         kwargs = self._apermask_kwargs['circ']
-        flux, fluxerr = self._aperture_photometry(apertures,
-                                                  desc='circular_photometry',
-                                                  **kwargs)
+        flux, flux_err = self._aperture_photometry(apertures,
+                                                   desc='circular_photometry',
+                                                   **kwargs)
 
         if self._data_unit is not None:
             flux <<= self._data_unit
-            fluxerr <<= self._data_unit
+            flux_err <<= self._data_unit
 
         if self.isscalar:
             flux = flux[0]
-            fluxerr = fluxerr[0]
+            flux_err = flux_err[0]
 
         if name is not None:
             flux_name = f'{name}_flux'
-            fluxerr_name = f'{name}_fluxerr'
+            flux_err_name = f'{name}_flux_err'
             self.add_extra_property(flux_name, flux, overwrite=overwrite)
-            self.add_extra_property(fluxerr_name, fluxerr,
+            self.add_extra_property(flux_err_name, flux_err,
                                     overwrite=overwrite)
 
-        return flux, fluxerr
+        return flux, flux_err
 
     def _make_elliptical_apertures(self, *, scale=6.0):
         """
@@ -3654,7 +3667,7 @@ class SourceCatalog:
         Note that changing ``kron_params`` from the values
         input into `SourceCatalog` does not change the Kron
         apertures (`kron_aperture`) and photometry (`kron_flux` and
-        `kron_fluxerr`) in the source catalog. This method should
+        `kron_flux_err`) in the source catalog. This method should
         be used only to explore alternative ``kron_params`` with a
         detection image.
 
@@ -3707,7 +3720,7 @@ class SourceCatalog:
         Note that changing ``kron_params`` from the values
         input into `SourceCatalog` does not change the Kron
         apertures (`kron_aperture`) and photometry (`kron_flux` and
-        `kron_fluxerr`) in the source catalog. This method should be
+        `kron_flux_err`) in the source catalog. This method should be
         used only to visualize/explore alternative ``kron_params`` with
         a detection image.
 
@@ -3780,7 +3793,7 @@ class SourceCatalog:
 
         Returns
         -------
-        flux, fluxerr : 1D `~numpy.ndaray`
+        flux, flux_err : 1D `~numpy.ndaray`
             The flux and flux error arrays.
         """
         labels = self.labels
@@ -3788,21 +3801,21 @@ class SourceCatalog:
             labels = add_progress_bar(labels, desc=desc)
 
         flux = []
-        fluxerr = []
+        flux_err = []
         for label, aperture, bkg in zip(labels, apertures,
                                         self._local_background, strict=True):
             # Return NaN for completely masked sources or sources where
             # the centroid is not finite
             if aperture is None:
                 flux.append(np.nan)
-                fluxerr.append(np.nan)
+                flux_err.append(np.nan)
                 continue
 
             xcen, ycen = aperture.positions
             aperture_mask = self._aperture_to_mask(aperture, **kwargs)
             if aperture_mask is None:
                 flux.append(np.nan)
-                fluxerr.append(np.nan)
+                flux_err.append(np.nan)
                 continue
 
             # Prepare cutouts of the data based on the aperture size
@@ -3819,19 +3832,19 @@ class SourceCatalog:
                 flux.append(flux_)
 
                 if error is None:
-                    fluxerr_ = np.nan
+                    flux_err_ = np.nan
                 else:
                     values = (aperture_weights * error**2)[pixel_mask]
                     if values.shape == (0,):
-                        fluxerr_ = np.nan
+                        flux_err_ = np.nan
                     else:
-                        fluxerr_ = np.sqrt(np.sum(values))
-                fluxerr.append(fluxerr_)
+                        flux_err_ = np.sqrt(np.sum(values))
+                flux_err.append(flux_err_)
 
         flux = np.array(flux)
-        fluxerr = np.array(fluxerr)
+        flux_err = np.array(flux_err)
 
-        return flux, fluxerr
+        return flux, flux_err
 
     def _calc_kron_photometry(self, *, kron_params=None):
         """
@@ -3849,7 +3862,7 @@ class SourceCatalog:
 
         Returns
         -------
-        kron_flux, kron_fluxerr : tuple of `~numpy.ndarray`
+        kron_flux, kron_flux_err : tuple of `~numpy.ndarray`
             The Kron flux and flux error.
         """
         if kron_params is None:
@@ -3868,12 +3881,12 @@ class SourceCatalog:
         max_size = max(self._data.size, 1_000_000)
 
         flux = []
-        fluxerr = []
+        flux_err = []
         for label, aperture, bkg in zip(labels, kron_aperture,
                                         self._local_background, strict=True):
             if aperture is None:
                 flux.append(np.nan)
-                fluxerr.append(np.nan)
+                flux_err.append(np.nan)
                 continue
 
             xcen, ycen = aperture.positions
@@ -3891,7 +3904,7 @@ class SourceCatalog:
                 ny = iymax - iymin
                 if nx * ny > max_size:
                     flux.append(np.nan)
-                    fluxerr.append(np.nan)
+                    flux_err.append(np.nan)
                     continue
                 edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
                          iymin - 0.5 - ycen, iymax - 0.5 - ycen)
@@ -3917,7 +3930,7 @@ class SourceCatalog:
                 ny = iymax - iymin
                 if nx * ny > max_size:
                     flux.append(np.nan)
-                    fluxerr.append(np.nan)
+                    flux_err.append(np.nan)
                     continue
                 edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
                          iymin - 0.5 - ycen, iymax - 0.5 - ycen)
@@ -3930,7 +3943,7 @@ class SourceCatalog:
                 label, xcen, ycen, bbox, bkg)
             if data is None:
                 flux.append(np.nan)
-                fluxerr.append(np.nan)
+                flux_err.append(np.nan)
                 continue
 
             aperture_weights = mask_data[slc_sm]
@@ -3942,19 +3955,19 @@ class SourceCatalog:
                 flux.append(flux_)
 
                 if error is None:
-                    fluxerr_ = np.nan
+                    flux_err_ = np.nan
                 else:
                     values = (aperture_weights * error ** 2)[pixel_mask]
                     if values.shape == (0,):
-                        fluxerr_ = np.nan
+                        flux_err_ = np.nan
                     else:
-                        fluxerr_ = np.sqrt(np.sum(values))
-                fluxerr.append(fluxerr_)
+                        flux_err_ = np.sqrt(np.sum(values))
+                flux_err.append(flux_err_)
 
         flux = np.array(flux)
-        fluxerr = np.array(fluxerr)
+        flux_err = np.array(flux_err)
 
-        return flux, fluxerr
+        return flux, flux_err
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def kron_photometry(self, kron_params, name=None, overwrite=False):
@@ -3985,7 +3998,7 @@ class SourceCatalog:
         name : str or `None`, optional
             The prefix name which will be used to define attribute
             names for the Kron flux and flux error. The attribute
-            names ``[name]_flux`` and ``[name]_fluxerr`` will store
+            names ``[name]_flux`` and ``[name]_flux_err`` will store
             the photometry results. For example, these names can then
             be included in the `to_table` ``columns`` keyword list to
             output the results in the table.
@@ -3995,30 +4008,30 @@ class SourceCatalog:
 
         Returns
         -------
-        flux, fluxerr : float or `~numpy.ndarray` of floats
+        flux, flux_err : float or `~numpy.ndarray` of floats
             The aperture fluxes and flux errors. NaN will be returned
             where the aperture is `None` (e.g., where the source
             `centroid` position or elliptical shape parameters are not
             finite or where the source is completely masked).
         """
-        kron_flux, kron_fluxerr = self._calc_kron_photometry(
+        kron_flux, kron_flux_err = self._calc_kron_photometry(
             kron_params=kron_params)
         if self._data_unit is not None:
             kron_flux <<= self._data_unit
-            kron_fluxerr <<= self._data_unit
+            kron_flux_err <<= self._data_unit
 
         if self.isscalar:
             kron_flux = kron_flux[0]
-            kron_fluxerr = kron_fluxerr[0]
+            kron_flux_err = kron_flux_err[0]
 
         if name is not None:
             flux_name = f'{name}_flux'
-            fluxerr_name = f'{name}_fluxerr'
+            flux_err_name = f'{name}_flux_err'
             self.add_extra_property(flux_name, kron_flux, overwrite=overwrite)
-            self.add_extra_property(fluxerr_name, kron_fluxerr,
+            self.add_extra_property(flux_err_name, kron_flux_err,
                                     overwrite=overwrite)
 
-        return kron_flux, kron_fluxerr
+        return kron_flux, kron_flux_err
 
     @lazyproperty
     def _kron_photometry(self):
@@ -4056,7 +4069,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def kron_fluxerr(self):
+    def kron_flux_err(self):
         """
         The flux error in the Kron aperture.
 
@@ -4068,10 +4081,10 @@ class SourceCatalog:
         or elliptical shape parameters are not finite or where the
         source is completely masked.
         """
-        kron_fluxerr = self._kron_photometry[:, 1]
+        kron_flux_err = self._kron_photometry[:, 1]
         if self._data_unit is not None:
-            kron_fluxerr <<= self._data_unit
-        return kron_fluxerr
+            kron_flux_err <<= self._data_unit
+        return kron_flux_err
 
     @lazyproperty
     @use_detcat

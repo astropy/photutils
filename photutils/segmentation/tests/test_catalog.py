@@ -168,7 +168,7 @@ class TestSourceCatalog:
         cat1.circular_photometry(5.0, name='circ5')
         cat1.kron_photometry((2.5, 1.4), name='kron2')
         cat1.fluxfrac_radius(0.5, name='r_hl')
-        segment_snr = cat1.segment_flux / cat1.segment_fluxerr
+        segment_snr = cat1.segment_flux / cat1.segment_flux_err
         cat1.add_extra_property('segment_snr', segment_snr)
         props = list(props)
         props.extend(cat1.extra_properties)
@@ -185,7 +185,7 @@ class TestSourceCatalog:
         obj.circular_photometry(5.0, name='circ5')
         obj.kron_photometry((2.5, 1.4), name='kron2')
         obj.fluxfrac_radius(0.5, name='r_hl')
-        segment_snr = obj.segment_flux / obj.segment_fluxerr
+        segment_snr = obj.segment_flux / obj.segment_flux_err
         obj.add_extra_property('segment_snr', segment_snr)
         for prop in props:
             assert_equal(getattr(obj, prop), getattr(cat1, prop)[idx])
@@ -234,35 +234,35 @@ class TestSourceCatalog:
         with pytest.raises(AssertionError, match=match):
             assert_equal(cat2.kron_flux, cat3.kron_flux)
         with pytest.raises(AssertionError, match=match):
-            assert_equal(cat2.kron_fluxerr, cat3.kron_fluxerr)
+            assert_equal(cat2.kron_flux_err, cat3.kron_flux_err)
         with pytest.raises(AssertionError, match=match):
             assert_equal(cat1.kron_flux, cat3.kron_flux)
         with pytest.raises(AssertionError, match=match):
-            assert_equal(cat1.kron_fluxerr, cat3.kron_fluxerr)
+            assert_equal(cat1.kron_flux_err, cat3.kron_flux_err)
 
-        flux1, fluxerr1 = cat1.circular_photometry(1.0)
-        flux2, fluxerr2 = cat2.circular_photometry(1.0)
-        flux3, fluxerr3 = cat3.circular_photometry(1.0)
+        flux1, flux_err1 = cat1.circular_photometry(1.0)
+        flux2, flux_err2 = cat2.circular_photometry(1.0)
+        flux3, flux_err3 = cat3.circular_photometry(1.0)
         with pytest.raises(AssertionError, match=match):
             assert_equal(flux2, flux3)
         with pytest.raises(AssertionError, match=match):
-            assert_equal(fluxerr2, fluxerr3)
+            assert_equal(flux_err2, flux_err3)
         with pytest.raises(AssertionError, match=match):
             assert_equal(flux1, flux2)
         with pytest.raises(AssertionError, match=match):
-            assert_equal(fluxerr1, fluxerr2)
+            assert_equal(flux_err1, flux_err2)
 
-        flux1, fluxerr1 = cat1.kron_photometry((2.5, 1.4))
-        flux2, fluxerr2 = cat2.kron_photometry((2.5, 1.4))
-        flux3, fluxerr3 = cat3.kron_photometry((2.5, 1.4))
+        flux1, flux_err1 = cat1.kron_photometry((2.5, 1.4))
+        flux2, flux_err2 = cat2.kron_photometry((2.5, 1.4))
+        flux3, flux_err3 = cat3.kron_photometry((2.5, 1.4))
         with pytest.raises(AssertionError, match=match):
             assert_equal(flux2, flux3)
         with pytest.raises(AssertionError, match=match):
-            assert_equal(fluxerr2, fluxerr3)
+            assert_equal(flux_err2, flux_err3)
         with pytest.raises(AssertionError, match=match):
             assert_equal(flux1, flux2)
         with pytest.raises(AssertionError, match=match):
-            assert_equal(fluxerr1, fluxerr2)
+            assert_equal(flux_err1, flux_err2)
 
         radius1 = cat1.fluxfrac_radius(0.5)
         radius2 = cat2.fluxfrac_radius(0.5)
@@ -290,7 +290,7 @@ class TestSourceCatalog:
             assert getattr(obj, prop)[0] is None
 
         props = ('background_mean', 'background_sum', 'background_centroid',
-                 'segment_fluxerr', 'kron_fluxerr')
+                 'segment_flux_err', 'kron_flux_err')
         for prop in props:
             assert np.isnan(getattr(obj, prop))
 
@@ -564,8 +564,8 @@ class TestSourceCatalog:
                             background=background, mask=self.mask)
 
         props = ('xcentroid', 'ycentroid', 'area', 'orientation',
-                 'segment_flux', 'segment_fluxerr', 'kron_flux',
-                 'kron_fluxerr', 'background_mean')
+                 'segment_flux', 'segment_flux_err', 'kron_flux',
+                 'kron_flux_err', 'background_mean')
         obj = cat[0]
         for prop in props:
             assert np.isnan(getattr(obj, prop))
@@ -658,37 +658,37 @@ class TestSourceCatalog:
         """
         Test kron photometry.
         """
-        flux0, fluxerr0 = self.cat.kron_photometry((2.5, 1.4))
+        flux0, flux_err0 = self.cat.kron_photometry((2.5, 1.4))
         assert_allclose(flux0, self.cat.kron_flux)
-        assert_allclose(fluxerr0, self.cat.kron_fluxerr)
+        assert_allclose(flux_err0, self.cat.kron_flux_err)
 
-        flux1, fluxerr1 = self.cat.kron_photometry((1.0, 1.4), name='kron1')
-        flux2, fluxerr2 = self.cat.kron_photometry((2.0, 1.4), name='kron2')
+        flux1, flux_err1 = self.cat.kron_photometry((1.0, 1.4), name='kron1')
+        flux2, flux_err2 = self.cat.kron_photometry((2.0, 1.4), name='kron2')
         assert_allclose(flux1, self.cat.kron1_flux)
-        assert_allclose(fluxerr1, self.cat.kron1_fluxerr)
+        assert_allclose(flux_err1, self.cat.kron1_flux_err)
         assert_allclose(flux2, self.cat.kron2_flux)
-        assert_allclose(fluxerr2, self.cat.kron2_fluxerr)
+        assert_allclose(flux_err2, self.cat.kron2_flux_err)
 
         assert np.all((flux2 > flux1) | (np.isnan(flux2) & np.isnan(flux1)))
-        assert np.all((fluxerr2 > fluxerr1)
-                      | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
+        assert np.all((flux_err2 > flux_err1)
+                      | (np.isnan(flux_err2) & np.isnan(flux_err1)))
 
         # Test different min Kron radius
-        flux3, fluxerr3 = self.cat.kron_photometry((2.5, 2.5))
+        flux3, flux_err3 = self.cat.kron_photometry((2.5, 2.5))
         assert np.all((flux3 > flux0) | (np.isnan(flux3) & np.isnan(flux0)))
-        assert np.all((fluxerr3 > fluxerr0)
-                      | (np.isnan(fluxerr3) & np.isnan(fluxerr0)))
+        assert np.all((flux_err3 > flux_err0)
+                      | (np.isnan(flux_err3) & np.isnan(flux_err0)))
 
         obj = self.cat[1]
-        flux1, fluxerr1 = obj.kron_photometry((1.0, 1.4), name='kron0')
+        flux1, flux_err1 = obj.kron_photometry((1.0, 1.4), name='kron0')
         assert np.isscalar(flux1)
-        assert np.isscalar(fluxerr1)
+        assert np.isscalar(flux_err1)
         assert_allclose(flux1, obj.kron0_flux)
-        assert_allclose(fluxerr1, obj.kron0_fluxerr)
+        assert_allclose(flux_err1, obj.kron0_flux_err)
 
         cat = SourceCatalog(self.data, self.segm)
-        _, fluxerr = cat.kron_photometry((2.0, 1.4))
-        assert np.all(np.isnan(fluxerr))
+        _, flux_err = cat.kron_photometry((2.0, 1.4))
+        assert np.all(np.isnan(flux_err))
 
         match = 'kron_params must be 1D'
         with pytest.raises(ValueError, match=match):
@@ -708,36 +708,36 @@ class TestSourceCatalog:
         """
         Test circular photometry.
         """
-        flux1, fluxerr1 = self.cat.circular_photometry(1.0, name='circ1')
-        flux2, fluxerr2 = self.cat.circular_photometry(5.0, name='circ5')
+        flux1, flux_err1 = self.cat.circular_photometry(1.0, name='circ1')
+        flux2, flux_err2 = self.cat.circular_photometry(5.0, name='circ5')
         assert_allclose(flux1, self.cat.circ1_flux)
-        assert_allclose(fluxerr1, self.cat.circ1_fluxerr)
+        assert_allclose(flux_err1, self.cat.circ1_flux_err)
         assert_allclose(flux2, self.cat.circ5_flux)
-        assert_allclose(fluxerr2, self.cat.circ5_fluxerr)
+        assert_allclose(flux_err2, self.cat.circ5_flux_err)
 
         assert np.all((flux2 > flux1) | (np.isnan(flux2) & np.isnan(flux1)))
-        assert np.all((fluxerr2 > fluxerr1)
-                      | (np.isnan(fluxerr2) & np.isnan(fluxerr1)))
+        assert np.all((flux_err2 > flux_err1)
+                      | (np.isnan(flux_err2) & np.isnan(flux_err1)))
 
         obj = self.cat[1]
         assert obj.isscalar
-        flux1, fluxerr1 = obj.circular_photometry(1.0, name='circ0')
+        flux1, flux_err1 = obj.circular_photometry(1.0, name='circ0')
         assert np.isscalar(flux1)
-        assert np.isscalar(fluxerr1)
+        assert np.isscalar(flux_err1)
         assert_allclose(flux1, obj.circ0_flux)
-        assert_allclose(fluxerr1, obj.circ0_fluxerr)
+        assert_allclose(flux_err1, obj.circ0_flux_err)
 
         cat = SourceCatalog(self.data, self.segm)
-        _, fluxerr = cat.circular_photometry(1.0)
-        assert np.all(np.isnan(fluxerr))
+        _, flux_err = cat.circular_photometry(1.0)
+        assert np.all(np.isnan(flux_err))
 
         # With "center" mode, tiny apertures that do not overlap any
         # center should return NaN
         cat2 = self.cat.copy()
         cat2._set_semode()  # sets "center" mode
-        flux1, fluxerr1 = cat2.circular_photometry(0.1)
+        flux1, flux_err1 = cat2.circular_photometry(0.1)
         assert np.all(np.isnan(flux1[2:4]))
-        assert np.all(np.isnan(fluxerr1[2:4]))
+        assert np.all(np.isnan(flux_err1[2:4]))
 
         match = 'radius must be > 0'
         with pytest.raises(ValueError, match=match):
@@ -949,7 +949,7 @@ class TestSourceCatalog:
         if scalar:
             cat = cat[1]
 
-        segment_snr = cat.segment_flux / cat.segment_fluxerr
+        segment_snr = cat.segment_flux / cat.segment_flux_err
 
         match = 'cannot be set because it is a built-in attribute'
         with pytest.raises(ValueError, match=match):
@@ -1497,7 +1497,7 @@ def test_progress_bar_kron_photometry(progress_bar_catalog):
     progress_bar=True.
     """
     cat = progress_bar_catalog
-    flux, _fluxerr = cat.kron_photometry((2.5, 1.4))
+    flux, _flux_err = cat.kron_photometry((2.5, 1.4))
     assert len(flux) == cat.nlabels
 
 
@@ -1813,7 +1813,7 @@ def test_kron_photometry_oom_guard(gauss_101_catalog):
 
     with patch.object(type(cat4), '_make_aperture_data', _make_all_masked):
         assert np.all(np.isnan(cat4.kron_flux))
-        assert np.all(np.isnan(cat4.kron_fluxerr))
+        assert np.all(np.isnan(cat4.kron_flux_err))
 
 
 def test_fluxfrac_cache_not_mutated_by_centroid_win(gauss_101_data):
