@@ -2012,9 +2012,9 @@ def test_measured_kron_radius_oom_guard(gauss_101_catalog):
     """
     _data, _segm, cat = gauss_101_catalog
 
-    # Patch semimajor_sigma to a huge value so the bbox triggers OOM
+    # Patch semimajor_axis to a huge value so the bbox triggers OOM
     huge = np.array([1e6]) << u.pix
-    with patch.object(type(cat), 'semimajor_sigma',
+    with patch.object(type(cat), 'semimajor_axis',
                       new_callable=lambda: property(lambda _self: huge)):
         assert np.all(np.isnan(cat.kron_radius.value))
 
@@ -2047,9 +2047,9 @@ def test_measured_kron_radius_circular_fallback(gauss_101_data):
     cxx_val = np.array([1.0]) / (u.pix * u.pix)
     cyy_val = np.array([1.0]) / (u.pix * u.pix)
     cxy_val = np.array([0.0]) / (u.pix * u.pix)
-    with (patch.object(type(cat), 'semimajor_sigma',
+    with (patch.object(type(cat), 'semimajor_axis',
                        new_callable=lambda: property(lambda _self: zero)),
-          patch.object(type(cat), 'semiminor_sigma',
+          patch.object(type(cat), 'semiminor_axis',
                        new_callable=lambda: property(lambda _self: zero)),
           patch.object(type(cat), 'cxx',
                        new_callable=lambda: property(lambda _self: cxx_val)),
@@ -2073,9 +2073,9 @@ def test_measured_kron_radius_circular_no_min_radius(gauss_101_data):
     cxx_val = np.array([1.0]) / (u.pix * u.pix)
     cyy_val = np.array([1.0]) / (u.pix * u.pix)
     cxy_val = np.array([0.0]) / (u.pix * u.pix)
-    with (patch.object(type(cat), 'semimajor_sigma',
+    with (patch.object(type(cat), 'semimajor_axis',
                        new_callable=lambda: property(lambda _self: zero)),
-          patch.object(type(cat), 'semiminor_sigma',
+          patch.object(type(cat), 'semiminor_axis',
                        new_callable=lambda: property(lambda _self: zero)),
           patch.object(type(cat), 'cxx',
                        new_callable=lambda: property(lambda _self: cxx_val)),

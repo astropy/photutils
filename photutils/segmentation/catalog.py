@@ -38,7 +38,7 @@ __all__ = ['SourceCatalog']
 # Default table columns for `to_table()` output
 DEFAULT_COLUMNS = ['label', 'xcentroid', 'ycentroid', 'sky_centroid',
                    'bbox_xmin', 'bbox_xmax', 'bbox_ymin', 'bbox_ymax',
-                   'area', 'semimajor_sigma', 'semiminor_sigma',
+                   'area', 'semimajor_axis', 'semiminor_axis',
                    'orientation', 'eccentricity', 'min_value', 'max_value',
                    'local_background', 'segment_flux', 'segment_flux_err',
                    'kron_flux', 'kron_flux_err']
@@ -47,6 +47,8 @@ DEFAULT_COLUMNS = ['label', 'xcentroid', 'ycentroid', 'sky_centroid',
 _DEPRECATED_ATTRIBUTES = {
     'segment_fluxerr': 'segment_flux_err',
     'kron_fluxerr': 'kron_flux_err',
+    'semimajor_sigma': 'semimajor_axis',
+    'semiminor_sigma': 'semiminor_axis',
 }
 
 
@@ -223,7 +225,7 @@ class SourceCatalog:
         radius and the second item represents the minimum value for
         the unscaled Kron radius in pixels. The optional third item is
         the minimum circular radius in pixels. If ``kron_params[0]``
-        * `kron_radius` * sqrt(`semimajor_sigma` * `semiminor_sigma`)
+        * `kron_radius` * sqrt(`semimajor_axis` * `semiminor_axis`)
         is less than or equal to this radius, then the Kron aperture
         will be a circle with this minimum radius. This keyword will be
         ignored if ``detection_cat`` is input.
@@ -2701,7 +2703,7 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
-    def semimajor_sigma(self):
+    def semimajor_axis(self):
         """
         The 1-sigma standard deviation along the semimajor axis of the
         2D Gaussian function that has the same second-order central
@@ -2716,7 +2718,7 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
-    def semiminor_sigma(self):
+    def semiminor_axis(self):
         """
         The 1-sigma standard deviation along the semiminor axis of the
         2D Gaussian function that has the same second-order central
@@ -2744,11 +2746,11 @@ class SourceCatalog:
                          & = 2 \sqrt{\ln(2) \ (a^2 + b^2)}
 
         where :math:`a` and :math:`b` are the 1-sigma lengths of the
-        semimajor (`semimajor_sigma`) and semiminor (`semiminor_sigma`)
+        semimajor (`semimajor_axis`) and semiminor (`semiminor_axis`)
         axes, respectively.
         """
-        return 2.0 * np.sqrt(np.log(2.0) * (self.semimajor_sigma**2
-                                            + self.semiminor_sigma**2))
+        return 2.0 * np.sqrt(np.log(2.0) * (self.semimajor_axis**2
+                                            + self.semiminor_axis**2))
 
     @lazyproperty
     @use_detcat
@@ -2802,7 +2804,7 @@ class SourceCatalog:
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
         """
-        return self.semimajor_sigma / self.semiminor_sigma
+        return self.semimajor_axis / self.semiminor_axis
 
     @lazyproperty
     @use_detcat
@@ -2819,7 +2821,7 @@ class SourceCatalog:
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
         """
-        return 1.0 - (self.semiminor_sigma / self.semimajor_sigma)
+        return 1.0 - (self.semiminor_axis / self.semimajor_axis)
 
     @lazyproperty
     @use_detcat
@@ -2873,8 +2875,8 @@ class SourceCatalog:
         `SourceExtractor`_ reports that the isophotal limit of a source
         is well represented by :math:`R \approx 3`.
         """
-        return ((np.cos(self.orientation) / self.semimajor_sigma)**2
-                + (np.sin(self.orientation) / self.semiminor_sigma)**2)
+        return ((np.cos(self.orientation) / self.semimajor_axis)**2
+                + (np.sin(self.orientation) / self.semiminor_axis)**2)
 
     @lazyproperty
     @use_detcat
@@ -2897,8 +2899,8 @@ class SourceCatalog:
         `SourceExtractor`_ reports that the isophotal limit of a source
         is well represented by :math:`R \approx 3`.
         """
-        return ((np.sin(self.orientation) / self.semimajor_sigma)**2
-                + (np.cos(self.orientation) / self.semiminor_sigma)**2)
+        return ((np.sin(self.orientation) / self.semimajor_axis)**2
+                + (np.cos(self.orientation) / self.semiminor_axis)**2)
 
     @lazyproperty
     @use_detcat
@@ -2922,8 +2924,8 @@ class SourceCatalog:
         is well represented by :math:`R \approx 3`.
         """
         return (2.0 * np.cos(self.orientation) * np.sin(self.orientation)
-                * ((1.0 / self.semimajor_sigma**2)
-                   - (1.0 / self.semiminor_sigma**2)))
+                * ((1.0 / self.semimajor_axis**2)
+                   - (1.0 / self.semiminor_axis**2)))
 
     @lazyproperty
     @use_detcat
@@ -3330,8 +3332,8 @@ class SourceCatalog:
         """
         xcen = self._xcentroid
         ycen = self._ycentroid
-        major_size = self.semimajor_sigma.value * scale
-        minor_size = self.semiminor_sigma.value * scale
+        major_size = self.semimajor_axis.value * scale
+        minor_size = self.semiminor_axis.value * scale
         theta = self.orientation.to(u.radian).value
         if self.isscalar:
             major_size = (major_size,)
@@ -3371,8 +3373,8 @@ class SourceCatalog:
 
         xcen_arr = self._xcentroid
         ycen_arr = self._ycentroid
-        a_arr = self.semimajor_sigma.value * scale
-        b_arr = self.semiminor_sigma.value * scale
+        a_arr = self.semimajor_axis.value * scale
+        b_arr = self.semiminor_axis.value * scale
         theta_arr = self.orientation.to(u.radian).value
         cxx_arr = self.cxx.value
         cxy_arr = self.cxy.value
@@ -3542,10 +3544,10 @@ class SourceCatalog:
 
         # Check for minimum circular radius
         if len(kron_params) == 3:
-            major_sigma = self.semimajor_sigma.value
-            minor_sigma = self.semiminor_sigma.value
+            semimajor_axis = self.semimajor_axis.value
+            semiminor_axis = self.semiminor_axis.value
             circ_radius = (kron_params[0] * kron_radius
-                           * np.sqrt(major_sigma * minor_sigma))
+                           * np.sqrt(semimajor_axis * semiminor_axis))
             kron_radius[circ_radius <= kron_params[2]] = 0.0
 
         return kron_radius << u.pix
@@ -3565,8 +3567,8 @@ class SourceCatalog:
 
         where :math:`I_i` are the data values and the sum is over
         pixels in an elliptical aperture whose axes are defined by
-        six times the semimajor (`semimajor_sigma`) and semiminor
-        axes (`semiminor_sigma`) at the calculated `orientation` (all
+        six times the semimajor (`semimajor_axis`) and semiminor
+        axes (`semiminor_axis`) at the calculated `orientation` (all
         properties derived from the central image moments of the
         source). :math:`r_i` is the elliptical "radius" to the pixel
         given by:
@@ -3598,8 +3600,8 @@ class SourceCatalog:
         minimum values input into `SourceCatalog`. The Kron aperture is
         used to compute the Kron photometry.
 
-        If ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma` *
-        `semiminor_sigma`) is less than or equal to the minimum circular
+        If ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_axis` *
+        `semiminor_axis`) is less than or equal to the minimum circular
         radius (``kron_params[2]``), then the Kron radius will be set to
         zero and the Kron aperture will be a circle with this minimum
         radius.
@@ -3637,8 +3639,8 @@ class SourceCatalog:
         minimum values input into `SourceCatalog`. The Kron aperture is
         used to compute the Kron photometry.
 
-        If ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma` *
-        `semiminor_sigma`) is less than or equal to the minimum circular
+        If ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_axis` *
+        `semiminor_axis`) is less than or equal to the minimum circular
         radius (``kron_params[2]``), then the Kron aperture will be a
         circle with this minimum radius.
 
@@ -3679,8 +3681,8 @@ class SourceCatalog:
             Kron radius and the second item represents the minimum
             value for the unscaled Kron radius in pixels. The optional
             third item is the minimum circular radius in pixels. If
-            ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma`
-            * `semiminor_sigma`) is less than or equal to this radius,
+            ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_axis`
+            * `semiminor_axis`) is less than or equal to this radius,
             then the Kron aperture will be a circle with this minimum
             radius. If `None`, then the ``kron_params`` input into
             `SourceCatalog` will be used (the apertures will be the same
@@ -3732,8 +3734,8 @@ class SourceCatalog:
             Kron radius and the second item represents the minimum
             value for the unscaled Kron radius in pixels. The optional
             third item is the minimum circular radius in pixels. If
-            ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma`
-            * `semiminor_sigma`) is less than or equal to this radius,
+            ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_axis`
+            * `semiminor_axis`) is less than or equal to this radius,
             then the Kron aperture will be a circle with this minimum
             radius. If `None`, then the ``kron_params`` input into
             `SourceCatalog` will be used (the apertures will be the same
@@ -3990,8 +3992,8 @@ class SourceCatalog:
             Kron radius and the second item represents the minimum
             value for the unscaled Kron radius in pixels. The optional
             third item is the minimum circular radius in pixels. If
-            ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_sigma`
-            * `semiminor_sigma`) is less than or equal to this radius,
+            ``kron_params[0]`` * `kron_radius` * sqrt(`semimajor_axis`
+            * `semiminor_axis`) is less than or equal to this radius,
             then the Kron aperture will be a circle with this minimum
             radius.
 
@@ -4093,7 +4095,7 @@ class SourceCatalog:
         The maximum circular Kron radius used as the upper limit of
         fluxfrac_radius.
         """
-        semimajor_sig = self.semimajor_sigma.value
+        semimajor_sig = self.semimajor_axis.value
         kron_radius = self.kron_radius.value
         radius = semimajor_sig * kron_radius * self.kron_params[0]
         mask = radius == 0
