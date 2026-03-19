@@ -6,7 +6,7 @@ description: |-
 tags:
 - tag_uri: tag:astropy.org:photutils/aperture/circular_aperture-1.0.0
   schema_uri: asdf://astropy.org/photutils/schemas/aperture/circular_aperture-1.0.0
-  title: CircularAperture 
+  title: CircularAperture
   description: Circular aperture with one or more positions.
 - tag_uri: tag:astropy.org:photutils/psf/airy_disk_psf-1.0.0
   schema_uri: asdf://astropy.org/photutils/schemas/psf/airy_disk_psf-1.0.0
