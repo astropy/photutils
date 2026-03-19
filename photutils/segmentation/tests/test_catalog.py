@@ -366,7 +366,7 @@ class TestSourceCatalog:
         """
         Test table.
         """
-        columns = ['label', 'xcentroid', 'ycentroid']
+        columns = ['label', 'x_centroid', 'y_centroid']
         tbl = self.cat.to_table(columns=columns)
         assert len(tbl) == 7
         assert tbl.colnames == columns
@@ -563,7 +563,7 @@ class TestSourceCatalog:
         cat = SourceCatalog(data, self.segm, error=error,
                             background=background, mask=self.mask)
 
-        props = ('xcentroid', 'ycentroid', 'area', 'orientation',
+        props = ('x_centroid', 'y_centroid', 'area', 'orientation',
                  'segment_flux', 'segment_flux_err', 'kron_flux',
                  'kron_flux_err', 'background_mean')
         obj = cat[0]
@@ -576,7 +576,7 @@ class TestSourceCatalog:
         # Test that mask=None is the same as mask=np.ma.nomask
         cat1 = SourceCatalog(data, self.segm, mask=None)
         cat2 = SourceCatalog(data, self.segm, mask=np.ma.nomask)
-        assert cat1[0].xcentroid == cat2[0].xcentroid
+        assert cat1[0].x_centroid == cat2[0].x_centroid
 
     def test_repr_str(self):
         """
@@ -1034,7 +1034,7 @@ class TestSourceCatalog:
         """
         Test properties.
         """
-        attrs = ('label', 'labels', 'slices', 'xcentroid',
+        attrs = ('label', 'labels', 'slices', 'x_centroid',
                  'segment_flux', 'kron_flux')
         for attr in attrs:
             assert attr in self.cat.properties
@@ -1287,12 +1287,12 @@ def test_centroid_win(centroid_win_data):
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         apermask_method='none')
 
-    assert cat.xcentroid[0] != cat.xcentroid_win[0]
-    assert cat.ycentroid[0] != cat.ycentroid_win[0]
+    assert cat.x_centroid[0] != cat.x_centroid_win[0]
+    assert cat.y_centroid[0] != cat.y_centroid_win[0]
     # centroid_win moved beyond 1-sigma ellipse and was reset to
     # isophotal centroid
-    assert cat.xcentroid[1] == cat.xcentroid_win[1]
-    assert cat.ycentroid[1] == cat.ycentroid_win[1]
+    assert cat.x_centroid[1] == cat.x_centroid_win[1]
+    assert cat.y_centroid[1] == cat.y_centroid_win[1]
 
 
 def test_centroid_win_migrate():
@@ -1335,8 +1335,8 @@ def test_background_centroid_coordinate_order():
     # The expected value at each centroid is approximately y_centroid
     # (since background = y)
     for i in range(cat.nlabels):
-        xcen = cat.xcentroid[i]
-        ycen = cat.ycentroid[i]
+        xcen = cat.x_centroid[i]
+        ycen = cat.y_centroid[i]
         if np.isfinite(xcen) and np.isfinite(ycen):
             # The interpolated background at the centroid should be
             # close to ycen (not xcen)
@@ -1894,8 +1894,8 @@ def test_centroid_win_aperture_mask_none_in_loop(gauss_101_catalog):
         cwin = cat.centroid_win
         # NaN from the loop resets to isophotal centroid
         # because nan_hl is False (fluxfrac_radius was valid)
-        assert_allclose(cwin[:, 0], cat.xcentroid)
-        assert_allclose(cwin[:, 1], cat.ycentroid)
+        assert_allclose(cwin[:, 0], cat.x_centroid)
+        assert_allclose(cwin[:, 1], cat.y_centroid)
 
 
 def test_centroid_win_oom_guard(gauss_101_catalog):
@@ -1913,8 +1913,8 @@ def test_centroid_win_oom_guard(gauss_101_catalog):
         cwin = cat.centroid_win
     # OOM guard should force NaN, which then resets to isophotal
     # centroid (because nan_hl is False)
-    assert_allclose(cwin[:, 0], cat.xcentroid)
-    assert_allclose(cwin[:, 1], cat.ycentroid)
+    assert_allclose(cwin[:, 0], cat.x_centroid)
+    assert_allclose(cwin[:, 1], cat.y_centroid)
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
@@ -1978,8 +1978,8 @@ def test_fluxfrac_optimizer_args_off_image(gauss_101_catalog):
     # Cache kron_photometry, then move the centroid way off-image
     _ = cat._kron_photometry
     off = np.array([500.0])
-    cat.__dict__['_xcentroid'] = off
-    cat.__dict__['_ycentroid'] = off
+    cat.__dict__['_x_centroid'] = off
+    cat.__dict__['_y_centroid'] = off
     assert np.all(np.isnan(cat.fluxfrac_radius(0.5)))
 
 
@@ -2027,8 +2027,8 @@ def test_measured_kron_radius_off_image(gauss_101_catalog):
     _data, _segm, cat = gauss_101_catalog
 
     # Move the centroid off the image
-    cat.__dict__['_xcentroid'] = np.array([5000.0])
-    cat.__dict__['_ycentroid'] = np.array([5000.0])
+    cat.__dict__['_x_centroid'] = np.array([5000.0])
+    cat.__dict__['_y_centroid'] = np.array([5000.0])
     assert np.all(np.isnan(cat.kron_radius.value))
 
 

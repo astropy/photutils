@@ -36,7 +36,7 @@ __all__ = ['SourceCatalog']
 
 
 # Default table columns for `to_table()` output
-DEFAULT_COLUMNS = ['label', 'xcentroid', 'ycentroid', 'sky_centroid',
+DEFAULT_COLUMNS = ['label', 'x_centroid', 'y_centroid', 'sky_centroid',
                    'bbox_xmin', 'bbox_xmax', 'bbox_ymin', 'bbox_ymax',
                    'area', 'semimajor_axis', 'semiminor_axis',
                    'orientation', 'eccentricity', 'min_value', 'max_value',
@@ -49,6 +49,12 @@ _DEPRECATED_ATTRIBUTES = {
     'kron_fluxerr': 'kron_flux_err',
     'semimajor_sigma': 'semimajor_axis',
     'semiminor_sigma': 'semiminor_axis',
+    'xcentroid': 'x_centroid',
+    'ycentroid': 'y_centroid',
+    'xcentroid_win': 'x_centroid_win',
+    'ycentroid_win': 'y_centroid_win',
+    'xcentroid_quad': 'x_centroid_quad',
+    'ycentroid_quad': 'y_centroid_quad',
 }
 
 
@@ -1458,9 +1464,9 @@ class SourceCatalog:
         # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
-            xcentroid = moments[:, 0, 1] / moments[:, 0, 0]
-        return np.transpose((xcentroid, ycentroid))
+            y_centroid = moments[:, 1, 0] / moments[:, 0, 0]
+            x_centroid = moments[:, 0, 1] / moments[:, 0, 0]
+        return np.transpose((x_centroid, y_centroid))
 
     @lazyproperty
     @use_detcat
@@ -1478,21 +1484,21 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    def _xcentroid(self):
+    def _x_centroid(self):
         """
         The ``x`` coordinate of the `centroid` within the source
         segment, always as an iterable.
         """
         if self.isscalar:
-            xcentroid = self.centroid[0:1]  # scalar array
+            x_centroid = self.centroid[0:1]  # scalar array
         else:
-            xcentroid = self.centroid[:, 0]
-        return xcentroid
+            x_centroid = self.centroid[:, 0]
+        return x_centroid
 
     @lazyproperty
     @use_detcat
     @as_scalar
-    def xcentroid(self):
+    def x_centroid(self):
         """
         The ``x`` coordinate of the `centroid` within the source
         segment.
@@ -1500,25 +1506,25 @@ class SourceCatalog:
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
         """
-        return self._xcentroid
+        return self._x_centroid
 
     @lazyproperty
     @use_detcat
-    def _ycentroid(self):
+    def _y_centroid(self):
         """
         The ``y`` coordinate of the `centroid` within the source
         segment, always as an iterable.
         """
         if self.isscalar:
-            ycentroid = self.centroid[1:2]  # scalar array
+            y_centroid = self.centroid[1:2]  # scalar array
         else:
-            ycentroid = self.centroid[:, 1]
-        return ycentroid
+            y_centroid = self.centroid[:, 1]
+        return y_centroid
 
     @lazyproperty
     @use_detcat
     @as_scalar
-    def ycentroid(self):
+    def y_centroid(self):
         """
         The ``y`` coordinate of the `centroid` within the source
         segment.
@@ -1526,7 +1532,7 @@ class SourceCatalog:
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
         """
-        return self._ycentroid
+        return self._y_centroid
 
     @lazyproperty
     @use_detcat
@@ -1592,7 +1598,7 @@ class SourceCatalog:
         xcen_win = []
         ycen_win = []
         for label, xcen, ycen, rad_hl, nan_hl_ in zip(
-                labels, self._xcentroid, self._ycentroid, radius_hl,
+                labels, self._x_centroid, self._y_centroid, radius_hl,
                 nan_hl, strict=True):
 
             if nan_hl_ or math.isnan(xcen) or math.isnan(ycen):
@@ -1721,8 +1727,8 @@ class SourceCatalog:
         # outside the 1-sigma ellipse or if the iteration failed (NaN
         # from aperture off-image). Sources with NaN half-light radius
         # keep NaN (no valid window size).
-        dx = self._xcentroid - xcen_win
-        dy = self._ycentroid - ycen_win
+        dx = self._x_centroid - xcen_win
+        dy = self._y_centroid - ycen_win
         cxx = self.cxx.value
         cxy = self.cxy.value
         cyy = self.cyy.value
@@ -1730,19 +1736,20 @@ class SourceCatalog:
             cxx = (cxx,)
             cxy = (cxy,)
             cyy = (cyy,)
+
         reset = ((cxx * dx**2 + cxy * dx * dy + cyy * dy**2) > 1)
         nan_cen = np.isnan(xcen_win) | np.isnan(ycen_win)
         reset |= nan_cen & ~nan_hl
         if np.any(reset):
-            xcen_win[reset] = self._xcentroid[reset]
-            ycen_win[reset] = self._ycentroid[reset]
+            xcen_win[reset] = self._x_centroid[reset]
+            ycen_win[reset] = self._y_centroid[reset]
 
         return np.transpose((xcen_win, ycen_win))
 
     @lazyproperty
     @use_detcat
     @as_scalar
-    def xcentroid_win(self):
+    def x_centroid_win(self):
         """
         The ``x`` coordinate of the "windowed" centroid
         (`centroid_win`).
@@ -1752,15 +1759,15 @@ class SourceCatalog:
         `SourceExtractor`_'s XWIN_IMAGE parameters.
         """
         if self.isscalar:
-            xcentroid = self.centroid_win[0]  # scalar array
+            x_centroid = self.centroid_win[0]  # scalar array
         else:
-            xcentroid = self.centroid_win[:, 0]
-        return xcentroid
+            x_centroid = self.centroid_win[:, 0]
+        return x_centroid
 
     @lazyproperty
     @use_detcat
     @as_scalar
-    def ycentroid_win(self):
+    def y_centroid_win(self):
         """
         The ``y`` coordinate of the "windowed" centroid
         (`centroid_win`).
@@ -1770,10 +1777,10 @@ class SourceCatalog:
         `SourceExtractor`_'s YWIN_IMAGE parameters.
         """
         if self.isscalar:
-            ycentroid = self.centroid_win[1]  # scalar array
+            y_centroid = self.centroid_win[1]  # scalar array
         else:
-            ycentroid = self.centroid_win[:, 1]
-        return ycentroid
+            y_centroid = self.centroid_win[:, 1]
+        return y_centroid
 
     @lazyproperty
     @use_detcat
@@ -1934,32 +1941,32 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
-    def xcentroid_quad(self):
+    def x_centroid_quad(self):
         """
         The ``x`` coordinate of the centroid (`centroid_quad`),
         calculated by fitting a 2D quadratic polynomial to the unmasked
         pixels in the source segment.
         """
         if self.isscalar:
-            xcentroid = self.centroid_quad[0]  # scalar array
+            x_centroid = self.centroid_quad[0]  # scalar array
         else:
-            xcentroid = self.centroid_quad[:, 0]
-        return xcentroid
+            x_centroid = self.centroid_quad[:, 0]
+        return x_centroid
 
     @lazyproperty
     @use_detcat
     @as_scalar
-    def ycentroid_quad(self):
+    def y_centroid_quad(self):
         """
         The ``y`` coordinate of the centroid (`centroid_quad`),
         calculated by fitting a 2D quadratic polynomial to the unmasked
         pixels in the source segment.
         """
         if self.isscalar:
-            ycentroid = self.centroid_quad[1]  # scalar array
+            y_centroid = self.centroid_quad[1]  # scalar array
         else:
-            ycentroid = self.centroid_quad[:, 1]
-        return ycentroid
+            y_centroid = self.centroid_quad[:, 1]
+        return y_centroid
 
     @lazyproperty
     @use_detcat
@@ -1975,7 +1982,7 @@ class SourceCatalog:
         """
         if self.wcs is None:
             return self._null_objects
-        return self.wcs.pixel_to_world(self.xcentroid, self.ycentroid)
+        return self.wcs.pixel_to_world(self.x_centroid, self.y_centroid)
 
     @lazyproperty
     @use_detcat
@@ -2007,7 +2014,8 @@ class SourceCatalog:
         """
         if self.wcs is None:
             return self._null_objects
-        return self.wcs.pixel_to_world(self.xcentroid_win, self.ycentroid_win)
+        return self.wcs.pixel_to_world(self.x_centroid_win,
+                                       self.y_centroid_win)
 
     @lazyproperty
     @use_detcat
@@ -2024,8 +2032,8 @@ class SourceCatalog:
         """
         if self.wcs is None:
             return self._null_objects
-        return self.wcs.pixel_to_world(self.xcentroid_quad,
-                                       self.ycentroid_quad)
+        return self.wcs.pixel_to_world(self.x_centroid_quad,
+                                       self.y_centroid_quad)
 
     @lazyproperty
     @use_detcat
@@ -2492,8 +2500,8 @@ class SourceCatalog:
         if self._background is None:
             bkg = self._null_values
         else:
-            xcen = self._xcentroid
-            ycen = self._ycentroid
+            xcen = self._x_centroid
+            ycen = self._y_centroid
             bkg = map_coordinates(self._background, (ycen, xcen), order=1,
                                   mode='nearest')
 
@@ -3078,7 +3086,7 @@ class SourceCatalog:
             return None
         return aperture.to_mask(**kwargs)
 
-    def _make_aperture_data(self, label, xcentroid, ycentroid, aperture_bbox,
+    def _make_aperture_data(self, label, x_centroid, y_centroid, aperture_bbox,
                             local_background, *, make_error=True):
         """
         Make cutouts of data, error, and mask arrays for aperture
@@ -3103,8 +3111,8 @@ class SourceCatalog:
             error = None
 
         # Calculate cutout centroid position
-        cutout_xycen = (xcentroid - max(0, aperture_bbox.ixmin),
-                        ycentroid - max(0, aperture_bbox.iymin))
+        cutout_xycen = (x_centroid - max(0, aperture_bbox.ixmin),
+                        y_centroid - max(0, aperture_bbox.iymin))
 
         # Mask or correct neighboring sources
         if self.apermask_method == 'none':
@@ -3148,14 +3156,14 @@ class SourceCatalog:
             position is not finite or where the source is completely
             masked.
         """
-        radius = np.broadcast_to(radius, len(self._xcentroid))
+        radius = np.broadcast_to(radius, len(self._x_centroid))
         if np.any(radius <= 0):
             msg = 'radius must be > 0'
             raise ValueError(msg)
 
         apertures = []
-        for (xcen, ycen, radius_, all_masked) in zip(self._xcentroid,
-                                                     self._ycentroid,
+        for (xcen, ycen, radius_, all_masked) in zip(self._x_centroid,
+                                                     self._y_centroid,
                                                      radius,
                                                      self._all_masked,
                                                      strict=True):
@@ -3330,8 +3338,8 @@ class SourceCatalog:
             `centroid` position or elliptical shape parameters are not
             finite or where the source is completely masked.
         """
-        xcen = self._xcentroid
-        ycen = self._ycentroid
+        xcen = self._x_centroid
+        ycen = self._y_centroid
         major_size = self.semimajor_axis.value * scale
         minor_size = self.semiminor_axis.value * scale
         theta = self.orientation.to(u.radian).value
@@ -3371,8 +3379,8 @@ class SourceCatalog:
         """
         scale = 6.0
 
-        xcen_arr = self._xcentroid
-        ycen_arr = self._ycentroid
+        xcen_arr = self._x_centroid
+        ycen_arr = self._y_centroid
         a_arr = self.semimajor_axis.value * scale
         b_arr = self.semiminor_axis.value * scale
         theta_arr = self.orientation.to(u.radian).value
@@ -4155,7 +4163,7 @@ class SourceCatalog:
 
         args = []
         for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
-                labels, self._xcentroid, self._ycentroid,
+                labels, self._x_centroid, self._y_centroid,
                 kron_flux, self._local_background, max_radius, strict=True):
 
             if (np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_)))
@@ -4385,8 +4393,8 @@ class SourceCatalog:
             raise ValueError(msg)
 
         cutouts = []
-        for (xcen, ycen, all_masked) in zip(self._xcentroid,
-                                            self._ycentroid,
+        for (xcen, ycen, all_masked) in zip(self._x_centroid,
+                                            self._y_centroid,
                                             self._all_masked, strict=True):
 
             if all_masked or np.any(~np.isfinite((xcen, ycen))):
