@@ -484,19 +484,17 @@ class SegmentationImage:
         labels = np.atleast_1d(labels)
         bad_labels = set()
 
-        # Check for positive label numbers
-        idx = np.where(labels <= 0)[0]
-        if idx.size > 0:
-            bad_labels.update(labels[idx])
-
         # Check if label is in the segmentation array
-        bad_labels.update(np.setdiff1d(labels, self.labels))
+        valid_mask = np.isin(labels, self.labels)
+        bad_labels.update(labels[~valid_mask])
 
-        if bad_labels:  # bad_labels is a set
-            if len(bad_labels) == 1:
-                msg = f'label {bad_labels} is invalid'
-                raise ValueError(msg)
-            msg = f'labels {bad_labels} are invalid'
+        if bad_labels:
+            label_str = 'label'
+            conj_str = 'is'
+            if len(bad_labels) > 1:
+                label_str = 'labels'
+                conj_str = 'are'
+            msg = f'{label_str} {bad_labels} {conj_str} invalid'
             raise ValueError(msg)
 
     def _make_cmap(self, ncolors, *, background_color='#000000ff', seed=None):
