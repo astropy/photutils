@@ -333,6 +333,15 @@ class SegmentationImage:
 
     @lazyproperty
     def _raw_slices(self):
+        """
+        A list of tuples, where each tuple contains two slices representing
+        the minimal box that contains the labeled region.
+
+        The list starts with the *non-zero* label. The returned list has
+        a length equal to the maximum label number and is indexed by
+        (label - 1). If a label is missing, then the corresponding list
+        element will be `None` instead of a slice.
+        """
         return find_objects(self.data)
 
     @lazyproperty
@@ -417,6 +426,142 @@ class SegmentationImage:
         idx = self.get_indices(np.atleast_1d(labels))
         return self.areas[idx]
 
+    def _make_polygon(self, label, slc):
+        """
+        Create a Shapely polygon for a single label using only its
+        bounding-box cutout.
+
+        Parameters
+        ----------
+        label : int
+            The label number.
+
+        slc : tuple of slices
+            The slice for the bounding box of the label.
+
+        Returns
+        -------
+        polygon : Shapely geometry or `None`
+            A Shapely Polygon or MultiPolygon, or `None` if rasterio and
+            shapely are not available.
+        """
+        if not (HAS_RASTERIO and HAS_SHAPELY):
+            return None
+
+        from rasterio.features import shapes
+        from rasterio.transform import Affine
+        from shapely.geometry import MultiPolygon, shape
+
+        cutout = self._data[slc]
+
+        # Create a mask for only this label within the cutout
+        label_mask = (cutout == label)
+
+        # Shift the vertices so that the (0, 0) origin is at the
+        # center of the lower-left pixel, offset by the slice origin
+        y0 = slc[0].start
+        x0 = slc[1].start
+        transform = Affine(1.0, 0.0, x0 - 0.5, 0.0, 1.0, y0 - 0.5)
+
+        # Create a single-label array for the cutout
+        label_data = np.where(label_mask, label, 0).astype(np.int32)
+        raw_polys = list(shapes(label_data, connectivity=8,
+                                mask=label_mask, transform=transform))
+
+        geo_polys = [poly for poly, val in raw_polys if int(val) == label]
+
+        if len(geo_polys) == 0:
+            return None
+        if len(geo_polys) == 1:
+            return shape(geo_polys[0])
+
+        return MultiPolygon([shape(poly) for poly in geo_polys])
+
+    def _make_segment(self, label):
+        """
+        Create a single `Segment` object for the given label.
+
+        Parameters
+        ----------
+        label : int
+            The label number.
+
+        Returns
+        -------
+        segment : `Segment`
+            The segment object.
+        """
+        # _raw_slices is indexed by (label - 1) since it includes all
+        # labels up to max_label, even if some are missing
+        slc = self._raw_slices[label - 1]
+        bbox = BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,
+                           iymin=slc[0].start, iymax=slc[0].stop)
+        area = np.count_nonzero(self._data[slc] == label)
+        polygon = self._make_polygon(label, slc)
+        return Segment(self.data, label, slc, bbox, area, polygon=polygon)
+
+    def get_segment(self, label):
+        """
+        Return a `Segment` object for the given label.
+
+        This is significantly faster than ``segments[index]`` for
+        segmentation images with many labels because it constructs only
+        the requested `Segment` without building the full list.
+
+        Parameters
+        ----------
+        label : int
+            The segment label number.
+
+        Returns
+        -------
+        segment : `Segment`
+            The segment object for the input label.
+
+        Raises
+        ------
+        TypeError
+            If ``label`` is not a scalar.
+
+        ValueError
+            If ``label`` is invalid.
+        """
+        if np.ndim(label) != 0:
+            msg = 'label must be a scalar value'
+            raise TypeError(msg)
+
+        self.check_labels(label)
+        return self._make_segment(label)
+
+    def get_segments(self, labels):
+        """
+        Return a list of `Segment` objects for the given labels.
+
+        This is significantly faster than indexing into ``segments``
+        when only a subset of labels is needed because it constructs
+        only the requested `Segment` objects without building the full
+        list.
+
+        Parameters
+        ----------
+        labels : int, array_like (1D, int)
+            The label number(s) for which to return `Segment` objects.
+
+        Returns
+        -------
+        segments : list of `Segment`
+            A list of `Segment` objects in the same order as the input
+            ``labels``.
+
+        Raises
+        ------
+        ValueError
+            If any input ``labels`` are invalid.
+        """
+        labels = np.atleast_1d(labels)
+        self.check_labels(labels)
+        return [self._make_segment(label) for label in labels]
+
     @lazyproperty
     def is_consecutive(self):
         """
@@ -484,19 +629,17 @@ class SegmentationImage:
         labels = np.atleast_1d(labels)
         bad_labels = set()
 
-        # Check for positive label numbers
-        idx = np.where(labels <= 0)[0]
-        if idx.size > 0:
-            bad_labels.update(labels[idx])
-
         # Check if label is in the segmentation array
-        bad_labels.update(np.setdiff1d(labels, self.labels))
+        valid_mask = np.isin(labels, self.labels)
+        bad_labels.update(labels[~valid_mask])
 
-        if bad_labels:  # bad_labels is a set
-            if len(bad_labels) == 1:
-                msg = f'label {bad_labels} is invalid'
-                raise ValueError(msg)
-            msg = f'labels {bad_labels} are invalid'
+        if bad_labels:
+            label_str = 'label'
+            conj_str = 'is'
+            if len(bad_labels) > 1:
+                label_str = 'labels'
+                conj_str = 'are'
+            msg = f'{label_str} {bad_labels} {conj_str} invalid'
             raise ValueError(msg)
 
     def _make_cmap(self, ncolors, *, background_color='#000000ff', seed=None):

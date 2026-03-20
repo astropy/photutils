@@ -1093,3 +1093,157 @@ def test_imshow_map_cbar_labelsize(segm_data):
     segm = SegmentationImage(segm_data)
     _im, cbar_info = segm.imshow_map(cbar_labelsize=8)
     assert cbar_info is not None
+
+
+class TestGetSegment:
+    """
+    Tests for get_segment and get_segments methods.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self, segm_data):
+        self.data = segm_data
+        self.segm = SegmentationImage(self.data)
+
+    def test_get_segment_basic(self):
+        """
+        Test that get_segment returns a valid Segment for each label.
+        """
+        for label in self.segm.labels:
+            seg = self.segm.get_segment(label)
+            assert isinstance(seg, Segment)
+            assert seg.label == label
+
+    def test_get_segment_matches_segments(self):
+        """
+        Test that get_segment returns the same data as indexing into the
+        segments property.
+        """
+        for idx, label in enumerate(self.segm.labels):
+            seg_new = self.segm.get_segment(label)
+            seg_old = self.segm.segments[idx]
+            assert seg_new.label == seg_old.label
+            assert seg_new.slices == seg_old.slices
+            assert seg_new.area == seg_old.area
+            assert seg_new.bbox == seg_old.bbox
+            assert_equal(seg_new.data, seg_old.data)
+
+    def test_get_segment_invalid_label(self):
+        """
+        Test that get_segment raises ValueError for an invalid label.
+        """
+        match = 'is invalid'
+        with pytest.raises(ValueError, match=match):
+            self.segm.get_segment(99)
+        with pytest.raises(ValueError, match=match):
+            self.segm.get_segment(0)
+
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+    def test_get_segment_polygon_matches(self):
+        """
+        Test that get_segment produces the same polygon as the
+        segments property.
+        """
+        for idx, label in enumerate(self.segm.labels):
+            seg_new = self.segm.get_segment(label)
+            seg_old = self.segm.segments[idx]
+            assert seg_new.polygon is not None
+            assert seg_new.polygon.equals(seg_old.polygon)
+
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+    def test_get_segment_polygon_multipolygon(self):
+        """
+        Test that get_segment returns a MultiPolygon for a
+        non-contiguous segment.
+        """
+        from shapely.geometry import MultiPolygon
+
+        data = np.zeros((10, 10), dtype=int)
+        data[1:3, 1:3] = 1
+        data[7:9, 7:9] = 1
+        segm = SegmentationImage(data)
+        seg = segm.get_segment(1)
+        assert isinstance(seg.polygon, MultiPolygon)
+
+    def test_get_segment_no_rasterio(self, monkeypatch):
+        """
+        Test that get_segment returns polygon=None without
+        rasterio/shapely.
+        """
+        import photutils.segmentation.core as core_mod
+
+        monkeypatch.setattr(core_mod, 'HAS_RASTERIO', False)
+
+        segm = SegmentationImage(self.data.copy())
+        seg = segm.get_segment(1)
+        assert isinstance(seg, Segment)
+        assert seg.polygon is None
+
+    def test_get_segments_basic(self):
+        """
+        Test that get_segments returns a list of Segments in the
+        correct order.
+        """
+        labels = [7, 3, 1]
+        segs = self.segm.get_segments(labels)
+        assert len(segs) == 3
+        assert [s.label for s in segs] == labels
+
+    def test_get_segments_single_label(self):
+        """
+        Test that get_segments works with a scalar label.
+        """
+        segs = self.segm.get_segments(5)
+        assert len(segs) == 1
+        assert segs[0].label == 5
+
+    def test_get_segments_invalid_label(self):
+        """
+        Test that get_segments raises ValueError for invalid labels.
+        """
+        match = 'is invalid'
+        with pytest.raises(ValueError, match=match):
+            self.segm.get_segments(99)
+
+        match = 'are invalid'
+        with pytest.raises(ValueError, match=match):
+            self.segm.get_segments([1, 99, 200])
+
+    def test_get_segment_multiple_labels(self):
+        """
+        Test that get_segment raises TypeError for multiple labels.
+        """
+        match = 'label must be a scalar value'
+        with pytest.raises(TypeError, match=match):
+            self.segm.get_segment([1, 3])
+        with pytest.raises(TypeError, match=match):
+            self.segm.get_segment(np.array([1, 3]))
+
+    @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
+    @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+    def test_get_segment_polygon_empty_geopolys(self):
+        """
+        Test that _make_polygon_for_label returns None when rasterio
+        returns no polygons for the target label.
+        """
+        def fake_shapes(_data, **_kwargs):
+            # Return no polygons at all
+            return iter([])
+
+        with patch('rasterio.features.shapes', fake_shapes):
+            seg = self.segm.get_segment(1)
+        assert seg.polygon is None
+
+    def test_get_segments_matches_segments(self):
+        """
+        Test that get_segments results match the segments property.
+        """
+        labels = list(self.segm.labels)
+        segs = self.segm.get_segments(labels)
+        for seg_new, seg_old in zip(segs, self.segm.segments, strict=True):
+            assert seg_new.label == seg_old.label
+            assert seg_new.slices == seg_old.slices
+            assert seg_new.area == seg_old.area
+            assert seg_new.bbox == seg_old.bbox
