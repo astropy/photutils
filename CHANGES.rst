@@ -129,6 +129,10 @@ New Features
     ``min_value``, ``max_value``, ``segment_flux``, ``segment_fluxerr``,
     ``background_sum``, and ``background_mean``. [#2199]
 
+  - Added ``SegmentationImage`` ``get_segment`` and ``get_segments``
+    methods to return the ``Segment`` object(s) for a given label or list
+    of labels. [#2228]
+
 - ``photutils.utils``
 
   - Significantly improved the performance (by factors of 3 or more) of
