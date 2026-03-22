@@ -4,7 +4,7 @@ $schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
 id: "asdf://astropy.org/photutils/schemas/psf/airy_disk_psf-1.0.0"
 title: AiryDiskPSF
 description: |
-  ASDF schema for serializing a photutils AiryDiskPSF.
+  ASDF schema for serializing a 2D Airy disk PSF model.
 
 examples:
   -
