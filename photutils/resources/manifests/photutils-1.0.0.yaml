@@ -11,4 +11,4 @@ tags:
 - tag_uri: tag:astropy.org:photutils/psf/airy_disk_psf-1.0.0
   schema_uri: asdf://astropy.org/photutils/schemas/psf/airy_disk_psf-1.0.0
   title: AiryDiskPSF
-  description: ASDF schema for serializing a photutils AiryDiskPSF.
+  description: A 2D Airy disk PSF model.
