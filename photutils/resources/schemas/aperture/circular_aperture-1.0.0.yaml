@@ -4,7 +4,7 @@ $schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
 id: "asdf://astropy.org/photutils/schemas/aperture/circular_aperture-1.0.0"
 title: CircularAperture
 description: |
-  ASDF schema for serializing a photutils CircularAperture.
+  ASDF schema for serializing a CircularAperture with one or more positions.
 examples:
   -
     - A CircularAperture with a single position and radius of 5 pixels.
