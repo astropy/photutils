@@ -133,6 +133,14 @@ New Features
     methods to return the ``Segment`` object(s) for a given label or list
     of labels. [#2228]
 
+  - Added the ability to input ``RegionVisual`` keywords to the
+    ``SegmentationImage`` ``to_regions`` method. [#2228]
+
+  - Added ``SegmentationImage`` ``get_polygon``, ``get_polygons``,
+    ``get_patch``, ``get_patches``, ``get_region``, and ``get_regions``
+    methods to return the polygon, patch, or region for a given segment
+    label or list of labels. [#2232]
+
 - ``photutils.utils``
 
   - Significantly improved the performance (by factors of 3 or more) of
