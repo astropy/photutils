@@ -299,6 +299,21 @@ class SourceCatalog:
     outside the source segment, masked pixels from the ``mask`` input,
     or any non-finite ``data`` values (NaN and inf).
 
+    **Scalar vs. Multi-source Catalogs**
+
+    A `SourceCatalog` can represent a single source or multiple
+    sources. Most properties adapt their return type accordingly: for
+    a multi-source catalog, properties return arrays or lists (one
+    element per source); for a single-source (scalar) catalog, the
+    same properties return a scalar value or a single object. For
+    example, `kron_aperture` returns a list of aperture objects for a
+    multi-source catalog, but a single aperture object for a scalar
+    catalog. Similarly, `data` returns a list of 2D cutout arrays for a
+    multi-source catalog, but a single 2D array for a scalar catalog. A
+    scalar catalog is created when the input segmentation image contains
+    only one source or when a multi-source catalog is indexed to select
+    a single source.
+
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
 
@@ -1060,6 +1075,9 @@ class SourceCatalog:
 
         This label number corresponds to the assigned pixel value in the
         `~photutils.segmentation.SegmentationImage`.
+
+        Returns an array for multi-source catalogs, or a scalar for a
+        single-source catalog.
         """
         return self._labels
 
@@ -1083,6 +1101,9 @@ class SourceCatalog:
         """
         A tuple of slice objects defining the minimal bounding box of
         the source.
+
+        Returns a list for multi-source catalogs, or a single tuple for
+        a single-source catalog.
         """
         return self._slices
 
@@ -1103,6 +1124,9 @@ class SourceCatalog:
         """
         A 2D `~numpy.ndarray` cutout of the segmentation image using the
         minimal bounding box of the source.
+
+        Returns a list of arrays for multi-source catalogs, or a single
+        array for a single-source catalog.
         """
         return self._prepare_cutouts(self._segment_img_cutouts, units=False,
                                      masked=False)
@@ -1117,6 +1141,9 @@ class SourceCatalog:
         The mask is `True` for pixels outside the source segment
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
+
+        Returns a list of arrays for multi-source catalogs, or a single
+        array for a single-source catalog.
         """
         return self._prepare_cutouts(self._segment_img_cutouts, units=False,
                                      masked=True)
@@ -1127,6 +1154,9 @@ class SourceCatalog:
         """
         A 2D `~numpy.ndarray` cutout from the data using the minimal
         bounding box of the source.
+
+        Returns a list of arrays for multi-source catalogs, or a single
+        array for a single-source catalog.
         """
         return self._prepare_cutouts(self._data_cutouts, units=True,
                                      masked=False, dtype=float)
@@ -1141,6 +1171,9 @@ class SourceCatalog:
         The mask is `True` for pixels outside the source segment
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
+
+        Returns a list of arrays for multi-source catalogs, or a single
+        array for a single-source catalog.
         """
         return self._prepare_cutouts(self._data_cutouts, units=False,
                                      masked=True, dtype=float)
@@ -1151,6 +1184,9 @@ class SourceCatalog:
         """
         A 2D `~numpy.ndarray` cutout from the convolved data using the
         minimal bounding box of the source.
+
+        Returns a list of arrays for multi-source catalogs, or a single
+        array for a single-source catalog.
         """
         return self._prepare_cutouts(self._convdata_cutouts, units=True,
                                      masked=False, dtype=float)
@@ -1165,6 +1201,9 @@ class SourceCatalog:
         The mask is `True` for pixels outside the source segment
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
+
+        Returns a list of arrays for multi-source catalogs, or a single
+        array for a single-source catalog.
         """
         return self._prepare_cutouts(self._convdata_cutouts, units=False,
                                      masked=True, dtype=float)
@@ -1175,6 +1214,9 @@ class SourceCatalog:
         """
         A 2D `~numpy.ndarray` cutout from the error array using the
         minimal bounding box of the source.
+
+        Returns a list of arrays for multi-source catalogs, or a single
+        array for a single-source catalog.
         """
         if self._error is None:
             return self._null_objects
@@ -1191,6 +1233,9 @@ class SourceCatalog:
         The mask is `True` for pixels outside the source segment
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
+
+        Returns a list of arrays for multi-source catalogs, or a single
+        array for a single-source catalog.
         """
         if self._error is None:
             return self._null_objects
@@ -1203,6 +1248,9 @@ class SourceCatalog:
         """
         A 2D `~numpy.ndarray` cutout from the background array using the
         minimal bounding box of the source.
+
+        Returns a list of arrays for multi-source catalogs, or a single
+        array for a single-source catalog.
         """
         if self._background is None:
             return self._null_objects
@@ -1219,6 +1267,9 @@ class SourceCatalog:
         The mask is `True` for pixels outside the source segment
         (labeled region of interest), masked pixels from the ``mask``
         input, or any non-finite ``data`` values (NaN and inf).
+
+        Returns a list of arrays for multi-source catalogs, or a single
+        array for a single-source catalog.
         """
         if self._background is None:
             return self._null_objects
@@ -1815,6 +1866,9 @@ class SourceCatalog:
         """
         The `~photutils.aperture.BoundingBox` of the minimal rectangular
         region containing the source segment.
+
+        Returns a list for multi-source catalogs, or a single
+        `~photutils.aperture.BoundingBox` for a single-source catalog.
         """
         return self._bbox
 
@@ -2737,6 +2791,9 @@ class SourceCatalog:
         """
         The `~photutils.aperture.RectangularAnnulus` aperture used to
         estimate the local background.
+
+        Returns a list of apertures for multi-source catalogs, or a
+        single aperture for a single-source catalog.
         """
         return self._local_background_apertures
 
@@ -3267,6 +3324,9 @@ class SourceCatalog:
 
         If a ``detection_cat`` was input to `SourceCatalog`, then its
         ``kron_aperture`` will be returned.
+
+        Returns a list of apertures for multi-source catalogs, or a
+        single aperture for a single-source catalog.
         """
         return self._make_kron_apertures(self.kron_params)
 
