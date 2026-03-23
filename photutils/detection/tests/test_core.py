@@ -229,18 +229,19 @@ class TestStarFinderCatalogBase:
                     'cutout_shape')
         assert cat._get_init_attributes() == expected
 
-    def test_lazyproperties_cache_hit(self, minimal_catalog_cls):
+    def test_lazyproperties_class_cache(self, minimal_catalog_cls):
         """
-        Test that accessing _lazyproperties twice returns the cached
-        result.
+        Test that _lazyproperties is cached on the class and shared
+        across instances.
         """
         data = np.zeros((11, 11))
         data[5, 5] = 10.0
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
-        result1 = cat._lazyproperties
-        result2 = cat._lazyproperties  # hits the cache branch
+        cat1 = minimal_catalog_cls(data, xypos, kernel)
+        cat2 = minimal_catalog_cls(data, xypos, kernel)
+        result1 = cat1._lazyproperties
+        result2 = cat2._lazyproperties
         assert result1 is result2
 
     def test_to_table_missing_default_columns(self, minimal_catalog_cls):

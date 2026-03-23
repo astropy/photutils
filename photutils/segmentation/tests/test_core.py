@@ -286,6 +286,16 @@ class TestSegmentationImage:
         """
         assert self.segm.shape == (6, 6)
 
+    def test_lazyproperties_class_cache(self):
+        """
+        Test that _lazyproperties is cached on the class and shared
+        across instances.
+        """
+        segm2 = SegmentationImage(self.data.copy())
+        result1 = self.segm._lazyproperties
+        result2 = segm2._lazyproperties
+        assert result1 is result2
+
     def test_labels(self):
         """
         Test labels.

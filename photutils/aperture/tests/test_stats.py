@@ -89,6 +89,16 @@ class TestApertureStats:
         with pytest.raises(ValueError, match=match):
             _ = ApertureStats(self.data, skyaper)
 
+    def test_lazyproperties_class_cache(self):
+        """
+        Test that _lazyproperties is cached on the class and shared
+        across instances.
+        """
+        apstats2 = ApertureStats(self.data, self.aperture)
+        result1 = self.apstats1._lazyproperties
+        result2 = apstats2._lazyproperties
+        assert result1 is result2
+
     def test_minimal_inputs(self):
         apstats = ApertureStats(self.data, self.aperture)
         props = ('sky_centroid', 'sky_centroid_icrs', 'error_sumcutout')

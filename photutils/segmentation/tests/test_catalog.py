@@ -989,6 +989,26 @@ class TestSourceCatalog:
         for attr in attrs:
             assert attr in self.cat.properties
 
+    def test_lazyproperties_class_cache(self):
+        """
+        Test that _lazyproperties is cached on the class and shared
+        across instances.
+        """
+        cat2 = SourceCatalog(self.data, self.segm)
+        result1 = self.cat._lazyproperties
+        result2 = cat2._lazyproperties
+        assert result1 is result2
+
+    def test_properties_class_cache(self):
+        """
+        Test that _properties is cached on the class and shared across
+        instances.
+        """
+        cat2 = SourceCatalog(self.data, self.segm)
+        result1 = self.cat._properties
+        result2 = cat2._properties
+        assert result1 is result2
+
     def test_copy(self):
         """
         Test copy.

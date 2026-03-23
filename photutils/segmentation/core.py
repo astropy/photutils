@@ -212,12 +212,21 @@ class SegmentationImage:
     def _lazyproperties(self):
         """
         A list of all class lazyproperties (even in superclasses).
-        """
-        def islazyproperty(obj):
-            return isinstance(obj, lazyproperty)
 
-        return [i[0] for i in inspect.getmembers(self.__class__,
-                                                 predicate=islazyproperty)]
+        The result is cached on the class to avoid repeated
+        introspection via `inspect.getmembers`.
+        """
+        cls = self.__class__
+        attr = '_cached_lazyproperties'
+        # Subclasses get their own lazyproperty list
+        if attr not in cls.__dict__:
+            def islazyproperty(obj):
+                return isinstance(obj, lazyproperty)
+
+            setattr(cls, attr,
+                    [i[0] for i in inspect.getmembers(
+                        cls, predicate=islazyproperty)])
+        return getattr(cls, attr)
 
     def _reset_lazyproperties(self):
         for key in self._lazyproperties:

@@ -468,12 +468,21 @@ class SourceCatalog:
         """
         A list of all class properties, include lazyproperties (even in
         superclasses).
-        """
-        def isproperty(obj):
-            return isinstance(obj, property)
 
-        return [i[0] for i in inspect.getmembers(self.__class__,
-                                                 predicate=isproperty)]
+        The result is cached on the class to avoid repeated
+        introspection via `inspect.getmembers`.
+        """
+        cls = self.__class__
+        attr = '_cached_properties'
+        # Subclasses get their own property list
+        if attr not in cls.__dict__:
+            def isproperty(obj):
+                return isinstance(obj, property)
+
+            setattr(cls, attr,
+                    [i[0] for i in inspect.getmembers(
+                        cls, predicate=isproperty)])
+        return getattr(cls, attr)
 
     @property
     def properties(self):
@@ -492,13 +501,21 @@ class SourceCatalog:
     def _lazyproperties(self):
         """
         A list of all class lazyproperties (even in superclasses).
+
+        The result is cached on the class to avoid repeated
+        introspection via `inspect.getmembers`.
         """
+        cls = self.__class__
+        attr = '_cached_lazyproperties'
+        # Subclasses get their own lazyproperty list
+        if attr not in cls.__dict__:
+            def islazyproperty(obj):
+                return isinstance(obj, lazyproperty)
 
-        def islazyproperty(obj):
-            return isinstance(obj, lazyproperty)
-
-        return [i[0] for i in inspect.getmembers(self.__class__,
-                                                 predicate=islazyproperty)]
+            setattr(cls, attr,
+                    [i[0] for i in inspect.getmembers(
+                        cls, predicate=islazyproperty)])
+        return getattr(cls, attr)
 
     @staticmethod
     def _index_object_list(lst, index):
