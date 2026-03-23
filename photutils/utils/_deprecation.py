@@ -106,6 +106,7 @@ class DeprecatedColumnMixin:
     """
 
     _deprecation_map = None
+    _deprecation_until = None
 
     def _warn_deprecated(self, name, new_name, stacklevel=4):
         """
@@ -122,9 +123,16 @@ class DeprecatedColumnMixin:
         stacklevel : int, optional
             The stack level for the warning. The default is 4.
         """
-        msg = (f"The column name '{name}' is deprecated; using "
-               f"'{new_name}' instead. This will be removed in a "
-               'future version.')
+        if self._deprecation_until is not None:
+            remove_str = 'version ' + str(self._deprecation_until)
+        else:
+            remove_str = 'a future version'
+        msg = (f"The column name '{name}' is deprecated. Use "
+               f"'{new_name}' instead. It will be removed in "
+               f'{remove_str}. Once you have updated your code to use '
+               f"'{new_name}', set photutils.future_column_names = True "
+               'to opt into a standard QTable without the deprecated '
+               'column name mapping.')
         warnings.warn(msg, AstropyDeprecationWarning,
                       stacklevel=stacklevel)
 
@@ -199,6 +207,7 @@ class DeprecatedColumnMixin:
         result = super().__getitem__(item)
         if isinstance(result, type(self)) and self._deprecation_map:
             result._deprecation_map = self._deprecation_map
+            result._deprecation_until = self._deprecation_until
         return result
 
     def __setitem__(self, item, value):
@@ -375,6 +384,7 @@ class DeprecatedColumnMixin:
         new_table._deprecation_map = (self._deprecation_map.copy()
                                       if self._deprecation_map
                                       else None)
+        new_table._deprecation_until = self._deprecation_until
         return new_table
 
 
@@ -390,7 +400,8 @@ class DeprecatedColumnQTable(DeprecatedColumnMixin, QTable):
     """
 
 
-def create_empty_deprecated_qtable(deprecation_map, **kwargs):
+def create_empty_deprecated_qtable(deprecation_map, *, until=None,
+                                   **kwargs):
     """
     Create an empty `DeprecatedColumnQTable`.
 
@@ -405,6 +416,11 @@ def create_empty_deprecated_qtable(deprecation_map, **kwargs):
     ----------
     deprecation_map : dict
         A dictionary mapping old (deprecated) names to new names.
+
+    until : str or int, optional
+        The version in which the old column names will be removed. If
+        `None`, the removal version is not mentioned in the warning
+        message.
 
     **kwargs : dict, optional
         Any other keywords accepted by the `~astropy.table.QTable`
@@ -445,11 +461,13 @@ def create_empty_deprecated_qtable(deprecation_map, **kwargs):
 
     table = DeprecatedColumnQTable(**kwargs)
     table._deprecation_map = deprecation_map
+    table._deprecation_until = until
     return table
 
 
-def create_deprecated_table_from_data(data, deprecation_map,
-                                      use_qtable=False, **kwargs):
+def create_deprecated_table_from_data(data, deprecation_map, *,
+                                      until=None, use_qtable=False,
+                                      **kwargs):
     """
     Create a new table from scratch with deprecated column name support.
 
@@ -470,6 +488,11 @@ def create_deprecated_table_from_data(data, deprecation_map,
 
     deprecation_map : dict
         A dictionary mapping old (deprecated) names to new names.
+
+    until : str or int, optional
+        The version in which the old column names will be removed. If
+        `None`, the removal version is not mentioned in the warning
+        message.
 
     use_qtable : bool, optional
         If ``True``, a ``DeprecatedColumnQTable`` (or
@@ -535,4 +558,5 @@ def create_deprecated_table_from_data(data, deprecation_map,
     # Create the table instance
     table = table_class(renamed_data, **kwargs)
     table._deprecation_map = deprecation_map
+    table._deprecation_until = until
     return table
