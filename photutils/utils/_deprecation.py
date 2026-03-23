@@ -19,7 +19,55 @@ import warnings
 from functools import wraps
 
 from astropy.table import QTable, Table
+from astropy.utils.decorators import (
+    deprecated_renamed_argument as astropy_deprecated_renamed_argument)
 from astropy.utils.exceptions import AstropyDeprecationWarning
+
+
+def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
+    """
+    Decorator to warn when a renamed argument is used.
+
+    This is a wrapper around
+    `astropy.utils.decorators.deprecated_renamed_argument` that allows
+    for an optional ``until`` parameter to specify when the old argument
+    name will be removed. If ``until`` is provided, the warning message
+    will include both the deprecation version and the removal version.
+
+    Parameters
+    ----------
+    old_name : str
+        The old (deprecated) argument name.
+
+    new_name : str or None
+        The new argument name that should be used instead, or `None` if
+        the argument has been removed entirely.
+
+    since : str or int
+        The version in which the argument was renamed or removed.
+
+    until : str or int, optional
+        The version in which the old argument name will be removed. If
+        `None`, the removal version is not mentioned in the warning
+        message.
+
+    Returns
+    -------
+    decorator : function
+        A decorator function that can be applied to any function to warn
+        about the use of a renamed argument.
+    """
+    if until is None:
+        return astropy_deprecated_renamed_argument(
+            old_name, new_name, since)
+
+    remove_version = 'version ' + str(until)
+    message = (f"'{old_name}' was deprecated in version {since} and will "
+               f'be removed in {remove_version}.')
+    if new_name is not None:
+        message += f" Use argument '{new_name}' instead."
+    return astropy_deprecated_renamed_argument(
+        old_name, new_name, since, message=message)
 
 
 def deprecated_positional_kwargs(since, *, until=None):
