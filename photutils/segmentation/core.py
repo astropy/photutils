@@ -73,9 +73,13 @@ class SegmentationImage:
         object.
         """
         if (isinstance(key, tuple) and len(key) == 2
-                and all(isinstance(key[i], slice)
-                        and (key[i].start != key[i].stop) for i in (0, 1))):
-            return SegmentationImage(self.data[key])
+                and all(isinstance(key[i], slice) for i in (0, 1))):
+            result = self.data[key]
+            if result.size == 0:
+                msg = ('The sliced result is empty; cannot create '
+                       'a SegmentationImage with zero size')
+                raise ValueError(msg)
+            return SegmentationImage(result)
 
         msg = f'{key!r} is not a valid 2D slice object'
         raise TypeError(msg)
@@ -166,6 +170,11 @@ class SegmentationImage:
 
         The dictionary will be empty if deblending has not been
         performed or if no sources were deblended.
+
+        Note that despite the name, this is the child-to-parent
+        mapping (i.e., the inverse of `_deblend_label_map`). See
+        `deblended_labels_inverse_map` for the parent-to-children
+        mapping.
         """
         inverse_map = {}
         for key, values in self._deblend_label_map.items():
@@ -185,6 +194,10 @@ class SegmentationImage:
 
         The dictionary will be empty if deblending has not been
         performed or if no sources were deblended.
+
+        Note that despite the name, this is the parent-to-children
+        mapping (i.e., the forward direction of `_deblend_label_map`).
+        See `deblended_labels_map` for the child-to-parent mapping.
         """
         return self._deblend_label_map
 
@@ -199,12 +212,21 @@ class SegmentationImage:
     def _lazyproperties(self):
         """
         A list of all class lazyproperties (even in superclasses).
-        """
-        def islazyproperty(obj):
-            return isinstance(obj, lazyproperty)
 
-        return [i[0] for i in inspect.getmembers(self.__class__,
-                                                 predicate=islazyproperty)]
+        The result is cached on the class to avoid repeated
+        introspection via `inspect.getmembers`.
+        """
+        cls = self.__class__
+        attr = '_cached_lazyproperties'
+        # Subclasses get their own lazyproperty list
+        if attr not in cls.__dict__:
+            def islazyproperty(obj):
+                return isinstance(obj, lazyproperty)
+
+            setattr(cls, attr,
+                    [i[0] for i in inspect.getmembers(
+                        cls, predicate=islazyproperty)])
+        return getattr(cls, attr)
 
     def _reset_lazyproperties(self):
         for key in self._lazyproperties:
@@ -227,7 +249,11 @@ class SegmentationImage:
 
         self._data = value  # pylint: disable=attribute-defined-outside-init
         self.__dict__['labels'] = labels
-        self.__dict__['_deblend_label_map'] = {}  # reset deblended labels
+
+        # Reset deblended labels explicitly since _deblend_label_map
+        # is a regular attribute, not a lazyproperty cleared by
+        # _reset_lazyproperties above.
+        self.__dict__['_deblend_label_map'] = {}
 
     @lazyproperty
     def data_ma(self):
@@ -387,6 +413,10 @@ class SegmentationImage:
         returned array has a length equal to the number of labels and
         matches the order of the ``labels`` attribute.
         """
+        # NOTE: np.bincount was benchmarked but is slower for typical
+        # large images because its cost is O(total_pixels) whereas the
+        # per-bbox loop below is O(sum_of_bbox_areas), which is much
+        # smaller when segments occupy a small fraction of the image.
         areas = []
         for label, slices in zip(self.labels, self.slices, strict=True):
             areas.append(np.count_nonzero(self._data[slices] == label))
@@ -446,6 +476,9 @@ class SegmentationImage:
             shapely are not available.
         """
         if not (HAS_RASTERIO and HAS_SHAPELY):
+            return None
+
+        if slc is None:
             return None
 
         from rasterio.features import shapes
@@ -581,8 +614,12 @@ class SegmentationImage:
         missing in the consecutive sequence from one to the maximum
         label number.
         """
-        return np.array(sorted(set(range(self.max_label + 1))
-                               .difference(np.insert(self.labels, 0, 0))))
+        if self.nlabels == 0:
+            return np.array([], dtype=int)
+        present = np.zeros(self.max_label + 1, dtype=bool)
+        present[self.labels] = True
+        present[0] = True  # exclude 0 from missing
+        return np.where(~present)[0]
 
     def copy(self):
         """
@@ -635,6 +672,7 @@ class SegmentationImage:
         bad_labels.update(labels[~valid_mask])
 
         if bad_labels:
+            bad_labels = sorted(bad_labels)
             label_str = 'label'
             conj_str = 'is'
             if len(bad_labels) > 1:
@@ -1096,7 +1134,7 @@ class SegmentationImage:
         self.check_labels(labels)
 
         labels = np.atleast_1d(labels)
-        labels_tmp = list(set(self.labels) - set(labels))
+        labels_tmp = np.setdiff1d(self.labels, labels)
         self.remove_labels(labels_tmp, relabel=relabel)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')

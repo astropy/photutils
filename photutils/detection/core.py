@@ -297,20 +297,20 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         """
         Return all lazyproperties (even in superclasses).
 
-        The result is cached per instance to avoid repeated
-        ``inspect.getmembers`` calls.
+        The result is cached on the class to avoid repeated
+        introspection via `inspect.getmembers`.
         """
-        if '_lazyproperties_cache' in self.__dict__:
-            return self.__dict__['_lazyproperties_cache']
+        cls = self.__class__
+        attr = '_cached_lazyproperties'
+        # Subclasses get their own lazyproperty list
+        if attr not in cls.__dict__:
+            def islazyproperty(obj):
+                return isinstance(obj, lazyproperty)
 
-        def islazyproperty(obj):
-            return isinstance(obj, lazyproperty)
-
-        result = [i[0] for i in
-                  inspect.getmembers(self.__class__,
-                                     predicate=islazyproperty)]
-        self.__dict__['_lazyproperties_cache'] = result
-        return result
+            setattr(cls, attr,
+                    [i[0] for i in inspect.getmembers(
+                        cls, predicate=islazyproperty)])
+        return getattr(cls, attr)
 
     @lazyproperty
     def isscalar(self):
