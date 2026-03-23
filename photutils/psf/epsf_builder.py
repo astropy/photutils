@@ -1025,13 +1025,6 @@ class EPSFBuilder:
         Whether to print the progress bar during the build
         iterations. The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
-
-    Notes
-    -----
-    If your image contains NaN values, you may see better performance if
-    you have the `bottleneck`_ package installed.
-
-    .. _bottleneck:  https://github.com/pydata/bottleneck
     """
 
     def __init__(self, *, oversampling=4, shape=None,

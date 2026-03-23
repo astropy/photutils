@@ -45,27 +45,10 @@ class Background2D:
 
     .. note::
 
-        Better performance will generally be obtained if you have
-        the `bottleneck`_ package installed. This acceleration also
-        requires that the byte order of the input data array matches
-        the byte order of the operating system. For example, the
-        `astropy.io.fits` module loads data arrays as big-endian, even
-        though most modern processors are little-endian. A big-endian
-        array can be converted to native byte order (`=`) *in-place*
-        using::
-
-            >>> data.byteswap(inplace=True)
-            >>> data.dtype = data.dtype.newbyteorder('=')
-
-        Alternative, one can use, for example::
-
-            >>> data = data.astype(float)
-
-        However, this approach creates a temporary copy of the array in
-        memory, which can be problematic for large arrays.
-
-        The ``byteswap`` and ``newbyteorder`` methods are preferred when
-        you want to convert endianness without allocating new memory.
+        Better performance will generally be obtained if you have the
+        `Bottleneck <https://github.com/pydata/bottleneck>`_ package
+        installed. See :ref:`performance-tips` for details, including
+        notes on array byte order (endianness) when loading FITS data.
 
     Parameters
     ----------
@@ -189,9 +172,6 @@ class Background2D:
 
     Notes
     -----
-    Better performance will generally be obtained if you have the
-    `bottleneck`_ package installed.
-
     Integer input data produce background and background RMS outputs
     with ``np.float32`` dtype to preserve precision from interpolation
     while minimizing memory usage. Float input data produce background
@@ -200,8 +180,6 @@ class Background2D:
     If there is only one background box element (i.e., ``box_size`` is
     the same size as (or larger than) the ``data``), then the background
     map will simply be a constant image.
-
-    .. _bottleneck:  https://github.com/pydata/bottleneck
     """
 
     @deprecated_renamed_argument('interpolator', None, '3.0')
