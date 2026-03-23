@@ -379,7 +379,7 @@ def _scalar_aperture_to_region(aperture):
     return region
 
 
-def _shapely_polygon_to_region(polygon, *, label=None):
+def _shapely_polygon_to_region(polygon, *, label=None, visual_kwargs=None):
     """
     Convert a `shapely.geometry.polygon.Polygon` object to a
     `regions.PolygonPixelRegion` object.
@@ -394,6 +394,11 @@ def _shapely_polygon_to_region(polygon, *, label=None):
         A label for the region. If provided, it will be stored in the
         meta attribute of the returned `regions.PolygonPixelRegion`
         objects.
+
+    visual_kwargs : dict or `None`, optional
+        A dictionary of visual keyword arguments to pass to
+        `regions.RegionVisual`. If provided, the visual attributes will
+        be set on the returned region(s).
 
     Returns
     -------
@@ -420,20 +425,22 @@ def _shapely_polygon_to_region(polygon, *, label=None):
     >>> region
     <PolygonPixelRegion(vertices=PixCoord(x=[1. 3. 2. 1.], y=[1. 1. 4. 2.]))>
     """
-    from regions import PixCoord, PolygonPixelRegion, Regions
+    from regions import PixCoord, PolygonPixelRegion, Regions, RegionVisual
     from shapely.geometry import MultiPolygon, Polygon
 
     meta = {'label': label} if label is not None else None
+    visual = RegionVisual(visual_kwargs) if visual_kwargs else None
 
     if isinstance(polygon, Polygon):
         x, y = np.transpose(polygon.exterior.coords[:-1])
-        return PolygonPixelRegion(vertices=PixCoord(x=x, y=y), meta=meta)
+        return PolygonPixelRegion(vertices=PixCoord(x=x, y=y), meta=meta,
+                                  visual=visual)
     if isinstance(polygon, MultiPolygon):
         geoms = []
         for poly in polygon.geoms:
             x, y = np.transpose(poly.exterior.coords[:-1])
             geoms.append(PolygonPixelRegion(vertices=PixCoord(x=x, y=y),
-                                            meta=meta))
+                                            meta=meta, visual=visual))
         return Regions(geoms)
     msg = 'Input must be a Polygon or MultiPolygon object'
     raise TypeError(msg)

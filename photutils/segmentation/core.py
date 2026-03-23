@@ -441,7 +441,7 @@ class SegmentationImage:
 
         Returns
         -------
-        polygon : Shapely geometry or `None`
+        polygon : `shapely.Polygon` or `shapely.MultiPolygon` or `None`
             A Shapely Polygon or MultiPolygon, or `None` if rasterio and
             shapely are not available.
         """
@@ -1595,8 +1595,7 @@ class SegmentationImage:
 
         Returns
         -------
-        polygon : `shapely.geometry.Polygon` or \
-                `shapely.geometry.MultiPolygon` or `None`
+        polygon : `shapely.Polygon` or `shapely.MultiPolygon` or `None`
             A Shapely Polygon or MultiPolygon object, or `None` if
             rasterio and shapely are not available.
 
@@ -1626,8 +1625,8 @@ class SegmentationImage:
 
         Returns
         -------
-        polygons : list of `shapely.geometry.Polygon`, \
-                `shapely.geometry.MultiPolygon`, or `None`
+        polygons : list of `shapely.Polygon`, `shapely.MultiPolygon`, \
+                or `None`
             A list of Shapely Polygon or MultiPolygon objects, or `None`
             elements if rasterio and shapely are not available.
 
@@ -1910,7 +1909,7 @@ class SegmentationImage:
 
         return patches
 
-    def to_regions(self, *, group=False):
+    def to_regions(self, *, group=False, **kwargs):
         """
         Return the `regions.Region` objects representing the source
         segments.
@@ -1941,6 +1940,12 @@ class SegmentationImage:
             be a `~regions.Regions` object containing multiple
             `~regions.PolygonPixelRegion` objects for that label.
 
+        **kwargs : dict, optional
+            Any keyword arguments accepted by
+            `regions.RegionVisual`. Common keywords include
+            ``edgecolor``, ``facecolor``, ``color``, ``linewidth``,
+            and ``linestyle``.
+
         Returns
         -------
         regions : `~regions.Regions`
@@ -1963,9 +1968,12 @@ class SegmentationImage:
         """
         from regions import Regions
 
+        visual_kwargs = kwargs or None
+
         regions = []
         for label, poly in zip(self.labels, self.polygons, strict=True):
-            regions.append(_shapely_polygon_to_region(poly, label=int(label)))
+            regions.append(_shapely_polygon_to_region(
+                poly, label=int(label), visual_kwargs=visual_kwargs))
 
         if group:
             return regions
@@ -1981,7 +1989,7 @@ class SegmentationImage:
 
         return Regions(flat_regions)
 
-    def get_region(self, label):
+    def get_region(self, label, **kwargs):
         """
         Return the `regions <https://astropy-regions.readthedocs.io>`_
         region object for the given label.
@@ -1994,6 +2002,12 @@ class SegmentationImage:
         ----------
         label : int
             The label number.
+
+        **kwargs : dict, optional
+            Any keyword arguments accepted by
+            `regions.RegionVisual`. Common keywords include
+            ``edgecolor``, ``facecolor``, ``color``, ``linewidth``,
+            and ``linestyle``.
 
         Returns
         -------
@@ -2013,9 +2027,9 @@ class SegmentationImage:
         if np.ndim(label) != 0:
             msg = 'label must be a scalar value'
             raise TypeError(msg)
-        return self.get_regions(label)[0]
+        return self.get_regions(label, **kwargs)[0]
 
-    def get_regions(self, labels):
+    def get_regions(self, labels, **kwargs):
         """
         Return a list of `regions
         <https://astropy-regions.readthedocs.io>`_ region objects for
@@ -2029,6 +2043,12 @@ class SegmentationImage:
         ----------
         labels : int, array_like (1D, int)
             The label number(s).
+
+        **kwargs : dict, optional
+            Any keyword arguments accepted by
+            `regions.RegionVisual`. Common keywords include
+            ``edgecolor``, ``facecolor``, ``color``, ``linewidth``,
+            and ``linestyle``.
 
         Returns
         -------
@@ -2044,10 +2064,12 @@ class SegmentationImage:
         """
         labels = np.atleast_1d(labels)
         self.check_labels(labels)
+        visual_kwargs = kwargs or None
         regions = []
         for label in labels:
             poly = self._make_polygon(label, self._raw_slices[label - 1])
-            regions.append(_shapely_polygon_to_region(poly, label=int(label)))
+            regions.append(_shapely_polygon_to_region(
+                poly, label=int(label), visual_kwargs=visual_kwargs))
         return regions
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
