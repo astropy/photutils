@@ -335,7 +335,7 @@ class TestStarFinder:
         Test that the deprecated 'brightest' keyword raises a warning
         and still works.
         """
-        match = '"brightest" was deprecated'
+        match = "'brightest' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             finder = StarFinder(threshold=5.0, kernel=kernel, brightest=5)
         assert finder.n_brightest == 5
@@ -345,7 +345,7 @@ class TestStarFinder:
         Test that the deprecated 'peakmax' keyword raises a warning
         and still works.
         """
-        match = '"peakmax" was deprecated'
+        match = "'peakmax' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             finder = StarFinder(threshold=5.0, kernel=kernel, peakmax=100.0)
         assert finder.peak_max == 100.0

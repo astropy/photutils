@@ -735,7 +735,7 @@ class TestBackground2D:
         with pytest.warns(AstropyDeprecationWarning, match=match):
             interp = BkgZoomInterpolator()
 
-        match = '"interpolator" was deprecated'
+        match = "'interpolator' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             bkg = Background2D(test_data, (25, 25), interpolator=interp)
 

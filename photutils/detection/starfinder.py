@@ -7,12 +7,12 @@ import warnings
 
 import numpy as np
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
 
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _validate_n_brightest)
 from photutils.utils._convolution import _filter_data
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -82,8 +82,9 @@ class StarFinder(StarFinderBase):
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
-    @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
-    @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
+    @deprecated_renamed_argument('brightest', 'n_brightest', '3.0',
+                                 until='4.0')
+    @deprecated_renamed_argument('peakmax', 'peak_max', '3.0', until='4.0')
     def __init__(self, threshold, kernel, min_separation=None,
                  exclude_border=False, n_brightest=None, peak_max=None):
 

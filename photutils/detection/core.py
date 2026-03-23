@@ -17,11 +17,11 @@ import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.peakfinder import find_peaks
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 from photutils.utils._misc import _get_meta
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
@@ -205,8 +205,9 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         value filtering will be performed.
     """
 
-    @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
-    @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
+    @deprecated_renamed_argument('brightest', 'n_brightest', '3.0',
+                                 until='4.0')
+    @deprecated_renamed_argument('peakmax', 'peak_max', '3.0', until='4.0')
     def __init__(self, data, xypos, kernel, *, n_brightest=None,
                  peak_max=None):
         # Validate the units, but do not strip them
