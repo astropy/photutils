@@ -551,7 +551,7 @@ class TestDAOStarFinder:
         Test that the deprecated 'brightest' keyword raises a warning
         and still works.
         """
-        match = '"brightest" was deprecated'
+        match = "'brightest' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0, brightest=5)
         assert finder.n_brightest == 5
@@ -561,7 +561,7 @@ class TestDAOStarFinder:
         Test that the deprecated 'peakmax' keyword raises a warning
         and still works.
         """
-        match = '"peakmax" was deprecated'
+        match = "'peakmax' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0, peakmax=100.0)
         assert finder.peak_max == 100.0

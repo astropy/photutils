@@ -8,11 +8,11 @@ import warnings
 
 import numpy as np
 from astropy.nddata import overlap_slices
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.centroids._utils import _process_data_mask
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
@@ -116,9 +116,9 @@ def centroid_com(data, mask=None):
 
 
 @deprecated_positional_kwargs(since='3.0', until='4.0')
-@deprecated_renamed_argument('xpeak', None, '3.0')
-@deprecated_renamed_argument('ypeak', None, '3.0')
-@deprecated_renamed_argument('search_boxsize', None, '3.0')
+@deprecated_renamed_argument('xpeak', None, '3.0', until='4.0')
+@deprecated_renamed_argument('ypeak', None, '3.0', until='4.0')
+@deprecated_renamed_argument('search_boxsize', None, '3.0', until='4.0')
 def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
                        ypeak=None, search_boxsize=None):
     """

@@ -10,7 +10,6 @@ import astropy.units as u
 import numpy as np
 from astropy.nddata import NDData, block_replicate, reshape_as_blocks
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import generic_filter
 
@@ -20,6 +19,7 @@ from photutils.background.core import (SIGMA_CLIP, SExtractorBackground,
 from photutils.background.interpolators import (BkgIDWInterpolator,
                                                 _BkgZoomInterpolator)
 from photutils.utils import ShepardIDWInterpolator
+from photutils.utils._deprecation import deprecated_renamed_argument
 from photutils.utils._parameters import as_pair, create_default_sigmaclip
 from photutils.utils._repr import make_repr
 from photutils.utils._stats import nanmedian, nanmin
@@ -182,7 +182,7 @@ class Background2D:
     map will simply be a constant image.
     """
 
-    @deprecated_renamed_argument('interpolator', None, '3.0')
+    @deprecated_renamed_argument('interpolator', None, '3.0', until='4.0')
     def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
                  fill_value=0.0, exclude_percentile=10.0, filter_size=(3, 3),
                  filter_threshold=None, sigma_clip=SIGMA_CLIP,

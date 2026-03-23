@@ -7,7 +7,6 @@ import warnings
 
 import numpy as np
 from astropy.utils import lazyproperty
-from astropy.utils.decorators import deprecated_renamed_argument
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
@@ -15,7 +14,8 @@ from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
                                       _handle_deprecated_range,
                                       _StarFinderKernel, _validate_n_brightest)
 from photutils.utils._convolution import _filter_data
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 from photutils.utils._quantity_helpers import isscalar, process_quantities
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -169,8 +169,9 @@ class IRAFStarFinder(StarFinderBase):
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
-    @deprecated_renamed_argument('brightest', 'n_brightest', '3.0')
-    @deprecated_renamed_argument('peakmax', 'peak_max', '3.0')
+    @deprecated_renamed_argument('brightest', 'n_brightest', '3.0',
+                                 until='4.0')
+    @deprecated_renamed_argument('peakmax', 'peak_max', '3.0', until='4.0')
     def __init__(self, threshold, fwhm, sigma_radius=1.5,
                  minsep_fwhm=_DEPR_DEFAULT,
                  sharplo=_DEPR_DEFAULT, sharphi=_DEPR_DEFAULT,
