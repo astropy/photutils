@@ -60,9 +60,11 @@ needs_sphinx = '8.2'  # keep in sync with pyproject.toml
 
 # Extend astropy intersphinx_mapping with packages we use here
 intersphinx_mapping.update(  # noqa: F405
-    {'regions': ('https://astropy-regions.readthedocs.io/en/stable/', None),
+    {'gwcs': ('https://gwcs.readthedocs.io/en/latest/', None),
+     'regions': ('https://astropy-regions.readthedocs.io/en/stable/', None),
+     'shapely': ('https://shapely.readthedocs.io/en/stable/', None),
      'skimage': ('https://scikit-image.org/docs/stable/', None),
-     'gwcs': ('https://gwcs.readthedocs.io/en/latest/', None)})
+     })
 
 # Exclude astropy intersphinx_mapping for unused packages
 del intersphinx_mapping['h5py']  # noqa: F405

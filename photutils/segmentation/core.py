@@ -441,7 +441,7 @@ class SegmentationImage:
 
         Returns
         -------
-        polygon : Shapely geometry or `None`
+        polygon : `shapely.Polygon` or `shapely.MultiPolygon` or `None`
             A Shapely Polygon or MultiPolygon, or `None` if rasterio and
             shapely are not available.
         """
@@ -450,7 +450,8 @@ class SegmentationImage:
 
         from rasterio.features import shapes
         from rasterio.transform import Affine
-        from shapely.geometry import MultiPolygon, shape
+        from shapely import MultiPolygon
+        from shapely.geometry import shape
 
         cutout = self._data[slc]
 
@@ -1557,7 +1558,8 @@ class SegmentationImage:
         whether the source segment is a single polygon or multiple
         polygons (e.g., holes or non-contiguous) for the same label.
         """
-        from shapely.geometry import MultiPolygon, shape
+        from shapely import MultiPolygon
+        from shapely.geometry import shape
 
         polygons = []
         for label, geo_polys in self._geojson_polygons.items():
@@ -1581,6 +1583,64 @@ class SegmentationImage:
         # MultiPolyon objects.
 
         return polygons
+
+    def get_polygon(self, label):
+        """
+        Return the `Shapely
+        <https://shapely.readthedocs.io/en/stable/>`_ polygon for the
+        given label.
+
+        Parameters
+        ----------
+        label : int
+            The label number.
+
+        Returns
+        -------
+        polygon : `shapely.Polygon` or `shapely.MultiPolygon` or `None`
+            A Shapely Polygon or MultiPolygon object, or `None` if
+            rasterio and shapely are not available.
+
+        Raises
+        ------
+        TypeError
+            If ``label`` is not a scalar.
+
+        ValueError
+            If ``label`` is invalid.
+        """
+        if np.ndim(label) != 0:
+            msg = 'label must be a scalar value'
+            raise TypeError(msg)
+        return self.get_polygons(label)[0]
+
+    def get_polygons(self, labels):
+        """
+        Return a list of `Shapely
+        <https://shapely.readthedocs.io/en/stable/>`_ polygons for the
+        given labels.
+
+        Parameters
+        ----------
+        labels : int, array_like (1D, int)
+            The label number(s).
+
+        Returns
+        -------
+        polygons : list of `shapely.Polygon`, `shapely.MultiPolygon`, \
+                or `None`
+            A list of Shapely Polygon or MultiPolygon objects, or `None`
+            elements if rasterio and shapely are not available.
+
+        Raises
+        ------
+        ValueError
+            If any input ``labels`` are invalid.
+        """
+        labels = np.atleast_1d(labels)
+        self.check_labels(labels)
+        return [self._make_polygon(label, self._raw_slices[label - 1])
+                for label in labels]
 
     @staticmethod
     def _convert_ring_to_path(ring):
@@ -1688,6 +1748,96 @@ class SegmentationImage:
                                                    scale=scale, **patch_kwargs)
                 for geometry in self.polygons]
 
+    def get_patch(self, label, *, origin=(0, 0), scale=1.0, **kwargs):
+        """
+        Return a `~matplotlib.patches.PathPatch` for the given label.
+
+        By default, the patch will have a white edge color and no face
+        color.
+
+        Parameters
+        ----------
+        label : int
+            The label number.
+
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image. This effectively translates the position of the
+            polygon.
+
+        scale : float, optional
+            The scale factor applied to the polygon vertices.
+
+        **kwargs : dict, optional
+            Any keyword arguments accepted by
+            `matplotlib.patches.PathPatch`.
+
+        Returns
+        -------
+        patch : `~matplotlib.patches.PathPatch` or `None`
+            A matplotlib patch for the source segment, or `None` if the
+            geometry is empty or rasterio and shapely are not available.
+
+        Raises
+        ------
+        TypeError
+            If ``label`` is not a scalar.
+
+        ValueError
+            If ``label`` is invalid.
+        """
+        if np.ndim(label) != 0:
+            msg = 'label must be a scalar value'
+            raise TypeError(msg)
+        return self.get_patches(label, origin=origin, scale=scale, **kwargs)[0]
+
+    def get_patches(self, labels, *, origin=(0, 0), scale=1.0, **kwargs):
+        """
+        Return a list of `~matplotlib.patches.PathPatch` objects for the
+        given labels.
+
+        By default, the patches will have a white edge color and no face
+        color.
+
+        Parameters
+        ----------
+        labels : int, array_like (1D, int)
+            The label number(s).
+
+        origin : array_like, optional
+            The ``(x, y)`` position of the origin of the displayed
+            image. This effectively translates the position of the
+            polygons.
+
+        scale : float, optional
+            The scale factor applied to the polygon vertices.
+
+        **kwargs : dict, optional
+            Any keyword arguments accepted by
+            `matplotlib.patches.PathPatch`.
+
+        Returns
+        -------
+        patches : list of `~matplotlib.patches.PathPatch`
+            A list of matplotlib patches for the source segments.
+
+        Raises
+        ------
+        ValueError
+            If any input ``labels`` are invalid.
+        """
+        labels = np.atleast_1d(labels)
+        self.check_labels(labels)
+        origin = np.array(origin)
+        patch_kwargs = {'edgecolor': 'white', 'facecolor': 'none'}
+        patch_kwargs.update(kwargs)
+        patches = []
+        for label in labels:
+            poly = self._make_polygon(label, self._raw_slices[label - 1])
+            patches.append(self._convert_shapely_to_pathpatch(
+                poly, origin=origin, scale=scale, **patch_kwargs))
+        return patches
+
     def plot_patches(self, *, ax=None, origin=(0, 0), scale=1.0, labels=None,
                      **kwargs):
         """
@@ -1761,7 +1911,7 @@ class SegmentationImage:
 
         return patches
 
-    def to_regions(self, *, group=False):
+    def to_regions(self, *, group=False, **kwargs):
         """
         Return the `regions.Region` objects representing the source
         segments.
@@ -1792,6 +1942,12 @@ class SegmentationImage:
             be a `~regions.Regions` object containing multiple
             `~regions.PolygonPixelRegion` objects for that label.
 
+        **kwargs : dict, optional
+            Any keyword arguments accepted by
+            `regions.RegionVisual`. Common keywords include
+            ``edgecolor``, ``facecolor``, ``color``, ``linewidth``,
+            and ``linestyle``.
+
         Returns
         -------
         regions : `~regions.Regions`
@@ -1814,9 +1970,12 @@ class SegmentationImage:
         """
         from regions import Regions
 
+        visual_kwargs = kwargs or None
+
         regions = []
         for label, poly in zip(self.labels, self.polygons, strict=True):
-            regions.append(_shapely_polygon_to_region(poly, label=int(label)))
+            regions.append(_shapely_polygon_to_region(
+                poly, label=int(label), visual_kwargs=visual_kwargs))
 
         if group:
             return regions
@@ -1831,6 +1990,89 @@ class SegmentationImage:
                 flat_regions.append(region)
 
         return Regions(flat_regions)
+
+    def get_region(self, label, **kwargs):
+        """
+        Return the `regions <https://astropy-regions.readthedocs.io>`_
+        region object for the given label.
+
+        The returned polygon region is defined as the exterior of the
+        source segment. Interior holes within the source segment are not
+        included.
+
+        Parameters
+        ----------
+        label : int
+            The label number.
+
+        **kwargs : dict, optional
+            Any keyword arguments accepted by
+            `regions.RegionVisual`. Common keywords include
+            ``edgecolor``, ``facecolor``, ``color``, ``linewidth``,
+            and ``linestyle``.
+
+        Returns
+        -------
+        region : `~regions.PolygonPixelRegion` or `~regions.Regions`
+            A `~regions.PolygonPixelRegion` object, or a
+            `~regions.Regions` object if the segment is a MultiPolygon
+            (e.g., non-contiguous).
+
+        Raises
+        ------
+        TypeError
+            If ``label`` is not a scalar.
+
+        ValueError
+            If ``label`` is invalid.
+        """
+        if np.ndim(label) != 0:
+            msg = 'label must be a scalar value'
+            raise TypeError(msg)
+        return self.get_regions(label, **kwargs)[0]
+
+    def get_regions(self, labels, **kwargs):
+        """
+        Return a list of `regions
+        <https://astropy-regions.readthedocs.io>`_ region objects for
+        the given labels.
+
+        The returned polygon regions are defined as the exteriors of the
+        source segments. Interior holes within the source segments are
+        not included.
+
+        Parameters
+        ----------
+        labels : int, array_like (1D, int)
+            The label number(s).
+
+        **kwargs : dict, optional
+            Any keyword arguments accepted by
+            `regions.RegionVisual`. Common keywords include
+            ``edgecolor``, ``facecolor``, ``color``, ``linewidth``,
+            and ``linestyle``.
+
+        Returns
+        -------
+        regions : list of `~regions.PolygonPixelRegion` or `~regions.Regions`
+            A list of `~regions.PolygonPixelRegion` objects, or
+            `~regions.Regions` objects for labels with MultiPolygon
+            segments (e.g., non-contiguous).
+
+        Raises
+        ------
+        ValueError
+            If any input ``labels`` are invalid.
+        """
+        labels = np.atleast_1d(labels)
+        self.check_labels(labels)
+        visual_kwargs = kwargs or None
+        regions = []
+        for label in labels:
+            poly = self._make_polygon(label, self._raw_slices[label - 1])
+            regions.append(_shapely_polygon_to_region(
+                poly, label=int(label), visual_kwargs=visual_kwargs))
+        return regions
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def imshow(self, ax=None, figsize=None, dpi=None, cmap=None, alpha=None):

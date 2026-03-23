@@ -95,8 +95,7 @@ image showing the detected sources:
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     >>> ax1.set_title('Background-subtracted Data')
-    >>> ax2.imshow(segment_map, origin='lower', cmap=segment_map.cmap,
-    ...            interpolation='nearest')
+    >>> segment_map.imshow(ax=ax2)
     >>> ax2.set_title('Segmentation Image')
 
 .. plot::
@@ -127,8 +126,7 @@ image showing the detected sources:
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     ax1.set_title('Background-subtracted Data')
-    ax2.imshow(segment_map, origin='lower', cmap=segment_map.cmap,
-               interpolation='nearest')
+    segment_map.imshow(ax=ax2)
     ax2.set_title('Segmentation Image')
     plt.tight_layout()
 
@@ -143,8 +141,8 @@ Photutils provides a :func:`~photutils.segmentation.deblend_sources`
 function that deblends sources using a combination
 of multi-thresholding and `watershed segmentation
 <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. Note
-that in order to deblend sources, they must be separated enough such
-that there is a saddle point between them.
+that in order to deblend sources, they must be separated enough that ere
+this a saddle point between them.
 
 The amount of deblending can be controlled with the two
 :func:`~photutils.segmentation.deblend_sources` keywords ``nlevels`` and
@@ -157,7 +155,7 @@ Here's a simple example of source deblending:
 .. doctest-requires:: skimage
 
     >>> from photutils.segmentation import deblend_sources
-    >>> segm_deblend = deblend_sources(convolved_data, segment_map,
+    >>> segment_map2 = deblend_sources(convolved_data, segment_map,
     ...                                npixels=10, nlevels=32, contrast=0.001,
     ...                                progress_bar=False)
 
@@ -195,13 +193,13 @@ deblended segmentation image:
 
     npixels = 10
     segment_map = detect_sources(convolved_data, threshold, npixels=npixels)
-    segm_deblend = deblend_sources(convolved_data, segment_map,
-                                   npixels=npixels, progress_bar=False)
+    deblended_segment_map = deblend_sources(convolved_data, segment_map,
+                                            npixels=npixels,
+                                            progress_bar=False)
 
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, ax = plt.subplots(1, 1, figsize=(10, 6.5))
-    ax.imshow(segm_deblend, origin='lower', cmap=segm_deblend.cmap,
-              interpolation='nearest')
+    deblended_segment_map.imshow(ax=ax)
     ax.set_title('Deblended Segmentation Image')
     plt.tight_layout()
 
@@ -232,8 +230,9 @@ Let's plot one of the deblended sources:
 
     npixels = 10
     segment_map = detect_sources(convolved_data, threshold, npixels=npixels)
-    segm_deblend = deblend_sources(convolved_data, segment_map,
-                                   npixels=npixels, progress_bar=False)
+    deblended_segment_map = deblend_sources(convolved_data, segment_map,
+                                            npixels=npixels,
+                                            progress_bar=False)
 
     norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 4))
@@ -244,8 +243,8 @@ Let's plot one of the deblended sources:
     ax2.imshow(segment_map.data[slc], origin='lower', cmap=cmap1,
                interpolation='nearest')
     ax2.set_title('Original Segment')
-    cmap2 = segm_deblend.cmap
-    ax3.imshow(segm_deblend.data[slc], origin='lower', cmap=cmap2,
+    cmap2 = deblended_segment_map.cmap
+    ax3.imshow(deblended_segment_map.data[slc], origin='lower', cmap=cmap2,
                interpolation='nearest')
     ax3.set_title('Deblended Segments')
     plt.tight_layout()
@@ -281,12 +280,12 @@ several methods that can be used to modify itself (e.g.,
 combining labels, removing labels, removing border segments) prior to
 measuring source photometry and other source properties, including:
 
-* :meth:`~photutils.segmentation.SegmentationImage.reassign_label`:
-  Reassign one or more label numbers.
-
 * :meth:`~photutils.segmentation.SegmentationImage.relabel_consecutive`:
   Reassign the label numbers consecutively, such that there are no
   missing label numbers.
+
+* :meth:`~photutils.segmentation.SegmentationImage.reassign_labels`:
+  Reassign one or more label numbers.
 
 * :meth:`~photutils.segmentation.SegmentationImage.keep_labels`:
   Keep only the specified labels.
@@ -299,6 +298,19 @@ measuring source photometry and other source properties, including:
 
 * :meth:`~photutils.segmentation.SegmentationImage.remove_masked_labels`:
   Remove labeled segments located within a masked region.
+
+Here's a simple example of removing border labels and relabeling the
+result:
+
+.. doctest-requires:: skimage
+
+    >>> segment_map3 = segment_map.copy()
+    >>> segment_map3.remove_border_labels(border_width=10, relabel=True)
+    >>> print(segment_map3)
+    <photutils.segmentation.core.SegmentationImage>
+    shape: (300, 500)
+    nlabels: 79
+    labels: [ 1  2  3  4  5 ... 75 76 77 78 79]
 
 
 Source Masks
@@ -363,6 +375,22 @@ will plot these patches directly on an existing matplotlib axes:
 
     >>> segment_map.plot_patches(edgecolor='white', lw=1.5)
 
+For working with individual labels, the
+:meth:`~photutils.segmentation.SegmentationImage.get_polygon`,
+:meth:`~photutils.segmentation.SegmentationImage.get_polygons`,
+:meth:`~photutils.segmentation.SegmentationImage.get_patch`,
+:meth:`~photutils.segmentation.SegmentationImage.get_patches`,
+:meth:`~photutils.segmentation.SegmentationImage.get_region`, and
+:meth:`~photutils.segmentation.SegmentationImage.get_regions` methods
+are significantly faster than the bulk properties when only a subset of
+labels is needed:
+
+.. doctest-skip::
+
+    >>> polygon = segment_map.get_polygon(1)
+    >>> patch = segment_map.get_patch(1, edgecolor='red', lw=2)
+    >>> region = segment_map.get_region(1)
+
 Here's an example showing the source polygons overlaid on both the
 segmentation image and the science image:
 
@@ -393,8 +421,7 @@ segmentation image and the science image:
 
     norm = simple_norm(data, 'sqrt')
     fig, (ax1, ax2) = plt.subplots(ncols=1, nrows=2, figsize=(10, 12.5))
-    ax1.imshow(segment_map, origin='lower', cmap=segment_map.cmap,
-               interpolation='nearest')
+    segment_map.imshow(ax=ax1)
     ax1.set_title('Segmentation Image')
     segment_map.plot_patches(ax=ax1, edgecolor='white', lw=1)
     ax2.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
@@ -416,6 +443,56 @@ To convert the source segments to `regions`_
 .. _regions: https://astropy-regions.readthedocs.io/en/stable/
 
 
+Segment Objects
+---------------
+
+The :class:`~photutils.segmentation.SegmentationImage` class provides
+:class:`~photutils.segmentation.Segment` objects that encapsulate
+individual labeled regions. Each `~photutils.segmentation.Segment`
+contains the label number, bounding-box slices, bounding box, area, and
+(optionally) the Shapely polygon outline.
+
+The :attr:`~photutils.segmentation.SegmentationImage.segments` property
+returns a list of `~photutils.segmentation.Segment` objects for all
+labels:
+
+.. doctest-skip::
+
+    >>> segments = segment_map.segments
+    >>> segments[0]
+    <photutils.segmentation.core.Segment>
+    label: 1
+    slices: (slice(1, 9, None), slice(207, 216, None))
+    area: 50
+
+For working with individual labels, the
+:meth:`~photutils.segmentation.SegmentationImage.get_segment` and
+:meth:`~photutils.segmentation.SegmentationImage.get_segments` methods
+are significantly faster than the bulk ``segments`` property when only a
+subset of labels is needed:
+
+.. doctest-skip::
+
+    >>> segment = segment_map.get_segment(1)
+    >>> print(segment.label, segment.area)
+    1 50
+
+    >>> segments = segment_map.get_segments([1, 5, 10])
+    >>> [segment.label for segment in segments]
+    [np.int64(1), np.int64(5), np.int64(10)]
+
+A `~photutils.segmentation.Segment` can provide cutout arrays
+of the segment data and of arbitrary data arrays via its
+:attr:`~photutils.segmentation.Segment.data` property and
+:meth:`~photutils.segmentation.Segment.make_cutout` method:
+
+.. doctest-skip::
+
+    >>> segment = segment_map.get_segment(1)
+    >>> segment_cutout = segment.data  # labeled region, others set to 0
+    >>> data_cutout = segment.make_cutout(data)  # science data cutout
+
+
 Photometry, Centroids, and Shape Properties
 -------------------------------------------
 
@@ -433,7 +510,7 @@ detected sources:
 .. doctest-requires:: skimage
 
     >>> from photutils.segmentation import SourceCatalog
-    >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
+    >>> cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
     >>> print(cat)
     <photutils.segmentation.catalog.SourceCatalog>
     Length: 93
@@ -493,8 +570,7 @@ of each source) on the data:
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
     >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     >>> ax1.set_title('Data')
-    >>> ax2.imshow(segm_deblend, origin='lower', cmap=segm_deblend.cmap,
-    ...            interpolation='nearest')
+    >>> segment_map.imshow(ax=ax2)
     >>> ax2.set_title('Segmentation Image')
     >>> cat.plot_kron_apertures(ax=ax1, color='white', lw=1.5)
     >>> cat.plot_kron_apertures(ax=ax2, color='white', lw=1.5)
@@ -530,8 +606,7 @@ of each source) on the data:
     norm = simple_norm(data, 'sqrt')
     ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
     ax1.set_title('Data with Kron apertures')
-    ax2.imshow(segment_map, origin='lower', cmap=segment_map.cmap,
-               interpolation='nearest')
+    segment_map.imshow(ax=ax2)
     ax2.set_title('Segmentation Image with Kron apertures')
     cat.plot_kron_apertures(ax=ax1, color='white', lw=1.5)
     cat.plot_kron_apertures(ax=ax2, color='white', lw=1.5)
@@ -544,7 +619,7 @@ label numbers in the segmentation image:
 
 .. doctest-requires:: skimage
 
-    >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
+    >>> cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> cat_subset = cat.get_labels(labels)
     >>> tbl2 = cat_subset.to_table()
@@ -569,7 +644,7 @@ properties can be customized in the `~astropy.table.QTable` using the
 
 .. doctest-requires:: skimage
 
-    >>> cat = SourceCatalog(data, segm_deblend, convolved_data=convolved_data)
+    >>> cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> cat_subset = cat.get_labels(labels)
     >>> columns = ['label', 'xcentroid', 'ycentroid', 'area', 'segment_flux']
@@ -607,7 +682,7 @@ properties for each source will also be calculated:
 .. doctest-requires:: scipy >= 1.8
 .. doctest-requires:: skimage
 
-    >>> cat = SourceCatalog(data, segm_deblend, background=bkg.background)
+    >>> cat = SourceCatalog(data, segment_map, background=bkg.background)
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> cat_subset = cat.get_labels(labels)
     >>> columns = ['label', 'background_centroid', 'background_mean',
@@ -664,7 +739,7 @@ instrumental flux and propagated flux error within the source segments:
     >>> from photutils.utils import calc_total_error
     >>> effective_gain = 500.0
     >>> error = calc_total_error(data, bkg.background_rms, effective_gain)
-    >>> cat = SourceCatalog(data, segm_deblend, error=error)
+    >>> cat = SourceCatalog(data, segment_map, error=error)
     >>> labels = [1, 5, 20, 50, 75, 80]
     >>> cat_subset = cat.get_labels(labels)  # select a subset of objects
     >>> columns = ['label', 'xcentroid', 'ycentroid', 'segment_flux',
@@ -736,9 +811,9 @@ measurement catalog:
 
 .. doctest-requires:: skimage
 
-    >>> det_cat = SourceCatalog(data, segm_deblend,
+    >>> det_cat = SourceCatalog(data, segment_map,
     ...                         convolved_data=convolved_data)
-    >>> measurement_cat = SourceCatalog(data, segm_deblend,
+    >>> measurement_cat = SourceCatalog(data, segment_map,
     ...                                 detection_cat=det_cat)
 
 In this example, ``measurement_cat`` uses the centroids and shape
