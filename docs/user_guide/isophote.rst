@@ -61,7 +61,7 @@ Let's show this initial ellipse guess:
     >>> from photutils.aperture import EllipticalAperture
     >>> aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
     ...                           geometry.sma * (1 - geometry.eps),
-    ...                           geometry.pa)
+    ...                           theta=geometry.pa)
     >>> plt.imshow(data, origin='lower')
     >>> aper.plot(color='white')
 
@@ -84,7 +84,8 @@ Let's show this initial ellipse guess:
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
                                pa=np.deg2rad(20.0))
     aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
-                              geometry.sma * (1 - geometry.eps), geometry.pa)
+                              geometry.sma * (1 - geometry.eps),
+                              theta=geometry.pa)
     plt.imshow(data, origin='lower')
     aper.plot(color='white')
 
@@ -156,7 +157,7 @@ position as a function of the semimajor axis length:
     data = g(x, y) + noise
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
                                pa=np.deg2rad(20.0))
-    ellipse = Ellipse(data, geometry)
+    ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
 
     plt.figure(figsize=(8, 8))
@@ -214,7 +215,7 @@ the elliptical model image, and the residual image:
     data = g(x, y) + noise
     geometry = EllipseGeometry(x0=75, y0=75, sma=20, eps=0.5,
                                pa=np.deg2rad(20.0))
-    ellipse = Ellipse(data, geometry)
+    ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
 
     model_image = build_ellipse_model(data.shape, isolist)
