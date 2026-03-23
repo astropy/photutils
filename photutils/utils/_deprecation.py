@@ -70,6 +70,67 @@ def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
         old_name, new_name, since, message=message)
 
 
+def deprecated_getattr(instance, name, deprecated_map, *, since=None,
+                       until=None):
+    """
+    Handle deprecated attribute access on an instance.
+
+    This is a helper function for ``__getattr__`` methods on classes
+    that have deprecated attribute names. It checks if ``name`` is in
+    ``deprecated_map`` and, if so, issues a deprecation warning and
+    returns the value of the new attribute. Otherwise, it raises an
+    `AttributeError`.
+
+    Parameters
+    ----------
+    instance : object
+        The instance on which the attribute was accessed.
+
+    name : str
+        The attribute name that was accessed.
+
+    deprecated_map : dict
+        A dictionary mapping old (deprecated) attribute names to their
+        new attribute names.
+
+    since : str or int, optional
+        The version in which the attribute was deprecated. If `None`,
+        the deprecation version is not mentioned in the warning message.
+
+    until : str or int, optional
+        The version in which the old attribute name will be removed.
+        If `None`, the removal version is not mentioned in the warning
+        message.
+
+    Returns
+    -------
+    value : object
+        The value of the new attribute.
+
+    Raises
+    ------
+    AttributeError
+        If ``name`` is not in ``deprecated_map``.
+    """
+    if name in deprecated_map:
+        new_name = deprecated_map[name]
+        since_str = ''
+        if since is not None:
+            since_str = f' in version {since}'
+        if until is not None:
+            remove_str = 'version ' + str(until)
+        else:
+            remove_str = 'a future version'
+        warn_msg = (f'The {name!r} attribute was deprecated{since_str}; '
+                    f'use {new_name!r} instead. It will be removed in '
+                    f'{remove_str}.')
+        warnings.warn(warn_msg, AstropyDeprecationWarning, stacklevel=3)
+        return getattr(instance, new_name)
+
+    msg = f'{type(instance).__name__!r} object has no attribute {name!r}'
+    raise AttributeError(msg)
+
+
 def deprecated_positional_kwargs(since, *, until=None):
     """
     Decorator to warn when optional arguments are passed positionally.
