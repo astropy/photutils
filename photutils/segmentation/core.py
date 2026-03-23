@@ -73,9 +73,13 @@ class SegmentationImage:
         object.
         """
         if (isinstance(key, tuple) and len(key) == 2
-                and all(isinstance(key[i], slice)
-                        and (key[i].start != key[i].stop) for i in (0, 1))):
-            return SegmentationImage(self.data[key])
+                and all(isinstance(key[i], slice) for i in (0, 1))):
+            result = self.data[key]
+            if result.size == 0:
+                msg = ('The sliced result is empty; cannot create '
+                       'a SegmentationImage with zero size')
+                raise ValueError(msg)
+            return SegmentationImage(result)
 
         msg = f'{key!r} is not a valid 2D slice object'
         raise TypeError(msg)
@@ -227,7 +231,11 @@ class SegmentationImage:
 
         self._data = value  # pylint: disable=attribute-defined-outside-init
         self.__dict__['labels'] = labels
-        self.__dict__['_deblend_label_map'] = {}  # reset deblended labels
+
+        # Reset deblended labels explicitly since _deblend_label_map
+        # is a regular attribute, not a lazyproperty cleared by
+        # _reset_lazyproperties above.
+        self.__dict__['_deblend_label_map'] = {}
 
     @lazyproperty
     def data_ma(self):
@@ -448,6 +456,9 @@ class SegmentationImage:
         if not (HAS_RASTERIO and HAS_SHAPELY):
             return None
 
+        if slc is None:
+            return None
+
         from rasterio.features import shapes
         from rasterio.transform import Affine
         from shapely import MultiPolygon
@@ -635,6 +646,7 @@ class SegmentationImage:
         bad_labels.update(labels[~valid_mask])
 
         if bad_labels:
+            bad_labels = sorted(bad_labels)
             label_str = 'label'
             conj_str = 'is'
             if len(bad_labels) > 1:
