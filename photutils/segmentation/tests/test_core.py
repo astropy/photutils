@@ -667,7 +667,7 @@ class TestSegmentationImage:
         """
         Test polygons.
         """
-        from shapely.geometry.polygon import Polygon
+        from shapely import Polygon
 
         polygons = self.segm.polygons
         assert len(polygons) == self.segm.nlabels
@@ -801,7 +801,7 @@ class TestSegmentationImage:
         """
         from matplotlib.patches import PathPatch
         from regions import PolygonPixelRegion, Regions
-        from shapely.geometry import MultiPolygon, Polygon
+        from shapely import MultiPolygon, Polygon
 
         image = np.zeros((150, 150), dtype=np.uint32)
 
@@ -1046,8 +1046,8 @@ def test_geojson_polygons_label_mismatch():
 
     # Mock rasterio.features.shapes to return a wrong label
     def fake_shapes(_data, **_kwargs):
+        from shapely import Polygon
         from shapely.geometry import mapping
-        from shapely.geometry.polygon import Polygon
 
         poly = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
         yield mapping(poly), 999  # wrong label
@@ -1087,7 +1087,7 @@ def test_convert_shapely_to_pathpatch_empty():
     """
     Test _convert_shapely_to_pathpatch returns None for empty geometry.
     """
-    from shapely.geometry import Point
+    from shapely import Point
 
     data = np.array([[0, 0, 0],
                      [0, 1, 0],
@@ -1107,7 +1107,7 @@ def test_convert_shapely_to_pathpatch_empty_geom_collection():
     Test _convert_shapely_to_pathpatch returns None for a non-Polygon
     geometry type that yields no polygons (empty all_vertices).
     """
-    from shapely.geometry import GeometryCollection
+    from shapely import GeometryCollection
 
     data = np.array([[0, 0, 0],
                      [0, 1, 0],
@@ -1212,7 +1212,7 @@ class TestGetSegment:
         Test that get_segment returns a MultiPolygon for a
         non-contiguous segment.
         """
-        from shapely.geometry import MultiPolygon
+        from shapely import MultiPolygon
 
         data = np.zeros((10, 10), dtype=int)
         data[1:3, 1:3] = 1
@@ -1319,7 +1319,7 @@ class TestGetPolygon:
         """
         Test that get_polygon returns a Shapely geometry for each label.
         """
-        from shapely.geometry import MultiPolygon, Polygon
+        from shapely import MultiPolygon, Polygon
 
         for label in self.segm.labels:
             poly = self.segm.get_polygon(label)
@@ -1364,7 +1364,7 @@ class TestGetPolygon:
         """
         Test that get_polygons returns a list in the correct order.
         """
-        from shapely.geometry import MultiPolygon, Polygon
+        from shapely import MultiPolygon, Polygon
 
         labels = [7, 3, 1]
         polys = self.segm.get_polygons(labels)

@@ -450,7 +450,8 @@ class SegmentationImage:
 
         from rasterio.features import shapes
         from rasterio.transform import Affine
-        from shapely.geometry import MultiPolygon, shape
+        from shapely import MultiPolygon
+        from shapely.geometry import shape
 
         cutout = self._data[slc]
 
@@ -1557,7 +1558,8 @@ class SegmentationImage:
         whether the source segment is a single polygon or multiple
         polygons (e.g., holes or non-contiguous) for the same label.
         """
-        from shapely.geometry import MultiPolygon, shape
+        from shapely import MultiPolygon
+        from shapely.geometry import shape
 
         polygons = []
         for label, geo_polys in self._geojson_polygons.items():

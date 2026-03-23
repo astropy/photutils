@@ -510,7 +510,7 @@ def test_invalid_inputs():
 @pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
 def test_shapely_polygon_to_region():
     from regions import PixCoord, PolygonPixelRegion
-    from shapely.geometry import Polygon
+    from shapely import Polygon
 
     ref_region = PolygonPixelRegion(vertices=PixCoord(x=[1, 3, 2, 1],
                                                       y=[1, 1, 4, 2]))

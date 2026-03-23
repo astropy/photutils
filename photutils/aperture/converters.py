@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 Tools for converting between `regions.Region` and Aperture objects
-and between `shapely.geometry.Polygon` and `regions.PolygonRegion`
+and between `shapely.Polygon` and `regions.PolygonRegion`
 objects.
 """
 
@@ -381,13 +381,12 @@ def _scalar_aperture_to_region(aperture):
 
 def _shapely_polygon_to_region(polygon, *, label=None, visual_kwargs=None):
     """
-    Convert a `shapely.geometry.polygon.Polygon` object to a
-    `regions.PolygonPixelRegion` object.
+    Convert a `shapely.Polygon` object to a `regions.PolygonPixelRegion`
+    object.
 
     Parameters
     ----------
-    polygon : `shapely.geometry.polygon.Polygon` \
-            or `shapely.geometry.MultiPolygon`
+    polygon : `shapely.Polygon` or `shapely.MultiPolygon`
         A Shapely Polygon or MultiPolygon object.
 
     label : str or `None`, optional
@@ -403,11 +402,11 @@ def _shapely_polygon_to_region(polygon, *, label=None, visual_kwargs=None):
     Returns
     -------
     result : list of `regions.PolygonPixelRegion` or `regions.Regions`
-        If the polygon is a `shapely.geometry.polygon.Polygon`,
-        then a `regions.PolygonPixelRegion` object is returned. If
-        the polygon is a `shapely.geometry.MultiPolygon`, then a
-        `regions.Regions` object is returned containing one or more
-        `regions.PolygonPixelRegion` objects.
+        If the polygon is a `shapely.Polygon`, then a
+        `regions.PolygonPixelRegion` object is returned. If the polygon
+        is a `shapely.MultiPolygon`, then a `regions.Regions` object is
+        returned containing one or more `regions.PolygonPixelRegion`
+        objects.
 
     Notes
     -----
@@ -418,7 +417,7 @@ def _shapely_polygon_to_region(polygon, *, label=None, visual_kwargs=None):
 
     Examples
     --------
-    >>> from shapely.geometry import Polygon
+    >>> from shapely import Polygon
     >>> from photutils.aperture.converters import _shapely_polygon_to_region
     >>> polygon = Polygon([(1, 1), (3, 1), (2, 4), (1, 2)])
     >>> region = _shapely_polygon_to_region(polygon)
@@ -426,7 +425,7 @@ def _shapely_polygon_to_region(polygon, *, label=None, visual_kwargs=None):
     <PolygonPixelRegion(vertices=PixCoord(x=[1. 3. 2. 1.], y=[1. 1. 4. 2.]))>
     """
     from regions import PixCoord, PolygonPixelRegion, Regions, RegionVisual
-    from shapely.geometry import MultiPolygon, Polygon
+    from shapely import MultiPolygon, Polygon
 
     meta = {'label': label} if label is not None else None
     visual = RegionVisual(visual_kwargs) if visual_kwargs else None
