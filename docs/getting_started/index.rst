@@ -11,4 +11,5 @@ Getting Started
     overview
     importing
     pixel_conventions
+    performance_tips
     citation
