@@ -14,7 +14,9 @@ from photutils.utils._deprecation import (DeprecatedColumnQTable,
                                           DeprecatedColumnTable,
                                           create_deprecated_table_from_data,
                                           create_empty_deprecated_qtable,
-                                          deprecated_positional_kwargs)
+                                          deprecated_getattr,
+                                          deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 
 DEPRECATION_MAP = {'old': 'new', 'old_b': 'new_b'}
 
@@ -397,7 +399,7 @@ def _example_func(a, b=10, c=20):
     return a + b + c
 
 
-class TestWarnPositionalKwargs:
+class TestDeprecatedPositionalKwargs:
     """
     Tests for the deprecated_positional_kwargs decorator.
     """
@@ -554,3 +556,241 @@ class TestWarnPositionalKwargs:
         assert result == 3
         msg = str(record[0].message)
         assert "'b'" in msg
+
+
+@deprecated_renamed_argument('b', 'new', '1.0', until='2.0')
+def _example_func2(a, new, c=20):
+    """
+    Example function for testing deprecated_renamed_argument.
+    """
+    return a + new + c
+
+
+@deprecated_renamed_argument('b', 'new', '1.0', until=None)
+def _example_func3(a, new, c=20):
+    """
+    Example function for testing deprecated_renamed_argument
+    with no "until" version specified.
+    """
+    return a + new + c
+
+
+def test_deprecated_renamed_argument():
+    # Test that using the new name works without warnings
+    result = _example_func2(1, new=5, c=3)
+    assert result == 9
+
+    # Test that using the old name issues a warning and still works
+    with pytest.warns(AstropyDeprecationWarning) as record:
+        result = _example_func2(1, b=5, c=3)
+    assert result == 9
+    msg = str(record[0].message)
+    assert "'b' was deprecated" in msg
+    assert "'new'" in msg
+    assert 'version 2.0' in msg
+
+    # Test that if until=None, the warning is issued but no end version
+    # is mentioned
+    with pytest.warns(AstropyDeprecationWarning) as record:
+        result = _example_func3(1, b=5, c=3)
+    assert result == 9
+    msg = str(record[0].message)
+    assert 'deprecated' in msg.lower()
+    assert 'future version' in msg
+
+
+def test_deprecated_renamed_argument_always_warns():
+    # Test that the warning is issued on every call, not just the first
+    # time from a given call site.
+    with pytest.warns(AstropyDeprecationWarning):
+        _example_func2(1, b=5)
+    with pytest.warns(AstropyDeprecationWarning):
+        _example_func2(1, b=5)
+
+
+class TestColumnDeprecationUntil:
+    """
+    Tests for the ``until`` parameter in column deprecation.
+    """
+
+    def test_until_in_warning_message(self):
+        """
+        Test that the removal version appears in the warning message.
+        """
+        table = create_deprecated_table_from_data(
+            {'old': [1]}, DEPRECATION_MAP, until='5.0')
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = table['old']
+        msg = str(record[0].message)
+        assert 'version 5.0' in msg
+
+    def test_until_none(self):
+        """
+        Test that without ``until``, the message says "a future
+        version".
+        """
+        table = create_deprecated_table_from_data(
+            {'old': [1]}, DEPRECATION_MAP)
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = table['old']
+        msg = str(record[0].message)
+        assert 'a future version' in msg
+
+    def test_future_column_names(self):
+        """
+        Test that the warning mentions ``future_column_names``.
+        """
+        table = create_deprecated_table_from_data(
+            {'old': [1]}, DEPRECATION_MAP)
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = table['old']
+        msg = str(record[0].message)
+        assert 'future_column_names' in msg
+
+    def test_until_preserved_on_copy(self):
+        """
+        Test that copy() preserves the ``until`` value.
+        """
+        table = create_deprecated_table_from_data(
+            {'old': [1]}, DEPRECATION_MAP, until='5.0')
+        copied = table.copy()
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = copied['old']
+        msg = str(record[0].message)
+        assert 'version 5.0' in msg
+
+    def test_until_preserved_on_slice(self):
+        """
+        Test that slicing preserves the ``until`` value.
+        """
+        table = create_deprecated_table_from_data(
+            {'old': [1, 2]}, DEPRECATION_MAP, until='5.0')
+        sliced = table[0:1]
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = sliced['old']
+        msg = str(record[0].message)
+        assert 'version 5.0' in msg
+
+    def test_empty_qtable_until(self):
+        """
+        Test that create_empty_deprecated_qtable passes ``until``.
+        """
+        table = create_empty_deprecated_qtable(
+            DEPRECATION_MAP, until='6.0')
+        table['new'] = [1, 2]
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = table['old']
+        msg = str(record[0].message)
+        assert 'version 6.0' in msg
+
+
+class _ExampleObj:
+    """
+    A helper class for testing ``deprecated_getattr``.
+    """
+
+    def __init__(self):
+        self.new_attr = 42
+        self._deprecated_attrs = {'old_attr': 'new_attr'}
+
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, self._deprecated_attrs)
+
+
+class _ExampleObjSinceUntil:
+    """
+    A helper class for testing ``deprecated_getattr`` with since/until.
+    """
+
+    def __init__(self):
+        self.new_attr = 42
+        self._deprecated_attrs = {'old_attr': 'new_attr'}
+
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, self._deprecated_attrs,
+                                  since='3.0', until='4.0')
+
+
+class TestDeprecatedGetattr:
+    """
+    Tests for the ``deprecated_getattr`` helper function.
+    """
+
+    def test_deprecated_access_warns(self):
+        """
+        Test that accessing a deprecated attribute issues a warning.
+        """
+        obj = _ExampleObj()
+        match = "'old_attr'.*deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            val = obj.old_attr
+        assert val == 42
+
+    def test_new_name_no_warning(self):
+        """
+        Test that the new attribute does not trigger a warning.
+        """
+        obj = _ExampleObj()
+        assert obj.new_attr == 42
+
+    def test_unknown_attr_raises(self):
+        """
+        Test that an unknown attribute raises AttributeError.
+        """
+        obj = _ExampleObj()
+        match = 'no attribute'
+        with pytest.raises(AttributeError, match=match):
+            _ = obj.nonexistent
+
+    def test_message_no_since_no_until(self):
+        """
+        Test the default message (no "since", no "until").
+        """
+        obj = _ExampleObj()
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = obj.old_attr
+        msg = str(record[0].message)
+        assert "'old_attr'" in msg
+        assert "'new_attr'" in msg
+        assert 'a future version' in msg
+        assert 'in version' not in msg
+
+    def test_message_with_since_and_until(self):
+        """
+        Test the message includes "since" and "until" versions.
+        """
+        obj = _ExampleObjSinceUntil()
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = obj.old_attr
+        msg = str(record[0].message)
+        assert 'in version 3.0' in msg
+        assert 'version 4.0' in msg
+
+    def test_message_with_since_only(self):
+        """
+        Test the message when only "since" is provided.
+        """
+        obj = _ExampleObj()
+        dep_map = {'x': 'y'}
+        obj.y = 99
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            val = deprecated_getattr(obj, 'x', dep_map, since='2.0')
+        assert val == 99
+        msg = str(record[0].message)
+        assert 'in version 2.0' in msg
+        assert 'a future version' in msg
+
+    def test_message_with_until_only(self):
+        """
+        Test the message when only "until" is provided.
+        """
+        obj = _ExampleObj()
+        dep_map = {'x': 'y'}
+        obj.y = 99
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            val = deprecated_getattr(obj, 'x', dep_map, until='5.0')
+        assert val == 99
+        msg = str(record[0].message)
+        assert 'version 5.0' in msg
+        # since was not given, so "deprecated in version" should not appear
+        assert 'deprecated in version' not in msg
