@@ -605,8 +605,12 @@ class SegmentationImage:
         missing in the consecutive sequence from one to the maximum
         label number.
         """
-        return np.array(sorted(set(range(self.max_label + 1))
-                               .difference(np.insert(self.labels, 0, 0))))
+        if self.nlabels == 0:
+            return np.array([], dtype=int)
+        present = np.zeros(self.max_label + 1, dtype=bool)
+        present[self.labels] = True
+        present[0] = True  # exclude 0 from missing
+        return np.where(~present)[0]
 
     def copy(self):
         """
@@ -1121,7 +1125,7 @@ class SegmentationImage:
         self.check_labels(labels)
 
         labels = np.atleast_1d(labels)
-        labels_tmp = list(set(self.labels) - set(labels))
+        labels_tmp = np.setdiff1d(self.labels, labels)
         self.remove_labels(labels_tmp, relabel=relabel)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')

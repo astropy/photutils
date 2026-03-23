@@ -70,6 +70,25 @@ class TestSegmentationImage:
         with pytest.raises(TypeError, match=match):
             self.segm[1:10]
 
+        match = 'The sliced result is empty'
+        with pytest.raises(ValueError, match=match):
+            self.segm[1:1, 2:4]
+        with pytest.raises(ValueError, match=match):
+            self.segm[5:2, 0:3]
+
+    def test_labels_via_raw_slices(self):
+        """
+        Test that labels can be derived from _raw_slices when that
+        lazyproperty is already cached.
+        """
+        segm = SegmentationImage(self.data.copy())
+        # Force _raw_slices to be cached
+        _ = segm._raw_slices
+        # Remove labels from instance dict to force the _raw_slices path
+        del segm.__dict__['labels']
+        labels = segm.labels
+        assert_equal(labels, [1, 3, 4, 5, 7])
+
     def test_data_all_zeros(self):
         """
         Test data all zeros.
@@ -346,6 +365,13 @@ class TestSegmentationImage:
         """
         assert_allclose(self.segm.missing_labels, [2, 6])
 
+    def test_missing_labels_empty(self):
+        """
+        Test missing_labels with no non-zero labels.
+        """
+        segm = SegmentationImage(np.zeros((5, 5), dtype=int))
+        assert_equal(segm.missing_labels, [])
+
     def test_check_labels(self):
         """
         Test check labels.
@@ -360,11 +386,13 @@ class TestSegmentationImage:
         with pytest.raises(ValueError, match=match):
             self.segm.check_labels([2, 6])
 
-    @pytest.mark.parametrize(('label', 'expected'), [(1, (0, 1, 0, 2)),
-                                                     (3, (2, 3, 2, 4)),
-                                                     (4, (0, 2, 4, 6)),
-                                                     (5, (3, 6, 3, 6)),
-                                                     (7, (3, 6, 0, 2))])
+    @pytest.mark.parametrize(('label', 'expected'), [
+        (1, (0, 1, 0, 2)),
+        (3, (2, 3, 2, 4)),
+        (4, (0, 2, 4, 6)),
+        (5, (3, 6, 3, 6)),
+        (7, (3, 6, 0, 2)),
+    ])
     def test_bbox_values(self, label, expected):
         """
         Test that bbox returns correct bounding box coordinates for
@@ -1401,6 +1429,12 @@ class TestGetPolygon:
         with patch('rasterio.features.shapes', fake_shapes):
             poly = self.segm.get_polygon(1)
         assert poly is None
+
+    def test_make_polygon_none_slice(self):
+        """
+        Test that _make_polygon returns None when slc is None.
+        """
+        assert self.segm._make_polygon(99, None) is None
 
 
 @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
