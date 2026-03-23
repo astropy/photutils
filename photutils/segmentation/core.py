@@ -170,6 +170,11 @@ class SegmentationImage:
 
         The dictionary will be empty if deblending has not been
         performed or if no sources were deblended.
+
+        Note that despite the name, this is the child-to-parent
+        mapping (i.e., the inverse of `_deblend_label_map`). See
+        `deblended_labels_inverse_map` for the parent-to-children
+        mapping.
         """
         inverse_map = {}
         for key, values in self._deblend_label_map.items():
@@ -189,6 +194,10 @@ class SegmentationImage:
 
         The dictionary will be empty if deblending has not been
         performed or if no sources were deblended.
+
+        Note that despite the name, this is the parent-to-children
+        mapping (i.e., the forward direction of `_deblend_label_map`).
+        See `deblended_labels_map` for the child-to-parent mapping.
         """
         return self._deblend_label_map
 
@@ -395,6 +404,10 @@ class SegmentationImage:
         returned array has a length equal to the number of labels and
         matches the order of the ``labels`` attribute.
         """
+        # NOTE: np.bincount was benchmarked but is slower for typical
+        # large images because its cost is O(total_pixels) whereas the
+        # per-bbox loop below is O(sum_of_bbox_areas), which is much
+        # smaller when segments occupy a small fraction of the image.
         areas = []
         for label, slices in zip(self.labels, self.slices, strict=True):
             areas.append(np.count_nonzero(self._data[slices] == label))
