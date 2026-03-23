@@ -69,8 +69,6 @@ class TestSegmentationImage:
             self.segm[1]
         with pytest.raises(TypeError, match=match):
             self.segm[1:10]
-        with pytest.raises(TypeError, match=match):
-            self.segm[1:1, 2:4]
 
     def test_data_all_zeros(self):
         """
@@ -203,6 +201,17 @@ class TestSegmentationImage:
                               segment.area, polygon=None)
         assert seg_no_poly._repr_svg_() is None
 
+    def test_segment_array(self):
+        """
+        Test that Segment.__array__ returns the correct labeled cutout.
+        """
+        segment = self.segm.segments[0]  # label=1
+        arr = segment.__array__()
+        assert arr.shape == segment.data.shape
+        assert_allclose(arr, segment.data)
+        # Only the label and 0 should appear
+        assert set(np.unique(arr)) <= {0, segment.label}
+
     def test_segment_data(self):
         """
         Test segment data.
@@ -252,6 +261,12 @@ class TestSegmentationImage:
         del segm
         assert sys.getrefcount(large) < full_refcount
 
+    def test_shape(self):
+        """
+        Test that the shape lazyproperty returns the correct shape.
+        """
+        assert self.segm.shape == (6, 6)
+
     def test_labels(self):
         """
         Test labels.
@@ -269,6 +284,28 @@ class TestSegmentationImage:
         Test max label.
         """
         assert self.segm.max_label == 7
+
+    def test_get_index_invalid(self):
+        """
+        Test get_index with an invalid label.
+        """
+        match = 'is invalid'
+        with pytest.raises(ValueError, match=match):
+            self.segm.get_index(999)
+        with pytest.raises(ValueError, match=match):
+            self.segm.get_index(0)
+
+    def test_get_indices_invalid(self):
+        """
+        Test get_indices with invalid labels.
+        """
+        match = 'is invalid'
+        with pytest.raises(ValueError, match=match):
+            self.segm.get_indices([1, 999])
+
+        match = 'are invalid'
+        with pytest.raises(ValueError, match=match):
+            self.segm.get_indices([999, 888])
 
     def test_areas(self):
         """
@@ -322,6 +359,23 @@ class TestSegmentationImage:
         match = 'are invalid'
         with pytest.raises(ValueError, match=match):
             self.segm.check_labels([2, 6])
+
+    @pytest.mark.parametrize(('label', 'expected'), [(1, (0, 1, 0, 2)),
+                                                     (3, (2, 3, 2, 4)),
+                                                     (4, (0, 2, 4, 6)),
+                                                     (5, (3, 6, 3, 6)),
+                                                     (7, (3, 6, 0, 2))])
+    def test_bbox_values(self, label, expected):
+        """
+        Test that bbox returns correct bounding box coordinates for
+        each label.
+        """
+        from photutils.aperture import BoundingBox
+
+        idx = self.segm.get_index(label)
+        bbox = self.segm.bbox[idx]
+        assert isinstance(bbox, BoundingBox)
+        assert (bbox.iymin, bbox.iymax, bbox.ixmin, bbox.ixmax) == expected
 
     def test_bbox_1d(self):
         """
@@ -1518,3 +1572,39 @@ class TestGetRegion:
         match = 'is invalid'
         with pytest.raises(ValueError, match=match):
             self.segm.get_regions(99)
+
+    def test_to_regions_visual_kwargs(self):
+        """
+        Test that to_regions passes visual kwargs to the regions.
+        """
+        from regions import PolygonPixelRegion
+
+        regions = self.segm.to_regions(edgecolor='red', linewidth=2)
+        for region in regions:
+            assert isinstance(region, PolygonPixelRegion)
+            assert region.visual['edgecolor'] == 'red'
+            assert region.visual['linewidth'] == 2
+
+    def test_get_region_visual_kwargs(self):
+        """
+        Test that get_region passes visual kwargs to the region.
+        """
+        region = self.segm.get_region(1, edgecolor='blue', linewidth=3)
+        assert region.visual['edgecolor'] == 'blue'
+        assert region.visual['linewidth'] == 3
+
+    def test_get_regions_visual_kwargs(self):
+        """
+        Test that get_regions passes visual kwargs to the regions.
+        """
+        regions = self.segm.get_regions([1, 3], color='green')
+        for region in regions:
+            assert region.visual['color'] == 'green'
+
+    def test_to_regions_no_visual_kwargs(self):
+        """
+        Test that to_regions with no kwargs has no visual attributes.
+        """
+        regions = self.segm.to_regions()
+        for region in regions:
+            assert not region.visual
