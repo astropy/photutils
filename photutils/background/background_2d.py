@@ -51,18 +51,21 @@ class Background2D:
         the byte order of the operating system. For example, the
         `astropy.io.fits` module loads data arrays as big-endian, even
         though most modern processors are little-endian. A big-endian
-        array can be converted to native byte order ('=') in place
+        array can be converted to native byte order (`=`) *in-place*
         using::
 
             >>> data.byteswap(inplace=True)
-            >>> data = data.view(data.dtype.newbyteorder('='))
+            >>> data.dtype = data.dtype.newbyteorder('=')
 
-        One can also use, e.g.,::
+        Alternative, one can use, for example::
 
             >>> data = data.astype(float)
 
-        but this will temporarily create a new copy of the array in
-        memory.
+        However, this approach creates a temporary copy of the array in
+        memory, which can be problematic for large arrays.
+
+        The ``byteswap`` and ``newbyteorder`` methods are preferred when
+        you want to convert endianness without allocating new memory.
 
     Parameters
     ----------
