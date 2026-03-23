@@ -141,6 +141,9 @@ New Features
     methods to return the polygon, patch, or region for a given segment
     label or list of labels. [#2232]
 
+  - Improved the performance of the ``SegmentationImage``
+    ``keep_labels`` method and ``missing_labels`` attribute. [#2234]
+
 - ``photutils.utils``
 
   - Significantly improved the performance (by factors of 3 or more) of
