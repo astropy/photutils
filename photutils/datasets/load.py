@@ -11,7 +11,8 @@ from astropy.table import Table
 from astropy.utils.data import (download_file, get_pkg_data_filename,
                                 is_url_in_cache)
 
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated,
+                                          deprecated_positional_kwargs)
 
 __all__ = [
     'get_path',
@@ -23,8 +24,7 @@ __all__ = [
 ]
 
 
-@deprecated_positional_kwargs(since='3.0', until='4.0')
-def get_path(filename, location='local', cache=True, show_progress=False):
+def _get_path(filename, location='local', cache=True, show_progress=False):
     """
     Get the local path for a given file.
 
@@ -90,6 +90,40 @@ def get_path(filename, location='local', cache=True, show_progress=False):
     return path
 
 
+@deprecated(since='3.0')
+def get_path(filename, location='local', cache=True, show_progress=False):
+    """
+    Get the local path for a given file.
+
+    Parameters
+    ----------
+    filename : str
+        File name in the local or remote data folder.
+
+    location : {'local', 'remote', 'photutils-datasets'}
+        File location. ``'local'`` means bundled with ``photutils``.
+        ``'remote'`` means the astropy data server (or the
+        photutils-datasets repo as a backup) or the Astropy cache
+        on your machine. ``'photutils-datasets'`` means the
+        photutils-datasets repo or the Astropy cache on your machine.
+
+    cache : bool, optional
+        Whether to cache the contents of remote URLs. Default is `True`.
+
+    show_progress : bool, optional
+        Whether to display a progress bar during the download (default
+        is `False`). The progress bar is displayed only when outputting
+        to a terminal.
+
+    Returns
+    -------
+    path : str
+        The local path of the file.
+    """
+    return _get_path(filename, location=location, cache=cache,
+                     show_progress=show_progress)
+
+
 def _load_fits_as_imagehdu(path):
     """
     Load a FITS file and return its primary HDU data and header wrapped
@@ -111,13 +145,12 @@ def _load_fits_as_imagehdu(path):
     return fits.ImageHDU(data, header)
 
 
-@deprecated_positional_kwargs(since='3.0', until='4.0')
+@deprecated(since='3.0')
 def load_spitzer_image(show_progress=False):
     """
     Load a 4.5 micron Spitzer image.
 
-    The catalog for this image is returned by
-    :func:`load_spitzer_catalog`.
+    The catalog for this image is returned by ``load_spitzer_catalog``.
 
     Parameters
     ----------
@@ -129,34 +162,19 @@ def load_spitzer_image(show_progress=False):
     -------
     hdu : `~astropy.io.fits.ImageHDU`
         The 4.5 micron Spitzer image in a FITS image HDU.
-
-    See Also
-    --------
-    load_spitzer_catalog
-
-    Examples
-    --------
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        from photutils.datasets import load_spitzer_image
-
-        hdu = load_spitzer_image()
-        plt.imshow(hdu.data, origin='lower', vmax=50)
     """
-    path = get_path('spitzer_example_image.fits', location='remote',
-                    show_progress=show_progress)
+    path = _get_path('spitzer_example_image.fits', location='remote',
+                     show_progress=show_progress)
     return _load_fits_as_imagehdu(path)
 
 
-@deprecated_positional_kwargs(since='3.0', until='4.0')
+@deprecated(since='3.0')
 def load_spitzer_catalog(show_progress=False):
     """
     Load a 4.5 micron Spitzer catalog.
 
     The image from which this catalog was derived is returned by
-    :func:`load_spitzer_image`.
+    ``load_spitzer_image``.
 
     Parameters
     ----------
@@ -168,28 +186,9 @@ def load_spitzer_catalog(show_progress=False):
     -------
     catalog : `~astropy.table.Table`
         The catalog of sources.
-
-    See Also
-    --------
-    load_spitzer_image
-
-    Examples
-    --------
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        from photutils.datasets import load_spitzer_catalog
-
-        catalog = load_spitzer_catalog()
-        plt.scatter(catalog['l'], catalog['b'])
-        plt.xlabel('Galactic l')
-        plt.ylabel('Galactic b')
-        plt.xlim(18.39, 18.05)
-        plt.ylim(0.13, 0.30)
     """
-    path = get_path('spitzer_example_catalog.xml', location='remote',
-                    show_progress=show_progress)
+    path = _get_path('spitzer_example_catalog.xml', location='remote',
+                     show_progress=show_progress)
     return Table.read(path)
 
 
@@ -255,11 +254,11 @@ def load_irac_psf(channel, show_progress=False):
         raise ValueError(msg)
 
     filepath = f'irac_ch{channel}_flight.fits'
-    path = get_path(filepath, location='remote', show_progress=show_progress)
+    path = _get_path(filepath, location='remote', show_progress=show_progress)
     return _load_fits_as_imagehdu(path)
 
 
-@deprecated_positional_kwargs(since='3.0', until='4.0')
+@deprecated(since='3.0')
 def load_star_image(show_progress=False):
     """
     Load an optical image of stars.
@@ -280,20 +279,9 @@ def load_star_image(show_progress=False):
     -------
     hdu : `~astropy.io.fits.ImageHDU`
         The M67 image in a FITS image HDU.
-
-    Examples
-    --------
-    .. plot::
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        from photutils.datasets import load_star_image
-
-        hdu = load_star_image()
-        plt.imshow(hdu.data, origin='lower', interpolation='nearest')
     """
-    path = get_path('M6707HH.fits', location='remote',
-                    show_progress=show_progress)
+    path = _get_path('M6707HH.fits', location='remote',
+                     show_progress=show_progress)
     return _load_fits_as_imagehdu(path)
 
 
@@ -326,7 +314,7 @@ def load_simulated_hst_star_image(show_progress=False):
         hdu = load_simulated_hst_star_image()
         plt.imshow(hdu.data, origin='lower', interpolation='nearest')
     """
-    path = get_path('hst_wfc3ir_f160w_simulated_starfield.fits',
-                    location='photutils-datasets',
-                    show_progress=show_progress)
+    path = _get_path('hst_wfc3ir_f160w_simulated_starfield.fits',
+                     location='photutils-datasets',
+                     show_progress=show_progress)
     return _load_fits_as_imagehdu(path)

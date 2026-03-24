@@ -15,13 +15,6 @@ tests, and benchmarks. However, they can also be used for general data
 analysis or for users that would like to try out or implement new
 methods for Photutils.
 
-Functions that start with ``load_*`` load datasets, either from within
-the Photutils package or remotely from a GitHub repository. Very
-small data files are bundled with Photutils and are guaranteed to be
-available. Larger datasets are available from the `astropy-data`_
-repository. On first load, these larger datasets will be downloaded and
-placed into the Astropy cache on the user's machine.
-
 Functions that start with ``make_*`` generate simulated data.
 Typically one would need to use a combination of these functions
 to create a simulated image. For example, one might use
@@ -32,32 +25,12 @@ to create an image of the sources, add noise using
 coordinate system (WCS) using :func:`~photutils.datasets.make_wcs`. An
 example of this process is shown below.
 
-
-Loading Datasets
-----------------
-
-Let's load an example image of M67 with
-:func:`~photutils.datasets.load_star_image`::
-
-    >>> from photutils.datasets import load_star_image
-    >>> hdu = load_star_image()  # doctest: +REMOTE_DATA
-    >>> print(hdu.data.shape)  # doctest: +REMOTE_DATA
-    (1059, 1059)
-
-``hdu`` is a FITS `~astropy.io.fits.ImageHDU` object and ``hdu.data``
-is a `~numpy.ndarray` object.
-
-Let's plot the image:
-
-.. plot::
-    :include-source:
-
-    import matplotlib.pyplot as plt
-    from photutils.datasets import load_star_image
-
-    hdu = load_star_image()
-    fig, ax = plt.subplots()
-    ax.imshow(hdu.data, origin='lower', interpolation='nearest')
+Functions that start with ``load_*`` load datasets, either from within
+the Photutils package or remotely from a GitHub repository. Very
+small data files are bundled with Photutils and are guaranteed to be
+available. Larger datasets are available from the `astropy-data`_
+repository. On first load, these larger datasets will be downloaded and
+placed into the Astropy cache on the user's machine.
 
 
 Simulating Images

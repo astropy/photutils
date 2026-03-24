@@ -252,6 +252,12 @@ API Changes
     ``centroid_sources`` to centroid sources at specific positions.
     [#2160]
 
+- ``photutils.datasets``
+
+  - The ``get_path``, ``load_spitzer_image``, ``load_spitzer_catalog``,
+    and ``load_star_image`` functions are now deprecated and will be
+    removed in a future version. [#2135]
+
 - ``photutils.detection``
 
   - ``find_peaks`` now returns a ``QTable`` instead of a ``Table``.

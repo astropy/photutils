@@ -11,7 +11,8 @@ from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.datasets import get_path, make_noise_image
+from photutils.datasets import make_noise_image
+from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import Isophote, IsophoteList
@@ -36,8 +37,8 @@ class TestEllipse:
 
     @pytest.mark.remote_data
     def test_find_center(self):
-        path = get_path('isophote/M51.fits', location='photutils-datasets',
-                        cache=True)
+        path = _get_path('isophote/M51.fits', location='photutils-datasets',
+                         cache=True)
         hdu = fits.open(path)
         data = hdu[0].data
         hdu.close()

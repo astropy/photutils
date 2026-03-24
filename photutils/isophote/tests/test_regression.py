@@ -54,7 +54,7 @@ import pytest
 from astropy.io import fits
 from astropy.table import Table
 
-from photutils.datasets import get_path
+from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.integrator import BILINEAR
 
@@ -77,8 +77,8 @@ def test_regression(name):
     table = Table.read(path)
 
     nrows = len(table['SMA'])
-    path = get_path(f'isophote/{name}.fits',
-                    location='photutils-datasets', cache=True)
+    path = _get_path(f'isophote/{name}.fits',
+                     location='photutils-datasets', cache=True)
     hdu = fits.open(path)
     data = hdu[0].data
     hdu.close()

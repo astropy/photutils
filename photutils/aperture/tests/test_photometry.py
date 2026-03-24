@@ -7,11 +7,8 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
-from astropy.io import fits
 from astropy.nddata import NDData, StdDevUncertainty
-from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
-from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_array_less, assert_equal
 
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
@@ -24,8 +21,7 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture,
                                           SkyRectangularAnnulus,
                                           SkyRectangularAperture)
-from photutils.datasets import (get_path, make_4gaussians_image, make_gwcs,
-                                make_wcs)
+from photutils.datasets import make_4gaussians_image, make_gwcs, make_wcs
 from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,
                                             HAS_REGIONS)
 
@@ -283,39 +279,6 @@ def test_input_wcs():
     assert 'sky_center' in phot1.colnames
     assert 'sky_center' in phot2.colnames
     assert 'sky_center' in phot3.colnames
-
-
-@pytest.mark.remote_data
-def test_wcs_based_photometry_to_catalog():
-    pathcat = get_path('spitzer_example_catalog.xml', location='remote')
-    pathhdu = get_path('spitzer_example_image.fits', location='remote')
-    hdu = fits.open(pathhdu)
-    data = u.Quantity(hdu[0].data, unit=hdu[0].header['BUNIT'])
-    wcs = WCS(hdu[0].header)
-
-    catalog = Table.read(pathcat)
-
-    pos_skycoord = SkyCoord(catalog['l'], catalog['b'], frame='galactic')
-
-    photometry_skycoord = aperture_photometry(
-        data, SkyCircularAperture(pos_skycoord, 4 * u.arcsec), wcs=wcs)
-
-    # Photometric unit conversion is needed to match the catalog
-    factor = (1.2 * u.arcsec) ** 2 / u.pixel
-    converted_aperture_sum = (photometry_skycoord['aperture_sum']
-                              * factor).to(u.mJy / u.pixel)
-
-    fluxes_catalog = catalog['f4_5'].filled()
-
-    # There shouldn't be large outliers, but some differences is OK, as
-    # fluxes_catalog is based on PSF photometry, etc.
-    assert_allclose(fluxes_catalog, converted_aperture_sum.value, rtol=1e0)
-
-    assert np.mean(np.fabs((fluxes_catalog - converted_aperture_sum.value)
-                           / fluxes_catalog)) < 0.1
-
-    # close the file
-    hdu.close()
 
 
 def test_wcs_based_photometry():

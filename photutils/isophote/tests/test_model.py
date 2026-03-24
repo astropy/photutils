@@ -11,7 +11,7 @@ from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.data import get_pkg_data_filename
 
-from photutils.datasets import get_path
+from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import IsophoteList
@@ -21,8 +21,8 @@ from photutils.isophote.tests.make_test_data import make_test_image
 
 @pytest.mark.remote_data
 def test_model():
-    path = get_path('isophote/M105-S001-RGB.fits',
-                    location='photutils-datasets', cache=True)
+    path = _get_path('isophote/M105-S001-RGB.fits',
+                     location='photutils-datasets', cache=True)
     hdu = fits.open(path)
     data = hdu[0].data[0]
     hdu.close()

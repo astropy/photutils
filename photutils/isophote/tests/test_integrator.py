@@ -8,7 +8,7 @@ import pytest
 from astropy.io import fits
 from numpy.testing import assert_allclose
 
-from photutils.datasets import get_path
+from photutils.datasets.load import _get_path
 from photutils.isophote.integrator import (BILINEAR, MEAN, MEDIAN,
                                            NEAREST_NEIGHBOR)
 from photutils.isophote.sample import EllipseSample
@@ -17,8 +17,8 @@ from photutils.isophote.sample import EllipseSample
 @pytest.mark.remote_data
 class TestData:
     def setup_class(self):
-        path = get_path('isophote/synth_highsnr.fits',
-                        location='photutils-datasets', cache=True)
+        path = _get_path('isophote/synth_highsnr.fits',
+                         location='photutils-datasets', cache=True)
         hdu = fits.open(path)
         self.data = hdu[0].data
         hdu.close()

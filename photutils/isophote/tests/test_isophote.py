@@ -8,7 +8,7 @@ import pytest
 from astropy.io import fits
 from numpy.testing import assert_allclose
 
-from photutils.datasets import get_path
+from photutils.datasets.load import _get_path
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.fitter import EllipseFitter
 from photutils.isophote.geometry import EllipseGeometry
@@ -22,8 +22,8 @@ DEFAULT_FIX = np.array([False, False, False, False])
 @pytest.mark.remote_data
 class TestIsophote:
     def setup_class(self):
-        path = get_path('isophote/M51.fits', location='photutils-datasets',
-                        cache=True)
+        path = _get_path('isophote/M51.fits', location='photutils-datasets',
+                         cache=True)
         hdu = fits.open(path)
         self.data = hdu[0].data
         hdu.close()
