@@ -17,12 +17,26 @@ from scipy.signal import fftconvolve
 
 from photutils.aperture import BoundingBox
 from photutils.aperture.converters import _shapely_polygon_to_region
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_getattr,
+                                          deprecated_positional_kwargs)
 from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY
 from photutils.utils._parameters import as_pair
 from photutils.utils.colormaps import make_random_cmap
 
 __all__ = ['Segment', 'SegmentationImage']
+
+# Remove in 4.0
+_SEGM_DEPRECATED_ATTRIBUTES = {
+    'nlabels': 'n_labels',
+    'data_ma': 'data_masked',
+    'deblended_labels_map': 'deblended_label_to_parent',
+    'deblended_labels_inverse_map': 'parent_to_deblended_labels',
+}
+
+# Remove in 4.0
+_SEGMENT_DEPRECATED_ATTRIBUTES = {
+    'data_ma': 'data_masked',
+}
 
 
 class SegmentationImage:
@@ -56,7 +70,7 @@ class SegmentationImage:
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
 
-        params = ['shape', 'nlabels']
+        params = ['shape', 'n_labels']
         cls_info = [(param, getattr(self, param)) for param in params]
         cls_info.append(('labels', self.labels))
         with np.printoptions(threshold=25, edgeitems=5):
@@ -66,6 +80,10 @@ class SegmentationImage:
 
     def __repr__(self):
         return self.__str__()
+
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, _SEGM_DEPRECATED_ATTRIBUTES)
 
     def __getitem__(self, key):
         """
@@ -159,7 +177,7 @@ class SegmentationImage:
         return np.sort(np.concatenate(list(self._deblend_label_map.values())))
 
     @lazyproperty
-    def deblended_labels_map(self):
+    def deblended_label_to_parent(self):
         """
         A dictionary mapping deblended label numbers to the original
         parent label numbers.
@@ -170,11 +188,6 @@ class SegmentationImage:
 
         The dictionary will be empty if deblending has not been
         performed or if no sources were deblended.
-
-        Note that despite the name, this is the child-to-parent
-        mapping (i.e., the inverse of `_deblend_label_map`). See
-        `deblended_labels_inverse_map` for the parent-to-children
-        mapping.
         """
         inverse_map = {}
         for key, values in self._deblend_label_map.items():
@@ -183,7 +196,7 @@ class SegmentationImage:
         return inverse_map
 
     @lazyproperty
-    def deblended_labels_inverse_map(self):
+    def parent_to_deblended_labels(self):
         """
         A dictionary mapping the original parent label numbers to the
         deblended label numbers.
@@ -194,10 +207,6 @@ class SegmentationImage:
 
         The dictionary will be empty if deblending has not been
         performed or if no sources were deblended.
-
-        Note that despite the name, this is the parent-to-children
-        mapping (i.e., the forward direction of `_deblend_label_map`).
-        See `deblended_labels_map` for the child-to-parent mapping.
         """
         return self._deblend_label_map
 
@@ -256,7 +265,7 @@ class SegmentationImage:
         self.__dict__['_deblend_label_map'] = {}
 
     @lazyproperty
-    def data_ma(self):
+    def data_masked(self):
         """
         A `~numpy.ma.MaskedArray` version of the segmentation array
         where the background (label = 0) has been masked.
@@ -294,7 +303,7 @@ class SegmentationImage:
         return self._get_labels(self.data)
 
     @lazyproperty
-    def nlabels(self):
+    def n_labels(self):
         """
         The number of non-zero labels in the segmentation array.
         """
@@ -305,7 +314,7 @@ class SegmentationImage:
         """
         The maximum label in the segmentation array.
         """
-        if self.nlabels == 0:
+        if self.n_labels == 0:
             return 0
         return np.max(self.labels)
 
@@ -602,9 +611,9 @@ class SegmentationImage:
         Boolean value indicating whether the non-zero labels in the
         segmentation array are consecutive and start from 1.
         """
-        if self.nlabels == 0:
+        if self.n_labels == 0:
             return False
-        return ((self.labels[-1] - self.labels[0] + 1) == self.nlabels
+        return ((self.labels[-1] - self.labels[0] + 1) == self.n_labels
                 and self.labels[0] == 1)
 
     @lazyproperty
@@ -614,7 +623,7 @@ class SegmentationImage:
         missing in the consecutive sequence from one to the maximum
         label number.
         """
-        if self.nlabels == 0:
+        if self.n_labels == 0:
             return np.array([], dtype=int)
         present = np.zeros(self.max_label + 1, dtype=bool)
         present[self.labels] = True
@@ -713,7 +722,7 @@ class SegmentationImage:
         cmap : `matplotlib.colors.ListedColormap`
             The matplotlib colormap with colors in RGBA format.
         """
-        if self.nlabels == 0:
+        if self.n_labels == 0:
             return None
 
         from matplotlib import colors
@@ -1003,7 +1012,7 @@ class SegmentationImage:
                [5, 5, 0, 4, 4, 4],
                [5, 5, 0, 0, 4, 4]])
         """
-        if self.nlabels == 0:
+        if self.n_labels == 0:
             msg = 'Cannot relabel a segmentation image with no non-zero labels'
             warnings.warn(msg, AstropyUserWarning)
             return
@@ -1013,12 +1022,12 @@ class SegmentationImage:
             raise ValueError(msg)
 
         if ((self.labels[0] == start_label)
-                and (self.labels[-1] - self.labels[0] + 1) == self.nlabels):
+                and (self.labels[-1] - self.labels[0] + 1) == self.n_labels):
             return
 
         old_slices = self.__dict__.get('slices', None)
         dtype = self.data.dtype  # keep the original dtype
-        new_labels = np.arange(self.nlabels, dtype=dtype) + start_label
+        new_labels = np.arange(self.n_labels, dtype=dtype) + start_label
         new_label_map = np.zeros(self.max_label + 1, dtype=dtype)
         new_label_map[self.labels] = new_labels
 
@@ -2360,6 +2369,10 @@ class Segment:
     def __repr__(self):
         return self.__str__()
 
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, _SEGMENT_DEPRECATED_ATTRIBUTES)
+
     def _repr_svg_(self):
         if self.polygon is not None:
             return self.polygon._repr_svg_()
@@ -2386,7 +2399,7 @@ class Segment:
         return cutout
 
     @lazyproperty
-    def data_ma(self):
+    def data_masked(self):
         """
         A `~numpy.ma.MaskedArray` cutout array of the segment using the
         minimal bounding box.

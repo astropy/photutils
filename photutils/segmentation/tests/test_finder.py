@@ -30,10 +30,10 @@ class TestSourceFinder:
         """
         finder = SourceFinder(npixels=self.npixels, progress_bar=False)
         segm1 = finder(self.convolved_data, self.threshold)
-        assert segm1.nlabels == 94
+        assert segm1.n_labels == 94
 
         segm2 = finder(self.convolved_data << u.uJy, self.threshold * u.uJy)
-        assert segm2.nlabels == 94
+        assert segm2.n_labels == 94
         assert np.all(segm1.data == segm2.data)
 
     def test_invalid_units(self):
@@ -56,7 +56,7 @@ class TestSourceFinder:
         finder = SourceFinder(npixels=self.npixels, deblend=False,
                               progress_bar=False)
         segm = finder(self.convolved_data, self.threshold)
-        assert segm.nlabels == 87
+        assert segm.n_labels == 87
 
     def test_no_sources(self):
         """
@@ -83,11 +83,11 @@ class TestSourceFinder:
 
         sf1 = SourceFinder(npixels=200)
         segm1 = sf1(data, threshold=0.1)
-        assert segm1.nlabels == 1
+        assert segm1.n_labels == 1
 
         sf2 = SourceFinder(npixels=(200, 5))
         segm2 = sf2(data, threshold=0.1)
-        assert segm2.nlabels == 3
+        assert segm2.n_labels == 3
 
     def test_repr(self):
         """

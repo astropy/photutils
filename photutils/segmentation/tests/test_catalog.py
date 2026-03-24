@@ -167,11 +167,11 @@ class TestSourceCatalog:
         # Add extra properties
         cat1.circular_photometry(5.0, name='circ5')
         cat1.kron_photometry((2.5, 1.4), name='kron2')
-        cat1.fluxfrac_radius(0.5, name='r_hl')
+        cat1.flux_radius(0.5, name='r_hl')
         segment_snr = cat1.segment_flux / cat1.segment_flux_err
-        cat1.add_extra_property('segment_snr', segment_snr)
+        cat1.add_property('segment_snr', segment_snr)
         props = list(props)
-        props.extend(cat1.extra_properties)
+        props.extend(cat1.custom_properties)
 
         idx = 1  # no NaN values
 
@@ -184,9 +184,9 @@ class TestSourceCatalog:
         obj = cat2[idx]
         obj.circular_photometry(5.0, name='circ5')
         obj.kron_photometry((2.5, 1.4), name='kron2')
-        obj.fluxfrac_radius(0.5, name='r_hl')
+        obj.flux_radius(0.5, name='r_hl')
         segment_snr = obj.segment_flux / obj.segment_flux_err
-        obj.add_extra_property('segment_snr', segment_snr)
+        obj.add_property('segment_snr', segment_snr)
         for prop in props:
             assert_equal(getattr(obj, prop), getattr(cat1, prop)[idx])
 
@@ -264,9 +264,9 @@ class TestSourceCatalog:
         with pytest.raises(AssertionError, match=match):
             assert_equal(flux_err1, flux_err2)
 
-        radius1 = cat1.fluxfrac_radius(0.5)
-        radius2 = cat2.fluxfrac_radius(0.5)
-        radius3 = cat3.fluxfrac_radius(0.5)
+        radius1 = cat1.flux_radius(0.5)
+        radius2 = cat2.flux_radius(0.5)
+        radius3 = cat3.flux_radius(0.5)
         with pytest.raises(AssertionError, match=match):
             assert_equal(radius2, radius3)
         with pytest.raises(AssertionError, match=match):
@@ -281,7 +281,8 @@ class TestSourceCatalog:
         """
         cat = SourceCatalog(self.data, self.segm)
         obj = cat[4]
-        props = ('background', 'background_ma', 'error', 'error_ma')
+        props = ('background_cutout', 'background_masked', 'error_cutout',
+                 'error_masked')
         for prop in props:
             assert getattr(obj, prop) is None
 
@@ -304,36 +305,36 @@ class TestSourceCatalog:
         self.cat.to_table()  # evaluate and cache several properties
 
         obj1 = self.cat[0]
-        assert obj1.nlabels == 1
-        obj1b = self.cat.get_label(1)
-        assert obj1b.nlabels == 1
+        assert obj1.n_labels == 1
+        obj1b = self.cat.select_label(1)
+        assert obj1b.n_labels == 1
 
         obj2 = self.cat[0:1]
-        assert obj2.nlabels == 1
+        assert obj2.n_labels == 1
         assert len(obj2) == 1
 
         obj3 = self.cat[0:3]
-        obj3b = self.cat.get_labels((1, 2, 3))
+        obj3b = self.cat.select_labels((1, 2, 3))
         assert_equal(obj3.label, obj3b.label)
         obj4 = self.cat[[0, 1, 2]]
-        assert obj3.nlabels == 3
-        assert obj3b.nlabels == 3
-        assert obj4.nlabels == 3
+        assert obj3.n_labels == 3
+        assert obj3b.n_labels == 3
+        assert obj4.n_labels == 3
         assert len(obj3) == 3
         assert len(obj4) == 3
 
         obj5 = self.cat[[3, 2, 1]]
         labels = [4, 3, 2]
-        obj5b = self.cat.get_labels(labels)
+        obj5b = self.cat.select_labels(labels)
         assert_equal(obj5.label, obj5b.label)
-        assert obj5.nlabels == 3
+        assert obj5.n_labels == 3
         assert len(obj5) == 3
         assert_equal(obj5.label, labels)
 
-        # Test get_labels when labels are not sorted
+        # Test select_labels when labels are not sorted
         obj5 = self.cat[[3, 2, 1]]
         labels2 = (3, 4)
-        obj5b = obj5.get_labels(labels2)
+        obj5b = obj5.select_labels(labels2)
         assert_equal(obj5b.label, labels2)
 
         obj6 = obj5[0]
@@ -341,7 +342,7 @@ class TestSourceCatalog:
 
         mask = self.cat.label > 3
         obj7 = self.cat[mask]
-        assert obj7.nlabels == 4
+        assert obj7.n_labels == 4
         assert len(obj7) == 4
 
         obj1 = self.cat[0]
@@ -351,9 +352,9 @@ class TestSourceCatalog:
 
         match = 'is invalid'
         with pytest.raises(ValueError, match=match):
-            self.cat.get_label(1000)
+            self.cat.select_label(1000)
         with pytest.raises(ValueError, match=match):
-            self.cat.get_labels([1, 2, 1000])
+            self.cat.select_labels([1, 2, 1000])
 
     def test_iter(self):
         """
@@ -541,7 +542,7 @@ class TestSourceCatalog:
         assert isinstance(tbl, QTable)
         assert len(tbl) == 7
         obj = cat[0]
-        assert obj.nlabels == 1
+        assert obj.n_labels == 1
         tbl = obj.to_table()
         assert len(tbl) == 1
 
@@ -778,90 +779,90 @@ class TestSourceCatalog:
         patch2 = obj.plot_kron_apertures(kron_params=(2.0, 1.2))
         assert isinstance(patch2, Patch)
 
-    def test_fluxfrac_cache(self):
+    def test_flux_radius_cache(self):
         """
-        Test that fluxfrac_radius caches results and reuses them on
-        repeated calls with the same fluxfrac value.
+        Test that flux_radius caches results and reuses them on repeated
+        calls with the same flux_radius value.
         """
         cat = SourceCatalog(self.data, self.segm)
 
         # Cache must start empty
-        assert cat._fluxfrac_cache == {}
+        assert cat._flux_radius_cache == {}
 
         # First call computes and stores in cache
-        r1 = cat.fluxfrac_radius(0.5)
-        assert 0.5 in cat._fluxfrac_cache
-        assert r1 is cat._fluxfrac_cache[0.5]
+        r1 = cat.flux_radius(0.5)
+        assert 0.5 in cat._flux_radius_cache
+        assert r1 is cat._flux_radius_cache[0.5]
 
         # Second call returns the identical cached object
-        r2 = cat.fluxfrac_radius(0.5)
+        r2 = cat.flux_radius(0.5)
         assert r2 is r1
 
-        # Different fluxfrac values are cached independently
-        r3 = cat.fluxfrac_radius(0.3)
-        assert 0.3 in cat._fluxfrac_cache
+        # Different flux_radius values are cached independently
+        r3 = cat.flux_radius(0.3)
+        assert 0.3 in cat._flux_radius_cache
         assert np.all(r1.value >= r3.value)
 
         # Test "name"= still works on a cache hit and stores the
         # attribute
         cat2 = SourceCatalog(self.data, self.segm)
-        cat2.fluxfrac_radius(0.5)  # populate cache
-        cat2.fluxfrac_radius(0.5, name='r_hl')  # cache hit with name
+        cat2.flux_radius(0.5)  # populate cache
+        cat2.flux_radius(0.5, name='r_hl')  # cache hit with name
         assert hasattr(cat2, 'r_hl')
-        assert_allclose(cat2.r_hl, cat2._fluxfrac_cache[0.5])
+        assert_allclose(cat2.r_hl, cat2._flux_radius_cache[0.5])
 
-    def test_fluxfrac_cache_getitem(self):
+    def test_flux_radius_cache_getitem(self):
         """
-        Test that sliced SourceCatalog objects preserve the
-        fluxfrac_radius cache and produce correct results.
+        Test that sliced SourceCatalog objects preserve the flux_radius
+        cache and produce correct results.
         """
         cat = SourceCatalog(self.data, self.segm)
 
         # Sliced object without a populated parent cache has an empty
         # cache
         obj = cat[1]
-        assert obj._fluxfrac_cache == {}
+        assert obj._flux_radius_cache == {}
 
-        # Populate the parent cache with two fluxfrac values
-        r_parent_05 = cat.fluxfrac_radius(0.5)
-        r_parent_03 = cat.fluxfrac_radius(0.3)
-        assert 0.5 in cat._fluxfrac_cache
-        assert 0.3 in cat._fluxfrac_cache
+        # Populate the parent cache with two flux_radius values
+        r_parent_05 = cat.flux_radius(0.5)
+        r_parent_03 = cat.flux_radius(0.3)
+        assert 0.5 in cat._flux_radius_cache
+        assert 0.3 in cat._flux_radius_cache
 
         # Scalar slice preserves the cache
         obj = cat[1]
-        assert 0.5 in obj._fluxfrac_cache
-        assert 0.3 in obj._fluxfrac_cache
-        r_sliced = obj.fluxfrac_radius(0.5)
+        assert 0.5 in obj._flux_radius_cache
+        assert 0.3 in obj._flux_radius_cache
+        r_sliced = obj.flux_radius(0.5)
         assert_allclose(r_sliced.value, r_parent_05[1].value)
-        r_sliced_03 = obj.fluxfrac_radius(0.3)
+        r_sliced_03 = obj.flux_radius(0.3)
         assert_allclose(r_sliced_03.value, r_parent_03[1].value)
 
         # Range slice preserves the cache
         sub = cat[1:3]
-        assert 0.5 in sub._fluxfrac_cache
-        assert 0.3 in sub._fluxfrac_cache
-        r_sub = sub.fluxfrac_radius(0.5)
+        assert 0.5 in sub._flux_radius_cache
+        assert 0.3 in sub._flux_radius_cache
+        r_sub = sub.flux_radius(0.5)
         assert_allclose(r_sub.value, r_parent_05[1:3].value)
 
         # Fancy index slice preserves the cache
         sub2 = cat[[0, 2]]
-        assert 0.5 in sub2._fluxfrac_cache
-        r_sub2 = sub2.fluxfrac_radius(0.5)
+        assert 0.5 in sub2._flux_radius_cache
+        r_sub2 = sub2.flux_radius(0.5)
         assert_allclose(r_sub2.value, r_parent_05[[0, 2]].value)
 
         # Boolean mask slice preserves the cache
         mask = np.array([True, False, True, False, True, False, True])
         sub3 = cat[mask]
-        assert 0.5 in sub3._fluxfrac_cache
-        r_sub3 = sub3.fluxfrac_radius(0.5)
+        assert 0.5 in sub3._flux_radius_cache
+        r_sub3 = sub3.flux_radius(0.5)
         assert_allclose(r_sub3.value, r_parent_05[mask].value)
 
         # Modifying the parent cache does not affect the sliced cache
-        cat.fluxfrac_radius(0.7)
-        assert 0.7 not in obj._fluxfrac_cache
+        cat.flux_radius(0.7)
+        assert 0.7 not in obj._flux_radius_cache
 
-    def test_fluxfrac_max_radius_delta(self):
+    def test_flux_radius_max_radius_delta(self):
         """
         Test that the max_radius_delta fallback loop reduces max_radius
         by 10 percent on each failed bracketing attempt and still
@@ -886,7 +887,7 @@ class TestSourceCatalog:
 
         with patch('photutils.segmentation.catalog.root_scalar',
                    mock_root_scalar):
-            r = cat.fluxfrac_radius(0.5)
+            r = cat.flux_radius(0.5)
 
         # Fallback triggered once then succeeded
         assert call_count[0] == 2
@@ -898,33 +899,33 @@ class TestSourceCatalog:
         # Result is a valid radius (not NaN)
         assert np.isfinite(r.value)
 
-    def test_fluxfrac_radius(self):
+    def test_flux_radius(self):
         """
-        Test fluxfrac radius.
+        Test flux_radius.
         """
-        radius1 = self.cat.fluxfrac_radius(0.1, name='fluxfrac_r1')
-        radius2 = self.cat.fluxfrac_radius(0.5, name='fluxfrac_r5')
-        assert_allclose(radius1, self.cat.fluxfrac_r1)
-        assert_allclose(radius2, self.cat.fluxfrac_r5)
+        radius1 = self.cat.flux_radius(0.1, name='flux_radius_r1')
+        radius2 = self.cat.flux_radius(0.5, name='flux_radius_r5')
+        assert_allclose(radius1, self.cat.flux_radius_r1)
+        assert_allclose(radius2, self.cat.flux_radius_r5)
         assert np.all((radius2 > radius1)
                       | (np.isnan(radius2) & np.isnan(radius1)))
 
         cat = SourceCatalog(self.data, self.segm)
         obj = cat[1]
-        radius = obj.fluxfrac_radius(0.5)
+        radius = obj.flux_radius(0.5)
         assert radius.isscalar  # Quantity radius - can't use np.isscalar
         assert_allclose(radius.value, 7.899648)
 
-        match = 'fluxfrac must be > 0 and <= 1'
+        match = 'fraction must be > 0 and <= 1'
         with pytest.raises(ValueError, match=match):
-            radius = self.cat.fluxfrac_radius(0)
+            radius = self.cat.flux_radius(0)
         with pytest.raises(ValueError, match=match):
-            radius = self.cat.fluxfrac_radius(-1)
+            radius = self.cat.flux_radius(-1)
 
         cat = SourceCatalog(self.data - 50.0, self.segm, error=self.error,
                             background=self.background, mask=self.mask,
                             wcs=self.wcs, localbkg_width=24)
-        radius_hl = cat.fluxfrac_radius(0.5)
+        radius_hl = cat.flux_radius(0.5)
         assert np.isnan(radius_hl[0])
 
     def test_cutout_units(self):
@@ -932,16 +933,18 @@ class TestSourceCatalog:
         Test cutout units.
         """
         obj = self.cat_units[0]
-        quantities = (obj.data, obj.error, obj.background)
-        ndarray = (obj.segment, obj.segment_ma, obj.data_ma, obj.error_ma,
-                   obj.background_ma)
+        quantities = (obj.data_cutout, obj.error_cutout,
+                      obj.background_cutout)
+        ndarray = (obj.segment_cutout, obj.segment_masked,
+                   obj.data_masked, obj.error_masked,
+                   obj.background_masked)
         for arr in quantities:
             assert isinstance(arr, u.Quantity)
         for arr in ndarray:
             assert not isinstance(arr, u.Quantity)
 
     @pytest.mark.parametrize('scalar', [True, False])
-    def test_extra_properties(self, scalar):
+    def test_custom_properties(self, scalar):
         """
         Test extra properties.
         """
@@ -954,81 +957,81 @@ class TestSourceCatalog:
         match = 'cannot be set because it is a built-in attribute'
         with pytest.raises(ValueError, match=match):
             # Built-in attribute
-            cat.add_extra_property('_data', segment_snr)
+            cat.add_property('_data', segment_snr)
         with pytest.raises(ValueError, match=match):
             # Built-in property
-            cat.add_extra_property('label', segment_snr)
+            cat.add_property('label', segment_snr)
         with pytest.raises(ValueError, match=match):
             # Built-in lazyproperty
-            cat.add_extra_property('area', segment_snr)
+            cat.add_property('area', segment_snr)
 
-        cat.add_extra_property('segment_snr', segment_snr)
+        cat.add_property('segment_snr', segment_snr)
 
         match = 'already exists as an attribute'
         with pytest.raises(ValueError, match=match):
             # Already exists
-            cat.add_extra_property('segment_snr', segment_snr)
+            cat.add_property('segment_snr', segment_snr)
 
-        cat.add_extra_property('segment_snr', 2.0 * segment_snr,
-                               overwrite=True)
-        assert len(cat.extra_properties) == 1
+        cat.add_property('segment_snr', 2.0 * segment_snr,
+                         overwrite=True)
+        assert len(cat.custom_properties) == 1
         assert_equal(cat.segment_snr, 2.0 * segment_snr)
 
-        match = 'is not a defined extra property'
+        match = 'is not a defined property'
         with pytest.raises(ValueError, match=match):
-            cat.remove_extra_property('invalid')
+            cat.remove_property('invalid')
 
-        cat.remove_extra_property(cat.extra_properties)
-        assert len(cat.extra_properties) == 0
+        cat.remove_property(cat.custom_properties)
+        assert len(cat.custom_properties) == 0
 
-        cat.add_extra_property('segment_snr', segment_snr)
-        cat.add_extra_property('segment_snr2', segment_snr)
-        cat.add_extra_property('segment_snr3', segment_snr)
-        assert len(cat.extra_properties) == 3
+        cat.add_property('segment_snr', segment_snr)
+        cat.add_property('segment_snr2', segment_snr)
+        cat.add_property('segment_snr3', segment_snr)
+        assert len(cat.custom_properties) == 3
 
-        cat.remove_extra_properties(cat.extra_properties)
-        assert len(cat.extra_properties) == 0
+        cat.remove_properties(cat.custom_properties)
+        assert len(cat.custom_properties) == 0
 
-        cat.add_extra_property('segment_snr', segment_snr)
+        cat.add_property('segment_snr', segment_snr)
         new_name = 'segment_snr0'
-        cat.rename_extra_property('segment_snr', new_name)
-        assert new_name in cat.extra_properties
+        cat.rename_property('segment_snr', new_name)
+        assert new_name in cat.custom_properties
 
         # Key in extra_properties, but not a defined attribute
         cat._extra_properties.append('invalid')
-        match = 'already exists in the extra_properties attribute'
+        match = 'already exists in the custom_properties attribute'
         with pytest.raises(ValueError, match=match):
-            cat.add_extra_property('invalid', segment_snr)
+            cat.add_property('invalid', segment_snr)
         cat._extra_properties.remove('invalid')
 
         assert cat._has_len([1, 2, 3])
         assert not cat._has_len('test_string')
 
-        cat.add_extra_property('segment_snr4', segment_snr, overwrite=True)
-        cat.add_extra_property('segment_snr4', segment_snr, overwrite=True)
+        cat.add_property('segment_snr4', segment_snr, overwrite=True)
+        cat.add_property('segment_snr4', segment_snr, overwrite=True)
 
-    def test_extra_properties_invalid(self):
+    def test_custom_properties_invalid(self):
         """
         Test extra properties invalid.
         """
         cat = SourceCatalog(self.data, self.segm)
         match = 'value must have the same number of elements as the catalog'
         with pytest.raises(ValueError, match=match):
-            cat.add_extra_property('invalid', 1.0)
+            cat.add_property('invalid', 1.0)
         with pytest.raises(ValueError, match=match):
-            cat.add_extra_property('invalid', (1.0, 2.0))
+            cat.add_property('invalid', (1.0, 2.0))
 
         obj = cat[1]
         with pytest.raises(ValueError, match=match):
-            obj.add_extra_property('invalid', (1.0, 2.0))
+            obj.add_property('invalid', (1.0, 2.0))
 
         val = np.arange(2) << u.km
         with pytest.raises(ValueError, match=match):
-            obj.add_extra_property('invalid', val)
+            obj.add_property('invalid', val)
 
         coord = SkyCoord([42, 43], [44, 45], unit='deg')
         with pytest.raises(ValueError, match=match):
-            obj.add_extra_property('invalid', coord)
+            obj.add_property('invalid', coord)
 
     def test_properties(self):
         """
@@ -1247,7 +1250,7 @@ def test_kron_params():
                         kron_params=kron_params)
     assert cat.kron_radius.value.min() == minrad
     assert_allclose(cat.kron_flux.min(), 264.775307)
-    rh = cat.fluxfrac_radius(0.5)
+    rh = cat.flux_radius(0.5)
     assert_allclose(rh.value.min(), 1.293722, rtol=1e-6)
 
     minrad = 1.2
@@ -1256,7 +1259,7 @@ def test_kron_params():
                         kron_params=kron_params)
     assert cat.kron_radius.value.min() == minrad
     assert_allclose(cat.kron_flux.min(), 264.775307)
-    rh = cat.fluxfrac_radius(0.5)
+    rh = cat.flux_radius(0.5)
     assert_allclose(rh.value.min(), 1.312618, rtol=1e-6)
 
     minrad = 0.2
@@ -1265,7 +1268,7 @@ def test_kron_params():
                         kron_params=kron_params)
     assert_allclose(cat.kron_radius.value.min(), 0.677399, rtol=1e-6)
     assert_allclose(cat.kron_flux.min(), 264.775307)
-    rh = cat.fluxfrac_radius(0.5)
+    rh = cat.flux_radius(0.5)
     assert_allclose(rh.value.min(), 1.232554)
 
     kron_params = (2.5, 1.4, 7.0)
@@ -1273,7 +1276,7 @@ def test_kron_params():
                         kron_params=kron_params)
     assert cat.kron_radius.value.min() == 0.0
     assert_allclose(cat.kron_flux.min(), 264.775307)
-    rh = cat.fluxfrac_radius(0.5)
+    rh = cat.flux_radius(0.5)
     assert_allclose(rh.value.min(), 1.288211, rtol=1e-6)
     assert isinstance(cat.kron_aperture[0], CircularAperture)
 
@@ -1334,7 +1337,7 @@ def test_background_centroid_coordinate_order():
 
     # The expected value at each centroid is approximately y_centroid
     # (since background = y)
-    for i in range(cat.nlabels):
+    for i in range(cat.n_labels):
         xcen = cat.x_centroid[i]
         ycen = cat.y_centroid[i]
         if np.isfinite(xcen) and np.isfinite(ycen):
@@ -1367,20 +1370,20 @@ def test_apermask_method_none():
     flux_mask, _ = cat_mask.circular_photometry(20.0)
 
     # 'none' should include neighbor flux, so should be >= 'mask'
-    for i in range(cat_none.nlabels):
+    for i in range(cat_none.n_labels):
         if np.isfinite(flux_none[i]) and np.isfinite(flux_mask[i]):
             assert flux_none[i] >= flux_mask[i]
 
 
-def test_fluxfrac_radius_nan_fallback():
+def test_flux_radius_nan_fallback():
     """
-    Test that fluxfrac_radius returns NaN when no root can be found
-    (e.g., when the source has all-negative Kron flux within the search
-    bracket or zero Kron flux).
+    Test that flux_radius returns NaN when no root can be found (e.g.,
+    when the source has all-negative Kron flux within the search bracket
+    or zero Kron flux).
     """
-    # Create a source with negative total flux by subtracting a
-    # large constant. The Kron flux will be zero/negative, causing
-    # fluxfrac_radius to return NaN.
+    # Create a source with negative total flux by subtracting a large
+    # constant. The Kron flux will be zero/negative, causing flux_radius
+    # to return NaN.
     yy, xx = np.mgrid[0:51, 0:51]
     g1 = Gaussian2D(10, 25, 25, 3, 3)
     data = g1(xx, yy) - 50.0  # all negative
@@ -1389,7 +1392,7 @@ def test_fluxfrac_radius_nan_fallback():
     segm = SegmentationImage(segm_data)
 
     cat = SourceCatalog(data, segm)
-    radius = cat.fluxfrac_radius(0.5)
+    radius = cat.flux_radius(0.5)
     # Should be NaN since there's no meaningful flux
     assert np.isnan(radius.value)
 
@@ -1417,7 +1420,7 @@ def test_reduceat_negative_data():
     segm = detect_sources(data, 0.5, npixels=5)
 
     cat = SourceCatalog(data, segm)
-    for i in range(cat.nlabels):
+    for i in range(cat.n_labels):
         obj = cat[i]
         vals = obj._data_values[0]
         expected_min = np.min(vals) - obj._local_background
@@ -1468,7 +1471,7 @@ def test_progress_bar_centroid_win(progress_bar_catalog):
     """
     cat = progress_bar_catalog
     cwin = cat.centroid_win
-    assert cwin.shape == (cat.nlabels, 2)
+    assert cwin.shape == (cat.n_labels, 2)
     assert np.all(np.isfinite(cwin))
 
 
@@ -1478,7 +1481,7 @@ def test_progress_bar_centroid_quad(progress_bar_catalog):
     """
     cat = progress_bar_catalog
     cquad = cat.centroid_quad
-    assert cquad.shape == (cat.nlabels, 2)
+    assert cquad.shape == (cat.n_labels, 2)
     assert np.all(np.isfinite(cquad))
 
 
@@ -1488,7 +1491,7 @@ def test_progress_bar_kron_radius(progress_bar_catalog):
     """
     cat = progress_bar_catalog
     kr = cat.kron_radius
-    assert len(kr) == cat.nlabels
+    assert len(kr) == cat.n_labels
 
 
 def test_progress_bar_kron_photometry(progress_bar_catalog):
@@ -1498,16 +1501,16 @@ def test_progress_bar_kron_photometry(progress_bar_catalog):
     """
     cat = progress_bar_catalog
     flux, _flux_err = cat.kron_photometry((2.5, 1.4))
-    assert len(flux) == cat.nlabels
+    assert len(flux) == cat.n_labels
 
 
-def test_progress_bar_fluxfrac_radius(progress_bar_catalog):
+def test_progress_bar_flux_radius(progress_bar_catalog):
     """
-    Test that fluxfrac_radius and its prep work with progress_bar=True.
+    Test that flux_radius and its prep work with progress_bar=True.
     """
     cat = progress_bar_catalog
-    r = cat.fluxfrac_radius(0.5)
-    assert len(r) == cat.nlabels
+    r = cat.flux_radius(0.5)
+    assert len(r) == cat.n_labels
 
 
 def test_progress_bar_circular_photometry(progress_bar_catalog):
@@ -1516,7 +1519,7 @@ def test_progress_bar_circular_photometry(progress_bar_catalog):
     """
     cat = progress_bar_catalog
     flux, _fluxerr = cat.circular_photometry(5.0)
-    assert len(flux) == cat.nlabels
+    assert len(flux) == cat.n_labels
 
 
 def test_negative_covariance_eigvals(single_source_catalog):
@@ -1667,9 +1670,9 @@ def test_centroid_quad_edge_cases():
     assert np.all(np.isfinite(cquad4))
 
 
-def test_fluxfrac_radius_no_solution(single_source_catalog):
+def test_flux_radius_no_solution(single_source_catalog):
     """
-    Test that fluxfrac_radius returns NaN when no solution is found
+    Test that flux_radius returns NaN when no solution is found
     (root_scalar always raises ValueError).
     """
     _data, _segm, cat = single_source_catalog
@@ -1681,7 +1684,7 @@ def test_fluxfrac_radius_no_solution(single_source_catalog):
 
     with patch('photutils.segmentation.catalog.root_scalar',
                mock_root_scalar):
-        result = cat.fluxfrac_radius(0.5)
+        result = cat.flux_radius(0.5)
     assert np.isnan(result.value[0])
 
 
@@ -1710,7 +1713,7 @@ def test_kron_radius_max(gauss_101_catalog):
         # Downstream properties should also be NaN / None
         assert cat2.kron_aperture[0] is None
         assert np.isnan(cat2.kron_flux[0])
-        assert np.isnan(cat2.fluxfrac_radius(0.5).value[0])
+        assert np.isnan(cat2.flux_radius(0.5).value[0])
 
 
 def test_aperture_to_mask_size_check():
@@ -1761,7 +1764,7 @@ def test_aperture_to_mask_none_branches(gauss_101_catalog):
     # _aperture_photometry (general path) with _aperture_to_mask
     # returning None
     with patch.object(type(cat), '_aperture_to_mask', return_value=None):
-        circ_aper = [CircularAperture((50, 50), r=10)] * cat.nlabels
+        circ_aper = [CircularAperture((50, 50), r=10)] * cat.n_labels
         flux, _ = cat._aperture_photometry(circ_aper, method='exact')
         assert np.all(np.isnan(flux))
 
@@ -1776,7 +1779,7 @@ def test_kron_photometry_oom_guard(gauss_101_catalog):
 
     # Create huge elliptical apertures that exceed the max_size check
     huge_aper = [EllipticalAperture((50, 50), 2000, 2000, theta=0.0)
-                 for _ in range(cat.nlabels)]
+                 for _ in range(cat.n_labels)]
     cat.__dict__['kron_aperture'] = huge_aper
     assert np.all(np.isnan(cat.kron_flux))
 
@@ -1784,7 +1787,7 @@ def test_kron_photometry_oom_guard(gauss_101_catalog):
     cat2 = SourceCatalog(data, segm)
     _ = cat2.kron_aperture
     huge_circ = [CircularAperture((50, 50), r=2000)
-                 for _ in range(cat2.nlabels)]
+                 for _ in range(cat2.n_labels)]
     cat2.__dict__['kron_aperture'] = huge_circ
     assert np.all(np.isnan(cat2.kron_flux))
 
@@ -1792,7 +1795,7 @@ def test_kron_photometry_oom_guard(gauss_101_catalog):
     cat3 = SourceCatalog(data, segm)
     _ = cat3.kron_aperture
     off_aper = [EllipticalAperture((-1000, -1000), 5, 3, theta=0.0)
-                for _ in range(cat3.nlabels)]
+                for _ in range(cat3.n_labels)]
     cat3.__dict__['kron_aperture'] = off_aper
     assert np.all(np.isnan(cat3.kron_flux))
 
@@ -1816,15 +1819,15 @@ def test_kron_photometry_oom_guard(gauss_101_catalog):
         assert np.all(np.isnan(cat4.kron_flux_err))
 
 
-def test_fluxfrac_cache_not_mutated_by_centroid_win(gauss_101_data):
+def test_flux_radius_cache_not_mutated_by_centroid_win(gauss_101_data):
     """
-    Test that calling centroid_win before fluxfrac_radius does not
-    corrupt the fluxfrac_radius cache.
+    Test that calling centroid_win before flux_radius does not corrupt
+    the flux_radius cache.
 
-    ``centroid_win`` calls ``fluxfrac_radius(0.5)`` internally and then
+    ``centroid_win`` calls ``flux_radius(0.5)`` internally and then
     modifies the returned half-light radius array in-place (replacing
     NaN with a minimum radius). This must not mutate the cached
-    ``fluxfrac_radius`` Quantity.
+    ``flux_radius`` Quantity.
 
     Regression test for a bug where ``.value`` returned a view of the
     cached Quantity's internal array, causing in-place modification.
@@ -1833,37 +1836,37 @@ def test_fluxfrac_cache_not_mutated_by_centroid_win(gauss_101_data):
     cat = SourceCatalog(data, segm)
 
     # Patch _measured_kron_radius to return a value > 6.0 so that
-    # kron_radius is NaN, which makes fluxfrac_radius return NaN
+    # kron_radius is NaN, which makes flux_radius return NaN
     with patch.object(type(cat), '_measured_kron_radius',
                       new_callable=lambda: property(
                           lambda _self: np.array([100.0]))):
         cat2 = SourceCatalog(data, segm)
         assert np.isnan(cat2.kron_radius.value[0])
 
-        # Call centroid_win first (it internally calls fluxfrac_radius(0.5))
+        # Call centroid_win first (it internally calls flux_radius(0.5))
         _ = cat2.centroid_win
 
-        # fluxfrac_radius(0.5) must still return NaN, not 0.5
-        result = cat2.fluxfrac_radius(0.5)
+        # flux_radius(0.5) must still return NaN, not 0.5
+        result = cat2.flux_radius(0.5)
         assert np.all(np.isnan(result.value))
 
 
-def test_centroid_win_nan_when_fluxfrac_nan(gauss_101_data):
+def test_centroid_win_nan_when_flux_radius_nan(gauss_101_data):
     """
-    Test that centroid_win returns NaN when fluxfrac_radius(0.5) is NaN
+    Test that centroid_win returns NaN when flux_radius(0.5) is NaN
     (e.g., because kron_radius is NaN).
     """
     data, segm = gauss_101_data
 
     # Patch _measured_kron_radius to return a value > 6.0 so that
-    # kron_radius is NaN, which makes fluxfrac_radius return NaN
+    # kron_radius is NaN, which makes flux_radius return NaN
     with patch.object(type(SourceCatalog(data, segm)),
                       '_measured_kron_radius',
                       new_callable=lambda: property(
                           lambda _self: np.array([100.0]))):
         cat = SourceCatalog(data, segm)
         assert np.isnan(cat.kron_radius.value[0])
-        assert np.isnan(cat.fluxfrac_radius(0.5).value[0])
+        assert np.isnan(cat.flux_radius(0.5).value[0])
 
         cwin = cat.centroid_win
         assert np.all(np.isnan(cwin))
@@ -1877,9 +1880,9 @@ def test_centroid_win_aperture_mask_none_in_loop(gauss_101_catalog):
     """
     _data, _segm, cat = gauss_101_catalog
 
-    # Pre-compute fluxfrac_radius before mocking, since it also
-    # uses CircularAperture internally
-    hl_val = cat.fluxfrac_radius(0.5)
+    # Pre-compute flux_radius before mocking, since it also uses
+    # CircularAperture internally
+    hl_val = cat.flux_radius(0.5)
     original_method = cat._aperture_to_mask
 
     def mock_aperture_to_mask(aperture, **kwargs):
@@ -1889,11 +1892,11 @@ def test_centroid_win_aperture_mask_none_in_loop(gauss_101_catalog):
 
     with patch.object(cat, '_aperture_to_mask',
                       side_effect=mock_aperture_to_mask), \
-         patch.object(type(cat), 'fluxfrac_radius',
+         patch.object(type(cat), 'flux_radius',
                       return_value=hl_val):
         cwin = cat.centroid_win
         # NaN from the loop resets to isophotal centroid
-        # because nan_hl is False (fluxfrac_radius was valid)
+        # because nan_hl is False (flux_radius was valid)
         assert_allclose(cwin[:, 0], cat.x_centroid)
         assert_allclose(cwin[:, 1], cat.y_centroid)
 
@@ -1908,8 +1911,7 @@ def test_centroid_win_oom_guard(gauss_101_catalog):
     # Provide a huge half-light radius so the aperture bbox exceeds
     # max_aper_size (max(data.size, 1_000_000) = 1_000_000).
     huge_radius = np.array([200.0]) * u.pix
-    with patch.object(type(cat), 'fluxfrac_radius',
-                      return_value=huge_radius):
+    with patch.object(type(cat), 'flux_radius', return_value=huge_radius):
         cwin = cat.centroid_win
     # OOM guard should force NaN, which then resets to isophotal
     # centroid (because nan_hl is False)
@@ -1948,9 +1950,9 @@ def test_make_aperture_data_outside_image(gauss_101_catalog):
     assert result == (None,) * 5
 
 
-def test_fluxfrac_optimizer_args_oom_guard(gauss_101_catalog):
+def test_flux_radius_optimizer_args_oom_guard(gauss_101_catalog):
     """
-    Test that _fluxfrac_optimizer_args returns None for sources whose
+    Test that _flux_radius_optimizer_args returns None for sources whose
     max-radius aperture bbox exceeds max_aper_size.
     """
     data, segm, cat = gauss_101_catalog
@@ -1965,12 +1967,12 @@ def test_fluxfrac_optimizer_args_oom_guard(gauss_101_catalog):
         cat2 = SourceCatalog(data, segm)
         cat2.__dict__['_kron_photometry'] = cat._kron_photometry
         cat2.__dict__['_max_circular_kron_radius'] = huge
-        assert np.all(np.isnan(cat2.fluxfrac_radius(0.5)))
+        assert np.all(np.isnan(cat2.flux_radius(0.5)))
 
 
-def test_fluxfrac_optimizer_args_off_image(gauss_101_catalog):
+def test_flux_radius_optimizer_args_off_image(gauss_101_catalog):
     """
-    Test that _fluxfrac_optimizer_args returns None for sources whose
+    Test that _flux_radius_optimizer_args returns None for sources whose
     max-radius aperture bbox doesn't overlap the data.
     """
     _data, _segm, cat = gauss_101_catalog
@@ -1980,28 +1982,29 @@ def test_fluxfrac_optimizer_args_off_image(gauss_101_catalog):
     off = np.array([500.0])
     cat.__dict__['_x_centroid'] = off
     cat.__dict__['_y_centroid'] = off
-    assert np.all(np.isnan(cat.fluxfrac_radius(0.5)))
+    assert np.all(np.isnan(cat.flux_radius(0.5)))
 
 
-def test_fluxfrac_optimizer_args_center_method(gauss_101_catalog):
+def test_flux_radius_optimizer_args_center_method(gauss_101_catalog):
     """
-    Test _fluxfrac_optimizer_args with method='center' to cover the
+    Test _flux_radius_optimizer_args with method='center' to cover the
     center-method branch in the method translation logic.
     """
     _data, _segm, cat = gauss_101_catalog
-    cat._apermask_kwargs['fluxfrac'] = {'method': 'center'}
-    r50 = cat.fluxfrac_radius(0.5)
+    cat._apermask_kwargs['flux_radius'] = {'method': 'center'}
+    r50 = cat.flux_radius(0.5)
     assert np.isfinite(r50.value[0])
 
 
-def test_fluxfrac_optimizer_args_subpixel_method(gauss_101_catalog):
+def test_flux_radius_optimizer_args_subpixel_method(gauss_101_catalog):
     """
-    Test _fluxfrac_optimizer_args with method='subpixel' to cover the
+    Test _flux_optimizer_args with method='subpixel' to cover the
     subpixel-method branch in the method translation logic.
     """
     _data, _segm, cat = gauss_101_catalog
-    cat._apermask_kwargs['fluxfrac'] = {'method': 'subpixel', 'subpixels': 5}
-    r50 = cat.fluxfrac_radius(0.5)
+    cat._apermask_kwargs['flux_radius'] = {'method': 'subpixel',
+                                           'subpixels': 5}
+    r50 = cat.flux_radius(0.5)
     assert np.isfinite(r50.value[0])
 
 
@@ -2041,8 +2044,8 @@ def test_measured_kron_radius_circular_fallback(gauss_101_data):
     cat = SourceCatalog(data, segm, kron_params=(2.5, 1.4, 5.0))
 
     # Force semimajor/semiminor to zero to trigger circular fallback.
-    # Also patch cxx/cxy/cyy to valid values since the real ones depend
-    # on covariance eigenvalues.
+    # Also patch ellipse_cxx/ellipse_cxy/ellipse_cyy to valid values
+    # since the real ones depend on covariance eigenvalues.
     zero = np.array([0.0]) << u.pix
     cxx_val = np.array([1.0]) / (u.pix * u.pix)
     cyy_val = np.array([1.0]) / (u.pix * u.pix)
@@ -2051,11 +2054,11 @@ def test_measured_kron_radius_circular_fallback(gauss_101_data):
                        new_callable=lambda: property(lambda _self: zero)),
           patch.object(type(cat), 'semiminor_axis',
                        new_callable=lambda: property(lambda _self: zero)),
-          patch.object(type(cat), 'cxx',
+          patch.object(type(cat), 'ellipse_cxx',
                        new_callable=lambda: property(lambda _self: cxx_val)),
-          patch.object(type(cat), 'cyy',
+          patch.object(type(cat), 'ellipse_cyy',
                        new_callable=lambda: property(lambda _self: cyy_val)),
-          patch.object(type(cat), 'cxy',
+          patch.object(type(cat), 'ellipse_cxy',
                        new_callable=lambda: property(lambda _self: cxy_val))):
         kr = cat._measured_kron_radius
         assert np.isfinite(kr[0])
@@ -2077,11 +2080,11 @@ def test_measured_kron_radius_circular_no_min_radius(gauss_101_data):
                        new_callable=lambda: property(lambda _self: zero)),
           patch.object(type(cat), 'semiminor_axis',
                        new_callable=lambda: property(lambda _self: zero)),
-          patch.object(type(cat), 'cxx',
+          patch.object(type(cat), 'ellipse_cxx',
                        new_callable=lambda: property(lambda _self: cxx_val)),
-          patch.object(type(cat), 'cyy',
+          patch.object(type(cat), 'ellipse_cyy',
                        new_callable=lambda: property(lambda _self: cyy_val)),
-          patch.object(type(cat), 'cxy',
+          patch.object(type(cat), 'ellipse_cxy',
                        new_callable=lambda: property(lambda _self: cxy_val))):
         kr = cat._measured_kron_radius
         assert np.all(np.isnan(kr))

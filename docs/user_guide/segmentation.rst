@@ -72,7 +72,7 @@ where pixels touch along their edges or corners. One can also use
     >>> print(segment_map)
     <photutils.segmentation.core.SegmentationImage>
     shape: (300, 500)
-    nlabels: 86
+    n_labels: 86
     labels: [ 1  2  3  4  5 ... 82 83 84 85 86]
 
 The result is a :class:`~photutils.segmentation.SegmentationImage`
@@ -268,7 +268,7 @@ the background-subtracted (convolved) image and threshold:
     >>> print(segment_map)
     <photutils.segmentation.core.SegmentationImage>
     shape: (300, 500)
-    nlabels: 93
+    n_labels: 93
     labels: [ 1  2  3  4  5 ... 89 90 91 92 93]
 
 
@@ -309,7 +309,7 @@ result:
     >>> print(segment_map3)
     <photutils.segmentation.core.SegmentationImage>
     shape: (300, 500)
-    nlabels: 79
+    n_labels: 79
     labels: [ 1  2  3  4  5 ... 75 76 77 78 79]
 
 
@@ -621,7 +621,7 @@ label numbers in the segmentation image:
 
     >>> cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> cat_subset = cat.get_labels(labels)
+    >>> cat_subset = cat.select_labels(labels)
     >>> tbl2 = cat_subset.to_table()
     >>> tbl2['x_centroid'].info.format = '.2f'  # optional format
     >>> tbl2['y_centroid'].info.format = '.2f'
@@ -646,7 +646,7 @@ properties can be customized in the `~astropy.table.QTable` using the
 
     >>> cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> cat_subset = cat.get_labels(labels)
+    >>> cat_subset = cat.select_labels(labels)
     >>> columns = ['label', 'x_centroid', 'y_centroid', 'area', 'segment_flux']
     >>> tbl3 = cat_subset.to_table(columns=columns)
     >>> tbl3['x_centroid'].info.format = '.4f'  # optional format
@@ -684,7 +684,7 @@ properties for each source will also be calculated:
 
     >>> cat = SourceCatalog(data, segment_map, background=bkg.background)
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> cat_subset = cat.get_labels(labels)
+    >>> cat_subset = cat.select_labels(labels)
     >>> columns = ['label', 'background_centroid', 'background_mean',
     ...            'background_sum']
     >>> tbl4 = cat_subset.to_table(columns=columns)
@@ -741,7 +741,7 @@ instrumental flux and propagated flux error within the source segments:
     >>> error = calc_total_error(data, bkg.background_rms, effective_gain)
     >>> cat = SourceCatalog(data, segment_map, error=error)
     >>> labels = [1, 5, 20, 50, 75, 80]
-    >>> cat_subset = cat.get_labels(labels)  # select a subset of objects
+    >>> cat_subset = cat.select_labels(labels)  # select a subset of objects
     >>> columns = ['label', 'x_centroid', 'y_centroid', 'segment_flux',
     ...            'segment_flux_err']
     >>> tbl5 = cat_subset.to_table(columns=columns)

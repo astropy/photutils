@@ -55,6 +55,39 @@ _DEPRECATED_ATTRIBUTES = {
     'ycentroid_win': 'y_centroid_win',
     'xcentroid_quad': 'x_centroid_quad',
     'ycentroid_quad': 'y_centroid_quad',
+    'nlabels': 'n_labels',
+    'data_ma': 'data_masked',
+    'convdata': 'convolved_data_cutout',
+    'convdata_ma': 'convolved_data_masked',
+    'error_ma': 'error_masked',
+    'segment_ma': 'segment_masked',
+    'background_ma': 'background_masked',
+    'covar_sigx2': 'covariance_xx',
+    'covar_sigxy': 'covariance_xy',
+    'covar_sigy2': 'covariance_yy',
+    'cxx': 'ellipse_cxx',
+    'cxy': 'ellipse_cxy',
+    'cyy': 'ellipse_cyy',
+    'data': 'data_cutout',
+    'error': 'error_cutout',
+    'background': 'background_cutout',
+    'segment': 'segment_cutout',
+    'cutout_minval_index': 'cutout_min_value_index',
+    'cutout_maxval_index': 'cutout_max_value_index',
+    'minval_index': 'min_value_index',
+    'maxval_index': 'max_value_index',
+    'minval_xindex': 'min_value_xindex',
+    'minval_yindex': 'min_value_yindex',
+    'maxval_xindex': 'max_value_xindex',
+    'maxval_yindex': 'max_value_yindex',
+    'fluxfrac_radius': 'flux_radius',
+    'get_label': 'select_label',
+    'get_labels': 'select_labels',
+    'add_extra_property': 'add_property',
+    'remove_extra_property': 'remove_property',
+    'remove_extra_properties': 'remove_properties',
+    'rename_extra_property': 'rename_property',
+    'extra_properties': 'custom_properties',
 }
 
 
@@ -196,12 +229,12 @@ class SourceCatalog:
         ignored if ``detection_cat`` is input.
 
     localbkg_width : int, optional
-        The width of the rectangular annulus used to compute a local
-        background around each source. If zero, then no local background
-        subtraction is performed. The local background affects the
-        ``min_value``, ``max_value``, ``segment_flux``, ``kron_flux``,
-        and ``fluxfrac_radius`` properties. It is also used when
-        calculating circular and Kron aperture photometry (i.e.,
+        The width of the rectangular annulus used to compute a
+        local background around each source. If zero, then no local
+        background subtraction is performed. The local background
+        affects the ``min_value``, ``max_value``, ``segment_flux``,
+        ``kron_flux``, and ``flux_radius`` properties. It is also used
+        when calculating circular and Kron aperture photometry (i.e.,
         `circular_photometry` and `kron_photometry`). It does not affect
         the moment-based morphological properties of the source.
 
@@ -249,13 +282,13 @@ class SourceCatalog:
         ``kron_params`` keywords will be ignored. This keyword affects
         `circular_photometry` (including returned apertures), all Kron
         parameters (Kron radius, flux, flux errors, apertures, and
-        custom `kron_photometry`), and `fluxfrac_radius` (which is based
-        on the Kron flux).
+        custom `kron_photometry`), and `flux_radius` (which is based on
+        the Kron flux).
 
     progress_bar : bool, optional
         Whether to display a progress bar when calculating
         some properties (e.g., ``kron_radius``, ``kron_flux``,
-        ``fluxfrac_radius``, ``circular_photometry``, ``centroid_win``,
+        ``flux_radius``, ``circular_photometry``, ``centroid_win``,
         ``centroid_quad``). The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
 
@@ -306,12 +339,12 @@ class SourceCatalog:
     :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
 
     Custom errors for source segments can be calculated using
-    the `~photutils.segmentation.SourceCatalog.error_ma` and
-    `~photutils.segmentation.SourceCatalog.background_ma` properties,
-    which are 2D `~numpy.ma.MaskedArray` cutout versions of the input
-    ``error`` and ``background`` arrays. The mask is `True` for pixels
-    outside the source segment, masked pixels from the ``mask`` input,
-    or any non-finite ``data`` values (NaN and inf).
+    the `~photutils.segmentation.SourceCatalog.error_masked` and
+    `~photutils.segmentation.SourceCatalog.background_masked`
+    properties, which are 2D `~numpy.ma.MaskedArray` cutout versions of
+    the input ``error`` and ``background`` arrays. The mask is `True`
+    for pixels outside the source segment, masked pixels from the
+    ``mask`` input, or any non-finite ``data`` values (NaN and inf).
 
     **Scalar vs. Multi-source Catalogs**
 
@@ -322,11 +355,11 @@ class SourceCatalog:
     same properties return a scalar value or a single object. For
     example, `kron_aperture` returns a list of aperture objects for a
     multi-source catalog, but a single aperture object for a scalar
-    catalog. Similarly, `data` returns a list of 2D cutout arrays for a
-    multi-source catalog, but a single 2D array for a scalar catalog. A
-    scalar catalog is created when the input segmentation image contains
-    only one source or when a multi-source catalog is indexed to select
-    a single source.
+    catalog. Similarly, `data_cutout` returns a list of 2D cutout arrays
+    for a multi-source catalog, but a single 2D array for a scalar
+    catalog. A scalar catalog is created when the input segmentation
+    image contains only one source or when a multi-source catalog is
+    indexed to select a single source.
 
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
@@ -378,13 +411,13 @@ class SourceCatalog:
         self._apermask_kwargs = {
             'circ': {'method': 'exact'},
             'kron': {'method': 'exact'},
-            'fluxfrac': {'method': 'exact'},
+            'flux_radius': {'method': 'exact'},
             'cen_win': {'method': 'center'},
         }
 
         self.default_columns = DEFAULT_COLUMNS
         self._extra_properties = []
-        self._fluxfrac_cache = {}
+        self._flux_radius_cache = {}
         self.meta = _get_meta()
         self._update_meta()
 
@@ -473,7 +506,7 @@ class SourceCatalog:
         self._apermask_kwargs = {
             'circ': {'method': 'subpixel', 'subpixels': 5},
             'kron': {'method': 'center'},
-            'fluxfrac': {'method': 'subpixel', 'subpixels': 5},
+            'flux_radius': {'method': 'subpixel', 'subpixels': 5},
             'cen_win': {'method': 'subpixel', 'subpixels': 11},
         }
 
@@ -506,7 +539,7 @@ class SourceCatalog:
         lazyproperties = [name for name in self._lazyproperties if not
                           name.startswith('_')]
         lazyproperties.remove('isscalar')
-        lazyproperties.remove('nlabels')
+        lazyproperties.remove('n_labels')
         lazyproperties.extend(['label', 'labels', 'slices'])
         lazyproperties.sort()
         return lazyproperties
@@ -596,10 +629,10 @@ class SourceCatalog:
         value = self._index_object_list(getattr(self, attr), index)
         setattr(newcls, attr, value)
 
-        # Slice the fluxfrac_radius cache values
-        newcls._fluxfrac_cache = {key: value[index]
-                                  for key, value
-                                  in self._fluxfrac_cache.items()}
+        # Slice the flux_radius cache values
+        newcls._flux_radius_cache = {key: value[index]
+                                     for key, value
+                                     in self._flux_radius_cache.items()}
 
         # Evaluated lazyproperty objects and extra properties
         keys = (set(self.__dict__.keys())
@@ -608,7 +641,7 @@ class SourceCatalog:
             value = self.__dict__[key]
 
             # Do not insert attributes that are always scalar (e.g.,
-            # isscalar, nlabels), i.e., not an array/list for each
+            # isscalar, n_labels), i.e., not an array/list for each
             # source
             if np.isscalar(value):
                 continue
@@ -634,7 +667,7 @@ class SourceCatalog:
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
         with np.printoptions(threshold=25, edgeitems=5):
-            fmt = [f'Length: {self.nlabels}', f'labels: {self.labels}']
+            fmt = [f'Length: {self.n_labels}', f'labels: {self.labels}']
         return f'{cls_name}\n' + '\n'.join(fmt)
 
     def __repr__(self):
@@ -644,7 +677,7 @@ class SourceCatalog:
         if self.isscalar:
             msg = f'Scalar {self.__class__.__name__!r} object has no len()'
             raise TypeError(msg)
-        return self.nlabels
+        return self.n_labels
 
     def __iter__(self):
         for item in range(len(self)):
@@ -685,23 +718,23 @@ class SourceCatalog:
         return deepcopy(self)
 
     @property
-    def extra_properties(self):
+    def custom_properties(self):
         """
         A list of the user-defined source properties.
         """
         return self._extra_properties
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def add_extra_property(self, name, value, overwrite=False):
+    def add_property(self, name, value, overwrite=False):
         """
-        Add a user-defined extra property as a new attribute.
+        Add a user-defined property as a new attribute.
 
         For example, the property ``name`` can then be included in the
         `to_table` ``columns`` keyword list to output the results in the
         table.
 
-        The complete list of user-defined extra properties is stored in
-        the `extra_properties` attribute.
+        The complete list of user-defined properties is stored in the
+        `custom_properties` attribute.
 
         Parameters
         ----------
@@ -717,7 +750,7 @@ class SourceCatalog:
         """
         internal_attributes = ((set(self.__dict__.keys())
                                | set(self._properties))
-                               - set(self.extra_properties))
+                               - set(self.custom_properties))
         if name in internal_attributes:
             msg = f'{name} cannot be set because it is a built-in attribute'
             raise ValueError(msg)
@@ -728,13 +761,13 @@ class SourceCatalog:
                        'overwrite=True to overwrite an existing attribute.')
                 raise ValueError(msg)
             if name in self._extra_properties:
-                msg = (f'{name} already exists in the extra_properties '
+                msg = (f'{name} already exists in the custom_properties '
                        'attribute list.')
                 raise ValueError(msg)
 
         property_error = False
         if self.isscalar:
-            # This allows fluxfrac_radius to add len-1 array values for
+            # This allows flux_radius to add len-1 array values for
             # scalar self
             if self._has_len(value) and len(value) == 1:
                 value = value[0]
@@ -745,39 +778,39 @@ class SourceCatalog:
                     property_error = True
             elif not np.isscalar(value):
                 property_error = True
-        elif not self._has_len(value) or len(value) != self.nlabels:
+        elif not self._has_len(value) or len(value) != self.n_labels:
             property_error = True
         if property_error:
             msg = ('value must have the same number of elements as the '
-                   'catalog in order to add it as an extra property.')
+                   'catalog in order to add it as a property.')
             raise ValueError(msg)
 
         setattr(self, name, value)
         if name not in self._extra_properties:
             self._extra_properties.append(name)
 
-    def remove_extra_property(self, name):
+    def remove_property(self, name):
         """
-        Remove a user-defined extra property.
+        Remove a user-defined property.
 
-        The property must have been defined using `add_extra_property`.
-        The complete list of user-defined extra properties is stored in
-        the `extra_properties` attribute.
+        The property must have been defined using `add_property`. The
+        complete list of user-defined properties is stored in the
+        `custom_properties` attribute.
 
         Parameters
         ----------
         name : str
             The name of the property to remove.
         """
-        self.remove_extra_properties(name)
+        self.remove_properties(name)
 
-    def remove_extra_properties(self, names):
+    def remove_properties(self, names):
         """
-        Remove user-defined extra properties.
+        Remove user-defined properties.
 
-        The properties must have been defined using
-        `add_extra_property`. The complete list of user-defined extra
-        properties is stored in the `extra_properties` attribute.
+        The properties must have been defined using `add_property`.
+        The complete list of user-defined properties is stored in the
+        `custom_properties` attribute.
 
         Parameters
         ----------
@@ -789,7 +822,7 @@ class SourceCatalog:
 
         # We copy the list here to prevent changing the list in-place
         # during the for loop below, e.g., in case a user inputs
-        # self.extra_properties to ``names``
+        # self.custom_properties to ``names``
         extra_properties = self._extra_properties.copy()
 
         for name in names:
@@ -797,16 +830,16 @@ class SourceCatalog:
                 delattr(self, name)
                 extra_properties.remove(name)
             else:
-                msg = f'{name} is not a defined extra property'
+                msg = f'{name} is not a defined property'
                 raise ValueError(msg)
         self._extra_properties = extra_properties
 
-    def rename_extra_property(self, name, new_name):
+    def rename_property(self, name, new_name):
         """
-        Rename a user-defined extra property.
+        Rename a user-defined property.
 
         The renamed property will remain at the same index in the
-        `extra_properties` list.
+        `custom_properties` list.
 
         Parameters
         ----------
@@ -816,12 +849,12 @@ class SourceCatalog:
         new_name : str
             The new attribute name.
         """
-        self.add_extra_property(new_name, getattr(self, name))
-        idx = self.extra_properties.index(name)
-        self.remove_extra_property(name)
-        # Preserve the order of self.extra_properties
-        self.extra_properties.remove(new_name)
-        self.extra_properties.insert(idx, new_name)
+        self.add_property(new_name, getattr(self, name))
+        idx = self.custom_properties.index(name)
+        self.remove_property(name)
+        # Preserve the order of self.custom_properties
+        self.custom_properties.remove(new_name)
+        self.custom_properties.insert(idx, new_name)
 
     @lazyproperty
     def _null_objects(self):
@@ -831,7 +864,7 @@ class SourceCatalog:
         For example, this is used for SkyCoord properties if ``wcs`` is
         `None`.
         """
-        return np.array([None] * self.nlabels)
+        return np.array([None] * self.n_labels)
 
     @lazyproperty
     def _null_values(self):
@@ -841,7 +874,7 @@ class SourceCatalog:
         For example, this is used for background properties if
         ``background`` is `None`.
         """
-        values = np.empty(self.nlabels)
+        values = np.empty(self.n_labels)
         values.fill(np.nan)
         return values
 
@@ -1017,7 +1050,7 @@ class SourceCatalog:
 
         return cutouts
 
-    def get_label(self, label):
+    def select_label(self, label):
         """
         Return a new `SourceCatalog` object for the input ``label``
         only.
@@ -1033,9 +1066,9 @@ class SourceCatalog:
             A new `SourceCatalog` object containing only the source with
             the input ``label``.
         """
-        return self.get_labels(label)
+        return self.select_labels(label)
 
-    def get_labels(self, labels):
+    def select_labels(self, labels):
         """
         Return a new `SourceCatalog` object for the input ``labels``
         only.
@@ -1067,7 +1100,7 @@ class SourceCatalog:
             Names of columns, in order, to include in the output
             `~astropy.table.QTable`. The allowed column names are any of
             the `SourceCatalog` properties or custom properties added
-            using `add_extra_property`. If ``columns`` is `None`, then a
+            using `add_property`. If ``columns`` is `None`, then a
             default list of scalar-valued properties (as defined by the
             ``default_columns`` attribute) will be used.
 
@@ -1098,7 +1131,7 @@ class SourceCatalog:
         return tbl
 
     @lazyproperty
-    def nlabels(self):
+    def n_labels(self):
         """
         The number of source labels.
         """
@@ -1157,7 +1190,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def segment(self):
+    def segment_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout of the segmentation image using the
         minimal bounding box of the source.
@@ -1170,7 +1203,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def segment_ma(self):
+    def segment_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout of the segmentation image
         using the minimal bounding box of the source.
@@ -1187,7 +1220,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def data(self):
+    def data_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the data using the minimal
         bounding box of the source.
@@ -1200,7 +1233,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def data_ma(self):
+    def data_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the data using the
         minimal bounding box of the source.
@@ -1217,7 +1250,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def convdata(self):
+    def convolved_data_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the convolved data using the
         minimal bounding box of the source.
@@ -1230,7 +1263,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def convdata_ma(self):
+    def convolved_data_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the convolved data
         using the minimal bounding box of the source.
@@ -1247,7 +1280,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def error(self):
+    def error_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the error array using the
         minimal bounding box of the source.
@@ -1262,7 +1295,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def error_ma(self):
+    def error_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the error array using
         the minimal bounding box of the source.
@@ -1281,7 +1314,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def background(self):
+    def background_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the background array using the
         minimal bounding box of the source.
@@ -1296,7 +1329,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def background_ma(self):
+    def background_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the background array.
         using the minimal bounding box of the source.
@@ -1380,7 +1413,7 @@ class SourceCatalog:
         An array with a single NaN is returned for completely-masked
         sources.
         """
-        return self._get_values(self.data_ma)
+        return self._get_values(self.data_masked)
 
     @lazyproperty
     def _error_values(self):
@@ -1392,7 +1425,7 @@ class SourceCatalog:
         """
         if self._error is None:
             return self._null_objects
-        return self._get_values(self.error_ma)
+        return self._get_values(self.error_masked)
 
     @lazyproperty
     def _background_values(self):
@@ -1404,7 +1437,7 @@ class SourceCatalog:
         """
         if self._background is None:
             return self._null_objects
-        return self._get_values(self.background_ma)
+        return self._get_values(self.background_masked)
 
     @lazyproperty
     @use_detcat
@@ -1547,11 +1580,11 @@ class SourceCatalog:
 
         Notes
         -----
-        On each iteration, the centroid is calculated using all pixels
-        within a circular aperture of ``4 * sigma`` from the current
-        position, weighting pixel values with a 2D Gaussian with a
-        standard deviation of ``sigma``. ``sigma`` is the half-light
-        radius (i.e., ``fluxfrac_radius(0.5)``) times (2.0 / 2.35). A
+        During each iteration, the centroid is calculated using all
+        pixels within a circular aperture of ``4 * sigma`` from the
+        current position, weighting pixel values with a 2D Gaussian with
+        a standard deviation of ``sigma``. ``sigma`` is the half-light
+        radius (i.e., ``flux_radius(0.5)``) times (2.0 / 2.35). A
         minimum half-light radius of 0.5 pixels is used. Iteration stops
         when the change in centroid position falls below a pre-defined
         threshold or a maximum number of iterations is reached.
@@ -1562,8 +1595,8 @@ class SourceCatalog:
         (e.g., due to a non-finite Kron radius), then ``np.nan`` will be
         returned.
         """
-        # Use .copy() to avoid mutating the cached fluxfrac_radius value
-        radius_hl = self.fluxfrac_radius(0.5).value.copy()
+        # Use .copy() to avoid mutating the cached flux_radius value
+        radius_hl = self.flux_radius(0.5).value.copy()
         if self.isscalar:
             radius_hl = np.array([radius_hl])
 
@@ -1729,9 +1762,9 @@ class SourceCatalog:
         # keep NaN (no valid window size).
         dx = self._x_centroid - xcen_win
         dy = self._y_centroid - ycen_win
-        cxx = self.cxx.value
-        cxy = self.cxy.value
-        cyy = self.cyy.value
+        cxx = self.ellipse_cxx.value
+        cxy = self.ellipse_cxy.value
+        cyy = self.ellipse_cyy.value
         if self.isscalar:
             cxx = (cxx,)
             cxy = (cxy,)
@@ -2243,7 +2276,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def cutout_minval_index(self):
+    def cutout_min_value_index(self):
         """
         The ``(y, x)`` coordinate, relative to the cutout data, of the
         minimum pixel value of the ``data`` within the source segment.
@@ -2251,7 +2284,7 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        data = self.data_ma
+        data = self.data_masked
         if self.isscalar:
             data = (data,)
         idx = []
@@ -2264,7 +2297,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def cutout_maxval_index(self):
+    def cutout_max_value_index(self):
         """
         The ``(y, x)`` coordinate, relative to the cutout data, of the
         maximum pixel value of the ``data`` within the source segment.
@@ -2272,7 +2305,7 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        data = self.data_ma
+        data = self.data_masked
         if self.isscalar:
             data = (data,)
         idx = []
@@ -2285,7 +2318,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def minval_index(self):
+    def min_value_index(self):
         """
         The ``(y, x)`` coordinate of the minimum pixel value of the
         ``data`` within the source segment.
@@ -2293,7 +2326,7 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        index = self.cutout_minval_index
+        index = self.cutout_min_value_index
         if self.isscalar:
             index = (index,)
         out = []
@@ -2303,7 +2336,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def maxval_index(self):
+    def max_value_index(self):
         """
         The ``(y, x)`` coordinate of the maximum pixel value of the
         ``data`` within the source segment.
@@ -2311,7 +2344,7 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        index = self.cutout_maxval_index
+        index = self.cutout_max_value_index
         if self.isscalar:
             index = (index,)
         out = []
@@ -2321,7 +2354,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def minval_xindex(self):
+    def min_value_xindex(self):
         """
         The ``x`` coordinate of the minimum pixel value of the ``data``
         within the source segment.
@@ -2330,14 +2363,14 @@ class SourceCatalog:
         first occurrence is returned.
         """
         if self.isscalar:
-            xidx = self.minval_index[1]
+            xidx = self.min_value_index[1]
         else:
-            xidx = self.minval_index[:, 1]
+            xidx = self.min_value_index[:, 1]
         return xidx
 
     @lazyproperty
     @as_scalar
-    def minval_yindex(self):
+    def min_value_yindex(self):
         """
         The ``y`` coordinate of the minimum pixel value of the ``data``
         within the source segment.
@@ -2346,14 +2379,14 @@ class SourceCatalog:
         first occurrence is returned.
         """
         if self.isscalar:
-            yidx = self.minval_index[0]
+            yidx = self.min_value_index[0]
         else:
-            yidx = self.minval_index[:, 0]
+            yidx = self.min_value_index[:, 0]
         return yidx
 
     @lazyproperty
     @as_scalar
-    def maxval_xindex(self):
+    def max_value_xindex(self):
         """
         The ``x`` coordinate of the maximum pixel value of the ``data``
         within the source segment.
@@ -2362,14 +2395,14 @@ class SourceCatalog:
         first occurrence is returned.
         """
         if self.isscalar:
-            xidx = self.maxval_index[1]
+            xidx = self.max_value_index[1]
         else:
-            xidx = self.maxval_index[:, 1]
+            xidx = self.max_value_index[:, 1]
         return xidx
 
     @lazyproperty
     @as_scalar
-    def maxval_yindex(self):
+    def max_value_yindex(self):
         """
         The ``y`` coordinate of the maximum pixel value of the ``data``
         within the source segment.
@@ -2378,9 +2411,9 @@ class SourceCatalog:
         first occurrence is returned.
         """
         if self.isscalar:
-            yidx = self.maxval_index[0]
+            yidx = self.max_value_index[0]
         else:
-            yidx = self.maxval_index[:, 0]
+            yidx = self.max_value_index[:, 0]
         return yidx
 
     @lazyproperty
@@ -2691,7 +2724,7 @@ class SourceCatalog:
         The two eigenvalues of the `covariance` matrix in decreasing
         order.
         """
-        eigvals = np.empty((self.nlabels, 2))
+        eigvals = np.empty((self.n_labels, 2))
         eigvals.fill(np.nan)
         # np.linalg.eigvalsh requires finite input values
         idx = np.unique(np.where(np.isfinite(self._covariance))[0])
@@ -2834,7 +2867,7 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
-    def covar_sigx2(self):
+    def covariance_xx(self):
         r"""
         The ``(0, 0)`` element of the `covariance` matrix, representing
         :math:`\sigma_x^2`, in units of pixel**2.
@@ -2844,7 +2877,7 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
-    def covar_sigy2(self):
+    def covariance_yy(self):
         r"""
         The ``(1, 1)`` element of the `covariance` matrix, representing
         :math:`\sigma_y^2`, in units of pixel**2.
@@ -2854,7 +2887,7 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
-    def covar_sigxy(self):
+    def covariance_xy(self):
         r"""
         The ``(0, 1)`` and ``(1, 0)`` elements of the `covariance`
         matrix, representing :math:`\sigma_x \sigma_y`, in units of
@@ -2865,7 +2898,7 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
-    def cxx(self):
+    def ellipse_cxx(self):
         r"""
         Coefficient for ``x**2`` in the generalized ellipse equation in
         units of pixel**(-2).
@@ -2889,7 +2922,7 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
-    def cyy(self):
+    def ellipse_cyy(self):
         r"""
         Coefficient for ``y**2`` in the generalized ellipse equation in
         units of pixel**(-2).
@@ -2913,7 +2946,7 @@ class SourceCatalog:
     @lazyproperty
     @use_detcat
     @as_scalar
-    def cxy(self):
+    def ellipse_cxy(self):
         r"""
         Coefficient for ``x * y`` in the generalized ellipse equation in
         units of pixel**(-2).
@@ -3014,7 +3047,7 @@ class SourceCatalog:
         This property is always an `~numpy.ndarray` without units.
         """
         if self.localbkg_width == 0:
-            local_bkgs = np.zeros(self.nlabels)
+            local_bkgs = np.zeros(self.n_labels)
         else:
             sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
             bkg_func = SExtractorBackground(sigma_clip=sigma_clip)
@@ -3304,9 +3337,9 @@ class SourceCatalog:
         if name is not None:
             flux_name = f'{name}_flux'
             flux_err_name = f'{name}_flux_err'
-            self.add_extra_property(flux_name, flux, overwrite=overwrite)
-            self.add_extra_property(flux_err_name, flux_err,
-                                    overwrite=overwrite)
+            self.add_property(flux_name, flux, overwrite=overwrite)
+            self.add_property(flux_err_name, flux_err,
+                              overwrite=overwrite)
 
         return flux, flux_err
 
@@ -3328,7 +3361,7 @@ class SourceCatalog:
             The scale factor to apply to the ellipse major and minor
             axes. The default value of 6.0 is roughly two times the
             isophotal extent of the source. A `~numpy.ndarray` input
-            must be a 1D array of length ``nlabels``.
+            must be a 1D array of length ``n_labels``.
 
         Returns
         -------
@@ -3384,10 +3417,11 @@ class SourceCatalog:
         a_arr = self.semimajor_axis.value * scale
         b_arr = self.semiminor_axis.value * scale
         theta_arr = self.orientation.to(u.radian).value
-        cxx_arr = self.cxx.value
-        cxy_arr = self.cxy.value
-        cyy_arr = self.cyy.value
+        cxx_arr = self.ellipse_cxx.value
+        cxy_arr = self.ellipse_cxy.value
+        cyy_arr = self.ellipse_cyy.value
         all_masked = self._all_masked
+
         if self.isscalar:
             a_arr = (a_arr,)
             b_arr = (b_arr,)
@@ -3589,7 +3623,7 @@ class SourceCatalog:
 
         where :math:`\bar{x}` and :math:`\bar{y}` represent the source
         `centroid` and the coefficients are based on image moments
-        (`cxx`, `cxy`, and `cyy`).
+        (`ellipse_cxx`, `ellipse_cxy`, and `ellipse_cyy`).
 
         The `kron_radius` value is the unscaled moment value. The
         minimum unscaled radius can be set using the second element of
@@ -4037,9 +4071,9 @@ class SourceCatalog:
         if name is not None:
             flux_name = f'{name}_flux'
             flux_err_name = f'{name}_flux_err'
-            self.add_extra_property(flux_name, kron_flux, overwrite=overwrite)
-            self.add_extra_property(flux_err_name, kron_flux_err,
-                                    overwrite=overwrite)
+            self.add_property(flux_name, kron_flux, overwrite=overwrite)
+            self.add_property(flux_err_name, kron_flux_err,
+                              overwrite=overwrite)
 
         return kron_flux, kron_flux_err
 
@@ -4101,7 +4135,7 @@ class SourceCatalog:
     def _max_circular_kron_radius(self):
         """
         The maximum circular Kron radius used as the upper limit of
-        fluxfrac_radius.
+        ``flux_radius``.
         """
         semimajor_sig = self.semimajor_axis.value
         kron_radius = self.kron_radius.value
@@ -4114,9 +4148,9 @@ class SourceCatalog:
         return radius
 
     @staticmethod
-    def _fluxfrac_radius_fcn(radius, clean_data, grid_params, normflux):
+    def _flux_radius_fcn(radius, clean_data, grid_params, normflux):
         """
-        Function whose root is found to compute the fluxfrac_radius.
+        Function whose root is found to compute the flux_radius.
 
         Uses ``circular_overlap_grid`` directly on pre-computed cutout
         data (with masked pixels zeroed) to avoid per-call aperture
@@ -4130,10 +4164,10 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    def _fluxfrac_optimizer_args(self):
+    def _flux_radius_optimizer_args(self):
         kron_flux = self._kron_photometry[:, 0]  # unitless
         max_radius = self._max_circular_kron_radius
-        kwargs = self._apermask_kwargs['fluxfrac']
+        kwargs = self._apermask_kwargs['flux_radius']
 
         # Translate mask method keywords to circular_overlap_grid
         # parameters once
@@ -4158,7 +4192,7 @@ class SourceCatalog:
 
         labels = self.labels
         if self.progress_bar:
-            desc = 'fluxfrac_radius prep'
+            desc = 'flux_radius prep'
             labels = add_progress_bar(labels, desc=desc)
 
         args = []
@@ -4238,16 +4272,16 @@ class SourceCatalog:
 
     @as_scalar
     @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def fluxfrac_radius(self, fluxfrac, name=None, overwrite=False):
+    def flux_radius(self, fraction, name=None, overwrite=False):
         """
         Calculate the circular radius that encloses the specified
         fraction of the Kron flux.
 
-        To estimate the half-light radius, use ``fluxfrac = 0.5``.
+        To estimate the half-light radius, use ``fraction = 0.5``.
 
         Parameters
         ----------
-        fluxfrac : float
+        fraction : float
             The fraction of the Kron flux at which to find the circular
             radius.
 
@@ -4267,33 +4301,33 @@ class SourceCatalog:
             the Kron flux. NaN is returned where no solution was found
             or where the Kron flux is zero or non-finite.
         """
-        if fluxfrac <= 0 or fluxfrac > 1:
-            msg = 'fluxfrac must be > 0 and <= 1'
+        if fraction <= 0 or fraction > 1:
+            msg = 'fraction must be > 0 and <= 1'
             raise ValueError(msg)
 
         # Return cached result if available
-        if fluxfrac in self._fluxfrac_cache:
-            result = self._fluxfrac_cache[fluxfrac]
+        if fraction in self._flux_radius_cache:
+            result = self._flux_radius_cache[fraction]
             if name is not None:
-                self.add_extra_property(name, result, overwrite=overwrite)
+                self.add_property(name, result, overwrite=overwrite)
             return result
 
-        args = self._fluxfrac_optimizer_args
+        args = self._flux_radius_optimizer_args
         if self.progress_bar:
-            desc = 'fluxfrac_radius'
+            desc = 'flux_radius'
             args = add_progress_bar(args, desc=desc)
 
         radius = []
-        for fluxfrac_args in args:
-            if fluxfrac_args is None:
+        for flux_radius_args in args:
+            if flux_radius_args is None:
                 radius.append(np.nan)
                 continue
 
-            clean_data, grid_params, kronflux, max_radius = fluxfrac_args
-            normflux = kronflux * fluxfrac
+            clean_data, grid_params, kronflux, max_radius = flux_radius_args
+            normflux = kronflux * fraction
             args = (clean_data, grid_params, normflux)
 
-            # Try to find the root of self._fluxfrac_radius_fnc, which
+            # Try to find the root of self._flux_radius_func, which
             # is bracketed by a min and max radius. A ValueError is
             # raised if the bracket points do not have different signs,
             # indicating no solution or multiple solutions (e.g., a
@@ -4311,7 +4345,7 @@ class SourceCatalog:
             while max_radius > min_radius and found is False:
                 try:
                     bracket = [min_radius, max_radius]
-                    result = root_scalar(self._fluxfrac_radius_fcn, args=args,
+                    result = root_scalar(self._flux_radius_fcn, args=args,
                                          bracket=bracket, method='brentq')
                     result = result.root
                     found = True
@@ -4327,10 +4361,10 @@ class SourceCatalog:
             radius.append(result)
 
         result = np.array(radius) << u.pix
-        self._fluxfrac_cache[fluxfrac] = result
+        self._flux_radius_cache[fraction] = result
 
         if name is not None:
-            self.add_extra_property(name, result, overwrite=overwrite)
+            self.add_property(name, result, overwrite=overwrite)
 
         return result
 
