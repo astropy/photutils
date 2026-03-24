@@ -153,7 +153,8 @@ class Isophote:
 
     # Remove in 4.0
     def __getattr__(self, name):
-        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES)
+        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
+                                  since='3.0', until='4.0')
 
     @staticmethod
     def _raise_sma_error(err):
@@ -497,7 +498,8 @@ class IsophoteList:
 
     # Remove in 4.0
     def __getattr__(self, name):
-        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES)
+        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
+                                  since='3.0', until='4.0')
 
     def __len__(self):
         return len(self._list)
@@ -947,7 +949,8 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
     }
 
     # Replace with QTable in 4.0
-    isotable = create_empty_deprecated_qtable(_deprecation_map)
+    isotable = create_empty_deprecated_qtable(
+        _deprecation_map, since='3.0', until='4.0')
 
     isotable.meta.update(_get_meta())  # keep isotable.meta type
 

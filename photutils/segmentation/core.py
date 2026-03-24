@@ -83,7 +83,8 @@ class SegmentationImage:
 
     # Remove in 4.0
     def __getattr__(self, name):
-        return deprecated_getattr(self, name, _SEGM_DEPRECATED_ATTRIBUTES)
+        return deprecated_getattr(self, name, _SEGM_DEPRECATED_ATTRIBUTES,
+                                  since='3.0', until='4.0')
 
     def __getitem__(self, key):
         """
@@ -2371,7 +2372,9 @@ class Segment:
 
     # Remove in 4.0
     def __getattr__(self, name):
-        return deprecated_getattr(self, name, _SEGMENT_DEPRECATED_ATTRIBUTES)
+        return deprecated_getattr(self, name,
+                                  _SEGMENT_DEPRECATED_ATTRIBUTES,
+                                  since='3.0', until='4.0')
 
     def _repr_svg_(self):
         if self.polygon is not None:

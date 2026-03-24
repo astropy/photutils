@@ -722,7 +722,7 @@ class EPSFBuildResult:
 
 @deprecated(since='3.0',
             message=('EPSFFitter is deprecated and will be removed in a '
-                     'future version. Use EPSFBuilder with the fitter, '
+                     'version 4.0. Use EPSFBuilder with the fitter, '
                      'fit_shape, and fitter_maxiters parameters instead.'))
 class EPSFFitter:
     """

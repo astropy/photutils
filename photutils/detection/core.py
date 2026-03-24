@@ -457,7 +457,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     # Remove in 4.0
     def __getattr__(self, name):
-        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES)
+        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
+                                  since='3.0', until='4.0')
 
     @lazyproperty
     def mu_sum(self):
@@ -667,7 +668,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             A table of the catalog properties.
         """
         # Replace with QTable in 4.0
-        table = create_empty_deprecated_qtable(_DEPRECATED_ATTRIBUTES)
+        table = create_empty_deprecated_qtable(
+            _DEPRECATED_ATTRIBUTES, since='3.0', until='4.0')
 
         table.meta.update(_get_meta())  # keep table.meta type
         if columns is None:

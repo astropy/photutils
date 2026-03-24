@@ -143,7 +143,9 @@ class EllipseSample:
 
     # Remove in 4.0
     def __getattr__(self, name):
-        return deprecated_getattr(self, name, _DEPRECATED_SAMPLE_ATTRIBUTES)
+        return deprecated_getattr(self, name,
+                                  _DEPRECATED_SAMPLE_ATTRIBUTES,
+                                  since='3.0', until='4.0')
 
     def extract(self):
         """

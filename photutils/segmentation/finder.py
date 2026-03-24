@@ -181,7 +181,9 @@ class SourceFinder:
 
     # Remove in 4.0
     def __getattr__(self, name):
-        return deprecated_getattr(self, name, _FINDER_DEPRECATED_ATTRIBUTES)
+        return deprecated_getattr(self, name,
+                                  _FINDER_DEPRECATED_ATTRIBUTES,
+                                  since='3.0', until='4.0')
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, data, threshold, mask=None):

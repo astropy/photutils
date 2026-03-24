@@ -233,7 +233,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     meta.update(aper_meta)
 
     # Replace with QTable in 4.0
-    tbl = create_empty_deprecated_qtable(_DEPRECATED_COLUMNS)
+    tbl = create_empty_deprecated_qtable(
+        _DEPRECATED_COLUMNS, since='3.0', until='4.0')
 
     tbl.meta.update(meta)  # keep tbl.meta type
 

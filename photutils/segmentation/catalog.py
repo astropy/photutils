@@ -703,7 +703,8 @@ class SourceCatalog:
 
     # Remove in 4.0
     def __getattr__(self, name):
-        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES)
+        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
+                                  since='3.0', until='4.0')
 
     @lazyproperty
     def isscalar(self):
@@ -1138,7 +1139,8 @@ class SourceCatalog:
             table_columns = columns
 
         # Replace with QTable() in 4.0
-        tbl = create_empty_deprecated_qtable(_DEPRECATED_ATTRIBUTES)
+        tbl = create_empty_deprecated_qtable(
+            _DEPRECATED_ATTRIBUTES, since='3.0', until='4.0')
 
         tbl.meta.update(self.meta)  # keep tbl.meta type
         for column in table_columns:
