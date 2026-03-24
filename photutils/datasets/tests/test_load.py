@@ -10,33 +10,34 @@ import numpy as np
 import pytest
 from astropy.io import fits
 from astropy.table import Table
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
-from photutils.datasets import get_path, load
-from photutils.datasets.load import _load_fits_as_imagehdu
+from photutils.datasets import load
+from photutils.datasets.load import _get_path, _load_fits_as_imagehdu
 
 
 def test_get_path():
     """
-    Test get_path with a valid filename and location, and with an
+    Test _get_path with a valid filename and location, and with an
     invalid location.
     """
     fn = '4gaussians_params.ecsv'
-    path = get_path(fn, location='local')
+    path = _get_path(fn, location='local')
     assert fn in path
 
     match = 'Invalid location:'
     with pytest.raises(ValueError, match=match):
-        get_path('filename', location='invalid')
+        _get_path('filename', location='invalid')
 
 
 def test_get_path_photutils_datasets():
     """
-    Test get_path with location='photutils-datasets'.
+    Test _get_path with location='photutils-datasets'.
     """
     with patch('photutils.datasets.load.download_file') as mock_dl:
         mock_dl.return_value = '/path/to/file.fits'
-        result = get_path('file.fits', location='photutils-datasets',
-                          cache=False)
+        result = _get_path('file.fits', location='photutils-datasets',
+                           cache=False)
         assert result == '/path/to/file.fits'
         mock_dl.assert_called_once()
         call_args = mock_dl.call_args
@@ -64,7 +65,7 @@ def url_paths():
 
 class TestGetPathCache:
     """
-    Tests for the caching behavior of get_path.
+    Tests for the caching behavior of _get_path.
 
     Tests that it correctly checks the cache for both the primary and
     fallback URLs, and that it falls back to downloading from the
@@ -73,7 +74,7 @@ class TestGetPathCache:
 
     def test_cache_hit_primary_url(self, url_paths):
         """
-        Test that get_path uses the cached file when the primary URL is
+        Test that _get_path uses the cached file when the primary URL is
         already in the cache, without trying the fallback URL.
         """
         with (
@@ -85,7 +86,7 @@ class TestGetPathCache:
             )
             mock_dl.return_value = '/cached/path/test_file.fits'
 
-            result = get_path(url_paths['filename'], location='remote')
+            result = _get_path(url_paths['filename'], location='remote')
 
             assert result == '/cached/path/test_file.fits'
             mock_dl.assert_called_once_with(
@@ -94,7 +95,7 @@ class TestGetPathCache:
 
     def test_cache_hit_datasets_url(self, url_paths):
         """
-        Test that get_path uses the cached file when only the fallback
+        Test that _get_path uses the cached file when only the fallback
         datasets URL is in the cache.
         """
         with (
@@ -106,7 +107,7 @@ class TestGetPathCache:
             )
             mock_dl.return_value = '/cached/path/test_file.fits'
 
-            result = get_path(url_paths['filename'], location='remote')
+            result = _get_path(url_paths['filename'], location='remote')
 
             assert result == '/cached/path/test_file.fits'
             mock_dl.assert_called_once_with(
@@ -115,7 +116,7 @@ class TestGetPathCache:
 
     def test_no_cache_falls_through_to_download(self, url_paths):
         """
-        Test that get_path tries the primary URL and falls back to the
+        Test that _get_path tries the primary URL and falls back to the
         datasets URL when neither is cached and the primary fails.
         """
         with (
@@ -128,7 +129,7 @@ class TestGetPathCache:
                 '/downloaded/path/test_file.fits',
             ]
 
-            result = get_path(url_paths['filename'], location='remote')
+            result = _get_path(url_paths['filename'], location='remote')
 
             assert result == '/downloaded/path/test_file.fits'
             assert mock_dl.call_count == 2
@@ -152,7 +153,8 @@ def test_load_star_image():
     Test that load_star_image returns an HDU with the expected header
     and data shape.
     """
-    hdu = load.load_star_image()
+    with pytest.warns(AstropyDeprecationWarning):
+        hdu = load.load_star_image()
     assert len(hdu.header) == 106
     assert hdu.data.shape == (1059, 1059)
 
@@ -205,8 +207,9 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'spitzer_example_image.fits'
         hdulist.writeto(filepath)
 
-        with patch('photutils.datasets.load.get_path',
-                   return_value=str(filepath)):
+        with (pytest.warns(AstropyDeprecationWarning),
+              patch('photutils.datasets.load._get_path',
+                    return_value=str(filepath))):
             hdu = load.load_spitzer_image()
 
         assert isinstance(hdu, fits.ImageHDU)
@@ -226,10 +229,9 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'spitzer_example_image.fits'
         hdulist.writeto(filepath)
 
-        with (
-            patch('photutils.datasets.load.get_path',
-                  return_value=str(filepath)) as mock_get_path,
-        ):
+        with (pytest.warns(AstropyDeprecationWarning),
+              patch('photutils.datasets.load._get_path',
+                    return_value=str(filepath)) as mock_get_path):
             hdu = load.load_spitzer_image(show_progress=True)
 
         assert isinstance(hdu, fits.ImageHDU)
@@ -251,8 +253,9 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'spitzer_example_catalog.xml'
         catalog_data.write(filepath, format='votable', overwrite=True)
 
-        with patch('photutils.datasets.load.get_path',
-                   return_value=str(filepath)):
+        with (pytest.warns(AstropyDeprecationWarning),
+              patch('photutils.datasets.load._get_path',
+                    return_value=str(filepath))):
             catalog = load.load_spitzer_catalog()
 
         assert isinstance(catalog, Table)
@@ -271,10 +274,9 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'spitzer_example_catalog.xml'
         catalog_data.write(filepath, format='votable', overwrite=True)
 
-        with (
-            patch('photutils.datasets.load.get_path',
-                  return_value=str(filepath)) as mock_get_path,
-        ):
+        with (pytest.warns(AstropyDeprecationWarning),
+              patch('photutils.datasets.load._get_path',
+                    return_value=str(filepath)) as mock_get_path):
             catalog = load.load_spitzer_catalog(show_progress=True)
 
         assert isinstance(catalog, Table)
@@ -300,7 +302,7 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'irac_ch1_flight.fits'
         hdulist.writeto(filepath)
 
-        with patch('photutils.datasets.load.get_path',
+        with patch('photutils.datasets.load._get_path',
                    return_value=str(filepath)):
             hdu = load.load_irac_psf(1)
 
@@ -323,7 +325,7 @@ class TestLoadFunctionsMocked:
             filepath = tmp_path / f'irac_ch{channel}_flight.fits'
             hdulist.writeto(filepath, overwrite=True)
 
-            with patch('photutils.datasets.load.get_path',
+            with patch('photutils.datasets.load._get_path',
                        return_value=str(filepath)):
                 hdu = load.load_irac_psf(channel)
 
@@ -344,7 +346,7 @@ class TestLoadFunctionsMocked:
         hdulist.writeto(filepath)
 
         with (
-            patch('photutils.datasets.load.get_path',
+            patch('photutils.datasets.load._get_path',
                   return_value=str(filepath)) as mock_get_path,
         ):
             hdu = load.load_irac_psf(2, show_progress=True)
@@ -371,8 +373,9 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'M6707HH.fits'
         hdulist.writeto(filepath)
 
-        with patch('photutils.datasets.load.get_path',
-                   return_value=str(filepath)):
+        with (pytest.warns(AstropyDeprecationWarning),
+              patch('photutils.datasets.load._get_path',
+                    return_value=str(filepath))):
             hdu = load.load_star_image()
 
         assert isinstance(hdu, fits.ImageHDU)
@@ -392,10 +395,9 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'M6707HH.fits'
         hdulist.writeto(filepath)
 
-        with (
-            patch('photutils.datasets.load.get_path',
-                  return_value=str(filepath)) as mock_get_path,
-        ):
+        with (pytest.warns(AstropyDeprecationWarning),
+              patch('photutils.datasets.load._get_path',
+                    return_value=str(filepath)) as mock_get_path):
             hdu = load.load_star_image(show_progress=True)
 
         assert isinstance(hdu, fits.ImageHDU)
@@ -422,7 +424,7 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'hst_wfc3ir_f160w_simulated_starfield.fits'
         hdulist.writeto(filepath)
 
-        with patch('photutils.datasets.load.get_path',
+        with patch('photutils.datasets.load._get_path',
                    return_value=str(filepath)):
             hdu = load.load_simulated_hst_star_image()
 
@@ -447,7 +449,7 @@ class TestLoadFunctionsMocked:
         hdulist.writeto(filepath)
 
         with (
-            patch('photutils.datasets.load.get_path',
+            patch('photutils.datasets.load._get_path',
                   return_value=str(filepath)) as mock_get_path,
         ):
             hdu = load.load_simulated_hst_star_image(show_progress=True)
@@ -458,3 +460,14 @@ class TestLoadFunctionsMocked:
             location='photutils-datasets',
             show_progress=True,
         )
+
+
+def test_deprecated_get_path():
+    """
+    Test that the deprecated get_path function raises a warning and
+    returns the expected path.
+    """
+    fn = '4gaussians_params.ecsv'
+    with pytest.warns(AstropyDeprecationWarning):
+        result = load.get_path(fn, location='local')
+    assert fn in result

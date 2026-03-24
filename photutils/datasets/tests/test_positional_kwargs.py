@@ -10,25 +10,11 @@ from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.datasets.images import _model_shape_from_bbox
-from photutils.datasets.load import get_path, load_irac_psf
+from photutils.datasets.load import load_irac_psf
 from photutils.datasets.model_params import make_random_models_table
 from photutils.datasets.noise import apply_poisson_noise, make_noise_image
 from photutils.datasets.wcs import make_gwcs, make_wcs
 from photutils.utils._optional_deps import HAS_GWCS
-
-
-class TestGetPathPositionalKwargs:
-    """
-    Test that get_path warns for positional optional args.
-    """
-
-    def test_positional_warns(self):
-        match = 'get_path'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
-            get_path('4gaussians_params.ecsv', 'local')
-
-    def test_keyword_no_warning(self):
-        get_path('4gaussians_params.ecsv', location='local')
 
 
 class TestLoadIracPsfPositionalKwargs:
