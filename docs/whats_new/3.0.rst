@@ -447,6 +447,13 @@ for :func:`~photutils.centroids.centroid_quadratic` function are now
 deprecated. Use the :func:`~photutils.centroids.centroid_sources`
 function to centroid sources at specific positions.
 
+Datasets Package
+^^^^^^^^^^^^^^^^
+
+The ``get_path``, ``load_spitzer_image``, ``load_spitzer_catalog``, and
+``load_star_image`` functions are now deprecated and will be removed in
+a future version.
+
 Detection Package
 ^^^^^^^^^^^^^^^^^
 
