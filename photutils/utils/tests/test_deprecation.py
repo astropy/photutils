@@ -14,7 +14,7 @@ from photutils.utils._deprecation import (DeprecatedColumnQTable,
                                           DeprecatedColumnTable,
                                           create_deprecated_table_from_data,
                                           create_empty_deprecated_qtable,
-                                          deprecated_getattr,
+                                          deprecated, deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 
@@ -794,3 +794,38 @@ class TestDeprecatedGetattr:
         assert 'version 5.0' in msg
         # since was not given, so "deprecated in version" should not appear
         assert 'deprecated in version' not in msg
+
+
+@deprecated('1.0', until='2.0')
+def _example_func4(a, b=10, c=20):
+    """
+    Example function for testing deprecated_positional_kwargs.
+    """
+    return a + b + c
+
+
+@deprecated('1.0')
+def _example_func5(a, b=10, c=20):
+    """
+    Example function for testing deprecated_positional_kwargs.
+    """
+    return a + b + c
+
+
+def test_deprecated():
+    """
+    Test the basic functionality of the @deprecated decorator.
+    """
+    with pytest.warns(AstropyDeprecationWarning) as record:
+        result = _example_func4(1, 2, 3)
+    assert result == 6
+    msg = str(record[0].message)
+    assert 'version 1.0' in msg
+    assert 'version 2.0' in msg
+
+    with pytest.warns(AstropyDeprecationWarning) as record:
+        result = _example_func5(1, 2, 3)
+    assert result == 6
+    msg = str(record[0].message)
+    assert 'version 1.0' in msg
+    assert 'a future version' in msg

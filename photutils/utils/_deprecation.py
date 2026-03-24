@@ -19,9 +19,47 @@ import warnings
 from functools import wraps
 
 from astropy.table import QTable, Table
+from astropy.utils.decorators import deprecated as astropy_deprecated
 from astropy.utils.decorators import (
     deprecated_renamed_argument as astropy_deprecated_renamed_argument)
 from astropy.utils.exceptions import AstropyDeprecationWarning
+
+
+def deprecated(since, *, until=None):
+    """
+    Decorator to mark a function or method as deprecated.
+
+    This is a wrapper around `astropy.utils.decorators.deprecated` that
+    allows for an optional ``until`` parameter to specify when the
+    deprecated functionality will be removed. If ``until`` is provided,
+    the warning message will include both the deprecation version and the
+    removal version.
+
+    Parameters
+    ----------
+    since : str or int
+        The version in which the function or method was deprecated.
+
+    until : str or int, optional
+        The version in which the deprecated functionality will be removed.
+        If `None`, the removal version is not mentioned in the warning
+        message.
+
+    Returns
+    -------
+    decorator : function
+        A decorator function that can be applied to any function or method
+        to mark it as deprecated.
+    """
+    if until is None:
+        message = (f'This function was deprecated in version {since} and will '
+                   'be removed in a future version.')
+        return astropy_deprecated(since, message=message)
+
+    remove_version = 'version ' + str(until)
+    message = (f'This function was deprecated in version {since} and will '
+               f'be removed in {remove_version}.')
+    return astropy_deprecated(since, message=message)
 
 
 def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
