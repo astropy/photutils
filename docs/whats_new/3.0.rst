@@ -406,9 +406,8 @@ Keyword-only Arguments
 ^^^^^^^^^^^^^^^^^^^^^^
 
 Passing **optional** arguments positionally to all functions, classes,
-and methods in ``photutils`` is now deprecated. In the next major
-release, all optional arguments must be passed as keyword arguments,
-e.g.::
+and methods in ``photutils`` is now deprecated. In the 4.0 release, all
+optional arguments must be passed as keyword arguments, e.g.::
 
     # Old (deprecated)
     from photutils.centroids import centroid_2dg
