@@ -22,10 +22,11 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
 
 __all__ = ['aperture_to_region', 'region_to_aperture']
 
-__doctest_requires__ = {'region_to_aperture': ['regions'],
-                        'aperture_to_region': ['regions'],
-                        '_scalar_aperture_to_region': ['regions'],
-                        '_shapely_polygon_to_region': ['regions', 'shapely']}
+__doctest_requires__ = {'region_to_aperture': ['regions >= 0.12.dev'],
+                        'aperture_to_region': ['regions >= 0.12.dev'],
+                        '_scalar_aperture_to_region': ['regions >= 0.12.dev'],
+                        '_shapely_polygon_to_region': ['regions >= 0.12.dev',
+                                                       'shapely']}
 
 
 def region_to_aperture(region):
@@ -265,8 +266,10 @@ def aperture_to_region(aperture):
     >>> aperture = CircularAperture(((10, 20), (30, 40)), r=5)
     >>> region = aperture_to_region(aperture)
     >>> region
-    <Regions([<CirclePixelRegion(center=PixCoord(x=10.0, y=20.0), radius=5.0)>,
-    <CirclePixelRegion(center=PixCoord(x=30.0, y=40.0), radius=5.0)>])>
+    <Regions([
+      <CirclePixelRegion(center=PixCoord(x=10.0, y=20.0), radius=5.0)>,
+      <CirclePixelRegion(center=PixCoord(x=30.0, y=40.0), radius=5.0)>
+    ])>
     """
     from regions import Regions
 
@@ -422,7 +425,8 @@ def _shapely_polygon_to_region(polygon, *, label=None, visual_kwargs=None):
     >>> polygon = Polygon([(1, 1), (3, 1), (2, 4), (1, 2)])
     >>> region = _shapely_polygon_to_region(polygon)
     >>> region
-    <PolygonPixelRegion(vertices=PixCoord(x=[1. 3. 2. 1.], y=[1. 1. 4. 2.]))>
+    <PolygonPixelRegion(vertices=PixCoord(x=[1.0 3.0 2.0 1.0],
+                                          y=[1.0 1.0 4.0 2.0]))>
     """
     from regions import PixCoord, PolygonPixelRegion, Regions, RegionVisual
     from shapely import MultiPolygon, Polygon
