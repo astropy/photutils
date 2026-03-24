@@ -27,9 +27,9 @@ class TestImageDepth:
         kernel = make_2dgaussian_kernel(3.0, size=5)
         convolved_data = convolve(data, kernel)
 
-        npixels = 10
+        n_pixels = 10
         threshold = 3.2
-        finder = SourceFinder(npixels=npixels, progress_bar=False)
+        finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
         segment_map = finder(convolved_data, threshold)
         self.data = data
         self.mask = segment_map.make_source_mask()

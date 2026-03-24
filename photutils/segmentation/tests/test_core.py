@@ -10,7 +10,8 @@ from unittest.mock import PropertyMock, patch
 import numpy as np
 import pytest
 from astropy.utils import lazyproperty
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.segmentation.core import Segment, SegmentationImage
@@ -1652,3 +1653,11 @@ class TestGetRegion:
         regions = self.segm.to_regions()
         for region in regions:
             assert not region.visual
+
+
+def test_segment_deprecations(segm_data):
+    segment_map = SegmentationImage(segm_data)
+    segments = segment_map.segments
+    match = 'attribute was deprecated'
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        _ = segments[0].data_ma

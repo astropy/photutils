@@ -7,9 +7,9 @@ import warnings
 
 import numpy as np
 from astropy.table import QTable
-from astropy.utils.decorators import deprecated_renamed_argument
 from scipy.ndimage import maximum_filter
 
+from photutils.utils._deprecation import deprecated_renamed_argument
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
@@ -19,7 +19,7 @@ from photutils.utils.exceptions import NoDetectionsWarning
 __all__ = ['find_peaks']
 
 
-@deprecated_renamed_argument('npeaks', 'n_peaks', '3.0')
+@deprecated_renamed_argument('npeaks', 'n_peaks', '3.0', until='4.0')
 def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
                border_width=None, n_peaks=np.inf, centroid_func=None,
                error=None, wcs=None):

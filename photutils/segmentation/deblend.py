@@ -20,6 +20,7 @@ from scipy.ndimage import sum_labels
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.detect import _detect_sources
 from photutils.segmentation.utils import _make_binary_structure
+from photutils.utils._deprecation import deprecated_renamed_argument
 from photutils.utils._progress_bars import add_progress_bar, tqdm
 from photutils.utils._stats import nanmax, nanmin, nansum
 
@@ -28,16 +29,21 @@ __all__ = ['deblend_sources']
 
 @dataclass
 class _DeblendParams:
-    npixels: int
+    n_pixels: int
     footprint: np.ndarray
-    nlevels: int
+    n_levels: int
     contrast: float
     mode: str
 
 
-def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
-                    contrast=0.001, mode='exponential', connectivity=8,
-                    relabel=True, nproc=1, progress_bar=True):
+@deprecated_renamed_argument('segment_img', 'segmentation_image', '3.0',
+                             until='4.0')
+@deprecated_renamed_argument('npixels', 'n_pixels', '3.0', until='4.0')
+@deprecated_renamed_argument('nlevels', 'n_levels', '3.0', until='4.0')
+def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
+                    n_levels=32, contrast=0.001, mode='exponential',
+                    connectivity=8, relabel=True, nproc=1,
+                    progress_bar=True):
     """
     Deblend overlapping sources labeled in a segmentation image.
 
@@ -53,21 +59,21 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         a convolved image here. This array should be the same array used
         in `~photutils.segmentation.detect_sources`.
 
-    segment_img : `~photutils.segmentation.SegmentationImage`
+    segmentation_image : `~photutils.segmentation.SegmentationImage`
         The segmentation image to deblend.
 
-    npixels : int
+    n_pixels : int
         The minimum number of connected pixels, each greater than
         ``threshold``, that an object must have to be deblended.
-        ``npixels`` must be a positive integer.
+        ``n_pixels`` must be a positive integer.
 
     labels : int or array_like of int, optional
         The label numbers to deblend. If `None` (default), then all
         labels in the segmentation image will be deblended.
 
-    nlevels : int, optional
+    n_levels : int, optional
         The number of multi-thresholding levels to use for deblending.
-        Each source will be re-thresholded at ``nlevels`` levels spaced
+        Each source will be re-thresholded at ``n_levels`` levels spaced
         between its minimum and maximum values (non-inclusive). The
         ``mode`` keyword determines how the levels are spaced.
 
@@ -82,11 +88,11 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
 
     mode : {'exponential', 'linear', 'sinh'}, optional
         The mode used in defining the spacing between the
-        multi-thresholding levels (see the ``nlevels`` keyword) during
-        deblending. The ``'exponential'`` and ``'sinh'`` modes have
-        more threshold levels near the source minimum and less near
-        the source maximum. The ``'linear'`` mode evenly spaces the
-        threshold levels between the source minimum and maximum.
+        multi-thresholding levels (see the ``n_levels`` keyword)
+        during deblending. The ``'exponential'`` and ``'sinh'`` modes
+        have more threshold levels near the source minimum and less
+        near the source maximum. The ``'linear'`` mode evenly spaces
+        the threshold levels between the source minimum and maximum.
         The ``'exponential'`` and ``'sinh'`` modes differ in that
         the ``'exponential'`` levels are dependent on the source
         maximum/minimum ratio (smaller ratios are more linear; larger
@@ -141,53 +147,54 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
     if isinstance(data, Quantity):
         data = data.value
 
-    if not isinstance(segment_img, SegmentationImage):
-        msg = 'segment_img must be a SegmentationImage'
+    if not isinstance(segmentation_image, SegmentationImage):
+        msg = 'segmentation_image must be a SegmentationImage'
         raise TypeError(msg)
 
-    if segment_img.shape != data.shape:
-        msg = 'segment_img must have the same shape as data'
+    if segmentation_image.shape != data.shape:
+        msg = 'segmentation_image must have the same shape as data'
         raise ValueError(msg)
 
-    if nlevels < 1:
-        msg = 'nlevels must be >= 1'
+    if n_levels < 1:
+        msg = 'n_levels must be >= 1'
         raise ValueError(msg)
     if contrast < 0 or contrast > 1:
         msg = 'contrast must be >= 0 and <= 1'
         raise ValueError(msg)
 
     if contrast == 1:  # no deblending
-        return segment_img.copy()
+        return segmentation_image.copy()
 
     if mode not in ('exponential', 'linear', 'sinh'):
         msg = 'mode must be "exponential", "linear", or "sinh"'
         raise ValueError(msg)
 
     if labels is None:
-        labels = segment_img.labels
+        labels = segmentation_image.labels
     else:
         labels = np.atleast_1d(labels)
-        segment_img.check_labels(labels)
+        segmentation_image.check_labels(labels)
 
-    # Include only sources that have at least (2 * npixels);
+    # Include only sources that have at least (2 * n_pixels);
     # this is required for a source to be deblended into multiple
-    # sources, each with a minimum of npixels
-    mask = (segment_img.areas[segment_img.get_indices(labels)]
-            >= (npixels * 2))
+    # sources, each with a minimum of n_pixels
+    mask = (segmentation_image.areas[
+            segmentation_image.get_indices(labels)]
+            >= (n_pixels * 2))
     labels = labels[mask]
 
     footprint = _make_binary_structure(data.ndim, connectivity)
-    deblend_params = _DeblendParams(npixels, footprint, nlevels, contrast,
+    deblend_params = _DeblendParams(n_pixels, footprint, n_levels, contrast,
                                     mode)
 
-    segm_deblended = segment_img.data.copy()
-    label_indices = segment_img.get_indices(labels)
+    segm_deblended = segmentation_image.data.copy()
+    label_indices = segmentation_image.get_indices(labels)
 
     if nproc is None:
         nproc = cpu_count()
 
     deblend_label_map = {}
-    max_label = segment_img.max_label
+    max_label = segmentation_image.max_label
     if nproc == 1:
         if progress_bar:
             desc = 'Deblending'
@@ -198,9 +205,9 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         for label, label_idx in zip(labels, label_indices, strict=True):
             if not isinstance(label_indices, np.ndarray):
                 label_indices.set_postfix_str(f'ID: {label}')
-            source_slice = segment_img.slices[label_idx]
+            source_slice = segmentation_image.slices[label_idx]
             source_data = data[source_slice]
-            source_segment = segment_img.data[source_slice]
+            source_segment = segmentation_image.data[source_slice]
             source_deblended, warns = _deblend_source(source_data,
                                                       source_segment,
                                                       label,
@@ -229,9 +236,9 @@ def deblend_sources(data, segment_img, npixels, *, labels=None, nlevels=32,
         all_source_segments = []
         all_source_slices = []
         for label_idx in label_indices:
-            source_slice = segment_img.slices[label_idx]
+            source_slice = segmentation_image.slices[label_idx]
             source_data = data[source_slice]
-            source_segment = segment_img.data[source_slice]
+            source_segment = segmentation_image.data[source_slice]
             all_source_data.append(source_data)
             all_source_segments.append(source_segment)
             all_source_slices.append(source_slice)
@@ -365,9 +372,9 @@ class _SingleSourceDeblender:
         self.data = data
         self.segment_data = segment_data
         self.label = label
-        self.npixels = deblend_params.npixels
+        self.n_pixels = deblend_params.n_pixels
         self.footprint = deblend_params.footprint
-        self.nlevels = deblend_params.nlevels
+        self.n_levels = deblend_params.n_levels
         self.contrast = deblend_params.contrast
         self.mode = deblend_params.mode
 
@@ -384,10 +391,10 @@ class _SingleSourceDeblender:
         Linearly spaced thresholds between the source minimum and
         maximum (inclusive).
 
-        The source min/max are excluded later, giving nlevels thresholds
-        between min and max (noninclusive).
+        The source min/max are excluded later, giving n_levels
+        thresholds between min and max (noninclusive).
         """
-        return np.linspace(self.source_min, self.source_max, self.nlevels + 2)
+        return np.linspace(self.source_min, self.source_max, self.n_levels + 2)
 
     @lazyproperty
     def normalized_thresholds(self):
@@ -452,7 +459,7 @@ class _SingleSourceDeblender:
         thresholds = self.compute_thresholds()
         segms = []
         for threshold in thresholds:
-            segm = _detect_sources(self.data, threshold, self.npixels,
+            segm = _detect_sources(self.data, threshold, self.n_pixels,
                                    self.footprint, self.segment_mask,
                                    relabel=False, return_segmimg=False)
             segms.append(segm)
@@ -478,7 +485,7 @@ class _SingleSourceDeblender:
             if there is only one source at every threshold.
         """
         thresholds = self.compute_thresholds()
-        segm_lower = _detect_sources(self.data, thresholds[0], self.npixels,
+        segm_lower = _detect_sources(self.data, thresholds[0], self.n_pixels,
                                      self.footprint, self.segment_mask,
                                      relabel=False, return_segmimg=False)
 
@@ -486,7 +493,7 @@ class _SingleSourceDeblender:
             all_segms = [segm_lower]
 
         for threshold in thresholds[1:]:
-            segm_upper = _detect_sources(self.data, threshold, self.npixels,
+            segm_upper = _detect_sources(self.data, threshold, self.n_pixels,
                                          self.footprint, self.segment_mask,
                                          relabel=False, return_segmimg=False)
             if segm_upper is None:  # 0 or 1 labels
@@ -613,7 +620,7 @@ class _SingleSourceDeblender:
             return None
 
         # If there are too many markers (e.g., due to low threshold
-        # and/or small npixels), the watershed step can be very slow
+        # and/or small n_pixels), the watershed step can be very slow
         # (the threshold of 200 is arbitrary, but seems to work well).
         # This mostly affects the "exponential" mode, where there are
         # many levels at low thresholds, so here we try again with

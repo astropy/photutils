@@ -485,6 +485,83 @@ improves code readability and reduces the likelihood of errors from
 accidentally passing arguments in the wrong order.
 
 
+Deprecated Table Column Names
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Many photutils output tables previously used concatenated column
+names (e.g., ``xcentroid``, ``ycentroid``, ``segment_fluxerr``,
+``kron_fluxerr``). In 3.0 these names are deprecated in favour of
+underscore-separated names (e.g., ``x_centroid``, ``y_centroid``,
+``segment_flux_err``, ``kron_flux_err``) that are consistent with Python
+naming conventions and the rest of the photutils API. The following
+table column names are deprecated with the corresponding new names:
+
+- ``xcentroid`` -> ``x_centroid``
+- ``ycentroid`` -> ``y_centroid``
+- ``xcentroid_win`` -> ``x_centroid_win``
+- ``ycentroid_win`` -> ``y_centroid_win``
+- ``xcentroid_quad`` -> ``x_centroid_quad``
+- ``ycentroid_quad`` -> ``y_centroid_quad``
+- ``xcenter`` -> ``x_center``
+- ``ycenter`` -> ``y_center``
+- ``semimajor_sigma`` -> ``semimajor_axis``
+- ``semiminor_sigma`` -> ``semiminor_axis``
+- ``pa`` -> ``orientation``
+- ``segment_fluxerr`` -> ``segment_flux_err``
+- ``kron_fluxerr`` -> ``kron_flux_err``
+- ``grad_error`` -> ``gradient_err``
+- ``grad_rerror`` -> ``gradient_rel_err``
+- ``[name]_fluxerr`` -> ``[name]_flux_err``
+- ``covar_sigx2`` -> ``covariance_xx``
+- ``covar_sigy2`` -> ``covariance_yy``
+- ``covar_sigxy`` -> ``covariance_xy``
+- ``cxx`` -> ``ellipse_cxx``
+- ``cyy`` -> ``ellipse_cyy``
+- ``cxy`` -> ``ellipse_cxy``
+
+To ease the transition, functions and classes that return output
+tables now return a ``DeprecatedColumnQTable`` instance, which
+is a thin wrapper to `~astropy.table.QTable`. These tables
+store data under the **new** column names internally, but
+transparently intercept accesses using the old names and emit an
+`~astropy.utils.exceptions.AstropyDeprecationWarning`::
+
+    >>> from photutils.segmentation import SourceCatalog
+    >>> cat = SourceCatalog(data, segmentation_image)
+    >>> tbl = cat.to_table()
+    >>> tbl.colnames  # new names are stored
+    ['label', 'x_centroid', 'y_centroid', ...]
+    >>> tbl['xcentroid']  # deprecated name still works, with a warning
+    ...  # AstropyDeprecationWarning: 'xcentroid' is deprecated; using 'x_centroid'
+
+All other table operations (slicing, sorting, copying, etc.) continue
+to work with either the old or new name, with the same warning for
+deprecated names.
+
+
+Opting into 4.0 Behavior Early
+""""""""""""""""""""""""""""""
+
+Users who have updated their code to use the new column names
+can opt in to the 4.0 behavior immediately by setting the
+``photutils.future_column_names`` flag to `True`::
+
+    >>> import photutils
+    >>> photutils.future_column_names = True
+
+When this flag is set, all photutils functions return plain
+`~astropy.table.QTable` instances with only the new column names.
+Accessing old column names will raise a `KeyError` instead of emitting a
+warning. This lets users verify their updated code is fully compatible
+with 4.0 before the release.
+
+.. note::
+
+    The ``future_column_names`` flag is a temporary migration aid. It
+    will be **removed** in 4.0, at which point plain tables with the new
+    column names will always be returned.
+
+
 Aperture Package
 ^^^^^^^^^^^^^^^^
 

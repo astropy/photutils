@@ -5,11 +5,19 @@ Tools for detecting sources in an image.
 
 from photutils.segmentation.deblend import deblend_sources
 from photutils.segmentation.detect import detect_sources
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_getattr,
+                                          deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 from photutils.utils._parameters import as_pair
 from photutils.utils._repr import make_repr
 
 __all__ = ['SourceFinder']
+
+# Remove in 4.0
+_FINDER_DEPRECATED_ATTRIBUTES = {
+    'npixels': 'n_pixels',
+    'nlevels': 'n_levels',
+}
 
 
 class SourceFinder:
@@ -28,14 +36,14 @@ class SourceFinder:
 
     Parameters
     ----------
-    npixels : int or array_like of 2 int
+    n_pixels : int or array_like of 2 int
         The minimum number of connected pixels, each greater than a
         specified threshold, that an object must have to be detected. If
-        ``npixels`` is an integer, then the value will be used for both
+        ``n_pixels`` is an integer, then the value will be used for both
         source detection and deblending (which internally uses source
-        detection at multiple thresholds). If ``npixels`` contains two
+        detection at multiple thresholds). If ``n_pixels`` contains two
         values, then the first value will be used for source detection
-        and the second value used for source deblending. ``npixels``
+        and the second value used for source deblending. ``n_pixels``
         values must be positive integers.
 
     connectivity : {4, 8}, optional
@@ -47,9 +55,9 @@ class SourceFinder:
     deblend : bool, optional
         Whether to deblend overlapping sources.
 
-    nlevels : int, optional
+    n_levels : int, optional
         The number of multi-thresholding levels to use for deblending.
-        Each source will be re-thresholded at ``nlevels`` levels spaced
+        Each source will be re-thresholded at ``n_levels`` levels spaced
         exponentially or linearly (see the ``mode`` keyword) between
         its minimum and maximum values. This keyword is ignored unless
         ``deblend=True``.
@@ -66,11 +74,11 @@ class SourceFinder:
 
     mode : {'exponential', 'linear', 'sinh'}, optional
         The mode used in defining the spacing between the
-        multi-thresholding levels (see the ``nlevels`` keyword) during
-        deblending. The ``'exponential'`` and ``'sinh'`` modes have
-        more threshold levels near the source minimum and less near
-        the source maximum. The ``'linear'`` mode evenly spaces the
-        threshold levels between the source minimum and maximum.
+        multi-thresholding levels (see the ``n_levels`` keyword)
+        during deblending. The ``'exponential'`` and ``'sinh'`` modes
+        have more threshold levels near the source minimum and less
+        near the source maximum. The ``'linear'`` mode evenly spaces
+        the threshold levels between the source minimum and maximum.
         The ``'exponential'`` and ``'sinh'`` modes differ in that
         the ``'exponential'`` levels are dependent on the source
         maximum/minimum ratio (smaller ratios are more linear; larger
@@ -138,7 +146,7 @@ class SourceFinder:
 
         # Detect the sources
         threshold = 1.5 * bkg.background_rms  # per-pixel threshold
-        finder = SourceFinder(npixels=10, progress_bar=False)
+        finder = SourceFinder(n_pixels=10, progress_bar=False)
         segm = finder(convolved_data, threshold)
 
         # Plot the image and the segmentation image
@@ -151,13 +159,15 @@ class SourceFinder:
         plt.tight_layout()
     """
 
-    def __init__(self, npixels, *, connectivity=8, deblend=True, nlevels=32,
+    @deprecated_renamed_argument('npixels', 'n_pixels', '3.0', until='4.0')
+    @deprecated_renamed_argument('nlevels', 'n_levels', '3.0', until='4.0')
+    def __init__(self, n_pixels, *, connectivity=8, deblend=True, n_levels=32,
                  contrast=0.001, mode='exponential', relabel=True, nproc=1,
                  progress_bar=True):
-        self.npixels = as_pair('npixels', npixels, check_odd=False)
+        self.n_pixels = as_pair('n_pixels', n_pixels, check_odd=False)
         self.deblend = deblend
         self.connectivity = connectivity
-        self.nlevels = nlevels
+        self.n_levels = n_levels
         self.contrast = contrast
         self.mode = mode
         self.relabel = relabel
@@ -165,9 +175,13 @@ class SourceFinder:
         self.progress_bar = progress_bar
 
     def __repr__(self):
-        params = ('npixels', 'deblend', 'connectivity', 'nlevels', 'contrast',
-                  'mode', 'relabel', 'nproc', 'progress_bar')
+        params = ('n_pixels', 'deblend', 'connectivity', 'n_levels',
+                  'contrast', 'mode', 'relabel', 'nproc', 'progress_bar')
         return make_repr(self, params)
+
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, _FINDER_DEPRECATED_ATTRIBUTES)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, data, threshold, mask=None):
@@ -202,15 +216,15 @@ class SourceFinder:
             value of zero is reserved for the background. If no sources are
             found then `None` is returned.
         """
-        segment_img = detect_sources(data, threshold, self.npixels[0],
+        segment_img = detect_sources(data, threshold, self.n_pixels[0],
                                      mask=mask, connectivity=self.connectivity)
         if segment_img is None:
             return None
 
         # Source deblending requires scikit-image
         if self.deblend:
-            segment_img = deblend_sources(data, segment_img, self.npixels[1],
-                                          nlevels=self.nlevels,
+            segment_img = deblend_sources(data, segment_img, self.n_pixels[1],
+                                          n_levels=self.n_levels,
                                           contrast=self.contrast,
                                           mode=self.mode,
                                           connectivity=self.connectivity,

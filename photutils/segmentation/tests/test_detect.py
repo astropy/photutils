@@ -170,35 +170,35 @@ class TestDetectSources:
         """
         Test basic detection.
         """
-        segm = detect_sources(self.data, threshold=0.9, npixels=2)
+        segm = detect_sources(self.data, threshold=0.9, n_pixels=2)
         assert_equal(segm.data, self.refdata)
 
         assert segm.data.dtype == np.int32
         assert segm.labels.dtype == np.int32
 
         segm = detect_sources(self.data << u.uJy, threshold=0.9 * u.uJy,
-                              npixels=2)
+                              n_pixels=2)
         assert_equal(segm.data, self.refdata)
 
         match = 'must all have the same units'
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data << u.uJy, threshold=0.9, npixels=2)
+            detect_sources(self.data << u.uJy, threshold=0.9, n_pixels=2)
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data, threshold=0.9 * u.Jy, npixels=2)
+            detect_sources(self.data, threshold=0.9 * u.Jy, n_pixels=2)
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data << u.uJy, threshold=0.9 * u.m, npixels=2)
+            detect_sources(self.data << u.uJy, threshold=0.9 * u.m, n_pixels=2)
 
     def test_small_sources(self):
         """
-        Test detection where sources are smaller than npixels size.
+        Test detection where sources are smaller than n_pixels size.
         """
         match = 'No sources were found'
         with pytest.warns(NoDetectionsWarning, match=match):
-            detect_sources(self.data, threshold=0.9, npixels=5)
+            detect_sources(self.data, threshold=0.9, n_pixels=5)
 
-    def test_npixels(self):
+    def test_n_pixels(self):
         """
-        Test removal of sources whose size is less than npixels.
+        Test removal of sources whose size is less than n_pixels.
 
         Regression tests for #663.
         """
@@ -208,17 +208,17 @@ class TestDetectSources:
         data[3, 3:] = 2
         data[3:, 3] = 2
 
-        segm = detect_sources(data, 0, npixels=4)
+        segm = detect_sources(data, 0, n_pixels=4)
         assert segm.n_labels == 2
         assert segm.data.dtype == np.int32
 
-        # Removal of labels with size less than npixels
+        # Removal of labels with size less than n_pixels
         # dtype should still be np.int32
-        segm = detect_sources(data, 0, npixels=8)
+        segm = detect_sources(data, 0, n_pixels=8)
         assert segm.n_labels == 1
         assert segm.data.dtype == np.int32
 
-        segm = detect_sources(data, 0, npixels=9)
+        segm = detect_sources(data, 0, n_pixels=9)
         assert segm.n_labels == 1
         assert segm.data.dtype == np.int32
 
@@ -229,21 +229,21 @@ class TestDetectSources:
         data[3:, 2] = 2
         data[5:, 3] = 2
 
-        npixels = np.arange(9, 14)
-        for npixels in np.arange(9, 14):
-            segm = detect_sources(data, 0, npixels=npixels)
+        n_pixels = np.arange(9, 14)
+        for n_pixels in np.arange(9, 14):
+            segm = detect_sources(data, 0, n_pixels=n_pixels)
             assert segm.n_labels == 1
             assert segm.areas[0] == 13
 
         match = 'No sources were found'
         with pytest.warns(NoDetectionsWarning, match=match):
-            detect_sources(data, 0, npixels=14)
+            detect_sources(data, 0, n_pixels=14)
 
     def test_zerothresh(self):
         """
         Test detection with zero threshold.
         """
-        segm = detect_sources(self.data, threshold=0.0, npixels=2)
+        segm = detect_sources(self.data, threshold=0.0, n_pixels=2)
         assert_equal(segm.data, self.refdata)
 
     def test_zerodet(self):
@@ -252,14 +252,14 @@ class TestDetectSources:
         """
         match = 'No sources were found'
         with pytest.warns(NoDetectionsWarning, match=match):
-            detect_sources(self.data, threshold=7, npixels=2)
+            detect_sources(self.data, threshold=7, n_pixels=2)
 
     def test_8connectivity(self):
         """
         Test detection with connectivity=8.
         """
         data = np.eye(3)
-        segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=8)
+        segm = detect_sources(data, threshold=0.9, n_pixels=1, connectivity=8)
         assert_equal(segm.data, data)
 
     def test_4connectivity(self):
@@ -268,24 +268,24 @@ class TestDetectSources:
         """
         data = np.eye(3)
         ref = np.diag([1, 2, 3])
-        segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=4)
+        segm = detect_sources(data, threshold=0.9, n_pixels=1, connectivity=4)
         assert_equal(segm.data, ref)
 
-    def test_npixels_nonint(self):
+    def test_n_pixels_nonint(self):
         """
         Test if an error is raised when npixel is noninteger.
         """
-        match = 'npixels must be a positive integer'
+        match = 'n_pixels must be a positive integer'
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data, threshold=1, npixels=0.1)
+            detect_sources(self.data, threshold=1, n_pixels=0.1)
 
-    def test_npixels_negative(self):
+    def test_n_pixels_negative(self):
         """
         Test if an error is raised when npixel is negative.
         """
-        match = 'npixels must be a positive integer'
+        match = 'n_pixels must be a positive integer'
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data, threshold=1, npixels=-1)
+            detect_sources(self.data, threshold=1, n_pixels=-1)
 
     @pytest.mark.parametrize('connectivity', [0, -1, 3, 6, 10])
     def test_connectivity_invalid(self, connectivity):
@@ -294,7 +294,7 @@ class TestDetectSources:
         """
         match = f'Invalid connectivity={connectivity}'
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data, threshold=1, npixels=1,
+            detect_sources(self.data, threshold=1, n_pixels=1,
                            connectivity=connectivity)
 
     def test_mask(self):

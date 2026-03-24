@@ -40,7 +40,7 @@ def progress_bar_catalog():
     g1 = Gaussian2D(100, 50, 50, 5, 5)
     g2 = Gaussian2D(80, 30, 30, 4, 4)
     data = g1(xx, yy) + g2(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
+    segm = detect_sources(data, 10.0, n_pixels=5)
     return SourceCatalog(data, segm, progress_bar=True)
 
 
@@ -54,7 +54,7 @@ def single_source_catalog():
     yy, xx = np.mgrid[0:51, 0:51]
     g1 = Gaussian2D(100, 25, 25, 5, 5)
     data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
+    segm = detect_sources(data, 10.0, n_pixels=5)
     cat = SourceCatalog(data, segm)
     return data, segm, cat
 
@@ -69,7 +69,7 @@ def gauss_101_data():
     yy, xx = np.mgrid[0:101, 0:101]
     g1 = Gaussian2D(100, 50, 50, 5, 5)
     data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
+    segm = detect_sources(data, 10.0, n_pixels=5)
     return data, segm
 
 
@@ -102,8 +102,8 @@ def centroid_win_data():
 
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
-    npixels = 10
-    finder = SourceFinder(npixels=npixels, progress_bar=False)
+    n_pixels = 10
+    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
     threshold = 107.9
     segment_map = finder(convolved_data, threshold)
     return data, segment_map, convolved_data
@@ -131,7 +131,7 @@ class TestSourceCatalog:
         self.data = (g1(xx, yy) + g2(xx, yy) + g3(xx, yy) + g4(xx, yy)
                      + g5(xx, yy) + g6(xx, yy) + g7(xx, yy))
         threshold = 27.0
-        self.segm = detect_sources(self.data, threshold, npixels=5)
+        self.segm = detect_sources(self.data, threshold, n_pixels=5)
         self.error = make_noise_image(self.data.shape, mean=0, stddev=2.0,
                                       seed=123)
         self.background = np.ones(self.data.shape) * 5.1
@@ -141,14 +141,14 @@ class TestSourceCatalog:
         self.wcs = make_wcs(self.data.shape)
         self.cat = SourceCatalog(self.data, self.segm, error=self.error,
                                  background=self.background, mask=self.mask,
-                                 wcs=self.wcs, localbkg_width=24)
+                                 wcs=self.wcs, local_background_width=24)
         unit = u.nJy
         self.unit = unit
         self.cat_units = SourceCatalog(self.data << unit, self.segm,
                                        error=self.error << unit,
                                        background=self.background << unit,
                                        mask=self.mask, wcs=self.wcs,
-                                       localbkg_width=24)
+                                       local_background_width=24)
 
     @pytest.mark.parametrize('with_units', [True, False])
     def test_catalog(self, with_units):
@@ -192,11 +192,11 @@ class TestSourceCatalog:
 
         match = 'Both units and masked cannot be True'
         with pytest.raises(ValueError, match=match):
-            cat1._prepare_cutouts(cat1._segment_img_cutouts, units=True,
+            cat1._prepare_cutouts(cat1._segmentation_image_cutouts, units=True,
                                   masked=True)
 
     @pytest.mark.parametrize('with_units', [True, False])
-    def test_catalog_detection_cat(self, with_units):
+    def test_catalog_detection_catalog(self, with_units):
         """
         Test aperture-based properties with an input detection catalog.
         """
@@ -209,22 +209,24 @@ class TestSourceCatalog:
                                  error=error << self.unit,
                                  background=self.background << self.unit,
                                  mask=self.mask, wcs=self.wcs,
-                                 localbkg_width=24, detection_cat=None)
+                                 local_background_width=24,
+                                 detection_catalog=None)
             cat3 = SourceCatalog(data2 << self.unit, self.segm,
                                  error=error << self.unit,
                                  background=self.background << self.unit,
                                  mask=self.mask, wcs=self.wcs,
-                                 localbkg_width=24, detection_cat=cat1)
+                                 local_background_width=24,
+                                 detection_catalog=cat1)
         else:
             cat1 = self.cat.copy()
             cat2 = SourceCatalog(data2, self.segm, error=error,
                                  background=self.background, mask=self.mask,
-                                 wcs=self.wcs, localbkg_width=24,
-                                 detection_cat=None)
+                                 wcs=self.wcs, local_background_width=24,
+                                 detection_catalog=None)
             cat3 = SourceCatalog(data2, self.segm, error=error,
                                  background=self.background, mask=self.mask,
-                                 wcs=self.wcs, localbkg_width=24,
-                                 detection_cat=cat1)
+                                 wcs=self.wcs, local_background_width=24,
+                                 detection_catalog=cat1)
 
         assert_equal(cat1.kron_radius, cat3.kron_radius)
         # Assert not equal
@@ -387,7 +389,7 @@ class TestSourceCatalog:
         Test invalid inputs.
         """
         segm = SegmentationImage(np.zeros(self.data.shape, dtype=int))
-        match = 'segment_img must have at least one non-zero label'
+        match = 'segmentation_image must have at least one non-zero label'
         with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, segm)
 
@@ -399,7 +401,7 @@ class TestSourceCatalog:
             SourceCatalog(img1d, segm)
 
         wrong_shape = np.ones((3, 3), dtype=int)
-        match = 'segment_img and data must have the same shape'
+        match = 'segmentation_image and data must have the same shape'
         with pytest.raises(ValueError, match=match):
             SourceCatalog(wrong_shape, self.segm)
 
@@ -416,11 +418,11 @@ class TestSourceCatalog:
             SourceCatalog(self.data, self.segm, mask=wrong_shape)
 
         segm = SegmentationImage(wrong_shape)
-        match = 'segment_img and data must have the same shape'
+        match = 'segmentation_image and data must have the same shape'
         with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, segm)
 
-        match = 'segment_img must be a SegmentationImage'
+        match = 'segmentation_image must be a SegmentationImage'
         with pytest.raises(TypeError, match=match):
             SourceCatalog(self.data, wrong_shape)
 
@@ -429,18 +431,18 @@ class TestSourceCatalog:
         with pytest.raises(TypeError, match=match):
             len(obj)
 
-        match = 'localbkg_width must be >= 0'
+        match = 'local_background_width must be >= 0'
         with pytest.raises(ValueError, match=match):
-            SourceCatalog(self.data, self.segm, localbkg_width=-1)
-        match = 'localbkg_width must be an integer'
+            SourceCatalog(self.data, self.segm, local_background_width=-1)
+        match = 'local_background_width must be an integer'
         with pytest.raises(ValueError, match=match):
-            SourceCatalog(self.data, self.segm, localbkg_width=3.4)
+            SourceCatalog(self.data, self.segm, local_background_width=3.4)
 
-        apermask_method = 'invalid'
-        match = 'Invalid apermask_method value'
+        aperture_mask_method = 'invalid'
+        match = 'Invalid aperture_mask_method value'
         with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm,
-                          apermask_method=apermask_method)
+                          aperture_mask_method=aperture_mask_method)
 
         kron_params = (0.0, 1.0)
         match = r'kron_params\[0\] must be > 0'
@@ -590,13 +592,13 @@ class TestSourceCatalog:
         for line in lines:
             assert line in repr(cat)
 
-    def test_detection_cat(self):
+    def test_detection_catalog(self):
         """
-        Test detection cat.
+        Test detection catalog.
         """
         data2 = self.data - 5
         cat1 = SourceCatalog(data2, self.segm)
-        cat2 = SourceCatalog(data2, self.segm, detection_cat=self.cat)
+        cat2 = SourceCatalog(data2, self.segm, detection_catalog=self.cat)
         assert len(cat2.kron_aperture) == len(cat2)
         assert not np.array_equal(cat1.kron_radius, cat2.kron_radius)
         assert not np.array_equal(cat1.kron_flux, cat2.kron_flux)
@@ -604,15 +606,16 @@ class TestSourceCatalog:
         assert not np.array_equal(cat2.kron_flux, self.cat.kron_flux)
 
         with pytest.raises(TypeError):
-            SourceCatalog(data2, self.segm, detection_cat=np.arange(4))
+            SourceCatalog(data2, self.segm, detection_catalog=np.arange(4))
 
         segm = self.segm.copy()
         segm.remove_labels((6, 7))
         cat = SourceCatalog(self.data, segm)
 
-        match = 'detection_cat must have same segment_img as the input'
+        match = ('detection_catalog must have same'
+                 ' segmentation_image as the input')
         with pytest.raises(ValueError, match=match):
-            SourceCatalog(self.data, self.segm, detection_cat=cat)
+            SourceCatalog(self.data, self.segm, detection_catalog=cat)
 
     def test_kron_minradius(self):
         """
@@ -620,7 +623,8 @@ class TestSourceCatalog:
         """
         kron_params = (2.5, 2.5)
         cat = SourceCatalog(self.data, self.segm, mask=self.mask,
-                            apermask_method='none', kron_params=kron_params)
+                            aperture_mask_method='none',
+                            kron_params=kron_params)
         assert cat.kron_aperture[0] is None
         assert np.isnan(cat.kron_radius[0])
         kronrad = cat.kron_radius.value
@@ -634,15 +638,15 @@ class TestSourceCatalog:
         """
         Test kron masking.
         """
-        apermask_method = 'none'
+        aperture_mask_method = 'none'
         cat1 = SourceCatalog(self.data, self.segm,
-                             apermask_method=apermask_method)
-        apermask_method = 'mask'
+                             aperture_mask_method=aperture_mask_method)
+        aperture_mask_method = 'mask'
         cat2 = SourceCatalog(self.data, self.segm,
-                             apermask_method=apermask_method)
-        apermask_method = 'correct'
+                             aperture_mask_method=aperture_mask_method)
+        aperture_mask_method = 'correct'
         cat3 = SourceCatalog(self.data, self.segm,
-                             apermask_method=apermask_method)
+                             aperture_mask_method=aperture_mask_method)
         idx = 2  # source with close neighbors
         assert cat1[idx].kron_flux > cat2[idx].kron_flux
         assert cat3[idx].kron_flux > cat2[idx].kron_flux
@@ -924,7 +928,7 @@ class TestSourceCatalog:
 
         cat = SourceCatalog(self.data - 50.0, self.segm, error=self.error,
                             background=self.background, mask=self.mask,
-                            wcs=self.wcs, localbkg_width=24)
+                            wcs=self.wcs, local_background_width=24)
         radius_hl = cat.flux_radius(0.5)
         assert np.isnan(radius_hl[0])
 
@@ -998,11 +1002,11 @@ class TestSourceCatalog:
         assert new_name in cat.custom_properties
 
         # Key in extra_properties, but not a defined attribute
-        cat._extra_properties.append('invalid')
+        cat._custom_properties.append('invalid')
         match = 'already exists in the custom_properties attribute'
         with pytest.raises(ValueError, match=match):
             cat.add_property('invalid', segment_snr)
-        cat._extra_properties.remove('invalid')
+        cat._custom_properties.remove('invalid')
 
         assert cat._has_len([1, 2, 3])
         assert not cat._has_len('test_string')
@@ -1084,7 +1088,7 @@ class TestSourceCatalog:
         segmdata = np.zeros((25, 25), dtype=int)
         segmdata[8:16, 8:16] = 1
         segm = SegmentationImage(segmdata)
-        cat = SourceCatalog(data, segm, localbkg_width=3)
+        cat = SourceCatalog(data, segm, local_background_width=3)
         assert cat.min_value == 10
         assert cat.max_value == 10
 
@@ -1131,8 +1135,8 @@ class TestSourceCatalog:
         threshold = 1.5 * bkg.background_rms
         kernel = make_2dgaussian_kernel(3.0, size=5)
         convolved_data = convolve(data, kernel)
-        npixels = 10
-        finder = SourceFinder(npixels=npixels, progress_bar=False)
+        n_pixels = 10
+        finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
         segment_map = finder(convolved_data, threshold)
         cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
 
@@ -1186,7 +1190,8 @@ class TestSourceCatalog:
         Test meta.
         """
         meta = self.cat.meta
-        attrs = ['localbkg_width', 'apermask_method', 'kron_params']
+        attrs = ['local_background_width', 'aperture_mask_method',
+                 'kron_params']
         for attr in attrs:
             assert attr in meta
 
@@ -1240,8 +1245,8 @@ def test_kron_params():
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
 
-    npixels = 10
-    finder = SourceFinder(npixels=npixels, progress_bar=False)
+    n_pixels = 10
+    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
     segm = finder(convolved_data, threshold)
 
     minrad = 1.4
@@ -1288,7 +1293,7 @@ def test_centroid_win(centroid_win_data):
     """
     data, segment_map, convolved_data = centroid_win_data
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
-                        apermask_method='none')
+                        aperture_mask_method='none')
 
     assert cat.x_centroid[0] != cat.x_centroid_win[0]
     assert cat.y_centroid[0] != cat.y_centroid_win[0]
@@ -1310,7 +1315,7 @@ def test_centroid_win_migrate():
     data = m(xx, yy)
     noise = make_noise_image(data.shape, mean=0, stddev=65.0, seed=123)
     data += noise
-    segm = detect_sources(data, 98.0, npixels=5)
+    segm = detect_sources(data, 98.0, n_pixels=5)
     cat = SourceCatalog(data, segm)
 
     indices = (0, 3, 14, 30)
@@ -1330,7 +1335,7 @@ def test_background_centroid_coordinate_order():
     g1 = Gaussian2D(200, 50, 25, 5, 5)
     g2 = Gaussian2D(200, 50, 75, 5, 5)
     data = g1(xx, yy) + g2(xx, yy)
-    segm = detect_sources(data, 30.0, npixels=5)
+    segm = detect_sources(data, 30.0, n_pixels=5)
 
     cat = SourceCatalog(data, segm, background=background)
     bkg_cen = cat.background_centroid
@@ -1350,9 +1355,9 @@ def test_background_centroid_coordinate_order():
                 assert abs(bkg_cen[i] - xcen) > 2
 
 
-def test_apermask_method_none():
+def test_aperture_mask_method_none():
     """
-    Test that circular_photometry with apermask_method='none' does not
+    Test that circular_photometry with aperture_mask_method='none' does not
     mask neighboring sources.
     """
     yy, xx = np.mgrid[0:101, 0:101]
@@ -1360,10 +1365,10 @@ def test_apermask_method_none():
     g1 = Gaussian2D(200, 40, 50, 8, 8)
     g2 = Gaussian2D(200, 60, 50, 8, 8)
     data = g1(xx, yy) + g2(xx, yy)
-    segm = detect_sources(data, 20.0, npixels=5)
+    segm = detect_sources(data, 20.0, n_pixels=5)
 
-    cat_none = SourceCatalog(data, segm, apermask_method='none')
-    cat_mask = SourceCatalog(data, segm, apermask_method='mask')
+    cat_none = SourceCatalog(data, segm, aperture_mask_method='none')
+    cat_mask = SourceCatalog(data, segm, aperture_mask_method='mask')
 
     # Use a large aperture that overlaps both sources
     flux_none, _ = cat_none.circular_photometry(20.0)
@@ -1417,7 +1422,7 @@ def test_reduceat_negative_data():
     g1 = Gaussian2D(100, 30, 30, 5, 5)
     g2 = Gaussian2D(80, 70, 70, 4, 4)
     data = g1(xx, yy) + g2(xx, yy) - 20.0  # shift so many pixels negative
-    segm = detect_sources(data, 0.5, npixels=5)
+    segm = detect_sources(data, 0.5, n_pixels=5)
 
     cat = SourceCatalog(data, segm)
     for i in range(cat.n_labels):
@@ -1442,7 +1447,7 @@ def test_make_cutouts_trim_mode():
     # Source in the center
     g2 = Gaussian2D(100, 50, 50, 3, 3)
     data = g1(xx, yy) + g2(xx, yy)
-    segm = detect_sources(data, 10, npixels=5)
+    segm = detect_sources(data, 10, n_pixels=5)
 
     cat = SourceCatalog(data, segm)
     shape = (40, 40)
@@ -1560,7 +1565,7 @@ def test_local_background_few_pixels():
     # Unmask only the source and a thin border
     mask[3:8, 3:8] = False
 
-    cat = SourceCatalog(data, segm, mask=mask, localbkg_width=2)
+    cat = SourceCatalog(data, segm, mask=mask, local_background_width=2)
     bkg = cat._local_background
     assert bkg[0] == 0.0
 
@@ -1920,14 +1925,14 @@ def test_centroid_win_oom_guard(gauss_101_catalog):
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
-def test_centroid_win_apermask_mask(centroid_win_data):
+def test_centroid_win_aperture_mask_mask(centroid_win_data):
     """
-    Test centroid_win with apermask_method='mask' to cover the
+    Test centroid_win with aperture_mask_method='mask' to cover the
     ``data_mask = data_mask | segm_mask`` branch.
     """
     data, segment_map, convolved_data = centroid_win_data
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
-                        apermask_method='mask')
+                        aperture_mask_method='mask')
 
     # Verify it runs without error and returns finite values for at
     # least the first source
@@ -1991,7 +1996,7 @@ def test_flux_radius_optimizer_args_center_method(gauss_101_catalog):
     center-method branch in the method translation logic.
     """
     _data, _segm, cat = gauss_101_catalog
-    cat._apermask_kwargs['flux_radius'] = {'method': 'center'}
+    cat._aperture_mask_kwargs['flux_radius'] = {'method': 'center'}
     r50 = cat.flux_radius(0.5)
     assert np.isfinite(r50.value[0])
 
@@ -2002,8 +2007,8 @@ def test_flux_radius_optimizer_args_subpixel_method(gauss_101_catalog):
     subpixel-method branch in the method translation logic.
     """
     _data, _segm, cat = gauss_101_catalog
-    cat._apermask_kwargs['flux_radius'] = {'method': 'subpixel',
-                                           'subpixels': 5}
+    cat._aperture_mask_kwargs['flux_radius'] = {'method': 'subpixel',
+                                                'subpixels': 5}
     r50 = cat.flux_radius(0.5)
     assert np.isfinite(r50.value[0])
 

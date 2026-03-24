@@ -26,7 +26,8 @@ from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _mask_to_mirrored_value
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_getattr,
-                                          deprecated_positional_kwargs)
+                                          deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 from photutils.utils._misc import _get_meta
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
@@ -88,6 +89,8 @@ _DEPRECATED_ATTRIBUTES = {
     'remove_extra_properties': 'remove_properties',
     'rename_extra_property': 'rename_property',
     'extra_properties': 'custom_properties',
+    'localbkg_width': 'local_background_width',
+    'apermask_method': 'aperture_mask_method',
 }
 
 
@@ -141,10 +144,10 @@ def use_detcat(method):
     """
     @functools.wraps(method)
     def _use_detcat(self, *args, **kwargs):
-        if self._detection_cat is None:
+        if self._detection_catalog is None:
             return method(self, *args, **kwargs)
 
-        return getattr(self._detection_cat, method.__name__)
+        return getattr(self._detection_catalog, method.__name__)
 
     return _use_detcat
 
@@ -166,7 +169,7 @@ class SourceCatalog:
         background-subtracted. Non-finite ``data`` values (NaN and inf)
         are automatically masked.
 
-    segment_img : `~photutils.segmentation.SegmentationImage`
+    segmentation_image : `~photutils.segmentation.SegmentationImage`
         A `~photutils.segmentation.SegmentationImage` object defining
         the sources.
 
@@ -226,9 +229,9 @@ class SourceCatalog:
         <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`). If `None`, then all
         sky-based properties will be set to `None`. This keyword will be
-        ignored if ``detection_cat`` is input.
+        ignored if ``detection_catalog`` is input.
 
-    localbkg_width : int, optional
+    local_background_width : int, optional
         The width of the rectangular annulus used to compute a
         local background around each source. If zero, then no local
         background subtraction is performed. The local background
@@ -238,7 +241,7 @@ class SourceCatalog:
         `circular_photometry` and `kron_photometry`). It does not affect
         the moment-based morphological properties of the source.
 
-    apermask_method : {'correct', 'mask', 'none'}, optional
+    aperture_mask_method : {'correct', 'mask', 'none'}, optional
         The method used to handle neighboring sources when performing
         aperture photometry (e.g., circular apertures or elliptical Kron
         apertures). This parameter also affects the Kron radius. The
@@ -254,9 +257,9 @@ class SourceCatalog:
         * 'none': do not mask any pixels (equivalent to MASK_TYPE=NONE
           in SourceExtractor).
 
-        This keyword will be ignored if ``detection_cat`` is input. In
-        that case, the ``apermask_method`` set in the ``detection_cat``
-        will be used.
+        This keyword will be ignored if ``detection_catalog`` is
+        input. In that case, the ``aperture_mask_method`` set in the
+        ``detection_catalog`` will be used.
 
     kron_params : tuple of 2 or 3 floats, optional
         A list of parameters used to determine the Kron aperture.
@@ -267,18 +270,18 @@ class SourceCatalog:
         * `kron_radius` * sqrt(`semimajor_axis` * `semiminor_axis`)
         is less than or equal to this radius, then the Kron aperture
         will be a circle with this minimum radius. This keyword will be
-        ignored if ``detection_cat`` is input.
+        ignored if ``detection_catalog`` is input.
 
-    detection_cat : `SourceCatalog`, optional
+    detection_catalog : `SourceCatalog`, optional
         A `SourceCatalog` object for the detection image. The
-        segmentation image used to create the detection catalog must
-        be the same one input to ``segment_img``. If input, then the
-        detection catalog source centroids and morphological/shape
-        properties will be returned instead of calculating them
-        from the input ``data``. The detection catalog centroids
-        and shape properties will also be used to perform aperture
-        photometry (i.e., circular and Kron). If ``detection_cat``
-        is input, then the input ``wcs``, ``apermask_method``, and
+        segmentation image used to create the detection catalog must be
+        the same one input to ``segmentation_image``. If input, then
+        the detection catalog source centroids and morphological/shape
+        properties will be returned instead of calculating them from
+        the input ``data``. The detection catalog centroids and shape
+        properties will also be used to perform aperture photometry
+        (i.e., circular and Kron). If ``detection_catalog`` is
+        input, then the input ``wcs``, ``aperture_mask_method``, and
         ``kron_params`` keywords will be ignored. This keyword affects
         `circular_photometry` (including returned apertures), all Kron
         parameters (Kron radius, flux, flux errors, apertures, and
@@ -364,10 +367,19 @@ class SourceCatalog:
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
 
-    def __init__(self, data, segment_img, *, convolved_data=None, error=None,
-                 mask=None, background=None, wcs=None, localbkg_width=0,
-                 apermask_method='correct', kron_params=(2.5, 1.4, 0.0),
-                 detection_cat=None, progress_bar=False):
+    @deprecated_renamed_argument('segment_img', 'segmentation_image', '3.0',
+                                 until='4.0')
+    @deprecated_renamed_argument('localbkg_width', 'local_background_width',
+                                 '3.0', until='4.0')
+    @deprecated_renamed_argument('apermask_method', 'aperture_mask_method',
+                                 '3.0', until='4.0')
+    @deprecated_renamed_argument('detection_cat', 'detection_catalog', '3.0',
+                                 until='4.0')
+    def __init__(self, data, segmentation_image, *, convolved_data=None,
+                 error=None, mask=None, background=None, wcs=None,
+                 local_background_width=0, aperture_mask_method='correct',
+                 kron_params=(2.5, 1.4, 0.0), detection_catalog=None,
+                 progress_bar=False):
 
         inputs = (data, convolved_data, error, background)
         names = ('data', 'convolved_data', 'error', 'background')
@@ -378,13 +390,16 @@ class SourceCatalog:
         self._data = self._validate_array(data, 'data', shape=False)
         self._convolved_data = self._validate_array(convolved_data,
                                                     'convolved_data')
-        self._segment_img = self._validate_segment_img(segment_img)
+        self._segmentation_image = self._validate_segmentation_image(
+            segmentation_image)
         self._error = self._validate_array(error, 'error')
         self._mask = self._validate_array(mask, 'mask')
         self._background = self._validate_array(background, 'background')
         self.wcs = wcs
-        self.localbkg_width = self._validate_localbkg_width(localbkg_width)
-        self.apermask_method = self._validate_apermask_method(apermask_method)
+        self.local_background_width = self._validate_local_background_width(
+            local_background_width)
+        self.aperture_mask_method = self._validate_aperture_mask_method(
+            aperture_mask_method)
         self.kron_params = self._validate_kron_params(kron_params)
         self.progress_bar = progress_bar
 
@@ -392,23 +407,24 @@ class SourceCatalog:
         # NOTE: calculate slices before labels for performance.
         #       _labels is initially always a non-scalar array, but
         #       it can become a numpy scalar after indexing/slicing.
-        self._slices = self._segment_img.slices
-        self._labels = self._segment_img.labels
+        self._slices = self._segmentation_image.slices
+        self._labels = self._segmentation_image.labels
 
         if self._labels.shape == (0,):
-            msg = 'segment_img must have at least one non-zero label'
+            msg = 'segmentation_image must have at least one non-zero label'
             raise ValueError(msg)
 
-        self._detection_cat = self._validate_detection_cat(detection_cat)
-        attrs = ('wcs', 'apermask_method', 'kron_params')
-        if self._detection_cat is not None:
+        self._detection_catalog = self._validate_detection_catalog(
+            detection_catalog)
+        attrs = ('wcs', 'aperture_mask_method', 'kron_params')
+        if self._detection_catalog is not None:
             for attr in attrs:
-                setattr(self, attr, getattr(self._detection_cat, attr))
+                setattr(self, attr, getattr(self._detection_catalog, attr))
 
         if convolved_data is None:
             self._convolved_data = self._data
 
-        self._apermask_kwargs = {
+        self._aperture_mask_kwargs = {
             'circ': {'method': 'exact'},
             'kron': {'method': 'exact'},
             'flux_radius': {'method': 'exact'},
@@ -416,19 +432,19 @@ class SourceCatalog:
         }
 
         self.default_columns = DEFAULT_COLUMNS
-        self._extra_properties = []
+        self._custom_properties = []
         self._flux_radius_cache = {}
         self.meta = _get_meta()
         self._update_meta()
 
-    def _validate_segment_img(self, segment_img):
-        if not isinstance(segment_img, SegmentationImage):
-            msg = 'segment_img must be a SegmentationImage'
+    def _validate_segmentation_image(self, segmentation_image):
+        if not isinstance(segmentation_image, SegmentationImage):
+            msg = 'segmentation_image must be a SegmentationImage'
             raise TypeError(msg)
-        if segment_img.shape != self._data.shape:
-            msg = 'segment_img and data must have the same shape'
+        if segmentation_image.shape != self._data.shape:
+            msg = 'segmentation_image and data must have the same shape'
             raise ValueError(msg)
-        return segment_img
+        return segmentation_image
 
     def _validate_array(self, array, name, *, shape=True):
         if name == 'mask' and array is np.ma.nomask:
@@ -446,22 +462,22 @@ class SourceCatalog:
         return array
 
     @staticmethod
-    def _validate_localbkg_width(localbkg_width):
-        if localbkg_width < 0:
-            msg = 'localbkg_width must be >= 0'
+    def _validate_local_background_width(local_background_width):
+        if local_background_width < 0:
+            msg = 'local_background_width must be >= 0'
             raise ValueError(msg)
-        localbkg_width_int = int(localbkg_width)
-        if localbkg_width_int != localbkg_width:
-            msg = 'localbkg_width must be an integer'
+        local_background_width_int = int(local_background_width)
+        if local_background_width_int != local_background_width:
+            msg = 'local_background_width must be an integer'
             raise ValueError(msg)
-        return localbkg_width_int
+        return local_background_width_int
 
     @staticmethod
-    def _validate_apermask_method(apermask_method):
-        if apermask_method not in ('none', 'mask', 'correct'):
-            msg = 'Invalid apermask_method value'
+    def _validate_aperture_mask_method(aperture_mask_method):
+        if aperture_mask_method not in ('none', 'mask', 'correct'):
+            msg = 'Invalid aperture_mask_method value'
             raise ValueError(msg)
-        return apermask_method
+        return aperture_mask_method
 
     @staticmethod
     def _validate_kron_params(kron_params):
@@ -483,27 +499,29 @@ class SourceCatalog:
             raise ValueError(msg)
         return tuple(kron_params)
 
-    def _validate_detection_cat(self, detection_cat):
-        if detection_cat is None:
+    def _validate_detection_catalog(self, detection_catalog):
+        if detection_catalog is None:
             return None
 
-        if not isinstance(detection_cat, SourceCatalog):
-            msg = 'detection_cat must be a SourceCatalog instance'
+        if not isinstance(detection_catalog, SourceCatalog):
+            msg = 'detection_catalog must be a SourceCatalog instance'
             raise TypeError(msg)
-        if not np.array_equal(detection_cat._segment_img, self._segment_img):
-            msg = ('detection_cat must have same segment_img as the '
-                   'input segment_img')
+        if not np.array_equal(detection_catalog._segmentation_image,
+                              self._segmentation_image):
+            msg = ('detection_catalog must have same segmentation_image '
+                   'as the input segmentation_image')
             raise ValueError(msg)
-        return detection_cat
+        return detection_catalog
 
     def _update_meta(self):
-        attrs = ('localbkg_width', 'apermask_method', 'kron_params')
+        attrs = ('local_background_width', 'aperture_mask_method',
+                 'kron_params')
         for attr in attrs:
             self.meta[attr] = getattr(self, attr)
 
     def _set_semode(self):
         # SE emulation
-        self._apermask_kwargs = {
+        self._aperture_mask_kwargs = {
             'circ': {'method': 'subpixel', 'subpixels': 5},
             'kron': {'method': 'center'},
             'flux_radius': {'method': 'subpixel', 'subpixels': 5},
@@ -606,11 +624,11 @@ class SourceCatalog:
 
         # Attributes defined in __init__ that are copied directly to the
         # new class
-        init_attr = ('_data', '_segment_img', '_error', '_mask', '_background',
-                     'wcs', '_data_unit', '_convolved_data', 'localbkg_width',
-                     'apermask_method', 'kron_params', 'default_columns',
-                     '_extra_properties', 'meta', '_apermask_kwargs',
-                     'progress_bar')
+        init_attr = ('_data', '_segmentation_image', '_error', '_mask',
+                     '_background', 'wcs', '_data_unit', '_convolved_data',
+                     'local_background_width', 'aperture_mask_method',
+                     'kron_params', 'default_columns', '_custom_properties',
+                     'meta', '_aperture_mask_kwargs', 'progress_bar')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -618,8 +636,8 @@ class SourceCatalog:
         attr = '_labels'
         setattr(newcls, attr, getattr(self, attr)[index])
 
-        # Need to slice detection_cat, if input
-        attr = '_detection_cat'
+        # Need to slice detection_catalog, if input
+        attr = '_detection_catalog'
         if getattr(self, attr) is None:
             setattr(newcls, attr, None)
         else:
@@ -636,7 +654,7 @@ class SourceCatalog:
 
         # Evaluated lazyproperty objects and extra properties
         keys = (set(self.__dict__.keys())
-                & (set(self._lazyproperties) | set(self._extra_properties)))
+                & (set(self._lazyproperties) | set(self._custom_properties)))
         for key in keys:
             value = self.__dict__[key]
 
@@ -722,7 +740,7 @@ class SourceCatalog:
         """
         A list of the user-defined source properties.
         """
-        return self._extra_properties
+        return self._custom_properties
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def add_property(self, name, value, overwrite=False):
@@ -760,7 +778,7 @@ class SourceCatalog:
                 msg = (f'{name} already exists as an attribute. Set '
                        'overwrite=True to overwrite an existing attribute.')
                 raise ValueError(msg)
-            if name in self._extra_properties:
+            if name in self._custom_properties:
                 msg = (f'{name} already exists in the custom_properties '
                        'attribute list.')
                 raise ValueError(msg)
@@ -786,8 +804,8 @@ class SourceCatalog:
             raise ValueError(msg)
 
         setattr(self, name, value)
-        if name not in self._extra_properties:
-            self._extra_properties.append(name)
+        if name not in self._custom_properties:
+            self._custom_properties.append(name)
 
     def remove_property(self, name):
         """
@@ -823,16 +841,16 @@ class SourceCatalog:
         # We copy the list here to prevent changing the list in-place
         # during the for loop below, e.g., in case a user inputs
         # self.custom_properties to ``names``
-        extra_properties = self._extra_properties.copy()
+        custom_properties = self._custom_properties.copy()
 
         for name in names:
-            if name in extra_properties:
+            if name in custom_properties:
                 delattr(self, name)
-                extra_properties.remove(name)
+                custom_properties.remove(name)
             else:
                 msg = f'{name} is not a defined property'
                 raise ValueError(msg)
-        self._extra_properties = extra_properties
+        self._custom_properties = custom_properties
 
     def rename_property(self, name, new_name):
         """
@@ -886,12 +904,13 @@ class SourceCatalog:
         return [self._data[slc] for slc in self._slices_iter]
 
     @lazyproperty
-    def _segment_img_cutouts(self):
+    def _segmentation_image_cutouts(self):
         """
         A list of segmentation image cutouts using the segmentation
         image slices.
         """
-        return [self._segment_img.data[slc] for slc in self._slices_iter]
+        return [self._segmentation_image.data[slc]
+                for slc in self._slices_iter]
 
     @lazyproperty
     def _mask_cutouts(self):
@@ -965,8 +984,10 @@ class SourceCatalog:
         source segments) outside the source segment.
         """
         return [segm != label
-                for label, segm in zip(self.labels,
-                                       self._segment_img_cutouts, strict=True)]
+                for label, segm
+                in zip(self.labels,
+                       self._segmentation_image_cutouts,
+                       strict=True)]
 
     @lazyproperty
     def _cutout_data_masks(self):
@@ -1084,7 +1105,7 @@ class SourceCatalog:
             A new `SourceCatalog` object containing only the sources with
             the input ``labels``.
         """
-        self._segment_img.check_labels(labels)
+        self._segmentation_image.check_labels(labels)
         sorter = np.argsort(self.labels)
         indices = sorter[np.searchsorted(self.labels, labels, sorter=sorter)]
         return self[indices]
@@ -1198,8 +1219,9 @@ class SourceCatalog:
         Returns a list of arrays for multi-source catalogs, or a single
         array for a single-source catalog.
         """
-        return self._prepare_cutouts(self._segment_img_cutouts, units=False,
-                                     masked=False)
+        return self._prepare_cutouts(
+            self._segmentation_image_cutouts, units=False,
+            masked=False)
 
     @lazyproperty
     @as_scalar
@@ -1215,8 +1237,9 @@ class SourceCatalog:
         Returns a list of arrays for multi-source catalogs, or a single
         array for a single-source catalog.
         """
-        return self._prepare_cutouts(self._segment_img_cutouts, units=False,
-                                     masked=True)
+        return self._prepare_cutouts(
+            self._segmentation_image_cutouts, units=False,
+            masked=True)
 
     @lazyproperty
     @as_scalar
@@ -1619,10 +1642,10 @@ class SourceCatalog:
         # Pre-fetch arrays used in the inner loop
         data_arr = self._data
         mask_arr = self._mask
-        segm_data = self._segment_img.data
+        segm_data = self._segmentation_image.data
         data_shape = data_arr.shape
-        do_correct = self.apermask_method == 'correct'
-        do_segm_mask = self.apermask_method != 'none'
+        do_correct = self.aperture_mask_method == 'correct'
+        do_segm_mask = self.aperture_mask_method != 'none'
         max_aper_size = max(data_arr.size, 1_000_000)
 
         max_iters = 16
@@ -1704,7 +1727,7 @@ class SourceCatalog:
                             seg_cut = segm_data[slc_y, slc_x]
                             segm_mask = ((seg_cut != label)
                                          & (seg_cut != 0))
-                            if self.apermask_method == 'mask':
+                            if self.aperture_mask_method == 'mask':
                                 data_mask = data_mask | segm_mask
 
                         if do_correct:
@@ -2525,7 +2548,8 @@ class SourceCatalog:
         The value of the per-pixel ``background`` at the position of the
         isophotal (center-of-mass) `centroid`.
 
-        If ``detection_cat`` is input, then its `centroid` will be used.
+        If ``detection_catalog`` is input, then its `centroid` will be
+        used.
 
         The background values at fractional position values are
         determined using bilinear interpolation.
@@ -2553,13 +2577,15 @@ class SourceCatalog:
         The total area of the source segment in units of pixels**2.
 
         This area is simply the area of the source segment from the
-        input ``segment_img``. It does not take into account any data
-        masking (i.e., a ``mask`` input to `SourceCatalog` or invalid
-        ``data`` values).
+        input ``segmentation_image``. It does not take into account
+        any data masking (i.e., a ``mask`` input to `SourceCatalog` or
+        invalid ``data`` values).
         """
         areas = []
-        for label, slices in zip(self.labels, self._slices_iter, strict=True):
-            areas.append(np.count_nonzero(self._segment_img[slices] == label))
+        for label, slices in zip(self.labels, self._slices_iter,
+                                 strict=True):
+            areas.append(np.count_nonzero(
+                self._segmentation_image[slices] == label))
         return np.array(areas) << (u.pix**2)
 
     @lazyproperty
@@ -3004,7 +3030,7 @@ class SourceCatalog:
         The `~photutils.aperture.RectangularAnnulus` aperture used to
         estimate the local background.
         """
-        if self.localbkg_width == 0:
+        if self.local_background_width == 0:
             return self._null_objects
 
         apertures = []
@@ -3013,9 +3039,9 @@ class SourceCatalog:
             ypos = 0.5 * (bbox_.iymin + bbox_.iymax - 1)
             scale = 1.5
             width_in = (bbox_.ixmax - bbox_.ixmin) * scale
-            width_out = width_in + 2 * self.localbkg_width
+            width_out = width_in + 2 * self.local_background_width
             height_in = (bbox_.iymax - bbox_.iymin) * scale
-            height_out = height_in + 2 * self.localbkg_width
+            height_out = height_in + 2 * self.local_background_width
             apertures.append(RectangularAnnulus((xpos, ypos), width_in,
                                                 width_out, height_out,
                                                 h_in=height_in, theta=0.0))
@@ -3046,7 +3072,7 @@ class SourceCatalog:
 
         This property is always an `~numpy.ndarray` without units.
         """
-        if self.localbkg_width == 0:
+        if self.local_background_width == 0:
             local_bkgs = np.zeros(self.n_labels)
         else:
             sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
@@ -3061,7 +3087,8 @@ class SourceCatalog:
 
                 data_cutout = self._data[slc_lg].astype(float, copy=True)
                 # All non-zero segment labels are masked
-                segm_mask_cutout = self._segment_img.data[slc_lg].astype(bool)
+                segm_mask_cutout = (
+                    self._segmentation_image.data[slc_lg].astype(bool))
                 if self._mask is None:
                     mask_cutout = None
                 else:
@@ -3126,7 +3153,7 @@ class SourceCatalog:
         photometry (e.g., circular or Kron).
 
         Neighboring sources can be included, masked, or corrected based
-        on the ``apermask_method`` keyword.
+        on the ``aperture_mask_method`` keyword.
         """
         # Make cutouts of the data based on the aperture bbox
         slc_lg, slc_sm = aperture_bbox.get_overlap_slices(self._data.shape)
@@ -3148,18 +3175,18 @@ class SourceCatalog:
                         y_centroid - max(0, aperture_bbox.iymin))
 
         # Mask or correct neighboring sources
-        if self.apermask_method == 'none':
+        if self.aperture_mask_method == 'none':
             mask = data_mask
         else:
-            segment_img = self._segment_img.data[slc_lg]
+            segment_img = self._segmentation_image.data[slc_lg]
             segm_mask = np.logical_and(segment_img != label,
                                        segment_img != 0)
-            if self.apermask_method == 'mask':
+            if self.aperture_mask_method == 'mask':
                 mask = data_mask | segm_mask
             else:
                 mask = data_mask
 
-        if self.apermask_method == 'correct':
+        if self.aperture_mask_method == 'correct':
             data = _mask_to_mirrored_value(data, segm_mask, cutout_xycen,
                                            mask=mask)
             if error is not None:
@@ -3172,9 +3199,9 @@ class SourceCatalog:
         """
         Make circular aperture for each source.
 
-        The aperture for each source will be centered at its `centroid`
-        position. If a ``detection_cat`` was input to `SourceCatalog`,
-        it will be used for the source centroids.
+        The aperture for each source will be centered at its
+        `centroid` position. If a ``detection_catalog`` was input to
+        `SourceCatalog`, it will be used for the source centroids.
 
         Parameters
         ----------
@@ -3213,9 +3240,9 @@ class SourceCatalog:
         """
         Make circular aperture for each source.
 
-        The aperture for each source will be centered at its `centroid`
-        position. If a ``detection_cat`` was input to `SourceCatalog`,
-        then its `centroid` values will be used.
+        The aperture for each source will be centered at its
+        `centroid` position. If a ``detection_catalog`` was input to
+        `SourceCatalog`, then its `centroid` values will be used.
 
         Parameters
         ----------
@@ -3240,9 +3267,9 @@ class SourceCatalog:
         Plot circular apertures for each source on a matplotlib
         `~matplotlib.axes.Axes` instance.
 
-        The aperture for each source will be centered at its `centroid`
-        position. If a ``detection_cat`` was input to `SourceCatalog`,
-        then its `centroid` values will be used.
+        The aperture for each source will be centered at its
+        `centroid` position. If a ``detection_catalog`` was input to
+        `SourceCatalog`, then its `centroid` values will be used.
 
         An aperture will not be plotted for sources where the source
         `centroid` position is not finite or where the source is
@@ -3285,12 +3312,12 @@ class SourceCatalog:
         """
         Perform circular aperture photometry for each source.
 
-        The circular aperture for each source will be centered at
-        its `centroid` position. If a ``detection_cat`` was input to
+        The circular aperture for each source will be centered at its
+        `centroid` position. If a ``detection_catalog`` was input to
         `SourceCatalog`, then its `centroid` values will be used.
 
-        See the `SourceCatalog` ``apermask_method`` keyword for options
-        to mask neighboring sources.
+        See the `SourceCatalog` ``aperture_mask_method`` keyword for
+        options to mask neighboring sources.
 
         Parameters
         ----------
@@ -3321,7 +3348,7 @@ class SourceCatalog:
             raise ValueError(msg)
 
         apertures = self._make_circular_apertures(radius)
-        kwargs = self._apermask_kwargs['circ']
+        kwargs = self._aperture_mask_kwargs['circ']
         flux, flux_err = self._aperture_photometry(apertures,
                                                    desc='circular_photometry',
                                                    **kwargs)
@@ -3348,8 +3375,8 @@ class SourceCatalog:
         Return a list of elliptical apertures based on the scaled
         isophotal shape of the sources.
 
-        If a ``detection_cat`` was input to `SourceCatalog`, then its
-        source `centroid` and shape parameters will be used.
+        If a ``detection_catalog`` was input to `SourceCatalog`, then
+        its source `centroid` and shape parameters will be used.
 
         If scale is zero (due to a minimum circular radius set in
         ``kron_params``) then a circular aperture will be returned with
@@ -3433,12 +3460,12 @@ class SourceCatalog:
         data_full = self._data
         data_shape = data_full.shape
         mask_full = self._mask
-        segm_data = self._segment_img.data
+        segm_data = self._segmentation_image.data
         max_size = max(data_full.size, 1_000_000)
         kron_min = self.kron_params[1]
         min_circ_radius = (self.kron_params[2]
                            if len(self.kron_params) == 3 else 0.0)
-        apermask_method = self.apermask_method
+        aperture_mask_method = self.aperture_mask_method
 
         labels = self.labels
         if self.progress_bar:
@@ -3509,14 +3536,14 @@ class SourceCatalog:
                 data_mask |= mask_full[slc_lg]
 
             # Mask or correct neighboring sources
-            if apermask_method != 'none':
+            if aperture_mask_method != 'none':
                 seg_cut = segm_data[slc_lg]
                 segm_mask = (seg_cut != label) & (seg_cut != 0)
-                if apermask_method == 'mask':
+                if aperture_mask_method == 'mask':
                     mask = data_mask | segm_mask
                 else:
                     mask = data_mask
-                if apermask_method == 'correct':
+                if aperture_mask_method == 'correct':
                     cutout_xycen = (xc - max(0, ixmin), yc - max(0, iymin))
                     data = _mask_to_mirrored_value(data, segm_mask,
                                                    cutout_xycen,
@@ -3652,11 +3679,11 @@ class SourceCatalog:
         returned for both the Kron radius and Kron flux (the Kron
         aperture will be `None`).
 
-        If a ``detection_cat`` was input to `SourceCatalog`, then its
-        ``kron_radius`` will be returned.
+        If a ``detection_catalog`` was input to `SourceCatalog`, then
+        its ``kron_radius`` will be returned.
 
-        See the `SourceCatalog` ``apermask_method`` keyword for options
-        to mask neighboring sources.
+        See the `SourceCatalog` ``aperture_mask_method`` keyword for
+        options to mask neighboring sources.
         """
         return self._calc_kron_radius(self.kron_params)
 
@@ -3690,8 +3717,8 @@ class SourceCatalog:
         or elliptical shape parameters are not finite or where the
         source is completely masked.
 
-        If a ``detection_cat`` was input to `SourceCatalog`, then its
-        ``kron_aperture`` will be returned.
+        If a ``detection_catalog`` was input to `SourceCatalog`, then
+        its ``kron_aperture`` will be returned.
 
         Returns a list of apertures for multi-source catalogs, or a
         single aperture for a single-source catalog.
@@ -3704,9 +3731,9 @@ class SourceCatalog:
         """
         Make Kron apertures for each source.
 
-        The aperture for each source will be centered at its `centroid`
-        position. If a ``detection_cat`` was input to `SourceCatalog`,
-        then its `centroid` values will be used.
+        The aperture for each source will be centered at its
+        `centroid` position. If a ``detection_catalog`` was input to
+        `SourceCatalog`, then its `centroid` values will be used.
 
         Note that changing ``kron_params`` from the values
         input into `SourceCatalog` does not change the Kron
@@ -3753,9 +3780,9 @@ class SourceCatalog:
         Plot Kron apertures for each source on a matplotlib
         `~matplotlib.axes.Axes` instance.
 
-        The aperture for each source will be centered at its `centroid`
-        position. If a ``detection_cat`` was input to `SourceCatalog`,
-        then its `centroid` values will be used.
+        The aperture for each source will be centered at its
+        `centroid` position. If a ``detection_catalog`` was input to
+        `SourceCatalog`, then its `centroid` values will be used.
 
         An aperture will not be plotted for sources where the source
         `centroid` position or elliptical shape parameters are not
@@ -3820,8 +3847,8 @@ class SourceCatalog:
         Perform aperture photometry on cutouts of the data and optional
         error arrays.
 
-        The appropriate ``apermask_method`` is applied to the cutouts to
-        handle neighboring sources.
+        The appropriate ``aperture_mask_method`` is applied to the
+        cutouts to handle neighboring sources.
 
         Parameters
         ----------
@@ -3895,14 +3922,14 @@ class SourceCatalog:
         Calculate the flux and flux error in the Kron aperture (without
         units).
 
-        See the `SourceCatalog` ``apermask_method`` keyword for options
-        to mask neighboring sources.
+        See the `SourceCatalog` ``aperture_mask_method`` keyword for
+        options to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be
         returned.
 
-        If ``detection_cat`` is input, then its `centroid` values will
-        be used.
+        If ``detection_catalog`` is input, then its `centroid` values
+        will be used.
 
         Returns
         -------
@@ -4023,8 +4050,8 @@ class SourceCatalog:
         alternate ``kron_params`` (e.g., different scalings of the Kron
         radius).
 
-        See the `SourceCatalog` ``apermask_method`` keyword for options
-        to mask neighboring sources.
+        See the `SourceCatalog` ``aperture_mask_method`` keyword for
+        options to mask neighboring sources.
 
         Parameters
         ----------
@@ -4082,8 +4109,8 @@ class SourceCatalog:
         """
         The flux and flux error in the Kron aperture (without units).
 
-        See the `SourceCatalog` ``apermask_method`` keyword for options
-        to mask neighboring sources.
+        See the `SourceCatalog` ``aperture_mask_method`` keyword for
+        options to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be
         returned. This will occur where the source `centroid` position
@@ -4098,8 +4125,8 @@ class SourceCatalog:
         """
         The flux in the Kron aperture.
 
-        See the `SourceCatalog` ``apermask_method`` keyword for options
-        to mask neighboring sources.
+        See the `SourceCatalog` ``aperture_mask_method`` keyword for
+        options to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be
         returned. This will occur where the source `centroid` position
@@ -4117,8 +4144,8 @@ class SourceCatalog:
         """
         The flux error in the Kron aperture.
 
-        See the `SourceCatalog` ``apermask_method`` keyword for options
-        to mask neighboring sources.
+        See the `SourceCatalog` ``aperture_mask_method`` keyword for
+        options to mask neighboring sources.
 
         If the Kron aperture is `None`, then ``np.nan`` will be
         returned. This will occur where the source `centroid` position
@@ -4167,7 +4194,7 @@ class SourceCatalog:
     def _flux_radius_optimizer_args(self):
         kron_flux = self._kron_photometry[:, 0]  # unitless
         max_radius = self._max_circular_kron_radius
-        kwargs = self._apermask_kwargs['flux_radius']
+        kwargs = self._aperture_mask_kwargs['flux_radius']
 
         # Translate mask method keywords to circular_overlap_grid
         # parameters once
@@ -4185,9 +4212,9 @@ class SourceCatalog:
         # Pre-fetch arrays used inside the loop
         data_arr = self._data
         mask_arr = self._mask
-        segm_data = self._segment_img.data
+        segm_data = self._segmentation_image.data
         data_shape = data_arr.shape
-        apermask_method = self.apermask_method
+        aperture_mask_method = self.aperture_mask_method
         max_aper_size = max(data_arr.size, 1_000_000)
 
         labels = self.labels
@@ -4242,12 +4269,12 @@ class SourceCatalog:
             cutout_ycen = ycen - data_ymin
 
             # Handle neighboring sources
-            if apermask_method != 'none':
+            if aperture_mask_method != 'none':
                 seg_cut = segm_data[slc_lg]
                 segm_mask = (seg_cut != label) & (seg_cut != 0)
-                if apermask_method == 'mask':
+                if aperture_mask_method == 'mask':
                     data_mask = data_mask | segm_mask
-                elif apermask_method == 'correct':
+                elif aperture_mask_method == 'correct':
                     cutout_data = _mask_to_mirrored_value(
                         cutout_data, segm_mask,
                         (cutout_xcen, cutout_ycen), mask=data_mask)
@@ -4374,9 +4401,9 @@ class SourceCatalog:
         """
         Make cutout arrays for each source.
 
-        The cutout for each source will be centered at its `centroid`
-        position. If a ``detection_cat`` was input to `SourceCatalog`,
-        then its `centroid` values will be used.
+        The cutout for each source will be centered at its
+        `centroid` position. If a ``detection_catalog`` was input to
+        `SourceCatalog`, then its `centroid` values will be used.
 
         Parameters
         ----------

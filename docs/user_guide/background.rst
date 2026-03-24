@@ -136,7 +136,7 @@ method with a circular dilation footprint to create the source mask::
     >>> from photutils.utils import circular_footprint
     >>> sigma_clip = SigmaClip(sigma=3.0, maxiters=10)
     >>> threshold = detect_threshold(data, nsigma=2.0, sigma_clip=sigma_clip)
-    >>> segment_img = detect_sources(data, threshold, npixels=10)
+    >>> segment_img = detect_sources(data, threshold, n_pixels=10)
     >>> footprint = circular_footprint(radius=10)
     >>> mask = segment_img.make_source_mask(footprint=footprint)
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
