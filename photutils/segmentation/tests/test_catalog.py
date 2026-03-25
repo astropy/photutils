@@ -1788,3 +1788,73 @@ def test_centroid_win_aperture_mask_none_in_loop():
         # because nan_hl is False (fluxfrac_radius was valid)
         assert_allclose(cwin[:, 0], cat.xcentroid)
         assert_allclose(cwin[:, 1], cat.ycentroid)
+
+
+def test_centroid_win_oom_guard():
+    """
+    Test that centroid_win returns NaN for sources whose half-light
+    radius would require an aperture larger than max_aper_size.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    cat = SourceCatalog(data, segm)
+
+    # Provide a huge half-light radius so the aperture bbox exceeds
+    # max_aper_size (max(data.size, 1_000_000) = 1_000_000).
+    huge_radius = np.array([200.0]) * u.pix
+    with patch.object(type(cat), 'fluxfrac_radius',
+                      return_value=huge_radius):
+        cwin = cat.centroid_win
+    # OOM guard should force NaN, which then resets to isophotal
+    # centroid (because nan_hl is False)
+    assert_allclose(cwin[:, 0], cat.xcentroid)
+    assert_allclose(cwin[:, 1], cat.ycentroid)
+
+
+def test_centroid_win_apermask_mask():
+    """
+    Test centroid_win with apermask_method='mask' to cover the
+    ``data_mask = data_mask | segm_mask`` branch.
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    m = g1 + g2
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = m(xx, yy)
+    noise = make_noise_image(data.shape, mean=0, stddev=65.0, seed=123)
+    data += noise
+
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    npixels = 10
+    finder = SourceFinder(npixels=npixels, progress_bar=False)
+    threshold = 107.9
+    segment_map = finder(convolved_data, threshold)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        apermask_method='mask')
+
+    # Verify it runs without error and returns finite values for at
+    # least the first source
+    cwin = cat.centroid_win
+    assert cwin.shape == (len(cat), 2)
+    assert np.isfinite(cwin[0, 0])
+
+
+def test_make_aperture_data_outside_image():
+    """
+    Test that _make_aperture_data returns (None,) * 5 when the aperture
+    bbox does not overlap the data.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    cat = SourceCatalog(data, segm)
+
+    # BoundingBox completely outside the 101x101 data
+    offimage_bbox = BoundingBox(ixmin=200, ixmax=210,
+                                iymin=200, iymax=210)
+    result = cat._make_aperture_data(1, 205.0, 205.0, offimage_bbox, 0.0)
+    assert result == (None,) * 5
