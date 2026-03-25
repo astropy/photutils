@@ -1586,3 +1586,205 @@ def test_fluxfrac_radius_no_solution(single_source_catalog):
                mock_root_scalar):
         result = cat.fluxfrac_radius(0.5)
     assert np.isnan(result.value[0])
+
+
+def test_kron_radius_max():
+    """
+    Test that measured kron_radius values exceeding the measurement
+    aperture scale (6.0) are set to NaN.
+
+    This flags unphysical Kron radii caused by near-cancellation in the
+    denominator of the Kron formula (e.g., due to outlier pixels or
+    noise).
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    cat = SourceCatalog(data, segm)
+
+    # The measured kron radius should be reasonable (<= 6.0)
+    assert cat.kron_radius.value <= 6.0
+
+    # Artificially test the NaN by patching _measured_kron_radius to
+    # return a huge value
+    with patch.object(type(cat), '_measured_kron_radius',
+                      new_callable=lambda: property(
+                          lambda _self: np.array([100.0]))):
+        cat2 = SourceCatalog(data, segm)
+        assert np.isnan(cat2.kron_radius.value)
+
+        # Downstream properties should also be NaN / None
+        assert cat2.kron_aperture[0] is None
+        assert np.isnan(cat2.kron_flux[0])
+        assert np.isnan(cat2.fluxfrac_radius(0.5).value[0])
+
+
+def test_aperture_to_mask_size_check():
+    """
+    Test that _aperture_to_mask returns None when the aperture bounding
+    box exceeds the allowed size, preventing out-of-memory errors from
+    pathologically large apertures (e.g., from huge Kron radii).
+
+    The check happens before to_mask() allocates the mask array.
+    """
+    data = np.zeros((11, 11))
+    data[4:7, 4:7] = 100.0
+    segm_data = np.zeros((11, 11), dtype=int)
+    segm_data[4:7, 4:7] = 1
+    segm = SegmentationImage(segm_data)
+    cat = SourceCatalog(data, segm)
+
+    # A small aperture is fine
+    small_aper = CircularAperture((5, 5), r=3)
+    result = cat._aperture_to_mask(small_aper, method='center')
+    assert result is not None
+
+    # An aperture larger than data.size but within the 1M floor is fine
+    big_aper = CircularAperture((5, 5), r=100)
+    assert big_aper.bbox.shape[0] * big_aper.bbox.shape[1] > data.size
+    result = cat._aperture_to_mask(big_aper, method='center')
+    assert result is not None
+
+    # An aperture whose bbox exceeds 1_000_000 pixels returns None
+    huge_aper = CircularAperture((5, 5), r=600)
+    bbox_size = huge_aper.bbox.shape[0] * huge_aper.bbox.shape[1]
+    assert bbox_size > 1_000_000
+    result = cat._aperture_to_mask(huge_aper, method='center')
+    assert result is None
+
+
+def test_aperture_to_mask_none_branches():
+    """
+    Test that properties gracefully return NaN when _aperture_to_mask
+    returns None (i.e., aperture too large to allocate).
+
+    This covers the None-guard branches in _measured_kron_radius,
+    _aperture_photometry, _fluxfrac_optimizer_args, and centroid_win.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    cat = SourceCatalog(data, segm)
+
+    with patch.object(type(cat), '_aperture_to_mask', return_value=None):
+        # _measured_kron_radius branch
+        assert np.all(np.isnan(cat.kron_radius.value))
+
+        # centroid_win: with _aperture_to_mask returning None,
+        # kron_radius is NaN, so fluxfrac_radius(0.5) is NaN,
+        # and centroid_win returns NaN (not the isophotal centroid)
+        cwin = cat.centroid_win
+        assert np.all(np.isnan(cwin))
+
+    # For _aperture_photometry, the Kron aperture must be non-None
+    # (i.e., kron_radius must succeed) but _aperture_to_mask must return
+    # None in the photometry step. First compute and cache kron_aperture
+    # normally, then patch.
+    cat2 = SourceCatalog(data, segm)
+    _ = cat2.kron_aperture  # cache the valid kron aperture
+    with patch.object(type(cat2), '_aperture_to_mask', return_value=None):
+        # _aperture_photometry branch
+        assert np.all(np.isnan(cat2.kron_flux))
+
+    # For _fluxfrac_optimizer_args, kron_flux must be finite (non-NaN)
+    # so the early finite check passes. Cache kron_photometry first.
+    cat3 = SourceCatalog(data, segm)
+    _ = cat3.kron_aperture
+    _ = cat3._kron_photometry  # cache valid kron flux
+    with patch.object(type(cat3), '_aperture_to_mask', return_value=None):
+        # _fluxfrac_optimizer_args branch
+        assert np.all(np.isnan(cat3.fluxfrac_radius(0.5)))
+
+
+def test_fluxfrac_cache_not_mutated_by_centroid_win():
+    """
+    Test that calling centroid_win before fluxfrac_radius does not
+    corrupt the fluxfrac_radius cache.
+
+    ``centroid_win`` calls ``fluxfrac_radius(0.5)`` internally and then
+    modifies the returned half-light radius array in-place (replacing
+    NaN with a minimum radius). This must not mutate the cached
+    ``fluxfrac_radius`` Quantity.
+
+    Regression test for a bug where ``.value`` returned a view of the
+    cached Quantity's internal array, causing in-place modification.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    cat = SourceCatalog(data, segm)
+
+    # Patch _measured_kron_radius to return a value > 6.0 so that
+    # kron_radius is NaN, which makes fluxfrac_radius return NaN
+    with patch.object(type(cat), '_measured_kron_radius',
+                      new_callable=lambda: property(
+                          lambda _self: np.array([100.0]))):
+        cat2 = SourceCatalog(data, segm)
+        assert np.isnan(cat2.kron_radius.value[0])
+
+        # Call centroid_win first (it internally calls fluxfrac_radius(0.5))
+        _ = cat2.centroid_win
+
+        # fluxfrac_radius(0.5) must still return NaN, not 0.5
+        result = cat2.fluxfrac_radius(0.5)
+        assert np.all(np.isnan(result.value))
+
+
+def test_centroid_win_nan_when_fluxfrac_nan():
+    """
+    Test that centroid_win returns NaN when fluxfrac_radius(0.5) is NaN
+    (e.g., because kron_radius is NaN).
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+
+    # Patch _measured_kron_radius to return a value > 6.0 so that
+    # kron_radius is NaN, which makes fluxfrac_radius return NaN
+    with patch.object(type(SourceCatalog(data, segm)),
+                      '_measured_kron_radius',
+                      new_callable=lambda: property(
+                          lambda _self: np.array([100.0]))):
+        cat = SourceCatalog(data, segm)
+        assert np.isnan(cat.kron_radius.value[0])
+        assert np.isnan(cat.fluxfrac_radius(0.5).value[0])
+
+        cwin = cat.centroid_win
+        assert np.all(np.isnan(cwin))
+
+
+def test_centroid_win_aperture_mask_none_in_loop():
+    """
+    Test that centroid_win falls back to the isophotal centroid when
+    _aperture_to_mask returns None during the iteration loop (e.g.,
+    because the circular aperture exceeds the size threshold).
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    cat = SourceCatalog(data, segm)
+
+    # Pre-compute fluxfrac_radius before mocking, since it also
+    # uses CircularAperture internally
+    hl_val = cat.fluxfrac_radius(0.5)
+    original_method = cat._aperture_to_mask
+
+    def mock_aperture_to_mask(aperture, **kwargs):
+        if isinstance(aperture, CircularAperture):
+            return None
+        return original_method(aperture, **kwargs)
+
+    with patch.object(cat, '_aperture_to_mask',
+                      side_effect=mock_aperture_to_mask), \
+         patch.object(type(cat), 'fluxfrac_radius',
+                      return_value=hl_val):
+        cwin = cat.centroid_win
+        # NaN from the loop resets to isophotal centroid
+        # because nan_hl is False (fluxfrac_radius was valid)
+        assert_allclose(cwin[:, 0], cat.xcentroid)
+        assert_allclose(cwin[:, 1], cat.ycentroid)
