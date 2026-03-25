@@ -31,6 +31,7 @@ from photutils.utils._deprecation import (_get_future_column_names,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 from photutils.utils._misc import _get_meta
+from photutils.utils._moments import _image_moments
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
@@ -1622,6 +1623,132 @@ class SourceCatalog:
         """
         return self._array('centroid')[:, 1]
 
+    def _centroid_win_single(self, label, xcen, ycen, rad_hl,
+                             nan_hl_, kwargs, compute_err):
+        """
+        Compute the windowed centroid and error terms for a single
+        source.
+
+        Returns a tuple of (xcen, ycen, weighted_flux, cen_mom_xx,
+        cen_mom_yy, cen_mom_xy, err_var_x, err_var_y, err_cov_xy).
+        """
+        nan_result = (np.nan, np.nan, 0.0, 0.0, 0.0, 0.0,
+                      np.nan, np.nan, np.nan)
+        if nan_hl_ or np.any(~np.isfinite((xcen, ycen))):
+            return nan_result
+
+        sigma = 2.0 * rad_hl * gaussian_fwhm_to_sigma
+        sigma2 = sigma**2
+        radius = 4.0 * sigma
+
+        iter_ = 0
+        centroid_shift = 1
+        max_iters = 16
+        centroid_threshold = 0.0001
+        weighted_flux = 0.0
+        dx_shift = dy_shift = 0.0
+        raw_mom_xx = raw_mom_yy = raw_mom_xy = 0.0
+        err_sum = err_var_x = err_var_y = err_cov_xy = 0.0
+        while iter_ < max_iters and centroid_shift > centroid_threshold:
+            aperture = CircularAperture((xcen, ycen), radius)
+            aperture_mask = self._aperture_to_mask(aperture, **kwargs)
+            if aperture_mask is None:
+                xcen = np.nan
+                ycen = np.nan
+                break
+
+            # For consistency with the isophotal centroid, a local
+            # background is not subtracted here
+            data, error, mask, cutout_xycen, slc_sm = (
+                self._make_aperture_data(
+                    label, xcen, ycen, aperture_mask.bbox, 0.0,
+                    make_error=compute_err))
+
+            if data is None:
+                # Return NaN if centroid moves the aperture
+                # completely off the image
+                xcen = np.nan
+                ycen = np.nan
+                break
+
+            aperture_weights = aperture_mask.data[slc_sm]
+
+            # Define a 2D Gaussian weight array
+            xvals = np.arange(data.shape[1]) - cutout_xycen[0]
+            yvals = np.arange(data.shape[0]) - cutout_xycen[1]
+            xx, yy = np.meshgrid(xvals, yvals)
+            rr2 = xx**2 + yy**2
+            gweight = np.exp(-rr2 / (2.0 * sigma2))
+
+            # Ignore multiplication with non-finite values
+            # and ignore divide-by-zero if moments[0, 0] = 0
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+
+                # Accumulate error variance terms. The combined
+                # weight (aperture_weights * gweight) includes the
+                # Gaussian weight.
+                if compute_err:
+                    var = error**2
+                    var[mask] = 0.0
+                    combined_weight = aperture_weights * gweight
+                    weighted_var = combined_weight**2 * var
+                    err_sum = np.sum(weighted_var)
+                    # 1/12 accounts for finite pixel size
+                    err_var_x = np.sum(
+                        weighted_var * (xx**2 + 1.0 / 12))
+                    err_var_y = np.sum(
+                        weighted_var * (yy**2 + 1.0 / 12))
+                    err_cov_xy = np.sum(weighted_var * xx * yy)
+
+                data = data * aperture_weights * gweight
+                data[mask] = 0.0
+
+                moments = _image_moments(data, center=cutout_xycen,
+                                         order=2)
+                weighted_flux = moments[0, 0]
+                dy_shift = moments[1, 0] / weighted_flux
+                dx_shift = moments[0, 1] / weighted_flux
+                raw_mom_xx = moments[0, 2]
+                raw_mom_yy = moments[2, 0]
+                raw_mom_xy = moments[1, 1]
+                centroid_shift = np.sqrt(dx_shift**2 + dy_shift**2)
+                xcen += dx_shift * 2.0
+                ycen += dy_shift * 2.0
+                iter_ += 1
+
+        # Compute windowed central 2nd moments from last
+        # iteration for the fallback checks.
+        if np.isfinite(weighted_flux) and weighted_flux > 0:
+            cen_mom_xx = (raw_mom_xx / weighted_flux
+                          - dx_shift * dx_shift)
+            cen_mom_yy = (raw_mom_yy / weighted_flux
+                          - dy_shift * dy_shift)
+            cen_mom_xy = (raw_mom_xy / weighted_flux
+                          - dx_shift * dy_shift)
+        else:
+            cen_mom_xx = cen_mom_yy = cen_mom_xy = 0.0
+
+        # Normalize error terms by step_factor^2 / weighted_flux^2
+        if compute_err and np.isfinite(weighted_flux) and weighted_flux > 0:
+            step_factor = 2.0
+            norm = step_factor**2 / (weighted_flux**2)
+            err_var_x *= norm
+            err_var_y *= norm
+            err_cov_xy *= norm
+
+            # Handle fully correlated profiles that cause a
+            # singularity.
+            err_sum_norm = err_sum * (1.0 / 12) * norm
+            if (err_var_x * err_var_y - err_cov_xy**2) < err_sum_norm**2:
+                err_var_x += err_sum_norm
+                err_var_y += err_sum_norm
+        else:
+            err_var_x = err_var_y = err_cov_xy = np.nan
+
+        return (xcen, ycen, weighted_flux, cen_mom_xx, cen_mom_yy,
+                cen_mom_xy, err_var_x, err_var_y, err_cov_xy)
+
     @cached_property
     @use_detcat
     def centroid_win(self):  # noqa: PLR0915
@@ -1668,6 +1795,8 @@ class SourceCatalog:
         small_mask = np.isfinite(radius_hl) & (radius_hl < min_radius)
         radius_hl[small_mask] = min_radius
 
+        compute_err = self._error is not None
+
         labels = self.labels
         if self.progress_bar:
             desc = 'centroid_win'
@@ -1680,6 +1809,7 @@ class SourceCatalog:
         # Pre-fetch arrays used in the inner loop
         data_arr = self._data
         mask_arr = self._mask
+        error_arr = self._error
         segm_data = self._segmentation_image.data
         data_shape = data_arr.shape
         do_correct = self.aperture_mask_method == 'correct'
@@ -1695,6 +1825,9 @@ class SourceCatalog:
         win_cen_mom_xx = []
         win_cen_mom_yy = []
         win_cen_mom_xy = []
+        win_err_var_x = []
+        win_err_var_y = []
+        win_err_cov_xy = []
         for label, xcen, ycen, rad_hl, nan_hl_ in zip(
                 labels, x_centroid, y_centroid, radius_hl, nan_hl,
                 strict=True):
@@ -1706,6 +1839,9 @@ class SourceCatalog:
                 win_cen_mom_xx.append(0.0)
                 win_cen_mom_yy.append(0.0)
                 win_cen_mom_xy.append(0.0)
+                win_err_var_x.append(np.nan)
+                win_err_var_y.append(np.nan)
+                win_err_cov_xy.append(np.nan)
                 continue
 
             sigma = 2.0 * rad_hl * gaussian_fwhm_to_sigma
@@ -1728,18 +1864,23 @@ class SourceCatalog:
                 win_cen_mom_xx.append(0.0)
                 win_cen_mom_yy.append(0.0)
                 win_cen_mom_xy.append(0.0)
+                win_err_var_x.append(np.nan)
+                win_err_var_y.append(np.nan)
+                win_err_cov_xy.append(np.nan)
                 continue
 
             # Cache for cutout data when the integer bbox doesn't change
             prev_ixcen = prev_iycen = None
             cached_data = None
             cached_mask = None
+            cached_error = None
 
             iter_ = 0
             dcen = 1.0
             weighted_flux = 0.0
             dx_mom = dy_mom = 0.0
             raw_mx2 = raw_my2 = raw_mxy = 0.0
+            err_sum = err_var_x = err_var_y = err_cov_xy = 0.0
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', RuntimeWarning)
                 while iter_ < max_iters and dcen > centroid_threshold:
@@ -1791,6 +1932,10 @@ class SourceCatalog:
                         cached_data = data
                         cached_mask = data_mask
 
+                        if compute_err:
+                            cached_error = (error_arr[slc_y, slc_x]
+                                            .astype(float))
+
                     # Centroid position in cutout coordinates
                     cx = xcen - max(0, ixmin)
                     cy = ycen - max(0, iymin)
@@ -1811,6 +1956,17 @@ class SourceCatalog:
 
                     # Inline Gaussian weight
                     gweight = np.exp(rr2 * inv_2sigma2)
+
+                    # Accumulate error variance terms
+                    if compute_err:
+                        var = cached_error**2
+                        var[cached_mask] = 0.0
+                        combined_weight = aper_weights * gweight
+                        weighted_var = combined_weight**2 * var
+                        err_sum = np.sum(weighted_var)
+                        err_var_x = np.sum(weighted_var * xx * xx)
+                        err_var_y = np.sum(weighted_var * yy * yy)
+                        err_cov_xy = np.sum(weighted_var * xx * yy)
 
                     # Apply weights and mask
                     weighted = (cached_data * aper_weights * gweight)
@@ -1843,10 +1999,36 @@ class SourceCatalog:
             else:
                 cen_mom_xx = cen_mom_yy = cen_mom_xy = 0.0
 
+            # Normalize error terms by step_factor^2 / weighted_flux^2
+            if (compute_err and np.isfinite(weighted_flux)
+                    and weighted_flux > 0):
+                step_factor = 2.0
+                norm = step_factor**2 / (weighted_flux**2)
+                err_var_x *= norm
+                err_var_y *= norm
+                err_cov_xy *= norm
+
+                # Handle fully correlated profiles that cause a
+                # singularity.
+                err_sum_norm = err_sum * (1.0 / 12) * norm
+                if (err_var_x * err_var_y
+                        - err_cov_xy**2) < err_sum_norm**2:
+                    err_var_x += err_sum_norm
+                    err_var_y += err_sum_norm
+
+                # Add pixel-size variance correction (1/12).
+                err_var_x += err_sum_norm
+                err_var_y += err_sum_norm
+            else:
+                err_var_x = err_var_y = err_cov_xy = np.nan
+
             win_weighted_flux.append(weighted_flux)
             win_cen_mom_xx.append(cen_mom_xx)
             win_cen_mom_yy.append(cen_mom_yy)
             win_cen_mom_xy.append(cen_mom_xy)
+            win_err_var_x.append(err_var_x)
+            win_err_var_y.append(err_var_y)
+            win_err_cov_xy.append(err_cov_xy)
             xcen_win.append(xcen)
             ycen_win.append(ycen)
 
@@ -1856,6 +2038,9 @@ class SourceCatalog:
         win_cen_mom_xx = np.array(win_cen_mom_xx)
         win_cen_mom_yy = np.array(win_cen_mom_yy)
         win_cen_mom_xy = np.array(win_cen_mom_xy)
+        win_err_var_x = np.array(win_err_var_x)
+        win_err_var_y = np.array(win_err_var_y)
+        win_err_cov_xy = np.array(win_err_cov_xy)
 
         # Reset to the isophotal centroid when any of:
         # 1. Centroid diverged far AND outside 1-sigma ellipse
@@ -1882,6 +2067,18 @@ class SourceCatalog:
         if np.any(reset):
             xcen_win[reset] = x_centroid[reset]
             ycen_win[reset] = y_centroid[reset]
+            # Errors are not meaningful for fallback sources
+            win_err_var_x[reset] = np.nan
+            win_err_var_y[reset] = np.nan
+            win_err_cov_xy[reset] = np.nan
+
+        # Store the 1-sigma position errors. Take sqrt to convert
+        # variance to 1-sigma.
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            xerr = np.sqrt(win_err_var_x)
+            yerr = np.sqrt(win_err_var_y)
+        self._centroid_win_poserr = np.transpose((xerr, yerr))
 
         return np.transpose((xcen_win, ycen_win))
 
@@ -1910,6 +2107,30 @@ class SourceCatalog:
         `SourceExtractor`_'s YWIN_IMAGE parameters.
         """
         return self._array('centroid_win')[:, 1]
+
+    @cached_property
+    @use_detcat
+    def _centroid_win_errors(self):
+        """
+        The 1-sigma errors on the ``(x, y)`` windowed centroid
+        position.
+
+        The errors are computed by propagating the error array
+        passed to `SourceCatalog` through the windowed centroid
+        computation. If no error array was provided, the errors are
+        ``np.nan``.
+
+        Errors are also ``np.nan`` for sources where the windowed
+        centroid fell back to the isophotal centroid, or where the
+        half-light radius is non-finite.
+        """
+        # Trigger centroid_win computation (which stores
+        # _centroid_win_poserr as a side effect).
+        _ = self.centroid_win  # noqa: F841
+        result = self._centroid_win_poserr
+        if self.isscalar:
+            return result[0]
+        return result
 
     @cached_property
     @use_detcat
