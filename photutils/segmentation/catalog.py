@@ -1624,7 +1624,7 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
-    def centroid_win(self):
+    def centroid_win(self):  # noqa: PLR0915
         """
         The ``(x, y)`` coordinate of the "windowed" centroid.
 
@@ -1643,9 +1643,12 @@ class SourceCatalog:
         when the change in centroid position falls below a pre-defined
         threshold or a maximum number of iterations is reached.
 
-        If the windowed centroid falls outside the 1-sigma ellipse
-        shape based on the image moments, then the isophotal `centroid`
-        will be used instead. If the half-light radius is not finite
+        The windowed centroid is reset to the isophotal `centroid`
+        if any of the following conditions hold: the centroid diverged
+        far from the isophotal centroid and lies outside the 1-sigma
+        ellipse, the total weighted flux is non-positive, the windowed
+        2nd-order moments are negative, or the windowed covariance
+        determinant is negative. If the half-light radius is not finite
         (e.g., due to a non-finite Kron radius), then ``np.nan`` will be
         returned.
         """
@@ -1688,6 +1691,10 @@ class SourceCatalog:
 
         xcen_win = []
         ycen_win = []
+        win_weighted_flux = []
+        win_cen_mom_xx = []
+        win_cen_mom_yy = []
+        win_cen_mom_xy = []
         for label, xcen, ycen, rad_hl, nan_hl_ in zip(
                 labels, x_centroid, y_centroid, radius_hl, nan_hl,
                 strict=True):
@@ -1695,6 +1702,10 @@ class SourceCatalog:
             if nan_hl_ or math.isnan(xcen) or math.isnan(ycen):
                 xcen_win.append(np.nan)
                 ycen_win.append(np.nan)
+                win_weighted_flux.append(0.0)
+                win_cen_mom_xx.append(0.0)
+                win_cen_mom_yy.append(0.0)
+                win_cen_mom_xy.append(0.0)
                 continue
 
             sigma = 2.0 * rad_hl * gaussian_fwhm_to_sigma
@@ -1713,6 +1724,10 @@ class SourceCatalog:
             if full_ny * full_nx > max_aper_size:
                 xcen_win.append(np.nan)
                 ycen_win.append(np.nan)
+                win_weighted_flux.append(0.0)
+                win_cen_mom_xx.append(0.0)
+                win_cen_mom_yy.append(0.0)
+                win_cen_mom_xy.append(0.0)
                 continue
 
             # Cache for cutout data when the integer bbox doesn't change
@@ -1722,6 +1737,9 @@ class SourceCatalog:
 
             iter_ = 0
             dcen = 1.0
+            weighted_flux = 0.0
+            dx_mom = dy_mom = 0.0
+            raw_mx2 = raw_my2 = raw_mxy = 0.0
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', RuntimeWarning)
                 while iter_ < max_iters and dcen > centroid_threshold:
@@ -1798,35 +1816,69 @@ class SourceCatalog:
                     weighted = (cached_data * aper_weights * gweight)
                     weighted[cached_mask] = 0.0
 
-                    # Inline moment computation
-                    total = np.sum(weighted)
-                    dx = np.sum(weighted * xx) / total
-                    dy = np.sum(weighted * yy) / total
+                    # Inline moment computation (including 2nd order
+                    # for the fallback checks)
+                    weighted_flux = np.sum(weighted)
+                    dx_mom = np.sum(weighted * xx) / weighted_flux
+                    dy_mom = np.sum(weighted * yy) / weighted_flux
+                    raw_mx2 = np.sum(weighted * xx * xx)
+                    raw_my2 = np.sum(weighted * yy * yy)
+                    raw_mxy = np.sum(weighted * xx * yy)
 
-                    dcen = math.sqrt(dx * dx + dy * dy)
-                    xcen += dx * 2.0
-                    ycen += dy * 2.0
+                    dcen = math.sqrt(dx_mom * dx_mom
+                                     + dy_mom * dy_mom)
+                    xcen += dx_mom * 2.0
+                    ycen += dy_mom * 2.0
                     iter_ += 1
 
+            # Compute windowed central 2nd moments from last
+            # iteration for the fallback checks.
+            if np.isfinite(weighted_flux) and weighted_flux > 0:
+                cen_mom_xx = (raw_mx2 / weighted_flux
+                              - dx_mom * dx_mom)
+                cen_mom_yy = (raw_my2 / weighted_flux
+                              - dy_mom * dy_mom)
+                cen_mom_xy = (raw_mxy / weighted_flux
+                              - dx_mom * dy_mom)
+            else:
+                cen_mom_xx = cen_mom_yy = cen_mom_xy = 0.0
+
+            win_weighted_flux.append(weighted_flux)
+            win_cen_mom_xx.append(cen_mom_xx)
+            win_cen_mom_yy.append(cen_mom_yy)
+            win_cen_mom_xy.append(cen_mom_xy)
             xcen_win.append(xcen)
             ycen_win.append(ycen)
 
         xcen_win = np.array(xcen_win)
         ycen_win = np.array(ycen_win)
+        win_weighted_flux = np.array(win_weighted_flux)
+        win_cen_mom_xx = np.array(win_cen_mom_xx)
+        win_cen_mom_yy = np.array(win_cen_mom_yy)
+        win_cen_mom_xy = np.array(win_cen_mom_xy)
 
-        # Reset to the isophotal centroid if the windowed centroid is
-        # outside the 1-sigma ellipse or if the iteration failed (NaN
-        # from aperture off-image). Sources with NaN half-light radius
-        # keep NaN (no valid window size).
+        # Reset to the isophotal centroid when any of:
+        # 1. Centroid diverged far AND outside 1-sigma ellipse
+        # 2. Non-positive total weighted flux
+        # 3. Negative windowed 2nd-order moments
+        # 4. Negative windowed covariance determinant
+        # Sources with NaN half-light radius keep NaN
+        # (no valid window size).
         dx = x_centroid - xcen_win
         dy = y_centroid - ycen_win
         cxx = self._array('ellipse_cxx').value
         cxy = self._array('ellipse_cxy').value
         cyy = self._array('ellipse_cyy').value
 
-        reset = ((cxx * dx**2 + cxy * dx * dy + cyy * dy**2) > 1)
+        reset = ((dx**2 > 1) & (dy**2 > 1)
+                 & ((cxx * dx**2 + cxy * dx * dy + cyy * dy**2) > 1))
+        reset |= win_weighted_flux <= 0.0
+        reset |= (win_cen_mom_xx < 0.0) | (win_cen_mom_yy < 0.0)
+        reset |= (win_cen_mom_xx * win_cen_mom_yy
+                  - win_cen_mom_xy**2) < 0.0
         nan_cen = np.isnan(xcen_win) | np.isnan(ycen_win)
         reset |= nan_cen & ~nan_hl
+        reset &= ~nan_hl
         if np.any(reset):
             xcen_win[reset] = x_centroid[reset]
             ycen_win[reset] = y_centroid[reset]
