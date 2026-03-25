@@ -215,6 +215,9 @@ Bug Fixes
   - Fixed an issue in ``SourceCatalog`` where incorrect masking behavior
     could occur when ``apermask_method='none'``. [#2198]
 
+  - Fixed an issue in ``SourceCatalog`` where unrealistically large
+    ``kron_radius`` values could cause out-of-memory issues. [#2237]
+
 API Changes
 ^^^^^^^^^^^
 
