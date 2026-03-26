@@ -351,6 +351,22 @@ built-in catalog infrastructure (table conversion, filtering, slicing,
 etc.).
 
 
+Segmentation Improvements
+=========================
+
+Protection against large Kron radii
+------------------------------------
+
+:class:`~photutils.segmentation.SourceCatalog` now protects against
+unrealistically large ``kron_radius`` values that could cause
+out-of-memory errors. These can occur when noise or outlier pixels
+cause near-cancellation in the denominator of the Kron radius formula.
+``kron_radius`` values exceeding the measurement aperture scale factor
+(6.0) are now set to NaN, and aperture masks that would exceed the
+input data size are rejected. This prevents pathologically large Kron
+apertures from allocating excessive memory during photometry.
+
+
 New CentroidQuadratic class
 ============================
 

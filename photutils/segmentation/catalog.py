@@ -1522,16 +1522,28 @@ class SourceCatalog:
         when the change in centroid position falls below a pre-defined
         threshold or a maximum number of iterations is reached.
 
-        If the windowed centroid falls outside the 1-sigma ellipse shape
-        based on the image moments, then the isophotal `centroid` will
-        be used instead.
+        If the windowed centroid falls outside the 1-sigma ellipse
+        shape based on the image moments, then the isophotal `centroid`
+        will be used instead. If the half-light radius is not finite
+        (e.g., due to a non-finite Kron radius), then ``np.nan`` will be
+        returned.
         """
-        radius_hl = self.fluxfrac_radius(0.5).value
+        # Use .copy() to avoid mutating the cached fluxfrac_radius value
+        radius_hl = self.fluxfrac_radius(0.5).value.copy()
         if self.isscalar:
             radius_hl = np.array([radius_hl])
-        min_radius = 0.5  # define minimum half-light radius
-        mask = (radius_hl < min_radius) | ~np.isfinite(radius_hl)
-        radius_hl[mask] = min_radius
+
+        # Track which sources have non-finite half-light radii (e.g.,
+        # due to NaN kron_radius). These sources cannot have a
+        # meaningful windowed centroid.
+        nan_hl = ~np.isfinite(radius_hl)
+
+        # Apply a minimum half-light radius of 0.5 pixels (matching
+        # SourceExtractor) for valid but very small values
+        min_radius = 0.5
+        small_mask = np.isfinite(radius_hl) & (radius_hl < min_radius)
+        radius_hl[small_mask] = min_radius
+
         kwargs = self._apermask_kwargs['cen_win']
 
         labels = self.labels
@@ -1541,11 +1553,11 @@ class SourceCatalog:
 
         xcen_win = []
         ycen_win = []
-        for label, xcen, ycen, rad_hl in zip(labels, self._xcentroid,
-                                             self._ycentroid, radius_hl,
-                                             strict=True):
+        for label, xcen, ycen, rad_hl, nan_hl_ in zip(
+                labels, self._xcentroid, self._ycentroid, radius_hl,
+                nan_hl, strict=True):
 
-            if np.any(~np.isfinite((xcen, ycen))):
+            if nan_hl_ or np.any(~np.isfinite((xcen, ycen))):
                 xcen_win.append(np.nan)
                 ycen_win.append(np.nan)
                 continue
@@ -1560,7 +1572,11 @@ class SourceCatalog:
             centroid_threshold = 0.0001
             while iter_ < max_iters and dcen > centroid_threshold:
                 aperture = CircularAperture((xcen, ycen), radius)
-                aperture_mask = aperture.to_mask(**kwargs)
+                aperture_mask = self._aperture_to_mask(aperture, **kwargs)
+                if aperture_mask is None:
+                    xcen = np.nan
+                    ycen = np.nan
+                    break
 
                 # For consistency with the isophotal centroid, a local
                 # background is not subtracted here
@@ -1607,7 +1623,9 @@ class SourceCatalog:
         ycen_win = np.array(ycen_win)
 
         # Reset to the isophotal centroid if the windowed centroid is
-        # outside the 1-sigma ellipse
+        # outside the 1-sigma ellipse or if the iteration failed (NaN
+        # from aperture off-image). Sources with NaN half-light radius
+        # keep NaN (no valid window size).
         dx = self._xcentroid - xcen_win
         dy = self._ycentroid - ycen_win
         cxx = self.cxx.value
@@ -1617,11 +1635,12 @@ class SourceCatalog:
             cxx = (cxx,)
             cxy = (cxy,)
             cyy = (cyy,)
-        mask = ((cxx * dx**2 + cxy * dx * dy + cyy * dy**2) > 1)
-        mask |= (np.isnan(xcen_win) | np.isnan(ycen_win))
-        if np.any(mask):
-            xcen_win[mask] = self._xcentroid[mask]
-            ycen_win[mask] = self._ycentroid[mask]
+        reset = ((cxx * dx**2 + cxy * dx * dy + cyy * dy**2) > 1)
+        nan_cen = np.isnan(xcen_win) | np.isnan(ycen_win)
+        reset |= nan_cen & ~nan_hl
+        if np.any(reset):
+            xcen_win[reset] = self._xcentroid[reset]
+            ycen_win[reset] = self._ycentroid[reset]
 
         return np.transpose((xcen_win, ycen_win))
 
@@ -2878,6 +2897,27 @@ class SourceCatalog:
             bkg <<= self._data_unit
         return bkg
 
+    def _aperture_to_mask(self, aperture, **kwargs):
+        """
+        Call ``aperture.to_mask()``, but first check that the aperture
+        bounding box is not larger than the input data to prevent
+        out-of-memory errors from pathologically large apertures.
+
+        The aperture mask is allocated at the full (unclipped) bounding
+        box size by ``to_mask()``, before ``get_overlap_slices`` clips
+        it to the data shape. For pathological apertures (e.g., from
+        huge Kron radii), this allocation can cause out-of-memory
+        issues.
+
+        Returns `None` if the aperture mask would be unreasonably large.
+        """
+        bbox = aperture.bbox
+        # Limit the aperture mask size to prevent OOM errors
+        max_size = max(self._data.size, 1_000_000)
+        if bbox.shape[0] * bbox.shape[1] > max_size:
+            return None
+        return aperture.to_mask(**kwargs)
+
     def _make_aperture_data(self, label, xcentroid, ycentroid, aperture_bbox,
                             local_background, *, make_error=True):
         """
@@ -3193,7 +3233,10 @@ class SourceCatalog:
 
             xcen, ycen = aperture.positions
             # Use 'center' (whole pixels) to compute Kron radius
-            aperture_mask = aperture.to_mask(method='center')
+            aperture_mask = self._aperture_to_mask(aperture, method='center')
+            if aperture_mask is None:
+                kron_radius.append(np.nan)
+                continue
 
             # Prepare cutouts of the data based on the aperture size
             # local background explicitly set to zero for SE agreement
@@ -3234,6 +3277,15 @@ class SourceCatalog:
         pixel units.
         """
         kron_radius = self._measured_kron_radius.copy()
+
+        # Set values exceeding the measurement aperture scale (6.0)
+        # to NaN. Such values are unphysical (the Kron radius cannot
+        # meaningfully exceed the aperture used to measure it) and are
+        # caused by near-cancellation in the denominator of the Kron
+        # formula due to outlier pixels or noise.
+        max_kron_radius = 6.0
+        kron_radius[kron_radius > max_kron_radius] = np.nan
+
         # Set minimum (unscaled) kron radius
         kron_radius[kron_radius < kron_params[1]] = kron_params[1]
 
@@ -3280,7 +3332,11 @@ class SourceCatalog:
 
         The `kron_radius` value is the unscaled moment value. The
         minimum unscaled radius can be set using the second element of
-        the `SourceCatalog` ``kron_params`` keyword.
+        the `SourceCatalog` ``kron_params`` keyword. If the measured
+        unscaled Kron radius exceeds 6.0 (the measurement aperture
+        scale factor), ``np.nan`` will be returned. Such values are
+        unphysical, typically caused by near-cancellation in the
+        denominator of the Kron formula due to outlier pixels or noise.
 
         If either the numerator or denominator above is less than
         or equal to 0, then the minimum unscaled Kron radius
@@ -3505,7 +3561,11 @@ class SourceCatalog:
                 continue
 
             xcen, ycen = aperture.positions
-            aperture_mask = aperture.to_mask(**kwargs)
+            aperture_mask = self._aperture_to_mask(aperture, **kwargs)
+            if aperture_mask is None:
+                flux.append(np.nan)
+                fluxerr.append(np.nan)
+                continue
 
             # Prepare cutouts of the data based on the aperture size
             data, error, mask, _, slc_sm = self._make_aperture_data(
@@ -3735,7 +3795,10 @@ class SourceCatalog:
                 continue
 
             aperture = CircularAperture((xcen, ycen), r=max_radius_)
-            aperture_mask = aperture.to_mask(**kwargs)
+            aperture_mask = self._aperture_to_mask(aperture, **kwargs)
+            if aperture_mask is None:
+                args.append(None)
+                continue
 
             # Prepare cutouts of the data based on the maximum aperture size
             data, _, mask, xycen, _ = self._make_aperture_data(
