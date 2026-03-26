@@ -21,7 +21,7 @@ from scipy.optimize import root_scalar
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture, RectangularAnnulus)
 from photutils.background import SExtractorBackground
-from photutils.geometry import circular_overlap_grid
+from photutils.geometry import circular_overlap_grid, elliptical_overlap_grid
 from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _mask_to_mirrored_value
@@ -3860,10 +3860,99 @@ class SourceCatalog:
             kron_params = self._validate_kron_params(kron_params)
             kron_aperture = self._make_kron_apertures(kron_params)
 
-        kwargs = self._apermask_kwargs['kron']
-        flux, fluxerr = self._aperture_photometry(kron_aperture,
-                                                  desc='kron_photometry',
-                                                  **kwargs)
+        labels = self.labels
+        if self.progress_bar:
+            labels = add_progress_bar(labels, desc='kron_photometry')
+
+        _floor = math.floor
+        max_size = max(self._data.size, 1_000_000)
+
+        flux = []
+        fluxerr = []
+        for label, aperture, bkg in zip(labels, kron_aperture,
+                                        self._local_background, strict=True):
+            if aperture is None:
+                flux.append(np.nan)
+                fluxerr.append(np.nan)
+                continue
+
+            xcen, ycen = aperture.positions
+
+            # Compute the aperture mask directly, bypassing the
+            # aperture's to_mask() method and ApertureMask/BoundingBox
+            # property overhead.
+            if isinstance(aperture, CircularAperture):
+                r = aperture.r
+                ixmin = _floor(xcen - r + 0.5)
+                ixmax = _floor(xcen + r + 1.5)
+                iymin = _floor(ycen - r + 0.5)
+                iymax = _floor(ycen + r + 1.5)
+                nx = ixmax - ixmin
+                ny = iymax - iymin
+                if nx * ny > max_size:
+                    flux.append(np.nan)
+                    fluxerr.append(np.nan)
+                    continue
+                edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
+                         iymin - 0.5 - ycen, iymax - 0.5 - ycen)
+                mask_data = circular_overlap_grid(
+                    edges[0], edges[1], edges[2], edges[3],
+                    nx, ny, r, 1, 1)
+            else:
+                a = aperture.a
+                b = aperture.b
+                theta_val = aperture.theta
+                theta_rad = (theta_val.to(u.radian).value
+                             if hasattr(theta_val, 'to')
+                             else float(theta_val))
+                cos_t = math.cos(theta_rad)
+                sin_t = math.sin(theta_rad)
+                x_ext = math.sqrt((a * cos_t) ** 2 + (b * sin_t) ** 2)
+                y_ext = math.sqrt((a * sin_t) ** 2 + (b * cos_t) ** 2)
+                ixmin = _floor(xcen - x_ext + 0.5)
+                ixmax = _floor(xcen + x_ext + 1.5)
+                iymin = _floor(ycen - y_ext + 0.5)
+                iymax = _floor(ycen + y_ext + 1.5)
+                nx = ixmax - ixmin
+                ny = iymax - iymin
+                if nx * ny > max_size:
+                    flux.append(np.nan)
+                    fluxerr.append(np.nan)
+                    continue
+                edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
+                         iymin - 0.5 - ycen, iymax - 0.5 - ycen)
+                mask_data = elliptical_overlap_grid(
+                    edges[0], edges[1], edges[2], edges[3],
+                    nx, ny, a, b, theta_rad, 1, 1)
+
+            bbox = BoundingBox(ixmin, ixmax, iymin, iymax)
+            data, error, mask, _, slc_sm = self._make_aperture_data(
+                label, xcen, ycen, bbox, bkg)
+            if data is None:
+                flux.append(np.nan)
+                fluxerr.append(np.nan)
+                continue
+
+            aperture_weights = mask_data[slc_sm]
+            pixel_mask = (aperture_weights > 0) & ~mask
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                values = (aperture_weights * data)[pixel_mask]
+                flux_ = np.nan if values.shape == (0,) else np.sum(values)
+                flux.append(flux_)
+
+                if error is None:
+                    fluxerr_ = np.nan
+                else:
+                    values = (aperture_weights * error ** 2)[pixel_mask]
+                    if values.shape == (0,):
+                        fluxerr_ = np.nan
+                    else:
+                        fluxerr_ = np.sqrt(np.sum(values))
+                fluxerr.append(fluxerr_)
+
+        flux = np.array(flux)
+        fluxerr = np.array(fluxerr)
 
         return flux, fluxerr
 

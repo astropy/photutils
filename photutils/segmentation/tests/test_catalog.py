@@ -1510,6 +1510,15 @@ def test_progress_bar_fluxfrac_radius(progress_bar_catalog):
     assert len(r) == cat.nlabels
 
 
+def test_progress_bar_circular_photometry(progress_bar_catalog):
+    """
+    Test that circular_photometry works with progress_bar=True.
+    """
+    cat = progress_bar_catalog
+    flux, _fluxerr = cat.circular_photometry(5.0)
+    assert len(flux) == cat.nlabels
+
+
 def test_negative_covariance_eigvals(single_source_catalog):
     """
     Test that negative eigenvalues in the covariance matrix are
@@ -1740,39 +1749,71 @@ def test_aperture_to_mask_size_check():
 
 def test_aperture_to_mask_none_branches(gauss_101_catalog):
     """
-    Test that properties gracefully return NaN when _aperture_to_mask
-    returns None (i.e., aperture too large to allocate).
+    Test that _aperture_photometry gracefully returns NaN when
+    _aperture_to_mask returns None (i.e., aperture too large to
+    allocate).
 
-    This covers the None-guard branches in _aperture_photometry and
-    centroid_win.
+    This covers the None-guard branch in _aperture_photometry (used by
+    the general circle photometry path).
+    """
+    _, _, cat = gauss_101_catalog
 
-    The _measured_kron_radius OOM guard is tested separately below in
-    test_measured_kron_radius_oom_guard.
+    # _aperture_photometry (general path) with _aperture_to_mask
+    # returning None
+    with patch.object(type(cat), '_aperture_to_mask', return_value=None):
+        circ_aper = [CircularAperture((50, 50), r=10)] * cat.nlabels
+        flux, _ = cat._aperture_photometry(circ_aper, method='exact')
+        assert np.all(np.isnan(flux))
+
+
+def test_kron_photometry_oom_guard(gauss_101_catalog):
+    """
+    Test that _calc_kron_photometry returns NaN when the Kron aperture
+    is too large (OOM guard).
     """
     data, segm, cat = gauss_101_catalog
+    _ = cat.kron_aperture  # cache
 
-    with patch.object(type(cat), '_aperture_to_mask', return_value=None):
-        # kron_radius still computes (inline OOM guard not triggered)
-        # but centroid_win may use _aperture_to_mask for other paths
+    # Create huge elliptical apertures that exceed the max_size check
+    huge_aper = [EllipticalAperture((50, 50), 2000, 2000, theta=0.0)
+                 for _ in range(cat.nlabels)]
+    cat.__dict__['kron_aperture'] = huge_aper
+    assert np.all(np.isnan(cat.kron_flux))
 
-        # centroid_win: with _aperture_to_mask returning None,
-        # the centroid_win loop returns NaN
-        cwin = cat.centroid_win
-        assert np.all(np.isnan(cwin))
-
-    # For _aperture_photometry, the Kron aperture must be non-None
-    # (i.e., kron_radius must succeed) but _aperture_to_mask must return
-    # None in the photometry step. First compute and cache kron_aperture
-    # normally, then patch.
+    # Create huge circular apertures that exceed the max_size check
     cat2 = SourceCatalog(data, segm)
-    _ = cat2.kron_aperture  # cache the valid kron aperture
-    with patch.object(type(cat2), '_aperture_to_mask', return_value=None):
-        # _aperture_photometry branch
-        assert np.all(np.isnan(cat2.kron_flux))
+    _ = cat2.kron_aperture
+    huge_circ = [CircularAperture((50, 50), r=2000)
+                 for _ in range(cat2.nlabels)]
+    cat2.__dict__['kron_aperture'] = huge_circ
+    assert np.all(np.isnan(cat2.kron_flux))
 
-    # For _fluxfrac_optimizer_args, the inline OOM guard and off-image
-    # guard are now tested separately in test_fluxfrac_optimizer_args_*
-    # tests below.
+    # Aperture completely off-image triggers data=None guard
+    cat3 = SourceCatalog(data, segm)
+    _ = cat3.kron_aperture
+    off_aper = [EllipticalAperture((-1000, -1000), 5, 3, theta=0.0)
+                for _ in range(cat3.nlabels)]
+    cat3.__dict__['kron_aperture'] = off_aper
+    assert np.all(np.isnan(cat3.kron_flux))
+
+    # All pixels masked in aperture overlap triggers empty values with
+    # error branch
+    error = np.ones_like(data)
+    cat4 = SourceCatalog(data, segm, error=error)
+    _ = cat4.kron_aperture  # cache
+    original_make = type(cat4)._make_aperture_data
+
+    def _make_all_masked(self, label, xcen, ycen, bbox, bkg, **kwargs):
+        result = original_make(self, label, xcen, ycen, bbox, bkg, **kwargs)
+        if result[0] is not None:
+            # Set mask to all True (all pixels masked)
+            return (result[0], result[1], np.ones_like(result[2]),
+                    result[3], result[4])
+        return result
+
+    with patch.object(type(cat4), '_make_aperture_data', _make_all_masked):
+        assert np.all(np.isnan(cat4.kron_flux))
+        assert np.all(np.isnan(cat4.kron_fluxerr))
 
 
 def test_fluxfrac_cache_not_mutated_by_centroid_win(gauss_101_data):
