@@ -1688,14 +1688,9 @@ def test_aperture_to_mask_none_branches():
         # _aperture_photometry branch
         assert np.all(np.isnan(cat2.kron_flux))
 
-    # For _fluxfrac_optimizer_args, kron_flux must be finite (non-NaN)
-    # so the early finite check passes. Cache kron_photometry first.
-    cat3 = SourceCatalog(data, segm)
-    _ = cat3.kron_aperture
-    _ = cat3._kron_photometry  # cache valid kron flux
-    with patch.object(type(cat3), '_aperture_to_mask', return_value=None):
-        # _fluxfrac_optimizer_args branch
-        assert np.all(np.isnan(cat3.fluxfrac_radius(0.5)))
+    # For _fluxfrac_optimizer_args, the inline OOM guard and off-image
+    # guard are now tested separately in test_fluxfrac_optimizer_args_*
+    # tests below.
 
 
 def test_fluxfrac_cache_not_mutated_by_centroid_win():
@@ -1858,3 +1853,76 @@ def test_make_aperture_data_outside_image():
                                 iymin=200, iymax=210)
     result = cat._make_aperture_data(1, 205.0, 205.0, offimage_bbox, 0.0)
     assert result == (None,) * 5
+
+
+def test_fluxfrac_optimizer_args_oom_guard():
+    """
+    Test that _fluxfrac_optimizer_args returns None for sources whose
+    max-radius aperture bbox exceeds max_aper_size.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    cat = SourceCatalog(data, segm)
+
+    # Cache kron_photometry normally, then patch
+    # _max_circular_kron_radius to return a huge radius that triggers
+    # the OOM guard
+    _ = cat._kron_photometry
+    huge = np.array([2000.0])
+    with patch.object(type(cat), '_max_circular_kron_radius',
+                      new_callable=lambda: property(lambda _self: huge)):
+        cat2 = SourceCatalog(data, segm)
+        cat2.__dict__['_kron_photometry'] = cat._kron_photometry
+        cat2.__dict__['_max_circular_kron_radius'] = huge
+        assert np.all(np.isnan(cat2.fluxfrac_radius(0.5)))
+
+
+def test_fluxfrac_optimizer_args_off_image():
+    """
+    Test that _fluxfrac_optimizer_args returns None for sources whose
+    max-radius aperture bbox doesn't overlap the data.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    cat = SourceCatalog(data, segm)
+
+    # Cache kron_photometry, then move the centroid way off-image
+    _ = cat._kron_photometry
+    off = np.array([500.0])
+    cat.__dict__['_xcentroid'] = off
+    cat.__dict__['_ycentroid'] = off
+    assert np.all(np.isnan(cat.fluxfrac_radius(0.5)))
+
+
+def test_fluxfrac_optimizer_args_center_method():
+    """
+    Test _fluxfrac_optimizer_args with method='center' to cover the
+    center-method branch in the method translation logic.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    cat = SourceCatalog(data, segm)
+    cat._apermask_kwargs['fluxfrac'] = {'method': 'center'}
+    r50 = cat.fluxfrac_radius(0.5)
+    assert np.isfinite(r50.value[0])
+
+
+def test_fluxfrac_optimizer_args_subpixel_method():
+    """
+    Test _fluxfrac_optimizer_args with method='subpixel' to cover the
+    subpixel-method branch in the method translation logic.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    cat = SourceCatalog(data, segm)
+    cat._apermask_kwargs['fluxfrac'] = {'method': 'subpixel', 'subpixels': 5}
+    r50 = cat.fluxfrac_radius(0.5)
+    assert np.isfinite(r50.value[0])

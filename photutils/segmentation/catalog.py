@@ -23,6 +23,7 @@ from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture, RectangularAnnulus)
 from photutils.background import SExtractorBackground
 from photutils.centroids import centroid_quadratic
+from photutils.geometry import circular_overlap_grid
 from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _mask_to_mirrored_value
@@ -3832,13 +3833,19 @@ class SourceCatalog:
         return radius
 
     @staticmethod
-    def _fluxfrac_radius_fcn(radius, data, mask, aperture, normflux, kwargs):
+    def _fluxfrac_radius_fcn(radius, clean_data, grid_params, normflux):
         """
         Function whose root is found to compute the fluxfrac_radius.
+
+        Uses ``circular_overlap_grid`` directly on pre-computed cutout
+        data (with masked pixels zeroed) to avoid per-call aperture
+        object overhead.
         """
-        aperture.r = radius
-        flux, _ = aperture.do_photometry(data, mask=mask, **kwargs)
-        return 1.0 - (flux[0] / normflux)
+        xmin_e, xmax_e, ymin_e, ymax_e, nx, ny, exact, subpx = grid_params
+        weights = circular_overlap_grid(xmin_e, xmax_e, ymin_e, ymax_e,
+                                        nx, ny, radius, exact, subpx)
+        flux = np.sum(clean_data * weights)
+        return 1.0 - (flux / normflux)
 
     @lazyproperty
     @use_detcat
@@ -3846,6 +3853,27 @@ class SourceCatalog:
         kron_flux = self._kron_photometry[:, 0]  # unitless
         max_radius = self._max_circular_kron_radius
         kwargs = self._apermask_kwargs['fluxfrac']
+
+        # Translate mask method keywords to circular_overlap_grid
+        # parameters once
+        method = kwargs.get('method', 'exact')
+        if method == 'exact':
+            use_exact = 1
+            subpixels = 1
+        elif method == 'center':
+            use_exact = 0
+            subpixels = 1
+        else:  # 'subpixel'
+            use_exact = 0
+            subpixels = kwargs.get('subpixels', 5)
+
+        # Pre-fetch arrays used inside the loop
+        data_arr = self._data
+        mask_arr = self._mask
+        segm_data = self._segment_img.data
+        data_shape = data_arr.shape
+        apermask_method = self.apermask_method
+        max_aper_size = max(data_arr.size, 1_000_000)
 
         labels = self.labels
         if self.progress_bar:
@@ -3862,19 +3890,68 @@ class SourceCatalog:
                 args.append(None)
                 continue
 
-            aperture = CircularAperture((xcen, ycen), r=max_radius_)
-            aperture_mask = self._aperture_to_mask(aperture, **kwargs)
-            if aperture_mask is None:
+            # Compute the bounding box for the max-radius aperture
+            # inline, replacing CircularAperture + _aperture_to_mask +
+            # _make_aperture_data
+            ixmin = math.floor(xcen - max_radius_ + 0.5)
+            ixmax = math.ceil(xcen + max_radius_ + 0.5)
+            iymin = math.floor(ycen - max_radius_ + 0.5)
+            iymax = math.ceil(ycen + max_radius_ + 0.5)
+
+            # OOM guard (same logic as _aperture_to_mask)
+            bbox_ny = iymax - iymin
+            bbox_nx = ixmax - ixmin
+            if bbox_ny * bbox_nx > max_aper_size:
                 args.append(None)
                 continue
 
-            # Prepare cutouts of the data based on the maximum aperture size
-            data, _, mask, xycen, _ = self._make_aperture_data(
-                label, xcen, ycen, aperture_mask.bbox, bkg,
-                make_error=False)
+            # Clip to data boundaries
+            data_ymin = max(0, iymin)
+            data_ymax = min(data_shape[0], iymax)
+            data_xmin = max(0, ixmin)
+            data_xmax = min(data_shape[1], ixmax)
+            if data_ymin >= data_ymax or data_xmin >= data_xmax:
+                args.append(None)
+                continue
 
-            aperture.positions = xycen
-            args.append([data, mask, aperture, kronflux, kwargs, max_radius_])
+            slc_lg = (slice(data_ymin, data_ymax), slice(data_xmin, data_xmax))
+            cutout_data = data_arr[slc_lg].astype(float) - bkg
+
+            # Build data mask (non-finite + user mask)
+            data_mask = ~np.isfinite(cutout_data)
+            if mask_arr is not None:
+                data_mask |= mask_arr[slc_lg]
+
+            # Cutout centroid position
+            cutout_xcen = xcen - data_xmin
+            cutout_ycen = ycen - data_ymin
+
+            # Handle neighboring sources
+            if apermask_method != 'none':
+                seg_cut = segm_data[slc_lg]
+                segm_mask = (seg_cut != label) & (seg_cut != 0)
+                if apermask_method == 'mask':
+                    data_mask = data_mask | segm_mask
+                elif apermask_method == 'correct':
+                    cutout_data = _mask_to_mirrored_value(
+                        cutout_data, segm_mask,
+                        (cutout_xcen, cutout_ycen), mask=data_mask)
+
+            # Pre-zero masked pixels so the root-finding function can
+            # use a simple sum without masking
+            clean_data = cutout_data.copy()
+            clean_data[data_mask] = 0.0
+
+            # Pre-compute grid parameters for circular_overlap_grid
+            ny, nx = clean_data.shape
+            xmin_edge = -0.5 - cutout_xcen
+            xmax_edge = nx - 0.5 - cutout_xcen
+            ymin_edge = -0.5 - cutout_ycen
+            ymax_edge = ny - 0.5 - cutout_ycen
+            grid_params = (xmin_edge, xmax_edge, ymin_edge, ymax_edge,
+                           nx, ny, use_exact, subpixels)
+
+            args.append([clean_data, grid_params, kronflux, max_radius_])
 
         return args
 
@@ -3931,10 +4008,9 @@ class SourceCatalog:
                 radius.append(np.nan)
                 continue
 
-            max_radius = fluxfrac_args[-1]
-            args = fluxfrac_args[:-1]
-            args[3] *= fluxfrac
-            args = tuple(args)
+            clean_data, grid_params, kronflux, max_radius = fluxfrac_args
+            normflux = kronflux * fluxfrac
+            args = (clean_data, grid_params, normflux)
 
             # Try to find the root of self._fluxfrac_radius_fnc, which
             # is bracketed by a min and max radius. A ValueError is
