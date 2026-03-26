@@ -3278,14 +3278,34 @@ class SourceCatalog:
         The returned value is the measured Kron radius without applying
         any minimum Kron or circular radius.
         """
-        apertures = self._make_elliptical_apertures(scale=6.0)
-        cxx = self.cxx.value
-        cxy = self.cxy.value
-        cyy = self.cyy.value
+        scale = 6.0
+
+        xcen_arr = self._xcentroid
+        ycen_arr = self._ycentroid
+        a_arr = self.semimajor_sigma.value * scale
+        b_arr = self.semiminor_sigma.value * scale
+        theta_arr = self.orientation.to(u.radian).value
+        cxx_arr = self.cxx.value
+        cxy_arr = self.cxy.value
+        cyy_arr = self.cyy.value
+        all_masked = self._all_masked
         if self.isscalar:
-            cxx = (cxx,)
-            cxy = (cxy,)
-            cyy = (cyy,)
+            a_arr = (a_arr,)
+            b_arr = (b_arr,)
+            theta_arr = (theta_arr,)
+            cxx_arr = (cxx_arr,)
+            cxy_arr = (cxy_arr,)
+            cyy_arr = (cyy_arr,)
+
+        data_full = self._data
+        data_shape = data_full.shape
+        mask_full = self._mask
+        segm_data = self._segment_img.data
+        max_size = max(data_full.size, 1_000_000)
+        kron_min = self.kron_params[1]
+        min_circ_radius = (self.kron_params[2]
+                           if len(self.kron_params) == 3 else 0.0)
+        apermask_method = self.apermask_method
 
         labels = self.labels
         if self.progress_bar:
@@ -3293,43 +3313,116 @@ class SourceCatalog:
             labels = add_progress_bar(labels, desc=desc)
 
         kron_radius = []
-        for (label, aperture, cxx_, cxy_, cyy_) in zip(labels, apertures,
-                                                       cxx, cxy, cyy,
-                                                       strict=True):
-            if aperture is None:
+        for (label, xc, yc, a, b, theta, cxx_, cxy_, cyy_,
+             masked) in zip(labels, xcen_arr, ycen_arr, a_arr, b_arr,
+                            theta_arr, cxx_arr, cxy_arr, cyy_arr,
+                            all_masked, strict=True):
+            if masked or not (math.isfinite(xc) and math.isfinite(yc)
+                              and math.isfinite(a) and math.isfinite(b)
+                              and math.isfinite(theta)):
                 kron_radius.append(np.nan)
                 continue
 
-            xcen, ycen = aperture.positions
-            # Use 'center' (whole pixels) to compute Kron radius
-            aperture_mask = self._aperture_to_mask(aperture, method='center')
-            if aperture_mask is None:
+            # Circular aperture fallback when semimajor/semiminor are
+            # zero (matching _make_elliptical_apertures behavior)
+            use_circular = (a == 0 and b == 0)
+            if use_circular:
+                if min_circ_radius <= 0:
+                    kron_radius.append(np.nan)
+                    continue
+                half_w = min_circ_radius
+                half_h = min_circ_radius
+            else:
+                cos_theta = math.cos(theta)
+                sin_theta = math.sin(theta)
+                half_w = math.sqrt(a * a * cos_theta * cos_theta
+                                   + b * b * sin_theta * sin_theta)
+                half_h = math.sqrt(a * a * sin_theta * sin_theta
+                                   + b * b * cos_theta * cos_theta)
+
+            # Compute bounding box from ellipse/circle parameters
+            ixmin = math.floor(xc - half_w + 0.5)
+            ixmax = math.floor(xc + half_w + 0.5) + 1
+            iymin = math.floor(yc - half_h + 0.5)
+            iymax = math.floor(yc + half_h + 0.5) + 1
+
+            # OOM guard
+            if (ixmax - ixmin) * (iymax - iymin) > max_size:
                 kron_radius.append(np.nan)
                 continue
 
-            # Prepare cutouts of the data based on the aperture size
-            # local background explicitly set to zero for SE agreement
-            data, _, mask, xycen, slc_sm = self._make_aperture_data(
-                label, xcen, ycen, aperture_mask.bbox, 0.0, make_error=False)
+            # Compute overlap slices with data boundaries
+            dx_min = max(0, -ixmin)
+            dy_min = max(0, -iymin)
+            dx_max = max(0, ixmax - data_shape[1])
+            dy_max = max(0, iymax - data_shape[0])
+            lg_xmin = ixmin + dx_min
+            lg_xmax = ixmax - dx_max
+            lg_ymin = iymin + dy_min
+            lg_ymax = iymax - dy_max
+            if lg_xmin >= lg_xmax or lg_ymin >= lg_ymax:
+                kron_radius.append(np.nan)
+                continue
 
-            xval = np.arange(data.shape[1]) - xycen[0]
-            yval = np.arange(data.shape[0]) - xycen[1]
-            xx, yy = np.meshgrid(xval, yval)
-            rr = np.sqrt(cxx_ * xx**2 + cxy_ * xx * yy + cyy_ * yy**2)
+            slc_lg = (slice(lg_ymin, lg_ymax), slice(lg_xmin, lg_xmax))
 
-            aperture_weights = aperture_mask.data[slc_sm]
-            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
+            # Cutout data (local background explicitly zero for SE
+            # agreement)
+            data = data_full[slc_lg].astype(float)
+
+            # Build data mask (non-finite + input mask)
+            data_mask = ~np.isfinite(data)
+            if mask_full is not None:
+                data_mask |= mask_full[slc_lg]
+
+            # Mask or correct neighboring sources
+            if apermask_method != 'none':
+                seg_cut = segm_data[slc_lg]
+                segm_mask = (seg_cut != label) & (seg_cut != 0)
+                if apermask_method == 'mask':
+                    mask = data_mask | segm_mask
+                else:
+                    mask = data_mask
+                if apermask_method == 'correct':
+                    cutout_xycen = (xc - max(0, ixmin), yc - max(0, iymin))
+                    data = _mask_to_mirrored_value(data, segm_mask,
+                                                   cutout_xycen,
+                                                   mask=mask)
+            else:
+                mask = data_mask
+
+            # Coordinate arrays (ogrid-style broadcasting avoids
+            # allocating full 2D meshgrid arrays)
+            ny, nx = data.shape
+            xval = np.arange(nx) - (xc - lg_xmin)
+            yval = np.arange(ny) - (yc - lg_ymin)
+            yy = yval[:, np.newaxis]
+            xx = xval[np.newaxis, :]
+
+            # Elliptical radius
+            rr_sq = cxx_ * xx * xx + cxy_ * xx * yy + cyy_ * yy * yy
+            rr = np.sqrt(np.maximum(rr_sq, 0.0))
+
+            # Aperture mask: for method='center', pixels whose center
+            # falls inside the ellipse (rr <= scale) or circle
+            if use_circular:
+                dx = xx
+                dy = yy
+                pixel_mask = ((dx * dx + dy * dy)
+                              <= min_circ_radius * min_circ_radius) & ~mask
+            else:
+                pixel_mask = (rr <= scale) & ~mask
 
             # Ignore RuntimeWarning for invalid data values
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', RuntimeWarning)
-                flux_numer = np.sum((aperture_weights * data * rr)[pixel_mask])
-                flux_denom = np.sum((aperture_weights * data)[pixel_mask])
+                flux_numer = np.sum(data[pixel_mask] * rr[pixel_mask])
+                flux_denom = np.sum(data[pixel_mask])
 
             # Set Kron radius to the minimum Kron radius if numerator or
             # denominator is negative
             if flux_numer <= 0 or flux_denom <= 0:
-                kron_radius.append(self.kron_params[1])
+                kron_radius.append(kron_min)
                 continue
 
             kron_radius.append(flux_numer / flux_denom)

@@ -59,6 +59,56 @@ def single_source_catalog():
     return data, segm, cat
 
 
+@pytest.fixture
+def gauss_101_data():
+    """
+    A single-source Gaussian on a 101x101 grid.
+
+    Returns ``(data, segm)``.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    g1 = Gaussian2D(100, 50, 50, 5, 5)
+    data = g1(xx, yy)
+    segm = detect_sources(data, 10.0, npixels=5)
+    return data, segm
+
+
+@pytest.fixture
+def gauss_101_catalog(gauss_101_data):
+    """
+    A single-source SourceCatalog from a Gaussian on a 101x101 grid.
+
+    Returns ``(data, segm, cat)``.
+    """
+    data, segm = gauss_101_data
+    cat = SourceCatalog(data, segm)
+    return data, segm, cat
+
+
+@pytest.fixture
+def centroid_win_data():
+    """
+    Two-source data on a 21x21 grid for centroid_win tests.
+
+    Returns ``(data, segment_map, convolved_data)``.
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    m = g1 + g2
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = m(xx, yy)
+    noise = make_noise_image(data.shape, mean=0, stddev=65.0, seed=123)
+    data += noise
+
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    npixels = 10
+    finder = SourceFinder(npixels=npixels, progress_bar=False)
+    threshold = 107.9
+    segment_map = finder(convolved_data, threshold)
+    return data, segment_map, convolved_data
+
+
 class TestSourceCatalog:
     @pytest.fixture(autouse=True)
     def setup(self):
@@ -1229,24 +1279,11 @@ def test_kron_params():
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
-def test_centroid_win():
+def test_centroid_win(centroid_win_data):
     """
     Test centroid win.
     """
-    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
-    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
-    m = g1 + g2
-    yy, xx = np.mgrid[0:21, 0:21]
-    data = m(xx, yy)
-    noise = make_noise_image(data.shape, mean=0, stddev=65.0, seed=123)
-    data += noise
-
-    kernel = make_2dgaussian_kernel(3.0, size=5)
-    convolved_data = convolve(data, kernel)
-    npixels = 10
-    finder = SourceFinder(npixels=npixels, progress_bar=False)
-    threshold = 107.9
-    segment_map = finder(convolved_data, threshold)
+    data, segment_map, convolved_data = centroid_win_data
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         apermask_method='none')
 
@@ -1588,7 +1625,7 @@ def test_fluxfrac_radius_no_solution(single_source_catalog):
     assert np.isnan(result.value[0])
 
 
-def test_kron_radius_max():
+def test_kron_radius_max(gauss_101_catalog):
     """
     Test that measured kron_radius values exceeding the measurement
     aperture scale (6.0) are set to NaN.
@@ -1597,11 +1634,7 @@ def test_kron_radius_max():
     denominator of the Kron formula (e.g., due to outlier pixels or
     noise).
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)
+    data, segm, cat = gauss_101_catalog
 
     # The measured kron radius should be reasonable (<= 6.0)
     assert cat.kron_radius.value <= 6.0
@@ -1654,27 +1687,25 @@ def test_aperture_to_mask_size_check():
     assert result is None
 
 
-def test_aperture_to_mask_none_branches():
+def test_aperture_to_mask_none_branches(gauss_101_catalog):
     """
     Test that properties gracefully return NaN when _aperture_to_mask
     returns None (i.e., aperture too large to allocate).
 
-    This covers the None-guard branches in _measured_kron_radius,
-    _aperture_photometry, _fluxfrac_optimizer_args, and centroid_win.
+    This covers the None-guard branches in _aperture_photometry and
+    centroid_win.
+
+    The _measured_kron_radius OOM guard is tested separately below in
+    test_measured_kron_radius_oom_guard.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)
+    data, segm, cat = gauss_101_catalog
 
     with patch.object(type(cat), '_aperture_to_mask', return_value=None):
-        # _measured_kron_radius branch
-        assert np.all(np.isnan(cat.kron_radius.value))
+        # kron_radius still computes (inline OOM guard not triggered)
+        # but centroid_win may use _aperture_to_mask for other paths
 
         # centroid_win: with _aperture_to_mask returning None,
-        # kron_radius is NaN, so fluxfrac_radius(0.5) is NaN,
-        # and centroid_win returns NaN (not the isophotal centroid)
+        # the centroid_win loop returns NaN
         cwin = cat.centroid_win
         assert np.all(np.isnan(cwin))
 
@@ -1693,7 +1724,7 @@ def test_aperture_to_mask_none_branches():
     # tests below.
 
 
-def test_fluxfrac_cache_not_mutated_by_centroid_win():
+def test_fluxfrac_cache_not_mutated_by_centroid_win(gauss_101_data):
     """
     Test that calling centroid_win before fluxfrac_radius does not
     corrupt the fluxfrac_radius cache.
@@ -1706,10 +1737,7 @@ def test_fluxfrac_cache_not_mutated_by_centroid_win():
     Regression test for a bug where ``.value`` returned a view of the
     cached Quantity's internal array, causing in-place modification.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
+    data, segm = gauss_101_data
     cat = SourceCatalog(data, segm)
 
     # Patch _measured_kron_radius to return a value > 6.0 so that
@@ -1728,15 +1756,12 @@ def test_fluxfrac_cache_not_mutated_by_centroid_win():
         assert np.all(np.isnan(result.value))
 
 
-def test_centroid_win_nan_when_fluxfrac_nan():
+def test_centroid_win_nan_when_fluxfrac_nan(gauss_101_data):
     """
     Test that centroid_win returns NaN when fluxfrac_radius(0.5) is NaN
     (e.g., because kron_radius is NaN).
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
+    data, segm = gauss_101_data
 
     # Patch _measured_kron_radius to return a value > 6.0 so that
     # kron_radius is NaN, which makes fluxfrac_radius return NaN
@@ -1752,17 +1777,13 @@ def test_centroid_win_nan_when_fluxfrac_nan():
         assert np.all(np.isnan(cwin))
 
 
-def test_centroid_win_aperture_mask_none_in_loop():
+def test_centroid_win_aperture_mask_none_in_loop(gauss_101_catalog):
     """
     Test that centroid_win falls back to the isophotal centroid when
     _aperture_to_mask returns None during the iteration loop (e.g.,
     because the circular aperture exceeds the size threshold).
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)
+    _data, _segm, cat = gauss_101_catalog
 
     # Pre-compute fluxfrac_radius before mocking, since it also
     # uses CircularAperture internally
@@ -1785,16 +1806,12 @@ def test_centroid_win_aperture_mask_none_in_loop():
         assert_allclose(cwin[:, 1], cat.ycentroid)
 
 
-def test_centroid_win_oom_guard():
+def test_centroid_win_oom_guard(gauss_101_catalog):
     """
     Test that centroid_win returns NaN for sources whose half-light
     radius would require an aperture larger than max_aper_size.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)
+    _data, _segm, cat = gauss_101_catalog
 
     # Provide a huge half-light radius so the aperture bbox exceeds
     # max_aper_size (max(data.size, 1_000_000) = 1_000_000).
@@ -1808,25 +1825,13 @@ def test_centroid_win_oom_guard():
     assert_allclose(cwin[:, 1], cat.ycentroid)
 
 
-def test_centroid_win_apermask_mask():
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_centroid_win_apermask_mask(centroid_win_data):
     """
     Test centroid_win with apermask_method='mask' to cover the
     ``data_mask = data_mask | segm_mask`` branch.
     """
-    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
-    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
-    m = g1 + g2
-    yy, xx = np.mgrid[0:21, 0:21]
-    data = m(xx, yy)
-    noise = make_noise_image(data.shape, mean=0, stddev=65.0, seed=123)
-    data += noise
-
-    kernel = make_2dgaussian_kernel(3.0, size=5)
-    convolved_data = convolve(data, kernel)
-    npixels = 10
-    finder = SourceFinder(npixels=npixels, progress_bar=False)
-    threshold = 107.9
-    segment_map = finder(convolved_data, threshold)
+    data, segment_map, convolved_data = centroid_win_data
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         apermask_method='mask')
 
@@ -1837,16 +1842,12 @@ def test_centroid_win_apermask_mask():
     assert np.isfinite(cwin[0, 0])
 
 
-def test_make_aperture_data_outside_image():
+def test_make_aperture_data_outside_image(gauss_101_catalog):
     """
     Test that _make_aperture_data returns (None,) * 5 when the aperture
     bbox does not overlap the data.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)
+    _data, _segm, cat = gauss_101_catalog
 
     # BoundingBox completely outside the 101x101 data
     offimage_bbox = BoundingBox(ixmin=200, ixmax=210,
@@ -1855,16 +1856,12 @@ def test_make_aperture_data_outside_image():
     assert result == (None,) * 5
 
 
-def test_fluxfrac_optimizer_args_oom_guard():
+def test_fluxfrac_optimizer_args_oom_guard(gauss_101_catalog):
     """
     Test that _fluxfrac_optimizer_args returns None for sources whose
     max-radius aperture bbox exceeds max_aper_size.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)
+    data, segm, cat = gauss_101_catalog
 
     # Cache kron_photometry normally, then patch
     # _max_circular_kron_radius to return a huge radius that triggers
@@ -1879,16 +1876,12 @@ def test_fluxfrac_optimizer_args_oom_guard():
         assert np.all(np.isnan(cat2.fluxfrac_radius(0.5)))
 
 
-def test_fluxfrac_optimizer_args_off_image():
+def test_fluxfrac_optimizer_args_off_image(gauss_101_catalog):
     """
     Test that _fluxfrac_optimizer_args returns None for sources whose
     max-radius aperture bbox doesn't overlap the data.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)
+    _data, _segm, cat = gauss_101_catalog
 
     # Cache kron_photometry, then move the centroid way off-image
     _ = cat._kron_photometry
@@ -1898,31 +1891,105 @@ def test_fluxfrac_optimizer_args_off_image():
     assert np.all(np.isnan(cat.fluxfrac_radius(0.5)))
 
 
-def test_fluxfrac_optimizer_args_center_method():
+def test_fluxfrac_optimizer_args_center_method(gauss_101_catalog):
     """
     Test _fluxfrac_optimizer_args with method='center' to cover the
     center-method branch in the method translation logic.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)
+    _data, _segm, cat = gauss_101_catalog
     cat._apermask_kwargs['fluxfrac'] = {'method': 'center'}
     r50 = cat.fluxfrac_radius(0.5)
     assert np.isfinite(r50.value[0])
 
 
-def test_fluxfrac_optimizer_args_subpixel_method():
+def test_fluxfrac_optimizer_args_subpixel_method(gauss_101_catalog):
     """
     Test _fluxfrac_optimizer_args with method='subpixel' to cover the
     subpixel-method branch in the method translation logic.
     """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    data = g1(xx, yy)
-    segm = detect_sources(data, 10.0, npixels=5)
-    cat = SourceCatalog(data, segm)
+    _data, _segm, cat = gauss_101_catalog
     cat._apermask_kwargs['fluxfrac'] = {'method': 'subpixel', 'subpixels': 5}
     r50 = cat.fluxfrac_radius(0.5)
     assert np.isfinite(r50.value[0])
+
+
+def test_measured_kron_radius_oom_guard(gauss_101_catalog):
+    """
+    Test that _measured_kron_radius returns NaN for sources whose
+    aperture bounding box exceeds max_size (OOM guard).
+    """
+    _data, _segm, cat = gauss_101_catalog
+
+    # Patch semimajor_sigma to a huge value so the bbox triggers OOM
+    huge = np.array([1e6]) << u.pix
+    with patch.object(type(cat), 'semimajor_sigma',
+                      new_callable=lambda: property(lambda _self: huge)):
+        assert np.all(np.isnan(cat.kron_radius.value))
+
+
+def test_measured_kron_radius_off_image(gauss_101_catalog):
+    """
+    Test that _measured_kron_radius returns NaN for sources whose
+    aperture bounding box doesn't overlap the data.
+    """
+    _data, _segm, cat = gauss_101_catalog
+
+    # Move the centroid off the image
+    cat.__dict__['_xcentroid'] = np.array([5000.0])
+    cat.__dict__['_ycentroid'] = np.array([5000.0])
+    assert np.all(np.isnan(cat.kron_radius.value))
+
+
+def test_measured_kron_radius_circular_fallback(gauss_101_data):
+    """
+    Test _measured_kron_radius with the circular aperture fallback when
+    semimajor/semiminor sigma are zero (kron_params[2] > 0).
+    """
+    data, segm = gauss_101_data
+    cat = SourceCatalog(data, segm, kron_params=(2.5, 1.4, 5.0))
+
+    # Force semimajor/semiminor to zero to trigger circular fallback.
+    # Also patch cxx/cxy/cyy to valid values since the real ones depend
+    # on covariance eigenvalues.
+    zero = np.array([0.0]) << u.pix
+    cxx_val = np.array([1.0]) / (u.pix * u.pix)
+    cyy_val = np.array([1.0]) / (u.pix * u.pix)
+    cxy_val = np.array([0.0]) / (u.pix * u.pix)
+    with (patch.object(type(cat), 'semimajor_sigma',
+                       new_callable=lambda: property(lambda _self: zero)),
+          patch.object(type(cat), 'semiminor_sigma',
+                       new_callable=lambda: property(lambda _self: zero)),
+          patch.object(type(cat), 'cxx',
+                       new_callable=lambda: property(lambda _self: cxx_val)),
+          patch.object(type(cat), 'cyy',
+                       new_callable=lambda: property(lambda _self: cyy_val)),
+          patch.object(type(cat), 'cxy',
+                       new_callable=lambda: property(lambda _self: cxy_val))):
+        kr = cat._measured_kron_radius
+        assert np.isfinite(kr[0])
+
+
+def test_measured_kron_radius_circular_no_min_radius(gauss_101_data):
+    """
+    Test _measured_kron_radius returns NaN for the circular fallback
+    when kron_params has only 2 elements (no minimum circular radius).
+    """
+    data, segm = gauss_101_data
+    cat = SourceCatalog(data, segm, kron_params=(2.5, 1.4))
+
+    zero = np.array([0.0]) << u.pix
+    cxx_val = np.array([1.0]) / (u.pix * u.pix)
+    cyy_val = np.array([1.0]) / (u.pix * u.pix)
+    cxy_val = np.array([0.0]) / (u.pix * u.pix)
+    with (patch.object(type(cat), 'semimajor_sigma',
+                       new_callable=lambda: property(lambda _self: zero)),
+          patch.object(type(cat), 'semiminor_sigma',
+                       new_callable=lambda: property(lambda _self: zero)),
+          patch.object(type(cat), 'cxx',
+                       new_callable=lambda: property(lambda _self: cxx_val)),
+          patch.object(type(cat), 'cyy',
+                       new_callable=lambda: property(lambda _self: cyy_val)),
+          patch.object(type(cat), 'cxy',
+                       new_callable=lambda: property(lambda _self: cxy_val))):
+        kr = cat._measured_kron_radius
+        assert np.all(np.isnan(kr))
