@@ -1607,6 +1607,57 @@ def test_sky_centroid_quad_no_wcs(single_source_catalog):
     assert sky_quad is None or np.all(sky_quad == np.array(None))
 
 
+def test_centroid_quad_edge_cases():
+    """
+    Test cutout_centroid_quad edge cases.
+    """
+    # Small cutout (< 3x3) triggers NaN fallback
+    data = np.zeros((10, 10))
+    segm_data = np.zeros((10, 10), dtype=int)
+    data[0, 4:6] = [5.0, 3.0]
+    segm_data[0, 4:6] = 1
+    data[5, 5] = 100.0
+    segm_data[4:7, 4:7] = 2
+    segm = SegmentationImage(segm_data)
+    cat = SourceCatalog(data, segm)
+    cquad = cat.cutout_centroid_quad
+    assert cquad.shape == (2, 2)
+    assert np.all(np.isfinite(cquad))
+
+    # Checkerboard pattern triggers det <= 0 or c20 > 0
+    data3 = np.zeros((7, 7))
+    data3[3, 3] = 10.0
+    data3[2, 2] = 9.0
+    data3[4, 4] = 9.0
+    data3[2, 4] = 9.0
+    data3[4, 2] = 9.0
+    data3[3, 2] = 1.0
+    data3[3, 4] = 1.0
+    data3[2, 3] = 1.0
+    data3[4, 3] = 1.0
+    segm_data3 = np.zeros((7, 7), dtype=int)
+    segm_data3[1:6, 1:6] = 1
+    segm3 = SegmentationImage(segm_data3)
+    cat3 = SourceCatalog(data3, segm3)
+    cquad3 = cat3.cutout_centroid_quad
+    assert np.all(np.isfinite(cquad3))
+
+    # Quadratic max falls outside cutout bounds.
+    # Use a 3x3 segment so cutout is exactly 3x3 (xidx0=0, yidx0=0), and
+    # the relative quadratic max falls outside [0, 2].
+    data4 = np.zeros((7, 7))
+    box4 = np.array([[7.45, 9.68, 3.26],
+                     [3.70, 10.67, 1.89],
+                     [1.30, 4.76, 2.27]])
+    data4[2:5, 2:5] = box4
+    segm_data4 = np.zeros((7, 7), dtype=int)
+    segm_data4[2:5, 2:5] = 1
+    segm4 = SegmentationImage(segm_data4)
+    cat4 = SourceCatalog(data4, segm4)
+    cquad4 = cat4.cutout_centroid_quad
+    assert np.all(np.isfinite(cquad4))
+
+
 def test_fluxfrac_radius_no_solution(single_source_catalog):
     """
     Test that fluxfrac_radius returns NaN when no solution is found

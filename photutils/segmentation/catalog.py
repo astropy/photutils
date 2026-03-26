@@ -15,14 +15,12 @@ import numpy as np
 from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import binary_erosion, convolve, map_coordinates
 from scipy.optimize import root_scalar
 
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture, RectangularAnnulus)
 from photutils.background import SExtractorBackground
-from photutils.centroids import centroid_quadratic
 from photutils.geometry import circular_overlap_grid
 from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
@@ -1794,29 +1792,77 @@ class SourceCatalog:
         is at the edge of the source segment. In this case, the position
         of the maximum pixel will be returned.
         """
+        # Precompute the pseudo-inverse for the 3x3 relative coordinate
+        # design matrix [1, x, y, xy, x^2, y^2]. This is constant for
+        # all sources and avoids per-source lstsq calls.
+        xi = np.arange(3)
+        x, y = np.meshgrid(xi, xi)
+        x = x.ravel()
+        y = y.ravel()
+        coeff_matrix = np.empty((9, 6), dtype=float)
+        coeff_matrix[:, 0] = 1
+        coeff_matrix[:, 1] = x
+        coeff_matrix[:, 2] = y
+        coeff_matrix[:, 3] = x * y
+        coeff_matrix[:, 4] = x * x
+        coeff_matrix[:, 5] = y * y
+        pinv = np.linalg.pinv(coeff_matrix)
+
+        _nan = np.nan
         centroid_quad = []
-        with warnings.catch_warnings():
-            # Ignore fit warnings:
-            #   - quadratic fit failed
-            #   - quadratic fit does not have a maximum
-            #   - quadratic fit maximum falls outside image
-            #   - not enough unmasked data points (6 are required)
-            #   - maximum value is at the edge of the data
-            warnings.simplefilter('ignore', AstropyUserWarning)
 
-            cutouts = self._data_cutouts
-            if self.progress_bar:
-                desc = 'centroid_quad'
-                cutouts = add_progress_bar(cutouts, desc=desc)
+        cutouts = self._data_cutouts
+        if self.progress_bar:
+            desc = 'centroid_quad'
+            cutouts = add_progress_bar(cutouts, desc=desc)
 
-            for data, mask in zip(cutouts, self._cutout_total_masks,
-                                  strict=True):
-                try:
-                    centroid = centroid_quadratic(data, mask=mask,
-                                                  fit_boxsize=3)
-                except ValueError:
-                    centroid = (np.nan, np.nan)
-                centroid_quad.append(centroid)
+        for cutout, mask in zip(cutouts, self._cutout_total_masks,
+                                strict=True):
+            ny, nx = cutout.shape
+
+            # Cutout must be at least 3x3 for the quadratic fit
+            if ny < 3 or nx < 3:
+                centroid_quad.append((_nan, _nan))
+                continue
+
+            # Apply mask: _cutout_total_masks already includes
+            # non-finite data values, so cutout[mask] = 0.0 handles both
+            # masked pixels and non-finite values.
+            cutout = np.array(cutout, dtype=float)
+            cutout[mask] = 0.0
+
+            # Find peak pixel
+            yidx, xidx = np.unravel_index(np.argmax(cutout), cutout.shape)
+
+            # If peak at edge of cutout, return peak position
+            if xidx == 0 or xidx == nx - 1 or yidx == 0 or yidx == ny - 1:
+                centroid_quad.append((float(xidx), float(yidx)))
+                continue
+
+            # Extract 3x3 box centered on peak (guaranteed to fit
+            # since peak is not at edge)
+            xidx0 = xidx - 1
+            yidx0 = yidx - 1
+            cutout_flat = cutout[yidx0:yidx0 + 3, xidx0:xidx0 + 3].ravel()
+
+            # Compute polynomial coefficients via precomputed
+            # pseudo-inverse
+            c = pinv @ cutout_flat
+            c10, c01, c11, c20, c02 = c[1], c[2], c[3], c[4], c[5]
+
+            det = 4.0 * c20 * c02 - c11 * c11
+            if det <= 0 or c20 > 0:
+                centroid_quad.append((_nan, _nan))
+                continue
+
+            # Maximum in relative coords, then convert to cutout coords
+            xm = (c01 * c11 - 2.0 * c02 * c10) / det + xidx0
+            ym = (c10 * c11 - 2.0 * c20 * c01) / det + yidx0
+
+            if 0.0 < xm < (nx - 1.0) and 0.0 < ym < (ny - 1.0):
+                centroid_quad.append((xm, ym))
+            else:
+                centroid_quad.append((_nan, _nan))
 
         centroid_quad = np.array(centroid_quad)
 
