@@ -27,7 +27,6 @@ from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _mask_to_mirrored_value
 from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._misc import _get_meta
-from photutils.utils._moments import _image_moments
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import CutoutImage
@@ -1393,8 +1392,15 @@ class SourceCatalog:
         """
         Spatial moments up to 3rd order of the source.
         """
-        return np.array([_image_moments(arr, order=3)
-                         for arr in self._moment_data_cutouts])
+        result = []
+        for arr in self._moment_data_cutouts:
+            ny, nx = arr.shape
+            y = np.arange(ny, dtype=float)
+            x = np.arange(nx, dtype=float)
+            yp = np.column_stack([np.ones(ny), y, y * y, y ** 3])
+            xp = np.column_stack([np.ones(nx), x, x * x, x ** 3])
+            result.append(yp.T @ arr @ xp)
+        return np.array(result)
 
     @lazyproperty
     @use_detcat
@@ -1407,10 +1413,17 @@ class SourceCatalog:
         cutout_centroid = self.cutout_centroid
         if self.isscalar:
             cutout_centroid = cutout_centroid[np.newaxis, :]
-        return np.array([_image_moments(arr, center=(xcen_, ycen_), order=3)
-                         for arr, xcen_, ycen_ in
-                         zip(self._moment_data_cutouts, cutout_centroid[:, 0],
-                             cutout_centroid[:, 1], strict=True)])
+        result = []
+        for arr, xcen, ycen in zip(self._moment_data_cutouts,
+                                   cutout_centroid[:, 0],
+                                   cutout_centroid[:, 1], strict=True):
+            ny, nx = arr.shape
+            yc = np.arange(ny, dtype=float) - ycen
+            xc = np.arange(nx, dtype=float) - xcen
+            yp = np.column_stack([np.ones(ny), yc, yc * yc, yc ** 3])
+            xp = np.column_stack([np.ones(nx), xc, xc * xc, xc ** 3])
+            result.append(yp.T @ arr @ xp)
+        return np.array(result)
 
     @lazyproperty
     @use_detcat
