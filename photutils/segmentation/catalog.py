@@ -15,7 +15,7 @@ import numpy as np
 from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-from scipy.ndimage import binary_erosion, convolve, map_coordinates
+from scipy.ndimage import map_coordinates
 from scipy.optimize import root_scalar
 
 from photutils.aperture import (BoundingBox, CircularAperture,
@@ -2551,8 +2551,6 @@ class SourceCatalog:
                the Irish Machine Vision and Image Processing Conference,
                pp. 51-57 (2000).
         """
-        footprint = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
-        kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])
         size = 34
         weights = np.zeros(size, dtype=float)
         weights[[5, 7, 15, 17, 25, 27]] = 1.0
@@ -2565,13 +2563,32 @@ class SourceCatalog:
                 perimeter.append(np.nan)
                 continue
 
-            data = ~mask
-            data_eroded = binary_erosion(data, footprint, border_value=0)
-            border = np.logical_xor(data, data_eroded).astype(int)
-            perimeter_data = convolve(border, kernel, mode='constant', cval=0)
-            perimeter_hist = np.bincount(perimeter_data.ravel(),
-                                         minlength=size)
-            perimeter.append(perimeter_hist[0:size] @ weights)
+            ny, nx = mask.shape
+
+            # Pad source array with zeros (border_value=0)
+            padded = np.zeros((ny + 2, nx + 2), dtype=np.int8)
+            padded[1:-1, 1:-1] = ~mask
+
+            # Binary erosion with cross footprint (4-connectivity):
+            # a pixel is eroded if any 4-connected neighbor is 0
+            p = padded
+            eroded = (p[1:-1, 1:-1] & p[:-2, 1:-1] & p[2:, 1:-1]
+                      & p[1:-1, :-2] & p[1:-1, 2:])
+
+            # Border pixels are source pixels that were eroded away
+            border = np.zeros((ny + 2, nx + 2), dtype=np.int8)
+            border[1:-1, 1:-1] = padded[1:-1, 1:-1] & ~eroded
+
+            # Convolution with kernel [[10,2,10], [2,1,2], [10,2,10]]
+            b = border
+            conv = (10 * b[:-2, :-2] + 2 * b[:-2, 1:-1]
+                    + 10 * b[:-2, 2:] + 2 * b[1:-1, :-2]
+                    + b[1:-1, 1:-1] + 2 * b[1:-1, 2:]
+                    + 10 * b[2:, :-2] + 2 * b[2:, 1:-1]
+                    + 10 * b[2:, 2:])
+
+            hist = np.bincount(conv.ravel(), minlength=size)
+            perimeter.append(hist[:size] @ weights)
 
         return np.array(perimeter) * u.pix
 
