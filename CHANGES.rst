@@ -144,6 +144,12 @@ New Features
   - Improved the performance of the ``SegmentationImage``
     ``keep_labels`` method and ``missing_labels`` attribute. [#2234]
 
+  - Improved the performance of ``SourceCatalog``
+    ``centroid_win`` (~3.5x speedup), ``centroid_quad``,
+    ``fluxfrac_radius`` (~6x speedup), ``kron_radius`` (~2x speedup),
+    ``moments``, ``moments_central``, ``perimeter``, and Kron
+    photometry. [#2238]
+
 - ``photutils.utils``
 
   - Significantly improved the performance (by factors of 3 or more) of

@@ -6,6 +6,7 @@ segmentation image.
 
 import functools
 import inspect
+import math
 import warnings
 from copy import deepcopy
 
@@ -14,20 +15,18 @@ import numpy as np
 from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-from astropy.utils.exceptions import AstropyUserWarning
-from scipy.ndimage import binary_erosion, convolve, map_coordinates
+from scipy.ndimage import map_coordinates
 from scipy.optimize import root_scalar
 
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture, RectangularAnnulus)
 from photutils.background import SExtractorBackground
-from photutils.centroids import centroid_quadratic
+from photutils.geometry import circular_overlap_grid, elliptical_overlap_grid
 from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _mask_to_mirrored_value
 from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._misc import _get_meta
-from photutils.utils._moments import _image_moments
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import CutoutImage
@@ -1393,8 +1392,15 @@ class SourceCatalog:
         """
         Spatial moments up to 3rd order of the source.
         """
-        return np.array([_image_moments(arr, order=3)
-                         for arr in self._moment_data_cutouts])
+        result = []
+        for arr in self._moment_data_cutouts:
+            ny, nx = arr.shape
+            y = np.arange(ny, dtype=float)
+            x = np.arange(nx, dtype=float)
+            yp = np.column_stack([np.ones(ny), y, y * y, y ** 3])
+            xp = np.column_stack([np.ones(nx), x, x * x, x ** 3])
+            result.append(yp.T @ arr @ xp)
+        return np.array(result)
 
     @lazyproperty
     @use_detcat
@@ -1407,10 +1413,17 @@ class SourceCatalog:
         cutout_centroid = self.cutout_centroid
         if self.isscalar:
             cutout_centroid = cutout_centroid[np.newaxis, :]
-        return np.array([_image_moments(arr, center=(xcen_, ycen_), order=3)
-                         for arr, xcen_, ycen_ in
-                         zip(self._moment_data_cutouts, cutout_centroid[:, 0],
-                             cutout_centroid[:, 1], strict=True)])
+        result = []
+        for arr, xcen, ycen in zip(self._moment_data_cutouts,
+                                   cutout_centroid[:, 0],
+                                   cutout_centroid[:, 1], strict=True):
+            ny, nx = arr.shape
+            yc = np.arange(ny, dtype=float) - ycen
+            xc = np.arange(nx, dtype=float) - xcen
+            yp = np.column_stack([np.ones(ny), yc, yc * yc, yc ** 3])
+            xp = np.column_stack([np.ones(nx), xc, xc * xc, xc ** 3])
+            result.append(yp.T @ arr @ xp)
+        return np.array(result)
 
     @lazyproperty
     @use_detcat
@@ -1544,12 +1557,22 @@ class SourceCatalog:
         small_mask = np.isfinite(radius_hl) & (radius_hl < min_radius)
         radius_hl[small_mask] = min_radius
 
-        kwargs = self._apermask_kwargs['cen_win']
-
         labels = self.labels
         if self.progress_bar:
             desc = 'centroid_win'
             labels = add_progress_bar(labels, desc=desc)
+
+        # Pre-fetch arrays used in the inner loop
+        data_arr = self._data
+        mask_arr = self._mask
+        segm_data = self._segment_img.data
+        data_shape = data_arr.shape
+        do_correct = self.apermask_method == 'correct'
+        do_segm_mask = self.apermask_method != 'none'
+        max_aper_size = max(data_arr.size, 1_000_000)
+
+        max_iters = 16
+        centroid_threshold = 0.0001
 
         xcen_win = []
         ycen_win = []
@@ -1557,61 +1580,118 @@ class SourceCatalog:
                 labels, self._xcentroid, self._ycentroid, radius_hl,
                 nan_hl, strict=True):
 
-            if nan_hl_ or np.any(~np.isfinite((xcen, ycen))):
+            if nan_hl_ or math.isnan(xcen) or math.isnan(ycen):
                 xcen_win.append(np.nan)
                 ycen_win.append(np.nan)
                 continue
 
             sigma = 2.0 * rad_hl * gaussian_fwhm_to_sigma
-            sigma2 = sigma**2
+            inv_2sigma2 = -1.0 / (2.0 * sigma * sigma)
             radius = 4.0 * sigma
+            radius_sq = radius * radius
+
+            # Compute the full (unclipped) bounding box for the aperture
+            # using the initial centroid. The radius is fixed, so the
+            # bbox size stays the same across iterations even if the
+            # center shifts slightly.
+            bbox_halfsize = int(radius + 1.5)
+            full_ny = full_nx = 2 * bbox_halfsize + 1
+
+            # OOM guard
+            if full_ny * full_nx > max_aper_size:
+                xcen_win.append(np.nan)
+                ycen_win.append(np.nan)
+                continue
+
+            # Cache for cutout data when the integer bbox doesn't change
+            prev_ixcen = prev_iycen = None
+            cached_data = None
+            cached_mask = None
 
             iter_ = 0
-            dcen = 1
-            max_iters = 16
-            centroid_threshold = 0.0001
-            while iter_ < max_iters and dcen > centroid_threshold:
-                aperture = CircularAperture((xcen, ycen), radius)
-                aperture_mask = self._aperture_to_mask(aperture, **kwargs)
-                if aperture_mask is None:
-                    xcen = np.nan
-                    ycen = np.nan
-                    break
+            dcen = 1.0
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                while iter_ < max_iters and dcen > centroid_threshold:
+                    # Compute integer bounding box
+                    ixmin = int(xcen + 0.5) - bbox_halfsize
+                    ixmax = ixmin + full_nx
+                    iymin = int(ycen + 0.5) - bbox_halfsize
+                    iymax = iymin + full_ny
 
-                # For consistency with the isophotal centroid, a local
-                # background is not subtracted here
-                data, _, mask, cutout_xycen, slc_sm = self._make_aperture_data(
-                    label, xcen, ycen, aperture_mask.bbox, 0.0,
-                    make_error=False)
+                    # Clip to data boundaries
+                    slc_y = slice(max(0, iymin), min(data_shape[0], iymax))
+                    slc_x = slice(max(0, ixmin), min(data_shape[1], ixmax))
+                    if (slc_y.start >= slc_y.stop
+                            or slc_x.start >= slc_x.stop):
+                        xcen = np.nan
+                        ycen = np.nan
+                        break
 
-                if data is None:
-                    # Return NaN if centroid moves the aperture
-                    # completely off the image
-                    xcen = np.nan
-                    ycen = np.nan
-                    break
+                    cur_ixcen = int(xcen + 0.5)
+                    cur_iycen = int(ycen + 0.5)
 
-                aperture_weights = aperture_mask.data[slc_sm]
+                    # Recompute cutout data only when the integer center
+                    # changes to avoid redundant _mask_to_mirrored_value
+                    # calls
+                    if cur_ixcen != prev_ixcen or cur_iycen != prev_iycen:
+                        prev_ixcen = cur_ixcen
+                        prev_iycen = cur_iycen
 
-                # Define a 2D Gaussian weight array
-                xvals = np.arange(data.shape[1]) - cutout_xycen[0]
-                yvals = np.arange(data.shape[0]) - cutout_xycen[1]
-                xx, yy = np.meshgrid(xvals, yvals)
-                rr2 = xx**2 + yy**2
-                gweight = np.exp(-rr2 / (2.0 * sigma2))
+                        data = data_arr[slc_y, slc_x].astype(float)
+                        data_mask = ~np.isfinite(data)
+                        if mask_arr is not None:
+                            data_mask |= mask_arr[slc_y, slc_x]
 
-                # Ignore multiplication with non-finite values
-                # and ignore divide-by-zero if moments[0, 0] = 0
-                with warnings.catch_warnings():
-                    warnings.simplefilter('ignore', RuntimeWarning)
-                    data = data * aperture_weights * gweight
-                    data[mask] = 0.0
+                        cutout_xycen = (xcen - max(0, ixmin),
+                                        ycen - max(0, iymin))
 
-                    moments = _image_moments(data, center=cutout_xycen,
-                                             order=1)
-                    dy = moments[1, 0] / moments[0, 0]
-                    dx = moments[0, 1] / moments[0, 0]
-                    dcen = np.sqrt(dx**2 + dy**2)
+                        if do_segm_mask:
+                            seg_cut = segm_data[slc_y, slc_x]
+                            segm_mask = ((seg_cut != label)
+                                         & (seg_cut != 0))
+                            if self.apermask_method == 'mask':
+                                data_mask = data_mask | segm_mask
+
+                        if do_correct:
+                            data = _mask_to_mirrored_value(
+                                data, segm_mask, cutout_xycen,
+                                mask=data_mask)
+
+                        cached_data = data
+                        cached_mask = data_mask
+
+                    # Centroid position in cutout coordinates
+                    cx = xcen - max(0, ixmin)
+                    cy = ycen - max(0, iymin)
+
+                    ny = slc_y.stop - slc_y.start
+                    nx = slc_x.stop - slc_x.start
+
+                    # Build coordinate grids relative to centroid
+                    # (reused for circle mask, Gaussian, and moments)
+                    xvals = np.arange(nx) - cx
+                    yvals = np.arange(ny) - cy
+                    xx = xvals[np.newaxis, :]
+                    yy = yvals[:, np.newaxis]
+
+                    # Inline binary circle mask
+                    rr2 = xx * xx + yy * yy
+                    aper_weights = (rr2 <= radius_sq).astype(float)
+
+                    # Inline Gaussian weight
+                    gweight = np.exp(rr2 * inv_2sigma2)
+
+                    # Apply weights and mask
+                    weighted = (cached_data * aper_weights * gweight)
+                    weighted[cached_mask] = 0.0
+
+                    # Inline moment computation
+                    total = np.sum(weighted)
+                    dx = np.sum(weighted * xx) / total
+                    dy = np.sum(weighted * yy) / total
+
+                    dcen = math.sqrt(dx * dx + dy * dy)
                     xcen += dx * 2.0
                     ycen += dy * 2.0
                     iter_ += 1
@@ -1725,29 +1805,77 @@ class SourceCatalog:
         is at the edge of the source segment. In this case, the position
         of the maximum pixel will be returned.
         """
+        # Precompute the pseudo-inverse for the 3x3 relative coordinate
+        # design matrix [1, x, y, xy, x^2, y^2]. This is constant for
+        # all sources and avoids per-source lstsq calls.
+        xi = np.arange(3)
+        x, y = np.meshgrid(xi, xi)
+        x = x.ravel()
+        y = y.ravel()
+        coeff_matrix = np.empty((9, 6), dtype=float)
+        coeff_matrix[:, 0] = 1
+        coeff_matrix[:, 1] = x
+        coeff_matrix[:, 2] = y
+        coeff_matrix[:, 3] = x * y
+        coeff_matrix[:, 4] = x * x
+        coeff_matrix[:, 5] = y * y
+        pinv = np.linalg.pinv(coeff_matrix)
+
+        _nan = np.nan
         centroid_quad = []
-        with warnings.catch_warnings():
-            # Ignore fit warnings:
-            #   - quadratic fit failed
-            #   - quadratic fit does not have a maximum
-            #   - quadratic fit maximum falls outside image
-            #   - not enough unmasked data points (6 are required)
-            #   - maximum value is at the edge of the data
-            warnings.simplefilter('ignore', AstropyUserWarning)
 
-            cutouts = self._data_cutouts
-            if self.progress_bar:
-                desc = 'centroid_quad'
-                cutouts = add_progress_bar(cutouts, desc=desc)
+        cutouts = self._data_cutouts
+        if self.progress_bar:
+            desc = 'centroid_quad'
+            cutouts = add_progress_bar(cutouts, desc=desc)
 
-            for data, mask in zip(cutouts, self._cutout_total_masks,
-                                  strict=True):
-                try:
-                    centroid = centroid_quadratic(data, mask=mask,
-                                                  fit_boxsize=3)
-                except ValueError:
-                    centroid = (np.nan, np.nan)
-                centroid_quad.append(centroid)
+        for cutout, mask in zip(cutouts, self._cutout_total_masks,
+                                strict=True):
+            ny, nx = cutout.shape
+
+            # Cutout must be at least 3x3 for the quadratic fit
+            if ny < 3 or nx < 3:
+                centroid_quad.append((_nan, _nan))
+                continue
+
+            # Apply mask: _cutout_total_masks already includes
+            # non-finite data values, so cutout[mask] = 0.0 handles both
+            # masked pixels and non-finite values.
+            cutout = np.array(cutout, dtype=float)
+            cutout[mask] = 0.0
+
+            # Find peak pixel
+            yidx, xidx = np.unravel_index(np.argmax(cutout), cutout.shape)
+
+            # If peak at edge of cutout, return peak position
+            if xidx == 0 or xidx == nx - 1 or yidx == 0 or yidx == ny - 1:
+                centroid_quad.append((float(xidx), float(yidx)))
+                continue
+
+            # Extract 3x3 box centered on peak (guaranteed to fit
+            # since peak is not at edge)
+            xidx0 = xidx - 1
+            yidx0 = yidx - 1
+            cutout_flat = cutout[yidx0:yidx0 + 3, xidx0:xidx0 + 3].ravel()
+
+            # Compute polynomial coefficients via precomputed
+            # pseudo-inverse
+            c = pinv @ cutout_flat
+            c10, c01, c11, c20, c02 = c[1], c[2], c[3], c[4], c[5]
+
+            det = 4.0 * c20 * c02 - c11 * c11
+            if det <= 0 or c20 > 0:
+                centroid_quad.append((_nan, _nan))
+                continue
+
+            # Maximum in relative coords, then convert to cutout coords
+            xm = (c01 * c11 - 2.0 * c02 * c10) / det + xidx0
+            ym = (c10 * c11 - 2.0 * c20 * c01) / det + yidx0
+
+            if 0.0 < xm < (nx - 1.0) and 0.0 < ym < (ny - 1.0):
+                centroid_quad.append((xm, ym))
+            else:
+                centroid_quad.append((_nan, _nan))
 
         centroid_quad = np.array(centroid_quad)
 
@@ -2423,8 +2551,6 @@ class SourceCatalog:
                the Irish Machine Vision and Image Processing Conference,
                pp. 51-57 (2000).
         """
-        footprint = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
-        kernel = np.array([[10, 2, 10], [2, 1, 2], [10, 2, 10]])
         size = 34
         weights = np.zeros(size, dtype=float)
         weights[[5, 7, 15, 17, 25, 27]] = 1.0
@@ -2437,13 +2563,32 @@ class SourceCatalog:
                 perimeter.append(np.nan)
                 continue
 
-            data = ~mask
-            data_eroded = binary_erosion(data, footprint, border_value=0)
-            border = np.logical_xor(data, data_eroded).astype(int)
-            perimeter_data = convolve(border, kernel, mode='constant', cval=0)
-            perimeter_hist = np.bincount(perimeter_data.ravel(),
-                                         minlength=size)
-            perimeter.append(perimeter_hist[0:size] @ weights)
+            ny, nx = mask.shape
+
+            # Pad source array with zeros (border_value=0)
+            padded = np.zeros((ny + 2, nx + 2), dtype=np.int8)
+            padded[1:-1, 1:-1] = ~mask
+
+            # Binary erosion with cross footprint (4-connectivity):
+            # a pixel is eroded if any 4-connected neighbor is 0
+            p = padded
+            eroded = (p[1:-1, 1:-1] & p[:-2, 1:-1] & p[2:, 1:-1]
+                      & p[1:-1, :-2] & p[1:-1, 2:])
+
+            # Border pixels are source pixels that were eroded away
+            border = np.zeros((ny + 2, nx + 2), dtype=np.int8)
+            border[1:-1, 1:-1] = padded[1:-1, 1:-1] & ~eroded
+
+            # Convolution with kernel [[10,2,10], [2,1,2], [10,2,10]]
+            b = border
+            conv = (10 * b[:-2, :-2] + 2 * b[:-2, 1:-1]
+                    + 10 * b[:-2, 2:] + 2 * b[1:-1, :-2]
+                    + b[1:-1, 1:-1] + 2 * b[1:-1, 2:]
+                    + 10 * b[2:, :-2] + 2 * b[2:, 1:-1]
+                    + 10 * b[2:, 2:])
+
+            hist = np.bincount(conv.ravel(), minlength=size)
+            perimeter.append(hist[:size] @ weights)
 
         return np.array(perimeter) * u.pix
 
@@ -3209,14 +3354,34 @@ class SourceCatalog:
         The returned value is the measured Kron radius without applying
         any minimum Kron or circular radius.
         """
-        apertures = self._make_elliptical_apertures(scale=6.0)
-        cxx = self.cxx.value
-        cxy = self.cxy.value
-        cyy = self.cyy.value
+        scale = 6.0
+
+        xcen_arr = self._xcentroid
+        ycen_arr = self._ycentroid
+        a_arr = self.semimajor_sigma.value * scale
+        b_arr = self.semiminor_sigma.value * scale
+        theta_arr = self.orientation.to(u.radian).value
+        cxx_arr = self.cxx.value
+        cxy_arr = self.cxy.value
+        cyy_arr = self.cyy.value
+        all_masked = self._all_masked
         if self.isscalar:
-            cxx = (cxx,)
-            cxy = (cxy,)
-            cyy = (cyy,)
+            a_arr = (a_arr,)
+            b_arr = (b_arr,)
+            theta_arr = (theta_arr,)
+            cxx_arr = (cxx_arr,)
+            cxy_arr = (cxy_arr,)
+            cyy_arr = (cyy_arr,)
+
+        data_full = self._data
+        data_shape = data_full.shape
+        mask_full = self._mask
+        segm_data = self._segment_img.data
+        max_size = max(data_full.size, 1_000_000)
+        kron_min = self.kron_params[1]
+        min_circ_radius = (self.kron_params[2]
+                           if len(self.kron_params) == 3 else 0.0)
+        apermask_method = self.apermask_method
 
         labels = self.labels
         if self.progress_bar:
@@ -3224,43 +3389,116 @@ class SourceCatalog:
             labels = add_progress_bar(labels, desc=desc)
 
         kron_radius = []
-        for (label, aperture, cxx_, cxy_, cyy_) in zip(labels, apertures,
-                                                       cxx, cxy, cyy,
-                                                       strict=True):
-            if aperture is None:
+        for (label, xc, yc, a, b, theta, cxx_, cxy_, cyy_,
+             masked) in zip(labels, xcen_arr, ycen_arr, a_arr, b_arr,
+                            theta_arr, cxx_arr, cxy_arr, cyy_arr,
+                            all_masked, strict=True):
+            if masked or not (math.isfinite(xc) and math.isfinite(yc)
+                              and math.isfinite(a) and math.isfinite(b)
+                              and math.isfinite(theta)):
                 kron_radius.append(np.nan)
                 continue
 
-            xcen, ycen = aperture.positions
-            # Use 'center' (whole pixels) to compute Kron radius
-            aperture_mask = self._aperture_to_mask(aperture, method='center')
-            if aperture_mask is None:
+            # Circular aperture fallback when semimajor/semiminor are
+            # zero (matching _make_elliptical_apertures behavior)
+            use_circular = (a == 0 and b == 0)
+            if use_circular:
+                if min_circ_radius <= 0:
+                    kron_radius.append(np.nan)
+                    continue
+                half_w = min_circ_radius
+                half_h = min_circ_radius
+            else:
+                cos_theta = math.cos(theta)
+                sin_theta = math.sin(theta)
+                half_w = math.sqrt(a * a * cos_theta * cos_theta
+                                   + b * b * sin_theta * sin_theta)
+                half_h = math.sqrt(a * a * sin_theta * sin_theta
+                                   + b * b * cos_theta * cos_theta)
+
+            # Compute bounding box from ellipse/circle parameters
+            ixmin = math.floor(xc - half_w + 0.5)
+            ixmax = math.floor(xc + half_w + 0.5) + 1
+            iymin = math.floor(yc - half_h + 0.5)
+            iymax = math.floor(yc + half_h + 0.5) + 1
+
+            # OOM guard
+            if (ixmax - ixmin) * (iymax - iymin) > max_size:
                 kron_radius.append(np.nan)
                 continue
 
-            # Prepare cutouts of the data based on the aperture size
-            # local background explicitly set to zero for SE agreement
-            data, _, mask, xycen, slc_sm = self._make_aperture_data(
-                label, xcen, ycen, aperture_mask.bbox, 0.0, make_error=False)
+            # Compute overlap slices with data boundaries
+            dx_min = max(0, -ixmin)
+            dy_min = max(0, -iymin)
+            dx_max = max(0, ixmax - data_shape[1])
+            dy_max = max(0, iymax - data_shape[0])
+            lg_xmin = ixmin + dx_min
+            lg_xmax = ixmax - dx_max
+            lg_ymin = iymin + dy_min
+            lg_ymax = iymax - dy_max
+            if lg_xmin >= lg_xmax or lg_ymin >= lg_ymax:
+                kron_radius.append(np.nan)
+                continue
 
-            xval = np.arange(data.shape[1]) - xycen[0]
-            yval = np.arange(data.shape[0]) - xycen[1]
-            xx, yy = np.meshgrid(xval, yval)
-            rr = np.sqrt(cxx_ * xx**2 + cxy_ * xx * yy + cyy_ * yy**2)
+            slc_lg = (slice(lg_ymin, lg_ymax), slice(lg_xmin, lg_xmax))
 
-            aperture_weights = aperture_mask.data[slc_sm]
-            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
+            # Cutout data (local background explicitly zero for SE
+            # agreement)
+            data = data_full[slc_lg].astype(float)
+
+            # Build data mask (non-finite + input mask)
+            data_mask = ~np.isfinite(data)
+            if mask_full is not None:
+                data_mask |= mask_full[slc_lg]
+
+            # Mask or correct neighboring sources
+            if apermask_method != 'none':
+                seg_cut = segm_data[slc_lg]
+                segm_mask = (seg_cut != label) & (seg_cut != 0)
+                if apermask_method == 'mask':
+                    mask = data_mask | segm_mask
+                else:
+                    mask = data_mask
+                if apermask_method == 'correct':
+                    cutout_xycen = (xc - max(0, ixmin), yc - max(0, iymin))
+                    data = _mask_to_mirrored_value(data, segm_mask,
+                                                   cutout_xycen,
+                                                   mask=mask)
+            else:
+                mask = data_mask
+
+            # Coordinate arrays (ogrid-style broadcasting avoids
+            # allocating full 2D meshgrid arrays)
+            ny, nx = data.shape
+            xval = np.arange(nx) - (xc - lg_xmin)
+            yval = np.arange(ny) - (yc - lg_ymin)
+            yy = yval[:, np.newaxis]
+            xx = xval[np.newaxis, :]
+
+            # Elliptical radius
+            rr_sq = cxx_ * xx * xx + cxy_ * xx * yy + cyy_ * yy * yy
+            rr = np.sqrt(np.maximum(rr_sq, 0.0))
+
+            # Aperture mask: for method='center', pixels whose center
+            # falls inside the ellipse (rr <= scale) or circle
+            if use_circular:
+                dx = xx
+                dy = yy
+                pixel_mask = ((dx * dx + dy * dy)
+                              <= min_circ_radius * min_circ_radius) & ~mask
+            else:
+                pixel_mask = (rr <= scale) & ~mask
 
             # Ignore RuntimeWarning for invalid data values
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', RuntimeWarning)
-                flux_numer = np.sum((aperture_weights * data * rr)[pixel_mask])
-                flux_denom = np.sum((aperture_weights * data)[pixel_mask])
+                flux_numer = np.sum(data[pixel_mask] * rr[pixel_mask])
+                flux_denom = np.sum(data[pixel_mask])
 
             # Set Kron radius to the minimum Kron radius if numerator or
             # denominator is negative
             if flux_numer <= 0 or flux_denom <= 0:
-                kron_radius.append(self.kron_params[1])
+                kron_radius.append(kron_min)
                 continue
 
             kron_radius.append(flux_numer / flux_denom)
@@ -3622,10 +3860,99 @@ class SourceCatalog:
             kron_params = self._validate_kron_params(kron_params)
             kron_aperture = self._make_kron_apertures(kron_params)
 
-        kwargs = self._apermask_kwargs['kron']
-        flux, fluxerr = self._aperture_photometry(kron_aperture,
-                                                  desc='kron_photometry',
-                                                  **kwargs)
+        labels = self.labels
+        if self.progress_bar:
+            labels = add_progress_bar(labels, desc='kron_photometry')
+
+        _floor = math.floor
+        max_size = max(self._data.size, 1_000_000)
+
+        flux = []
+        fluxerr = []
+        for label, aperture, bkg in zip(labels, kron_aperture,
+                                        self._local_background, strict=True):
+            if aperture is None:
+                flux.append(np.nan)
+                fluxerr.append(np.nan)
+                continue
+
+            xcen, ycen = aperture.positions
+
+            # Compute the aperture mask directly, bypassing the
+            # aperture's to_mask() method and ApertureMask/BoundingBox
+            # property overhead.
+            if isinstance(aperture, CircularAperture):
+                r = aperture.r
+                ixmin = _floor(xcen - r + 0.5)
+                ixmax = _floor(xcen + r + 1.5)
+                iymin = _floor(ycen - r + 0.5)
+                iymax = _floor(ycen + r + 1.5)
+                nx = ixmax - ixmin
+                ny = iymax - iymin
+                if nx * ny > max_size:
+                    flux.append(np.nan)
+                    fluxerr.append(np.nan)
+                    continue
+                edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
+                         iymin - 0.5 - ycen, iymax - 0.5 - ycen)
+                mask_data = circular_overlap_grid(
+                    edges[0], edges[1], edges[2], edges[3],
+                    nx, ny, r, 1, 1)
+            else:
+                a = aperture.a
+                b = aperture.b
+                theta_val = aperture.theta
+                theta_rad = (theta_val.to(u.radian).value
+                             if hasattr(theta_val, 'to')
+                             else float(theta_val))
+                cos_t = math.cos(theta_rad)
+                sin_t = math.sin(theta_rad)
+                x_ext = math.sqrt((a * cos_t) ** 2 + (b * sin_t) ** 2)
+                y_ext = math.sqrt((a * sin_t) ** 2 + (b * cos_t) ** 2)
+                ixmin = _floor(xcen - x_ext + 0.5)
+                ixmax = _floor(xcen + x_ext + 1.5)
+                iymin = _floor(ycen - y_ext + 0.5)
+                iymax = _floor(ycen + y_ext + 1.5)
+                nx = ixmax - ixmin
+                ny = iymax - iymin
+                if nx * ny > max_size:
+                    flux.append(np.nan)
+                    fluxerr.append(np.nan)
+                    continue
+                edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
+                         iymin - 0.5 - ycen, iymax - 0.5 - ycen)
+                mask_data = elliptical_overlap_grid(
+                    edges[0], edges[1], edges[2], edges[3],
+                    nx, ny, a, b, theta_rad, 1, 1)
+
+            bbox = BoundingBox(ixmin, ixmax, iymin, iymax)
+            data, error, mask, _, slc_sm = self._make_aperture_data(
+                label, xcen, ycen, bbox, bkg)
+            if data is None:
+                flux.append(np.nan)
+                fluxerr.append(np.nan)
+                continue
+
+            aperture_weights = mask_data[slc_sm]
+            pixel_mask = (aperture_weights > 0) & ~mask
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', RuntimeWarning)
+                values = (aperture_weights * data)[pixel_mask]
+                flux_ = np.nan if values.shape == (0,) else np.sum(values)
+                flux.append(flux_)
+
+                if error is None:
+                    fluxerr_ = np.nan
+                else:
+                    values = (aperture_weights * error ** 2)[pixel_mask]
+                    if values.shape == (0,):
+                        fluxerr_ = np.nan
+                    else:
+                        fluxerr_ = np.sqrt(np.sum(values))
+                fluxerr.append(fluxerr_)
+
+        flux = np.array(flux)
+        fluxerr = np.array(fluxerr)
 
         return flux, fluxerr
 
@@ -3764,13 +4091,19 @@ class SourceCatalog:
         return radius
 
     @staticmethod
-    def _fluxfrac_radius_fcn(radius, data, mask, aperture, normflux, kwargs):
+    def _fluxfrac_radius_fcn(radius, clean_data, grid_params, normflux):
         """
         Function whose root is found to compute the fluxfrac_radius.
+
+        Uses ``circular_overlap_grid`` directly on pre-computed cutout
+        data (with masked pixels zeroed) to avoid per-call aperture
+        object overhead.
         """
-        aperture.r = radius
-        flux, _ = aperture.do_photometry(data, mask=mask, **kwargs)
-        return 1.0 - (flux[0] / normflux)
+        xmin_e, xmax_e, ymin_e, ymax_e, nx, ny, exact, subpx = grid_params
+        weights = circular_overlap_grid(xmin_e, xmax_e, ymin_e, ymax_e,
+                                        nx, ny, radius, exact, subpx)
+        flux = np.sum(clean_data * weights)
+        return 1.0 - (flux / normflux)
 
     @lazyproperty
     @use_detcat
@@ -3778,6 +4111,27 @@ class SourceCatalog:
         kron_flux = self._kron_photometry[:, 0]  # unitless
         max_radius = self._max_circular_kron_radius
         kwargs = self._apermask_kwargs['fluxfrac']
+
+        # Translate mask method keywords to circular_overlap_grid
+        # parameters once
+        method = kwargs.get('method', 'exact')
+        if method == 'exact':
+            use_exact = 1
+            subpixels = 1
+        elif method == 'center':
+            use_exact = 0
+            subpixels = 1
+        else:  # 'subpixel'
+            use_exact = 0
+            subpixels = kwargs.get('subpixels', 5)
+
+        # Pre-fetch arrays used inside the loop
+        data_arr = self._data
+        mask_arr = self._mask
+        segm_data = self._segment_img.data
+        data_shape = data_arr.shape
+        apermask_method = self.apermask_method
+        max_aper_size = max(data_arr.size, 1_000_000)
 
         labels = self.labels
         if self.progress_bar:
@@ -3794,19 +4148,68 @@ class SourceCatalog:
                 args.append(None)
                 continue
 
-            aperture = CircularAperture((xcen, ycen), r=max_radius_)
-            aperture_mask = self._aperture_to_mask(aperture, **kwargs)
-            if aperture_mask is None:
+            # Compute the bounding box for the max-radius aperture
+            # inline, replacing CircularAperture + _aperture_to_mask +
+            # _make_aperture_data
+            ixmin = math.floor(xcen - max_radius_ + 0.5)
+            ixmax = math.ceil(xcen + max_radius_ + 0.5)
+            iymin = math.floor(ycen - max_radius_ + 0.5)
+            iymax = math.ceil(ycen + max_radius_ + 0.5)
+
+            # OOM guard (same logic as _aperture_to_mask)
+            bbox_ny = iymax - iymin
+            bbox_nx = ixmax - ixmin
+            if bbox_ny * bbox_nx > max_aper_size:
                 args.append(None)
                 continue
 
-            # Prepare cutouts of the data based on the maximum aperture size
-            data, _, mask, xycen, _ = self._make_aperture_data(
-                label, xcen, ycen, aperture_mask.bbox, bkg,
-                make_error=False)
+            # Clip to data boundaries
+            data_ymin = max(0, iymin)
+            data_ymax = min(data_shape[0], iymax)
+            data_xmin = max(0, ixmin)
+            data_xmax = min(data_shape[1], ixmax)
+            if data_ymin >= data_ymax or data_xmin >= data_xmax:
+                args.append(None)
+                continue
 
-            aperture.positions = xycen
-            args.append([data, mask, aperture, kronflux, kwargs, max_radius_])
+            slc_lg = (slice(data_ymin, data_ymax), slice(data_xmin, data_xmax))
+            cutout_data = data_arr[slc_lg].astype(float) - bkg
+
+            # Build data mask (non-finite + user mask)
+            data_mask = ~np.isfinite(cutout_data)
+            if mask_arr is not None:
+                data_mask |= mask_arr[slc_lg]
+
+            # Cutout centroid position
+            cutout_xcen = xcen - data_xmin
+            cutout_ycen = ycen - data_ymin
+
+            # Handle neighboring sources
+            if apermask_method != 'none':
+                seg_cut = segm_data[slc_lg]
+                segm_mask = (seg_cut != label) & (seg_cut != 0)
+                if apermask_method == 'mask':
+                    data_mask = data_mask | segm_mask
+                elif apermask_method == 'correct':
+                    cutout_data = _mask_to_mirrored_value(
+                        cutout_data, segm_mask,
+                        (cutout_xcen, cutout_ycen), mask=data_mask)
+
+            # Pre-zero masked pixels so the root-finding function can
+            # use a simple sum without masking
+            clean_data = cutout_data.copy()
+            clean_data[data_mask] = 0.0
+
+            # Pre-compute grid parameters for circular_overlap_grid
+            ny, nx = clean_data.shape
+            xmin_edge = -0.5 - cutout_xcen
+            xmax_edge = nx - 0.5 - cutout_xcen
+            ymin_edge = -0.5 - cutout_ycen
+            ymax_edge = ny - 0.5 - cutout_ycen
+            grid_params = (xmin_edge, xmax_edge, ymin_edge, ymax_edge,
+                           nx, ny, use_exact, subpixels)
+
+            args.append([clean_data, grid_params, kronflux, max_radius_])
 
         return args
 
@@ -3863,10 +4266,9 @@ class SourceCatalog:
                 radius.append(np.nan)
                 continue
 
-            max_radius = fluxfrac_args[-1]
-            args = fluxfrac_args[:-1]
-            args[3] *= fluxfrac
-            args = tuple(args)
+            clean_data, grid_params, kronflux, max_radius = fluxfrac_args
+            normflux = kronflux * fluxfrac
+            args = (clean_data, grid_params, normflux)
 
             # Try to find the root of self._fluxfrac_radius_fnc, which
             # is bracketed by a min and max radius. A ValueError is
