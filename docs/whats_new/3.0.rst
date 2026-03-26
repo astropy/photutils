@@ -366,6 +366,24 @@ cause near-cancellation in the denominator of the Kron radius formula.
 input data size are rejected. This prevents pathologically large Kron
 apertures from allocating excessive memory during photometry.
 
+Improved performance of source properties
+-----------------------------------------
+
+The following source properties in
+:class:`~photutils.segmentation.SourceCatalog` have been optimized for
+significantly improved performance by inlining the underlying
+computations and eliminating per-source function-call overhead:
+
+* ``centroid_win`` (~3.5x speedup)
+* ``centroid_quad``
+* ``fluxfrac_radius`` (~6x speedup)
+* ``kron_flux``
+* ``kron_fluxerr``
+* ``kron_radius`` (~2x speedup)
+* ``moments``
+* ``moments_central``
+* ``perimeter``
+
 
 New CentroidQuadratic class
 ============================
