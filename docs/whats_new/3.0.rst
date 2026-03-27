@@ -543,10 +543,10 @@ deprecated and will be removed in a future version. Update your
 imports::
 
     # Old (deprecated)
-    from photutils.psf.matching import make_kernel
+    from photutils.psf.matching import CosineBellWindow
 
     # New
-    from photutils.psf_matching import make_kernel
+    from photutils.psf_matching import CosineBellWindow
 
 The PSF matching function ``create_matching_kernel`` has been renamed
 to ``make_kernel`` for brevity and consistency with Python naming
