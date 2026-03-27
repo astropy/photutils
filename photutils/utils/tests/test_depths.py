@@ -41,7 +41,7 @@ class TestImageDepth:
         Test ImageDepth with various unit and overlap settings.
         """
         radius = 4
-        depth = ImageDepth(radius, nsigma=5.0, napers=100, niters=2,
+        depth = ImageDepth(radius, n_sigma=5.0, n_apertures=100, n_iters=2,
                            mask_pad=5, overlap=overlap, seed=123,
                            zeropoint=23.9, progress_bar=False)
 
@@ -69,7 +69,7 @@ class TestImageDepth:
         Test ImageDepth with mask=None.
         """
         radius = 4
-        depth = ImageDepth(radius, nsigma=5.0, napers=100, niters=2,
+        depth = ImageDepth(radius, n_sigma=5.0, n_apertures=100, n_iters=2,
                            mask_pad=5, overlap=True, seed=123, zeropoint=23.9,
                            progress_bar=False)
         limits = depth(self.data, mask=None)
@@ -80,7 +80,7 @@ class TestImageDepth:
         Test ImageDepth with too many apertures.
         """
         radius = 4
-        depth = ImageDepth(radius, nsigma=5.0, napers=5000, niters=2,
+        depth = ImageDepth(radius, n_sigma=5.0, n_apertures=5000, n_iters=2,
                            mask_pad=5, overlap=True, seed=123, zeropoint=23.9,
                            progress_bar=False)
         mask = np.zeros(self.data.shape)
@@ -89,7 +89,7 @@ class TestImageDepth:
         with pytest.raises(ValueError, match=match):
             depth(self.data, mask)
 
-        depth = ImageDepth(radius, nsigma=5.0, napers=250, niters=2,
+        depth = ImageDepth(radius, n_sigma=5.0, n_apertures=250, n_iters=2,
                            mask_pad=5, overlap=False, seed=123, zeropoint=23.9,
                            progress_bar=False)
         mask = np.zeros(self.data.shape)
@@ -100,7 +100,7 @@ class TestImageDepth:
 
         # Test for zero non-overlapping apertures before slow loop
         radius = 5
-        depth = ImageDepth(radius, nsigma=5.0, napers=100, niters=2,
+        depth = ImageDepth(radius, n_sigma=5.0, n_apertures=100, n_iters=2,
                            overlap=False, seed=123, zeropoint=23.9,
                            progress_bar=False)
         mask = np.zeros(self.data.shape)
@@ -114,7 +114,7 @@ class TestImageDepth:
         Test ImageDepth with all-zero data.
         """
         radius = 4
-        depth = ImageDepth(radius, napers=500, niters=2,
+        depth = ImageDepth(radius, n_apertures=500, n_iters=2,
                            overlap=True, seed=123, progress_bar=False)
         data = np.zeros((300, 400))
         mask = None
@@ -128,7 +128,7 @@ class TestImageDepth:
         Test ImageDepth when all pixels are masked.
         """
         radius = 4
-        depth = ImageDepth(radius, napers=500, niters=1, mask_pad=5,
+        depth = ImageDepth(radius, n_apertures=500, n_iters=1, mask_pad=5,
                            overlap=True, seed=123, progress_bar=False)
         data = np.zeros(self.data.shape)
         mask = np.zeros(data.shape, dtype=bool)
@@ -142,7 +142,7 @@ class TestImageDepth:
         Test that the input mask is not modified in place.
         """
         radius = 4
-        depth = ImageDepth(radius, nsigma=5.0, napers=100, niters=2,
+        depth = ImageDepth(radius, n_sigma=5.0, n_apertures=100, n_iters=2,
                            mask_pad=5, overlap=True, seed=123,
                            zeropoint=23.9, progress_bar=False)
         mask_orig = np.zeros(self.data.shape, dtype=bool)
@@ -162,34 +162,34 @@ class TestImageDepth:
         """
         match = 'aper_radius must be > 0'
         with pytest.raises(ValueError, match=match):
-            ImageDepth(0.0, nsigma=5.0, napers=500, niters=2,
+            ImageDepth(0.0, n_sigma=5.0, n_apertures=500, n_iters=2,
                        overlap=True, seed=123, zeropoint=23.9,
                        progress_bar=False)
 
         match = 'aper_radius must be > 0'
         with pytest.raises(ValueError, match=match):
-            ImageDepth(-12.4, nsigma=5.0, napers=500, niters=2,
+            ImageDepth(-12.4, n_sigma=5.0, n_apertures=500, n_iters=2,
                        overlap=True, seed=123, zeropoint=23.9,
                        progress_bar=False)
 
         match = 'mask_pad must be >= 0'
         with pytest.raises(ValueError, match=match):
-            ImageDepth(12.4, nsigma=5.0, napers=500, niters=2,
+            ImageDepth(12.4, n_sigma=5.0, n_apertures=500, n_iters=2,
                        mask_pad=-7.1, overlap=True, seed=123, zeropoint=23.9,
                        progress_bar=False)
 
         match = 'sigma_clip must be a callable'
         with pytest.raises(TypeError, match=match):
-            ImageDepth(4.0, nsigma=5.0, napers=500, niters=2,
+            ImageDepth(4.0, n_sigma=5.0, n_apertures=500, n_iters=2,
                        sigma_clip='not_callable', progress_bar=False)
 
     def test_repr(self):
         """
         Test ImageDepth __repr__ output.
         """
-        depth = ImageDepth(aper_radius=4, nsigma=5.0, napers=100, niters=2,
-                           overlap=False, seed=123, zeropoint=23.9,
-                           progress_bar=False)
+        depth = ImageDepth(aper_radius=4, n_sigma=5.0, n_apertures=100,
+                           n_iters=2, overlap=False, seed=123,
+                           zeropoint=23.9, progress_bar=False)
         cls_repr = repr(depth)
         assert cls_repr.startswith(f'{depth.__class__.__name__}')
 
@@ -198,7 +198,7 @@ class TestImageDepth:
         Test running ImageDepth with progress_bar=True.
         """
         radius = 4
-        depth = ImageDepth(radius, nsigma=5.0, napers=100, niters=1,
+        depth = ImageDepth(radius, n_sigma=5.0, n_apertures=100, n_iters=1,
                            mask_pad=5, overlap=True, seed=123,
                            zeropoint=23.9, progress_bar=True)
         limits = depth(self.data, self.mask)

@@ -25,7 +25,7 @@ from astropy.utils.decorators import (
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 
-def deprecated(since, *, until=None):
+def deprecated(since, *, alternative=None, until=None):
     """
     Decorator to mark a function or method as deprecated.
 
@@ -39,6 +39,11 @@ def deprecated(since, *, until=None):
     ----------
     since : str or int
         The version in which the function or method was deprecated.
+
+    alternative : str or None, optional
+        An optional string describing an alternative function or method
+        to use instead of the deprecated one. If `None`, no alternative
+        is mentioned in the warning message.
 
     until : str or int, optional
         The version in which the deprecated functionality will be removed.
@@ -54,11 +59,14 @@ def deprecated(since, *, until=None):
     if until is None:
         message = (f'This function was deprecated in version {since} and will '
                    'be removed in a future version.')
-        return astropy_deprecated(since, message=message)
+    else:
+        remove_version = 'version ' + str(until)
+        message = (f'This function was deprecated in version {since} and will '
+                   f'be removed in {remove_version}.')
 
-    remove_version = 'version ' + str(until)
-    message = (f'This function was deprecated in version {since} and will '
-               f'be removed in {remove_version}.')
+    if alternative is not None:
+        message += f' Use {alternative} instead.'
+
     return astropy_deprecated(since, message=message)
 
 
