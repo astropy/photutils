@@ -1,0 +1,23 @@
+name: Check PR change log
+
+on:
+  pull_request:
+    types: [opened, synchronize, labeled, unlabeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: read
+
+jobs:
+  changelog_checker:
+    name: Check if change log entry is correct
+    runs-on: ubuntu-latest
+    if: github.repository == 'astropy/photutils'
+    steps:
+    - uses: scientific-python/action-check-changelogfile@1fc669db9618167166d5a16c10282044f51805c0  # 0.3
+      env:
+        CHANGELOG_FILENAME: CHANGES.rst
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
