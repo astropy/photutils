@@ -278,7 +278,7 @@ class DAOStarFinder(StarFinderBase):
                                         theta=self.theta,
                                         sigma_radius=self.sigma_radius)
         if self.scale_threshold:
-            self.threshold_eff = self.threshold * self.kernel.relerr
+            self.threshold_eff = self.threshold * self.kernel.rel_err
         else:
             self.threshold_eff = self.threshold
 
@@ -488,7 +488,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         self.roundness_range = roundness_range
 
         if scale_threshold:
-            self.threshold_eff = threshold * kernel.relerr
+            self.threshold_eff = threshold * kernel.rel_err
         else:
             self.threshold_eff = threshold
         self.cutout_center = tuple((size - 1) // 2 for size in kernel.shape)
@@ -587,7 +587,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         # Mean value of the unconvolved data (excluding the peak)
         cutout_data_masked = self.cutout_data * self.kernel.mask
         data_mean = ((np.sum(cutout_data_masked, axis=(1, 2)) - self.peak)
-                     / (self.kernel.npixels - 1))
+                     / (self.kernel.n_pixels - 1))
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -636,14 +636,14 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
             wts = xwt  # 2D
             size = self.cutout_shape[0]
             center = ycen
-            sigma = self.kernel.ysigma
+            sigma = self.kernel.y_sigma
             dxx = np.arange(size) - center
         elif axis == 1:  # marginal distributions along x axis (columns)
             wt = xwt[0]  # 1D
             wts = ywt  # 2D
             size = self.cutout_shape[1]
             center = xcen
-            sigma = self.kernel.xsigma
+            sigma = self.kernel.x_sigma
             dxx = center - np.arange(size)
 
         return wt, wts, size, center, sigma, dxx

@@ -118,8 +118,8 @@ class StarFinderBase(metaclass=abc.ABCMeta):
                 yborder = (kernel.shape[0] - 1) // 2
                 xborder = (kernel.shape[1] - 1) // 2
             else:
-                yborder = kernel.yradius
-                xborder = kernel.xradius
+                yborder = kernel.y_radius
+                xborder = kernel.x_radius
             border_width = (yborder, xborder)
         else:
             border_width = None
@@ -744,7 +744,7 @@ class _StarFinderKernel:
         in `_DAOStarFinderCatalog`, and sky estimation in
         `_IRAFStarFinderCatalog`.
 
-    relerr : float
+    rel_err : float
         The kernel relative error, used by `DAOStarFinder` to scale the
         detection threshold.
 
@@ -752,13 +752,13 @@ class _StarFinderKernel:
         The unmasked Gaussian kernel (peak normalized to 1), used by
         `_DAOStarFinderCatalog` for marginal fitting.
 
-    xsigma, ysigma : float
+    x_sigma, y_sigma : float
         Standard deviations along the major and minor axes.
 
-    xradius, yradius : int
+    x_radius, y_radius : int
         Half-widths of the kernel array in pixels.
 
-    npixels : int
+    n_pixels : int
         Total number of pixels within the kernel ``mask``.
 
     References
@@ -789,19 +789,19 @@ class _StarFinderKernel:
         self.ratio = ratio
         self.theta = theta % 360.0
         self.sigma_radius = sigma_radius
-        self.xsigma = self.fwhm * gaussian_fwhm_to_sigma
-        self.ysigma = self.xsigma * self.ratio
+        self.x_sigma = self.fwhm * gaussian_fwhm_to_sigma
+        self.y_sigma = self.x_sigma * self.ratio
 
         theta_radians = np.deg2rad(self.theta)
         cost = np.cos(theta_radians)
         sint = np.sin(theta_radians)
-        xsigma2 = self.xsigma**2
-        ysigma2 = self.ysigma**2
+        x_sigma2 = self.x_sigma**2
+        y_sigma2 = self.y_sigma**2
 
-        a = (cost**2 / (2.0 * xsigma2)) + (sint**2 / (2.0 * ysigma2))
+        a = (cost**2 / (2.0 * x_sigma2)) + (sint**2 / (2.0 * y_sigma2))
         # Counterclockwise rotation
-        b = 0.5 * cost * sint * ((1.0 / xsigma2) - (1.0 / ysigma2))
-        c = (sint**2 / (2.0 * xsigma2)) + (cost**2 / (2.0 * ysigma2))
+        b = 0.5 * cost * sint * ((1.0 / x_sigma2) - (1.0 / y_sigma2))
+        c = (sint**2 / (2.0 * x_sigma2)) + (cost**2 / (2.0 * y_sigma2))
 
         # Find the extent of an ellipse with radius = sigma_radius*sigma.
         # Solve for the horizontal and vertical tangents of an ellipse
@@ -814,12 +814,12 @@ class _StarFinderKernel:
         nx = 2 * int(max(2, math.sqrt(c * f / denom))) + 1
         ny = 2 * int(max(2, math.sqrt(a * f / denom))) + 1
 
-        self.xradius = nx // 2
-        self.yradius = ny // 2
+        self.x_radius = nx // 2
+        self.y_radius = ny // 2
 
         # Define the kernel on a 2D grid
-        xc = self.xradius
-        yc = self.yradius
+        xc = self.x_radius
+        yc = self.y_radius
         yy, xx = np.mgrid[0:ny, 0:nx]
         circular_radius = np.sqrt((xx - xc)**2 + (yy - yc)**2)
         elliptical_radius = (a * (xx - xc)**2
@@ -829,21 +829,21 @@ class _StarFinderKernel:
         self.mask = np.where(
             (elliptical_radius <= f)
             | (circular_radius <= 2.0), 1, 0).astype(int)
-        self.npixels = self.mask.sum()
+        self.n_pixels = self.mask.sum()
 
         # Central (peak) pixel of gaussian_kernel has a value of 1.0
         self.gaussian_kernel_unmasked = np.exp(-elliptical_radius)
         gaussian_kernel = self.gaussian_kernel_unmasked * self.mask
 
-        # The denom represents (variance * npixels)
+        # The denom represents (variance * n_pixels)
         denom = ((gaussian_kernel**2).sum()
-                 - (gaussian_kernel.sum()**2 / self.npixels))
-        self.relerr = 1.0 / np.sqrt(denom)
+                 - (gaussian_kernel.sum()**2 / self.n_pixels))
+        self.rel_err = 1.0 / np.sqrt(denom)
 
         # Normalize the kernel to zero sum
         if normalize_zerosum:
             self.data = ((gaussian_kernel
-                          - (gaussian_kernel.sum() / self.npixels))
+                          - (gaussian_kernel.sum() / self.n_pixels))
                          / denom) * self.mask
         else:
             self.data = gaussian_kernel

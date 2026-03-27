@@ -510,14 +510,14 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         """
         The x pixel coordinate of the cutout origin.
         """
-        return np.transpose(self.xypos)[0] - self.kernel.xradius
+        return np.transpose(self.xypos)[0] - self.kernel.x_radius
 
     @lazyproperty
     def cutout_yorigin(self):
         """
         The y pixel coordinate of the cutout origin.
         """
-        return np.transpose(self.xypos)[1] - self.kernel.yradius
+        return np.transpose(self.xypos)[1] - self.kernel.y_radius
 
     @lazyproperty
     def x_centroid(self):

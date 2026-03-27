@@ -449,7 +449,8 @@ class TestDAOStarFinder:
 
     def test_scale_threshold_default(self, data):
         """
-        Test that scale_threshold=True (default) applies relerr scaling.
+        Test that scale_threshold=True (default) applies rel_err
+        scaling.
         """
         threshold = 5.0
         fwhm = 1.5
