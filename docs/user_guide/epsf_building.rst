@@ -92,7 +92,7 @@ brighter stars and their initial positions::
     >>> finder = DAOStarFinder(threshold=100.0, fwhm=1.5)  # doctest: +REMOTE_DATA
     >>> sources = finder(data)  # doctest: +REMOTE_DATA
     >>> for col in sources.colnames:  # doctest: +REMOTE_DATA
-    ...     if col not in ('id', 'npix'):
+    ...     if col not in ('id', 'n_pixels'):
     ...         sources[col].info.format = '%.2f'  # for consistent table output
     >>> sources.pprint(max_width=76)  # doctest: +REMOTE_DATA
      id x_centroid y_centroid sharpness ...   peak    flux    mag   daofind_mag

@@ -23,6 +23,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
 from photutils.datasets import make_model_image as _make_model_image
+from photutils.utils._deprecation import DeprecatedColumnQTable
 from photutils.utils._misc import _get_meta
 
 from .flags import PSF_FLAGS
@@ -1380,7 +1381,7 @@ class PSFResultsAssembler:
         flags : `~numpy.ndarray`
             Array of integer flags where each bit indicates a specific
             condition:
-            - 1: npixfit smaller than full fit_shape region
+            - 1: n_pixels_fit smaller than full fit_shape region
             - 2: fitted position outside input image bounds
             - 4: non-positive flux
             - 8: possible non-convergence
@@ -1398,9 +1399,10 @@ class PSFResultsAssembler:
         y_col = self.param_mapper.fit_colnames['y']
         flux_col = self.param_mapper.fit_colnames['flux']
 
-        # Flag=1: npixfit smaller than full fit_shape region
-        flag1_mask = results_tbl['npixfit'] < np.prod(self.fit_shape)
-        flags[flag1_mask] |= PSF_FLAGS.NPIXFIT_PARTIAL
+        # Flag=1: n_pixels_fit smaller than full fit_shape region
+        flag1_mask = (results_tbl['n_pixels_fit']
+                      < np.prod(self.fit_shape))
+        flags[flag1_mask] |= PSF_FLAGS.N_PIXELS_FIT_PARTIAL
 
         # Flag=2: fitted position outside input image bounds
         ny, nx = shape
@@ -1490,7 +1492,7 @@ class PSFResultsAssembler:
 
         The final results table is built by merging the input
         ``init_params`` table with the ``fit_params`` table. Additional
-        columns are added for ``npixfit``, ``group_size``, ``qfit``,
+        columns are added for ``n_pixels_fit``, ``group_size``, ``qfit``,
         ``cfit``, and ``flags``.
 
         This method also cleans up the state dictionary as data is
@@ -1532,14 +1534,14 @@ class PSFResultsAssembler:
             - Fitted parameters with uncertainties
             - Quality metrics (qfit, cfit)
             - Bitwise flags indicating fit conditions
-            - Iterator statistics (npixfit, group_size)
+            - Iterator statistics (n_pixels_fit, group_size)
         """
         # Add metrics and flags column to fit_params. The results in the
         # state container match the order of the fit_params results,
         # which are in the same source ID order as the init_params.
 
-        # Consume npixfit and group_size data, removing from state
-        fit_params['npixfit'] = state.pop('npixfit')
+        # Consume n_pixels_fit and group_size data, removing from state
+        fit_params['n_pixels_fit'] = state.pop('n_pixels_fit')
         fit_params['group_size'] = state.pop('group_size')
 
         # Calculate fit metrics and remove the underlying data
@@ -1588,8 +1590,13 @@ class PSFResultsAssembler:
         # Add attribute metadata
         meta.update(metadata_attrs)
 
-        # Convert to QTable and set metadata
-        return QTable(results_tbl, meta=meta)
+        # Replace with QTable in 4.0
+        _psf_deprecation_map = {'npixfit': 'n_pixels_fit'}
+        result = DeprecatedColumnQTable(results_tbl, meta=meta)
+        result._deprecation_map = _psf_deprecation_map
+        result._deprecation_since = '3.0'
+        result._deprecation_until = '4.0'
+        return result
 
 
 def _make_model_image_docstring(func):

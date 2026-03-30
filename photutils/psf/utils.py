@@ -661,8 +661,8 @@ def _create_call_docstring(*, iterative=False):
               and error of the source y center
             * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
               fit, and error of the source flux
-            * ``npixfit`` : the number of unmasked pixels used to fit
-              the source
+            * ``n_pixels_fit`` : the number of unmasked pixels used to
+              fit the source
             * ``qfit`` : a quality-of-fit metric defined as the sum
               of the absolute value of the fit residuals divided by the
               fit flux. ``qfit`` is zero for sources that are perfectly

@@ -574,7 +574,7 @@ def test_psf_photometry_mask(test_data):
                 'qfit', 'cfit', 'reduced_chi2')
     for col in colnames:
         assert np.isnan(phot_masked[col][0])
-    assert phot_masked['npixfit'][0] == 0
+    assert phot_masked['n_pixels_fit'][0] == 0
     assert phot_masked['group_size'][0] == 1
     # new flag 128 for fully masked
     assert (phot_masked['flags'][0] & 128) == 128
@@ -667,7 +667,7 @@ def test_psf_photometry_init_params(test_data):
     assert len(phot_no_overlap) == 1
     for col in colnames:
         assert np.isnan(phot_no_overlap[col][0])
-    assert phot_no_overlap['npixfit'][0] == 0
+    assert phot_no_overlap['n_pixels_fit'][0] == 0
     assert phot_no_overlap['group_size'][0] == 1
     # new flag 64 for no overlap
     assert (phot_no_overlap['flags'][0] & 64) == 64
@@ -684,7 +684,7 @@ def test_psf_photometry_init_params(test_data):
     assert len(phot_few) == 1
     for col in colnames:
         assert np.isnan(phot_few[col][0])
-    assert phot_few['npixfit'][0] == 2
+    assert phot_few['n_pixels_fit'][0] == 2
     assert phot_few['group_size'][0] == 1
     # new flag 256 for too few pixels
     assert (phot_few['flags'][0] & 256) == 256
@@ -1389,7 +1389,7 @@ def test_flag64_no_overlap():
     # Expect bits include 64 (no overlap). Others (2,1,16,32) may also
     # be present. Only assert 64 is set.
     assert (phot['flags'][0] & 64) == 64
-    assert phot['npixfit'][0] == 0
+    assert phot['n_pixels_fit'][0] == 0
 
 
 def test_flag128_fully_masked():
@@ -1408,7 +1408,7 @@ def test_flag128_fully_masked():
     psfphot = PSFPhotometry(psf_model, fit_shape)
     phot = psfphot(data, init_params=init_params, mask=mask)
     assert len(phot) == 1
-    assert phot['npixfit'][0] == 0
+    assert phot['n_pixels_fit'][0] == 0
     assert (phot['flags'][0] & 128) == 128
 
 
@@ -1430,7 +1430,7 @@ def test_flag256_too_few_pixels():
     psfphot = PSFPhotometry(psf_model, fit_shape)
     phot = psfphot(data, init_params=init_params, mask=mask)
     assert len(phot) == 1
-    assert phot['npixfit'][0] == 1
+    assert phot['n_pixels_fit'][0] == 1
     # Ensure 256 bit set (too few pixels); not fully masked (no 128).
     assert (phot['flags'][0] & 256) == 256
 

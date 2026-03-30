@@ -444,7 +444,7 @@ class PSFPhotometry:
             'fit_param_errs': None,
             'fit_error_indices': None,
             'fitted_models_table': None,
-            'npixfit': None,
+            'n_pixels_fit': None,
             'group_size': None,
             'invalid_reasons': None,
             'sum_abs_residuals': None,
@@ -465,7 +465,7 @@ class PSFPhotometry:
         nfitparam = len(self._param_mapper.fitted_param_names)
         self._state.update({
             'fit_param_errs': np.full((n_sources, nfitparam), np.nan),
-            'npixfit': np.zeros(n_sources, dtype=int),
+            'n_pixels_fit': np.zeros(n_sources, dtype=int),
             'invalid_reasons': [''] * n_sources,
             'sum_abs_residuals': np.full(n_sources, np.nan, dtype=float),
             'cen_residuals': np.full(n_sources, np.nan, dtype=float),
@@ -1270,8 +1270,8 @@ class PSFPhotometry:
             # source ID order given by init_params.
             row_indices_arr = np.array(row_indices)
             self._state['group_size'][row_indices_arr] = group_size
-            self._state['npixfit'][row_indices_arr] = np.array(npixfit_full,
-                                                               dtype=int)
+            self._state['n_pixels_fit'][row_indices_arr] = np.array(
+                npixfit_full, dtype=int)
 
             for i, row_index in enumerate(row_indices):
                 reason = invalid_reasons[i]
