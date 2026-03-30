@@ -256,18 +256,18 @@ class ShepardIDWInterpolator:
             raise ValueError(msg)
 
         positions = np.reshape(positions, (-1, self.coords_ndim))
-        npositions = positions.shape[0]
+        n_positions = positions.shape[0]
 
         distances, idx = self.kdtree.query(positions, k=n_neighbors, eps=eps)
 
         if n_neighbors == 1:
             result = self.values[idx]
-            return result.item() if npositions == 1 else result
+            return result.item() if n_positions == 1 else result
 
         if dtype is None:
             dtype = self.values.dtype
 
-        # distances and idx have shape (npositions, n_neighbors). Mask
+        # distances and idx have shape (n_positions, n_neighbors). Mask
         # for valid (finite) distances; invalid entries arise when
         # n_neighbors exceeds the number of known data points.
         valid = np.isfinite(distances)
@@ -283,21 +283,23 @@ class ShepardIDWInterpolator:
         # when a query point coincides with a data point (distance = 0
         # and reg = 0); these are handled by the conf_dist override.
         with np.errstate(invalid='ignore', divide='ignore'):
-            w = np.where(valid, 1.0 / (safe_distances ** power + reg), 0.0)
+            weights = np.where(valid, 1.0 / (safe_distances ** power + reg),
+                               0.0)
 
             # Apply external (user-supplied) weights
             if self.weights is not None:
-                w *= np.where(valid, self.weights[safe_idx], 0.0)
+                weights *= np.where(valid, self.weights[safe_idx], 0.0)
 
             # Gather neighbor values and compute the weighted average
             neighbor_values = self.values[safe_idx]
-            wtot = np.sum(w, axis=1)
-            weighted_sum = np.sum(w * neighbor_values, axis=1)
+            weights_tot = np.sum(weights, axis=1)
+            weighted_sum = np.sum(weights * neighbor_values, axis=1)
 
             # Where total weight is positive, compute interpolation;
             # otherwise return NaN (covers both the "no valid
             # neighbours" and "all-zero external weights" cases).
-            interp_values = np.where(wtot > 0.0, weighted_sum / wtot,
+            interp_values = np.where(weights_tot > 0.0,
+                                     weighted_sum / weights_tot,
                                      np.nan).astype(dtype)
 
         # Confusion-distance override: if the nearest neighbour is
@@ -311,7 +313,7 @@ class ShepardIDWInterpolator:
                     idx[confused, 0]
                 ].astype(dtype)
 
-        if npositions == 1:
+        if n_positions == 1:
             return interp_values[0]
 
         return interp_values
