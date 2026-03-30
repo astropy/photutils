@@ -19,7 +19,8 @@ from photutils.background.core import (SIGMA_CLIP, SExtractorBackground,
 from photutils.background.interpolators import (BkgIDWInterpolator,
                                                 _BkgZoomInterpolator)
 from photutils.utils import ShepardIDWInterpolator
-from photutils.utils._deprecation import deprecated_renamed_argument
+from photutils.utils._deprecation import (deprecated,
+                                          deprecated_renamed_argument)
 from photutils.utils._parameters import as_pair, create_default_sigmaclip
 from photutils.utils._repr import make_repr
 from photutils.utils._stats import nanmedian, nanmin
@@ -778,7 +779,19 @@ class Background2D:
         return result
 
     @property
+    @deprecated(since='3.0', alternative='n_pixels_mesh', until='4.0')
     def npixels_mesh(self):
+        """
+        A 2D array of the number pixels used to compute the statistics
+        in each mesh.
+
+        .. deprecated:: 3.0
+            Use ``n_pixels_mesh`` instead.
+        """
+        return self._ngood
+
+    @property
+    def n_pixels_mesh(self):
         """
         A 2D array of the number pixels used to compute the statistics
         in each mesh.
@@ -786,7 +799,25 @@ class Background2D:
         return self._ngood
 
     @property
+    @deprecated(since='3.0', alternative='n_pixels_map', until='4.0')
     def npixels_map(self):
+        """
+        A 2D map of the number of pixels used to compute the statistics
+        in each mesh, resized to the shape of the input image.
+
+        .. deprecated:: 3.0
+            Use ``n_pixels_map`` instead.
+
+        .. note::
+
+            The returned image is (re)calculated each time this property
+            is accessed. Store the result in a variable if you need to
+            access it more than once.
+        """
+        return self.n_pixels_map
+
+    @property
+    def n_pixels_map(self):
         """
         A 2D map of the number of pixels used to compute the statistics
         in each mesh, resized to the shape of the input image.
@@ -797,11 +828,11 @@ class Background2D:
             is accessed. Store the result in a variable if you need to
             access it more than once.
         """
-        npixels_map = block_replicate(self.npixels_mesh,
-                                      self._interp_kwargs['box_size'],
-                                      conserve_sum=False)
-        return npixels_map[:self._interp_kwargs['shape'][0],
-                           :self._interp_kwargs['shape'][1]]
+        n_pixels_map = block_replicate(self.n_pixels_mesh,
+                                       self._interp_kwargs['box_size'],
+                                       conserve_sum=False)
+        return n_pixels_map[:self._interp_kwargs['shape'][0],
+                            :self._interp_kwargs['shape'][1]]
 
     @lazyproperty
     def background_median(self):

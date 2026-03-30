@@ -87,8 +87,8 @@ class TestBackground2D:
         assert_allclose(bkg.background_rms_mesh, bkg_rms_mesh)
         assert bkg.background_median == 1.0
         assert bkg.background_rms_median == 0.0
-        assert bkg.npixels_mesh.shape == (4, 4)
-        assert bkg.npixels_map.shape == test_data.shape
+        assert bkg.n_pixels_mesh.shape == (4, 4)
+        assert bkg.n_pixels_map.shape == test_data.shape
 
     @pytest.mark.parametrize('box_size', [(25, 25), (23, 22)])
     @pytest.mark.parametrize('dtype', ['int', 'int32', 'float32'])
@@ -111,13 +111,13 @@ class TestBackground2D:
             assert np.issubdtype(bkg.background_mesh.dtype, np.floating)
             assert np.issubdtype(bkg.background_rms_mesh.dtype,
                                  np.floating)
-        assert bkg.npixels_map.dtype == int
-        assert bkg.npixels_mesh.dtype == int
+        assert bkg.n_pixels_map.dtype == int
+        assert bkg.n_pixels_mesh.dtype == int
         assert_allclose(bkg.background, data2)
         assert_allclose(bkg.background_rms, bkg_rms)
         assert bkg.background_median == 1.0
         assert bkg.background_rms_median == 0.0
-        assert bkg.npixels_map.shape == test_data.shape
+        assert bkg.n_pixels_map.shape == test_data.shape
 
     def test_background_nddata(self, test_data, bkg_rms, bkg_mesh,
                                bkg_rms_mesh, nddata_variant,
@@ -176,8 +176,8 @@ class TestBackground2D:
         assert np.mean(bkg.background_rms) < 1.0
         assert bkg.background_median < 1.0
         assert bkg.background_rms_median < 0.1
-        assert bkg.npixels_mesh.shape == (5, 12)
-        assert bkg.npixels_map.shape == data.shape
+        assert bkg.n_pixels_mesh.shape == (5, 12)
+        assert bkg.n_pixels_map.shape == data.shape
 
     def test_bkg_estimator_not_mutated(self, test_data):
         """
@@ -332,8 +332,8 @@ class TestBackground2D:
         mask[25:50, 25:50] = True
         bkg1 = Background2D(data, (25, 25), filter_size=(1, 1), mask=None,
                             bkg_estimator=MeanBackground())
-        assert np.all(bkg1.npixels_map == 625)
-        assert np.all(bkg1.npixels_mesh == 625)
+        assert np.all(bkg1.n_pixels_map == 625)
+        assert np.all(bkg1.n_pixels_mesh == 625)
         assert bkg1.background.shape == data.shape
         assert_allclose(bkg1.background_mesh[0, 0], 1.0)
         assert_allclose(bkg1.background_mesh[1, 1], 100.0)
@@ -343,8 +343,8 @@ class TestBackground2D:
                             bkg_estimator=MeanBackground())
 
         ngoodpix = test_data.size - 625
-        assert np.count_nonzero(bkg2.npixels_map == 625) == ngoodpix
-        assert np.count_nonzero(bkg2.npixels_mesh == 625) == 15
+        assert np.count_nonzero(bkg2.n_pixels_map == 625) == ngoodpix
+        assert np.count_nonzero(bkg2.n_pixels_mesh == 625) == 15
         assert bkg2.background.shape == data.shape
         assert_allclose(bkg2.background_mesh, 1.0)
         assert np.all(bkg2.background_rms_mesh == 0.0)
@@ -484,8 +484,8 @@ class TestBackground2D:
         with pytest.warns(AstropyUserWarning, match=match):
             bkg = Background2D(data, (25, 25), filter_size=(1, 1),
                                exclude_percentile=100.0)
-        assert_equal(bkg.npixels_mesh[0:2, 0:2], np.zeros((2, 2)))
-        assert bkg.npixels_mesh[-1, -1] == 625
+        assert_equal(bkg.n_pixels_mesh[0:2, 0:2], np.zeros((2, 2)))
+        assert bkg.n_pixels_mesh[-1, -1] == 625
 
         data = np.ones((111, 121))
         bkg = Background2D(data, box_size=10, exclude_percentile=100)
@@ -904,3 +904,13 @@ class TestBackground2D:
         Background2D(data_ma2, (23, 22))
         assert_equal(data_ma2.data, data_values_orig)
         assert_equal(data_ma2.mask, mask_orig)
+
+
+def test_deprecations(test_data):
+    data = test_data.copy()
+    bkg = Background2D(data, (25, 25))
+    match = 'was deprecated'
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        assert bkg.npixels_mesh.shape == (4, 4)
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        assert bkg.npixels_map.shape == data.shape
