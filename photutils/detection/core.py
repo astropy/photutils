@@ -38,6 +38,7 @@ _DEPRECATED_ATTRIBUTES: dict = {
     'cutout_xcentroid': 'cutout_x_centroid',
     'cutout_ycentroid': 'cutout_y_centroid',
     'pa': 'orientation',
+    'npix': 'n_pixels',
 }
 
 

@@ -381,8 +381,8 @@ class DAOStarFinder(StarFinderBase):
             * ``roundness1``: object roundness based on symmetry.
             * ``roundness2``: object roundness based on marginal Gaussian
               fits.
-            * ``npix``: the total number of pixels in the Gaussian kernel
-              array.
+            * ``n_pixels``: the total number of pixels in the Gaussian
+              kernel array.
             * ``peak``: the peak pixel value of the object.
             * ``flux``: the object instrumental flux calculated as the
               sum of data values within the kernel footprint.
@@ -493,8 +493,8 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
             self.threshold_eff = threshold
         self.cutout_center = tuple((size - 1) // 2 for size in kernel.shape)
         self.default_columns = ('id', 'x_centroid', 'y_centroid', 'sharpness',
-                                'roundness1', 'roundness2', 'npix', 'peak',
-                                'flux', 'mag', 'daofind_mag')
+                                'roundness1', 'roundness2', 'n_pixels',
+                                'peak', 'flux', 'mag', 'daofind_mag')
 
     def _get_init_attributes(self):
         """
@@ -1010,7 +1010,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
                                    / self._threshold_eff_per_source)
 
     @lazyproperty
-    def npix(self):
+    def n_pixels(self):
         """
         The total number of pixels in the Gaussian kernel array.
         """

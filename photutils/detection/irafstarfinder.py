@@ -353,7 +353,8 @@ class IRAFStarFinder(StarFinderBase):
             * ``orientation``: the angle between the ``x`` axis and the
               major axis source measured counter-clockwise in the range
               [0, 360) degrees.
-            * ``npix``: the total number of (positive) unmasked pixels.
+            * ``n_pixels``: the total number of (positive) unmasked
+              pixels.
             * ``peak``: the peak, sky-subtracted, pixel value of the object.
             * ``flux``: the object instrumental flux calculated as the
               sum of sky-subtracted data values within the kernel
@@ -445,7 +446,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
 
         self.default_columns = ('id', 'x_centroid', 'y_centroid', 'fwhm',
                                 'sharpness', 'roundness', 'orientation',
-                                'npix', 'peak', 'flux', 'mag')
+                                'n_pixels', 'peak', 'flux', 'mag')
 
     def _get_init_attributes(self):
         """
@@ -498,7 +499,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         return data
 
     @lazyproperty
-    def npix(self):
+    def n_pixels(self):
         """
         The total number of (positive) unmasked pixels in the cutout
         data.

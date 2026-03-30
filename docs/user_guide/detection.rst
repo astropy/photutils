@@ -108,7 +108,7 @@ Running the finder on the background-subtracted data::
 
     >>> sources = daofind(data - median)  # doctest: +REMOTE_DATA
     >>> for col in sources.colnames:  # doctest: +REMOTE_DATA
-    ...     if col not in ('id', 'npix'):
+    ...     if col not in ('id', 'n_pixels'):
     ...         sources[col].info.format = '%.2f'  # for consistent table output
     >>> sources.pprint(max_lines=12, max_width=76)  # doctest: +REMOTE_DATA, +FLOAT_CMP
      id x_centroid y_centroid sharpness ...   peak    flux   mag   daofind_mag
