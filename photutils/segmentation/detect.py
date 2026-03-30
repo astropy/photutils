@@ -25,7 +25,8 @@ __all__ = ['detect_sources', 'detect_threshold']
 SIGMA_CLIP = SigmaClipSentinelDefault(sigma=3.0, maxiters=10)
 
 
-def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
+@deprecated_renamed_argument('nsigma', 'n_sigma', '3.0', until='4.0')
+def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
                      sigma_clip=SIGMA_CLIP):
     """
     Calculate a pixel-wise threshold image that can be used to detect
@@ -41,7 +42,7 @@ def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
     data : 2D `~numpy.ndarray`
         The 2D array of the image.
 
-    nsigma : float
+    n_sigma : float
         The number of standard deviations per pixel above the
         ``background`` for which to consider a pixel as possibly being
         part of a source.
@@ -128,7 +129,7 @@ def detect_threshold(data, nsigma, *, background=None, error=None, mask=None,
         raise ValueError(msg)
 
     threshold = (np.broadcast_to(background, data.shape)
-                 + np.broadcast_to(error * nsigma, data.shape))
+                 + np.broadcast_to(error * n_sigma, data.shape))
 
     if unit:
         threshold <<= unit

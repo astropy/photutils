@@ -46,8 +46,11 @@ class TestDeblendSources:
 
         if mode == 'linear':
             # Test multiprocessing
-            result2 = deblend_sources(self.data, self.segm, self.n_pixels,
-                                      mode=mode, progress_bar=False, nproc=2)
+            result2 = deblend_sources(self.data, self.segm,
+                                      self.n_pixels,
+                                      mode=mode,
+                                      progress_bar=False,
+                                      n_processes=2)
             assert_equal(result.data, result2.data)
             assert result2.data.dtype == self.segm.data.dtype
 
@@ -428,11 +431,11 @@ class TestDeblendSources:
 
     def test_deblend_nproc_none(self):
         """
-        Test deblend_sources with nproc=None (auto-detect CPU count).
+        Test deblend_sources with n_processes=None (auto-detect CPU count).
         """
         result = deblend_sources(self.data, self.segm, self.n_pixels,
                                  mode='linear', progress_bar=False,
-                                 nproc=None)
+                                 n_processes=None)
         assert result.n_labels == 2
 
 
@@ -466,7 +469,7 @@ def test_nmarkers_fallback():
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_nmarkers_fallback_multiproc():
     """
-    Test the nmarkers fallback warning via multiprocessing (nproc=2).
+    Test the nmarkers fallback warning via multiprocessing (n_processes=2).
     This covers the multiprocessing result-processing block for nmarkers.
     """
     size = 51
@@ -485,14 +488,15 @@ def test_nmarkers_fallback_multiproc():
     segm = detect_sources(data, 0.01, 10)
     match = 'The deblending mode of one or more source labels from the'
     with pytest.warns(AstropyUserWarning, match=match):
-        segm2 = deblend_sources(data, segm, 1, mode='exponential', nproc=2)
+        segm2 = deblend_sources(data, segm, 1, mode='exponential',
+                                n_processes=2)
     assert segm2.info['warnings']['nmarkers']['input_labels'][0] == 1
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_nonposmin_multiproc():
     """
-    Test nonposmin warning via multiprocessing (nproc=2).
+    Test nonposmin warning via multiprocessing (n_processes=2).
     This covers the multiprocessing result-processing block for
     nonposmin.
     """
@@ -504,7 +508,8 @@ def test_nonposmin_multiproc():
     segm = detect_sources(data + 20, 10, 5)  # detect sources on positive data
     match = 'The deblending mode of one or more source labels from the'
     with pytest.warns(AstropyUserWarning, match=match):
-        segm2 = deblend_sources(data, segm, 5, progress_bar=False, nproc=2)
+        segm2 = deblend_sources(data, segm, 5, progress_bar=False,
+                                n_processes=2)
     assert 'nonposmin' in segm2.info['warnings']
 
 

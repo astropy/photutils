@@ -20,21 +20,21 @@ REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 class TestDetectThreshold:
     def test_nsigma(self):
         """
-        Test basic nsigma.
+        Test basic n_sigma.
         """
-        threshold = detect_threshold(DATA, nsigma=0.1)
+        threshold = detect_threshold(DATA, n_sigma=0.1)
         ref = 0.4 * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
-        threshold = detect_threshold(DATA << u.uJy, nsigma=0.1)
+        threshold = detect_threshold(DATA << u.uJy, n_sigma=0.1)
         assert isinstance(threshold, u.Quantity)
         assert_allclose(threshold.value, ref)
 
     def test_nsigma_zero(self):
         """
-        Test nsigma=0.
+        Test n_sigma=0.
         """
-        threshold = detect_threshold(DATA, nsigma=0.0)
+        threshold = detect_threshold(DATA, n_sigma=0.0)
         ref = (1.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
@@ -42,7 +42,7 @@ class TestDetectThreshold:
         """
         Test background.
         """
-        threshold = detect_threshold(DATA, nsigma=1.0, background=1)
+        threshold = detect_threshold(DATA, n_sigma=1.0, background=1)
         ref = (5.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
@@ -51,11 +51,11 @@ class TestDetectThreshold:
         Test background image.
         """
         background = np.ones((3, 3))
-        threshold = detect_threshold(DATA, nsigma=1.0, background=background)
+        threshold = detect_threshold(DATA, n_sigma=1.0, background=background)
         ref = (5.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
-        threshold = detect_threshold(DATA << u.Jy, nsigma=1.0,
+        threshold = detect_threshold(DATA << u.Jy, n_sigma=1.0,
                                      background=background << u.Jy)
         assert isinstance(threshold, u.Quantity)
         assert_allclose(threshold.value, ref)
@@ -67,13 +67,13 @@ class TestDetectThreshold:
         wrong_shape = np.zeros((2, 2))
         match = 'input background is 2D, then it must have the same shape'
         with pytest.raises(ValueError, match=match):
-            detect_threshold(DATA, nsigma=2.0, background=wrong_shape)
+            detect_threshold(DATA, n_sigma=2.0, background=wrong_shape)
 
     def test_error(self):
         """
         Test error.
         """
-        threshold = detect_threshold(DATA, nsigma=1.0, error=1)
+        threshold = detect_threshold(DATA, n_sigma=1.0, error=1)
         ref = (4.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
@@ -82,11 +82,11 @@ class TestDetectThreshold:
         Test error image.
         """
         error = np.ones((3, 3))
-        threshold = detect_threshold(DATA, nsigma=1.0, error=error)
+        threshold = detect_threshold(DATA, n_sigma=1.0, error=error)
         ref = (4.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
-        threshold = detect_threshold(DATA << u.Jy, nsigma=1.0,
+        threshold = detect_threshold(DATA << u.Jy, n_sigma=1.0,
                                      error=error << u.Jy)
         assert isinstance(threshold, u.Quantity)
         assert_allclose(threshold.value, ref)
@@ -98,18 +98,18 @@ class TestDetectThreshold:
         wrong_shape = np.zeros((2, 2))
         match = 'If input error is 2D, then it must have the same shape'
         with pytest.raises(ValueError, match=match):
-            detect_threshold(DATA, nsigma=2.0, error=wrong_shape)
+            detect_threshold(DATA, n_sigma=2.0, error=wrong_shape)
 
     def test_background_error(self):
         """
         Test background error.
         """
-        threshold = detect_threshold(DATA, nsigma=2.0, background=10.0,
+        threshold = detect_threshold(DATA, n_sigma=2.0, background=10.0,
                                      error=1.0)
         ref = 12.0 * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
-        threshold = detect_threshold(DATA << u.Jy, nsigma=2.0,
+        threshold = detect_threshold(DATA << u.Jy, n_sigma=2.0,
                                      background=10.0 * u.Jy,
                                      error=1.0 * u.Jy)
         assert isinstance(threshold, u.Quantity)
@@ -117,10 +117,10 @@ class TestDetectThreshold:
 
         match = 'must all have the same units'
         with pytest.raises(ValueError, match=match):
-            detect_threshold(DATA << u.Jy, nsigma=2.0, background=10.0,
+            detect_threshold(DATA << u.Jy, n_sigma=2.0, background=10.0,
                              error=1.0 * u.Jy)
         with pytest.raises(ValueError, match=match):
-            detect_threshold(DATA << u.Jy, nsigma=2.0, background=10.0 * u.m,
+            detect_threshold(DATA << u.Jy, n_sigma=2.0, background=10.0 * u.m,
                              error=1.0 * u.Jy)
 
     def test_background_error_images(self):
@@ -129,7 +129,7 @@ class TestDetectThreshold:
         """
         background = np.ones((3, 3)) * 10.0
         error = np.ones((3, 3))
-        threshold = detect_threshold(DATA, nsigma=2.0, background=background,
+        threshold = detect_threshold(DATA, n_sigma=2.0, background=background,
                                      error=error)
         ref = 12.0 * np.ones((3, 3))
         assert_allclose(threshold, ref)
@@ -143,7 +143,7 @@ class TestDetectThreshold:
         """
         mask = REF1.astype(bool)
         sigma_clip = SigmaClip(sigma=10, maxiters=1)
-        threshold = detect_threshold(DATA, nsigma=1.0, error=0, mask=mask,
+        threshold = detect_threshold(DATA, n_sigma=1.0, error=0, mask=mask,
                                      sigma_clip=sigma_clip)
         ref = (1.0 / 8.0) * np.ones((3, 3))
         assert_equal(threshold, ref)

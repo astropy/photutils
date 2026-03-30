@@ -17,6 +17,7 @@ __all__ = ['SourceFinder']
 _FINDER_DEPRECATED_ATTRIBUTES = {
     'npixels': 'n_pixels',
     'nlevels': 'n_levels',
+    'nproc': 'n_processes',
 }
 
 
@@ -93,7 +94,7 @@ class SourceFinder:
         consecutive order starting from 1. This keyword is ignored
         unless ``deblend=True``.
 
-    nproc : int, optional
+    n_processes : int, optional
         The number of processes to use for source deblending. If set to
         1, then a serial implementation is used instead of a parallel
         one. If `None`, then the number of processes will be set to the
@@ -105,9 +106,9 @@ class SourceFinder:
         This keyword is ignored unless ``deblend=True``.
 
     progress_bar : bool, optional
-        Whether to display a progress bar. If ``nproc = 1``, then the
+        Whether to display a progress bar. If ``n_processes = 1``, then the
         ID shown after the progress bar is the source label being
-        deblended. If multiprocessing is used (``nproc > 1``), the
+        deblended. If multiprocessing is used (``n_processes > 1``), the
         ID shown is the last source label that was deblended. The
         progress bar requires that the `tqdm <https://tqdm.github.io/>`_
         optional dependency be installed. This keyword is ignored unless
@@ -161,9 +162,10 @@ class SourceFinder:
 
     @deprecated_renamed_argument('npixels', 'n_pixels', '3.0', until='4.0')
     @deprecated_renamed_argument('nlevels', 'n_levels', '3.0', until='4.0')
+    @deprecated_renamed_argument('nproc', 'n_processes', '3.0', until='4.0')
     def __init__(self, n_pixels, *, connectivity=8, deblend=True, n_levels=32,
-                 contrast=0.001, mode='exponential', relabel=True, nproc=1,
-                 progress_bar=True):
+                 contrast=0.001, mode='exponential', relabel=True,
+                 n_processes=1, progress_bar=True):
         self.n_pixels = as_pair('n_pixels', n_pixels, check_odd=False)
         self.deblend = deblend
         self.connectivity = connectivity
@@ -171,12 +173,13 @@ class SourceFinder:
         self.contrast = contrast
         self.mode = mode
         self.relabel = relabel
-        self.nproc = nproc
+        self.n_processes = n_processes
         self.progress_bar = progress_bar
 
     def __repr__(self):
         params = ('n_pixels', 'deblend', 'connectivity', 'n_levels',
-                  'contrast', 'mode', 'relabel', 'nproc', 'progress_bar')
+                  'contrast', 'mode', 'relabel', 'n_processes',
+                  'progress_bar')
         return make_repr(self, params)
 
     # Remove in 4.0
@@ -231,7 +234,7 @@ class SourceFinder:
                                           mode=self.mode,
                                           connectivity=self.connectivity,
                                           relabel=self.relabel,
-                                          nproc=self.nproc,
+                                          n_processes=self.n_processes,
                                           progress_bar=self.progress_bar)
 
         return segment_img

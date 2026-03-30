@@ -40,9 +40,10 @@ class _DeblendParams:
                              until='4.0')
 @deprecated_renamed_argument('npixels', 'n_pixels', '3.0', until='4.0')
 @deprecated_renamed_argument('nlevels', 'n_levels', '3.0', until='4.0')
+@deprecated_renamed_argument('nproc', 'n_processes', '3.0', until='4.0')
 def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                     n_levels=32, contrast=0.001, mode='exponential',
-                    connectivity=8, relabel=True, nproc=1,
+                    connectivity=8, relabel=True, n_processes=1,
                     progress_bar=True):
     """
     Deblend overlapping sources labeled in a segmentation image.
@@ -113,7 +114,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         relabeled such that the labels are in consecutive order starting
         from 1.
 
-    nproc : int, optional
+    n_processes : int, optional
         The number of processes to use for multiprocessing (if larger
         than 1). If set to 1, then a serial implementation is used
         instead of a parallel one. If `None`, then the number of
@@ -125,9 +126,9 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         the number of sources increase.
 
     progress_bar : bool, optional
-        Whether to display a progress bar. If ``nproc = 1``, then the
+        Whether to display a progress bar. If ``n_processes = 1``, then the
         ID shown after the progress bar is the source label being
-        deblended. If multiprocessing is used (``nproc > 1``), the ID
+        deblended. If multiprocessing is used (``n_processes > 1``), the ID
         shown is the last source label that was deblended. The progress
         bar requires that the `tqdm <https://tqdm.github.io/>`_ optional
         dependency be installed.
@@ -190,12 +191,12 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     segm_deblended = segmentation_image.data.copy()
     label_indices = segmentation_image.get_indices(labels)
 
-    if nproc is None:
-        nproc = cpu_count()
+    if n_processes is None:
+        n_processes = cpu_count()
 
     deblend_label_map = {}
     max_label = segmentation_image.max_label
-    if nproc == 1:
+    if n_processes == 1:
         if progress_bar:
             desc = 'Deblending'
             label_indices = add_progress_bar(label_indices, desc=desc)
@@ -258,7 +259,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         disable_pbar = not progress_bar
         mp_context = get_context('spawn')
         with ProcessPoolExecutor(mp_context=mp_context,
-                                 max_workers=nproc) as executor:
+                                 max_workers=n_processes) as executor:
             # Submit all jobs at once
             for index, args in enumerate(args_all):
                 futures_dict[executor.submit(worker, *args)] = index
