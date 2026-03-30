@@ -260,7 +260,7 @@ class DeprecatedColumnMixin:
     this class directly, ensuring a valid method resolution order.
     """
 
-    _deprecation_map = None
+    deprecation_map = None
     _deprecation_since = None
     _deprecation_until = None
 
@@ -314,8 +314,8 @@ class DeprecatedColumnMixin:
             The translated new column name, or the original name if it
             is not deprecated.
         """
-        if self._deprecation_map and name in self._deprecation_map:
-            new_name = self._deprecation_map[name]
+        if self.deprecation_map and name in self.deprecation_map:
+            new_name = self.deprecation_map[name]
             self._warn_deprecated(name, new_name, stacklevel=stacklevel)
             return new_name
         return name
@@ -350,9 +350,9 @@ class DeprecatedColumnMixin:
         """
         Override for ``in`` checks.
         """
-        if (isinstance(name, str) and self._deprecation_map
-                and name in self._deprecation_map):
-            new_name = self._deprecation_map[name]
+        if (isinstance(name, str) and self.deprecation_map
+                and name in self.deprecation_map):
+            new_name = self.deprecation_map[name]
             self._warn_deprecated(name, new_name, stacklevel=3)
             return new_name in self.colnames
         return name in self.colnames
@@ -364,8 +364,8 @@ class DeprecatedColumnMixin:
         if isinstance(item, (str, list, tuple)):
             item = self._translate_names(item)
         result = super().__getitem__(item)
-        if isinstance(result, type(self)) and self._deprecation_map:
-            result._deprecation_map = self._deprecation_map
+        if isinstance(result, type(self)) and self.deprecation_map:
+            result.deprecation_map = self.deprecation_map
             result._deprecation_since = self._deprecation_since
             result._deprecation_until = self._deprecation_until
         return result
@@ -541,9 +541,9 @@ class DeprecatedColumnMixin:
             A copy of the table with the deprecation map preserved.
         """
         new_table = super().copy(copy_data=copy_data)
-        new_table._deprecation_map = (self._deprecation_map.copy()
-                                      if self._deprecation_map
-                                      else None)
+        new_table.deprecation_map = (self.deprecation_map.copy()
+                                     if self.deprecation_map
+                                     else None)
         new_table._deprecation_since = self._deprecation_since
         new_table._deprecation_until = self._deprecation_until
         return new_table
@@ -626,7 +626,7 @@ def create_empty_deprecated_qtable(deprecation_map, *, since=None,
         return QTable(**kwargs)
 
     table = DeprecatedColumnQTable(**kwargs)
-    table._deprecation_map = deprecation_map
+    table.deprecation_map = deprecation_map
     table._deprecation_since = since
     table._deprecation_until = until
     return table
@@ -729,7 +729,7 @@ def create_deprecated_table_from_data(data, deprecation_map, *,
 
     # Create the table instance
     table = table_class(renamed_data, **kwargs)
-    table._deprecation_map = deprecation_map
+    table.deprecation_map = deprecation_map
     table._deprecation_since = since
     table._deprecation_until = until
     return table

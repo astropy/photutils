@@ -1591,9 +1591,9 @@ class PSFResultsAssembler:
         meta.update(metadata_attrs)
 
         # Replace with QTable in 4.0
-        _psf_deprecation_map = {'npixfit': 'n_pixels_fit'}
+        psf_deprecation_map = {'npixfit': 'n_pixels_fit'}
         result = DeprecatedColumnQTable(results_tbl, meta=meta)
-        result._deprecation_map = _psf_deprecation_map
+        result.deprecation_map = psf_deprecation_map
         result._deprecation_since = '3.0'
         result._deprecation_until = '4.0'
         return result

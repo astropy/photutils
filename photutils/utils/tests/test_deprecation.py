@@ -295,12 +295,12 @@ class TestDeprecatedColumn:
 
     def test_copy_with_none_deprecation_map(self):
         """
-        Test that copy() works when _deprecation_map is None.
+        Test that copy() works when deprecation_map is None.
         """
         table = DeprecatedColumnTable({'a': [1, 2, 3]})
-        table._deprecation_map = None
+        table.deprecation_map = None
         copied = table.copy()
-        assert copied._deprecation_map is None
+        assert copied.deprecation_map is None
         assert np.all(copied['a'] == [1, 2, 3])
 
     def test_create_empty_deprecated_qtable(self):
