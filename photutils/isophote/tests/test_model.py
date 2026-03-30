@@ -90,7 +90,7 @@ def test_model_minimum_radius():
         ctx3 = pytest.warns(RuntimeWarning, match=match3)
         with ctx1, ctx2, ctx3:
             isophote_list = ellipse.fit_image(sma0=40, minsma=0,
-                                              maxsma=350.0, step=0.4, nclip=3)
+                                              maxsma=350.0, step=0.4, n_clip=3)
 
         model = build_ellipse_model(data.shape, isophote_list,
                                     fill=np.mean(data[0:50, 0:50]))

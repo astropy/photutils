@@ -111,7 +111,7 @@ class TestIsophote:
         iso = fitter.fit()
 
         assert iso.valid
-        assert iso.niter == 50
+        assert iso.n_iter == 50
 
 
 def test_isophote_comparisons():
@@ -187,9 +187,9 @@ class TestIsophoteList:
         assert isinstance(result.gradient_err, np.ndarray)
         assert isinstance(result.gradient_rel_err, np.ndarray)
         assert isinstance(result.sarea, np.ndarray)
-        assert isinstance(result.niter, np.ndarray)
-        assert isinstance(result.ndata, np.ndarray)
-        assert isinstance(result.nflag, np.ndarray)
+        assert isinstance(result.n_iter, np.ndarray)
+        assert isinstance(result.n_data, np.ndarray)
+        assert isinstance(result.n_flag, np.ndarray)
         assert isinstance(result.valid, np.ndarray)
         assert isinstance(result.stop_code, np.ndarray)
         assert isinstance(result.tflux_c, np.ndarray)

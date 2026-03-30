@@ -20,6 +20,9 @@ __all__ = ['Isophote', 'IsophoteList']
 _DEPRECATED_ATTRIBUTES = {
     'grad_error': 'gradient_err',
     'grad_r_error': 'gradient_rel_err',
+    'niter': 'n_iter',
+    'ndata': 'n_data',
+    'nflag': 'n_flag',
 }
 
 
@@ -38,7 +41,7 @@ class Isophote:
     ----------
     sample : `~photutils.isophote.EllipseSample` instance
         The sample information.
-    niter : int
+    n_iter : int
         The number of iterations used to fit the isophote.
     valid : bool
         The status of the fitting operation.
@@ -101,8 +104,14 @@ class Isophote:
     sarea : float
         The average sector area on the isophote (pixel**2).
     ndata : int
+        .. deprecated:: 3.0
+            Use ``n_data`` instead.
+    n_data : int
         The number of extracted data points.
     nflag : int
+        .. deprecated:: 3.0
+            Use ``n_flag`` instead.
+    n_flag : int
         The number of discarded data points. Data points can be
         discarded either because they are physically outside the image
         frame boundaries, because they were rejected by sigma-clipping,
@@ -120,9 +129,9 @@ class Isophote:
         ``b4`` attributes.
     """
 
-    def __init__(self, sample, niter, valid, stop_code):
+    def __init__(self, sample, n_iter, valid, stop_code):
         self.sample = sample
-        self.niter = niter
+        self.n_iter = n_iter
         self.valid = valid
         self.stop_code = stop_code
 
@@ -136,8 +145,8 @@ class Isophote:
 
             self.gradient_rel_err = sample.gradient_rel_err
             self.sarea = sample.sector_area
-            self.ndata = sample.actual_points
-            self.nflag = sample.total_points - sample.actual_points
+            self.n_data = sample.actual_points
+            self.n_flag = sample.total_points - sample.actual_points
 
             # flux contained inside ellipse and circle
             (self.tflux_e, self.tflux_c, self.npix_e,
@@ -437,8 +446,8 @@ class CentralPixel(Isophote):
         self.gradient_err = None
         self.gradient_rel_err = None
         self.sarea = None
-        self.ndata = sample.actual_points
-        self.nflag = sample.total_points - sample.actual_points
+        self.n_data = sample.actual_points
+        self.n_flag = sample.total_points - sample.actual_points
 
         self.tflux_e = self.tflux_c = self.npix_e = self.npix_c = None
 
@@ -722,14 +731,14 @@ class IsophoteList:
         return self._collect_as_array('sarea')
 
     @property
-    def ndata(self):
+    def n_data(self):
         """
         The number of extracted data points.
         """
-        return self._collect_as_array('ndata')
+        return self._collect_as_array('n_data')
 
     @property
-    def nflag(self):
+    def n_flag(self):
         """
         The number of discarded data points.
 
@@ -737,14 +746,14 @@ class IsophoteList:
         outside the image frame boundaries, because they were rejected
         by sigma-clipping, or they are masked.
         """
-        return self._collect_as_array('nflag')
+        return self._collect_as_array('n_flag')
 
     @property
-    def niter(self):
+    def n_iter(self):
         """
         The number of iterations used to fit the isophote.
         """
-        return self._collect_as_array('niter')
+        return self._collect_as_array('n_iter')
 
     @property
     def valid(self):
@@ -910,11 +919,15 @@ def _get_properties(isophote_list):
     result : dict
         An dictionary with the list of the isophote_list properties.
     """
+    # deprecated IsophoteList property names to exclude
+    _deprecated_props = {'npix_e', 'npix_c'}
+
     properties = {}
     for an_item in isophote_list.__class__.__dict__:
         p_type = isophote_list.__class__.__dict__[an_item]
-        # Exclude the sample property
-        if isinstance(p_type, property) and 'sample' not in an_item:
+        # Exclude the sample property and deprecated properties
+        if (isinstance(p_type, property) and 'sample' not in an_item
+                and an_item not in _deprecated_props):
             properties[str(an_item)] = str(an_item)
     return properties
 
@@ -960,9 +973,9 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
 
     def __rename_properties(properties, *,
                             orig_names=('int_err', 'eps', 'ellip_err',
-                                        'nflag'),
+                                        'n_flag'),
                             new_names=('intens_err', 'ellipticity',
-                                       'ellipticity_err', 'nflag')):
+                                       'ellipticity_err', 'n_flag')):
         """
         Simple renaming for some of the isophote_list parameters.
 
@@ -987,7 +1000,7 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
         main_properties = ['sma', 'intens', 'int_err', 'eps', 'ellip_err',
                            'pa', 'pa_err', 'grad', 'gradient_err',
                            'gradient_rel_err', 'x0', 'x0_err', 'y0',
-                           'y0_err', 'ndata', 'nflag', 'niter',
+                           'y0_err', 'n_data', 'n_flag', 'n_iter',
                            'stop_code']
 
         for an_item in main_properties:

@@ -67,7 +67,7 @@ def test_fitting_small_radii():
     isophote = fitter.fit()
 
     assert isinstance(isophote, Isophote)
-    assert isophote.ndata == 13
+    assert isophote.n_data == 13
 
 
 def test_fitting_eps():
@@ -169,7 +169,7 @@ class TestM51:
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()
 
-        assert isophote.ndata == 119
+        assert isophote.n_data == 119
         assert_allclose(isophote.intens, 685.4, atol=0.1)
 
         # last sample taken by the original code, before turning inwards.
@@ -178,7 +178,7 @@ class TestM51:
         fitter = EllipseFitter(sample)
         isophote = fitter.fit()
 
-        assert isophote.ndata == 382
+        assert isophote.n_data == 382
         assert_allclose(isophote.intens, 155.0, atol=0.1)
 
     def test_m51_outer(self):
@@ -205,6 +205,6 @@ class TestM51:
 
         # the central pixel intensity is about 3% larger than
         # found by the spp code.
-        assert isophote.ndata == 1
+        assert isophote.n_data == 1
         assert isophote.intens <= 7560.0
         assert isophote.intens >= 7550.0

@@ -119,9 +119,9 @@ def test_regression(name):
         x0_i = iso.sample.geometry.x0
         y0_i = iso.sample.geometry.y0
         rerr_i = (iso.sample.gradient_rel_err or 0.0)
-        ndata_i = iso.ndata
-        nflag_i = iso.nflag
-        niter_i = iso.niter
+        ndata_i = iso.n_data
+        nflag_i = iso.n_flag
+        niter_i = iso.n_iter
         stop_i = iso.stop_code
 
         # convert to old code reference system

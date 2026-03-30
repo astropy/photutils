@@ -122,7 +122,7 @@ We can also show the isophote values as a table, which is again sorted
 by the semimajor axis length (``sma``)::
 
     >>> print(isolist.to_table())  # doctest: +SKIP
-         sma            intens        intens_err   ... flag niter stop_code
+         sma            intens        intens_err   ... flag n_iter stop_code
                                                    ...
     -------------- --------------- --------------- ... ---- ----- ---------
                0.0   102.237692914             0.0 ...    0     0         0

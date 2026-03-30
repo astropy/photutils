@@ -299,7 +299,7 @@ class _PositionCorrector(_ParameterCorrector):
 
         return EllipseSample(sample.image, sample.geometry.sma, x0=new_x0,
                              y0=new_y0, astep=sample.geometry.astep,
-                             sclip=sample.sclip, nclip=sample.nclip,
+                             sclip=sample.sclip, n_clip=sample.n_clip,
                              eps=sample.geometry.eps,
                              position_angle=sample.geometry.pa,
                              linear_growth=sample.geometry.linear_growth,
@@ -341,7 +341,7 @@ class _AngleCorrector(_ParameterCorrector):
         return EllipseSample(sample.image, sample.geometry.sma,
                              x0=sample.geometry.x0, y0=sample.geometry.y0,
                              astep=sample.geometry.astep, sclip=sample.sclip,
-                             nclip=sample.nclip, eps=sample.geometry.eps,
+                             n_clip=sample.n_clip, eps=sample.geometry.eps,
                              position_angle=new_pa,
                              linear_growth=sample.geometry.linear_growth,
                              integrmode=sample.integrmode)
@@ -360,7 +360,7 @@ class _EllipticityCorrector(_ParameterCorrector):
         return EllipseSample(sample.image, sample.geometry.sma,
                              x0=sample.geometry.x0, y0=sample.geometry.y0,
                              astep=sample.geometry.astep, sclip=sample.sclip,
-                             nclip=sample.nclip, eps=new_eps,
+                             n_clip=sample.n_clip, eps=new_eps,
                              position_angle=sample.geometry.pa,
                              linear_growth=sample.geometry.linear_growth,
                              integrmode=sample.integrmode)

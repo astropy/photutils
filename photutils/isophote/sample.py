@@ -10,12 +10,14 @@ import numpy as np
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import INTEGRATORS
 from photutils.utils._deprecation import (deprecated_getattr,
-                                          deprecated_positional_kwargs)
+                                          deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 
 # Remove in 4.0
 _DEPRECATED_SAMPLE_ATTRIBUTES = {
     'gradient_error': 'gradient_err',
     'gradient_relative_error': 'gradient_rel_err',
+    'nclip': 'n_clip',
 }
 
 __all__ = ['EllipseSample']
@@ -52,9 +54,12 @@ class EllipseSample:
         default is 0.
     sclip : float, optional
         The sigma-clip sigma value. The default is 3.0.
-    nclip : int, optional
+    n_clip : int, optional
         The number of sigma-clip iterations. Set to zero to skip
         sigma-clipping. The default is 0.
+
+        .. deprecated:: 3.0
+            The ``nclip`` keyword is deprecated. Use ``n_clip`` instead.
     linear_growth : bool, optional
         The semimajor axis growing/shrinking mode. The default is
         `False`.
@@ -98,8 +103,10 @@ class EllipseSample:
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_renamed_argument('nclip', 'n_clip', '3.0', until='4.0')
     def __init__(self, image, sma, x0=None, y0=None, astep=0.1, eps=0.2,
-                 position_angle=0.0, sclip=3.0, nclip=0, linear_growth=False,
+                 position_angle=0.0, sclip=3.0, n_clip=0,
+                 linear_growth=False,
                  integrmode='bilinear', geometry=None):
         self.image = image
         self.integrmode = integrmode
@@ -125,7 +132,7 @@ class EllipseSample:
 
         # sigma-clip parameters
         self.sclip = sclip
-        self.nclip = nclip
+        self.n_clip = n_clip
 
         # extracted values associated with this sample.
         self.values = None
@@ -253,8 +260,8 @@ class EllipseSample:
                          np.array(intensities)])
 
     def _sigma_clip(self, angles, radii, intensities):
-        if self.nclip > 0:
-            for _ in range(self.nclip):
+        if self.n_clip > 0:
+            for _ in range(self.n_clip):
                 # do not use list.copy()! must be python2-compliant.
                 angles, radii, intensities = self._iter_sigma_clip(
                     angles[:], radii[:], intensities[:])
@@ -354,7 +361,7 @@ class EllipseSample:
         gradient_sample = EllipseSample(
             self.image, gradient_sma, x0=self.geometry.x0,
             y0=self.geometry.y0, astep=self.geometry.astep, sclip=self.sclip,
-            nclip=self.nclip, eps=self.geometry.eps,
+            n_clip=self.n_clip, eps=self.geometry.eps,
             position_angle=self.geometry.pa,
             linear_growth=self.geometry.linear_growth,
             integrmode=self.integrmode)
