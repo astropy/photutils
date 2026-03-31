@@ -6,7 +6,8 @@ Tools for interpolating data.
 import numpy as np
 from scipy.spatial import cKDTree
 
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 
 __all__ = ['ShepardIDWInterpolator']
 
@@ -158,9 +159,11 @@ class ShepardIDWInterpolator:
         self.weights = weights
         self.kdtree = cKDTree(coordinates, leafsize=leafsize)
 
+    @deprecated_renamed_argument('reg', 'regularization', '3.0',
+                                 until='4.0')
     @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def __call__(self, positions, n_neighbors=8, eps=0.0, power=1.0, reg=0.0,
-                 conf_dist=1.0e-12, dtype=float):
+    def __call__(self, positions, n_neighbors=8, eps=0.0, power=1.0,
+                 regularization=0.0, conf_dist=1.0e-12, dtype=float):
         """
         Evaluate the interpolator at the given positions.
 
@@ -201,7 +204,7 @@ class ShepardIDWInterpolator:
             The power of the inverse distance used for the interpolation
             weights. See the Notes section for more details.
 
-        reg : float, optional
+        regularization : float, optional
             The regularization parameter. It may be used to control the
             smoothness of the interpolator. See the Notes section for
             more details.
@@ -211,7 +214,7 @@ class ShepardIDWInterpolator:
             use the value of the closest data point instead of
             attempting to interpolate. This is used to avoid
             singularities at the known data points, especially if
-            ``reg`` is 0.0.
+            ``regularization`` is 0.0.
 
         dtype : data-type, optional
             The data type of the output interpolated values. If `None`
@@ -283,7 +286,9 @@ class ShepardIDWInterpolator:
         # when a query point coincides with a data point (distance = 0
         # and reg = 0); these are handled by the conf_dist override.
         with np.errstate(invalid='ignore', divide='ignore'):
-            weights = np.where(valid, 1.0 / (safe_distances ** power + reg),
+            weights = np.where(valid,
+                               1.0 / (safe_distances ** power
+                                      + regularization),
                                0.0)
 
             # Apply external (user-supplied) weights
