@@ -8,7 +8,8 @@ import numpy as np
 import pytest
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.stats import SigmaClip
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture.circle import CircularAnnulus, CircularAperture
@@ -77,7 +78,7 @@ class TestApertureStats:
         skyaper = self.aperture.to_sky(self.wcs)
         sky_apstats = ApertureStats(self.data, skyaper, wcs=self.wcs)
 
-        exclude_props = ('bbox', 'error_sumcutout', 'sum_error',
+        exclude_props = ('bbox', 'error_sum_cutout', 'sum_error',
                          'sky_centroid', 'sky_centroid_icrs')
         for prop in pix_apstats.properties:
             if prop in exclude_props:
@@ -101,7 +102,7 @@ class TestApertureStats:
 
     def test_minimal_inputs(self):
         apstats = ApertureStats(self.data, self.aperture)
-        props = ('sky_centroid', 'sky_centroid_icrs', 'error_sumcutout')
+        props = ('sky_centroid', 'sky_centroid_icrs', 'error_sum_cutout')
         for prop in props:
             assert set(getattr(apstats, prop)) == {None}
         assert np.all(np.isnan(apstats.sum_err))
@@ -234,7 +235,7 @@ class TestApertureStats:
         apstat0 = apstats[1]
         assert apstat0.n_apertures == 1
         assert apstat0.ids == np.array([2])
-        apstat1 = apstats.get_id(2)
+        apstat1 = apstats.select_id(2)
         assert apstat1.n_apertures == 1
         assert apstat0.sum_aper_area == apstat1.sum_aper_area
 
@@ -248,22 +249,22 @@ class TestApertureStats:
         assert len(apstat0) == 3
 
         apstat0 = apstats[1:]
-        apstat1 = apstats.get_ids([1, 2])
+        apstat1 = apstats.select_ids([1, 2])
         assert len(apstat0) == len(apstat1) == 2
 
         apstat0 = apstats[1:]
-        apstat1 = apstats.get_ids([1, 2])
+        apstat1 = apstats.select_ids([1, 2])
         assert len(apstat0) == len(apstat1) == 2
 
         apstat0 = apstats[[2, 1, 0]]
-        apstat1 = apstats.get_ids([3, 2, 1])
+        apstat1 = apstats.select_ids([3, 2, 1])
         assert len(apstat0) == len(apstat1) == 3
         assert_equal(apstat0.ids, [3, 2, 1])
         assert_equal(apstat1.ids, [3, 2, 1])
 
-        # test get_ids when ids are not sorted
+        # test select_ids when ids are not sorted
         apstat0 = apstats[[2, 1, 0]]
-        apstat1 = apstat0.get_ids(2)
+        apstat1 = apstat0.select_ids(2)
         assert apstat1.ids == 2
 
         mask = apstats.id >= 2
@@ -290,7 +291,7 @@ class TestApertureStats:
 
         match = '-1 is not a valid source ID number'
         with pytest.raises(ValueError, match=match):
-            apstat0 = apstats.get_ids([-1, 0])
+            apstat0 = apstats.select_ids([-1, 0])
 
     def test_scalar_aperture_stats(self):
         apstats = self.apstats1[0]
@@ -298,6 +299,36 @@ class TestApertureStats:
         assert apstats.ids == np.array([1])
         tbl = apstats.to_table()
         assert len(tbl) == 1
+
+    def test_deprecated_attributes(self):
+        """
+        Test that deprecated attributes are still available and
+        give the same value as the new attributes, but raise an
+        AstropyDeprecationWarning.
+        """
+        apstats = ApertureStats(self.data, self.aperture, error=self.error)
+        match = 'attribute was deprecated'
+        deprecated_map = {
+            'covar_sigx2': 'covariance_xx',
+            'covar_sigxy': 'covariance_xy',
+            'covar_sigy2': 'covariance_yy',
+            'cxx': 'ellipse_cxx',
+            'cxy': 'ellipse_cxy',
+            'cyy': 'ellipse_cyy',
+            'data_sumcutout': 'data_sum_cutout',
+            'error_sumcutout': 'error_sum_cutout',
+            'get_id': 'select_id',
+            'get_ids': 'select_ids',
+            'semimajor_sigma': 'semimajor_axis',
+            'semiminor_sigma': 'semiminor_axis',
+            'xcentroid': 'x_centroid',
+            'ycentroid': 'y_centroid',
+        }
+        for old_name, new_name in deprecated_map.items():
+            with pytest.warns(AstropyDeprecationWarning, match=match):
+                old_val = getattr(apstats, old_name)
+            new_val = getattr(apstats, new_name)
+            assert_equal(old_val, new_val)
 
     def test_invalid_inputs(self):
         match = 'aperture must be an Aperture or Region object'

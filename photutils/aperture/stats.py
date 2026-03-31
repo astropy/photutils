@@ -39,6 +39,16 @@ DEFAULT_COLUMNS = ['id', 'x_centroid', 'y_centroid', 'sky_centroid',
 
 # Remove in 4.0
 _DEPRECATED_ATTRIBUTES: dict = {
+    'covar_sigx2': 'covariance_xx',
+    'covar_sigxy': 'covariance_xy',
+    'covar_sigy2': 'covariance_yy',
+    'cxx': 'ellipse_cxx',
+    'cxy': 'ellipse_cxy',
+    'cyy': 'ellipse_cyy',
+    'data_sumcutout': 'data_sum_cutout',
+    'error_sumcutout': 'error_sum_cutout',
+    'get_id': 'select_id',
+    'get_ids': 'select_ids',
     'semimajor_sigma': 'semimajor_axis',
     'semiminor_sigma': 'semiminor_axis',
     'xcentroid': 'x_centroid',
@@ -138,10 +148,10 @@ class ApertureStats:
     sum_method : {'exact', 'center', 'subpixel'}, optional
         The method used to determine the overlap of the aperture on
         the pixel grid. This method is used only for calculating the
-        ``sum``, ``sum_error``, ``sum_aper_area``, ``data_sumcutout``,
-        and ``error_sumcutout`` properties. All other properties use the
-        "center" aperture mask method. Not all options are available for
-        all aperture types. The following methods are available:
+        ``sum``, ``sum_error``, ``sum_aper_area``, ``data_sum_cutout``,
+        and ``error_sum_cutout`` properties. All other properties use
+        the "center" aperture mask method. Not all options are available
+        for all aperture types. The following methods are available:
 
         * ``'exact'`` (default):
           The exact fractional overlap of the aperture and each pixel is
@@ -206,7 +216,7 @@ class ApertureStats:
     The input ``sum_method`` and ``subpixels`` keywords are used
     to determine the aperture-mask method when calculating the
     sum-related properties: ``sum``, ``sum_error``, ``sum_aper_area``,
-    ``data_sumcutout``, and ``error_sumcutout``. The default is
+    ``data_sum_cutout``, and ``error_sum_cutout``. The default is
     ``sum_method='exact'``, which produces exact aperture-weighted
     photometry.
 
@@ -527,7 +537,7 @@ class ApertureStats:
             _ids = np.array((_ids,))
         return _ids
 
-    def get_id(self, id_num):
+    def select_id(self, id_num):
         """
         Return a new `ApertureStats` object for the input ID number
         only.
@@ -543,9 +553,9 @@ class ApertureStats:
             A new `ApertureStats` object containing only the source with
             the input ID number.
         """
-        return self.get_ids(id_num)
+        return self.select_ids(id_num)
 
-    def get_ids(self, id_nums):
+    def select_ids(self, id_nums):
         """
         Return a new `ApertureStats` object for the input ID numbers
         only.
@@ -857,7 +867,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def data_sumcutout(self):
+    def data_sum_cutout(self):
         """
         A 2D aperture-weighted cutout from the data using the aperture
         mask with the input ``sum_method`` method as a
@@ -915,7 +925,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def error_sumcutout(self):
+    def error_sum_cutout(self):
         """
         A 2D aperture-weighted error cutout using the aperture mask with
         the input ``sum_method`` method as a `~numpy.ma.MaskedArray`.
@@ -1298,7 +1308,7 @@ class ApertureStats:
         if self.sum_method == 'center':
             return self._calculate_stats(np.sum)
 
-        data_values = self._get_values(self.data_sumcutout)
+        data_values = self._get_values(self.data_sum_cutout)
         result = np.array([np.sum(arr) for arr in data_values])
         if self._data_unit is not None:
             result <<= self._data_unit
@@ -1657,7 +1667,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def covar_sigx2(self):
+    def covariance_xx(self):
         r"""
         The ``(0, 0)`` element of the `covariance` matrix, representing
         :math:`\sigma_x^2`, in units of pixel**2.
@@ -1666,7 +1676,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def covar_sigy2(self):
+    def covariance_yy(self):
         r"""
         The ``(1, 1)`` element of the `covariance` matrix, representing
         :math:`\sigma_y^2`, in units of pixel**2.
@@ -1675,7 +1685,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def covar_sigxy(self):
+    def covariance_xy(self):
         r"""
         The ``(0, 1)`` and ``(1, 0)`` elements of the `covariance`
         matrix, representing :math:`\sigma_x \sigma_y`, in units of
@@ -1685,7 +1695,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def cxx(self):
+    def ellipse_cxx(self):
         r"""
         Coefficient for ``x**2`` in the generalized ellipse equation in
         units of pixel**(-2).
@@ -1708,7 +1718,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def cyy(self):
+    def ellipse_cyy(self):
         r"""
         Coefficient for ``y**2`` in the generalized ellipse equation in
         units of pixel**(-2).
@@ -1731,7 +1741,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def cxy(self):
+    def ellipse_cxy(self):
         r"""
         Coefficient for ``x * y`` in the generalized ellipse equation in
         units of pixel**(-2).

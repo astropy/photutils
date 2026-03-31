@@ -322,8 +322,8 @@ statistics --- the ``data`` pixel values are directly used.
 
 The ``sum_method`` and ``subpixels`` keywords are used to determine
 the aperture-mask method when calculating the sum-related properties:
-``sum``, ``sum_error``, ``sum_aper_area``, ``data_sumcutout``, and
-``error_sumcutout``. The default is ``sum_method='exact'``, which
+``sum``, ``sum_error``, ``sum_aper_area``, ``data_sum_cutout``, and
+``error_sum_cutout``. The default is ``sum_method='exact'``, which
 produces exact aperture-weighted photometry.
 
 The optional ``local_bkg`` keyword can be used to input the per-pixel
