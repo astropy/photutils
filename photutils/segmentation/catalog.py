@@ -49,9 +49,9 @@ _DEPRECATED_ATTRIBUTES = {
     'add_extra_property': 'add_property',
     'apermask_method': 'aperture_mask_method',
     'background': 'background_cutout',
-    'background_ma': 'background_masked',
-    'convdata': 'convolved_data_cutout',
-    'convdata_ma': 'convolved_data_masked',
+    'background_ma': 'background_cutout_masked',
+    'convdata': 'conv_data_cutout',
+    'convdata_ma': 'conv_data_cutout_masked',
     'covar_sigx2': 'covariance_xx',
     'covar_sigxy': 'covariance_xy',
     'covar_sigy2': 'covariance_yy',
@@ -61,15 +61,15 @@ _DEPRECATED_ATTRIBUTES = {
     'cxy': 'ellipse_cxy',
     'cyy': 'ellipse_cyy',
     'data': 'data_cutout',
-    'data_ma': 'data_masked',
+    'data_ma': 'data_cutout_masked',
     'error': 'error_cutout',
-    'error_ma': 'error_masked',
+    'error_ma': 'error_cutout_masked',
     'extra_properties': 'custom_properties',
     'fluxfrac_radius': 'flux_radius',
     'get_label': 'select_label',
     'get_labels': 'select_labels',
     'kron_fluxerr': 'kron_flux_err',
-    'localbkg_width': 'local_background_width',
+    'localbkg_width': 'local_bkg_width',
     'maxval_index': 'max_value_index',
     'maxval_xindex': 'max_value_xindex',
     'maxval_yindex': 'max_value_yindex',
@@ -82,7 +82,7 @@ _DEPRECATED_ATTRIBUTES = {
     'rename_extra_property': 'rename_property',
     'segment': 'segment_cutout',
     'segment_fluxerr': 'segment_flux_err',
-    'segment_ma': 'segment_masked',
+    'segment_ma': 'segment_cutout_masked',
     'semimajor_sigma': 'semimajor_axis',
     'semiminor_sigma': 'semiminor_axis',
     'xcentroid': 'x_centroid',
@@ -231,7 +231,7 @@ class SourceCatalog:
         sky-based properties will be set to `None`. This keyword will be
         ignored if ``detection_catalog`` is input.
 
-    local_background_width : int, optional
+    local_bkg_width : int, optional
         The width of the rectangular annulus used to compute a
         local background around each source. If zero, then no local
         background subtraction is performed. The local background
@@ -341,9 +341,9 @@ class SourceCatalog:
     :math:`S` are the unmasked pixels in the source segment, and
     :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
 
-    Custom errors for source segments can be calculated using
-    the `~photutils.segmentation.SourceCatalog.error_masked` and
-    `~photutils.segmentation.SourceCatalog.background_masked`
+    Custom errors for source segments can be calculated using the
+    `~photutils.segmentation.SourceCatalog.error_cutout_masked` and
+    `~photutils.segmentation.SourceCatalog.background_cutout_masked`
     properties, which are 2D `~numpy.ma.MaskedArray` cutout versions of
     the input ``error`` and ``background`` arrays. The mask is `True`
     for pixels outside the source segment, masked pixels from the
@@ -369,7 +369,7 @@ class SourceCatalog:
 
     @deprecated_renamed_argument('segment_img', 'segmentation_image', '3.0',
                                  until='4.0')
-    @deprecated_renamed_argument('localbkg_width', 'local_background_width',
+    @deprecated_renamed_argument('localbkg_width', 'local_bkg_width',
                                  '3.0', until='4.0')
     @deprecated_renamed_argument('apermask_method', 'aperture_mask_method',
                                  '3.0', until='4.0')
@@ -377,7 +377,7 @@ class SourceCatalog:
                                  until='4.0')
     def __init__(self, data, segmentation_image, *, convolved_data=None,
                  error=None, mask=None, background=None, wcs=None,
-                 local_background_width=0, aperture_mask_method='correct',
+                 local_bkg_width=0, aperture_mask_method='correct',
                  kron_params=(2.5, 1.4, 0.0), detection_catalog=None,
                  progress_bar=False):
 
@@ -396,8 +396,8 @@ class SourceCatalog:
         self._mask = self._validate_array(mask, 'mask')
         self._background = self._validate_array(background, 'background')
         self.wcs = wcs
-        self.local_background_width = self._validate_local_background_width(
-            local_background_width)
+        self.local_bkg_width = self._validate_local_bkg_width(
+            local_bkg_width)
         self.aperture_mask_method = self._validate_aperture_mask_method(
             aperture_mask_method)
         self.kron_params = self._validate_kron_params(kron_params)
@@ -462,15 +462,15 @@ class SourceCatalog:
         return array
 
     @staticmethod
-    def _validate_local_background_width(local_background_width):
-        if local_background_width < 0:
-            msg = 'local_background_width must be >= 0'
+    def _validate_local_bkg_width(local_bkg_width):
+        if local_bkg_width < 0:
+            msg = 'local_bkg_width must be >= 0'
             raise ValueError(msg)
-        local_background_width_int = int(local_background_width)
-        if local_background_width_int != local_background_width:
-            msg = 'local_background_width must be an integer'
+        local_bkg_width_int = int(local_bkg_width)
+        if local_bkg_width_int != local_bkg_width:
+            msg = 'local_bkg_width must be an integer'
             raise ValueError(msg)
-        return local_background_width_int
+        return local_bkg_width_int
 
     @staticmethod
     def _validate_aperture_mask_method(aperture_mask_method):
@@ -514,7 +514,7 @@ class SourceCatalog:
         return detection_catalog
 
     def _update_meta(self):
-        attrs = ('local_background_width', 'aperture_mask_method',
+        attrs = ('local_bkg_width', 'aperture_mask_method',
                  'kron_params')
         for attr in attrs:
             self.meta[attr] = getattr(self, attr)
@@ -626,7 +626,7 @@ class SourceCatalog:
         # new class
         init_attr = ('_data', '_segmentation_image', '_error', '_mask',
                      '_background', 'wcs', '_data_unit', '_convolved_data',
-                     'local_background_width', 'aperture_mask_method',
+                     'local_bkg_width', 'aperture_mask_method',
                      'kron_params', 'default_columns', '_custom_properties',
                      'meta', '_aperture_mask_kwargs', 'progress_bar')
         for attr in init_attr:
@@ -1227,7 +1227,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def segment_masked(self):
+    def segment_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout of the segmentation image
         using the minimal bounding box of the source.
@@ -1258,7 +1258,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def data_masked(self):
+    def data_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the data using the
         minimal bounding box of the source.
@@ -1275,7 +1275,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def convolved_data_cutout(self):
+    def conv_data_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the convolved data using the
         minimal bounding box of the source.
@@ -1288,7 +1288,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def convolved_data_masked(self):
+    def conv_data_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the convolved data
         using the minimal bounding box of the source.
@@ -1320,7 +1320,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def error_masked(self):
+    def error_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the error array using
         the minimal bounding box of the source.
@@ -1354,7 +1354,7 @@ class SourceCatalog:
 
     @lazyproperty
     @as_scalar
-    def background_masked(self):
+    def background_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the background array.
         using the minimal bounding box of the source.
@@ -1438,7 +1438,7 @@ class SourceCatalog:
         An array with a single NaN is returned for completely-masked
         sources.
         """
-        return self._get_values(self.data_masked)
+        return self._get_values(self.data_cutout_masked)
 
     @lazyproperty
     def _error_values(self):
@@ -1450,7 +1450,7 @@ class SourceCatalog:
         """
         if self._error is None:
             return self._null_objects
-        return self._get_values(self.error_masked)
+        return self._get_values(self.error_cutout_masked)
 
     @lazyproperty
     def _background_values(self):
@@ -1462,7 +1462,7 @@ class SourceCatalog:
         """
         if self._background is None:
             return self._null_objects
-        return self._get_values(self.background_masked)
+        return self._get_values(self.background_cutout_masked)
 
     @lazyproperty
     @use_detcat
@@ -2309,7 +2309,7 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        data = self.data_masked
+        data = self.data_cutout_masked
         if self.isscalar:
             data = (data,)
         idx = []
@@ -2330,7 +2330,7 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        data = self.data_masked
+        data = self.data_cutout_masked
         if self.isscalar:
             data = (data,)
         idx = []
@@ -3032,7 +3032,7 @@ class SourceCatalog:
         The `~photutils.aperture.RectangularAnnulus` aperture used to
         estimate the local background.
         """
-        if self.local_background_width == 0:
+        if self.local_bkg_width == 0:
             return self._null_objects
 
         apertures = []
@@ -3041,9 +3041,9 @@ class SourceCatalog:
             ypos = 0.5 * (bbox_.iymin + bbox_.iymax - 1)
             scale = 1.5
             width_in = (bbox_.ixmax - bbox_.ixmin) * scale
-            width_out = width_in + 2 * self.local_background_width
+            width_out = width_in + 2 * self.local_bkg_width
             height_in = (bbox_.iymax - bbox_.iymin) * scale
-            height_out = height_in + 2 * self.local_background_width
+            height_out = height_in + 2 * self.local_bkg_width
             apertures.append(RectangularAnnulus((xpos, ypos), width_in,
                                                 width_out, height_out,
                                                 h_in=height_in, theta=0.0))
@@ -3074,7 +3074,7 @@ class SourceCatalog:
 
         This property is always an `~numpy.ndarray` without units.
         """
-        if self.local_background_width == 0:
+        if self.local_bkg_width == 0:
             local_bkgs = np.zeros(self.n_labels)
         else:
             sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)

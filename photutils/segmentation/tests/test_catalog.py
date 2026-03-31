@@ -141,14 +141,14 @@ class TestSourceCatalog:
         self.wcs = make_wcs(self.data.shape)
         self.cat = SourceCatalog(self.data, self.segm, error=self.error,
                                  background=self.background, mask=self.mask,
-                                 wcs=self.wcs, local_background_width=24)
+                                 wcs=self.wcs, local_bkg_width=24)
         unit = u.nJy
         self.unit = unit
         self.cat_units = SourceCatalog(self.data << unit, self.segm,
                                        error=self.error << unit,
                                        background=self.background << unit,
                                        mask=self.mask, wcs=self.wcs,
-                                       local_background_width=24)
+                                       local_bkg_width=24)
 
     @pytest.mark.parametrize('with_units', [True, False])
     def test_catalog(self, with_units):
@@ -209,23 +209,23 @@ class TestSourceCatalog:
                                  error=error << self.unit,
                                  background=self.background << self.unit,
                                  mask=self.mask, wcs=self.wcs,
-                                 local_background_width=24,
+                                 local_bkg_width=24,
                                  detection_catalog=None)
             cat3 = SourceCatalog(data2 << self.unit, self.segm,
                                  error=error << self.unit,
                                  background=self.background << self.unit,
                                  mask=self.mask, wcs=self.wcs,
-                                 local_background_width=24,
+                                 local_bkg_width=24,
                                  detection_catalog=cat1)
         else:
             cat1 = self.cat.copy()
             cat2 = SourceCatalog(data2, self.segm, error=error,
                                  background=self.background, mask=self.mask,
-                                 wcs=self.wcs, local_background_width=24,
+                                 wcs=self.wcs, local_bkg_width=24,
                                  detection_catalog=None)
             cat3 = SourceCatalog(data2, self.segm, error=error,
                                  background=self.background, mask=self.mask,
-                                 wcs=self.wcs, local_background_width=24,
+                                 wcs=self.wcs, local_bkg_width=24,
                                  detection_catalog=cat1)
 
         assert_equal(cat1.kron_radius, cat3.kron_radius)
@@ -283,8 +283,8 @@ class TestSourceCatalog:
         """
         cat = SourceCatalog(self.data, self.segm)
         obj = cat[4]
-        props = ('background_cutout', 'background_masked', 'error_cutout',
-                 'error_masked')
+        props = ('background_cutout', 'background_cutout_masked',
+                 'error_cutout', 'error_cutout_masked')
         for prop in props:
             assert getattr(obj, prop) is None
 
@@ -431,12 +431,12 @@ class TestSourceCatalog:
         with pytest.raises(TypeError, match=match):
             len(obj)
 
-        match = 'local_background_width must be >= 0'
+        match = 'local_bkg_width must be >= 0'
         with pytest.raises(ValueError, match=match):
-            SourceCatalog(self.data, self.segm, local_background_width=-1)
-        match = 'local_background_width must be an integer'
+            SourceCatalog(self.data, self.segm, local_bkg_width=-1)
+        match = 'local_bkg_width must be an integer'
         with pytest.raises(ValueError, match=match):
-            SourceCatalog(self.data, self.segm, local_background_width=3.4)
+            SourceCatalog(self.data, self.segm, local_bkg_width=3.4)
 
         aperture_mask_method = 'invalid'
         match = 'Invalid aperture_mask_method value'
@@ -928,7 +928,7 @@ class TestSourceCatalog:
 
         cat = SourceCatalog(self.data - 50.0, self.segm, error=self.error,
                             background=self.background, mask=self.mask,
-                            wcs=self.wcs, local_background_width=24)
+                            wcs=self.wcs, local_bkg_width=24)
         radius_hl = cat.flux_radius(0.5)
         assert np.isnan(radius_hl[0])
 
@@ -939,9 +939,9 @@ class TestSourceCatalog:
         obj = self.cat_units[0]
         quantities = (obj.data_cutout, obj.error_cutout,
                       obj.background_cutout)
-        ndarray = (obj.segment_cutout, obj.segment_masked,
-                   obj.data_masked, obj.error_masked,
-                   obj.background_masked)
+        ndarray = (obj.segment_cutout, obj.segment_cutout_masked,
+                   obj.data_cutout_masked, obj.error_cutout_masked,
+                   obj.background_cutout_masked)
         for arr in quantities:
             assert isinstance(arr, u.Quantity)
         for arr in ndarray:
@@ -1088,7 +1088,7 @@ class TestSourceCatalog:
         segmdata = np.zeros((25, 25), dtype=int)
         segmdata[8:16, 8:16] = 1
         segm = SegmentationImage(segmdata)
-        cat = SourceCatalog(data, segm, local_background_width=3)
+        cat = SourceCatalog(data, segm, local_bkg_width=3)
         assert cat.min_value == 10
         assert cat.max_value == 10
 
@@ -1190,7 +1190,7 @@ class TestSourceCatalog:
         Test meta.
         """
         meta = self.cat.meta
-        attrs = ['local_background_width', 'aperture_mask_method',
+        attrs = ['local_bkg_width', 'aperture_mask_method',
                  'kron_params']
         for attr in attrs:
             assert attr in meta
@@ -1565,7 +1565,7 @@ def test_local_background_few_pixels():
     # Unmask only the source and a thin border
     mask[3:8, 3:8] = False
 
-    cat = SourceCatalog(data, segm, mask=mask, local_background_width=2)
+    cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=2)
     bkg = cat._local_background
     assert bkg[0] == 0.0
 
