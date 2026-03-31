@@ -7,13 +7,15 @@ This module requires matplotlib to be installed.
 
 import numpy as np
 
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 
 __all__ = ['make_random_cmap']
 
 
+@deprecated_renamed_argument('ncolors', 'n_colors', '3.0', until='4.0')
 @deprecated_positional_kwargs(since='3.0', until='4.0')
-def make_random_cmap(ncolors=256, seed=None):
+def make_random_cmap(n_colors=256, seed=None):
     """
     Make a matplotlib colormap consisting of (random) muted colors.
 
@@ -21,7 +23,7 @@ def make_random_cmap(ncolors=256, seed=None):
 
     Parameters
     ----------
-    ncolors : int, optional
+    n_colors : int, optional
         The number of colors in the colormap. The default is 256. Must
         be at least 1.
 
@@ -36,16 +38,16 @@ def make_random_cmap(ncolors=256, seed=None):
     cmap : `matplotlib.colors.ListedColormap`
         The matplotlib colormap with random colors in RGBA format.
     """
-    if ncolors < 1:
-        msg = 'ncolors must be at least 1'
+    if n_colors < 1:
+        msg = 'n_colors must be at least 1'
         raise ValueError(msg)
 
     from matplotlib import colors
 
     rng = np.random.default_rng(seed)
-    hue = rng.uniform(low=0.0, high=1.0, size=ncolors)
-    sat = rng.uniform(low=0.2, high=0.7, size=ncolors)
-    val = rng.uniform(low=0.5, high=1.0, size=ncolors)
+    hue = rng.uniform(low=0.0, high=1.0, size=n_colors)
+    sat = rng.uniform(low=0.2, high=0.7, size=n_colors)
+    val = rng.uniform(low=0.5, high=1.0, size=n_colors)
     hsv = np.dstack((hue, sat, val))
     rgb = np.squeeze(colors.hsv_to_rgb(hsv))
 

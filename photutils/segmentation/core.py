@@ -691,7 +691,8 @@ class SegmentationImage:
             msg = f'{label_str} {bad_labels} {conj_str} invalid'
             raise ValueError(msg)
 
-    def _make_cmap(self, ncolors, *, background_color='#000000ff', seed=None):
+    def _make_cmap(self, n_colors, *, background_color='#000000ff',
+                   seed=None):
         """
         Define a matplotlib colormap consisting of (random) muted
         colors.
@@ -700,7 +701,7 @@ class SegmentationImage:
 
         Parameters
         ----------
-        ncolors : int
+        n_colors : int
             The number of the colors in the colormap.
 
         background_color : Matplotlib color, optional
@@ -728,7 +729,7 @@ class SegmentationImage:
 
         from matplotlib import colors
 
-        cmap = make_random_cmap(ncolors=ncolors, seed=seed)
+        cmap = make_random_cmap(n_colors=n_colors, seed=seed)
 
         if background_color is not None:
             cmap.colors[0] = colors.to_rgba(background_color)
