@@ -143,7 +143,7 @@ class Background2D:
         define sigma clipping). The default is an instance of
         `~photutils.background.SExtractorBackground`.
 
-    bkgrms_estimator : callable, optional
+    bkg_rms_estimator : callable, optional
         A callable object (a function or e.g., an instance of
         any `~photutils.background.BackgroundRMSBase` subclass)
         used to estimate the background RMS in each of the boxes.
@@ -152,7 +152,7 @@ class Background2D:
         Internally, the background RMS will be calculated along
         ``axis=1`` and in this case the callable object must return a
         1D `~numpy.ndarray`, where np.nan values are used for masked
-        pixels. If ``bkgrms_estimator`` includes sigma clipping,
+        pixels. If ``bkg_rms_estimator`` includes sigma clipping,
         it will be ignored (use the ``sigma_clip`` keyword here
         to define sigma clipping). The default is an instance of
         `~photutils.background.StdBackgroundRMS`.
@@ -183,11 +183,14 @@ class Background2D:
     map will simply be a constant image.
     """
 
+    @deprecated_renamed_argument('bkgrms_estimator', 'bkg_rms_estimator',
+                                 '3.0', until='4.0')
     @deprecated_renamed_argument('interpolator', None, '3.0', until='4.0')
     def __init__(self, data, box_size, *, mask=None, coverage_mask=None,
                  fill_value=0.0, exclude_percentile=10.0, filter_size=(3, 3),
                  filter_threshold=None, sigma_clip=SIGMA_CLIP,
-                 bkg_estimator=None, bkgrms_estimator=None, interpolator=None):
+                 bkg_estimator=None, bkg_rms_estimator=None,
+                 interpolator=None):
 
         if isinstance(data, (u.Quantity, NDData)):  # includes CCDData
             self._unit = data.unit
@@ -237,8 +240,8 @@ class Background2D:
 
         if bkg_estimator is None:
             bkg_estimator = SExtractorBackground(sigma_clip=None)
-        if bkgrms_estimator is None:
-            bkgrms_estimator = StdBackgroundRMS(sigma_clip=None)
+        if bkg_rms_estimator is None:
+            bkg_rms_estimator = StdBackgroundRMS(sigma_clip=None)
 
         # We perform sigma clipping as a separate step to avoid calling
         # it twice for the background and background RMS. Shallow-copy
@@ -246,13 +249,13 @@ class Background2D:
         # that any user-supplied estimator object is not modified in
         # place.
         bkg_estimator = copy.copy(bkg_estimator)
-        bkgrms_estimator = copy.copy(bkgrms_estimator)
+        bkg_rms_estimator = copy.copy(bkg_rms_estimator)
         if hasattr(bkg_estimator, 'sigma_clip'):
             bkg_estimator.sigma_clip = None
-        if hasattr(bkgrms_estimator, 'sigma_clip'):
-            bkgrms_estimator.sigma_clip = None
+        if hasattr(bkg_rms_estimator, 'sigma_clip'):
+            bkg_rms_estimator.sigma_clip = None
         self.bkg_estimator = bkg_estimator
-        self.bkgrms_estimator = bkgrms_estimator
+        self.bkg_rms_estimator = bkg_rms_estimator
 
         self._box_npixels = None
 
@@ -288,7 +291,7 @@ class Background2D:
     def _repr_str_params(self):
         params = ('data', 'box_size', 'mask', 'coverage_mask', 'fill_value',
                   'exclude_percentile', 'filter_size', 'filter_threshold',
-                  'sigma_clip', 'bkg_estimator', 'bkgrms_estimator',
+                  'sigma_clip', 'bkg_estimator', 'bkg_rms_estimator',
                   'interpolator')
 
         data_repr = f'<array; shape={self._interp_kwargs["shape"]}>'
@@ -464,7 +467,7 @@ class Background2D:
 
         # Make 2D arrays of the box statistics
         bkg = self.bkg_estimator(data, axis=axis)
-        bkgrms = self.bkgrms_estimator(data, axis=axis)
+        bkgrms = self.bkg_rms_estimator(data, axis=axis)
 
         # Mask boxes with too few unmasked pixels
         ngood = np.count_nonzero(~np.isnan(data), axis=axis)
@@ -600,7 +603,7 @@ class Background2D:
         return bkg, bkgrms, ngood
 
     def _interpolate_grid(self, data, *, n_neighbors=10, eps=0.0, power=1.0,
-                          reg=0.0):
+                          regularization=0.0):
         """
         Fill in any NaN values in the low-resolution 2D mesh background
         and background RMS images using inverse distance weighting (IDW)
@@ -629,7 +632,7 @@ class Background2D:
             The power of the inverse distance used for the interpolation
             weights.
 
-        reg : float, optional
+        regularization : float, optional
             Regularization parameter to control the smoothness of the
             interpolator.
 
@@ -650,7 +653,8 @@ class Background2D:
         idx = np.where(np.isnan(data))
         yx_indices = np.column_stack(idx)
         interp_values = interp_func(yx_indices, n_neighbors=n_neighbors,
-                                    power=power, eps=eps, reg=reg)
+                                    power=power, eps=eps,
+                                    regularization=regularization)
 
         interp_data = np.copy(data)  # copy to avoid modifying the input data
         interp_data[idx] = interp_values

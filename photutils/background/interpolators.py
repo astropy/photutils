@@ -177,19 +177,20 @@ class BkgIDWInterpolator:
         The power of the inverse distance used for the interpolation
         weights.
 
-    reg : float, optional
+    regularization : float, optional
         The regularization parameter. It may be used to control the
         smoothness of the interpolator.
     """
 
-    def __init__(self, *, leafsize=10, n_neighbors=10, power=1.0, reg=0.0):
+    def __init__(self, *, leafsize=10, n_neighbors=10, power=1.0,
+                 regularization=0.0):
         self.leafsize = leafsize
         self.n_neighbors = n_neighbors
         self.power = power
-        self.reg = reg
+        self.regularization = regularization
 
     def __repr__(self):
-        params = ('leafsize', 'n_neighbors', 'power', 'reg')
+        params = ('leafsize', 'n_neighbors', 'power', 'regularization')
         return make_repr(self, params)
 
     def __call__(self, data, **kwargs):
@@ -234,6 +235,7 @@ class BkgIDWInterpolator:
         yi, xi = np.mgrid[0:kwargs['shape'][0], 0:kwargs['shape'][1]]
         yx_indices = np.column_stack((yi.ravel(), xi.ravel()))
         data = interp_func(yx_indices, n_neighbors=self.n_neighbors,
-                           power=self.power, reg=self.reg)
+                           power=self.power,
+                           regularization=self.regularization)
 
         return data.reshape(kwargs['shape'])

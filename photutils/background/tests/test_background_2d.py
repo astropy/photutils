@@ -196,7 +196,7 @@ class TestBackground2D:
         assert bkgrms_est.sigma_clip is sigclip
 
         Background2D(test_data, (25, 25), bkg_estimator=bkg_est,
-                     bkgrms_estimator=bkgrms_est)
+                     bkg_rms_estimator=bkgrms_est)
 
         # Check that original sigma_clip values are unchanged after the
         # call
@@ -262,7 +262,7 @@ class TestBackground2D:
     def test_function_estimators(self, test_data):
         """
         Test with user-defined functions for bkg_estimator and
-        bkgrms_estimator.
+        bkg_rms_estimator.
         """
         def bkg_func(data, *, axis=None):
             return np.nanmean(data, axis=axis)
@@ -272,7 +272,7 @@ class TestBackground2D:
 
         bkg = Background2D(test_data, (25, 25), filter_size=(1, 1),
                            sigma_clip=None, bkg_estimator=bkg_func,
-                           bkgrms_estimator=bkgrms_func)
+                           bkg_rms_estimator=bkgrms_func)
         assert_allclose(bkg.background, test_data)
         assert_allclose(bkg.background_rms, np.zeros(test_data.shape))
 
