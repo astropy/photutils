@@ -35,6 +35,7 @@ Refactored ePSF Building
 The ePSF building tools have been significantly refactored for improved
 robustness, better diagnostics, and a cleaner API.
 
+
 New EPSFBuildResult class
 -------------------------
 
@@ -57,6 +58,7 @@ unpacking will continue to work::
 
     >>> epsf, stars = builder(stars)
 
+
 Improved star exclusion handling
 --------------------------------
 
@@ -73,6 +75,7 @@ Improved PSF Matching Tools
 The PSF matching module has been significantly improved with better
 validation, regularization, and documentation.
 
+
 New regularization parameter
 -----------------------------
 
@@ -88,6 +91,7 @@ The default value of ``1e-4`` provides good regularization for most
 cases, but can be adjusted based on the noise characteristics of your
 PSFs.
 
+
 Improved validation
 -------------------
 
@@ -97,6 +101,7 @@ Both :func:`~photutils.psf_matching.make_kernel` and
 * PSFs must be 2D arrays with odd dimensions
 * Window functions must return valid 2D arrays with values between [0, 1]
 * Pixel scales must be positive
+
 
 New PSF Matching Function with Wiener Regularization
 ----------------------------------------------------
@@ -244,6 +249,7 @@ IDs::
     >>> from photutils.psf import SourceGroups
     >>> groups = SourceGroups(x, y, group_ids)
 
+
 Improved Handling of Non-Finite Local Background Values in PSF Photometry
 -------------------------------------------------------------------------
 
@@ -321,6 +327,7 @@ thresholds across the image. This is useful, for example, when the
 noise level varies across the field or when combining the threshold
 with a 2D background RMS map.
 
+
 Unscaled threshold option for DAOStarFinder
 -------------------------------------------
 
@@ -328,6 +335,7 @@ Unscaled threshold option for DAOStarFinder
 ``scale_threshold`` keyword (default `True`). When set to `False`, the
 input ``threshold`` is applied directly to the convolved data without
 the default DAOFIND kernel-based scaling factor.
+
 
 Performance improvements
 ------------------------
@@ -337,6 +345,7 @@ Source detection with :class:`~photutils.detection.DAOStarFinder`,
 :class:`~photutils.detection.StarFinder` is now significantly faster.
 Cutout extraction and image moment computation have been fully
 vectorized.
+
 
 Public StarFinderCatalogBase class
 ----------------------------------
@@ -374,8 +383,8 @@ The following source properties in
 significantly improved performance by inlining the underlying
 computations and eliminating per-source function-call overhead:
 
-* ``centroid_win`` (~3.5x speedup)
 * ``centroid_quad``
+* ``centroid_win`` (~3.5x speedup)
 * ``fluxfrac_radius`` (~6x speedup)
 * ``kron_flux``
 * ``kron_fluxerr``
@@ -445,22 +454,6 @@ docstring.
 API Changes
 ===========
 
-Removed Deprecations
---------------------
-
-The following previously deprecated features from the
-``background`` package have been removed:
-
-* The ``Background2D`` ``edge_method`` keyword argument.
-* The ``Background2D`` ``background_mesh_masked``,
-  ``background_rms_mesh_masked``, and ``mesh_nmasked`` properties.
-* The ``BkgZoomInterpolator`` ``grid_mode`` keyword argument.
-
-For the ``psf`` package, the previously deprecated
-``FittableImageModel`` and ``EPSFModel`` classes have been removed. Use
-:class:`~photutils.psf.ImagePSF` instead.
-
-
 New Deprecations
 ----------------
 
@@ -496,28 +489,30 @@ underscore-separated names (e.g., ``x_centroid``, ``y_centroid``,
 naming conventions and the rest of the photutils API. The following
 table column names are deprecated with the corresponding new names:
 
-- ``xcentroid`` -> ``x_centroid``
-- ``ycentroid`` -> ``y_centroid``
-- ``xcentroid_win`` -> ``x_centroid_win``
-- ``ycentroid_win`` -> ``y_centroid_win``
-- ``xcentroid_quad`` -> ``x_centroid_quad``
-- ``ycentroid_quad`` -> ``y_centroid_quad``
-- ``xcenter`` -> ``x_center``
-- ``ycenter`` -> ``y_center``
-- ``semimajor_sigma`` -> ``semimajor_axis``
-- ``semiminor_sigma`` -> ``semiminor_axis``
-- ``pa`` -> ``orientation``
-- ``segment_fluxerr`` -> ``segment_flux_err``
-- ``kron_fluxerr`` -> ``kron_flux_err``
-- ``grad_error`` -> ``gradient_err``
-- ``grad_rerror`` -> ``gradient_rel_err``
 - ``[name]_fluxerr`` -> ``[name]_flux_err``
 - ``covar_sigx2`` -> ``covariance_xx``
-- ``covar_sigy2`` -> ``covariance_yy``
 - ``covar_sigxy`` -> ``covariance_xy``
+- ``covar_sigy2`` -> ``covariance_yy``
 - ``cxx`` -> ``ellipse_cxx``
-- ``cyy`` -> ``ellipse_cyy``
 - ``cxy`` -> ``ellipse_cxy``
+- ``cyy`` -> ``ellipse_cyy``
+- ``grad_error`` -> ``gradient_err``
+- ``grad_rerror`` -> ``gradient_rel_err``
+- ``kron_fluxerr`` -> ``kron_flux_err``
+- ``npix`` -> ``n_pixels``
+- ``npixfit`` -> ``n_pixels_fit``
+- ``pa`` -> ``orientation``
+- ``segment_fluxerr`` -> ``segment_flux_err``
+- ``semimajor_sigma`` -> ``semimajor_axis``
+- ``semiminor_sigma`` -> ``semiminor_axis``
+- ``xcenter`` -> ``x_center``
+- ``xcentroid`` -> ``x_centroid``
+- ``xcentroid_quad`` -> ``x_centroid_quad``
+- ``xcentroid_win`` -> ``x_centroid_win``
+- ``ycenter`` -> ``y_center``
+- ``ycentroid`` -> ``y_centroid``
+- ``ycentroid_quad`` -> ``y_centroid_quad``
+- ``ycentroid_win`` -> ``y_centroid_win``
 
 To ease the transition, functions and classes that return output
 tables now return a ``DeprecatedColumnQTable`` instance, which
@@ -565,15 +560,43 @@ with 4.0 before the release.
 Aperture Package
 ^^^^^^^^^^^^^^^^
 
-The ``CircularMaskMixin``, ``EllipticalMaskMixin``, and
-``RectangularMaskMixin`` classes are now deprecated and will be removed
-in a future version. The mask-generation logic is now handled internally
-by `~photutils.aperture.PixelAperture`.
+The following `~photutils.aperture.ApertureStats` properties have
+been renamed for consistency with the rest of the photutils API:
 
-These mixin classes were implementation details used to share
-mask-generation code between aperture and annulus classes. No user
-action is required unless you were explicitly subclassing one of these
-mixin classes.
+* ``covar_sigx2`` -> ``covariance_xx``
+* ``covar_sigxy`` -> ``covariance_xy``
+* ``covar_sigy2`` -> ``covariance_yy``
+* ``cxx`` -> ``ellipse_cxx``
+* ``cxy`` -> ``ellipse_cxy``
+* ``cyy`` -> ``ellipse_cyy``
+* ``data_sumcutout`` -> ``data_sum_cutout``
+* ``error_sumcutout`` -> ``error_sum_cutout``
+* ``semimajor_sigma`` -> ``semimajor_axis``
+* ``semiminor_sigma`` -> ``semiminor_axis``
+* ``xcentroid`` -> ``x_centroid``
+* ``ycentroid`` -> ``y_centroid``
+
+The old property names are deprecated and will be removed in version
+4.0.
+
+The `~photutils.aperture.ApertureStats` ``get_id`` and ``get_ids``
+methods have been renamed to ``select_id`` and ``select_ids``,
+respectively (consistent with ``select_label`` and ``select_labels``
+in `~photutils.segmentation.SourceCatalog`). The old method names are
+deprecated and will be removed in version 4.0.
+
+The ``xcenter`` and ``ycenter`` column names in the table returned
+by `~photutils.aperture.aperture_photometry` have been renamed to
+``x_center`` and ``y_center``, respectively. The old names are
+deprecated and will be removed in version 4.0.
+
+The ``CircularMaskMixin``, ``EllipticalMaskMixin``, and
+``RectangularMaskMixin`` classes are now deprecated and will be
+removed in a future version. The mask-generation logic is now handled
+internally by `~photutils.aperture.PixelAperture`. These mixin classes
+were implementation details used to share mask-generation code between
+aperture and annulus classes. No user action is required unless you were
+explicitly subclassing one of these mixin classes.
 
 
 Background Package
@@ -592,6 +615,14 @@ is also significantly slower than the default interpolator based on
 ``scipy.ndimage.zoom``. The ``BkgZoomInterpolator`` functionality will
 be preserved in the default resizing behavior of ``Background2D``.
 
+The ``Background2D`` ``npixels_mesh`` and ``npixels_map`` properties
+have been renamed to ``n_pixels_mesh`` and ``n_pixels_map``,
+respectively. The old names are deprecated.
+
+The ``Background2D`` ``bkgrms_estimator`` keyword argument is now
+deprecated. Use ``bkg_rms_estimator`` instead.
+
+
 Centroids Package
 ^^^^^^^^^^^^^^^^^
 
@@ -600,12 +631,14 @@ for :func:`~photutils.centroids.centroid_quadratic` function are now
 deprecated. Use the :func:`~photutils.centroids.centroid_sources`
 function to centroid sources at specific positions.
 
+
 Datasets Package
 ^^^^^^^^^^^^^^^^
 
 The ``get_path``, ``load_spitzer_image``, ``load_spitzer_catalog``, and
 ``load_star_image`` functions are now deprecated and will be removed in
 a future version.
+
 
 Detection Package
 ^^^^^^^^^^^^^^^^^
@@ -638,6 +671,26 @@ Use ``n_peaks`` instead.
 The ``minsep_fwhm`` keyword argument for ``IRAFStarFinder`` is now
 deprecated. Use ``min_separation`` instead.
 
+
+Isophote Package
+^^^^^^^^^^^^^^^^
+
+The ``nclip`` keyword argument for
+:meth:`~photutils.isophote.Ellipse.fit_image`,
+:meth:`~photutils.isophote.Ellipse.fit_isophote`, and
+:class:`~photutils.isophote.EllipseSample` is now deprecated. Use
+``n_clip`` instead.
+
+The following :class:`~photutils.isophote.Isophote` and
+:class:`~photutils.isophote.IsophoteList` attributes have been renamed:
+
+* ``ndata`` -> ``n_data``
+* ``nflag`` -> ``n_flag``
+* ``niter`` -> ``n_iter``
+
+The old attribute names are deprecated.
+
+
 PSF Package
 ^^^^^^^^^^^
 
@@ -650,6 +703,22 @@ To customize the ePSF fitting process, use the ``fitter``,
 ``fit_shape``, and ``fitter_maxiters`` parameters of
 :class:`~photutils.psf.EPSFBuilder` directly instead of creating an
 ``EPSFFitter`` instance.
+
+The ``npixfit_partial`` flag name and ``NPIXFIT_PARTIAL`` constant on
+:class:`~photutils.psf.PSFPhotometry` flags are now deprecated. Use
+``n_pixels_fit_partial`` and ``N_PIXELS_FIT_PARTIAL`` instead.
+
+The ``localbkg_estimator`` keyword argument
+for :class:`~photutils.psf.PSFPhotometry` and
+:class:`~photutils.psf.IterativePSFPhotometry` is now deprecated. Use
+``local_bkg_estimator`` instead.
+
+The ``include_localbkg`` keyword argument for the
+``make_model_image`` and ``make_residual_image``
+methods of :class:`~photutils.psf.PSFPhotometry` and
+:class:`~photutils.psf.IterativePSFPhotometry` is now deprecated. Use
+``include_local_bkg`` instead.
+
 
 PSF Matching Package
 ^^^^^^^^^^^^^^^^^^^^
@@ -684,8 +753,107 @@ a future version. Update your code to use the new name::
     from photutils.psf_matching import make_kernel
 
 
+Segmentation Package
+^^^^^^^^^^^^^^^^^^^^
+
+The following ``SegmentationImage`` and ``SourceCatalog`` properties and
+methods have been renamed for consistency with the rest of the photutils
+API:
+
+* ``add_extra_property`` -> ``add_property``
+* ``background`` -> ``background_cutout``
+* ``background_ma`` -> ``background_cutout_masked``
+* ``convdata`` -> ``conv_data_cutout``
+* ``convdata_ma`` -> ``conv_data_cutout_masked``
+* ``cutout_maxval_index`` -> ``cutout_max_value_index``
+* ``cutout_minval_index`` -> ``cutout_min_value_index``
+* ``data`` -> ``data_cutout``
+* ``data_ma`` -> ``data_cutout_masked``
+* ``deblended_labels_inverse_map`` -> ``parent_to_deblended_labels``
+* ``deblended_labels_map`` -> ``deblended_label_to_parent``
+* ``error`` -> ``error_cutout``
+* ``error_ma`` -> ``error_cutout_masked``
+* ``extra_properties`` -> ``custom_properties``
+* ``fluxfrac_radius`` -> ``flux_radius``
+* ``get_label`` -> ``select_label``
+* ``get_labels`` -> ``select_labels``
+* ``maxval_index`` -> ``max_value_index``
+* ``maxval_xindex`` -> ``max_value_xindex``
+* ``maxval_yindex`` -> ``max_value_yindex``
+* ``minval_index`` -> ``min_value_index``
+* ``minval_xindex`` -> ``min_value_xindex``
+* ``minval_yindex`` -> ``min_value_yindex``
+* ``nlabels`` -> ``n_labels``
+* ``remove_extra_properties`` -> ``remove_properties``
+* ``remove_extra_property`` -> ``remove_property``
+* ``rename_extra_property`` -> ``rename_property``
+* ``segment`` -> ``segment_cutout``
+* ``segment_ma`` -> ``segment_cutout_masked``
+
+The old property and method names are deprecated and will be removed in
+version 4.0.
+
+The following arguments used in various segmentation functions and
+classes have been renamed for consistency:
+
+* ``apermask_method`` -> ``aperture_mask_method``
+* ``detection_cat`` -> ``detection_catalog``
+* ``localbkg_width`` -> ``local_bkg_width``
+* ``nlevels`` -> ``n_levels``
+* ``npixels`` -> ``n_pixels``
+* ``nproc`` -> ``n_processes``
+* ``nsigma`` -> ``n_sigma``
+* ``segment_img`` -> ``segmentation_image``
+
+The old argument names are deprecated and will be removed in version
+4.0.
+
+
+Utils Package
+^^^^^^^^^^^^^
+
+The ``nsigma``, ``napers``, and ``niters`` keyword arguments for
+:class:`~photutils.utils.ImageDepth` are now deprecated. Use
+``n_sigma``, ``n_apertures``, and ``n_iters`` instead.
+
+The ``napers_used`` attribute on :class:`~photutils.utils.ImageDepth` is
+now deprecated. Use ``n_apertures_used`` instead.
+
+The ``ncolors`` parameter for :func:`~photutils.utils.make_random_cmap`
+has been renamed to ``n_colors``. The old name is deprecated.
+
+The ``reg`` parameter for
+:class:`~photutils.utils.ShepardIDWInterpolator` ``__call__`` has been
+renamed to ``regularization``. The old name is deprecated.
+
+
+Removed Deprecations
+--------------------
+
+The following previously deprecated features from the
+``background`` package have been removed:
+
+* The ``Background2D`` ``edge_method`` keyword argument.
+* The ``Background2D`` ``background_mesh_masked``,
+  ``background_rms_mesh_masked``, and ``mesh_nmasked`` properties.
+* The ``BkgZoomInterpolator`` ``grid_mode`` keyword argument.
+
+For the ``psf`` package, the previously deprecated
+``FittableImageModel`` and ``EPSFModel`` classes have been removed. Use
+:class:`~photutils.psf.ImagePSF` instead.
+
+
 Breaking Changes
 ----------------
+
+Star Finder ``orientation`` Column Units
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``orientation`` (was ``pa``) column in the output tables
+from :class:`~photutils.detection.IRAFStarFinder` and
+:class:`~photutils.detection.StarFinder` is now a ``Quantity`` array in
+in the range of [0, 360) degrees.
+
 
 Consistent Default ``min_separation`` for Star Finders
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

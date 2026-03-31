@@ -20,20 +20,20 @@ local-background subtracted aperture photometry with the "exact",
 
 The :class:`~photutils.aperture.ApertureStats` class
 can calculate many properties, including statistics
-like :attr:`~photutils.aperture.ApertureStats.min`,
-:attr:`~photutils.aperture.ApertureStats.max`,
-:attr:`~photutils.aperture.ApertureStats.mean`,
-:attr:`~photutils.aperture.ApertureStats.median`,
-:attr:`~photutils.aperture.ApertureStats.std`,
-:attr:`~photutils.aperture.ApertureStats.sum_aper_area`,
-and :attr:`~photutils.aperture.ApertureStats.sum`. It
+like ``photutils.aperture.ApertureStats.min``,
+``photutils.aperture.ApertureStats.max``,
+``photutils.aperture.ApertureStats.mean``,
+``photutils.aperture.ApertureStats.median``,
+``photutils.aperture.ApertureStats.std``,
+``photutils.aperture.ApertureStats.sum_aper_area``,
+and ``photutils.aperture.ApertureStats.sum``. It
 also can be used to calculate morphological properties
-like :attr:`~photutils.aperture.ApertureStats.centroid`,
-:attr:`~photutils.aperture.ApertureStats.fwhm`,
-:attr:`~photutils.aperture.ApertureStats.semimajor_sigma`,
-:attr:`~photutils.aperture.ApertureStats.semiminor_sigma`,
-:attr:`~photutils.aperture.ApertureStats.orientation`, and
-:attr:`~photutils.aperture.ApertureStats.eccentricity`.
+like ``photutils.aperture.ApertureStats.centroid``,
+``photutils.aperture.ApertureStats.fwhm``,
+``photutils.aperture.ApertureStats.semimajor_sigma``,
+``photutils.aperture.ApertureStats.semiminor_sigma``,
+``photutils.aperture.ApertureStats.orientation``, and
+``photutils.aperture.ApertureStats.eccentricity``.
 
 The properties can be accessed using `~photutils.aperture.ApertureStats`
 attributes or output to an Astropy `~astropy.table.QTable` using the
