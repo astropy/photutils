@@ -103,7 +103,7 @@ which facilitates the optimization process. For more details see
 :ref:`source-grouping`.
 
 The local background around each source can optionally be subtracted
-using the ``localbkg_estimator`` keyword. This keyword accepts a
+using the ``local_bkg_estimator`` keyword. This keyword accepts a
 `~photutils.background.LocalBackground` instance that estimates the
 local statistics in a circular annulus aperture centered on each source.
 The size of the annulus and the statistic function can be configured in
@@ -712,18 +712,18 @@ Local Background Subtraction
 
 To subtract a local background from each source, define a
 `~photutils.background.LocalBackground` instance and input it via
-the ``localbkg_estimator`` keyword. Here we'll use an annulus with
+the ``local_bkg_estimator`` keyword. Here we'll use an annulus with
 an inner and outer radius of 5 and 10 pixels, respectively, with the
 `~photutils.background.MMMBackground` statistic (with its default sigma
 clipping)::
 
     >>> from photutils.background import LocalBackground, MMMBackground
     >>> bkgstat = MMMBackground()
-    >>> localbkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
+    >>> local_bkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
     >>> finder = DAOStarFinder(10.0, 2.0)
     >>> psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
     ...                         grouper=grouper, aperture_radius=4,
-    ...                         localbkg_estimator=localbkg_estimator)
+    ...                         local_bkg_estimator=local_bkg_estimator)
     >>> phot = psfphot(data, error=error)
 
 The local background values are output in the table::
@@ -765,12 +765,12 @@ find additional sources::
     >>> fit_shape = (5, 5)
     >>> finder = DAOStarFinder(10.0, 2.0)
     >>> bkgstat = MMMBackground()
-    >>> localbkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
+    >>> local_bkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
     >>> init_params = QTable()
     >>> init_params['x'] = [54, 29, 80]
     >>> init_params['y'] = [8, 26, 29]
     >>> psfphot2 = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
-    ...                                   localbkg_estimator=localbkg_estimator,
+    ...                                   local_bkg_estimator=local_bkg_estimator,
     ...                                   aperture_radius=4)
     >>> phot = psfphot2(data, error=error, init_params=init_params)
 

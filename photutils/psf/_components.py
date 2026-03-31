@@ -298,18 +298,18 @@ class PSFDataProcessor:
         Radius in pixels of circular apertures for initial flux
         estimation when flux values are not provided in ``init_params``.
 
-    localbkg_estimator : object, optional
+    local_bkg_estimator : object, optional
         Local background estimator for determining background levels
         around sources. Must have a ``__call__`` method.
     """
 
     def __init__(self, param_mapper, fit_shape, *, finder=None,
-                 aperture_radius=None, localbkg_estimator=None):
+                 aperture_radius=None, local_bkg_estimator=None):
         self.param_mapper = param_mapper
         self.fit_shape = fit_shape
         self.finder = finder
         self.aperture_radius = aperture_radius
-        self.localbkg_estimator = localbkg_estimator
+        self.local_bkg_estimator = local_bkg_estimator
         self.data_unit = None
         self.finder_results = None
 
@@ -608,12 +608,12 @@ class PSFDataProcessor:
         flux_col = self.param_mapper.init_colnames['flux']
 
         if 'local_bkg' not in init_params.colnames:
-            if self.localbkg_estimator is None:
+            if self.local_bkg_estimator is None:
                 local_bkg = np.zeros(len(init_params))
             else:
-                local_bkg = self.localbkg_estimator(data, init_params[x_col],
-                                                    init_params[y_col],
-                                                    mask=mask)
+                local_bkg = self.local_bkg_estimator(
+                    data, init_params[x_col],
+                    init_params[y_col], mask=mask)
             if self.data_unit is not None:
                 local_bkg <<= self.data_unit
             init_params['local_bkg'] = local_bkg
@@ -1617,7 +1617,7 @@ def _make_model_image_docstring(func):
             used. This keyword must be specified if the model does not
             have a ``bounding_box`` attribute.
 
-        include_localbkg : bool, optional
+        include_local_bkg : bool, optional
             Whether to include the local background in the rendered
             output image. Note that the local background level is
             included around each source over the region defined by
@@ -1656,7 +1656,7 @@ def _make_residual_image_docstring(func):
             This keyword must be specified if the model does not have a
             ``bounding_box`` attribute.
 
-        include_localbkg : bool, optional
+        include_local_bkg : bool, optional
             Whether to include the local background in the subtracted
             model. Note that the local background level is subtracted
             around each source over the region defined by ``psf_shape``.
@@ -1702,13 +1702,13 @@ class _ModelImageMaker:
 
     @_make_model_image_docstring
     def make_model_image(self, shape, *, psf_shape=None,
-                         include_localbkg=False):
+                         include_local_bkg=False):
         psf_model = self.psf_model
         model_params = self.model_params
         local_bkgs = self.local_bkg
         progress_bar = self.progress_bar
 
-        if include_localbkg:
+        if include_local_bkg:
             # add local_bkg, but set non-finite values to 0 to avoid
             # corrupting the model image
             model_params = model_params.copy()
@@ -1733,7 +1733,7 @@ class _ModelImageMaker:
 
     @_make_residual_image_docstring
     def make_residual_image(self, data, *, psf_shape=None,
-                            include_localbkg=False):
+                            include_local_bkg=False):
         if isinstance(data, NDData):
             residual = deepcopy(data)
             data_arr = data.data
@@ -1741,10 +1741,10 @@ class _ModelImageMaker:
                 data_arr <<= data.unit
             residual.data[:] = self.make_residual_image(
                 data_arr, psf_shape=psf_shape,
-                include_localbkg=include_localbkg)
+                include_local_bkg=include_local_bkg)
         else:
             residual = self.make_model_image(data.shape, psf_shape=psf_shape,
-                                             include_localbkg=include_localbkg)
+                                             include_local_bkg=include_local_bkg)
             np.subtract(data, residual, out=residual)
 
         return residual
