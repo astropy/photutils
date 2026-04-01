@@ -278,7 +278,7 @@ class DAOStarFinder(StarFinderBase):
                                         theta=self.theta,
                                         sigma_radius=self.sigma_radius)
         if self.scale_threshold:
-            self.threshold_eff = self.threshold * self.kernel.relerr
+            self.threshold_eff = self.threshold * self.kernel.rel_err
         else:
             self.threshold_eff = self.threshold
 
@@ -376,13 +376,13 @@ class DAOStarFinder(StarFinderBase):
             found. The table contains the following parameters:
 
             * ``id``: unique object identification number.
-            * ``xcentroid, ycentroid``: object centroid.
+            * ``x_centroid, y_centroid``: object centroid.
             * ``sharpness``: object sharpness.
             * ``roundness1``: object roundness based on symmetry.
             * ``roundness2``: object roundness based on marginal Gaussian
               fits.
-            * ``npix``: the total number of pixels in the Gaussian kernel
-              array.
+            * ``n_pixels``: the total number of pixels in the Gaussian
+              kernel array.
             * ``peak``: the peak pixel value of the object.
             * ``flux``: the object instrumental flux calculated as the
               sum of data values within the kernel footprint.
@@ -488,13 +488,13 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         self.roundness_range = roundness_range
 
         if scale_threshold:
-            self.threshold_eff = threshold * kernel.relerr
+            self.threshold_eff = threshold * kernel.rel_err
         else:
             self.threshold_eff = threshold
         self.cutout_center = tuple((size - 1) // 2 for size in kernel.shape)
-        self.default_columns = ('id', 'xcentroid', 'ycentroid', 'sharpness',
-                                'roundness1', 'roundness2', 'npix', 'peak',
-                                'flux', 'mag', 'daofind_mag')
+        self.default_columns = ('id', 'x_centroid', 'y_centroid', 'sharpness',
+                                'roundness1', 'roundness2', 'n_pixels',
+                                'peak', 'flux', 'mag', 'daofind_mag')
 
     def _get_init_attributes(self):
         """
@@ -587,7 +587,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         # Mean value of the unconvolved data (excluding the peak)
         cutout_data_masked = self.cutout_data * self.kernel.mask
         data_mean = ((np.sum(cutout_data_masked, axis=(1, 2)) - self.peak)
-                     / (self.kernel.npixels - 1))
+                     / (self.kernel.n_pixels - 1))
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -636,14 +636,14 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
             wts = xwt  # 2D
             size = self.cutout_shape[0]
             center = ycen
-            sigma = self.kernel.ysigma
+            sigma = self.kernel.y_sigma
             dxx = np.arange(size) - center
         elif axis == 1:  # marginal distributions along x axis (columns)
             wt = xwt[0]  # 1D
             wts = ywt  # 2D
             size = self.cutout_shape[1]
             center = xcen
-            sigma = self.kernel.xsigma
+            sigma = self.kernel.x_sigma
             dxx = center - np.arange(size)
 
         return wt, wts, size, center, sigma, dxx
@@ -944,7 +944,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         return np.transpose(self.dy_hy)[1]
 
     @lazyproperty
-    def xcentroid(self):
+    def x_centroid(self):
         """
         The fitted x centroid of the source, calculated as the sum of
         the x position of the maximum pixel and the fitted fractional
@@ -953,7 +953,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         return np.transpose(self.xypos)[0] + self.dx
 
     @lazyproperty
-    def ycentroid(self):
+    def y_centroid(self):
         """
         The fitted y centroid of the source, calculated as the sum of
         the y position of the maximum pixel and the fitted fractional
@@ -1010,7 +1010,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
                                    / self._threshold_eff_per_source)
 
     @lazyproperty
-    def npix(self):
+    def n_pixels(self):
         """
         The total number of pixels in the Gaussian kernel array.
         """
@@ -1020,7 +1020,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         Filter the catalog.
         """
-        attrs = ('xcentroid', 'ycentroid', 'hx', 'hy', 'sharpness',
+        attrs = ('x_centroid', 'y_centroid', 'hx', 'hy', 'sharpness',
                  'roundness1', 'roundness2', 'peak', 'flux')
         skip = ()
         if np.all(self._threshold_eff_per_source == 0):

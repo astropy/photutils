@@ -135,8 +135,8 @@ method with a circular dilation footprint to create the source mask::
     >>> from photutils.segmentation import detect_threshold, detect_sources
     >>> from photutils.utils import circular_footprint
     >>> sigma_clip = SigmaClip(sigma=3.0, maxiters=10)
-    >>> threshold = detect_threshold(data, nsigma=2.0, sigma_clip=sigma_clip)
-    >>> segment_img = detect_sources(data, threshold, npixels=10)
+    >>> threshold = detect_threshold(data, n_sigma=2.0, sigma_clip=sigma_clip)
+    >>> segment_img = detect_sources(data, threshold, n_pixels=10)
     >>> footprint = circular_footprint(radius=10)
     >>> mask = segment_img.make_source_mask(footprint=footprint)
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0, mask=mask)
@@ -190,18 +190,17 @@ median) - (1.5 * mean)``. However, if ``(mean - median) / std > 0.3``
 then the ``median`` is used instead.
 
 Likewise, the background RMS level in each mesh is calculated using the
-function or callable object input via the ``bkgrms_estimator`` keyword.
+function or callable object input via the ``bkg_rms_estimator`` keyword.
 Photutils provides the following classes for this purpose:
 
 * `~photutils.background.StdBackgroundRMS`
 * `~photutils.background.MADStdBackgroundRMS`
 * `~photutils.background.BiweightScaleBackgroundRMS`
 
-For even more flexibility, users may input a custom function or
-callable object to the ``bkg_estimator`` and/or ``bkgrms_estimator``
-keywords.
+For even more flexibility, users may input a custom function or callable
+object to the ``bkg_estimator`` and/or ``bkg_rms_estimator`` keywords.
 
-By default, the ``bkg_estimator`` and ``bkgrms_estimator`` are
+By default, the ``bkg_estimator`` and ``bkg_rms_estimator`` are
 applied to sigma clipped data. Sigma clipping is defined by inputting
 a :class:`astropy.stats.SigmaClip` object to the ``sigma_clip``
 keyword. The default is to perform sigma clipping with ``sigma=3``

@@ -107,13 +107,13 @@ def test_iterative_psf_photometry_compound(mode):
     # test model and residual images
     psf_shape = (9, 9)
     model1 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
-                                      include_localbkg=False)
+                                      include_local_bkg=False)
     resid1 = psfphot.make_residual_image(data, psf_shape=psf_shape,
-                                         include_localbkg=False)
+                                         include_local_bkg=False)
     model2 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
-                                      include_localbkg=True)
+                                      include_local_bkg=True)
     resid2 = psfphot.make_residual_image(data, psf_shape=psf_shape,
-                                         include_localbkg=True)
+                                         include_local_bkg=True)
     assert model1.shape == data.shape
     assert model2.shape == data.shape
     assert resid1.shape == data.shape
@@ -140,7 +140,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
     bkgstat = MMMBackground()
-    localbkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
+    local_bkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
     finder = DAOStarFinder(10.0, 2.0)
 
     init_params = QTable()
@@ -148,7 +148,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
     init_params['y'] = [8, 26, 29]
     psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                      mode='new',
-                                     localbkg_estimator=localbkg_estimator,
+                                     local_bkg_estimator=local_bkg_estimator,
                                      aperture_radius=4)
     phot = psfphot(data, error=error, init_params=init_params)
     cols = ['id', 'group_id', 'group_size', 'iter_detected', 'local_bkg']
@@ -187,7 +187,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
     finder_units = DAOStarFinder(10.0 * unit, 2.0)
     psfphot = IterativePSFPhotometry(psf_model, fit_shape,
                                      finder=finder_units, mode='new',
-                                     localbkg_estimator=localbkg_estimator,
+                                     local_bkg_estimator=local_bkg_estimator,
                                      aperture_radius=4)
 
     phot2 = psfphot(data << unit, error=error << unit, init_params=init_params)
@@ -213,7 +213,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
     finder = DAOStarFinder(1000.0, 2.0)
     psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                      mode='new',
-                                     localbkg_estimator=localbkg_estimator,
+                                     local_bkg_estimator=local_bkg_estimator,
                                      aperture_radius=4)
     match = 'No sources were found'
     with pytest.warns(NoDetectionsWarning, match=match):
@@ -488,7 +488,7 @@ def test_iterative_model_residual_image_nonfinite_localbkg(test_data):
     Test that make_model_image and make_residual_image handle non-finite
     local background values correctly for IterativePSFPhotometry.
 
-    When include_localbkg=True and the local_bkg is non-finite (NaN or
+    When include_local_bkg=True and the local_bkg is non-finite (NaN or
     inf), the non-finite value should be treated as 0 and not included
     in the model or residual images.
     """
@@ -511,12 +511,12 @@ def test_iterative_model_residual_image_nonfinite_localbkg(test_data):
                                      aperture_radius=4, maxiters=2)
     phot = psfphot(data, error=error, init_params=sources)
 
-    # Test make_model_image with include_localbkg=True
+    # Test make_model_image with include_local_bkg=True
     psf_shape = (15, 15)
     model_with_bkg = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
-                                              include_localbkg=True)
+                                              include_local_bkg=True)
     model_without_bkg = psfphot.make_model_image(
-        data.shape, psf_shape=psf_shape, include_localbkg=False)
+        data.shape, psf_shape=psf_shape, include_local_bkg=False)
 
     # The model images should be finite everywhere
     assert np.all(np.isfinite(model_with_bkg))
@@ -553,8 +553,8 @@ def test_iterative_residual_image_localbkg_invalid_sources(test_data):
     sources['local_bkg'][1] = np.inf
     sources['local_bkg'][2] = -np.inf
     # Add an invalid source outside the image
-    sources['xcentroid'][-3] = 1000
-    sources['ycentroid'][-3] = 1000
+    sources['x_centroid'][-3] = 1000
+    sources['y_centroid'][-3] = 1000
 
     # Perform iterative PSF photometry with init_params containing
     # non-finite local_bkg
@@ -562,7 +562,7 @@ def test_iterative_residual_image_localbkg_invalid_sources(test_data):
                                      aperture_radius=4, maxiters=2)
     psfphot(data, error=error, init_params=sources)
 
-    residual_img = psfphot.make_residual_image(data, include_localbkg=True)
+    residual_img = psfphot.make_residual_image(data, include_local_bkg=True)
 
     assert residual_img.shape == data.shape
     assert np.all(np.isfinite(residual_img))

@@ -92,22 +92,22 @@ brighter stars and their initial positions::
     >>> finder = DAOStarFinder(threshold=100.0, fwhm=1.5)  # doctest: +REMOTE_DATA
     >>> sources = finder(data)  # doctest: +REMOTE_DATA
     >>> for col in sources.colnames:  # doctest: +REMOTE_DATA
-    ...     if col not in ('id', 'npix'):
+    ...     if col not in ('id', 'n_pixels'):
     ...         sources[col].info.format = '%.2f'  # for consistent table output
     >>> sources.pprint(max_width=76)  # doctest: +REMOTE_DATA
-     id xcentroid ycentroid sharpness ...   peak    flux    mag   daofind_mag
-    --- --------- --------- --------- ... ------- -------- ------ -----------
-      1    848.53      2.15      0.87 ... 1062.18  4258.95  -9.07       -2.41
-      2    181.85      3.74      0.91 ... 1722.27  5828.71  -9.41       -2.93
-      3    323.87      3.69      0.91 ... 3016.37 10252.06 -10.03       -3.55
-      4     99.89      8.95      0.96 ... 1144.52  3496.04  -8.86       -2.47
-      5    824.12      9.36      0.90 ... 1311.20  4685.32  -9.18       -2.64
-    ...       ...       ...       ... ...     ...      ...    ...         ...
-    478    888.44    991.86      0.85 ...  194.27  1005.88  -7.51       -0.52
-    479    114.16    993.40      0.84 ... 1588.31  6810.15  -9.58       -2.84
-    480    298.36    993.87      0.84 ...  655.37  2979.57  -8.69       -1.88
-    481    207.21    998.17      0.91 ... 2811.02  8614.10  -9.84       -3.48
-    482    691.02    998.77      0.98 ... 2611.22  5768.68  -9.40       -3.39
+     id x_centroid y_centroid sharpness ...   peak    flux    mag   daofind_mag
+    --- ---------- ---------- --------- ... ------- -------- ------ -----------
+      1     848.53       2.15      0.87 ... 1062.18  4258.95  -9.07       -2.41
+      2     181.85       3.74      0.91 ... 1722.27  5828.71  -9.41       -2.93
+      3     323.87       3.69      0.91 ... 3016.37 10252.06 -10.03       -3.55
+      4      99.89       8.95      0.96 ... 1144.52  3496.04  -8.86       -2.47
+      5     824.12       9.36      0.90 ... 1311.20  4685.32  -9.18       -2.64
+    ...        ...        ...       ... ...     ...      ...    ...         ...
+    478     888.44     991.86      0.85 ...  194.27  1005.88  -7.51       -0.52
+    479     114.16     993.40      0.84 ... 1588.31  6810.15  -9.58       -2.84
+    480     298.36     993.87      0.84 ...  655.37  2979.57  -8.69       -1.88
+    481     207.21     998.17      0.91 ... 2811.02  8614.10  -9.84       -3.48
+    482     691.02     998.77      0.98 ... 2611.22  5768.68  -9.40       -3.39
     Length = 482 rows
 
 Let's show the detected stars overlaid on the image:
@@ -131,7 +131,7 @@ Let's show the detected stars overlaid on the image:
     fig, ax = plt.subplots(figsize=(8, 8))
     norm = simple_norm(data, 'sqrt', percent=99.0)
     ax.imshow(data, norm=norm, origin='lower', cmap='viridis')
-    ax.scatter(sources['xcentroid'], sources['ycentroid'],
+    ax.scatter(sources['x_centroid'], sources['y_centroid'],
                s=80, edgecolor='red', facecolor='none', lw=1.5)
 
 Note that the stars are sufficiently separated in the simulated image
@@ -154,8 +154,8 @@ explicitly exclude stars that are too close to the image boundaries
 
     >>> size = 25
     >>> hsize = (size - 1) / 2
-    >>> x = sources['xcentroid']  # doctest: +REMOTE_DATA
-    >>> y = sources['ycentroid']  # doctest: +REMOTE_DATA
+    >>> x = sources['x_centroid']  # doctest: +REMOTE_DATA
+    >>> y = sources['y_centroid']  # doctest: +REMOTE_DATA
     >>> mask = ((x > hsize) & (x < (data.shape[1] - 1 - hsize)) &
     ...         (y > hsize) & (y < (data.shape[0] - 1 - hsize)))  # doctest: +REMOTE_DATA
 
@@ -241,8 +241,8 @@ show the first 25 of them:
 
     size = 25
     hsize = (size - 1) / 2
-    x = sources['xcentroid']
-    y = sources['ycentroid']
+    x = sources['x_centroid']
+    y = sources['y_centroid']
     mask = ((x > hsize) & (x < (data.shape[1] - 1 - hsize))
             & (y > hsize) & (y < (data.shape[0] - 1 - hsize)))
     stars_tbl = Table()
@@ -347,8 +347,8 @@ Finally, let's show the constructed ePSF:
 
     size = 25
     hsize = (size - 1) / 2
-    x = sources['xcentroid']
-    y = sources['ycentroid']
+    x = sources['x_centroid']
+    y = sources['y_centroid']
     mask = ((x > hsize) & (x < (data.shape[1] - 1 - hsize))
             & (y > hsize) & (y < (data.shape[0] - 1 - hsize)))
     stars_tbl = Table()

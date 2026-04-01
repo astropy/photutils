@@ -16,7 +16,8 @@ from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import BILINEAR
 from photutils.isophote.isophote import Isophote, IsophoteList
 from photutils.isophote.sample import CentralEllipseSample, EllipseSample
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 
 __all__ = ['Ellipse']
 
@@ -206,10 +207,11 @@ class Ellipse:
         self._geometry.centerer_threshold = threshold
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_renamed_argument('nclip', 'n_clip', '3.0', until='4.0')
     def fit_image(self, sma0=None, minsma=0.0, maxsma=None, step=0.1,
                   conver=DEFAULT_CONVERGENCE, minit=DEFAULT_MINIT,
                   maxit=DEFAULT_MAXIT, fflag=DEFAULT_FFLAG,
-                  maxgerr=DEFAULT_MAXGERR, sclip=3.0, nclip=0,
+                  maxgerr=DEFAULT_MAXGERR, sclip=3.0, n_clip=0,
                   integrmode=BILINEAR, linear=None, maxrit=None,
                   fix_center=False, fix_pa=False, fix_eps=False):
         # This parameter list is quite large and should in principle be
@@ -330,9 +332,13 @@ class Ellipse:
         sclip : float, optional
             The sigma-clip sigma value. The default is 3.0.
 
-        nclip : int, optional
+        n_clip : int, optional
             The number of sigma-clip iterations. The default is 0, which
             means sigma-clipping is skipped.
+
+            .. deprecated:: 3.0
+                The ``nclip`` keyword is deprecated. Use ``n_clip``
+                instead.
 
         integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
                 optional
@@ -421,7 +427,7 @@ class Ellipse:
             isophote = self.fit_isophote(sma, step=step, conver=conver,
                                          minit=minit_a, maxit=maxit,
                                          fflag=fflag, maxgerr=maxgerr,
-                                         sclip=sclip, nclip=nclip,
+                                         sclip=sclip, n_clip=n_clip,
                                          integrmode=integrmode,
                                          linear=linear, maxrit=maxrit,
                                          noniterate=noiter,
@@ -482,7 +488,7 @@ class Ellipse:
             isophote = self.fit_isophote(sma, step=step, conver=conver,
                                          minit=minit, maxit=maxit,
                                          fflag=fflag, maxgerr=maxgerr,
-                                         sclip=sclip, nclip=nclip,
+                                         sclip=sclip, n_clip=n_clip,
                                          integrmode=integrmode,
                                          linear=linear, maxrit=maxrit,
                                          going_inwards=True,
@@ -519,10 +525,11 @@ class Ellipse:
         return IsophoteList(isophote_list)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
+    @deprecated_renamed_argument('nclip', 'n_clip', '3.0', until='4.0')
     def fit_isophote(self, sma, step=0.1, conver=DEFAULT_CONVERGENCE,
                      minit=DEFAULT_MINIT, maxit=DEFAULT_MAXIT,
                      fflag=DEFAULT_FFLAG, maxgerr=DEFAULT_MAXGERR,
-                     sclip=3.0, nclip=0, integrmode=BILINEAR,
+                     sclip=3.0, n_clip=0, integrmode=BILINEAR,
                      linear=False, maxrit=None, noniterate=False,
                      going_inwards=False, isophote_list=None):
         """
@@ -583,9 +590,13 @@ class Ellipse:
         sclip : float, optional
             The sigma-clip sigma value. The default is 3.0.
 
-        nclip : int, optional
+        n_clip : int, optional
             The number of sigma-clip iterations. The default is 0, which
             means sigma-clipping is skipped.
+
+            .. deprecated:: 3.0
+                The ``nclip`` keyword is deprecated. Use ``n_clip``
+                instead.
 
         integrmode : {'bilinear', 'nearest_neighbor', 'mean', 'median'}, \
                 optional
@@ -652,10 +663,10 @@ class Ellipse:
         # do the fit
         if noniterate or (maxrit and sma > maxrit):
             isophote = self._non_iterative(sma, step, linear, geometry,
-                                           sclip, nclip, integrmode)
+                                           sclip, n_clip, integrmode)
         else:
             isophote = self._iterative(sma, step, linear, geometry, sclip,
-                                       nclip, integrmode, conver, minit,
+                                       n_clip, integrmode, conver, minit,
                                        maxit, fflag, maxgerr,
                                        going_inwards=going_inwards)
 
@@ -665,13 +676,13 @@ class Ellipse:
 
         return isophote
 
-    def _iterative(self, sma, step, linear, geometry, sclip, nclip,
+    def _iterative(self, sma, step, linear, geometry, sclip, n_clip,
                    integrmode, conver, minit, maxit, fflag, maxgerr, *,
                    going_inwards=False):
         if sma > 0.0:
             # iterative fitter
             sample = EllipseSample(self.image, sma, astep=step, sclip=sclip,
-                                   nclip=nclip, linear_growth=linear,
+                                   n_clip=n_clip, linear_growth=linear,
                                    geometry=geometry, integrmode=integrmode)
             fitter = EllipseFitter(sample)
         else:
@@ -683,10 +694,10 @@ class Ellipse:
                           fflag=fflag, maxgerr=maxgerr,
                           going_inwards=going_inwards)
 
-    def _non_iterative(self, sma, step, linear, geometry, sclip, nclip,
+    def _non_iterative(self, sma, step, linear, geometry, sclip, n_clip,
                        integrmode):
         sample = EllipseSample(self.image, sma, astep=step, sclip=sclip,
-                               nclip=nclip, linear_growth=linear,
+                               n_clip=n_clip, linear_growth=linear,
                                geometry=geometry, integrmode=integrmode)
         sample.update(fixed_parameters=geometry.fix)
 
@@ -715,7 +726,7 @@ class Ellipse:
 
             # build new instance so it can have its attributes
             # populated from the updated sample attributes.
-            new_isophote = Isophote(isophote.sample, isophote.niter,
+            new_isophote = Isophote(isophote.sample, isophote.n_iter,
                                     isophote.valid, code)
 
             # add new isophote to list

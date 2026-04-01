@@ -70,13 +70,13 @@ New methods and attributes
 The new `~photutils.segmentation.SourceCatalog` class has the following
 new methods:
 
-* :meth:`~photutils.segmentation.SourceCatalog.circular_photometry`
-* :meth:`~photutils.segmentation.SourceCatalog.fluxfrac_radius`
-* :meth:`~photutils.segmentation.SourceCatalog.get_label`
-* :meth:`~photutils.segmentation.SourceCatalog.get_labels`
+* ``circular_photometry``
+* ``fluxfrac_radius``
+* ``get_label``
+* ``get_labels``
 
 and new attributes:
 
-* :attr:`~photutils.segmentation.SourceCatalog.fwhm`
-* :attr:`~photutils.segmentation.SourceCatalog.segment`
-* :attr:`~photutils.segmentation.SourceCatalog.segment_ma`
+* ``fwhm`` (full width at half maximum)
+* ``segment``
+* ``segment_ma``

@@ -81,14 +81,14 @@ class TestPSFDataProcessor:
             fit_shape=fit_shape,
             finder=None,
             aperture_radius=3.0,
-            localbkg_estimator=None,
+            local_bkg_estimator=None,
         )
 
         assert processor.param_mapper is param_mapper
         assert processor.fit_shape == fit_shape
         assert processor.finder is None
         assert processor.aperture_radius == 3.0
-        assert processor.localbkg_estimator is None
+        assert processor.local_bkg_estimator is None
         assert processor.data_unit is None
         assert processor.finder_results is None
         assert processor._cached_offsets is None

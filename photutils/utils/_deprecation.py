@@ -25,7 +25,7 @@ from astropy.utils.decorators import (
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 
-def deprecated(since, *, until=None):
+def deprecated(since, *, alternative=None, until=None):
     """
     Decorator to mark a function or method as deprecated.
 
@@ -39,6 +39,11 @@ def deprecated(since, *, until=None):
     ----------
     since : str or int
         The version in which the function or method was deprecated.
+
+    alternative : str or None, optional
+        An optional string describing an alternative function or method
+        to use instead of the deprecated one. If `None`, no alternative
+        is mentioned in the warning message.
 
     until : str or int, optional
         The version in which the deprecated functionality will be removed.
@@ -54,11 +59,14 @@ def deprecated(since, *, until=None):
     if until is None:
         message = (f'This function was deprecated in version {since} and will '
                    'be removed in a future version.')
-        return astropy_deprecated(since, message=message)
+    else:
+        remove_version = 'version ' + str(until)
+        message = (f'This function was deprecated in version {since} and will '
+                   f'be removed in {remove_version}.')
 
-    remove_version = 'version ' + str(until)
-    message = (f'This function was deprecated in version {since} and will '
-               f'be removed in {remove_version}.')
+    if alternative is not None:
+        message += f' Use {alternative} instead.'
+
     return astropy_deprecated(since, message=message)
 
 
@@ -252,7 +260,8 @@ class DeprecatedColumnMixin:
     this class directly, ensuring a valid method resolution order.
     """
 
-    _deprecation_map = None
+    deprecation_map = None
+    _deprecation_since = None
     _deprecation_until = None
 
     def _warn_deprecated(self, name, new_name, stacklevel=4):
@@ -270,11 +279,14 @@ class DeprecatedColumnMixin:
         stacklevel : int, optional
             The stack level for the warning. The default is 4.
         """
+        since_str = ''
+        if self._deprecation_since is not None:
+            since_str = f' in version {self._deprecation_since}'
         if self._deprecation_until is not None:
             remove_str = 'version ' + str(self._deprecation_until)
         else:
             remove_str = 'a future version'
-        msg = (f"The column name '{name}' is deprecated. Use "
+        msg = (f"The column name '{name}' was deprecated{since_str}. Use "
                f"'{new_name}' instead. It will be removed in "
                f'{remove_str}. Once you have updated your code to use '
                f"'{new_name}', set photutils.future_column_names = True "
@@ -302,8 +314,8 @@ class DeprecatedColumnMixin:
             The translated new column name, or the original name if it
             is not deprecated.
         """
-        if self._deprecation_map and name in self._deprecation_map:
-            new_name = self._deprecation_map[name]
+        if self.deprecation_map and name in self.deprecation_map:
+            new_name = self.deprecation_map[name]
             self._warn_deprecated(name, new_name, stacklevel=stacklevel)
             return new_name
         return name
@@ -338,9 +350,9 @@ class DeprecatedColumnMixin:
         """
         Override for ``in`` checks.
         """
-        if (isinstance(name, str) and self._deprecation_map
-                and name in self._deprecation_map):
-            new_name = self._deprecation_map[name]
+        if (isinstance(name, str) and self.deprecation_map
+                and name in self.deprecation_map):
+            new_name = self.deprecation_map[name]
             self._warn_deprecated(name, new_name, stacklevel=3)
             return new_name in self.colnames
         return name in self.colnames
@@ -352,8 +364,9 @@ class DeprecatedColumnMixin:
         if isinstance(item, (str, list, tuple)):
             item = self._translate_names(item)
         result = super().__getitem__(item)
-        if isinstance(result, type(self)) and self._deprecation_map:
-            result._deprecation_map = self._deprecation_map
+        if isinstance(result, type(self)) and self.deprecation_map:
+            result.deprecation_map = self.deprecation_map
+            result._deprecation_since = self._deprecation_since
             result._deprecation_until = self._deprecation_until
         return result
 
@@ -528,9 +541,10 @@ class DeprecatedColumnMixin:
             A copy of the table with the deprecation map preserved.
         """
         new_table = super().copy(copy_data=copy_data)
-        new_table._deprecation_map = (self._deprecation_map.copy()
-                                      if self._deprecation_map
-                                      else None)
+        new_table.deprecation_map = (self.deprecation_map.copy()
+                                     if self.deprecation_map
+                                     else None)
+        new_table._deprecation_since = self._deprecation_since
         new_table._deprecation_until = self._deprecation_until
         return new_table
 
@@ -547,8 +561,8 @@ class DeprecatedColumnQTable(DeprecatedColumnMixin, QTable):
     """
 
 
-def create_empty_deprecated_qtable(deprecation_map, *, until=None,
-                                   **kwargs):
+def create_empty_deprecated_qtable(deprecation_map, *, since=None,
+                                   until=None, **kwargs):
     """
     Create an empty `DeprecatedColumnQTable`.
 
@@ -563,6 +577,11 @@ def create_empty_deprecated_qtable(deprecation_map, *, until=None,
     ----------
     deprecation_map : dict
         A dictionary mapping old (deprecated) names to new names.
+
+    since : str or int, optional
+        The version in which the column names were deprecated. If
+        `None`, the deprecation version is not mentioned in the
+        warning message.
 
     until : str or int, optional
         The version in which the old column names will be removed. If
@@ -607,14 +626,15 @@ def create_empty_deprecated_qtable(deprecation_map, *, until=None,
         return QTable(**kwargs)
 
     table = DeprecatedColumnQTable(**kwargs)
-    table._deprecation_map = deprecation_map
+    table.deprecation_map = deprecation_map
+    table._deprecation_since = since
     table._deprecation_until = until
     return table
 
 
 def create_deprecated_table_from_data(data, deprecation_map, *,
-                                      until=None, use_qtable=False,
-                                      **kwargs):
+                                      since=None, until=None,
+                                      use_qtable=False, **kwargs):
     """
     Create a new table from scratch with deprecated column name support.
 
@@ -635,6 +655,11 @@ def create_deprecated_table_from_data(data, deprecation_map, *,
 
     deprecation_map : dict
         A dictionary mapping old (deprecated) names to new names.
+
+    since : str or int, optional
+        The version in which the column names were deprecated. If
+        `None`, the deprecation version is not mentioned in the
+        warning message.
 
     until : str or int, optional
         The version in which the old column names will be removed. If
@@ -704,6 +729,7 @@ def create_deprecated_table_from_data(data, deprecation_map, *,
 
     # Create the table instance
     table = table_class(renamed_data, **kwargs)
-    table._deprecation_map = deprecation_map
+    table.deprecation_map = deprecation_map
+    table._deprecation_since = since
     table._deprecation_until = until
     return table

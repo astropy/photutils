@@ -456,7 +456,7 @@ def create_matching_kernel(source_psf, target_psf, *, window=None,
 
     .. deprecated:: 3.0
         ``create_matching_kernel`` is deprecated as of Photutils 3.0 and
-        will be removed in a future version. Use `make_kernel` instead.
+        will be removed in version 4.0. Use `make_kernel` instead.
     """
     return make_kernel(source_psf,
                        target_psf,

@@ -134,7 +134,8 @@ class TestDAOStarFinder:
         """
         finder0 = DAOStarFinder(threshold=8.0, fwhm=2)
         tbl0 = finder0(data)
-        xycoords = list(zip(tbl0['xcentroid'], tbl0['ycentroid'], strict=True))
+        xycoords = list(zip(tbl0['x_centroid'],
+                            tbl0['y_centroid'], strict=True))
         xycoords = np.round(xycoords).astype(int)
 
         finder1 = DAOStarFinder(threshold=8.0, fwhm=2, xycoords=xycoords)
@@ -423,7 +424,7 @@ class TestDAOStarFinder:
         tbl_2d = finder_2d(data)
         assert len(tbl_low) > len(tbl_2d)
         # All 2D sources should be in the lower half
-        assert all(tbl_2d['ycentroid'] >= 50)
+        assert all(tbl_2d['y_centroid'] >= 50)
 
     def test_threshold_2d_repr(self):
         """
@@ -448,7 +449,8 @@ class TestDAOStarFinder:
 
     def test_scale_threshold_default(self, data):
         """
-        Test that scale_threshold=True (default) applies relerr scaling.
+        Test that scale_threshold=True (default) applies rel_err
+        scaling.
         """
         threshold = 5.0
         fwhm = 1.5

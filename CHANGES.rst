@@ -134,7 +134,7 @@ New Features
     regardless of source size. [#2197]
 
   - Improved the performance (~6-9x speedup) of ``SourceCatalog``
-    ``min_value``, ``max_value``, ``segment_flux``, ``segment_fluxerr``,
+    ``min_value``, ``max_value``, ``segment_flux``, ``segment_flux_err``,
     ``background_sum``, and ``background_mean``. [#2199]
 
   - Added ``SegmentationImage`` ``get_segment`` and ``get_segments``
@@ -243,6 +243,38 @@ API Changes
 
 - ``photutils.aperture``
 
+  - The ``ApertureStats`` ``covar_sigx2``, ``covar_sigxy``, and
+    ``covar_sigy2`` attributes have been renamed to ``covariance_xx``,
+    ``covariance_xy``, and ``covariance_yy``, respectively. The old
+    names are deprecated. [#2241]
+
+  - The ``ApertureStats`` ``cxx``, ``cxy``, and ``cyy`` attributes have
+    been renamed to ``ellipse_cxx``, ``ellipse_cxy``, and
+    ``ellipse_cyy``, respectively. The old names are deprecated. [#2241]
+
+  - The ``ApertureStats`` ``data_sumcutout`` and ``error_sumcutout``
+    attributes have been renamed to ``data_sum_cutout`` and
+    ``error_sum_cutout``, respectively. The old names are deprecated.
+    [#2241]
+
+  - The ``ApertureStats`` ``get_id`` and ``get_ids`` methods have been
+    renamed to ``select_id`` and ``select_ids``, respectively. The old
+    names are deprecated. [#2241]
+
+  - The ``ApertureStats`` ``semimajor_sigma`` and ``semiminor_sigma``
+    attributes/columns have been renamed to ``semimajor_axis`` and
+    ``semiminor_axis``, respectively. The old names are deprecated.
+    [#2241]
+
+  - The ``ApertureStats`` ``xcentroid`` and ``ycentroid``
+    attributes/columns have been renamed to ``x_centroid`` and
+    ``y_centroid``, respectively. The old names are deprecated.
+    [#2241]
+
+  - The ``xcenter`` and ``ycenter`` column names in the table returned
+    by ``aperture_photometry`` have been renamed to ``x_center`` and
+    ``y_center``, respectively. The old names are deprecated. [#2241]
+
   - The ``CircularMaskMixin``, ``EllipticalMaskMixin``, and
     ``RectangularMaskMixin`` classes are now deprecated. The mask
     generation is now handled internally by the ``PixelAperture``
@@ -266,8 +298,16 @@ API Changes
     used to resize the low-resolution arrays. The behavior will be
     identical to the current default. [#2108]
 
+  - The ``Background2D`` ``npixels_mesh`` and ``npixels_map`` properties
+    have been renamed to ``n_pixels_mesh`` and ``n_pixels_map``,
+    respectively. The old names are deprecated. [#2241]
+
   - The ``BkgIDWInterpolator`` and ``BkgZoomInterpolator`` classes are
     now deprecated. [#2108]
+
+  - The ``Background2D`` ``bkgrms_estimator`` keyword argument has been
+    renamed to ``bkg_rms_estimator``. The old name is deprecated.
+    [#2241]
 
 - ``photutils.centroids``
 
@@ -308,15 +348,58 @@ API Changes
     ``IRAFStarFinder``, and ``StarFinder`` is now deprecated. Use
     ``n_brightest`` instead. [#2216]
 
+  - The ``npeaks`` keyword argument for ``find_peaks`` is now
+    deprecated. Use ``n_peaks`` instead. [#2241]
+
   - The default ``min_separation`` for ``DAOStarFinder``,
     ``IRAFStarFinder``, and ``StarFinder`` is now ``None``, which
     computes a default separation of ``2.5 * fwhm`` (or ``2.5 *
     (min(kernel.shape) // 2)`` for ``StarFinder``) consistent across all
     three star finders. [#2216]
 
-  - The ``IRAFStarFinder`` and ``StarFinder`` ``pa`` values are now
-    always returned as a ``Quantity`` array in the range [0, 360)
-    degrees. [#2224, #2225]
+  - The ``xcentroid`` and ``ycentroid`` column/attribute names for
+    ``DAOStarFinder``, ``IRAFStarFinder``, and ``StarFinder`` catalog
+    classes are deprecated. Use ``x_centroid`` and ``y_centroid``
+    instead. The ``cutout_xcentroid`` and ``cutout_ycentroid`` attributes
+    are also deprecated in favor of ``cutout_x_centroid`` and
+    ``cutout_y_centroid``. [#2241]
+
+  - The ``IRAFStarFinder`` and ``StarFinder`` ``pa`` attribute/column
+    has been renamed to ``orientation``. The old name is deprecated.
+    [#2241]
+
+  - The ``npix`` column/attribute in ``DAOStarFinder`` and
+    ``IRAFStarFinder`` catalogs has been renamed to ``n_pixels``. The
+    old name is deprecated. [#2241]
+
+  - The ``IRAFStarFinder`` and ``StarFinder`` ``orientation`` (was
+    ``pa``) values are now always returned as a ``Quantity`` array in the
+    range [0, 360) degrees. [#2224, #2225]
+
+- ``photutils.isophote``
+
+  - The ``Isophote`` and ``IsophoteList`` ``grad_error`` and
+    ``grad_r_error`` attributes have been renamed to ``gradient_err`` and
+    ``gradient_rel_err``, respectively. The old names are deprecated.
+    [#2241]
+
+  - The ``EllipseSample`` ``gradient_error`` and
+    ``gradient_relative_error`` attributes have been renamed to
+    ``gradient_err`` and ``gradient_rel_err``, respectively. The old names
+    are deprecated. [#2241]
+
+  - The ``grad_error`` and ``grad_rerror`` column names in the
+    isophote output table have been renamed to ``gradient_err`` and
+    ``gradient_rel_err``, respectively. The old names are deprecated.
+    [#2241]
+
+  - The ``nclip`` parameter in ``Ellipse.fit_image``,
+    ``Ellipse.fit_isophote``, and ``EllipseSample`` has been renamed to
+    ``n_clip``. The old name is deprecated. [#2241]
+
+  - The ``Isophote`` and ``IsophotList`` ``niter``, ``ndata``, and
+    ``nflag`` attributes have been renamed to ``n_iter``, ``n_data``, and
+    ``n_flag``, respectively. The old names are deprecated. [#2241]
 
 - ``photutils.profiles``
 
@@ -356,6 +439,22 @@ API Changes
 
   - ``LinkedEPSFStar`` no longer inherits from ``EPSFStars``. [#2158]
 
+  - The ``npixfit`` column in ``PSFPhotometry`` results has been renamed
+    to ``n_pixels_fit``. The old name is deprecated. [#2241]
+
+  - The ``NPIXFIT_PARTIAL`` (``npixfit_partial``) PSF flag has been
+    renamed to ``N_PIXELS_FIT_PARTIAL`` (``n_pixels_fit_partial``). The
+    old name is deprecated. [#2241]
+
+  - The ``PSFPhotometry`` and ``IterativePSFPhotometry``
+    ``localbkg_estimator`` keyword argument has been renamed to
+    ``local_bkg_estimator``. The old name is deprecated. [#2241]
+
+  - The ``PSFPhotometry`` and ``IterativePSFPhotometry``
+    ``include_localbkg`` keyword argument in ``make_model_image``
+    and ``make_residual_image`` has been renamed to
+    ``include_local_bkg``. The old name is deprecated. [#2241]
+
 - ``photutils.psf_matching``
 
   - Renamed ``create_matching_kernel`` to ``make_kernel``. The old name
@@ -374,6 +473,131 @@ API Changes
 
   - The ``SourceCatalog`` ``orientation`` property is now always
     returned in the range [0, 360) degrees. [#2224]
+
+  - The ``SegmentationImage`` ``nlabels``, ``data_ma``,
+    ``deblended_labels_map``, and ``deblended_labels_inverse_map``
+    attributes have been renamed to ``n_labels``, ``data_masked``,
+    ``deblended_label_to_parent``, and ``parent_to_deblended_labels``,
+    respectively. The old names are deprecated. [#2241]
+
+  - The ``Segment`` ``data_ma`` attribute has been renamed to
+    ``data_masked``. The old name is deprecated. [#2241]
+
+  - The ``SourceCatalog`` ``data``, ``error``, ``background``, and
+    ``segment`` attributes have been renamed to ``data_cutout``,
+    ``error_cutout``, ``background_cutout``, and ``segment_cutout``,
+    respectively. The old names are deprecated. [#2241]
+
+  - The ``SourceCatalog`` ``data_ma``, ``error_ma``, ``background_ma``,
+    and ``segment_ma`` attributes have been renamed to
+    ``data_cutout_masked``, ``error_cutout_masked``,
+    ``background_cutout_masked``, and ``segment_cutout_masked``,
+    respectively. The old names are deprecated. [#2241]
+
+  - The ``SourceCatalog`` ``convdata`` and ``convdata_ma`` attributes
+    have been renamed to ``conv_data_cutout`` and
+    ``conv_data_cutout_masked``, respectively. The old names are
+    deprecated. [#2241]
+
+  - The ``SourceCatalog`` ``cutout_minval_index`` and
+    ``cutout_maxval_index`` attributes have been renamed to
+    ``cutout_min_value_index`` and ``cutout_max_value_index``,
+    respectively. The old names are deprecated. [#2241]
+
+  - The ``SourceCatalog`` ``minval_index``, ``maxval_index``,
+    ``minval_xindex``, ``minval_yindex``, ``maxval_xindex``, and
+    ``maxval_yindex`` attributes have been renamed to
+    ``min_value_index``, ``max_value_index``, ``min_value_xindex``,
+    ``min_value_yindex``, ``max_value_xindex``, and
+    ``max_value_yindex``, respectively. The old names are deprecated.
+    [#2241]
+
+  - The ``SourceCatalog`` ``covar_sigx2``, ``covar_sigxy``, and
+    ``covar_sigy2`` attributes/columns have been renamed to
+    ``covariance_xx``, ``covariance_xy``, and ``covariance_yy``,
+    respectively. The old names are deprecated. [#2241]
+
+  - The ``SourceCatalog`` ``cxx``, ``cxy``, and ``cyy``
+    attributes/columns have been renamed to ``ellipse_cxx``,
+    ``ellipse_cxy``, and ``ellipse_cyy``, respectively. The old names
+    are deprecated. [#2241]
+
+  - The ``SourceCatalog`` ``segment_fluxerr`` and ``kron_fluxerr``
+    attributes/columns have been renamed to ``segment_flux_err`` and
+    ``kron_flux_err``, respectively. The old names are deprecated.
+    [#2241]
+
+  - The ``SourceCatalog`` ``fluxfrac_radius`` attribute has been renamed
+    to ``flux_radius``. The old name is deprecated. [#2241]
+
+  - The ``SourceCatalog`` ``get_label`` and ``get_labels`` methods have
+    been renamed to ``select_label`` and ``select_labels``,
+    respectively. The old names are deprecated. [#2241]
+
+  - The ``SourceCatalog`` ``add_extra_property``,
+    ``remove_extra_property``, ``remove_extra_properties``, and
+    ``rename_extra_property`` methods have been renamed to
+    ``add_property``, ``remove_property``, ``remove_properties``, and
+    ``rename_property``, respectively. The ``extra_properties``
+    attribute has been renamed to ``custom_properties``. The old names
+    are deprecated. [#2241]
+
+  - The ``SourceCatalog`` ``nlabels`` and ``localbkg_width`` attributes
+    have been renamed to ``n_labels`` and ``local_bkg_width``,
+    respectively. The old names are deprecated. [#2241]
+
+  - The ``SourceCatalog`` ``semimajor_sigma`` and ``semiminor_sigma``
+    attributes/columns have been renamed to ``semimajor_axis`` and
+    ``semiminor_axis``, respectively. The old names are deprecated.
+    [#2241]
+
+  - The ``SourceCatalog`` ``xcentroid``, ``ycentroid``,
+    ``xcentroid_win``, ``ycentroid_win``, ``xcentroid_quad``, and
+    ``ycentroid_quad`` attributes/columns have been renamed to
+    ``x_centroid``, ``y_centroid``, ``x_centroid_win``,
+    ``y_centroid_win``, ``x_centroid_quad``, and ``y_centroid_quad``,
+    respectively. The old names are deprecated. [#2241]
+
+  - The ``SourceCatalog`` ``segment_img``, ``localbkg_width``,
+    ``apermask_method``, and ``detection_cat`` keyword arguments have
+    been renamed to ``segmentation_image``, ``local_bkg_width``,
+    ``aperture_mask_method``, and ``detection_catalog``, respectively.
+    The old names are deprecated. [#2241]
+
+  - The ``SourceFinder`` ``npixels``, ``nlevels``, and ``nproc``
+    attributes have been renamed to ``n_pixels``, ``n_levels``, and
+    ``n_processes``, respectively. The old names are deprecated. [#2241]
+
+  - The ``nsigma`` parameter in ``detect_threshold`` has been renamed
+    to ``n_sigma``. The old name is deprecated. [#2241]
+
+  - The ``npixels`` parameter in ``detect_sources`` has been renamed
+    to ``n_pixels``. The old name is deprecated. [#2241]
+
+  - The ``segment_img``, ``npixels``, ``nlevels``, and ``nproc``
+    parameters in ``deblend_sources`` have been renamed to
+    ``segmentation_image``, ``n_pixels``, ``n_levels``, and
+    ``n_processes``, respectively. The old names are deprecated. [#2241]
+
+  - The ``npixels``, ``nlevels``, and ``nproc`` parameters in
+    ``SourceFinder`` have been renamed to ``n_pixels``, ``n_levels``,
+    and ``n_processes``, respectively. The old names are deprecated.
+    [#2241]
+
+- ``photutils.utils``
+
+  - The ``ImageDepth`` ``nsigma``, ``napers``, and ``niters`` parameters
+    have been renamed to ``n_sigma``, ``n_apertures``, and ``n_iters``,
+    respectively. The old names are deprecated. The ``napers_used``
+    attribute has also been renamed to ``n_apertures_used``. [#2241]
+
+  - The ``make_random_cmap`` ``ncolors`` parameter has been renamed
+    to ``n_colors``. The old name is deprecated. [#2241]
+
+  - The ``ShepardIDWInterpolator`` ``reg`` parameter in ``__call__``
+    has been renamed to ``regularization``. The old name is deprecated.
+    [#2241]
+
 
 2.3.0 (2025-09-15)
 ------------------

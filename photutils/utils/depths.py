@@ -11,6 +11,8 @@ from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import binary_dilation
 
 from photutils.utils._coords import apply_separation
+from photutils.utils._deprecation import (deprecated_getattr,
+                                          deprecated_renamed_argument)
 from photutils.utils._parameters import (SigmaClipSentinelDefault,
                                          create_default_sigmaclip)
 from photutils.utils._progress_bars import add_progress_bar
@@ -23,6 +25,14 @@ __doctest_requires__ = {('ImageDepth', 'ImageDepth.*'): ['skimage']}
 
 SIGMA_CLIP = SigmaClipSentinelDefault(sigma=3.0, maxiters=10)
 
+# Remove in 4.0
+_DEPRECATED_ATTRIBUTES = {
+    'nsigma': 'n_sigma',
+    'napers': 'n_apertures',
+    'niters': 'n_iters',
+    'napers_used': 'n_apertures_used',
+}
+
 
 class ImageDepth:
     r"""
@@ -34,21 +44,33 @@ class ImageDepth:
         The radius (in pixels) of the circular apertures used to compute
         the image depth.
 
-    nsigma : float, optional
+    n_sigma : float, optional
         The number of standard deviations at which to compute the image
         depths.
+
+        .. deprecated:: 3.0
+            The ``nsigma`` keyword is deprecated. Use ``n_sigma``
+            instead.
 
     mask_pad : float, optional
         An additional padding (in pixels) to apply when dilating the
         input mask.
 
-    napers : int, optional
+    n_apertures : int, optional
         The number of circular apertures used to compute the image
         depth.
 
-    niters : int, optional
+        .. deprecated:: 3.0
+            The ``napers`` keyword is deprecated. Use ``n_apertures``
+            instead.
+
+    n_iters : int, optional
         The number of iterations, each with randomly-generated
         apertures, for which the image depth will be calculated.
+
+        .. deprecated:: 3.0
+            The ``niters`` keyword is deprecated. Use ``n_iters``
+            instead.
 
     overlap : bool, optional
         Whether to allow the apertures to overlap.
@@ -91,6 +113,10 @@ class ImageDepth:
         A list of circular apertures for each iteration.
 
     napers_used : 1D `~numpy.ndarray`
+        .. deprecated:: 3.0
+            Use ``n_apertures_used`` instead.
+
+    n_apertures_used : 1D `~numpy.ndarray`
         An array of the number of apertures used for each iteration.
 
     fluxes : list of `~numpy.ndarray`
@@ -107,7 +133,7 @@ class ImageDepth:
     -----
     The image depth is calculated by placing random circular apertures
     with the specified radius on blank regions of the image. The number
-    of apertures is specified by the ``napers`` keyword. The blank
+    of apertures is specified by the ``n_apertures`` keyword. The blank
     regions are calculated from an input mask, which should mask both
     sources in the image and areas without image coverage. The input
     mask will be dilated with a circular footprint with a radius equal
@@ -115,11 +141,11 @@ class ImageDepth:
     is also masked with the same radius.
 
     The flux limit is calculated as the standard deviation of the
-    aperture fluxes times the input ``nsigma`` significance level. The
+    aperture fluxes times the input ``n_sigma`` significance level. The
     aperture flux values can be sigma clipped prior to computing the
     standard deviation using the ``sigma_clip`` keyword.
 
-    The flux limit is calculated ``niters`` times, each with a
+    The flux limit is calculated ``n_iters`` times, each with a
     randomly-generated set of circular apertures. The returned flux
     limit is the average of these flux limits.
 
@@ -142,15 +168,16 @@ class ImageDepth:
     >>> data = make_100gaussians_image() - bkg
     >>> kernel = make_2dgaussian_kernel(3.0, size=5)
     >>> convolved_data = convolve(data, kernel)
-    >>> npixels = 10
+    >>> n_pixels = 10
     >>> threshold = 3.2
-    >>> finder = SourceFinder(npixels=npixels, progress_bar=False)
+    >>> finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
     >>> segment_map = finder(convolved_data, threshold)
     >>> mask = segment_map.make_source_mask()
     >>> radius = 4
-    >>> depth = ImageDepth(radius, nsigma=5.0, napers=500, niters=2,
-    ...                    mask_pad=5, overlap=False, seed=123,
-    ...                    zeropoint=23.9, progress_bar=False)
+    >>> depth = ImageDepth(radius, n_sigma=5.0, n_apertures=500,
+    ...                    n_iters=2, mask_pad=5, overlap=False,
+    ...                    seed=123, zeropoint=23.9,
+    ...                    progress_bar=False)
     >>> limits = depth(data, mask)
     >>> print(np.array(limits))  # doctest: +FLOAT_CMP
     [68.7403149  19.30697121]
@@ -171,14 +198,15 @@ class ImageDepth:
         data = make_100gaussians_image() - bkg
         kernel = make_2dgaussian_kernel(3.0, size=5)
         convolved_data = convolve(data, kernel)
-        npixels = 10
+        n_pixels = 10
         threshold = 3.2
-        finder = SourceFinder(npixels=npixels, progress_bar=False)
+        finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
         segment_map = finder(convolved_data, threshold)
         mask = segment_map.make_source_mask()
         radius = 4
-        depth = ImageDepth(radius, nsigma=5.0, napers=500, niters=2,
-                           overlap=False, seed=123, progress_bar=False)
+        depth = ImageDepth(radius, n_sigma=5.0, n_apertures=500,
+                           n_iters=2, overlap=False, seed=123,
+                           progress_bar=False)
         limits = depth(data, mask)
 
         fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(9, 3))
@@ -195,9 +223,13 @@ class ImageDepth:
                             wspace=0.15)
     """
 
-    def __init__(self, aper_radius, *, nsigma=5.0, mask_pad=0, napers=1000,
-                 niters=10, overlap=True, overlap_maxiters=100, seed=None,
-                 zeropoint=0.0, sigma_clip=SIGMA_CLIP, progress_bar=True):
+    @deprecated_renamed_argument('nsigma', 'n_sigma', '3.0', until='4.0')
+    @deprecated_renamed_argument('napers', 'n_apertures', '3.0', until='4.0')
+    @deprecated_renamed_argument('niters', 'n_iters', '3.0', until='4.0')
+    def __init__(self, aper_radius, *, n_sigma=5.0, mask_pad=0,
+                 n_apertures=1000, n_iters=10, overlap=True,
+                 overlap_maxiters=100, seed=None, zeropoint=0.0,
+                 sigma_clip=SIGMA_CLIP, progress_bar=True):
 
         if aper_radius <= 0:
             msg = 'aper_radius must be > 0'
@@ -207,10 +239,10 @@ class ImageDepth:
             raise ValueError(msg)
 
         self.aper_radius = aper_radius
-        self.nsigma = nsigma
+        self.n_sigma = n_sigma
         self.mask_pad = mask_pad
-        self.napers = napers
-        self.niters = niters
+        self.n_apertures = n_apertures
+        self.n_iters = n_iters
         self.overlap = overlap
         self.overlap_maxiters = overlap_maxiters
         self.seed = seed
@@ -229,16 +261,22 @@ class ImageDepth:
         self.dilate_footprint = circular_footprint(radius=self.dilate_radius)
 
         self.apertures = []
-        self.napers_used = np.array([])
+        self.n_apertures_used = np.array([])
         self.fluxes = []
         self.flux_limits = np.array([])
         self.mag_limits = np.array([])
 
     def __repr__(self):
-        params = ('aper_radius', 'nsigma', 'mask_pad', 'napers', 'niters',
-                  'overlap', 'overlap_maxiters', 'seed', 'zeropoint',
-                  'sigma_clip', 'progress_bar')
+        params = ('aper_radius', 'n_sigma', 'mask_pad', 'n_apertures',
+                  'n_iters', 'overlap', 'overlap_maxiters', 'seed',
+                  'zeropoint', 'sigma_clip', 'progress_bar')
         return make_repr(self, params)
+
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name,
+                                  _DEPRECATED_ATTRIBUTES,
+                                  since='3.0', until='4.0')
 
     def __call__(self, data, mask):
         """
@@ -277,12 +315,13 @@ class ImageDepth:
                    'masked image borders).')
             raise ValueError(msg)
 
-        napers = self.napers
+        n_apertures = self.n_apertures
         if not self.overlap:
-            napers2 = 1.5 * self.napers
-            napers = int(min(napers2, 0.1 * len(all_xycoords)))
+            n_apertures2 = 1.5 * self.n_apertures
+            n_apertures = int(min(n_apertures2,
+                                  0.1 * len(all_xycoords)))
 
-        iter_range = range(self.niters)
+        iter_range = range(self.n_iters)
         if self.progress_bar:
             desc = 'Image Depths'
             iter_range = add_progress_bar(iter_range,
@@ -292,13 +331,14 @@ class ImageDepth:
         apertures = []
         for _ in iter_range:
             if self.overlap:
-                xycoords = self._make_coords(all_xycoords, napers)
+                xycoords = self._make_coords(all_xycoords, n_apertures)
             else:
                 # Cut the number of coords (only need to input ~10x)
-                xycoords = self._make_coords(all_xycoords, napers * 10)
+                xycoords = self._make_coords(all_xycoords,
+                                             n_apertures * 10)
                 min_separation = self.aper_radius * 2.0
                 xycoords = apply_separation(xycoords, min_separation)
-                xycoords = xycoords[0:self.napers]
+                xycoords = xycoords[0:self.n_apertures]
 
             apers = CircularAperture(xycoords, r=self.aper_radius)
             apertures.append(apers)
@@ -306,19 +346,21 @@ class ImageDepth:
             if self.sigma_clip is not None:
                 fluxes = self.sigma_clip(fluxes, masked=False)  # ndarray
             self.fluxes.append(fluxes)
-            flux_limits.append(self.nsigma * np.std(fluxes))
+            flux_limits.append(self.n_sigma * np.std(fluxes))
 
         self.apertures = apertures
-        napers_used = np.array([len(apers) for apers in apertures])
-        self.napers_used = napers_used
-        if np.any(napers_used < self.napers):
-            msg = (f'Unable to generate {self.napers} non-overlapping '
-                   'apertures in unmasked regions. The number of apertures '
-                   f'used was less than {self.napers} (see the '
-                   '"napers_used" ImageDepth object attribute). To fix '
-                   'this, decrease the number of apertures and/or '
-                   'aperture size, or increase `overlap_maxiters`. '
-                   'Alternatively, you may set overlap=True')
+        n_apertures_used = np.array([len(apers) for apers in apertures])
+        self.n_apertures_used = n_apertures_used
+        if np.any(n_apertures_used < self.n_apertures):
+            msg = (f'Unable to generate {self.n_apertures} '
+                   'non-overlapping apertures in unmasked regions. '
+                   'The number of apertures used was less than '
+                   f'{self.n_apertures} (see the '
+                   '"n_apertures_used" ImageDepth object attribute). '
+                   'To fix this, decrease the number of apertures '
+                   'and/or aperture size, or increase '
+                   '`overlap_maxiters`. Alternatively, you may set '
+                   'overlap=True')
             warnings.warn(msg, AstropyUserWarning)
 
         if isinstance(flux_limits[0], u.Quantity):

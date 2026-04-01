@@ -20,21 +20,21 @@ REF1 = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 class TestDetectThreshold:
     def test_nsigma(self):
         """
-        Test basic nsigma.
+        Test basic n_sigma.
         """
-        threshold = detect_threshold(DATA, nsigma=0.1)
+        threshold = detect_threshold(DATA, n_sigma=0.1)
         ref = 0.4 * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
-        threshold = detect_threshold(DATA << u.uJy, nsigma=0.1)
+        threshold = detect_threshold(DATA << u.uJy, n_sigma=0.1)
         assert isinstance(threshold, u.Quantity)
         assert_allclose(threshold.value, ref)
 
     def test_nsigma_zero(self):
         """
-        Test nsigma=0.
+        Test n_sigma=0.
         """
-        threshold = detect_threshold(DATA, nsigma=0.0)
+        threshold = detect_threshold(DATA, n_sigma=0.0)
         ref = (1.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
@@ -42,7 +42,7 @@ class TestDetectThreshold:
         """
         Test background.
         """
-        threshold = detect_threshold(DATA, nsigma=1.0, background=1)
+        threshold = detect_threshold(DATA, n_sigma=1.0, background=1)
         ref = (5.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
@@ -51,11 +51,11 @@ class TestDetectThreshold:
         Test background image.
         """
         background = np.ones((3, 3))
-        threshold = detect_threshold(DATA, nsigma=1.0, background=background)
+        threshold = detect_threshold(DATA, n_sigma=1.0, background=background)
         ref = (5.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
-        threshold = detect_threshold(DATA << u.Jy, nsigma=1.0,
+        threshold = detect_threshold(DATA << u.Jy, n_sigma=1.0,
                                      background=background << u.Jy)
         assert isinstance(threshold, u.Quantity)
         assert_allclose(threshold.value, ref)
@@ -67,13 +67,13 @@ class TestDetectThreshold:
         wrong_shape = np.zeros((2, 2))
         match = 'input background is 2D, then it must have the same shape'
         with pytest.raises(ValueError, match=match):
-            detect_threshold(DATA, nsigma=2.0, background=wrong_shape)
+            detect_threshold(DATA, n_sigma=2.0, background=wrong_shape)
 
     def test_error(self):
         """
         Test error.
         """
-        threshold = detect_threshold(DATA, nsigma=1.0, error=1)
+        threshold = detect_threshold(DATA, n_sigma=1.0, error=1)
         ref = (4.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
@@ -82,11 +82,11 @@ class TestDetectThreshold:
         Test error image.
         """
         error = np.ones((3, 3))
-        threshold = detect_threshold(DATA, nsigma=1.0, error=error)
+        threshold = detect_threshold(DATA, n_sigma=1.0, error=error)
         ref = (4.0 / 3.0) * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
-        threshold = detect_threshold(DATA << u.Jy, nsigma=1.0,
+        threshold = detect_threshold(DATA << u.Jy, n_sigma=1.0,
                                      error=error << u.Jy)
         assert isinstance(threshold, u.Quantity)
         assert_allclose(threshold.value, ref)
@@ -98,18 +98,18 @@ class TestDetectThreshold:
         wrong_shape = np.zeros((2, 2))
         match = 'If input error is 2D, then it must have the same shape'
         with pytest.raises(ValueError, match=match):
-            detect_threshold(DATA, nsigma=2.0, error=wrong_shape)
+            detect_threshold(DATA, n_sigma=2.0, error=wrong_shape)
 
     def test_background_error(self):
         """
         Test background error.
         """
-        threshold = detect_threshold(DATA, nsigma=2.0, background=10.0,
+        threshold = detect_threshold(DATA, n_sigma=2.0, background=10.0,
                                      error=1.0)
         ref = 12.0 * np.ones((3, 3))
         assert_allclose(threshold, ref)
 
-        threshold = detect_threshold(DATA << u.Jy, nsigma=2.0,
+        threshold = detect_threshold(DATA << u.Jy, n_sigma=2.0,
                                      background=10.0 * u.Jy,
                                      error=1.0 * u.Jy)
         assert isinstance(threshold, u.Quantity)
@@ -117,10 +117,10 @@ class TestDetectThreshold:
 
         match = 'must all have the same units'
         with pytest.raises(ValueError, match=match):
-            detect_threshold(DATA << u.Jy, nsigma=2.0, background=10.0,
+            detect_threshold(DATA << u.Jy, n_sigma=2.0, background=10.0,
                              error=1.0 * u.Jy)
         with pytest.raises(ValueError, match=match):
-            detect_threshold(DATA << u.Jy, nsigma=2.0, background=10.0 * u.m,
+            detect_threshold(DATA << u.Jy, n_sigma=2.0, background=10.0 * u.m,
                              error=1.0 * u.Jy)
 
     def test_background_error_images(self):
@@ -129,7 +129,7 @@ class TestDetectThreshold:
         """
         background = np.ones((3, 3)) * 10.0
         error = np.ones((3, 3))
-        threshold = detect_threshold(DATA, nsigma=2.0, background=background,
+        threshold = detect_threshold(DATA, n_sigma=2.0, background=background,
                                      error=error)
         ref = 12.0 * np.ones((3, 3))
         assert_allclose(threshold, ref)
@@ -143,7 +143,7 @@ class TestDetectThreshold:
         """
         mask = REF1.astype(bool)
         sigma_clip = SigmaClip(sigma=10, maxiters=1)
-        threshold = detect_threshold(DATA, nsigma=1.0, error=0, mask=mask,
+        threshold = detect_threshold(DATA, n_sigma=1.0, error=0, mask=mask,
                                      sigma_clip=sigma_clip)
         ref = (1.0 / 8.0) * np.ones((3, 3))
         assert_equal(threshold, ref)
@@ -170,35 +170,35 @@ class TestDetectSources:
         """
         Test basic detection.
         """
-        segm = detect_sources(self.data, threshold=0.9, npixels=2)
+        segm = detect_sources(self.data, threshold=0.9, n_pixels=2)
         assert_equal(segm.data, self.refdata)
 
         assert segm.data.dtype == np.int32
         assert segm.labels.dtype == np.int32
 
         segm = detect_sources(self.data << u.uJy, threshold=0.9 * u.uJy,
-                              npixels=2)
+                              n_pixels=2)
         assert_equal(segm.data, self.refdata)
 
         match = 'must all have the same units'
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data << u.uJy, threshold=0.9, npixels=2)
+            detect_sources(self.data << u.uJy, threshold=0.9, n_pixels=2)
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data, threshold=0.9 * u.Jy, npixels=2)
+            detect_sources(self.data, threshold=0.9 * u.Jy, n_pixels=2)
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data << u.uJy, threshold=0.9 * u.m, npixels=2)
+            detect_sources(self.data << u.uJy, threshold=0.9 * u.m, n_pixels=2)
 
     def test_small_sources(self):
         """
-        Test detection where sources are smaller than npixels size.
+        Test detection where sources are smaller than n_pixels size.
         """
         match = 'No sources were found'
         with pytest.warns(NoDetectionsWarning, match=match):
-            detect_sources(self.data, threshold=0.9, npixels=5)
+            detect_sources(self.data, threshold=0.9, n_pixels=5)
 
-    def test_npixels(self):
+    def test_n_pixels(self):
         """
-        Test removal of sources whose size is less than npixels.
+        Test removal of sources whose size is less than n_pixels.
 
         Regression tests for #663.
         """
@@ -208,18 +208,18 @@ class TestDetectSources:
         data[3, 3:] = 2
         data[3:, 3] = 2
 
-        segm = detect_sources(data, 0, npixels=4)
-        assert segm.nlabels == 2
+        segm = detect_sources(data, 0, n_pixels=4)
+        assert segm.n_labels == 2
         assert segm.data.dtype == np.int32
 
-        # Removal of labels with size less than npixels
+        # Removal of labels with size less than n_pixels
         # dtype should still be np.int32
-        segm = detect_sources(data, 0, npixels=8)
-        assert segm.nlabels == 1
+        segm = detect_sources(data, 0, n_pixels=8)
+        assert segm.n_labels == 1
         assert segm.data.dtype == np.int32
 
-        segm = detect_sources(data, 0, npixels=9)
-        assert segm.nlabels == 1
+        segm = detect_sources(data, 0, n_pixels=9)
+        assert segm.n_labels == 1
         assert segm.data.dtype == np.int32
 
         data = np.zeros((8, 8))
@@ -229,21 +229,21 @@ class TestDetectSources:
         data[3:, 2] = 2
         data[5:, 3] = 2
 
-        npixels = np.arange(9, 14)
-        for npixels in np.arange(9, 14):
-            segm = detect_sources(data, 0, npixels=npixels)
-            assert segm.nlabels == 1
+        n_pixels = np.arange(9, 14)
+        for n_pixels in np.arange(9, 14):
+            segm = detect_sources(data, 0, n_pixels=n_pixels)
+            assert segm.n_labels == 1
             assert segm.areas[0] == 13
 
         match = 'No sources were found'
         with pytest.warns(NoDetectionsWarning, match=match):
-            detect_sources(data, 0, npixels=14)
+            detect_sources(data, 0, n_pixels=14)
 
     def test_zerothresh(self):
         """
         Test detection with zero threshold.
         """
-        segm = detect_sources(self.data, threshold=0.0, npixels=2)
+        segm = detect_sources(self.data, threshold=0.0, n_pixels=2)
         assert_equal(segm.data, self.refdata)
 
     def test_zerodet(self):
@@ -252,14 +252,14 @@ class TestDetectSources:
         """
         match = 'No sources were found'
         with pytest.warns(NoDetectionsWarning, match=match):
-            detect_sources(self.data, threshold=7, npixels=2)
+            detect_sources(self.data, threshold=7, n_pixels=2)
 
     def test_8connectivity(self):
         """
         Test detection with connectivity=8.
         """
         data = np.eye(3)
-        segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=8)
+        segm = detect_sources(data, threshold=0.9, n_pixels=1, connectivity=8)
         assert_equal(segm.data, data)
 
     def test_4connectivity(self):
@@ -268,24 +268,24 @@ class TestDetectSources:
         """
         data = np.eye(3)
         ref = np.diag([1, 2, 3])
-        segm = detect_sources(data, threshold=0.9, npixels=1, connectivity=4)
+        segm = detect_sources(data, threshold=0.9, n_pixels=1, connectivity=4)
         assert_equal(segm.data, ref)
 
-    def test_npixels_nonint(self):
+    def test_n_pixels_nonint(self):
         """
         Test if an error is raised when npixel is noninteger.
         """
-        match = 'npixels must be a positive integer'
+        match = 'n_pixels must be a positive integer'
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data, threshold=1, npixels=0.1)
+            detect_sources(self.data, threshold=1, n_pixels=0.1)
 
-    def test_npixels_negative(self):
+    def test_n_pixels_negative(self):
         """
         Test if an error is raised when npixel is negative.
         """
-        match = 'npixels must be a positive integer'
+        match = 'n_pixels must be a positive integer'
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data, threshold=1, npixels=-1)
+            detect_sources(self.data, threshold=1, n_pixels=-1)
 
     @pytest.mark.parametrize('connectivity', [0, -1, 3, 6, 10])
     def test_connectivity_invalid(self, connectivity):
@@ -294,7 +294,7 @@ class TestDetectSources:
         """
         match = f'Invalid connectivity={connectivity}'
         with pytest.raises(ValueError, match=match):
-            detect_sources(self.data, threshold=1, npixels=1,
+            detect_sources(self.data, threshold=1, n_pixels=1,
                            connectivity=connectivity)
 
     def test_mask(self):

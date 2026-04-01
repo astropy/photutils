@@ -230,7 +230,7 @@ class SourceGroups:
             ax = plt.gca()
 
         if cmap is None:
-            cmap = make_random_cmap(ncolors=self.n_groups, seed=seed)
+            cmap = make_random_cmap(n_colors=self.n_groups, seed=seed)
         elif isinstance(cmap, str):
             cmap = colormaps[cmap]
 

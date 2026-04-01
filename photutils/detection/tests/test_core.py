@@ -189,12 +189,12 @@ def _make_minimal_catalog_class():
     class _MinimalCatalog(StarFinderCatalogBase):
 
         @property
-        def xcentroid(self):
-            return self.cutout_xcentroid
+        def x_centroid(self):
+            return self.cutout_x_centroid
 
         @property
-        def ycentroid(self):
-            return self.cutout_ycentroid
+        def y_centroid(self):
+            return self.cutout_y_centroid
 
         def apply_filters(self):
             return self
@@ -266,7 +266,7 @@ class TestStarFinderCatalogBase:
         kernel = np.ones((3, 3))
         xypos = np.array([[5, 5]])
         cat = minimal_catalog_cls(data, xypos, kernel)
-        columns = ('id', 'xcentroid', 'ycentroid')
+        columns = ('id', 'x_centroid', 'y_centroid')
         tbl = cat.to_table(columns=columns)
         assert len(tbl) == 1
         assert tbl.colnames == list(columns)

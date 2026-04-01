@@ -26,7 +26,8 @@ from photutils.psf.flags import decode_psf_flags
 from photutils.psf.utils import (_create_call_docstring,
                                  _get_psf_model_main_params, _make_mask,
                                  _validate_psf_model)
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
@@ -301,7 +302,7 @@ class PSFPhotometry:
         values are present in the ``init_params`` table, they will
         override this keyword.
 
-    localbkg_estimator : `~photutils.background.LocalBackground` or `None`, \
+    local_bkg_estimator : `~photutils.background.LocalBackground` or `None`, \
             optional
         The object used to estimate the local background around each
         source. If `None`, then no local background is subtracted. The
@@ -353,7 +354,7 @@ class PSFPhotometry:
     can try a different Astropy fitter that returns parameter errors.
 
     The local background value around each source is optionally
-    estimated using the ``localbkg_estimator`` or obtained from the
+    estimated using the ``local_bkg_estimator`` or obtained from the
     ``local_bkg`` column in the input ``init_params`` table. This local
     background is then subtracted from the data over the ``fit_shape``
     region for each source before fitting the PSF model. For sources
@@ -361,7 +362,7 @@ class PSFPhotometry:
     effectively be subtracted twice in the overlapping ``fit_shape``
     regions, even if the source ``grouper`` is input. This is not an
     issue if the sources are well-separated. However, for crowded
-    fields, please use the ``localbkg_estimator`` (or ``local_bkg``
+    fields, please use the ``local_bkg_estimator`` (or ``local_bkg``
     column in ``init_params``) with care.
 
     Care should be taken in defining the source groups. Simultaneously
@@ -377,9 +378,12 @@ class PSFPhotometry:
     # Default value for parameter initialization (invalid sources)
     _DEFAULT_PARAM_VALUE = np.nan
 
+    @deprecated_renamed_argument('localbkg_estimator',
+                                 'local_bkg_estimator', '3.0',
+                                 until='4.0')
     def __init__(self, psf_model, fit_shape, *, finder=None, grouper=None,
                  fitter=None, fitter_maxiters=100, xy_bounds=None,
-                 aperture_radius=None, localbkg_estimator=None,
+                 aperture_radius=None, local_bkg_estimator=None,
                  group_warning_threshold=25, progress_bar=False):
 
         self.psf_model = _validate_psf_model(psf_model)
@@ -395,15 +399,15 @@ class PSFPhotometry:
         self.fitter_maxiters = self._validate_maxiters(fitter_maxiters)
         self.xy_bounds = self._validate_bounds(xy_bounds)
         self.aperture_radius = self._validate_radius(aperture_radius)
-        self.localbkg_estimator = self._validate_localbkg(
-            localbkg_estimator, 'localbkg_estimator')
+        self.local_bkg_estimator = self._validate_localbkg(
+            local_bkg_estimator, 'local_bkg_estimator')
         self.group_warning_threshold = group_warning_threshold
         self.progress_bar = progress_bar
 
         self._data_processor = PSFDataProcessor(
             self._param_mapper, self.fit_shape, finder=self.finder,
             aperture_radius=self.aperture_radius,
-            localbkg_estimator=self.localbkg_estimator,
+            local_bkg_estimator=self.local_bkg_estimator,
         )
 
         self._psf_fitter = PSFFitter(
@@ -419,7 +423,7 @@ class PSFPhotometry:
         # used by the __repr__ method and the output table metadata
         self._attrs = ('psf_model', 'fit_shape', 'finder', 'grouper', 'fitter',
                        'fitter_maxiters', 'xy_bounds', 'aperture_radius',
-                       'localbkg_estimator', 'group_warning_threshold',
+                       'local_bkg_estimator', 'group_warning_threshold',
                        'progress_bar')
 
         self._reset_results()
@@ -444,7 +448,7 @@ class PSFPhotometry:
             'fit_param_errs': None,
             'fit_error_indices': None,
             'fitted_models_table': None,
-            'npixfit': None,
+            'n_pixels_fit': None,
             'group_size': None,
             'invalid_reasons': None,
             'sum_abs_residuals': None,
@@ -465,7 +469,7 @@ class PSFPhotometry:
         nfitparam = len(self._param_mapper.fitted_param_names)
         self._state.update({
             'fit_param_errs': np.full((n_sources, nfitparam), np.nan),
-            'npixfit': np.zeros(n_sources, dtype=int),
+            'n_pixels_fit': np.zeros(n_sources, dtype=int),
             'invalid_reasons': [''] * n_sources,
             'sum_abs_residuals': np.full(n_sources, np.nan, dtype=float),
             'cen_residuals': np.full(n_sources, np.nan, dtype=float),
@@ -706,7 +710,7 @@ class PSFPhotometry:
 
     def _validate_localbkg(self, value, name):
         """
-        Validate the input ``localbkg_estimator`` value.
+        Validate the input ``local_bkg_estimator`` value.
 
         Parameters
         ----------
@@ -726,7 +730,7 @@ class PSFPhotometry:
         TypeError
             If value is not None and not a LocalBackground instance.
         """
-        value = self._validate_type(value, 'localbkg_estimator',
+        value = self._validate_type(value, 'local_bkg_estimator',
                                     LocalBackground)
         return self._validate_callable(value, name)
 
@@ -1270,8 +1274,8 @@ class PSFPhotometry:
             # source ID order given by init_params.
             row_indices_arr = np.array(row_indices)
             self._state['group_size'][row_indices_arr] = group_size
-            self._state['npixfit'][row_indices_arr] = np.array(npixfit_full,
-                                                               dtype=int)
+            self._state['n_pixels_fit'][row_indices_arr] = np.array(
+                npixfit_full, dtype=int)
 
             for i, row_index in enumerate(row_indices):
                 reason = invalid_reasons[i]
@@ -1424,7 +1428,7 @@ class PSFPhotometry:
         """
         # prepare metadata attributes
         class_attrs = {'psf_model', 'finder', 'grouper', 'fitter',
-                       'localbkg_estimator'}
+                       'local_bkg_estimator'}
         metadata_attrs = {}
         for attr in self._attrs:
             value = getattr(self, attr)
@@ -1815,9 +1819,11 @@ class PSFPhotometry:
 
         return model_params, local_bkg
 
+    @deprecated_renamed_argument('include_localbkg', 'include_local_bkg',
+                                 '3.0', until='4.0')
     @_make_model_image_docstring
     def make_model_image(self, shape, *, psf_shape=None,
-                         include_localbkg=False):
+                         include_local_bkg=False):
         if self.results is None:
             msg = ('No results available. Please run the PSFPhotometry '
                    'instance first.')
@@ -1828,11 +1834,13 @@ class PSFPhotometry:
                                  local_bkg=local_bkg,
                                  progress_bar=self.progress_bar)
         return maker.make_model_image(shape, psf_shape=psf_shape,
-                                      include_localbkg=include_localbkg)
+                                      include_local_bkg=include_local_bkg)
 
+    @deprecated_renamed_argument('include_localbkg', 'include_local_bkg',
+                                 '3.0', until='4.0')
     @_make_residual_image_docstring
     def make_residual_image(self, data, *, psf_shape=None,
-                            include_localbkg=False):
+                            include_local_bkg=False):
         if self.results is None:
             msg = ('No results available. Please run the PSFPhotometry '
                    'instance first.')
@@ -1843,4 +1851,4 @@ class PSFPhotometry:
                                  local_bkg=local_bkg,
                                  progress_bar=self.progress_bar)
         return maker.make_residual_image(data, psf_shape=psf_shape,
-                                         include_localbkg=include_localbkg)
+                                         include_local_bkg=include_local_bkg)

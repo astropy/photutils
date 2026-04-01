@@ -23,6 +23,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import CircularAperture
 from photutils.datasets import make_model_image as _make_model_image
+from photutils.utils._deprecation import DeprecatedColumnQTable
 from photutils.utils._misc import _get_meta
 
 from .flags import PSF_FLAGS
@@ -297,18 +298,18 @@ class PSFDataProcessor:
         Radius in pixels of circular apertures for initial flux
         estimation when flux values are not provided in ``init_params``.
 
-    localbkg_estimator : object, optional
+    local_bkg_estimator : object, optional
         Local background estimator for determining background levels
         around sources. Must have a ``__call__`` method.
     """
 
     def __init__(self, param_mapper, fit_shape, *, finder=None,
-                 aperture_radius=None, localbkg_estimator=None):
+                 aperture_radius=None, local_bkg_estimator=None):
         self.param_mapper = param_mapper
         self.fit_shape = fit_shape
         self.finder = finder
         self.aperture_radius = aperture_radius
-        self.localbkg_estimator = localbkg_estimator
+        self.local_bkg_estimator = local_bkg_estimator
         self.data_unit = None
         self.finder_results = None
 
@@ -607,12 +608,12 @@ class PSFDataProcessor:
         flux_col = self.param_mapper.init_colnames['flux']
 
         if 'local_bkg' not in init_params.colnames:
-            if self.localbkg_estimator is None:
+            if self.local_bkg_estimator is None:
                 local_bkg = np.zeros(len(init_params))
             else:
-                local_bkg = self.localbkg_estimator(data, init_params[x_col],
-                                                    init_params[y_col],
-                                                    mask=mask)
+                local_bkg = self.local_bkg_estimator(
+                    data, init_params[x_col],
+                    init_params[y_col], mask=mask)
             if self.data_unit is not None:
                 local_bkg <<= self.data_unit
             init_params['local_bkg'] = local_bkg
@@ -1380,7 +1381,7 @@ class PSFResultsAssembler:
         flags : `~numpy.ndarray`
             Array of integer flags where each bit indicates a specific
             condition:
-            - 1: npixfit smaller than full fit_shape region
+            - 1: n_pixels_fit smaller than full fit_shape region
             - 2: fitted position outside input image bounds
             - 4: non-positive flux
             - 8: possible non-convergence
@@ -1398,9 +1399,10 @@ class PSFResultsAssembler:
         y_col = self.param_mapper.fit_colnames['y']
         flux_col = self.param_mapper.fit_colnames['flux']
 
-        # Flag=1: npixfit smaller than full fit_shape region
-        flag1_mask = results_tbl['npixfit'] < np.prod(self.fit_shape)
-        flags[flag1_mask] |= PSF_FLAGS.NPIXFIT_PARTIAL
+        # Flag=1: n_pixels_fit smaller than full fit_shape region
+        flag1_mask = (results_tbl['n_pixels_fit']
+                      < np.prod(self.fit_shape))
+        flags[flag1_mask] |= PSF_FLAGS.N_PIXELS_FIT_PARTIAL
 
         # Flag=2: fitted position outside input image bounds
         ny, nx = shape
@@ -1490,7 +1492,7 @@ class PSFResultsAssembler:
 
         The final results table is built by merging the input
         ``init_params`` table with the ``fit_params`` table. Additional
-        columns are added for ``npixfit``, ``group_size``, ``qfit``,
+        columns are added for ``n_pixels_fit``, ``group_size``, ``qfit``,
         ``cfit``, and ``flags``.
 
         This method also cleans up the state dictionary as data is
@@ -1532,14 +1534,14 @@ class PSFResultsAssembler:
             - Fitted parameters with uncertainties
             - Quality metrics (qfit, cfit)
             - Bitwise flags indicating fit conditions
-            - Iterator statistics (npixfit, group_size)
+            - Iterator statistics (n_pixels_fit, group_size)
         """
         # Add metrics and flags column to fit_params. The results in the
         # state container match the order of the fit_params results,
         # which are in the same source ID order as the init_params.
 
-        # Consume npixfit and group_size data, removing from state
-        fit_params['npixfit'] = state.pop('npixfit')
+        # Consume n_pixels_fit and group_size data, removing from state
+        fit_params['n_pixels_fit'] = state.pop('n_pixels_fit')
         fit_params['group_size'] = state.pop('group_size')
 
         # Calculate fit metrics and remove the underlying data
@@ -1588,8 +1590,13 @@ class PSFResultsAssembler:
         # Add attribute metadata
         meta.update(metadata_attrs)
 
-        # Convert to QTable and set metadata
-        return QTable(results_tbl, meta=meta)
+        # Replace with QTable in 4.0
+        psf_deprecation_map = {'npixfit': 'n_pixels_fit'}
+        result = DeprecatedColumnQTable(results_tbl, meta=meta)
+        result.deprecation_map = psf_deprecation_map
+        result._deprecation_since = '3.0'
+        result._deprecation_until = '4.0'
+        return result
 
 
 def _make_model_image_docstring(func):
@@ -1610,7 +1617,7 @@ def _make_model_image_docstring(func):
             used. This keyword must be specified if the model does not
             have a ``bounding_box`` attribute.
 
-        include_localbkg : bool, optional
+        include_local_bkg : bool, optional
             Whether to include the local background in the rendered
             output image. Note that the local background level is
             included around each source over the region defined by
@@ -1649,7 +1656,7 @@ def _make_residual_image_docstring(func):
             This keyword must be specified if the model does not have a
             ``bounding_box`` attribute.
 
-        include_localbkg : bool, optional
+        include_local_bkg : bool, optional
             Whether to include the local background in the subtracted
             model. Note that the local background level is subtracted
             around each source over the region defined by ``psf_shape``.
@@ -1695,13 +1702,13 @@ class _ModelImageMaker:
 
     @_make_model_image_docstring
     def make_model_image(self, shape, *, psf_shape=None,
-                         include_localbkg=False):
+                         include_local_bkg=False):
         psf_model = self.psf_model
         model_params = self.model_params
         local_bkgs = self.local_bkg
         progress_bar = self.progress_bar
 
-        if include_localbkg:
+        if include_local_bkg:
             # add local_bkg, but set non-finite values to 0 to avoid
             # corrupting the model image
             model_params = model_params.copy()
@@ -1726,7 +1733,7 @@ class _ModelImageMaker:
 
     @_make_residual_image_docstring
     def make_residual_image(self, data, *, psf_shape=None,
-                            include_localbkg=False):
+                            include_local_bkg=False):
         if isinstance(data, NDData):
             residual = deepcopy(data)
             data_arr = data.data
@@ -1734,10 +1741,11 @@ class _ModelImageMaker:
                 data_arr <<= data.unit
             residual.data[:] = self.make_residual_image(
                 data_arr, psf_shape=psf_shape,
-                include_localbkg=include_localbkg)
+                include_local_bkg=include_local_bkg)
         else:
-            residual = self.make_model_image(data.shape, psf_shape=psf_shape,
-                                             include_localbkg=include_localbkg)
+            residual = self.make_model_image(
+                data.shape, psf_shape=psf_shape,
+                include_local_bkg=include_local_bkg)
             np.subtract(data, residual, out=residual)
 
         return residual

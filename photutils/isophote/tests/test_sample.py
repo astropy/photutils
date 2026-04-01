@@ -50,7 +50,7 @@ def test_coordinates():
 
 
 def test_sclip():
-    sample = EllipseSample(DATA, 50.0, nclip=3)
+    sample = EllipseSample(DATA, 50.0, n_clip=3)
     sample.update(fixed_parameters=DEFAULT_FIX)
     x, y = sample.coordinates()
 

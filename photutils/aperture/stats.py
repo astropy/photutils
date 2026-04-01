@@ -13,14 +13,15 @@ import numpy as np
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.stats import (SigmaClip, biweight_location, biweight_midvariance,
                            mad_std)
-from astropy.table import QTable
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture.core import _aperture_metadata
 from photutils.morphology import gini as gini_func
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (create_empty_deprecated_qtable,
+                                          deprecated_getattr,
+                                          deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _image_moments
 from photutils.utils._quantity_helpers import process_quantities
@@ -28,13 +29,31 @@ from photutils.utils._quantity_helpers import process_quantities
 __all__ = ['ApertureStats']
 
 
-# default table columns for `to_table()` output
-DEFAULT_COLUMNS = ['id', 'xcentroid', 'ycentroid', 'sky_centroid',
+# Default table columns for `to_table()` output
+DEFAULT_COLUMNS = ['id', 'x_centroid', 'y_centroid', 'sky_centroid',
                    'sum', 'sum_err', 'sum_aper_area', 'center_aper_area',
                    'min', 'max', 'mean', 'median', 'mode', 'std',
                    'mad_std', 'var', 'biweight_location',
-                   'biweight_midvariance', 'fwhm', 'semimajor_sigma',
-                   'semiminor_sigma', 'orientation', 'eccentricity']
+                   'biweight_midvariance', 'fwhm', 'semimajor_axis',
+                   'semiminor_axis', 'orientation', 'eccentricity']
+
+# Remove in 4.0
+_DEPRECATED_ATTRIBUTES: dict = {
+    'covar_sigx2': 'covariance_xx',
+    'covar_sigxy': 'covariance_xy',
+    'covar_sigy2': 'covariance_yy',
+    'cxx': 'ellipse_cxx',
+    'cxy': 'ellipse_cxy',
+    'cyy': 'ellipse_cyy',
+    'data_sumcutout': 'data_sum_cutout',
+    'error_sumcutout': 'error_sum_cutout',
+    'get_id': 'select_id',
+    'get_ids': 'select_ids',
+    'semimajor_sigma': 'semimajor_axis',
+    'semiminor_sigma': 'semiminor_axis',
+    'xcentroid': 'x_centroid',
+    'ycentroid': 'y_centroid',
+}
 
 
 def as_scalar(method):
@@ -129,10 +148,10 @@ class ApertureStats:
     sum_method : {'exact', 'center', 'subpixel'}, optional
         The method used to determine the overlap of the aperture on
         the pixel grid. This method is used only for calculating the
-        ``sum``, ``sum_error``, ``sum_aper_area``, ``data_sumcutout``,
-        and ``error_sumcutout`` properties. All other properties use the
-        "center" aperture mask method. Not all options are available for
-        all aperture types. The following methods are available:
+        ``sum``, ``sum_error``, ``sum_aper_area``, ``data_sum_cutout``,
+        and ``error_sum_cutout`` properties. All other properties use
+        the "center" aperture mask method. Not all options are available
+        for all aperture types. The following methods are available:
 
         * ``'exact'`` (default):
           The exact fractional overlap of the aperture and each pixel is
@@ -197,7 +216,7 @@ class ApertureStats:
     The input ``sum_method`` and ``subpixels`` keywords are used
     to determine the aperture-mask method when calculating the
     sum-related properties: ``sum``, ``sum_error``, ``sum_aper_area``,
-    ``data_sumcutout``, and ``error_sumcutout``. The default is
+    ``data_sum_cutout``, and ``error_sum_cutout``. The default is
     ``sum_method='exact'``, which produces exact aperture-weighted
     photometry.
 
@@ -211,9 +230,9 @@ class ApertureStats:
     >>> data = make_4gaussians_image()
     >>> aper = CircularAperture((150, 25), 8)
     >>> aperstats = ApertureStats(data, aper)
-    >>> print(aperstats.xcentroid)  # doctest: +FLOAT_CMP
+    >>> print(aperstats.x_centroid)  # doctest: +FLOAT_CMP
     149.99080259251238
-    >>> print(aperstats.ycentroid)  # doctest: +FLOAT_CMP
+    >>> print(aperstats.y_centroid)  # doctest: +FLOAT_CMP
     24.97484633000507
     >>> print(aperstats.centroid)  # doctest: +FLOAT_CMP
     [149.99080259  24.97484633]
@@ -233,7 +252,7 @@ class ApertureStats:
     >>> # more than one aperture position
     >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
     >>> aperstats2 = ApertureStats(data, aper2)
-    >>> print(aperstats2.xcentroid)  # doctest: +FLOAT_CMP
+    >>> print(aperstats2.x_centroid)  # doctest: +FLOAT_CMP
     [149.98470724  89.97893946]
     >>> print(aperstats2.sum)  # doctest: +FLOAT_CMP
     [10177.62548482 36653.97704059]
@@ -459,6 +478,11 @@ class ApertureStats:
         for item in range(len(self)):
             yield self.__getitem__(item)
 
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
+                                  since='3.0', until='4.0')
+
     @lazyproperty
     def isscalar(self):
         """
@@ -513,7 +537,7 @@ class ApertureStats:
             _ids = np.array((_ids,))
         return _ids
 
-    def get_id(self, id_num):
+    def select_id(self, id_num):
         """
         Return a new `ApertureStats` object for the input ID number
         only.
@@ -529,9 +553,9 @@ class ApertureStats:
             A new `ApertureStats` object containing only the source with
             the input ID number.
         """
-        return self.get_ids(id_num)
+        return self.select_ids(id_num)
 
-    def get_ids(self, id_nums):
+    def select_ids(self, id_nums):
         """
         Return a new `ApertureStats` object for the input ID numbers
         only.
@@ -582,7 +606,10 @@ class ApertureStats:
         else:
             table_columns = columns
 
-        tbl = QTable()
+        # Replace with QTable in 4.0
+        tbl = create_empty_deprecated_qtable(
+            _DEPRECATED_ATTRIBUTES, since='3.0', until='4.0')
+
         tbl.meta.update(self.meta)  # keep tbl.meta type
 
         for column in table_columns:
@@ -840,7 +867,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def data_sumcutout(self):
+    def data_sum_cutout(self):
         """
         A 2D aperture-weighted cutout from the data using the aperture
         mask with the input ``sum_method`` method as a
@@ -898,7 +925,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def error_sumcutout(self):
+    def error_sum_cutout(self):
         """
         A 2D aperture-weighted error cutout using the aperture mask with
         the input ``sum_method`` method as a `~numpy.ma.MaskedArray`.
@@ -1051,9 +1078,9 @@ class ApertureStats:
         # ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
-            xcentroid = moments[:, 0, 1] / moments[:, 0, 0]
-        return np.transpose((xcentroid, ycentroid))
+            y_centroid = moments[:, 1, 0] / moments[:, 0, 0]
+            x_centroid = moments[:, 0, 1] / moments[:, 0, 0]
+        return np.transpose((x_centroid, y_centroid))
 
     @lazyproperty
     @as_scalar
@@ -1068,46 +1095,46 @@ class ApertureStats:
         return self.cutout_centroid + origin
 
     @lazyproperty
-    def _xcentroid(self):
+    def _x_centroid(self):
         """
         The ``x`` coordinate of the centroid, always as an iterable.
         """
-        xcentroid = np.transpose(self.centroid)[0]
+        x_centroid = np.transpose(self.centroid)[0]
         if self.isscalar:
-            xcentroid = (xcentroid,)
-        return xcentroid
+            x_centroid = (x_centroid,)
+        return x_centroid
 
     @lazyproperty
     @as_scalar
-    def xcentroid(self):
+    def x_centroid(self):
         """
         The ``x`` coordinate of the centroid.
 
         The centroid is computed as the center of mass of the unmasked
         pixels within the aperture.
         """
-        return self._xcentroid
+        return self._x_centroid
 
     @lazyproperty
-    def _ycentroid(self):
+    def _y_centroid(self):
         """
         The ``y`` coordinate of the centroid, always as an iterable.
         """
-        ycentroid = np.transpose(self.centroid)[1]
+        y_centroid = np.transpose(self.centroid)[1]
         if self.isscalar:
-            ycentroid = (ycentroid,)
-        return ycentroid
+            y_centroid = (y_centroid,)
+        return y_centroid
 
     @lazyproperty
     @as_scalar
-    def ycentroid(self):
+    def y_centroid(self):
         """
         The ``y`` coordinate of the centroid.
 
         The centroid is computed as the center of mass of the unmasked
         pixels within the aperture.
         """
-        return self._ycentroid
+        return self._y_centroid
 
     @lazyproperty
     @as_scalar
@@ -1123,7 +1150,7 @@ class ApertureStats:
         """
         if self._wcs is None:
             return self._null_object
-        return self._wcs.pixel_to_world(self.xcentroid, self.ycentroid)
+        return self._wcs.pixel_to_world(self.x_centroid, self.y_centroid)
 
     @lazyproperty
     @as_scalar
@@ -1281,7 +1308,7 @@ class ApertureStats:
         if self.sum_method == 'center':
             return self._calculate_stats(np.sum)
 
-        data_values = self._get_values(self.data_sumcutout)
+        data_values = self._get_values(self.data_sum_cutout)
         result = np.array([np.sum(arr) for arr in data_values])
         if self._data_unit is not None:
             result <<= self._data_unit
@@ -1525,7 +1552,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def semimajor_sigma(self):
+    def semimajor_axis(self):
         """
         The 1-sigma standard deviation along the semimajor axis of the
         2D Gaussian function that has the same second-order central
@@ -1539,7 +1566,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def semiminor_sigma(self):
+    def semiminor_axis(self):
         """
         The 1-sigma standard deviation along the semiminor axis of the
         2D Gaussian function that has the same second-order central
@@ -1566,11 +1593,11 @@ class ApertureStats:
                          & = 2 \sqrt{\ln(2) \ (a^2 + b^2)}
 
         where :math:`a` and :math:`b` are the 1-sigma lengths of the
-        semimajor (`semimajor_sigma`) and semiminor (`semiminor_sigma`)
+        semimajor (`semimajor_axis`) and semiminor (`semiminor_axis`)
         axes, respectively.
         """
-        return 2.0 * np.sqrt(np.log(2.0) * (self.semimajor_sigma**2
-                                            + self.semiminor_sigma**2))
+        return 2.0 * np.sqrt(np.log(2.0) * (self.semimajor_axis**2
+                                            + self.semiminor_axis**2))
 
     @lazyproperty
     @as_scalar
@@ -1620,7 +1647,7 @@ class ApertureStats:
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
         """
-        return self.semimajor_sigma / self.semiminor_sigma
+        return self.semimajor_axis / self.semiminor_axis
 
     @lazyproperty
     @as_scalar
@@ -1636,11 +1663,11 @@ class ApertureStats:
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.
         """
-        return 1.0 - (self.semiminor_sigma / self.semimajor_sigma)
+        return 1.0 - (self.semiminor_axis / self.semimajor_axis)
 
     @lazyproperty
     @as_scalar
-    def covar_sigx2(self):
+    def covariance_xx(self):
         r"""
         The ``(0, 0)`` element of the `covariance` matrix, representing
         :math:`\sigma_x^2`, in units of pixel**2.
@@ -1649,7 +1676,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def covar_sigy2(self):
+    def covariance_yy(self):
         r"""
         The ``(1, 1)`` element of the `covariance` matrix, representing
         :math:`\sigma_y^2`, in units of pixel**2.
@@ -1658,7 +1685,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def covar_sigxy(self):
+    def covariance_xy(self):
         r"""
         The ``(0, 1)`` and ``(1, 0)`` elements of the `covariance`
         matrix, representing :math:`\sigma_x \sigma_y`, in units of
@@ -1668,7 +1695,7 @@ class ApertureStats:
 
     @lazyproperty
     @as_scalar
-    def cxx(self):
+    def ellipse_cxx(self):
         r"""
         Coefficient for ``x**2`` in the generalized ellipse equation in
         units of pixel**(-2).
@@ -1686,12 +1713,12 @@ class ApertureStats:
         `SourceExtractor`_ reports that the isophotal limit of a source
         is well represented by :math:`R \approx 3`.
         """
-        return ((np.cos(self.orientation) / self.semimajor_sigma)**2
-                + (np.sin(self.orientation) / self.semiminor_sigma)**2)
+        return ((np.cos(self.orientation) / self.semimajor_axis)**2
+                + (np.sin(self.orientation) / self.semiminor_axis)**2)
 
     @lazyproperty
     @as_scalar
-    def cyy(self):
+    def ellipse_cyy(self):
         r"""
         Coefficient for ``y**2`` in the generalized ellipse equation in
         units of pixel**(-2).
@@ -1709,12 +1736,12 @@ class ApertureStats:
         `SourceExtractor`_ reports that the isophotal limit of a source
         is well represented by :math:`R \approx 3`.
         """
-        return ((np.sin(self.orientation) / self.semimajor_sigma)**2
-                + (np.cos(self.orientation) / self.semiminor_sigma)**2)
+        return ((np.sin(self.orientation) / self.semimajor_axis)**2
+                + (np.cos(self.orientation) / self.semiminor_axis)**2)
 
     @lazyproperty
     @as_scalar
-    def cxy(self):
+    def ellipse_cxy(self):
         r"""
         Coefficient for ``x * y`` in the generalized ellipse equation in
         units of pixel**(-2).
@@ -1733,8 +1760,8 @@ class ApertureStats:
         is well represented by :math:`R \approx 3`.
         """
         return (2.0 * np.cos(self.orientation) * np.sin(self.orientation)
-                * ((1.0 / self.semimajor_sigma**2)
-                   - (1.0 / self.semiminor_sigma**2)))
+                * ((1.0 / self.semimajor_axis**2)
+                   - (1.0 / self.semiminor_axis**2)))
 
     @lazyproperty
     @as_scalar

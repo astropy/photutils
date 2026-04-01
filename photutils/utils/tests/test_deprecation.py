@@ -65,12 +65,12 @@ class TestDeprecatedColumn:
         """
         table = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP)
 
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             col = table['old']
         assert np.all(col == table['new'])
 
-        match = "'old_b' is deprecated"
+        match = "'old_b' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             sub_table = table[['stable', 'old_b']]
         assert sub_table.colnames == ['stable', 'new_b']
@@ -80,7 +80,7 @@ class TestDeprecatedColumn:
         Test deprecated assignment via __setitem__.
         """
         table = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP)
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             table['old'] = [100, 200, 300]
         assert np.all(table['new'] == [100, 200, 300])
@@ -90,7 +90,7 @@ class TestDeprecatedColumn:
         Test deprecated deletion via __delitem__ and remove methods.
         """
         table1 = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP)
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             del table1['old']
         assert 'new' not in table1.colnames
@@ -105,7 +105,7 @@ class TestDeprecatedColumn:
         Test deprecated use in keep_columns.
         """
         table = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP)
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             table.keep_columns(['stable', 'old'])
         assert set(table.colnames) == {'stable', 'new'}
@@ -115,7 +115,7 @@ class TestDeprecatedColumn:
         Test deprecated use in rename_column and rename_columns.
         """
         table1 = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP)
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             table1.rename_column('old', 'final_name_1')
         assert 'final_name_1' in table1.colnames
@@ -132,21 +132,21 @@ class TestDeprecatedColumn:
         """
         table_sort = create_deprecated_table_from_data(raw_data,
                                                        DEPRECATION_MAP)
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             table_sort.sort('old')
         assert table_sort['new'][0] == 1
 
         table_group = create_deprecated_table_from_data(raw_data,
                                                         DEPRECATION_MAP)
-        match = "'old_b' is deprecated"
+        match = "'old_b' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             groups = table_group.group_by('old_b')
         assert len(groups.groups) == 3
 
         table_unique = create_deprecated_table_from_data(raw_data,
                                                          DEPRECATION_MAP)
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             unique_table = unique(table_unique, keys='old')
         assert len(unique_table) == 3
@@ -174,7 +174,7 @@ class TestDeprecatedColumn:
         Test deprecated use in add_index and remove_indices.
         """
         table = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP)
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             table.add_index('old')
 
@@ -212,7 +212,7 @@ class TestDeprecatedColumn:
         Test deprecated use in ``in`` checks.
         """
         table = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP)
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             assert 'old' in table
 
@@ -230,7 +230,7 @@ class TestDeprecatedColumn:
         copied = table.copy()
 
         assert isinstance(copied, DeprecatedColumnTable)
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             col = copied['old']
         assert np.all(col == [3, 2, 1])
@@ -253,7 +253,7 @@ class TestDeprecatedColumn:
         Test deprecated use in replace_column.
         """
         table = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP)
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             table.replace_column('old', [100, 200, 300])
         assert np.all(table['new'] == [100, 200, 300])
@@ -282,6 +282,27 @@ class TestDeprecatedColumn:
         index_col_names = [c.name for c in table.indices[0].columns]
         assert index_col_names == ['new', 'new_b']
 
+    def test_remove_indices_deprecated(self, raw_data):
+        """
+        Test deprecated use in remove_indices.
+        """
+        table = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP)
+        table.add_index('new')
+        assert len(table.indices) == 1
+        with pytest.warns(AstropyDeprecationWarning):
+            table.remove_indices('old')
+        assert len(table.indices) == 0
+
+    def test_copy_with_none_deprecation_map(self):
+        """
+        Test that copy() works when deprecation_map is None.
+        """
+        table = DeprecatedColumnTable({'a': [1, 2, 3]})
+        table.deprecation_map = None
+        copied = table.copy()
+        assert copied.deprecation_map is None
+        assert np.all(copied['a'] == [1, 2, 3])
+
     def test_create_empty_deprecated_qtable(self):
         """
         Test creating an empty QTable and adding columns incrementally.
@@ -295,7 +316,7 @@ class TestDeprecatedColumn:
         table['stable'] = [4, 5, 6]
 
         # Access via deprecated name
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             col = table['old']
         assert np.all(col == [1, 2, 3])
@@ -308,7 +329,7 @@ class TestDeprecatedColumn:
         sliced = table[0:2]
 
         assert isinstance(sliced, DeprecatedColumnTable)
-        match = "'old' is deprecated"
+        match = "'old' was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             col = sliced['old']
         assert np.all(col == [3, 2])
@@ -682,6 +703,81 @@ class TestColumnDeprecationUntil:
             _ = table['old']
         msg = str(record[0].message)
         assert 'version 6.0' in msg
+
+    def test_since_in_warning_message(self):
+        """
+        Test that the deprecation version appears in the warning
+        message.
+        """
+        table = create_deprecated_table_from_data(
+            {'old': [1]}, DEPRECATION_MAP, since='3.0')
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = table['old']
+        msg = str(record[0].message)
+        assert 'in version 3.0' in msg
+
+    def test_since_none(self):
+        """
+        Test that without ``since``, the message does not mention a
+        deprecation version.
+        """
+        table = create_deprecated_table_from_data(
+            {'old': [1]}, DEPRECATION_MAP)
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = table['old']
+        msg = str(record[0].message)
+        assert 'was deprecated.' in msg
+        assert 'was deprecated in version' not in msg
+
+    def test_since_and_until(self):
+        """
+        Test that both ``since`` and ``until`` appear in the warning.
+        """
+        table = create_deprecated_table_from_data(
+            {'old': [1]}, DEPRECATION_MAP, since='3.0', until='4.0')
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = table['old']
+        msg = str(record[0].message)
+        assert 'in version 3.0' in msg
+        assert 'version 4.0' in msg
+
+    def test_since_preserved_on_copy(self):
+        """
+        Test that copy() preserves the ``since`` value.
+        """
+        table = create_deprecated_table_from_data(
+            {'old': [1]}, DEPRECATION_MAP, since='3.0', until='4.0')
+        copied = table.copy()
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = copied['old']
+        msg = str(record[0].message)
+        assert 'in version 3.0' in msg
+        assert 'version 4.0' in msg
+
+    def test_since_preserved_on_slice(self):
+        """
+        Test that slicing preserves the ``since`` value.
+        """
+        table = create_deprecated_table_from_data(
+            {'old': [1, 2]}, DEPRECATION_MAP, since='3.0', until='4.0')
+        sliced = table[0:1]
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = sliced['old']
+        msg = str(record[0].message)
+        assert 'in version 3.0' in msg
+
+    def test_empty_qtable_since(self):
+        """
+        Test that create_empty_deprecated_qtable passes ``since``.
+        """
+        table = create_empty_deprecated_qtable(
+            DEPRECATION_MAP, since='3.0', until='4.0')
+        table['new'] = [1, 2]
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            _ = table['old']
+        msg = str(record[0].message)
+        assert 'in version 3.0' in msg
+        assert 'version 4.0' in msg
 
 
 class _ExampleObj:

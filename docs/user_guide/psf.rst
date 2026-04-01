@@ -103,7 +103,7 @@ which facilitates the optimization process. For more details see
 :ref:`source-grouping`.
 
 The local background around each source can optionally be subtracted
-using the ``localbkg_estimator`` keyword. This keyword accepts a
+using the ``local_bkg_estimator`` keyword. This keyword accepts a
 `~photutils.background.LocalBackground` instance that estimates the
 local statistics in a circular annulus aperture centered on each source.
 The size of the annulus and the statistic function can be configured in
@@ -472,26 +472,26 @@ from the ``finder`` instance called during PSF fitting can be accessed
 using the ``finder_results`` attribute (the ``finder`` returns an
 astropy table)::
 
-    >>> psfphot.finder_results['xcentroid'].info.format = '.4f'  # optional format
-    >>> psfphot.finder_results['ycentroid'].info.format = '.4f'  # optional format
+    >>> psfphot.finder_results['x_centroid'].info.format = '.4f'  # optional format
+    >>> psfphot.finder_results['y_centroid'].info.format = '.4f'  # optional format
     >>> psfphot.finder_results['sharpness'].info.format = '.4f'  # optional format
     >>> psfphot.finder_results['peak'].info.format = '.4f'
     >>> psfphot.finder_results['flux'].info.format = '.4f'
     >>> psfphot.finder_results['mag'].info.format = '.4f'
     >>> psfphot.finder_results['daofind_mag'].info.format = '.4f'
     >>> print(psfphot.finder_results)  # doctest: +FLOAT_CMP
-     id xcentroid ycentroid sharpness ...   peak    flux     mag   daofind_mag
-    --- --------- --------- --------- ... ------- -------- ------- -----------
-      1   54.5299    7.7460    0.6006 ... 53.5953 476.3221 -6.6948     -2.1093
-      2   29.0927   25.5992    0.5955 ... 57.1982 499.4443 -6.7462     -2.1958
-      3   79.6185   28.7515    0.5957 ... 65.7175 574.1382 -6.8975     -2.3401
-      4   63.2485   48.6134    0.5802 ... 58.3985 521.4656 -6.7931     -2.2209
-      5   88.8820   54.1311    0.5948 ... 69.1869 576.2842 -6.9016     -2.4379
-      6   79.8727   61.1208    0.6216 ... 74.0935 612.8353 -6.9684     -2.4799
-      7   90.9621   72.0803    0.6167 ... 68.4157 561.7163 -6.8738     -2.4035
-      8    7.7962   78.5465    0.5979 ... 66.2173 595.6881 -6.9375     -2.3167
-      9    5.5858   89.8664    0.5741 ... 54.3786 505.6093 -6.7595     -2.1188
-     10   71.8303   90.5624    0.6038 ... 73.5747 639.9299 -7.0153     -2.4516
+     id x_centroid y_centroid sharpness ...   peak    flux     mag   daofind_mag
+    --- ---------- ---------- --------- ... ------- -------- ------- -----------
+      1    54.5299     7.7460    0.6006 ... 53.5953 476.3221 -6.6948     -2.1093
+      2    29.0927    25.5992    0.5955 ... 57.1982 499.4443 -6.7462     -2.1958
+      3    79.6185    28.7515    0.5957 ... 65.7175 574.1382 -6.8975     -2.3401
+      4    63.2485    48.6134    0.5802 ... 58.3985 521.4656 -6.7931     -2.2209
+      5    88.8820    54.1311    0.5948 ... 69.1869 576.2842 -6.9016     -2.4379
+      6    79.8727    61.1208    0.6216 ... 74.0935 612.8353 -6.9684     -2.4799
+      7    90.9621    72.0803    0.6167 ... 68.4157 561.7163 -6.8738     -2.4035
+      8     7.7962    78.5465    0.5979 ... 66.2173 595.6881 -6.9375     -2.3167
+      9     5.5858    89.8664    0.5741 ... 54.3786 505.6093 -6.7595     -2.1188
+     10    71.8303    90.5624    0.6038 ... 73.5747 639.9299 -7.0153     -2.4516
 
 
 Fitting a single source
@@ -712,18 +712,18 @@ Local Background Subtraction
 
 To subtract a local background from each source, define a
 `~photutils.background.LocalBackground` instance and input it via
-the ``localbkg_estimator`` keyword. Here we'll use an annulus with
+the ``local_bkg_estimator`` keyword. Here we'll use an annulus with
 an inner and outer radius of 5 and 10 pixels, respectively, with the
 `~photutils.background.MMMBackground` statistic (with its default sigma
 clipping)::
 
     >>> from photutils.background import LocalBackground, MMMBackground
     >>> bkgstat = MMMBackground()
-    >>> localbkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
+    >>> local_bkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
     >>> finder = DAOStarFinder(10.0, 2.0)
     >>> psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
     ...                         grouper=grouper, aperture_radius=4,
-    ...                         localbkg_estimator=localbkg_estimator)
+    ...                         local_bkg_estimator=local_bkg_estimator)
     >>> phot = psfphot(data, error=error)
 
 The local background values are output in the table::
@@ -765,12 +765,12 @@ find additional sources::
     >>> fit_shape = (5, 5)
     >>> finder = DAOStarFinder(10.0, 2.0)
     >>> bkgstat = MMMBackground()
-    >>> localbkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
+    >>> local_bkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
     >>> init_params = QTable()
     >>> init_params['x'] = [54, 29, 80]
     >>> init_params['y'] = [8, 26, 29]
     >>> psfphot2 = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
-    ...                                   localbkg_estimator=localbkg_estimator,
+    ...                                   local_bkg_estimator=local_bkg_estimator,
     ...                                   aperture_radius=4)
     >>> phot = psfphot2(data, error=error, init_params=init_params)
 
@@ -814,7 +814,7 @@ defined above::
    >>> from photutils.psf import fit_fwhm
    >>> finder = DAOStarFinder(6.0, 2.0)
    >>> finder_tbl = finder(data)
-   >>> xypos = list(zip(finder_tbl['xcentroid'], finder_tbl['ycentroid']))
+   >>> xypos = list(zip(finder_tbl['x_centroid'], finder_tbl['y_centroid']))
    >>> fwhm = fit_fwhm(data, xypos=xypos, error=error, fit_shape=(5, 5), fwhm=2)
    >>> fwhm  # doctest: +FLOAT_CMP
    array([2.69735154, 2.70371211, 2.68917219, 2.69310558, 2.68931721,

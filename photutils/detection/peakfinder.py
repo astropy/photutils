@@ -9,6 +9,7 @@ import numpy as np
 from astropy.table import QTable
 from scipy.ndimage import maximum_filter
 
+from photutils.utils._deprecation import deprecated_renamed_argument
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import as_pair
 from photutils.utils._quantity_helpers import process_quantities
@@ -18,8 +19,9 @@ from photutils.utils.exceptions import NoDetectionsWarning
 __all__ = ['find_peaks']
 
 
+@deprecated_renamed_argument('npeaks', 'n_peaks', '3.0', until='4.0')
 def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
-               border_width=None, npeaks=np.inf, centroid_func=None,
+               border_width=None, n_peaks=np.inf, centroid_func=None,
                error=None, wcs=None):
     """
     Find local peaks in an image that are above a specified threshold
@@ -84,9 +86,9 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         border is excluded. The border width values must be non-negative
         integers.
 
-    npeaks : int, optional
+    n_peaks : int, optional
         The maximum number of peaks to return. When the number of
-        detected peaks exceeds ``npeaks``, the peaks with the highest
+        detected peaks exceeds ``n_peaks``, the peaks with the highest
         peak intensities will be returned.
 
     centroid_func : callable, optional
@@ -131,8 +133,8 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     The output column names (``x_peak``, ``y_peak``, ``peak_value``)
     differ from the star finder classes (e.g.,
-    `~photutils.detection.DAOStarFinder`), which use ``xcentroid``,
-    ``ycentroid``, and ``flux``.
+    `~photutils.detection.DAOStarFinder`), which use ``x_centroid``,
+    ``y_centroid``, and ``flux``.
     """
     arrays, unit = process_quantities((data, threshold, error),
                                       ('data', 'threshold', 'error'))
@@ -201,14 +203,14 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     if unit is not None:
         peak_values <<= unit
 
-    nxpeaks = len(x_peaks)
-    if nxpeaks == 0:
+    n_x_peaks = len(x_peaks)
+    if n_x_peaks == 0:
         msg = 'No local peaks were found.'
         warnings.warn(msg, NoDetectionsWarning)
         return None
 
-    if nxpeaks > npeaks:
-        idx = np.argsort(peak_values)[::-1][:npeaks]
+    if n_x_peaks > n_peaks:
+        idx = np.argsort(peak_values)[::-1][:n_peaks]
         x_peaks = x_peaks[idx]
         y_peaks = y_peaks[idx]
         peak_values = peak_values[idx]

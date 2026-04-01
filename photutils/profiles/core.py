@@ -200,24 +200,24 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         Returns
         -------
-        fluxes : `~numpy.ndarray`
+        flux : `~numpy.ndarray`
             The aperture fluxes.
 
-        fluxerrs : `~numpy.ndarray`
+        flux_err : `~numpy.ndarray`
             The aperture flux errors.
 
         areas : `~numpy.ndarray`
             The aperture areas.
         """
         fluxes = []
-        fluxerrs = []
+        flux_errs = []
         areas = []
         for aperture in apertures:
             if aperture is None:
-                flux, fluxerr = [0.0], [0.0]
+                flux, flux_err = [0.0], [0.0]
                 area = 0.0
             else:
-                flux, fluxerr = aperture.do_photometry(
+                flux, flux_err = aperture.do_photometry(
                     self.data, error=self.error, mask=self.mask,
                     method=self.method, subpixels=self.subpixels)
                 area = aperture.area_overlap(self.data, mask=self.mask,
@@ -225,17 +225,17 @@ class ProfileBase(metaclass=abc.ABCMeta):
                                              subpixels=self.subpixels)
             fluxes.append(flux[0])
             if self.error is not None:
-                fluxerrs.append(fluxerr[0])
+                flux_errs.append(flux_err[0])
             areas.append(area)
 
         fluxes = np.array(fluxes)
-        fluxerrs = np.array(fluxerrs)
+        flux_errs = np.array(flux_errs)
         areas = np.array(areas)
         if self.unit is not None:
             fluxes <<= self.unit
-            fluxerrs <<= self.unit
+            flux_errs <<= self.unit
 
-        return fluxes, fluxerrs, areas
+        return fluxes, flux_errs, areas
 
     @lazyproperty
     def _photometry(self):

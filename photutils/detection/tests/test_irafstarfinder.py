@@ -32,7 +32,7 @@ class TestIRAFStarFinder:
         tbl0 = finder0(data)
         tbl1 = finder1(data << units)
         assert_array_equal(tbl0, tbl1)
-        assert tbl0['pa'].unit == u.deg
+        assert tbl0['orientation'].unit == u.deg
 
     def test_inputs(self):
         """
@@ -100,7 +100,8 @@ class TestIRAFStarFinder:
         """
         finder0 = IRAFStarFinder(threshold=8.0, fwhm=2)
         tbl0 = finder0(data)
-        xycoords = list(zip(tbl0['xcentroid'], tbl0['ycentroid'], strict=True))
+        xycoords = list(zip(tbl0['x_centroid'],
+                            tbl0['y_centroid'], strict=True))
         xycoords = np.round(xycoords).astype(int)
 
         finder1 = IRAFStarFinder(threshold=8.0, fwhm=2, xycoords=xycoords)
@@ -409,7 +410,7 @@ class TestIRAFStarFinder:
         tbl_2d = finder_2d(data)
         assert len(tbl_low) > len(tbl_2d)
         # All 2D sources should be in the lower half
-        assert all(tbl_2d['ycentroid'] >= 50)
+        assert all(tbl_2d['y_centroid'] >= 50)
 
     def test_threshold_2d_repr(self):
         """

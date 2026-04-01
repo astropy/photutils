@@ -5,15 +5,25 @@ Tools for storing the results of isophote fits.
 
 import astropy.units as u
 import numpy as np
-from astropy.table import QTable
 
 from photutils.isophote.harmonics import (first_and_second_harmonic_function,
                                           fit_first_and_second_harmonics,
                                           fit_upper_harmonic)
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (create_empty_deprecated_qtable,
+                                          deprecated_getattr,
+                                          deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
 
 __all__ = ['Isophote', 'IsophoteList']
+
+# Remove in 4.0
+_DEPRECATED_ATTRIBUTES = {
+    'grad_error': 'gradient_err',
+    'grad_r_error': 'gradient_rel_err',
+    'niter': 'n_iter',
+    'ndata': 'n_data',
+    'nflag': 'n_flag',
+}
 
 
 class Isophote:
@@ -31,7 +41,7 @@ class Isophote:
     ----------
     sample : `~photutils.isophote.EllipseSample` instance
         The sample information.
-    niter : int
+    n_iter : int
         The number of iterations used to fit the isophote.
     valid : bool
         The status of the fitting operation.
@@ -77,9 +87,9 @@ class Isophote:
         sector integration area)).
     grad : float
         The local radial intensity gradient.
-    grad_error : float
+    gradient_err : float
         The measurement error of the local radial intensity gradient.
-    grad_r_error : float
+    gradient_rel_err : float
         The relative error of local radial intensity gradient.
     tflux_e : float
         The sum of all pixels inside the ellipse.
@@ -94,8 +104,14 @@ class Isophote:
     sarea : float
         The average sector area on the isophote (pixel**2).
     ndata : int
+        .. deprecated:: 3.0
+            Use ``n_data`` instead.
+    n_data : int
         The number of extracted data points.
     nflag : int
+        .. deprecated:: 3.0
+            Use ``n_flag`` instead.
+    n_flag : int
         The number of discarded data points. Data points can be
         discarded either because they are physically outside the image
         frame boundaries, because they were rejected by sigma-clipping,
@@ -113,9 +129,9 @@ class Isophote:
         ``b4`` attributes.
     """
 
-    def __init__(self, sample, niter, valid, stop_code):
+    def __init__(self, sample, n_iter, valid, stop_code):
         self.sample = sample
-        self.niter = niter
+        self.n_iter = n_iter
         self.valid = valid
         self.stop_code = stop_code
 
@@ -125,12 +141,12 @@ class Isophote:
             self.int_err = self.rms / np.sqrt(sample.actual_points)
             self.pix_stddev = self.rms * np.sqrt(sample.sector_area)
             self.grad = sample.gradient
-            self.grad_error = sample.gradient_error
+            self.gradient_err = sample.gradient_err
 
-            self.grad_r_error = sample.gradient_relative_error
+            self.gradient_rel_err = sample.gradient_rel_err
             self.sarea = sample.sector_area
-            self.ndata = sample.actual_points
-            self.nflag = sample.total_points - sample.actual_points
+            self.n_data = sample.actual_points
+            self.n_flag = sample.total_points - sample.actual_points
 
             # flux contained inside ellipse and circle
             (self.tflux_e, self.tflux_c, self.npix_e,
@@ -143,6 +159,11 @@ class Isophote:
              self.b3_err) = self._compute_deviations(sample, 3)
             (self.a4, self.b4, self.a4_err,
              self.b4_err) = self._compute_deviations(sample, 4)
+
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
+                                  since='3.0', until='4.0')
 
     @staticmethod
     def _raise_sma_error(err):
@@ -302,7 +323,8 @@ class Isophote:
             # this comes from the old code. Likely it was based on
             # empirical experience with the STSDAS task, so we leave
             # it here without too much thought.
-            gre = self.grad_r_error if self.grad_r_error is not None else 0.8
+            gre = (self.gradient_rel_err
+                   if self.gradient_rel_err is not None else 0.8)
 
             a_err = abs(a) * np.sqrt((ce[1] / up_coeffs[1])**2 + gre**2)
             b_err = abs(b) * np.sqrt((ce[2] / up_coeffs[2])**2 + gre**2)
@@ -421,11 +443,11 @@ class CentralPixel(Isophote):
         self.int_err = 0.0
         self.pix_stddev = None
         self.grad = 0.0
-        self.grad_error = None
-        self.grad_r_error = None
+        self.gradient_err = None
+        self.gradient_rel_err = None
         self.sarea = None
-        self.ndata = sample.actual_points
-        self.nflag = sample.total_points - sample.actual_points
+        self.n_data = sample.actual_points
+        self.n_flag = sample.total_points - sample.actual_points
 
         self.tflux_e = self.tflux_c = self.npix_e = self.npix_c = None
 
@@ -482,6 +504,11 @@ class IsophoteList:
 
     def __init__(self, iso_list):
         self._list = iso_list
+
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
+                                  since='3.0', until='4.0')
 
     def __len__(self):
         return len(self._list)
@@ -683,18 +710,18 @@ class IsophoteList:
         return self._collect_as_array('grad')
 
     @property
-    def grad_error(self):
+    def gradient_err(self):
         """
         The measurement error of the local radial intensity gradient.
         """
-        return self._collect_as_array('grad_error')
+        return self._collect_as_array('gradient_err')
 
     @property
-    def grad_r_error(self):
+    def gradient_rel_err(self):
         """
         The relative error of local radial intensity gradient.
         """
-        return self._collect_as_array('grad_r_error')
+        return self._collect_as_array('gradient_rel_err')
 
     @property
     def sarea(self):
@@ -704,14 +731,14 @@ class IsophoteList:
         return self._collect_as_array('sarea')
 
     @property
-    def ndata(self):
+    def n_data(self):
         """
         The number of extracted data points.
         """
-        return self._collect_as_array('ndata')
+        return self._collect_as_array('n_data')
 
     @property
-    def nflag(self):
+    def n_flag(self):
         """
         The number of discarded data points.
 
@@ -719,14 +746,14 @@ class IsophoteList:
         outside the image frame boundaries, because they were rejected
         by sigma-clipping, or they are masked.
         """
-        return self._collect_as_array('nflag')
+        return self._collect_as_array('n_flag')
 
     @property
-    def niter(self):
+    def n_iter(self):
         """
         The number of iterations used to fit the isophote.
         """
-        return self._collect_as_array('niter')
+        return self._collect_as_array('n_iter')
 
     @property
     def valid(self):
@@ -892,11 +919,15 @@ def _get_properties(isophote_list):
     result : dict
         An dictionary with the list of the isophote_list properties.
     """
+    # deprecated IsophoteList property names to exclude
+    _deprecated_props = {'npix_e', 'npix_c'}
+
     properties = {}
     for an_item in isophote_list.__class__.__dict__:
         p_type = isophote_list.__class__.__dict__[an_item]
-        # Exclude the sample property
-        if isinstance(p_type, property) and 'sample' not in an_item:
+        # Exclude the sample property and deprecated properties
+        if (isinstance(p_type, property) and 'sample' not in an_item
+                and an_item not in _deprecated_props):
             properties[str(an_item)] = str(an_item)
     return properties
 
@@ -923,7 +954,17 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
         An astropy QTable with the selected or all isophote parameters.
     """
     properties = {}
-    isotable = QTable()
+
+    # Remove in 4.0
+    _deprecation_map = {
+        'grad_error': 'gradient_err',
+        'grad_rerror': 'gradient_rel_err',
+    }
+
+    # Replace with QTable in 4.0
+    isotable = create_empty_deprecated_qtable(
+        _deprecation_map, since='3.0', until='4.0')
+
     isotable.meta.update(_get_meta())  # keep isotable.meta type
 
     # main_properties: `List`
@@ -932,10 +973,9 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
 
     def __rename_properties(properties, *,
                             orig_names=('int_err', 'eps', 'ellip_err',
-                                        'grad_r_error', 'nflag'),
+                                        'n_flag'),
                             new_names=('intens_err', 'ellipticity',
-                                       'ellipticity_err', 'grad_rerror',
-                                       'nflag')):
+                                       'ellipticity_err', 'n_flag')):
         """
         Simple renaming for some of the isophote_list parameters.
 
@@ -958,9 +998,10 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
             parameters.
         """
         main_properties = ['sma', 'intens', 'int_err', 'eps', 'ellip_err',
-                           'pa', 'pa_err', 'grad', 'grad_error',
-                           'grad_r_error', 'x0', 'x0_err', 'y0', 'y0_err',
-                           'ndata', 'nflag', 'niter', 'stop_code']
+                           'pa', 'pa_err', 'grad', 'gradient_err',
+                           'gradient_rel_err', 'x0', 'x0_err', 'y0',
+                           'y0_err', 'n_data', 'n_flag', 'n_iter',
+                           'stop_code']
 
         for an_item in main_properties:
             if an_item in orig_names:

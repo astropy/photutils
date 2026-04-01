@@ -59,18 +59,19 @@ converted to an `astropy.table.Table` object for easier access and
 display. For example, we can display the centroid, semimajor and
 semiminor axis lengths, and orientation of the source::
 
-    >>> columns = ['label', 'xcentroid', 'ycentroid', 'semimajor_sigma',
-    ...            'semiminor_sigma', 'orientation']
+    >>> columns = ['label', 'x_centroid', 'y_centroid', 'semimajor_axis',
+    ...            'semiminor_axis', 'orientation']
     >>> tbl = cat.to_table(columns=columns)
-    >>> tbl['xcentroid'].info.format = '.10f'  # optional format
-    >>> tbl['ycentroid'].info.format = '.10f'
-    >>> tbl['semiminor_sigma'].info.format = '.10f'
-    >>> tbl['orientation'].info.format = '.10f'
+    >>> tbl['x_centroid'].info.format = '.6f'  # optional format
+    >>> tbl['y_centroid'].info.format = '.6f'
+    >>> tbl['semimajor_axis'].info.format = '.6f'
+    >>> tbl['semiminor_axis'].info.format = '.6f'
+    >>> tbl['orientation'].info.format = '.6f'
     >>> print(tbl)
-    label   xcentroid     ycentroid   ... semiminor_sigma  orientation
-                                      ...       pix            deg
-    ----- ------------- ------------- ... --------------- -------------
-        1 15.0203353055 20.0876025118 ...    3.2260911267 59.6896286141
+    label x_centroid y_centroid semimajor_axis semiminor_axis orientation
+                                     pix            pix           deg
+    ----- ---------- ---------- -------------- -------------- -----------
+        1  15.020335  20.087603       5.597273       3.226091   59.689629
 
 Now let's use the measured morphological properties to define an
 approximate isophotal ellipse for the source:
@@ -88,13 +89,13 @@ approximate isophotal ellipse for the source:
     data = make_4gaussians_image()[slc]  # extract single object
     mask = data < 50
     cat = data_properties(data, mask=mask)
-    columns = ['label', 'xcentroid', 'ycentroid', 'semimajor_sigma',
-               'semiminor_sigma', 'orientation']
+    columns = ['label', 'x_centroid', 'y_centroid', 'semimajor_axis',
+               'semiminor_axis', 'orientation']
     tbl = cat.to_table(columns=columns)
     r = 2.5  # approximate isophotal extent
-    xypos = (cat.xcentroid, cat.ycentroid)
-    a = cat.semimajor_sigma.value * r
-    b = cat.semiminor_sigma.value * r
+    xypos = (cat.x_centroid, cat.y_centroid)
+    a = cat.semimajor_axis.value * r
+    b = cat.semiminor_axis.value * r
     theta = cat.orientation.to(u.rad).value
     apertures = EllipticalAperture(xypos, a, b, theta=theta)
 
@@ -106,12 +107,12 @@ approximate isophotal ellipse for the source:
     dy_major = a * np.sin(theta)
     color = 'C1'
     width = 0.2
-    ax.arrow(cat.xcentroid, cat.ycentroid, dx_major, dy_major, color=color,
+    ax.arrow(cat.x_centroid, cat.y_centroid, dx_major, dy_major, color=color,
              length_includes_head=True, width=width)
     theta2 = theta + np.pi / 2
     dx_minor = b * np.cos(theta2)
     dy_minor = b * np.sin(theta2)
-    ax.arrow(cat.xcentroid, cat.ycentroid, dx_minor, dy_minor, color=color,
+    ax.arrow(cat.x_centroid, cat.y_centroid, dx_minor, dy_minor, color=color,
              length_includes_head=True, width=width)
 
 

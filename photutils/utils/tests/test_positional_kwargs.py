@@ -28,7 +28,7 @@ class TestMakeRandomCmapPositionalKwargs:
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_keyword_no_warning(self):
-        make_random_cmap(ncolors=100)
+        make_random_cmap(n_colors=100)
 
 
 class TestCutoutImagePositionalKwargs:

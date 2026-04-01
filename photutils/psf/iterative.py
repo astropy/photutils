@@ -16,7 +16,8 @@ from photutils.psf._components import (_make_model_image_docstring,
 from photutils.psf.flags import decode_psf_flags
 from photutils.psf.photometry import PSFPhotometry
 from photutils.psf.utils import _create_call_docstring
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated_positional_kwargs,
+                                          deprecated_renamed_argument)
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -128,7 +129,7 @@ class IterativePSFPhotometry:
         flux values are present in the ``init_params`` table, they will
         override this keyword *only for the first iteration*.
 
-    localbkg_estimator : `~photutils.background.LocalBackground` or `None`, \
+    local_bkg_estimator : `~photutils.background.LocalBackground` or `None`, \
             optional
         The object used to estimate the local background around each
         source. If `None`, then no local background is subtracted. The
@@ -192,7 +193,7 @@ class IterativePSFPhotometry:
     can try a different Astropy fitter that returns parameter errors.
 
     The local background value around each source is optionally
-    estimated using the ``localbkg_estimator`` or obtained from the
+    estimated using the ``local_bkg_estimator`` or obtained from the
     ``local_bkg`` column in the input ``init_params`` table. This local
     background is then subtracted from the data over the ``fit_shape``
     region for each source before fitting the PSF model. For sources
@@ -200,7 +201,7 @@ class IterativePSFPhotometry:
     effectively be subtracted twice in the overlapping ``fit_shape``
     regions, even if the source ``grouper`` is input. This is not an
     issue if the sources are well-separated. However, for crowded
-    fields, please use the ``localbkg_estimator`` (or ``local_bkg``
+    fields, please use the ``local_bkg_estimator`` (or ``local_bkg``
     column in ``init_params``) with care.
 
     This class has two modes of operation: 'new' and 'all'. For both
@@ -232,10 +233,13 @@ class IterativePSFPhotometry:
     in a group exceeds the ``group_warning_threshold`` value.
     """
 
+    @deprecated_renamed_argument('localbkg_estimator',
+                                 'local_bkg_estimator', '3.0',
+                                 until='4.0')
     def __init__(self, psf_model, fit_shape, finder, *, grouper=None,
                  fitter=None, fitter_maxiters=100, xy_bounds=None,
                  maxiters=3, mode='new', aperture_radius=None,
-                 localbkg_estimator=None, group_warning_threshold=25,
+                 local_bkg_estimator=None, group_warning_threshold=25,
                  sub_shape=None, progress_bar=False):
 
         if finder is None:
@@ -252,7 +256,7 @@ class IterativePSFPhotometry:
                                       fitter_maxiters=fitter_maxiters,
                                       xy_bounds=xy_bounds,
                                       aperture_radius=aperture_radius,
-                                      localbkg_estimator=localbkg_estimator,
+                                      local_bkg_estimator=local_bkg_estimator,
                                       group_warning_threshold=threshold,
                                       progress_bar=progress_bar)
 
@@ -280,7 +284,7 @@ class IterativePSFPhotometry:
     def __repr__(self):
         params = ('psf_model', 'fit_shape', 'finder', 'grouper', 'fitter',
                   'fitter_maxiters', 'xy_bounds', 'maxiters', 'mode',
-                  'localbkg_estimator', 'aperture_radius', 'sub_shape',
+                  'local_bkg_estimator', 'aperture_radius', 'sub_shape',
                   'progress_bar')
         overrides = {
             'psf_model': self._psfphot.psf_model,
@@ -290,7 +294,7 @@ class IterativePSFPhotometry:
             'fitter': self._psfphot.fitter,
             'fitter_maxiters': self._psfphot.fitter_maxiters,
             'xy_bounds': self._psfphot.xy_bounds,
-            'localbkg_estimator': self._psfphot.localbkg_estimator,
+            'local_bkg_estimator': self._psfphot.local_bkg_estimator,
             'aperture_radius': self._psfphot.aperture_radius,
             'progress_bar': self._psfphot.progress_bar,
         }
@@ -702,9 +706,11 @@ class IterativePSFPhotometry:
 
         return model_params, local_bkg
 
+    @deprecated_renamed_argument('include_localbkg', 'include_local_bkg',
+                                 '3.0', until='4.0')
     @_make_model_image_docstring
     def make_model_image(self, shape, *, psf_shape=None,
-                         include_localbkg=False):
+                         include_local_bkg=False):
         if not self.fit_results:
             msg = ('No results available. Please run the '
                    'IterativePSFPhotometry instance first.')
@@ -715,11 +721,13 @@ class IterativePSFPhotometry:
                                  local_bkg=local_bkg,
                                  progress_bar=self._psfphot.progress_bar)
         return maker.make_model_image(shape, psf_shape=psf_shape,
-                                      include_localbkg=include_localbkg)
+                                      include_local_bkg=include_local_bkg)
 
+    @deprecated_renamed_argument('include_localbkg', 'include_local_bkg',
+                                 '3.0', until='4.0')
     @_make_residual_image_docstring
     def make_residual_image(self, data, *, psf_shape=None,
-                            include_localbkg=False):
+                            include_local_bkg=False):
         if not self.fit_results:
             msg = ('No results available. Please run the '
                    'IterativePSFPhotometry instance first.')
@@ -730,4 +738,4 @@ class IterativePSFPhotometry:
                                  local_bkg=local_bkg,
                                  progress_bar=self._psfphot.progress_bar)
         return maker.make_residual_image(data, psf_shape=psf_shape,
-                                         include_localbkg=include_localbkg)
+                                         include_local_bkg=include_local_bkg)

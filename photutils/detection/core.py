@@ -15,12 +15,13 @@ import warnings
 import astropy.units as u
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
-from astropy.table import QTable
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.peakfinder import find_peaks
-from photutils.utils._deprecation import (deprecated_positional_kwargs,
+from photutils.utils._deprecation import (create_empty_deprecated_qtable,
+                                          deprecated_getattr,
+                                          deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 from photutils.utils._misc import _get_meta
 from photutils.utils._quantity_helpers import process_quantities
@@ -29,6 +30,16 @@ from photutils.utils.cutouts import _make_cutouts
 from photutils.utils.exceptions import NoDetectionsWarning
 
 __all__ = ['StarFinderBase', 'StarFinderCatalogBase']
+
+# Remove in 4.0
+_DEPRECATED_ATTRIBUTES: dict = {
+    'xcentroid': 'x_centroid',
+    'ycentroid': 'y_centroid',
+    'cutout_xcentroid': 'cutout_x_centroid',
+    'cutout_ycentroid': 'cutout_y_centroid',
+    'pa': 'orientation',
+    'npix': 'n_pixels',
+}
 
 
 class StarFinderBase(metaclass=abc.ABCMeta):
@@ -108,8 +119,8 @@ class StarFinderBase(metaclass=abc.ABCMeta):
                 yborder = (kernel.shape[0] - 1) // 2
                 xborder = (kernel.shape[1] - 1) // 2
             else:
-                yborder = kernel.yradius
-                xborder = kernel.xradius
+                yborder = kernel.y_radius
+                xborder = kernel.x_radius
             border_width = (yborder, xborder)
         else:
             border_width = None
@@ -160,8 +171,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     Subclasses **must** implement:
 
-    * :attr:`xcentroid` property -- Object centroid in the x direction.
-    * :attr:`ycentroid` property -- Object centroid in the y direction.
+    * :attr:`x_centroid` property -- Object centroid in the x direction.
+    * :attr:`y_centroid` property -- Object centroid in the y direction.
     * `apply_filters` method -- Filter the catalog using
       algorithm-specific criteria.
     * ``default_columns`` attribute -- A tuple of column names used
@@ -388,8 +399,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         y = np.arange(ky, dtype=float)
         x = np.arange(kx, dtype=float)
         # Per-source shifted coordinates
-        dy = y[np.newaxis, :] - self.cutout_ycentroid[:, np.newaxis]
-        dx = x[np.newaxis, :] - self.cutout_xcentroid[:, np.newaxis]
+        dy = y[np.newaxis, :] - self.cutout_y_centroid[:, np.newaxis]
+        dx = x[np.newaxis, :] - self.cutout_x_centroid[:, np.newaxis]
         # Per-source power arrays: (n, ky, 3) and (n, kx, 3)
         ypowers = np.stack([np.ones_like(dy), dy, dy**2], axis=-1)
         xpowers = np.stack([np.ones_like(dx), dx, dx**2], axis=-1)
@@ -409,19 +420,19 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            ycentroid = moments[:, 1, 0] / moments[:, 0, 0]
-            xcentroid = moments[:, 0, 1] / moments[:, 0, 0]
-        return np.transpose((ycentroid, xcentroid))
+            y_centroid = moments[:, 1, 0] / moments[:, 0, 0]
+            x_centroid = moments[:, 0, 1] / moments[:, 0, 0]
+        return np.transpose((y_centroid, x_centroid))
 
     @lazyproperty
-    def cutout_xcentroid(self):
+    def cutout_x_centroid(self):
         """
         The cutout x centroids.
         """
         return np.transpose(self.cutout_centroid)[1]
 
     @lazyproperty
-    def cutout_ycentroid(self):
+    def cutout_y_centroid(self):
         """
         The cutout y centroids.
         """
@@ -429,7 +440,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def xcentroid(self):
+    def x_centroid(self):
         """
         Object centroid in the x direction.
 
@@ -438,12 +449,17 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def ycentroid(self):
+    def y_centroid(self):
         """
         Object centroid in the y direction.
 
         This property must be implemented in subclasses.
         """
+
+    # Remove in 4.0
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
+                                  since='3.0', until='4.0')
 
     @lazyproperty
     def mu_sum(self):
@@ -469,10 +485,14 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         return 2.0 * np.sqrt(np.log(2.0) * self.mu_sum)
 
     @lazyproperty
-    def pa(self):
+    def orientation(self):
         """
-        The position angle of the sources, in the range [0, 360)
-        degrees.
+        The angle between the ``x`` axis and the major axis of the 2D
+        Gaussian function that has the same second-order moments as the
+        source.
+
+        The angle increases in the counter-clockwise direction and
+        will be in the range [0, 360) degrees.
         """
         angle = 0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
                                  self.mu_diff)
@@ -648,7 +668,10 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         table : `~astropy.table.QTable`
             A table of the catalog properties.
         """
-        table = QTable()
+        # Replace with QTable in 4.0
+        table = create_empty_deprecated_qtable(
+            _DEPRECATED_ATTRIBUTES, since='3.0', until='4.0')
+
         table.meta.update(_get_meta())  # keep table.meta type
         if columns is None:
             if not hasattr(self, 'default_columns'):
@@ -724,7 +747,7 @@ class _StarFinderKernel:
         in `_DAOStarFinderCatalog`, and sky estimation in
         `_IRAFStarFinderCatalog`.
 
-    relerr : float
+    rel_err : float
         The kernel relative error, used by `DAOStarFinder` to scale the
         detection threshold.
 
@@ -732,13 +755,13 @@ class _StarFinderKernel:
         The unmasked Gaussian kernel (peak normalized to 1), used by
         `_DAOStarFinderCatalog` for marginal fitting.
 
-    xsigma, ysigma : float
+    x_sigma, y_sigma : float
         Standard deviations along the major and minor axes.
 
-    xradius, yradius : int
+    x_radius, y_radius : int
         Half-widths of the kernel array in pixels.
 
-    npixels : int
+    n_pixels : int
         Total number of pixels within the kernel ``mask``.
 
     References
@@ -769,19 +792,19 @@ class _StarFinderKernel:
         self.ratio = ratio
         self.theta = theta % 360.0
         self.sigma_radius = sigma_radius
-        self.xsigma = self.fwhm * gaussian_fwhm_to_sigma
-        self.ysigma = self.xsigma * self.ratio
+        self.x_sigma = self.fwhm * gaussian_fwhm_to_sigma
+        self.y_sigma = self.x_sigma * self.ratio
 
         theta_radians = np.deg2rad(self.theta)
         cost = np.cos(theta_radians)
         sint = np.sin(theta_radians)
-        xsigma2 = self.xsigma**2
-        ysigma2 = self.ysigma**2
+        x_sigma2 = self.x_sigma**2
+        y_sigma2 = self.y_sigma**2
 
-        a = (cost**2 / (2.0 * xsigma2)) + (sint**2 / (2.0 * ysigma2))
+        a = (cost**2 / (2.0 * x_sigma2)) + (sint**2 / (2.0 * y_sigma2))
         # Counterclockwise rotation
-        b = 0.5 * cost * sint * ((1.0 / xsigma2) - (1.0 / ysigma2))
-        c = (sint**2 / (2.0 * xsigma2)) + (cost**2 / (2.0 * ysigma2))
+        b = 0.5 * cost * sint * ((1.0 / x_sigma2) - (1.0 / y_sigma2))
+        c = (sint**2 / (2.0 * x_sigma2)) + (cost**2 / (2.0 * y_sigma2))
 
         # Find the extent of an ellipse with radius = sigma_radius*sigma.
         # Solve for the horizontal and vertical tangents of an ellipse
@@ -794,12 +817,12 @@ class _StarFinderKernel:
         nx = 2 * int(max(2, math.sqrt(c * f / denom))) + 1
         ny = 2 * int(max(2, math.sqrt(a * f / denom))) + 1
 
-        self.xradius = nx // 2
-        self.yradius = ny // 2
+        self.x_radius = nx // 2
+        self.y_radius = ny // 2
 
         # Define the kernel on a 2D grid
-        xc = self.xradius
-        yc = self.yradius
+        xc = self.x_radius
+        yc = self.y_radius
         yy, xx = np.mgrid[0:ny, 0:nx]
         circular_radius = np.sqrt((xx - xc)**2 + (yy - yc)**2)
         elliptical_radius = (a * (xx - xc)**2
@@ -809,21 +832,21 @@ class _StarFinderKernel:
         self.mask = np.where(
             (elliptical_radius <= f)
             | (circular_radius <= 2.0), 1, 0).astype(int)
-        self.npixels = self.mask.sum()
+        self.n_pixels = self.mask.sum()
 
         # Central (peak) pixel of gaussian_kernel has a value of 1.0
         self.gaussian_kernel_unmasked = np.exp(-elliptical_radius)
         gaussian_kernel = self.gaussian_kernel_unmasked * self.mask
 
-        # The denom represents (variance * npixels)
+        # The denom represents (variance * n_pixels)
         denom = ((gaussian_kernel**2).sum()
-                 - (gaussian_kernel.sum()**2 / self.npixels))
-        self.relerr = 1.0 / np.sqrt(denom)
+                 - (gaussian_kernel.sum()**2 / self.n_pixels))
+        self.rel_err = 1.0 / np.sqrt(denom)
 
         # Normalize the kernel to zero sum
         if normalize_zerosum:
             self.data = ((gaussian_kernel
-                          - (gaussian_kernel.sum() / self.npixels))
+                          - (gaussian_kernel.sum() / self.n_pixels))
                          / denom) * self.mask
         else:
             self.data = gaussian_kernel

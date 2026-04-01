@@ -99,10 +99,10 @@ def test_invalid_inputs():
         with pytest.raises(TypeError, match=match):
             _ = PSFPhotometry(model, 1, **{key: val})
 
-    match = 'localbkg_estimator must be a LocalBackground instance'
+    match = 'local_bkg_estimator must be a LocalBackground instance'
     localbkg = MMMBackground()
     with pytest.raises(TypeError, match=match):
-        _ = PSFPhotometry(model, 1, localbkg_estimator=localbkg)
+        _ = PSFPhotometry(model, 1, local_bkg_estimator=localbkg)
 
     match = 'aperture_radius must be a strictly-positive scalar'
     for radius in (0, -1, np.nan, np.inf):
@@ -337,21 +337,21 @@ def test_model_residual_image(test_data):
     fit_shape = (5, 5)
     finder = DAOStarFinder(16.0, 2.0)
     bkgstat = MMMBackground()
-    localbkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
+    local_bkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4,
-                            localbkg_estimator=localbkg_estimator)
+                            local_bkg_estimator=local_bkg_estimator)
     psfphot(data, error=error)
 
     psf_shape = (25, 25)
     model1 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
-                                      include_localbkg=False)
+                                      include_local_bkg=False)
     model2 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
-                                      include_localbkg=True)
+                                      include_local_bkg=True)
     resid1 = psfphot.make_residual_image(data, psf_shape=psf_shape,
-                                         include_localbkg=False)
+                                         include_local_bkg=False)
     resid2 = psfphot.make_residual_image(data, psf_shape=psf_shape,
-                                         include_localbkg=True)
+                                         include_local_bkg=True)
 
     x, y = 0, 100
     assert model1[y, x] < 0.1
@@ -371,7 +371,7 @@ def test_model_residual_image_nonfinite_localbkg(test_data):
     Test that make_model_image and make_residual_image handle non-finite
     local background values correctly.
 
-    When include_localbkg=True and the local_bkg is non-finite (NaN or
+    When include_local_bkg=True and the local_bkg is non-finite (NaN or
     inf), the non-finite value should be treated as 0 and not included
     in the model or residual images.
     """
@@ -394,12 +394,12 @@ def test_model_residual_image_nonfinite_localbkg(test_data):
                             aperture_radius=4)
     phot = psfphot(data, error=error, init_params=sources)
 
-    # Test make_model_image with include_localbkg=True
+    # Test make_model_image with include_local_bkg=True
     psf_shape = (15, 15)
     model_with_bkg = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
-                                              include_localbkg=True)
+                                              include_local_bkg=True)
     model_without_bkg = psfphot.make_model_image(
-        data.shape, psf_shape=psf_shape, include_localbkg=False)
+        data.shape, psf_shape=psf_shape, include_local_bkg=False)
 
     # The model images should be finite everywhere
     assert np.all(np.isfinite(model_with_bkg))
@@ -437,15 +437,15 @@ def test_residual_image_localbkg_invalid_sources(test_data):
     sources['local_bkg'][1] = np.inf
     sources['local_bkg'][2] = -np.inf
     # Add an invalid source outside the image
-    sources['xcentroid'][-3] = 1000
-    sources['ycentroid'][-3] = 1000
+    sources['x_centroid'][-3] = 1000
+    sources['y_centroid'][-3] = 1000
 
     # Perform PSF photometry with init_params containing non-finite local_bkg
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
     psfphot(data, error=error, init_params=sources)
 
-    residual_img = psfphot.make_residual_image(data, include_localbkg=True)
+    residual_img = psfphot.make_residual_image(data, include_local_bkg=True)
 
     assert residual_img.shape == data.shape
     assert np.all(np.isfinite(residual_img))
@@ -484,13 +484,13 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
     # test model and residual images
     psf_shape = (9, 9)
     model1 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
-                                      include_localbkg=False)
+                                      include_local_bkg=False)
     resid1 = psfphot.make_residual_image(data, psf_shape=psf_shape,
-                                         include_localbkg=False)
+                                         include_local_bkg=False)
     model2 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
-                                      include_localbkg=True)
+                                      include_local_bkg=True)
     resid2 = psfphot.make_residual_image(data, psf_shape=psf_shape,
-                                         include_localbkg=True)
+                                         include_local_bkg=True)
     assert model1.shape == data.shape
     assert model2.shape == data.shape
     assert resid1.shape == data.shape
@@ -574,7 +574,7 @@ def test_psf_photometry_mask(test_data):
                 'qfit', 'cfit', 'reduced_chi2')
     for col in colnames:
         assert np.isnan(phot_masked[col][0])
-    assert phot_masked['npixfit'][0] == 0
+    assert phot_masked['n_pixels_fit'][0] == 0
     assert phot_masked['group_size'][0] == 1
     # new flag 128 for fully masked
     assert (phot_masked['flags'][0] & 128) == 128
@@ -667,7 +667,7 @@ def test_psf_photometry_init_params(test_data):
     assert len(phot_no_overlap) == 1
     for col in colnames:
         assert np.isnan(phot_no_overlap[col][0])
-    assert phot_no_overlap['npixfit'][0] == 0
+    assert phot_no_overlap['n_pixels_fit'][0] == 0
     assert phot_no_overlap['group_size'][0] == 1
     # new flag 64 for no overlap
     assert (phot_no_overlap['flags'][0] & 64) == 64
@@ -684,7 +684,7 @@ def test_psf_photometry_init_params(test_data):
     assert len(phot_few) == 1
     for col in colnames:
         assert np.isnan(phot_few[col][0])
-    assert phot_few['npixfit'][0] == 2
+    assert phot_few['n_pixels_fit'][0] == 2
     assert phot_few['group_size'][0] == 1
     # new flag 256 for too few pixels
     assert (phot_few['flags'][0] & 256) == 256
@@ -733,11 +733,11 @@ def test_psf_photometry_init_params_units(test_data):
 
     for val in (True, False):
         im = psfphot.make_model_image(data2.shape, psf_shape=fit_shape,
-                                      include_localbkg=val)
+                                      include_local_bkg=val)
         assert isinstance(im, u.Quantity)
         assert im.unit == unit
         resid = psfphot.make_residual_image(data2, psf_shape=fit_shape,
-                                            include_localbkg=val)
+                                            include_local_bkg=val)
         assert isinstance(resid, u.Quantity)
         assert resid.unit == unit
 
@@ -872,12 +872,12 @@ def test_local_bkg(test_data):
     finder = DAOStarFinder(6.0, 2.0)
     grouper = SourceGrouper(min_separation=20)
     bkgstat = MMMBackground()
-    localbkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
+    local_bkg_estimator = LocalBackground(5, 10, bkg_estimator=bkgstat)
     finder = DAOStarFinder(10.0, 2.0)
 
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             grouper=grouper, aperture_radius=4,
-                            localbkg_estimator=localbkg_estimator)
+                            local_bkg_estimator=local_bkg_estimator)
     phot = psfphot(data, error=error)
     assert np.count_nonzero(phot['local_bkg']) == len(sources)
 
@@ -950,10 +950,10 @@ def test_local_bkg_nonfinite_measured(test_data):
     mask[70:, :20] = False  # two sources
 
     bkgstat = MMMBackground()
-    localbkg_estimator = LocalBackground(10, 25, bkg_estimator=bkgstat)
+    local_bkg_estimator = LocalBackground(10, 25, bkg_estimator=bkgstat)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4,
-                            localbkg_estimator=localbkg_estimator)
+                            local_bkg_estimator=local_bkg_estimator)
     phot = psfphot(data, error=error, mask=mask)
 
     assert_equal(phot['flags'], [2048, 0, 0])
@@ -1389,7 +1389,7 @@ def test_flag64_no_overlap():
     # Expect bits include 64 (no overlap). Others (2,1,16,32) may also
     # be present. Only assert 64 is set.
     assert (phot['flags'][0] & 64) == 64
-    assert phot['npixfit'][0] == 0
+    assert phot['n_pixels_fit'][0] == 0
 
 
 def test_flag128_fully_masked():
@@ -1408,7 +1408,7 @@ def test_flag128_fully_masked():
     psfphot = PSFPhotometry(psf_model, fit_shape)
     phot = psfphot(data, init_params=init_params, mask=mask)
     assert len(phot) == 1
-    assert phot['npixfit'][0] == 0
+    assert phot['n_pixels_fit'][0] == 0
     assert (phot['flags'][0] & 128) == 128
 
 
@@ -1430,7 +1430,7 @@ def test_flag256_too_few_pixels():
     psfphot = PSFPhotometry(psf_model, fit_shape)
     phot = psfphot(data, init_params=init_params, mask=mask)
     assert len(phot) == 1
-    assert phot['npixfit'][0] == 1
+    assert phot['n_pixels_fit'][0] == 1
     # Ensure 256 bit set (too few pixels); not fully masked (no 128).
     assert (phot['flags'][0] & 256) == 256
 
@@ -1665,14 +1665,14 @@ def test_psf_photometry_table_serialization(test_data):
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
     grouper = SourceGrouper(min_separation=2.0)
-    localbkg_estimator = LocalBackground(5, 10)
+    local_bkg_estimator = LocalBackground(5, 10)
     fitter = TRFLSQFitter()
 
     psfphot = PSFPhotometry(
         psf_model, fit_shape,
         finder=finder,
         grouper=grouper,
-        localbkg_estimator=localbkg_estimator,
+        local_bkg_estimator=local_bkg_estimator,
         fitter=fitter,
         aperture_radius=4,
     )
@@ -1689,21 +1689,21 @@ def test_psf_photometry_table_serialization(test_data):
     assert 'psf_model' in meta
     assert 'finder' in meta
     assert 'grouper' in meta
-    assert 'localbkg_estimator' in meta
+    assert 'local_bkg_estimator' in meta
     assert 'fitter' in meta
 
     # Verify these are string representations, not objects
     assert isinstance(meta['psf_model'], str)
     assert isinstance(meta['finder'], str)
     assert isinstance(meta['grouper'], str)
-    assert isinstance(meta['localbkg_estimator'], str)
+    assert isinstance(meta['local_bkg_estimator'], str)
     assert isinstance(meta['fitter'], str)
 
     # Verify the repr strings contain expected content
     assert 'CircularGaussianPRF' in meta['psf_model']
     assert 'DAOStarFinder' in meta['finder']
     assert 'SourceGrouper' in meta['grouper']
-    assert 'LocalBackground' in meta['localbkg_estimator']
+    assert 'LocalBackground' in meta['local_bkg_estimator']
     assert 'TRFLSQFitter' in meta['fitter']
 
     # Test file writing - this should not raise any errors

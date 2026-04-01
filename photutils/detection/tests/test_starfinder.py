@@ -30,7 +30,7 @@ class TestStarFinder:
         assert isinstance(tbl1, Table)
         assert len(tbl1) == 25
         assert len(tbl2) == 9
-        assert tbl1['pa'].unit == u.deg
+        assert tbl1['orientation'].unit == u.deg
 
         # Test with units
         unit = u.Jy
@@ -40,7 +40,7 @@ class TestStarFinder:
         assert len(tbl3) == 25
         assert tbl3['flux'].unit == unit
         assert tbl3['max_value'].unit == unit
-        assert tbl3['pa'].unit == u.deg
+        assert tbl3['orientation'].unit == u.deg
         for col in tbl3.colnames:
             if col not in ('flux', 'max_value'):
                 assert_equal(tbl3[col], tbl1[col])
@@ -112,7 +112,7 @@ class TestStarFinder:
         tbl2 = starfinder(data, mask=mask)
         assert len(tbl1) == 25
         assert len(tbl2) == 13
-        assert min(tbl2['ycentroid']) > 50
+        assert min(tbl2['y_centroid']) > 50
 
     def test_min_separation(self, data, kernel):
         """
@@ -308,7 +308,7 @@ class TestStarFinder:
         tbl_2d = finder_2d(data)
         assert len(tbl_low) > len(tbl_2d)
         # All 2D sources should be in the lower half
-        assert all(tbl_2d['ycentroid'] >= 50)
+        assert all(tbl_2d['y_centroid'] >= 50)
 
     def test_threshold_2d_repr(self, kernel):
         """

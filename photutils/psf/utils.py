@@ -599,7 +599,7 @@ def _create_call_docstring(*, iterative=False):
             measure the initial flux values. Note that the initial
             flux values refer to the model flux parameters and are
             not corrected for local background values (computed using
-            ``localbkg_estimator`` or input in a ``local_bkg`` column).
+            ``local_bkg_estimator`` or input in a ``local_bkg`` column).
             The allowed column names are:
 
             * ``x_init``, ``xinit``, ``x``, ``x_0``, ``x0``,
@@ -637,7 +637,7 @@ def _create_call_docstring(*, iterative=False):
             columns. If ``group_id`` is input, the values will
             be used and ``grouper`` keyword will be ignored. If
             ``local_bkg`` is input, those values will be used and the
-            ``localbkg_estimator`` will be ignored. If ``data`` has
+            ``local_bkg_estimator`` will be ignored. If ``data`` has
             units, then the ``local_bkg`` values must have the same
             units.
 
@@ -661,8 +661,8 @@ def _create_call_docstring(*, iterative=False):
               and error of the source y center
             * ``flux_init``, ``flux_fit``, ``flux_err`` : the initial,
               fit, and error of the source flux
-            * ``npixfit`` : the number of unmasked pixels used to fit
-              the source
+            * ``n_pixels_fit`` : the number of unmasked pixels used to
+              fit the source
             * ``qfit`` : a quality-of-fit metric defined as the sum
               of the absolute value of the fit residuals divided by the
               fit flux. ``qfit`` is zero for sources that are perfectly

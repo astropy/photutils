@@ -10,7 +10,8 @@ from unittest.mock import PropertyMock, patch
 import numpy as np
 import pytest
 from astropy.utils import lazyproperty
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.segmentation.core import Segment, SegmentationImage
@@ -151,13 +152,13 @@ class TestSegmentationImage:
         with pytest.raises(ValueError, match=match):
             self.segm.check_labels([0, -1, 2])
 
-    def test_data_ma(self):
+    def test_data_masked(self):
         """
-        Test data ma.
+        Test data_masked.
         """
-        assert isinstance(self.segm.data_ma, np.ma.MaskedArray)
-        assert np.ma.count(self.segm.data_ma) == 18
-        assert np.ma.count_masked(self.segm.data_ma) == 18
+        assert isinstance(self.segm.data_masked, np.ma.MaskedArray)
+        assert np.ma.count(self.segm.data_masked) == 18
+        assert np.ma.count_masked(self.segm.data_masked) == 18
 
     def test_segments(self):
         """
@@ -167,9 +168,9 @@ class TestSegmentationImage:
         assert_allclose(self.segm.segments[0].data,
                         self.segm.segments[0].__array__())
 
-        assert (self.segm.segments[0].data_ma.shape
+        assert (self.segm.segments[0].data_masked.shape
                 == self.segm.segments[0].data.shape)
-        assert (self.segm.segments[0].data_ma.filled(0.0).sum()
+        assert (self.segm.segments[0].data_masked.filled(0.0).sum()
                 == self.segm.segments[0].data.sum())
 
         label = 4
@@ -185,7 +186,7 @@ class TestSegmentationImage:
         """
         assert repr(self.segm) == str(self.segm)
 
-        props = ['shape', 'nlabels']
+        props = ['shape', 'n_labels']
         for prop in props:
             assert f'{prop}:' in repr(self.segm)
 
@@ -302,11 +303,11 @@ class TestSegmentationImage:
         """
         assert_allclose(self.segm.labels, [1, 3, 4, 5, 7])
 
-    def test_nlabels(self):
+    def test_n_labels(self):
         """
-        Test nlabels.
+        Test n_labels.
         """
-        assert self.segm.nlabels == 5
+        assert self.segm.n_labels == 5
 
     def test_max_label(self):
         """
@@ -473,7 +474,7 @@ class TestSegmentationImage:
                              [2, 2, 0, 5, 5, 5],
                              [2, 2, 0, 0, 5, 5]])
         assert_allclose(segm.data, ref_data)
-        assert segm.nlabels == len(segm.slices) - segm.slices.count(None)
+        assert segm.n_labels == len(segm.slices) - segm.slices.count(None)
 
     @pytest.mark.parametrize('start_label', [1, 5])
     def test_relabel_consecutive(self, start_label):
@@ -494,7 +495,7 @@ class TestSegmentationImage:
         # relabel_consecutive should do nothing if already consecutive
         segm.relabel_consecutive(start_label=start_label)
         assert_allclose(segm.data, ref_data)
-        assert segm.nlabels == len(segm.slices) - segm.slices.count(None)
+        assert segm.n_labels == len(segm.slices) - segm.slices.count(None)
 
         # Test slices caching
         segm = SegmentationImage(self.data.copy())
@@ -605,7 +606,7 @@ class TestSegmentationImage:
         alt_data[alt_data == 3] = 0
         segm = SegmentationImage(alt_data)
         segm.remove_border_labels(border_width=1, relabel=True)
-        assert segm.nlabels == 0
+        assert segm.n_labels == 0
 
     def test_remove_masked_labels(self):
         """
@@ -708,7 +709,7 @@ class TestSegmentationImage:
         from shapely import Polygon
 
         polygons = self.segm.polygons
-        assert len(polygons) == self.segm.nlabels
+        assert len(polygons) == self.segm.n_labels
         assert isinstance(polygons[0], Polygon)
 
         data = np.zeros((5, 5), dtype=int)
@@ -752,7 +753,7 @@ class TestSegmentationImage:
 
         assert isinstance(regions, Regions)
         assert isinstance(regions[0], PolygonPixelRegion)
-        assert len(regions) == self.segm.nlabels
+        assert len(regions) == self.segm.n_labels
 
         segm = self.segm.copy()
         segm.reassign_labels(labels=4, new_label=1)
@@ -822,7 +823,7 @@ class TestSegmentationImage:
         data[4, 4] = 1
         data[3, 3] = 1
         segm = SegmentationImage(data)
-        assert segm.nlabels == 1
+        assert segm.n_labels == 1
         assert len(segm.segments) == 1
         assert len(segm.polygons) == 1
         assert len(segm.to_patches()) == 1
@@ -931,31 +932,31 @@ class TestSegmentationImage:
         segm0 = segm.copy()
         assert segm0._deblend_label_map == {}
         assert segm0.deblended_labels.size == 0
-        assert segm0.deblended_labels_map == {}
-        assert segm0.deblended_labels_inverse_map == {}
+        assert segm0.deblended_label_to_parent == {}
+        assert segm0.parent_to_deblended_labels == {}
 
         deblend_map = {2: np.array([5, 6]), 3: np.array([7, 8])}
         segm._deblend_label_map = deblend_map
         assert_equal(segm._deblend_label_map, deblend_map)
         assert_equal(segm.deblended_labels, [5, 6, 7, 8])
-        assert segm.deblended_labels_map == {5: 2, 6: 2, 7: 3, 8: 3}
-        assert segm.deblended_labels_inverse_map == deblend_map
+        assert segm.deblended_label_to_parent == {5: 2, 6: 2, 7: 3, 8: 3}
+        assert segm.parent_to_deblended_labels == deblend_map
 
         segm2 = segm.copy()
         segm2.relabel_consecutive()
         deblend_map = {2: [3, 4], 3: [5, 6]}
         assert_equal(segm2._deblend_label_map, deblend_map)
         assert_equal(segm2.deblended_labels, [3, 4, 5, 6])
-        assert segm2.deblended_labels_map == {3: 2, 4: 2, 5: 3, 6: 3}
-        assert_equal(segm2.deblended_labels_inverse_map, deblend_map)
+        assert segm2.deblended_label_to_parent == {3: 2, 4: 2, 5: 3, 6: 3}
+        assert_equal(segm2.parent_to_deblended_labels, deblend_map)
 
         segm3 = segm.copy()
         segm3.relabel_consecutive(start_label=10)
         deblend_map = {2: [12, 13], 3: [14, 15]}
         assert_equal(segm3._deblend_label_map, deblend_map)
         assert_equal(segm3.deblended_labels, [12, 13, 14, 15])
-        assert segm3.deblended_labels_map == {12: 2, 13: 2, 14: 3, 15: 3}
-        assert_equal(segm3.deblended_labels_inverse_map, deblend_map)
+        assert segm3.deblended_label_to_parent == {12: 2, 13: 2, 14: 3, 15: 3}
+        assert_equal(segm3.parent_to_deblended_labels, deblend_map)
 
         segm4 = segm.copy()
         segm4.reassign_label(5, 50)
@@ -963,16 +964,16 @@ class TestSegmentationImage:
         deblend_map = {2: [50, 6], 3: [70, 8]}
         assert_equal(segm4._deblend_label_map, deblend_map)
         assert_equal(segm4.deblended_labels, [6, 8, 50, 70])
-        assert segm4.deblended_labels_map == {50: 2, 6: 2, 70: 3, 8: 3}
-        assert_equal(segm4.deblended_labels_inverse_map, deblend_map)
+        assert segm4.deblended_label_to_parent == {50: 2, 6: 2, 70: 3, 8: 3}
+        assert_equal(segm4.parent_to_deblended_labels, deblend_map)
 
         segm5 = segm.copy()
         segm5.reassign_label(5, 50, relabel=True)
         deblend_map = {2: [6, 3], 3: [4, 5]}
         assert_equal(segm5._deblend_label_map, deblend_map)
         assert_equal(segm5.deblended_labels, [3, 4, 5, 6])
-        assert segm5.deblended_labels_map == {6: 2, 3: 2, 4: 3, 5: 3}
-        assert_equal(segm5.deblended_labels_inverse_map, deblend_map)
+        assert segm5.deblended_label_to_parent == {6: 2, 3: 2, 4: 3, 5: 3}
+        assert_equal(segm5.parent_to_deblended_labels, deblend_map)
 
 
 class CustomSegm(SegmentationImage):
@@ -1009,7 +1010,7 @@ def test_segments_no_rasterio(segm_data, monkeypatch):
 
     segm = SegmentationImage(segm_data)
     segments = segm.segments
-    assert len(segments) == segm.nlabels
+    assert len(segments) == segm.n_labels
     assert isinstance(segments[0], Segment)
     # Without rasterio, segments should not have polygon attribute set
     assert segments[0].polygon is None
@@ -1031,7 +1032,7 @@ def test_keep_label(segm_data):
     """
     segm = SegmentationImage(segm_data.copy())
     segm.keep_label(3, relabel=True)
-    assert segm.nlabels == 1
+    assert segm.n_labels == 1
     assert_equal(segm.labels, [1])
     # Only label 3 (now relabeled to 1) should remain
     assert segm.data[2, 2] == 1
@@ -1652,3 +1653,11 @@ class TestGetRegion:
         regions = self.segm.to_regions()
         for region in regions:
             assert not region.visual
+
+
+def test_segment_deprecations(segm_data):
+    segment_map = SegmentationImage(segm_data)
+    segments = segment_map.segments
+    match = 'attribute was deprecated'
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        _ = segments[0].data_ma
