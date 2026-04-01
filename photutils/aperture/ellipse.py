@@ -269,6 +269,16 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
         -------
         aperture : `SkyEllipticalAperture` object
             A `SkyEllipticalAperture` object.
+
+        Notes
+        -----
+        The aperture shape parameters are converted using the local WCS
+        properties (pixel scale, rotation angle) evaluated at the first
+        aperture position. Because aperture objects require scalar shape
+        parameters, only a single reference position is used for the
+        conversion. For apertures with multiple positions used with a
+        WCS that has spatially-varying distortions, this may produce
+        inaccurate results for positions far from the first position.
         """
         xpos, ypos = np.transpose(self.positions)
         positions = wcs.pixel_to_world(xpos, ypos)
@@ -280,11 +290,8 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
         a = Angle(sky_width / 2, 'arcsec')
         b = Angle(sky_height / 2, 'arcsec')
-        # Convert from regions convention (from RA axis) to PA
-        # convention (from Dec/North axis)
-        theta = sky_angle - 90 * u.deg
         return SkyEllipticalAperture(positions=positions, a=a, b=b,
-                                     theta=theta)
+                                     theta=sky_angle)
 
 
 class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
@@ -458,6 +465,16 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         -------
         aperture : `SkyEllipticalAnnulus` object
             A `SkyEllipticalAnnulus` object.
+
+        Notes
+        -----
+        The aperture shape parameters are converted using the local WCS
+        properties (pixel scale, rotation angle) evaluated at the first
+        aperture position. Because aperture objects require scalar shape
+        parameters, only a single reference position is used for the
+        conversion. For apertures with multiple positions used with a
+        WCS that has spatially-varying distortions, this may produce
+        inaccurate results for positions far from the first position.
         """
         xpos, ypos = np.transpose(self.positions)
         positions = wcs.pixel_to_world(xpos, ypos)
@@ -475,12 +492,9 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
         b_out = Angle(sky_h_out / 2, 'arcsec')
         a_in = Angle(sky_w_in / 2, 'arcsec')
         b_in = Angle(sky_h_in / 2, 'arcsec')
-        # Convert from regions convention (from RA axis) to PA
-        # convention (from Dec/North axis).
-        theta = sky_angle - 90 * u.deg
         return SkyEllipticalAnnulus(positions=positions, a_in=a_in,
                                     a_out=a_out, b_out=b_out,
-                                    b_in=b_in, theta=theta)
+                                    b_in=b_in, theta=sky_angle)
 
 
 class SkyEllipticalAperture(SkyAperture):
@@ -547,14 +561,22 @@ class SkyEllipticalAperture(SkyAperture):
         -------
         aperture : `EllipticalAperture` object
             An `EllipticalAperture` object.
+
+        Notes
+        -----
+        The aperture shape parameters are converted using the local WCS
+        properties (pixel scale, rotation angle) evaluated at the first
+        aperture position. Because aperture objects require scalar shape
+        parameters, only a single reference position is used for the
+        conversion. For apertures with multiple positions used with a
+        WCS that has spatially-varying distortions, this may produce
+        inaccurate results for positions far from the first position.
         """
         xpos, ypos = wcs.world_to_pixel(self.positions)
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
-        # Convert from PA convention (from Dec/North axis) to regions
-        # convention (from RA axis).
-        sky_angle_rad = (self.theta + 90 * u.deg).to(u.rad).value
+        sky_angle_rad = self.theta.to(u.rad).value
         _, pix_width, pix_height, pix_angle = sky_ellipse_to_pixel_svd(
             skypos, wcs,
             2 * self.a.to(u.arcsec).value,
@@ -659,14 +681,22 @@ class SkyEllipticalAnnulus(SkyAperture):
         -------
         aperture : `EllipticalAnnulus` object
             An `EllipticalAnnulus` object.
+
+        Notes
+        -----
+        The aperture shape parameters are converted using the local WCS
+        properties (pixel scale, rotation angle) evaluated at the first
+        aperture position. Because aperture objects require scalar shape
+        parameters, only a single reference position is used for the
+        conversion. For apertures with multiple positions used with a
+        WCS that has spatially-varying distortions, this may produce
+        inaccurate results for positions far from the first position.
         """
         xpos, ypos = wcs.world_to_pixel(self.positions)
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
-        # Convert from PA convention (from Dec/North axis) to regions
-        # convention (from RA axis).
-        sky_angle_rad = (self.theta + 90 * u.deg).to(u.rad).value
+        sky_angle_rad = self.theta.to(u.rad).value
 
         _, pix_w_out, pix_h_out, pix_angle = sky_ellipse_to_pixel_svd(
             skypos, wcs,

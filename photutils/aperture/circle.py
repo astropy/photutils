@@ -227,6 +227,16 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         -------
         aperture : `SkyCircularAperture` object
             A `SkyCircularAperture` object.
+
+        Notes
+        -----
+        The aperture shape parameters are converted using the local
+        WCS pixel scale evaluated at the first aperture position.
+        Because aperture objects require scalar shape parameters, only
+        a single reference position is used for the conversion. For
+        apertures with multiple positions used with a WCS that has
+        spatially-varying distortions, this may produce inaccurate
+        results for positions far from the first position.
         """
         xpos, ypos = np.transpose(self.positions)
         positions = wcs.pixel_to_world(xpos, ypos)
@@ -369,6 +379,16 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
         -------
         aperture : `SkyCircularAnnulus` object
             A `SkyCircularAnnulus` object.
+
+        Notes
+        -----
+        The aperture shape parameters are converted using the local
+        WCS pixel scale evaluated at the first aperture position.
+        Because aperture objects require scalar shape parameters, only
+        a single reference position is used for the conversion. For
+        apertures with multiple positions used with a WCS that has
+        spatially-varying distortions, this may produce inaccurate
+        results for positions far from the first position.
         """
         xpos, ypos = np.transpose(self.positions)
         positions = wcs.pixel_to_world(xpos, ypos)
@@ -432,6 +452,16 @@ class SkyCircularAperture(SkyAperture):
         -------
         aperture : `CircularAperture` object
             A `CircularAperture` object.
+
+        Notes
+        -----
+        The aperture shape parameters are converted using the local
+        WCS pixel scale evaluated at the first aperture position.
+        Because aperture objects require scalar shape parameters, only
+        a single reference position is used for the conversion. For
+        apertures with multiple positions used with a WCS that has
+        spatially-varying distortions, this may produce inaccurate
+        results for positions far from the first position.
         """
         xpos, ypos = wcs.world_to_pixel(self.positions)
         positions = np.transpose((xpos, ypos))
@@ -502,6 +532,16 @@ class SkyCircularAnnulus(SkyAperture):
         -------
         aperture : `CircularAnnulus` object
             A `CircularAnnulus` object.
+
+        Notes
+        -----
+        The aperture shape parameters are converted using the local
+        WCS pixel scale evaluated at the first aperture position.
+        Because aperture objects require scalar shape parameters, only
+        a single reference position is used for the conversion. For
+        apertures with multiple positions used with a WCS that has
+        spatially-varying distortions, this may produce inaccurate
+        results for positions far from the first position.
         """
         xpos, ypos = wcs.world_to_pixel(self.positions)
         positions = np.transpose((xpos, ypos))
