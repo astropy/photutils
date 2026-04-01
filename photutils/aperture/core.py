@@ -8,14 +8,12 @@ import inspect
 import warnings
 from copy import deepcopy
 
-import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
 
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.utils._deprecation import deprecated_positional_kwargs
-from photutils.utils._wcs_helpers import _pixel_scale_angle_at_skycoord
 
 __all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
 
@@ -714,59 +712,6 @@ class PixelAperture(Aperture):
 
         return patches
 
-    def _to_sky_params(self, wcs):
-        """
-        Convert the pixel aperture parameters to those for a sky
-        aperture.
-
-        Parameters
-        ----------
-        wcs : WCS object
-            A world coordinate system (WCS) transformation that
-            supports the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
-            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
-
-        Returns
-        -------
-        sky_params : dict
-            A dictionary of parameters for an equivalent sky aperture.
-        """
-        sky_params = {}
-        xpos, ypos = np.transpose(self.positions)
-        sky_params['positions'] = skypos = wcs.pixel_to_world(xpos, ypos)
-
-        # Aperture objects require scalar shape parameters (e.g.,
-        # radius, a, b, theta, etc.), therefore we must calculate the
-        # pixel scale and angle at only a single sky position, which
-        # we take as the first aperture position. For apertures with
-        # multiple positions used with a WCS that contains distortions
-        # (e.g., a spatially-dependent pixel scale), this may lead to
-        # unexpected results (e.g., results that are dependent of the
-        # order of the positions). There is no good way to fix this with
-        # the current Aperture API allowing multiple positions.
-        if not self.isscalar:
-            skypos = skypos[0]
-        _, pixscale, angle = _pixel_scale_angle_at_skycoord(skypos, wcs)
-
-        for param in self._params:
-            value = getattr(self, param)
-            if param == 'positions':
-                continue
-
-            if param == 'theta':
-                # photutils aperture sky angles are defined as the PA of
-                # the semimajor axis (i.e., relative to the WCS latitude
-                # axis). region sky angles are defined relative to the WCS
-                # longitude axis.
-                value = value - angle.to(u.rad)
-            else:
-                value = (value * u.pix * pixscale).to(u.arcsec)
-
-            sky_params[param] = value
-
-        return sky_params
-
     @abc.abstractmethod
     def to_sky(self, wcs):
         """
@@ -793,61 +738,6 @@ class SkyAperture(Aperture):
     Abstract base class for all apertures defined in celestial
     coordinates.
     """
-
-    def _to_pixel_params(self, wcs):
-        """
-        Convert the sky aperture parameters to those for a pixel
-        aperture.
-
-        Parameters
-        ----------
-        wcs : WCS object
-            A world coordinate system (WCS) transformation that
-            supports the `astropy shared interface for WCS
-            <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
-            (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
-
-        Returns
-        -------
-        pixel_params : dict
-            A dictionary of parameters for an equivalent pixel aperture.
-        """
-        pixel_params = {}
-
-        xpos, ypos = wcs.world_to_pixel(self.positions)
-        pixel_params['positions'] = np.transpose((xpos, ypos))
-
-        # Aperture objects require scalar shape parameters (e.g.,
-        # radius, a, b, theta, etc.), therefore we must calculate the
-        # pixel scale and angle at only a single sky position, which
-        # we take as the first aperture position. For apertures with
-        # multiple positions used with a WCS that contains distortions
-        # (e.g., a spatially-dependent pixel scale), this may lead to
-        # unexpected results (e.g., results that are dependent of the
-        # order of the positions). There is no good way to fix this with
-        # the current Aperture API allowing multiple positions.
-        skypos = self.positions if self.isscalar else self.positions[0]
-        _, pixscale, angle = _pixel_scale_angle_at_skycoord(skypos, wcs)
-
-        for param in self._params:
-            value = getattr(self, param)
-            if param == 'positions':
-                continue
-
-            if param == 'theta':
-                # photutils aperture sky angles are defined as the PA of
-                # the semimajor axis (i.e., relative to the WCS latitude
-                # axis). region sky angles are defined relative to the WCS
-                # longitude axis.
-                value = (value + angle).to(u.radian)
-            elif value.unit.physical_type == 'angle':
-                value = (value / pixscale).to(u.pixel).value
-            else:
-                value = value.value
-
-            pixel_params[param] = value
-
-        return pixel_params
 
     @abc.abstractmethod
     def to_pixel(self, wcs):

@@ -8,6 +8,7 @@ import math
 
 import astropy.units as u
 import numpy as np
+from astropy.coordinates import Angle
 
 from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            PositiveScalarAngle, ScalarAngle,
@@ -17,6 +18,8 @@ from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import rectangular_overlap_grid
 from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._wcs_helpers import (pixel_to_sky_scales,
+                                          sky_to_pixel_scales)
 
 __all__ = [
     'RectangularAnnulus',
@@ -291,8 +294,29 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
         -------
         aperture : `SkyRectangularAperture` object
             A `SkyRectangularAperture` object.
+
+        Notes
+        -----
+        The aperture shape parameters are converted using the local WCS
+        properties (pixel scale, rotation angle) evaluated at the first
+        aperture position. Because aperture objects require scalar shape
+        parameters, only a single reference position is used for the
+        conversion. For apertures with multiple positions used with a
+        WCS that has spatially-varying distortions, this may produce
+        inaccurate results for positions far from the first position.
         """
-        return SkyRectangularAperture(**self._to_sky_params(wcs))
+        xpos, ypos = np.transpose(self.positions)
+        positions = wcs.pixel_to_world(xpos, ypos)
+
+        first_pos = np.atleast_2d(self.positions)[0]
+        pixcoord = (float(first_pos[0]), float(first_pos[1]))
+        _, scale_w, scale_h, sky_angle = pixel_to_sky_scales(
+            pixcoord, wcs, self.theta.to(u.rad).value)
+
+        w = Angle(self.w * scale_w, 'arcsec')
+        h = Angle(self.h * scale_h, 'arcsec')
+        return SkyRectangularAperture(positions=positions, w=w, h=h,
+                                      theta=sky_angle)
 
 
 class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
@@ -478,8 +502,32 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
         -------
         aperture : `SkyRectangularAnnulus` object
             A `SkyRectangularAnnulus` object.
+
+        Notes
+        -----
+        The aperture shape parameters are converted using the local WCS
+        properties (pixel scale, rotation angle) evaluated at the first
+        aperture position. Because aperture objects require scalar shape
+        parameters, only a single reference position is used for the
+        conversion. For apertures with multiple positions used with a
+        WCS that has spatially-varying distortions, this may produce
+        inaccurate results for positions far from the first position.
         """
-        return SkyRectangularAnnulus(**self._to_sky_params(wcs))
+        xpos, ypos = np.transpose(self.positions)
+        positions = wcs.pixel_to_world(xpos, ypos)
+
+        first_pos = np.atleast_2d(self.positions)[0]
+        pixcoord = (float(first_pos[0]), float(first_pos[1]))
+        _, scale_w, scale_h, sky_angle = pixel_to_sky_scales(
+            pixcoord, wcs, self.theta.to(u.rad).value)
+
+        w_in = Angle(self.w_in * scale_w, 'arcsec')
+        w_out = Angle(self.w_out * scale_w, 'arcsec')
+        h_in = Angle(self.h_in * scale_h, 'arcsec')
+        h_out = Angle(self.h_out * scale_h, 'arcsec')
+        return SkyRectangularAnnulus(positions=positions, w_in=w_in,
+                                     w_out=w_out, h_out=h_out,
+                                     h_in=h_in, theta=sky_angle)
 
 
 class SkyRectangularAperture(SkyAperture):
@@ -548,8 +596,29 @@ class SkyRectangularAperture(SkyAperture):
         -------
         aperture : `RectangularAperture` object
             A `RectangularAperture` object.
+
+        Notes
+        -----
+        The aperture shape parameters are converted using the local WCS
+        properties (pixel scale, rotation angle) evaluated at the first
+        aperture position. Because aperture objects require scalar shape
+        parameters, only a single reference position is used for the
+        conversion. For apertures with multiple positions used with a
+        WCS that has spatially-varying distortions, this may produce
+        inaccurate results for positions far from the first position.
         """
-        return RectangularAperture(**self._to_pixel_params(wcs))
+        xpos, ypos = wcs.world_to_pixel(self.positions)
+        positions = np.transpose((xpos, ypos))
+
+        skypos = self.positions if self.isscalar else self.positions[0]
+        sky_angle_rad = self.theta.to(u.rad).value
+        _, scale_w, scale_h, pixel_angle = sky_to_pixel_scales(
+            skypos, wcs, sky_angle_rad)
+
+        w = self.w.to(u.arcsec).value * scale_w
+        h = self.h.to(u.arcsec).value * scale_h
+        return RectangularAperture(positions=positions, w=w, h=h,
+                                   theta=pixel_angle)
 
 
 class SkyRectangularAnnulus(SkyAperture):
@@ -651,5 +720,29 @@ class SkyRectangularAnnulus(SkyAperture):
         -------
         aperture : `RectangularAnnulus` object
             A `RectangularAnnulus` object.
+
+        Notes
+        -----
+        The aperture shape parameters are converted using the local WCS
+        properties (pixel scale, rotation angle) evaluated at the first
+        aperture position. Because aperture objects require scalar shape
+        parameters, only a single reference position is used for the
+        conversion. For apertures with multiple positions used with a
+        WCS that has spatially-varying distortions, this may produce
+        inaccurate results for positions far from the first position.
         """
-        return RectangularAnnulus(**self._to_pixel_params(wcs))
+        xpos, ypos = wcs.world_to_pixel(self.positions)
+        positions = np.transpose((xpos, ypos))
+
+        skypos = self.positions if self.isscalar else self.positions[0]
+        sky_angle_rad = self.theta.to(u.rad).value
+        _, scale_w, scale_h, pixel_angle = sky_to_pixel_scales(
+            skypos, wcs, sky_angle_rad)
+
+        w_in = self.w_in.to(u.arcsec).value * scale_w
+        w_out = self.w_out.to(u.arcsec).value * scale_w
+        h_in = self.h_in.to(u.arcsec).value * scale_h
+        h_out = self.h_out.to(u.arcsec).value * scale_h
+        return RectangularAnnulus(positions=positions, w_in=w_in,
+                                  w_out=w_out, h_out=h_out,
+                                  h_in=h_in, theta=pixel_angle)

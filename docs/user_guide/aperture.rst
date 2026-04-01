@@ -132,6 +132,17 @@ sky apertures, e.g.,::
     >>> pix_aperture  # doctest: +FLOAT_CMP
     <CircularAperture([26.14628817, 56.58410628], r=4.000000000439743)>
 
+.. note::
+
+    Aperture objects require scalar shape parameters (e.g., radius,
+    semi-axes, angle), so only a single reference position can be
+    used for computing local WCS properties (pixel scale, rotation
+    angle). For apertures with multiple positions, the first position
+    is used. Apertures with multiple positions used with a WCS that
+    has spatially-varying distortions may produce inaccurate shape
+    conversions for positions far from the first position.
+
+
 Performing Aperture Photometry
 ------------------------------
 

@@ -414,6 +414,34 @@ parameters::
     ...                         centroid_func=centroid_func)
 
 
+Improved Aperture Pixel-to-Sky Conversions
+==========================================
+
+The :meth:`~photutils.aperture.PixelAperture.to_sky` and
+:meth:`~photutils.aperture.SkyAperture.to_pixel` methods for all
+aperture types have been significantly improved. They now use the local
+WCS Jacobian to accurately compute pixel scale factors and rotation
+angles, correctly handling WCS with distortions (e.g., SIP polynomial
+corrections) and non-square pixels.
+
+For elliptical and rectangular apertures specifically, the conversion
+now uses singular value decomposition (SVD) of the local Jacobian to
+compute independent scale factors along the width and height axes. This
+is more accurate than applying a single mean pixel scale to all linear
+dimensions, particularly near the edge of a distorted WCS or when the
+pixel scale differs significantly along the two axes.
+
+For all aperture types, the WCS properties (pixel scale, rotation angle)
+are evaluated at the first aperture position. Because aperture objects
+require scalar shape parameters, only a single reference position can
+be used. For apertures with multiple positions used with a WCS that
+has spatially-varying distortions, this may produce inaccurate shape
+conversions for positions far from the first position. This behavior
+is now clearly documented in the :ref:`photutils-aperture` user guide
+and in the ``Notes`` section of each ``to_sky`` and ``to_pixel`` method
+docstring.
+
+
 API Changes
 ===========
 

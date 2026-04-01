@@ -17,6 +17,14 @@ General
 New Features
 ^^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - The ``to_sky`` and ``to_pixel`` methods for all pixel and sky
+    aperture types now use the local WCS Jacobian to accurately compute
+    pixel scale factors and rotation angles. This correctly handles WCS
+    with distortions (e.g., SIP polynomial corrections) and non-square
+    pixels. [#2240]
+
 - ``photutils.background``
 
   - Added a ``to_aperture`` method to ``LocalBackground``. [#2118]
