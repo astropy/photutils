@@ -13,6 +13,7 @@ from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
 
 from photutils.aperture.bounding_box import BoundingBox
+from photutils.aperture.mask import ApertureMask
 from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
@@ -399,8 +400,8 @@ class PixelAperture(Aperture):
 
         return areas
 
-    @abc.abstractmethod
-    def to_mask(self, *, method='exact', subpixels=5):
+    @deprecated_positional_kwargs(since='3.0', until='4.0')
+    def to_mask(self, method='exact', subpixels=5):
         """
         Return a mask for the aperture.
 
@@ -445,6 +446,47 @@ class PixelAperture(Aperture):
             a single `~photutils.aperture.ApertureMask` is returned,
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
+        """
+        use_exact, subpixels = self._translate_mask_mode(
+            method, subpixels,
+            rectangle=getattr(self, '_is_rectangle', False))
+
+        masks = []
+        for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
+            ny, nx = bbox.shape
+            overlap = self._compute_overlap(
+                edges, nx, ny, use_exact, subpixels)
+            masks.append(ApertureMask(overlap, bbox))
+
+        if self.isscalar:
+            return masks[0]
+
+        return masks
+
+    @abc.abstractmethod
+    def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
+        """
+        Compute the overlap of the aperture for a single position.
+
+        Parameters
+        ----------
+        edges : tuple of float
+            The ``(xmin, xmax, ymin, ymax)`` pixel edges centered at
+            the origin.
+
+        nx, ny : int
+            The number of pixels in x and y.
+
+        use_exact : int
+            Whether to use exact mode (1) or not (0).
+
+        subpixels : int
+            The number of subpixels for subpixel mode.
+
+        Returns
+        -------
+        overlap : 2D `~numpy.ndarray`
+            The overlap array.
         """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')

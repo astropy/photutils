@@ -17,7 +17,8 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import elliptical_overlap_grid
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated,
+                                          deprecated_positional_kwargs)
 from photutils.utils._wcs_helpers import (pixel_ellipse_to_sky_svd,
                                           sky_ellipse_to_pixel_svd)
 
@@ -30,13 +31,15 @@ __all__ = [
 ]
 
 
+@deprecated('3.0', until='4.0')
 class EllipticalMaskMixin:
     """
     Mixin class to create masks for elliptical and elliptical-annulus
     aperture objects.
+
+    .. deprecated:: 3.0
     """
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         """
         Return a mask for the aperture.
@@ -135,7 +138,24 @@ class EllipticalMaskMixin:
         return x_extent, y_extent
 
 
-class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
+def _calc_ellipse_extents(semimajor_axis, semiminor_axis, theta):
+    """
+    Calculate half of the bounding box extents of an ellipse.
+    """
+    theta_rad = theta.to(u.radian).value
+    cos_theta = np.cos(theta_rad)
+    sin_theta = np.sin(theta_rad)
+    semimajor_x = semimajor_axis * cos_theta
+    semimajor_y = semimajor_axis * sin_theta
+    semiminor_x = semiminor_axis * -sin_theta
+    semiminor_y = semiminor_axis * cos_theta
+    x_extent = np.sqrt(semimajor_x**2 + semiminor_x**2)
+    y_extent = np.sqrt(semimajor_y**2 + semiminor_y**2)
+
+    return x_extent, y_extent
+
+
+class EllipticalAperture(PixelAperture):
     """
     An elliptical aperture defined in pixel coordinates.
 
@@ -201,7 +221,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
     @property
     def _xy_extents(self):
-        return self._calc_extents(self.a, self.b, self.theta)
+        return _calc_ellipse_extents(self.a, self.b, self.theta)
 
     @property
     def area(self):
@@ -247,10 +267,37 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
 
         return patches
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def to_mask(self, method='exact', subpixels=5):
-        return EllipticalMaskMixin.to_mask(self, method=method,
-                                           subpixels=subpixels)
+    def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
+        """
+        Compute the overlap of the aperture on the pixel grid.
+
+        Parameters
+        ----------
+        edges : list of 4 1D `~numpy.ndarray`
+            The edges of the pixel grid in the form of
+            ``[x_edges, y_edges, x_centers, y_centers]``.
+
+        nx, ny : int
+            The number of pixels in the x and y directions.
+
+        use_exact : bool
+            Whether to use the exact method for calculating the overlap.
+
+        subpixels : int
+            The number of subpixels to use in each dimension for the
+            subpixel method.
+
+        Returns
+        -------
+        overlap : 2D `~numpy.ndarray`
+            The overlap of the aperture on the pixel grid. The values
+            will be between 0 and 1, where 0 means no overlap and 1
+            means full overlap.
+        """
+        theta_rad = self.theta.to(u.radian).value
+        return elliptical_overlap_grid(edges[0], edges[1], edges[2],
+                                       edges[3], nx, ny, self.a, self.b,
+                                       theta_rad, use_exact, subpixels)
 
     def to_sky(self, wcs):
         """
@@ -294,7 +341,7 @@ class EllipticalAperture(EllipticalMaskMixin, PixelAperture):
                                      theta=sky_angle)
 
 
-class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
+class EllipticalAnnulus(PixelAperture):
     r"""
     An elliptical annulus aperture defined in pixel coordinates.
 
@@ -392,7 +439,7 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
     @property
     def _xy_extents(self):
-        return self._calc_extents(self.a_out, self.b_out, self.theta)
+        return _calc_ellipse_extents(self.a_out, self.b_out, self.theta)
 
     @property
     def area(self):
@@ -443,10 +490,43 @@ class EllipticalAnnulus(EllipticalMaskMixin, PixelAperture):
 
         return patches
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def to_mask(self, method='exact', subpixels=5):
-        return EllipticalMaskMixin.to_mask(self, method=method,
-                                           subpixels=subpixels)
+    def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
+        """
+        Compute the overlap of the aperture on the pixel grid.
+
+        Parameters
+        ----------
+        edges : list of 4 1D `~numpy.ndarray`
+            The edges of the pixel grid in the form of
+            ``[x_edges, y_edges, x_centers, y_centers]``.
+
+        nx, ny : int
+            The number of pixels in the x and y directions.
+
+        use_exact : bool
+            Whether to use the exact method for calculating the overlap.
+
+        subpixels : int
+            The number of subpixels to use in each dimension for the
+            subpixel method.
+
+        Returns
+        -------
+        overlap : 2D `~numpy.ndarray`
+            The overlap of the aperture on the pixel grid. The values
+            will be between 0 and 1, where 0 means no overlap and 1
+            means full overlap.
+        """
+        theta_rad = self.theta.to(u.radian).value
+        overlap = elliptical_overlap_grid(edges[0], edges[1], edges[2],
+                                          edges[3], nx, ny, self.a_out,
+                                          self.b_out, theta_rad,
+                                          use_exact, subpixels)
+        overlap -= elliptical_overlap_grid(edges[0], edges[1], edges[2],
+                                           edges[3], nx, ny, self.a_in,
+                                           self.b_in, theta_rad,
+                                           use_exact, subpixels)
+        return overlap
 
     def to_sky(self, wcs):
         """

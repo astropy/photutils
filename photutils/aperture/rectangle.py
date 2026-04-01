@@ -17,7 +17,8 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import rectangular_overlap_grid
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated,
+                                          deprecated_positional_kwargs)
 from photutils.utils._wcs_helpers import (pixel_to_sky_scales,
                                           sky_to_pixel_scales)
 
@@ -30,13 +31,15 @@ __all__ = [
 ]
 
 
+@deprecated('3.0', until='4.0')
 class RectangularMaskMixin:
     """
     Mixin class to create masks for rectangular or rectangular-annulus
     aperture objects.
+
+    .. deprecated:: 3.0
     """
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         """
         Return a mask for the aperture.
@@ -156,7 +159,44 @@ class RectangularMaskMixin:
         return np.atleast_2d(positions) + np.array([xshift, yshift])
 
 
-class RectangularAperture(RectangularMaskMixin, PixelAperture):
+def _calc_rectangle_extents(width, height, theta):
+    """
+    Calculate half of the bounding box extents of a rectangle.
+    """
+    theta_rad = theta.to(u.radian).value
+    half_width = width / 2.0
+    half_height = height / 2.0
+    sin_theta = math.sin(theta_rad)
+    cos_theta = math.cos(theta_rad)
+    x_extent1 = abs((half_width * cos_theta) - (half_height * sin_theta))
+    x_extent2 = abs((half_width * cos_theta) + (half_height * sin_theta))
+    y_extent1 = abs((half_width * sin_theta) + (half_height * cos_theta))
+    y_extent2 = abs((half_width * sin_theta) - (half_height * cos_theta))
+    x_extent = max(x_extent1, x_extent2)
+    y_extent = max(y_extent1, y_extent2)
+
+    return x_extent, y_extent
+
+
+def _calc_lower_left_positions(positions, width, height, theta):
+    """
+    Calculate lower-left positions from the input center positions.
+
+    Used for creating `~matplotlib.patches.Rectangle` patch for the
+    aperture.
+    """
+    theta_rad = theta.to(u.radian).value
+    half_width = width / 2.0
+    half_height = height / 2.0
+    sin_theta = math.sin(theta_rad)
+    cos_theta = math.cos(theta_rad)
+    xshift = (half_height * sin_theta) - (half_width * cos_theta)
+    yshift = -(half_height * cos_theta) - (half_width * sin_theta)
+
+    return np.atleast_2d(positions) + np.array([xshift, yshift])
+
+
+class RectangularAperture(PixelAperture):
     """
     A rectangular aperture defined in pixel coordinates.
 
@@ -214,6 +254,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
                                'angular Quantity or a value in radians from '
                                'the positive x axis.')
+    _is_rectangle = True
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w, h, theta=0.0):
@@ -224,7 +265,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
     @property
     def _xy_extents(self):
-        return self._calc_extents(self.w, self.h, self.theta)
+        return _calc_rectangle_extents(self.w, self.h, self.theta)
 
     @property
     def area(self):
@@ -259,7 +300,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
                                                                **kwargs)
-        xy_positions = self._lower_left_positions(xy_positions, self.w,
+        xy_positions = _calc_lower_left_positions(xy_positions, self.w,
                                                   self.h, self.theta)
 
         angle = self.theta.to(u.deg).value
@@ -272,10 +313,38 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
 
         return patches
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def to_mask(self, method='exact', subpixels=5):
-        return RectangularMaskMixin.to_mask(self, method=method,
-                                            subpixels=subpixels)
+    def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
+        """
+        Compute the overlap of the aperture on the pixel grid.
+
+        Parameters
+        ----------
+        edges : list of 4 1D `~numpy.ndarray`
+            The edges of the pixel grid in the form of
+            ``[x_edges, y_edges, x_centers, y_centers]``.
+
+        nx, ny : int
+            The number of pixels in the x and y directions.
+
+        use_exact : bool
+            Whether to use the exact method for calculating the overlap.
+
+        subpixels : int
+            The number of subpixels to use in each dimension for the
+            subpixel method.
+
+        Returns
+        -------
+        overlap : 2D `~numpy.ndarray`
+            The overlap of the aperture on the pixel grid. The values
+            will be between 0 and 1, where 0 means no overlap and 1
+            means full overlap.
+        """
+        theta_rad = self.theta.to(u.radian).value
+        return rectangular_overlap_grid(edges[0], edges[1], edges[2],
+                                        edges[3], nx, ny, self.w,
+                                        self.h, theta_rad,
+                                        use_exact, subpixels)
 
     def to_sky(self, wcs):
         """
@@ -319,7 +388,7 @@ class RectangularAperture(RectangularMaskMixin, PixelAperture):
                                       theta=sky_angle)
 
 
-class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
+class RectangularAnnulus(PixelAperture):
     r"""
     A rectangular annulus aperture defined in pixel coordinates.
 
@@ -398,6 +467,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
                                'angular Quantity or a value in radians from '
                                'the positive x axis.')
+    _is_rectangle = True
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.0):
@@ -421,7 +491,7 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
     @property
     def _xy_extents(self):
-        return self._calc_extents(self.w_out, self.h_out, self.theta)
+        return _calc_rectangle_extents(self.w_out, self.h_out, self.theta)
 
     @property
     def area(self):
@@ -456,10 +526,11 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
                                                                **kwargs)
-        inner_xy_positions = self._lower_left_positions(xy_positions,
-                                                        self.w_in, self.h_in,
+        inner_xy_positions = _calc_lower_left_positions(xy_positions,
+                                                        self.w_in,
+                                                        self.h_in,
                                                         self.theta)
-        outer_xy_positions = self._lower_left_positions(xy_positions,
+        outer_xy_positions = _calc_lower_left_positions(xy_positions,
                                                         self.w_out,
                                                         self.h_out,
                                                         self.theta)
@@ -480,10 +551,43 @@ class RectangularAnnulus(RectangularMaskMixin, PixelAperture):
 
         return patches
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def to_mask(self, method='exact', subpixels=5):
-        return RectangularMaskMixin.to_mask(self, method=method,
-                                            subpixels=subpixels)
+    def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
+        """
+        Compute the overlap of the aperture on the pixel grid.
+
+        Parameters
+        ----------
+        edges : list of 4 1D `~numpy.ndarray`
+            The edges of the pixel grid in the form of
+            ``[x_edges, y_edges, x_centers, y_centers]``.
+
+        nx, ny : int
+            The number of pixels in the x and y directions.
+
+        use_exact : bool
+            Whether to use the exact method for calculating the overlap.
+
+        subpixels : int
+            The number of subpixels to use in each dimension for the
+            subpixel method.
+
+        Returns
+        -------
+        overlap : 2D `~numpy.ndarray`
+            The overlap of the aperture on the pixel grid. The values
+            will be between 0 and 1, where 0 means no overlap and 1
+            means full overlap.
+        """
+        theta_rad = self.theta.to(u.radian).value
+        overlap = rectangular_overlap_grid(edges[0], edges[1], edges[2],
+                                           edges[3], nx, ny, self.w_out,
+                                           self.h_out, theta_rad,
+                                           use_exact, subpixels)
+        overlap -= rectangular_overlap_grid(edges[0], edges[1], edges[2],
+                                            edges[3], nx, ny, self.w_in,
+                                            self.h_in, theta_rad,
+                                            use_exact, subpixels)
+        return overlap
 
     def to_sky(self, wcs):
         """

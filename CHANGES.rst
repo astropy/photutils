@@ -241,6 +241,13 @@ API Changes
     methods in ``photutils`` is now deprecated. In the future, all
     optional arguments must be passed as keyword arguments. [#2219]
 
+- ``photutils.aperture``
+
+  - The ``CircularMaskMixin``, ``EllipticalMaskMixin``, and
+    ``RectangularMaskMixin`` classes are now deprecated. The mask
+    generation is now handled internally by the ``PixelAperture``
+    base class. [#2242]
+
 - ``photutils.background``
 
   - Removed the deprecated ``edge_method`` keyword from ``Background2D``.
