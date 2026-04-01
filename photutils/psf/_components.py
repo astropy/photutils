@@ -1743,8 +1743,9 @@ class _ModelImageMaker:
                 data_arr, psf_shape=psf_shape,
                 include_local_bkg=include_local_bkg)
         else:
-            residual = self.make_model_image(data.shape, psf_shape=psf_shape,
-                                             include_local_bkg=include_local_bkg)
+            residual = self.make_model_image(
+                data.shape, psf_shape=psf_shape,
+                include_local_bkg=include_local_bkg)
             np.subtract(data, residual, out=residual)
 
         return residual
