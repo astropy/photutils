@@ -400,8 +400,6 @@ class PixelAperture(Aperture):
 
         return areas
 
-    _is_rectangle = False
-
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         """
@@ -450,7 +448,8 @@ class PixelAperture(Aperture):
             returned.
         """
         use_exact, subpixels = self._translate_mask_mode(
-            method, subpixels, rectangle=self._is_rectangle)
+            method, subpixels,
+            rectangle=getattr(self, '_is_rectangle', False))
 
         masks = []
         for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
