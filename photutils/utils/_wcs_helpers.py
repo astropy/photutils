@@ -155,10 +155,21 @@ def _svd_ellipse_from_composite(m_comp, width_col_idx=0,
         angle_col = -angle_col
 
     # Compute the rotation angle
-    x_comp = parity * angle_col[0] if use_parity_for_angle else angle_col[0]
-    angle = Angle(
-        np.rad2deg(np.arctan2(angle_col[1], x_comp)) * u.deg,
-    ).wrap_at(360 * u.deg)
+    if use_parity_for_angle:
+        # Sky position angle (PA) measured from North (eta/Dec) toward
+        # East. The xi (RA) component in the composite matrix has
+        # -parity baked in, so we multiply by -parity to recover the
+        # physical East direction.
+        angle = Angle(
+            np.rad2deg(np.arctan2(-parity * angle_col[0],
+                                  angle_col[1])) * u.deg,
+        ).wrap_at(360 * u.deg)
+    else:
+        # Pixel angle: measured from +x toward +y
+        angle = Angle(
+            np.rad2deg(np.arctan2(angle_col[1],
+                                  angle_col[0])) * u.deg,
+        ).wrap_at(360 * u.deg)
 
     return out_width, out_height, angle
 
@@ -212,9 +223,10 @@ def jacobian_sky_to_pixel_scales(skycoord, wcs, sky_angle_rad):
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
     sky_angle_rad : float
-        The sky rotation angle in radians. This is the angle of the
-        region's width axis measured counterclockwise from the longitude
-        (RA) axis in the tangent-plane coordinate system.
+        The sky rotation angle in radians as a position angle (PA).
+        This is the angle of the region's width axis measured
+        counterclockwise from North (the latitude/Dec axis) in the
+        tangent-plane coordinate system.
 
     Returns
     -------
@@ -235,11 +247,12 @@ def jacobian_sky_to_pixel_scales(skycoord, wcs, sky_angle_rad):
 
     # Construct unit direction vectors in the tangent-plane coordinate
     # system for the region's width and height axes.
-    # d_w points along the width axis; d_h is perpendicular to it.
-    d_w = np.array([parity * np.cos(sky_angle_rad),
-                    np.sin(sky_angle_rad)])
-    d_h = np.array([-parity * np.sin(sky_angle_rad),
+    # d_w points along the width axis at the given PA from North;
+    # d_h is perpendicular to it.
+    d_w = np.array([-parity * np.sin(sky_angle_rad),
                     np.cos(sky_angle_rad)])
+    d_h = np.array([-parity * np.cos(sky_angle_rad),
+                    -np.sin(sky_angle_rad)])
 
     # Map sky directions to pixel-plane vectors via the Jacobian
     v_w = jacobian @ d_w
@@ -287,8 +300,8 @@ def jacobian_pixel_to_sky_scales(pixcoord, wcs, pixel_angle_rad):
        and ``d_h``, in units of arcsec per pixel.
 
     5. The sky rotation angle is derived from the direction of
-       ``d_w`` in the tangent-plane coordinate system, with the WCS
-       parity applied to the RA component.
+       ``d_w`` in the tangent-plane coordinate system as a position
+       angle (PA) measured from North.
 
     Parameters
     ----------
@@ -318,10 +331,11 @@ def jacobian_pixel_to_sky_scales(pixcoord, wcs, pixel_angle_rad):
         The scale factor along the height direction (arcsec per pixel).
 
     sky_angle : `~astropy.coordinates.Angle`
-        The sky rotation angle of the width axis relative to the
-        longitude (RA) axis, wrapped to [0, 360) degrees.
+        The sky position angle (PA) of the width axis, measured
+        counterclockwise from North (the latitude/Dec axis), wrapped to
+        [0, 360) degrees.
     """
-    center, _, jacobian_inv, parity = _pixel_to_sky_jacobian(pixcoord, wcs)
+    center, _, jacobian_inv, _ = _pixel_to_sky_jacobian(pixcoord, wcs)
 
     # Unit direction vectors in the pixel plane for width and height
     e_w = np.array([np.cos(pixel_angle_rad), np.sin(pixel_angle_rad)])
@@ -336,10 +350,11 @@ def jacobian_pixel_to_sky_scales(pixcoord, wcs, pixel_angle_rad):
     scale_w = np.hypot(d_w[0], d_w[1])
     scale_h = np.hypot(d_h[0], d_h[1])
 
-    # Sky rotation angle of the width axis, with parity applied to the
-    # RA component to account for the reflected RA axis
+    # Sky position angle (PA) of the width axis: d_w is in raw
+    # tangent-plane coordinates (xi=East, eta=North), so PA is simply
+    # arctan2(xi, eta).
     sky_angle = Angle(np.rad2deg(np.arctan2(
-        d_w[1], parity * d_w[0])) * u.deg).wrap_at(360 * u.deg)
+        d_w[0], d_w[1])) * u.deg).wrap_at(360 * u.deg)
 
     return center, scale_w, scale_h, sky_angle
 
@@ -545,9 +560,10 @@ def sky_to_pixel_scales(skycoord, wcs, sky_angle_rad):
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
     sky_angle_rad : float
-        The sky rotation angle in radians. This is the angle of the
-        region's width axis measured counterclockwise from the longitude
-        (RA) axis in the tangent-plane coordinate system.
+        The sky rotation angle in radians as a position angle (PA).
+        This is the angle of the region's width axis measured
+        counterclockwise from North (the latitude/Dec axis) in the
+        tangent-plane coordinate system.
 
     Returns
     -------
@@ -571,11 +587,8 @@ def sky_to_pixel_scales(skycoord, wcs, sky_angle_rad):
         center, pixscale, north_angle = wcs_pixel_scale_angle(skycoord, wcs)
 
         scale = 1.0 / pixscale
-        # Region sky angles are defined relative to the WCS longitude
-        # axis; photutils aperture sky angles are defined as the PA of
-        # the semimajor axis (i.e., relative to the WCS latitude axis).
         pixel_angle = Angle(np.rad2deg(sky_angle_rad) * u.deg
-                            + (north_angle - 90 * u.deg),
+                            + north_angle,
                             ).wrap_at(360 * u.deg)
         return center, scale, scale, pixel_angle
 
@@ -621,8 +634,9 @@ def pixel_to_sky_scales(pixcoord, wcs, pixel_angle_rad):
         The scale factor along the height direction (arcsec per pixel).
 
     sky_angle : `~astropy.coordinates.Angle`
-        The sky rotation angle of the width axis relative to the
-        longitude (RA) axis, wrapped to [0, 360) degrees.
+        The sky position angle (PA) of the width axis, measured
+        counterclockwise from North (the latitude/Dec axis), wrapped to
+        [0, 360) degrees.
     """
     # Non-FITS WCS (e.g., GWCS) and astropy.wcs.WCS with distortions
     # should use the Jacobian method to compute the pixel scales and
@@ -630,11 +644,8 @@ def pixel_to_sky_scales(pixcoord, wcs, pixel_angle_rad):
     if not _has_distortion(wcs):
         center = wcs.pixel_to_world(pixcoord[0], pixcoord[1])
         _, pixscale, north_angle = wcs_pixel_scale_angle(center, wcs)
-        # Region sky angles are defined relative to the WCS longitude
-        # axis; photutils aperture sky angles are defined as the PA of
-        # the semimajor axis (i.e., relative to the WCS latitude axis).
         sky_angle = Angle(np.rad2deg(pixel_angle_rad) * u.deg
-                          - (north_angle - 90 * u.deg),
+                          - north_angle,
                           ).wrap_at(360 * u.deg)
         return center, pixscale, pixscale, sky_angle
 
@@ -769,9 +780,9 @@ def pixel_ellipse_to_sky_svd(pixcoord, wcs, width, height, pixel_angle_rad):
         The full height of the sky ellipse in arcsec.
 
     sky_angle : `~astropy.coordinates.Angle`
-        The sky rotation angle of the width axis, measured
-        counterclockwise from the longitude (RA) axis, wrapped to [0,
-        360) degrees.
+        The sky position angle (PA) of the width axis, measured
+        counterclockwise from North (the latitude/Dec axis), wrapped to
+        [0, 360) degrees.
     """
     center, _, jacobian_inv, parity = _pixel_to_sky_jacobian(pixcoord, wcs)
 
@@ -825,9 +836,9 @@ def sky_ellipse_to_pixel_svd(skycoord, wcs, width_arcsec, height_arcsec,
         The full height of the sky ellipse in arcsec.
 
     sky_angle_rad : float
-        The sky rotation angle in radians. This is the angle of the
-        ellipse's width axis measured counterclockwise from the
-        longitude (RA) axis.
+        The sky rotation angle in radians as a position angle (PA).
+        This is the angle of the ellipse's width axis measured
+        counterclockwise from North (the latitude/Dec axis).
 
     Returns
     -------
@@ -848,14 +859,15 @@ def sky_ellipse_to_pixel_svd(skycoord, wcs, width_arcsec, height_arcsec,
     center, jacobian, parity = _sky_to_pixel_jacobian(skycoord, wcs)
 
     # Build M_sky: columns are sky semi-axis vectors in tangent-plane
-    # coordinates. Apply parity to the RA component to account for the
-    # reflected RA axis.
-    cos_a = np.cos(sky_angle_rad)
-    sin_a = np.sin(sky_angle_rad)
+    # coordinates (xi=RA, eta=Dec). The width axis is at the given PA
+    # from North. Apply parity to the RA (xi) component.
+    cos_pa = np.cos(sky_angle_rad)
+    sin_pa = np.sin(sky_angle_rad)
     half_w = 0.5 * width_arcsec
     half_h = 0.5 * height_arcsec
-    m_sky = np.array([[parity * half_w * cos_a, -parity * half_h * sin_a],
-                      [half_w * sin_a, half_h * cos_a]])
+    m_sky = np.array([[-parity * half_w * sin_pa,
+                       -parity * half_h * cos_pa],
+                      [half_w * cos_pa, -half_h * sin_pa]])
 
     # M_pix = J @ M_sky: columns are pixel semi-axis vectors
     m_pix = jacobian @ m_sky
@@ -969,19 +981,19 @@ def pixel_to_sky_svd_scales(pixcoord, wcs):
         (arcsec per pixel).
 
     sky_angle : `~astropy.coordinates.Angle`
-        The sky rotation angle of the major axis, measured
-        counterclockwise from the longitude (RA) axis, wrapped to
+        The sky position angle (PA) of the major axis, measured
+        counterclockwise from North (the latitude/Dec axis), wrapped to
         [0, 360) degrees.
     """
-    center, _, jacobian_inv, parity = _pixel_to_sky_jacobian(pixcoord, wcs)
+    center, _, jacobian_inv, _ = _pixel_to_sky_jacobian(pixcoord, wcs)
 
     u_mat, s_vals, _vt = np.linalg.svd(jacobian_inv)
 
-    # Sky angle of the major axis in tangent-plane coordinates.
-    # Apply parity to the RA component to recover the correct sky
-    # angle from the tangent-plane direction.
+    # Sky position angle (PA) of the major axis: u_mat columns are in
+    # raw tangent-plane coordinates (xi=East, eta=North), so PA is
+    # simply arctan2(xi, eta).
     sky_angle = Angle(
-        np.rad2deg(np.arctan2(u_mat[1, 0], parity * u_mat[0, 0])) * u.deg,
+        np.rad2deg(np.arctan2(u_mat[0, 0], u_mat[1, 0])) * u.deg,
     ).wrap_at(360 * u.deg)
 
     return center, s_vals[0], s_vals[1], sky_angle
