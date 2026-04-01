@@ -484,6 +484,21 @@ parameters in photutils, which was initiated in version 2.0. This change
 improves code readability and reduces the likelihood of errors from
 accidentally passing arguments in the wrong order.
 
+
+Aperture Package
+^^^^^^^^^^^^^^^^
+
+The ``CircularMaskMixin``, ``EllipticalMaskMixin``, and
+``RectangularMaskMixin`` classes are now deprecated and will be removed
+in a future version. The mask-generation logic is now handled internally
+by `~photutils.aperture.PixelAperture`.
+
+These mixin classes were implementation details used to share
+mask-generation code between aperture and annulus classes. No user
+action is required unless you were explicitly subclassing one of these
+mixin classes.
+
+
 Background Package
 ^^^^^^^^^^^^^^^^^^
 
