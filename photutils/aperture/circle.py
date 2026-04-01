@@ -17,7 +17,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import circular_overlap_grid
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import deprecated
 from photutils.utils._wcs_helpers import (pixel_to_sky_mean_scale,
                                           sky_to_pixel_mean_scale)
 
@@ -30,13 +30,15 @@ __all__ = [
 ]
 
 
+@deprecated('3.0')
 class CircularMaskMixin:
     """
     Mixin class to create masks for circular and circular-annulus
     aperture objects.
+
+    .. deprecated:: 3.0
     """
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         """
         Return a mask for the aperture.
@@ -114,7 +116,7 @@ class CircularMaskMixin:
         return masks
 
 
-class CircularAperture(CircularMaskMixin, PixelAperture):
+class CircularAperture(PixelAperture):
     """
     A circular aperture defined in pixel coordinates.
 
@@ -205,10 +207,36 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
 
         return patches
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def to_mask(self, method='exact', subpixels=5):
-        return CircularMaskMixin.to_mask(self, method=method,
-                                         subpixels=subpixels)
+    def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
+        """
+        Compute the overlap of the aperture on the pixel grid.
+
+        Parameters
+        ----------
+        edges : list of 4 1D `~numpy.ndarray`
+            The edges of the pixel grid in the form of
+            ``[x_edges, y_edges, x_centers, y_centers]``.
+
+        nx, ny : int
+            The number of pixels in the x and y directions.
+
+        use_exact : bool
+            Whether to use the exact method for calculating the overlap.
+
+        subpixels : int
+            The number of subpixels to use in each dimension for the
+            subpixel method.
+
+        Returns
+        -------
+        overlap : 2D `~numpy.ndarray`
+            The overlap of the aperture on the pixel grid. The values
+            will be between 0 and 1, where 0 means no overlap and 1
+            means full overlap.
+        """
+        return circular_overlap_grid(edges[0], edges[1], edges[2],
+                                     edges[3], nx, ny, self.r,
+                                     use_exact, subpixels)
 
     def to_sky(self, wcs):
         """
@@ -249,7 +277,7 @@ class CircularAperture(CircularMaskMixin, PixelAperture):
         return SkyCircularAperture(positions=positions, r=r)
 
 
-class CircularAnnulus(CircularMaskMixin, PixelAperture):
+class CircularAnnulus(PixelAperture):
     """
     A circular annulus aperture defined in pixel coordinates.
 
@@ -357,10 +385,40 @@ class CircularAnnulus(CircularMaskMixin, PixelAperture):
 
         return patches
 
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def to_mask(self, method='exact', subpixels=5):
-        return CircularMaskMixin.to_mask(self, method=method,
-                                         subpixels=subpixels)
+    def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
+        """
+        Compute the overlap of the aperture on the pixel grid.
+
+        Parameters
+        ----------
+        edges : list of 4 1D `~numpy.ndarray`
+            The edges of the pixel grid in the form of
+            ``[x_edges, y_edges, x_centers, y_centers]``.
+
+        nx, ny : int
+            The number of pixels in the x and y directions.
+
+        use_exact : bool
+            Whether to use the exact method for calculating the overlap.
+
+        subpixels : int
+            The number of subpixels to use in each dimension for the
+            subpixel method.
+
+        Returns
+        -------
+        overlap : 2D `~numpy.ndarray`
+            The overlap of the aperture on the pixel grid. The values
+            will be between 0 and 1, where 0 means no overlap and 1
+            means full overlap.
+        """
+        overlap = circular_overlap_grid(edges[0], edges[1], edges[2],
+                                        edges[3], nx, ny, self.r_out,
+                                        use_exact, subpixels)
+        overlap -= circular_overlap_grid(edges[0], edges[1], edges[2],
+                                         edges[3], nx, ny, self.r_in,
+                                         use_exact, subpixels)
+        return overlap
 
     def to_sky(self, wcs):
         """
