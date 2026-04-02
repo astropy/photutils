@@ -1,0 +1,8 @@
+rules:
+  secrets-outside-env:
+    ignore:
+      # CODECOV_TOKEN is a low-risk CI-only token; no GitHub Environment is
+      # needed. This rule will be demoted to --persona=auditor only in
+      # zizmor v1.24.0, at which point this ignore block can be removed.
+      - ci_cron_daily.yml:76
+      - ci_tests.yml:144
