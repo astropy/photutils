@@ -5,6 +5,7 @@ Tests for the photutils.detection.core module.
 
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection import DAOStarFinder
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderCatalogBase,
@@ -581,6 +582,18 @@ class TestStarFinderBaseCall:
         assert len(tbl_call) == len(tbl_find)
         for col in tbl_call.colnames:
             np.testing.assert_array_equal(tbl_call[col], tbl_find[col])
+
+
+def test_deprecated_attr(data):
+    """
+    Test that accessing the deprecated attribute on the
+    StarFinderCatalogBase raises an warning.
+    """
+    finder = DAOStarFinder(threshold=5.0, fwhm=2.0)
+    cat = finder._get_raw_catalog(data)
+    match = 'attribute was deprecated'
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        _ = cat.xcentroid
 
 
 def test_deprecated_default():
