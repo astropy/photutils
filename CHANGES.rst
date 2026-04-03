@@ -198,6 +198,10 @@ Bug Fixes
   - Fixed ``StarFinder`` mutating the input ``kernel`` array during
     normalization. [#2201]
 
+  - Fixed an edge case of ``find_peaks`` not excluding NaN pixel
+    locations from peak detection, which could produce false peaks when
+    the NaN fill value was a local maximum. [#2247]
+
 - ``photutils.isophote``
 
   - ``build_ellipse_model`` now integrates over all angles instead of

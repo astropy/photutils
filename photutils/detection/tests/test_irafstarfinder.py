@@ -94,6 +94,20 @@ class TestIRAFStarFinder:
         tbl1 = finder(data, mask=mask)
         assert len(tbl0) > len(tbl1)
 
+    def test_mask_int(self, data):
+        """
+        Test that an integer mask gives the same result as a boolean
+        mask.
+        """
+        finder = IRAFStarFinder(threshold=1.0, fwhm=1.5)
+        bool_mask = np.zeros(data.shape, dtype=bool)
+        bool_mask[0:50, :] = True
+        int_mask = bool_mask.astype(int)
+
+        tbl_bool = finder(data, mask=bool_mask)
+        tbl_int = finder(data, mask=int_mask)
+        assert_array_equal(tbl_bool, tbl_int)
+
     def test_xycoords(self, data):
         """
         Test source detection at specified coordinates.

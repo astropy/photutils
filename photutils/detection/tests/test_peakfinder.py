@@ -60,6 +60,19 @@ class TestFindPeaks:
         tbl1 = find_peaks(data, 0.1, box_size=3, mask=mask)
         assert len(tbl1) < len(tbl0)
 
+    def test_mask_int(self, data):
+        """
+        Test that an integer mask gives the same result as a boolean
+        mask.
+        """
+        bool_mask = np.zeros(data.shape, dtype=bool)
+        bool_mask[0:50, :] = True
+        int_mask = bool_mask.astype(int)
+
+        tbl_bool = find_peaks(data, 0.1, box_size=3, mask=bool_mask)
+        tbl_int = find_peaks(data, 0.1, box_size=3, mask=int_mask)
+        assert_array_equal(tbl_bool, tbl_int)
+
     def test_maskshape(self, data):
         """
         Test if mask shape doesn't match data shape.
@@ -521,3 +534,82 @@ class TestFindPeaks:
         assert len(tbl_fast) == 2
         assert_array_equal(tbl_ref['x_peak'], tbl_fast['x_peak'])
         assert_array_equal(tbl_ref['y_peak'], tbl_fast['y_peak'])
+
+    def test_nan_no_false_peaks(self):
+        """
+        Test that NaN pixels do not produce false peaks when the fill
+        value (nanmin) happens to be a local maximum.
+        """
+        data = np.full((50, 50), 5.0)
+        data[25, 25] = 10.0  # one real peak
+        data[10, 10] = np.nan  # NaN pixel (fill value = 5.0 = background)
+        data[10, 11] = np.nan
+
+        tbl = find_peaks(data, 6.0, box_size=3)
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 25
+        assert tbl['y_peak'][0] == 25
+
+    def test_nan_adjacent_to_peak(self):
+        """
+        Test that NaN pixels adjacent to a real peak do not cause the
+        peak to be lost or duplicated.
+        """
+        data = np.zeros((50, 50))
+        data[25, 25] = 10.0
+        data[25, 26] = np.nan
+        data[24, 25] = np.nan
+
+        tbl = find_peaks(data, 1.0, box_size=3)
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 25
+        assert tbl['y_peak'][0] == 25
+
+    def test_all_negative_data(self):
+        """
+        Test peak detection with all-negative data.
+
+        Peaks near the border may be suppressed because maximum_filter
+        uses cval=0.0, but interior peaks should be detected correctly.
+        """
+        data = np.full((50, 50), -10.0)
+        data[25, 25] = -1.0  # brightest pixel, well inside border
+
+        tbl = find_peaks(data, -5.0, box_size=3)
+        assert tbl is not None
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 25
+        assert tbl['y_peak'][0] == 25
+
+    def test_all_negative_border_suppression(self):
+        """
+        Test that all-negative data near the border is suppressed by
+        cval=0.0 in maximum_filter.
+        """
+        data = np.full((50, 50), -10.0)
+        # Peak at border and one well inside
+        data[0, 0] = -1.0
+        data[25, 25] = -1.0
+
+        # The peak at (0,0) is above the threshold but cval=0.0 means
+        # the border region has a "virtual" maximum of 0.0, which is
+        # greater than -1.0, so this pixel won't be detected as a peak.
+        tbl = find_peaks(data, -5.0, box_size=3)
+        assert tbl is not None
+        # The border peak should not be among the results
+        assert not any((tbl['x_peak'] == 0) & (tbl['y_peak'] == 0))
+        # The interior peak should be detected
+        assert any((tbl['x_peak'] == 25) & (tbl['y_peak'] == 25))
+
+    def test_min_separation_with_centroid_func(self, data):
+        """
+        Test that min_separation works with centroid_func.
+
+        The centroid box_size defaults to box_size (3) when
+        min_separation is used.
+        """
+        tbl = find_peaks(data, 0.1, min_separation=10,
+                         centroid_func=centroid_com)
+        assert 'x_centroid' in tbl.colnames
+        assert 'y_centroid' in tbl.colnames
+        assert len(tbl) > 0

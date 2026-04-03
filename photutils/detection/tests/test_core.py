@@ -5,6 +5,7 @@ Tests for the photutils.detection.core module.
 
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection import DAOStarFinder
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderCatalogBase,
@@ -226,7 +227,7 @@ class TestStarFinderCatalogBase:
         xypos = np.array([[5, 5]])
         cat = minimal_catalog_cls(data, xypos, kernel)
         expected = ('data', 'unit', 'kernel', 'n_brightest', 'peak_max',
-                    'cutout_shape')
+                    'cutout_shape', 'default_columns')
         assert cat._get_init_attributes() == expected
 
     def test_lazyproperties_class_cache(self, minimal_catalog_cls):
@@ -520,6 +521,51 @@ class TestStarFinderCatalogBase:
         assert sub.xypos[0, 0] == 15
         assert sub.xypos[1, 0] == 5
 
+    def test_filter_bounds_none_range(self, minimal_catalog_cls):
+        """
+        Test that _filter_bounds skips filtering when a range is None.
+        """
+        data = np.zeros((21, 21))
+        data[5, 5] = 10.0
+        data[10, 10] = 50.0
+        data[15, 15] = 30.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5], [10, 10], [15, 15]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        bounds = [('flux', None)]
+        result = cat._filter_bounds(bounds)
+        assert len(result) == 3
+
+    def test_filter_bounds_initial_mask(self, minimal_catalog_cls):
+        """
+        Test _filter_bounds with an initial_mask.
+        """
+        data = np.zeros((21, 21))
+        data[5, 5] = 10.0
+        data[10, 10] = 50.0
+        data[15, 15] = 30.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5], [10, 10], [15, 15]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        # Pre-exclude the first source
+        initial_mask = np.array([False, True, True])
+        result = cat._filter_bounds([], initial_mask=initial_mask)
+        assert len(result) == 2
+
+    def test_default_columns_preserved_on_slice(self, minimal_catalog_cls):
+        """
+        Test that default_columns is preserved when slicing.
+        """
+        data = np.zeros((21, 21))
+        data[5, 5] = 10.0
+        data[10, 10] = 50.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5], [10, 10]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat.default_columns = ('id', 'x_centroid', 'y_centroid')
+        sub = cat[0]
+        assert sub.default_columns == ('id', 'x_centroid', 'y_centroid')
+
 
 class TestStarFinderBaseCall:
     """
@@ -536,6 +582,18 @@ class TestStarFinderBaseCall:
         assert len(tbl_call) == len(tbl_find)
         for col in tbl_call.colnames:
             np.testing.assert_array_equal(tbl_call[col], tbl_find[col])
+
+
+def test_deprecated_attr(data):
+    """
+    Test that accessing the deprecated attribute on the
+    StarFinderCatalogBase raises an warning.
+    """
+    finder = DAOStarFinder(threshold=5.0, fwhm=2.0)
+    cat = finder._get_raw_catalog(data)
+    match = 'attribute was deprecated'
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        _ = cat.xcentroid
 
 
 def test_deprecated_default():

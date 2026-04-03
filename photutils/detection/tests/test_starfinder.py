@@ -114,6 +114,20 @@ class TestStarFinder:
         assert len(tbl2) == 13
         assert min(tbl2['y_centroid']) > 50
 
+    def test_mask_int(self, data, kernel):
+        """
+        Test that an integer mask gives the same result as a boolean
+        mask.
+        """
+        starfinder = StarFinder(1, kernel)
+        bool_mask = np.zeros(data.shape, dtype=bool)
+        bool_mask[0:50] = True
+        int_mask = bool_mask.astype(int)
+
+        tbl_bool = starfinder(data, mask=bool_mask)
+        tbl_int = starfinder(data, mask=int_mask)
+        assert_array_equal(tbl_bool, tbl_int)
+
     def test_min_separation(self, data, kernel):
         """
         Test the min_separation parameter.
