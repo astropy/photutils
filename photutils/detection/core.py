@@ -49,6 +49,26 @@ class StarFinderBase(metaclass=abc.ABCMeta):
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __call__(self, data, mask=None):
+        """
+        Find stars in an astronomical image.
+
+        Parameters
+        ----------
+        data : 2D array_like
+            The 2D image array.
+
+        mask : 2D bool array, optional
+            A boolean mask with the same shape as ``data``, where a
+            `True` value indicates the corresponding element of ``data``
+            is masked. Masked pixels are ignored when searching for
+            stars.
+
+        Returns
+        -------
+        table : `~astropy.table.Table` or `None`
+            A table of found stars. If no stars are found then `None` is
+            returned.
+        """
         return self.find_stars(data, mask=mask)
 
     @staticmethod
