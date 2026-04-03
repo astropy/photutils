@@ -311,3 +311,213 @@ class TestFindPeaks:
         tbl = find_peaks(img, 1.0, box_size=box_size)
         assert len(tbl) == 1
         assert tbl['peak_value'][0] == 10.0
+
+    def test_min_separation(self, data):
+        """
+        Test that min_separation enforces minimum Euclidean distance.
+        """
+        tbl0 = find_peaks(data, 0.1, box_size=3)
+        tbl1 = find_peaks(data, 0.1, box_size=3, min_separation=10)
+        assert len(tbl1) <= len(tbl0)
+
+        # Check that all pairs of peaks are at least min_separation
+        # apart
+        if len(tbl1) > 1:
+            x = np.array(tbl1['x_peak'], dtype=float)
+            y = np.array(tbl1['y_peak'], dtype=float)
+            for i in range(len(tbl1)):
+                for j in range(i + 1, len(tbl1)):
+                    dist = np.sqrt((x[i] - x[j])**2 + (y[i] - y[j])**2)
+                    assert dist > 10
+
+    def test_min_separation_two_peaks(self):
+        """
+        Test min_separation with two peaks at known separation.
+        """
+        data = np.zeros((100, 100))
+        data[50, 30] = 10.0
+        data[50, 50] = 8.0
+
+        # Separation is 20 pixels; min_separation=15 should keep both
+        tbl = find_peaks(data, 1.0, box_size=3, min_separation=15)
+        assert len(tbl) == 2
+
+        # min_separation=25 should keep only the brightest
+        tbl = find_peaks(data, 1.0, box_size=3, min_separation=25)
+        assert len(tbl) == 1
+        assert tbl['peak_value'][0] == 10.0
+
+    def test_min_separation_plateau(self):
+        """
+        Test that min_separation treats plateaus identically to an
+        equivalent circular footprint (all equal-valued plateau pixels
+        are local maxima).
+        """
+        data = np.zeros((50, 50))
+        data[20:30, 20:30] = 10.0  # 10x10 plateau (diagonal ~12.7 px)
+
+        for radius in (5, 15):
+            idx = np.arange(-radius, radius + 1)
+            xx, yy = np.meshgrid(idx, idx)
+            fp = np.array((xx**2 + yy**2) <= radius**2, dtype=int)
+            tbl_ref = find_peaks(data, 1.0, footprint=fp)
+            tbl_fast = find_peaks(data, 1.0, min_separation=radius)
+
+            assert len(tbl_ref) == len(tbl_fast)
+            assert_array_equal(tbl_ref['x_peak'], tbl_fast['x_peak'])
+            assert_array_equal(tbl_ref['y_peak'], tbl_fast['y_peak'])
+
+    def test_min_separation_with_units(self):
+        """
+        Test min_separation with Quantity data.
+        """
+        unit = u.Jy
+        data = np.zeros((100, 100))
+        data[50, 30] = 10.0
+        data[50, 50] = 8.0
+
+        tbl = find_peaks(data << unit, 1.0 << unit, box_size=3,
+                         min_separation=25)
+        assert len(tbl) == 1
+        assert tbl['peak_value'][0].value == 10.0
+        assert tbl['peak_value'][0].unit == unit
+
+    def test_min_separation_with_npeaks(self):
+        """
+        Test that min_separation and n_peaks work together.
+        """
+        data = np.zeros((100, 100))
+        data[20, 20] = 10.0
+        data[20, 60] = 8.0
+        data[60, 20] = 6.0
+        data[60, 60] = 4.0
+
+        # All peaks are well-separated;
+        # n_peaks=2 should keep brightest 2
+        tbl = find_peaks(data, 1.0, min_separation=5, n_peaks=2)
+        assert len(tbl) == 2
+        assert tbl['peak_value'][0] == 10.0
+        assert tbl['peak_value'][1] == 8.0
+
+    def test_min_separation_negative(self, data):
+        """
+        Test that negative min_separation raises ValueError.
+        """
+        match = 'min_separation must be >= 0'
+        with pytest.raises(ValueError, match=match):
+            find_peaks(data, 0.1, min_separation=-1)
+
+    def test_min_separation_zero(self, data):
+        """
+        Test that min_separation=0 gives the same result as None.
+        """
+        tbl0 = find_peaks(data, 0.1, box_size=3)
+        tbl1 = find_peaks(data, 0.1, box_size=3, min_separation=0)
+        assert_array_equal(tbl0, tbl1)
+
+    def test_min_separation_with_footprint(self, data):
+        """
+        Test that min_separation takes priority over footprint.
+        """
+        footprint = np.ones((3, 3))
+        tbl = find_peaks(data, 0.1, footprint=footprint, min_separation=10)
+        assert len(tbl) > 0
+
+        # Check minimum separation is enforced
+        if len(tbl) > 1:
+            x = np.array(tbl['x_peak'], dtype=float)
+            y = np.array(tbl['y_peak'], dtype=float)
+            for i in range(len(tbl)):
+                for j in range(i + 1, len(tbl)):
+                    dist = np.sqrt((x[i] - x[j])**2 + (y[i] - y[j])**2)
+                    assert dist > 10
+
+    def test_min_separation_matches_circular_footprint(self):
+        """
+        Test that min_separation produces the same peaks as an
+        equivalent circular footprint passed to maximum_filter.
+        """
+        rng = np.random.default_rng(42)
+        data = rng.standard_normal((200, 200))
+        data[50, 50] = 20.0
+        data[120, 130] = 18.0
+        data[30, 170] = 15.0
+        threshold = 3.0
+
+        for radius in (5, 10, 25, 50):
+            # Reference: actual circular footprint (slow but correct)
+            idx = np.arange(-radius, radius + 1)
+            xx, yy = np.meshgrid(idx, idx)
+            fp = np.array((xx**2 + yy**2) <= radius**2, dtype=int)
+            tbl_ref = find_peaks(data, threshold, footprint=fp)
+
+            tbl_fast = find_peaks(data, threshold, min_separation=radius)
+
+            if tbl_ref is None:
+                assert tbl_fast is None
+            else:
+                ref_xy = set(zip(tbl_ref['x_peak'].tolist(),
+                                 tbl_ref['y_peak'].tolist(),
+                                 strict=True))
+                fast_xy = set(zip(tbl_fast['x_peak'].tolist(),
+                                  tbl_fast['y_peak'].tolist(),
+                                  strict=True))
+                assert ref_xy == fast_xy
+
+    def test_min_separation_rejects_non_maxima(self):
+        """
+        Test that min_separation rejects peaks that are not the true
+        local maximum within the circular region.
+
+        This test would fail with a greedy KD-tree-only approach that
+        uses a small box_size for initial peak detection, because such
+        an approach would keep faint peaks that are not the maximum
+        within a circle of min_separation (due to non-peak pixels with
+        higher values in the neighborhood).
+        """
+        data = np.zeros((100, 100))
+
+        # Bright peak with a declining gradient
+        data[50, 50] = 100.0
+        for i in range(1, 30):
+            data[50, 50 + i] = 100.0 - 2 * i  # 98, 96, ..., 42
+
+        # Faint peak at (50, 85), which is 35 px from the bright peak.
+        # The gradient pixel at (50, 65) = 100 - 2*15 = 70, which is
+        # within radius 20 of (50, 85) and brighter (70 > 45).
+        data[50, 85] = 45.0
+
+        # With min_separation=20: (50, 85) is NOT the local max within a
+        # circle of radius 20 because (50, 65)=70 > 45.
+        tbl = find_peaks(data, 1.0, min_separation=20)
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 50
+        assert tbl['y_peak'][0] == 50
+
+    def test_min_separation_keeps_nearby_true_maxima(self):
+        """
+        Test that two equal-valued peaks within min_separation of each
+        other are both retained, matching the circular footprint result.
+        """
+        radius = 12
+        data = np.zeros((100, 100))
+
+        # Two equal-valued peaks separated by less than min_separation
+        # (dist = 11 px < radius = 12 px). Because they are equal,
+        # each is tied for the max in its own circle, so both should
+        # be detected (same behavior as maximum_filter with a circular
+        # footprint).
+        data[50, 40] = 10.0
+        data[50, 51] = 10.0
+
+        # Reference: actual circular footprint
+        idx = np.arange(-radius, radius + 1)
+        xx, yy = np.meshgrid(idx, idx)
+        fp = np.array((xx**2 + yy**2) <= radius**2, dtype=int)
+        tbl_ref = find_peaks(data, 1.0, footprint=fp)
+        tbl_fast = find_peaks(data, 1.0, min_separation=radius)
+
+        assert len(tbl_ref) == 2
+        assert len(tbl_fast) == 2
+        assert_array_equal(tbl_ref['x_peak'], tbl_fast['x_peak'])
+        assert_array_equal(tbl_ref['y_peak'], tbl_fast['y_peak'])
