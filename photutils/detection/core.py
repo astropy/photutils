@@ -101,17 +101,15 @@ class StarFinderBase(metaclass=abc.ABCMeta):
             is returned if no sources are found.
         """
         # Define a local footprint for the peak finder
-        if min_separation == 0.0:  # DAOStarFinder
+        find_peaks_kwargs = {}
+        if min_separation == 0:  # use kernel-shape footprint
             if isinstance(kernel, np.ndarray):
                 footprint = np.ones(kernel.shape)
             else:
                 footprint = kernel.mask.astype(bool)
+            find_peaks_kwargs['footprint'] = footprint
         else:
-            # Define a local circular footprint for the peak finder
-            idx = np.arange(-min_separation, min_separation + 1)
-            xx, yy = np.meshgrid(idx, idx)
-            footprint = np.array((xx**2 + yy**2) <= min_separation**2,
-                                 dtype=int)
+            find_peaks_kwargs['min_separation'] = min_separation
 
         # Define the border exclusion region
         if exclude_border:
@@ -129,8 +127,8 @@ class StarFinderBase(metaclass=abc.ABCMeta):
         # Suppress any NoDetectionsWarning from find_peaks.
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=NoDetectionsWarning)
-            tbl = find_peaks(convolved_data, threshold, footprint=footprint,
-                             mask=mask, border_width=border_width)
+            tbl = find_peaks(convolved_data, threshold, mask=mask,
+                             border_width=border_width, **find_peaks_kwargs)
 
         if tbl is None:
             return None
