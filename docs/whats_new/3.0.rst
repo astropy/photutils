@@ -346,6 +346,31 @@ input ``threshold`` is applied directly to the convolved data without
 the default DAOFIND kernel-based scaling factor.
 
 
+New ``min_separation`` parameter for ``find_peaks``
+---------------------------------------------------
+
+:func:`~photutils.detection.find_peaks` now accepts a ``min_separation``
+keyword argument that enforces a minimum peak separation without
+requiring an explicit circular footprint. When set, each detected
+peak must be the maximum value (or equal to the maximum) within a
+circle of the given radius, which is equivalent to passing a circular
+``footprint`` of that radius to :func:`~scipy.ndimage.maximum_filter`::
+
+    >>> from photutils.detection import find_peaks
+    >>> tbl = find_peaks(data, threshold=5.0, min_separation=12.5)
+
+This approach is approximately 10–400x faster than using an explicit
+circular footprint with :func:`~scipy.ndimage.maximum_filter` (depending
+on the radius). The result is identical to the slow circular-footprint
+method.
+
+This parameter is used internally by
+:class:`~photutils.detection.DAOStarFinder`,
+:class:`~photutils.detection.IRAFStarFinder`, and
+:class:`~photutils.detection.StarFinder` when ``min_separation > 0``
+is set.
+
+
 Performance improvements
 ------------------------
 

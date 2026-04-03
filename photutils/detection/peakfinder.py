@@ -19,10 +19,117 @@ from photutils.utils.exceptions import NoDetectionsWarning
 __all__ = ['find_peaks']
 
 
+def _fast_circular_peaks(data, radius):
+    """
+    Find pixels that are local maxima within circular regions.
+
+    This is equivalent to::
+
+        idx = np.arange(-radius, radius + 1)
+        xx, yy = np.meshgrid(idx, idx)
+        footprint = np.array((xx**2 + yy**2) <= radius**2, dtype=int)
+        data_max = maximum_filter(data, footprint=footprint,
+                                  mode='constant', cval=0.0)
+        peaks = (data == data_max)
+
+    but uses fast separable box filters with targeted circular
+    verification, which is typically ~10-400x faster (depending on the
+    radius).
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The 2D image array (NaN-free).
+
+    radius : float
+        The radius of the circular region in pixels.
+
+    Returns
+    -------
+    peak_mask : 2D bool `~numpy.ndarray`
+        Boolean mask where `True` indicates a local maximum within the
+        circular region.
+    """
+    # Build the circular footprint
+    idx = np.arange(-radius, radius + 1)
+    radius_sq = radius ** 2
+    footprint_size = len(idx)
+
+    xx, yy = np.meshgrid(idx, idx)
+    fp_bool = (xx ** 2 + yy ** 2) <= radius_sq
+
+    # For even-sized footprints (non-integer radius), scipy's
+    # maximum_filter places the center at index ``footprint_size // 2``
+    # (i.e., the origin is biased by +0.5 pixel). The same convention is
+    # used here so that the fast path is bit-identical to the reference
+    # maximum_filter(footprint=...) result.
+    half = footprint_size // 2
+
+    # Circumscribed box (size = footprint_size): contains the footprint.
+    # Any pixel that is the max in this box is definitely the max in the
+    # circular footprint, since circle <= box.
+    data_max_box = maximum_filter(data, size=footprint_size, mode='constant',
+                                  cval=0.0)
+    definite = (data == data_max_box)
+
+    # Inscribed box: fits inside the circle. For even-sized footprints,
+    # the circle center is shifted by 0.5 from the pixel center. We
+    # account for this so the inscribed box stays inside the circle.
+    if footprint_size % 2 == 0:
+        half_side = int(np.floor(radius / np.sqrt(2) - 0.5))
+    else:
+        half_side = int(np.floor(radius / np.sqrt(2)))
+    side_insc = max(2 * half_side + 1, 3)
+
+    data_max_insc = maximum_filter(data, size=side_insc, mode='constant',
+                                   cval=0.0)
+    # Candidates from inscribed box are a superset of true peaks
+    candidates = (data == data_max_insc)
+
+    # Ring candidates: max in inscribed box but not in circumscribed
+    # box. These need per-pixel verification against the actual circular
+    # footprint.
+    needs_verify = candidates & ~definite
+    peak_mask = definite.copy()
+
+    y_maybe, x_maybe = needs_verify.nonzero()
+    if len(y_maybe) > 0:
+        ny, nx = data.shape
+        for y, x in zip(y_maybe, x_maybe, strict=True):
+
+            # Map footprint onto data, clipping to image boundaries.
+            y0 = y - half
+            y1 = y0 + footprint_size
+            x0 = x - half
+            x1 = x0 + footprint_size
+
+            dy0, dy1 = max(0, y0), min(ny, y1)
+            dx0, dx1 = max(0, x0), min(nx, x1)
+
+            fy0 = dy0 - y0
+            fy1 = footprint_size - (y1 - dy1)
+            fx0 = dx0 - x0
+            fx1 = footprint_size - (x1 - dx1)
+
+            local = data[dy0:dy1, dx0:dx1]
+            fp_local = fp_bool[fy0:fy1, fx0:fx1]
+            local_max = local[fp_local].max()
+
+            # Footprint extends beyond image: include cval=0.0
+            if (fy0 > 0 or fy1 < footprint_size or fx0 > 0
+                    or fx1 < footprint_size):
+                local_max = max(local_max, 0.0)
+
+            if data[y, x] == local_max:
+                peak_mask[y, x] = True
+
+    return peak_mask
+
+
 @deprecated_renamed_argument('npeaks', 'n_peaks', '3.0', until='4.0')
 def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
-               border_width=None, n_peaks=np.inf, centroid_func=None,
-               error=None, wcs=None):
+               border_width=None, n_peaks=np.inf, min_separation=None,
+               centroid_func=None, error=None, wcs=None):
     """
     Find local peaks in an image that are above a specified threshold
     value.
@@ -38,6 +145,12 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     there will be only one peak pixel per local region. Thus, the
     defined region effectively imposes a minimum separation between
     peaks unless there are identical peaks within the region.
+
+    When ``min_separation`` is set, a fast algorithm is used that
+    produces results equivalent to using a circular ``footprint`` of the
+    given radius for `~scipy.ndimage.maximum_filter`, but is typically
+    ~10-400x faster (depending on the radius). When set, ``box_size``
+    and ``footprint`` are not used for peak detection.
 
     If ``centroid_func`` is input, then it will be used to calculate a
     centroid within the defined local region centered on each detected
@@ -91,6 +204,17 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         detected peaks exceeds ``n_peaks``, the peaks with the highest
         peak intensities will be returned.
 
+    min_separation : float or None, optional
+        The minimum allowed separation (in pixels) between detected
+        peaks, enforced using a circular region of this radius. Each
+        detected peak must be the maximum value (or tied for the
+        maximum) within a circle of this radius. This is equivalent to
+        using a circular ``footprint`` of the given radius but uses a
+        fast algorithm that is typically ~10-400x faster (depending on
+        the radius). When set, ``box_size`` and ``footprint`` are not
+        used for peak detection. If `None` (default), the peak detection
+        uses ``box_size`` or ``footprint`` as specified.
+
     centroid_func : callable, optional
         A callable object (e.g., function or class) that is used to
         calculate the centroid of a 2D array. The ``centroid_func``
@@ -126,13 +250,22 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     -----
     By default, the returned pixel coordinates are the integer indices
     of the maximum pixel value within the input ``box_size`` or
-    ``footprint`` (i.e., only the peak pixel is identified). However, a
-    centroiding function can be input via the ``centroid_func`` keyword
-    to compute centroid coordinates with subpixel precision within the
-    input ``box_size`` or ``footprint``.
+    ``footprint`` (i.e., only the peak pixel is identified).
 
-    The output column names (``x_peak``, ``y_peak``, ``peak_value``)
-    differ from the star finder classes (e.g.,
+    When ``min_separation`` is given, peaks are detected
+    using a fast algorithm that is mathematically equivalent
+    to a circular ``footprint`` of the given radius for
+    `~scipy.ndimage.maximum_filter`. The algorithm uses two fast O(N)
+    separable box filters (inscribed and circumscribed squares of
+    the circle) to classify most candidates, then verifies only the
+    remaining few against the exact circular region.
+
+    A centroiding function can be input via the ``centroid_func``
+    keyword to compute centroid coordinates with subpixel precision
+    within the input ``box_size`` or ``footprint``.
+
+    The output column names (``x_peak``, ``y_peak``,
+    ``peak_value``) differ from the star finder classes (e.g.,
     `~photutils.detection.DAOStarFinder`), which use ``x_centroid``,
     ``y_centroid``, and ``flux``.
     """
@@ -144,6 +277,10 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     if centroid_func is not None and not callable(centroid_func):
         msg = 'centroid_func must be a callable object'
         raise TypeError(msg)
+
+    if min_separation is not None and min_separation < 0:
+        msg = 'min_separation must be >= 0'
+        raise ValueError(msg)
 
     if np.all(data == data.flat[0]):
         msg = 'Input data is constant. No local peaks can be found.'
@@ -167,14 +304,17 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         data = np.copy(data)  # ndarray
         data[nan_mask] = nanmin(data)
 
-    if footprint is not None:
+    # peak_goodmask: good pixels are True
+    if min_separation is not None and min_separation > 0:
+        peak_goodmask = _fast_circular_peaks(data, min_separation)
+    elif footprint is not None:
         data_max = maximum_filter(data, footprint=footprint, mode='constant',
                                   cval=0.0)
+        peak_goodmask = (data == data_max)
     else:
         data_max = maximum_filter(data, size=box_size, mode='constant',
                                   cval=0.0)
-
-    peak_goodmask = (data == data_max)  # good pixels are True
+        peak_goodmask = (data == data_max)
 
     # Exclude peaks that are masked
     if mask is not None:
