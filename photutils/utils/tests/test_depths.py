@@ -8,7 +8,8 @@ import numpy as np
 import pytest
 from astropy.convolution import convolve
 from astropy.tests.helper import assert_quantity_allclose
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose
 
 from photutils.datasets import make_100gaussians_image
@@ -204,3 +205,14 @@ class TestImageDepth:
         limits = depth(self.data, self.mask)
         assert np.isfinite(limits[0])
         assert np.isfinite(limits[1])
+
+    def test_deprecation(self):
+        """
+        Test ImageDepth deprecation warnings.
+        """
+        depth = ImageDepth(aper_radius=4, n_sigma=5.0, n_apertures=100,
+                           n_iters=2, mask_pad=5, overlap=True, seed=123,
+                           zeropoint=23.9, progress_bar=False)
+        match = 'attribute was deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            _ = depth.napers
