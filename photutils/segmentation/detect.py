@@ -15,7 +15,7 @@ from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._deprecation import deprecated_renamed_argument
 from photutils.utils._parameters import (SigmaClipSentinelDefault,
                                          create_default_sigmaclip)
-from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._quantity_helpers import check_units, process_quantities
 from photutils.utils._stats import nanmean, nanstd
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -366,7 +366,7 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
                    cmap=segm.make_cmap(seed=1234))
         plt.tight_layout()
     """
-    _ = process_quantities((data, threshold), ('data', 'threshold'))
+    check_units((data, threshold), ('data', 'threshold'))
 
     if (n_pixels <= 0) or (int(n_pixels) != n_pixels):
         msg = f'n_pixels must be a positive integer, got {n_pixels!r}'
