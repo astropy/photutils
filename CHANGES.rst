@@ -57,6 +57,12 @@ New Features
     to the convolved data without the default kernel-based scaling.
     [#2202]
 
+  - Added a ``min_separation`` keyword to ``find_peaks``. The
+    implementation uses fast separable box filters and is approximately
+    10-400x faster than using an explicit circular footprint with
+    ``scipy.ndimage.maximum_filter`` (depending on the radius), while
+    producing identical results. [#2246]
+
 - ``photutils.profiles``
 
   - Added a ``EnsquaredCurveOfGrowth`` class to compute a curve of
