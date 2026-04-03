@@ -372,7 +372,7 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     # Exclude peaks that are masked
     if mask is not None:
-        mask = np.asanyarray(mask)
+        mask = np.asanyarray(mask, dtype=bool)
         if data.shape != mask.shape:
             msg = 'data and mask must have the same shape'
             raise ValueError(msg)

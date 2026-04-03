@@ -60,6 +60,19 @@ class TestFindPeaks:
         tbl1 = find_peaks(data, 0.1, box_size=3, mask=mask)
         assert len(tbl1) < len(tbl0)
 
+    def test_mask_int(self, data):
+        """
+        Test that an integer mask gives the same result as a boolean
+        mask.
+        """
+        bool_mask = np.zeros(data.shape, dtype=bool)
+        bool_mask[0:50, :] = True
+        int_mask = bool_mask.astype(int)
+
+        tbl_bool = find_peaks(data, 0.1, box_size=3, mask=bool_mask)
+        tbl_int = find_peaks(data, 0.1, box_size=3, mask=int_mask)
+        assert_array_equal(tbl_bool, tbl_int)
+
     def test_maskshape(self, data):
         """
         Test if mask shape doesn't match data shape.
