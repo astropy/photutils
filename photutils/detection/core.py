@@ -60,7 +60,8 @@ class StarFinderBase(metaclass=abc.ABCMeta):
         Parameters
         ----------
         convolved_data : 2D array_like
-            The convolved 2D array.
+            The convolved 2D array. Should be NaN-free; any NaN values
+            should be handled before calling this method.
 
         kernel : `_StarFinderKernel` or 2D `~numpy.ndarray`
             The convolution kernel. ``StarFinder`` inputs the kernel
@@ -231,6 +232,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         self.xypos = np.atleast_2d(xypos)
         self.n_brightest = n_brightest
         self.peak_max = peak_max
+        self.default_columns = ()
 
         self.id = np.arange(len(self)) + 1
 
@@ -297,7 +299,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         This method should be overridden in subclasses.
         """
         return ('data', 'unit', 'kernel', 'n_brightest', 'peak_max',
-                'cutout_shape')
+                'cutout_shape', 'default_columns')
 
     @property
     def _lazyproperties(self):
@@ -583,7 +585,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         return newcat
 
-    def _filter_bounds(self, bounds, *, peakattr='peak'):
+    def _filter_bounds(self, bounds, *, initial_mask=None, peakattr='peak'):
         """
         Filter the catalog by sharpness, roundness, and peak_max bounds.
 
@@ -595,6 +597,10 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             of the form ``(lower_bound, upper_bound)``, or `None` to
             skip filtering for that attribute.
 
+        initial_mask : 1D `~numpy.ndarray` of bool or `None`, optional
+            A pre-existing boolean mask to combine with. If `None`,
+            starts with all `True`.
+
         peakattr : str, optional
             The attribute name for the peak value used for peak_max
             filtering. The default is ``'peak'``.
@@ -604,7 +610,11 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         catalog : ``self.__class__`` or `None`
             The filtered catalog, or `None` if no sources remain.
         """
-        mask = np.ones(len(self), dtype=bool)
+        if initial_mask is None:
+            mask = np.ones(len(self), dtype=bool)
+        else:
+            mask = initial_mask.copy()
+
         for attr, range_val in bounds:
             if range_val is None:
                 continue
@@ -670,7 +680,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         table.meta.update(_get_meta())  # keep table.meta type
         if columns is None:
-            if not hasattr(self, 'default_columns'):
+            if not self.default_columns:
                 msg = ('default_columns attribute is not set; either '
                        'pass explicit column names or set '
                        'default_columns in the subclass __init__')

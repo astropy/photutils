@@ -19,6 +19,71 @@ from photutils.utils.exceptions import NoDetectionsWarning
 __all__ = ['find_peaks']
 
 
+def _verify_ring_candidates(data, peak_mask, needs_verify, footprint_bool,
+                            half, footprint_size):
+    """
+    Verify ring candidates against the exact circular footprint.
+
+    Ring candidates are pixels that are the local maximum within the
+    inscribed box but not in the circumscribed box. These need per-pixel
+    verification against the actual circular footprint.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The 2D image array.
+
+    peak_mask : 2D bool `~numpy.ndarray`
+        Boolean mask to update in place. `True` indicates a confirmed
+        local maximum.
+
+    needs_verify : 2D bool `~numpy.ndarray`
+        Boolean mask of candidate pixels that require verification.
+
+    footprint_bool : 2D bool `~numpy.ndarray`
+        The circular footprint boolean mask.
+
+    half : int
+        Half the footprint size (``footprint_size // 2``), used to
+        center the footprint on each candidate pixel.
+
+    footprint_size : int
+        The size of the circular footprint array along each axis.
+    """
+    y_maybe, x_maybe = needs_verify.nonzero()
+    if len(y_maybe) == 0:
+        return
+
+    ny, nx = data.shape
+    for y, x in zip(y_maybe, x_maybe, strict=True):
+        # Map footprint onto data, clipping to image boundaries
+        y0 = y - half
+        y1 = y0 + footprint_size
+        x0 = x - half
+        x1 = x0 + footprint_size
+
+        dy0, dy1 = max(0, y0), min(ny, y1)
+        dx0, dx1 = max(0, x0), min(nx, x1)
+
+        fy0 = dy0 - y0
+        fy1 = footprint_size - (y1 - dy1)
+        fx0 = dx0 - x0
+        fx1 = footprint_size - (x1 - dx1)
+
+        local = data[dy0:dy1, dx0:dx1]
+        fp_local = footprint_bool[fy0:fy1, fx0:fx1]
+        local_max = local[fp_local].max()
+
+        # Footprint extends beyond image: include cval=0.0
+        if (fy0 > 0 or fy1 < footprint_size or fx0 > 0
+                or fx1 < footprint_size):
+            local_max = max(local_max, 0.0)
+
+        # peak_mask is updated in place
+        if data[y, x] == local_max:
+            peak_mask[y, x] = True
+
+
 def _fast_circular_peaks(data, radius):
     """
     Find pixels that are local maxima within circular regions.
@@ -39,7 +104,9 @@ def _fast_circular_peaks(data, radius):
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        The 2D image array (NaN-free).
+        The 2D image array. Must be NaN-free because
+        `~scipy.ndimage.maximum_filter` propagates NaNs, which would
+        corrupt the local-maximum comparisons.
 
     radius : float
         The radius of the circular region in pixels.
@@ -56,7 +123,7 @@ def _fast_circular_peaks(data, radius):
     footprint_size = len(idx)
 
     xx, yy = np.meshgrid(idx, idx)
-    fp_bool = (xx ** 2 + yy ** 2) <= radius_sq
+    footprint_bool = (xx ** 2 + yy ** 2) <= radius_sq
 
     # For even-sized footprints (non-integer radius), scipy's
     # maximum_filter places the center at index ``footprint_size // 2``
@@ -92,36 +159,9 @@ def _fast_circular_peaks(data, radius):
     needs_verify = candidates & ~definite
     peak_mask = definite.copy()
 
-    y_maybe, x_maybe = needs_verify.nonzero()
-    if len(y_maybe) > 0:
-        ny, nx = data.shape
-        for y, x in zip(y_maybe, x_maybe, strict=True):
-
-            # Map footprint onto data, clipping to image boundaries.
-            y0 = y - half
-            y1 = y0 + footprint_size
-            x0 = x - half
-            x1 = x0 + footprint_size
-
-            dy0, dy1 = max(0, y0), min(ny, y1)
-            dx0, dx1 = max(0, x0), min(nx, x1)
-
-            fy0 = dy0 - y0
-            fy1 = footprint_size - (y1 - dy1)
-            fx0 = dx0 - x0
-            fx1 = footprint_size - (x1 - dx1)
-
-            local = data[dy0:dy1, dx0:dx1]
-            fp_local = fp_bool[fy0:fy1, fx0:fx1]
-            local_max = local[fp_local].max()
-
-            # Footprint extends beyond image: include cval=0.0
-            if (fy0 > 0 or fy1 < footprint_size or fx0 > 0
-                    or fx1 < footprint_size):
-                local_max = max(local_max, 0.0)
-
-            if data[y, x] == local_max:
-                peak_mask[y, x] = True
+    # peak_mask is updated in place
+    _verify_ring_candidates(data, peak_mask, needs_verify, footprint_bool,
+                            half, footprint_size)
 
     return peak_mask
 
@@ -262,10 +302,21 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     A centroiding function can be input via the ``centroid_func``
     keyword to compute centroid coordinates with subpixel precision
-    within the input ``box_size`` or ``footprint``.
+    within the input ``box_size`` or ``footprint``. Note that when
+    ``min_separation`` is used, the centroid region size is determined
+    by ``box_size`` (default 3), not by ``min_separation``.
 
-    The output column names (``x_peak``, ``y_peak``,
-    ``peak_value``) differ from the star finder classes (e.g.,
+    The peak detection uses ``mode='constant'`` with ``cval=0.0`` for
+    `~scipy.ndimage.maximum_filter`, which means pixels outside the
+    image boundary are treated as zero. For images with all-negative
+    values, this may suppress legitimate peaks near the borders.
+
+    Any NaN values in the input ``data`` are replaced with the minimum
+    finite value before peak detection, and the corresponding pixels are
+    automatically excluded from the results.
+
+    The output column names (``x_peak``, ``y_peak``, ``peak_value``)
+    differ from the star finder classes (e.g.,
     `~photutils.detection.DAOStarFinder`), which use ``x_centroid``,
     ``y_centroid``, and ``flux``.
     """
@@ -298,11 +349,14 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         border_width = as_pair('border_width', border_width,
                                lower_bound=(0, 1), upper_bound=data.shape)
 
-    # Remove NaN values to avoid runtime warnings
+    # Remove NaN values to avoid runtime warnings and exclude NaN pixels
+    # from peak detection
     nan_mask = np.isnan(data)
     if np.any(nan_mask):
         data = np.copy(data)  # ndarray
         data[nan_mask] = nanmin(data)
+        mask = (nan_mask if mask is None
+                else np.asanyarray(mask) | nan_mask)
 
     # peak_goodmask: good pixels are True
     if min_separation is not None and min_separation > 0:
