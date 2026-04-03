@@ -6,6 +6,15 @@
 What's New in Photutils 3.0?
 ****************************
 
+Photutils 3.0 is a major release that includes a small number of
+:ref:`breaking changes <whatsnew-3.0-breaking-changes>` alongside
+several :ref:`new deprecations <whatsnew-3.0-deprecations>`. While these
+deprecations will now trigger warning messages, they will not break
+your code. We are intentionally providing a long deprecation period to
+give users ample time to update their code before these features are
+completely removed in version 4.0. Please review the :ref:`API Changes
+<whatsnew-3.0-api-changes>` section before upgrading.
+
 Here we highlight some of the new functionality of the 3.0 release.
 In addition to these changes, Photutils 3.0 includes several
 smaller improvements and bug fixes, which are described in the full
@@ -451,8 +460,12 @@ and in the ``Notes`` section of each ``to_sky`` and ``to_pixel`` method
 docstring.
 
 
+.. _whatsnew-3.0-api-changes:
+
 API Changes
 ===========
+
+.. _whatsnew-3.0-deprecations:
 
 New Deprecations
 ----------------
@@ -843,17 +856,10 @@ For the ``psf`` package, the previously deprecated
 :class:`~photutils.psf.ImagePSF` instead.
 
 
+.. _whatsnew-3.0-breaking-changes:
+
 Breaking Changes
 ----------------
-
-Star Finder ``orientation`` Column Units
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The ``orientation`` (was ``pa``) column in the output tables
-from :class:`~photutils.detection.IRAFStarFinder` and
-:class:`~photutils.detection.StarFinder` is now a ``Quantity`` array in
-in the range of [0, 360) degrees.
-
 
 Consistent Default ``min_separation`` for Star Finders
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -894,7 +900,7 @@ in the range [0, 360) degrees.
 Star Finder ``pa`` Column Units and Range
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``pa`` (position angle) column in the output tables
+The ``orientation`` (was ``pa``) column in the output tables
 from :class:`~photutils.detection.IRAFStarFinder` and
 :class:`~photutils.detection.StarFinder` is now a ``Quantity`` array in
 the range of [0, 360) degrees.
