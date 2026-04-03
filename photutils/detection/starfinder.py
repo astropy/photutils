@@ -13,7 +13,7 @@ from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
 from photutils.utils._convolution import _filter_data
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
-from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._quantity_helpers import check_units
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -88,10 +88,8 @@ class StarFinder(StarFinderBase):
     def __init__(self, threshold, kernel, min_separation=None,
                  exclude_border=False, n_brightest=None, peak_max=None):
 
-        # Validate the units, but do not strip them
-        inputs = (threshold, peak_max)
-        names = ('threshold', 'peak_max')
-        _ = process_quantities(inputs, names)
+        # Validate the units
+        check_units((threshold, peak_max), ('threshold', 'peak_max'))
 
         self.threshold = threshold
 
@@ -210,10 +208,9 @@ class StarFinder(StarFinderBase):
             `None` is returned if no stars are found or no stars meet
             the peak_max criteria.
         """
-        # Validate the units, but do not strip them
-        inputs = (data, self.threshold, self.peak_max)
-        names = ('data', 'threshold', 'peak_max')
-        _ = process_quantities(inputs, names)
+        # Validate the units
+        check_units((data, self.threshold, self.peak_max),
+                    ('data', 'threshold', 'peak_max'))
 
         cat = self._get_raw_catalog(data, mask=mask)
         if cat is None:

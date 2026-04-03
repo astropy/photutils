@@ -7,6 +7,53 @@ import astropy.units as u
 import numpy as np
 
 
+def check_units(values, names):
+    """
+    Check that input values have consistent units.
+
+    Parameters
+    ----------
+    values : list of scalar, `~numpy.ndarray`, or `~astropy.units.Quantity`
+        A list of values.
+
+    names : list of str
+        A list of names corresponding to the input ``values``.
+
+    Returns
+    -------
+    units : set
+        The set of distinct units across all non-`None` values.
+
+    Raises
+    ------
+    ValueError
+        If the number of values does not match the number of names,
+        or if the input values do not all have the same units.
+    """
+    if len(values) != len(names):
+        msg = 'The number of values must match the number of names.'
+        raise ValueError(msg)
+
+    all_units = {name: getattr(arr, 'unit', None)
+                 for arr, name in zip(values, names, strict=True)
+                 if arr is not None}
+    units = set(all_units.values())
+
+    if len(units) > 1:
+        param_names = list(all_units.keys())
+        msg = [f'The inputs {param_names} must all have the same units:']
+        indent = ' ' * 4
+        for key, value in all_units.items():
+            if value is None:
+                msg.append(f'{indent}{key} does not have units')
+            else:
+                msg.append(f'{indent}{key} has units of {value}')
+        msg = '\n'.join(msg)
+        raise ValueError(msg)
+
+    return units
+
+
 def process_quantities(values, names):
     """
     Check and remove units of input values.
@@ -40,34 +87,15 @@ def process_quantities(values, names):
     ValueError
         If the input values do not all have the same units.
     """
-    if len(values) != len(names):
-        msg = 'The number of values must match the number of names.'
-        raise ValueError(msg)
+    units = check_units(values, names)
 
-    all_units = {name: getattr(arr, 'unit', None)
-                 for arr, name in zip(values, names, strict=True)
-                 if arr is not None}
-    unit = set(all_units.values())
-
-    if len(unit) > 1:
-        param_names = list(all_units.keys())
-        msg = [f'The inputs {param_names} must all have the same units:']
-        indent = ' ' * 4
-        for key, value in all_units.items():
-            if value is None:
-                msg.append(f'{indent}{key} does not have units')
-            else:
-                msg.append(f'{indent}{key} has units of {value}')
-        msg = '\n'.join(msg)
-        raise ValueError(msg)
-
-    # When all values are None, all_units is empty; return unchanged
+    # When all values are None, the units set is empty; return unchanged
     # with unit=None
-    if len(unit) == 0:
+    if len(units) == 0:
         return values, None
 
     # Extract the unit and remove it from the return values
-    unit = unit.pop()
+    unit = units.pop()
     if unit is not None:
         values = [val.value if val is not None else val for val in values]
 

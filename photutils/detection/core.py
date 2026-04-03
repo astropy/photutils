@@ -24,7 +24,7 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 from photutils.utils._misc import _get_meta
-from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._quantity_helpers import check_units
 from photutils.utils._repr import make_repr
 from photutils.utils.cutouts import _make_cutouts
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -221,10 +221,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
     @deprecated_renamed_argument('peakmax', 'peak_max', '3.0', until='4.0')
     def __init__(self, data, xypos, kernel, *, n_brightest=None,
                  peak_max=None):
-        # Validate the units, but do not strip them
-        inputs = (data, peak_max)
-        names = ('data', 'peak_max')
-        _ = process_quantities(inputs, names)
+        # Validate the units
+        check_units((data, peak_max), ('data', 'peak_max'))
 
         self.data = data
         unit = data.unit if isinstance(data, u.Quantity) else None

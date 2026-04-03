@@ -16,7 +16,7 @@ from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
 from photutils.utils._convolution import _filter_data
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
-from photutils.utils._quantity_helpers import isscalar, process_quantities
+from photutils.utils._quantity_helpers import check_units, isscalar
 from photutils.utils._repr import make_repr
 from photutils.utils.exceptions import NoDetectionsWarning
 
@@ -219,7 +219,7 @@ class DAOStarFinder(StarFinderBase):
         # Validate the units, but do not strip them
         inputs = (threshold, peak_max)
         names = ('threshold', 'peak_max')
-        _ = process_quantities(inputs, names)
+        check_units(inputs, names)
 
         if not isscalar(fwhm):
             msg = 'fwhm must be a scalar value'
@@ -399,7 +399,7 @@ class DAOStarFinder(StarFinderBase):
         # Validate the units, but do not strip them
         inputs = (data, self.threshold, self.peak_max)
         names = ('data', 'threshold', 'peak_max')
-        _ = process_quantities(inputs, names)
+        check_units(inputs, names)
 
         cat = self._get_raw_catalog(data, mask=mask)
         if cat is None:
@@ -476,7 +476,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         # Validate the units, but do not strip them
         inputs = (data, convolved_data, threshold, peak_max)
         names = ('data', 'convolved_data', 'threshold', 'peak_max')
-        _ = process_quantities(inputs, names)
+        check_units(inputs, names)
 
         super().__init__(data, xypos, kernel,
                          n_brightest=n_brightest,
