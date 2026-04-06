@@ -360,9 +360,8 @@ class SourceCatalog:
     multi-source catalog, but a single aperture object for a scalar
     catalog. Similarly, `data_cutout` returns a list of 2D cutout arrays
     for a multi-source catalog, but a single 2D array for a scalar
-    catalog. A scalar catalog is created when the input segmentation
-    image contains only one source or when a multi-source catalog is
-    indexed to select a single source.
+    catalog. A scalar catalog is created when the a multi-source catalog
+    is indexed to select a single source.
 
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
