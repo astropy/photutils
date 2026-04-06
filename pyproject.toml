@@ -140,16 +140,16 @@ filterwarnings = [
 
 [tool.coverage.run]
 omit = [
-    'photutils/conftest.py',
-    'photutils/*setup_package*',
-    'photutils/tests/*',
-    'photutils/*/tests/*',
+    'photutils/__init__*',
+    'photutils/**/conftest.py',
+    'photutils/**/setup*',
+    'photutils/**/tests/*',
     'photutils/extern/*',
     'photutils/version*',
-    '*/photutils/conftest.py',
-    '*/photutils/*setup_package*',
-    '*/photutils/tests/*',
-    '*/photutils/*/tests/*',
+    '*/photutils/__init__*',
+    '*/photutils/**/conftest.py',
+    '*/photutils/**/setup*',
+    '*/photutils/**/tests/*',
     '*/photutils/extern/*',
     '*/photutils/version*',
 ]
