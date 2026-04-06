@@ -135,6 +135,20 @@ def test_mask_cutout_partial_overlap(position):
     assert image.shape == data.shape
 
 
+def test_mask_cutout_partial_overlap_quantity():
+    """
+    Test that cutout with a Quantity array and partial overlap applies
+    the data unit to the output cutout (covers the `cutout <<=
+    data.unit` branch).
+    """
+    aper = CircularAperture((-20, -20), r=30.0)
+    mask = aper.to_mask()
+    data = np.ones((50, 50)) * u.adu
+    cutout = mask.cutout(data)
+    assert isinstance(cutout, u.Quantity)
+    assert cutout.unit == u.adu
+
+
 def test_mask_multiply():
     radius = 10.0
     data = np.ones((50, 50))

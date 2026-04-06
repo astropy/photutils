@@ -1186,7 +1186,7 @@ class ApertureStats:
 
         Note that the aperture bounding box is calculated using the
         exact size of the aperture, which may be slightly larger than
-        the aperture mask calculated using the "center" mode.
+        the aperture mask calculated using the "center" method.
         """
         return self._bbox
 
@@ -1541,8 +1541,8 @@ class ApertureStats:
 
         # check for negative variance
         # (just in case covariance matrix is not positive semidefinite)
-        idx2 = np.unique(np.where(eigvals < 0)[0])  # pragma: no cover
-        eigvals[idx2] = (np.nan, np.nan)  # pragma: no cover
+        idx2 = np.unique(np.where(eigvals < 0)[0])
+        eigvals[idx2] = (np.nan, np.nan)
 
         # sort each eigenvalue pair in descending order
         # (eigvalsh returns values in ascending order)
