@@ -36,7 +36,7 @@ class ApertureAttribute:
 
     def __get__(self, instance, owner):
         if instance is None:
-            return self  # pragma: no cover
+            return self
         return instance.__dict__[self.name]
 
     def __set__(self, instance, value):
@@ -58,7 +58,7 @@ class ApertureAttribute:
             pass
 
     def __delete__(self, instance):
-        del instance.__dict__[self.name]  # pragma: no cover
+        del instance.__dict__[self.name]
 
     def _validate(self, value):
         """
