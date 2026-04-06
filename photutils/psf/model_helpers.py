@@ -327,7 +327,7 @@ def _shift_model_param(model, param_name, *, shift=2):
 
 @deprecated_positional_kwargs(since='3.0', until='4.0')
 @deprecated(since='3.0', alternative='`GriddedPSFModel`')
-def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):
+def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):  # pragma: no cover
     """
     Create a GriddedPSFModel from a list of ImagePSF models.
 
