@@ -32,7 +32,7 @@ __all__ = [
 
 
 @deprecated('3.0', until='4.0')
-class EllipticalMaskMixin:
+class EllipticalMaskMixin:  # pragma: no cover
     """
     Mixin class to create masks for elliptical and elliptical-annulus
     aperture objects.
@@ -86,7 +86,7 @@ class EllipticalMaskMixin:
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-        use_exact, subpixels = self._translate_mask_mode(method, subpixels)
+        use_exact, subpixels = self._translate_mask_method(method, subpixels)
 
         if hasattr(self, 'a'):
             a = self.a

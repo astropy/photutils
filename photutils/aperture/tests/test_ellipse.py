@@ -13,6 +13,7 @@ from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus,
                                         SkyEllipticalAperture)
 from photutils.aperture.tests.test_aperture_common import BaseTestAperture
+from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
 RA, DEC = np.transpose(POSITIONS)
@@ -44,6 +45,14 @@ class TestEllipticalAperture(BaseTestAperture):
     def test_theta(self):
         assert isinstance(self.aperture.theta, u.Quantity)
         assert self.aperture.theta.unit == u.rad
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_to_patch_nonscalar(self):
+        """
+        Test that _to_patch returns a list for non-scalar apertures.
+        """
+        patches = self.aperture._to_patch()
+        assert isinstance(patches, list)
 
 
 class TestEllipticalAnnulus(BaseTestAperture):
@@ -82,6 +91,23 @@ class TestEllipticalAnnulus(BaseTestAperture):
     def test_theta(self):
         assert isinstance(self.aperture.theta, u.Quantity)
         assert self.aperture.theta.unit == u.rad
+
+    def test_b_in_greater_than_b_out(self):
+        """
+        Test that a ValueError is raised when b_in >= b_out.
+        """
+        match = '"b_out" must be greater than "b_in"'
+        with pytest.raises(ValueError, match=match):
+            EllipticalAnnulus(POSITIONS, a_in=10.0, a_out=20.0, b_out=5.0,
+                              b_in=8.0, theta=np.pi / 3)
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_to_patch_nonscalar(self):
+        """
+        Test that _to_patch returns a list for non-scalar apertures.
+        """
+        patches = self.aperture._to_patch()
+        assert isinstance(patches, list)
 
 
 class TestSkyEllipticalAperture(BaseTestAperture):
@@ -144,6 +170,16 @@ class TestSkyEllipticalAnnulus(BaseTestAperture):
         assert aper == self.aperture
         aper.a_in = 2.0 * UNIT
         assert aper != self.aperture
+
+    def test_b_in_greater_than_b_out(self):
+        """
+        Test that a ValueError is raised when b_in >= b_out.
+        """
+        match = '"b_out" must be greater than "b_in"'
+        with pytest.raises(ValueError, match=match):
+            SkyEllipticalAnnulus(SKYCOORD, a_in=10.0 * UNIT, a_out=20.0 * UNIT,
+                                 b_out=5.0 * UNIT, b_in=8.0 * UNIT,
+                                 theta=60 * u.deg)
 
 
 def test_ellipse_theta_quantity():
