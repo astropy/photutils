@@ -132,6 +132,15 @@ class TestSkyCircularAnnulus(BaseTestAperture):
         aper.r_in = 2.0 * UNIT
         assert aper != self.aperture
 
+    def test_incompatible_unit_types(self):
+        """
+        Test that a ValueError is raised when r_in and r_out have
+        incompatible physical unit types.
+        """
+        match = 'r_in and r_out should either both be angles or in pixels'
+        with pytest.raises(ValueError, match=match):
+            SkyCircularAnnulus(SKYCOORD, r_in=0.5 * u.pix, r_out=7.0 * UNIT)
+
 
 def test_slicing():
     xypos = [(10, 10), (20, 20), (30, 30)]

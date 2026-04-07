@@ -193,26 +193,53 @@ class PixelAperture(Aperture):
         return mpl_params
 
     @staticmethod
-    def _translate_mask_mode(mode, subpixels, *, rectangle=False):
-        if mode not in ('center', 'subpixel', 'exact'):
-            msg = f'Invalid mask mode: {mode}'
+    def _translate_mask_method(method, subpixels, *, rectangle=False):
+        """
+        Translate the mask method and subpixels parameters to the values
+        used by the low-level `photutils.geometry` functions.
+
+        Parameters
+        ----------
+        method : {'exact', 'center', 'subpixel'}
+            The mask method.
+
+        subpixels : int
+            The number of subpixels for subpixel method.
+
+        rectangle : bool, optional
+            Whether the aperture is a rectangular aperture. This is
+            used to approximate the "exact" method for rectangular
+            apertures, which is not currently supported by the low-level
+            `photutils.geometry` functions.
+
+        Returns
+        -------
+        use_exact : int
+            Whether to use exact method (1) or not (0).
+
+        subpixels : int
+            The number of subpixels for subpixel method.
+        """
+        if method not in ('center', 'subpixel', 'exact'):
+            msg = f'Invalid mask method: {method}'
             raise ValueError(msg)
 
-        if rectangle and mode == 'exact':
-            mode = 'subpixel'
+        # Remove when rectangular apertures support "exact" method
+        if rectangle and method == 'exact':
+            method = 'subpixel'
             subpixels = 32
 
-        if ((mode == 'subpixel')
+        if ((method == 'subpixel')
                 and (not isinstance(subpixels, int) or subpixels <= 0)):
             msg = 'subpixels must be a strictly positive integer'
             raise ValueError(msg)
 
-        if mode == 'center':
+        if method == 'center':
             use_exact = 0
             subpixels = 1
-        elif mode == 'subpixel':
+        elif method == 'subpixel':
             use_exact = 0
-        elif mode == 'exact':
+        elif method == 'exact':
             use_exact = 1
             subpixels = 1
 
@@ -447,9 +474,8 @@ class PixelAperture(Aperture):
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-        use_exact, subpixels = self._translate_mask_mode(
-            method, subpixels,
-            rectangle=getattr(self, '_is_rectangle', False))
+        use_exact, subpixels = self._translate_mask_method(
+            method, subpixels, rectangle=getattr(self, '_is_rectangle', False))
 
         masks = []
         for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
@@ -478,10 +504,10 @@ class PixelAperture(Aperture):
             The number of pixels in x and y.
 
         use_exact : int
-            Whether to use exact mode (1) or not (0).
+            Whether to use exact method (1) or not (0).
 
         subpixels : int
-            The number of subpixels for subpixel mode.
+            The number of subpixels for subpixel method.
 
         Returns
         -------

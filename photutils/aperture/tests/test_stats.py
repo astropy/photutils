@@ -3,6 +3,9 @@
 Tests for the stats module.
 """
 
+import sys
+from unittest.mock import patch
+
 import astropy.units as u
 import numpy as np
 import pytest
@@ -229,6 +232,10 @@ class TestApertureStats:
         assert tbl.colnames == columns
         assert len(tbl) == len(self.apstats1) == 3
 
+        tbl = self.apstats1.to_table(columns='sum')
+        assert tbl.colnames == ['sum']
+        assert len(tbl) == len(self.apstats1) == 3
+
     def test_slicing(self):
         apstats = self.apstats1
         _ = apstats.to_table()
@@ -333,6 +340,10 @@ class TestApertureStats:
     def test_invalid_inputs(self):
         match = 'aperture must be an Aperture or Region object'
         with pytest.raises(TypeError, match=match):
+            ApertureStats(self.data, 10.0)
+
+        with (patch.dict(sys.modules, {'regions': None}),
+              pytest.raises(TypeError, match=match)):
             ApertureStats(self.data, 10.0)
 
         match = 'sigma_clip must be a SigmaClip instance'

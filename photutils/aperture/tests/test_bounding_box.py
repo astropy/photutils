@@ -98,6 +98,17 @@ def test_bounding_box_get_overlap_slices():
     assert bbox.get_overlap_slices((50, 50)) == slc
 
 
+def test_bounding_box_get_overlap_slices_invalid_shape():
+    """
+    Test that get_overlap_slices raises ValueError when shape does not
+    have exactly 2 elements.
+    """
+    bbox = BoundingBox(1, 10, 2, 20)
+    match = 'input shape must have 2 elements'
+    with pytest.raises(ValueError, match=match):
+        bbox.get_overlap_slices((50,))
+
+
 def test_bounding_box_extent():
     bbox = BoundingBox(1, 10, 2, 20)
     assert_allclose(bbox.extent, (0.5, 9.5, 1.5, 19.5))

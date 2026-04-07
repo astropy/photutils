@@ -375,7 +375,7 @@ def _scalar_aperture_to_region(aperture):
             aperture.h_in, aperture.h_out,
             angle=(aperture.theta + (90 * u.deg)))
 
-    else:  # pragma: no cover
+    else:
         msg = 'Cannot convert input aperture to a Region object'
         raise TypeError(msg)
 

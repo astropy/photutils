@@ -31,7 +31,7 @@ __all__ = [
 
 
 @deprecated('3.0')
-class CircularMaskMixin:
+class CircularMaskMixin:  # pragma: no cover
     """
     Mixin class to create masks for circular and circular-annulus
     aperture objects.
@@ -85,7 +85,7 @@ class CircularMaskMixin:
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-        use_exact, subpixels = self._translate_mask_mode(method, subpixels)
+        use_exact, subpixels = self._translate_mask_method(method, subpixels)
 
         if hasattr(self, 'r'):
             radius = self.r

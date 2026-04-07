@@ -32,7 +32,7 @@ __all__ = [
 
 
 @deprecated('3.0', until='4.0')
-class RectangularMaskMixin:
+class RectangularMaskMixin:  # pragma: no cover
     """
     Mixin class to create masks for rectangular or rectangular-annulus
     aperture objects.
@@ -86,8 +86,8 @@ class RectangularMaskMixin:
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-        _, subpixels = self._translate_mask_mode(method, subpixels,
-                                                 rectangle=True)
+        _, subpixels = self._translate_mask_method(method, subpixels,
+                                                   rectangle=True)
 
         if hasattr(self, 'w'):
             w = self.w
@@ -254,7 +254,7 @@ class RectangularAperture(PixelAperture):
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
                                'angular Quantity or a value in radians from '
                                'the positive x axis.')
-    _is_rectangle = True
+    _is_rectangle = True  # remove when rectangles support "exact" method
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w, h, theta=0.0):
@@ -467,7 +467,7 @@ class RectangularAnnulus(PixelAperture):
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
                                'angular Quantity or a value in radians from '
                                'the positive x axis.')
-    _is_rectangle = True
+    _is_rectangle = True  # remove when rectangles support "exact" method
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.0):

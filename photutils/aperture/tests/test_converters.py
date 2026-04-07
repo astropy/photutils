@@ -522,3 +522,42 @@ def test_shapely_polygon_to_region():
     match = 'Input must be a Polygon or MultiPolygon object'
     with pytest.raises(TypeError, match=match):
         _shapely_polygon_to_region('foo')
+
+
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+@pytest.mark.skipif(not HAS_SHAPELY, reason='shapely is required')
+def test_shapely_multipolygon_to_region():
+    """
+    Test that _shapely_polygon_to_region handles MultiPolygon inputs by
+    returning a Regions object containing one PolygonPixelRegion per
+    polygon.
+    """
+    from regions import Regions
+    from shapely import MultiPolygon, Polygon
+
+    poly1 = Polygon([(0, 0), (1, 0), (1, 1), (0, 1)])
+    poly2 = Polygon([(2, 2), (3, 2), (3, 3), (2, 3)])
+    multi = MultiPolygon([poly1, poly2])
+    result = _shapely_polygon_to_region(multi)
+    assert isinstance(result, Regions)
+    assert len(result) == 2
+
+
+@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+def test_scalar_aperture_to_region_unknown_type():
+    """
+    Test that _scalar_aperture_to_region raises TypeError for an
+    aperture type that is not one of the 12 supported classes.
+    """
+
+    class _FakeAperture:
+        """
+        Minimal fake aperture with shape=() that passes the scalar check
+        but has no matching isinstance branch.
+        """
+
+        shape = ()
+
+    match = 'Cannot convert input aperture to a Region object'
+    with pytest.raises(TypeError, match=match):
+        _scalar_aperture_to_region(_FakeAperture())

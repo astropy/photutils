@@ -97,10 +97,10 @@ class ApertureMask:
         dtype : data-type, optional
             The desired data type for the array. This should be a
             floating data type if the `ApertureMask` was created with
-            the "exact" or "subpixel" mode, otherwise the fractional
+            the "exact" or "subpixel" method, otherwise the fractional
             mask weights will be altered. An integer data type may be
             used if the `ApertureMask` was created with the "center"
-            mode.
+            method.
 
         Returns
         -------
