@@ -13,6 +13,7 @@ from astropy.convolution import convolve
 from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose, assert_equal
 from scipy.optimize import root_scalar
 
@@ -1195,6 +1196,14 @@ class TestSourceCatalog:
         for attr in attrs:
             assert attr in meta
 
+        deprecated_attrs = {
+            'localbkg_width': 'local_bkg_width',
+            'apermask_method': 'aperture_mask_method',
+        }
+        for old_name, new_name in deprecated_attrs.items():
+            assert old_name in meta
+            assert meta[old_name] == meta[new_name]
+
         tbl = self.cat.to_table()
         assert tbl.meta == self.cat.meta
 
@@ -1203,6 +1212,49 @@ class TestSourceCatalog:
         tbl2 = QTable.read(out.getvalue(), format='ascii.ecsv')
         # Check order of meta keys
         assert list(tbl2.meta.keys()) == list(tbl.meta.keys())
+
+    def test_meta_deprecated_kwargs(self):
+        """
+        Test meta aliases for deprecated keyword names.
+        """
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            cat = SourceCatalog(self.data, self.segm, error=self.error,
+                                background=self.background, mask=self.mask,
+                                wcs=self.wcs, localbkg_width=24,
+                                apermask_method='mask')
+
+        assert len(record) == 2
+        messages = [str(item.message) for item in record]
+        assert any('localbkg_width' in message for message in messages)
+        assert any('apermask_method' in message for message in messages)
+        assert cat.meta['localbkg_width'] == cat.meta['local_bkg_width']
+        assert cat.meta['apermask_method'] == cat.meta['aperture_mask_method']
+
+    def test_meta_future_column_names(self, monkeypatch):
+        """
+        Test meta with future_column_names enabled.
+        """
+        import photutils
+
+        monkeypatch.setattr(photutils, 'future_column_names', True)
+
+        with pytest.warns(AstropyDeprecationWarning) as record:
+            cat = SourceCatalog(self.data, self.segm, error=self.error,
+                                background=self.background, mask=self.mask,
+                                wcs=self.wcs, localbkg_width=24,
+                                apermask_method='mask')
+
+        assert len(record) == 2
+        meta = cat.meta
+        attrs = ['local_bkg_width', 'aperture_mask_method', 'kron_params']
+        for attr in attrs:
+            assert attr in meta
+
+        assert 'localbkg_width' not in meta
+        assert 'apermask_method' not in meta
+
+        tbl = cat.to_table()
+        assert tbl.meta == meta
 
     def test_semode(self):
         """

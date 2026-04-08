@@ -93,6 +93,11 @@ _DEPRECATED_ATTRIBUTES = {
     'ycentroid_win': 'y_centroid_win',
 }
 
+_DEPRECATED_META_KEYS = {
+    'localbkg_width': 'local_bkg_width',
+    'apermask_method': 'aperture_mask_method',
+}
+
 
 def as_scalar(method):
     """
@@ -513,10 +518,20 @@ class SourceCatalog:
         return detection_catalog
 
     def _update_meta(self):
+        import photutils
+
+        meta_values = {}
         attrs = ('local_bkg_width', 'aperture_mask_method',
                  'kron_params')
         for attr in attrs:
-            self.meta[attr] = getattr(self, attr)
+            meta_values[attr] = getattr(self, attr)
+
+        if not photutils.future_column_names:
+            for old_name, new_name in _DEPRECATED_META_KEYS.items():
+                if new_name in meta_values:
+                    meta_values[old_name] = meta_values[new_name]
+
+        self.meta.update(meta_values)
 
     def _set_semode(self):
         # SE emulation
