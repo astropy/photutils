@@ -39,10 +39,9 @@ __all__ = ['SourceCatalog']
 # Default table columns for `to_table()` output
 DEFAULT_COLUMNS = ['label', 'x_centroid', 'y_centroid', 'sky_centroid',
                    'bbox_xmin', 'bbox_xmax', 'bbox_ymin', 'bbox_ymax',
-                   'area', 'semimajor_axis', 'semiminor_axis',
-                   'orientation', 'eccentricity', 'min_value', 'max_value',
-                   'local_background', 'segment_flux', 'segment_flux_err',
-                   'kron_flux', 'kron_flux_err']
+                   'area', 'semimajor_axis', 'semiminor_axis', 'orientation',
+                   'eccentricity', 'min_value', 'max_value', 'segment_flux',
+                   'segment_flux_err', 'kron_flux', 'kron_flux_err']
 
 # Remove in 4.0
 _DEPRECATED_ATTRIBUTES = {

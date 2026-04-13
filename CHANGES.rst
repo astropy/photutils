@@ -594,6 +594,9 @@ API Changes
     and ``n_processes``, respectively. The old names are deprecated.
     [#2241]
 
+  - The ``SourceCatalog`` ``to_table`` default columns no longer
+    includes ``local_background``. [#2252]
+
 - ``photutils.utils``
 
   - The ``ImageDepth`` ``nsigma``, ``napers``, and ``niters`` parameters
