@@ -102,7 +102,7 @@ class CircularMaskMixin:  # pragma: no cover
                                          edges[3], nx, ny, radius, use_exact,
                                          subpixels)
 
-            # subtract the inner circle for an annulus
+            # Subtract the inner circle for an annulus
             if hasattr(self, 'r_in'):
                 mask -= circular_overlap_grid(edges[0], edges[1], edges[2],
                                               edges[3], nx, ny, self.r_in,

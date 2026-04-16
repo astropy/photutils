@@ -49,7 +49,7 @@ def test_outside_array(aperture_class, params):
     data = np.ones((10, 10), dtype=float)
     aperture = aperture_class((-60, 60), **params)
     fluxtable = aperture_photometry(data, aperture)
-    # aperture is fully outside array:
+    # Aperture is fully outside array
     assert np.isnan(fluxtable['aperture_sum'])
 
 
@@ -266,7 +266,7 @@ def test_input_wcs():
     data = make_4gaussians_image()
     wcs = make_wcs(data.shape)
 
-    # hard wired positions in make_4gaussian_image
+    # Hard wired positions in make_4gaussian_image
     xypos = np.transpose(([160.0, 25.0, 150.0, 90.0],
                           [70.0, 40.0, 25.0, 60.0]))
     aper = CircularAperture(xypos, 3.0)
@@ -285,7 +285,7 @@ def test_wcs_based_photometry():
     data = make_4gaussians_image()
     wcs = make_wcs(data.shape)
 
-    # hard wired positions in make_4gaussian_image
+    # Hard wired positions in make_4gaussian_image
     pos_orig_pixel = u.Quantity(([160.0, 25.0, 150.0, 90.0],
                                  [70.0, 40.0, 25.0, 60.0]), unit=u.pixel)
 
@@ -616,7 +616,7 @@ def test_sky_aperture_repr():
 
 
 def test_rectangular_bbox():
-    # test odd sizes
+    # Test odd sizes
     width = 7
     height = 3
     a = RectangularAperture((50, 50), w=width, h=height, theta=0)
@@ -629,7 +629,7 @@ def test_rectangular_bbox():
                             theta=np.deg2rad(90.0))
     assert a.bbox.shape == (width, height)
 
-    # test even sizes
+    # Test even sizes
     width = 8
     height = 4
     a = RectangularAperture((50, 50), w=width, h=height, theta=0)
@@ -644,7 +644,7 @@ def test_rectangular_bbox():
 
 
 def test_elliptical_bbox():
-    # integer axes
+    # Integer axes
     a = 7
     b = 3
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=0)
@@ -656,7 +656,7 @@ def test_elliptical_bbox():
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=np.deg2rad(90.0))
     assert ap.bbox.shape == (2 * a + 1, 2 * b + 1)
 
-    # fractional axes
+    # Fractional axes
     a = 7.5
     b = 4.5
     ap = EllipticalAperture((50, 50), a=a, b=b, theta=0)

@@ -41,7 +41,7 @@ class Aperture(metaclass=abc.ABCMeta):
         kwargs = {}
         for param in self._params:
             if param == 'positions':
-                # slice the positions array
+                # Slice the positions array
                 kwargs[param] = getattr(self, param)[index]
             else:
                 kwargs[param] = getattr(self, param)
@@ -99,11 +99,11 @@ class Aperture(metaclass=abc.ABCMeta):
         self_params = list(self._params)
         other_params = list(other._params)
 
-        # check that both have identical parameters
+        # Check that both have identical parameters
         if self_params != other_params:
             return False
 
-        # now check the parameter values
+        # Now check the parameter values.
         # Note that Quantity comparisons allow for different units if they
         # are directly convertible (e.g., 1.0 * u.deg == 60.0 * u.arcmin)
         try:
@@ -410,7 +410,7 @@ class PixelAperture(Aperture):
         for apermask in apermasks:
             slc_large, slc_small = apermask.get_overlap_slices(data.shape)
 
-            # if the aperture does not overlap the data return np.nan
+            # If the aperture does not overlap the data, return np.nan
             if slc_large is None:
                 area = np.nan
             else:
@@ -602,7 +602,7 @@ class PixelAperture(Aperture):
                 msg = 'error and data must have the same shape'
                 raise ValueError(msg)
 
-        # check Quantity inputs
+        # Check Quantity inputs
         unit = {getattr(arr, 'unit', None) for arr in (data, error)
                 if arr is not None}
         if len(unit) > 1:
@@ -610,7 +610,7 @@ class PixelAperture(Aperture):
                    'the same units')
             raise ValueError(msg)
 
-        # strip data and error units for performance
+        # Strip data and error units for performance
         unit = unit.pop()
         if unit is not None:
             unit = data.unit
@@ -630,14 +630,14 @@ class PixelAperture(Aperture):
              aper_weights,
              pixel_mask) = apermask._get_overlap_cutouts(data.shape, mask=mask)
 
-            # no overlap of the aperture with the data
+            # No overlap of the aperture with the data
             if slc_large is None:
                 aperture_sums.append(np.nan)
                 aperture_sum_errs.append(np.nan)
                 continue
 
             with warnings.catch_warnings():
-                # ignore multiplication with non-finite data values
+                # Ignore multiplication with non-finite data values
                 warnings.simplefilter('ignore', RuntimeWarning)
 
                 values = (data[slc_large] * aper_weights)[pixel_mask]
@@ -650,7 +650,7 @@ class PixelAperture(Aperture):
         aperture_sums = np.array(aperture_sums)
         aperture_sum_errs = np.array(aperture_sum_errs)
 
-        # apply units
+        # Apply units
         if unit is not None:
             aperture_sums <<= unit
             aperture_sum_errs <<= unit

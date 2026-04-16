@@ -45,20 +45,20 @@ def test_mask_copy():
     mask_copy[0, 0] = 100.0
     assert mask.data[0, 0] == 100.0
 
-    # no copy; copy=None returns a copy only if __array__ returns a copy
-    # copy=None was introduced in NumPy 2.0
+    # No copy: copy=None returns a copy only if __array__ returns a
+    # copy; copy=None was introduced in NumPy 2.0
     mask = ApertureMask(np.ones((10, 10)), bbox)
     mask_copy = np.array(mask, copy=None)
     mask_copy[0, 0] = 100.0
     assert mask.data[0, 0] == 100.0
 
-    # no copy
+    # No copy
     mask = ApertureMask(np.ones((10, 10)), bbox)
     mask_copy = np.asarray(mask)
     mask_copy[0, 0] = 100.0
     assert mask.data[0, 0] == 100.0
 
-    # needs to copy because of the dtype change
+    # Needs to copy because of the dtype change
     mask = ApertureMask(np.ones((10, 10)), bbox)
     mask_copy = np.asarray(mask, dtype=int)
     mask_copy[0, 0] = 100.0
@@ -95,7 +95,7 @@ def test_mask_cutout_copy():
     data[25, 25] = 100.0
     assert cutout[10, 10] == 1.0
 
-    # test quantity data
+    # Test quantity data
     data2 = np.ones((50, 50)) * u.adu
     cutout2 = mask.cutout(data2, copy=True)
     assert cutout2.unit == data2.unit
@@ -157,7 +157,7 @@ def test_mask_multiply():
     data_weighted = mask.multiply(data)
     assert_almost_equal(np.sum(data_weighted), np.pi * radius**2)
 
-    # test that multiply() returns a copy
+    # Test that multiply() returns a copy
     data[25, 25] = 100.0
     assert data_weighted[10, 10] == 1.0
 
@@ -171,7 +171,7 @@ def test_mask_multiply_quantity():
     assert data_weighted.unit == u.adu
     assert_almost_equal(np.sum(data_weighted.value), np.pi * radius**2)
 
-    # test that multiply() returns a copy
+    # Test that multiply() returns a copy
     data[25, 25] = 100.0 * u.adu
     assert data_weighted[10, 10].value == 1.0
 

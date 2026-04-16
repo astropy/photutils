@@ -108,7 +108,7 @@ class RectangularMaskMixin:  # pragma: no cover
                                             edges[3], nx, ny, w, h,
                                             theta_rad, 0, subpixels)
 
-            # subtract the inner circle for an annulus
+            # Subtract the inner rectangle for an annulus
             if hasattr(self, 'w_in'):
                 mask -= rectangular_overlap_grid(edges[0], edges[1], edges[2],
                                                  edges[3], nx, ny, self.w_in,

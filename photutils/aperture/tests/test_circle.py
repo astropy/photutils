@@ -38,7 +38,7 @@ class TestCircularAperture(BaseTestAperture):
         for patch in my_patches:
             assert isinstance(patch, Patch)
 
-        # test creating a legend with these patches
+        # Test creating a legend with these patches
         plt.legend(my_patches, list(range(len(my_patches))))
 
     @staticmethod
@@ -73,7 +73,7 @@ class TestCircularAnnulus(BaseTestAperture):
         for p in my_patches:
             assert isinstance(p, Patch)
 
-        # make sure I can create a legend with these patches
+        # Test creating a legend with these patches
         labels = list(range(len(my_patches)))
         plt.legend(my_patches, labels)
 

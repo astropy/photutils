@@ -107,7 +107,7 @@ class EllipticalMaskMixin:  # pragma: no cover
                                            edges[3], nx, ny, a, b,
                                            theta_rad, use_exact, subpixels)
 
-            # subtract the inner ellipse for an annulus
+            # Subtract the inner ellipse for an annulus
             if hasattr(self, 'a_in'):
                 mask -= elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                                 edges[3], nx, ny, self.a_in,

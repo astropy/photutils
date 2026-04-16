@@ -249,7 +249,7 @@ class ApertureStats:
     >>> print(aperstats.sum_aper_area) # doctest: +FLOAT_CMP
     201.0619298297468 pix2
 
-    >>> # more than one aperture position
+    >>> # More than one aperture position
     >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
     >>> aperstats2 = ApertureStats(data, aper2)
     >>> print(aperstats2.x_centroid)  # doctest: +FLOAT_CMP
@@ -280,7 +280,7 @@ class ApertureStats:
             msg = 'A wcs is required when using a SkyAperture'
             raise ValueError(msg)
 
-        # convert region to aperture if necessary
+        # Convert region to aperture if necessary
         if not isinstance(aperture, Aperture):
             aperture = region_to_aperture(aperture)
         self.aperture = aperture
@@ -411,7 +411,7 @@ class ApertureStats:
 
         newcls = object.__new__(self.__class__)
 
-        # attributes defined in __init__ that are copied directly to the
+        # Attributes defined in __init__ that are copied directly to the
         # new class
         init_attr = ('_data', '_data_unit', '_error', '_mask', '_wcs',
                      'sigma_clip', 'sum_method', 'subpixels',
@@ -419,26 +419,26 @@ class ApertureStats:
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
-        # need to slice _aperture and _ids;
+        # Need to slice _aperture and _ids;
         # aperture determines isscalar (needed below)
         attrs = ('aperture', '_ids')
         for attr in attrs:
             setattr(newcls, attr, getattr(self, attr)[index])
 
-        # slice evaluated lazyproperty objects
+        # Slice evaluated lazyproperty objects
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
         keys.add('_local_bkg')  # iterable defined in __init__
         for key in keys:
             value = self.__dict__[key]
 
-            # do not insert attributes that are always scalar (e.g.,
+            # Do not insert attributes that are always scalar (e.g.,
             # isscalar, n_apertures), i.e., not an array/list for each
             # source
             if np.isscalar(value):
                 continue
 
             try:
-                # keep most _<attrs> as length-1 iterables
+                # Keep most _<attrs> as length-1 iterables
                 if (newcls.isscalar and key.startswith('_')
                         and key != '_pixel_aperture'):
                     if isinstance(value, np.ndarray):
@@ -448,9 +448,9 @@ class ApertureStats:
                 else:
                     val = value[index]
             except TypeError:
-                # apply fancy indices (e.g., array/list or bool
-                # mask) to lists
-                # see https://numpy.org/doc/stable/release/1.20.0-notes.html
+                # Apply fancy indices (e.g., array/list or bool mask) to
+                # lists.
+                # See https://numpy.org/doc/stable/release/1.20.0-notes.html
                 # #arraylike-objects-which-do-not-define-len-and-getitem
                 arr = np.empty(len(value), dtype=object)
                 arr[:] = list(value)
@@ -615,7 +615,7 @@ class ApertureStats:
         for column in table_columns:
             values = getattr(self, column)
 
-            # column assignment requires an object with a length
+            # Column assignment requires an object with a length
             if self.isscalar:
                 values = (values,)
 
@@ -690,7 +690,7 @@ class ApertureStats:
             if slices[0] is None:
                 cutout = None  # no aperture overlap with the data
             else:
-                # copy is needed to preserve input data because masks are
+                # Copy is needed to preserve input data because masks are
                 # applied to these cutouts later
                 cutout = (self._data[slices[0]].astype(float, copy=True)
                           - local_bkg)
@@ -732,8 +732,8 @@ class ApertureStats:
                 mask_cutout = np.array([False])
                 weight_cutout = np.array([np.nan])
             else:
-                # create a mask of non-finite ``data`` values combined
-                # with the input ``mask`` array.
+                # Create a mask of non-finite ``data`` values combined
+                # with the input ``mask`` array
                 data_mask = ~np.isfinite(data_cutout)
                 if self._mask is not None:
                     data_mask |= self._mask[slc_large]
@@ -742,7 +742,7 @@ class ApertureStats:
                 aperweight_cutout = apermask.data[slc_small]
                 weight_cutout = aperweight_cutout * ~data_mask
 
-                # apply the aperture mask; for "exact" and "subpixel"
+                # Apply the aperture mask; for "exact" and "subpixel"
                 # this is an expanded boolean mask using the aperture
                 # mask zero values
                 mask_cutout = (aperweight_cutout == 0) | data_mask
@@ -752,25 +752,25 @@ class ApertureStats:
                     # data_cutout will have zeros where mask_cutout is True
                     data_cutout *= ~mask_cutout
                 else:
-                    # to input a mask, SigmaClip needs a MaskedArray
+                    # To input a mask, SigmaClip needs a MaskedArray
                     data_cutout_ma = np.ma.masked_array(data_cutout,
                                                         mask=mask_cutout)
                     data_sigclip = self.sigma_clip(data_cutout_ma)
 
-                    # define a mask of only the sigma-clipped pixels
+                    # Define a mask of only the sigma-clipped pixels
                     sigclip_mask = data_sigclip.mask & ~mask_cutout
                     weight_cutout *= ~sigclip_mask
 
                     mask_cutout = data_sigclip.mask
                     data_cutout = data_sigclip.filled(0.0)
 
-                # need to apply the aperture weights
+                # Need to apply the aperture weights
                 data_cutout *= aperweight_cutout
 
                 if self._error is None:
                     variance_cutout = None
                 else:
-                    # apply the exact weights and total mask;
+                    # Apply the exact weights and total mask;
                     # error_cutout will have zeros where mask_cutout is True
                     variance = self._error[slc_large]**2
                     variance_cutout = (variance * aperweight_cutout
@@ -782,7 +782,7 @@ class ApertureStats:
             weight_cutouts.append(weight_cutout)
             overlaps.append(overlap)
 
-        # use zip (instead of np.transpose) because these may contain
+        # Use zip (instead of np.transpose) because these may contain
         # arrays that have different shapes
         return list(zip(data_cutouts, variance_cutouts, mask_cutouts,
                         weight_cutouts, overlaps, strict=True))
@@ -1075,7 +1075,7 @@ class ApertureStats:
         if self.isscalar:
             moments = moments[np.newaxis, :]
 
-        # ignore divide-by-zero RuntimeWarning
+        # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             y_centroid = moments[:, 1, 0] / moments[:, 0, 0]
@@ -1486,7 +1486,7 @@ class ApertureStats:
         moments = self.moments_central
         if self.isscalar:
             moments = moments[np.newaxis, :]
-        # ignore divide-by-zero RuntimeWarning
+        # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             mu_norm = moments / moments[:, 0, 0][:, np.newaxis, np.newaxis]
@@ -1500,12 +1500,12 @@ class ApertureStats:
         # incrementally increasing the diagonal elements by 1/12.
         delta = 1.0 / 12
         delta2 = delta**2
-        # ignore RuntimeWarning from NaN values in covar
+        # Ignore RuntimeWarning from NaN values in covar
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             covar_det = np.linalg.det(covar)
 
-            # covariance should be positive semidefinite
+            # Covariance should be positive semidefinite
             idx = np.where(covar_det < 0)[0]
             covar[idx] = np.array([[np.nan, np.nan], [np.nan, np.nan]])
 
@@ -1539,12 +1539,12 @@ class ApertureStats:
         idx = np.unique(np.where(np.isfinite(self._covariance))[0])
         eigvals[idx] = np.linalg.eigvalsh(self._covariance[idx])
 
-        # check for negative variance
+        # Check for negative variance
         # (just in case covariance matrix is not positive semidefinite)
         idx2 = np.unique(np.where(eigvals < 0)[0])
         eigvals[idx2] = (np.nan, np.nan)
 
-        # sort each eigenvalue pair in descending order
+        # Sort each eigenvalue pair in descending order
         # (eigvalsh returns values in ascending order)
         eigvals = np.fliplr(eigvals)
 
@@ -1561,7 +1561,6 @@ class ApertureStats:
         eigvals = self.covariance_eigvals
         if self.isscalar:
             eigvals = eigvals[np.newaxis, :]
-        # this matches SourceExtractor's A parameter
         return np.sqrt(eigvals[:, 0])
 
     @lazyproperty
@@ -1575,7 +1574,6 @@ class ApertureStats:
         eigvals = self.covariance_eigvals
         if self.isscalar:
             eigvals = eigvals[np.newaxis, :]
-        # this matches SourceExtractor's B parameter
         return np.sqrt(eigvals[:, 1])
 
     @lazyproperty

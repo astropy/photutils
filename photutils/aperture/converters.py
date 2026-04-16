@@ -1,14 +1,12 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools for converting between `regions.Region` and Aperture objects
-and between `shapely.Polygon` and `regions.PolygonRegion`
-objects.
+Tools for converting between `regions.Region` and Aperture objects and
+between `shapely.Polygon` and `regions.PolygonRegion` objects.
 """
 
 import astropy.units as u
 import numpy as np
 
-# prevent circular imports
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAnnulus, SkyCircularAperture)
 from photutils.aperture.core import Aperture
@@ -280,7 +278,7 @@ def aperture_to_region(aperture):
     if aperture.shape == ():
         return _scalar_aperture_to_region(aperture)
 
-    # multiple aperture positions return a Regions object
+    # Multiple aperture positions return a Regions object
     regs = [_scalar_aperture_to_region(aper) for aper in aperture]
     return Regions(regs)
 
