@@ -111,13 +111,13 @@ class ApertureMask:
             msg = 'input shape must have 2 elements'
             raise ValueError(msg)
 
-        # find the overlap of the mask on the output image shape
+        # Find the overlap of the mask on the output image shape
         slices_large, slices_small = self.get_overlap_slices(shape)
 
         if slices_small is None:
             return None  # no overlap
 
-        # insert the mask into the output image
+        # Insert the mask into the output image
         image = np.zeros(shape, dtype=dtype)
         image[slices_large] = self.data[slices_small]
         return image
@@ -161,7 +161,7 @@ class ApertureMask:
             msg = 'data must be a 2D array'
             raise ValueError(msg)
 
-        # find the overlap of the mask on the output image shape
+        # Find the overlap of the mask on the output image shape
         slices_large, slices_small = self.get_overlap_slices(data.shape)
 
         if slices_small is None:
@@ -176,7 +176,7 @@ class ApertureMask:
                 cutout = np.copy(cutout)
             return cutout
 
-        # cutout is always a copy for partial overlap
+        # Cutout is always a copy for partial overlap
         dtype = float if ~np.isfinite(fill_value) else data.dtype
         cutout = np.zeros(self.shape, dtype=dtype)
         cutout[:] = fill_value
@@ -218,12 +218,12 @@ class ApertureMask:
         if cutout is None:
             return None
 
-        # ignore multiplication with non-finite data values
+        # Ignore multiplication with non-finite data values
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             weighted_cutout = cutout * self.data
 
-        # fill values outside the mask but within the bounding box
+        # Fill values outside the mask but within the bounding box
         weighted_cutout[self._mask] = fill_value
 
         return weighted_cutout
@@ -316,7 +316,7 @@ class ApertureMask:
         if slc_large is None:
             return np.array([])
 
-        # ignore multiplication with non-finite data values
+        # Ignore multiplication with non-finite data values
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             # pixel_mask is used so that pixels value where data = 0 and

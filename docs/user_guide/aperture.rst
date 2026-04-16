@@ -793,15 +793,14 @@ requires the definition of a new `~photutils.aperture.Aperture`
 subclass.
 
 All `~photutils.aperture.PixelAperture` subclasses must define
-a ``bounding_boxes`` property and ``to_mask()`` and ``plot()``
-methods. They may also optionally define an ``area`` property. All
+a ``bbox`` property and ``to_mask()`` and ``plot()`` methods.
+They may also optionally define an ``area`` property. All
 `~photutils.aperture.SkyAperture` subclasses must only implement a
 ``to_pixel()`` method.
 
-* ``bounding_boxes``:  The minimal bounding box for the aperture.
-  If the aperture is scalar, then a single
-  `~photutils.aperture.BoundingBox` is returned. Otherwise, a list of
-  `~photutils.aperture.BoundingBox` is returned.
+* ``bbox``: The minimal bounding box for the aperture. If the aperture
+  is scalar, then a single `~photutils.aperture.BoundingBox` is returned.
+  Otherwise, a list of `~photutils.aperture.BoundingBox` is returned.
 
 * ``area``: An optional property defining the exact analytical
   area (in pixels**2) of the aperture.

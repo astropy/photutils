@@ -43,14 +43,14 @@ class ApertureAttribute:
         self._validate(value)
         if not isinstance(value, (u.Quantity, SkyCoord)):
             value = float(value)
-        # no need to reset if not already in the instance dict
+        # No need to reset if not already in the instance dict
         if self.name in instance.__dict__:
             self._reset_lazyproperties(instance)
         instance.__dict__[self.name] = value
 
     def _reset_lazyproperties(self, instance):
-        # reset lazyproperties (if they exist) for aperture
-        # parameter changes
+        # Reset lazyproperties (if they exist) for aperture parameter
+        # changes
         try:
             for key in instance._lazyproperties:
                 instance.__dict__.pop(key, None)
@@ -76,12 +76,12 @@ class PixelPositions(ApertureAttribute):
     """
 
     def __set__(self, instance, value):
-        # this is needed for zip (e.g., positions = zip(xpos, ypos))
+        # Needed for zip positions (e.g., positions = zip(xpos, ypos))
         if isinstance(value, zip):
             value = tuple(value)
 
         value = self._validate(value)  # np.ndarray
-        # no need to reset if not already in the instance dict
+        # No need to reset if not already in the instance dict
         if self.name in instance.__dict__:
             self._reset_lazyproperties(instance)
         instance.__dict__[self.name] = value
@@ -90,7 +90,7 @@ class PixelPositions(ApertureAttribute):
         try:
             value = np.asanyarray(value).astype(float)  # np.ndarray
         except TypeError as exc:
-            # value is a zip object containing Quantity objects
+            # Value is a zip object containing Quantity objects
             msg = f'{self.name!r} must not be a Quantity'
             raise TypeError(msg) from exc
 
@@ -164,10 +164,6 @@ class PositiveScalarAngle(ApertureAttribute):
     """
 
     def _validate(self, value):
-        if value <= 0:
-            msg = f'{self.name!r} must be greater than zero'
-            raise ValueError(msg)
-
         if isinstance(value, u.Quantity):
             if not value.isscalar:
                 msg = f'{self.name!r} must be a scalar'
@@ -179,6 +175,10 @@ class PositiveScalarAngle(ApertureAttribute):
         else:
             msg = f'{self.name!r} must be a scalar angle'
             raise TypeError(msg)
+
+        if value <= 0:
+            msg = f'{self.name!r} must be greater than zero'
+            raise ValueError(msg)
 
 
 class ScalarAngleOrValue(ApertureAttribute):
@@ -194,11 +194,11 @@ class ScalarAngleOrValue(ApertureAttribute):
 
     def __set__(self, instance, value):
         self._validate(value)
-        # no need to reset if not already in the instance dict
+        # No need to reset if not already in the instance dict
         if self.name in instance.__dict__:
             self._reset_lazyproperties(instance)
 
-        # if theta is not a Quantity, it is assumed to be in radians
+        # If theta is not a Quantity, it is assumed to be in radians
         if not isinstance(value, u.Quantity):
             value <<= u.radian
         instance.__dict__[self.name] = value

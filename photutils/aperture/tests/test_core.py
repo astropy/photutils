@@ -3,11 +3,15 @@
 Tests for the core module.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
+from astropy.coordinates import SkyCoord
 from numpy.testing import assert_allclose
 
-from photutils.aperture import Aperture, CircularAperture, EllipticalAperture
+from photutils.aperture import (Aperture, CircularAperture, EllipticalAperture,
+                                SkyCircularAperture)
+from photutils.aperture.core import _aperture_metadata
 
 POSITIONS = [(5, 5), (10, 10), (15, 15)]
 SCALAR_POS = (5, 5)
@@ -176,3 +180,127 @@ class TestPixelApertureDoPhotometry:
         sums, errs = self.aper.do_photometry(self.data)
         assert_allclose(sums[0], np.pi * 9, rtol=1e-3)
         assert len(errs) == 0
+
+
+class TestApertureReprStr:
+    """
+    Tests for __repr__ and __str__ of various aperture types.
+    """
+
+    def test_repr_scalar(self):
+        """
+        Test __repr__ for a scalar CircularAperture.
+        """
+        aper = CircularAperture(SCALAR_POS, r=3)
+        result = repr(aper)
+        assert 'CircularAperture' in result
+        assert 'r=3.0' in result
+
+    def test_repr_multi(self):
+        """
+        Test __repr__ for a multi-position CircularAperture.
+        """
+        aper = CircularAperture(POSITIONS, r=3)
+        result = repr(aper)
+        assert 'CircularAperture' in result
+
+    def test_str_scalar(self):
+        """
+        Test __str__ for a scalar CircularAperture.
+        """
+        aper = CircularAperture(SCALAR_POS, r=3)
+        result = str(aper)
+        assert 'Aperture: CircularAperture' in result
+        assert 'r: 3.0' in result
+
+    def test_str_multi(self):
+        """
+        Test __str__ for a multi-position CircularAperture.
+        """
+        aper = CircularAperture(POSITIONS, r=3)
+        result = str(aper)
+        assert 'Aperture: CircularAperture' in result
+
+    def test_repr_sky(self):
+        """
+        Test __repr__ for a SkyCircularAperture.
+        """
+        pos = SkyCoord(ra=10, dec=20, unit='deg')
+        aper = SkyCircularAperture(pos, r=1.0 * u.arcsec)
+        result = repr(aper)
+        assert 'SkyCircularAperture' in result
+
+
+class TestApertureIteration:
+    """
+    Tests for __iter__ and __len__ of Aperture objects.
+    """
+
+    def test_iter(self):
+        """
+        Test that iterating over a multi-position aperture yields
+        scalar apertures.
+        """
+        aper = CircularAperture(POSITIONS, r=3)
+        items = list(aper)
+        assert len(items) == len(POSITIONS)
+        for item in items:
+            assert item.isscalar
+
+    def test_copy(self):
+        """
+        Test that copy creates a deep copy with independent data.
+        """
+        aper = CircularAperture(POSITIONS, r=3)
+        aper_copy = aper.copy()
+        assert aper == aper_copy
+        aper_copy.r = 5.0
+        assert aper != aper_copy
+        assert aper.r == 3.0
+
+    def test_copy_sky(self):
+        """
+        Test that copy works for SkyAperture objects.
+        """
+        pos = SkyCoord(ra=[10, 20], dec=[30, 40], unit='deg')
+        aper = SkyCircularAperture(pos, r=1.0 * u.arcsec)
+        aper_copy = aper.copy()
+        assert aper == aper_copy
+
+
+class TestApertureMetadata:
+    """
+    Tests for the _aperture_metadata helper function.
+    """
+
+    def test_metadata_keys(self):
+        """
+        Test that _aperture_metadata returns the expected keys.
+        """
+        aper = CircularAperture(SCALAR_POS, r=3)
+        meta = _aperture_metadata(aper)
+        assert 'aperture' in meta
+        assert meta['aperture'] == 'CircularAperture'
+        assert 'aperture_r' in meta
+        assert meta['aperture_r'] == 3.0
+
+    def test_metadata_with_index(self):
+        """
+        Test that _aperture_metadata uses the index in keys.
+        """
+        aper = CircularAperture(SCALAR_POS, r=3)
+        meta = _aperture_metadata(aper, index='_0')
+        assert 'aperture_0' in meta
+        assert meta['aperture_0'] == 'CircularAperture'
+        assert 'aperture_0_r' in meta
+
+    def test_metadata_class_name_not_repeated(self):
+        """
+        Test that aperture class name key is set exactly once.
+        """
+        aper = EllipticalAperture(SCALAR_POS, a=5, b=3, theta=0)
+        meta = _aperture_metadata(aper)
+        assert meta['aperture'] == 'EllipticalAperture'
+        assert 'aperture_a' in meta
+        assert 'aperture_b' in meta
+        assert 'aperture_theta' in meta

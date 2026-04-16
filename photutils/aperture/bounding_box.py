@@ -195,7 +195,7 @@ class BoundingBox:
         ymax = self.iymax
 
         if xmin >= shape[1] or ymin >= shape[0] or xmax <= 0 or ymax <= 0:
-            # no overlap of the bounding box with the input shape
+            # No overlap of the bounding box with the input shape
             return None, None
 
         slices_large = (slice(max(ymin, 0), min(ymax, shape[0])),
@@ -271,7 +271,7 @@ class BoundingBox:
         aperture : `~photutils.aperture.RectangularAperture`
             A rectangular aperture.
         """
-        # prevent circular import
+        # Prevent circular import
         from photutils.aperture.rectangle import RectangularAperture
 
         xypos = self.center[::-1]  # xy order

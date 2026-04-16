@@ -60,7 +60,7 @@ class TestApertureStats:
 
         scalar_props = ('isscalar', 'n_apertures')
 
-        # evaluate (cache) properties before slice
+        # Evaluate (cache) properties before slice
         for prop in apstats1.properties:
             _ = getattr(apstats1, prop)
         apstats3 = apstats1[idx]
@@ -69,7 +69,7 @@ class TestApertureStats:
                 continue
             assert_equal(getattr(apstats1, prop)[idx], getattr(apstats3, prop))
 
-        # slice catalog before evaluating catalog properties
+        # Slice catalog before evaluating catalog properties
         apstats4 = apstats2[idx]
         for prop in apstats1.properties:
             if prop in scalar_props:
@@ -123,12 +123,12 @@ class TestApertureStats:
 
         scalar_props = ('isscalar', 'n_apertures')
 
-        # evaluate (cache) properties before slice
+        # Evaluate (cache) properties before slice
         for prop in apstats1.properties:
             if prop in scalar_props:
                 continue
             if 'sum' in prop:
-                # test that these properties are not equal
+                # Test that these properties are not equal
                 with pytest.raises(AssertionError):
                     assert_equal(getattr(apstats1, prop),
                                  getattr(apstats2, prop))
@@ -169,7 +169,7 @@ class TestApertureStats:
                 continue
             assert np.all(np.isnan(getattr(apstats1, prop)))
 
-        # test that mask=None is the same as mask=np.ma.nomask
+        # Test that mask=None is the same as mask=np.ma.nomask
         apstats1 = ApertureStats(self.data, self.aperture, mask=None)
         apstats2 = ApertureStats(self.data, self.aperture, mask=np.ma.nomask)
         assert_equal(apstats1.centroid, apstats2.centroid)
@@ -186,7 +186,7 @@ class TestApertureStats:
                 assert_equal(getattr(apstats[i], prop),
                              getattr(apstats0, prop))
 
-        # test broadcasting
+        # Test broadcasting
         local_bkg = (12, 12, 12)
         apstats1 = ApertureStats(data, self.aperture, local_bkg=local_bkg)
         apstats2 = ApertureStats(data, self.aperture, local_bkg=local_bkg[0])
@@ -269,7 +269,7 @@ class TestApertureStats:
         assert_equal(apstat0.ids, [3, 2, 1])
         assert_equal(apstat1.ids, [3, 2, 1])
 
-        # test select_ids when ids are not sorted
+        # Test select_ids when ids are not sorted
         apstat0 = apstats[[2, 1, 0]]
         apstat1 = apstat0.select_ids(2)
         assert apstat1.ids == 2
@@ -279,7 +279,7 @@ class TestApertureStats:
         assert len(apstat0) == 2
         assert_equal(apstat0.ids, [2, 3])
 
-        # test iter
+        # Test iter
         for (i, apstat) in enumerate(apstats):
             assert apstat.isscalar
             assert apstat.id == (i + 1)
