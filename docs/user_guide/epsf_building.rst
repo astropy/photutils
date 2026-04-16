@@ -82,7 +82,7 @@ Let's show the image:
 
     fig, ax = plt.subplots(figsize=(8, 8))
     norm = simple_norm(data, 'sqrt', percent=99.0)
-    ax.imshow(data, norm=norm, origin='lower', cmap='viridis')
+    ax.imshow(data, norm=norm, origin='lower')
 
 For this example we'll use the
 :class:`~photutils.detection.DAOStarFinder` class to identify the
@@ -130,7 +130,7 @@ Let's show the detected stars overlaid on the image:
 
     fig, ax = plt.subplots(figsize=(8, 8))
     norm = simple_norm(data, 'sqrt', percent=99.0)
-    ax.imshow(data, norm=norm, origin='lower', cmap='viridis')
+    ax.imshow(data, norm=norm, origin='lower')
     ax.scatter(sources['x_centroid'], sources['y_centroid'],
                s=80, edgecolor='red', facecolor='none', lw=1.5)
 
@@ -218,7 +218,7 @@ show the first 25 of them:
     >>> ax = ax.ravel()
     >>> for i in range(nrows * ncols):
     ...     norm = simple_norm(stars[i], 'log', percent=99.0)
-    ...     ax[i].imshow(stars[i], norm=norm, origin='lower', cmap='viridis')
+    ...     ax[i].imshow(stars[i], norm=norm, origin='lower')
 
 .. plot::
 
@@ -263,7 +263,7 @@ show the first 25 of them:
     ax = ax.ravel()
     for i in range(nrows * ncols):
         norm = simple_norm(stars[i], 'log', percent=99.0)
-        ax[i].imshow(stars[i], norm=norm, origin='lower', cmap='viridis')
+        ax[i].imshow(stars[i], norm=norm, origin='lower')
 
 
 Constructing the ePSF
@@ -322,7 +322,7 @@ Finally, let's show the constructed ePSF:
     >>> from astropy.visualization import simple_norm
     >>> fig, ax = plt.subplots(figsize=(8, 8))
     >>> norm = simple_norm(epsf.data, 'log', percent=99.0)
-    >>> axim = ax.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
+    >>> axim = ax.imshow(epsf.data, norm=norm, origin='lower')
     >>> fig.colorbar(axim)
 
 .. plot::
@@ -368,7 +368,7 @@ Finally, let's show the constructed ePSF:
 
     fig, ax = plt.subplots(figsize=(8, 8))
     norm = simple_norm(epsf.data, 'log', percent=99.0)
-    axim = ax.imshow(epsf.data, norm=norm, origin='lower', cmap='viridis')
+    axim = ax.imshow(epsf.data, norm=norm, origin='lower')
     fig.colorbar(axim)
 
 The `~photutils.psf.ImagePSF` object can be

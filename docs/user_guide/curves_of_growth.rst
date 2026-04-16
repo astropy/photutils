@@ -516,7 +516,7 @@ with an axis ratio of 0.5 and a rotation angle of 42 degrees::
     >>> xycen = centroid_2dg(data)
     >>> radii = np.arange(1, 40)
     >>> ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-    ...                               theta=np.deg2rad(42), error=error)
+    ...                                theta=np.deg2rad(42), error=error)
 
 The elliptical curve of growth profile represents the total flux within
 the elliptical aperture as a function of semimajor-axis length::
@@ -578,7 +578,7 @@ Here, we plot the normalized elliptical curve of growth.
     # Create the elliptical curve of growth
     radii = np.arange(1, 40)
     ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-                                  theta=np.deg2rad(42), error=error)
+                                   theta=np.deg2rad(42), error=error)
     ecog.normalize(method='max')
 
     # Plot the elliptical curve of growth
@@ -613,7 +613,7 @@ We can also plot a few of the elliptical apertures on the data.
     # Create the elliptical curve of growth
     radii = np.arange(1, 40)
     ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-                                  theta=np.deg2rad(42), error=error)
+                                   theta=np.deg2rad(42), error=error)
 
     norm = simple_norm(data, 'sqrt')
     fig, ax = plt.subplots(figsize=(5, 5))
@@ -678,7 +678,7 @@ Here we plot the enclosed energy values.
     # Create the elliptical curve of growth
     radii = np.arange(1, 40)
     ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-                                  theta=np.deg2rad(42), error=error)
+                                   theta=np.deg2rad(42), error=error)
     ecog.normalize(method='max')
     ee_rads = np.array([5, 10, 15, 20])
     ee_vals = ecog.calc_ee_at_radius(ee_rads)

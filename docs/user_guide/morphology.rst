@@ -100,7 +100,7 @@ approximate isophotal ellipse for the source:
     apertures = EllipticalAperture(xypos, a, b, theta=theta)
 
     fig, ax = plt.subplots(1, 1, figsize=(8, 8))
-    ax.imshow(data, origin='lower', interpolation='nearest')
+    ax.imshow(data, origin='lower')
     apertures.plot(ax=ax, color='C3', lw=2)
 
     dx_major = a * np.cos(theta)

@@ -459,7 +459,7 @@ apertures (red) on a cutout from the image containing the three sources:
 
     norm = simple_norm(data, 'sqrt', percent=99)
     fig, ax = plt.subplots()
-    ax.imshow(data, norm=norm, interpolation='nearest')
+    ax.imshow(data, norm=norm, origin='lower')
     ax.set_xlim(0, 170)
     ax.set_ylim(130, 250)
 
@@ -706,7 +706,7 @@ Let's plot the first aperture mask:
 
     >>> import matplotlib.pyplot as plt
     >>> fig, ax = plt.subplots()
-    >>> ax.imshow(masks[0])
+    >>> ax.imshow(masks[0], origin='lower')
 
 .. plot::
 
@@ -720,7 +720,7 @@ Let's plot the first aperture mask:
     annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
     masks = annulus_aperture.to_mask(method='exact')
     fig, ax = plt.subplots()
-    ax.imshow(masks[0])
+    ax.imshow(masks[0], origin='lower')
 
 Let's now use the "center" aperture mask method and plot the resulting
 aperture mask:
@@ -729,7 +729,7 @@ aperture mask:
 
     >>> masks2 = aperture.to_mask(method='center')
     >>> fig, ax = plt.subplots()
-    >>> ax.imshow(masks2[0])
+    >>> ax.imshow(masks2[0], origin='lower')
 
 .. plot::
 
@@ -743,7 +743,7 @@ aperture mask:
     annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
     masks2 = annulus_aperture.to_mask(method='center')
     fig, ax = plt.subplots()
-    ax.imshow(masks2[0])
+    ax.imshow(masks2[0], origin='lower')
 
 We can also create an aperture mask-weighted cutout from the data,
 properly handling the cases of partial or no overlap of the aperture
@@ -754,7 +754,7 @@ generated above with the "exact" method) multiplied with the data:
 
     >>> data_weighted = masks[0].multiply(data)
     >>> fig, ax = plt.subplots()
-    >>> ax.imshow(data_weighted)
+    >>> ax.imshow(data_weighted, origin='lower')
 
 .. plot::
 
@@ -768,7 +768,7 @@ generated above with the "exact" method) multiplied with the data:
     annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
     masks = annulus_aperture.to_mask(method='exact')
     fig, ax = plt.subplots()
-    ax.imshow(masks[0].multiply(data))
+    ax.imshow(masks[0].multiply(data), origin='lower')
 
 To get a 1D `~numpy.ndarray` of the non-zero weighted data values, use
 the :meth:`~photutils.aperture.ApertureMask.get_values` method:
