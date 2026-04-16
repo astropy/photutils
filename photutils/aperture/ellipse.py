@@ -9,6 +9,7 @@ import math
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import Angle
+from astropy.utils import lazyproperty
 
 from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            PositiveScalarAngle, ScalarAngle,
@@ -125,17 +126,7 @@ class EllipticalMaskMixin:  # pragma: no cover
         """
         Calculate half of the bounding box extents of an ellipse.
         """
-        theta_rad = theta.to(u.radian).value
-        cos_theta = np.cos(theta_rad)
-        sin_theta = np.sin(theta_rad)
-        semimajor_x = semimajor_axis * cos_theta
-        semimajor_y = semimajor_axis * sin_theta
-        semiminor_x = semiminor_axis * -sin_theta
-        semiminor_y = semiminor_axis * cos_theta
-        x_extent = np.sqrt(semimajor_x**2 + semiminor_x**2)
-        y_extent = np.sqrt(semimajor_y**2 + semiminor_y**2)
-
-        return x_extent, y_extent
+        return _calc_ellipse_extents(semimajor_axis, semiminor_axis, theta)
 
 
 def _calc_ellipse_extents(semimajor_axis, semiminor_axis, theta):
@@ -219,11 +210,15 @@ class EllipticalAperture(PixelAperture):
         self.b = b
         self.theta = theta
 
-    @property
+    @lazyproperty
     def _xy_extents(self):
+        """
+        The half of the bounding box extents of the ellipse in the x and
+        y directions.
+        """
         return _calc_ellipse_extents(self.a, self.b, self.theta)
 
-    @property
+    @lazyproperty
     def area(self):
         """
         The exact geometric area of the aperture shape.
@@ -437,11 +432,15 @@ class EllipticalAnnulus(PixelAperture):
 
         self.theta = theta
 
-    @property
+    @lazyproperty
     def _xy_extents(self):
+        """
+        The half of the bounding box extents of the outer ellipse in the
+        x and y directions.
+        """
         return _calc_ellipse_extents(self.a_out, self.b_out, self.theta)
 
-    @property
+    @lazyproperty
     def area(self):
         """
         The exact geometric area of the aperture shape.

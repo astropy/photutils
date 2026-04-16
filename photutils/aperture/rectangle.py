@@ -9,6 +9,7 @@ import math
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import Angle
+from astropy.utils import lazyproperty
 
 from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            PositiveScalarAngle, ScalarAngle,
@@ -124,21 +125,9 @@ class RectangularMaskMixin:  # pragma: no cover
     @staticmethod
     def _calc_extents(width, height, theta):
         """
-        Calculate half of the bounding box extents of an ellipse.
+        Calculate half of the bounding box extents of a rectangle.
         """
-        theta_rad = theta.to(u.radian).value
-        half_width = width / 2.0
-        half_height = height / 2.0
-        sin_theta = math.sin(theta_rad)
-        cos_theta = math.cos(theta_rad)
-        x_extent1 = abs((half_width * cos_theta) - (half_height * sin_theta))
-        x_extent2 = abs((half_width * cos_theta) + (half_height * sin_theta))
-        y_extent1 = abs((half_width * sin_theta) + (half_height * cos_theta))
-        y_extent2 = abs((half_width * sin_theta) - (half_height * cos_theta))
-        x_extent = max(x_extent1, x_extent2)
-        y_extent = max(y_extent1, y_extent2)
-
-        return x_extent, y_extent
+        return _calc_rectangle_extents(width, height, theta)
 
     @staticmethod
     def _lower_left_positions(positions, width, height, theta):
@@ -148,15 +137,7 @@ class RectangularMaskMixin:  # pragma: no cover
         Used for creating `~matplotlib.patches.Rectangle` patch for the
         aperture.
         """
-        theta_rad = theta.to(u.radian).value
-        half_width = width / 2.0
-        half_height = height / 2.0
-        sin_theta = math.sin(theta_rad)
-        cos_theta = math.cos(theta_rad)
-        xshift = (half_height * sin_theta) - (half_width * cos_theta)
-        yshift = -(half_height * cos_theta) - (half_width * sin_theta)
-
-        return np.atleast_2d(positions) + np.array([xshift, yshift])
+        return _calc_lower_left_positions(positions, width, height, theta)
 
 
 def _calc_rectangle_extents(width, height, theta):
@@ -263,11 +244,15 @@ class RectangularAperture(PixelAperture):
         self.h = h
         self.theta = theta
 
-    @property
+    @lazyproperty
     def _xy_extents(self):
+        """
+        The half-width and half-height of the bounding box of the
+        rectangle.
+        """
         return _calc_rectangle_extents(self.w, self.h, self.theta)
 
-    @property
+    @lazyproperty
     def area(self):
         """
         The exact geometric area of the aperture shape.
@@ -489,11 +474,15 @@ class RectangularAnnulus(PixelAperture):
 
         self.theta = theta
 
-    @property
+    @lazyproperty
     def _xy_extents(self):
+        """
+        The half-width and half-height of the bounding box of the
+        rectangle.
+        """
         return _calc_rectangle_extents(self.w_out, self.h_out, self.theta)
 
-    @property
+    @lazyproperty
     def area(self):
         """
         The exact geometric area of the aperture shape.
@@ -753,7 +742,7 @@ class SkyRectangularAnnulus(SkyAperture):
         units.
 
     h_in : `None` or scalar `~astropy.units.Quantity`
-        The outer full height of the rectangular annulus in angular
+        The inner full height of the rectangular annulus in angular
         units. If `None`, then the inner full height is calculated as:
 
         .. math::
