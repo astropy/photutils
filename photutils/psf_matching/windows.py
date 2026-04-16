@@ -393,7 +393,7 @@ class TopHatWindow(SplitCosineBellWindow):
         taper = TopHatWindow(beta=0.4)
         data = taper((101, 101))
         fig, ax = plt.subplots()
-        axim = ax.imshow(data, origin='lower', interpolation='nearest')
+        axim = ax.imshow(data, origin='lower')
         fig.colorbar(axim)
 
     A 1D cut across the image center:

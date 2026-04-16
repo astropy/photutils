@@ -209,18 +209,17 @@ class ImageDepth:
                            progress_bar=False)
         limits = depth(data, mask)
 
-        fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(9, 3))
-        norm = simple_norm(data, 'sqrt', percent=99.)
+        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(5, 7))
+        norm = simple_norm(data, 'sqrt', percent=99.5)
         ax[0].imshow(data, norm=norm, origin='lower')
-        color = 'orange'
+        color = 'white'
         depth.apertures[0].plot(ax=ax[0], color=color)
         ax[0].set_title('Data with blank apertures')
-        ax[1].imshow(mask, origin='lower', interpolation='none')
+        ax[1].imshow(mask, origin='lower')
         depth.apertures[0].plot(ax=ax[1], color=color)
         ax[1].set_title('Mask with blank apertures')
 
-        fig.subplots_adjust(left=0.05, right=0.98, bottom=0.05, top=0.95,
-                            wspace=0.15)
+        fig.tight_layout()
     """
 
     @deprecated_renamed_argument('nsigma', 'n_sigma', '3.0', until='4.0')

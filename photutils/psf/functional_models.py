@@ -143,12 +143,13 @@ class GaussianPSF(Fittable2DModel):
         import matplotlib.pyplot as plt
         import numpy as np
         from photutils.psf import GaussianPSF
+
         model = GaussianPSF(flux=71.4, x_0=24.3, y_0=25.2, x_fwhm=10.1,
                             y_fwhm=5.82, theta=21.7)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
         fig, ax = plt.subplots()
-        ax.imshow(data, origin='lower', interpolation='nearest')
+        ax.imshow(data, origin='lower')
     """
 
     flux = Parameter(
@@ -514,11 +515,12 @@ class CircularGaussianPSF(Fittable2DModel):
         import matplotlib.pyplot as plt
         import numpy as np
         from photutils.psf import CircularGaussianPSF
+
         model = CircularGaussianPSF(flux=71.4, x_0=24.3, y_0=25.2, fwhm=10.1)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
         fig, ax = plt.subplots()
-        ax.imshow(data, origin='lower', interpolation='nearest')
+        ax.imshow(data, origin='lower')
     """
 
     flux = Parameter(
@@ -806,12 +808,13 @@ class GaussianPRF(Fittable2DModel):
         import matplotlib.pyplot as plt
         import numpy as np
         from photutils.psf import GaussianPRF
+
         model = GaussianPRF(flux=71.4, x_0=24.3, y_0=25.2, x_fwhm=10.1,
                             y_fwhm=5.82, theta=21.7)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
         fig, ax = plt.subplots()
-        ax.imshow(data, origin='lower', interpolation='nearest')
+        ax.imshow(data, origin='lower')
     """
 
     flux = Parameter(
@@ -1093,11 +1096,12 @@ class CircularGaussianPRF(Fittable2DModel):
         import matplotlib.pyplot as plt
         import numpy as np
         from photutils.psf import CircularGaussianPRF
+
         model = CircularGaussianPRF(flux=71.4, x_0=24.3, y_0=25.2, fwhm=10.1)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
         fig, ax = plt.subplots()
-        ax.imshow(data, origin='lower', interpolation='nearest')
+        ax.imshow(data, origin='lower')
     """
 
     flux = Parameter(
@@ -1335,12 +1339,13 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         import matplotlib.pyplot as plt
         import numpy as np
         from photutils.psf import CircularGaussianSigmaPRF
+
         model = CircularGaussianSigmaPRF(flux=71.4, x_0=24.3, y_0=25.2,
                                          sigma=5.1)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
         fig, ax = plt.subplots()
-        ax.imshow(data, origin='lower', interpolation='nearest')
+        ax.imshow(data, origin='lower')
     """
 
     flux = Parameter(
@@ -1583,11 +1588,12 @@ class MoffatPSF(Fittable2DModel):
         import matplotlib.pyplot as plt
         import numpy as np
         from photutils.psf import MoffatPSF
+
         model = MoffatPSF(flux=71.4, x_0=24.3, y_0=25.2, alpha=5.1, beta=3.2)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
         fig, ax = plt.subplots()
-        ax.imshow(data, origin='lower', interpolation='nearest')
+        ax.imshow(data, origin='lower')
     """
 
     flux = Parameter(
@@ -1835,12 +1841,13 @@ class AiryDiskPSF(Fittable2DModel):
         import numpy as np
         from astropy.visualization import simple_norm
         from photutils.psf import AiryDiskPSF
+
         model = AiryDiskPSF(flux=71.4, x_0=24.3, y_0=25.2, radius=5)
         yy, xx = np.mgrid[0:51, 0:51]
         data = model(xx, yy)
         norm = simple_norm(data, 'sqrt')
         fig, ax = plt.subplots()
-        ax.imshow(data, norm=norm, origin='lower', interpolation='nearest')
+        ax.imshow(data, norm=norm, origin='lower')
     """
 
     flux = Parameter(

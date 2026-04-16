@@ -120,6 +120,7 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
 
         import matplotlib.pyplot as plt
         from photutils.psf import CircularGaussianPRF, make_psf_model_image
+
         shape = (150, 200)
         psf_model = CircularGaussianPRF(fwhm=3.5)
         n_sources = 10
@@ -135,6 +136,7 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
 
         import matplotlib.pyplot as plt
         from photutils.psf import CircularGaussianPRF, make_psf_model_image
+
         shape = (150, 200)
         psf_model = CircularGaussianPRF(fwhm=3.5)
         n_sources = 10

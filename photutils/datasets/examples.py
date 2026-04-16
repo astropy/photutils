@@ -93,11 +93,13 @@ def make_4gaussians_image(noise=True):
         :include-source:
 
         import matplotlib.pyplot as plt
+        from astropy.visualization import simple_norm
         from photutils.datasets import make_4gaussians_image
 
         image = make_4gaussians_image()
         fig, ax = plt.subplots()
-        ax.imshow(image, origin='lower', interpolation='nearest')
+        norm = simple_norm(image, 'sqrt', percent=99.5)
+        ax.imshow(image, norm=norm, origin='lower')
     """
     return _make_gaussians_image('4gaussians_params.ecsv', (100, 200),
                                  noise, noise_stddev=5.0)
@@ -135,11 +137,13 @@ def make_100gaussians_image(noise=True):
         :include-source:
 
         import matplotlib.pyplot as plt
+        from astropy.visualization import simple_norm
         from photutils.datasets import make_100gaussians_image
 
         image = make_100gaussians_image()
         fig, ax = plt.subplots()
-        ax.imshow(image, origin='lower', interpolation='nearest')
+        norm = simple_norm(image, 'sqrt', percent=99.5)
+        ax.imshow(image, norm=norm, origin='lower')
     """
     return _make_gaussians_image('100gaussians_params.ecsv', (300, 500),
                                  noise, noise_stddev=2.0, bbox_factor=6.0)

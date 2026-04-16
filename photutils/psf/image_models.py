@@ -115,6 +115,7 @@ class ImagePSF(Fittable2DModel):
         import matplotlib.pyplot as plt
         import numpy as np
         from photutils.psf import CircularGaussianPSF, ImagePSF
+
         gaussian_psf = CircularGaussianPSF(x_0=12, y_0=12, fwhm=3.2)
         yy, xx = np.mgrid[:25, :25]
         psf_data = gaussian_psf(xx, yy)

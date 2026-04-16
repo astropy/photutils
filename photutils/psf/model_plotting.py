@@ -60,7 +60,7 @@ def _plot_grid_docstring(func):
         Notes
         -----
         This method returns a figure object. If you are using this
-        method in a script, you will need to call ``plt.show()`` to
+        method in a script, you will need to call ``fig.show()`` to
         display the figure. If you are using this method in a Jupyter
         notebook, the figure will be displayed automatically.
 
