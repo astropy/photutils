@@ -120,11 +120,13 @@ class TestPSFDataProcessor:
         processor = PSFDataProcessor(param_mapper, (7, 7))
 
         # Test 1D array
-        with pytest.raises(ValueError, match='data must be a 2D array'):
+        match = 'data must be a 2D array'
+        with pytest.raises(ValueError, match=match):
             processor.validate_array(np.ones(10), 'data')
 
         # Test 3D array
-        with pytest.raises(ValueError, match='error must be a 2D array'):
+        match = 'error must be a 2D array'
+        with pytest.raises(ValueError, match=match):
             processor.validate_array(np.ones((5, 5, 5)), 'error')
 
         # Test shape mismatch

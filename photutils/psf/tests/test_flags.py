@@ -111,13 +111,12 @@ def test_decode_psf_flags():
     assert 'negative_flux' not in issues
 
     # Test error conditions
-    with pytest.raises(TypeError, match='Flag value must be an integer'):
+    match = 'Flag value must be an integer'
+    with pytest.raises(TypeError, match=match):
         decode_psf_flags(3.14)
-
-    with pytest.raises(TypeError, match='Flag value must be an integer'):
+    with pytest.raises(TypeError, match=match):
         decode_psf_flags('invalid')
-
-    with pytest.raises(TypeError, match='Flag value must be an integer'):
+    with pytest.raises(TypeError, match=match):
         decode_psf_flags([1, 2.5, 3])
 
 
@@ -329,13 +328,16 @@ def test_psf_flags_get_definition():
     assert def_by_bit is def_by_name
 
     # Test error cases
-    with pytest.raises(KeyError, match='No flag with bit value 999'):
+    match = 'No flag with bit value 999'
+    with pytest.raises(KeyError, match=match):
         PSF_FLAGS.get_definition(999)
 
-    with pytest.raises(KeyError, match="No flag with name 'invalid'"):
+    match = "No flag with name 'invalid'"
+    with pytest.raises(KeyError, match=match):
         PSF_FLAGS.get_definition('invalid')
 
-    with pytest.raises(TypeError, match='identifier must be int'):
+    match = 'identifier must be int'
+    with pytest.raises(TypeError, match=match):
         PSF_FLAGS.get_definition(3.14)
 
 

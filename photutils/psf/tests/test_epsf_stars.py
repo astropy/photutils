@@ -309,7 +309,8 @@ class TestEPSFStar:
             EPSFStar(np.ones((5, 5, 5)))
 
         # Test empty data
-        with pytest.raises(ValueError, match='Input data cannot be empty'):
+        match = 'Input data cannot be empty'
+        with pytest.raises(ValueError, match=match):
             EPSFStar(np.array([]).reshape(0, 0))
 
     def test_weights_validation(self):
@@ -378,7 +379,8 @@ class TestEPSFStar:
             star.cutout_center = [1, 2, 3]
 
         # Test non-finite values
-        with pytest.raises(ValueError, match='must be finite'):
+        match = 'must be finite'
+        with pytest.raises(ValueError, match=match):
             star.cutout_center = [np.nan, 2.0]
 
         # Test bounds warnings (should warn but not raise)
@@ -430,10 +432,10 @@ class TestEPSFStar:
         """
         # Test zero-dimension data - this actually triggers "empty"
         # error
-        with pytest.raises(ValueError, match='Input data cannot be empty'):
+        match = 'Input data cannot be empty'
+        with pytest.raises(ValueError, match=match):
             EPSFStar(np.zeros((0, 5)))
-
-        with pytest.raises(ValueError, match='Input data cannot be empty'):
+        with pytest.raises(ValueError, match=match):
             EPSFStar(np.zeros((5, 0)))
 
     def test_flux_estimation_failure(self):
@@ -655,7 +657,8 @@ class TestEPSFStar:
         Test empty data validation.
         """
         data = np.array([[]])  # Empty 2D array
-        with pytest.raises(ValueError, match='Input data cannot be empty'):
+        match = 'Input data cannot be empty'
+        with pytest.raises(ValueError, match=match):
             EPSFStar(data)
 
     def test_residual_image(self):
@@ -702,7 +705,8 @@ class TestEPSFStars:
         assert len(stars_list) == 2
 
         # Test invalid initialization
-        with pytest.raises(TypeError, match='stars_list must be a list'):
+        match = 'stars_list must be a list of EPSFStar'
+        with pytest.raises(TypeError, match=match):
             EPSFStars('invalid')
 
     def test_indexing_operations(self):
@@ -883,12 +887,14 @@ class TestLinkedEPSFStar:
         Test LinkedEPSFStar initialization validation.
         """
         # Test with non-EPSFStar objects
-        with pytest.raises(TypeError, match='must contain only EPSFStar'):
+        match = 'stars_list must contain only EPSFStar objects'
+        with pytest.raises(TypeError, match=match):
             LinkedEPSFStar(['not_a_star', 'also_not_a_star'])
 
         # Test with EPSFStar without WCS
         star_no_wcs = EPSFStar(np.ones((5, 5)))
-        with pytest.raises(ValueError, match='must have a valid wcs_large'):
+        match = 'Each EPSFStar object must have a valid wcs_large attribute'
+        with pytest.raises(ValueError, match=match):
             LinkedEPSFStar([star_no_wcs])
 
     def test_constraint_no_good_stars(self, simple_wcs):
@@ -1217,11 +1223,13 @@ class TestExtractStars:
         table['y'] = [25]
 
         # Test invalid data type
-        with pytest.raises(TypeError, match='must be a single NDData object'):
+        match = 'must be a single NDData object or list of NDData objects'
+        with pytest.raises(TypeError, match=match):
             extract_stars('not_nddata', table)
 
         # Test invalid catalog type
-        with pytest.raises(TypeError, match='must be a single Table object'):
+        match = 'must be a single Table object'
+        with pytest.raises(TypeError, match=match):
             extract_stars(simple_nddata, 'not_table')
 
     def test_coordinate_validation(self, simple_nddata):
@@ -1241,7 +1249,8 @@ class TestExtractStars:
         bad_table = Table()
         bad_table['flux'] = [100]  # No x, y, or skycoord
 
-        with pytest.raises(ValueError, match='must have either'):
+        match = "must have either 'x' and 'y' columns or a 'skycoord' column"
+        with pytest.raises(ValueError, match=match):
             extract_stars(simple_nddata, bad_table)
 
     def test_data_validation(self, simple_table):
@@ -1249,17 +1258,19 @@ class TestExtractStars:
         Test data input validation.
         """
         # Test invalid data types in list
-        with pytest.raises(TypeError, match='All data elements must be'):
+        match = 'All data elements must be NDData objects'
+        with pytest.raises(TypeError, match=match):
             extract_stars(['not_nddata'], simple_table)
 
         # Test NDData with no data array
         empty_nddata = NDData(np.array([]))  # Provide empty array
-        with pytest.raises(ValueError, match='must contain 2D data'):
+        match = 'must contain 2D data'
+        with pytest.raises(ValueError, match=match):
             extract_stars(empty_nddata, simple_table)
 
         # Test NDData with wrong dimensions
         nddata_1d = NDData(np.ones(50))
-        with pytest.raises(ValueError, match='must contain 2D data'):
+        with pytest.raises(ValueError, match=match):
             extract_stars(nddata_1d, simple_table)
 
     def test_catalog_validation(self, simple_nddata):
@@ -1267,7 +1278,8 @@ class TestExtractStars:
         Test catalog input validation.
         """
         # Test invalid catalog types in list
-        with pytest.raises(TypeError, match='All catalog elements must be'):
+        match = 'All catalog elements must be Table objects'
+        with pytest.raises(TypeError, match=match):
             extract_stars(simple_nddata, ['not_table'])
 
     def test_coordinate_system_validation(self, simple_nddata):
@@ -1278,15 +1290,15 @@ class TestExtractStars:
         skycoord_table = Table()
         skycoord_table['skycoord'] = [SkyCoord(0, 0, unit='deg')]
 
-        with pytest.raises(ValueError,
-                           match='must have a wcs attribute'):
+        match = 'NDData object must have a wcs attribute'
+        with pytest.raises(ValueError, match=match):
             extract_stars(simple_nddata, skycoord_table)
 
         # Test multiple catalogs with mismatched count
         table1 = Table({'x': [25], 'y': [25]})
         table2 = Table({'x': [25], 'y': [25]})
-        with pytest.raises(ValueError,
-                           match='number of catalogs must match'):
+        match = 'number of catalogs must match the number of input images'
+        with pytest.raises(ValueError, match=match):
             extract_stars(simple_nddata, [table1, table2])
 
     def test_extract_stars_skycoord_and_wcs(self, simple_data, simple_wcs):
@@ -1581,7 +1593,8 @@ class TestExtractStars:
         table['skycoord'] = [SkyCoord(0, 0, unit='deg')]
 
         # Should raise because images don't have WCS
-        with pytest.raises(ValueError, match='must have a wcs attribute'):
+        match = 'must have a wcs attribute'
+        with pytest.raises(ValueError, match=match):
             extract_stars([nddata1, nddata2], table, size=11)
 
     def test_validate_skycoord_only_catalog_no_wcs(self):
@@ -1597,7 +1610,8 @@ class TestExtractStars:
         table['skycoord'] = [SkyCoord(0, 0, unit='deg')]
 
         # Should raise because NDData does not have WCS
-        with pytest.raises(ValueError, match='must have a wcs attribute'):
+        match = 'NDData object must have a wcs attribute'
+        with pytest.raises(ValueError, match=match):
             extract_stars(nddata, table, size=11)
 
     def test_validate_multiple_catalogs_skycoord_only_no_wcs(self, simple_wcs):
@@ -1620,8 +1634,8 @@ class TestExtractStars:
         table2['skycoord'] = [SkyCoord(0, 0, unit='deg')]
 
         # nddata2 has WCS, but nddata1 does not
-        with pytest.raises(ValueError,
-                           match='each NDData object must have a wcs'):
+        match = 'each NDData object must have a wcs'
+        with pytest.raises(ValueError, match=match):
             extract_stars([nddata1, nddata2], [table1, table2], size=11)
 
     def test_extract_stars_uncertainties(self, epsf_test_data):

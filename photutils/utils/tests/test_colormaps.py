@@ -50,6 +50,7 @@ def test_colormap_ncolors_deprecated():
     Test that using the deprecated ``ncolors`` keyword raises a
     deprecation warning.
     """
-    with pytest.warns(AstropyDeprecationWarning, match='ncolors'):
+    match = "'ncolors' was deprecated"
+    with pytest.warns(AstropyDeprecationWarning, match=match):
         cmap = make_random_cmap(ncolors=10, seed=0)
     assert len(cmap.colors) == 10

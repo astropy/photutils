@@ -132,7 +132,8 @@ class TestAttributeErrors:
         Test that a plausible typo like ``HAS_SKIIMAGE`` raises
         `AttributeError`.
         """
-        with pytest.raises(AttributeError, match='HAS_SKIIMAGE'):
+        match = 'HAS_SKIIMAGE'
+        with pytest.raises(AttributeError, match=match):
             _ = od_mod.HAS_SKIIMAGE
 
     def test_non_dependency_raises(self):
@@ -141,7 +142,8 @@ class TestAttributeErrors:
         not an optional dependency.
         """
         if 'NUMPY' not in od_mod._deps_by_key:
-            with pytest.raises(AttributeError, match='HAS_NUMPY'):
+            match = 'HAS_NUMPY'
+            with pytest.raises(AttributeError, match=match):
                 _ = od_mod.HAS_NUMPY
 
     def test_arbitrary_name_raises(self):

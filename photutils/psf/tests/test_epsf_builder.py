@@ -114,7 +114,8 @@ class TestSmoothingKernel:
         """
         Test invalid kernel type raises TypeError.
         """
-        with pytest.raises(TypeError, match='Unsupported kernel type'):
+        match = 'Unsupported kernel type'
+        with pytest.raises(TypeError, match=match):
             _SmoothingKernel.get_kernel('invalid')
 
     @pytest.mark.parametrize('kernel_type', ['quartic', 'quadratic'])
@@ -194,7 +195,8 @@ class TestEPSFValidator:
         """
         Test oversampling validation with zero values.
         """
-        with pytest.raises(ValueError, match='oversampling must be > 0'):
+        match = 'oversampling must be > 0'
+        with pytest.raises(ValueError, match=match):
             _EPSFValidator.validate_oversampling((0, 2))
 
         match = ('test_context: Invalid oversampling parameter - '
@@ -1184,8 +1186,8 @@ class TestEPSFBuilder:
         assert builder6.fitter_maxiters == 200
 
         # Test with invalid fitter type (should fail)
-        with pytest.raises(TypeError,
-                           match='fitter must be a callable'):
+        match = 'fitter must be a callable'
+        with pytest.raises(TypeError, match=match):
             EPSFBuilder(fitter='invalid_fitter', maxiters=3)
 
     def test_fitter_options_deprecated_epsf_fitter(self):
