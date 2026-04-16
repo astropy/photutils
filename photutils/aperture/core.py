@@ -847,8 +847,8 @@ def _aperture_metadata(aperture, *, index=''):
     """
     params = aperture._params
     meta = {}
+    meta[f'aperture{index}'] = aperture.__class__.__name__
     for param in params:
         if param != 'positions':
-            meta[f'aperture{index}'] = aperture.__class__.__name__
             meta[f'aperture{index}_{param}'] = getattr(aperture, param)
     return meta

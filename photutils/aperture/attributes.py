@@ -164,10 +164,6 @@ class PositiveScalarAngle(ApertureAttribute):
     """
 
     def _validate(self, value):
-        if value <= 0:
-            msg = f'{self.name!r} must be greater than zero'
-            raise ValueError(msg)
-
         if isinstance(value, u.Quantity):
             if not value.isscalar:
                 msg = f'{self.name!r} must be a scalar'
@@ -179,6 +175,10 @@ class PositiveScalarAngle(ApertureAttribute):
         else:
             msg = f'{self.name!r} must be a scalar angle'
             raise TypeError(msg)
+
+        if value <= 0:
+            msg = f'{self.name!r} must be greater than zero'
+            raise ValueError(msg)
 
 
 class ScalarAngleOrValue(ApertureAttribute):

@@ -565,8 +565,8 @@ class SkyCircularAnnulus(SkyAperture):
     r_out = PositiveScalarAngle('The outer radius in angular units.')
 
     def __init__(self, positions, r_in, r_out):
-        if r_in.unit.physical_type != r_out.unit.physical_type:
-            msg = 'r_in and r_out should either both be angles or in pixels'
+        if not r_out > r_in:
+            msg = '"r_out" must be greater than "r_in"'
             raise ValueError(msg)
 
         self.positions = positions
