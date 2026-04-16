@@ -2489,15 +2489,15 @@ def test_centroid_errors():
     error = np.full(data.shape, 65.0)
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
-    npixels = 10
-    finder = SourceFinder(npixels=npixels, progress_bar=False)
+    n_pixels = 10
+    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
     threshold = 107.9
     segment_map = finder(convolved_data, threshold)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
-                        error=error, apermask_method='none')
+                        error=error, aperture_mask_method='none')
 
     errors = cat._centroid_errors
-    assert errors.shape == (cat.nlabels, 2)
+    assert errors.shape == (cat.n_labels, 2)
     # Both sources should have finite, positive errors
     assert np.all(np.isfinite(errors))
     assert np.all(errors > 0)
@@ -2516,10 +2516,10 @@ def test_centroid_errors_no_error():
 
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
-    npixels = 10
-    segment_map = detect_sources(convolved_data, 50.0, npixels)
+    n_pixels = 10
+    segment_map = detect_sources(convolved_data, 50.0, n_pixels)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
-                        apermask_method='none')
+                        aperture_mask_method='none')
 
     errors = cat._centroid_errors
     assert np.all(np.isnan(errors))
@@ -2536,10 +2536,10 @@ def test_centroid_errors_scalar():
 
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
-    npixels = 10
-    segment_map = detect_sources(convolved_data, 50.0, npixels)
+    n_pixels = 10
+    segment_map = detect_sources(convolved_data, 50.0, n_pixels)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
-                        error=error, apermask_method='none')
+                        error=error, aperture_mask_method='none')
 
     single = cat[0]
     errors = single._centroid_errors
@@ -2574,7 +2574,7 @@ def test_centroid_errors_singularity():
 
     convolved_data = data.copy()
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
-                        error=error, apermask_method='none')
+                        error=error, aperture_mask_method='none')
 
     errors = cat._centroid_errors
     assert np.all(np.isfinite(errors))
@@ -2596,7 +2596,7 @@ def test_centroid_errors_zero_flux():
     segment_map = SegmentationImage(segment_data)
 
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
-                        error=error, apermask_method='none')
+                        error=error, aperture_mask_method='none')
 
     errors = cat._centroid_errors
     assert np.all(np.isnan(errors))

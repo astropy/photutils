@@ -31,7 +31,6 @@ from photutils.utils._deprecation import (_get_future_column_names,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 from photutils.utils._misc import _get_meta
-from photutils.utils._moments import _image_moments
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
@@ -1647,7 +1646,7 @@ class SourceCatalog:
         shape covariance determinant is below :math:`(1/12)^2`.
         """
         if self._error is None:
-            result = np.full((self.nlabels, 2), np.nan)
+            result = np.full((self.n_labels, 2), np.nan)
             if self.isscalar:
                 return result[0]
             return result
@@ -1728,138 +1727,385 @@ class SourceCatalog:
             return result[0]
         return result
 
-    def _centroid_win_single(self, label, xcen, ycen, rad_hl,
-                             nan_hl_, kwargs, compute_err):
+    @staticmethod
+    def _normalize_win_errors(err_sum, err_var_x, err_var_y, err_cov_xy,
+                              weighted_flux):
         """
-        Compute the windowed centroid and error terms for a single
-        source.
+        Normalize the windowed centroid position-error variances.
 
-        Returns a tuple of (xcen, ycen, weighted_flux, cen_mom_xx,
-        cen_mom_yy, cen_mom_xy, err_var_x, err_var_y, err_cov_xy).
+        Normalize by ``step_factor^2 / weighted_flux^2`` and apply the
+        singularity correction and pixel-size variance correction.
+
+        Parameters
+        ----------
+        err_sum : float
+            Sum of the weighted error variance over the aperture.
+
+        err_var_x : float
+            Weighted error variance in ``x``.
+
+        err_var_y : float
+            Weighted error variance in ``y``.
+
+        err_cov_xy : float
+            Weighted error covariance in ``xy``.
+
+        weighted_flux : float
+            Total weighted flux from the last iteration.
+
+        Returns
+        -------
+        err_var_x : float
+            Normalized error variance in ``x``.
+
+        err_var_y : float
+            Normalized error variance in ``y``.
+
+        err_cov_xy : float
+            Normalized error covariance in ``xy``.
+        """
+        if not (np.isfinite(weighted_flux) and weighted_flux > 0):
+            return np.nan, np.nan, np.nan
+
+        step_factor = 2.0
+        norm = step_factor**2 / (weighted_flux**2)
+        err_var_x *= norm
+        err_var_y *= norm
+        err_cov_xy *= norm
+
+        # Handle fully correlated profiles that cause a singularity.
+        err_sum_norm = err_sum * (1.0 / 12) * norm
+        if (err_var_x * err_var_y
+                - err_cov_xy**2) < err_sum_norm**2:
+            err_var_x += err_sum_norm
+            err_var_y += err_sum_norm
+
+        # Add pixel-size variance correction (1/12).
+        err_var_x += err_sum_norm
+        err_var_y += err_sum_norm
+
+        return err_var_x, err_var_y, err_cov_xy
+
+    def _apply_centroid_win_fallback(self, xcen_win, ycen_win,
+                                     win_weighted_flux,
+                                     win_cen_mom_xx, win_cen_mom_yy,
+                                     win_cen_mom_xy,
+                                     win_err_var_x, win_err_var_y,
+                                     win_err_cov_xy, nan_hl,
+                                     x_centroid, y_centroid):
+        """
+        Apply the fallback conditions for the windowed centroid.
+
+        Reset the centroid to the isophotal centroid when any of the
+        following conditions hold: the centroid diverged far from the
+        isophotal centroid and lies outside the 1-sigma ellipse, the
+        total weighted flux is non-positive, the windowed 2nd-order
+        moments are negative, or the windowed covariance determinant
+        is negative. Sources with NaN half-light radius keep NaN.
+
+        Store the 1-sigma position errors as a side effect.
+
+        Parameters
+        ----------
+        xcen_win : `~numpy.ndarray`
+            Windowed x centroids.
+
+        ycen_win : `~numpy.ndarray`
+            Windowed y centroids.
+
+        win_weighted_flux : `~numpy.ndarray`
+            Weighted flux from each source.
+
+        win_cen_mom_xx : `~numpy.ndarray`
+            Windowed central 2nd-order moment xx.
+
+        win_cen_mom_yy : `~numpy.ndarray`
+            Windowed central 2nd-order moment yy.
+
+        win_cen_mom_xy : `~numpy.ndarray`
+            Windowed central 2nd-order moment xy.
+
+        win_err_var_x : `~numpy.ndarray`
+            Error variance in x.
+
+        win_err_var_y : `~numpy.ndarray`
+            Error variance in y.
+
+        win_err_cov_xy : `~numpy.ndarray`
+            Error covariance in xy.
+
+        nan_hl : `~numpy.ndarray`
+            Boolean mask indicating sources with NaN half-light radius.
+
+        x_centroid : `~numpy.ndarray`
+            The isophotal x centroids.
+
+        y_centroid : `~numpy.ndarray`
+            The isophotal y centroids.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            The ``(x, y)`` windowed centroid coordinates, shape
+            ``(n_sources, 2)``.
+        """
+        dx = x_centroid - xcen_win
+        dy = y_centroid - ycen_win
+        cxx = self._array('ellipse_cxx').value
+        cxy = self._array('ellipse_cxy').value
+        cyy = self._array('ellipse_cyy').value
+
+        reset = ((dx**2 > 1) & (dy**2 > 1)
+                 & ((cxx * dx**2 + cxy * dx * dy + cyy * dy**2) > 1))
+        reset |= win_weighted_flux <= 0.0
+        reset |= (win_cen_mom_xx < 0.0) | (win_cen_mom_yy < 0.0)
+        reset |= (win_cen_mom_xx * win_cen_mom_yy
+                  - win_cen_mom_xy**2) < 0.0
+        nan_cen = np.isnan(xcen_win) | np.isnan(ycen_win)
+        reset |= nan_cen & ~nan_hl
+        reset &= ~nan_hl
+        if np.any(reset):
+            xcen_win[reset] = x_centroid[reset]
+            ycen_win[reset] = y_centroid[reset]
+            # Errors are not meaningful for fallback sources
+            win_err_var_x[reset] = np.nan
+            win_err_var_y[reset] = np.nan
+            win_err_cov_xy[reset] = np.nan
+
+        # Store the 1-sigma position errors.
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            xerr = np.sqrt(win_err_var_x)
+            yerr = np.sqrt(win_err_var_y)
+        self._centroid_win_poserr = np.transpose((xerr, yerr))
+
+        return np.transpose((xcen_win, ycen_win))
+
+    def _centroid_win_iter(self, label, xcen, ycen, rad_hl, nan_hl_,
+                           *, data_arr, mask_arr, error_arr, segm_data,
+                           data_shape, do_correct, do_segm_mask,
+                           compute_err, max_aper_size):
+        """
+        Compute the windowed centroid for a single source.
+
+        Parameters
+        ----------
+        label : int
+            The source label.
+
+        xcen : float
+            Initial x centroid (isophotal).
+
+        ycen : float
+            Initial y centroid (isophotal).
+
+        rad_hl : float
+            Half-light radius for this source.
+
+        nan_hl_ : bool
+            Whether the half-light radius is NaN.
+
+        data_arr : `~numpy.ndarray`
+            The 2D data array.
+
+        mask_arr : `~numpy.ndarray` or `None`
+            The 2D boolean mask array.
+
+        error_arr : `~numpy.ndarray` or `None`
+            The 2D error array.
+
+        segm_data : `~numpy.ndarray`
+            The segmentation image data array.
+
+        data_shape : tuple of int
+            Shape of the data array.
+
+        do_correct : bool
+            Whether to apply mirror correction for masked pixels.
+
+        do_segm_mask : bool
+            Whether to mask pixels outside the source segment.
+
+        compute_err : bool
+            Whether to compute position errors.
+
+        max_aper_size : int
+            Maximum aperture size (OOM guard).
+
+        Returns
+        -------
+        result : tuple of float
+            Tuple of (xcen, ycen, weighted_flux, cen_mom_xx,
+            cen_mom_yy, cen_mom_xy, err_var_x, err_var_y,
+            err_cov_xy).
         """
         nan_result = (np.nan, np.nan, 0.0, 0.0, 0.0, 0.0,
                       np.nan, np.nan, np.nan)
-        if nan_hl_ or np.any(~np.isfinite((xcen, ycen))):
+        if nan_hl_ or math.isnan(xcen) or math.isnan(ycen):
             return nan_result
 
         sigma = 2.0 * rad_hl * gaussian_fwhm_to_sigma
-        sigma2 = sigma**2
+        inv_2sigma2 = -1.0 / (2.0 * sigma * sigma)
         radius = 4.0 * sigma
+        radius_sq = radius * radius
 
-        iter_ = 0
-        centroid_shift = 1
+        # Compute the full (unclipped) bounding box for the aperture
+        # using the initial centroid. The radius is fixed, so the
+        # bbox size stays the same across iterations even if the
+        # center shifts slightly.
+        bbox_halfsize = int(radius + 1.5)
+        full_ny = full_nx = 2 * bbox_halfsize + 1
+
+        # OOM guard
+        if full_ny * full_nx > max_aper_size:
+            return nan_result
+
+        # Cache for cutout data when the integer bbox doesn't change
+        prev_ixcen = prev_iycen = None
+        cached_data = cached_mask = cached_error = None
+
         max_iters = 16
         centroid_threshold = 0.0001
+        iter_ = 0
+        dcen = 1.0
         weighted_flux = 0.0
-        dx_shift = dy_shift = 0.0
-        raw_mom_xx = raw_mom_yy = raw_mom_xy = 0.0
+        dx_mom = dy_mom = 0.0
+        raw_mx2 = raw_my2 = raw_mxy = 0.0
         err_sum = err_var_x = err_var_y = err_cov_xy = 0.0
-        while iter_ < max_iters and centroid_shift > centroid_threshold:
-            aperture = CircularAperture((xcen, ycen), radius)
-            aperture_mask = self._aperture_to_mask(aperture, **kwargs)
-            if aperture_mask is None:
-                xcen = np.nan
-                ycen = np.nan
-                break
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            while iter_ < max_iters and dcen > centroid_threshold:
+                # Compute integer bounding box
+                ixmin = int(xcen + 0.5) - bbox_halfsize
+                ixmax = ixmin + full_nx
+                iymin = int(ycen + 0.5) - bbox_halfsize
+                iymax = iymin + full_ny
 
-            # For consistency with the isophotal centroid, a local
-            # background is not subtracted here
-            data, error, mask, cutout_xycen, slc_sm = (
-                self._make_aperture_data(
-                    label, xcen, ycen, aperture_mask.bbox, 0.0,
-                    make_error=compute_err))
+                # Clip to data boundaries
+                slc_y = slice(max(0, iymin), min(data_shape[0], iymax))
+                slc_x = slice(max(0, ixmin), min(data_shape[1], ixmax))
+                if (slc_y.start >= slc_y.stop
+                        or slc_x.start >= slc_x.stop):
+                    xcen = np.nan
+                    ycen = np.nan
+                    break
 
-            if data is None:
-                # Return NaN if centroid moves the aperture
-                # completely off the image
-                xcen = np.nan
-                ycen = np.nan
-                break
+                cur_ixcen = int(xcen + 0.5)
+                cur_iycen = int(ycen + 0.5)
 
-            aperture_weights = aperture_mask.data[slc_sm]
+                # Recompute cutout data only when the integer center
+                # changes to avoid redundant _mask_to_mirrored_value
+                # calls
+                if cur_ixcen != prev_ixcen or cur_iycen != prev_iycen:
+                    prev_ixcen = cur_ixcen
+                    prev_iycen = cur_iycen
 
-            # Define a 2D Gaussian weight array
-            xvals = np.arange(data.shape[1]) - cutout_xycen[0]
-            yvals = np.arange(data.shape[0]) - cutout_xycen[1]
-            xx, yy = np.meshgrid(xvals, yvals)
-            rr2 = xx**2 + yy**2
-            gweight = np.exp(-rr2 / (2.0 * sigma2))
+                    data = data_arr[slc_y, slc_x].astype(float)
+                    data_mask = ~np.isfinite(data)
+                    if mask_arr is not None:
+                        data_mask |= mask_arr[slc_y, slc_x]
 
-            # Ignore multiplication with non-finite values
-            # and ignore divide-by-zero if moments[0, 0] = 0
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
+                    cutout_xycen = (xcen - max(0, ixmin),
+                                    ycen - max(0, iymin))
 
-                # Accumulate error variance terms. The combined
-                # weight (aperture_weights * gweight) includes the
-                # Gaussian weight.
+                    if do_segm_mask:
+                        seg_cut = segm_data[slc_y, slc_x]
+                        segm_mask = ((seg_cut != label)
+                                     & (seg_cut != 0))
+                        if self.aperture_mask_method == 'mask':
+                            data_mask = data_mask | segm_mask
+
+                    if do_correct:
+                        data = _mask_to_mirrored_value(
+                            data, segm_mask, cutout_xycen,
+                            mask=data_mask)
+
+                    cached_data = data
+                    cached_mask = data_mask
+
+                    if compute_err:
+                        cached_error = (error_arr[slc_y, slc_x]
+                                        .astype(float))
+
+                # Centroid position in cutout coordinates
+                cx = xcen - max(0, ixmin)
+                cy = ycen - max(0, iymin)
+
+                ny = slc_y.stop - slc_y.start
+                nx = slc_x.stop - slc_x.start
+
+                # Build coordinate grids relative to centroid
+                # (reused for circle mask, Gaussian, and moments)
+                xvals = np.arange(nx) - cx
+                yvals = np.arange(ny) - cy
+                xx = xvals[np.newaxis, :]
+                yy = yvals[:, np.newaxis]
+
+                # Inline binary circle mask
+                rr2 = xx * xx + yy * yy
+                aper_weights = (rr2 <= radius_sq).astype(float)
+
+                # Inline Gaussian weight
+                gweight = np.exp(rr2 * inv_2sigma2)
+
+                # Accumulate error variance terms
                 if compute_err:
-                    var = error**2
-                    var[mask] = 0.0
-                    combined_weight = aperture_weights * gweight
+                    var = cached_error**2
+                    var[cached_mask] = 0.0
+                    combined_weight = aper_weights * gweight
                     weighted_var = combined_weight**2 * var
                     err_sum = np.sum(weighted_var)
-                    # Compute raw error variances without the
-                    # pixel-size correction.
-                    err_var_x = np.sum(weighted_var * xx**2)
-                    err_var_y = np.sum(weighted_var * yy**2)
+                    err_var_x = np.sum(weighted_var * xx * xx)
+                    err_var_y = np.sum(weighted_var * yy * yy)
                     err_cov_xy = np.sum(weighted_var * xx * yy)
 
-                data = data * aperture_weights * gweight
-                data[mask] = 0.0
+                # Apply weights and mask
+                weighted = (cached_data * aper_weights * gweight)
+                weighted[cached_mask] = 0.0
 
-                moments = _image_moments(data, center=cutout_xycen,
-                                         order=2)
-                weighted_flux = moments[0, 0]
-                dy_shift = moments[1, 0] / weighted_flux
-                dx_shift = moments[0, 1] / weighted_flux
-                raw_mom_xx = moments[0, 2]
-                raw_mom_yy = moments[2, 0]
-                raw_mom_xy = moments[1, 1]
-                centroid_shift = np.sqrt(dx_shift**2 + dy_shift**2)
-                xcen += dx_shift * 2.0
-                ycen += dy_shift * 2.0
+                # Inline moment computation (including 2nd order
+                # for the fallback checks)
+                weighted_flux = np.sum(weighted)
+                dx_mom = np.sum(weighted * xx) / weighted_flux
+                dy_mom = np.sum(weighted * yy) / weighted_flux
+                raw_mx2 = np.sum(weighted * xx * xx)
+                raw_my2 = np.sum(weighted * yy * yy)
+                raw_mxy = np.sum(weighted * xx * yy)
+
+                dcen = math.sqrt(dx_mom * dx_mom
+                                 + dy_mom * dy_mom)
+                xcen += dx_mom * 2.0
+                ycen += dy_mom * 2.0
                 iter_ += 1
 
         # Compute windowed central 2nd moments from last
         # iteration for the fallback checks.
         if np.isfinite(weighted_flux) and weighted_flux > 0:
-            cen_mom_xx = (raw_mom_xx / weighted_flux
-                          - dx_shift * dx_shift)
-            cen_mom_yy = (raw_mom_yy / weighted_flux
-                          - dy_shift * dy_shift)
-            cen_mom_xy = (raw_mom_xy / weighted_flux
-                          - dx_shift * dy_shift)
+            cen_mom_xx = (raw_mx2 / weighted_flux
+                          - dx_mom * dx_mom)
+            cen_mom_yy = (raw_my2 / weighted_flux
+                          - dy_mom * dy_mom)
+            cen_mom_xy = (raw_mxy / weighted_flux
+                          - dx_mom * dy_mom)
         else:
             cen_mom_xx = cen_mom_yy = cen_mom_xy = 0.0
 
         # Normalize error terms by step_factor^2 / weighted_flux^2
-        if compute_err and np.isfinite(weighted_flux) and weighted_flux > 0:
-            step_factor = 2.0
-            norm = step_factor**2 / (weighted_flux**2)
-            err_var_x *= norm
-            err_var_y *= norm
-            err_cov_xy *= norm
-
-            # Handle fully correlated profiles that cause a
-            # singularity.
-            err_sum_norm = err_sum * (1.0 / 12) * norm
-            if (err_var_x * err_var_y - err_cov_xy**2) < err_sum_norm**2:
-                err_var_x += err_sum_norm
-                err_var_y += err_sum_norm
-
-            # Add pixel-size variance correction (1/12).
-            err_var_x += err_sum_norm
-            err_var_y += err_sum_norm
+        if compute_err:
+            err_var_x, err_var_y, err_cov_xy = (
+                self._normalize_win_errors(
+                    err_sum, err_var_x, err_var_y, err_cov_xy,
+                    weighted_flux))
         else:
             err_var_x = err_var_y = err_cov_xy = np.nan
 
-        return (xcen, ycen, weighted_flux, cen_mom_xx, cen_mom_yy,
-                cen_mom_xy, err_var_x, err_var_y, err_cov_xy)
+        return (xcen, ycen, weighted_flux, cen_mom_xx,
+                cen_mom_yy, cen_mom_xy,
+                err_var_x, err_var_y, err_cov_xy)
 
     @cached_property
     @use_detcat
-    def centroid_win(self):  # noqa: PLR0915
+    def centroid_win(self):
         """
         The ``(x, y)`` coordinate of the "windowed" centroid.
 
@@ -1924,271 +2170,36 @@ class SourceCatalog:
         do_segm_mask = self.aperture_mask_method != 'none'
         max_aper_size = max(data_arr.size, 1_000_000)
 
-        max_iters = 16
-        centroid_threshold = 0.0001
+        iter_kwargs = {
+            'data_arr': data_arr,
+            'mask_arr': mask_arr,
+            'error_arr': error_arr,
+            'segm_data': segm_data,
+            'data_shape': data_shape,
+            'do_correct': do_correct,
+            'do_segm_mask': do_segm_mask,
+            'compute_err': compute_err,
+            'max_aper_size': max_aper_size,
+        }
 
-        xcen_win = []
-        ycen_win = []
-        win_weighted_flux = []
-        win_cen_mom_xx = []
-        win_cen_mom_yy = []
-        win_cen_mom_xy = []
-        win_err_var_x = []
-        win_err_var_y = []
-        win_err_cov_xy = []
+        results = []
         for label, xcen, ycen, rad_hl, nan_hl_ in zip(
                 labels, x_centroid, y_centroid, radius_hl, nan_hl,
                 strict=True):
+            results.append(self._centroid_win_iter(
+                label, xcen, ycen, rad_hl, nan_hl_, **iter_kwargs))
 
-            if nan_hl_ or math.isnan(xcen) or math.isnan(ycen):
-                xcen_win.append(np.nan)
-                ycen_win.append(np.nan)
-                win_weighted_flux.append(0.0)
-                win_cen_mom_xx.append(0.0)
-                win_cen_mom_yy.append(0.0)
-                win_cen_mom_xy.append(0.0)
-                win_err_var_x.append(np.nan)
-                win_err_var_y.append(np.nan)
-                win_err_cov_xy.append(np.nan)
-                continue
+        (xcen_win, ycen_win, win_weighted_flux,
+         win_cen_mom_xx, win_cen_mom_yy, win_cen_mom_xy,
+         win_err_var_x, win_err_var_y,
+         win_err_cov_xy) = (np.array(col)
+                            for col in zip(*results, strict=True))
 
-            sigma = 2.0 * rad_hl * gaussian_fwhm_to_sigma
-            inv_2sigma2 = -1.0 / (2.0 * sigma * sigma)
-            radius = 4.0 * sigma
-            radius_sq = radius * radius
-
-            # Compute the full (unclipped) bounding box for the aperture
-            # using the initial centroid. The radius is fixed, so the
-            # bbox size stays the same across iterations even if the
-            # center shifts slightly.
-            bbox_halfsize = int(radius + 1.5)
-            full_ny = full_nx = 2 * bbox_halfsize + 1
-
-            # OOM guard
-            if full_ny * full_nx > max_aper_size:
-                xcen_win.append(np.nan)
-                ycen_win.append(np.nan)
-                win_weighted_flux.append(0.0)
-                win_cen_mom_xx.append(0.0)
-                win_cen_mom_yy.append(0.0)
-                win_cen_mom_xy.append(0.0)
-                win_err_var_x.append(np.nan)
-                win_err_var_y.append(np.nan)
-                win_err_cov_xy.append(np.nan)
-                continue
-
-            # Cache for cutout data when the integer bbox doesn't change
-            prev_ixcen = prev_iycen = None
-            cached_data = None
-            cached_mask = None
-            cached_error = None
-
-            iter_ = 0
-            dcen = 1.0
-            weighted_flux = 0.0
-            dx_mom = dy_mom = 0.0
-            raw_mx2 = raw_my2 = raw_mxy = 0.0
-            err_sum = err_var_x = err_var_y = err_cov_xy = 0.0
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                while iter_ < max_iters and dcen > centroid_threshold:
-                    # Compute integer bounding box
-                    ixmin = int(xcen + 0.5) - bbox_halfsize
-                    ixmax = ixmin + full_nx
-                    iymin = int(ycen + 0.5) - bbox_halfsize
-                    iymax = iymin + full_ny
-
-                    # Clip to data boundaries
-                    slc_y = slice(max(0, iymin), min(data_shape[0], iymax))
-                    slc_x = slice(max(0, ixmin), min(data_shape[1], ixmax))
-                    if (slc_y.start >= slc_y.stop
-                            or slc_x.start >= slc_x.stop):
-                        xcen = np.nan
-                        ycen = np.nan
-                        break
-
-                    cur_ixcen = int(xcen + 0.5)
-                    cur_iycen = int(ycen + 0.5)
-
-                    # Recompute cutout data only when the integer center
-                    # changes to avoid redundant _mask_to_mirrored_value
-                    # calls
-                    if cur_ixcen != prev_ixcen or cur_iycen != prev_iycen:
-                        prev_ixcen = cur_ixcen
-                        prev_iycen = cur_iycen
-
-                        data = data_arr[slc_y, slc_x].astype(float)
-                        data_mask = ~np.isfinite(data)
-                        if mask_arr is not None:
-                            data_mask |= mask_arr[slc_y, slc_x]
-
-                        cutout_xycen = (xcen - max(0, ixmin),
-                                        ycen - max(0, iymin))
-
-                        if do_segm_mask:
-                            seg_cut = segm_data[slc_y, slc_x]
-                            segm_mask = ((seg_cut != label)
-                                         & (seg_cut != 0))
-                            if self.aperture_mask_method == 'mask':
-                                data_mask = data_mask | segm_mask
-
-                        if do_correct:
-                            data = _mask_to_mirrored_value(
-                                data, segm_mask, cutout_xycen,
-                                mask=data_mask)
-
-                        cached_data = data
-                        cached_mask = data_mask
-
-                        if compute_err:
-                            cached_error = (error_arr[slc_y, slc_x]
-                                            .astype(float))
-
-                    # Centroid position in cutout coordinates
-                    cx = xcen - max(0, ixmin)
-                    cy = ycen - max(0, iymin)
-
-                    ny = slc_y.stop - slc_y.start
-                    nx = slc_x.stop - slc_x.start
-
-                    # Build coordinate grids relative to centroid
-                    # (reused for circle mask, Gaussian, and moments)
-                    xvals = np.arange(nx) - cx
-                    yvals = np.arange(ny) - cy
-                    xx = xvals[np.newaxis, :]
-                    yy = yvals[:, np.newaxis]
-
-                    # Inline binary circle mask
-                    rr2 = xx * xx + yy * yy
-                    aper_weights = (rr2 <= radius_sq).astype(float)
-
-                    # Inline Gaussian weight
-                    gweight = np.exp(rr2 * inv_2sigma2)
-
-                    # Accumulate error variance terms
-                    if compute_err:
-                        var = cached_error**2
-                        var[cached_mask] = 0.0
-                        combined_weight = aper_weights * gweight
-                        weighted_var = combined_weight**2 * var
-                        err_sum = np.sum(weighted_var)
-                        err_var_x = np.sum(weighted_var * xx * xx)
-                        err_var_y = np.sum(weighted_var * yy * yy)
-                        err_cov_xy = np.sum(weighted_var * xx * yy)
-
-                    # Apply weights and mask
-                    weighted = (cached_data * aper_weights * gweight)
-                    weighted[cached_mask] = 0.0
-
-                    # Inline moment computation (including 2nd order
-                    # for the fallback checks)
-                    weighted_flux = np.sum(weighted)
-                    dx_mom = np.sum(weighted * xx) / weighted_flux
-                    dy_mom = np.sum(weighted * yy) / weighted_flux
-                    raw_mx2 = np.sum(weighted * xx * xx)
-                    raw_my2 = np.sum(weighted * yy * yy)
-                    raw_mxy = np.sum(weighted * xx * yy)
-
-                    dcen = math.sqrt(dx_mom * dx_mom
-                                     + dy_mom * dy_mom)
-                    xcen += dx_mom * 2.0
-                    ycen += dy_mom * 2.0
-                    iter_ += 1
-
-            # Compute windowed central 2nd moments from last
-            # iteration for the fallback checks.
-            if np.isfinite(weighted_flux) and weighted_flux > 0:
-                cen_mom_xx = (raw_mx2 / weighted_flux
-                              - dx_mom * dx_mom)
-                cen_mom_yy = (raw_my2 / weighted_flux
-                              - dy_mom * dy_mom)
-                cen_mom_xy = (raw_mxy / weighted_flux
-                              - dx_mom * dy_mom)
-            else:
-                cen_mom_xx = cen_mom_yy = cen_mom_xy = 0.0
-
-            # Normalize error terms by step_factor^2 / weighted_flux^2
-            if (compute_err and np.isfinite(weighted_flux)
-                    and weighted_flux > 0):
-                step_factor = 2.0
-                norm = step_factor**2 / (weighted_flux**2)
-                err_var_x *= norm
-                err_var_y *= norm
-                err_cov_xy *= norm
-
-                # Handle fully correlated profiles that cause a
-                # singularity.
-                err_sum_norm = err_sum * (1.0 / 12) * norm
-                if (err_var_x * err_var_y
-                        - err_cov_xy**2) < err_sum_norm**2:
-                    err_var_x += err_sum_norm
-                    err_var_y += err_sum_norm
-
-                # Add pixel-size variance correction (1/12).
-                err_var_x += err_sum_norm
-                err_var_y += err_sum_norm
-            else:
-                err_var_x = err_var_y = err_cov_xy = np.nan
-
-            win_weighted_flux.append(weighted_flux)
-            win_cen_mom_xx.append(cen_mom_xx)
-            win_cen_mom_yy.append(cen_mom_yy)
-            win_cen_mom_xy.append(cen_mom_xy)
-            win_err_var_x.append(err_var_x)
-            win_err_var_y.append(err_var_y)
-            win_err_cov_xy.append(err_cov_xy)
-            xcen_win.append(xcen)
-            ycen_win.append(ycen)
-
-        xcen_win = np.array(xcen_win)
-        ycen_win = np.array(ycen_win)
-        win_weighted_flux = np.array(win_weighted_flux)
-        win_cen_mom_xx = np.array(win_cen_mom_xx)
-        win_cen_mom_yy = np.array(win_cen_mom_yy)
-        win_cen_mom_xy = np.array(win_cen_mom_xy)
-        win_err_var_x = np.array(win_err_var_x)
-        win_err_var_y = np.array(win_err_var_y)
-        win_err_cov_xy = np.array(win_err_cov_xy)
-
-        # Reset to the isophotal centroid when any of:
-        # 1. Centroid diverged far AND outside 1-sigma ellipse
-        # 2. Non-positive total weighted flux
-        # 3. Negative windowed 2nd-order moments
-        # 4. Negative windowed covariance determinant
-        # Sources with NaN half-light radius keep NaN
-        # (no valid window size).
-        dx = x_centroid - xcen_win
-        dy = y_centroid - ycen_win
-        cxx = self._array('ellipse_cxx').value
-        cxy = self._array('ellipse_cxy').value
-        cyy = self._array('ellipse_cyy').value
-
-        reset = ((dx**2 > 1) & (dy**2 > 1)
-                 & ((cxx * dx**2 + cxy * dx * dy + cyy * dy**2) > 1))
-        reset |= win_weighted_flux <= 0.0
-        reset |= (win_cen_mom_xx < 0.0) | (win_cen_mom_yy < 0.0)
-        reset |= (win_cen_mom_xx * win_cen_mom_yy
-                  - win_cen_mom_xy**2) < 0.0
-        nan_cen = np.isnan(xcen_win) | np.isnan(ycen_win)
-        reset |= nan_cen & ~nan_hl
-        reset &= ~nan_hl
-        if np.any(reset):
-            xcen_win[reset] = x_centroid[reset]
-            ycen_win[reset] = y_centroid[reset]
-            # Errors are not meaningful for fallback sources
-            win_err_var_x[reset] = np.nan
-            win_err_var_y[reset] = np.nan
-            win_err_cov_xy[reset] = np.nan
-
-        # Store the 1-sigma position errors. Take sqrt to convert
-        # variance to 1-sigma.
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            xerr = np.sqrt(win_err_var_x)
-            yerr = np.sqrt(win_err_var_y)
-        self._centroid_win_poserr = np.transpose((xerr, yerr))
-
-        return np.transpose((xcen_win, ycen_win))
+        return self._apply_centroid_win_fallback(
+            xcen_win, ycen_win, win_weighted_flux,
+            win_cen_mom_xx, win_cen_mom_yy, win_cen_mom_xy,
+            win_err_var_x, win_err_var_y, win_err_cov_xy, nan_hl,
+            x_centroid, y_centroid)
 
     @cached_property
     @use_detcat
