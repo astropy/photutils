@@ -457,7 +457,7 @@ class RectangularAnnulus(PixelAperture):
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.0):
         if not w_out > w_in:
-            msg = '"w_out" must be greater than "w_in"'
+            msg = "'w_out' must be greater than 'w_in'"
             raise ValueError(msg)
 
         self.positions = positions
@@ -468,7 +468,7 @@ class RectangularAnnulus(PixelAperture):
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
         elif not h_out > h_in:
-            msg = '"h_out" must be greater than "h_in"'
+            msg = "'h_out' must be greater than 'h_in'"
             raise ValueError(msg)
         self.h_in = h_in
 
@@ -779,7 +779,7 @@ class SkyRectangularAnnulus(SkyAperture):
     def __init__(self, positions, w_in, w_out, h_out, h_in=None,
                  theta=0.0 * u.deg):
         if not w_out > w_in:
-            msg = '"w_out" must be greater than "w_in"'
+            msg = "'w_out' must be greater than 'w_in'"
             raise ValueError(msg)
 
         self.positions = positions
@@ -790,7 +790,7 @@ class SkyRectangularAnnulus(SkyAperture):
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
         elif not h_out > h_in:
-            msg = '"h_out" must be greater than "h_in"'
+            msg = "'h_out' must be greater than 'h_in'"
             raise ValueError(msg)
         self.h_in = h_in
 

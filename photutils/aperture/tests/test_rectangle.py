@@ -68,7 +68,7 @@ class TestRectangularAnnulus(BaseTestAperture):
             RectangularAnnulus(POSITIONS, w_in=radius, w_out=20.0, h_out=17,
                                theta=np.pi / 3)
 
-        match = '"w_out" must be greater than "w_in"'
+        match = "'w_out' must be greater than 'w_in'"
         with pytest.raises(ValueError, match=match):
             RectangularAnnulus(POSITIONS, w_in=10.0, w_out=radius, h_out=17,
                                theta=np.pi / 3)
@@ -97,7 +97,7 @@ class TestRectangularAnnulus(BaseTestAperture):
         """
         Test that a ValueError is raised when h_in >= h_out.
         """
-        match = '"h_out" must be greater than "h_in"'
+        match = "'h_out' must be greater than 'h_in'"
         with pytest.raises(ValueError, match=match):
             RectangularAnnulus(POSITIONS, w_in=10.0, w_out=20.0, h_out=5.0,
                                h_in=8.0, theta=np.pi / 3)
@@ -149,7 +149,7 @@ class TestSkyRectangularAnnulus(BaseTestAperture):
                                   w_out=20.0 * UNIT, h_out=17.0 * UNIT,
                                   theta=60 * u.deg)
 
-        match = '"w_out" must be greater than "w_in"'
+        match = "'w_out' must be greater than 'w_in'"
         with pytest.raises(ValueError, match=match):
             SkyRectangularAnnulus(SKYCOORD, w_in=10.0 * UNIT,
                                   w_out=radius * UNIT, h_out=17.0 * UNIT,
@@ -177,7 +177,7 @@ class TestSkyRectangularAnnulus(BaseTestAperture):
         """
         Test that a ValueError is raised when h_in >= h_out.
         """
-        match = '"h_out" must be greater than "h_in"'
+        match = "'h_out' must be greater than 'h_in'"
         with pytest.raises(ValueError, match=match):
             SkyRectangularAnnulus(SKYCOORD, w_in=10.0 * UNIT,
                                   w_out=20.0 * UNIT, h_out=5.0 * UNIT,

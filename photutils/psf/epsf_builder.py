@@ -1148,7 +1148,7 @@ class EPSFBuilder:
                        or any(p.kind == inspect.Parameter.VAR_KEYWORD
                               for p in spec.parameters.values()))
         if not has_maxiter:
-            msg = ('"fitter_maxiters" will be ignored because '
+            msg = ("'fitter_maxiters' will be ignored because "
                    'it is not accepted by the input fitter')
             warnings.warn(msg, AstropyUserWarning)
             return None

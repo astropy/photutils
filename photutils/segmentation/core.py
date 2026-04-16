@@ -399,7 +399,7 @@ class SegmentationImage:
         bounding boxes containing the labeled regions.
         """
         if self._ndim != 2:
-            msg = 'The "bbox" attribute requires a 2D segmentation image.'
+            msg = "The 'bbox' attribute requires a 2D segmentation image."
             raise ValueError(msg)
 
         return [BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,

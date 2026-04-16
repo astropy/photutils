@@ -120,7 +120,7 @@ class TestCurveOfGrowth:
         cg1.unnormalize()
         assert_allclose(cg1.profile, cg2.profile)
 
-        match = 'invalid method, must be "max" or "sum"'
+        match = "invalid method, must be 'max' or 'sum'"
         with pytest.raises(ValueError, match=match):
             cg1.normalize(method='invalid')
 
@@ -431,7 +431,7 @@ class TestEnsquaredCurveOfGrowth:
         ecg1.unnormalize()
         assert_allclose(ecg1.profile, ecg2.profile)
 
-        match = 'invalid method, must be "max" or "sum"'
+        match = "invalid method, must be 'max' or 'sum'"
         with pytest.raises(ValueError, match=match):
             ecg1.normalize(method='invalid')
 
@@ -712,7 +712,7 @@ class TestEllipticalCurveOfGrowth:
         ecg1.unnormalize()
         assert_allclose(ecg1.profile, ecg2.profile)
 
-        match = 'invalid method, must be "max" or "sum"'
+        match = "invalid method, must be 'max' or 'sum'"
         with pytest.raises(ValueError, match=match):
             ecg1.normalize(method='invalid')
 

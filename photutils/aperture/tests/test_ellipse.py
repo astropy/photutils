@@ -67,7 +67,7 @@ class TestEllipticalAnnulus(BaseTestAperture):
             EllipticalAnnulus(POSITIONS, a_in=radius, a_out=20.0, b_out=17.0,
                               theta=np.pi / 3)
 
-        match = '"a_out" must be greater than "a_in"'
+        match = "'a_out' must be greater than 'a_in'"
         with pytest.raises(ValueError, match=match):
             EllipticalAnnulus(POSITIONS, a_in=10.0, a_out=radius, b_out=17.0,
                               theta=np.pi / 3)
@@ -96,7 +96,7 @@ class TestEllipticalAnnulus(BaseTestAperture):
         """
         Test that a ValueError is raised when b_in >= b_out.
         """
-        match = '"b_out" must be greater than "b_in"'
+        match = "'b_out' must be greater than 'b_in'"
         with pytest.raises(ValueError, match=match):
             EllipticalAnnulus(POSITIONS, a_in=10.0, a_out=20.0, b_out=5.0,
                               b_in=8.0, theta=np.pi / 3)
@@ -148,7 +148,7 @@ class TestSkyEllipticalAnnulus(BaseTestAperture):
                                  a_out=20.0 * UNIT, b_out=17.0 * UNIT,
                                  theta=60 * u.deg)
 
-        match = '"a_out" must be greater than "a_in"'
+        match = "'a_out' must be greater than 'a_in'"
         with pytest.raises(ValueError, match=match):
             SkyEllipticalAnnulus(SKYCOORD, a_in=10.0 * UNIT,
                                  a_out=radius * UNIT, b_out=17.0 * UNIT,
@@ -175,7 +175,7 @@ class TestSkyEllipticalAnnulus(BaseTestAperture):
         """
         Test that a ValueError is raised when b_in >= b_out.
         """
-        match = '"b_out" must be greater than "b_in"'
+        match = "'b_out' must be greater than 'b_in'"
         with pytest.raises(ValueError, match=match):
             SkyEllipticalAnnulus(SKYCOORD, a_in=10.0 * UNIT, a_out=20.0 * UNIT,
                                  b_out=5.0 * UNIT, b_in=8.0 * UNIT,

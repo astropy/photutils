@@ -84,7 +84,7 @@ class TestCircularAnnulus(BaseTestAperture):
         with pytest.raises(ValueError, match=match):
             CircularAnnulus(POSITIONS, r_in=radius, r_out=7.0)
 
-        match = 'r_out must be greater than r_in'
+        match = "'r_out' must be greater than 'r_in'"
         with pytest.raises(ValueError, match=match):
             CircularAnnulus(POSITIONS, r_in=3.0, r_out=radius)
 
@@ -122,7 +122,7 @@ class TestSkyCircularAnnulus(BaseTestAperture):
         with pytest.raises(ValueError, match=match):
             SkyCircularAnnulus(SKYCOORD, r_in=radius * UNIT, r_out=7.0 * UNIT)
 
-        match = '"r_out" must be greater than "r_in"'
+        match = "'r_out' must be greater than 'r_in'"
         with pytest.raises(ValueError, match=match):
             SkyCircularAnnulus(SKYCOORD, r_in=3.0 * UNIT, r_out=radius * UNIT)
 
@@ -137,7 +137,7 @@ class TestSkyCircularAnnulus(BaseTestAperture):
         """
         Test that a ValueError is raised when r_out <= r_in.
         """
-        match = '"r_out" must be greater than "r_in"'
+        match = "'r_out' must be greater than 'r_in'"
         with pytest.raises(ValueError, match=match):
             SkyCircularAnnulus(SKYCOORD, r_in=7.0 * UNIT, r_out=3.0 * UNIT)
 

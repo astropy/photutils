@@ -136,21 +136,21 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
         ax2.set_title(r'Poisson noise ($\mu=5$)')
     """
     if mean is None:
-        msg = '"mean" must be input'
+        msg = "'mean' must be input"
         raise ValueError(msg)
 
     rng = np.random.default_rng(seed)
 
     if distribution == 'gaussian':
         if stddev is None:
-            msg = '"stddev" must be input for Gaussian noise'
+            msg = "'stddev' must be input for Gaussian noise"
             raise ValueError(msg)
         image = rng.normal(loc=mean, scale=stddev, size=shape)
     elif distribution == 'poisson':
         image = rng.poisson(lam=mean, size=shape)
     else:
         msg = (f'Invalid distribution: {distribution}. Use either '
-               '"gaussian" or "poisson".')
+               "'gaussian' or 'poisson'.")
         raise ValueError(msg)
 
     return image

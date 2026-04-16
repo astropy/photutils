@@ -187,7 +187,7 @@ class GriddedPSFModel(Fittable2DModel):
             raise ValueError(msg)
 
         if 'oversampling' not in data.meta:
-            msg = '"oversampling" must be in the nddata meta dictionary'
+            msg = "'oversampling' must be in the nddata meta dictionary"
             raise ValueError(msg)
 
     @staticmethod
@@ -240,7 +240,7 @@ class GriddedPSFModel(Fittable2DModel):
         try:
             grid_xypos = np.array(data.meta['grid_xypos'])
         except KeyError as exc:
-            msg = '"grid_xypos" must be in the nddata meta dictionary'
+            msg = "'grid_xypos' must be in the nddata meta dictionary"
             raise ValueError(msg) from exc
 
         if len(grid_xypos) != data.data.shape[0]:

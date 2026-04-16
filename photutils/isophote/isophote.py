@@ -167,7 +167,7 @@ class Isophote:
 
     @staticmethod
     def _raise_sma_error(err):
-        msg = 'Comparison object does not have a "sma" attribute'
+        msg = "Comparison object does not have a 'sma' attribute"
         raise AttributeError(msg) from err
 
     # This method is useful for sorting lists of instances. Note

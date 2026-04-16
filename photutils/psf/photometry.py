@@ -751,7 +751,7 @@ class PSFPhotometry:
         """
         spec = inspect.signature(self.fitter.__call__)
         if 'maxiter' not in spec.parameters:
-            msg = ('"maxiters" will be ignored because it is not accepted '
+            msg = ("'maxiters' will be ignored because it is not accepted "
                    'by the input fitter __call__ method.')
             warnings.warn(msg, AstropyUserWarning)
             maxiters = None

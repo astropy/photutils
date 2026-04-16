@@ -328,7 +328,7 @@ class CircularAnnulus(PixelAperture):
 
     def __init__(self, positions, r_in, r_out):
         if not r_out > r_in:
-            msg = 'r_out must be greater than r_in'
+            msg = "'r_out' must be greater than 'r_in'"
             raise ValueError(msg)
 
         self.positions = positions
@@ -566,7 +566,7 @@ class SkyCircularAnnulus(SkyAperture):
 
     def __init__(self, positions, r_in, r_out):
         if not r_out > r_in:
-            msg = '"r_out" must be greater than "r_in"'
+            msg = "'r_out' must be greater than 'r_in'"
             raise ValueError(msg)
 
         self.positions = positions

@@ -1143,7 +1143,7 @@ class TestSourceCatalog:
 
         shape = (100, 100)
 
-        match = 'mode must be "partial" or "trim"'
+        match = "mode must be 'partial' or 'trim'"
         with pytest.raises(ValueError, match=match):
             cat.make_cutouts(shape, mode='strict')
 

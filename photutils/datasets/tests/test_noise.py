@@ -82,11 +82,11 @@ def test_make_noise_image_nomean():
     with pytest.raises(ValueError, match=match):
         make_noise_image(shape, distribution='invalid', mean=0, stddev=2.0)
 
-    match = '"mean" must be input'
+    match = "'mean' must be input"
     with pytest.raises(ValueError, match=match):
         make_noise_image(shape, distribution='gaussian', stddev=2.0)
 
-    match = '"stddev" must be input for Gaussian noise'
+    match = "'stddev' must be input for Gaussian noise"
     with pytest.raises(ValueError, match=match):
         make_noise_image(shape, distribution='gaussian', mean=2.0)
 

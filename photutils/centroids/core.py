@@ -641,7 +641,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
 
     spec = inspect.signature(centroid_func)
     if 'mask' not in spec.parameters:
-        msg = 'The input "centroid_func" must have a "mask" keyword.'
+        msg = "The input 'centroid_func' must have a 'mask' keyword."
         raise ValueError(msg)
 
     # Drop any **kwargs not supported by the centroid_func

@@ -167,7 +167,7 @@ class TestGriddedPSFModel:
         # check that grid_xypos is in meta
         meta = {'oversampling': 4}
         nddata = NDData(data, meta=meta)
-        match = '"grid_xypos" must be in the nddata meta dictionary'
+        match = "'grid_xypos' must be in the nddata meta dictionary"
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
@@ -196,7 +196,7 @@ class TestGriddedPSFModel:
         # check that oversampling is in meta
         meta = {'grid_xypos': [[0, 0], [0, 1], [1, 0], [1, 1]]}
         nddata = NDData(data, meta=meta)
-        match = '"oversampling" must be in the nddata meta dictionary'
+        match = "'oversampling' must be in the nddata meta dictionary"
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 

@@ -272,7 +272,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
                 warnings.simplefilter('ignore', RuntimeWarning)
                 normalization = nansum(self.profile)
         else:
-            msg = 'invalid method, must be "max" or "sum"'
+            msg = "invalid method, must be 'max' or 'sum'"
             raise ValueError(msg)
 
         if normalization == 0 or not np.isfinite(normalization):

@@ -852,7 +852,7 @@ def _validate_coordinate_consistency(data, catalogs):
         # Single catalog with multiple images requires skycoord and WCS
         if 'skycoord' not in catalogs[0].colnames:
             msg = ('When inputting a single catalog with multiple NDData '
-                   'objects, the catalog must have a "skycoord" column.')
+                   "objects, the catalog must have a 'skycoord' column.")
             raise ValueError(msg)
 
         if any(img.wcs is None for img in data):
@@ -867,7 +867,7 @@ def _validate_coordinate_consistency(data, catalogs):
 
             if not has_xy and not has_skycoord:
                 msg = (f'Catalog at index {i} must have either '
-                       '"x" and "y" columns or a "skycoord" column.')
+                       "'x' and 'y' columns or a 'skycoord' column.")
                 raise ValueError(msg)
 
             # If only skycoord is available, ensure WCS is present

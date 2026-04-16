@@ -415,7 +415,7 @@ class EllipticalAnnulus(PixelAperture):
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, a_in, a_out, b_out, b_in=None, theta=0.0):
         if not a_out > a_in:
-            msg = '"a_out" must be greater than "a_in"'
+            msg = "'a_out' must be greater than 'a_in'"
             raise ValueError(msg)
 
         self.positions = positions
@@ -426,7 +426,7 @@ class EllipticalAnnulus(PixelAperture):
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
         elif not b_out > b_in:
-            msg = '"b_out" must be greater than "b_in"'
+            msg = "'b_out' must be greater than 'b_in'"
             raise ValueError(msg)
         self.b_in = b_in
 
@@ -726,7 +726,7 @@ class SkyEllipticalAnnulus(SkyAperture):
     def __init__(self, positions, a_in, a_out, b_out, b_in=None,
                  theta=0.0 * u.deg):
         if not a_out > a_in:
-            msg = '"a_out" must be greater than "a_in"'
+            msg = "'a_out' must be greater than 'a_in'"
             raise ValueError(msg)
 
         self.positions = positions
@@ -737,7 +737,7 @@ class SkyEllipticalAnnulus(SkyAperture):
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
         elif not b_out > b_in:
-            msg = '"b_out" must be greater than "b_in"'
+            msg = "'b_out' must be greater than 'b_in'"
             raise ValueError(msg)
         self.b_in = b_in
 

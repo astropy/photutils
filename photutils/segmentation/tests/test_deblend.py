@@ -279,7 +279,7 @@ class TestDeblendSources:
         """
         Test invalid mode.
         """
-        match = 'mode must be "exponential", "linear", or "sinh"'
+        match = "mode must be 'exponential', 'linear', or 'sinh'"
         with pytest.raises(ValueError, match=match):
             deblend_sources(self.data, self.segm, self.n_pixels,
                             mode='invalid', progress_bar=False)

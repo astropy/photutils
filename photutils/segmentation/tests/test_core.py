@@ -421,7 +421,7 @@ class TestSegmentationImage:
         Test bbox 1d.
         """
         segm = SegmentationImage(np.array([0, 0, 1, 1, 0, 2, 2, 0]))
-        match = 'The "bbox" attribute requires a 2D segmentation image'
+        match = "The 'bbox' attribute requires a 2D segmentation image"
         with pytest.raises(ValueError, match=match):
             _ = segm.bbox
 

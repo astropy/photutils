@@ -4465,7 +4465,7 @@ class SourceCatalog:
             raise ValueError(msg)
 
         if mode not in ('partial', 'trim'):
-            msg = 'mode must be "partial" or "trim"'
+            msg = "mode must be 'partial' or 'trim'"
             raise ValueError(msg)
 
         cutouts = []

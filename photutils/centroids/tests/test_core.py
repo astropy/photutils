@@ -551,7 +551,7 @@ class TestCentroidSources:
         def test_func(data):
             return data
 
-        match = 'The input "centroid_func" must have a "mask" keyword'
+        match = "The input 'centroid_func' must have a 'mask' keyword"
         with pytest.raises(ValueError, match=match):
             centroid_sources(data, [25], 26, centroid_func=test_func)
 

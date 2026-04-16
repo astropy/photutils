@@ -1170,7 +1170,7 @@ class TestExtractStars:
         with pytest.raises(ValueError, match=match):
             extract_stars(stars_nddata, [stars_table, stars_table])
 
-        match = 'the catalog must have a "skycoord" column'
+        match = "the catalog must have a 'skycoord' column"
         with pytest.raises(ValueError, match=match):
             extract_stars([stars_nddata, stars_nddata], stars_table)
 
@@ -1233,7 +1233,8 @@ class TestExtractStars:
         table['y'] = [25]
 
         # Test missing skycoord for multiple images
-        with pytest.raises(ValueError, match='must have a "skycoord" column'):
+        match = "must have a 'skycoord' column"
+        with pytest.raises(ValueError, match=match):
             extract_stars([simple_nddata, simple_nddata], table)
 
         # Test missing coordinate columns

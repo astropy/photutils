@@ -1034,7 +1034,7 @@ def test_fitter_no_maxiters_no_metrics(test_data):
     fit_shape = (5, 5)
     fitter = SimplexLSQFitter()  # does not produce residual array
     finder = DAOStarFinder(6.0, 2.0)
-    match = '"maxiters" will be ignored because it is not accepted by'
+    match = "'maxiters' will be ignored because it is not accepted by"
     with pytest.warns(AstropyUserWarning, match=match):
         psfphot = PSFPhotometry(psf_model, fit_shape, fitter=fitter,
                                 finder=finder, aperture_radius=4)
@@ -1456,7 +1456,7 @@ def test_flag16_missing_covariance():
     mock_fitter.fit_info = {}
     fit_shape = (5, 5)
 
-    match = r'"maxiters" will be ignored because it is not accepted'
+    match = r"'maxiters' will be ignored because it is not accepted"
     with pytest.warns(AstropyUserWarning, match=match):
         psfphot = PSFPhotometry(psf_model, fit_shape, fitter=mock_fitter)
 

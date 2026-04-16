@@ -252,13 +252,13 @@ def test_iterative_psf_photometry_mode_all():
     resid = psfphot.make_residual_image(data, psf_shape=sub_shape)
     assert_allclose(resid, 0, atol=1e-6)
 
-    match = 'mode must be "new" or "all"'
+    match = "mode must be 'new' or 'all'"
     with pytest.raises(ValueError, match=match):
         psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                          grouper=grouper, aperture_radius=4,
                                          sub_shape=sub_shape, mode='invalid')
 
-    match = 'grouper must be input for the "all" mode'
+    match = "grouper must be input for the 'all' mode"
     with pytest.raises(ValueError, match=match):
         psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                          grouper=None, aperture_radius=4,

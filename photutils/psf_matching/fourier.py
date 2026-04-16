@@ -398,7 +398,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
             raise ValueError(msg)
         penalty_array = np.asarray(penalty, dtype=float)
     else:
-        msg = ('penalty must be None, "laplacian", "biharmonic", or a 2D '
+        msg = ("penalty must be None, 'laplacian', 'biharmonic', or a 2D "
                'numpy array.')
         raise ValueError(msg)
 

@@ -167,7 +167,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         return segmentation_image.copy()
 
     if mode not in ('exponential', 'linear', 'sinh'):
-        msg = 'mode must be "exponential", "linear", or "sinh"'
+        msg = "mode must be 'exponential', 'linear', or 'sinh'"
         raise ValueError(msg)
 
     if labels is None:

@@ -263,10 +263,10 @@ class IterativePSFPhotometry:
         self.maxiters = self._validate_maxiters(maxiters)
 
         if mode not in ['new', 'all']:
-            msg = 'mode must be "new" or "all"'
+            msg = "mode must be 'new' or 'all'"
             raise ValueError(msg)
         if mode == 'all' and grouper is None:
-            msg = 'grouper must be input for the "all" mode'
+            msg = "grouper must be input for the 'all' mode"
             raise ValueError(msg)
         self.mode = mode
 
