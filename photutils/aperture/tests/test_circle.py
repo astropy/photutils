@@ -122,7 +122,7 @@ class TestSkyCircularAnnulus(BaseTestAperture):
         with pytest.raises(ValueError, match=match):
             SkyCircularAnnulus(SKYCOORD, r_in=radius * UNIT, r_out=7.0 * UNIT)
 
-        match = "'r_out' must be greater than zero"
+        match = '"r_out" must be greater than "r_in"'
         with pytest.raises(ValueError, match=match):
             SkyCircularAnnulus(SKYCOORD, r_in=3.0 * UNIT, r_out=radius * UNIT)
 
@@ -132,14 +132,24 @@ class TestSkyCircularAnnulus(BaseTestAperture):
         aper.r_in = 2.0 * UNIT
         assert aper != self.aperture
 
-    def test_incompatible_unit_types(self):
+    @staticmethod
+    def test_r_out_less_than_r_in():
         """
-        Test that a ValueError is raised when r_in and r_out have
-        incompatible physical unit types.
+        Test that a ValueError is raised when r_out <= r_in.
         """
-        match = 'r_in and r_out should either both be angles or in pixels'
+        match = '"r_out" must be greater than "r_in"'
         with pytest.raises(ValueError, match=match):
-            SkyCircularAnnulus(SKYCOORD, r_in=0.5 * u.pix, r_out=7.0 * UNIT)
+            SkyCircularAnnulus(SKYCOORD, r_in=7.0 * UNIT, r_out=3.0 * UNIT)
+
+    @staticmethod
+    def test_non_angle_quantity():
+        """
+        Test that a ValueError is raised when r_in has non-angular
+        units.
+        """
+        match = "'r_in' must have angular units"
+        with pytest.raises(ValueError, match=match):
+            SkyCircularAnnulus(SKYCOORD, r_in=0.5 * u.pix, r_out=7.0 * u.pix)
 
 
 def test_slicing():
