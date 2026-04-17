@@ -347,7 +347,7 @@ The :attr:`~photutils.segmentation.SegmentationImage.polygons` property
 returns a list of `Shapely`_ polygon objects representing each source
 segment:
 
-.. doctest-skip::
+.. doctest-requires:: rasterio, shapely
 
     >>> polygons = segment_map.polygons
 
@@ -355,7 +355,7 @@ The :meth:`~photutils.segmentation.SegmentationImage.to_patches` method
 returns a list of `~matplotlib.patches.PathPatch` objects for the source
 segments, which can be overlaid on plots:
 
-.. doctest-skip::
+.. doctest-requires:: rasterio, shapely
 
     >>> patches = segment_map.to_patches(edgecolor='white', lw=1.5)
 
@@ -365,7 +365,7 @@ will plot these patches directly on an existing matplotlib axes:
 
 .. doctest-skip::
 
-    >>> segment_map.plot_patches(edgecolor='white', lw=1.5)
+    >>> patches = segment_map.plot_patches(edgecolor='white', lw=1.5)
 
 For working with individual labels, the
 :meth:`~photutils.segmentation.SegmentationImage.get_polygon`,
@@ -377,7 +377,7 @@ For working with individual labels, the
 are significantly faster than the bulk properties when only a subset of
 labels is needed:
 
-.. doctest-skip::
+.. doctest-requires:: rasterio, shapely
 
     >>> polygon = segment_map.get_polygon(1)
     >>> patch = segment_map.get_patch(1, edgecolor='red', lw=2)
@@ -425,7 +425,7 @@ To convert the source segments to `regions`_
 `~regions.PolygonPixelRegion` objects, use the
 :meth:`~photutils.segmentation.SegmentationImage.to_regions` method:
 
-.. doctest-skip::
+.. doctest-requires:: rasterio, regions, shapely
 
     >>> regions = segment_map.to_regions()
 
@@ -446,28 +446,24 @@ contains the label number, bounding-box slices, bounding box, area, and
 
 The :attr:`~photutils.segmentation.SegmentationImage.segments` property
 returns a list of `~photutils.segmentation.Segment` objects for all
-labels:
-
-.. doctest-skip::
+labels::
 
     >>> segments = segment_map.segments
     >>> segments[0]
     <photutils.segmentation.core.Segment>
     label: 1
-    slices: (slice(1, 9, None), slice(207, 216, None))
-    area: 50
+    slices: (slice(0, 5, None), slice(230, 242, None))
+    area: 47
 
 For working with individual labels, the
 :meth:`~photutils.segmentation.SegmentationImage.get_segment` and
 :meth:`~photutils.segmentation.SegmentationImage.get_segments` methods
 are significantly faster than the bulk ``segments`` property when only a
-subset of labels is needed:
-
-.. doctest-skip::
+subset of labels is needed::
 
     >>> segment = segment_map.get_segment(1)
     >>> print(segment.label, segment.area)
-    1 50
+    1 47
 
     >>> segments = segment_map.get_segments([1, 5, 10])
     >>> [segment.label for segment in segments]
@@ -476,9 +472,7 @@ subset of labels is needed:
 A `~photutils.segmentation.Segment` can provide cutout arrays
 of the segment data and of arbitrary data arrays via its
 :attr:`~photutils.segmentation.Segment.data` property and
-:meth:`~photutils.segmentation.Segment.make_cutout` method:
-
-.. doctest-skip::
+:meth:`~photutils.segmentation.Segment.make_cutout` method::
 
     >>> segment = segment_map.get_segment(1)
     >>> segment_cutout = segment.data  # labeled region, others set to 0
