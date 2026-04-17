@@ -595,6 +595,30 @@ with 4.0 before the release.
     column names will always be returned.
 
 
+Scoped Override for Libraries
+"""""""""""""""""""""""""""""
+
+Libraries that build on photutils can use the
+``photutils.use_future_column_names`` context manager to opt into 4.0
+behavior for a limited scope without changing the global flag. This is
+thread-safe and async-safe::
+
+    >>> from photutils import use_future_column_names
+    >>> with use_future_column_names():
+    ...     table = cat.to_table()  # returns a plain QTable
+    >>> # outside the block, behavior is unchanged
+
+The context-local override takes precedence over the global
+``photutils.future_column_names`` flag and nests correctly::
+
+    >>> with use_future_column_names():
+    ...     # new names only
+    ...     with use_future_column_names(enabled=False):
+    ...         # deprecated mapping is active again
+    ...         pass
+    ...     # back to new names only
+
+
 Aperture Package
 ^^^^^^^^^^^^^^^^
 

@@ -24,7 +24,8 @@ from photutils.geometry import circular_overlap_grid, elliptical_overlap_grid
 from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import _mask_to_mirrored_value
-from photutils.utils._deprecation import (create_empty_deprecated_qtable,
+from photutils.utils._deprecation import (_get_future_column_names,
+                                          create_empty_deprecated_qtable,
                                           deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
@@ -517,15 +518,12 @@ class SourceCatalog:
         return detection_catalog
 
     def _update_meta(self):
-        import photutils
-
         meta_values = {}
-        attrs = ('local_bkg_width', 'aperture_mask_method',
-                 'kron_params')
+        attrs = ('local_bkg_width', 'aperture_mask_method', 'kron_params')
         for attr in attrs:
             meta_values[attr] = getattr(self, attr)
 
-        if not photutils.future_column_names:
+        if not _get_future_column_names():
             for old_name, new_name in _DEPRECATED_META_KEYS.items():
                 if new_name in meta_values:
                     meta_values[old_name] = meta_values[new_name]

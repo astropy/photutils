@@ -169,6 +169,11 @@ New Features
   - Significantly improved the performance (by factors of 3 or more) of
     ``ShepardIDWInterpolator`` [#2187].
 
+  - Added a ``use_future_column_names`` context manager for temporarily
+    enabling future column names in a scoped, thread-safe,
+    and async-safe way without modifying the global
+    ``photutils.future_column_names`` flag. [#2258]
+
 Bug Fixes
 ^^^^^^^^^
 
