@@ -7,8 +7,7 @@ import importlib.resources as importlib_resources
 from asdf.extension import ManifestExtension
 from asdf.resource import DirectoryResourceMapping
 
-from .converters import apertures  # import CircularApertureConverter
-from .converters import functional_models  # import AiryDiskPSFConverter
+from .converters import apertures, functional_models
 
 __all__ = [
     'PHOTUTILS_APERTURE_CONVERTERS',
@@ -18,11 +17,16 @@ __all__ = [
 
 PHOTUTILS_PSF_CONVERTERS = [
     functional_models.AiryDiskPSFConverter(),
+    functional_models.CircularGaussianPRFConverter(),
+    functional_models.CircularGaussianPSFConverter(),
+    functional_models.CircularGaussianSigmaPRFConverter(),
+    functional_models.GaussianPRFConverter(),
+    functional_models.GaussianPSFConverter(),
+    functional_models.MoffatPSFConverter(),
 ]
 
 PHOTUTILS_APERTURE_CONVERTERS = [
     apertures.CircularApertureConverter(),
-
 ]
 
 PHOTUTILS_CONVERTERS = PHOTUTILS_PSF_CONVERTERS + PHOTUTILS_APERTURE_CONVERTERS

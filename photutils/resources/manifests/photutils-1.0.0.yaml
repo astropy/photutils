@@ -12,3 +12,27 @@ tags:
   schema_uri: asdf://astropy.org/photutils/schemas/psf/airy_disk_psf-1.0.0
   title: AiryDiskPSF
   description: A 2D Airy disk PSF model.
+- tag_uri: tag:astropy.org:photutils/psf/circular_gaussian_prf-1.0.0
+  schema_uri: asdf://astropy.org/photutils/schemas/psf/circular_gaussian_prf-1.0.0
+  title: CircularGaussianPRF
+  description: CircularGaussianPRF model.
+- tag_uri: tag:astropy.org:photutils/psf/circular_gaussian_psf-1.0.0
+  schema_uri: asdf://astropy.org/photutils/schemas/psf/circular_gaussian_psf-1.0.0
+  title: CircularGaussianPSF
+  description: CircularGaussianPSF model.
+- tag_uri: tag:astropy.org:photutils/psf/circular_gaussian_sigma_prf-1.0.0
+  schema_uri: asdf://astropy.org/photutils/schemas/psf/circular_gaussian_sigma_prf-1.0.0
+  title: CircularGaussianSigmaPRF
+  description: CircularGaussianSigmaPRF model.
+- tag_uri: tag:astropy.org:photutils/psf/gaussian_prf-1.0.0
+  schema_uri: asdf://astropy.org/photutils/schemas/psf/gaussian_prf-1.0.0
+  title: GaussianPRF
+  description: A 2D GaussianPRF model.
+- tag_uri: tag:astropy.org:photutils/psf/gaussian_psf-1.0.0
+  schema_uri: asdf://astropy.org/photutils/schemas/psf/gaussian_psf-1.0.0
+  title: GaussianPSF
+  description: A 2D GaussianPSF model.
+- tag_uri: tag:astropy.org:photutils/psf/moffat_psf-1.0.0
+  schema_uri: asdf://astropy.org/photutils/schemas/psf/moffat_psf-1.0.0
+  title: MoffatPSF
+  description: A 2D MoffatPSF model.

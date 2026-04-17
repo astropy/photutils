@@ -1,0 +1,56 @@
+%YAML 1.1
+---
+$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
+id: "asdf://astropy.org/photutils/schemas/psf/circular_gaussian_prf-1.0.0"
+title: CircularGaussianPRF
+description: |
+  ASDF schema for serializing a photutils CircularGaussianPRF.
+
+examples:
+  -
+    - A CircularGaussianPRF with a flux of 71.4, centered at (24.3, 25.2) pixels, and a FWHM of 5 pixels.
+      psf.CircularGaussianPRF(flux=71.4, x_0=24.3, y_0=25.2, fwhm=5)
+    - |
+      !<tag:astropy.org:photutils/psf/circular_gaussian_prf-1.0.0>
+        bbox_factor: 10.0
+        bounds:
+          fwhm: [1.1754943508222875e-38, null]
+        fixed: {fwhm: true}
+        flux: 71.4
+        inputs: [x, y]
+        outputs: [z]
+        fwhm: 5.0
+        x_0: 24.3
+        y_0: 25.2
+
+
+allOf:
+  - $ref: "http://stsci.edu/schemas/asdf/transform/transform-1.4.0"
+  - type: object
+    properties:
+      flux:
+        anyOf:
+          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - type: number
+        description: Total integrated flux of the PSF.
+      x_0:
+        anyOf:
+          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - type: number
+        description: "X coordinate of the PSF center (pixel coordinates)."
+      y_0:
+        anyOf:
+          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - type: number
+        description: "Y coordinate of the PSF center (pixel coordinates)."
+      fwhm:
+        anyOf:
+          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - type: number
+        description: "Full width at half maximum of the Gaussian profile in pixels."
+      bbox_factor:
+        type: number
+        description: Factor by which to multiply the radius to determine the size of the bounding box.
+
+    required: [flux, x_0, y_0, fwhm]
+...
