@@ -665,8 +665,8 @@ Centroids Package
 ^^^^^^^^^^^^^^^^^
 
 The ``xpeak``, ``ypeak``, and ``search_boxsize`` keyword arguments
-for :func:`~photutils.centroids.centroid_quadratic` function are now
-deprecated. Use the :func:`~photutils.centroids.centroid_sources`
+for the :func:`~photutils.centroids.centroid_quadratic` function are
+now deprecated. Use the :func:`~photutils.centroids.centroid_sources`
 function to centroid sources at specific positions.
 
 

@@ -248,7 +248,7 @@ API Changes
 - ``photutils``
 
   - Passing optional arguments positionally to all functions, classes,
-    methods in ``photutils`` is now deprecated. In the future, all
+    and methods in ``photutils`` is now deprecated. In the future, all
     optional arguments must be passed as keyword arguments. [#2219]
 
 - ``photutils.aperture``
@@ -339,7 +339,7 @@ API Changes
 
   - The ``sharplo`` and ``sharphi`` keyword arguments for
     ``DAOStarFinder`` and ``IRAFStarFinder`` are now deprecated. Use
-    ``the sharpness_range=(lower, upper)`` tuple keyword instead. Set
+    the ``sharpness_range=(lower, upper)`` tuple keyword instead. Set
     ``sharpness_range=None`` to disable sharpness filtering. [#2216]
 
   - The ``roundlo`` and ``roundhi`` keyword arguments for
