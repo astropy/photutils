@@ -377,7 +377,7 @@ For working with individual labels, the
 are significantly faster than the bulk properties when only a subset of
 labels is needed:
 
-.. doctest-requires:: rasterio, shapely
+.. doctest-requires:: rasterio, regions, shapely
 
     >>> polygon = segment_map.get_polygon(1)
     >>> patch = segment_map.get_patch(1, edgecolor='red', lw=2)
