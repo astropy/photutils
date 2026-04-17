@@ -479,7 +479,7 @@ subset of labels is needed:
 
     >>> segments = segment_map.get_segments([1, 5, 10])
     >>> [segment.label for segment in segments]
-    [np.int64(1), np.int64(5), np.int64(10)]
+    [np.int32(1), np.int32(5), np.int32(10)]
 
 A `~photutils.segmentation.Segment` can provide cutout arrays
 of the segment data and of arbitrary data arrays via its

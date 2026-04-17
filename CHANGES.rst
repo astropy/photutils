@@ -145,7 +145,7 @@ New Features
 
   - Added ``SegmentationImage`` ``get_segment`` and ``get_segments``
     methods to return the ``Segment`` object(s) for a given label or list
-    of labels. [#2228]
+    of labels. [#2228, #2256]
 
   - Added the ability to input ``RegionVisual`` keywords to the
     ``SegmentationImage`` ``to_regions`` method. [#2228]

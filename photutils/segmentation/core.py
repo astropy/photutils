@@ -537,6 +537,7 @@ class SegmentationImage:
         """
         # _raw_slices is indexed by (label - 1) since it includes all
         # labels up to max_label, even if some are missing
+        label = self._data.dtype.type(label)
         slc = self._raw_slices[label - 1]
         bbox = BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,
                            iymin=slc[0].start, iymax=slc[0].stop)
@@ -625,11 +626,11 @@ class SegmentationImage:
         label number.
         """
         if self.n_labels == 0:
-            return np.array([], dtype=int)
+            return np.array([], dtype=self._data.dtype)
         present = np.zeros(self.max_label + 1, dtype=bool)
         present[self.labels] = True
         present[0] = True  # exclude 0 from missing
-        return np.where(~present)[0]
+        return np.where(~present)[0].astype(self._data.dtype)
 
     def copy(self):
         """
