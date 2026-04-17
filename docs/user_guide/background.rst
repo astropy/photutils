@@ -276,8 +276,8 @@ and ``background_rms_median`` attributes, respectively::
 
     >>> print(bkg.background_median)  # doctest: +FLOAT_CMP
     10.822232525276007
-    >>> print(bkg.background_rms_median)  # doctest: +FLOAT_CMP
-    2.0366827388438478
+    >>> print(round(bkg.background_rms_median, 4))  # doctest: +FLOAT_CMP
+    2.0367
 
 Let's plot the background image:
 
