@@ -4278,5 +4278,5 @@ Other Changes and Additions
 0.1 (2014-12-22)
 ----------------
 
-Photutils 0.1 was released on December 22, 2014.  It requires Astropy
-version 0.4 or later.
+- Photutils 0.1 was released on December 22, 2014. It requires Astropy
+  version 0.4 or later.
