@@ -376,12 +376,25 @@ class TestSegmentationImage:
         """
         assert_allclose(self.segm.missing_labels, [2, 6])
 
+    def test_missing_labels_dtype(self):
+        """
+        Test that missing_labels dtype matches the segmentation image
+        label dtype.
+        """
+        assert self.segm.missing_labels.dtype == self.segm.labels.dtype
+
     def test_missing_labels_empty(self):
         """
-        Test missing_labels with no non-zero labels.
+        Test that missing_labels dtype matches the segmentation image
+        label dtype when there are no labels.
         """
+        segm = SegmentationImage(np.zeros((5, 5), dtype=np.int32))
+        assert_equal(segm.missing_labels, [])
+        assert segm.missing_labels.dtype == segm.data.dtype
+
         segm = SegmentationImage(np.zeros((5, 5), dtype=int))
         assert_equal(segm.missing_labels, [])
+        assert segm.missing_labels.dtype == segm.data.dtype
 
     def test_check_labels(self):
         """
@@ -1340,6 +1353,17 @@ class TestGetSegment:
             assert seg_new.slices == seg_old.slices
             assert seg_new.area == seg_old.area
             assert seg_new.bbox == seg_old.bbox
+
+    def test_get_segments_label_dtype(self):
+        """
+        Test that segment label dtype matches the segmentation image
+        label dtype.
+        """
+        labels = [1, 5]
+        segs = self.segm.get_segments(labels)
+        expected_dtype = self.segm.labels.dtype
+        for seg in segs:
+            assert seg.label.dtype == expected_dtype
 
 
 @pytest.mark.skipif(not HAS_RASTERIO, reason='rasterio is required')
