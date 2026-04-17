@@ -40,10 +40,9 @@ jobs:
             allow_failure: false
             prefix: ''
 
-          # no rasterio wheel for 3.14 yet
           - os: ubuntu-latest
-            python: '3.13'
-            tox_env: 'py313-test-devdeps'
+            python: '3.14'
+            tox_env: 'py314-test-devdeps'
             toxposargs: --remote-data=any
             allow_failure: true
             prefix: '(Allowed failure)'
@@ -73,6 +72,6 @@ jobs:
       if: ${{ contains(matrix.tox_env, '-cov') }}
       uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de  # v5.5.2
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+        token: ${{ secrets.CODECOV_TOKEN }}  # zizmor: ignore[secrets-outside-env]
         files: ./coverage.xml
         verbose: true
