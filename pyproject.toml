@@ -94,9 +94,6 @@ include-package-data = false
 namespaces = false
 
 [tool.setuptools.package-data]
-'photutils' = [
-    'CITATION.rst',
-]
 'photutils.datasets' = [
     'data/*',
 ]

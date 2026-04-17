@@ -1,0 +1,139 @@
+cff-version: 1.2.0
+title: Photutils
+message: 'If you use this software, please cite it as below.'
+type: software
+authors:
+  - family-names: Bradley
+    given-names: Larry
+    orcid: 'https://orcid.org/0000-0002-7908-9284'
+    affiliation: >-
+      Space Telescope Science Institute, 3700 San Martin
+      Drive, Baltimore, MD 21218, USA
+  - family-names: Sipőcz
+    given-names: Brigitta M.
+    orcid: 'https://orcid.org/0000-0002-3713-6337'
+    affiliation: >-
+      IPAC, MC 100-22, Caltech, 1200E. California Blvd.
+      Pasadena, CA 91125
+  - family-names: Robitaille
+    given-names: T. P.
+    orcid: 'https://orcid.org/0000-0002-8642-1329'
+    affiliation: >-
+      Aperio Software Ltd., Headingley Enterprise and Arts
+      Centre, Bennett Road, Leeds, LS6 3HN, United Kingdom
+  - family-names: Tollerud
+    given-names: E. J.
+    orcid: 'https://orcid.org/0000-0002-9599-310X'
+    affiliation: >-
+      Space Telescope Science Institute, 3700 San Martin
+      Dr., Baltimore, MD 21218, USA
+  - family-names: Vinícius
+    given-names: Zé
+  - family-names: Deil
+    given-names: Christoph
+    orcid: 'https://orcid.org/0000-0002-4198-4005'
+  - family-names: Barbary
+    given-names: Kyle
+    orcid: 'https://orcid.org/0000-0002-2532-3696'
+  - family-names: Wilson
+    given-names: Tom J.
+    orcid: 'https://orcid.org/0000-0001-6352-9735'
+  - family-names: Busko
+    given-names: Ivo
+  - family-names: Donath
+    given-names: Axel
+    orcid: 'https://orcid.org/0000-0003-4568-7005'
+    affiliation: >-
+      Harvard-Smithsonian Center for Astrophysics, 60 Garden
+      St., Cambridge, MA, 02138, USA
+  - family-names: Günther
+    given-names: Hans Moritz
+    orcid: 'https://orcid.org/0000-0003-4243-2840'
+    affiliation: >-
+      MIT Kavli Institute for Astrophysics and Space
+      Research, 77 Massachusetts Avenue, Cambridge, MA
+      02139, USA
+  - family-names: Cara
+    given-names: Mihai
+    orcid: 'https://orcid.org/0000-0002-9294-6551'
+    affiliation: >-
+      Space Telescope Science Institute, 3700 San Martin
+      Drive, Baltimore, MD 21218, USA
+  - family-names: Lim
+    given-names: P. L.
+    orcid: 'https://orcid.org/0000-0003-0079-4114'
+    affiliation: >-
+      Space Telescope Science Institute, 3700 San Martin
+      Dr., Baltimore, MD 21218, USA
+  - family-names: Meßlinger
+    given-names: Sebastian
+  - family-names: Conseil
+    given-names: Simon
+    orcid: 'https://orcid.org/0000-0002-3657-4191'
+  - family-names: Droettboom
+    given-names: Michael
+  - family-names: Bostroem
+    given-names: K. Azalee
+    orcid: 'https://orcid.org/0000-0002-4924-444X'
+  - family-names: Bray
+    given-names: E. M.
+  - family-names: Bratholm
+    given-names: Lars Andersen
+    orcid: 'https://orcid.org/0000-0002-3565-5926'
+  - family-names: Burnett
+    given-names: Zach
+    affiliation: >-
+      Space Telescope Science Institute, 3700 San Martin
+      Drive, Baltimore, MD 21218, USA
+  - family-names: Jamieson
+    given-names: William
+    orcid: 'https://orcid.org/0000-0001-5976-4492'
+    affiliation: >-
+      Space Telescope Science Institute, 3700 San Martin
+      Drive, Baltimore, MD 21218, USA
+  - family-names: Ginsburg
+    given-names: Adam
+    orcid: 'https://orcid.org/0000-0001-6431-9633'
+  - family-names: Taranu
+    given-names: Dan
+    orcid: 'https://orcid.org/0000-0001-6268-1882'
+  - family-names: Barentsen
+    given-names: Geert
+    orcid: 'https://orcid.org/0000-0002-3306-3484'
+  - family-names: Craig
+    given-names: Matthew W.
+    orcid: 'https://orcid.org/0000-0001-7988-8919'
+  - family-names: Morris
+    given-names: Brett M.
+    orcid: 'https://orcid.org/0000-0003-2528-3409'
+    affiliation: >-
+      Space Telescope Science Institute, 3700 San Martin
+      Drive, Baltimore, MD 21218, USA
+  - family-names: Perrin
+    given-names: Marshall
+    orcid: 'https://orcid.org/0000-0002-3191-8151'
+    affiliation: >-
+      Space Telescope Science Institute, 3700 San Martin
+      Drive, Baltimore, MD 21218, USA
+  - family-names: Rathi
+    given-names: Shivangee
+    orcid: 'https://orcid.org/0000-0002-4859-8203'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.596036
+    description: Zenodo - all versions
+  - type: url
+    value: 'https://ascl.net/1609.011'
+    description: ASCL entry
+repository-code: 'https://github.com/astropy/photutils'
+url: 'https://photutils.readthedocs.io/en/latest/'
+abstract: Astropy package for source detection and photometry
+keywords:
+  - Astronomy software
+  - Astronomy data analysis
+  - Photometry
+  - Image Data Analysis
+  - Open source software
+license: BSD-3-Clause
+version: 3.0.0
+date-released: '2026-04-17'
