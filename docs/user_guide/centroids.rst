@@ -51,9 +51,9 @@ centroid with each of these methods. First, let's create the data::
     from photutils.datasets import make_4gaussians_image
 
     data = make_4gaussians_image()
-    plt.figure(figsize=(8, 4))
-    plt.imshow(data, origin='lower', interpolation='nearest')
-    plt.tight_layout()
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.imshow(data, origin='lower')
+    fig.tight_layout()
 
 Next, we need to subtract the background from the data. For this
 example, we'll estimate the background by taking the median of a blank
@@ -116,7 +116,7 @@ we also include an inset plot zoomed in near the centroid:
     xycen4 = centroid_2dg(data)
     xycens = [xycen1, xycen2, xycen3, xycen4]
     fig, ax = plt.subplots(1, 1, figsize=(8, 8))
-    ax.imshow(data, origin='lower', interpolation='nearest')
+    ax.imshow(data, origin='lower')
     marker = '+'
     ms = 60
     colors = ('white', 'cyan', 'red', 'blue')
@@ -127,8 +127,7 @@ we also include an inset plot zoomed in near the centroid:
     ax.legend(loc='lower right', fontsize=12)
 
     ax2 = zoomed_inset_axes(ax, zoom=6, loc=9)
-    ax2.imshow(data, vmin=190, vmax=220, origin='lower',
-               interpolation='nearest')
+    ax2.imshow(data, vmin=190, vmax=220, origin='lower')
     ms = 1000
     for xycen, color in zip(xycens, colors):
         ax2.scatter(*xycen, color=color, marker=marker, s=ms)
@@ -188,11 +187,11 @@ Let's plot the results:
     y_init = (40, 61, 24, 71)
     x, y = centroid_sources(data, x_init, y_init, box_size=25,
                             centroid_func=centroid_2dg)
-    plt.figure(figsize=(8, 4))
-    plt.imshow(data, origin='lower', interpolation='nearest')
-    plt.scatter(x, y, marker='+', s=80, color='red', label='Centroids')
-    plt.legend()
-    plt.tight_layout()
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.imshow(data, origin='lower')
+    ax.scatter(x, y, marker='+', s=80, color='red', label='Centroids')
+    ax.legend()
+    fig.tight_layout()
 
 
 API Reference

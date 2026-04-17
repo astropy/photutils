@@ -58,24 +58,22 @@ Let's plot the image:
 .. doctest-skip::
 
     >>> import matplotlib.pyplot as plt
-    >>> from astropy.visualization import SqrtStretch
-    >>> from astropy.visualization.mpl_normalize import ImageNormalize
-    >>> norm = ImageNormalize(stretch=SqrtStretch())
-    >>> plt.imshow(data, norm=norm, origin='lower', cmap='Greys_r',
-    ...            interpolation='nearest')
+    >>> from astropy.visualization import simple_norm
+    >>> norm = simple_norm(data, 'sqrt', percent=99.5)
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(data, norm=norm, origin='lower')
 
 .. plot::
 
     import matplotlib.pyplot as plt
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import simple_norm
     from photutils.datasets import make_100gaussians_image
 
     data = make_100gaussians_image()
-    norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data, norm=norm, origin='lower', cmap='Greys_r',
-               interpolation='nearest')
-    plt.title('Data')
+    norm = simple_norm(data, 'sqrt', percent=99.5)
+    fig, ax = plt.subplots()
+    ax.imshow(data, norm=norm, origin='lower')
+    ax.set_title('Data')
 
 The image median and biweight location are both larger than the true
 background level of 5::
@@ -235,15 +233,14 @@ background gradient to the image defined above::
     >>> y, x = np.mgrid[:ny, :nx]
     >>> gradient = x * y / 5000.0
     >>> data2 = data + gradient
-    >>> plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r',
-    ...            interpolation='nearest')  # doctest: +SKIP
+    >>> fig, ax = plt.subplots()  # doctest: +SKIP
+    >>> ax.imshow(data2, norm=norm, origin='lower')  # doctest: +SKIP
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import simple_norm
     from photutils.datasets import make_100gaussians_image
 
     data = make_100gaussians_image()
@@ -251,13 +248,13 @@ background gradient to the image defined above::
     y, x = np.mgrid[:ny, :nx]
     gradient = x * y / 5000.0
     data2 = data + gradient
-    norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data2, norm=norm, origin='lower', cmap='Greys_r',
-               interpolation='nearest')
-    plt.title('Data with added background gradient')
+    norm = simple_norm(data2, 'sqrt', percent=99.5)
+    fig, ax = plt.subplots()
+    ax.imshow(data2, norm=norm, origin='lower')
+    ax.set_title('Data with added background gradient')
 
 We start by creating a `~photutils.background.Background2D` object
-using a box size of 50x50 and a 3x3 median filter.  We will estimate
+using a box size of 15x15 and a 3x3 median filter.  We will estimate
 the background level in each mesh as the sigma-clipped median using an
 instance of :class:`~photutils.background.MedianBackground`::
 
@@ -265,7 +262,7 @@ instance of :class:`~photutils.background.MedianBackground`::
     >>> from photutils.background import Background2D, MedianBackground
     >>> sigma_clip = SigmaClip(sigma=3.0)
     >>> bkg_estimator = MedianBackground()
-    >>> bkg = Background2D(data2, (50, 50), filter_size=(3, 3),
+    >>> bkg = Background2D(data2, (15, 15), filter_size=(3, 3),
     ...                    sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
 
 
@@ -278,16 +275,16 @@ and background RMS image can be accessed with the ``background_median``
 and ``background_rms_median`` attributes, respectively::
 
     >>> print(bkg.background_median)  # doctest: +FLOAT_CMP
-    10.852487630351824
-    >>> print(bkg.background_rms_median)  # doctest: +FLOAT_CMP
-    2.262996981325314
+    10.822232525276007
+    >>> print(round(bkg.background_rms_median, 4))  # doctest: +FLOAT_CMP
+    2.0367
 
 Let's plot the background image:
 
 .. doctest-skip::
 
-    >>> plt.imshow(bkg.background, origin='lower', cmap='Greys_r',
-    ...            interpolation='nearest')
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(bkg.background, origin='lower')
 
 .. plot::
 
@@ -304,26 +301,26 @@ Let's plot the background image:
     data2 = data + gradient
     sigma_clip = SigmaClip(sigma=3.0)
     bkg_estimator = MedianBackground()
-    bkg = Background2D(data2, (50, 50), filter_size=(3, 3),
+    bkg = Background2D(data2, (15, 15), filter_size=(3, 3),
                        sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
-    plt.imshow(bkg.background, origin='lower', cmap='Greys_r',
-               interpolation='nearest')
-    plt.title('Estimated Background')
+    fig, ax = plt.subplots()
+    ax.imshow(bkg.background, origin='lower')
+    ax.set_title('Estimated Background')
 
 and the background-subtracted image:
 
 .. doctest-skip::
 
-    >>> plt.imshow(data2 - bkg.background, norm=norm, origin='lower',
-    ...            cmap='Greys_r', interpolation='nearest')
+    >>> data2_sub = data2 - bkg.background
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(data2_sub, norm=norm, origin='lower')
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
     from astropy.stats import SigmaClip
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import simple_norm
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
 
@@ -334,12 +331,13 @@ and the background-subtracted image:
     data2 = data + gradient
     sigma_clip = SigmaClip(sigma=3.0)
     bkg_estimator = MedianBackground()
-    bkg = Background2D(data2, (50, 50), filter_size=(3, 3),
+    bkg = Background2D(data2, (15, 15), filter_size=(3, 3),
                        sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
-    norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data2 - bkg.background, norm=norm, origin='lower',
-               cmap='Greys_r', interpolation='nearest')
-    plt.title('Background-subtracted Data')
+    data2_sub = data2 - bkg.background
+    norm = simple_norm(data2_sub, 'sqrt', percent=99.9)
+    fig, ax = plt.subplots()
+    ax.imshow(data2_sub, norm=norm, origin='lower')
+    ax.set_title('Background-subtracted Data')
 
 
 Masking
@@ -358,20 +356,22 @@ background and background RMS maps. The ``fill_value`` keyword defines
 the value assigned in the output background and background RMS maps
 where the input ``coverage_mask`` is `True`.
 
-Let's create a rotated image that has blank areas and plot it::
+Let's create a rotated image that has blank areas and plot it:
 
+.. doctest-skip::
+
+    >>> from astropy.visualization import simple_norm
     >>> from scipy.ndimage import rotate
     >>> data3 = rotate(data2, -45.0)
-    >>> norm = ImageNormalize(stretch=SqrtStretch())  # doctest: +SKIP
-    >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
-    ...            interpolation='nearest')  # doctest: +SKIP
+    >>> norm = simple_norm(data3, 'sqrt', percent=99.5)
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(data3, norm=norm, origin='lower')
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import simple_norm
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage import rotate
 
@@ -381,10 +381,10 @@ Let's create a rotated image that has blank areas and plot it::
     gradient = x * y / 5000.0
     data2 = data + gradient
     data3 = rotate(data2, -45.0)
-    norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
-               interpolation='nearest')
-    plt.title('Data with added background gradient')
+    norm = simple_norm(data3, 'sqrt', percent=99.5)
+    fig, ax = plt.subplots()
+    ax.imshow(data3, norm=norm, origin='lower')
+    ax.set_title('Data with added background gradient')
 
 Now we create a coverage mask and input it into
 `~photutils.background.Background2D` to exclude the regions where we
@@ -393,7 +393,9 @@ real data, one can usually create a coverage mask from a weight or noise
 image. In this example we also use a smaller box size to help capture
 the strong gradient in the background. We also increase the value of the
 ``exclude_percentile`` keyword to include more boxes around the edge of
-the rotated image::
+the rotated image:
+
+.. doctest-skip::
 
     >>> coverage_mask = (data3 == 0)
     >>> bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
@@ -401,18 +403,19 @@ the rotated image::
     ...                     exclude_percentile=50.0)
 
 Note that the ``coverage_mask`` is applied to the output background
-image (values assigned to ``fill_value``)::
+image (values assigned to ``fill_value``):
 
-    >>> norm = ImageNormalize(stretch=SqrtStretch())  # doctest: +SKIP
-    >>> plt.imshow(bkg3.background, origin='lower', cmap='Greys_r', norm=norm,
-    ...            interpolation='nearest')  # doctest: +SKIP
+.. doctest-skip::
+
+    >>> norm = simple_norm(bkg3.background, 'sqrt', percent=99.5)
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(bkg3.background, norm=norm, origin='lower')
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import simple_norm
     from photutils.background import Background2D
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage import rotate
@@ -427,10 +430,10 @@ image (values assigned to ``fill_value``)::
     bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
                         coverage_mask=coverage_mask, fill_value=0.0,
                         exclude_percentile=50.0)
-    norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(bkg3.background, origin='lower', cmap='Greys_r', norm=norm,
-               interpolation='nearest')
-    plt.title('Estimated Background')
+    norm = simple_norm(bkg3.background, 'sqrt', percent=99.5)
+    fig, ax = plt.subplots()
+    ax.imshow(bkg3.background, norm=norm, origin='lower')
+    ax.set_title('Estimated Background')
 
 
 Finally, let's subtract the background from the image and plot it:
@@ -438,15 +441,16 @@ Finally, let's subtract the background from the image and plot it:
 .. doctest-skip::
 
     >>> norm = ImageNormalize(stretch=SqrtStretch())
-    >>> plt.imshow(data3 - bkg3.background, origin='lower', cmap='Greys_r',
-    ...            norm=norm, interpolation='nearest')
+    >>> data_sub = data3 - bkg3.background
+    >>> norm = simple_norm(data_sub, 'sqrt', percent=99.5)
+    >>> fig, ax = plt.subplots()  # doctest: +SKIP
+    >>> ax.imshow(data_sub, norm=norm, origin='lower')
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import simple_norm
     from photutils.background import Background2D
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage import rotate
@@ -461,10 +465,11 @@ Finally, let's subtract the background from the image and plot it:
     bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
                         coverage_mask=coverage_mask, fill_value=0.0,
                         exclude_percentile=50.0)
-    norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data3 - bkg3.background, origin='lower', cmap='Greys_r',
-               norm=norm, interpolation='nearest')
-    plt.title('Background-subtracted Data')
+    data_sub = data3 - bkg3.background
+    norm = simple_norm(data_sub, 'sqrt', percent=99.5)
+    fig, ax = plt.subplots()
+    ax.imshow(data_sub, norm=norm, origin='lower')
+    ax.set_title('Background-subtracted Data')
 
 If there is any small residual background still present in the image,
 the background subtraction can be improved by masking the sources
@@ -482,18 +487,17 @@ Meshes without a center marker were excluded.
 
 .. doctest-skip::
 
-    >>> plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
-    ...            interpolation='nearest')
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(data3, norm=norm, origin='lower')
     >>> bkg3.plot_meshes(outlines=True, marker='.', color='cyan', alpha=0.3)
-    >>> plt.xlim(0, 250)
-    >>> plt.ylim(0, 250)
+    >>> ax.set_xlim(0, 250)
+    >>> ax.set_ylim(0, 250)
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import simple_norm
     from photutils.background import Background2D
     from photutils.datasets import make_100gaussians_image
     from scipy.ndimage import rotate
@@ -508,12 +512,12 @@ Meshes without a center marker were excluded.
     bkg3 = Background2D(data3, (15, 15), filter_size=(3, 3),
                         coverage_mask=coverage_mask, fill_value=0.0,
                         exclude_percentile=50.0)
-    norm = ImageNormalize(stretch=SqrtStretch())
-    plt.imshow(data3, origin='lower', cmap='Greys_r', norm=norm,
-               interpolation='nearest')
-    bkg3.plot_meshes(outlines=True, marker='.', color='cyan', alpha=0.3)
-    plt.xlim(0, 250)
-    plt.ylim(0, 250)
+    norm = simple_norm(data3, 'sqrt', percent=99.5)
+    fig, ax = plt.subplots()
+    ax.imshow(data3, norm=norm, origin='lower')
+    bkg3.plot_meshes(outlines=True, marker='.', color='white', alpha=0.5)
+    ax.set_xlim(0, 250)
+    ax.set_ylim(0, 250)
 
 
 API Reference

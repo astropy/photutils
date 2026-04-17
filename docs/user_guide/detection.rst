@@ -134,7 +134,7 @@ Let's plot the image and mark the location of detected sources:
     from astropy.visualization import simple_norm
     from photutils.aperture import CircularAperture
     from photutils.datasets import (load_simulated_hst_star_image,
-                                     make_noise_image)
+                                    make_noise_image)
     from photutils.detection import DAOStarFinder
 
     hdu = load_simulated_hst_star_image()
@@ -149,7 +149,7 @@ Let's plot the image and mark the location of detected sources:
     apertures = CircularAperture(positions, r=10.0)
     norm = simple_norm(data, 'sqrt', percent=99)
     fig, ax = plt.subplots()
-    axim = ax.imshow(data, origin='lower', norm=norm, interpolation='nearest')
+    axim = ax.imshow(data, norm=norm, origin='lower')
     patches = apertures.plot(ax=ax, color='red')
 
 
@@ -180,7 +180,7 @@ rectangular regions. No sources will be detected in the masked regions:
     from astropy.visualization import simple_norm
     from photutils.aperture import CircularAperture, RectangularAperture
     from photutils.datasets import (load_simulated_hst_star_image,
-                                     make_noise_image)
+                                    make_noise_image)
     from photutils.detection import DAOStarFinder
 
     hdu = load_simulated_hst_star_image()
@@ -198,7 +198,7 @@ rectangular regions. No sources will be detected in the masked regions:
     apertures = CircularAperture(positions, r=10.0)
     fig, ax = plt.subplots()
     norm = simple_norm(data, 'sqrt', percent=99)
-    axim = ax.imshow(data, origin='lower', norm=norm, interpolation='nearest')
+    axim = ax.imshow(data, norm=norm, origin='lower')
     ax.set_title('Star finder with a mask to exclude regions')
     p1 = apertures.plot(ax=ax, color='red')
     rect1 = RectangularAperture((725, 750), 250, 200, theta=0)
@@ -275,7 +275,7 @@ Let's plot the location of the detected peaks in the image:
     apertures = CircularAperture(positions, r=10.0)
     fig, ax = plt.subplots()
     norm = simple_norm(data, 'sqrt', percent=99)
-    axim = ax.imshow(data, norm=norm, origin='lower', interpolation='nearest')
+    axim = ax.imshow(data, norm=norm, origin='lower')
     patches = apertures.plot(color='red')
 
 

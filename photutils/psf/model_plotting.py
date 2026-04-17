@@ -60,7 +60,7 @@ def _plot_grid_docstring(func):
         Notes
         -----
         This method returns a figure object. If you are using this
-        method in a script, you will need to call ``plt.show()`` to
+        method in a script, you will need to call ``fig.show()`` to
         display the figure. If you are using this method in a Jupyter
         notebook, the figure will be displayed automatically.
 
@@ -129,7 +129,7 @@ class _ModelGridPlotter:
                 figsize = (20, 8)
             fig, ax = plt.subplots(figsize=figsize)
         else:
-            fig = plt.gcf()
+            fig = ax.get_figure()
 
         if peak_norm and data.max() != 0:
             # normalize relative to peak
@@ -224,7 +224,7 @@ class _ModelGridPlotter:
             # The plot gets extra divider lines and SCA name labels.
             nxpsfs = len(self.model._xgrid)
             nypsfs = len(self.model._ygrid)
-            plt.axhline(nypsfs / 2 - 0.5, color='orange')
+            ax.axhline(nypsfs / 2 - 0.5, color='orange')
             for i in range(1, 4):
                 ax.axvline(nxpsfs / 4 * i - 0.5, color='orange')
 

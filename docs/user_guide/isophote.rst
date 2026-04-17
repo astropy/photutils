@@ -42,7 +42,8 @@ For this example, let's create a simple simulated galaxy image::
     noise = make_noise_image((ny, nx), distribution='gaussian', mean=0.0,
                              stddev=2.0, seed=1234)
     data = g(x, y) + noise
-    plt.imshow(data, origin='lower')
+    fig, ax = plt.subplots()
+    ax.imshow(data, origin='lower')
 
 We must provide the elliptical isophote fitter with an initial ellipse
 to be fitted.  This ellipse geometry is defined with the
@@ -62,7 +63,8 @@ Let's show this initial ellipse guess:
     >>> aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
     ...                           geometry.sma * (1 - geometry.eps),
     ...                           theta=geometry.pa)
-    >>> plt.imshow(data, origin='lower')
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(data, origin='lower')
     >>> aper.plot(color='white')
 
 .. plot::
@@ -86,7 +88,8 @@ Let's show this initial ellipse guess:
     aper = EllipticalAperture((geometry.x0, geometry.y0), geometry.sma,
                               geometry.sma * (1 - geometry.eps),
                               theta=geometry.pa)
-    plt.imshow(data, origin='lower')
+    fig, ax = plt.subplots()
+    ax.imshow(data, origin='lower')
     aper.plot(color='white')
 
 Next, we create an instance of the `~photutils.isophote.Ellipse`
@@ -160,32 +163,28 @@ position as a function of the semimajor axis length:
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
 
-    plt.figure(figsize=(8, 8))
-    plt.subplots_adjust(hspace=0.35, wspace=0.35)
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(8, 8))
+    fig.subplots_adjust(hspace=0.35, wspace=0.35)
 
-    plt.subplot(2, 2, 1)
-    plt.errorbar(isolist.sma, isolist.eps, yerr=isolist.ellip_err,
+    ax1.errorbar(isolist.sma, isolist.eps, yerr=isolist.ellip_err,
                  fmt='o', markersize=4)
-    plt.xlabel('Semimajor Axis Length (pix)')
-    plt.ylabel('Ellipticity')
+    ax1.set_xlabel('Semimajor Axis Length (pix)')
+    ax1.set_ylabel('Ellipticity')
 
-    plt.subplot(2, 2, 2)
-    plt.errorbar(isolist.sma, np.rad2deg(isolist.pa),
+    ax2.errorbar(isolist.sma, np.rad2deg(isolist.pa),
                  yerr=np.rad2deg(isolist.pa_err), fmt='o', markersize=4)
-    plt.xlabel('Semimajor Axis Length (pix)')
-    plt.ylabel('PA (deg)')
+    ax2.set_xlabel('Semimajor Axis Length (pix)')
+    ax2.set_ylabel('PA (deg)')
 
-    plt.subplot(2, 2, 3)
-    plt.errorbar(isolist.sma, isolist.x0, yerr=isolist.x0_err, fmt='o',
+    ax3.errorbar(isolist.sma, isolist.x0, yerr=isolist.x0_err, fmt='o',
                  markersize=4)
-    plt.xlabel('Semimajor Axis Length (pix)')
-    plt.ylabel('x0')
+    ax3.set_xlabel('Semimajor Axis Length (pix)')
+    ax3.set_ylabel('x0')
 
-    plt.subplot(2, 2, 4)
-    plt.errorbar(isolist.sma, isolist.y0, yerr=isolist.y0_err, fmt='o',
+    ax4.errorbar(isolist.sma, isolist.y0, yerr=isolist.y0_err, fmt='o',
                  markersize=4)
-    plt.xlabel('Semimajor Axis Length (pix)')
-    plt.ylabel('y0')
+    ax4.set_xlabel('Semimajor Axis Length (pix)')
+    ax4.set_ylabel('y0')
 
 We can build an elliptical model image from the
 `~photutils.isophote.IsophoteList` object using the

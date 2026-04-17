@@ -458,17 +458,18 @@ apertures (red) on a cutout from the image containing the three sources:
     annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
 
     norm = simple_norm(data, 'sqrt', percent=99)
-    plt.imshow(data, norm=norm, interpolation='nearest')
-    plt.xlim(0, 170)
-    plt.ylim(130, 250)
+    fig, ax = plt.subplots()
+    ax.imshow(data, norm=norm, origin='lower')
+    ax.set_xlim(0, 170)
+    ax.set_ylim(130, 250)
 
     ap_patches = aperture.plot(color='white', lw=2,
                                label='Photometry aperture')
     ann_patches = annulus_aperture.plot(color='red', lw=2,
                                         label='Background annulus')
     handles = (ap_patches[0], ann_patches[0])
-    plt.legend(loc=(0.17, 0.05), facecolor='#458989', labelcolor='white',
-               handles=handles, prop={'weight': 'bold', 'size': 11})
+    ax.legend(loc=(0.17, 0.05), facecolor='#458989', labelcolor='white',
+              handles=handles, prop={'weight': 'bold', 'size': 11})
 
 
 Simple mean within a circular annulus
@@ -704,7 +705,8 @@ Let's plot the first aperture mask:
 .. doctest-skip::
 
     >>> import matplotlib.pyplot as plt
-    >>> plt.imshow(masks[0])
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(masks[0], origin='lower')
 
 .. plot::
 
@@ -717,7 +719,8 @@ Let's plot the first aperture mask:
     aperture = CircularAperture(positions, r=5)
     annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
     masks = annulus_aperture.to_mask(method='exact')
-    plt.imshow(masks[0])
+    fig, ax = plt.subplots()
+    ax.imshow(masks[0], origin='lower')
 
 Let's now use the "center" aperture mask method and plot the resulting
 aperture mask:
@@ -725,7 +728,8 @@ aperture mask:
 .. doctest-skip::
 
     >>> masks2 = aperture.to_mask(method='center')
-    >>> plt.imshow(masks2[0])
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(masks2[0], origin='lower')
 
 .. plot::
 
@@ -738,7 +742,8 @@ aperture mask:
     aperture = CircularAperture(positions, r=5)
     annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
     masks2 = annulus_aperture.to_mask(method='center')
-    plt.imshow(masks2[0])
+    fig, ax = plt.subplots()
+    ax.imshow(masks2[0], origin='lower')
 
 We can also create an aperture mask-weighted cutout from the data,
 properly handling the cases of partial or no overlap of the aperture
@@ -748,7 +753,8 @@ generated above with the "exact" method) multiplied with the data:
 .. doctest-skip::
 
     >>> data_weighted = masks[0].multiply(data)
-    >>> plt.imshow(data_weighted)
+    >>> fig, ax = plt.subplots()
+    >>> ax.imshow(data_weighted, origin='lower')
 
 .. plot::
 
@@ -761,7 +767,8 @@ generated above with the "exact" method) multiplied with the data:
     aperture = CircularAperture(positions, r=5)
     annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
     masks = annulus_aperture.to_mask(method='exact')
-    plt.imshow(masks[0].multiply(data))
+    fig, ax = plt.subplots()
+    ax.imshow(masks[0].multiply(data), origin='lower')
 
 To get a 1D `~numpy.ndarray` of the non-zero weighted data values, use
 the :meth:`~photutils.aperture.ApertureMask.get_values` method:

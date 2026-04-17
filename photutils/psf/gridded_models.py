@@ -698,7 +698,6 @@ class STDPSFGrid:
     >>> from photutils.psf import STDPSFGrid
     >>> psfgrid = STDPSFGrid('STDPSF_ACSWFC_F814W.fits')
     >>> fig = psfgrid.plot_grid()
-    >>> fig.show()
     """
 
     def __init__(self, filename):

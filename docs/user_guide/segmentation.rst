@@ -89,11 +89,10 @@ image showing the detected sources:
 
     >>> import numpy as np
     >>> import matplotlib.pyplot as plt
-    >>> from astropy.visualization import SqrtStretch
-    >>> from astropy.visualization.mpl_normalize import ImageNormalize
-    >>> norm = ImageNormalize(stretch=SqrtStretch())
+    >>> from astropy.visualization import simple_norm
+    >>> norm = simple_norm(data, 'sqrt', percent=99.5)
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
-    >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
+    >>> ax1.imshow(data, norm=norm, origin='lower')
     >>> ax1.set_title('Background-subtracted Data')
     >>> segment_map.imshow(ax=ax2)
     >>> ax2.set_title('Segmentation Image')
@@ -102,8 +101,7 @@ image showing the detected sources:
 
     import matplotlib.pyplot as plt
     from astropy.convolution import convolve
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
+    from astropy.visualization import simple_norm
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
     from photutils.segmentation import detect_sources, make_2dgaussian_kernel
@@ -122,13 +120,13 @@ image showing the detected sources:
 
     segment_map = detect_sources(convolved_data, threshold, n_pixels=10)
 
-    norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
-    ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
+    norm = simple_norm(data, 'sqrt', percent=99.5)
+    ax1.imshow(data, norm=norm, origin='lower')
     ax1.set_title('Background-subtracted Data')
     segment_map.imshow(ax=ax2)
     ax2.set_title('Segmentation Image')
-    plt.tight_layout()
+    fig.tight_layout()
 
 
 Source Deblending
@@ -172,8 +170,6 @@ deblended segmentation image:
 
     import matplotlib.pyplot as plt
     from astropy.convolution import convolve
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
     from photutils.segmentation import (deblend_sources, detect_sources,
@@ -197,11 +193,10 @@ deblended segmentation image:
                                             n_pixels=n_pixels,
                                             progress_bar=False)
 
-    norm = ImageNormalize(stretch=SqrtStretch())
     fig, ax = plt.subplots(1, 1, figsize=(10, 6.5))
     deblended_segment_map.imshow(ax=ax)
     ax.set_title('Deblended Segmentation Image')
-    plt.tight_layout()
+    fig.tight_layout()
 
 Let's plot one of the deblended sources:
 
@@ -209,8 +204,6 @@ Let's plot one of the deblended sources:
 
     import matplotlib.pyplot as plt
     from astropy.convolution import convolve
-    from astropy.visualization import SqrtStretch
-    from astropy.visualization.mpl_normalize import ImageNormalize
     from photutils.background import Background2D, MedianBackground
     from photutils.datasets import make_100gaussians_image
     from photutils.segmentation import (deblend_sources, detect_sources,
@@ -234,20 +227,19 @@ Let's plot one of the deblended sources:
                                             n_pixels=n_pixels,
                                             progress_bar=False)
 
-    norm = ImageNormalize(stretch=SqrtStretch())
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 4))
     slc = (slice(273, 297), slice(425, 444))
     ax1.imshow(data[slc], origin='lower')
     ax1.set_title('Background-subtracted Data')
-    cmap1 = segment_map.cmap
-    ax2.imshow(segment_map.data[slc], origin='lower', cmap=cmap1,
-               interpolation='nearest')
+
+    segm_cutout = segment_map[slc]
+    segm_cutout.imshow(ax=ax2, cmap=segment_map.cmap)
     ax2.set_title('Original Segment')
-    cmap2 = deblended_segment_map.cmap
-    ax3.imshow(deblended_segment_map.data[slc], origin='lower', cmap=cmap2,
-               interpolation='nearest')
+
+    deblended_segm_cutout = deblended_segment_map[slc]
+    deblended_segm_cutout.imshow(ax=ax3, cmap=deblended_segment_map.cmap)
     ax3.set_title('Deblended Segments')
-    plt.tight_layout()
+    fig.tight_layout()
 
 
 SourceFinder
@@ -355,7 +347,7 @@ The :attr:`~photutils.segmentation.SegmentationImage.polygons` property
 returns a list of `Shapely`_ polygon objects representing each source
 segment:
 
-.. doctest-skip::
+.. doctest-requires:: rasterio, shapely
 
     >>> polygons = segment_map.polygons
 
@@ -363,7 +355,7 @@ The :meth:`~photutils.segmentation.SegmentationImage.to_patches` method
 returns a list of `~matplotlib.patches.PathPatch` objects for the source
 segments, which can be overlaid on plots:
 
-.. doctest-skip::
+.. doctest-requires:: rasterio, shapely
 
     >>> patches = segment_map.to_patches(edgecolor='white', lw=1.5)
 
@@ -373,7 +365,7 @@ will plot these patches directly on an existing matplotlib axes:
 
 .. doctest-skip::
 
-    >>> segment_map.plot_patches(edgecolor='white', lw=1.5)
+    >>> patches = segment_map.plot_patches(edgecolor='white', lw=1.5)
 
 For working with individual labels, the
 :meth:`~photutils.segmentation.SegmentationImage.get_polygon`,
@@ -385,7 +377,7 @@ For working with individual labels, the
 are significantly faster than the bulk properties when only a subset of
 labels is needed:
 
-.. doctest-skip::
+.. doctest-requires:: rasterio, shapely
 
     >>> polygon = segment_map.get_polygon(1)
     >>> patch = segment_map.get_patch(1, edgecolor='red', lw=2)
@@ -419,21 +411,21 @@ segmentation image and the science image:
     finder = SourceFinder(n_pixels=10, progress_bar=False)
     segment_map = finder(convolved_data, threshold)
 
-    norm = simple_norm(data, 'sqrt')
     fig, (ax1, ax2) = plt.subplots(ncols=1, nrows=2, figsize=(10, 12.5))
     segment_map.imshow(ax=ax1)
     ax1.set_title('Segmentation Image')
-    segment_map.plot_patches(ax=ax1, edgecolor='white', lw=1)
-    ax2.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
+    segment_map.plot_patches(ax=ax1, edgecolor='white', lw=1.5)
+    norm = simple_norm(data, 'sqrt', percent=99.5)
+    ax2.imshow(data, norm=norm, origin='lower')
     ax2.set_title('Background-subtracted Data')
-    segment_map.plot_patches(ax=ax2, edgecolor='white', lw=1)
-    plt.tight_layout()
+    segment_map.plot_patches(ax=ax2, edgecolor='white', lw=1.5)
+    fig.tight_layout()
 
 To convert the source segments to `regions`_
 `~regions.PolygonPixelRegion` objects, use the
 :meth:`~photutils.segmentation.SegmentationImage.to_regions` method:
 
-.. doctest-skip::
+.. doctest-requires:: rasterio, regions, shapely
 
     >>> regions = segment_map.to_regions()
 
@@ -454,28 +446,24 @@ contains the label number, bounding-box slices, bounding box, area, and
 
 The :attr:`~photutils.segmentation.SegmentationImage.segments` property
 returns a list of `~photutils.segmentation.Segment` objects for all
-labels:
-
-.. doctest-skip::
+labels::
 
     >>> segments = segment_map.segments
     >>> segments[0]
     <photutils.segmentation.core.Segment>
     label: 1
-    slices: (slice(1, 9, None), slice(207, 216, None))
-    area: 50
+    slices: (slice(0, 5, None), slice(230, 242, None))
+    area: 47
 
 For working with individual labels, the
 :meth:`~photutils.segmentation.SegmentationImage.get_segment` and
 :meth:`~photutils.segmentation.SegmentationImage.get_segments` methods
 are significantly faster than the bulk ``segments`` property when only a
-subset of labels is needed:
-
-.. doctest-skip::
+subset of labels is needed::
 
     >>> segment = segment_map.get_segment(1)
     >>> print(segment.label, segment.area)
-    1 50
+    1 47
 
     >>> segments = segment_map.get_segments([1, 5, 10])
     >>> [segment.label for segment in segments]
@@ -484,9 +472,7 @@ subset of labels is needed:
 A `~photutils.segmentation.Segment` can provide cutout arrays
 of the segment data and of arbitrary data arrays via its
 :attr:`~photutils.segmentation.Segment.data` property and
-:meth:`~photutils.segmentation.Segment.make_cutout` method:
-
-.. doctest-skip::
+:meth:`~photutils.segmentation.Segment.make_cutout` method::
 
     >>> segment = segment_map.get_segment(1)
     >>> segment_cutout = segment.data  # labeled region, others set to 0
@@ -566,9 +552,9 @@ of each source) on the data:
     >>> import numpy as np
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import simple_norm
-    >>> norm = simple_norm(data, 'sqrt')
+    >>> norm = simple_norm(data, 'sqrt', percent=99.5)
     >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
-    >>> ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
+    >>> ax1.imshow(data, norm=norm, origin='lower')
     >>> ax1.set_title('Data')
     >>> segment_map.imshow(ax=ax2)
     >>> ax2.set_title('Segmentation Image')
@@ -603,14 +589,14 @@ of each source) on the data:
 
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
-    norm = simple_norm(data, 'sqrt')
-    ax1.imshow(data, origin='lower', cmap='Greys_r', norm=norm)
+    norm = simple_norm(data, 'sqrt', percent=99.5)
+    ax1.imshow(data, norm=norm, origin='lower')
     ax1.set_title('Data with Kron apertures')
     segment_map.imshow(ax=ax2)
     ax2.set_title('Segmentation Image with Kron apertures')
     cat.plot_kron_apertures(ax=ax1, color='white', lw=1.5)
     cat.plot_kron_apertures(ax=ax2, color='white', lw=1.5)
-    plt.tight_layout()
+    fig.tight_layout()
 
 
 We can also create a `~photutils.segmentation.SourceCatalog` object

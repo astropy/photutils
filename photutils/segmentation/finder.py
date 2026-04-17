@@ -135,29 +135,27 @@ class SourceFinder:
         # Make a simulated image
         data = make_100gaussians_image()
 
-        # Subtract the background
+        # Estimate the background using Background2D and subtract it
         bkg_estimator = MedianBackground()
         bkg = Background2D(data, (50, 50), filter_size=(3, 3),
                            bkg_estimator=bkg_estimator)
-        data -= bkg.background
+        data -= bkg.background  # subtract the background
 
         # Convolve the data
-        kernel = make_2dgaussian_kernel(3., size=5)  # FWHM = 3.
+        kernel = make_2dgaussian_kernel(3.0, size=5)
         convolved_data = convolve(data, kernel)
 
         # Detect the sources
-        threshold = 1.5 * bkg.background_rms  # per-pixel threshold
+        threshold = 1.5 * bkg.background_rms  # per-pixel detection threshold
         finder = SourceFinder(n_pixels=10, progress_bar=False)
-        segm = finder(convolved_data, threshold)
+        segment_map = finder(convolved_data, threshold)
 
         # Plot the image and the segmentation image
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
-        norm = simple_norm(data, 'sqrt', percent=99.)
-        ax1.imshow(data, origin='lower', interpolation='nearest',
-                   norm=norm)
-        ax2.imshow(segm.data, origin='lower', interpolation='nearest',
-                   cmap=segm.cmap)
-        plt.tight_layout()
+        norm = simple_norm(data, 'sqrt', percent=99.5)
+        ax1.imshow(data, norm=norm, origin='lower')
+        segment_map.imshow(ax=ax2)
+        fig.tight_layout()
     """
 
     @deprecated_renamed_argument('npixels', 'n_pixels', '3.0', until='4.0')

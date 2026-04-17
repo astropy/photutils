@@ -336,9 +336,11 @@ Let's plot the image:
                                              min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
-    plt.imshow(data, origin='lower')
-    plt.title('Simulated Data')
-    plt.colorbar()
+
+    fig, ax = plt.subplots()
+    axim = ax.imshow(data, origin='lower')
+    ax.set_title('Simulated Data')
+    fig.colorbar(axim)
 
 
 Fitting multiple sources
@@ -455,13 +457,13 @@ and plot it:
 
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
     norm = simple_norm(data, 'sqrt', percent=99)
-    ax[0].imshow(data, origin='lower', norm=norm)
-    ax[1].imshow(data - resid, origin='lower', norm=norm)
-    im = ax[2].imshow(resid, origin='lower', norm=norm)
+    ax[0].imshow(data, norm=norm, origin='lower')
+    ax[1].imshow(data - resid, norm=norm, origin='lower')
+    im = ax[2].imshow(resid, norm=norm, origin='lower')
     ax[0].set_title('Data')
     ax[1].set_title('Model')
     ax[2].set_title('Residual Image')
-    plt.tight_layout()
+    fig.tight_layout()
 
 The residual image looks like noise, indicating good fits to the
 sources.
@@ -568,16 +570,16 @@ the location of the source that was fit and subtracted.
 
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
     norm = simple_norm(data, 'sqrt', percent=99)
-    ax[0].imshow(data, origin='lower', norm=norm)
-    ax[1].imshow(data - resid, origin='lower', norm=norm)
-    im = ax[2].imshow(resid, origin='lower', norm=norm)
+    ax[0].imshow(data, norm=norm, origin='lower')
+    ax[1].imshow(data - resid, norm=norm, origin='lower')
+    im = ax[2].imshow(resid, norm=norm, origin='lower')
     ax[0].set_title('Data')
     aper.plot(ax=ax[0], color='red')
     ax[1].set_title('Model')
     aper.plot(ax=ax[1], color='red')
     ax[2].set_title('Residual Image')
     aper.plot(ax=ax[2], color='red')
-    plt.tight_layout()
+    fig.tight_layout()
 
 
 .. _psf-forced-photometry:

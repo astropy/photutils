@@ -54,6 +54,7 @@ The first step is to generate a simulated astronomical image that
 contains sources modeled as 2D Gaussians, which we will accomplish using
 the `~photutils.psf.make_psf_model_image` function::
 
+    >>> from photutils.datasets import make_noise_image
     >>> from photutils.psf import CircularGaussianPRF, make_psf_model_image
     >>> shape = (256, 256)
     >>> fwhm = 4.7
@@ -66,6 +67,8 @@ the `~photutils.psf.make_psf_model_image` function::
     ...                                    model_shape=psf_shape,
     ...                                    flux=flux,
     ...                                    border_size=border_size, seed=123)
+    >>> noise = make_noise_image(shape, mean=0, stddev=2, seed=123)
+    >>> data += noise
 
 The `~photutils.psf.make_psf_model_image` provides two outputs: the
 image itself, which we call ``data``, and a table containing the
@@ -79,11 +82,12 @@ Let's display the image:
 
     >>> import matplotlib.pyplot as plt
     >>> fig, ax = plt.subplots(figsize=(8, 8))
-    >>> ax.imshow(data, origin='lower', interpolation='nearest')
+    >>> ax.imshow(data, origin='lower')
 
 .. plot::
 
     import matplotlib.pyplot as plt
+    from photutils.datasets import make_noise_image
     from photutils.psf import CircularGaussianPRF, make_psf_model_image
 
     shape = (256, 256)
@@ -97,9 +101,11 @@ Let's display the image:
                                        flux=flux,
                                        model_shape=psf_shape,
                                        border_size=border_size, seed=123)
+    noise = make_noise_image(shape, mean=0, stddev=2, seed=123)
+    data += noise
+
     fig, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(data, origin='lower', interpolation='nearest')
-    fig.show()
+    ax.imshow(data, origin='lower')
 
 With the simulated data ready, we can now identify groups of stars.
 The first step is to create a `~photutils.psf.SourceGrouper` object.
@@ -213,15 +219,14 @@ circles around each star to show which stars have been grouped together:
 
     >>> import matplotlib.pyplot as plt
     >>> fig, ax = plt.subplots(figsize=(8, 8))
-    >>> ax.imshow(data, origin='lower', interpolation='nearest',
-    ...           cmap='Greys_r')
+    >>> ax.imshow(data, origin='lower')
     >>> groups.plot(radius=fwhm, ax=ax, lw=2, seed=123)
-    >>> fig.show()
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
+    from photutils.datasets import make_noise_image
     from photutils.psf import (CircularGaussianPRF, SourceGrouper,
                                make_psf_model_image)
 
@@ -236,6 +241,8 @@ circles around each star to show which stars have been grouped together:
                                        flux=flux,
                                        model_shape=psf_shape,
                                        border_size=border_size, seed=123)
+    noise = make_noise_image(shape, mean=0, stddev=2, seed=123)
+    data += noise
 
     min_separation = 2.5 * fwhm
     grouper = SourceGrouper(min_separation)
@@ -245,9 +252,8 @@ circles around each star to show which stars have been grouped together:
     groups = grouper(x, y, return_groups_object=True)
 
     fig, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(data, origin='lower', interpolation='nearest', cmap='Greys_r')
+    ax.imshow(data, origin='lower')
     groups.plot(radius=fwhm, ax=ax, lw=2, seed=123)
-    fig.show()
 
 You can also label each group with its ID by setting the ``label_groups``
 keyword:
@@ -256,16 +262,15 @@ keyword:
 
     >>> import matplotlib.pyplot as plt
     >>> fig, ax = plt.subplots(figsize=(8, 8))
-    >>> ax.imshow(data, origin='lower', interpolation='nearest',
-    ...           cmap='Greys_r')
+    >>> ax.imshow(data, origin='lower')
     >>> groups.plot(radius=fwhm, ax=ax, lw=2, seed=123,
                     label_groups=True, label_offset=(6, 6))
-    >>> fig.show()
 
 .. plot::
 
     import matplotlib.pyplot as plt
     import numpy as np
+    from photutils.datasets import make_noise_image
     from photutils.psf import (CircularGaussianPRF, SourceGrouper,
                                make_psf_model_image)
 
@@ -280,6 +285,8 @@ keyword:
                                        flux=flux,
                                        model_shape=psf_shape,
                                        border_size=border_size, seed=123)
+    noise = make_noise_image(shape, mean=0, stddev=2, seed=123)
+    data += noise
 
     min_separation = 2.5 * fwhm
     grouper = SourceGrouper(min_separation)
@@ -289,7 +296,6 @@ keyword:
     groups = grouper(x, y, return_groups_object=True)
 
     fig, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(data, origin='lower', interpolation='nearest', cmap='Greys_r')
+    ax.imshow(data, origin='lower')
     groups.plot(radius=fwhm, ax=ax, lw=2, seed=123, label_groups=True,
                 label_offset=(6, 6))
-    fig.show()

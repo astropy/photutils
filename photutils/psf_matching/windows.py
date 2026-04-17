@@ -78,8 +78,9 @@ class SplitCosineBellWindow:
 
         taper = SplitCosineBellWindow(alpha=0.4, beta=0.3)
         data = taper((101, 101))
-        plt.imshow(data, origin='lower')
-        plt.colorbar()
+        fig, ax = plt.subplots()
+        axim = ax.imshow(data, origin='lower')
+        fig.colorbar(axim)
 
     A 1D cut across the image center:
 
@@ -91,7 +92,8 @@ class SplitCosineBellWindow:
 
         taper = SplitCosineBellWindow(alpha=0.4, beta=0.3)
         data = taper((101, 101))
-        plt.plot(data[50, :])
+        fig, ax = plt.subplots()
+        ax.plot(data[50, :])
     """
 
     def __init__(self, alpha, beta):
@@ -185,8 +187,9 @@ class HanningWindow(SplitCosineBellWindow):
 
         taper = HanningWindow()
         data = taper((101, 101))
-        plt.imshow(data, origin='lower')
-        plt.colorbar()
+        fig, ax = plt.subplots()
+        axim = ax.imshow(data, origin='lower')
+        fig.colorbar(axim)
 
     A 1D cut across the image center:
 
@@ -198,7 +201,8 @@ class HanningWindow(SplitCosineBellWindow):
 
         taper = HanningWindow()
         data = taper((101, 101))
-        plt.plot(data[50, :])
+        fig, ax = plt.subplots()
+        ax.plot(data[50, :])
     """
 
     def __init__(self):
@@ -254,8 +258,9 @@ class TukeyWindow(SplitCosineBellWindow):
 
         taper = TukeyWindow(alpha=0.4)
         data = taper((101, 101))
-        plt.imshow(data, origin='lower')
-        plt.colorbar()
+        fig, ax = plt.subplots()
+        axim = ax.imshow(data, origin='lower')
+        fig.colorbar(axim)
 
     A 1D cut across the image center:
 
@@ -267,7 +272,8 @@ class TukeyWindow(SplitCosineBellWindow):
 
         taper = TukeyWindow(alpha=0.4)
         data = taper((101, 101))
-        plt.plot(data[50, :])
+        fig, ax = plt.subplots()
+        ax.plot(data[50, :])
     """
 
     def __init__(self, alpha):
@@ -317,8 +323,9 @@ class CosineBellWindow(SplitCosineBellWindow):
 
         taper = CosineBellWindow(alpha=0.3)
         data = taper((101, 101))
-        plt.imshow(data, origin='lower')
-        plt.colorbar()
+        fig, ax = plt.subplots()
+        axim = ax.imshow(data, origin='lower')
+        fig.colorbar(axim)
 
     A 1D cut across the image center:
 
@@ -330,7 +337,8 @@ class CosineBellWindow(SplitCosineBellWindow):
 
         taper = CosineBellWindow(alpha=0.3)
         data = taper((101, 101))
-        plt.plot(data[50, :])
+        fig, ax = plt.subplots()
+        ax.plot(data[50, :])
     """
 
     def __init__(self, alpha):
@@ -384,8 +392,9 @@ class TopHatWindow(SplitCosineBellWindow):
 
         taper = TopHatWindow(beta=0.4)
         data = taper((101, 101))
-        plt.imshow(data, origin='lower', interpolation='nearest')
-        plt.colorbar()
+        fig, ax = plt.subplots()
+        axim = ax.imshow(data, origin='lower')
+        fig.colorbar(axim)
 
     A 1D cut across the image center:
 
@@ -397,7 +406,8 @@ class TopHatWindow(SplitCosineBellWindow):
 
         taper = TopHatWindow(beta=0.4)
         data = taper((101, 101))
-        plt.plot(data[50, :])
+        fig, ax = plt.subplots()
+        ax.plot(data[50, :])
     """
 
     def __init__(self, beta):

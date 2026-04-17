@@ -198,8 +198,9 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         model_shape = (15, 15)
         data = make_model_image(shape, model, params, model_shape=model_shape)
 
-        plt.imshow(data, origin='lower')
-        plt.tight_layout()
+        fig, ax = plt.subplots()
+        ax.imshow(data, origin='lower')
+        fig.tight_layout()
 
     .. plot::
         :include-source:
@@ -220,8 +221,9 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         data = make_model_image(shape, model, params, model_shape=model_shape,
                                 x_name='x_mean', y_name='y_mean')
 
-        plt.imshow(data, origin='lower')
-        plt.tight_layout()
+        fig, ax = plt.subplots()
+        ax.imshow(data, origin='lower')
+        fig.tight_layout()
     """
     if not isinstance(shape, tuple) or len(shape) != 2:
         msg = 'shape must be a 2-tuple'

@@ -796,7 +796,7 @@ class EllipticalCurveOfGrowth(ProfileBase):
     >>> xycen = centroid_2dg(data)
     >>> radii = np.arange(1, 40)
     >>> ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-    ...                               theta=np.deg2rad(42), error=error)
+    ...                                theta=np.deg2rad(42), error=error)
 
     >>> print(ecog.radius)  # doctest: +FLOAT_CMP
     [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
@@ -852,7 +852,7 @@ class EllipticalCurveOfGrowth(ProfileBase):
         # Create the elliptical curve of growth
         radii = np.arange(1, 40)
         ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-                                      theta=np.deg2rad(42), error=error)
+                                       theta=np.deg2rad(42), error=error)
 
         # Plot the elliptical curve of growth
         ecog.normalize()
@@ -888,7 +888,7 @@ class EllipticalCurveOfGrowth(ProfileBase):
         # Create the elliptical curve of growth
         radii = np.arange(1, 40)
         ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
-                                      theta=np.deg2rad(42), error=error)
+                                       theta=np.deg2rad(42), error=error)
 
         norm = simple_norm(data, 'sqrt')
         fig, ax = plt.subplots(figsize=(5, 5))

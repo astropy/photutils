@@ -2300,7 +2300,7 @@ class SegmentationImage:
         cbar_labels = np.hstack((0, self.labels))
         if len(cbar_labels) <= max_labels:
             cbar_ticks = np.arange(len(cbar_labels))
-            cbar = plt.colorbar(im, ax=ax, ticks=cbar_ticks)
+            cbar = ax.figure.colorbar(im, ax=ax, ticks=cbar_ticks)
             cbar.ax.set_yticklabels(cbar_labels)
             if cbar_labelsize is not None:
                 cbar.ax.yaxis.set_tick_params(labelsize=cbar_labelsize)
