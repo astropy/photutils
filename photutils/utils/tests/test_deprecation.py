@@ -12,11 +12,13 @@ from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.utils._deprecation import (DeprecatedColumnQTable,
                                           DeprecatedColumnTable,
+                                          _future_column_names_var,
                                           create_deprecated_table_from_data,
                                           create_empty_deprecated_qtable,
                                           deprecated, deprecated_getattr,
                                           deprecated_positional_kwargs,
-                                          deprecated_renamed_argument)
+                                          deprecated_renamed_argument,
+                                          use_future_column_names)
 
 DEPRECATION_MAP = {'old': 'new', 'old_b': 'new_b'}
 
@@ -410,6 +412,118 @@ class TestFutureColumnNames:
         table = create_empty_deprecated_qtable(DEPRECATION_MAP)
         assert type(table) is QTable
         assert len(table) == 0
+
+
+class TestUseFutureColumnNames:
+    """
+    Tests for the ``use_future_column_names`` context manager.
+    """
+
+    def test_context_manager_returns_plain_table(self, raw_data):
+        """
+        Test that the context manager makes
+        create_deprecated_table_from_data return a plain Table.
+        """
+        with use_future_column_names():
+            table = create_deprecated_table_from_data(
+                raw_data, DEPRECATION_MAP)
+        assert type(table) is Table
+        assert set(table.colnames) == {'new', 'new_b', 'stable'}
+
+    def test_context_manager_returns_plain_qtable(self, raw_data):
+        """
+        Test that the context manager makes
+        create_deprecated_table_from_data return a plain QTable.
+        """
+        with use_future_column_names():
+            table = create_deprecated_table_from_data(
+                raw_data, DEPRECATION_MAP, use_qtable=True)
+        assert type(table) is QTable
+
+    def test_context_manager_empty_qtable(self):
+        """
+        Test that the context manager makes
+        create_empty_deprecated_qtable return a plain QTable.
+        """
+        with use_future_column_names():
+            table = create_empty_deprecated_qtable(DEPRECATION_MAP)
+        assert type(table) is QTable
+        assert len(table) == 0
+
+    def test_global_unchanged_after_context(self):
+        """
+        Test that the global flag is unchanged after the context
+        manager exits.
+        """
+        import photutils
+
+        original = photutils.future_column_names
+        with use_future_column_names():
+            pass
+        assert photutils.future_column_names == original
+
+    def test_outside_context_uses_global(self, raw_data):
+        """
+        Test that outside the context manager, the global flag is
+        respected and deprecated table behavior is used.
+        """
+        import photutils
+
+        assert not photutils.future_column_names
+        with use_future_column_names():
+            pass
+        # Outside the context, should use the deprecated table
+        table = create_deprecated_table_from_data(
+            raw_data, DEPRECATION_MAP)
+        assert type(table) is DeprecatedColumnTable
+
+    def test_nested_context_managers(self, raw_data):
+        """
+        Test that nested context managers work correctly with different
+        values.
+        """
+        with use_future_column_names(enabled=True):
+            table1 = create_deprecated_table_from_data(
+                raw_data, DEPRECATION_MAP)
+            assert type(table1) is Table
+
+            with use_future_column_names(enabled=False):
+                table2 = create_deprecated_table_from_data(
+                    raw_data, DEPRECATION_MAP)
+                assert type(table2) is DeprecatedColumnTable
+
+            # Back to the outer context
+            table3 = create_deprecated_table_from_data(
+                raw_data, DEPRECATION_MAP)
+            assert type(table3) is Table
+
+    def test_context_manager_disabled(self, raw_data):
+        """
+        Test that use_future_column_names(enabled=False) forces the
+        deprecated table behavior even if the global flag is True.
+        """
+        import photutils
+
+        original = photutils.future_column_names
+        try:
+            photutils.future_column_names = True
+            with use_future_column_names(enabled=False):
+                table = create_deprecated_table_from_data(
+                    raw_data, DEPRECATION_MAP)
+                assert type(table) is DeprecatedColumnTable
+        finally:
+            photutils.future_column_names = original
+
+    def test_restores_on_exception(self):
+        """
+        Test that the context manager restores state even if an
+        exception occurs.
+        """
+        sentinel_before = _future_column_names_var.get()
+        msg = 'test error'
+        with use_future_column_names(), pytest.raises(ValueError, match=msg):
+            raise ValueError(msg)
+        assert _future_column_names_var.get() == sentinel_before
 
 
 @deprecated_positional_kwargs('1.0', until='2.0')
