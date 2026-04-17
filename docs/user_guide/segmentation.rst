@@ -355,7 +355,7 @@ The :meth:`~photutils.segmentation.SegmentationImage.to_patches` method
 returns a list of `~matplotlib.patches.PathPatch` objects for the source
 segments, which can be overlaid on plots:
 
-.. doctest-requires:: rasterio, shapely
+.. doctest-requires:: matplotlib, rasterio, shapely
 
     >>> patches = segment_map.to_patches(edgecolor='white', lw=1.5)
 
@@ -377,7 +377,7 @@ For working with individual labels, the
 are significantly faster than the bulk properties when only a subset of
 labels is needed:
 
-.. doctest-requires:: rasterio, regions, shapely
+.. doctest-requires:: matplotlib, rasterio, regions, shapely
 
     >>> polygon = segment_map.get_polygon(1)
     >>> patch = segment_map.get_patch(1, edgecolor='red', lw=2)
