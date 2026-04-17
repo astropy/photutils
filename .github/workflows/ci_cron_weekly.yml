@@ -37,15 +37,9 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: '3.13'
-            tox_env: 'py313-test-alldeps-devinfra'
+            python: '3.14'
+            tox_env: 'py314-test-alldeps-devinfra'
             allow_failure: false
-
-          # no rasterio wheel for 3.14 yet
-          # - os: ubuntu-latest
-          #   python: '3.14'
-          #   tox_env: 'py314-test-alldeps-devinfra'
-          #   allow_failure: false
 
     steps:
       - name: Check out repository
@@ -86,7 +80,9 @@ jobs:
         include:
           - arch: s390x
           - arch: ppc64le
-          - arch: armv7
+          # isophote.rst fails on armv7 with
+          # "RuntimeWarning: Mean of empty slice."
+          # - arch: armv7
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
