@@ -22,11 +22,6 @@ repository is called ``upstream``.
    sure to push all changes to the repository so that CI can run on the
    bugfix branch.
 
-#. Ensure that a "What's New" page is added to the documentation for the
-   new release. This page should be added to the ``docs/whats_new``
-   directory and should be named ``<X.Y.Z>.rst``. Update the "What's
-   New" link on the main page (``docs/index.rst``) to the new version.
-
 #. Ensure that `CI tests <https://github.com/astropy/photutils/actions>`_
    are passing for the branch you are going to
    release. Also, ensure that `Read the Docs builds
@@ -39,6 +34,15 @@ repository is called ``upstream``.
         tox -e test-alldeps -- --remote-data
         tox -e build_docs
         tox -e linkcheck
+
+#. Update the current "What's New" page (``docs/whats_new/<X.Y.Z>.rst``)
+   to make sure that all the changes are listed. Update the
+   ``docs/release_notes/index.rst`` file by changing the section header
+   from "Development Version" to "Current Version". Then commit the
+   changes::
+
+        git add docs/whats_new/<X.Y.Z>.rst docs/release_notes/index.rst
+        git commit -m"Finalizing what's new for version <X.Y.Z>"
 
 #. Update the ``CHANGES.rst`` file to make sure that all the changes are
    listed and update the release date from ``unreleased`` to the current
@@ -93,6 +97,15 @@ repository is called ``upstream``.
    <https://app.readthedocs.org/projects/photutils/versions/>`_ and
    check that the "stable" docs correspond to the new released version.
    Hide any older released versions (i.e., check "Hidden").
+
+#. Add a new "What's New" page (``docs/whats_new/<X.Y.Z>.rst``)
+   for the next release. Update the ``docs/release_notes/index.rst``
+   file by changing the section header from "Current Version" to
+   "Development Version" and adding the new "What's New" page for the
+   next release. Then commit the changes::
+
+        git add docs/whats_new/<X.Y.Z>.rst docs/release_notes/index.rst
+        git commit -m"Add what's new for version <X.Y.Z>"
 
 #. Update ``CHANGES.rst``, adding new sections for the next ``x.y.z``
    version, e.g.,::
