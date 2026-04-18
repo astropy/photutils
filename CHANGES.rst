@@ -4,8 +4,20 @@
 General
 ^^^^^^^
 
+- The minimum required astropy is now 6.1.7. [#2211]
+
 New Features
 ^^^^^^^^^^^^
+
+- ``photutils.aperture``
+
+  - Added support for serializing ``CircularAperture`` to the ASDF
+    format. [#2211]
+
+- ``photutils.psf``
+
+  - Added support for serializing ``AiryDiskPSF`` to the ASDF format.
+    [#2211]
 
 Bug Fixes
 ^^^^^^^^^

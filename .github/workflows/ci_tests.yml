@@ -140,3 +140,21 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}  # zizmor: ignore[secrets-outside-env]
         files: ./coverage.xml
         verbose: true
+  asdf-schemas:
+    name: Test ASDF Schemas
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+        path: photutils
+    - name: Set up Python 3.13
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+      with:
+        python-version: '3.13'
+    - name: Install dependencies
+      run: cd photutils && python -m pip install -e .[test]
+    - name: Validate ASDF schemas
+      run: cd photutils && pytest photutils/resources/schemas
