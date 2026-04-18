@@ -19,7 +19,6 @@ cdef extern from "math.h":
     double sin(double x)
     double sqrt(double x)
 
-
 DTYPE = np.float64
 ctypedef cnp.float64_t DTYPE_t
 
@@ -83,7 +82,7 @@ def build_ellipse_model_c(
     cdef double r, sma, q, pa, x0, y0, intens0, intens
     cdef int i, j, i_max, j_max
     cdef cython.Py_ssize_t index
-    cdef bool i_ge_zero, i_p1_le_max
+    cdef bint i_ge_zero, i_p1_le_max
 
     # Define output array
     cdef double[:, :] result = np.zeros([n_rows, n_cols], dtype=DTYPE)
