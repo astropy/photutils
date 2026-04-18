@@ -24,6 +24,12 @@ dependencies to provide users with access to the latest features and
 performance improvements:
 
 - Astropy minimum version is now 6.1.7
+- SciPy minimum version is now 1.14
+- Regions minimum version is now 0.10
+- scikit-image minimum version is now 0.24
+- gwcs minimum version is now 0.22
+- Shapely minimum version is now 2.1
+- tqdm minimum version is now 4.67
 
 
 ASDF Serialization Support
