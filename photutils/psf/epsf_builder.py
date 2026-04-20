@@ -212,8 +212,8 @@ class _EPSFValidator:
                 problematic_stars.append(f'Star {i}: {star.shape}')
 
         if problematic_stars:
-            msg = (f"Found {len(problematic_stars)} star(s) with very small "
-                   f"dimensions (< {min_star_size}x{min_star_size}): "
+            msg = (f'Found {len(problematic_stars)} star(s) with very small '
+                   f'dimensions (< {min_star_size}x{min_star_size}): '
                    f"{', '.join(problematic_stars)}. Consider using larger "
                    'star cutouts for better ePSF quality.')
             raise ValueError(msg)
