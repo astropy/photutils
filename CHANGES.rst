@@ -6,6 +6,8 @@ General
 
 New Features
 ^^^^^^^^^^^^
+- Added an ASDF extension to provide converters for photutils aperture
+  and PSF classes. [#2211]
 
 Bug Fixes
 ^^^^^^^^^
