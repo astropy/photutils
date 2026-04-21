@@ -20,8 +20,8 @@ properties:
     description: |
       The pixel coordinates of the aperture center(s) in one of the following formats:
 
-        * single ``(x, y)`` pair as a tuple, list, or `~numpy.ndarray`
-        * tuple, list, or `~numpy.ndarray` of ``(x, y)`` pairs
+        * single ``(x, y)`` pair as a tuple, list, or `numpy.ndarray`
+        * tuple, list, or `numpy.ndarray` of ``(x, y)`` pairs
     anyOf:
       - type: array
         items:

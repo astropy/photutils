@@ -36,7 +36,6 @@ dependencies = [
     'astropy >= 6.1.7',
     'numpy >= 2.0',
     'scipy >= 1.13',
-    'asdf-astropy>=0.10',
 ]
 
 [project.urls]
@@ -49,6 +48,7 @@ Documentation = 'https://photutils.readthedocs.io/en/stable/'
 
 [project.optional-dependencies]
 all = [
+    'asdf-astropy>=0.10',
     'bottleneck >= 1.4',
     'gwcs >= 0.20',
     'matplotlib >= 3.9',
@@ -62,7 +62,7 @@ test = [
     'pytest-astropy >= 0.11',
     'pytest-xdist >= 3.5',
     'tox >= 4.12',
-    'pytest-asdf-plugin'
+    'pytest-asdf-plugin',
 ]
 docs = [
     'photutils[all]',

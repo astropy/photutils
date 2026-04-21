@@ -161,6 +161,6 @@ jobs:
       with:
         python-version: '3.13'
     - name: Install dependencies
-      run: cd photutils && python -m pip install -e .[test]
+      run: cd photutils && python -m pip install -e .[test] asdf-astropy
     - name: Validate ASDF schemas
       run: cd photutils && pytest photutils/resources/schemas

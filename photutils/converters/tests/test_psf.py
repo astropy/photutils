@@ -5,8 +5,10 @@ Tests for the photutils PSF converters.
 """
 import asdf
 from astropy import units as u
+import pytest
 
 from photutils.psf import AiryDiskPSF
+from photutils.converters import ASDF_ASTROPY_INSTALLED
 
 psfs = [
     AiryDiskPSF(flux=1 * u.Jy, x_0=0 * u.arcsec, y_0=0 * u.arcsec,
@@ -16,6 +18,8 @@ psfs = [
 ]
 
 
+@pytest.mark.skipif(not ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
 def test_psf_converters(tmp_path):
     """
     Test that the PSF converters can round-trip a PSF object.
