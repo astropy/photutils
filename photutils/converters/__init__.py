@@ -8,6 +8,9 @@ from . functional_models import (
     MoffatPSFConverter,
 )
 from . apertures import CircularApertureConverter
+from . image_models import ImagePSFConverter
+#from . gridded_models import GriddedPSFConverter
+
 
 __all__ = [
     'AiryDiskPSFConverter',
@@ -17,5 +20,8 @@ __all__ = [
     'CircularApertureConverter',
     'GaussianPRFConverter',
     'GaussianPSFConverter',
+ #   'GriddedPSFConverter',
+    'ImagePSFConverter',
     'MoffatPSFConverter',
 ]
+

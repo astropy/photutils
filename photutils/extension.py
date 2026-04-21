@@ -7,7 +7,7 @@ import importlib.resources as importlib_resources
 from asdf.extension import ManifestExtension
 from asdf.resource import DirectoryResourceMapping
 
-from .converters import apertures, functional_models
+from .converters import apertures, functional_models, image_models # gridded_models
 
 __all__ = [
     'PHOTUTILS_APERTURE_CONVERTERS',
@@ -23,6 +23,8 @@ PHOTUTILS_PSF_CONVERTERS = [
     functional_models.GaussianPRFConverter(),
     functional_models.GaussianPSFConverter(),
     functional_models.MoffatPSFConverter(),
+    image_models.ImagePSFConverter(),
+    #gridded_models.GriddedPSFConverter(),
 ]
 
 PHOTUTILS_APERTURE_CONVERTERS = [
