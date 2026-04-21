@@ -19,6 +19,7 @@ cdef extern from "math.h":
     double sin(double x)
     double sqrt(double x)
 
+from cpython cimport bool
 
 DTYPE = np.float64
 ctypedef cnp.float64_t DTYPE_t
