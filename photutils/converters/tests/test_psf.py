@@ -19,20 +19,20 @@ psfs = [
 
 @pytest.mark.skipif(not ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
-def test_psf_converters(tmp_path):
+@pytest.mark.parametrize('psf', psfs)
+def test_psf_converters(tmp_path, psf):
     """
     Test that the PSF converters can round-trip a PSF object.
     """
-    for psf in psfs:
-        with asdf.AsdfFile() as af:
-            af['psf'] = psf
-            af.write_to(tmp_path / 'psf.asdf')
+    with asdf.AsdfFile() as af:
+        af['psf'] = psf
+        af.write_to(tmp_path / 'psf.asdf')
 
-        with asdf.open(tmp_path / 'psf.asdf') as af:
-            psf2 = af['psf']
+    with asdf.open(tmp_path / 'psf.asdf') as af:
+        psf2 = af['psf']
 
-            assert psf.flux == psf2.flux
-            assert psf.x_0 == psf2.x_0
-            assert psf.y_0 == psf2.y_0
-            assert psf.radius == psf2.radius
-            assert psf.bbox_factor == psf2.bbox_factor
+        assert psf.flux == psf2.flux
+        assert psf.x_0 == psf2.x_0
+        assert psf.y_0 == psf2.y_0
+        assert psf.radius == psf2.radius
+        assert psf.bbox_factor == psf2.bbox_factor
