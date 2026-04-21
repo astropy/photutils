@@ -4,17 +4,16 @@
 Tests for the photutils PSF converters.
 """
 import asdf
-from astropy import units as u
 import pytest
+from astropy import units as u
 
-from photutils.psf import AiryDiskPSF
 from photutils.converters import ASDF_ASTROPY_INSTALLED
+from photutils.psf import AiryDiskPSF
 
 psfs = [
     AiryDiskPSF(flux=1 * u.Jy, x_0=0 * u.arcsec, y_0=0 * u.arcsec,
                 radius=1 * u.arcsec, bbox_factor=2),
-    AiryDiskPSF(flux=2 * u.Jy, x_0=1 * u.arcsec, y_0=1 * u.arcsec,
-                radius=2 * u.arcsec, bbox_factor=3),
+    AiryDiskPSF(flux=2, x_0=1, y_0=1, radius=2, bbox_factor=3),
 ]
 
 
