@@ -12,13 +12,17 @@ on:
       - labeled
   push:
     branches:
-      - '*'
+      - 'main'
     tags:
       - '*'
       - '!*dev*'
       - '!*pre*'
       - '!*post*'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -34,16 +38,32 @@ jobs:
 
     uses: OpenAstronomy/github-actions-workflows/.github/workflows/publish.yml@e97344095b099e1d729fe97429078c9975921d8a  # v2.6.2
 
-    if: (github.repository == 'astropy/photutils' && (github.event_name == 'push' ||  github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Build all wheels')))
+    if: |
+      github.repository == 'astropy/photutils' &&
+      (
+        github.event_name == 'push' ||
+        github.event_name == 'schedule' ||
+        github.event_name == 'workflow_dispatch' ||
+        contains(github.event.pull_request.labels.*.name, 'Build all wheels')
+      )
     with:
       # We upload to PyPI for all tag pushes, except tags ending in .dev
-      upload_to_pypi: ${{ startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref, '.dev') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+      upload_to_pypi: >-
+        ${{ startsWith(github.ref, 'refs/tags/') &&
+            !endsWith(github.ref, '.dev') &&
+            (
+              github.event_name == 'push' ||
+              github.event_name == 'workflow_dispatch'
+            )
+        }}
 
       test_extras: test
       test_command: pytest -p no:warnings --pyargs photutils
       targets: |
         # Linux wheels
         - cp*-manylinux_x86_64
+        - target: cp3*-manylinux_aarch64
+          runs-on: ubuntu-24.04-arm
 
         # MacOS X wheels
         - cp*-macosx_x86_64
@@ -51,6 +71,7 @@ jobs:
 
         # Windows wheels
         - cp*-win_amd64
+        - cp*-win_arm64
 
       # Developer wheels
       upload_to_anaconda: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
