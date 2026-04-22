@@ -3,6 +3,7 @@
 *.a
 *.o
 *.so
+*.whl
 __pycache__
 
 # Ignore .c files by default to avoid including generated code. If you want to
@@ -13,6 +14,9 @@ __pycache__
 */version.py
 */cython_version.py
 MANIFEST
+build-oldest-constraints.txt
+install-oldest-constraints.txt
+requirements-min.txt
 htmlcov
 .coverage*
 .ipynb_checkpoints
