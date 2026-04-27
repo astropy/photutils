@@ -1,4 +1,5 @@
-from . functional_models import (
+from . apertures import CircularApertureConverter
+from .functional_models import (
     AiryDiskPSFConverter,
     CircularGaussianPRFConverter,
     CircularGaussianPSFConverter,
@@ -7,21 +8,18 @@ from . functional_models import (
     GaussianPSFConverter,
     MoffatPSFConverter,
 )
-from . apertures import CircularApertureConverter
-from . image_models import ImagePSFConverter
-#from . gridded_models import GriddedPSFConverter
+from . image_models import GriddedPSFConverter, ImagePSFConverter
 
 
 __all__ = [
     'AiryDiskPSFConverter',
+    'CircularApertureConverter',
     'CircularGaussianPRFConverter',
     'CircularGaussianPSFConverter',
     'CircularGaussianSigmaPRFConverter',
-    'CircularApertureConverter',
     'GaussianPRFConverter',
     'GaussianPSFConverter',
- #   'GriddedPSFConverter',
+    'GriddedPSFConverter',
     'ImagePSFConverter',
     'MoffatPSFConverter',
 ]
-

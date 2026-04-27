@@ -10,11 +10,11 @@ from asdf_astropy.converters.transform.core import (TransformConverterBase,
 __all__ = ['AiryDiskPSFConverter',
            'CircularGaussianPRFConverter',
            'CircularGaussianPSFConverter',
-            'CircularGaussianSigmaPRFConverter',
-            'GaussianPRFConverter',
-            'GaussianPSFConverter',
-            'MoffatPSFConverter',
-            ]
+           'CircularGaussianSigmaPRFConverter',
+           'GaussianPRFConverter',
+           'GaussianPSFConverter',
+           'MoffatPSFConverter',
+           ]
 
 
 class AiryDiskPSFConverter(TransformConverterBase):
@@ -165,6 +165,7 @@ class GaussianPRFConverter(TransformConverterBase):
             bbox_factor=node['bbox_factor'],
         )
 
+
 class GaussianPSFConverter(TransformConverterBase):
     """
     ASDF converter for GaussianPSF model.
@@ -189,14 +190,14 @@ class GaussianPSFConverter(TransformConverterBase):
 
         return GaussianPSF(
             flux=node['flux'],
-            x_0=node['x_0'],    
+            x_0=node['x_0'],
             y_0=node['y_0'],
             x_fwhm=node['x_fwhm'],
             y_fwhm=node['y_fwhm'],
             theta=node['theta'],
             bbox_factor=node['bbox_factor'],
         )
-    
+
 
 class MoffatPSFConverter(TransformConverterBase):
     """

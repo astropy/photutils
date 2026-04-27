@@ -6,58 +6,58 @@ title: ImagePSF
 description: |
   ASDF schema for serializing a 2D Image PSF model.
 
-
-
 examples:
   -
-    - A ImagePSF with a flux of 71.4, centered at (24.3, 25.2) pixels,
-      and alpha 0f 5.1 and beta 0f 3.2
-      psf.ImagePSF(flux=71.4, x_0=24.3, y_0=25.2, alpha=5.1, beta=3.2)
+    - An ImagePSF with a flux of 71.4, centered at (24.3, 25.2) pixels, 
+      and an image of shape (11, 11).
+      psf.ImagePSF(data=np.ones((11, 11)), flux=71.4, x_0=24.3, y_0=25.2)
     - |
       !<tag:astropy.org:photutils/psf/image_psf-1.0.0>
         bbox_factor: 10.0
         bounds:
-          alpha: [1.1754943508222875e-38, null]
-          beta: [1.0, null]
-        fixed: {alpha: true, beta: true}
+          data: [1.1754943508222875e-38, null]
+        fixed: {data: true}
+        data: !core/ndarray-1.1.0
+          source: 0
+          datatype: int64
+          byteorder: little
+          shape: [4, 6]
         flux: 71.4
         inputs: [x, y]
         outputs: [z]
         x_0: 24.3
         y_0: 25.2
-        alpha: 5.1
-        beta: 3.2
-
+        fill_value: 0.0
+        oversampling: [1.0, 1.0]
+        
 allOf:
   - $ref: "http://stsci.edu/schemas/asdf/transform/transform-1.4.0"
   - type: object
     properties:
-      data: "tag:stsci.edu:asdf/core/ndarray-1.*"
+      data: 
+        tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
       flux:
-        anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
-          - type: number
+        type: number
         description: Total integrated flux of the PSF.
       x_0:
-        anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
-          - type: number
+        type: number
         description: |
           Position of the peak along the x axis.
       y_0:
-        anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
-          - type: number
+        type: number
         description: |
           Position of the peak along the y axis.
       origin:
-        type: array
-        items:
-          type: number
-        minItems: 2
-        maxItems: 2
+        anyOf:
+        - type: array
+          items:
+            type: number
+          minItems: 2
+          maxItems: 2
+        - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
         description: |
-          The origin of the image in the x and y directions.
+          The ``(x, y)`` coordinate with respect to the input image data
+          array that represents the reference pixel of the input data.
       fill_value:
         type: number
         description: |
@@ -70,9 +70,8 @@ allOf:
             type: number
           minItems: 2
           maxItems: 2
-        - type: number
+        - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
         description: |
-          The oversampling factor in the x and y directions. This is used to
-          determine the size of the bounding box for the PSF.
-    required: [flux, x_0, y_0]
+          The integer oversampling factor(s) of the input PSF image in (y, x) order.
+    required: [data]
 ...

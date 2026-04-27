@@ -6,54 +6,48 @@ title: GriddedPSF
 description: |
   ASDF schema for serializing a 2D Gridded PSF model.
 
-
-
-examples:
-  -
-    - A GriddedPSF with a flux of 71.4, centered at (24.3, 25.2) pixels,
-      and alpha 0f 5.1 and beta 0f 3.2
-      psf.GriddedPSF(flux=71.4, x_0=24.3, y_0=25.2, alpha=5.1, beta=3.2)
-    - |
-      !<tag:astropy.org:photutils/psf/gridded_psf-1.0.0>
-        bbox_factor: 10.0
-        bounds:
-          alpha: [1.1754943508222875e-38, null]
-          beta: [1.0, null]
-        fixed: {alpha: true, beta: true}
-        flux: 71.4
-        inputs: [x, y]
-        outputs: [z]
-        x_0: 24.3
-        y_0: 25.2
-        alpha: 5.1
-        beta: 3.2
-
 allOf:
   - $ref: "http://stsci.edu/schemas/asdf/transform/transform-1.4.0"
   - type: object
     properties:
+      data: 
+        tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+        description: |
+          A 3D array of shape (N, My, Mx) containing N ePSF
+          images of shape (My, Mx).
       flux:
-        anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
-          - type: number
-        description: Total integrated flux of the PSF.
+        type: number
+        description: |
+          Intensity scaling factor for the ePSF.
+          This is the total flux of the source, assuming the input
+          ePSF images are properly normalized.
       x_0:
-        anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
-          - type: number
+        type: number
         description: |
-          Position of the peak along the x axis.
+          x position in the output coordinate grid where the model
+          is evaluated.
       y_0:
-        anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
-          - type: number
+        type: number
         description: |
-          Position of the peak along the y axis.
+          y position in the output coordinate grid where the model
+          is evaluated.
       fill_value:
         type: number
         description: |
           Assign value to pixels outside the input pixel grid 
           to avoid extrapolation.
-      
-    required: [flux, x_0, y_0, fill_value]
+      oversampling:
+        tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+        description: |
+          The integer oversampling factor(s) of the input ePSF images along each axis.
+          It is in Python order - "(y, x)".
+      grid_xypos:
+        tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+        description: |
+          A list of the (x, y) grid positions of each reference ePSF. The order of
+          positions should match the first axis of the 3D `~numpy.ndarray` of ePSFs.
+          In other words, ``grid_xypos[i]`` should be the (x, y) position of the 
+          reference ePSF defined in ``nddata.data[i]``. The grid positions must form
+          a rectangular grid.
+    required: [data, oversampling, grid_xypos]
 ...
