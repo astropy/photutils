@@ -17,7 +17,7 @@ def _has_distortion(wcs):
 
 def _sky_to_pixel_jacobian(skycoord, wcs):
     """
-    Common setup for sky-to-pixel Jacobian-based conversions.
+    Set up common values for sky-to-pixel Jacobian-based conversions.
 
     Returns the pixel center, the local Jacobian matrix, and the WCS
     parity.
@@ -53,7 +53,7 @@ def _sky_to_pixel_jacobian(skycoord, wcs):
 
 def _pixel_to_sky_jacobian(pixcoord, wcs):
     """
-    Common setup for pixel-to-sky Jacobian-based conversions.
+    Set up common values for pixel-to-sky Jacobian-based conversions.
 
     Returns the sky center, the local Jacobian matrix, its inverse, and
     the WCS parity.
