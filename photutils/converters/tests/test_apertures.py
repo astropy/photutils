@@ -27,8 +27,8 @@ def test_aperture_converters(tmp_path, aperture):
         af['aperture'] = aperture
         af.write_to(tmp_path / 'aperture.asdf')
 
-    with asdf.open(tmp_path / 'aperture.asdf') as af:
-        aperture2 = af['aperture']
+        with asdf.open(tmp_path / 'aperture.asdf') as af:
+            aperture2 = af['aperture']
 
-        assert np.all(aperture.positions == aperture2.positions)
-        assert aperture.r == aperture2.r
+            assert np.all(aperture.positions == aperture2.positions)
+            assert aperture.r == aperture2.r
