@@ -9,6 +9,7 @@ import pytest
 from astropy.coordinates import SkyCoord
 from numpy.testing import assert_allclose
 
+from photutils.aperture import PolygonAperture
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAnnulus, SkyCircularAperture)
 from photutils.aperture.tests.test_aperture_common import BaseTestAperture
@@ -243,3 +244,24 @@ def test_invalid_positions():
     xypos = zip(x, y, strict=True)
     with pytest.raises(TypeError, match=match):
         _ = CircularAperture(xypos, r=3)
+
+
+def test_circular_aperture_to_polygon():
+    aper = CircularAperture((10.0, 20.0), r=5.0)
+    poly = aper.to_polygon(n_points=200)
+    assert isinstance(poly, PolygonAperture)
+    assert poly.n_vertices == 200
+    assert poly.is_regular
+    assert abs(poly.area - aper.area) / aper.area < 1e-3
+
+
+def test_circular_aperture_to_polygon_multi_position():
+    aper = CircularAperture([(10.0, 20.0), (30.0, 40.0)], r=3.0)
+    poly = aper.to_polygon(n_points=50)
+    assert poly.vertices.shape == (2, 50, 2)
+
+
+def test_circular_aperture_to_polygon_invalid_n_points():
+    aper = CircularAperture((0.0, 0.0), r=1.0)
+    with pytest.raises(ValueError, match='n_points must be at least 3'):
+        aper.to_polygon(n_points=2)
