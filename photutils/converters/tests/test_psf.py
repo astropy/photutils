@@ -1,39 +1,22 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """
 Tests for the photutils PSF converters.
 """
+
 import asdf
 import pytest
 from numpy.testing import assert_array_equal
 
-from photutils.converters import ASDF_ASTROPY_INSTALLED
+from photutils.converters import _ASDF_ASTROPY_INSTALLED
 
 
-@pytest.fixture
-def psfobj(request):
-    """
-    A pytest fixture that returns a PSF model and the
-    list of parameters to test.
-    """
-    return request.getfixturevalue(request.param)
-
-
-psf_params = pytest.mark.parametrize('psfobj', [
-    'airy_disk_units',
-    'airy_disk',
-], indirect=True)
-
-
-@pytest.mark.skipif(not ASDF_ASTROPY_INSTALLED,
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
-@psf_params
-def test_psf_converters(tmp_path, psfobj):
+def test_psf_converters(tmp_path, airy_disk_psf):
     """
-    Test that the PSF converters can round-trip
-    a PSF object.
+    Test that the PSF converters can round-trip a PSF object.
     """
-    psf, pars = psfobj
+    psf, pars = airy_disk_psf
     with asdf.AsdfFile() as af:
         af['psf'] = psf
         af.write_to(tmp_path / 'psf.asdf')
