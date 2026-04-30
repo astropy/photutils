@@ -8,24 +8,23 @@ import importlib.resources as importlib_resources
 from asdf.extension import ManifestExtension
 from asdf.resource import DirectoryResourceMapping
 
-from .converters import apertures  # import CircularApertureConverter
-from .converters import functional_models  # import AiryDiskPSFConverter
+from .converters import apertures, functional_models
 
 __all__ = [
     'PHOTUTILS_APERTURE_CONVERTERS',
+    'PHOTUTILS_CONVERTERS',
     'PHOTUTILS_MANIFEST_URIS',
     'PHOTUTILS_PSF_CONVERTERS',
-]
-
-PHOTUTILS_PSF_CONVERTERS = [
-    functional_models.AiryDiskPSFConverter(),
 ]
 
 PHOTUTILS_APERTURE_CONVERTERS = [
     apertures.CircularApertureConverter(),
 ]
+PHOTUTILS_PSF_CONVERTERS = [
+    functional_models.AiryDiskPSFConverter(),
+]
 
-PHOTUTILS_CONVERTERS = PHOTUTILS_PSF_CONVERTERS + PHOTUTILS_APERTURE_CONVERTERS
+PHOTUTILS_CONVERTERS = PHOTUTILS_APERTURE_CONVERTERS + PHOTUTILS_PSF_CONVERTERS
 
 # The order here is important; asdf will prefer to use extensions
 # that occur earlier in the list.
