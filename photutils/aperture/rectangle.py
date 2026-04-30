@@ -17,6 +17,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            SkyCoordPositions)
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
+from photutils.aperture.polygon import PolygonAperture
 from photutils.geometry import rectangular_overlap_grid
 from photutils.geometry._batch_photometry import (SHAPE_RECTANGLE,
                                                   SHAPE_RECTANGULAR_ANNULUS)
@@ -367,6 +368,29 @@ class RectangularAperture(PixelAperture):
         height = Angle(sky_h, 'arcsec')
         return SkyRectangularAperture(positions=positions, w=width, h=height,
                                       theta=sky_angle)
+
+    def to_polygon(self):
+        """
+        Return a `~photutils.aperture.PolygonAperture` with the four
+        corners of this rectangle as its vertices.
+
+        Returns
+        -------
+        aperture : `~photutils.aperture.PolygonAperture`
+            A polygon aperture exactly equivalent to the rectangle.
+        """
+        hw = 0.5 * self.w
+        hh = 0.5 * self.h
+        # Corners ordered counter-clockwise in the unrotated frame.
+        corners = np.array([[-hw, -hh], [hw, -hh],
+                            [hw, hh], [-hw, hh]])
+        rot = self.theta.to_value(u.radian)
+        cos_t = np.cos(rot)
+        sin_t = np.sin(rot)
+        rot_mat = np.array([[cos_t, -sin_t], [sin_t, cos_t]])
+        offsets = corners @ rot_mat.T
+
+        return PolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
 class RectangularAnnulus(PixelAperture):

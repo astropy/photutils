@@ -8,7 +8,9 @@ import numpy as np
 import pytest
 from astropy.coordinates import Angle, SkyCoord
 from astropy.tests.helper import assert_quantity_allclose
+from numpy.testing import assert_allclose
 
+from photutils.aperture import PolygonAperture
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture,
                                           RectangularMaskMixin,
@@ -223,3 +225,35 @@ def test_deprecated_rectangular_mask_mixin(method, subpixels):
                                         subpixels=subpixels)
     expected = aper.to_mask(method=method, subpixels=subpixels)
     assert_quantity_allclose(mask.data, expected.data)
+
+
+def test_rectangular_aperture_to_polygon():
+    aper = RectangularAperture((10.0, 20.0), w=4.0, h=2.0)
+    poly = aper.to_polygon()
+    assert isinstance(poly, PolygonAperture)
+    assert poly.n_vertices == 4
+    # Area is exact (rectangle is itself a polygon)
+    assert_allclose(poly.area, aper.area)
+
+
+@pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
+def test_rectangular_aperture_to_polygon_rotation(theta_deg):
+    aper = RectangularAperture((10.0, 20.0), w=4.0, h=2.0,
+                               theta=np.deg2rad(theta_deg))
+    poly = aper.to_polygon()
+    assert poly.n_vertices == 4
+    assert_allclose(poly.area, aper.area, rtol=1e-12)
+    # Bounding-box extents should match the rotated rectangle's.
+    expected_x_extent = (0.5 * abs(aper.w * np.cos(aper.theta.value))
+                         + 0.5 * abs(aper.h * np.sin(aper.theta.value)))
+    expected_y_extent = (0.5 * abs(aper.w * np.sin(aper.theta.value))
+                         + 0.5 * abs(aper.h * np.cos(aper.theta.value)))
+    assert_allclose(poly._xy_extents[0], expected_x_extent, rtol=1e-12)
+    assert_allclose(poly._xy_extents[1], expected_y_extent, rtol=1e-12)
+
+
+def test_rectangular_aperture_to_polygon_multi_position():
+    aper = RectangularAperture([(10.0, 20.0), (30.0, 40.0)],
+                               w=4.0, h=3.0, theta=0.5)
+    poly = aper.to_polygon()
+    assert poly.vertices.shape == (2, 4, 2)
