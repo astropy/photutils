@@ -22,7 +22,6 @@ PHOTUTILS_PSF_CONVERTERS = [
 
 PHOTUTILS_APERTURE_CONVERTERS = [
     apertures.CircularApertureConverter(),
-
 ]
 
 PHOTUTILS_CONVERTERS = PHOTUTILS_PSF_CONVERTERS + PHOTUTILS_APERTURE_CONVERTERS
@@ -37,7 +36,7 @@ PHOTUTILS_MANIFEST_URIS = [
 
 def get_extensions():
     """
-    Get the gwcs.converters extension.
+    Get the photutils extension.
     This method is registered with the asdf.extensions entry point.
 
     Returns
