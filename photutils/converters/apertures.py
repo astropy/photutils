@@ -1,5 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """
 Converters to and from the ASDF data format for photutils apertures.
 """
@@ -29,7 +28,7 @@ class CircularApertureConverter(Converter):
         }
 
     def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
-        from photutils.aperture.circle import CircularAperture
+        from photutils.aperture import CircularAperture
 
         return CircularAperture(
             positions=node['positions'],

@@ -1,11 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """
 Converters to and from the ASDF format for photutils.psf.functional_models.
 """
-from . import ASDF_ASTROPY_INSTALLED
 
-if ASDF_ASTROPY_INSTALLED:
+from . import _ASDF_ASTROPY_INSTALLED
+
+if _ASDF_ASTROPY_INSTALLED:
     from asdf_astropy.converters.transform.core import (TransformConverterBase,
                                                         parameter_to_value)
 else:

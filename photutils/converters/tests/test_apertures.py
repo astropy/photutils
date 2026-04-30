@@ -1,14 +1,14 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """
 Tests for the photutils aperture converters.
 """
+
 import asdf
 import numpy as np
 import pytest
 
 from photutils.aperture import CircularAperture
-from photutils.converters import ASDF_ASTROPY_INSTALLED
+from photutils.converters import _ASDF_ASTROPY_INSTALLED
 
 apertures = [
     CircularAperture(positions=[(1, 2), (3, 4)], r=5),
@@ -16,7 +16,7 @@ apertures = [
 ]
 
 
-@pytest.mark.skipif(not ASDF_ASTROPY_INSTALLED,
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
 @pytest.mark.parametrize('aperture', apertures)
 def test_aperture_converters(tmp_path, aperture):

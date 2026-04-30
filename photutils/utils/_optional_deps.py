@@ -25,6 +25,7 @@ from packaging.requirements import Requirement
 # dependency is added whose import name does not match its dist name,
 # add a single entry below.
 _DIST_TO_IMPORT = {
+    'asdf-astropy': 'asdf_astropy',
     'scikit-image': 'skimage',
 }
 

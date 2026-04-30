@@ -2,6 +2,7 @@
 """
 ASDF extension for photutils.
 """
+
 import importlib.resources as importlib_resources
 
 from asdf.extension import ManifestExtension
@@ -26,7 +27,6 @@ PHOTUTILS_APERTURE_CONVERTERS = [
 
 PHOTUTILS_CONVERTERS = PHOTUTILS_PSF_CONVERTERS + PHOTUTILS_APERTURE_CONVERTERS
 
-
 # The order here is important; asdf will prefer to use extensions
 # that occur earlier in the list.
 PHOTUTILS_MANIFEST_URIS = [
@@ -37,6 +37,7 @@ PHOTUTILS_MANIFEST_URIS = [
 def get_extensions():
     """
     Get the photutils extension.
+
     This method is registered with the asdf.extensions entry point.
 
     Returns
