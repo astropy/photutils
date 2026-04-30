@@ -10,6 +10,11 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.isophote``
+
+  - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a
+    compilation issue with Cython 3.1.x. [#2260]
+
 API Changes
 ^^^^^^^^^^^
 
