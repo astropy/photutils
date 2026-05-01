@@ -37,11 +37,9 @@ ASDF Serialization Support
 
 Photutils 3.1 introduces initial support for serializing
 photutils objects to the `Advanced Scientific Data Format (ASDF)
-<https://asdf.readthedocs.io/>`_ file format. This requires installing
-the new optional ``asdf-astropy`` dependency.
-
-`~photutils.aperture.CircularAperture` and `~photutils.psf.AiryDiskPSF`
-can now be serialized to and deserialized from ASDF files, e.g.::
+<https://asdf.readthedocs.io/>`_ file format. This requires
+installing the ``asdf`` package. For some classes, the new optional
+``asdf-astropy`` package must also be installed.
 
     >>> import asdf
     >>> from photutils.aperture import CircularAperture
@@ -51,6 +49,12 @@ can now be serialized to and deserialized from ASDF files, e.g.::
     ...     af.write_to('aperture.asdf')
     >>> with asdf.open('aperture.asdf') as af:
     ...     aperture = af['aperture']
+
+So far, the following classes can be serialized to and deserialized from
+ASDF files:
+
+* `~photutils.psf.AiryDiskPSF`
+* `~photutils.aperture.CircularAperture`
 
 
 .. _whatsnew-3.1-api-changes:
