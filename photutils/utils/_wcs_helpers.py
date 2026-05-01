@@ -475,10 +475,14 @@ def compute_local_wcs_jacobian(skycoord, wcs):
 
     The Jacobian is computed by making 1-pixel offsets in x and y,
     converting the resulting pixel positions to sky coordinates, and
-    measuring the tangent-plane displacements in arcsec. This gives
-    the forward Jacobian ``F = d(sky_arcsec)/d(pixel)``, which is then
-    inverted to obtain ``J = F^{-1} = d(pixel)/d(sky_arcsec)``. Using
-    1-pixel steps ensures numerical stability across all pixel scales.
+    measuring the tangent-plane displacements in arcsec. The (xi, eta)
+    offsets are computed from the great-circle separation and position
+    angle between the center and each offset point, so the formula is
+    well-defined at the celestial poles and across the longitude
+    wraparound (RA = 0 / 360). This gives the forward Jacobian ``F =
+    d(sky_arcsec)/d(pixel)``, which is then inverted to obtain ``J =
+    F^{-1} = d(pixel)/d(sky_arcsec)``. Using 1-pixel steps ensures
+    numerical stability across all pixel scales.
 
     This function works with any WCS that supports
     the `astropy shared interface for WCS
@@ -511,24 +515,24 @@ def compute_local_wcs_jacobian(skycoord, wcs):
     sky_x = wcs.pixel_to_world(x0 + 1, y0)
     sky_y = wcs.pixel_to_world(x0, y0 + 1)
 
-    ra0 = sky0.spherical.lon.rad
-    dec0 = sky0.spherical.lat.rad
-    cos_dec = np.cos(dec0)
+    # Compute tangent-plane offsets (xi, eta) in arcsec from the
+    # great-circle separation and position angle to the offset point.
+    # Position angle is measured from North (eta) toward East (xi),
+    # counterclockwise as seen on the sky from outside.
+    # This formulation is intrinsically wrap-safe (no longitude
+    # subtractions) and pole-safe (no division by cos(dec)).
+    arcsec_per_rad = 3600.0 * np.degrees(1)
+    sep_x = sky0.separation(sky_x).rad
+    pa_x = sky0.position_angle(sky_x).rad
+    sep_y = sky0.separation(sky_y).rad
+    pa_y = sky0.position_angle(sky_y).rad
 
-    # Tangent-plane offsets (xi, eta) in arcsec for a +1 pixel step
-    # in x. xi = dRA * cos(dec), eta = dDec, both converted to arcsec.
-    dra_x = sky_x.spherical.lon.rad - ra0
-    ddec_x = sky_x.spherical.lat.rad - dec0
-    dxi_x = dra_x * cos_dec * 3600.0 * np.degrees(1)
-    deta_x = ddec_x * 3600.0 * np.degrees(1)
+    dxi_x = sep_x * np.sin(pa_x) * arcsec_per_rad
+    deta_x = sep_x * np.cos(pa_x) * arcsec_per_rad
+    dxi_y = sep_y * np.sin(pa_y) * arcsec_per_rad
+    deta_y = sep_y * np.cos(pa_y) * arcsec_per_rad
 
-    # Same for a +1 pixel step in y
-    dra_y = sky_y.spherical.lon.rad - ra0
-    ddec_y = sky_y.spherical.lat.rad - dec0
-    dxi_y = dra_y * cos_dec * 3600.0 * np.degrees(1)
-    deta_y = ddec_y * 3600.0 * np.degrees(1)
-
-    # Forward Jacobian F = d(sky_arcsec)/d(pixel), shape (2, 2)
+    # Forward Jacobian F = d(sky_arcsec)/d(pixel), shape (2, 2).
     # Rows are (xi, eta), columns are (px_x, px_y).
     forward = np.array([[dxi_x, dxi_y],
                         [deta_x, deta_y]])

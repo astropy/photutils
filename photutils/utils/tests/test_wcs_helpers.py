@@ -959,3 +959,117 @@ class TestSVDScales:
             WCS_CENTER, sip_wcs)
         assert smaj > 0
         assert smin > 0
+
+
+def _make_sip_wcs_at(ra_deg, dec_deg):
+    """
+    Build a small TAN-SIP WCS centered at (ra_deg, dec_deg).
+
+    The SIP terms are tiny but nonzero, ensuring that
+    ``compute_local_wcs_jacobian`` is exercised (the jacobian is only
+    used for distorted WCS).
+    """
+    from astropy.io.fits import Header
+    from astropy.wcs import WCS as APWCS
+
+    header = Header()
+    header['NAXIS'] = 2
+    header['NAXIS1'] = 20
+    header['NAXIS2'] = 20
+    header['CRPIX1'] = 10.5
+    header['CRPIX2'] = 10.5
+    header['CRVAL1'] = ra_deg
+    header['CRVAL2'] = dec_deg
+    header['CTYPE1'] = 'RA---TAN-SIP'
+    header['CTYPE2'] = 'DEC--TAN-SIP'
+    cdelt = WCS_CDELT_ARCSEC / 3600.0
+    header['CD1_1'] = -cdelt
+    header['CD1_2'] = 0.0
+    header['CD2_1'] = 0.0
+    header['CD2_2'] = cdelt
+    header['A_ORDER'] = 2
+    header['A_2_0'] = 1e-6
+    header['B_ORDER'] = 2
+    header['B_0_2'] = 1e-6
+    return APWCS(header)
+
+
+POLE_DEC_LIST = [80.0, 89.0, 89.99, -80.0, -89.99]
+RA_WRAP_LIST = [0.0, 0.001, 359.999]
+
+
+class TestComputeLocalWCSJacobianPoleAndWrap:
+    """
+    Regression tests for ``compute_local_wcs_jacobian`` at WCS centers
+    where the previous flat-sky finite-difference formula failed:
+
+    * RA = 0 (any of the three sample points crosses the 0 / 360 cut)
+    * High |declination| (small ``cos(dec)`` makes the small-angle
+      ``xi = cos(dec) * dRA`` approximation fail, and the (xi, eta)
+      sampling becomes wildly nonlinear near the pole)
+
+    These tests pin the near-singular values of the Jacobian to the
+    expected ``1 / WCS_CDELT_ARCSEC`` value.
+    """
+
+    @pytest.mark.parametrize('center_dec', POLE_DEC_LIST)
+    def test_jacobian_well_conditioned_at_pole(self, center_dec):
+        wcs = _make_sip_wcs_at(0.0, center_dec)
+        sc = SkyCoord(0 * u.deg, center_dec * u.deg)
+        jac = compute_local_wcs_jacobian(sc, wcs)
+        sv = np.linalg.svd(jac, compute_uv=False)
+        assert_allclose(sv, 1.0 / WCS_CDELT_ARCSEC, rtol=1e-3)
+
+    @pytest.mark.parametrize('center_ra', RA_WRAP_LIST)
+    def test_jacobian_well_conditioned_at_ra_wrap(self, center_ra):
+        wcs = _make_sip_wcs_at(center_ra, 30.0)
+        sc = SkyCoord(center_ra * u.deg, 30 * u.deg)
+        jac = compute_local_wcs_jacobian(sc, wcs)
+        sv = np.linalg.svd(jac, compute_uv=False)
+        assert_allclose(sv, 1.0 / WCS_CDELT_ARCSEC, rtol=1e-3)
+
+    @pytest.mark.parametrize('center_dec', POLE_DEC_LIST)
+    def test_jacobian_parity_correct_at_pole(self, center_dec):
+        """
+        The determinant of the Jacobian (parity) must be negative for
+        a standard RA-increases-to-the-left WCS at all declinations,
+        including near the poles.
+        """
+        wcs = _make_sip_wcs_at(0.0, center_dec)
+        sc = SkyCoord(0 * u.deg, center_dec * u.deg)
+        jac = compute_local_wcs_jacobian(sc, wcs)
+        assert np.linalg.det(jac) < 0
+
+
+class TestSkyEllipseSVDPoleAndWrap:
+    """
+    End-to-end regression tests via ``sky_ellipse_to_pixel_svd``: a
+    directed sky shape converted at the troublesome positions must
+    round-trip back to itself.
+    """
+
+    @pytest.mark.parametrize('center_dec', POLE_DEC_LIST)
+    def test_roundtrip_at_pole(self, center_dec):
+        wcs = _make_sip_wcs_at(0.0, center_dec)
+        sc = SkyCoord(0 * u.deg, center_dec * u.deg)
+        center, pw, ph, pa = sky_ellipse_to_pixel_svd(
+            sc, wcs, 2.0, 1.0, np.deg2rad(30))
+        assert pw > 1.0
+        assert ph > 1.0
+        _, sw, sh, _ = pixel_ellipse_to_sky_svd(
+            center, wcs, pw, ph, pa.to(u.rad).value)
+        assert_allclose(sw, 2.0, rtol=1e-3)
+        assert_allclose(sh, 1.0, rtol=1e-3)
+
+    @pytest.mark.parametrize('center_ra', RA_WRAP_LIST)
+    def test_roundtrip_at_ra_wrap(self, center_ra):
+        wcs = _make_sip_wcs_at(center_ra, 30.0)
+        sc = SkyCoord(center_ra * u.deg, 30 * u.deg)
+        center, pw, ph, pa = sky_ellipse_to_pixel_svd(
+            sc, wcs, 2.0, 1.0, np.deg2rad(30))
+        assert pw > 1.0
+        assert ph > 1.0
+        _, sw, sh, _ = pixel_ellipse_to_sky_svd(
+            center, wcs, pw, ph, pa.to(u.rad).value)
+        assert_allclose(sw, 2.0, rtol=1e-3)
+        assert_allclose(sh, 1.0, rtol=1e-3)
