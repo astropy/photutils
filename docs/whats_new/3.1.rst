@@ -19,6 +19,33 @@ smaller improvements and bug fixes, which are described in the full
 Dependency Version Updates
 ==========================
 
+Photutils 3.1 bumps the minimum required versions of several key
+dependencies to provide users with access to the latest features and
+performance improvements:
+
+- Astropy minimum version is now 6.1.7
+
+
+ASDF Serialization Support
+==========================
+
+Photutils 3.1 introduces initial support for serializing
+photutils objects to the `Advanced Scientific Data Format (ASDF)
+<https://asdf.readthedocs.io/>`_ file format. This requires installing
+the new optional ``asdf-astropy`` dependency.
+
+`~photutils.aperture.CircularAperture` and `~photutils.psf.AiryDiskPSF`
+can now be serialized to and deserialized from ASDF files, e.g.::
+
+    >>> import asdf
+    >>> from photutils.aperture import CircularAperture
+    >>> aperture = CircularAperture((10, 20), r=5)
+    >>> with asdf.AsdfFile() as af:
+    ...     af['aperture'] = aperture
+    ...     af.write_to('aperture.asdf')
+    >>> with asdf.open('aperture.asdf') as af:
+    ...     aperture = af['aperture']
+
 
 .. _whatsnew-3.1-api-changes:
 

@@ -13,7 +13,7 @@ Photutils has the following strict requirements:
 
 * `SciPy <https://scipy.org/>`_ 1.13 or later
 
-* `Astropy`_ 6.1.4 or later
+* `Astropy`_ 6.1.7 or later
 
 Photutils also optionally depends on other packages for some features:
 
@@ -29,6 +29,12 @@ Photutils also optionally depends on other packages for some features:
 * `GWCS <https://gwcs.readthedocs.io/en/stable/>`_ 0.20 or later:
   Required in `~photutils.datasets.make_gwcs` to create a simple celestial
   gwcs object.
+
+* `asdf-astropy <https://asdf-astropy.readthedocs.io/en/latest/>`_ 0.10
+  or later:
+  Required to serialize objects to the `Advanced Scientific Data Format
+  (ASDF) <https://www.asdf-format.org/projects/asdf/en/latest/>`_
+  format.
 
 * `Bottleneck <https://github.com/pydata/bottleneck>`_ 1.4 or later:
   Improves the performance of sigma clipping and other functionality that

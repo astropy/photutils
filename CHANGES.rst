@@ -4,8 +4,15 @@
 General
 ^^^^^^^
 
+- The minimum required astropy is now 6.1.7. [#2211]
+
+- The ``asdf-astropy`` package is now an optional dependency. [#2211]
+
 New Features
 ^^^^^^^^^^^^
+
+- Added an ASDF extension to provide converters for photutils aperture
+  and PSF classes. [#2211]
 
 Bug Fixes
 ^^^^^^^^^
