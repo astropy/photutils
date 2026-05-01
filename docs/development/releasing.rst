@@ -137,9 +137,7 @@ repository is called ``upstream``.
    The ``meta.yaml`` recipe may need to be edited to update
    dependencies or versions. Modify (if necessary), review,
    and merge the PR to create the `conda-forge package
-   <https://anaconda.org/conda-forge/photutils>`_. The `Astropy conda
-   channel <https://anaconda.org/astropy/photutils>`_ will automatically
-   mirror the package from conda-forge.
+   <https://anaconda.org/conda-forge/photutils>`_.
 
 
 .. _manual_tests:
