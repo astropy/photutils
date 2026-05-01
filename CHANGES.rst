@@ -6,6 +6,18 @@ General
 
 - The minimum required astropy is now 6.1.7. [#2211]
 
+- The minimum required SciPy is now 1.14. [#2266]
+
+- The minimum required regions is now 0.10. [#2266]
+
+- The minimum required scikit-image is now 0.24. [#2266]
+
+- The minimum required gwcs is now 0.22. [#2266]
+
+- The minimum required Shapely is now 2.1. [#2266]
+
+- The minimum required tqdm is now 4.67. [#2266]
+
 - The ``asdf-astropy`` package is now an optional dependency. [#2211]
 
 New Features
