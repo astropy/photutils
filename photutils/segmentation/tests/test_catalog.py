@@ -165,7 +165,7 @@ class TestSourceCatalog:
 
         props = self.cat.properties
 
-        # Add extra properties
+        # Add custom properties
         cat1.circular_photometry(5.0, name='circ5')
         cat1.kron_photometry((2.5, 1.4), name='kron2')
         cat1.flux_radius(0.5, name='r_hl')
@@ -951,7 +951,7 @@ class TestSourceCatalog:
     @pytest.mark.parametrize('scalar', [True, False])
     def test_custom_properties(self, scalar):
         """
-        Test extra properties.
+        Test custom properties.
         """
         cat = SourceCatalog(self.data, self.segm)
         if scalar:
@@ -1002,7 +1002,7 @@ class TestSourceCatalog:
         cat.rename_property('segment_snr', new_name)
         assert new_name in cat.custom_properties
 
-        # Key in extra_properties, but not a defined attribute
+        # Key in custom_properties, but not a defined attribute
         cat._custom_properties.append('invalid')
         match = 'already exists in the custom_properties attribute'
         with pytest.raises(ValueError, match=match):
@@ -1017,7 +1017,7 @@ class TestSourceCatalog:
 
     def test_custom_properties_invalid(self):
         """
-        Test extra properties invalid.
+        Test custom properties invalid.
         """
         cat = SourceCatalog(self.data, self.segm)
         match = 'value must have the same number of elements as the catalog'
