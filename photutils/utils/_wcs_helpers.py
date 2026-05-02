@@ -91,7 +91,8 @@ def _pixel_to_sky_jacobian(pixcoord, wcs):
 
 
 def _svd_ellipse_from_composite(m_comp, width_col_idx=0,
-                                use_parity_for_angle=False, parity=1):
+                                use_parity_for_angle=False, parity=1,
+                                input_circular=False):
     """
     Extract ellipse width, height, and angle from a composite matrix
     using SVD.
@@ -117,6 +118,12 @@ def _svd_ellipse_from_composite(m_comp, width_col_idx=0,
     parity : float, optional
         The WCS parity (+1 or -1). Only used if ``use_parity_for_angle``
         is True.
+
+    input_circular : bool, optional
+        If True, the input ellipse is known to be circular (width ==
+        height), so the SVD's principal axis is meaningless and the
+        rotation angle is taken directly from the mapped width semi-
+        axis. Default is False.
 
     Returns
     -------
@@ -153,6 +160,17 @@ def _svd_ellipse_from_composite(m_comp, width_col_idx=0,
     # mapped width semi-axis
     if np.dot(angle_col, width_col) < 0:
         angle_col = -angle_col
+
+    # When the input ellipse is circular (width == height), the SVD's
+    # principal direction has no physical meaning: any rotation of a
+    # circle yields an identical shape, so the SVD picks an arbitrary
+    # principal axis derived from the Jacobian. To preserve the input
+    # rotation angle, fall back to the mapped width semi-axis direction
+    # (which carries the input theta through the Jacobian).
+    if input_circular:
+        width_norm = np.linalg.norm(width_col)
+        if width_norm > 0:
+            angle_col = width_col / width_norm
 
     # Compute the rotation angle
     if use_parity_for_angle:
@@ -802,7 +820,8 @@ def pixel_ellipse_to_sky_svd(pixcoord, wcs, width, height, pixel_angle_rad):
     m_sky = jacobian_inv @ m_pix
 
     sky_width, sky_height, sky_angle = _svd_ellipse_from_composite(
-        m_sky, use_parity_for_angle=True, parity=parity)
+        m_sky, use_parity_for_angle=True, parity=parity,
+        input_circular=np.isclose(width, height))
 
     return center, sky_width, sky_height, sky_angle
 
@@ -877,7 +896,7 @@ def sky_ellipse_to_pixel_svd(skycoord, wcs, width_arcsec, height_arcsec,
     m_pix = jacobian @ m_sky
 
     pixel_width, pixel_height, pixel_angle = _svd_ellipse_from_composite(
-        m_pix)
+        m_pix, input_circular=np.isclose(width_arcsec, height_arcsec))
 
     return center, pixel_width, pixel_height, pixel_angle
 

@@ -228,3 +228,107 @@ class TestRotatedWCSRoundtrip:
         pix_rt = pix.to_sky(rotated_wcs).to_pixel(rotated_wcs)
         diff = _angle_diff_deg(pix_rt.theta, theta_deg * u.deg)
         assert abs(diff) < 1e-3
+
+
+@pytest.fixture
+def sheared_wcs():
+    """
+    A sheared TAN WCS where the pixel x and y axes are 80 deg apart on
+    the sky (10 deg of shear from a perpendicular axis-aligned grid).
+    """
+    cdelt = 0.1 / 3600
+    a = np.radians(80.0)
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = [10.5, 10.5]
+    wcs.wcs.crval = [CENTER.ra.deg, CENTER.dec.deg]
+    wcs.wcs.cd = [[-cdelt, cdelt * np.cos(a)],
+                  [0.0, cdelt * np.sin(a)]]
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+
+    return wcs
+
+
+SHEAR_DIRECTED_PAIRS = [
+    (SkyRectangularAperture, RectangularAperture),
+    (SkyRectangularAnnulus, RectangularAnnulus),
+    (SkyEllipticalAperture, EllipticalAperture),
+    (SkyEllipticalAnnulus, EllipticalAnnulus),
+]
+
+
+class TestShearedWCS:
+    """
+    Verify that directed apertures round-trip exactly through a sheared
+    WCS, where the pixel x and y axes are not perpendicular on the sky.
+    """
+
+    @pytest.mark.parametrize(('sky_cls', 'pix_cls'), SHEAR_DIRECTED_PAIRS)
+    @pytest.mark.parametrize('theta_deg', [0.0, 30.0, 75.0])
+    def test_sky_pixel_sky_roundtrip_under_shear(self, sheared_wcs,
+                                                 sky_cls, pix_cls,
+                                                 theta_deg):
+        sky, _ = _make_sky_pix_pair(sky_cls, pix_cls, theta_deg * u.deg)
+        sky_rt = sky.to_pixel(sheared_wcs).to_sky(sheared_wcs)
+        diff = _angle_diff_deg(sky_rt.theta, theta_deg * u.deg)
+        assert abs(diff) < 1e-6
+
+        # Shape parameters must round-trip too
+        for attr in ('a', 'b', 'w', 'h', 'a_in', 'a_out', 'b_in', 'b_out',
+                     'w_in', 'w_out', 'h_in', 'h_out'):
+            if hasattr(sky, attr):
+                assert u.allclose(getattr(sky_rt, attr),
+                                  getattr(sky, attr), rtol=1e-6)
+
+    @pytest.mark.parametrize(('sky_cls', 'pix_cls'), SHEAR_DIRECTED_PAIRS)
+    @pytest.mark.parametrize('theta_deg', [0.0, 30.0, 75.0])
+    def test_pixel_sky_pixel_roundtrip_under_shear(self, sheared_wcs,
+                                                   sky_cls, pix_cls,
+                                                   theta_deg):
+        _, pix = _make_sky_pix_pair(sky_cls, pix_cls, theta_deg * u.deg)
+        pix_rt = pix.to_sky(sheared_wcs).to_pixel(sheared_wcs)
+        diff = _angle_diff_deg(pix_rt.theta, theta_deg * u.deg)
+        assert abs(diff) < 1e-6
+
+
+class TestCircularInputAnglePreserved:
+    """
+    Verify that the SVD path preserves the input rotation angle when the
+    input rectangular/elliptical aperture is shape-degenerate (width ==
+    height): the converted theta must round-trip exactly.
+
+    For a circular shape the SVD principal axis is otherwise arbitrary,
+    so the helper falls back to the mapped width semi-axis direction to
+    preserve orientation.
+    """
+
+    @pytest.mark.parametrize('theta_deg', [0.0, 30.0, 75.0])
+    @pytest.mark.parametrize(
+        'sky_cls',
+        [SkyRectangularAperture, SkyEllipticalAperture])
+    def test_square_sky_roundtrip(self, rotated_wcs, sky_cls, theta_deg):
+        if sky_cls is SkyRectangularAperture:
+            sky = SkyRectangularAperture(CENTER, w=2 * u.arcsec,
+                                         h=2 * u.arcsec,
+                                         theta=theta_deg * u.deg)
+        else:
+            sky = SkyEllipticalAperture(CENTER, a=2 * u.arcsec,
+                                        b=2 * u.arcsec,
+                                        theta=theta_deg * u.deg)
+        sky_rt = sky.to_pixel(rotated_wcs).to_sky(rotated_wcs)
+        diff = _angle_diff_deg(sky_rt.theta, theta_deg * u.deg)
+        assert abs(diff) < 1e-6
+
+    @pytest.mark.parametrize('theta_deg', [0.0, 30.0, 75.0])
+    @pytest.mark.parametrize(
+        'pix_cls',
+        [RectangularAperture, EllipticalAperture])
+    def test_square_pixel_roundtrip(self, rotated_wcs, pix_cls, theta_deg):
+        if pix_cls is RectangularAperture:
+            pix = RectangularAperture(PIX_CENTER, w=4, h=4,
+                                      theta=theta_deg * u.deg)
+        else:
+            pix = EllipticalAperture(PIX_CENTER, a=4, b=4,
+                                     theta=theta_deg * u.deg)
+        pix_rt = pix.to_sky(rotated_wcs).to_pixel(rotated_wcs)
+        diff = _angle_diff_deg(pix_rt.theta, theta_deg * u.deg)
+        assert abs(diff) < 1e-6
