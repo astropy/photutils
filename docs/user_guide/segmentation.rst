@@ -139,8 +139,8 @@ Photutils provides a :func:`~photutils.segmentation.deblend_sources`
 function that deblends sources using a combination
 of multi-thresholding and `watershed segmentation
 <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. Note
-that in order to deblend sources, they must be separated enough that ere
-this a saddle point between them.
+that in order to deblend sources, they must be separated enough that
+there is a saddle point between them.
 
 The amount of deblending can be controlled with the two
 :func:`~photutils.segmentation.deblend_sources` keywords ``n_levels``

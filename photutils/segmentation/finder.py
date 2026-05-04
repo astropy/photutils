@@ -33,7 +33,8 @@ class SourceFinder:
     Sources are deblended using a combination of
     multi-thresholding and `watershed segmentation
     <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. In
-    order to deblend sources, there must be a saddle between them.
+    order to deblend sources, they must be separated enough that there
+    is a saddle point between them.
 
     Parameters
     ----------

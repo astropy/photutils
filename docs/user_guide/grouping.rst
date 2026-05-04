@@ -27,7 +27,7 @@ A straightforward method for this grouping was introduced by `Stetson (1987)
 algorithm determines whether a given source's light profile interferes
 with that of any other source by using a "critical separation"
 parameter. This parameter sets the minimum distance required between
-two source for them to be placed in separate groups. Typically, this
+two sources for them to be placed in separate groups. Typically, this
 critical separation is defined as a multiple of the stellar full width
 at half maximum (FWHM), which is a measure of the source's apparent
 size.
@@ -133,9 +133,9 @@ detection tool to find the star positions in an actual image::
    [ 1  2  3  4  5  6  7  8  9 10 11  4  6  3 12 13 14 15 16 17]
 
 The result of this process is an array of integers, ``group_id``, where
-each integer represents the group to which the corresponding star.
-Stars that share the same group ID are considered part of the same
-group.
+each integer represents the group to which the corresponding star
+belongs. Stars that share the same group ID are considered part of the
+same group.
 
 When performing PSF photometry, you can add the group IDs to the initial
 parameters table (``init_params``) that is passed to the photometry

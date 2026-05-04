@@ -425,8 +425,8 @@ below.
 
 Let's start by generating a more realistic example dataset::
 
->>> from photutils.datasets import make_100gaussians_image
->>> data = make_100gaussians_image()
+    >>> from photutils.datasets import make_100gaussians_image
+    >>> data = make_100gaussians_image()
 
 This artificial image has a known constant background level of 5. In the
 following examples, we'll leave this global background in the image to

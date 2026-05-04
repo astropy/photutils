@@ -390,7 +390,7 @@ The ``smoothing_kernel`` parameter controls the smoothing applied to
 the ePSF during each iteration. The smoothing helps to reduce noise in
 the ePSF, especially when the number of stars is small. The default
 is ``'quartic'``, which uses a fourth-degree polynomial kernel. This
-kernel was initial developed by Anderson and King for HST data with an
+kernel was initially developed by Anderson and King for HST data with an
 ePSF oversampling factor of 4. It is designed to provide a good balance
 between smoothing and preserving the shape of the ePSF.
 
