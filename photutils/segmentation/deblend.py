@@ -48,10 +48,11 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     """
     Deblend overlapping sources labeled in a segmentation image.
 
-    Sources are deblended using a combination of multi-thresholding and
-    `watershed segmentation
+    Sources are deblended using a combination of
+    multi-thresholding and `watershed segmentation
     <https://en.wikipedia.org/wiki/Watershed_(image_processing)>`_. In
-    order to deblend sources, there must be a saddle between them.
+    order to deblend sources, they must be separated enough that there
+    is a saddle point between them.
 
     Parameters
     ----------

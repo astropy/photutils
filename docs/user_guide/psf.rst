@@ -90,17 +90,17 @@ subpackage, e.g., `~photutils.detection.DAOStarFinder`,
 After finding sources, one can optionally apply a clustering algorithm
 to group overlapping sources using the ``grouper`` keyword. Usually,
 groups are formed by a distance criterion, which is the case of the
-grouping algorithm proposed by Stetson. Sources that grouped are fit
-simultaneously. The reason behind the construction of groups and not
-fitting all sources simultaneously is illustrated as follows: imagine
-that one would like to fit 300 sources and the model for each source
-has three parameters to be fitted. If one constructs a single model to
-fit the 300 sources simultaneously, then the optimization algorithm
-will have to search for the solution in a 900-dimensional space, which
-is computationally expensive and error-prone. Having smaller groups
-of sources effectively reduces the dimension of the parameter space,
-which facilitates the optimization process. For more details see
-:ref:`source-grouping`.
+grouping algorithm proposed by Stetson. Sources that are grouped are
+fit simultaneously. The reason behind the construction of groups and
+not fitting all sources simultaneously is illustrated as follows:
+imagine that one would like to fit 300 sources and the model for each
+source has three parameters to be fitted. If one constructs a single
+model to fit the 300 sources simultaneously, then the optimization
+algorithm will have to search for the solution in a 900-dimensional
+space, which is computationally expensive and error-prone. Having
+smaller groups of sources effectively reduces the dimension of the
+parameter space, which facilitates the optimization process. For more
+details see :ref:`source-grouping`.
 
 The local background around each source can optionally be subtracted
 using the ``local_bkg_estimator`` keyword. This keyword accepts a
