@@ -50,20 +50,23 @@ jobs:
       test_command: pytest -p no:warnings --pyargs photutils
       targets: |
         # Linux wheels
-        - cp*-manylinux_x86_64
+        - cp3*-manylinux_x86_64
         - target: cp3*-manylinux_aarch64
           runs-on: ubuntu-24.04-arm
 
         # MacOS X wheels
-        - cp*-macosx_x86_64
-        - cp*-macosx_arm64
+        - cp3*-macosx_x86_64
+        - cp3*-macosx_arm64
 
         # Windows wheels
-        - cp*-win_amd64
-        - cp*-win_arm64
+        - cp3*-win_amd64
+        - cp3*-win_arm64
 
       # Developer wheels
-      upload_to_anaconda: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+      upload_to_anaconda: >-
+        ${{ (github.event_name == 'schedule' ||
+             github.event_name == 'workflow_dispatch')
+        }}
       anaconda_user: astropy
       anaconda_package: photutils
       anaconda_keep_n_latest: 10
@@ -72,23 +75,23 @@ jobs:
       anaconda_token: ${{ secrets.anaconda_token }}
 
   upload:
-    # This job builds the wheels and publishes them to PyPI for all
-    # tags, except those ending in ".dev". For PRs with the "Build all
-    # wheels" label, wheels are built, but are not uploaded to PyPI.
+    # This job publishes the built wheels to PyPI for all tags, except
+    # those ending in ".dev". For PRs with the "Build all wheels" label,
+    # wheels are built, but are not uploaded to PyPI.
     permissions:
       id-token: write
     environment:
       name: pypi
       url: https://pypi.org/project/photutils/
     # We upload to PyPI for all tag pushes, except tags ending in .dev
-    if: >-
-      ${{ startsWith(github.ref, 'refs/tags/') &&
-          !endsWith(github.ref, '.dev') &&
-          (
-            github.event_name == 'push' ||
-            github.event_name == 'workflow_dispatch'
-          )
-      }}
+    if: |
+      needs.build_and_publish.result == 'success' &&
+      startsWith(github.ref, 'refs/tags/') &&
+      !endsWith(github.ref, '.dev') &&
+      (
+        github.event_name == 'push' ||
+        github.event_name == 'workflow_dispatch'
+      )
     name: Upload release to PyPI
     runs-on: ubuntu-latest
     needs: [build_and_publish]
