@@ -25,8 +25,8 @@ from sphinx.util import logging
 logger = logging.getLogger(__name__)
 
 try:
-    from sphinx_astropy.conf.v2 import *  # noqa: F403
-    from sphinx_astropy.conf.v2 import extensions  # noqa: E402
+    from sphinx_astropy.conf.v3 import *  # noqa: F403
+    from sphinx_astropy.conf.v3 import extensions  # noqa: E402
 except ImportError:
     msg = ('The documentation requires the sphinx-astropy package to be '
            'installed. Please install the "docs" requirements.')
@@ -109,10 +109,6 @@ dev = 'dev' in release
 # -- Options for HTML output --------------------------------------------------
 
 html_theme_options = {
-    'header_links_before_dropdown': 6,
-    'collapse_navigation': True,
-    'navigation_depth': 2,
-    'show_nav_level': 2,
     'navigation_with_keys': False,
     'use_edit_page_button': False,
     'logo': {
