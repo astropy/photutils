@@ -41,3 +41,9 @@ html[data-theme="dark"] .bd-content h2 {
 p {
   margin-bottom: 0.7rem;
 }
+
+div.sidebar-primary-item > a.logo {
+  display: flex;
+  flex-direction: column;
+}
+
