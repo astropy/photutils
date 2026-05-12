@@ -109,12 +109,8 @@ dev = 'dev' in release
 # -- Options for HTML output --------------------------------------------------
 
 html_theme_options = {
-    #'header_links_before_dropdown': 6,
-    #'collapse_navigation': True,
-    #'navigation_depth': 2,
-    #'show_nav_level': 2,
-    #'navigation_with_keys': False,
-    #'use_edit_page_button': False,
+    'navigation_with_keys': False,
+    'use_edit_page_button': False,
     'logo': {
         'image_light': 'photutils_logo_light_plain_path.svg',
         'image_dark': 'photutils_logo_dark_plain_path.svg',
