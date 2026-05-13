@@ -14,6 +14,7 @@
   border-bottom: 1px solid var(--pst-color-border);
   padding-bottom: 0.3rem;
 }
+
 /* Light and Dark Theme Specific Styles */
 /*
 html[data-theme="light"] .bd-content h2 {
@@ -32,6 +33,67 @@ html[data-theme="dark"] .bd-content h2 {
   --pst-font-size-h4: 1.15rem;
   --pst-font-size-h5: 1.0rem;
   --pst-font-size-h6: 0.9rem;
+
+  --pst-color-inline-code: #ff0000;
+
+  /* Softer astropy orange palette — warm burnt orange instead of bright
+  neon */
+  --sst-accent-color-bright: #d07530;
+  --sst-accent-color-muted: #b35c28;
+}
+
+html[data-theme="light"] {
+  --pst-color-warning-bg: #f5e4d4;
+  /* Replace green-teal #085d6c with a steel blue that complements the
+  burnt orange */
+  --pst-color-inline-code-links: #2e6da4;
+  --pst-color-link-higher-contrast: #2e6da4;
+  /* Fix button/card hover: use steel blue for contrast against the burnt
+  orange */
+  --pst-color-primary-highlight: #1f5080;
+  --sd-color-primary-highlight: #1f5080;
+
+  --pst-color-surface: #f3f4f5;
+  --pst-color-border: #d1d5da;
+}
+
+html[data-theme="dark"] {
+  /* Slightly lighter accent for readability on dark backgrounds */
+  --sst-accent-color-bright: #e08a42;
+  --sst-accent-color-muted: #c87035;
+  --pst-color-inline-code-links: #5b9fd6;
+  --pst-color-link-higher-contrast: #5b9fd6;
+  /* Fix button/card hover for dark mode */
+  --pst-color-primary-highlight: #4a85bc;
+  --sd-color-primary-highlight: #4a85bc;
+}
+
+/* Improve the "Important" and "Note" admonition title strips in dark
+   mode. The generic admonition fallback uses --pst-color-info-bg (#06245d,
+   harsh navy). Override directly to a muted dark slate blue. */
+html[data-theme="dark"] .admonition-important {
+  border-color: #2e6da4;
+}
+html[data-theme="dark"] .admonition-important > .admonition-title {
+  background-color: #152438;
+}
+html[data-theme="dark"] .admonition-important > .admonition-title:after {
+  color: #5b9fd6;
+}
+html[data-theme="dark"] .admonition {
+  border-color: #2e6da4;
+}
+html[data-theme="dark"] .admonition > .admonition-title {
+  background-color: #152438;
+}
+html[data-theme="dark"] .admonition > .admonition-title:after {
+  color: #5b9fd6;
+}
+
+/* Keep the original bright orange for the "Astropy" brand text in the
+header */
+.bd-header a.navbar-brand {
+  color: #fe7900 !important;
 }
 
 .section {
@@ -45,4 +107,11 @@ p {
 div.sidebar-primary-item > a.logo {
   display: flex;
   flex-direction: column;
+}
+
+code.literal {
+  background-color: var(--pst-color-surface);
+  border: 1px solid var(--pst-color-border);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.25rem;
 }
