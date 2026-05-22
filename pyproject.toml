@@ -59,6 +59,7 @@ all = [
     'tqdm >= 4.67',
 ]
 test = [
+    'asdf-astropy >= 0.10',
     'pytest-asdf-plugin',
     'pytest-astropy >= 0.11',
     'pytest-xdist >= 3.7',
