@@ -77,7 +77,14 @@ jobs:
 
     runs-on: ubuntu-latest
     name: More architectures
-    if: (github.repository == 'astropy/photutils' && (github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'Arch CI')))
+    if: |
+      github.repository == 'astropy/photutils' &&
+      (
+        github.event_name == 'push' ||
+        github.event_name == 'schedule' ||
+        github.event_name == 'workflow_dispatch' ||
+        contains(github.event.pull_request.labels.*.name, 'Arch CI')
+      )
     env:
       ARCH_ON_CI: ${{ matrix.arch }}
 
@@ -133,7 +140,7 @@ jobs:
             echo "LONG_BIT="$(getconf LONG_BIT)
             python3 -m venv --system-site-packages tests
             source tests/bin/activate
-            # Cython and pyerfa versions in ubuntu repos are currently too old
+            # Update older versions
             pip install -U cython setuptools packaging
             pip install -U --no-build-isolation pyerfa
             ASTROPY_USE_SYSTEM_ALL=1 pip3 install -v --no-build-isolation -e .[test]
