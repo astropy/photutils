@@ -4,7 +4,6 @@ Tests for the load module.
 """
 
 from unittest.mock import patch
-from urllib.error import URLError
 
 import numpy as np
 import pytest
@@ -48,7 +47,7 @@ def test_get_path_photutils_datasets():
 @pytest.fixture
 def url_paths():
     """
-    Fixture providing URLs for cache tests.
+    Fixture providing URLs for remote location tests.
     """
     filename = 'test_file.fits'
     primary_url = f'http://data.astropy.org/photometry/{filename}'
@@ -63,76 +62,54 @@ def url_paths():
     }
 
 
-class TestGetPathCache:
+class TestGetPathRemote:
     """
-    Tests for the caching behavior of _get_path.
+    Tests for the behavior of _get_path with location='remote'.
 
-    Tests that it correctly checks the cache for both the primary and
-    fallback URLs, and that it falls back to downloading from the
-    datasets URL if the primary URL is not cached and fails to download.
+    These tests verify that ``download_file`` is called with both the
+    primary astropy data URL and the photutils-datasets fallback URL
+    passed as ``sources``, so that astropy handles the cache lookup
+    and fallback behavior automatically.
     """
 
-    def test_cache_hit_primary_url(self, url_paths):
+    def test_calls_download_file_with_sources(self, url_paths):
         """
-        Test that _get_path uses the cached file when the primary URL is
-        already in the cache, without trying the fallback URL.
+        Test that _get_path calls ``download_file`` with the primary
+        URL as the cache key and both URLs in ``sources``.
         """
-        with (
-            patch('photutils.datasets.load.is_url_in_cache') as mock_cache,
-            patch('photutils.datasets.load.download_file') as mock_dl,
-        ):
-            mock_cache.side_effect = (
-                lambda url: url == url_paths['primary_url']
-            )
+        with patch('photutils.datasets.load.download_file') as mock_dl:
             mock_dl.return_value = '/cached/path/test_file.fits'
 
             result = _get_path(url_paths['filename'], location='remote')
 
             assert result == '/cached/path/test_file.fits'
             mock_dl.assert_called_once_with(
-                url_paths['primary_url'], cache=True, show_progress=False,
+                url_paths['primary_url'],
+                cache=True,
+                sources=[url_paths['primary_url'],
+                         url_paths['datasets_url']],
+                show_progress=False,
             )
 
-    def test_cache_hit_datasets_url(self, url_paths):
+    def test_passes_cache_and_show_progress(self, url_paths):
         """
-        Test that _get_path uses the cached file when only the fallback
-        datasets URL is in the cache.
+        Test that the ``cache`` and ``show_progress`` arguments are
+        forwarded to ``download_file``.
         """
-        with (
-            patch('photutils.datasets.load.is_url_in_cache') as mock_cache,
-            patch('photutils.datasets.load.download_file') as mock_dl,
-        ):
-            mock_cache.side_effect = (
-                lambda url: url == url_paths['datasets_url']
-            )
-            mock_dl.return_value = '/cached/path/test_file.fits'
+        with patch('photutils.datasets.load.download_file') as mock_dl:
+            mock_dl.return_value = '/downloaded/path/test_file.fits'
 
-            result = _get_path(url_paths['filename'], location='remote')
-
-            assert result == '/cached/path/test_file.fits'
-            mock_dl.assert_called_once_with(
-                url_paths['datasets_url'], cache=True, show_progress=False,
-            )
-
-    def test_no_cache_falls_through_to_download(self, url_paths):
-        """
-        Test that _get_path tries the primary URL and falls back to the
-        datasets URL when neither is cached and the primary fails.
-        """
-        with (
-            patch('photutils.datasets.load.is_url_in_cache',
-                  return_value=False),
-            patch('photutils.datasets.load.download_file') as mock_dl,
-        ):
-            mock_dl.side_effect = [
-                URLError('timeout'),
-                '/downloaded/path/test_file.fits',
-            ]
-
-            result = _get_path(url_paths['filename'], location='remote')
+            result = _get_path(url_paths['filename'], location='remote',
+                               cache=False, show_progress=True)
 
             assert result == '/downloaded/path/test_file.fits'
-            assert mock_dl.call_count == 2
+            mock_dl.assert_called_once_with(
+                url_paths['primary_url'],
+                cache=False,
+                sources=[url_paths['primary_url'],
+                         url_paths['datasets_url']],
+                show_progress=True,
+            )
 
 
 def test_load_irac_psf_invalid_channel():

@@ -4,12 +4,9 @@ Tools for loading example datasets, from both within photutils and
 remote servers.
 """
 
-from urllib.error import HTTPError, URLError
-
 from astropy.io import fits
 from astropy.table import Table
-from astropy.utils.data import (download_file, get_pkg_data_filename,
-                                is_url_in_cache)
+from astropy.utils.data import download_file, get_pkg_data_filename
 
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs)
@@ -61,25 +58,15 @@ def _get_path(filename, location='local', cache=True, show_progress=False):
     elif location == 'remote':
         url = f'http://data.astropy.org/photometry/{filename}'
 
-        # First check if the file is already in the local cache from the
-        # primary URL, then check the backup URL. If the file is in the
-        # cache, the download_file function will simply return the local
-        # path to the cached file without trying to download it again.
-        if is_url_in_cache(url):
-            path = download_file(url, cache=True,
-                                 show_progress=show_progress)
-        elif is_url_in_cache(datasets_url):
-            path = download_file(datasets_url, cache=True,
-                                 show_progress=show_progress)
-        else:
-            # If the file is not in the local cache, then try to
-            # download it from the respective URLs.
-            try:
-                path = download_file(url, cache=cache,
-                                     show_progress=show_progress)
-            except (URLError, HTTPError):  # timeout or not found
-                path = download_file(datasets_url, cache=cache,
-                                     show_progress=show_progress)
+        # Use download_file's ``sources`` argument to try the primary
+        # astropy data URL first and fall back to the photutils-datasets
+        # repo. The result is cached under the primary URL regardless
+        # of which source was used. If the file is already in the
+        # cache, download_file returns the local path without any
+        # network access.
+        path = download_file(url, cache=cache,
+                             sources=[url, datasets_url],
+                             show_progress=show_progress)
     elif location == 'photutils-datasets':
         path = download_file(datasets_url, cache=cache,
                              show_progress=show_progress)
