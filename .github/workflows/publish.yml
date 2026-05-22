@@ -2,7 +2,7 @@ name: Wheel building
 
 on:
   schedule:
-    # run every day at 4:30am UTC
+    # Run every day at 4:30am UTC
     - cron: '30 4 * * *'
   pull_request:
     # We also want this workflow triggered if the 'Build all wheels'

@@ -8,7 +8,7 @@ on:
       - '*'
   pull_request:
   schedule:
-    # run every Monday at 6am UTC
+    # Run every Monday at 6am UTC
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
@@ -16,11 +16,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  TOXARGS: '-v'
-
 permissions:
   contents: read
+
+env:
+  TOXARGS: '-v'
 
 jobs:
   tests:
@@ -67,7 +67,7 @@ jobs:
             allow_failure: false
             prefix: ''
 
-          # test without all dependencies
+          # Test without all dependencies
           - os: ubuntu-latest
             python: '3.14'
             tox_env: 'py314-test'
