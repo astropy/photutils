@@ -91,7 +91,7 @@ image showing the detected sources:
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import simple_norm
     >>> norm = simple_norm(data, 'sqrt', percent=99.5)
-    >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
+    >>> fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(10, 12.5))
     >>> ax1.imshow(data, norm=norm, origin='lower')
     >>> ax1.set_title('Background-subtracted Data')
     >>> segment_map.imshow(ax=ax2)
@@ -120,7 +120,7 @@ image showing the detected sources:
 
     segment_map = detect_sources(convolved_data, threshold, n_pixels=10)
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
+    fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(10, 12.5))
     norm = simple_norm(data, 'sqrt', percent=99.5)
     ax1.imshow(data, norm=norm, origin='lower')
     ax1.set_title('Background-subtracted Data')
@@ -193,7 +193,7 @@ deblended segmentation image:
                                             n_pixels=n_pixels,
                                             progress_bar=False)
 
-    fig, ax = plt.subplots(1, 1, figsize=(10, 6.5))
+    fig, ax = plt.subplots(figsize=(10, 6.5))
     deblended_segment_map.imshow(ax=ax)
     ax.set_title('Deblended Segmentation Image')
     fig.tight_layout()
@@ -227,7 +227,7 @@ Let's plot one of the deblended sources:
                                             n_pixels=n_pixels,
                                             progress_bar=False)
 
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(10, 4))
+    fig, (ax1, ax2, ax3) = plt.subplots(ncols=3, figsize=(10, 4))
     slc = (slice(273, 297), slice(425, 444))
     ax1.imshow(data[slc], origin='lower')
     ax1.set_title('Background-subtracted Data')
@@ -411,7 +411,7 @@ segmentation image and the science image:
     finder = SourceFinder(n_pixels=10, progress_bar=False)
     segment_map = finder(convolved_data, threshold)
 
-    fig, (ax1, ax2) = plt.subplots(ncols=1, nrows=2, figsize=(10, 12.5))
+    fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(10, 12.5))
     segment_map.imshow(ax=ax1)
     ax1.set_title('Segmentation Image')
     segment_map.plot_patches(ax=ax1, edgecolor='white', lw=1.5)
@@ -553,7 +553,7 @@ of each source) on the data:
     >>> import matplotlib.pyplot as plt
     >>> from astropy.visualization import simple_norm
     >>> norm = simple_norm(data, 'sqrt', percent=99.5)
-    >>> fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
+    >>> fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(10, 12.5))
     >>> ax1.imshow(data, norm=norm, origin='lower')
     >>> ax1.set_title('Data')
     >>> segment_map.imshow(ax=ax2)
@@ -588,7 +588,7 @@ of each source) on the data:
     segment_map = finder(convolved_data, threshold)
 
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12.5))
+    fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(10, 12.5))
     norm = simple_norm(data, 'sqrt', percent=99.5)
     ax1.imshow(data, norm=norm, origin='lower')
     ax1.set_title('Data with Kron apertures')

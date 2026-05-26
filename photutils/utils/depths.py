@@ -209,7 +209,7 @@ class ImageDepth:
                            progress_bar=False)
         limits = depth(data, mask)
 
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(5, 7))
+        fig, ax = plt.subplots(nrows=2, figsize=(5, 7))
         norm = simple_norm(data, 'sqrt', percent=99.5)
         ax[0].imshow(data, norm=norm, origin='lower')
         color = 'white'

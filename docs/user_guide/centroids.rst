@@ -115,7 +115,7 @@ we also include an inset plot zoomed in near the centroid:
     xycen3 = centroid_1dg(data)
     xycen4 = centroid_2dg(data)
     xycens = [xycen1, xycen2, xycen3, xycen4]
-    fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=(8, 8))
     ax.imshow(data, origin='lower')
     marker = '+'
     ms = 60
