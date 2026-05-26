@@ -207,7 +207,7 @@ Let's plot both results side by side:
     kernel1 = make_kernel(psf1, psf2)
     kernel2 = make_wiener_kernel(psf1, psf2)
 
-    fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+    fig, ax = plt.subplots(ncols=2, figsize=(10, 4))
     axim1 = ax[0].imshow(kernel1, origin='lower')
     fig.colorbar(axim1, ax=ax[0])
     ax[0].set_title('make_kernel')
@@ -528,7 +528,7 @@ Let's display the matching kernel results from all methods:
               'make_wiener_kernel\n(Laplacian penalty)',
               'make_wiener_kernel\n(biharmonic penalty)']
 
-    fig, axes = plt.subplots(2, 2, figsize=(8, 7))
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 7))
     for ax, kernel, title in zip(axes.ravel(), kernels, titles):
         axim = snorm.imshow(kernel, ax=ax, origin='lower')
         fig.colorbar(axim, ax=ax)
@@ -656,7 +656,7 @@ channel 4 PSF target:
               'make_wiener_kernel\n(biharmonic penalty)']
     residuals = [resid1, resid2, resid3, resid4]
 
-    fig, axes = plt.subplots(2, 2, figsize=(9, 7))
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(9, 7))
     for ax, resid, title in zip(axes.ravel(), residuals, titles):
         axim = ax.imshow(resid, origin='lower', cmap='RdBu_r',
                          vmin=-vmax, vmax=vmax)
@@ -732,7 +732,7 @@ agrees with the channel 4 target:
     ls_list = ['--', '-.', ':', (0, (3, 1, 1, 1))]
 
     fig, (ax_top, ax_bot) = plt.subplots(
-        2, 1, figsize=(8, 8),
+        nrows=2, figsize=(8, 8),
         gridspec_kw={'height_ratios': [3, 1]},
         sharex=True,
     )

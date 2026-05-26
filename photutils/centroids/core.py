@@ -96,7 +96,7 @@ def centroid_com(data, mask=None):
         data -= np.median(data[0:30, 0:125])
         data = data[40:80, 70:110]
         xycen = centroid_com(data)
-        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        fig, ax = plt.subplots(figsize=(8, 8))
         ax.imshow(data, origin='lower')
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()
@@ -251,7 +251,7 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
         data -= np.median(data[0:30, 0:125])
         data = data[40:80, 70:110]
         xycen = centroid_quadratic(data)
-        fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+        fig, ax = plt.subplots(figsize=(8, 8))
         ax.imshow(data, origin='lower')
         ax.scatter(*xycen, color='red', marker='+', s=100, label='Centroid')
         ax.legend()

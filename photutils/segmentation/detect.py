@@ -359,7 +359,7 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
         segment_map = detect_sources(convolved_data, threshold, n_pixels=10)
 
         # Plot the image and the segmentation image
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10))
+        fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(8, 10))
         norm = simple_norm(data, 'sqrt', percent=99.5)
         ax1.imshow(data, norm=norm, origin='lower')
         segment_map.imshow(ax=ax2)

@@ -163,7 +163,8 @@ position as a function of the semimajor axis length:
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
 
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(8, 8))
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2,
+                                                 figsize=(8, 8))
     fig.subplots_adjust(hspace=0.35, wspace=0.35)
 
     ax1.errorbar(isolist.sma, isolist.eps, yerr=isolist.ellip_err,
@@ -220,7 +221,7 @@ the elliptical model image, and the residual image:
     model_image = build_ellipse_model(data.shape, isolist)
     residual = data - model_image
 
-    fig, (ax1, ax2, ax3) = plt.subplots(figsize=(14, 5), nrows=1, ncols=3)
+    fig, (ax1, ax2, ax3) = plt.subplots(ncols=3, figsize=(14, 5))
     fig.subplots_adjust(left=0.04, right=0.98, bottom=0.02, top=0.98)
     ax1.imshow(data, origin='lower')
     ax1.set_title('Data')

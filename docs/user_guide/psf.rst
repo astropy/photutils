@@ -455,7 +455,7 @@ and plot it:
 
     resid = psfphot.make_residual_image(data)
 
-    fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
+    fig, ax = plt.subplots(ncols=3, figsize=(15, 5))
     norm = simple_norm(data, 'sqrt', percent=99)
     ax[0].imshow(data, norm=norm, origin='lower')
     ax[1].imshow(data - resid, norm=norm, origin='lower')
@@ -568,7 +568,7 @@ the location of the source that was fit and subtracted.
     resid = psfphot.make_residual_image(data)
     aper = CircularAperture(zip(phot['x_fit'], phot['y_fit']), r=4)
 
-    fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15, 5))
+    fig, ax = plt.subplots(ncols=3, figsize=(15, 5))
     norm = simple_norm(data, 'sqrt', percent=99)
     ax[0].imshow(data, norm=norm, origin='lower')
     ax[1].imshow(data - resid, norm=norm, origin='lower')

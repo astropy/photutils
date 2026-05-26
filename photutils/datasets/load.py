@@ -219,7 +219,7 @@ def load_irac_psf(channel, show_progress=False):
 
         norm = simple_norm(hdu1.data, stretch='log')
 
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
         ax1.imshow(hdu1.data, norm=norm, origin='lower')
         ax1.set_title('IRAC Ch1 PSF')
         ax2.imshow(hdu2.data, norm=norm, origin='lower')
