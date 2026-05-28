@@ -27,5 +27,5 @@ will abide by the `Python Software Foundation Code of Conduct
 <https://policies.python.org/python.org/code-of-conduct/>`_.
 
 This package follows the same workflow and coding guidelines as
-`Astropy`_. Please read the `Astropy Development documentation
+`Astropy`_. Please read the `Astropy Contributing documentation
 <https://docs.astropy.org/en/latest/index_dev.html>`_ to get started.
