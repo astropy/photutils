@@ -80,6 +80,16 @@ html[data-theme="dark"] {
   border-bottom-color: var(--sst-accent-color-bright) !important;
 }
 
+/* Theme toggle and GitHub icon hover color */
+html .pst-navbar-icon:hover {
+  color: #ff9a6c !important;
+}
+
+/* Selected theme in the light/dark mode dropdown */
+html[data-theme="light"] .theme-switch-button + .dropdown-menu {
+  --bs-dropdown-link-active-color: #5b9fd6;
+}
+
 /* Vertical sidebar/content separator */
 html[data-theme="light"] .bd-sidebar-primary {
   border-right-width: thin;
