@@ -117,6 +117,7 @@ class EllipseSample:
             # explicitly passed to the constructor.
             self.geometry = copy.deepcopy(geometry)
             self.geometry.sma = sma
+            self.geometry._reset_sma_dependent_attributes()
         else:
             # if no center was specified, assume it's roughly
             # coincident with the image center
