@@ -173,3 +173,9 @@ code.literal {
   border-radius: 0.25rem;
   padding: 0.1rem 0.25rem;
 }
+
+/* Prevent unnecessary vertical scrollbars for MathJax equations */
+mjx-container {
+  overflow: visible !important;
+  padding-bottom: 0 !important;
+}
