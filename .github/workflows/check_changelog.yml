@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'astropy/photutils'
     steps:
-    - uses: scientific-python/action-check-changelogfile@1fc669db9618167166d5a16c10282044f51805c0  # 0.3
-      env:
-        CHANGELOG_FILENAME: CHANGES.rst
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: scientific-python/action-check-changelogfile@1fc669db9618167166d5a16c10282044f51805c0 # 0.3
+        env:
+          CHANGELOG_FILENAME: CHANGES.rst
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

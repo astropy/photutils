@@ -16,18 +16,18 @@ jobs:
   milestone_checker:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
-      if: github.repository == 'astropy/photutils'
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const { data } = await github.request("GET /repos/{owner}/{repo}/pulls/{pr}", {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pr: context.payload.pull_request.number
-            });
-            if (data.milestone) {
-              core.info(`This pull request has a milestone set: ${data.milestone.title}`);
-            } else {
-              core.setFailed(`A maintainer needs to set the milestone for this pull request.`);
-            }
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        if: github.repository == 'astropy/photutils'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data } = await github.request("GET /repos/{owner}/{repo}/pulls/{pr}", {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pr: context.payload.pull_request.number
+              });
+              if (data.milestone) {
+                core.info(`This pull request has a milestone set: ${data.milestone.title}`);
+              } else {
+                core.setFailed(`A maintainer needs to set the milestone for this pull request.`);
+              }
