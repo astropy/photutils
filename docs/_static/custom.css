@@ -3,18 +3,18 @@
    ========================================================================= */
 
 :root {
-  --pst-font-size-h1: 2.0rem;
+  --pst-font-size-h1: 2rem;
   --pst-font-size-h2: 1.6rem;
   --pst-font-size-h3: 1.35rem;
   --pst-font-size-h4: 1.15rem;
-  --pst-font-size-h5: 1.0rem;
+  --pst-font-size-h5: 1rem;
   --pst-font-size-h6: 0.9rem;
 
   --sst-accent-color-bright: #ff9a6c;
   --sst-accent-color-muted: #ff9a6c;
 }
 
-html[data-theme="light"] {
+html[data-theme='light'] {
   --pst-color-surface: #f3f4f5;
   --pst-color-border: #d1d5da;
   --pst-color-warning-bg: #f5e4d4;
@@ -41,7 +41,7 @@ html[data-theme="light"] {
   --sst-footer-background-color: #f6f6f6;
 }
 
-html[data-theme="dark"] {
+html[data-theme='dark'] {
   /* Steel blue link/card colors */
   --pst-color-link: #5b9fd6;
   --pst-color-link-hover: #4a85bc;
@@ -59,7 +59,7 @@ html[data-theme="dark"] {
   --pst-color-inline-code-links: #5b9fd6;
   --pst-color-link-higher-contrast: #5b9fd6;
 
-  --pst-color-target: #5A3C19;
+  --pst-color-target: #5a3c19;
 
   --sst-footer-background-color: #282828;
 }
@@ -86,17 +86,17 @@ html .pst-navbar-icon:hover {
 }
 
 /* Selected theme in the light/dark mode dropdown */
-html[data-theme="light"] .theme-switch-button + .dropdown-menu {
+html[data-theme='light'] .theme-switch-button + .dropdown-menu {
   --bs-dropdown-link-active-color: #5b9fd6;
 }
 
 /* Vertical sidebar/content separator */
-html[data-theme="light"] .bd-sidebar-primary {
+html[data-theme='light'] .bd-sidebar-primary {
   border-right-width: thin;
   border-right-color: #c4c4c4;
 }
 
-html[data-theme="dark"] .bd-sidebar-primary {
+html[data-theme='dark'] .bd-sidebar-primary {
   border-right-width: thin;
   border-right-color: #666666;
 }
@@ -126,11 +126,11 @@ div.sidebar-primary-item > a.logo {
    Footer
    ========================================================================= */
 
-html[data-theme="light"] .bd-footer {
+html[data-theme='light'] .bd-footer {
   border-top: 1px solid #c4c4c4;
 }
 
-html[data-theme="dark"] .bd-footer {
+html[data-theme='dark'] .bd-footer {
   border-top: 1px solid #666666;
 }
 
@@ -152,24 +152,24 @@ html[data-theme="dark"] .bd-footer {
    ========================================================================= */
 
 /* Muted slate blue for general admonitions (note, important, etc.) */
-html[data-theme="dark"] .admonition {
+html[data-theme='dark'] .admonition {
   border-color: #2e6da4;
 }
-html[data-theme="dark"] .admonition > .admonition-title {
+html[data-theme='dark'] .admonition > .admonition-title {
   background-color: #1c4378;
 }
-html[data-theme="dark"] .admonition > .admonition-title:after {
+html[data-theme='dark'] .admonition > .admonition-title:after {
   color: #5b9fd6;
 }
 
 /* Orange theming for warning admonitions */
-html[data-theme="dark"] .admonition.warning {
+html[data-theme='dark'] .admonition.warning {
   border-color: #c07030;
 }
-html[data-theme="dark"] .admonition.warning > .admonition-title {
+html[data-theme='dark'] .admonition.warning > .admonition-title {
   background-color: #6d4225;
 }
-html[data-theme="dark"] .admonition.warning > .admonition-title:after {
+html[data-theme='dark'] .admonition.warning > .admonition-title:after {
   color: #e08a42;
 }
 
