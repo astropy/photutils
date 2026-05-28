@@ -76,6 +76,10 @@ html[data-theme="dark"] {
   color: var(--sst-accent-color-bright) !important;
 }
 
+.bd-header ul.navbar-nav > li.nav-item > .nav-link:hover:before {
+  border-bottom-color: var(--sst-accent-color-bright) !important;
+}
+
 /* Vertical sidebar/content separator */
 html[data-theme="light"] .bd-sidebar-primary {
   border-right-width: thin;
