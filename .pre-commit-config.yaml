@@ -34,10 +34,10 @@ repos:
         # Replace double-quoted strings with single-quoted strings.
       - id: end-of-file-fixer
         # Makes sure files end in a newline and only a newline.
-        exclude: ".*(svg.*|extern.*)$"
+        exclude: '.*(svg.*|extern.*)$'
       - id: trailing-whitespace
         # Trims trailing whitespace.
-        exclude: ".*(data.*|extern.*)$"
+        exclude: '.*(data.*|extern.*)$'
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
@@ -55,10 +55,10 @@ repos:
         # Enforce that all noqa annotations always occur with specific codes.
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.15.12"
+    rev: 'v0.15.12'
     hooks:
       - id: ruff-check
-        args: ["--fix", "--show-fixes"]
+        args: ['--fix', '--show-fixes']
 
   - repo: https://github.com/scientific-python/cookie
     rev: 2026.04.04
@@ -80,13 +80,13 @@ repos:
     rev: 7.3.0
     hooks:
       - id: flake8
-        args: ["--ignore", "E501,W503"]
+        args: ['--ignore', 'E501,W503']
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.2
     hooks:
       - id: codespell
-        args: ["--write-changes"]
+        args: ['--write-changes']
         additional_dependencies:
           - tomli
 
@@ -94,7 +94,7 @@ repos:
     rev: v1.10.0
     hooks:
       - id: numpydoc-validation
-        exclude: "extern/"
+        exclude: 'extern/'
 
   # TMP: disabled until new release (Python 3.14 support and without
   #      requiring untokenize) and various regressions are fixed
@@ -109,10 +109,23 @@ repos:
   - repo: https://github.com/woodruffw/zizmor-pre-commit
     rev: v1.24.1
     hooks:
-    - id: zizmor
+      - id: zizmor
 
   - repo: https://github.com/sphinx-contrib/sphinx-lint
     rev: v1.0.2
     hooks:
       - id: sphinx-lint
-        exclude: "(docs/_build/|photutils/extern/)"
+        exclude: '(docs/_build/|photutils/extern/)'
+
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: v3.8.3
+    hooks:
+      - id: prettier
+        types_or: [css, rst, json, yaml, toml, markdown]
+        args: ['--single-quote']
+        # Exclude codeql.yml, dependabot.yml, and schemas/**/*.yaml
+        exclude: |
+          (?x)^(
+            (.*\/)?(codeql\.yml|dependabot\.yml)$|
+            .*schemas\/.*\.yaml$
+          )
