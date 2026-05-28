@@ -60,58 +60,28 @@ for astronomical image analysis.
 .. grid:: 3
     :gutter: 2 3 4 4
 
-    .. grid-item-card::
+    .. grid-item-card:: Getting Started
+        :link: getting_started/index
+        :link-type: doc
         :text-align: center
-
-        **Getting Started**
-        ^^^^^^^^^^^^^^^^^^^
 
         New to Photutils? Check out the getting started guides. They
         contain an overview of Photutils and an introduction to its main
         concepts.
 
-        +++
-
-        .. button-ref:: getting_started/index
-            :expand:
-            :color: primary
-            :click-parent:
-
-            To the getting started guides
-
-    .. grid-item-card::
+    .. grid-item-card:: User Guide
+        :link: user_guide/index
+        :link-type: doc
         :text-align: center
-
-        **User Guide**
-        ^^^^^^^^^^^^^^
 
         The user guide provides in-depth information on the key concepts
         of Photutils with useful background information and explanation.
 
-        +++
-
-        .. button-ref:: user_guide/index
-            :expand:
-            :color: primary
-            :click-parent:
-
-            To the user guide
-
-    .. grid-item-card::
+    .. grid-item-card:: API Reference Guide
+        :link: reference/index
+        :link-type: doc
         :text-align: center
-
-        **API Reference**
-        ^^^^^^^^^^^^^^^^^
 
         The reference guide contains a detailed description of the
         functions, modules, and objects included in Photutils. It
         assumes that you have an understanding of the key concepts.
-
-        +++
-
-        .. button-ref:: reference/index
-            :expand:
-            :color: primary
-            :click-parent:
-
-            To the reference guide

@@ -1,8 +1,8 @@
 .. _api_reference:
 
-*************
-API Reference
-*************
+*******************
+API Reference Guide
+*******************
 
 The API reference guide contains detailed descriptions of the functions,
 modules, and objects included in each of the Photutils subpackages. It

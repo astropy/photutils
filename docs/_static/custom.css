@@ -1,30 +1,6 @@
-.field-list ul {
-  padding-left: 2em;
-}
-
-.bd-article {
-  padding-top: 0.75rem;
-}
-
-.bd-content h1 {
-  margin-top: 0;
-}
-
-.bd-content h2 {
-  border-bottom: 1px solid var(--pst-color-border);
-  padding-bottom: 0.3rem;
-}
-
-/* Light and Dark Theme Specific Styles */
-/*
-html[data-theme="light"] .bd-content h2 {
-  border-bottom: 1px solid #d0d0d0;
-}
-
-html[data-theme="dark"] .bd-content h2 {
-  border-bottom: 1px solid #444;
-}
-*/
+/* =========================================================================
+   CSS Variables
+   ========================================================================= */
 
 :root {
   --pst-font-size-h1: 2.0rem;
@@ -34,66 +10,93 @@ html[data-theme="dark"] .bd-content h2 {
   --pst-font-size-h5: 1.0rem;
   --pst-font-size-h6: 0.9rem;
 
-  --pst-color-inline-code: #ff0000;
-
-  /* Softer astropy orange palette — warm burnt orange instead of bright
-  neon */
-  --sst-accent-color-bright: #d07530;
-  --sst-accent-color-muted: #b35c28;
+  --sst-accent-color-bright: #ff9a6c;
+  --sst-accent-color-muted: #ff9a6c;
 }
 
 html[data-theme="light"] {
+  --pst-color-surface: #f3f4f5;
+  --pst-color-border: #d1d5da;
   --pst-color-warning-bg: #f5e4d4;
-  /* Replace green-teal #085d6c with a steel blue that complements the
-  burnt orange */
-  --pst-color-inline-code-links: #2e6da4;
-  --pst-color-link-higher-contrast: #2e6da4;
-  /* Fix button/card hover: use steel blue for contrast against the burnt
-  orange */
+
+  /* Steel blue link/card colors */
+  --pst-color-link: #2e6da4;
+  --pst-color-link-hover: #1f5080;
+  --pst-color-primary: #2e6da4;
   --pst-color-primary-highlight: #1f5080;
   --sd-color-primary-highlight: #1f5080;
 
-  --pst-color-surface: #f3f4f5;
-  --pst-color-border: #d1d5da;
+  /* Orange secondary accent */
+  --pst-color-secondary: #d07530;
+  --pst-color-secondary-highlight: #b85f1f;
+  --pst-color-secondary-text: #ffffff;
+  --pst-color-secondary-highlight-text: #ffffff;
+
+  --pst-color-inline-code: #912583;
+  --pst-color-inline-code-links: #2e6da4;
+  --pst-color-link-higher-contrast: #2e6da4;
+
+  --pst-color-target: #f3cf95;
+
+  --sst-footer-background-color: #f6f6f6;
 }
 
 html[data-theme="dark"] {
-  /* Slightly lighter accent for readability on dark backgrounds */
-  --sst-accent-color-bright: #e08a42;
-  --sst-accent-color-muted: #c87035;
-  --pst-color-inline-code-links: #5b9fd6;
-  --pst-color-link-higher-contrast: #5b9fd6;
-  /* Fix button/card hover for dark mode */
+  /* Steel blue link/card colors */
+  --pst-color-link: #5b9fd6;
+  --pst-color-link-hover: #4a85bc;
+  --pst-color-primary: #5b9fd6;
   --pst-color-primary-highlight: #4a85bc;
   --sd-color-primary-highlight: #4a85bc;
+
+  /* Orange secondary accent */
+  --pst-color-secondary: #e08a42;
+  --pst-color-secondary-highlight: #d07530;
+  --pst-color-secondary--text: #14181e;
+  --pst-color-secondary-highlight-text: #14181e;
+
+  --pst-color-inline-code: #f3c7ee;
+  --pst-color-inline-code-links: #5b9fd6;
+  --pst-color-link-higher-contrast: #5b9fd6;
+
+  --pst-color-target: #5A3C19;
+
+  --sst-footer-background-color: #282828;
 }
 
-/* Improve the "Important" and "Note" admonition title strips in dark
-   mode. The generic admonition fallback uses --pst-color-info-bg (#06245d,
-   harsh navy). Override directly to a muted dark slate blue. */
-html[data-theme="dark"] .admonition-important {
-  border-color: #2e6da4;
-}
-html[data-theme="dark"] .admonition-important > .admonition-title {
-  background-color: #152438;
-}
-html[data-theme="dark"] .admonition-important > .admonition-title:after {
-  color: #5b9fd6;
-}
-html[data-theme="dark"] .admonition {
-  border-color: #2e6da4;
-}
-html[data-theme="dark"] .admonition > .admonition-title {
-  background-color: #152438;
-}
-html[data-theme="dark"] .admonition > .admonition-title:after {
-  color: #5b9fd6;
-}
+/* =========================================================================
+   Header / Navigation
+   ========================================================================= */
 
-/* Keep the original bright orange for the "Astropy" brand text in the
-header */
 .bd-header a.navbar-brand {
-  color: #fe7900 !important;
+  color: #ff6b26 !important;
+}
+
+.bd-header ul.navbar-nav > li.nav-item > .nav-link:hover {
+  color: var(--sst-accent-color-bright) !important;
+}
+
+.bd-header ul.navbar-nav > li.nav-item > .nav-link:hover:before {
+  border-bottom-color: var(--sst-accent-color-bright) !important;
+}
+
+/* Vertical sidebar/content separator */
+html[data-theme="light"] .bd-sidebar-primary {
+  border-right-width: thin;
+  border-right-color: #c4c4c4;
+}
+
+html[data-theme="dark"] .bd-sidebar-primary {
+  border-right-width: thin;
+  border-right-color: #666666;
+}
+
+/* =========================================================================
+   Layout
+   ========================================================================= */
+
+.bd-article {
+  padding-top: 0.75rem;
 }
 
 .section {
@@ -109,9 +112,74 @@ div.sidebar-primary-item > a.logo {
   flex-direction: column;
 }
 
+/* =========================================================================
+   Footer
+   ========================================================================= */
+
+html[data-theme="light"] .bd-footer {
+  border-top: 1px solid #c4c4c4;
+}
+
+html[data-theme="dark"] .bd-footer {
+  border-top: 1px solid #666666;
+}
+
+/* =========================================================================
+   Headings
+   ========================================================================= */
+
+.bd-content h1 {
+  margin-top: 0;
+}
+
+.bd-content h2 {
+  border-bottom: 1px solid var(--pst-color-border);
+  padding-bottom: 0.3rem;
+}
+
+/* =========================================================================
+   Admonitions (dark mode)
+   ========================================================================= */
+
+/* Muted slate blue for general admonitions (note, important, etc.) */
+html[data-theme="dark"] .admonition {
+  border-color: #2e6da4;
+}
+html[data-theme="dark"] .admonition > .admonition-title {
+  background-color: #1c4378;
+}
+html[data-theme="dark"] .admonition > .admonition-title:after {
+  color: #5b9fd6;
+}
+
+/* Orange theming for warning admonitions */
+html[data-theme="dark"] .admonition.warning {
+  border-color: #c07030;
+}
+html[data-theme="dark"] .admonition.warning > .admonition-title {
+  background-color: #6d4225;
+}
+html[data-theme="dark"] .admonition.warning > .admonition-title:after {
+  color: #e08a42;
+}
+
+/* =========================================================================
+   Typography / Code
+   ========================================================================= */
+
+.field-list ul {
+  padding-left: 2em;
+}
+
 code.literal {
   background-color: var(--pst-color-surface);
   border: 1px solid var(--pst-color-border);
   border-radius: 0.25rem;
   padding: 0.1rem 0.25rem;
+}
+
+/* Prevent unnecessary vertical scrollbars for MathJax equations */
+mjx-container {
+  overflow: visible !important;
+  padding-bottom: 0 !important;
 }
