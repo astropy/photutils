@@ -6,6 +6,7 @@ Tests for the sample module.
 import numpy as np
 import pytest
 
+from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.integrator import (BILINEAR, MEAN, MEDIAN,
                                            NEAREST_NEIGHBOR)
 from photutils.isophote.isophote import Isophote
@@ -56,3 +57,22 @@ def test_sclip():
 
     assert isinstance(x, np.ndarray)
     assert isinstance(y, np.ndarray)
+
+
+def test_geometry_sma_override_resets_cached_attributes():
+    geometry = EllipseGeometry(25.0, 25.0, 10.0, 0.3, np.pi / 4.0,
+                               astep=0.2)
+    sample = EllipseSample(DATA, 20.0, geometry=geometry)
+    expected_geometry = EllipseGeometry(25.0, 25.0, 20.0, 0.3,
+                                        np.pi / 4.0, astep=0.2)
+
+    assert sample.geometry.sma == 20.0
+    assert geometry.sma == 10.0
+    np.testing.assert_allclose(sample.geometry._area_factor,
+                               expected_geometry._area_factor)
+    np.testing.assert_allclose(sample.geometry.sector_angular_width,
+                               expected_geometry.sector_angular_width)
+    np.testing.assert_allclose(sample.geometry.initial_polar_angle,
+                               expected_geometry.initial_polar_angle)
+    np.testing.assert_allclose(sample.geometry.initial_polar_radius,
+                               expected_geometry.initial_polar_radius)

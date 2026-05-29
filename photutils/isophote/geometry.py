@@ -143,10 +143,21 @@ class EllipseGeometry:
         self._phi_min = 0.05
         self._phi_max = 0.2
 
+        self._reset_sma_dependent_attributes()
+
+    def _reset_sma_dependent_attributes(self):
+        """
+        Reset attributes derived from the current semimajor axis length.
+        """
         # variables used in the calculation of the sector angular width
         sma1, sma2 = self.bounding_ellipses()
         inner_sma = min((sma2 - sma1), 3.0)
         self._area_factor = (sma2 - sma1) * inner_sma
+
+        for attr in ('sector_angular_width', 'initial_polar_angle',
+                     'initial_polar_radius'):
+            if hasattr(self, attr):
+                delattr(self, attr)
 
         # sma can eventually be zero!
         if self.sma > 0.0:
