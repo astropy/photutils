@@ -39,6 +39,9 @@ Bug Fixes
     an elliptical path that falls entirely (or largely) outside the
     image. [#2283]
 
+  - Fixed ``EllipseSample`` not resetting ``EllipseGeometry`` cached
+    attributes when overriding ``sma``. [#2280]
+
 API Changes
 ^^^^^^^^^^^
 
