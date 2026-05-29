@@ -92,17 +92,10 @@ class TestEllipse:
         # image is off-center by a large offset.
         ellipse = Ellipse(OFFSET_GALAXY)
 
-        match1 = 'Degrees of freedom'
-        match2 = 'Mean of empty slice'
-        match3 = 'invalid value encountered'
-        match4 = 'No meaningful fit was possible'
-        ctx1 = pytest.warns(RuntimeWarning, match=match1)
-        ctx2 = pytest.warns(RuntimeWarning, match=match2)
-        ctx3 = pytest.warns(RuntimeWarning, match=match3)
-        ctx4 = pytest.warns(AstropyUserWarning, match=match4)
-        with ctx1, ctx2, ctx3, ctx4:
+        match = 'No meaningful fit was possible'
+        with pytest.warns(AstropyUserWarning, match=match):
             isophote_list = ellipse.fit_image()
-            assert len(isophote_list) == 0
+        assert len(isophote_list) == 0
 
     def test_offcenter_fit(self):
         # A first guess ellipse that is roughly centered on the
