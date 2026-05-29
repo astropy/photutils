@@ -93,9 +93,7 @@ jobs:
         include:
           - arch: s390x
           - arch: ppc64le
-          # isophote.rst fails on armv7 with
-          # "RuntimeWarning: Mean of empty slice."
-          # - arch: armv7
+          - arch: armv7
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
