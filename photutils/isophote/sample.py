@@ -319,6 +319,20 @@ class EllipseSample:
 
         # Update the mean value first, using extraction from main sample.
         s = self.extract()
+
+        # If the elliptical path falls entirely outside the image (e.g.,
+        # a trial geometry that diverged during the fit), no points are
+        # sampled. Short-circuit here to avoid emitting numpy warnings
+        # (e.g., "Mean of empty slice") from operating on empty arrays.
+        # The fitter detects this condition separately via its own
+        # zero-length check and marks the isophote as invalid.
+        if len(s[2]) == 0:
+            self.mean = np.nan
+            self.gradient = np.nan
+            self.gradient_err = np.nan
+            self.gradient_rel_err = None
+            return
+
         self.mean = np.mean(s[2])
 
         # Get sample with same geometry but at a different distance from
@@ -367,6 +381,16 @@ class EllipseSample:
             integrmode=self.integrmode)
 
         sg = gradient_sample.extract()
+
+        # If the gradient sample (taken at a slightly larger semimajor
+        # axis) falls entirely outside the image, no points are sampled.
+        # Return a non-meaningful gradient without operating on empty
+        # arrays (which would emit numpy warnings). NaN (rather than
+        # None) is returned to match the previous numeric behavior so
+        # that downstream arithmetic continues to work.
+        if len(sg[2]) == 0:
+            return np.nan, np.nan
+
         mean_g = np.mean(sg[2])
         gradient = (mean_g - self.mean) / self.geometry.sma / step
 

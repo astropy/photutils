@@ -137,6 +137,30 @@ class Isophote:
 
         if sample.geometry.sma > 0:
             self.intens = sample.mean
+            if sample.actual_points == 0:
+                # No valid sampled points (e.g., a trial geometry that
+                # fell entirely outside the image). Operating on the
+                # empty sample arrays would emit numpy warnings (e.g.,
+                # "Mean of empty slice"), so set non-meaningful values
+                # directly and skip the harmonic computations. Such a
+                # degenerate isophote is transient: it is either
+                # discarded or replaced by `_fix_last_isophote`.
+                self.rms = np.nan
+                self.int_err = np.nan
+                self.pix_stddev = np.nan
+                self.grad = sample.gradient
+                self.gradient_err = sample.gradient_err
+                self.gradient_rel_err = sample.gradient_rel_err
+                self.sarea = sample.sector_area
+                self.n_data = sample.actual_points
+                self.n_flag = sample.total_points - sample.actual_points
+                self.tflux_e = self.tflux_c = 0.0
+                self.npix_e = self.npix_c = 0
+                self.x0_err = self.y0_err = self.pa_err = self.ellip_err = 0.0
+                self.a3 = self.b3 = self.a3_err = self.b3_err = None
+                self.a4 = self.b4 = self.a4_err = self.b4_err = None
+                return
+
             self.rms = np.std(sample.values[2])
             self.int_err = self.rms / np.sqrt(sample.actual_points)
             self.pix_stddev = self.rms * np.sqrt(sample.sector_area)
