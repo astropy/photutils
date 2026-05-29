@@ -34,6 +34,11 @@ Bug Fixes
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a
     compilation issue with Cython 3.1.x. [#2260]
 
+  - Fixed spurious NumPy "Mean of empty slice" and related warnings
+    raised during isophote fitting when a trial or failed isophote has
+    an elliptical path that falls entirely (or largely) outside the
+    image. [#2283]
+
 API Changes
 ^^^^^^^^^^^
 
