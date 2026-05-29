@@ -18,8 +18,8 @@ for astronomical image analysis.
 
 Please see the `online documentation
 <https://photutils.readthedocs.io>`_ for `installation instructions
-<https://photutils.readthedocs.io/en/stable/getting_started/install.html>`_ and usage
-information.
+<https://photutils.readthedocs.io/en/stable/getting_started/install.html>`_
+and usage information.
 
 
 Citing Photutils
@@ -38,9 +38,7 @@ the following acknowledgment::
 where (Bradley et al. <YEAR>) is a citation to the `Zenodo record
 <https://doi.org/10.5281/zenodo.596036>`_ of the Photutils
 version that was used. We also encourage citations in the
-main text wherever appropriate. Please see the `CITATION
-<https://github.com/astropy/photutils/blob/main/photutils/CITATION.rst>`_
-file for details and an example BibTeX entry.
+main text wherever appropriate.
 
 
 License
