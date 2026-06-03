@@ -20,8 +20,8 @@ from photutils.aperture.mask import ApertureMask
 from photutils.geometry import rectangular_overlap_grid
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs)
-from photutils.utils._wcs_helpers import (pixel_ellipse_to_sky_svd,
-                                          sky_ellipse_to_pixel_svd)
+from photutils.utils._wcs_helpers import (pixel_shape_to_sky_svd,
+                                          sky_shape_to_pixel_svd)
 
 __all__ = [
     'RectangularAnnulus',
@@ -364,7 +364,7 @@ class RectangularAperture(PixelAperture):
 
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
-        _, sky_w, sky_h, sky_angle = pixel_ellipse_to_sky_svd(
+        _, sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
             pixcoord, wcs, self.w, self.h, self.theta.to(u.rad).value)
 
         width = Angle(sky_w, 'arcsec')
@@ -612,9 +612,9 @@ class RectangularAnnulus(PixelAperture):
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
         theta_rad = self.theta.to(u.rad).value
-        _, sky_w_out, sky_h_out, sky_angle = pixel_ellipse_to_sky_svd(
+        _, sky_w_out, sky_h_out, sky_angle = pixel_shape_to_sky_svd(
             pixcoord, wcs, self.w_out, self.h_out, theta_rad)
-        _, sky_w_in, sky_h_in, _ = pixel_ellipse_to_sky_svd(
+        _, sky_w_in, sky_h_in, _ = pixel_shape_to_sky_svd(
             pixcoord, wcs, self.w_in, self.h_in, theta_rad)
 
         w_in = Angle(sky_w_in, 'arcsec')
@@ -708,7 +708,7 @@ class SkyRectangularAperture(SkyAperture):
 
         skypos = self.positions if self.isscalar else self.positions[0]
         sky_angle_rad = self.theta.to(u.rad).value
-        _, pix_w, pix_h, pix_angle = sky_ellipse_to_pixel_svd(
+        _, pix_w, pix_h, pix_angle = sky_shape_to_pixel_svd(
             skypos, wcs,
             self.w.to(u.arcsec).value,
             self.h.to(u.arcsec).value,
@@ -833,12 +833,12 @@ class SkyRectangularAnnulus(SkyAperture):
 
         skypos = self.positions if self.isscalar else self.positions[0]
         sky_angle_rad = self.theta.to(u.rad).value
-        _, pix_w_out, pix_h_out, pix_angle = sky_ellipse_to_pixel_svd(
+        _, pix_w_out, pix_h_out, pix_angle = sky_shape_to_pixel_svd(
             skypos, wcs,
             self.w_out.to(u.arcsec).value,
             self.h_out.to(u.arcsec).value,
             sky_angle_rad)
-        _, pix_w_in, pix_h_in, _ = sky_ellipse_to_pixel_svd(
+        _, pix_w_in, pix_h_in, _ = sky_shape_to_pixel_svd(
             skypos, wcs,
             self.w_in.to(u.arcsec).value,
             self.h_in.to(u.arcsec).value,
