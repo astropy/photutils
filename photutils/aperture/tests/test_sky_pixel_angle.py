@@ -33,6 +33,24 @@ from photutils.aperture import (EllipticalAnnulus, EllipticalAperture,
 CENTER = SkyCoord(100 * u.deg, 30 * u.deg)
 PIX_CENTER = (10.5, 10.5)
 
+DIRECTED_APERTURE_PAIRS = [
+    pytest.param(SkyEllipticalAperture, EllipticalAperture, id='ellipse'),
+    pytest.param(SkyRectangularAperture, RectangularAperture, id='rectangle'),
+    pytest.param(SkyEllipticalAnnulus, EllipticalAnnulus,
+                 id='ellipse_annulus'),
+    pytest.param(SkyRectangularAnnulus, RectangularAnnulus,
+                 id='rectangle_annulus'),
+]
+
+SHEAR_DIRECTED_PAIRS = [
+    (SkyRectangularAperture, RectangularAperture),
+    (SkyRectangularAnnulus, RectangularAnnulus),
+    (SkyEllipticalAperture, EllipticalAperture),
+    (SkyEllipticalAnnulus, EllipticalAnnulus),
+]
+
+ANGLES_DEG = [0, 30, 60, 135, 200, 315]
+
 
 @pytest.fixture
 def axis_aligned_wcs():
@@ -44,6 +62,24 @@ def axis_aligned_wcs():
     wcs.wcs.crpix = [10.5, 10.5]
     wcs.wcs.crval = [CENTER.ra.deg, CENTER.dec.deg]
     wcs.wcs.cdelt = [-0.1 / 3600, 0.1 / 3600]
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+
+    return wcs
+
+
+@pytest.fixture
+def sheared_wcs():
+    """
+    A sheared TAN WCS where the pixel x and y axes are 80 deg apart on
+    the sky (10 deg of shear from a perpendicular axis-aligned grid).
+    """
+    cdelt = 0.1 / 3600
+    a = np.radians(80.0)
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = [10.5, 10.5]
+    wcs.wcs.crval = [CENTER.ra.deg, CENTER.dec.deg]
+    wcs.wcs.cd = [[-cdelt, cdelt * np.cos(a)],
+                  [0.0, cdelt * np.sin(a)]]
     wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
 
     return wcs
@@ -115,22 +151,10 @@ def _make_sky_pix_pair(sky_cls, pix_cls, theta):
     return sky, pix
 
 
-DIRECTED_APERTURE_PAIRS = [
-    pytest.param(SkyEllipticalAperture, EllipticalAperture, id='ellipse'),
-    pytest.param(SkyRectangularAperture, RectangularAperture, id='rectangle'),
-    pytest.param(SkyEllipticalAnnulus, EllipticalAnnulus,
-                 id='ellipse_annulus'),
-    pytest.param(SkyRectangularAnnulus, RectangularAnnulus,
-                 id='rectangle_annulus'),
-]
-
-ANGLES_DEG = [0, 30, 60, 135, 200, 315]
-
-
 class TestSkyPixelAngleConvention:
     """
-    Verify the photutils sky/pixel angle conventions on an axis-aligned
-    WCS where North = +y.
+    Verify the sky/pixel angle conventions on an axis-aligned WCS where
+    North = +y.
     """
 
     @pytest.mark.parametrize(('sky_cls', 'pix_cls'), DIRECTED_APERTURE_PAIRS)
@@ -143,7 +167,7 @@ class TestSkyPixelAngleConvention:
         sky, _ = _make_sky_pix_pair(sky_cls, pix_cls, theta_deg * u.deg)
         pix = sky.to_pixel(axis_aligned_wcs)
         diff = _angle_diff_deg(pix.theta, (theta_deg + 90) * u.deg)
-        assert abs(diff) < 1e-3
+        assert abs(diff) < 2e-5
 
     @pytest.mark.parametrize(('sky_cls', 'pix_cls'), DIRECTED_APERTURE_PAIRS)
     @pytest.mark.parametrize('theta_deg', ANGLES_DEG)
@@ -155,7 +179,7 @@ class TestSkyPixelAngleConvention:
         _, pix = _make_sky_pix_pair(sky_cls, pix_cls, theta_deg * u.deg)
         sky = pix.to_sky(axis_aligned_wcs)
         diff = _angle_diff_deg(sky.theta, (theta_deg - 90) * u.deg)
-        assert abs(diff) < 1e-3
+        assert abs(diff) < 2e-5
 
     @pytest.mark.parametrize(('sky_cls', 'pix_cls'), DIRECTED_APERTURE_PAIRS)
     @pytest.mark.parametrize('theta_deg', ANGLES_DEG)
@@ -167,7 +191,7 @@ class TestSkyPixelAngleConvention:
         sky, _ = _make_sky_pix_pair(sky_cls, pix_cls, theta_deg * u.deg)
         sky_rt = sky.to_pixel(axis_aligned_wcs).to_sky(axis_aligned_wcs)
         diff = _angle_diff_deg(sky_rt.theta, theta_deg * u.deg)
-        assert abs(diff) < 1e-3
+        assert abs(diff) < 2e-5
 
     @pytest.mark.parametrize(('sky_cls', 'pix_cls'), DIRECTED_APERTURE_PAIRS)
     @pytest.mark.parametrize('theta_deg', ANGLES_DEG)
@@ -179,7 +203,7 @@ class TestSkyPixelAngleConvention:
         _, pix = _make_sky_pix_pair(sky_cls, pix_cls, theta_deg * u.deg)
         pix_rt = pix.to_sky(axis_aligned_wcs).to_pixel(axis_aligned_wcs)
         diff = _angle_diff_deg(pix_rt.theta, theta_deg * u.deg)
-        assert abs(diff) < 1e-3
+        assert abs(diff) < 2e-5
 
     def test_north_is_plus_y(self, axis_aligned_wcs):
         """
@@ -190,7 +214,7 @@ class TestSkyPixelAngleConvention:
                                     b=1 * u.arcsec, theta=0 * u.deg)
         pix = sky.to_pixel(axis_aligned_wcs)
         diff = _angle_diff_deg(pix.theta, 90 * u.deg)
-        assert abs(diff) < 1e-3
+        assert abs(diff) < 2e-5
 
     def test_east_is_minus_x(self, axis_aligned_wcs):
         """
@@ -201,7 +225,7 @@ class TestSkyPixelAngleConvention:
                                     b=1 * u.arcsec, theta=90 * u.deg)
         pix = sky.to_pixel(axis_aligned_wcs)
         diff = _angle_diff_deg(pix.theta, 180 * u.deg)
-        assert abs(diff) < 1e-3
+        assert abs(diff) < 2e-5
 
 
 class TestRotatedWCSRoundtrip:
@@ -218,7 +242,7 @@ class TestRotatedWCSRoundtrip:
         sky, _ = _make_sky_pix_pair(sky_cls, pix_cls, theta_deg * u.deg)
         sky_rt = sky.to_pixel(rotated_wcs).to_sky(rotated_wcs)
         diff = _angle_diff_deg(sky_rt.theta, theta_deg * u.deg)
-        assert abs(diff) < 1e-3
+        assert abs(diff) < 2e-5
 
     @pytest.mark.parametrize(('sky_cls', 'pix_cls'), DIRECTED_APERTURE_PAIRS)
     @pytest.mark.parametrize('theta_deg', ANGLES_DEG)
@@ -227,33 +251,7 @@ class TestRotatedWCSRoundtrip:
         _, pix = _make_sky_pix_pair(sky_cls, pix_cls, theta_deg * u.deg)
         pix_rt = pix.to_sky(rotated_wcs).to_pixel(rotated_wcs)
         diff = _angle_diff_deg(pix_rt.theta, theta_deg * u.deg)
-        assert abs(diff) < 1e-3
-
-
-@pytest.fixture
-def sheared_wcs():
-    """
-    A sheared TAN WCS where the pixel x and y axes are 80 deg apart on
-    the sky (10 deg of shear from a perpendicular axis-aligned grid).
-    """
-    cdelt = 0.1 / 3600
-    a = np.radians(80.0)
-    wcs = WCS(naxis=2)
-    wcs.wcs.crpix = [10.5, 10.5]
-    wcs.wcs.crval = [CENTER.ra.deg, CENTER.dec.deg]
-    wcs.wcs.cd = [[-cdelt, cdelt * np.cos(a)],
-                  [0.0, cdelt * np.sin(a)]]
-    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-
-    return wcs
-
-
-SHEAR_DIRECTED_PAIRS = [
-    (SkyRectangularAperture, RectangularAperture),
-    (SkyRectangularAnnulus, RectangularAnnulus),
-    (SkyEllipticalAperture, EllipticalAperture),
-    (SkyEllipticalAnnulus, EllipticalAnnulus),
-]
+        assert abs(diff) < 2e-5
 
 
 class TestShearedWCS:
