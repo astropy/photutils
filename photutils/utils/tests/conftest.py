@@ -86,6 +86,23 @@ def _make_sip_wcs():
     return WCS(sip_header)
 
 
+class _MockGWCS:
+    """
+    Minimal WCS-like wrapper without a ``has_distortion`` attribute,
+    used to simulate a generalized WCS (e.g., gwcs) so the dispatch
+    helpers fall back to the Jacobian path.
+    """
+
+    def __init__(self, real_wcs):
+        self._wcs = real_wcs
+
+    def world_to_pixel(self, *args, **kwargs):
+        return self._wcs.world_to_pixel(*args, **kwargs)
+
+    def pixel_to_world(self, *args, **kwargs):
+        return self._wcs.pixel_to_world(*args, **kwargs)
+
+
 @pytest.fixture
 def simple_wcs():
     """
@@ -122,3 +139,21 @@ def nonsquare_wcs():
     wcs.wcs.cdelt = [-0.03, 0.05]
     wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
     return wcs
+
+
+@pytest.fixture
+def center_xy_coord(simple_wcs):
+    """
+    Return the center (x, y) tuple at CRPIX of the simple WCS.
+    """
+    x, y = simple_wcs.world_to_pixel(WCS_CENTER)
+    return (x, y)
+
+
+@pytest.fixture
+def mock_gwcs(simple_wcs):
+    """
+    A WCS-like object without ``has_distortion`` (simulates gwcs),
+    forcing the dispatch helpers to use the Jacobian path.
+    """
+    return _MockGWCS(simple_wcs)
