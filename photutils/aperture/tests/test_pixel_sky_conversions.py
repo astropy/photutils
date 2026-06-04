@@ -215,6 +215,25 @@ def sip_wcs():
     return _make_sip_wcs()
 
 
+@pytest.fixture
+def flipped_wcs():
+    """
+    A flipped-parity TAN WCS (North down, East left).
+
+    Both CDELT values are negative, so the pixel scale matrix has
+    a positive determinant (parity = +1), opposite the standard
+    astronomical convention. North (increasing Dec) points along -y and
+    East (increasing RA) points along -x.
+    """
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = [10.5, 10.5]
+    wcs.wcs.crval = [CENTER.ra.deg, CENTER.dec.deg]
+    wcs.wcs.cdelt = [-0.1 / 3600, -0.1 / 3600]
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+
+    return wcs
+
+
 class TestApertureSkyToPixel:
     """
     Converting a sky aperture to a pixel aperture must return the
@@ -530,3 +549,80 @@ class TestCircularInputAnglePreserved:
         pix_rt = pix.to_sky(rotated_wcs).to_pixel(rotated_wcs)
         diff = _angle_diff_deg(pix_rt.theta, theta_deg * u.deg)
         assert abs(diff) < 1e-6
+
+
+class TestFlippedParityWCS:
+    """
+    Regression tests for a flipped-parity WCS (North down, East left;
+    positive-determinant pixel scale matrix).
+
+    Such a WCS previously produced apertures that were mirrored about
+    the x-axis. For the flipped axis-aligned WCS, North = -y and East =
+    -x, so the sky/pixel angle relation is ``pixel.theta == 270 deg -
+    sky.theta`` (mod 360).
+    """
+
+    def test_flipped_wcs_has_positive_parity(self, flipped_wcs):
+        """
+        The flipped WCS fixture must have a positive-determinant pixel
+        scale matrix (parity = +1).
+        """
+        assert np.linalg.det(flipped_wcs.pixel_scale_matrix) > 0
+
+    def test_north_is_minus_y(self, flipped_wcs):
+        """
+        A sky aperture at PA=0 (North) maps to a pixel aperture pointing
+        along -y (down), i.e., pixel theta = 270 deg.
+        """
+        sky = SkyEllipticalAperture(CENTER, a=2 * u.arcsec, b=1 * u.arcsec,
+                                    theta=0 * u.deg)
+        pix = sky.to_pixel(flipped_wcs)
+        diff = _angle_diff_deg(pix.theta, 270 * u.deg)
+        assert abs(diff) < 2e-5
+
+    def test_east_is_minus_x(self, flipped_wcs):
+        """
+        A sky aperture at PA=90 deg (East) maps to a pixel aperture
+        pointing along -x (left), i.e., pixel theta = 180 deg.
+        """
+        sky = SkyEllipticalAperture(CENTER, a=2 * u.arcsec, b=1 * u.arcsec,
+                                    theta=90 * u.deg)
+        pix = sky.to_pixel(flipped_wcs)
+        diff = _angle_diff_deg(pix.theta, 180 * u.deg)
+        assert abs(diff) < 2e-5
+
+    @pytest.mark.parametrize('case', DIRECTED_CASES)
+    @pytest.mark.parametrize('theta_deg', ANGLES_DEG)
+    def test_sky_to_pixel_theta(self, flipped_wcs, case, theta_deg):
+        """
+        Verify ``sky.to_pixel`` returns ``270 deg - theta`` (mod 360)
+        for the flipped-parity WCS (not the mirrored value).
+        """
+        sky, _ = _build_pair(case, theta_deg * u.deg)
+        pix = sky.to_pixel(flipped_wcs)
+        diff = _angle_diff_deg(pix.theta, (270 - theta_deg) * u.deg)
+        assert abs(diff) < 2e-5
+
+    @pytest.mark.parametrize('case', DIRECTED_CASES)
+    @pytest.mark.parametrize('theta_deg', ANGLES_DEG)
+    def test_pixel_to_sky_theta(self, flipped_wcs, case, theta_deg):
+        """
+        Verify ``pixel.to_sky`` returns ``270 deg - theta`` (mod 360)
+        for the flipped-parity WCS (the inverse of the above relation).
+        """
+        _, pix = _build_pair(case, theta_deg * u.deg)
+        sky = pix.to_sky(flipped_wcs)
+        diff = _angle_diff_deg(sky.theta, (270 - theta_deg) * u.deg)
+        assert abs(diff) < 2e-5
+
+    @pytest.mark.parametrize('case', DIRECTED_CASES)
+    @pytest.mark.parametrize('theta_deg', ANGLES_DEG)
+    def test_sky_pixel_sky_roundtrip_theta(self, flipped_wcs, case, theta_deg):
+        """
+        Verify ``sky -> pixel -> sky`` preserves the original theta for
+        the flipped-parity WCS.
+        """
+        sky, _ = _build_pair(case, theta_deg * u.deg)
+        sky_rt = sky.to_pixel(flipped_wcs).to_sky(flipped_wcs)
+        diff = _angle_diff_deg(sky_rt.theta, theta_deg * u.deg)
+        assert abs(diff) < 2e-5
