@@ -605,3 +605,114 @@ class TestSVDShapeConversions:
             center, wcs, pw, ph, pa.to(u.rad).value)
         assert_allclose(sw, 2.0, rtol=1e-3)
         assert_allclose(sh, 1.0, rtol=1e-3)
+
+
+def _project_sky_ellipse_boundary(skycoord, wcs, a_arcsec, b_arcsec,
+                                  pa_rad, npts=720):
+    """
+    Project the boundary of a sky ellipse to pixel coordinates.
+
+    The boundary points are computed in the tangent plane (``xi``
+    = East, ``eta`` = North) and offset from ``skycoord`` using
+    great-circle geometry, then converted to pixel coordinates with
+    ``wcs.world_to_pixel``. This is an independent ground truth for the
+    pixel image of a sky ellipse.
+    """
+    theta = np.linspace(0, 2 * np.pi, npts, endpoint=False)
+    xi = (a_arcsec * np.cos(theta) * np.sin(pa_rad)
+          + b_arcsec * np.sin(theta) * np.cos(pa_rad))
+    eta = (a_arcsec * np.cos(theta) * np.cos(pa_rad)
+           - b_arcsec * np.sin(theta) * np.sin(pa_rad))
+    sep = np.hypot(xi, eta) * u.arcsec
+    posang = np.arctan2(xi, eta) * u.rad
+    pts = skycoord.directional_offset_by(posang, sep)
+    x, y = wcs.world_to_pixel(pts)
+    return np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+
+
+def _ellipse_implicit_residual(x, y, center, width, height, angle_rad):
+    """
+    Evaluate the implicit ellipse equation for points ``(x, y)``.
+
+    Returns ``(u / a)**2 + (v / b)**2`` where ``(u, v)`` are the point
+    offsets from ``center`` rotated into the ellipse frame and ``a``,
+    ``b`` are the semi-axes. Points exactly on the ellipse boundary
+    yield 1.
+    """
+    cx, cy = center
+    dx = x - cx
+    dy = y - cy
+    cos_a = np.cos(angle_rad)
+    sin_a = np.sin(angle_rad)
+    u_axis = dx * cos_a + dy * sin_a
+    v_axis = -dx * sin_a + dy * cos_a
+    return (u_axis / (width / 2)) ** 2 + (v_axis / (height / 2)) ** 2
+
+
+class TestFlippedParityWCS:
+    """
+    Regression tests for sky <-> pixel shape conversions with a
+    flipped-parity WCS (North down, East left; positive determinant).
+
+    Such a WCS previously produced apertures that were mirrored about
+    the x-axis relative to the correct orientation.
+    """
+
+    PA_DEGS = (0.0, 30.0, 75.0, 130.0, 228.0, 310.0)
+
+    def test_flipped_wcs_has_positive_parity(self, flipped_wcs):
+        """
+        The flipped WCS fixture must have a positive-determinant pixel
+        scale matrix (parity = +1), opposite the standard convention.
+        """
+        assert np.linalg.det(flipped_wcs.pixel_scale_matrix) > 0
+
+    @pytest.mark.parametrize('pa_deg', PA_DEGS)
+    def test_sky_to_pixel_matches_projection(self, flipped_wcs, pa_deg):
+        """
+        The pixel ellipse from ``sky_shape_to_pixel_svd`` must match
+        the true projection of the sky ellipse boundary (not its mirror
+        image) for a flipped-parity WCS.
+        """
+        a_arcsec, b_arcsec = 3.0, 1.5
+        pa_rad = np.deg2rad(pa_deg)
+        center, pw, ph, pangle = sky_shape_to_pixel_svd(
+            WCS_CENTER, flipped_wcs, 2 * a_arcsec, 2 * b_arcsec, pa_rad)
+
+        x, y = _project_sky_ellipse_boundary(
+            WCS_CENTER, flipped_wcs, a_arcsec, b_arcsec, pa_rad)
+        resid = _ellipse_implicit_residual(
+            x, y, center, pw, ph, pangle.rad)
+        # All projected boundary points must lie on the pixel ellipse.
+        assert_allclose(resid, 1.0, atol=1e-3)
+
+    @pytest.mark.parametrize('pa_deg', PA_DEGS)
+    def test_normal_wcs_matches_projection(self, simple_wcs, pa_deg):
+        """
+        The same check for a standard-parity WCS (a control case that
+        already worked before the fix).
+        """
+        a_arcsec, b_arcsec = 3.0, 1.5
+        pa_rad = np.deg2rad(pa_deg)
+        center, pw, ph, pangle = sky_shape_to_pixel_svd(
+            WCS_CENTER, simple_wcs, 2 * a_arcsec, 2 * b_arcsec, pa_rad)
+
+        x, y = _project_sky_ellipse_boundary(
+            WCS_CENTER, simple_wcs, a_arcsec, b_arcsec, pa_rad)
+        resid = _ellipse_implicit_residual(
+            x, y, center, pw, ph, pangle.rad)
+        assert_allclose(resid, 1.0, atol=1e-3)
+
+    def test_roundtrip_sky_pixel_sky(self, flipped_wcs):
+        """
+        Sky -> pixel -> sky should recover the original ellipse for a
+        flipped-parity WCS.
+        """
+        sky_w, sky_h, sky_a = 6.0, 3.0, np.deg2rad(228.0)
+        center_pix, pw, ph, pa = sky_shape_to_pixel_svd(
+            WCS_CENTER, flipped_wcs, sky_w, sky_h, sky_a)
+        _, rw, rh, ra = pixel_shape_to_sky_svd(
+            center_pix, flipped_wcs, pw, ph, pa.rad)
+        assert_allclose(rw, sky_w, rtol=1e-6)
+        assert_allclose(rh, sky_h, rtol=1e-6)
+        assert_allclose(ra.rad, sky_a, rtol=1e-4)

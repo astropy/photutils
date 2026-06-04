@@ -142,6 +142,24 @@ def nonsquare_wcs():
 
 
 @pytest.fixture
+def flipped_wcs():
+    """
+    Non-distorted TAN WCS with a flipped parity (North down, East left).
+
+    Both CDELT values are negative, so the determinant of the pixel
+    scale matrix is positive (parity = +1). This is the opposite parity
+    from the standard astronomical convention (North up, East left) and
+    reproduces the mirrored-aperture bug reported for such WCS.
+    """
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = [10.5, 10.5]
+    wcs.wcs.crval = [WCS_CENTER.ra.deg, WCS_CENTER.dec.deg]
+    wcs.wcs.cdelt = [-WCS_CDELT_ARCSEC / 3600, -WCS_CDELT_ARCSEC / 3600]
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    return wcs
+
+
+@pytest.fixture
 def center_xy_coord(simple_wcs):
     """
     Return the center (x, y) tuple at CRPIX of the simple WCS.

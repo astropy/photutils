@@ -41,6 +41,12 @@ Bug Fixes
     ``to_pixel`` conversions so that they round-trip correctly with a
     sheared WCS. [#2286]
 
+  - Fixed the aperture ``to_sky`` and ``to_pixel`` conversions for
+    elliptical and rectangular apertures (and their annulus variants)
+    so that the orientation is correct for a WCS with a flipped parity
+    (e.g., North down, East left). Previously, such apertures were
+    mirrored about the x-axis. [#2288]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a

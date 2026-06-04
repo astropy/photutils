@@ -90,8 +90,7 @@ def _pixel_to_sky_jacobian(pixcoord, wcs):
     return center, jacobian, jacobian_inv, parity
 
 
-def _svd_ellipse_from_composite(m_comp, width_col_idx=0,
-                                use_parity_for_angle=False, parity=1,
+def _svd_ellipse_from_composite(m_comp, width_col_idx=0, sky_angle=False,
                                 input_circular=False):
     """
     Extract ellipse width, height, and angle from a composite matrix
@@ -111,13 +110,13 @@ def _svd_ellipse_from_composite(m_comp, width_col_idx=0,
         The column index (0 or 1) of ``m_comp`` that corresponds to the
         width semi-axis. Default is 0.
 
-    use_parity_for_angle : bool, optional
-        If True, apply ``parity`` to the RA (x) component when computing
-        the sky rotation angle. Default is False (for pixel angles).
-
-    parity : float, optional
-        The WCS parity (+1 or -1). Only used if ``use_parity_for_angle``
-        is True.
+    sky_angle : bool, optional
+        If True, the composite matrix columns are tangent-plane (``xi``
+        = East, ``eta`` = North) vectors, so the returned angle is a sky
+        position angle (PA) measured from North toward East. If False
+        (the default), the columns are pixel (``x``, ``y``) vectors
+        and the returned angle is measured counterclockwise from the
+        positive x-axis.
 
     input_circular : bool, optional
         If True, the input ellipse is known to be circular (width ==
@@ -173,13 +172,15 @@ def _svd_ellipse_from_composite(m_comp, width_col_idx=0,
             angle_col = width_col / width_norm
 
     # Compute the rotation angle
-    if use_parity_for_angle:
+    if sky_angle:
         # Sky position angle (PA) measured from North (eta/Dec) toward
-        # East. The xi (RA) component in the composite matrix has
-        # -parity baked in, so we multiply by -parity to recover the
-        # physical East direction.
+        # East. The composite-matrix columns are tangent-plane vectors
+        # with components (xi=East, eta=North), so the PA is simply
+        # arctan2(xi, eta). The local Jacobian (or its inverse) used to
+        # build the composite matrix already encodes the WCS parity, so
+        # no additional parity correction is needed here.
         angle = Angle(
-            np.rad2deg(np.arctan2(-parity * angle_col[0],
+            np.rad2deg(np.arctan2(angle_col[0],
                                   angle_col[1])) * u.deg,
         ).wrap_at(360 * u.deg)
     else:
@@ -506,7 +507,7 @@ def pixel_shape_to_sky_svd(pixcoord, wcs, width, height, pixel_angle_rad):
         counterclockwise from North (the latitude/Dec axis), wrapped to
         [0, 360) degrees.
     """
-    center, _, jacobian_inv, parity = _pixel_to_sky_jacobian(pixcoord, wcs)
+    center, _, jacobian_inv, _ = _pixel_to_sky_jacobian(pixcoord, wcs)
 
     # Build M_pix: columns are pixel semi-axis vectors
     cos_a = np.cos(pixel_angle_rad)
@@ -520,7 +521,7 @@ def pixel_shape_to_sky_svd(pixcoord, wcs, width, height, pixel_angle_rad):
     m_sky = jacobian_inv @ m_pix
 
     sky_width, sky_height, sky_angle = _svd_ellipse_from_composite(
-        m_sky, use_parity_for_angle=True, parity=parity,
+        m_sky, sky_angle=True,
         input_circular=np.isclose(width, height))
 
     return center, sky_width, sky_height, sky_angle
@@ -579,17 +580,19 @@ def sky_shape_to_pixel_svd(skycoord, wcs, width_arcsec, height_arcsec,
         counterclockwise from the positive x-axis, wrapped to [0, 360)
         degrees.
     """
-    center, jacobian, parity = _sky_to_pixel_jacobian(skycoord, wcs)
+    center, jacobian, _ = _sky_to_pixel_jacobian(skycoord, wcs)
 
     # Build M_sky: columns are sky semi-axis vectors in tangent-plane
-    # coordinates (xi=RA, eta=Dec). The width axis is at the given PA
-    # from North. Apply parity to the RA (xi) component.
+    # coordinates (xi=East, eta=North). The width axis is at the given
+    # PA from North (toward East), so its tangent-plane components are
+    # (sin(PA), cos(PA)); the height axis is perpendicular, at PA+90.
+    # The local Jacobian already encodes the WCS parity, so no manual
+    # parity factor is applied here.
     cos_pa = np.cos(sky_angle_rad)
     sin_pa = np.sin(sky_angle_rad)
     half_w = 0.5 * width_arcsec
     half_h = 0.5 * height_arcsec
-    m_sky = np.array([[-parity * half_w * sin_pa,
-                       -parity * half_h * cos_pa],
+    m_sky = np.array([[half_w * sin_pa, half_h * cos_pa],
                       [half_w * cos_pa, -half_h * sin_pa]])
 
     # M_pix = J @ M_sky: columns are pixel semi-axis vectors
