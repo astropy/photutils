@@ -29,6 +29,18 @@ New Features
 Bug Fixes
 ^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - Fixed the local WCS Jacobian computation used by the aperture
+    ``to_sky`` and ``to_pixel`` methods so that it is well-conditioned
+    at the celestial poles and across the RA = 0/360 degree wraparound.
+    [#2286]
+
+  - Fixed ``RectangularAperture``, ``RectangularAnnulus``, and their
+    sky counterparts to use the SVD-based ellipse ``to_sky`` and
+    ``to_pixel`` conversions so that they round-trip correctly with a
+    sheared WCS. [#2286]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a
