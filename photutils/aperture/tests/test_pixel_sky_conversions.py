@@ -145,9 +145,11 @@ def _make_sip_wcs(ra_deg=100.0, dec_deg=30.0):
     header['CD2_1'] = 0.0
     header['CD2_2'] = cdelt
     header['A_ORDER'] = 2
-    header['A_2_0'] = 1e-6
+    header['A_2_0'] = 1e-7
+    header['A_0_2'] = 1e-7
     header['B_ORDER'] = 2
-    header['B_0_2'] = 1e-6
+    header['B_2_0'] = 1e-7
+    header['B_0_2'] = 1e-7
 
     return WCS(header)
 
