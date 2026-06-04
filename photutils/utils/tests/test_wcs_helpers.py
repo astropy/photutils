@@ -567,6 +567,27 @@ class TestSVDShapeConversions:
             center_xy_coord, simple_wcs, 10.0, 5.0, 0.5)
         assert 0.0 <= angle.deg < 360.0
 
+    @pytest.mark.parametrize('angle_deg', [0.0, 40.0, 130.0])
+    def test_circular_input_preserves_angle(self, rotated_wcs, angle_deg):
+        """
+        For a circular input shape (width == height), the SVD principal
+        axis is arbitrary, so the helper falls back to the mapped width
+        semi-axis to preserve the input rotation angle.
+
+        The angle must round-trip through pixel -> sky -> pixel.
+        """
+        pixcoord = (9.5, 9.5)
+        angle_rad = np.deg2rad(angle_deg)
+        sky_center, sw, sh, sky_angle = pixel_shape_to_sky_svd(
+            pixcoord, rotated_wcs, 6.0, 6.0, angle_rad)
+        assert_allclose(sw, sh, rtol=1e-8)
+
+        _, pw, ph, pix_angle = sky_shape_to_pixel_svd(
+            sky_center, rotated_wcs, sw, sh, sky_angle.rad)
+        assert_allclose(pw, ph, rtol=1e-8)
+        diff = (pix_angle.deg - angle_deg + 180) % 360 - 180
+        assert_allclose(diff, 0.0, atol=1e-6)
+
     @pytest.mark.parametrize(('center_ra', 'center_dec'), TROUBLESOME_CENTERS)
     def test_roundtrip_at_pole_and_wrap(self, center_ra, center_dec):
         """
