@@ -155,7 +155,7 @@ def _make_sip_wcs(ra_deg=100.0, dec_deg=30.0):
 
 
 @pytest.fixture
-def axis_aligned_wcs():
+def simple_wcs():
     """
     A simple axis-aligned TAN WCS (RA increases to the left, equal pixel
     scales, North = +y).
@@ -234,16 +234,16 @@ def flipped_wcs():
     return wcs
 
 
-class TestApertureSkyToPixel:
+class TestSkyToPixel:
     """
     Converting a sky aperture to a pixel aperture must return the
     matching pixel class with positive shape parameters.
     """
 
     @pytest.mark.parametrize('case', APERTURE_CASES)
-    def test_simple_wcs(self, axis_aligned_wcs, case):
+    def test_simple_wcs(self, simple_wcs, case):
         pix = case['sky_cls'](CENTER, **case['sky_kw']).to_pixel(
-            axis_aligned_wcs)
+            simple_wcs)
         assert isinstance(pix, case['pix_cls'])
         for attr in case['size_attrs']:
             assert getattr(pix, attr) > 0
@@ -267,16 +267,16 @@ class TestApertureSkyToPixel:
             assert getattr(pix, attr) > 0
 
 
-class TestAperturePixelToSky:
+class TestPixelToSky:
     """
     Converting a pixel aperture to a sky aperture must return the
     matching sky class with positive angular shape parameters.
     """
 
     @pytest.mark.parametrize('case', APERTURE_CASES)
-    def test_simple_wcs(self, axis_aligned_wcs, case):
+    def test_simple_wcs(self, simple_wcs, case):
         sky = case['pix_cls'](PIX_CENTER, **case['pix_kw']).to_sky(
-            axis_aligned_wcs)
+            simple_wcs)
         assert isinstance(sky, case['sky_cls'])
         for attr in case['size_attrs']:
             assert getattr(sky, attr) > 0 * u.arcsec
@@ -289,16 +289,16 @@ class TestAperturePixelToSky:
             assert getattr(sky, attr) > 0 * u.arcsec
 
 
-class TestApertureRoundtripSkyPixelSky:
+class TestRoundtripSkyPixelSky:
     """
     A sky -> pixel -> sky roundtrip must recover the original shape
     parameters and rotation angle.
     """
 
     @pytest.mark.parametrize('case', APERTURE_CASES)
-    def test_simple_wcs(self, axis_aligned_wcs, case):
+    def test_simple_wcs(self, simple_wcs, case):
         sky = case['sky_cls'](CENTER, **case['sky_kw'])
-        sky_rt = sky.to_pixel(axis_aligned_wcs).to_sky(axis_aligned_wcs)
+        sky_rt = sky.to_pixel(simple_wcs).to_sky(simple_wcs)
         assert isinstance(sky_rt, case['sky_cls'])
         for attr in case['size_attrs']:
             assert_quantity_allclose(getattr(sky_rt, attr),
@@ -334,16 +334,16 @@ class TestApertureRoundtripSkyPixelSky:
                                      atol=1e-3 * u.deg)
 
 
-class TestApertureRoundtripPixelSkyPixel:
+class TestRoundtripPixelSkyPixel:
     """
     A pixel -> sky -> pixel roundtrip must recover the original center,
     shape parameters, and rotation angle.
     """
 
     @pytest.mark.parametrize('case', APERTURE_CASES)
-    def test_simple_wcs(self, axis_aligned_wcs, case):
+    def test_simple_wcs(self, simple_wcs, case):
         pix = case['pix_cls'](PIX_CENTER, **case['pix_kw'])
-        pix_rt = pix.to_sky(axis_aligned_wcs).to_pixel(axis_aligned_wcs)
+        pix_rt = pix.to_sky(simple_wcs).to_pixel(simple_wcs)
         assert_allclose(pix_rt.positions, pix.positions)
         for attr in case['size_attrs']:
             assert_allclose(getattr(pix_rt, attr), getattr(pix, attr))
@@ -376,7 +376,7 @@ class TestApertureRoundtripPixelSkyPixel:
 
 
 @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
-class TestApertureGWCSRoundtrip:
+class TestGWCSRoundtrip:
     """
     Roundtrip conversions through a generalized WCS (`gwcs.wcs.WCS`).
 
@@ -436,45 +436,45 @@ class TestSkyPixelAngleConvention:
 
     @pytest.mark.parametrize('case', DIRECTED_CASES)
     @pytest.mark.parametrize('theta_deg', ANGLES_DEG)
-    def test_sky_to_pixel_theta(self, axis_aligned_wcs, case, theta_deg):
+    def test_sky_to_pixel_theta(self, simple_wcs, case, theta_deg):
         """
         Verify ``sky.to_pixel`` returns ``theta + 90 deg`` (mod 360).
         """
         sky, _ = _build_pair(case, theta_deg * u.deg)
-        pix = sky.to_pixel(axis_aligned_wcs)
+        pix = sky.to_pixel(simple_wcs)
         diff = _angle_diff_deg(pix.theta, (theta_deg + 90) * u.deg)
         assert abs(diff) < 2e-5
 
     @pytest.mark.parametrize('case', DIRECTED_CASES)
     @pytest.mark.parametrize('theta_deg', ANGLES_DEG)
-    def test_pixel_to_sky_theta(self, axis_aligned_wcs, case, theta_deg):
+    def test_pixel_to_sky_theta(self, simple_wcs, case, theta_deg):
         """
         Verify ``pixel.to_sky`` returns ``theta - 90 deg`` (mod 360).
         """
         _, pix = _build_pair(case, theta_deg * u.deg)
-        sky = pix.to_sky(axis_aligned_wcs)
+        sky = pix.to_sky(simple_wcs)
         diff = _angle_diff_deg(sky.theta, (theta_deg - 90) * u.deg)
         assert abs(diff) < 2e-5
 
-    def test_north_is_plus_y(self, axis_aligned_wcs):
+    def test_north_is_plus_y(self, simple_wcs):
         """
         Test that a sky aperture at PA=0 (North) maps to a pixel
         aperture pointing along +y, i.e., pixel theta = 90 deg.
         """
         sky = SkyEllipticalAperture(CENTER, a=2 * u.arcsec,
                                     b=1 * u.arcsec, theta=0 * u.deg)
-        pix = sky.to_pixel(axis_aligned_wcs)
+        pix = sky.to_pixel(simple_wcs)
         diff = _angle_diff_deg(pix.theta, 90 * u.deg)
         assert abs(diff) < 2e-5
 
-    def test_east_is_minus_x(self, axis_aligned_wcs):
+    def test_east_is_minus_x(self, simple_wcs):
         """
         Test that a sky aperture at PA=90 deg (East) maps to a pixel
         aperture pointing along -x, i.e., pixel theta = 180 deg.
         """
         sky = SkyEllipticalAperture(CENTER, a=2 * u.arcsec,
                                     b=1 * u.arcsec, theta=90 * u.deg)
-        pix = sky.to_pixel(axis_aligned_wcs)
+        pix = sky.to_pixel(simple_wcs)
         diff = _angle_diff_deg(pix.theta, 180 * u.deg)
         assert abs(diff) < 2e-5
 
