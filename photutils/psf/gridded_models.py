@@ -3,6 +3,7 @@
 Gridded PSF models.
 """
 
+import bisect
 import copy
 import itertools
 
@@ -493,6 +494,39 @@ class GriddedPSFModel(Fittable2DModel):
 
         return interp
 
+    @lazyproperty
+    def _xgrid_list(self):
+        """Plain Python list view of the sorted x-grid for fast bisect."""
+        return [float(v) for v in self._xgrid]
+
+    @lazyproperty
+    def _ygrid_list(self):
+        """Plain Python list view of the sorted y-grid for fast bisect."""
+        return [float(v) for v in self._ygrid]
+
+    @lazyproperty
+    def _bounding_lookup(self):
+        """Precomputed (xidx, yidx) -> [LL, LR, UL, UR] source indices.
+
+        Shape (nx-1, ny-1, 4), int64. Maps grid cell indices to the
+        source indices of the four bounding PSF models.
+        """
+        nx = len(self._xgrid)
+        ny = len(self._ygrid)
+        xcoords, ycoords = self.grid_xypos.T
+        out = np.empty((nx - 1, ny - 1, 4), dtype=np.int64)
+        for ix in range(nx - 1):
+            for iy in range(ny - 1):
+                x0 = self._xgrid[ix]
+                x1 = self._xgrid[ix + 1]
+                y0 = self._ygrid[iy]
+                y1 = self._ygrid[iy + 1]
+                out[ix, iy, 0] = np.where((xcoords == x0) & (ycoords == y0))[0][0]
+                out[ix, iy, 1] = np.where((xcoords == x1) & (ycoords == y0))[0][0]
+                out[ix, iy, 2] = np.where((xcoords == x0) & (ycoords == y1))[0][0]
+                out[ix, iy, 3] = np.where((xcoords == x1) & (ycoords == y1))[0][0]
+        return out
+
     def _find_bounding_points(self, x, y):
         """
         Find the grid indices and reference (x, y) points of the four
@@ -516,30 +550,27 @@ class GriddedPSFModel(Fittable2DModel):
             The x and y coordinates of the four bounding points. The
             order is left, right, bottom, top.
         """
-        # Find the insertion indices for x and y in the sorted grids
-        xidx = np.searchsorted(self._xgrid, x) - 1
-        yidx = np.searchsorted(self._ygrid, y) - 1
-
-        # Clip the indices to valid ranges
-        xidx = np.clip(xidx, 0, len(self._xgrid) - 2)
-        yidx = np.clip(yidx, 0, len(self._ygrid) - 2)
-
-        # Find the four bounding points in the sorted grid
-        # (x0, y0) is the lower-left corner of the grid
-        # (x1, y1) is the upper-right corner of the grid
-        x0, x1 = self._xgrid[xidx], self._xgrid[xidx + 1]
-        y0, y1 = self._ygrid[yidx], self._ygrid[yidx + 1]
-
-        # Find the indices of these points in grid_xypos
-        xcoords, ycoords = self.grid_xypos.T
-        lower_left = np.where((xcoords == x0) & (ycoords == y0))[0][0]
-        lower_right = np.where((xcoords == x1) & (ycoords == y0))[0][0]
-        upper_left = np.where((xcoords == x0) & (ycoords == y1))[0][0]
-        upper_right = np.where((xcoords == x1) & (ycoords == y1))[0][0]
-
-        grid_idx = np.array((lower_left, lower_right, upper_left, upper_right))
+        # Use bisect on the float list and precomputed lookup table for
+        # efficient grid cell indexing. Indices are clamped so out-of-grid
+        # inputs select the nearest grid cell.
+        nx = len(self._xgrid)
+        ny = len(self._ygrid)
+        xidx = bisect.bisect_right(self._xgrid_list, float(x)) - 1
+        yidx = bisect.bisect_right(self._ygrid_list, float(y)) - 1
+        if xidx < 0:
+            xidx = 0
+        elif xidx > nx - 2:
+            xidx = nx - 2
+        if yidx < 0:
+            yidx = 0
+        elif yidx > ny - 2:
+            yidx = ny - 2
+        x0 = self._xgrid[xidx]
+        x1 = self._xgrid[xidx + 1]
+        y0 = self._ygrid[yidx]
+        y1 = self._ygrid[yidx + 1]
+        grid_idx = self._bounding_lookup[xidx, yidx]
         grid_xy = np.array((x0, x1, y0, y1))
-
         return grid_idx, grid_xy
 
     def _calc_bilinear_weights(self, xi, yi, grid_xy):
@@ -565,13 +596,25 @@ class GriddedPSFModel(Fittable2DModel):
         """
         x0, x1, y0, y1 = grid_xy
 
-        xi = np.clip(xi, x0, x1)
-        yi = np.clip(yi, y0, y1)
+        # Clamp coordinates to grid bounds using conditional logic.
+        xi = float(xi)
+        yi = float(yi)
+        if xi < x0:
+            xi = x0
+        elif xi > x1:
+            xi = x1
+        if yi < y0:
+            yi = y0
+        elif yi > y1:
+            yi = y1
 
-        norm = (x1 - x0) * (y1 - y0)
+        inv_norm = 1.0 / ((x1 - x0) * (y1 - y0))
         # lower-left, lower-right, upper-left, upper-right
-        return np.array([(x1 - xi) * (y1 - yi), (xi - x0) * (y1 - yi),
-                         (x1 - xi) * (yi - y0), (xi - x0) * (yi - y0)]) / norm
+        ll = (x1 - xi) * (y1 - yi) * inv_norm
+        lr = (xi - x0) * (y1 - yi) * inv_norm
+        ul = (x1 - xi) * (yi - y0) * inv_norm
+        ur = (xi - x0) * (yi - y0) * inv_norm
+        return np.array((ll, lr, ul, ur))
 
     def _calc_model_values(self, x_0, y_0, xi, yi):
         """
