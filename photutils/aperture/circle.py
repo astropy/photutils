@@ -17,6 +17,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import circular_overlap_grid
+from photutils.geometry._batch_photometry import SHAPE_CIRCLE
 from photutils.utils._deprecation import deprecated
 from photutils.utils._wcs_helpers import (pixel_to_sky_mean_scale,
                                           sky_to_pixel_mean_scale)
@@ -154,6 +155,9 @@ class CircularAperture(PixelAperture):
     @lazyproperty
     def _xy_extents(self):
         return self.r, self.r
+
+    def _batch_shape_params(self):
+        return SHAPE_CIRCLE, (self.r,)
 
     @lazyproperty
     def area(self):

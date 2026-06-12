@@ -14,6 +14,7 @@ from astropy.utils import lazyproperty
 
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.mask import ApertureMask
+from photutils.geometry._batch_photometry import batch_aperture_sums
 from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
@@ -483,6 +484,157 @@ class PixelAperture(Aperture):
             The overlap array.
         """
 
+    def _do_mask_photometry(self, data, *, error, mask, method, subpixels):
+        """
+        Perform aperture photometry using per-source aperture masks.
+
+        This is the fallback code path for apertures or inputs that are
+        not supported by the batch Cython driver.
+
+        Parameters
+        ----------
+        data : `~numpy.ndarray`
+            The 2D array on which to perform photometry, with any units
+            already stripped.
+
+        error, mask, method, subpixels
+            See `do_photometry`. Any units must already be stripped from
+            ``error``.
+
+        Returns
+        -------
+        aperture_sums, aperture_sum_errs : `~numpy.ndarray`
+            The aperture sums and errors.
+        """
+        apermasks = self.to_mask(method=method, subpixels=subpixels)
+        if self.isscalar:
+            apermasks = (apermasks,)
+
+        aperture_sums = []
+        aperture_sum_errs = []
+        with warnings.catch_warnings():
+            # Ignore multiplication with non-finite data values
+            warnings.simplefilter('ignore', RuntimeWarning)
+
+            for apermask in apermasks:
+                (slc_large,
+                 aper_weights,
+                 pixel_mask) = apermask._get_overlap_cutouts(data.shape,
+                                                             mask=mask)
+
+                # No overlap of the aperture with the data
+                if slc_large is None:
+                    aperture_sums.append(np.nan)
+                    aperture_sum_errs.append(np.nan)
+                    continue
+
+                values = (data[slc_large] * aper_weights)[pixel_mask]
+                aperture_sums.append(values.sum())
+
+                if error is not None:
+                    variance = (error[slc_large]**2
+                                * aper_weights)[pixel_mask]
+                    aperture_sum_errs.append(np.sqrt(variance.sum()))
+
+        return np.array(aperture_sums), np.array(aperture_sum_errs)
+
+    def _batch_shape_params(self):
+        """
+        The aperture shape code and parameters for the batch Cython
+        photometry driver.
+
+        Returns
+        -------
+        spec : tuple or `None`
+            A ``(shape_code, params)`` tuple, where
+            ``shape_code`` is one of the shape codes defined in
+            `photutils.geometry._batch_photometry` and ``params``
+            is a tuple of the aperture shape parameters expected by
+            `~photutils.geometry._batch_photometry.batch_aperture_sums`
+            for that shape. `None` is returned if batch photometry is
+            not supported for this aperture, in which case the slower
+            mask-based code path is used.
+
+        Notes
+        -----
+        The batch driver is used only if this hook is defined in the
+        aperture instance's own class (see `_do_batch_photometry`),
+        so subclasses must define this method (e.g., by calling
+        ``super()``) to opt in to the batch code path.
+        """
+        return
+
+    def _do_batch_photometry(self, data, *, error, mask, method, subpixels):
+        """
+        Perform aperture photometry using the batch Cython driver.
+
+        The batch driver computes results identical to the mask-based
+        code path, but without creating per-source mask arrays or making
+        per-source Python calls.
+
+        Parameters
+        ----------
+        data : `~numpy.ndarray`
+            The 2D array on which to perform photometry, with any units
+            already stripped.
+
+        error, mask, method, subpixels
+            See `do_photometry`. Any units must already be stripped from
+            ``error``.
+
+        Returns
+        -------
+        result : tuple of `~numpy.ndarray` or `None`
+            A ``(aperture_sums, aperture_sum_errs)`` tuple of float64
+            arrays, or `None` if the batch driver does not support this
+            aperture or these inputs (in which case the caller should
+            use the mask-based code path).
+        """
+        # Use the batch driver only if the aperture's own class defines
+        # the _batch_shape_params hook. Subclasses that do not define
+        # it may override other behavior (e.g., to_mask) that the batch
+        # driver would not honor, so they use the mask-based code path.
+        if '_batch_shape_params' not in type(self).__dict__:
+            return None
+
+        spec = self._batch_shape_params()
+        if spec is None:
+            return None
+
+        def _supported(arr):
+            return (type(arr) is np.ndarray and arr.dtype.kind in 'fiub'
+                    and arr.dtype.itemsize <= 8)
+
+        if not _supported(data) or (error is not None
+                                    and not _supported(error)):
+            return None
+
+        if mask is not None:
+            if (not isinstance(mask, np.ndarray) or mask.dtype != bool
+                    or mask.shape != data.shape):
+                return None
+            mask = np.ascontiguousarray(mask, dtype=np.uint8)
+
+        use_exact, subpixels = self._translate_mask_method(method, subpixels)
+
+        shape_code, params = spec
+        if error is not None:
+            error = np.ascontiguousarray(error, dtype=np.float64)
+        ext_x, ext_y = self._xy_extents
+
+        sums, errs, overlap = batch_aperture_sums(
+            np.ascontiguousarray(data, dtype=np.float64), error, mask,
+            np.ascontiguousarray(self._positions, dtype=np.float64),
+            shape_code, np.array(params, dtype=np.float64),
+            float(ext_x), float(ext_y), use_exact, subpixels)
+
+        if error is None:
+            # Match the mask-based path, which collects one NaN per
+            # non-overlapping source when error is not input.
+            errs = np.full(np.count_nonzero(~overlap), np.nan)
+
+        return sums, errs
+
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def do_photometry(self, data, error=None, mask=None, method='exact',
                       subpixels=5):
@@ -577,38 +729,16 @@ class PixelAperture(Aperture):
             if error is not None:
                 error = error.value
 
-        apermasks = self.to_mask(method=method, subpixels=subpixels)
-        if self.isscalar:
-            apermasks = (apermasks,)
+        result = self._do_batch_photometry(data, error=error, mask=mask,
+                                           method=method,
+                                           subpixels=subpixels)
 
-        aperture_sums = []
-        aperture_sum_errs = []
-        with warnings.catch_warnings():
-            # Ignore multiplication with non-finite data values
-            warnings.simplefilter('ignore', RuntimeWarning)
-
-            for apermask in apermasks:
-                (slc_large,
-                 aper_weights,
-                 pixel_mask) = apermask._get_overlap_cutouts(data.shape,
-                                                             mask=mask)
-
-                # No overlap of the aperture with the data
-                if slc_large is None:
-                    aperture_sums.append(np.nan)
-                    aperture_sum_errs.append(np.nan)
-                    continue
-
-                values = (data[slc_large] * aper_weights)[pixel_mask]
-                aperture_sums.append(values.sum())
-
-                if error is not None:
-                    variance = (error[slc_large]**2
-                                * aper_weights)[pixel_mask]
-                    aperture_sum_errs.append(np.sqrt(variance.sum()))
-
-        aperture_sums = np.array(aperture_sums)
-        aperture_sum_errs = np.array(aperture_sum_errs)
+        if result is not None:
+            aperture_sums, aperture_sum_errs = result
+        else:
+            aperture_sums, aperture_sum_errs = self._do_mask_photometry(
+                data, error=error, mask=mask, method=method,
+                subpixels=subpixels)
 
         # Apply units
         if unit is not None:
