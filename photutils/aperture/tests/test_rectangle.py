@@ -11,6 +11,7 @@ from astropy.tests.helper import assert_quantity_allclose
 
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture,
+                                          RectangularMaskMixin,
                                           SkyRectangularAnnulus,
                                           SkyRectangularAperture)
 from photutils.aperture.tests.test_aperture_common import BaseTestAperture
@@ -207,3 +208,18 @@ def test_rectangle_annulus_theta_quantity():
 
     assert_quantity_allclose(aper1.theta, aper2.theta)
     assert_quantity_allclose(aper1.theta, aper3.theta)
+
+
+@pytest.mark.parametrize(('method', 'subpixels'),
+                         [('exact', 5), ('center', 5), ('subpixel', 8)])
+def test_deprecated_rectangular_mask_mixin(method, subpixels):
+    """
+    Test that the deprecated RectangularMaskMixin.to_mask method works
+    with the current _translate_mask_method signature and matches the
+    non-deprecated to_mask result.
+    """
+    aper = RectangularAperture((10.0, 10.0), w=4.0, h=2.0, theta=0.5)
+    mask = RectangularMaskMixin.to_mask(aper, method=method,
+                                        subpixels=subpixels)
+    expected = aper.to_mask(method=method, subpixels=subpixels)
+    assert_quantity_allclose(mask.data, expected.data)
