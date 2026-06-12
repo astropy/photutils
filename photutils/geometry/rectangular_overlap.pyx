@@ -19,6 +19,10 @@ cdef extern from "math.h":
     double sin(double x) nogil
     double cos(double x) nogil
     double fabs(double x) nogil
+    double fmax(double x, double y) nogil
+    double fmin(double x, double y) nogil
+    double floor(double x) nogil
+    double ceil(double x) nogil
 
 
 DTYPE = np.float64
@@ -63,6 +67,7 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
         2-d array giving the fraction of the overlap.
     """
     cdef unsigned int i, j
+    cdef int i_min, i_max, j_min, j_max
     cdef double pxmin, pxmax, pymin, pymax
     cdef double dx, dy
     cdef double half_width = 0.5 * width
@@ -99,25 +104,33 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
         poly_x[3] = -half_width * cos_theta - half_height * sin_theta
         poly_y[3] = -half_width * sin_theta + half_height * cos_theta
 
-        # Axis-aligned bounding box of the rotated rectangle for
-        # fast pixel rejection
+        # Axis-aligned bounding box of the rotated rectangle, used to
+        # restrict the pixel loops to the bounding-box index range
+        # (pixels outside it have zero overlap). The clamping to
+        # [0, nx] and [0, ny] is done in floating point to avoid
+        # integer overflow for rectangles far outside the grid.
         bbox_dx = (half_width * fabs(cos_theta)
                    + half_height * fabs(sin_theta))
         bbox_dy = (half_width * fabs(sin_theta)
                    + half_height * fabs(cos_theta))
         pixel_area = dx * dy
 
+        i_min = <int>fmax(0.0, fmin(<double>nx,
+                                    floor((-bbox_dx - xmin) / dx)))
+        i_max = <int>fmax(0.0, fmin(<double>nx,
+                                    ceil((bbox_dx - xmin) / dx)))
+        j_min = <int>fmax(0.0, fmin(<double>ny,
+                                    floor((-bbox_dy - ymin) / dy)))
+        j_max = <int>fmax(0.0, fmin(<double>ny,
+                                    ceil((bbox_dy - ymin) / dy)))
+
         with nogil:
-            for i in range(nx):
+            for i in range(i_min, i_max):
                 pxmin = xmin + i * dx
                 pxmax = pxmin + dx
-                if pxmax <= -bbox_dx or pxmin >= bbox_dx:
-                    continue
-                for j in range(ny):
+                for j in range(j_min, j_max):
                     pymin = ymin + j * dy
                     pymax = pymin + dy
-                    if pymax <= -bbox_dy or pymin >= bbox_dy:
-                        continue
                     frac_view[j, i] = (
                         polygon_pixel_overlap(pxmin, pymin, pxmax,
                                               pymax, poly_x, poly_y, 4,

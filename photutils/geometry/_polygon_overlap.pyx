@@ -22,6 +22,8 @@ cdef extern from "math.h":
     double fabs(double x) nogil
     double fmax(double x, double y) nogil
     double fmin(double x, double y) nogil
+    double floor(double x) nogil
+    double ceil(double x) nogil
 
 
 DTYPE = np.float64
@@ -148,22 +150,18 @@ cdef double polygon_pixel_overlap(double pxmin, double pymin,
     cdef double *nxt_x = buf_b_x
     cdef double *nxt_y = buf_b_y
     cdef double *tmp
-    cdef int n = n_poly
-    cdef int i
+    cdef int n
 
     if n_poly < 3 or n_poly > buf_size:
         return 0.0
 
-    for i in range(n_poly):
-        cur_x[i] = poly_x[i]
-        cur_y[i] = poly_y[i]
-
     # Clip against x >= pxmin, x <= pxmax, y >= pymin, y <= pymax.
-    n = _clip_against_axis(cur_x, cur_y, n, 0, pxmin, 1, nxt_x, nxt_y)
+    # The first clip reads directly from the input polygon, avoiding a
+    # per-pixel copy of the input vertices.
+    n = _clip_against_axis(poly_x, poly_y, n_poly, 0, pxmin, 1,
+                           cur_x, cur_y)
     if n == 0:
         return 0.0
-    tmp = cur_x; cur_x = nxt_x; nxt_x = tmp
-    tmp = cur_y; cur_y = nxt_y; nxt_y = tmp
 
     n = _clip_against_axis(cur_x, cur_y, n, 0, pxmax, 0, nxt_x, nxt_y)
     if n == 0:
@@ -305,9 +303,10 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     cdef double bbox_xmin, bbox_xmax, bbox_ymin, bbox_ymax
     cdef double pixel_area = dx * dy
     cdef int i, j, ii, jj, k
+    cdef int i_min, i_max, j_min, j_max
     cdef double sub_dx, sub_dy, sx, sy, hits
 
-    # Polygon bounding box for fast rejection.
+    # Polygon bounding box.
     bbox_xmin = poly_x[0]
     bbox_xmax = poly_x[0]
     bbox_ymin = poly_y[0]
@@ -318,18 +317,23 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         bbox_ymin = fmin(bbox_ymin, poly_y[k])
         bbox_ymax = fmax(bbox_ymax, poly_y[k])
 
+    # Restrict the pixel loops to the bounding-box index range (pixels
+    # outside the bounding box have zero overlap). The clamping to
+    # [0, nx] and [0, ny] is done in floating point to avoid integer
+    # overflow for polygons far outside the grid.
+    i_min = <int>fmax(0.0, fmin(<double>nx, floor((bbox_xmin - xmin) / dx)))
+    i_max = <int>fmax(0.0, fmin(<double>nx, ceil((bbox_xmax - xmin) / dx)))
+    j_min = <int>fmax(0.0, fmin(<double>ny, floor((bbox_ymin - ymin) / dy)))
+    j_max = <int>fmax(0.0, fmin(<double>ny, ceil((bbox_ymax - ymin) / dy)))
+
     if use_exact == 1:
         with nogil:
-            for i in range(nx):
+            for i in range(i_min, i_max):
                 pxmin = xmin + i * dx
                 pxmax = pxmin + dx
-                if pxmax <= bbox_xmin or pxmin >= bbox_xmax:
-                    continue
-                for j in range(ny):
+                for j in range(j_min, j_max):
                     pymin = ymin + j * dy
                     pymax = pymin + dy
-                    if pymax <= bbox_ymin or pymin >= bbox_ymax:
-                        continue
                     frac_view[j, i] = (
                         polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
                                               poly_x, poly_y, n_poly,
@@ -341,14 +345,10 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         sub_dx = dx / subpixels
         sub_dy = dy / subpixels
         with nogil:
-            for i in range(nx):
+            for i in range(i_min, i_max):
                 pxmin = xmin + i * dx
-                if pxmin + dx <= bbox_xmin or pxmin >= bbox_xmax:
-                    continue
-                for j in range(ny):
+                for j in range(j_min, j_max):
                     pymin = ymin + j * dy
-                    if pymin + dy <= bbox_ymin or pymin >= bbox_ymax:
-                        continue
                     hits = 0.0
                     sx = pxmin + 0.5 * sub_dx
                     for ii in range(subpixels):
