@@ -193,7 +193,7 @@ class PixelAperture(Aperture):
         return mpl_params
 
     @staticmethod
-    def _translate_mask_method(method, subpixels, *, rectangle=False):
+    def _translate_mask_method(method, subpixels):
         """
         Translate the mask method and subpixels parameters to the values
         used by the low-level `photutils.geometry` functions.
@@ -204,13 +204,7 @@ class PixelAperture(Aperture):
             The mask method.
 
         subpixels : int
-            The number of subpixels for subpixel method.
-
-        rectangle : bool, optional
-            Whether the aperture is a rectangular aperture. This is
-            used to approximate the "exact" method for rectangular
-            apertures, which is not currently supported by the low-level
-            `photutils.geometry` functions.
+            The number of subpixels for the 'subpixel' method.
 
         Returns
         -------
@@ -223,11 +217,6 @@ class PixelAperture(Aperture):
         if method not in ('center', 'subpixel', 'exact'):
             msg = f'Invalid mask method: {method}'
             raise ValueError(msg)
-
-        # Remove when rectangular apertures support "exact" method
-        if rectangle and method == 'exact':
-            method = 'subpixel'
-            subpixels = 32
 
         if ((method == 'subpixel')
                 and (not isinstance(subpixels, int) or subpixels <= 0)):
@@ -356,35 +345,25 @@ class PixelAperture(Aperture):
             is masked. Masked data are excluded from the area overlap.
 
         method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture
-            on the pixel grid. Not all options are available for all
-            aperture types. Note that the more precise methods are
-            generally slower. The following methods are available:
+            The method used to determine the pixel weights (the fraction
+            of the pixel area covered by the aperture):
 
             * ``'exact'`` (default):
-              The exact fractional overlap of the aperture and each
-              pixel is calculated. The aperture weights will contain
-              values between 0 and 1.
-
+              Calculates the exact geometric overlap area. Weights are
+              continuous in the range [0, 1].
             * ``'center'``:
-              A pixel is considered to be entirely in or out of the
-              aperture depending on whether its center is in or out of
-              the aperture. The aperture weights will contain values
-              only of 0 (out) and 1 (in).
-
+              Binary weighting based on the pixel center. Weights are
+              either 0 or 1.
             * ``'subpixel'``:
-              A pixel is divided into subpixels (see the ``subpixels``
-              keyword), each of which are considered to be entirely in
-              or out of the aperture depending on whether its center is
-              in or out of the aperture. If ``subpixels=1``, this method
-              is equivalent to ``'center'``. The aperture weights will
-              contain values between 0 and 1.
+              Approximates the overlap by averaging binary samples on a
+              subgrid. The number of samples is set by the ``subpixels``
+              parameter. Weights are discrete in the range [0, 1].
 
         subpixels : int, optional
-            For the ``'subpixel'`` method, resample pixels by this
-            factor in each dimension. That is, each pixel is divided
-            into ``subpixels**2`` subpixels. This keyword is ignored
-            unless ``method='subpixel'``.
+            The subsampling factor per axis used when
+            ``method='subpixel'``. Each pixel is divided into a grid of
+            ``subpixels**2`` subpixels to approximate the overlap. This
+            parameter is ignored for other methods.
 
         Returns
         -------
@@ -435,35 +414,25 @@ class PixelAperture(Aperture):
         Parameters
         ----------
         method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture
-            on the pixel grid. Not all options are available for all
-            aperture types. Note that the more precise methods are
-            generally slower. The following methods are available:
+            The method used to determine the pixel weights (the fraction
+            of the pixel area covered by the aperture):
 
             * ``'exact'`` (default):
-              The exact fractional overlap of the aperture and each
-              pixel is calculated. The aperture weights will contain
-              values between 0 and 1.
-
+              Calculates the exact geometric overlap area. Weights are
+              continuous in the range [0, 1].
             * ``'center'``:
-              A pixel is considered to be entirely in or out of the
-              aperture depending on whether its center is in or out of
-              the aperture. The aperture weights will contain values
-              only of 0 (out) and 1 (in).
-
+              Binary weighting based on the pixel center. Weights are
+              either 0 or 1.
             * ``'subpixel'``:
-              A pixel is divided into subpixels (see the ``subpixels``
-              keyword), each of which are considered to be entirely in
-              or out of the aperture depending on whether its center is
-              in or out of the aperture. If ``subpixels=1``, this method
-              is equivalent to ``'center'``. The aperture weights will
-              contain values between 0 and 1.
+              Approximates the overlap by averaging binary samples on a
+              subgrid. The number of samples is set by the ``subpixels``
+              parameter. Weights are discrete in the range [0, 1].
 
         subpixels : int, optional
-            For the ``'subpixel'`` method, resample pixels by this
-            factor in each dimension. That is, each pixel is divided
-            into ``subpixels**2`` subpixels. This keyword is ignored
-            unless ``method='subpixel'``.
+            The subsampling factor per axis used when
+            ``method='subpixel'``. Each pixel is divided into a grid of
+            ``subpixels**2`` subpixels to approximate the overlap. This
+            parameter is ignored for other methods.
 
         Returns
         -------
@@ -474,8 +443,7 @@ class PixelAperture(Aperture):
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-        use_exact, subpixels = self._translate_mask_method(
-            method, subpixels, rectangle=getattr(self, '_is_rectangle', False))
+        use_exact, subpixels = self._translate_mask_method(method, subpixels)
 
         masks = []
         for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
@@ -540,35 +508,25 @@ class PixelAperture(Aperture):
             is masked. Masked data are excluded from all calculations.
 
         method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture
-            on the pixel grid. Not all options are available for all
-            aperture types. Note that the more precise methods are
-            generally slower. The following methods are available:
+            The method used to determine the pixel weights (the fraction
+            of the pixel area covered by the aperture):
 
             * ``'exact'`` (default):
-              The exact fractional overlap of the aperture and each
-              pixel is calculated. The aperture weights will contain
-              values between 0 and 1.
-
+              Calculates the exact geometric overlap area. Weights are
+              continuous in the range [0, 1].
             * ``'center'``:
-              A pixel is considered to be entirely in or out of the
-              aperture depending on whether its center is in or out of
-              the aperture. The aperture weights will contain values
-              only of 0 (out) and 1 (in).
-
+              Binary weighting based on the pixel center. Weights are
+              either 0 or 1.
             * ``'subpixel'``:
-              A pixel is divided into subpixels (see the ``subpixels``
-              keyword), each of which are considered to be entirely in
-              or out of the aperture depending on whether its center is
-              in or out of the aperture. If ``subpixels=1``, this method
-              is equivalent to ``'center'``. The aperture weights will
-              contain values between 0 and 1.
+              Approximates the overlap by averaging binary samples on a
+              subgrid. The number of samples is set by the ``subpixels``
+              parameter. Weights are discrete in the range [0, 1].
 
         subpixels : int, optional
-            For the ``'subpixel'`` method, resample pixels by this
-            factor in each dimension. That is, each pixel is divided
-            into ``subpixels**2`` subpixels. This keyword is ignored
-            unless ``method='subpixel'``.
+            The subsampling factor per axis used when
+            ``method='subpixel'``. Each pixel is divided into a grid of
+            ``subpixels**2`` subpixels to approximate the overlap. This
+            parameter is ignored for other methods.
 
         Returns
         -------
@@ -625,26 +583,28 @@ class PixelAperture(Aperture):
 
         aperture_sums = []
         aperture_sum_errs = []
-        for apermask in apermasks:
-            (slc_large,
-             aper_weights,
-             pixel_mask) = apermask._get_overlap_cutouts(data.shape, mask=mask)
+        with warnings.catch_warnings():
+            # Ignore multiplication with non-finite data values
+            warnings.simplefilter('ignore', RuntimeWarning)
 
-            # No overlap of the aperture with the data
-            if slc_large is None:
-                aperture_sums.append(np.nan)
-                aperture_sum_errs.append(np.nan)
-                continue
+            for apermask in apermasks:
+                (slc_large,
+                 aper_weights,
+                 pixel_mask) = apermask._get_overlap_cutouts(data.shape,
+                                                             mask=mask)
 
-            with warnings.catch_warnings():
-                # Ignore multiplication with non-finite data values
-                warnings.simplefilter('ignore', RuntimeWarning)
+                # No overlap of the aperture with the data
+                if slc_large is None:
+                    aperture_sums.append(np.nan)
+                    aperture_sum_errs.append(np.nan)
+                    continue
 
                 values = (data[slc_large] * aper_weights)[pixel_mask]
                 aperture_sums.append(values.sum())
 
                 if error is not None:
-                    variance = (error[slc_large]**2 * aper_weights)[pixel_mask]
+                    variance = (error[slc_large]**2
+                                * aper_weights)[pixel_mask]
                     aperture_sum_errs.append(np.sqrt(variance.sum()))
 
         aperture_sums = np.array(aperture_sums)

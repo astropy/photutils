@@ -48,35 +48,25 @@ class RectangularMaskMixin:  # pragma: no cover
         Parameters
         ----------
         method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the overlap of the aperture
-            on the pixel grid. Not all options are available for all
-            aperture types. Note that the more precise methods are
-            generally slower. The following methods are available:
+            The method used to determine the pixel weights (the fraction
+            of the pixel area covered by the aperture):
 
             * ``'exact'`` (default):
-              The exact fractional overlap of the aperture and each
-              pixel is calculated. The aperture weights will contain
-              values between 0 and 1.
-
+              Calculates the exact geometric overlap area. Weights are
+              continuous in the range [0, 1].
             * ``'center'``:
-              A pixel is considered to be entirely in or out of the
-              aperture depending on whether its center is in or out of
-              the aperture. The aperture weights will contain values
-              only of 0 (out) and 1 (in).
-
+              Binary weighting based on the pixel center. Weights are
+              either 0 or 1.
             * ``'subpixel'``:
-              A pixel is divided into subpixels (see the ``subpixels``
-              keyword), each of which are considered to be entirely in
-              or out of the aperture depending on whether its center is
-              in or out of the aperture. If ``subpixels=1``, this method
-              is equivalent to ``'center'``. The aperture weights will
-              contain values between 0 and 1.
+              Approximates the overlap by averaging binary samples on a
+              subgrid. The number of samples is set by the ``subpixels``
+              parameter. Weights are discrete in the range [0, 1].
 
         subpixels : int, optional
-            For the ``'subpixel'`` method, resample pixels by this
-            factor in each dimension. That is, each pixel is divided
-            into ``subpixels**2`` subpixels. This keyword is ignored
-            unless ``method='subpixel'``.
+            The subsampling factor per axis used when
+            ``method='subpixel'``. Each pixel is divided into a grid of
+            ``subpixels**2`` subpixels to approximate the overlap. This
+            parameter is ignored for other methods.
 
         Returns
         -------
@@ -87,8 +77,7 @@ class RectangularMaskMixin:  # pragma: no cover
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-        _, subpixels = self._translate_mask_method(method, subpixels,
-                                                   rectangle=True)
+        use_exact, subpixels = self._translate_mask_method(method, subpixels)
 
         if hasattr(self, 'w'):
             w = self.w
@@ -106,14 +95,14 @@ class RectangularMaskMixin:  # pragma: no cover
             theta_rad = self.theta.to(u.radian).value
             mask = rectangular_overlap_grid(edges[0], edges[1], edges[2],
                                             edges[3], nx, ny, w, h,
-                                            theta_rad, 0, subpixels)
+                                            theta_rad, use_exact, subpixels)
 
             # Subtract the inner rectangle for an annulus
             if hasattr(self, 'w_in'):
                 mask -= rectangular_overlap_grid(edges[0], edges[1], edges[2],
                                                  edges[3], nx, ny, self.w_in,
                                                  self.h_in, theta_rad,
-                                                 0, subpixels)
+                                                 use_exact, subpixels)
 
             masks.append(ApertureMask(mask, bbox))
 
@@ -235,7 +224,6 @@ class RectangularAperture(PixelAperture):
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
                                'angular Quantity or a value in radians from '
                                'the positive x axis.')
-    _is_rectangle = True  # remove when rectangles support "exact" method
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w, h, theta=0.0):
@@ -452,7 +440,6 @@ class RectangularAnnulus(PixelAperture):
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
                                'angular Quantity or a value in radians from '
                                'the positive x axis.')
-    _is_rectangle = True  # remove when rectangles support "exact" method
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.0):
