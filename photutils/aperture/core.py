@@ -583,26 +583,28 @@ class PixelAperture(Aperture):
 
         aperture_sums = []
         aperture_sum_errs = []
-        for apermask in apermasks:
-            (slc_large,
-             aper_weights,
-             pixel_mask) = apermask._get_overlap_cutouts(data.shape, mask=mask)
+        with warnings.catch_warnings():
+            # Ignore multiplication with non-finite data values
+            warnings.simplefilter('ignore', RuntimeWarning)
 
-            # No overlap of the aperture with the data
-            if slc_large is None:
-                aperture_sums.append(np.nan)
-                aperture_sum_errs.append(np.nan)
-                continue
+            for apermask in apermasks:
+                (slc_large,
+                 aper_weights,
+                 pixel_mask) = apermask._get_overlap_cutouts(data.shape,
+                                                             mask=mask)
 
-            with warnings.catch_warnings():
-                # Ignore multiplication with non-finite data values
-                warnings.simplefilter('ignore', RuntimeWarning)
+                # No overlap of the aperture with the data
+                if slc_large is None:
+                    aperture_sums.append(np.nan)
+                    aperture_sum_errs.append(np.nan)
+                    continue
 
                 values = (data[slc_large] * aper_weights)[pixel_mask]
                 aperture_sums.append(values.sum())
 
                 if error is not None:
-                    variance = (error[slc_large]**2 * aper_weights)[pixel_mask]
+                    variance = (error[slc_large]**2
+                                * aper_weights)[pixel_mask]
                     aperture_sum_errs.append(np.sqrt(variance.sum()))
 
         aperture_sums = np.array(aperture_sums)
