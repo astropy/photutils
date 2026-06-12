@@ -121,11 +121,15 @@ def aperture_photometry(data, apertures, error=None, mask=None,
           if a ``wcs`` is input.
 
         * ``'aperture_sum'``:
-          The sum of the values within the aperture(s).
+          The sum of the values within the aperture(s). The values
+          are always float64, regardless of the input ``data`` dtype
+          (a `~astropy.units.Quantity` with float64 values if ``data``
+          has units).
 
         * ``'aperture_sum_err'``:
           The corresponding uncertainty in the ``'aperture_sum'``
-          values. Returned only if the input ``error`` is not `None`.
+          values (always float64). Returned only if the input ``error``
+          is not `None`.
 
         The table metadata includes the Astropy and Photutils version
         numbers and the `aperture_photometry` calling arguments.
@@ -134,16 +138,6 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     -----
     `~regions.Region` objects are converted to `Aperture` objects using
     the :func:`region_to_aperture` function.
-
-    `RectangularAperture` and `RectangularAnnulus` photometry with the
-    "exact" method uses a subpixel approximation by subdividing each
-    data pixel by a factor of 1024 (``subpixels = 32``). For rectangular
-    aperture widths and heights in the range from 2 to 100 pixels, this
-    subpixel approximation gives results typically within 0.001 percent
-    or better of the exact value. The differences can be larger for
-    smaller apertures (e.g., aperture sizes of one pixel or smaller).
-    For such small sizes, it is recommended to set ``method='subpixel'``
-    with a larger ``subpixels`` size.
 
     If the input ``data`` is a `~astropy.nddata.NDData` instance,
     then the ``error``, ``mask``, and ``wcs`` keyword inputs are

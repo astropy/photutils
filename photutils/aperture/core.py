@@ -683,23 +683,12 @@ class PixelAperture(Aperture):
         Returns
         -------
         aperture_sums : `~numpy.ndarray` or `~astropy.units.Quantity`
-            The sum within each aperture.
+            The sum within each aperture. The values are always
+            float64, regardless of the input ``data`` dtype.
 
         aperture_sum_errs : `~numpy.ndarray` or `~astropy.units.Quantity`
-            The errors on the sum within each aperture.
-
-        Notes
-        -----
-        `RectangularAperture` and `RectangularAnnulus` photometry with
-        the "exact" method uses a subpixel approximation by subdividing
-        each data pixel by a factor of 1024 (``subpixels = 32``). For
-        rectangular aperture widths and heights in the range from
-        2 to 100 pixels, this subpixel approximation gives results
-        typically within 0.001 percent or better of the exact value.
-        The differences can be larger for smaller apertures (e.g.,
-        aperture sizes of one pixel or smaller). For such small sizes,
-        it is recommended to set ``method='subpixel'`` with a larger
-        ``subpixels`` size.
+            The errors on the sum within each aperture. The values are
+            always float64, regardless of the input ``error`` dtype.
         """
         data = np.asanyarray(data)
         if data.ndim != 2:
