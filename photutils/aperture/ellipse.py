@@ -18,6 +18,8 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import elliptical_overlap_grid
+from photutils.geometry._batch_photometry import (SHAPE_ELLIPSE,
+                                                  SHAPE_ELLIPTICAL_ANNULUS)
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs)
 from photutils.utils._wcs_helpers import (pixel_shape_to_sky_svd,
@@ -207,6 +209,10 @@ class EllipticalAperture(PixelAperture):
         y directions.
         """
         return _calc_ellipse_extents(self.a, self.b, self.theta)
+
+    def _batch_shape_params(self):
+        theta_rad = self.theta.to_value(u.radian)
+        return SHAPE_ELLIPSE, (self.a, self.b, theta_rad)
 
     @lazyproperty
     def area(self):
@@ -429,6 +435,11 @@ class EllipticalAnnulus(PixelAperture):
         x and y directions.
         """
         return _calc_ellipse_extents(self.a_out, self.b_out, self.theta)
+
+    def _batch_shape_params(self):
+        theta_rad = self.theta.to_value(u.radian)
+        return SHAPE_ELLIPTICAL_ANNULUS, (self.a_in, self.b_in, self.a_out,
+                                          self.b_out, theta_rad)
 
     @lazyproperty
     def area(self):

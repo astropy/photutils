@@ -18,6 +18,8 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import rectangular_overlap_grid
+from photutils.geometry._batch_photometry import (SHAPE_RECTANGLE,
+                                                  SHAPE_RECTANGULAR_ANNULUS)
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs)
 from photutils.utils._wcs_helpers import (pixel_shape_to_sky_svd,
@@ -239,6 +241,10 @@ class RectangularAperture(PixelAperture):
         rectangle.
         """
         return _calc_rectangle_extents(self.w, self.h, self.theta)
+
+    def _batch_shape_params(self):
+        theta_rad = self.theta.to_value(u.radian)
+        return SHAPE_RECTANGLE, (self.w, self.h, theta_rad)
 
     @lazyproperty
     def area(self):
@@ -468,6 +474,11 @@ class RectangularAnnulus(PixelAperture):
         rectangle.
         """
         return _calc_rectangle_extents(self.w_out, self.h_out, self.theta)
+
+    def _batch_shape_params(self):
+        theta_rad = self.theta.to_value(u.radian)
+        return SHAPE_RECTANGULAR_ANNULUS, (self.w_in, self.h_in, self.w_out,
+                                           self.h_out, theta_rad)
 
     @lazyproperty
     def area(self):
