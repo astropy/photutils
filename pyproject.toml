@@ -337,5 +337,8 @@ convention = 'numpy'
 [tool.ruff.lint.flake8-quotes]
 inline-quotes = 'single'
 
+[tool.cython-lint]
+max-line-length = 79
+
 [tool.distutils.bdist_wheel]
 py-limited-api = "cp311"
