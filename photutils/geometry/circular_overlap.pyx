@@ -1,18 +1,21 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-# cython: language_level=3
+# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
+# cython: freethreading_compatible=True
 """
 The functions defined here allow one to determine the exact area of
-overlap of a rectangle and a circle (written by Thomas Robitaille).
+overlap of a rectangle and a circle.
 """
 
 import numpy as np
+
 cimport numpy as np
+
+from .core cimport area_arc, area_triangle, floor_sqrt
 
 __all__ = ['circular_overlap_grid']
 
 
-cdef extern from "math.h":
-
+cdef extern from "math.h" nogil:
     double asin(double x)
     double sin(double x)
     double sqrt(double x)
@@ -21,21 +24,16 @@ cdef extern from "math.h":
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
 
-# NOTE: Here we need to make sure we use cimport to import the C functions from
-# core (since these were defined with cdef). This also requires the core.pxd
-# file to exist with the function signatures.
-from .core cimport area_arc, area_triangle, floor_sqrt
-
 
 def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                           int nx, int ny, double r, int use_exact,
                           int subpixels):
     """
-    circular_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, r,
-                             use_exact, subpixels)
+    circular_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, r, use_exact,
+                          subpixels)
 
-    Area of overlap between a circle and a pixel grid. The circle is centered
-    on the origin.
+    Area of overlap between a circle and a pixel grid. The circle is
+    centered on the origin.
 
     Parameters
     ----------
@@ -46,8 +44,8 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     r : float
         The radius of the circle.
     use_exact : 0 or 1
-        If ``1`` calculates exact overlap, if ``0`` uses ``subpixel`` number
-        of subpixels to calculate the overlap.
+        If ``1`` calculates exact overlap. If ``0`` uses ``subpixel``
+        number of subpixels to calculate the overlap.
     subpixels : int
         Each pixel resampled by this factor in each dimension, thus each
         pixel is divided into ``subpixels ** 2`` subpixels.
@@ -55,11 +53,10 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     Returns
     -------
     frac : `~numpy.ndarray` (float)
-        2-d array of shape (ny, nx) giving the fraction of the overlap.
+        2D array of shape (ny, nx) giving the fraction of the overlap.
     """
-
     cdef unsigned int i, j
-    cdef double x, y, dx, dy, d, pixel_radius
+    cdef double dx, dy, d, pixel_radius
     cdef double bxmin, bxmax, bymin, bymax
     cdef double pxmin, pxcen, pxmax, pymin, pycen, pymax
 
@@ -89,7 +86,6 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                 pycen = pymin + dy * 0.5
                 pymax = pymin + dy
                 if pymax > bymin and pymin < bymax:
-
                     # Distance from circle center to pixel center.
                     d = sqrt(pxcen * pxcen + pycen * pycen)
 
@@ -101,7 +97,6 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                     # If pixel center is "close" to circle border, find
                     # overlap.
                     elif d < r + pixel_radius:
-
                         # Either do exact calculation or use subpixel
                         # sampling:
                         if use_exact:
@@ -117,23 +112,25 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     return frac
 
 
-# NOTE: The following two functions use cdef because they are not
-# intended to be called from the Python code. Using def makes them
-# callable from outside, but also slower. In any case, these aren't useful
-# to call from outside because they only operate on a single pixel.
+# NOTE: The following functions use cdef because they are not intended
+# to be called from Python code. They are pure C math functions declared
+# ``noexcept nogil`` so they can be called without the GIL (e.g., from
+# the batch aperture photometry driver), including from multiple threads
+# on free-threaded Python builds. Their signatures are exported via
+# circular_overlap.pxd.
 
 
 cdef double circular_overlap_single_subpixel(double x0, double y0,
                                              double x1, double y1,
-                                             double r, int subpixels):
+                                             double r,
+                                             int subpixels) noexcept nogil:
     """
     Return the fraction of overlap between a circle and a single pixel
     with given extent, using a sub-pixel sampling method.
     """
-
     cdef unsigned int i, j
     cdef double x, y, dx, dy, r_squared
-    cdef double frac = 0.0  # Accumulator.
+    cdef double frac = 0.0  # accumulator
 
     dx = (x1 - x0) / subpixels
     dy = (y1 - y0) / subpixels
@@ -153,9 +150,9 @@ cdef double circular_overlap_single_subpixel(double x0, double y0,
 
 cdef double circular_overlap_single_exact(double xmin, double ymin,
                                           double xmax, double ymax,
-                                          double r):
+                                          double r) noexcept nogil:
     """
-    Area of overlap of a rectangle and a circle
+    Area of overlap of a rectangle and a circle.
     """
     if 0.0 <= xmin:
         if 0.0 <= ymin:
@@ -187,13 +184,12 @@ cdef double circular_overlap_single_exact(double xmin, double ymin,
                 + circular_overlap_single_exact(0.0, 0.0, xmax, ymax, r)
 
 
-cdef double circular_overlap_core(double xmin, double ymin, double xmax, double ymax,
-                          double r):
+cdef double circular_overlap_core(double xmin, double ymin, double xmax,
+                                  double ymax, double r) noexcept nogil:
     """
-    Assumes that the center of the circle is <= xmin,
-    ymin (can always modify input to conform to this).
+    Assumes that the center of the circle is <= xmin, ymin (can always
+    modify input to conform to this).
     """
-
     cdef double area, d1, d2, x1, x2, y1, y2
 
     if xmin * xmin + ymin * ymin > r * r:

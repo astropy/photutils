@@ -64,7 +64,7 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
     Returns
     -------
     frac : `~numpy.ndarray`
-        2-d array giving the fraction of the overlap.
+        2D array giving the fraction of the overlap.
     """
     cdef unsigned int i, j
     cdef int i_min, i_max, j_min, j_max

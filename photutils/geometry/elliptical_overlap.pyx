@@ -1,5 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-# cython: language_level=3
+# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
+# cython: freethreading_compatible=True
 """
 The functions defined here allow one to determine the exact area of
 overlap of an ellipse and a triangle (written by Thomas Robitaille).
@@ -12,27 +13,19 @@ import numpy as np
 
 cimport numpy as np
 
+from .core cimport overlap_area_triangle_unit_circle
+
 __all__ = ['elliptical_overlap_grid']
 
 
-cdef extern from "math.h":
-
+cdef extern from "math.h" nogil:
     double asin(double x)
     double sin(double x)
     double cos(double x)
     double sqrt(double x)
 
-from cpython cimport bool
-
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
-
-cimport cython
-
-# NOTE: Here we need to make sure we use cimport to import the C functions from
-# core (since these were defined with cdef). This also requires the core.pxd
-# file to exist with the function signatures.
-from .core cimport area_triangle, distance, overlap_area_triangle_unit_circle
 
 
 def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
@@ -40,7 +33,7 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                             int use_exact, int subpixels):
     """
     elliptical_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, rx, ry,
-                             use_exact, subpixels)
+                            use_exact, subpixels)
 
     Area of overlap between an ellipse and a pixel grid. The ellipse is
     centered on the origin.
@@ -56,23 +49,24 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     ry : float
         The semiminor axis of the ellipse.
     theta : float
-        The position angle of the semimajor axis in radians (counterclockwise).
+        The position angle of the semimajor axis in radians
+        (counterclockwise).
     use_exact : 0 or 1
-        If set to 1, calculates the exact overlap, while if set to 0, uses a
-        subpixel sampling method with ``subpixel`` subpixels in each direction.
+        If set to 1, calculates the exact overlap, while if set to 0,
+        uses a subpixel sampling method with ``subpixel`` subpixels in
+        each direction.
     subpixels : int
-        If ``use_exact`` is 0, each pixel is resampled by this factor in each
-        dimension. Thus, each pixel is divided into ``subpixels ** 2``
-        subpixels.
+        If ``use_exact`` is 0, each pixel is resampled by this factor in
+        each dimension. Thus, each pixel is divided into ``subpixels **
+        2`` subpixels.
 
     Returns
     -------
     frac : `~numpy.ndarray`
-        2-d array giving the fraction of the overlap.
+        2D array giving the fraction of the overlap.
     """
-
     cdef unsigned int i, j
-    cdef double x, y, dx, dy
+    cdef double dx, dy
     cdef double bxmin, bxmax, bymin, bymax
     cdef double pxmin, pxmax, pymin, pymax
     cdef double norm
@@ -86,8 +80,9 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
 
     norm = 1.0 / (dx * dy)
 
-    # For now we use a bounding circle and then use that to find a bounding box
-    # but of course this is inefficient and could be done better.
+    # For now we use a bounding circle and then use that to find a
+    # bounding box but of course this is inefficient and could be done
+    # better.
 
     # Find bounding circle radius
     r = max(rx, ry)
@@ -116,21 +111,23 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     return frac
 
 
-# NOTE: The following two functions use cdef because they are not
-# intended to be called from the Python code. Using def makes them
-# callable from outside, but also slower. In any case, these aren't useful
-# to call from outside because they only operate on a single pixel.
+# NOTE: The following functions use cdef because they are not intended
+# to be called from Python code. They are pure C math functions declared
+# ``noexcept nogil`` so they can be called without the GIL (e.g., from
+# the batch aperture photometry driver), including from multiple threads
+# on free-threaded Python builds. Their signatures are exported via
+# elliptical_overlap.pxd.
 
 
 cdef double elliptical_overlap_single_subpixel(double x0, double y0,
                                                double x1, double y1,
                                                double rx, double ry,
-                                               double theta, int subpixels):
+                                               double theta,
+                                               int subpixels) noexcept nogil:
     """
-    Return the fraction of overlap between a ellipse and a single pixel with
-    given extent, using a sub-pixel sampling method.
+    Return the fraction of overlap between a ellipse and a single pixel
+    with given extent, using a sub-pixel sampling method.
     """
-
     cdef unsigned int i, j
     cdef double x, y
     cdef double frac = 0.0  # Accumulator.
@@ -166,16 +163,16 @@ cdef double elliptical_overlap_single_subpixel(double x0, double y0,
 cdef double elliptical_overlap_single_exact(double xmin, double ymin,
                                             double xmax, double ymax,
                                             double rx, double ry,
-                                            double theta):
+                                            double theta) noexcept nogil:
     """
     Given a rectangle defined by (xmin, ymin, xmax, ymax) and an ellipse
-    with major and minor axes rx and ry respectively, position angle theta,
-    and centered at the origin, find the area of overlap.
+    with major and minor axes rx and ry respectively, position angle
+    theta, and centered at the origin, find the area of overlap.
     """
-
     cdef double cos_m_theta = cos(-theta)
     cdef double sin_m_theta = sin(-theta)
     cdef double scale
+    cdef double x1, y1, x2, y2, x3, y3, x4, y4
 
     # Find scale by which the areas will be shrunk
     scale = rx * ry

@@ -14,7 +14,6 @@ the (always-convex, axis-aligned) pixel rectangle.
 
 import numpy as np
 
-cimport cython
 cimport numpy as np
 
 
@@ -166,14 +165,22 @@ cdef double polygon_pixel_overlap(double pxmin, double pymin,
     n = _clip_against_axis(cur_x, cur_y, n, 0, pxmax, 0, nxt_x, nxt_y)
     if n == 0:
         return 0.0
-    tmp = cur_x; cur_x = nxt_x; nxt_x = tmp
-    tmp = cur_y; cur_y = nxt_y; nxt_y = tmp
+    tmp = cur_x
+    cur_x = nxt_x
+    nxt_x = tmp
+    tmp = cur_y
+    cur_y = nxt_y
+    nxt_y = tmp
 
     n = _clip_against_axis(cur_x, cur_y, n, 1, pymin, 1, nxt_x, nxt_y)
     if n == 0:
         return 0.0
-    tmp = cur_x; cur_x = nxt_x; nxt_x = tmp
-    tmp = cur_y; cur_y = nxt_y; nxt_y = tmp
+    tmp = cur_x
+    cur_x = nxt_x
+    nxt_x = tmp
+    tmp = cur_y
+    cur_y = nxt_y
+    nxt_y = tmp
 
     n = _clip_against_axis(cur_x, cur_y, n, 1, pymax, 0, nxt_x, nxt_y)
     if n == 0:
