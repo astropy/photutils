@@ -193,7 +193,7 @@ class PixelAperture(Aperture):
         return mpl_params
 
     @staticmethod
-    def _translate_mask_method(method, subpixels, *, rectangle=False):
+    def _translate_mask_method(method, subpixels):
         """
         Translate the mask method and subpixels parameters to the values
         used by the low-level `photutils.geometry` functions.
@@ -206,12 +206,6 @@ class PixelAperture(Aperture):
         subpixels : int
             The number of subpixels for subpixel method.
 
-        rectangle : bool, optional
-            Whether the aperture is a rectangular aperture. This is
-            used to approximate the "exact" method for rectangular
-            apertures, which is not currently supported by the low-level
-            `photutils.geometry` functions.
-
         Returns
         -------
         use_exact : int
@@ -223,11 +217,6 @@ class PixelAperture(Aperture):
         if method not in ('center', 'subpixel', 'exact'):
             msg = f'Invalid mask method: {method}'
             raise ValueError(msg)
-
-        # Remove when rectangular apertures support "exact" method
-        if rectangle and method == 'exact':
-            method = 'subpixel'
-            subpixels = 32
 
         if ((method == 'subpixel')
                 and (not isinstance(subpixels, int) or subpixels <= 0)):
@@ -474,8 +463,7 @@ class PixelAperture(Aperture):
             otherwise a list of `~photutils.aperture.ApertureMask` is
             returned.
         """
-        use_exact, subpixels = self._translate_mask_method(
-            method, subpixels, rectangle=getattr(self, '_is_rectangle', False))
+        use_exact, subpixels = self._translate_mask_method(method, subpixels)
 
         masks = []
         for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):

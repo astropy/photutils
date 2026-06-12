@@ -235,7 +235,6 @@ class RectangularAperture(PixelAperture):
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
                                'angular Quantity or a value in radians from '
                                'the positive x axis.')
-    _is_rectangle = True  # remove when rectangles support "exact" method
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w, h, theta=0.0):
@@ -452,7 +451,6 @@ class RectangularAnnulus(PixelAperture):
     theta = ScalarAngleOrValue('The counterclockwise rotation angle as an '
                                'angular Quantity or a value in radians from '
                                'the positive x axis.')
-    _is_rectangle = True  # remove when rectangles support "exact" method
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.0):
