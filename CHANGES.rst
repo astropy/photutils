@@ -26,6 +26,11 @@ New Features
 - Added an ASDF extension to provide converters for photutils aperture
   and PSF classes. [#2211]
 
+- ``photutils.aperture``
+
+  - Rectangular apertures now support the ``method='exact'`` mask mode.
+    Previously this fell back to a 32x subpixel approximation. [#2291]
+
 Bug Fixes
 ^^^^^^^^^
 
