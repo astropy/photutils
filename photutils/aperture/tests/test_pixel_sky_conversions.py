@@ -108,7 +108,7 @@ def _angle_diff_deg(actual, desired):
     """
     Signed angular difference in degrees, wrapped to (-180, 180].
     """
-    diff = (actual.to(u.deg).value - desired.to(u.deg).value + 180) % 360
+    diff = (actual.to_value(u.deg) - desired.to_value(u.deg) + 180) % 360
     return diff - 180
 
 

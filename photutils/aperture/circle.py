@@ -525,7 +525,7 @@ class SkyCircularAperture(SkyAperture):
         skypos = self.positions if self.isscalar else self.positions[0]
         _, mean_scale = sky_to_pixel_mean_scale(skypos, wcs)
 
-        r = self.r.to(u.arcsec).value * mean_scale
+        r = self.r.to_value(u.arcsec) * mean_scale
         return CircularAperture(positions=positions, r=r)
 
 
@@ -605,6 +605,6 @@ class SkyCircularAnnulus(SkyAperture):
         skypos = self.positions if self.isscalar else self.positions[0]
         _, mean_scale = sky_to_pixel_mean_scale(skypos, wcs)
 
-        r_in = self.r_in.to(u.arcsec).value * mean_scale
-        r_out = self.r_out.to(u.arcsec).value * mean_scale
+        r_in = self.r_in.to_value(u.arcsec) * mean_scale
+        r_out = self.r_out.to_value(u.arcsec) * mean_scale
         return CircularAnnulus(positions=positions, r_in=r_in, r_out=r_out)
