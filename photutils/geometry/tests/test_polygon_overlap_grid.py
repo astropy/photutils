@@ -188,10 +188,20 @@ def test_polygon_overlap_validation():
     with pytest.raises(ValueError, match=match):
         polygon_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, vx, vy, 1, 1)
 
-    n_too_many = 600
-    angles = np.linspace(0.0, 2 * np.pi, n_too_many, endpoint=False)
-    vx = np.cos(angles)
-    vy = np.sin(angles)
-    match = 'too many vertices'
-    with pytest.raises(ValueError, match=match):
-        polygon_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, vx, vy, 1, 1)
+
+def test_polygon_overlap_many_vertices():
+    """
+    There is no limit on the number of polygon vertices.
+
+    A 10000-vertex polygon approximating a circle should have the
+    analytic circle area.
+    """
+    n_verts = 10000
+    radius = 3.0
+    angles = np.linspace(0.0, 2 * np.pi, n_verts, endpoint=False)
+    vx = np.ascontiguousarray(radius * np.cos(angles))
+    vy = np.ascontiguousarray(radius * np.sin(angles))
+    n = 70
+    grid = polygon_overlap_grid(-3.5, 3.5, -3.5, 3.5, n, n, vx, vy, 1, 1)
+    pixel_area = (7.0 / n) ** 2
+    assert_allclose(grid.sum() * pixel_area, np.pi * radius**2, rtol=1e-6)

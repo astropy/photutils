@@ -141,9 +141,9 @@ cdef double polygon_pixel_overlap(double pxmin, double pymin,
     each must hold at least ``buf_size`` doubles. The caller is
     responsible for ensuring ``buf_size`` is large enough; each clip can
     roughly double the vertex count of a non-convex polygon, so 16 times
-    the maximum input polygon size is a safe choice (see the analysis in
-    ``_polygon_overlap.pxd``). For convex input polygons, each clip adds
-    at most one vertex, so input size plus four suffices.
+    the maximum input polygon size is a safe choice. For convex input
+    polygons, each clip adds at most one vertex, so input size plus four
+    suffices.
     """
     cdef double *cur_x = buf_a_x
     cdef double *cur_y = buf_a_y
@@ -255,7 +255,7 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     vertices_x, vertices_y : 1-d `~numpy.ndarray`
         The x and y coordinates of the polygon vertices (in the same
         coordinate frame as the grid extents). The polygon must have at
-        least 3 and at most 512 vertices.
+        least 3 vertices.
     use_exact : 0 or 1
         If set to 1, calculates the exact overlap, while if set to 0,
         uses a subpixel sampling method with ``subpixels`` subpixels in
@@ -277,20 +277,22 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     if n_poly < 3:
         msg = 'polygon must have at least 3 vertices'
         raise ValueError(msg)
-    if n_poly > POLYGON_OVERLAP_MAX_INPUT_VERTICES:
-        msg = (f'polygon has too many vertices (max '
-               f'{POLYGON_OVERLAP_MAX_INPUT_VERTICES})')
-        raise ValueError(msg)
     if use_exact != 1 and subpixels < 1:
         msg = 'subpixels must be a strictly positive integer'
         raise ValueError(msg)
 
-    cdef double poly_x[POLYGON_OVERLAP_MAX_INPUT_VERTICES]
-    cdef double poly_y[POLYGON_OVERLAP_MAX_INPUT_VERTICES]
-    cdef double buf_a_x[POLYGON_OVERLAP_MAX_VERTICES]
-    cdef double buf_a_y[POLYGON_OVERLAP_MAX_VERTICES]
-    cdef double buf_b_x[POLYGON_OVERLAP_MAX_VERTICES]
-    cdef double buf_b_y[POLYGON_OVERLAP_MAX_VERTICES]
+    # Working buffers, allocated once per call (not per pixel) as a
+    # single block. Each Sutherland-Hodgman clip can at most double the
+    # vertex count of a non-convex polygon, so after the four half-plane
+    # clips the vertex count is bounded by 16 * n_poly.
+    cdef int buf_size = 16 * n_poly
+    cdef double[::1] work = np.empty(2 * n_poly + 4 * buf_size, dtype=DTYPE)
+    cdef double *poly_x = &work[0]
+    cdef double *poly_y = &work[n_poly]
+    cdef double *buf_a_x = &work[2 * n_poly]
+    cdef double *buf_a_y = &work[2 * n_poly + buf_size]
+    cdef double *buf_b_x = &work[2 * n_poly + 2 * buf_size]
+    cdef double *buf_b_y = &work[2 * n_poly + 3 * buf_size]
     cdef double[::1] vx_view = np.ascontiguousarray(vertices_x)
     cdef double[::1] vy_view = np.ascontiguousarray(vertices_y)
     _ensure_ccw(vx_view, vy_view, n_poly, poly_x, poly_y)
@@ -338,8 +340,7 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                         polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
                                               poly_x, poly_y, n_poly,
                                               buf_a_x, buf_a_y,
-                                              buf_b_x, buf_b_y,
-                                              POLYGON_OVERLAP_MAX_VERTICES)
+                                              buf_b_x, buf_b_y, buf_size)
                         / pixel_area)
     else:
         sub_dx = dx / subpixels
