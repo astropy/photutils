@@ -602,7 +602,7 @@ class TestSVDShapeConversions:
         assert pw > 1.0
         assert ph > 1.0
         _, sw, sh, _ = pixel_shape_to_sky_svd(
-            center, wcs, pw, ph, pa.to(u.rad).value)
+            center, wcs, pw, ph, pa.to_value(u.radian))
         assert_allclose(sw, 2.0, rtol=1e-3)
         assert_allclose(sh, 1.0, rtol=1e-3)
 
