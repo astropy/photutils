@@ -38,6 +38,16 @@ New Features
     global state, so aperture photometry can now be parallelized across
     threads, including on free-threaded Python builds. [#2292]
 
+- ``photutils.isophote``
+
+  - Optimized the ``build_ellipse_model_c`` Cython extension by
+    adding module-level compiler directives (``boundscheck=False``,
+    ``wraparound=False``, ``cdivision=True``), using C-contiguous memory
+    views, declaring ``math.h`` functions as ``nogil``, and replacing
+    Python function-pointer dispatch with a direct ``if``/``else``
+    branch for harmonic corrections. The module is now also marked as
+    ``freethreading_compatible=True``. [#2293]
+
 Bug Fixes
 ^^^^^^^^^
 
