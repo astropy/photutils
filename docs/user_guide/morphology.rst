@@ -96,7 +96,7 @@ approximate isophotal ellipse for the source:
     xypos = (cat.x_centroid, cat.y_centroid)
     a = cat.semimajor_axis.value * r
     b = cat.semiminor_axis.value * r
-    theta = cat.orientation.to(u.rad).value
+    theta = cat.orientation.to_value(u.radian)
     apertures = EllipticalAperture(xypos, a, b, theta=theta)
 
     fig, ax = plt.subplots(figsize=(8, 8))

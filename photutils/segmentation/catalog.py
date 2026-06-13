@@ -3415,7 +3415,7 @@ class SourceCatalog:
         ycen = self._y_centroid
         major_size = self.semimajor_axis.value * scale
         minor_size = self.semiminor_axis.value * scale
-        theta = self.orientation.to(u.radian).value
+        theta = self.orientation.to_value(u.radian)
         if self.isscalar:
             major_size = (major_size,)
             minor_size = (minor_size,)
@@ -3456,7 +3456,7 @@ class SourceCatalog:
         ycen_arr = self._y_centroid
         a_arr = self.semimajor_axis.value * scale
         b_arr = self.semiminor_axis.value * scale
-        theta_arr = self.orientation.to(u.radian).value
+        theta_arr = self.orientation.to_value(u.radian)
         cxx_arr = self.ellipse_cxx.value
         cxy_arr = self.ellipse_cxy.value
         cyy_arr = self.ellipse_cyy.value
@@ -3999,7 +3999,7 @@ class SourceCatalog:
                 a = aperture.a
                 b = aperture.b
                 theta_val = aperture.theta
-                theta_rad = (theta_val.to(u.radian).value
+                theta_rad = (theta_val.to_value(u.radian)
                              if hasattr(theta_val, 'to')
                              else float(theta_val))
                 cos_t = math.cos(theta_rad)
