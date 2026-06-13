@@ -2,7 +2,7 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 # cython: freethreading_compatible=True
 """
-This module provides a batch driver for aperture photometry.
+Tools to provide a batch driver for aperture photometry.
 
 For each source position, the overlap fraction of the aperture with
 each pixel in the aperture bounding box is computed and immediately
@@ -57,134 +57,6 @@ SHAPE_ELLIPSE = _ELLIPSE
 SHAPE_ELLIPTICAL_ANNULUS = _ELLIPTICAL_ANNULUS
 SHAPE_RECTANGLE = _RECTANGLE
 SHAPE_RECTANGULAR_ANNULUS = _RECTANGULAR_ANNULUS
-
-
-cdef inline double _circle_pixel_frac(double pxmin, double pymin,
-                                      double dx, double dy,
-                                      double pixel_radius, double r,
-                                      int use_exact,
-                                      int subpixels) noexcept nogil:
-    """
-    Fraction of a single pixel that overlaps a circle of radius ``r``
-    centered on the origin.
-
-    This replicates the per-pixel logic of ``circular_overlap_grid``,
-    including the bounding-box and "well inside/outside" shortcuts, so
-    the result is identical to the grid function.
-    """
-    cdef double pxmax = pxmin + dx
-    cdef double pymax = pymin + dy
-    cdef double pxcen, pycen, d
-
-    # Bounding-box check
-    if not (pxmax > -r - 0.5 * dx and pxmin < r + 0.5 * dx
-            and pymax > -r - 0.5 * dy and pymin < r + 0.5 * dy):
-        return 0.0
-
-    # Distance from circle center to pixel center
-    pxcen = pxmin + dx * 0.5
-    pycen = pymin + dy * 0.5
-    d = sqrt(pxcen * pxcen + pycen * pycen)
-
-    if d < r - pixel_radius:  # pixel is well within the circle
-        return 1.0
-
-    if d < r + pixel_radius:  # pixel is close to the circle border
-        if use_exact:
-            return circular_overlap_single_exact(pxmin, pymin, pxmax,
-                                                 pymax, r) / (dx * dy)
-        return circular_overlap_single_subpixel(pxmin, pymin, pxmax,
-                                                pymax, r, subpixels)
-
-    return 0.0  # pixel is fully outside the circle
-
-
-cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
-                                       double dx, double dy, double norm,
-                                       double rx, double ry, double theta,
-                                       int use_exact,
-                                       int subpixels) noexcept nogil:
-    """
-    Fraction of a single pixel that overlaps an ellipse with semimajor
-    and semiminor axes ``rx`` and ``ry`` and position angle ``theta``
-    centered on the origin.
-
-    This replicates the per-pixel logic of ``elliptical_overlap_grid``,
-    including the bounding-circle shortcut, so the result is identical
-    to the grid function.
-    """
-    cdef double pxmax = pxmin + dx
-    cdef double pymax = pymin + dy
-    cdef double r = fmax(rx, ry)  # bounding circle radius
-
-    # Bounding-box check
-    if not (pxmax > -r - 0.5 * dx and pxmin < r + 0.5 * dx
-            and pymax > -r - 0.5 * dy and pymin < r + 0.5 * dy):
-        return 0.0
-
-    if use_exact:
-        return elliptical_overlap_single_exact(pxmin, pymin, pxmax, pymax,
-                                               rx, ry, theta) * norm
-    return elliptical_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
-                                              rx, ry, theta, subpixels)
-
-
-cdef inline double _rect_pixel_frac(double pxmin, double pymin,
-                                    double dx, double dy,
-                                    double half_width, double half_height,
-                                    double cos_theta, double sin_theta,
-                                    double bbox_dx, double bbox_dy,
-                                    double *poly_x, double *poly_y,
-                                    double *buf_a_x, double *buf_a_y,
-                                    double *buf_b_x, double *buf_b_y,
-                                    int use_exact,
-                                    int subpixels) noexcept nogil:
-    """
-    Fraction of a single pixel that overlaps a rectangle of full width
-    ``2 * half_width`` and full height ``2 * half_height`` rotated by
-    ``theta`` (given as ``cos_theta``/``sin_theta``) centered on the
-    origin.
-
-    This replicates the per-pixel logic of ``rectangular_overlap_grid``
-    (the exact mode skips pixels outside the axis-aligned bounding box
-    of the rotated rectangle), so the result is identical to the grid
-    function.
-    """
-    cdef double pxmax = pxmin + dx
-    cdef double pymax = pymin + dy
-
-    if use_exact:
-        # Bounding-box check
-        if (pxmax <= -bbox_dx or pxmin >= bbox_dx
-                or pymax <= -bbox_dy or pymin >= bbox_dy):
-            return 0.0
-        return polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
-                                     poly_x, poly_y, 4,
-                                     buf_a_x, buf_a_y, buf_b_x, buf_b_y,
-                                     32) / (dx * dy)
-
-    return rectangular_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
-                                               half_width, half_height,
-                                               cos_theta, sin_theta,
-                                               subpixels)
-
-
-cdef inline void _rect_vertices(double half_width, double half_height,
-                                double cos_theta, double sin_theta,
-                                double *poly_x,
-                                double *poly_y) noexcept nogil:
-    """
-    Build the four CCW vertices of a rotated rectangle centered on the
-    origin (same arithmetic as ``rectangular_overlap_grid``).
-    """
-    poly_x[0] = -half_width * cos_theta - (-half_height) * sin_theta
-    poly_y[0] = -half_width * sin_theta + (-half_height) * cos_theta
-    poly_x[1] = half_width * cos_theta - (-half_height) * sin_theta
-    poly_y[1] = half_width * sin_theta + (-half_height) * cos_theta
-    poly_x[2] = half_width * cos_theta - half_height * sin_theta
-    poly_y[2] = half_width * sin_theta + half_height * cos_theta
-    poly_x[3] = -half_width * cos_theta - half_height * sin_theta
-    poly_y[3] = -half_width * sin_theta + half_height * cos_theta
 
 
 def batch_aperture_sums(double[:, ::1] data, double[:, ::1] error,
@@ -458,3 +330,131 @@ def batch_aperture_sums(double[:, ::1] data, double[:, ::1] error,
                 errs[k] = sqrt(var_val)
 
     return sums_arr, errs_arr, overlap_arr.view(bool)
+
+
+cdef inline double _circle_pixel_frac(double pxmin, double pymin,
+                                      double dx, double dy,
+                                      double pixel_radius, double r,
+                                      int use_exact,
+                                      int subpixels) noexcept nogil:
+    """
+    Fraction of a single pixel that overlaps a circle of radius ``r``
+    centered on the origin.
+
+    This replicates the per-pixel logic of ``circular_overlap_grid``,
+    including the bounding-box and "well inside/outside" shortcuts, so
+    the result is identical to the grid function.
+    """
+    cdef double pxmax = pxmin + dx
+    cdef double pymax = pymin + dy
+    cdef double pxcen, pycen, d
+
+    # Bounding-box check
+    if not (pxmax > -r - 0.5 * dx and pxmin < r + 0.5 * dx
+            and pymax > -r - 0.5 * dy and pymin < r + 0.5 * dy):
+        return 0.0
+
+    # Distance from circle center to pixel center
+    pxcen = pxmin + dx * 0.5
+    pycen = pymin + dy * 0.5
+    d = sqrt(pxcen * pxcen + pycen * pycen)
+
+    if d < r - pixel_radius:  # pixel is well within the circle
+        return 1.0
+
+    if d < r + pixel_radius:  # pixel is close to the circle border
+        if use_exact:
+            return circular_overlap_single_exact(pxmin, pymin, pxmax,
+                                                 pymax, r) / (dx * dy)
+        return circular_overlap_single_subpixel(pxmin, pymin, pxmax,
+                                                pymax, r, subpixels)
+
+    return 0.0  # pixel is fully outside the circle
+
+
+cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
+                                       double dx, double dy, double norm,
+                                       double rx, double ry, double theta,
+                                       int use_exact,
+                                       int subpixels) noexcept nogil:
+    """
+    Fraction of a single pixel that overlaps an ellipse with semimajor
+    and semiminor axes ``rx`` and ``ry`` and position angle ``theta``
+    centered on the origin.
+
+    This replicates the per-pixel logic of ``elliptical_overlap_grid``,
+    including the bounding-circle shortcut, so the result is identical
+    to the grid function.
+    """
+    cdef double pxmax = pxmin + dx
+    cdef double pymax = pymin + dy
+    cdef double r = fmax(rx, ry)  # bounding circle radius
+
+    # Bounding-box check
+    if not (pxmax > -r - 0.5 * dx and pxmin < r + 0.5 * dx
+            and pymax > -r - 0.5 * dy and pymin < r + 0.5 * dy):
+        return 0.0
+
+    if use_exact:
+        return elliptical_overlap_single_exact(pxmin, pymin, pxmax, pymax,
+                                               rx, ry, theta) * norm
+    return elliptical_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
+                                              rx, ry, theta, subpixels)
+
+
+cdef inline double _rect_pixel_frac(double pxmin, double pymin,
+                                    double dx, double dy,
+                                    double half_width, double half_height,
+                                    double cos_theta, double sin_theta,
+                                    double bbox_dx, double bbox_dy,
+                                    double *poly_x, double *poly_y,
+                                    double *buf_a_x, double *buf_a_y,
+                                    double *buf_b_x, double *buf_b_y,
+                                    int use_exact,
+                                    int subpixels) noexcept nogil:
+    """
+    Fraction of a single pixel that overlaps a rectangle of full width
+    ``2 * half_width`` and full height ``2 * half_height`` rotated by
+    ``theta`` (given as ``cos_theta``/``sin_theta``) centered on the
+    origin.
+
+    This replicates the per-pixel logic of ``rectangular_overlap_grid``
+    (the exact mode skips pixels outside the axis-aligned bounding box
+    of the rotated rectangle), so the result is identical to the grid
+    function.
+    """
+    cdef double pxmax = pxmin + dx
+    cdef double pymax = pymin + dy
+
+    if use_exact:
+        # Bounding-box check
+        if (pxmax <= -bbox_dx or pxmin >= bbox_dx
+                or pymax <= -bbox_dy or pymin >= bbox_dy):
+            return 0.0
+        return polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
+                                     poly_x, poly_y, 4,
+                                     buf_a_x, buf_a_y, buf_b_x, buf_b_y,
+                                     32) / (dx * dy)
+
+    return rectangular_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
+                                               half_width, half_height,
+                                               cos_theta, sin_theta,
+                                               subpixels)
+
+
+cdef inline void _rect_vertices(double half_width, double half_height,
+                                double cos_theta, double sin_theta,
+                                double *poly_x,
+                                double *poly_y) noexcept nogil:
+    """
+    Build the four CCW vertices of a rotated rectangle centered on the
+    origin (same arithmetic as ``rectangular_overlap_grid``).
+    """
+    poly_x[0] = -half_width * cos_theta - (-half_height) * sin_theta
+    poly_y[0] = -half_width * sin_theta + (-half_height) * cos_theta
+    poly_x[1] = half_width * cos_theta - (-half_height) * sin_theta
+    poly_y[1] = half_width * sin_theta + (-half_height) * cos_theta
+    poly_x[2] = half_width * cos_theta - half_height * sin_theta
+    poly_y[2] = half_width * sin_theta + half_height * cos_theta
+    poly_x[3] = -half_width * cos_theta - half_height * sin_theta
+    poly_y[3] = -half_width * sin_theta + half_height * cos_theta

@@ -2,30 +2,22 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 # cython: freethreading_compatible=True
 """
-The functions here are the core geometry functions.
+Core geometry functions for computing the overlap of an aperture and a
+pixel grid.
 
-All ``cdef`` functions in this module are ``noexcept nogil``. They are
-pure C math function that do not interact with Python objects, do not
-raise exceptions, and may safely be called without the GIL (including
-from multiple threads on free-threaded Python builds).
+The cdef functions are not intended to be called from Python code. They
+are pure C math functions declared ``noexcept nogil`` so they can be
+called without the GIL, including from multiple threads on free-threaded
+Python builds. Their signatures are exported via core.pxd.
 """
-
-import numpy as np
-
-cimport numpy as np
-
 
 cdef extern from "math.h" nogil:
     double asin(double x)
     double sin(double x)
-    double cos(double x)
     double sqrt(double x)
     double fabs(double x)
     double M_PI
     double NAN
-
-DTYPE = np.float64
-ctypedef np.float64_t DTYPE_t
 
 ctypedef struct point:
     double x
@@ -52,11 +44,6 @@ cdef double floor_sqrt(double x) noexcept nogil:
     else:
         return 0
 
-
-# NOTE: The following two functions use cdef because they are not
-# intended to be called from the Python code. Using def makes them
-# callable from outside, but also slower. Some functions currently
-# return multiple values, and for those we still use 'def' for now.
 
 cdef double distance(double x1, double y1, double x2,
                      double y2) noexcept nogil:
@@ -100,14 +87,14 @@ cdef double area_triangle(double x1, double y1, double x2, double y2,
     """
     Area of a triangle defined by three vertices.
     """
-    return 0.5 * abs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
+    return 0.5 * fabs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
 
 
 cdef double area_arc_unit(double x1, double y1, double x2,
                           double y2) noexcept nogil:
     """
-    Area of a circle arc with radius R between points (x1, y1) and (x2,
-    y2).
+    Area of a unit circle arc (radius of 1) between points (x1, y1) and
+    (x2, y2).
 
     References
     ----------
@@ -138,6 +125,9 @@ cdef intersections circle_line(double x1, double y1, double x2,
                                double y2) noexcept nogil:
     """
     Intersection of a line defined by two points with a unit circle.
+
+    Coordinates > 1 in the result indicate that there is no
+    intersection.
     """
     cdef double a, b, delta, dx, dy
     cdef double tolerance = 1.e-10
@@ -146,13 +136,16 @@ cdef intersections circle_line(double x1, double y1, double x2,
     dx = x2 - x1
     dy = y2 - y1
 
-    if fabs(dx) < tolerance and fabs(dy) < tolerance:
-        inter.p1.x = 2.
-        inter.p1.y = 2.
-        inter.p2.x = 2.
-        inter.p2.y = 2.
+    # Initialize to values > 1, indicating no intersection
+    inter.p1.x = 2.
+    inter.p1.y = 2.
+    inter.p2.x = 2.
+    inter.p2.y = 2.
 
-    elif fabs(dx) > fabs(dy):
+    if fabs(dx) < tolerance and fabs(dy) < tolerance:
+        return inter
+
+    if fabs(dx) > fabs(dy):
         # Find the slope and intercept of the line
         a = dy / dx
         b = y1 - a * x1
@@ -162,17 +155,10 @@ cdef intersections circle_line(double x1, double y1, double x2,
         if delta > 0.:  # solutions exist
             delta = sqrt(delta)
 
-            inter.p1.x = (- a * b - delta) / (1. + a * a)
+            inter.p1.x = (-a * b - delta) / (1. + a * a)
             inter.p1.y = a * inter.p1.x + b
-            inter.p2.x = (- a * b + delta) / (1. + a * a)
+            inter.p2.x = (-a * b + delta) / (1. + a * a)
             inter.p2.y = a * inter.p2.x + b
-
-        else:  # no solution, return values > 1
-            inter.p1.x = 2.
-            inter.p1.y = 2.
-            inter.p2.x = 2.
-            inter.p2.y = 2.
-
     else:
         # Find the slope and intercept of the line
         a = dx / dy
@@ -180,20 +166,13 @@ cdef intersections circle_line(double x1, double y1, double x2,
 
         # Find the determinant of the quadratic equation
         delta = 1. + a * a - b * b
-
         if delta > 0.:  # solutions exist
             delta = sqrt(delta)
 
-            inter.p1.y = (- a * b - delta) / (1. + a * a)
+            inter.p1.y = (-a * b - delta) / (1. + a * a)
             inter.p1.x = a * inter.p1.y + b
-            inter.p2.y = (- a * b + delta) / (1. + a * a)
+            inter.p2.y = (-a * b + delta) / (1. + a * a)
             inter.p2.x = a * inter.p2.y + b
-
-        else:  # no solution, return values > 1
-            inter.p1.x = 2.
-            inter.p1.y = 2.
-            inter.p2.x = 2.
-            inter.p2.y = 2.
 
     return inter
 
@@ -201,8 +180,9 @@ cdef intersections circle_line(double x1, double y1, double x2,
 cdef point circle_segment_single2(double x1, double y1, double x2,
                                   double y2) noexcept nogil:
     """
-    The intersection of a line with the unit circle. The intersection
-    the closest to (x2, y2) is chosen.
+    The intersection of a line with the unit circle.
+
+    The intersection closest to (x2, y2) is chosen.
     """
     cdef double dx1, dy1, dx2, dy2
     cdef intersections inter

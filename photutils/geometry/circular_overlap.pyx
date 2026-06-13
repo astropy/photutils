@@ -2,8 +2,14 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 # cython: freethreading_compatible=True
 """
-The functions defined here allow one to determine the exact area of
-overlap of a rectangle and a circle.
+Tools to calculate the area of overlap between a circle and a pixel
+grid.
+
+The cdef functions are not intended to be called from Python code.
+They are pure C math functions declared ``noexcept nogil`` so they can
+be called without the GIL (e.g., from the batch aperture photometry
+driver), including from multiple threads on free-threaded Python builds.
+Their signatures are exported via circular_overlap.pxd.
 """
 
 import numpy as np
@@ -16,8 +22,6 @@ __all__ = ['circular_overlap_grid']
 
 
 cdef extern from "math.h" nogil:
-    double asin(double x)
-    double sin(double x)
     double sqrt(double x)
 
 
@@ -32,28 +36,49 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     circular_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, r, use_exact,
                           subpixels)
 
-    Area of overlap between a circle and a pixel grid. The circle is
-    centered on the origin.
+    Calculate the fractional overlap between a circle and a pixel grid.
+
+    The circle is centered on the origin.
 
     Parameters
     ----------
     xmin, xmax, ymin, ymax : float
-        Extent of the grid in the x and y direction.
+        The extent of the grid in the x and y direction. The grid is
+        defined by the rectangle with corners (xmin, ymin) and (xmax,
+        ymax).
+
     nx, ny : int
-        Grid dimensions.
+        The grid dimensions in the x and y direction. The grid is
+        defined by the rectangle with corners (xmin, ymin) and (xmax,
+        ymax) and is divided into nx and ny pixels in the x and y
+        direction, respectively.
+
     r : float
         The radius of the circle.
+
     use_exact : 0 or 1
-        If ``1`` calculates exact overlap. If ``0`` uses ``subpixel``
-        number of subpixels to calculate the overlap.
+        Set to ``1`` to use an exact method to calculate the overlap
+        between the circle and each pixel. Set to ``0`` to use a
+        sub-pixel sampling method to calculate the overlap, where each
+        pixel is divided into ``subpixels ** 2`` subpixels and the
+        fraction of subpixels that are within the circle is used to
+        estimate the overlap.
+
     subpixels : int
-        Each pixel resampled by this factor in each dimension, thus each
-        pixel is divided into ``subpixels ** 2`` subpixels.
+        The number of subpixels to use in each dimension when using
+        the sub-pixel sampling method. Each pixel is resampled by this
+        factor in each dimension; thus, each pixel is divided into
+        ``subpixels ** 2`` subpixels.
 
     Returns
     -------
-    frac : `~numpy.ndarray` (float)
-        2D array of shape (ny, nx) giving the fraction of the overlap.
+    result : `~numpy.ndarray` (float)
+        A 2D array of shape (ny, nx) giving the fraction of each
+        pixel's area that overlaps with the circle, ranging from 0 to
+        1. The element at index (j, i) corresponds to the pixel with
+        corners at (xmin + i * dx, ymin + j * dy) and (xmin + (i + 1)
+        * dx, ymin + (j + 1) * dy), where dx and dy are the width of
+        each pixel in the x and y direction, respectively.
     """
     cdef unsigned int i, j
     cdef double dx, dy, d, pixel_radius
@@ -62,6 +87,7 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
 
     # Define output array
     cdef np.ndarray[DTYPE_t, ndim=2] frac = np.zeros([ny, nx], dtype=DTYPE)
+    cdef double[:, ::1] frac_view = frac
 
     # Find the width of each element in x and y
     dx = (xmax - xmin) / nx
@@ -76,48 +102,45 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     bymin = -r - 0.5 * dy
     bymax = +r + 0.5 * dy
 
-    for i in range(nx):
-        pxmin = xmin + i * dx  # lower end of pixel
-        pxcen = pxmin + dx * 0.5
-        pxmax = pxmin + dx  # upper end of pixel
-        if pxmax > bxmin and pxmin < bxmax:
-            for j in range(ny):
-                pymin = ymin + j * dy
-                pycen = pymin + dy * 0.5
-                pymax = pymin + dy
-                if pymax > bymin and pymin < bymax:
-                    # Distance from circle center to pixel center.
-                    d = sqrt(pxcen * pxcen + pycen * pycen)
+    with nogil:
+        for i in range(nx):
+            pxmin = xmin + i * dx  # lower end of pixel
+            pxcen = pxmin + dx * 0.5
+            pxmax = pxmin + dx  # upper end of pixel
+            if pxmax > bxmin and pxmin < bxmax:
+                for j in range(ny):
+                    pymin = ymin + j * dy
+                    pycen = pymin + dy * 0.5
+                    pymax = pymin + dy
+                    if pymax > bymin and pymin < bymax:
+                        # Distance from circle center to pixel center.
+                        d = sqrt(pxcen * pxcen + pycen * pycen)
 
-                    # If pixel center is "well within" circle, count full
-                    # pixel.
-                    if d < r - pixel_radius:
-                        frac[j, i] = 1.0
+                        # If pixel center is "well within" circle,
+                        # count full pixel.
+                        if d < r - pixel_radius:
+                            frac_view[j, i] = 1.0
 
-                    # If pixel center is "close" to circle border, find
-                    # overlap.
-                    elif d < r + pixel_radius:
-                        # Either do exact calculation or use subpixel
-                        # sampling:
-                        if use_exact:
-                            frac[j, i] = circular_overlap_single_exact(
-                                pxmin, pymin, pxmax, pymax, r) / (dx * dy)
-                        else:
-                            frac[j, i] = circular_overlap_single_subpixel(
-                                pxmin, pymin, pxmax, pymax, r, subpixels)
+                        # If pixel center is "close" to circle border,
+                        # find overlap.
+                        elif d < r + pixel_radius:
+                            # Either do exact calculation or use
+                            # subpixel sampling:
+                            if use_exact:
+                                frac_view[j, i] = (
+                                    circular_overlap_single_exact(
+                                        pxmin, pymin, pxmax, pymax, r)
+                                    / (dx * dy))
+                            else:
+                                frac_view[j, i] = (
+                                    circular_overlap_single_subpixel(
+                                        pxmin, pymin, pxmax, pymax, r,
+                                        subpixels))
 
-                    # Otherwise, it is fully outside circle.
-                    # No action needed.
+                        # Otherwise, it is fully outside circle.
+                        # No action needed.
 
     return frac
-
-
-# NOTE: The following functions use cdef because they are not intended
-# to be called from Python code. They are pure C math functions declared
-# ``noexcept nogil`` so they can be called without the GIL (e.g., from
-# the batch aperture photometry driver), including from multiple threads
-# on free-threaded Python builds. Their signatures are exported via
-# circular_overlap.pxd.
 
 
 cdef double circular_overlap_single_subpixel(double x0, double y0,
@@ -152,7 +175,10 @@ cdef double circular_overlap_single_exact(double xmin, double ymin,
                                           double xmax, double ymax,
                                           double r) noexcept nogil:
     """
-    Area of overlap of a rectangle and a circle.
+    Calculate the area of overlap between a circle and a single pixel
+    with given extent, using an exact method.
+
+    The circle is centered on the origin.
     """
     if 0.0 <= xmin:
         if 0.0 <= ymin:
@@ -171,10 +197,7 @@ cdef double circular_overlap_single_exact(double xmin, double ymin,
             return circular_overlap_single_exact(xmin, ymin, xmax, 0.0, r) \
                 + circular_overlap_single_exact(xmin, 0.0, xmax, ymax, r)
     else:
-        if 0.0 <= ymin:
-            return circular_overlap_single_exact(xmin, ymin, 0.0, ymax, r) \
-                + circular_overlap_single_exact(0.0, ymin, xmax, ymax, r)
-        if 0.0 >= ymax:
+        if 0.0 <= ymin or 0.0 >= ymax:
             return circular_overlap_single_exact(xmin, ymin, 0.0, ymax, r) \
                 + circular_overlap_single_exact(0.0, ymin, xmax, ymax, r)
         else:
@@ -187,6 +210,10 @@ cdef double circular_overlap_single_exact(double xmin, double ymin,
 cdef double circular_overlap_core(double xmin, double ymin, double xmax,
                                   double ymax, double r) noexcept nogil:
     """
+    Calculate the area of overlap between a circle and a rectangle,
+    where the rectangle is in the first quadrant and the circle is
+    centered on the origin.
+
     Assumes that the center of the circle is <= xmin, ymin (can always
     modify input to conform to this).
     """
