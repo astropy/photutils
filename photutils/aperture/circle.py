@@ -17,6 +17,8 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import circular_overlap_grid
+from photutils.geometry._batch_photometry import (SHAPE_CIRCLE,
+                                                  SHAPE_CIRCULAR_ANNULUS)
 from photutils.utils._deprecation import deprecated
 from photutils.utils._wcs_helpers import (pixel_to_sky_mean_scale,
                                           sky_to_pixel_mean_scale)
@@ -154,6 +156,9 @@ class CircularAperture(PixelAperture):
     @lazyproperty
     def _xy_extents(self):
         return self.r, self.r
+
+    def _batch_shape_params(self):
+        return SHAPE_CIRCLE, (self.r,)
 
     @lazyproperty
     def area(self):
@@ -328,6 +333,9 @@ class CircularAnnulus(PixelAperture):
     @lazyproperty
     def _xy_extents(self):
         return self.r_out, self.r_out
+
+    def _batch_shape_params(self):
+        return SHAPE_CIRCULAR_ANNULUS, (self.r_in, self.r_out)
 
     @lazyproperty
     def area(self):
@@ -517,7 +525,7 @@ class SkyCircularAperture(SkyAperture):
         skypos = self.positions if self.isscalar else self.positions[0]
         _, mean_scale = sky_to_pixel_mean_scale(skypos, wcs)
 
-        r = self.r.to(u.arcsec).value * mean_scale
+        r = self.r.to_value(u.arcsec) * mean_scale
         return CircularAperture(positions=positions, r=r)
 
 
@@ -597,6 +605,6 @@ class SkyCircularAnnulus(SkyAperture):
         skypos = self.positions if self.isscalar else self.positions[0]
         _, mean_scale = sky_to_pixel_mean_scale(skypos, wcs)
 
-        r_in = self.r_in.to(u.arcsec).value * mean_scale
-        r_out = self.r_out.to(u.arcsec).value * mean_scale
+        r_in = self.r_in.to_value(u.arcsec) * mean_scale
+        r_out = self.r_out.to_value(u.arcsec) * mean_scale
         return CircularAnnulus(positions=positions, r_in=r_in, r_out=r_out)

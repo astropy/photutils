@@ -212,6 +212,10 @@ class ApertureStats:
     ``sum_method='exact'``, which produces exact aperture-weighted
     photometry.
 
+    The calculated statistics are always float64, regardless of the
+    input ``data`` dtype (`~astropy.units.Quantity` values with float64
+    dtype if the input ``data`` has units).
+
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
 
     Examples

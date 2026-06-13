@@ -73,6 +73,55 @@ algorithm::
     >>> mask = aper.to_mask(method='exact')
 
 
+Faster Aperture Photometry
+==========================
+
+Aperture photometry is now significantly faster for all built-in
+aperture shapes. The photometry for all sources is now computed in a
+single call into compiled code, avoiding the per-source Python overhead
+of creating individual aperture masks and cutouts. Typical speedups
+range from ~2x to more than 25x, depending on the aperture shape and
+overlap method, with the largest gains for fields with many sources. The
+results are identical to those from previous versions.
+
+
+Thread-Safe and Free-Threading-Compatible Aperture Photometry
+==============================================================
+
+The new aperture photometry implementation releases the Python global
+interpreter lock (GIL) during the computation and uses no global state,
+making it safe to call concurrently from multiple threads. The compiled
+extensions are also declared compatible with free-threaded CPython
+builds, so threads can run the computation truly in parallel.
+
+For example, photometry of many apertures on a large image can be
+parallelized across threads by splitting the source positions into
+chunks::
+
+    >>> from concurrent.futures import ThreadPoolExecutor
+    >>> import numpy as np
+    >>> from astropy.table import vstack
+    >>> from photutils.aperture import (CircularAperture,
+    ...                                 aperture_photometry)
+    >>> rng = np.random.default_rng(seed=0)
+    >>> data = rng.random((4096, 4096))
+    >>> positions = rng.uniform(0, 4096, (100_000, 2))
+    >>> n_workers = 10
+    >>> chunks = [CircularAperture(pos, r=5.0)
+    ...           for pos in np.array_split(positions, n_workers)]
+    >>> with ThreadPoolExecutor(max_workers=n_workers) as executor:
+    ...     tables = list(executor.map(
+    ...         lambda aper: aperture_photometry(data, aper), chunks))
+    >>> phot_table = vstack(tables)
+    >>> phot_table['id'] = np.arange(1, len(phot_table) + 1)
+
+Note that the ``id`` column of each chunk's table is numbered starting
+from 1, so the last line renumbers the stacked ``id`` column to match
+the input source order. Because ``executor.map`` returns results in
+input order, the stacked table rows are in the same order as the input
+``positions``.
+
+
 .. _whatsnew-3.1-api-changes:
 
 API Changes

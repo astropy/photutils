@@ -2,8 +2,14 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 # cython: freethreading_compatible=True
 """
-This module provides tools to calculate the area of overlap between a
-rectangle and a pixel grid.
+Tools to calculate the area of overlap between a rectangle and a pixel
+grid.
+
+The cdef function is not intended to be called from Python code.
+It is a pure C math function declared ``noexcept nogil`` so it can
+be called without the GIL (e.g., from the batch aperture photometry
+driver), including from multiple threads on free-threaded Python builds.
+Its signature is exported via rectangular_overlap.pxd.
 """
 
 import numpy as np
@@ -15,14 +21,14 @@ from ._polygon_overlap cimport polygon_pixel_overlap
 __all__ = ['rectangular_overlap_grid']
 
 
-cdef extern from "math.h":
-    double sin(double x) nogil
-    double cos(double x) nogil
-    double fabs(double x) nogil
-    double fmax(double x, double y) nogil
-    double fmin(double x, double y) nogil
-    double floor(double x) nogil
-    double ceil(double x) nogil
+cdef extern from "math.h" nogil:
+    double sin(double x)
+    double cos(double x)
+    double fabs(double x)
+    double fmax(double x, double y)
+    double fmin(double x, double y)
+    double floor(double x)
+    double ceil(double x)
 
 
 DTYPE = np.float64
@@ -37,34 +43,57 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
     rectangular_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, width, height,
                              theta, use_exact, subpixels)
 
-    Area of overlap between a rectangle and a pixel grid. The rectangle
-    is centered on the origin.
+    Calculate the fractional overlap between a rectangle and a pixel
+    grid.
+
+    The rectangle is centered on the origin.
 
     Parameters
     ----------
     xmin, xmax, ymin, ymax : float
-        Extent of the grid in the x and y direction.
+        The extent of the grid in the x and y direction. The grid is
+        defined by the rectangle with corners (xmin, ymin) and (xmax,
+        ymax).
+
     nx, ny : int
-        Grid dimensions.
+        The grid dimensions in the x and y direction. The grid is
+        defined by the rectangle with corners (xmin, ymin) and (xmax,
+        ymax) and is divided into nx and ny pixels in the x and y
+        direction, respectively.
+
     width : float
         The width of the rectangle.
+
     height : float
         The height of the rectangle.
+
     theta : float
-        The position angle of the rectangle in radians (counterclockwise).
+        The position angle of the rectangle in radians
+        (counterclockwise).
+
     use_exact : 0 or 1
-        If set to 1, calculates the exact overlap, while if set to 0,
-        uses a subpixel sampling method with ``subpixels`` subpixels in
-        each direction.
+        Set to ``1`` to use an exact method to calculate the overlap
+        between the rectangle and each pixel. Set to ``0`` to use a
+        sub-pixel sampling method to calculate the overlap, where each
+        pixel is divided into ``subpixels ** 2`` subpixels and the
+        fraction of subpixels that are within the rectangle is used to
+        estimate the overlap.
+
     subpixels : int
-        If ``use_exact`` is 0, each pixel is resampled by this factor in
-        each dimension. Each pixel is divided into ``subpixels ** 2``
-        subpixels.
+        The number of subpixels to use in each dimension when using
+        the sub-pixel sampling method. Each pixel is resampled by this
+        factor in each dimension; thus, each pixel is divided into
+        ``subpixels ** 2`` subpixels.
 
     Returns
     -------
-    frac : `~numpy.ndarray`
-        2-d array giving the fraction of the overlap.
+    result : `~numpy.ndarray` (float)
+        A 2D array of shape (ny, nx) giving the fraction of each
+        pixel's area that overlaps with the rectangle, ranging from 0
+        to 1. The element at index (j, i) corresponds to the pixel with
+        corners at (xmin + i * dx, ymin + j * dy) and (xmin + (i + 1)
+        * dx, ymin + (j + 1) * dy), where dx and dy are the width of
+        each pixel in the x and y direction, respectively.
     """
     cdef unsigned int i, j
     cdef int i_min, i_max, j_min, j_max

@@ -18,6 +18,8 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.geometry import elliptical_overlap_grid
+from photutils.geometry._batch_photometry import (SHAPE_ELLIPSE,
+                                                  SHAPE_ELLIPTICAL_ANNULUS)
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs)
 from photutils.utils._wcs_helpers import (pixel_shape_to_sky_svd,
@@ -92,16 +94,16 @@ class EllipticalMaskMixin:  # pragma: no cover
         masks = []
         for bbox, edges in zip(self._bbox, self._centered_edges, strict=True):
             ny, nx = bbox.shape
-            theta_rad = self.theta.to(u.radian).value
             mask = elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                            edges[3], nx, ny, a, b,
-                                           theta_rad, use_exact, subpixels)
+                                           self._theta_rad, use_exact,
+                                           subpixels)
 
             # Subtract the inner ellipse for an annulus
             if hasattr(self, 'a_in'):
                 mask -= elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                                 edges[3], nx, ny, self.a_in,
-                                                self.b_in, theta_rad,
+                                                self.b_in, self._theta_rad,
                                                 use_exact, subpixels)
 
             masks.append(ApertureMask(mask, bbox))
@@ -112,18 +114,17 @@ class EllipticalMaskMixin:  # pragma: no cover
         return masks
 
     @staticmethod
-    def _calc_extents(semimajor_axis, semiminor_axis, theta):
+    def _calc_extents(semimajor_axis, semiminor_axis, theta_rad):
         """
         Calculate half of the bounding box extents of an ellipse.
         """
-        return _calc_ellipse_extents(semimajor_axis, semiminor_axis, theta)
+        return _calc_ellipse_extents(semimajor_axis, semiminor_axis, theta_rad)
 
 
-def _calc_ellipse_extents(semimajor_axis, semiminor_axis, theta):
+def _calc_ellipse_extents(semimajor_axis, semiminor_axis, theta_rad):
     """
     Calculate half of the bounding box extents of an ellipse.
     """
-    theta_rad = theta.to(u.radian).value
     cos_theta = np.cos(theta_rad)
     sin_theta = np.sin(theta_rad)
     semimajor_x = semimajor_axis * cos_theta
@@ -199,6 +200,7 @@ class EllipticalAperture(PixelAperture):
         self.a = a
         self.b = b
         self.theta = theta
+        self._theta_rad = self.theta.to_value(u.radian)
 
     @lazyproperty
     def _xy_extents(self):
@@ -206,7 +208,10 @@ class EllipticalAperture(PixelAperture):
         The half of the bounding box extents of the ellipse in the x and
         y directions.
         """
-        return _calc_ellipse_extents(self.a, self.b, self.theta)
+        return _calc_ellipse_extents(self.a, self.b, self._theta_rad)
+
+    def _batch_shape_params(self):
+        return SHAPE_ELLIPSE, (self.a, self.b, self._theta_rad)
 
     @lazyproperty
     def area(self):
@@ -242,7 +247,7 @@ class EllipticalAperture(PixelAperture):
         xy_positions, patch_kwargs = self._define_patch_params(origin=origin,
                                                                **kwargs)
 
-        angle = self.theta.to(u.deg).value
+        angle = self.theta.to_value(u.deg)
         patches = [mpatches.Ellipse(xy_position, 2.0 * self.a, 2.0 * self.b,
                                     angle=angle, **patch_kwargs)
                    for xy_position in xy_positions]
@@ -279,10 +284,9 @@ class EllipticalAperture(PixelAperture):
             will be between 0 and 1, where 0 means no overlap and 1
             means full overlap.
         """
-        theta_rad = self.theta.to(u.radian).value
         return elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                        edges[3], nx, ny, self.a, self.b,
-                                       theta_rad, use_exact, subpixels)
+                                       self._theta_rad, use_exact, subpixels)
 
     def to_sky(self, wcs):
         """
@@ -318,7 +322,7 @@ class EllipticalAperture(PixelAperture):
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
         _, sky_width, sky_height, sky_angle = pixel_shape_to_sky_svd(
-            pixcoord, wcs, 2 * self.a, 2 * self.b, self.theta.to(u.rad).value)
+            pixcoord, wcs, 2 * self.a, 2 * self.b, self._theta_rad)
 
         a = Angle(sky_width / 2, 'arcsec')
         b = Angle(sky_height / 2, 'arcsec')
@@ -421,6 +425,7 @@ class EllipticalAnnulus(PixelAperture):
         self.b_in = b_in
 
         self.theta = theta
+        self._theta_rad = self.theta.to_value(u.radian)
 
     @lazyproperty
     def _xy_extents(self):
@@ -428,7 +433,11 @@ class EllipticalAnnulus(PixelAperture):
         The half of the bounding box extents of the outer ellipse in the
         x and y directions.
         """
-        return _calc_ellipse_extents(self.a_out, self.b_out, self.theta)
+        return _calc_ellipse_extents(self.a_out, self.b_out, self._theta_rad)
+
+    def _batch_shape_params(self):
+        return SHAPE_ELLIPTICAL_ANNULUS, (self.a_in, self.b_in, self.a_out,
+                                          self.b_out, self._theta_rad)
 
     @lazyproperty
     def area(self):
@@ -465,7 +474,7 @@ class EllipticalAnnulus(PixelAperture):
                                                                **kwargs)
 
         patches = []
-        angle = self.theta.to(u.deg).value
+        angle = self.theta.to_value(u.deg)
         for xy_position in xy_positions:
             patch_inner = mpatches.Ellipse(xy_position, 2.0 * self.a_in,
                                            2.0 * self.b_in, angle=angle)
@@ -506,14 +515,13 @@ class EllipticalAnnulus(PixelAperture):
             will be between 0 and 1, where 0 means no overlap and 1
             means full overlap.
         """
-        theta_rad = self.theta.to(u.radian).value
         overlap = elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                           edges[3], nx, ny, self.a_out,
-                                          self.b_out, theta_rad,
+                                          self.b_out, self._theta_rad,
                                           use_exact, subpixels)
         overlap -= elliptical_overlap_grid(edges[0], edges[1], edges[2],
                                            edges[3], nx, ny, self.a_in,
-                                           self.b_in, theta_rad,
+                                           self.b_in, self._theta_rad,
                                            use_exact, subpixels)
         return overlap
 
@@ -550,12 +558,11 @@ class EllipticalAnnulus(PixelAperture):
 
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
-        theta_rad = self.theta.to(u.rad).value
 
         _, sky_w_out, sky_h_out, sky_angle = pixel_shape_to_sky_svd(
-            pixcoord, wcs, 2 * self.a_out, 2 * self.b_out, theta_rad)
+            pixcoord, wcs, 2 * self.a_out, 2 * self.b_out, self._theta_rad)
         _, sky_w_in, sky_h_in, _ = pixel_shape_to_sky_svd(
-            pixcoord, wcs, 2 * self.a_in, 2 * self.b_in, theta_rad)
+            pixcoord, wcs, 2 * self.a_in, 2 * self.b_in, self._theta_rad)
 
         a_out = Angle(sky_w_out / 2, 'arcsec')
         b_out = Angle(sky_h_out / 2, 'arcsec')
@@ -612,6 +619,7 @@ class SkyEllipticalAperture(SkyAperture):
         self.a = a
         self.b = b
         self.theta = theta
+        self._theta_rad = self.theta.to_value(u.radian)
 
     def to_pixel(self, wcs):
         """
@@ -645,12 +653,11 @@ class SkyEllipticalAperture(SkyAperture):
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
-        sky_angle_rad = self.theta.to(u.rad).value
         _, pix_width, pix_height, pix_angle = sky_shape_to_pixel_svd(
             skypos, wcs,
-            2 * self.a.to(u.arcsec).value,
-            2 * self.b.to(u.arcsec).value,
-            sky_angle_rad)
+            2 * self.a.to_value(u.arcsec),
+            2 * self.b.to_value(u.arcsec),
+            self._theta_rad)
 
         a = pix_width / 2
         b = pix_height / 2
@@ -732,6 +739,7 @@ class SkyEllipticalAnnulus(SkyAperture):
         self.b_in = b_in
 
         self.theta = theta
+        self._theta_rad = self.theta.to_value(u.radian)
 
     def to_pixel(self, wcs):
         """
@@ -765,18 +773,17 @@ class SkyEllipticalAnnulus(SkyAperture):
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
-        sky_angle_rad = self.theta.to(u.rad).value
 
         _, pix_w_out, pix_h_out, pix_angle = sky_shape_to_pixel_svd(
             skypos, wcs,
-            2 * self.a_out.to(u.arcsec).value,
-            2 * self.b_out.to(u.arcsec).value,
-            sky_angle_rad)
+            2 * self.a_out.to_value(u.arcsec),
+            2 * self.b_out.to_value(u.arcsec),
+            self._theta_rad)
         _, pix_w_in, pix_h_in, _ = sky_shape_to_pixel_svd(
             skypos, wcs,
-            2 * self.a_in.to(u.arcsec).value,
-            2 * self.b_in.to(u.arcsec).value,
-            sky_angle_rad)
+            2 * self.a_in.to_value(u.arcsec),
+            2 * self.b_in.to_value(u.arcsec),
+            self._theta_rad)
 
         a_out = pix_w_out / 2
         b_out = pix_h_out / 2

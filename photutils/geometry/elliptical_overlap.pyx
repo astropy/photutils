@@ -1,38 +1,38 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-# cython: language_level=3
+# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
+# cython: freethreading_compatible=True
 """
-The functions defined here allow one to determine the exact area of
-overlap of an ellipse and a triangle (written by Thomas Robitaille).
-The approach is to divide the rectangle into two triangles, and
-reproject these so that the ellipse is a unit circle, then compute the
-intersection of a triangle with a unit circle.
+Tools to calculate the area of overlap between an ellipse and a pixel
+grid.
+
+The method divides the pixel rectangle into two triangles and reprojects
+them into a coordinate system where the ellipse becomes the unit circle.
+It then computes the intersection area between each triangle and the
+unit circle.
+
+The cdef functions are not intended to be called from Python code.
+They are pure C math functions declared ``noexcept nogil`` so they can
+be called without the GIL (e.g., from the batch aperture photometry
+driver), including from multiple threads on free-threaded Python builds.
+Their signatures are exported via elliptical_overlap.pxd.
 """
 
 import numpy as np
 
 cimport numpy as np
 
+from .core cimport overlap_area_triangle_unit_circle
+
 __all__ = ['elliptical_overlap_grid']
 
 
-cdef extern from "math.h":
-
-    double asin(double x)
+cdef extern from "math.h" nogil:
     double sin(double x)
     double cos(double x)
-    double sqrt(double x)
-
-from cpython cimport bool
+    double fmax(double x, double y)
 
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
-
-cimport cython
-
-# NOTE: Here we need to make sure we use cimport to import the C functions from
-# core (since these were defined with cdef). This also requires the core.pxd
-# file to exist with the function signatures.
-from .core cimport area_triangle, distance, overlap_area_triangle_unit_circle
 
 
 def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
@@ -40,45 +40,70 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                             int use_exact, int subpixels):
     """
     elliptical_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, rx, ry,
-                             use_exact, subpixels)
+                            theta, use_exact, subpixels)
 
-    Area of overlap between an ellipse and a pixel grid. The ellipse is
-    centered on the origin.
+    Calculate the fractional overlap between an ellipse and a pixel
+    grid.
+
+    The ellipse is centered on the origin.
 
     Parameters
     ----------
     xmin, xmax, ymin, ymax : float
-        Extent of the grid in the x and y direction.
+        The extent of the grid in the x and y direction. The grid is
+        defined by the rectangle with corners (xmin, ymin) and (xmax,
+        ymax).
+
     nx, ny : int
-        Grid dimensions.
+        The grid dimensions in the x and y direction. The grid is
+        defined by the rectangle with corners (xmin, ymin) and (xmax,
+        ymax) and is divided into nx and ny pixels in the x and y
+        direction, respectively.
+
     rx : float
         The semimajor axis of the ellipse.
+
     ry : float
         The semiminor axis of the ellipse.
+
     theta : float
-        The position angle of the semimajor axis in radians (counterclockwise).
+        The position angle of the semimajor axis in radians
+        (counterclockwise).
+
     use_exact : 0 or 1
-        If set to 1, calculates the exact overlap, while if set to 0, uses a
-        subpixel sampling method with ``subpixel`` subpixels in each direction.
+        Set to ``1`` to use an exact method to calculate the overlap
+        between the ellipse and each pixel. Set to ``0`` to use a
+        sub-pixel sampling method to calculate the overlap, where each
+        pixel is divided into ``subpixels ** 2`` subpixels and the
+        fraction of subpixels that are within the ellipse is used to
+        estimate the overlap.
+
     subpixels : int
-        If ``use_exact`` is 0, each pixel is resampled by this factor in each
-        dimension. Thus, each pixel is divided into ``subpixels ** 2``
-        subpixels.
+        The number of subpixels to use in each dimension when using
+        the sub-pixel sampling method. Each pixel is resampled by this
+        factor in each dimension; thus, each pixel is divided into
+        ``subpixels ** 2`` subpixels.
 
     Returns
     -------
-    frac : `~numpy.ndarray`
-        2-d array giving the fraction of the overlap.
+    result : `~numpy.ndarray` (float)
+        A 2D array of shape (ny, nx) giving the fraction of each
+        pixel's area that overlaps with the ellipse, ranging from 0 to
+        1. The element at index (j, i) corresponds to the pixel with
+        corners at (xmin + i * dx, ymin + j * dy) and (xmin + (i + 1)
+        * dx, ymin + (j + 1) * dy), where dx and dy are the width of
+        each pixel in the x and y direction, respectively.
     """
-
     cdef unsigned int i, j
-    cdef double x, y, dx, dy
+    cdef double dx, dy
+    cdef double r
     cdef double bxmin, bxmax, bymin, bymax
     cdef double pxmin, pxmax, pymin, pymax
     cdef double norm
 
     # Define output array
     cdef np.ndarray[DTYPE_t, ndim=2] frac = np.zeros([ny, nx], dtype=DTYPE)
+    cdef double[:, ::1] frac_view = frac
 
     # Find the width of each element in x and y
     dx = (xmax - xmin) / nx
@@ -86,11 +111,12 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
 
     norm = 1.0 / (dx * dy)
 
-    # For now we use a bounding circle and then use that to find a bounding box
-    # but of course this is inefficient and could be done better.
+    # For now we use a bounding circle and then use that to find a
+    # bounding box but of course this is inefficient and could be done
+    # better.
 
     # Find bounding circle radius
-    r = max(rx, ry)
+    r = fmax(rx, ry)
 
     # Define bounding box
     bxmin = -r - 0.5 * dx
@@ -98,39 +124,37 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     bymin = -r - 0.5 * dy
     bymax = +r + 0.5 * dy
 
-    for i in range(nx):
-        pxmin = xmin + i * dx  # lower end of pixel
-        pxmax = pxmin + dx  # upper end of pixel
-        if pxmax > bxmin and pxmin < bxmax:
-            for j in range(ny):
-                pymin = ymin + j * dy
-                pymax = pymin + dy
-                if pymax > bymin and pymin < bymax:
-                    if use_exact:
-                        frac[j, i] = elliptical_overlap_single_exact(
-                            pxmin, pymin, pxmax, pymax, rx, ry, theta) * norm
-                    else:
-                        frac[j, i] = elliptical_overlap_single_subpixel(
-                            pxmin, pymin, pxmax, pymax, rx, ry, theta,
-                            subpixels)
+    with nogil:
+        for i in range(nx):
+            pxmin = xmin + i * dx  # lower end of pixel
+            pxmax = pxmin + dx  # upper end of pixel
+            if pxmax > bxmin and pxmin < bxmax:
+                for j in range(ny):
+                    pymin = ymin + j * dy
+                    pymax = pymin + dy
+                    if pymax > bymin and pymin < bymax:
+                        if use_exact:
+                            frac_view[j, i] = (
+                                elliptical_overlap_single_exact(
+                                    pxmin, pymin, pxmax, pymax, rx, ry,
+                                    theta) * norm)
+                        else:
+                            frac_view[j, i] = (
+                                elliptical_overlap_single_subpixel(
+                                    pxmin, pymin, pxmax, pymax, rx, ry,
+                                    theta, subpixels))
     return frac
-
-
-# NOTE: The following two functions use cdef because they are not
-# intended to be called from the Python code. Using def makes them
-# callable from outside, but also slower. In any case, these aren't useful
-# to call from outside because they only operate on a single pixel.
 
 
 cdef double elliptical_overlap_single_subpixel(double x0, double y0,
                                                double x1, double y1,
                                                double rx, double ry,
-                                               double theta, int subpixels):
+                                               double theta,
+                                               int subpixels) noexcept nogil:
     """
-    Return the fraction of overlap between a ellipse and a single pixel with
-    given extent, using a sub-pixel sampling method.
+    Return the fraction of overlap between an ellipse and a single
+    pixel with given extent, using a sub-pixel sampling method.
     """
-
     cdef unsigned int i, j
     cdef double x, y
     cdef double frac = 0.0  # Accumulator.
@@ -166,16 +190,23 @@ cdef double elliptical_overlap_single_subpixel(double x0, double y0,
 cdef double elliptical_overlap_single_exact(double xmin, double ymin,
                                             double xmax, double ymax,
                                             double rx, double ry,
-                                            double theta):
+                                            double theta) noexcept nogil:
     """
-    Given a rectangle defined by (xmin, ymin, xmax, ymax) and an ellipse
-    with major and minor axes rx and ry respectively, position angle theta,
-    and centered at the origin, find the area of overlap.
-    """
+    Return the area of overlap between a rectangle and an ellipse.
 
+    The rectangle is defined by (``xmin``, ``ymin``, ``xmax``, ``ymax``)
+    and the ellipse has major and minor axes ``rx`` and ``ry``,
+    respectively, position angle ``theta``, and is centered at the
+    origin. The method divides the pixel rectangle into two triangles
+    and reprojects them into a coordinate system where the ellipse
+    becomes the unit circle. It then computes the intersection area
+    between each triangle and the unit circle, and sums them to get the
+    total area of overlap.
+    """
     cdef double cos_m_theta = cos(-theta)
     cdef double sin_m_theta = sin(-theta)
     cdef double scale
+    cdef double x1, y1, x2, y2, x3, y3, x4, y4
 
     # Find scale by which the areas will be shrunk
     scale = rx * ry

@@ -31,6 +31,13 @@ New Features
   - Rectangular apertures now support the ``method='exact'`` mask mode.
     Previously this fell back to a 32x subpixel approximation. [#2291]
 
+  - Significantly improved the performance of aperture photometry,
+    typically by factors of ~2-25 depending on the aperture shape and
+    overlap method, by computing all sources in a single call into
+    compiled code. The computation also releases the GIL and uses no
+    global state, so aperture photometry can now be parallelized across
+    threads, including on free-threaded Python builds. [#2292]
+
 Bug Fixes
 ^^^^^^^^^
 
