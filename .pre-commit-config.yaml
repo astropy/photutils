@@ -82,6 +82,29 @@ repos:
       - id: flake8
         args: ['--ignore', 'E501,W503']
 
+  - repo: https://github.com/MarcoGorelli/cython-lint
+    rev: v0.19.0
+    hooks:
+      - id: cython-lint
+
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v1.25.2
+    hooks:
+      - id: zizmor
+
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: v3.8.3
+    hooks:
+      - id: prettier
+        types_or: [css, rst, json, yaml, toml, markdown]
+        args: ['--single-quote']
+        # Exclude codeql.yml, dependabot.yml, and schemas/**/*.yaml
+        exclude: |
+          (?x)^(
+            (.*\/)?(codeql\.yml|dependabot\.yml)$|
+            .*schemas\/.*\.yaml$
+          )
+
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.2
     hooks:
@@ -106,26 +129,8 @@ repos:
   #       args: [--in-place, --config, ./pyproject.toml]
   #       exclude: "extern/"
 
-  - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.25.2
-    hooks:
-      - id: zizmor
-
   - repo: https://github.com/sphinx-contrib/sphinx-lint
     rev: v1.0.2
     hooks:
       - id: sphinx-lint
         exclude: '(docs/_build/|photutils/extern/)'
-
-  - repo: https://github.com/rbubley/mirrors-prettier
-    rev: v3.8.3
-    hooks:
-      - id: prettier
-        types_or: [css, rst, json, yaml, toml, markdown]
-        args: ['--single-quote']
-        # Exclude codeql.yml, dependabot.yml, and schemas/**/*.yaml
-        exclude: |
-          (?x)^(
-            (.*\/)?(codeql\.yml|dependabot\.yml)$|
-            .*schemas\/.*\.yaml$
-          )
