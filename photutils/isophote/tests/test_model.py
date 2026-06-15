@@ -4,14 +4,17 @@ Tests for the model module.
 """
 
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pytest
 from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.data import get_pkg_data_filename
+from numpy.testing import assert_array_equal
 
 from photutils.datasets.load import _get_path
+from photutils.isophote._ellipse_model import build_ellipse_model_c
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import IsophoteList
@@ -153,3 +156,32 @@ def test_model_integration():
                                 fill=np.nanmean(data[105:, :5]),
                                 sma_interval=0.05)
     assert np.nanmean(np.abs(model[100:, 60:] - data[100:, 60:])) < 2
+
+
+def test_build_ellipse_model_c_threadsafe():
+    """
+    Test that build_ellipse_model_c is thread safe by running it in
+    multiple threads and checking that the results are consistent.
+    """
+    n = 64
+    sma = np.linspace(0.5, 20.0, n)
+    intens = np.full(n, 1.0)
+    eps = np.full(n, 0.3)
+    pa = np.full(n, 0.5)
+    x0 = np.full(n, 50.0)
+    y0 = np.full(n, 50.0)
+
+    def fn():
+        return build_ellipse_model_c(100, 100, sma, intens, eps, pa, x0, y0)
+
+    expected = fn()
+    n_threads = 8
+    n_calls_per_thread = 4
+
+    with ThreadPoolExecutor(max_workers=n_threads) as executor:
+        futures = [executor.submit(fn)
+                   for _ in range(n_threads * n_calls_per_thread)]
+        for future in futures:
+            result = future.result()
+            assert_array_equal(result[0], expected[0])
+            assert_array_equal(result[1], expected[1])

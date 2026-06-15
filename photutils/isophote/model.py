@@ -7,9 +7,8 @@ isophotes.
 import numpy as np
 from scipy.interpolate import LSQUnivariateSpline
 
+from photutils.isophote._ellipse_model import build_ellipse_model_c
 from photutils.utils._deprecation import deprecated_positional_kwargs
-
-from .ellipse_model import build_ellipse_model_c
 
 __all__ = ['build_ellipse_model']
 

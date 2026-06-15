@@ -9,8 +9,6 @@ import numpy as np
 
 cimport numpy as cnp
 
-__all__ = ['build_ellipse_model_c']
-
 cnp.import_array()
 
 cdef extern from "math.h" nogil:
