@@ -14,8 +14,8 @@ from astropy.utils.data import get_pkg_data_filename
 from numpy.testing import assert_array_equal
 
 from photutils.datasets.load import _get_path
+from photutils.isophote._ellipse_model import build_ellipse_model_c
 from photutils.isophote.ellipse import Ellipse
-from photutils.isophote.ellipse_model import build_ellipse_model_c
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import IsophoteList
 from photutils.isophote.model import build_ellipse_model
