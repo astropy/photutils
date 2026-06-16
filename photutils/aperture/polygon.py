@@ -11,6 +11,7 @@ from astropy.utils import lazyproperty
 from photutils.aperture.attributes import (ApertureAttribute, PixelPositions,
                                            SkyCoordPositions)
 from photutils.aperture.core import PixelAperture, SkyAperture
+from photutils.geometry._batch_photometry import SHAPE_POLYGON
 from photutils.geometry._polygon_overlap import polygon_overlap_grid
 
 __all__ = [
@@ -579,6 +580,12 @@ class PolygonAperture(PixelAperture):
         x_extent = float(np.max(np.abs(self.vertex_offsets[:, 0])))
         y_extent = float(np.max(np.abs(self.vertex_offsets[:, 1])))
         return x_extent, y_extent
+
+    def _batch_shape_params(self):
+        # The vertex offsets are counter-clockwise (normalized when the
+        # attribute is set) and flattened as (x0, y0, x1, y1, ...) for
+        # the batch Cython photometry driver.
+        return SHAPE_POLYGON, tuple(self.vertex_offsets.ravel())
 
     @lazyproperty
     def area(self):

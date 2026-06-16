@@ -130,9 +130,8 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     cdef double pxmin, pxmax, pymin, pymax
     cdef double bbox_xmin, bbox_xmax, bbox_ymin, bbox_ymax
     cdef double pixel_area = dx * dy
-    cdef int i, j, ii, jj, k
+    cdef int i, j, k
     cdef int i_min, i_max, j_min, j_max
-    cdef double sub_dx, sub_dy, sx, sy, hits
 
     # Polygon bounding box.
     bbox_xmin = poly_x[0]
@@ -169,24 +168,14 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                                               buf_b_x, buf_b_y, buf_size)
                         / pixel_area)
     else:
-        sub_dx = dx / subpixels
-        sub_dy = dy / subpixels
         with nogil:
             for i in range(i_min, i_max):
                 pxmin = xmin + i * dx
                 for j in range(j_min, j_max):
                     pymin = ymin + j * dy
-                    hits = 0.0
-                    sx = pxmin + 0.5 * sub_dx
-                    for ii in range(subpixels):
-                        sy = pymin + 0.5 * sub_dy
-                        for jj in range(subpixels):
-                            if point_in_polygon(sx, sy, poly_x, poly_y,
-                                                n_poly) == 1:
-                                hits += 1.0
-                            sy += sub_dy
-                        sx += sub_dx
-                    frac_view[j, i] = hits / (subpixels * subpixels)
+                    frac_view[j, i] = polygon_overlap_single_subpixel(
+                        pxmin, pymin, pxmin + dx, pymin + dy,
+                        poly_x, poly_y, n_poly, subpixels)
 
     return frac
 
@@ -289,6 +278,43 @@ cdef int point_in_polygon(double x, double y, double *poly_x,
                 inside = 1 - inside
         j = i
     return inside
+
+
+cdef double polygon_overlap_single_subpixel(double x0, double y0,
+                                            double x1, double y1,
+                                            double *poly_x, double *poly_y,
+                                            int n_poly,
+                                            int subpixels) noexcept nogil:
+    """
+    Return the fraction of overlap between a simple polygon and a single
+    pixel with the given extent, using a sub-pixel sampling method.
+
+    The pixel ``[x0, x1] x [y0, y1]`` is divided into ``subpixels ** 2``
+    subpixels and the fraction of subpixel centers that fall inside the
+    polygon is returned. The polygon may be convex or non-convex.
+
+    This is a pure C math function declared ``noexcept nogil`` so it can
+    be called without the GIL (e.g., from the batch aperture photometry
+    driver), including from multiple threads on free-threaded Python
+    builds.
+    """
+    cdef int i, j
+    cdef double x, y, dx, dy, hits
+
+    dx = (x1 - x0) / subpixels
+    dy = (y1 - y0) / subpixels
+    hits = 0.0
+
+    x = x0 + 0.5 * dx
+    for i in range(subpixels):
+        y = y0 + 0.5 * dy
+        for j in range(subpixels):
+            if point_in_polygon(x, y, poly_x, poly_y, n_poly) == 1:
+                hits += 1.0
+            y += dy
+        x += dx
+
+    return hits / (subpixels * subpixels)
 
 
 cdef inline double _polygon_signed_area(double *xs, double *ys,
