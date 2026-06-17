@@ -86,6 +86,12 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         factor in each dimension; thus, each pixel is divided into
         ``subpixels ** 2`` subpixels.
 
+        With ``subpixels == 1`` (the ``center`` method) a pixel is
+        included only if its center falls strictly inside the polygon.
+        Pixel centers lying exactly on a polygon edge are counted
+        as outside, consistent with the circular, elliptical, and
+        rectangular apertures (see ``point_in_polygon``).
+
     Returns
     -------
     result : `~numpy.ndarray` (float)
@@ -227,6 +233,7 @@ cdef double polygon_pixel_overlap(double pxmin, double pymin,
     n = _clip_against_axis(cur_x, cur_y, n, 0, pxmax, 0, nxt_x, nxt_y)
     if n == 0:
         return 0.0
+
     tmp = cur_x
     cur_x = nxt_x
     nxt_x = tmp
@@ -237,6 +244,7 @@ cdef double polygon_pixel_overlap(double pxmin, double pymin,
     n = _clip_against_axis(cur_x, cur_y, n, 1, pymin, 1, nxt_x, nxt_y)
     if n == 0:
         return 0.0
+
     tmp = cur_x
     cur_x = nxt_x
     nxt_x = tmp
@@ -258,25 +266,60 @@ cdef int point_in_polygon(double x, double y, double *poly_x,
     poly_y)``, 0 otherwise.
 
     Uses the standard ray-casting algorithm so the polygon may be convex
-    or non-convex. Points exactly on an edge may be classified as either
-    inside or outside (the usual half-open behavior of ray casting);
-    this is adequate for subpixel sampling.
+    or non-convex.
+
+    Boundary convention
+    -------------------
+    Points lying exactly on a polygon edge are classified as
+    *outside* (return 0). This matches the ``center`` method
+    of the circular, elliptical, and rectangular apertures,
+    which use a strict inequality (``< r**2``, ``< 1``, and ``<
+    half_width/half_height``, respectively) and therefore also exclude
+    every on-boundary point. In particular, because a rectangle is
+    itself a polygon, a `~photutils.aperture.RectangularAperture` and
+    a `~photutils.aperture.PolygonAperture` with the same four corners
+    produce identical ``center`` masks.
+
+    The on-edge test is performed first: if ``(x, y)`` lies on any edge
+    (within the closed bounding box of that edge and collinear with it),
+    the point is reported as outside. Otherwise the standard ray-casting
+    parity test is applied for strictly interior/exterior points.
+
+    This boundary handling matters mainly for the ``center`` method
+    (``subpixels == 1``), where pixel centers commonly fall exactly
+    on an edge (e.g., for integer-coordinate polygons). For subpixel
+    sampling (``subpixels > 1``) on-edge samples are rare.
     """
     cdef int i, j, inside = 0
     cdef double xi, yi, xj, yj
+    cdef double cross
+
     if n_poly < 3:
         return 0
+
     j = n_poly - 1
     for i in range(n_poly):
         xi = poly_x[i]
         yi = poly_y[i]
         xj = poly_x[j]
         yj = poly_y[j]
+
+        # Reject points exactly on this edge (collinear and within the
+        # edge's closed bounding box), so that all boundary points are
+        # classified as outside, consistent with the other apertures.
+        cross = (xj - xi) * (y - yi) - (yj - yi) * (x - xi)
+        if (cross == 0.0
+                and fmin(xi, xj) <= x <= fmax(xi, xj)
+                and fmin(yi, yj) <= y <= fmax(yi, yj)):
+            return 0
+
         if ((yi > y) != (yj > y)):
             # x of intersection of polygon edge with horizontal line at y
             if x < (xj - xi) * (y - yi) / (yj - yi) + xi:
                 inside = 1 - inside
+
         j = i
+
     return inside
 
 
@@ -329,13 +372,16 @@ cdef inline double _polygon_signed_area(double *xs, double *ys,
     """
     cdef double area = 0.0
     cdef int i, j
+
     if n < 3:
         return 0.0
+
     for i in range(n):
         j = i + 1
         if j == n:
             j = 0
         area += xs[i] * ys[j] - xs[j] * ys[i]
+
     return 0.5 * area
 
 
@@ -414,6 +460,7 @@ cdef void _ensure_ccw(double[::1] xs, double[::1] ys, int n,
     """
     cdef double area = _polygon_signed_area(&xs[0], &ys[0], n)
     cdef int i, k
+
     if area >= 0.0:
         for i in range(n):
             out_x[i] = xs[i]
