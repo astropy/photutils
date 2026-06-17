@@ -38,6 +38,10 @@ New Features
     global state, so aperture photometry can now be parallelized across
     threads, including on free-threaded Python builds. [#2292]
 
+  - Added new ``PolygonAperture`` and ``SkyPolygonAperture`` classes
+    for polygon apertures defined by a fixed shape applied at one or
+    more positions. [#2297]
+
 - ``photutils.isophote``
 
   - Optimized the ``build_ellipse_model_c`` Cython extension by

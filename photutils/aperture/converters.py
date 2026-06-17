@@ -13,6 +13,7 @@ from photutils.aperture.core import Aperture
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus,
                                         SkyEllipticalAperture)
+from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture,
                                           SkyRectangularAnnulus,
@@ -94,6 +95,10 @@ def region_to_aperture(region):
       `~photutils.aperture.RectangularAnnulus`
     * `~regions.RectangleAnnulusSkyRegion` |rarr|
       `~photutils.aperture.SkyRectangularAnnulus`
+    * `~regions.PolygonPixelRegion` |rarr|
+      `~photutils.aperture.PolygonAperture`
+    * `~regions.PolygonSkyRegion` |rarr|
+      `~photutils.aperture.SkyPolygonAperture`
 
     Examples
     --------
@@ -108,6 +113,7 @@ def region_to_aperture(region):
                          CirclePixelRegion, CircleSkyRegion,
                          EllipseAnnulusPixelRegion, EllipseAnnulusSkyRegion,
                          EllipsePixelRegion, EllipseSkyRegion,
+                         PolygonPixelRegion, PolygonSkyRegion,
                          RectangleAnnulusPixelRegion,
                          RectangleAnnulusSkyRegion, RectanglePixelRegion,
                          RectangleSkyRegion, Region)
@@ -177,6 +183,13 @@ def region_to_aperture(region):
             region.inner_width, region.outer_width,
             region.outer_height, h_in=region.inner_height,
             theta=(region.angle - (90 * u.deg)))
+
+    elif isinstance(region, PolygonPixelRegion):
+        verts = np.stack([region.vertices.x, region.vertices.y], axis=1)
+        aperture = PolygonAperture.from_vertices(verts)
+
+    elif isinstance(region, PolygonSkyRegion):
+        aperture = SkyPolygonAperture.from_vertices(region.vertices)
 
     else:
         msg = (f'Cannot convert {region.__class__.__name__!r} to an '
@@ -252,6 +265,10 @@ def aperture_to_region(aperture):
       `~regions.RectangleAnnulusPixelRegion`
     * `~photutils.aperture.SkyRectangularAnnulus` |rarr|
       `~regions.RectangleAnnulusSkyRegion`
+    * `~photutils.aperture.PolygonAperture` |rarr|
+      `~regions.PolygonPixelRegion`
+    * `~photutils.aperture.SkyPolygonAperture` |rarr|
+      `~regions.PolygonSkyRegion`
 
     Examples
     --------
@@ -303,6 +320,7 @@ def _scalar_aperture_to_region(aperture):
                          CirclePixelRegion, CircleSkyRegion,
                          EllipseAnnulusPixelRegion, EllipseAnnulusSkyRegion,
                          EllipsePixelRegion, EllipseSkyRegion, PixCoord,
+                         PolygonPixelRegion, PolygonSkyRegion,
                          RectangleAnnulusPixelRegion,
                          RectangleAnnulusSkyRegion, RectanglePixelRegion,
                          RectangleSkyRegion)
@@ -372,6 +390,14 @@ def _scalar_aperture_to_region(aperture):
             aperture.w_in, aperture.w_out,
             aperture.h_in, aperture.h_out,
             angle=(aperture.theta + (90 * u.deg)))
+
+    elif isinstance(aperture, PolygonAperture):
+        verts = aperture.vertices
+        region = PolygonPixelRegion(
+            PixCoord(x=verts[:, 0], y=verts[:, 1]))
+
+    elif isinstance(aperture, SkyPolygonAperture):
+        region = PolygonSkyRegion(aperture.vertices)
 
     else:
         msg = 'Cannot convert input aperture to a Region object'

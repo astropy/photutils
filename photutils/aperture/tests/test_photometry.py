@@ -17,6 +17,7 @@ from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus,
                                         SkyEllipticalAperture)
 from photutils.aperture.photometry import aperture_photometry
+from photutils.aperture.polygon import PolygonAperture
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture,
                                           SkyRectangularAnnulus,
@@ -221,6 +222,19 @@ class TestRectangularAnnulus(BaseTestAperturePhotometry):
         self.aperture = RectangularAnnulus(position, w_in, w_out, h_out,
                                            theta=theta)
         self.area = h_out * w_out - h_in * w_in
+        self.true_flux = self.area
+
+
+class TestPolygon(BaseTestAperturePhotometry):
+    def setup_class(self):
+        self.data = np.ones((40, 40), dtype=float)
+        position = (20.0, 20.0)
+        n_vertices = 5
+        radius = 6.0
+        theta = 30 * u.deg
+        self.aperture = PolygonAperture.from_regular_polygon(
+            position, n_vertices, radius, theta=theta)
+        self.area = self.aperture.area
         self.true_flux = self.area
 
 
@@ -793,13 +807,8 @@ class BaseTestRegionPhotometry:
                                        strict=True):
             assert_allclose(reg_table['aperture_sum'],
                             ap_table['aperture_sum'])
-
-        if isinstance(self.aperture, (RectangularAperture,
-                                      RectangularAnnulus)):
-            for reg_table, ap_table in zip(region_tables, aperture_tables,
-                                           strict=True):
-                assert_allclose(reg_table['aperture_sum_err'],
-                                ap_table['aperture_sum_err'])
+            assert_allclose(reg_table['aperture_sum_err'],
+                            ap_table['aperture_sum_err'])
 
 
 def test_invalid_inputs():
@@ -918,9 +927,10 @@ class TestRectangleAnnulusRegionPhotometry(BaseTestRegionPhotometry):
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_unsupported_region_input():
-    from regions import PixCoord, PolygonPixelRegion
+    from regions import LinePixelRegion, PixCoord
 
-    region = PolygonPixelRegion(vertices=PixCoord(x=[1, 2, 3], y=[1, 1, 2]))
+    region = LinePixelRegion(start=PixCoord(x=1, y=1),
+                             end=PixCoord(x=5, y=5))
     data = np.ones((10, 10))
     match = r'Cannot convert .* to an Aperture object'
     with pytest.raises(TypeError, match=match):

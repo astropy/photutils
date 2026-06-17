@@ -122,6 +122,69 @@ input order, the stacked table rows are in the same order as the input
 ``positions``.
 
 
+Polygon Apertures
+=================
+
+Two new aperture classes have been added:
+`~photutils.aperture.PolygonAperture` and
+`~photutils.aperture.SkyPolygonAperture`. Like the other aperture types,
+they have a single fixed shape (parameterized by ``vertex_offsets``)
+that can be applied at one or more positions::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import PolygonAperture
+    >>> positions = [(10.0, 20.0), (30.0, 40.0)]
+    >>> # A regular hexagon centered on each position
+    >>> outer_radius = 5.0
+    >>> theta = np.linspace(0.0, 2 * np.pi, 6, endpoint=False)
+    >>> offsets = np.column_stack([outer_radius * np.cos(theta),
+    ...                            outer_radius * np.sin(theta)])
+    >>> aper = PolygonAperture(positions, offsets)
+
+The polygon must be simple (non-self-intersecting), but it does not need
+to be convex; non-convex shapes such as L-shapes or stars are fully
+supported.
+
+Regular polygons can be constructed by specifying a center,
+the number of vertices, the `circumradius (outer radius)
+<https://mathworld.wolfram.com/Circumradius.html>`_, and an optional
+rotation angle via the ``from_regular_polygon`` classmethod. The
+``is_regular`` property reports whether a polygon is regular, and the
+``outer_radius``, ``inner_radius``, ``side_length``, ``interior_angle``,
+``exterior_angle``, and ``theta`` properties expose the geometric
+parameters of regular polygons (they raise ``ValueError`` for
+non-regular polygons)::
+
+    >>> hexagon = PolygonAperture.from_regular_polygon((10.0, 20.0),
+    ...                                                n_vertices=6,
+    ...                                                radius=5.0)
+    >>> hexagon.is_regular
+    True
+    >>> hexagon.outer_radius
+    5.0
+    >>> hexagon.interior_angle
+    <Quantity 120. deg>
+
+A ``from_vertices`` classmethod is also provided as a convenience for
+building a single polygon directly from absolute pixel or sky vertex
+coordinates::
+
+    >>> verts = [(0.0, 0.0), (4.0, 0.0), (4.0, 3.0)]
+    >>> aper = PolygonAperture.from_vertices(verts)
+
+Both polygon aperture classes also expose a ``vertices`` attribute
+returning the absolute vertex coordinates at every aperture position.
+
+Conversions between `~photutils.aperture.PolygonAperture` and
+`~photutils.aperture.SkyPolygonAperture` use ``wcs.pixel_to_world`` and
+``wcs.world_to_pixel`` directly on the absolute vertex coordinates,
+so the conversion captures the actual finite-displacement WCS
+transformation of the polygon corners.
+
+``aperture_to_region`` and ``region_to_aperture`` also now support
+`~regions.PolygonPixelRegion` and `~regions.PolygonSkyRegion`.
+
+
 .. _whatsnew-3.1-api-changes:
 
 API Changes

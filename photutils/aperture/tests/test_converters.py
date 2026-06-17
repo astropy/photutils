@@ -13,9 +13,10 @@ from numpy.testing import assert_allclose
 
 from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 EllipticalAnnulus, EllipticalAperture,
-                                RectangularAnnulus, RectangularAperture,
-                                SkyCircularAnnulus, SkyCircularAperture,
-                                SkyEllipticalAnnulus, SkyEllipticalAperture,
+                                PolygonAperture, RectangularAnnulus,
+                                RectangularAperture, SkyCircularAnnulus,
+                                SkyCircularAperture, SkyEllipticalAnnulus,
+                                SkyEllipticalAperture, SkyPolygonAperture,
                                 SkyRectangularAnnulus, SkyRectangularAperture)
 from photutils.aperture.converters import (_scalar_aperture_to_region,
                                            _shapely_polygon_to_region,
@@ -75,9 +76,7 @@ def test_translation_circle(image_2d_wcs):
     assert aperture_sky.positions == region_sky.center  # SkyCoord
     assert_quantity_allclose(aperture_sky.r, region_sky.radius)
 
-    # NOTE: If these no longer fail, we also have to account for
-    # non-scalar inputs. Assume this is representative for the sky
-    # counterpart too.
+    # Check that non-scalar center and radius raise ValueError
     match = 'must be a scalar PixCoord'
     with pytest.raises(ValueError, match=match):
         CirclePixelRegion(center=PixCoord(x=[0, 42], y=[1, 43]), radius=4.2)
@@ -110,9 +109,8 @@ def test_translation_ellipse(image_2d_wcs):
     assert_quantity_allclose(aperture_sky.theta + (90 * u.deg),
                              region_sky.angle)
 
-    # NOTE: If these no longer fail, we also have to account for
-    # non-scalar inputs. Assume this is representative for the sky
-    # counterpart too.
+    # Check that non-scalar center, width, height, and angle raise
+    # ValueError
     match = 'must be a scalar PixCoord'
     with pytest.raises(ValueError, match=match):
         EllipsePixelRegion(
@@ -168,9 +166,8 @@ def test_translation_rectangle(image_2d_wcs):
     assert_quantity_allclose(aperture_sky.theta + (90 * u.deg),
                              region_sky.angle)
 
-    # NOTE: If these no longer fail, we also have to account for
-    # non-scalar inputs. Assume this is representative for the sky
-    # counterpart too.
+    # Check that non-scalar center, width, height, and angle raise
+    # ValueError
     match = 'must be a scalar PixCoord'
     with pytest.raises(ValueError, match=match):
         RectanglePixelRegion(
@@ -225,9 +222,8 @@ def test_translation_circle_annulus(image_2d_wcs):
     assert_quantity_allclose(aperture_sky.r_in, region_sky.inner_radius)
     assert_quantity_allclose(aperture_sky.r_out, region_sky.outer_radius)
 
-    # NOTE: If these no longer fail, we also have to account for
-    # non-scalar inputs. Assume this is representative for the sky
-    # counterpart too.
+    # Check that non-scalar center, inner_radius, and outer_radius raise
+    # ValueError
     match = 'must be a scalar PixCoord'
     with pytest.raises(ValueError, match=match):
         CircleAnnulusPixelRegion(
@@ -276,9 +272,8 @@ def test_translation_ellipse_annulus(image_2d_wcs):
     assert_quantity_allclose(aperture_sky.theta + (90 * u.deg),
                              region_sky.angle)
 
-    # NOTE: If these no longer fail, we also have to account for
-    # non-scalar inputs. Assume this is representative for the sky
-    # counterpart too.
+    # Check that non-scalar center, inner_width, inner_height,
+    # outer_width, outer_height, and angle raise ValueError
     match = 'must be a scalar PixCoord'
     with pytest.raises(ValueError, match=match):
         EllipseAnnulusPixelRegion(
@@ -369,9 +364,8 @@ def test_translation_rectangle_annulus(image_2d_wcs):
     assert_quantity_allclose(aperture_sky.theta + (90 * u.deg),
                              region_sky.angle)
 
-    # NOTE: If these no longer fail, we also have to account for
-    # non-scalar inputs. Assume this is representative for the sky
-    # counterpart too.
+    # Check that non-scalar center, inner_width, inner_height,
+    # outer_width, outer_height, and angle raise ValueError
     match = 'must be a scalar PixCoord'
     with pytest.raises(ValueError, match=match):
         RectangleAnnulusPixelRegion(
@@ -432,14 +426,32 @@ def test_translation_rectangle_annulus(image_2d_wcs):
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
-def test_translation_polygon():
+def test_translation_polygon(image_2d_wcs):
     from regions import PixCoord, PolygonPixelRegion
 
-    region_shape = PolygonPixelRegion(vertices=PixCoord(x=[1, 2, 2],
-                                                        y=[1, 1, 2]))
-    match = r'Cannot convert .* to an Aperture object'
-    with pytest.raises(TypeError, match=match):
-        region_to_aperture(region_shape)
+    # Counter-clockwise simple (non-self-intersecting) quadrilateral.
+    x = [42, 50, 47, 40]
+    y = [43, 45, 52, 50]
+    region_shape = PolygonPixelRegion(vertices=PixCoord(x=x, y=y))
+    aperture = region_to_aperture(region_shape)
+    assert isinstance(aperture, PolygonAperture)
+    ref_vertices = np.column_stack((region_shape.vertices.x,
+                                    region_shape.vertices.y))
+    assert_allclose(aperture.vertices, ref_vertices)
+
+    region_sky = region_shape.to_sky(image_2d_wcs)
+    aperture_sky = region_to_aperture(region_sky)
+    assert isinstance(aperture_sky, SkyPolygonAperture)
+    # The inverted RA axis flips the polygon orientation, so the
+    # counter-clockwise normalization reverses the vertex order. Compare
+    # the vertices independently of their ordering.
+    ap_verts = np.column_stack((aperture_sky.vertices.ra.deg,
+                                aperture_sky.vertices.dec.deg))
+    reg_verts = np.column_stack((region_sky.vertices.ra.deg,
+                                 region_sky.vertices.dec.deg))
+    ap_sorted = ap_verts[np.lexsort((ap_verts[:, 1], ap_verts[:, 0]))]
+    reg_sorted = reg_verts[np.lexsort((reg_verts[:, 1], reg_verts[:, 0]))]
+    assert_allclose(ap_sorted, reg_sorted, atol=1e-9)
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
@@ -450,6 +462,14 @@ def test_aperture_to_region():
     ra, dec = np.transpose(xypos)
     skycoord = SkyCoord(ra=ra, dec=dec, unit='deg')
     unit = u.arcsec
+
+    # A square polygon centered on each position (zero-centroid offsets
+    # so the pixel round-trip is exact).
+    poly_offsets = np.array([(-5.0, -5.0), (5.0, -5.0),
+                             (5.0, 5.0), (-5.0, 5.0)])
+    theta = np.linspace(0.0, 2 * np.pi, 5, endpoint=False)
+    sky_poly_offsets = np.column_stack([3.0 * np.cos(theta),
+                                        3.0 * np.sin(theta)]) * unit
 
     apertures = [CircularAperture(xypos, r=3.0),
                  CircularAnnulus(xypos, r_in=3.0, r_out=7.0),
@@ -471,7 +491,10 @@ def test_aperture_to_region():
                                         theta=30 * u.deg),
                  SkyRectangularAnnulus(skycoord, w_in=10.0 * unit,
                                        w_out=20.0 * unit, h_out=17.0 * unit,
-                                       theta=60 * u.deg)]
+                                       theta=60 * u.deg),
+                 PolygonAperture(xypos, poly_offsets),
+                 SkyPolygonAperture(skycoord, sky_poly_offsets),
+                 ]
 
     for aperture in apertures:
         region0 = aperture_to_region(aperture[0])
@@ -482,7 +505,18 @@ def test_aperture_to_region():
         assert len(region) == len(aperture)
 
         aper0 = region_to_aperture(region0)
-        assert aper0 == aperture[0]
+        if isinstance(aperture, SkyPolygonAperture):
+            # The sky polygon round-trip recomputes the centroid from
+            # the vertices, so positions and offsets match only to
+            # within floating-point tolerance.
+            assert isinstance(aper0, SkyPolygonAperture)
+            sep = aper0.positions.separation(aperture[0].positions)
+            assert_quantity_allclose(sep, 0 * u.deg, atol=1e-9 * u.arcsec)
+            assert_quantity_allclose(aper0.vertex_offsets,
+                                     aperture[0].vertex_offsets,
+                                     atol=1e-9 * u.arcsec)
+        else:
+            assert aper0 == aperture[0]
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')

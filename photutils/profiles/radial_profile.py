@@ -63,33 +63,30 @@ class RadialProfile(ProfileBase):
         Masked data are excluded from all calculations.
 
     method : {'exact', 'center', 'subpixel'}, optional
-        The method used to determine the overlap of the aperture on the
-        pixel grid:
+        The method used to determine the pixel weights (the fraction of
+        the pixel area covered by the aperture):
 
         * ``'exact'`` (default):
-          The exact fractional overlap of the aperture and each pixel is
-          calculated. The aperture weights will contain values between 0
-          and 1.
-
+          Calculates the exact geometric overlap area. Weights are
+          continuous in the range [0, 1].
         * ``'center'``:
-          A pixel is considered to be entirely in or out of the aperture
-          depending on whether its center is in or out of the aperture.
-          The aperture weights will contain values only of 0 (out) and 1
-          (in).
-
+          Binary weighting based on the pixel center. Weights are either
+          0 or 1. A pixel is included only if its center lies strictly
+          inside the aperture; pixel centers lying exactly on the
+          aperture boundary are excluded (weight 0).
         * ``'subpixel'``:
-          A pixel is divided into subpixels (see the ``subpixels``
-          keyword), each of which are considered to be entirely in or
-          out of the aperture depending on whether its center is in
-          or out of the aperture. If ``subpixels=1``, this method is
-          equivalent to ``'center'``. The aperture weights will contain
-          values between 0 and 1.
+          Approximates the overlap by averaging binary samples on a
+          subgrid. The number of samples is set by the ``subpixels``
+          parameter. Weights are discrete in the range [0, 1]. A
+          subpixel is included only if its center lies strictly inside
+          the aperture; subpixel centers lying exactly on the aperture
+          boundary are excluded (weight 0).
 
     subpixels : int, optional
-        For the ``'subpixel'`` method, resample pixels by this factor
-        in each dimension. That is, each pixel is divided into
-        ``subpixels**2`` subpixels. This keyword is ignored unless
-        ``method='subpixel'``.
+        The subsampling factor per axis used when ``method='subpixel'``.
+        Each pixel is divided into a grid of ``subpixels**2`` subpixels
+        to approximate the overlap. This parameter is ignored for other
+        methods.
 
     See Also
     --------

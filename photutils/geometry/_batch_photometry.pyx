@@ -19,7 +19,8 @@ free-threaded Python builds.
 
 import numpy as np
 
-from ._polygon_overlap cimport polygon_pixel_overlap
+from ._polygon_overlap cimport (polygon_overlap_single_subpixel,
+                                polygon_pixel_overlap)
 from .circular_overlap cimport (circular_overlap_single_exact,
                                 circular_overlap_single_subpixel)
 from .elliptical_overlap cimport (elliptical_overlap_single_exact,
@@ -49,6 +50,7 @@ cdef enum:
     _ELLIPTICAL_ANNULUS = 3
     _RECTANGLE = 4
     _RECTANGULAR_ANNULUS = 5
+    _POLYGON = 6
 
 # Python-level aliases of the shape codes
 SHAPE_CIRCLE = _CIRCLE
@@ -57,6 +59,7 @@ SHAPE_ELLIPSE = _ELLIPSE
 SHAPE_ELLIPTICAL_ANNULUS = _ELLIPTICAL_ANNULUS
 SHAPE_RECTANGLE = _RECTANGLE
 SHAPE_RECTANGULAR_ANNULUS = _RECTANGULAR_ANNULUS
+SHAPE_POLYGON = _POLYGON
 
 
 def batch_aperture_sums(double[:, ::1] data, double[:, ::1] error,
@@ -96,7 +99,7 @@ def batch_aperture_sums(double[:, ::1] data, double[:, ::1] error,
     shape_code : int
         The aperture shape code: 0=circle, 1=circular annulus,
         2=ellipse, 3=elliptical annulus, 4=rectangle, 5=rectangular
-        annulus (see the module-level ``SHAPE_*`` constants).
+        annulus, 6=polygon (see the module-level ``SHAPE_*`` constants).
 
     params : 1D ndarray of float64 (C-contiguous)
         The aperture shape parameters:
@@ -107,6 +110,9 @@ def batch_aperture_sums(double[:, ::1] data, double[:, ::1] error,
         * elliptical annulus: ``(a_in, b_in, a_out, b_out, theta)``
         * rectangle: ``(w, h, theta)``
         * rectangular annulus: ``(w_in, h_in, w_out, h_out, theta)``
+        * polygon: the flattened counter-clockwise vertex offsets
+          ``(x0, y0, x1, y1, ...)`` relative to each position (at least
+          3 vertices, i.e., 6 values)
 
         where ``theta`` is in radians.
 
@@ -169,6 +175,20 @@ def batch_aperture_sums(double[:, ::1] data, double[:, ::1] error,
     cdef double buf_b_x[32]
     cdef double buf_b_y[32]
 
+    # Working buffers for arbitrary-polygon apertures. The vertex count
+    # is variable, so these are allocated as a single numpy block (kept
+    # alive by ``poly_work``) and accessed through raw pointers. They
+    # are local to this call, so this function is thread safe.
+    cdef int n_poly = 0, poly_buf_size = 0
+    cdef Py_ssize_t pk
+    cdef double[::1] poly_work
+    cdef double *poly_x = NULL
+    cdef double *poly_y = NULL
+    cdef double *pbuf_a_x = NULL
+    cdef double *pbuf_a_y = NULL
+    cdef double *pbuf_b_x = NULL
+    cdef double *pbuf_b_y = NULL
+
     if shape_code == _CIRCLE:
         r_out = params[0]
     elif shape_code == _CIRCULAR_ANNULUS:
@@ -211,6 +231,30 @@ def batch_aperture_sums(double[:, ::1] data, double[:, ::1] error,
                           + half_height_in * fabs(sin_theta))
             bbox_dy_in = (half_width_in * fabs(sin_theta)
                           + half_height_in * fabs(cos_theta))
+    elif shape_code == _POLYGON:
+        # ``params`` holds the flattened counter-clockwise vertex
+        # offsets (x0, y0, x1, y1, ...).
+        n_poly = params.shape[0] // 2
+        if n_poly < 3 or 2 * n_poly != params.shape[0]:
+            msg = ('polygon params must be the flattened (x, y) offsets '
+                   'of at least 3 vertices')
+            raise ValueError(msg)
+
+        # Each Sutherland-Hodgman clip can at most double the vertex
+        # count of a non-convex polygon, so 16 * n_poly is a safe bound
+        # (see ``polygon_overlap_grid``).
+        poly_buf_size = 16 * n_poly
+        poly_work = np.empty(2 * n_poly + 4 * poly_buf_size,
+                             dtype=np.float64)
+        poly_x = &poly_work[0]
+        poly_y = &poly_work[n_poly]
+        pbuf_a_x = &poly_work[2 * n_poly]
+        pbuf_a_y = &poly_work[2 * n_poly + poly_buf_size]
+        pbuf_b_x = &poly_work[2 * n_poly + 2 * poly_buf_size]
+        pbuf_b_y = &poly_work[2 * n_poly + 3 * poly_buf_size]
+        for pk in range(n_poly):
+            poly_x[pk] = params[2 * pk]
+            poly_y[pk] = params[2 * pk + 1]
     else:
         msg = f'Invalid shape_code: {shape_code}'
         raise ValueError(msg)
@@ -304,7 +348,7 @@ def batch_aperture_sums(double[:, ::1] data, double[:, ::1] error,
                             bbox_dx_out, bbox_dy_out, poly_x_out,
                             poly_y_out, buf_a_x, buf_a_y, buf_b_x,
                             buf_b_y, use_exact, subpixels)
-                    else:
+                    elif shape_code == _RECTANGULAR_ANNULUS:
                         frac = (_rect_pixel_frac(
                                     pxmin, pymin, dx, dy, half_width_out,
                                     half_height_out, cos_theta, sin_theta,
@@ -317,6 +361,11 @@ def batch_aperture_sums(double[:, ::1] data, double[:, ::1] error,
                                     bbox_dx_in, bbox_dy_in, poly_x_in,
                                     poly_y_in, buf_a_x, buf_a_y, buf_b_x,
                                     buf_b_y, use_exact, subpixels))
+                    else:
+                        frac = _polygon_pixel_frac(
+                            pxmin, pymin, dx, dy, poly_x, poly_y, n_poly,
+                            pbuf_a_x, pbuf_a_y, pbuf_b_x, pbuf_b_y,
+                            poly_buf_size, use_exact, subpixels)
 
                     if frac <= 0.0:
                         continue
@@ -440,6 +489,38 @@ cdef inline double _rect_pixel_frac(double pxmin, double pymin,
                                                half_width, half_height,
                                                cos_theta, sin_theta,
                                                subpixels)
+
+
+cdef inline double _polygon_pixel_frac(double pxmin, double pymin,
+                                       double dx, double dy,
+                                       double *poly_x, double *poly_y,
+                                       int n_poly,
+                                       double *buf_a_x, double *buf_a_y,
+                                       double *buf_b_x, double *buf_b_y,
+                                       int buf_size, int use_exact,
+                                       int subpixels) noexcept nogil:
+    """
+    Fraction of a single pixel that overlaps a simple polygon supplied
+    as counter-clockwise vertices centered on the origin.
+
+    This replicates the per-pixel logic of ``polygon_overlap_grid``: the
+    exact mode clips the pixel against the polygon (Sutherland-Hodgman),
+    while the subpixel mode samples pixel centers with point-in-polygon
+    tests, so the result is identical to the grid function.
+    """
+    cdef double pxmax = pxmin + dx
+    cdef double pymax = pymin + dy
+
+    if use_exact:
+        return polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
+                                     poly_x, poly_y, n_poly,
+                                     buf_a_x, buf_a_y, buf_b_x, buf_b_y,
+                                     buf_size) / (dx * dy)
+
+    return polygon_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
+                                           poly_x, poly_y, n_poly,
+                                           subpixels, buf_a_x, buf_a_y,
+                                           buf_b_x)
 
 
 cdef inline void _rect_vertices(double half_width, double half_height,

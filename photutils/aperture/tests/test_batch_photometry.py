@@ -14,6 +14,7 @@ from numpy.testing import assert_allclose
 from photutils.aperture.circle import CircularAnnulus, CircularAperture
 from photutils.aperture.core import PixelAperture
 from photutils.aperture.ellipse import EllipticalAnnulus, EllipticalAperture
+from photutils.aperture.polygon import PolygonAperture
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture)
 
@@ -40,6 +41,12 @@ APERTURES = [
     EllipticalAnnulus(POSITIONS, a_in=3.0, a_out=6.0, b_out=4.0, theta=-1.1),
     RectangularAperture(POSITIONS, w=7.0, h=4.0, theta=0.4),
     RectangularAnnulus(POSITIONS, w_in=3.0, w_out=8.0, h_out=5.0, theta=2.2),
+    PolygonAperture.from_regular_polygon(POSITIONS, 6, radius=5.5),
+    PolygonAperture(POSITIONS, [[-4.0, -3.0], [6.0, -2.0], [3.0, 5.0],
+                                [-5.0, 4.0]]),
+    # A non-convex (concave arrowhead) polygon offset shape
+    PolygonAperture(POSITIONS, [[-5.0, -4.0], [5.0, -4.0], [0.0, 6.0],
+                                [0.0, 0.0]]),
 ]
 
 METHODS = [('exact', 5), ('center', 5), ('subpixel', 1), ('subpixel', 7)]
@@ -118,6 +125,9 @@ def test_scalar_position():
     legacy mask-based code path for a single scalar position.
     """
     aperture = CircularAperture((70.0, 80.0), r=5.5)
+    assert_batch_matches_legacy(aperture, DATA, error=ERROR)
+
+    aperture = EllipticalAperture((70.0, 80.0), 10.124, 5.073)
     assert_batch_matches_legacy(aperture, DATA, error=ERROR)
 
 

@@ -13,5 +13,10 @@ cdef double polygon_pixel_overlap(double pxmin, double pymin,
                                   double *buf_a_x, double *buf_a_y,
                                   double *buf_b_x, double *buf_b_y,
                                   int buf_size) noexcept nogil
-cdef int point_in_polygon(double x, double y, double *poly_x,
-                          double *poly_y, int n_poly) noexcept nogil
+cdef double polygon_overlap_single_subpixel(double x0, double y0,
+                                            double x1, double y1,
+                                            double *poly_x, double *poly_y,
+                                            int n_poly, int subpixels,
+                                            double *xint_buf,
+                                            double *hxmin_buf,
+                                            double *hxmax_buf) noexcept nogil

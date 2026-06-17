@@ -85,6 +85,10 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
         factor in each dimension; thus, each pixel is divided into
         ``subpixels ** 2`` subpixels.
 
+        A subpixel is included only if its center lies strictly inside
+        the rectangle; subpixel centers lying exactly on the rectangle
+        boundary are excluded (weight 0).
+
     Returns
     -------
     result : `~numpy.ndarray` (float)
