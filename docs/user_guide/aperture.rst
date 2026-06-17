@@ -27,6 +27,7 @@ coordinates are:
 * `~photutils.aperture.EllipticalAnnulus`
 * `~photutils.aperture.RectangularAperture`
 * `~photutils.aperture.RectangularAnnulus`
+* `~photutils.aperture.PolygonAperture`
 
 Each of these classes has a corresponding variant defined in sky
 coordinates:
@@ -37,6 +38,7 @@ coordinates:
 * `~photutils.aperture.SkyEllipticalAnnulus`
 * `~photutils.aperture.SkyRectangularAperture`
 * `~photutils.aperture.SkyRectangularAnnulus`
+* `~photutils.aperture.SkyPolygonAperture`
 
 To perform aperture photometry with sky-based apertures, one will need
 to specify a WCS transformation.
@@ -134,13 +136,74 @@ sky apertures, e.g.,::
 
 .. note::
 
-    Aperture objects require scalar shape parameters (e.g., radius,
-    semi-axes, angle), so only a single reference position can be
-    used for computing local WCS properties (pixel scale, rotation
-    angle). For apertures with multiple positions, the first position
-    is used. Apertures with multiple positions used with a WCS that
-    has spatially-varying distortions may produce inaccurate shape
-    conversions for positions far from the first position.
+    A given aperture has a single fixed *shape* that is applied
+    identically at every position (e.g., a pixel circle must remain
+    a pixel circle of the same radius at all positions). Because a
+    WCS can have a spatially-varying scale, rotation, and distortion,
+    the local transformation generally differs from position to
+    position, so the shape cannot be preserved exactly at every
+    position when converting between pixel and sky apertures. To
+    keep the conversion deterministic and the shape well-defined,
+    a single reference position is used to compute the local WCS
+    properties (pixel scale, rotation angle), and by convention
+    this is the **first** position. This applies to all aperture
+    classes, including `~photutils.aperture.PolygonAperture` and
+    `~photutils.aperture.SkyPolygonAperture`, whose vertex offsets are
+    transformed using the WCS sampled at the first position. Apertures
+    with multiple positions used with a WCS that has spatially-varying
+    distortions may therefore produce inaccurate shape conversions for
+    positions far from the first position.
+
+
+Polygon Apertures
+^^^^^^^^^^^^^^^^^
+
+In addition to the built-in circular, elliptical, and
+rectangular shapes, arbitrary polygon apertures are
+supported via the `~photutils.aperture.PolygonAperture` and
+`~photutils.aperture.SkyPolygonAperture` classes. Like the other
+aperture types, a polygon aperture has a single fixed shape (defined by
+its ``vertex_offsets``) that can be applied at one or more positions::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import PolygonAperture
+    >>> positions = [(30.0, 30.0), (40.0, 40.0)]
+    >>> offsets = [(-3.0, -2.0), (3.0, -2.0), (3.0, 2.0), (-3.0, 2.0)]
+    >>> aperture = PolygonAperture(positions, offsets)
+
+The polygon must be simple (non-self-intersecting) with at least three
+vertices, but it does not need to be convex; non-convex shapes such as
+L-shapes or stars are fully supported. The vertices may be input in
+either clockwise or counter-clockwise order; they are normalized to
+counter-clockwise order internally.
+
+A single polygon can also be constructed directly
+from its absolute vertex coordinates using the
+:meth:`~photutils.aperture.PolygonAperture.from_vertices` class method,
+which sets the aperture position to the polygon centroid::
+
+    >>> vertices = [(0.0, 0.0), (4.0, 0.0), (4.0, 3.0)]
+    >>> aperture = PolygonAperture.from_vertices(vertices)
+
+Regular polygons (equal-length sides and equal
+interior angles) can be created with the
+:meth:`~photutils.aperture.PolygonAperture.from_regular_polygon` class
+method by specifying a center, the number of vertices, the circumradius,
+and an optional rotation angle::
+
+    >>> hexagon = PolygonAperture.from_regular_polygon((30.0, 30.0),
+    ...                                                n_vertices=6,
+    ...                                                radius=5.0)
+
+For regular polygons, the ``outer_radius``, ``inner_radius``,
+``side_length``, ``interior_angle``, ``exterior_angle``, and ``theta``
+properties expose the geometric parameters of the shape.
+
+The built-in `~photutils.aperture.CircularAperture`,
+`~photutils.aperture.EllipticalAperture`, and
+`~photutils.aperture.RectangularAperture` classes also provide a
+``to_polygon`` method to convert them to an approximating (or, for the
+rectangle, exactly equivalent) `~photutils.aperture.PolygonAperture`.
 
 
 Performing Aperture Photometry
