@@ -9,6 +9,7 @@ import pytest
 from astropy.coordinates import Angle, SkyCoord
 from astropy.tests.helper import assert_quantity_allclose
 
+from photutils.aperture import PolygonAperture
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus,
                                         SkyEllipticalAperture)
@@ -205,3 +206,24 @@ def test_ellipse_annulus_theta_quantity():
 
     assert_quantity_allclose(aper1.theta, aper2.theta)
     assert_quantity_allclose(aper1.theta, aper3.theta)
+
+
+def test_elliptical_aperture_to_polygon():
+    aper = EllipticalAperture((10.0, 20.0), a=5.0, b=3.0, theta=np.pi / 4)
+    poly = aper.to_polygon(n_points=200)
+    assert isinstance(poly, PolygonAperture)
+    assert poly.n_vertices == 200
+    assert abs(poly.area - aper.area) / aper.area < 1e-3
+
+
+def test_elliptical_aperture_to_polygon_multi_position():
+    aper = EllipticalAperture([(10.0, 20.0), (30.0, 40.0)],
+                              a=4.0, b=2.0, theta=0.5)
+    poly = aper.to_polygon(n_points=50)
+    assert poly.vertices.shape == (2, 50, 2)
+
+
+def test_elliptical_aperture_to_polygon_invalid_n_points():
+    aper = EllipticalAperture((0.0, 0.0), a=1.0, b=1.0)
+    with pytest.raises(ValueError, match='n_points must be at least 3'):
+        aper.to_polygon(n_points=2)
