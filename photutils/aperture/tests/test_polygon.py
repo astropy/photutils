@@ -432,6 +432,71 @@ def test_do_photometry():
     assert_allclose(flux, [4.0])
 
 
+def test_do_photometry_subpixel_on_horizontal_boundary():
+    """
+    Test that ``do_photometry`` excludes subpixel centers landing
+    exactly on a horizontal polygon edge.
+
+    This is the ``do_photometry`` counterpart of
+    ``test_polygon_overlap_subpixel_on_horizontal_boundary`` in
+    ``photutils/geometry/tests/test_polygon_overlap_grid.py``,
+    using the same wide rectangle (half-widths 2 in x, 1 in y) and
+    ``subpixels=3``.
+
+    At an integer position the subpixel centers fall on all multiples
+    of 1/3, so the horizontal edges at y = center +/- 1 coincide with
+    a row of subpixel centers and are excluded. The strictly interior
+    subpixel centers are the 11 x-positions and 5 y-positions inside the
+    open rectangle, giving 55 of every 9 subpixels, i.e., 55/9. Were the
+    on-boundary centers counted instead, the result would be 91/9.
+    """
+    data = np.ones((31, 31))
+    offsets = np.array([[-2.0, -1.0], [2.0, -1.0],
+                        [2.0, 1.0], [-2.0, 1.0]])
+    aper = PolygonAperture((15.0, 15.0), offsets)
+    flux, _ = aper.do_photometry(data, method='subpixel', subpixels=3)
+    assert_allclose(flux, [55.0 / 9.0])
+
+
+def test_do_photometry_subpixel_on_vertical_boundary():
+    """
+    Test that ``do_photometry`` excludes subpixel centers landing
+    exactly on a vertical polygon edge.
+
+    This is the ``do_photometry`` counterpart of
+    ``test_polygon_overlap_subpixel_on_vertical_boundary``, using
+    the same tall rectangle (half-widths 1 in x, 2 in y) and
+    ``subpixels=3``. The vertical edges at x = center +/- 1 coincide
+    with a column of subpixel centers and are excluded, giving 55/9 (the
+    boundary-included value would be 91/9).
+    """
+    data = np.ones((31, 31))
+    offsets = np.array([[-1.0, -2.0], [1.0, -2.0],
+                        [1.0, 2.0], [-1.0, 2.0]])
+    aper = PolygonAperture((15.0, 15.0), offsets)
+    flux, _ = aper.do_photometry(data, method='subpixel', subpixels=3)
+    assert_allclose(flux, [55.0 / 9.0])
+
+
+def test_do_photometry_subpixel_on_all_boundaries():
+    """
+    Test that ``do_photometry`` excludes subpixel centers on horizontal
+    edges, vertical edges, and at corners.
+
+    This is the ``do_photometry`` counterpart of
+    ``test_polygon_overlap_subpixel_on_all_boundaries``, using the same
+    unit square (half-widths 1 in both axes) and ``subpixels=3``. At
+    an integer position the four edges and four corners coincide with
+    subpixel centers and are all excluded, leaving the 5 x-positions
+    and 5 y-positions strictly inside the open square, i.e., 25/9 (the
+    boundary-included value would be 49/9).
+    """
+    data = np.ones((31, 31))
+    aper = PolygonAperture((15.0, 15.0), SQUARE_OFFSETS)
+    flux, _ = aper.do_photometry(data, method='subpixel', subpixels=3)
+    assert_allclose(flux, [25.0 / 9.0])
+
+
 @pytest.mark.parametrize(('method', 'kwargs'),
                          [('exact', {}),
                           ('subpixel', {'subpixels': 7}),

@@ -519,7 +519,8 @@ cdef inline double _polygon_pixel_frac(double pxmin, double pymin,
 
     return polygon_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
                                            poly_x, poly_y, n_poly,
-                                           subpixels)
+                                           subpixels, buf_a_x, buf_a_y,
+                                           buf_b_x)
 
 
 cdef inline void _rect_vertices(double half_width, double half_height,

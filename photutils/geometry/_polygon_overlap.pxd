@@ -16,5 +16,7 @@ cdef double polygon_pixel_overlap(double pxmin, double pymin,
 cdef double polygon_overlap_single_subpixel(double x0, double y0,
                                             double x1, double y1,
                                             double *poly_x, double *poly_y,
-                                            int n_poly,
-                                            int subpixels) noexcept nogil
+                                            int n_poly, int subpixels,
+                                            double *xint_buf,
+                                            double *hxmin_buf,
+                                            double *hxmax_buf) noexcept nogil

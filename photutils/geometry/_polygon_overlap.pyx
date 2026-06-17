@@ -92,6 +92,11 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         as outside, consistent with the circular, elliptical, and
         rectangular apertures (see ``point_in_polygon``).
 
+        For ``subpixels > 1`` the same convention applies to each
+        subpixel: a subpixel is included only if its center lies
+        strictly inside the polygon; subpixel centers lying exactly on a
+        polygon edge are excluded (weight 0).
+
     Returns
     -------
     result : `~numpy.ndarray` (float)
@@ -181,7 +186,8 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                     pymin = ymin + j * dy
                     frac_view[j, i] = polygon_overlap_single_subpixel(
                         pxmin, pymin, pxmin + dx, pymin + dy,
-                        poly_x, poly_y, n_poly, subpixels)
+                        poly_x, poly_y, n_poly, subpixels,
+                        buf_a_x, buf_a_y, buf_b_x)
 
     return frac
 
@@ -326,8 +332,10 @@ cdef int point_in_polygon(double x, double y, double *poly_x,
 cdef double polygon_overlap_single_subpixel(double x0, double y0,
                                             double x1, double y1,
                                             double *poly_x, double *poly_y,
-                                            int n_poly,
-                                            int subpixels) noexcept nogil:
+                                            int n_poly, int subpixels,
+                                            double *xint_buf,
+                                            double *hxmin_buf,
+                                            double *hxmax_buf) noexcept nogil:
     """
     Return the fraction of overlap between a simple polygon and a single
     pixel with the given extent, using a sub-pixel sampling method.
@@ -336,26 +344,129 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
     subpixels and the fraction of subpixel centers that fall inside the
     polygon is returned. The polygon may be convex or non-convex.
 
+    For ``subpixels == 1`` (the ``center`` method) the single
+    pixel-center sample is classified with the full `point_in_polygon`
+    test, so that samples lying exactly on a polygon edge are excluded,
+    consistent with the circular, elliptical, and rectangular apertures.
+
+    For ``subpixels > 1`` the samples are classified with a scanline
+    parity fill: for each subpixel row, the polygon boundary restricted
+    to the horizontal line at ``y`` is fully characterized once
+    (``O(n_poly)``) as a set of crossing points (from sloped and
+    vertical edges) plus a set of closed x-intervals (from any
+    horizontal edges lying exactly on that line). The crossings are
+    sorted and the row's samples are then classified by a single
+    monotonic sweep instead of re-testing every edge for every sample.
+    This reduces the per-pixel cost from ``O(subpixels ** 2 * n_poly)``
+    to roughly ``O(subpixels * n_poly + subpixels ** 2)`` while matching
+    the classification of `point_in_polygon`: interior samples are
+    classified by the identical ``x < xint`` parity rule, and every
+    on-boundary sample is excluded (classified as outside). A sample
+    is on the boundary when its x coincides exactly with a crossing (a
+    sloped or vertical edge, including vertices, whose crossing x is
+    computed exactly because the ``y - yi`` term vanishes) or when it
+    lies within the closed x-span of a horizontal edge at that ``y``.
+    This makes the on-boundary exclusion bit-exact for the axis-aligned
+    and integer-coordinate polygons where on-boundary samples actually
+    occur. For samples on the interior of a sloped edge (a rare event
+    for subpixel sampling) the recomputed crossing may differ from the
+    sample x by rounding and the exclusion is not guaranteed.
+
+    ``xint_buf``, ``hxmin_buf``, and ``hxmax_buf`` are caller-supplied
+    scratch buffers, each of which must hold at least ``n_poly``
+    doubles. ``xint_buf`` stores the per-row edge crossings, while
+    ``hxmin_buf`` and ``hxmax_buf`` store the endpoints of the per-row
+    horizontal-edge intervals. They are written only within this call,
+    so the function remains thread safe.
+
     This is a pure C math function declared ``noexcept nogil`` so it can
     be called without the GIL (e.g., from the batch aperture photometry
     driver), including from multiple threads on free-threaded Python
     builds.
     """
-    cdef int i, j
+    cdef int i, j, e, prev, m, a, b, ptr, h, hh
     cdef double x, y, dx, dy, hits
+    cdef double xi, yi, xj, yj, tmp
+    cdef bint inside
 
     dx = (x1 - x0) / subpixels
     dy = (y1 - y0) / subpixels
     hits = 0.0
 
-    x = x0 + 0.5 * dx
+    if subpixels == 1:
+        # Center method: a single sample at the pixel center. Use
+        # the full point-in-polygon test so that on-edge samples are
+        # classified consistently with the other apertures (excluded).
+        if point_in_polygon(x0 + 0.5 * dx, y0 + 0.5 * dy,
+                            poly_x, poly_y, n_poly) == 1:
+            hits = 1.0
+        return hits
+
+    # Subpixel sampling (subpixels > 1): scanline parity fill.
+    y = y0 + 0.5 * dy
     for i in range(subpixels):
-        y = y0 + 0.5 * dy
+        # Characterize the polygon boundary on the horizontal line
+        # at ``y``. Sloped and vertical edges that straddle the line
+        # each contribute one crossing point (``xint_buf``), using
+        # the same edge-straddle test and intersection arithmetic
+        # as the parity step of ``point_in_polygon``. Horizontal
+        # edges lying exactly on the line cannot straddle it,
+        # so they are recorded separately as closed x-intervals
+        # (``hxmin_buf``/``hxmax_buf``). Together these two sets fully
+        # describe the boundary on the line and let every on-boundary
+        # sample be excluded.
+        m = 0
+        h = 0
+        prev = n_poly - 1
+        for e in range(n_poly):
+            yi = poly_y[e]
+            yj = poly_y[prev]
+            if yi == y and yj == y:
+                xi = poly_x[e]
+                xj = poly_x[prev]
+                hxmin_buf[h] = fmin(xi, xj)
+                hxmax_buf[h] = fmax(xi, xj)
+                h += 1
+            elif (yi > y) != (yj > y):
+                xi = poly_x[e]
+                xj = poly_x[prev]
+                xint_buf[m] = (xj - xi) * (y - yi) / (yj - yi) + xi
+                m += 1
+            prev = e
+
+        # Insertion sort the (typically few) crossings in ascending x.
+        for a in range(1, m):
+            tmp = xint_buf[a]
+            b = a - 1
+            while b >= 0 and xint_buf[b] > tmp:
+                xint_buf[b + 1] = xint_buf[b]
+                b -= 1
+            xint_buf[b + 1] = tmp
+
+        # Sweep the row's samples (monotonically increasing in x). A
+        # sample is inside when an odd number of crossings lie strictly
+        # to its right (the ``x < xint`` parity rule), unless it lies
+        # on the boundary. On-boundary samples are excluded (classified
+        # as outside), consistent with ``point_in_polygon``: a sample
+        # whose x coincides exactly with a crossing lies on a sloped or
+        # vertical edge, and a sample within a horizontal edge's closed
+        # x-span lies on that edge.
+        x = x0 + 0.5 * dx
+        ptr = 0
         for j in range(subpixels):
-            if point_in_polygon(x, y, poly_x, poly_y, n_poly) == 1:
+            while ptr < m and xint_buf[ptr] < x:
+                ptr += 1
+            inside = (((m - ptr) & 1) == 1
+                      and not (ptr < m and xint_buf[ptr] == x))
+            if inside:
+                for hh in range(h):
+                    if hxmin_buf[hh] <= x <= hxmax_buf[hh]:
+                        inside = False
+                        break
+            if inside:
                 hits += 1.0
-            y += dy
-        x += dx
+            x += dx
+        y += dy
 
     return hits / (subpixels * subpixels)
 

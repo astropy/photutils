@@ -205,3 +205,59 @@ def test_polygon_overlap_many_vertices():
     grid = polygon_overlap_grid(-3.5, 3.5, -3.5, 3.5, n, n, vx, vy, 1, 1)
     pixel_area = (7.0 / n) ** 2
     assert_allclose(grid.sum() * pixel_area, np.pi * radius**2, rtol=1e-6)
+
+
+def test_polygon_overlap_subpixel_on_horizontal_boundary():
+    """
+    Test that subpixel centers landing exactly on a horizontal polygon
+    edge are excluded (classified as outside).
+
+    A wide rectangle spanning y in [-1, 1] is sampled by a single pixel
+    with ``subpixels=3``, so the subpixel-row centers fall exactly at y
+    = -1, 0, +1. The top and bottom rows lie exactly on the rectangle's
+    horizontal edges (with all column centers strictly inside in x), so
+    only the middle row (3 of 9 subpixels) is counted, giving 1/3.
+
+    Before horizontal-edge handling, the bottom edge (lower y, region
+    above) was incorrectly counted, which would give 2/3 instead.
+    """
+    vx = np.array([-2.0, 2.0, 2.0, -2.0])
+    vy = np.array([-1.0, -1.0, 1.0, 1.0])
+    grid = polygon_overlap_grid(-1.5, 1.5, -1.5, 1.5, 1, 1, vx, vy, 0, 3)
+    assert_allclose(grid[0, 0], 1.0 / 3.0)
+
+
+def test_polygon_overlap_subpixel_on_vertical_boundary():
+    """
+    Test that subpixel centers landing exactly on a vertical polygon
+    edge are excluded (classified as outside).
+
+    A tall rectangle spanning x in [-1, 1] is sampled by a single pixel
+    with ``subpixels=3``, so the subpixel-column centers fall exactly
+    at x = -1, 0, +1. The left and right columns lie exactly on the
+    rectangle's vertical edges (with all row centers strictly inside in
+    y), so only the middle column (3 of 9 subpixels) is counted, giving
+    1/3.
+    """
+    vx = np.array([-1.0, 1.0, 1.0, -1.0])
+    vy = np.array([-2.0, -2.0, 2.0, 2.0])
+    grid = polygon_overlap_grid(-1.5, 1.5, -1.5, 1.5, 1, 1, vx, vy, 0, 3)
+    assert_allclose(grid[0, 0], 1.0 / 3.0)
+
+
+def test_polygon_overlap_subpixel_on_all_boundaries():
+    """
+    Test that subpixel centers on horizontal edges, vertical edges, and
+    at corners are all excluded.
+
+    A unit square spanning [-1, 1] in both axes is sampled by a single
+    pixel with ``subpixels=3``, so the 9 subpixel centers fall at every
+    combination of (-1, 0, +1). Of these, only the central center
+    (0, 0) is strictly interior; the four edge-midpoint centers (two
+    horizontal, two vertical) and the four corner centers all lie on the
+    boundary and are excluded, giving 1/9.
+    """
+    vx = np.array([-1.0, 1.0, 1.0, -1.0])
+    vy = np.array([-1.0, -1.0, 1.0, 1.0])
+    grid = polygon_overlap_grid(-1.5, 1.5, -1.5, 1.5, 1, 1, vx, vy, 0, 3)
+    assert_allclose(grid[0, 0], 1.0 / 9.0)
