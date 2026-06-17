@@ -249,16 +249,31 @@ area of a circle with a radius of 3::
 Aperture and Pixel Overlap
 --------------------------
 
-The overlap of the aperture with the data pixels can be handled in
-different ways.  The default method (``method='exact'``) calculates the
-exact intersection of the aperture with each pixel.  The
-other options, ``'center'`` and ``'subpixel'``, are faster, but with
-the expense of less precision.  With ``'center'``, a pixel is
-considered to be entirely in or out of the aperture depending on
-whether its center is in or out of the aperture.  With ``'subpixel'``,
-pixels are divided into a number of subpixels, which are in or out of
-the aperture based on their centers.  For this method, the number of
-subpixels needs to be set with the ``subpixels`` keyword.
+The overlap of the aperture with the data pixels can be handled using one of three methods:
+
+* ``'exact'`` (default):
+  Calculates the exact geometric intersection of the aperture with each
+  pixel. This is the most precise and preferred method.
+
+* ``'center'``:
+  A pixel is assigned a weight of 1 if its center falls within the
+  aperture, and 0 otherwise.
+
+* ``'subpixel'``:
+  Pixels are divided into a sub-grid of :math:`N×N` subpixels (where
+  :math:`N` is set by the ``'subpixels'`` keyword). The pixel weight is
+  the fraction of subpixel centers that fall within the aperture.
+
+.. note::
+
+    For the ``'center'`` and ``'subpixel'`` methods, a pixel (or
+    subpixel) center is considered "inside" the aperture only if it lies
+    *strictly* inside the aperture boundary. A center that lands exactly
+    on the aperture boundary is treated as outside and assigned a weight
+    of 0. This is particularly relevant for the ``'center'`` method
+    when using apertures aligned perfectly with the pixel grid. For the
+    ``'subpixel'`` method it is less relevant, since subpixel centers
+    seldom land exactly on the boundary.
 
 This example uses the ``'subpixel'`` method where pixels are resampled
 by a factor of 5 (``subpixels=5``) in each dimension::
@@ -277,10 +292,9 @@ above).
 For the ``'subpixel'`` method, the default value is ``subpixels=5``,
 meaning that each pixel is equally divided into 25 smaller pixels
 (this is the method and subsampling factor used in `SourceExtractor
-<https://sextractor.readthedocs.io/en/latest/>`_).
-
-The precision can be increased by increasing ``subpixels``, but note
-that computation time will be increased.
+<https://sextractor.readthedocs.io/en/latest/>`_). The precision can
+be improved by increasing ``subpixels``, but the computation time will
+generally increase as a result.
 
 
 Aperture Photometry with Multiple Apertures at Each Position
