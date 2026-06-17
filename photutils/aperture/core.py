@@ -354,7 +354,9 @@ class PixelAperture(Aperture):
               continuous in the range [0, 1].
             * ``'center'``:
               Binary weighting based on the pixel center. Weights are
-              either 0 or 1.
+              either 0 or 1. A pixel is included only if its center lies
+              strictly inside the aperture; pixel centers lying exactly
+              on the aperture boundary are excluded (weight 0).
             * ``'subpixel'``:
               Approximates the overlap by averaging binary samples on a
               subgrid. The number of samples is set by the ``subpixels``
@@ -423,7 +425,9 @@ class PixelAperture(Aperture):
               continuous in the range [0, 1].
             * ``'center'``:
               Binary weighting based on the pixel center. Weights are
-              either 0 or 1.
+              either 0 or 1. A pixel is included only if its center lies
+              strictly inside the aperture; pixel centers lying exactly
+              on the aperture boundary are excluded (weight 0).
             * ``'subpixel'``:
               Approximates the overlap by averaging binary samples on a
               subgrid. The number of samples is set by the ``subpixels``
@@ -668,7 +672,9 @@ class PixelAperture(Aperture):
               continuous in the range [0, 1].
             * ``'center'``:
               Binary weighting based on the pixel center. Weights are
-              either 0 or 1.
+              either 0 or 1. A pixel is included only if its center lies
+              strictly inside the aperture; pixel centers lying exactly
+              on the aperture boundary are excluded (weight 0).
             * ``'subpixel'``:
               Approximates the overlap by averaging binary samples on a
               subgrid. The number of samples is set by the ``subpixels``
