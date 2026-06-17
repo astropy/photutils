@@ -62,7 +62,10 @@ class CircularMaskMixin:  # pragma: no cover
             * ``'subpixel'``:
               Approximates the overlap by averaging binary samples on a
               subgrid. The number of samples is set by the ``subpixels``
-              parameter. Weights are discrete in the range [0, 1].
+              parameter. Weights are discrete in the range [0, 1]. A
+              subpixel is included only if its center lies strictly
+              inside the aperture; subpixel centers lying exactly on the
+              aperture boundary are excluded (weight 0).
 
         subpixels : int, optional
             The subsampling factor per axis used when
