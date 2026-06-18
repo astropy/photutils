@@ -552,6 +552,162 @@ class PolygonAperture(PixelAperture):
 
         return cls(positions, offsets)
 
+    @classmethod
+    def _from_star(cls, positions, n_spikes, outer_radius, inner_radius=None,
+                   *, theta=0.0, optimal_shape=False, collinear_edges=False):
+        """
+        Construct a star-shaped `PolygonAperture`.
+
+        The star has ``n_spikes`` spikes, with vertices alternating
+        between ``outer_radius`` and ``inner_radius``. The first (outer)
+        vertex is placed directly above the center (in the ``+y``
+        direction) for ``theta == 0`` and is rotated counter-clockwise
+        by ``theta``.
+
+        Parameters
+        ----------
+        positions : array_like
+            The pixel coordinates of the aperture center(s) (see
+            `PolygonAperture` for the accepted formats).
+
+        n_spikes : int
+            The number of spikes (must be at least 2).
+
+        outer_radius : float
+            The distance from the center to the outer (spike) vertices
+            in pixels (must be positive).
+
+        inner_radius : float, optional
+            The distance from the center to the inner vertices in pixels
+            (must be positive and less than ``outer_radius``). If
+            either ``optimal_shape`` or ``collinear_edges`` is `True`,
+            this parameter is ignored and the inner radius is computed
+            automatically.
+
+        theta : float or `~astropy.units.Quantity`, optional
+            The rotation angle of the star, measured counter-clockwise
+            from the ``+y`` axis to the first (outer) vertex. A scalar
+            float is interpreted in radians.
+
+        optimal_shape : bool, optional
+            If `True`, compute ``inner_radius`` automatically to
+            produce a star with naturally-proportioned geometry. The
+            spike angle (the angular width at each point) is set to
+            180°/``n_spikes``, which is the exterior angle of a
+            regular ``n_spikes``-gon. This creates a balanced, visually
+            appealing star where the indentations between spikes are
+            symmetric and proportional to the spikes themselves.
+
+            The formula is:
+
+                inner_radius = outer_radius / (1 + 2·cos(π/``n_spikes``))
+
+            For a 5-pointed star, this gives a radius ratio of φ + 1
+            (where φ is the golden ratio ≈ 1.618), resulting in the
+            inner_radius ≈ 3.82 for outer_radius = 10. This ratio is
+            aesthetically pleasing and appears naturally in classical
+            star designs. Default is `False`.
+
+        collinear_edges : bool, optional
+            If `True`, compute ``inner_radius`` automatically to make
+            the two polygon edges adjacent to each spike lie on a single
+            straight line. At ``theta=0``, these edges are horizontal
+            at the sides of the top spike, creating a symmetric _/\\_
+            profile. When rotated (``theta > 0``), the edges remain
+            collinear but at a different angle.
+
+            This proportionality constraint makes the indentation
+            between spikes flat-bottomed, resulting in a sharp,
+            classical star appearance. The formula is:
+
+                inner_radius = (outer_radius · cos(2π/``n_spikes``)
+                                / cos(π/``n_spikes``))
+
+            This keyword requires ``n_spikes >= 5``. Default is `False`.
+
+        Returns
+        -------
+        aperture : `PolygonAperture`
+            The star-shaped polygon aperture.
+        """
+        n_spikes = int(n_spikes)
+        if n_spikes < 2:
+            msg = f'n_spikes must be at least 2, got {n_spikes}'
+            raise ValueError(msg)
+
+        outer_radius = float(outer_radius)
+        if not np.isfinite(outer_radius) or outer_radius <= 0.0:
+            msg = ('outer_radius must be a finite positive number, '
+                   f'got {outer_radius}')
+            raise ValueError(msg)
+
+        # Determine which automatic mode to use, if any
+        num_auto_modes = sum([optimal_shape, collinear_edges])
+        if num_auto_modes > 1:
+            msg = 'optimal_shape and collinear_edges cannot both be True'
+            raise ValueError(msg)
+
+        if optimal_shape:
+            # Compute inner radius to make spike angles = 180°/n_spikes
+            inner_radius = (outer_radius
+                            / (1.0 + 2.0 * np.cos(np.pi / n_spikes)))
+        elif collinear_edges:
+            # Compute inner radius to make the polygon edges adjacent
+            # to each spike collinear (lie on the same straight line).
+            # This creates a flat-bottomed indentation between spikes.
+            # At theta=0, these edges are horizontal; when rotated, they
+            # remain collinear but at a different angle. This requires
+            # n_spikes >= 5 because for smaller values the formula
+            # produces a negative or zero inner radius.
+            if n_spikes < 5:
+                msg = ('collinear_edges requires n_spikes >= 5, '
+                       f'got {n_spikes}')
+                raise ValueError(msg)
+            inner_radius = (outer_radius
+                            * np.cos(2 * np.pi / n_spikes)
+                            / np.cos(np.pi / n_spikes))
+        else:
+            if inner_radius is None:
+                msg = ('inner_radius must be provided if both optimal_shape '
+                       'and horizontal_edges are False')
+                raise ValueError(msg)
+
+            inner_radius = float(inner_radius)
+            if not np.isfinite(inner_radius) or inner_radius <= 0.0:
+                msg = ('inner_radius must be a finite positive number, '
+                       f'got {inner_radius}')
+                raise ValueError(msg)
+
+            if inner_radius >= outer_radius:
+                msg = ('inner_radius must be less than outer_radius '
+                       f'({inner_radius} >= {outer_radius})')
+                raise ValueError(msg)
+
+        if isinstance(theta, u.Quantity):
+            theta_rad = float(theta.to_value(u.rad))
+        else:
+            theta_rad = float(theta)
+
+        # Create star vertices alternating between outer and inner radii.
+        # The star has 2*n_spikes vertices total.
+        # For theta=0, the first (outer) vertex points straight up (+y),
+        # at angle pi/2 from the x-axis.
+        n_vertices = 2 * n_spikes
+        step = 2.0 * np.pi / n_vertices
+        base = np.pi / 2.0 + theta_rad
+
+        # Create alternating radii: outer, inner, outer, inner, ...
+        radii = np.zeros(n_vertices)
+        radii[::2] = outer_radius  # even indices: outer vertices
+        radii[1::2] = inner_radius  # odd indices: inner vertices
+
+        # Place vertices at the appropriate angles
+        thetas = base + np.arange(n_vertices) * step
+        offsets = np.column_stack([radii * np.cos(thetas),
+                                   radii * np.sin(thetas)])
+
+        return cls(positions, offsets)
+
     @lazyproperty
     def vertices(self):
         """
