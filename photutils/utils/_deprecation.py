@@ -18,6 +18,7 @@ import inspect
 import warnings
 from contextlib import contextmanager
 from contextvars import ContextVar
+from copy import deepcopy
 from functools import wraps
 
 from astropy.table import QTable, Table
@@ -588,7 +589,7 @@ class DeprecatedColumnMixin:
         keys = self._translate_names(keys)
         return super().group_by(keys, **kwargs)
 
-    def copy(self, copy_data=True):
+    def copy(self, *, copy_data=True):
         """
         Override to preserve the deprecation map on copy.
 
@@ -612,6 +613,13 @@ class DeprecatedColumnMixin:
         new_table._deprecation_since = self._deprecation_since
         new_table._deprecation_until = self._deprecation_until
         return new_table
+
+    def __deepcopy__(self, memo):
+        out = self.copy(copy_data=False)
+        for name in out.colnames:
+            out.columns.__setitem__(name, deepcopy(self[name]), validated=True)
+        out.meta = deepcopy(self.meta)
+        return out
 
 
 class DeprecatedColumnTable(DeprecatedColumnMixin, Table):
