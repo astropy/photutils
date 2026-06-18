@@ -212,7 +212,7 @@ def test_ellipse_annulus_theta_quantity():
 
 def test_elliptical_aperture_to_polygon():
     aper = EllipticalAperture((10.0, 20.0), a=5.0, b=3.0, theta=np.pi / 4)
-    poly = aper.to_polygon(n_points=200)
+    poly = aper.to_polygon(n_vertices=200)
     assert isinstance(poly, PolygonAperture)
     assert poly.n_vertices == 200
     assert abs(poly.area - aper.area) / aper.area < 1e-3
@@ -221,22 +221,22 @@ def test_elliptical_aperture_to_polygon():
 def test_elliptical_aperture_to_polygon_multi_position():
     aper = EllipticalAperture([(10.0, 20.0), (30.0, 40.0)],
                               a=4.0, b=2.0, theta=0.5)
-    poly = aper.to_polygon(n_points=50)
+    poly = aper.to_polygon(n_vertices=50)
     assert poly.vertices.shape == (2, 50, 2)
 
 
-def test_elliptical_aperture_to_polygon_invalid_n_points():
+def test_elliptical_aperture_to_polygon_invalid_n_vertices():
     aper = EllipticalAperture((0.0, 0.0), a=1.0, b=1.0)
-    match = 'n_points must be at least 3'
+    match = 'n_vertices must be at least 3'
     with pytest.raises(ValueError, match=match):
-        aper.to_polygon(n_points=2)
+        aper.to_polygon(n_vertices=2)
 
 
 def test_sky_elliptical_aperture_to_polygon():
     pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
     aper = SkyEllipticalAperture(pos, a=5.0 * u.arcsec, b=3.0 * u.arcsec,
                                  theta=30 * u.deg)
-    poly = aper.to_polygon(n_points=200)
+    poly = aper.to_polygon(n_vertices=200)
     assert isinstance(poly, SkyPolygonAperture)
     assert poly.n_vertices == 200
     assert poly.vertices.shape == (200,)
@@ -251,16 +251,16 @@ def test_sky_elliptical_aperture_to_polygon_multi_position():
     pos = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     aper = SkyEllipticalAperture(pos, a=4.0 * u.arcsec, b=2.0 * u.arcsec,
                                  theta=0.5 * u.rad)
-    poly = aper.to_polygon(n_points=50)
+    poly = aper.to_polygon(n_vertices=50)
     assert poly.vertices.shape == (2, 50)
 
 
-def test_sky_elliptical_aperture_to_polygon_invalid_n_points():
+def test_sky_elliptical_aperture_to_polygon_invalid_n_vertices():
     pos = SkyCoord(ra=0.0, dec=0.0, unit='deg')
     aper = SkyEllipticalAperture(pos, a=1.0 * u.arcsec, b=1.0 * u.arcsec)
-    match = 'n_points must be at least 3'
+    match = 'n_vertices must be at least 3'
     with pytest.raises(ValueError, match=match):
-        aper.to_polygon(n_points=2)
+        aper.to_polygon(n_vertices=2)
 
 
 def _make_round_trip_wcs():
@@ -283,8 +283,8 @@ def test_sky_elliptical_aperture_to_polygon_wcs_round_trip(theta_deg):
     pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
     aper = SkyEllipticalAperture(pos, a=5.0 * u.arcsec, b=3.0 * u.arcsec,
                                  theta=theta_deg * u.deg)
-    poly_from_sky = aper.to_polygon(n_points=200).to_pixel(wcs)
-    poly_from_pix = aper.to_pixel(wcs).to_polygon(n_points=200)
+    poly_from_sky = aper.to_polygon(n_vertices=200).to_pixel(wcs)
+    poly_from_pix = aper.to_pixel(wcs).to_polygon(n_vertices=200)
     assert_allclose(poly_from_sky.area, poly_from_pix.area, rtol=1e-6)
     assert_allclose(poly_from_sky._xy_extents, poly_from_pix._xy_extents,
                     rtol=1e-6)
@@ -304,8 +304,8 @@ def test_elliptical_aperture_to_polygon_to_sky_round_trip(theta_deg):
     wcs = _make_round_trip_wcs()
     aper = EllipticalAperture((50.0, 50.0), a=5.0, b=3.0,
                               theta=np.deg2rad(theta_deg))
-    sky_from_poly = aper.to_polygon(n_points=200).to_sky(wcs)
-    sky_from_aper = aper.to_sky(wcs).to_polygon(n_points=200)
+    sky_from_poly = aper.to_polygon(n_vertices=200).to_sky(wcs)
+    sky_from_aper = aper.to_sky(wcs).to_polygon(n_vertices=200)
     assert_allclose(sky_from_poly.positions.ra.deg,
                     sky_from_aper.positions.ra.deg)
     assert_allclose(sky_from_poly.positions.dec.deg,

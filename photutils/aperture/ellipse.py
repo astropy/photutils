@@ -35,11 +35,11 @@ __all__ = [
 ]
 
 
-def _elliptical_polygon_offsets(a, b, theta, n_points, *, swap_axes=False):
+def _elliptical_polygon_offsets(a, b, theta, n_vertices, *, swap_axes=False):
     """
     Compute the vertex offsets that approximate an ellipse with
     semimajor axis ``a``, semiminor axis ``b``, and position angle
-    ``theta`` (in radians) using ``n_points`` equally spaced vertices.
+    ``theta`` (in radians) using ``n_vertices`` equally spaced vertices.
 
     Parameters
     ----------
@@ -50,11 +50,14 @@ def _elliptical_polygon_offsets(a, b, theta, n_points, *, swap_axes=False):
         The semiminor axis of the ellipse.
 
     theta : float
-        The position angle of the ellipse in radians. For a right-handed
-        world coordinate system, the position angle increases
-        counterclockwise from North (PA=0).
+        The rotation angle of the ellipse in radians. With
+        ``swap_axes=False`` (the pixel convention), it is measured
+        counterclockwise from the first (``x``) coordinate axis. With
+        ``swap_axes=True`` (the sky convention), it is the position
+        angle measured counterclockwise from North (+latitude), where
+        PA=0 places the semimajor axis along North.
 
-    n_points : int
+    n_vertices : int
         The number of vertices used to approximate the ellipse. Must be
         at least 3.
 
@@ -69,14 +72,15 @@ def _elliptical_polygon_offsets(a, b, theta, n_points, *, swap_axes=False):
     -------
     offsets : 2D `~numpy.ndarray`
         The vertex offsets that approximate the ellipse. The shape is
-        (n_points, 2) where the columns correspond to the x and y
+        (n_vertices, 2) where the columns correspond to the x and y
         coordinate offsets, respectively.
     """
-    if n_points < 3:
-        msg = f'n_points must be at least 3, got {n_points}'
+    n_vertices = int(n_vertices)
+    if n_vertices < 3:
+        msg = f'n_vertices must be at least 3, got {n_vertices}'
         raise ValueError(msg)
 
-    angles = np.linspace(0.0, 2.0 * np.pi, n_points, endpoint=False)
+    angles = np.linspace(0.0, 2.0 * np.pi, n_vertices, endpoint=False)
     x = a * np.cos(angles)
     y = b * np.sin(angles)
     if swap_axes:
@@ -389,14 +393,14 @@ class EllipticalAperture(PixelAperture):
         return SkyEllipticalAperture(positions=positions, a=a, b=b,
                                      theta=sky_angle)
 
-    def to_polygon(self, n_points=100):
+    def to_polygon(self, n_vertices=100):
         """
         Return a `~photutils.aperture.PolygonAperture` that approximates
         this elliptical aperture.
 
         Parameters
         ----------
-        n_points : int, optional
+        n_vertices : int, optional
             The number of polygon vertices used to approximate the
             ellipse. Must be at least 3. Default is 100.
 
@@ -406,7 +410,7 @@ class EllipticalAperture(PixelAperture):
             A polygon aperture that approximates the ellipse.
         """
         offsets = _elliptical_polygon_offsets(
-            self.a, self.b, self.theta.to_value(u.radian), n_points)
+            self.a, self.b, self.theta.to_value(u.radian), n_vertices)
         return PolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
@@ -744,14 +748,14 @@ class SkyEllipticalAperture(SkyAperture):
         return EllipticalAperture(positions=positions, a=a, b=b,
                                   theta=pix_angle)
 
-    def to_polygon(self, n_points=100):
+    def to_polygon(self, n_vertices=100):
         """
         Return a `~photutils.aperture.SkyPolygonAperture` that
         approximates this elliptical aperture.
 
         Parameters
         ----------
-        n_points : int, optional
+        n_vertices : int, optional
             The number of polygon vertices used to approximate the
             ellipse. Must be at least 3. Default is 100.
 
@@ -763,7 +767,7 @@ class SkyEllipticalAperture(SkyAperture):
         unit = self.a.unit
         offsets = _elliptical_polygon_offsets(
             self.a.to_value(unit), self.b.to_value(unit),
-            self.theta.to_value(u.radian), n_points, swap_axes=True) * unit
+            self.theta.to_value(u.radian), n_vertices, swap_axes=True) * unit
         return SkyPolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
