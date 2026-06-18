@@ -14,7 +14,6 @@ except ImportError:
 
 from .utils._deprecation import use_future_column_names  # noqa: F401
 
-
 future_column_names = False
 """
 If `True`, all photutils functions return standard
