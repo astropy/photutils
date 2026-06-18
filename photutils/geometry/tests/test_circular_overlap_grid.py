@@ -26,3 +26,15 @@ def test_circular_overlap_grid(grid_size, circ_size, use_exact, subsample):
     g = circular_overlap_grid(-1.0, 1.0, -1.0, 1.0, grid_size, grid_size,
                               circ_size, use_exact, subsample)
     assert_allclose(g.max(), 1.0)
+
+
+@pytest.mark.parametrize('use_exact', use_exacts)
+def test_circular_overlap_grid_no_readonly_inputs(use_exact):
+    """
+    Test that the scalar-input overlap grid function takes no array
+    inputs (so read-only input arrays cannot occur) and returns a
+    freshly allocated, writeable output array of shape (ny, nx).
+    """
+    g = circular_overlap_grid(-5.0, 5.0, -5.0, 5.0, 10, 12, 3.0, use_exact, 5)
+    assert g.shape == (12, 10)
+    assert g.flags.writeable

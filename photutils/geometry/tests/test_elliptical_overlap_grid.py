@@ -32,3 +32,16 @@ def test_elliptical_overlap_grid(grid_size, maj_size, min_size, angle,
                                 maj_size, min_size, angle, use_exact,
                                 subsample)
     assert_allclose(g.max(), 1.0)
+
+
+@pytest.mark.parametrize('use_exact', use_exacts)
+def test_elliptical_overlap_grid_no_readonly_inputs(use_exact):
+    """
+    Test that the scalar-input overlap grid function takes no array
+    inputs (so read-only input arrays cannot occur) and returns a
+    freshly allocated, writeable output array of shape (ny, nx).
+    """
+    g = elliptical_overlap_grid(-5.0, 5.0, -5.0, 5.0, 10, 12, 4.0, 2.0,
+                                0.5, use_exact, 5)
+    assert g.shape == (12, 10)
+    assert g.flags.writeable

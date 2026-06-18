@@ -26,6 +26,29 @@ def test_polygon_overlap_clockwise_input():
     assert_allclose(grid_cw, grid_ccw)
 
 
+@pytest.mark.parametrize('use_exact', [1, 0])
+def test_polygon_overlap_readonly_vertices(use_exact):
+    """
+    Regression test that read-only (non-writeable) vertex arrays are
+    accepted and give results identical to writeable arrays.
+
+    The vertex arrays are buffered into ``const`` typed memoryviews so
+    that read-only arrays do not raise a ``ValueError``.
+    """
+    vx = np.array([-4.0, 6.0, 3.0, -5.0])
+    vy = np.array([-3.0, -2.0, 5.0, 4.0])
+    expected = polygon_overlap_grid(-10.0, 10.0, -10.0, 10.0, 40, 40,
+                                    vx, vy, use_exact, 5)
+
+    vx_ro = vx.copy()
+    vy_ro = vy.copy()
+    vx_ro.setflags(write=False)
+    vy_ro.setflags(write=False)
+    result = polygon_overlap_grid(-10.0, 10.0, -10.0, 10.0, 40, 40,
+                                  vx_ro, vy_ro, use_exact, 5)
+    assert_allclose(result, expected, rtol=1e-12)
+
+
 @pytest.mark.parametrize(('leg', 'dx', 'dy'), [
     (3.0, 0.0, 0.0),  # base case
     (1.0, 0.0, 0.0),  # small triangle
