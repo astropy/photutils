@@ -597,9 +597,6 @@ class DeprecatedColumnMixin:
         ----------
         copy_data : bool, optional
             Whether to copy the data. The default is `True`.
-            ``copy_data`` cannot be forced to be kwarg-only because
-            astropy table ``deepcopy()`` calls ``copy`` with a
-            positional argument.
 
         Returns
         -------
