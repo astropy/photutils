@@ -8,10 +8,10 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
 
+from photutils.aperture._batch_photometry import SHAPE_POLYGON
 from photutils.aperture.attributes import (ApertureAttribute, PixelPositions,
                                            SkyCoordPositions)
 from photutils.aperture.core import PixelAperture, SkyAperture
-from photutils.geometry._batch_photometry import SHAPE_POLYGON
 from photutils.geometry._polygon_overlap import polygon_overlap_grid
 
 __all__ = [

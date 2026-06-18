@@ -11,6 +11,8 @@ import numpy as np
 from astropy.coordinates import Angle
 from astropy.utils import lazyproperty
 
+from photutils.aperture._batch_photometry import (SHAPE_RECTANGLE,
+                                                  SHAPE_RECTANGULAR_ANNULUS)
 from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            PositiveScalarAngle, ScalarAngle,
                                            ScalarAngleOrValue,
@@ -19,8 +21,6 @@ from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
 from photutils.geometry import rectangular_overlap_grid
-from photutils.geometry._batch_photometry import (SHAPE_RECTANGLE,
-                                                  SHAPE_RECTANGULAR_ANNULUS)
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs)
 from photutils.utils._wcs_helpers import (pixel_shape_to_sky_svd,
