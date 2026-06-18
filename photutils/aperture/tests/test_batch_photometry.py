@@ -119,6 +119,49 @@ def test_data_dtypes(dtype):
     assert_allclose(batch[0], legacy[0], rtol=rtol, equal_nan=True)
 
 
+@pytest.mark.parametrize(('method', 'subpixels'), METHODS)
+def test_readonly_arrays(method, subpixels):
+    """
+    Test that read-only (non-writeable) data, error, and mask arrays are
+    accepted by the batch photometry driver and give results identical
+    to writeable arrays.
+
+    The batch Cython driver buffers the data, error, and positions into
+    ``const`` typed memoryviews so that read-only arrays do not raise a
+    ``ValueError``.
+    """
+    aperture = CircularAperture(POSITIONS, r=5.5)
+    data = DATA.copy()
+    error = ERROR.copy()
+    mask = MASK.copy()
+    for arr in (data, error, mask):
+        arr.setflags(write=False)
+
+    batch = aperture._do_batch_photometry(data, error=error, mask=mask,
+                                          method=method, subpixels=subpixels)
+    assert batch is not None
+
+    expected = aperture._do_batch_photometry(DATA, error=ERROR, mask=MASK,
+                                             method=method,
+                                             subpixels=subpixels)
+    for batch_arr, exp_arr in zip(batch, expected, strict=True):
+        assert_allclose(batch_arr, exp_arr, rtol=1e-12, atol=0,
+                        equal_nan=True)
+
+
+def test_readonly_data_do_photometry():
+    """
+    Test that ``do_photometry`` works with read-only data arrays.
+    """
+    data = np.ones((10, 10))
+    data.setflags(write=False)
+    aperture = CircularAperture((4.5, 4.5), r=4.5)
+    sums, _ = aperture.do_photometry(data, method='exact')
+
+    expected, _ = aperture.do_photometry(np.ones((10, 10)), method='exact')
+    assert_allclose(sums, expected, rtol=1e-12)
+
+
 def test_scalar_position():
     """
     Test that the batch photometry driver gives results identical to the
