@@ -393,7 +393,7 @@ class EllipticalAperture(PixelAperture):
         return SkyEllipticalAperture(positions=positions, a=a, b=b,
                                      theta=sky_angle)
 
-    def to_polygon(self, n_vertices=100):
+    def to_polygon(self, *, n_vertices=100):
         """
         Return a `~photutils.aperture.PolygonAperture` that approximates
         this elliptical aperture.
@@ -748,7 +748,7 @@ class SkyEllipticalAperture(SkyAperture):
         return EllipticalAperture(positions=positions, a=a, b=b,
                                   theta=pix_angle)
 
-    def to_polygon(self, n_vertices=100):
+    def to_polygon(self, *, n_vertices=100):
         """
         Return a `~photutils.aperture.SkyPolygonAperture` that
         approximates this elliptical aperture.

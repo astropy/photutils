@@ -925,7 +925,7 @@ def test_sky_n_vertices_works_for_any_polygon():
     assert aper.n_vertices == 3
 
 
-def _matches_up_to_cyclic_reversal(a, b, atol=1e-10):
+def _matches_up_to_cyclic_reversal(a, b, *, atol=1e-10):
     n = len(a)
     if len(b) != n:
         return False

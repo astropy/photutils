@@ -326,7 +326,7 @@ class DeprecatedColumnMixin:
     _deprecation_since = None
     _deprecation_until = None
 
-    def _warn_deprecated(self, name, new_name, stacklevel=4):
+    def _warn_deprecated(self, name, new_name, *, stacklevel=4):
         """
         Issue a deprecation warning for a column name.
 
@@ -357,7 +357,7 @@ class DeprecatedColumnMixin:
         warnings.warn(msg, AstropyDeprecationWarning,
                       stacklevel=stacklevel)
 
-    def _translate_name(self, name, stacklevel=4):
+    def _translate_name(self, name, *, stacklevel=4):
         """
         Translate a single name, issue a warning, and return the new
         name.
@@ -382,7 +382,7 @@ class DeprecatedColumnMixin:
             return new_name
         return name
 
-    def _translate_names(self, names, stacklevel=4):
+    def _translate_names(self, names, *, stacklevel=4):
         """
         Translate a single name or a list/tuple of names.
 
@@ -596,6 +596,9 @@ class DeprecatedColumnMixin:
         ----------
         copy_data : bool, optional
             Whether to copy the data. The default is `True`.
+            ``copy_data`` cannot be forced to be kwarg-only because
+            astropy table ``deepcopy()`` calls ``copy`` with a
+            positional argument.
 
         Returns
         -------

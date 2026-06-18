@@ -311,7 +311,7 @@ class CircularAperture(PixelAperture):
         r = Angle(self.r * mean_scale, 'arcsec')
         return SkyCircularAperture(positions=positions, r=r)
 
-    def to_polygon(self, n_vertices=100):
+    def to_polygon(self, *, n_vertices=100):
         """
         Return a `~photutils.aperture.PolygonAperture` that
         approximates this circular aperture.
@@ -587,7 +587,7 @@ class SkyCircularAperture(SkyAperture):
         r = self.r.to_value(u.arcsec) * mean_scale
         return CircularAperture(positions=positions, r=r)
 
-    def to_polygon(self, n_vertices=100):
+    def to_polygon(self, *, n_vertices=100):
         """
         Return a `~photutils.aperture.SkyPolygonAperture` that
         approximates this circular aperture.

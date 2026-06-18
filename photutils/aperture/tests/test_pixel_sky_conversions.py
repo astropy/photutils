@@ -122,7 +122,7 @@ def _build_pair(case, theta):
     return sky, pix
 
 
-def _make_sip_wcs(ra_deg=100.0, dec_deg=30.0):
+def _make_sip_wcs(*, ra_deg=100.0, dec_deg=30.0):
     """
     Build a small TAN-SIP WCS centered at the given (RA, Dec).
 

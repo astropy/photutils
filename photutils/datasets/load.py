@@ -21,7 +21,7 @@ __all__ = [
 ]
 
 
-def _get_path(filename, location='local', cache=True, show_progress=False):
+def _get_path(filename, *, location='local', cache=True, show_progress=False):
     """
     Get the local path for a given file.
 

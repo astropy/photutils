@@ -608,7 +608,7 @@ class TestSVDShapeConversions:
 
 
 def _project_sky_ellipse_boundary(skycoord, wcs, a_arcsec, b_arcsec,
-                                  pa_rad, npts=720):
+                                  pa_rad, *, npts=720):
     """
     Project the boundary of a sky ellipse to pixel coordinates.
 
