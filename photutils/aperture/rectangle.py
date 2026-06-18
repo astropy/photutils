@@ -17,7 +17,8 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            PositiveScalarAngle, ScalarAngle,
                                            ScalarAngleOrValue,
                                            SkyCoordPositions)
-from photutils.aperture.core import PixelAperture, SkyAperture
+from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _update_method_subpixels_docstring)
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
 from photutils.geometry import rectangular_overlap_grid
@@ -79,37 +80,14 @@ class RectangularMaskMixin:  # pragma: no cover
     .. deprecated:: 3.0
     """
 
+    @_update_method_subpixels_docstring
     def to_mask(self, method='exact', subpixels=5):
         """
         Return a mask for the aperture.
 
         Parameters
         ----------
-        method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the pixel weights (the fraction
-            of the pixel area covered by the aperture):
-
-            * ``'exact'`` (default):
-              Calculates the exact geometric overlap area. Weights are
-              continuous in the range [0, 1].
-            * ``'center'``:
-              Binary weighting based on the pixel center. Weights are
-              either 0 or 1. A pixel is included only if its center lies
-              strictly inside the aperture; pixel centers lying exactly
-              on the aperture boundary are excluded (weight 0).
-            * ``'subpixel'``:
-              Approximates the overlap by averaging binary samples on a
-              subgrid. The number of samples is set by the ``subpixels``
-              parameter. Weights are discrete in the range [0, 1]. A
-              subpixel is included only if its center lies strictly
-              inside the aperture; subpixel centers lying exactly on the
-              aperture boundary are excluded (weight 0).
-
-        subpixels : int, optional
-            The subsampling factor per axis used when
-            ``method='subpixel'``. Each pixel is divided into a grid of
-            ``subpixels**2`` subpixels to approximate the overlap. This
-            parameter is ignored for other methods.
+        <method_subpixels_descriptions>
 
         Returns
         -------
