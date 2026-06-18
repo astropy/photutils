@@ -11,6 +11,8 @@ import numpy as np
 from astropy.coordinates import Angle
 from astropy.utils import lazyproperty
 
+from photutils.aperture._batch_photometry import (SHAPE_CIRCLE,
+                                                  SHAPE_CIRCULAR_ANNULUS)
 from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            PositiveScalarAngle,
                                            SkyCoordPositions)
@@ -18,8 +20,6 @@ from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
 from photutils.geometry import circular_overlap_grid
-from photutils.geometry._batch_photometry import (SHAPE_CIRCLE,
-                                                  SHAPE_CIRCULAR_ANNULUS)
 from photutils.utils._deprecation import deprecated
 from photutils.utils._wcs_helpers import (pixel_to_sky_mean_scale,
                                           sky_to_pixel_mean_scale)

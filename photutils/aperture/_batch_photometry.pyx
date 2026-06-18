@@ -19,13 +19,14 @@ free-threaded Python builds.
 
 import numpy as np
 
-from ._polygon_overlap cimport (polygon_overlap_single_subpixel,
-                                polygon_pixel_overlap)
-from .circular_overlap cimport (circular_overlap_single_exact,
-                                circular_overlap_single_subpixel)
-from .elliptical_overlap cimport (elliptical_overlap_single_exact,
-                                  elliptical_overlap_single_subpixel)
-from .rectangular_overlap cimport rectangular_overlap_single_subpixel
+from photutils.geometry._polygon_overlap cimport (
+    polygon_overlap_single_subpixel, polygon_pixel_overlap)
+from photutils.geometry.circular_overlap cimport (
+    circular_overlap_single_exact, circular_overlap_single_subpixel)
+from photutils.geometry.elliptical_overlap cimport (
+    elliptical_overlap_single_exact, elliptical_overlap_single_subpixel)
+from photutils.geometry.rectangular_overlap cimport (
+    rectangular_overlap_single_subpixel)
 
 __all__ = ['batch_aperture_sums']
 

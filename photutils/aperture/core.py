@@ -12,9 +12,9 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
 
+from photutils.aperture._batch_photometry import batch_aperture_sums
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.mask import ApertureMask
-from photutils.geometry._batch_photometry import batch_aperture_sums
 from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
@@ -558,9 +558,9 @@ class PixelAperture(Aperture):
         spec : tuple or `None`
             A ``(shape_code, params)`` tuple, where
             ``shape_code`` is one of the shape codes defined in
-            `photutils.geometry._batch_photometry` and ``params``
+            `photutils.aperture._batch_photometry` and ``params``
             is a tuple of the aperture shape parameters expected by
-            `~photutils.geometry._batch_photometry.batch_aperture_sums`
+            `~photutils.aperture._batch_photometry.batch_aperture_sums`
             for that shape. `None` is returned if batch photometry is
             not supported for this aperture, in which case the slower
             mask-based code path is used.
