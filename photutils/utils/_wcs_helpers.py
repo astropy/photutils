@@ -90,7 +90,7 @@ def _pixel_to_sky_jacobian(pixcoord, wcs):
     return center, jacobian, jacobian_inv, parity
 
 
-def _svd_ellipse_from_composite(m_comp, width_col_idx=0, sky_angle=False,
+def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
                                 input_circular=False):
     """
     Extract ellipse width, height, and angle from a composite matrix

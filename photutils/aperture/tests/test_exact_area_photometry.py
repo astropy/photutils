@@ -21,7 +21,7 @@ from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 RectangularAperture, aperture_photometry)
 
 
-def _phot_sum(aperture, data=None):
+def _phot_sum(aperture, *, data=None):
     if data is None:
         shape = (101, 101)
         data = np.ones(shape, dtype=float)

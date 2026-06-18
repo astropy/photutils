@@ -131,7 +131,8 @@ def _polygon_is_simple(verts):
     return True
 
 
-def _validate_simple_polygon(verts, name='vertex_offsets', check_simple=True):
+def _validate_simple_polygon(verts, *, name='vertex_offsets',
+                             check_simple=True):
     """
     Verify that ``verts`` defines a simple, non-degenerate polygon.
 
@@ -298,7 +299,7 @@ def _regular_polygon_offsets(n_vertices, radius, angle_rad):
                             radius * np.sin(thetas)])
 
 
-def _is_regular_polygon(offsets, rtol=1.0e-7, atol=1.0e-10):
+def _is_regular_polygon(offsets, *, rtol=1.0e-7, atol=1.0e-10):
     """
     Return `True` if ``offsets`` defines a regular polygon centered at
     the origin (equal vertex distances and uniform angular spacing).
@@ -499,7 +500,7 @@ class PolygonAperture(PixelAperture):
         return cls(tuple(center), offsets)
 
     @classmethod
-    def from_regular_polygon(cls, positions, n_vertices, radius, theta=0.0):
+    def from_regular_polygon(cls, positions, n_vertices, radius, *, theta=0.0):
         """
         Construct a regular `PolygonAperture` from a center, vertex
         count, circumradius, and rotation angle.
@@ -952,7 +953,7 @@ class SkyPolygonAperture(SkyAperture):
         return cls(positions=center, vertex_offsets=offsets)
 
     @classmethod
-    def from_regular_polygon(cls, positions, n_vertices, radius,
+    def from_regular_polygon(cls, positions, n_vertices, radius, *,
                              theta=0.0 * u.deg):
         """
         Construct a regular `SkyPolygonAperture` from a center, vertex

@@ -694,7 +694,7 @@ class TestDeprecatedPositionalKwargs:
 
 
 @deprecated_renamed_argument('b', 'new', '1.0', until='2.0')
-def _example_func2(a, new, c=20):
+def _example_func2(a, new, *, c=20):
     """
     Example function for testing deprecated_renamed_argument.
     """
@@ -702,7 +702,7 @@ def _example_func2(a, new, c=20):
 
 
 @deprecated_renamed_argument('b', 'new', '1.0', until=None)
-def _example_func3(a, new, c=20):
+def _example_func3(a, new, *, c=20):
     """
     Example function for testing deprecated_renamed_argument
     with no "until" version specified.

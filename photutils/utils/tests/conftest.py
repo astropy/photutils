@@ -14,7 +14,7 @@ WCS_CENTER = SkyCoord(100 * u.deg, 30 * u.deg)
 WCS_CDELT_ARCSEC = 0.1
 
 
-def _make_simple_wcs(skycoord, resolution, size, rotation_deg=0.0):
+def _make_simple_wcs(skycoord, resolution, size, *, rotation_deg=0.0):
     """
     Create a simple TAN WCS with optional rotation.
 
