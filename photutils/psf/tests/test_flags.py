@@ -488,7 +488,7 @@ def test_decode_psf_flags_docstring():
     docstring = decode_psf_flags.__doc__
 
     # Should not have placeholder
-    assert '<flag descriptions>' not in docstring
+    assert '<flag_descriptions>' not in docstring
 
     # Should have all expected flag names in the expected format
     expected_flags = [

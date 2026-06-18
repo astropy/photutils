@@ -5,6 +5,8 @@ Base aperture classes.
 
 import abc
 import inspect
+import re
+import textwrap
 import warnings
 from copy import deepcopy
 
@@ -18,6 +20,98 @@ from photutils.aperture.mask import ApertureMask
 from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
+
+
+# Canonical descriptions of the ``method`` and ``subpixels`` parameters
+# shared by many aperture and profile docstrings. The text is stored
+# without leading indentation and is re-indented to match the
+# placeholder by ``_update_method_subpixels_docstring``.
+_METHOD_INTRO = """\
+method : {'exact', 'center', 'subpixel'}, optional
+    The method used to determine the pixel weights (the fraction
+    of the pixel area covered by the aperture):"""
+
+_METHOD_BULLETS = """\
+* ``'exact'`` (default):
+  Calculates the exact geometric overlap area. Weights are
+  continuous in the range [0, 1].
+* ``'center'``:
+  Binary weighting based on the pixel center. Weights are
+  either 0 or 1. A pixel is included only if its center lies
+  strictly inside the aperture; pixel centers lying exactly
+  on the aperture boundary are excluded (weight 0).
+* ``'subpixel'``:
+  Approximates the overlap by averaging binary samples on a
+  subgrid. The number of samples is set by the ``subpixels``
+  parameter. Weights are discrete in the range [0, 1]. A
+  subpixel is included only if its center lies strictly
+  inside the aperture; subpixel centers lying exactly on the
+  aperture boundary are excluded (weight 0)."""
+
+_SUBPIXELS_DOC = """\
+subpixels : int, optional
+    The subsampling factor per axis used when
+    ``method='subpixel'``. Each pixel is divided into a grid of
+    ``subpixels**2`` subpixels to approximate the overlap. This
+    parameter is ignored for other methods."""
+
+_METHOD_SUBPIXELS_DOC = (
+    _METHOD_INTRO + '\n\n'
+    + textwrap.indent(_METHOD_BULLETS, '    ') + '\n\n'
+    + _SUBPIXELS_DOC)
+
+# Mapping of placeholder tags to their replacement text. Each tag must
+# appear alone on its own line in a docstring; the leading indentation
+# of the placeholder is applied to the inserted text.
+_DOC_PLACEHOLDERS = {
+    'method_subpixels_descriptions': _METHOD_SUBPIXELS_DOC,
+    'method_bullets': _METHOD_BULLETS,
+    'subpixels_description': _SUBPIXELS_DOC,
+}
+
+_DOC_PLACEHOLDER_RE = re.compile(
+    r'^([ \t]*)<(' + '|'.join(_DOC_PLACEHOLDERS) + r')>[ \t]*$',
+    re.MULTILINE)
+
+
+def _update_method_subpixels_docstring(obj):
+    """
+    Decorator to insert standard ``method``, ``subpixels``, and related
+    parameter descriptions into a docstring.
+
+    The following placeholders are supported, each of which must appear
+    alone on its own line. The leading indentation of the placeholder is
+    applied to the inserted text, so the same source descriptions can be
+    used at any docstring indentation level.
+
+    * ``<method_subpixels_descriptions>`` : the full ``method`` and
+      ``subpixels`` parameter descriptions.
+    * ``<method_bullets>`` : only the ``'exact'``, ``'center'``, and
+      ``'subpixel'`` bullet list, e.g., for a parameter that uses a
+      custom name and introduction.
+    * ``<subpixels_description>`` : only the ``subpixels`` parameter
+      description.
+
+    Parameters
+    ----------
+    obj : function or type
+        The function or class whose docstring will be updated.
+
+    Returns
+    -------
+    obj : function or type
+        The input ``obj`` with its ``__doc__`` updated in place.
+    """
+    docstring = obj.__doc__
+    if docstring is None:
+        return obj
+
+    def replace(match):
+        indent = match.group(1)
+        return textwrap.indent(_DOC_PLACEHOLDERS[match.group(2)], indent)
+
+    obj.__doc__ = _DOC_PLACEHOLDER_RE.sub(replace, docstring)
+    return obj
 
 
 class Aperture(metaclass=abc.ABCMeta):
@@ -323,7 +417,9 @@ class PixelAperture(Aperture):
         area_overlap
         """
 
+    @_update_method_subpixels_docstring
     def area_overlap(self, data, *, mask=None, method='exact', subpixels=5):
+        # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         Return the area of overlap between the data and the aperture.
 
@@ -345,31 +441,7 @@ class PixelAperture(Aperture):
             `True` value indicates the corresponding element of ``data``
             is masked. Masked data are excluded from the area overlap.
 
-        method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the pixel weights (the fraction
-            of the pixel area covered by the aperture):
-
-            * ``'exact'`` (default):
-              Calculates the exact geometric overlap area. Weights are
-              continuous in the range [0, 1].
-            * ``'center'``:
-              Binary weighting based on the pixel center. Weights are
-              either 0 or 1. A pixel is included only if its center lies
-              strictly inside the aperture; pixel centers lying exactly
-              on the aperture boundary are excluded (weight 0).
-            * ``'subpixel'``:
-              Approximates the overlap by averaging binary samples on a
-              subgrid. The number of samples is set by the ``subpixels``
-              parameter. Weights are discrete in the range [0, 1]. A
-              subpixel is included only if its center lies strictly
-              inside the aperture; subpixel centers lying exactly on the
-              aperture boundary are excluded (weight 0).
-
-        subpixels : int, optional
-            The subsampling factor per axis used when
-            ``method='subpixel'``. Each pixel is divided into a grid of
-            ``subpixels**2`` subpixels to approximate the overlap. This
-            parameter is ignored for other methods.
+        <method_subpixels_descriptions>
 
         Returns
         -------
@@ -412,6 +484,7 @@ class PixelAperture(Aperture):
 
         return areas
 
+    @_update_method_subpixels_docstring
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def to_mask(self, method='exact', subpixels=5):
         """
@@ -419,31 +492,7 @@ class PixelAperture(Aperture):
 
         Parameters
         ----------
-        method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the pixel weights (the fraction
-            of the pixel area covered by the aperture):
-
-            * ``'exact'`` (default):
-              Calculates the exact geometric overlap area. Weights are
-              continuous in the range [0, 1].
-            * ``'center'``:
-              Binary weighting based on the pixel center. Weights are
-              either 0 or 1. A pixel is included only if its center lies
-              strictly inside the aperture; pixel centers lying exactly
-              on the aperture boundary are excluded (weight 0).
-            * ``'subpixel'``:
-              Approximates the overlap by averaging binary samples on a
-              subgrid. The number of samples is set by the ``subpixels``
-              parameter. Weights are discrete in the range [0, 1]. A
-              subpixel is included only if its center lies strictly
-              inside the aperture; subpixel centers lying exactly on the
-              aperture boundary are excluded (weight 0).
-
-        subpixels : int, optional
-            The subsampling factor per axis used when
-            ``method='subpixel'``. Each pixel is divided into a grid of
-            ``subpixels**2`` subpixels to approximate the overlap. This
-            parameter is ignored for other methods.
+        <method_subpixels_descriptions>
 
         Returns
         -------
@@ -645,9 +694,11 @@ class PixelAperture(Aperture):
 
         return sums, errs
 
+    @_update_method_subpixels_docstring
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def do_photometry(self, data, error=None, mask=None, method='exact',
                       subpixels=5):
+        # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         Perform aperture photometry on the input data.
 
@@ -669,31 +720,7 @@ class PixelAperture(Aperture):
             `True` value indicates the corresponding element of ``data``
             is masked. Masked data are excluded from all calculations.
 
-        method : {'exact', 'center', 'subpixel'}, optional
-            The method used to determine the pixel weights (the fraction
-            of the pixel area covered by the aperture):
-
-            * ``'exact'`` (default):
-              Calculates the exact geometric overlap area. Weights are
-              continuous in the range [0, 1].
-            * ``'center'``:
-              Binary weighting based on the pixel center. Weights are
-              either 0 or 1. A pixel is included only if its center lies
-              strictly inside the aperture; pixel centers lying exactly
-              on the aperture boundary are excluded (weight 0).
-            * ``'subpixel'``:
-              Approximates the overlap by averaging binary samples on a
-              subgrid. The number of samples is set by the ``subpixels``
-              parameter. Weights are discrete in the range [0, 1]. A
-              subpixel is included only if its center lies strictly
-              inside the aperture; subpixel centers lying exactly on the
-              aperture boundary are excluded (weight 0).
-
-        subpixels : int, optional
-            The subsampling factor per axis used when
-            ``method='subpixel'``. Each pixel is divided into a grid of
-            ``subpixels**2`` subpixels to approximate the overlap. This
-            parameter is ignored for other methods.
+        <method_subpixels_descriptions>
 
         Returns
         -------

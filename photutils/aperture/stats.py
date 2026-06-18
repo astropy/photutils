@@ -17,7 +17,8 @@ from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
-from photutils.aperture.core import _aperture_metadata
+from photutils.aperture.core import (_aperture_metadata,
+                                     _update_method_subpixels_docstring)
 from photutils.morphology import gini as gini_func
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_getattr,
@@ -83,7 +84,8 @@ def as_scalar(method):
     return _decorator
 
 
-class ApertureStats:
+@_update_method_subpixels_docstring
+class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
     """
     Class to create a catalog of statistics for pixels within an
     aperture.
@@ -153,27 +155,9 @@ class ApertureStats:
         properties. All other properties use the "center" aperture mask
         method. The following methods are available:
 
-        * ``'exact'`` (default):
-          Calculates the exact geometric overlap area. Weights are
-          continuous in the range [0, 1].
-        * ``'center'``:
-          Binary weighting based on the pixel center. Weights are
-          either 0 or 1. A pixel is included only if its center lies
-          strictly inside the aperture; pixel centers lying exactly on
-          the aperture boundary are excluded (weight 0).
-        * ``'subpixel'``:
-          Approximates the overlap by averaging binary samples on a
-          subgrid. The number of samples is set by the ``subpixels``
-          parameter. Weights are discrete in the range [0, 1]. A
-          subpixel is included only if its center lies strictly inside
-          the aperture; subpixel centers lying exactly on the aperture
-          boundary are excluded (weight 0).
+        <method_bullets>
 
-    subpixels : int, optional
-        The subsampling factor per axis used when
-        ``method='subpixel'``. Each pixel is divided into a grid of
-        ``subpixels**2`` subpixels to approximate the overlap. This
-        parameter is ignored for other methods.
+    <subpixels_description>
 
     local_bkg : float, `~numpy.ndarray`, `~astropy.units.Quantity`, or `None`
         The per-pixel local background values to subtract from the data

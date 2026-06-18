@@ -350,7 +350,7 @@ def _update_decode_docstring(func):
     docstring = func.__doc__
 
     # Look for the placeholder text
-    placeholder = '<flag descriptions>'
+    placeholder = '<flag_descriptions>'
 
     if placeholder in docstring:
         # Generate the flag descriptions
@@ -405,7 +405,7 @@ def decode_psf_flags(flags, return_bit_values=False):
         specific condition that was detected during PSF fitting. If no
         flags are set, an empty list is returned. Possible flag names
         are:
-        <flag descriptions>
+        <flag_descriptions>
 
     Examples
     --------

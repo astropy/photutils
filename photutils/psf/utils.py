@@ -678,7 +678,7 @@ def _create_call_docstring(*, iterative=False):
               no ``error`` array is provided, ``reduced_chi2`` values
               will be NaN.
             * ``flags`` : bitwise flag values
-              <flag descriptions>
+              <flag_descriptions>
 
         Notes
         -----
@@ -710,7 +710,7 @@ def _create_call_docstring(*, iterative=False):
             )
 
         # Apply the flag descriptions replacement
-        placeholder = '<flag descriptions>'
+        placeholder = '<flag_descriptions>'
         if placeholder in customized_docstring:
             # Generate the flag descriptions
             flag_descriptions = []

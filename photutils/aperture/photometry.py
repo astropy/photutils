@@ -11,7 +11,8 @@ from astropy.nddata import NDData, StdDevUncertainty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture.converters import region_to_aperture
-from photutils.aperture.core import Aperture, SkyAperture, _aperture_metadata
+from photutils.aperture.core import (Aperture, SkyAperture, _aperture_metadata,
+                                     _update_method_subpixels_docstring)
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
@@ -26,9 +27,11 @@ _DEPRECATED_COLUMNS: dict = {
 }
 
 
+@_update_method_subpixels_docstring
 @deprecated_positional_kwargs(since='3.0', until='4.0')
 def aperture_photometry(data, apertures, error=None, mask=None,
                         method='exact', subpixels=5, wcs=None):
+    # numpydoc ignore: PR01,PR02,PR04,PR07
     """
     Perform aperture photometry on the input data by summing the flux
     within the given aperture(s).
@@ -73,31 +76,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from all calculations.
 
-    method : {'exact', 'center', 'subpixel'}, optional
-        The method used to determine the pixel weights (the fraction of
-        the pixel area covered by the aperture):
-
-        * ``'exact'`` (default):
-          Calculates the exact geometric overlap area. Weights are
-          continuous in the range [0, 1].
-        * ``'center'``:
-          Binary weighting based on the pixel center. Weights are either
-          0 or 1. A pixel is included only if its center lies strictly
-          inside the aperture; pixel centers lying exactly on the
-          aperture boundary are excluded (weight 0).
-        * ``'subpixel'``:
-          Approximates the overlap by averaging binary samples on a
-          subgrid. The number of samples is set by the ``subpixels``
-          parameter. Weights are discrete in the range [0, 1]. A
-          subpixel is included only if its center lies strictly inside
-          the aperture; subpixel centers lying exactly on the aperture
-          boundary are excluded (weight 0).
-
-    subpixels : int, optional
-        The subsampling factor per axis used when ``method='subpixel'``.
-        Each pixel is divided into a grid of ``subpixels**2`` subpixels
-        to approximate the overlap. This parameter is ignored for other
-        methods.
+    <method_subpixels_descriptions>
 
     wcs : WCS object, optional
         A world coordinate system (WCS) transformation that
