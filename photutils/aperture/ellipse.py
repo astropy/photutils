@@ -17,7 +17,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            SkyCoordPositions)
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
-from photutils.aperture.polygon import PolygonAperture
+from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
 from photutils.geometry import elliptical_overlap_grid
 from photutils.geometry._batch_photometry import (SHAPE_ELLIPSE,
                                                   SHAPE_ELLIPTICAL_ANNULUS)
@@ -33,6 +33,60 @@ __all__ = [
     'SkyEllipticalAnnulus',
     'SkyEllipticalAperture',
 ]
+
+
+def _elliptical_polygon_offsets(a, b, theta, n_points, *, swap_axes=False):
+    """
+    Compute the vertex offsets that approximate an ellipse with
+    semimajor axis ``a``, semiminor axis ``b``, and position angle
+    ``theta`` (in radians) using ``n_points`` equally spaced vertices.
+
+    Parameters
+    ----------
+    a : float
+        The semimajor axis of the ellipse.
+
+    b : float
+        The semiminor axis of the ellipse.
+
+    theta : float
+        The position angle of the ellipse in radians. For a right-handed
+        world coordinate system, the position angle increases
+        counterclockwise from North (PA=0).
+
+    n_points : int
+        The number of vertices used to approximate the ellipse. Must be
+        at least 3.
+
+    swap_axes : bool, optional
+        If `True`, the unrotated semimajor axis is placed along the
+        second coordinate axis instead of the first. This matches the
+        sky-aperture convention where, at ``theta=0``, the semimajor axis
+        is along +latitude (North) and the semiminor axis is along
+        +longitude.
+
+    Returns
+    -------
+    offsets : 2D `~numpy.ndarray`
+        The vertex offsets that approximate the ellipse. The shape is
+        (n_points, 2) where the columns correspond to the x and y
+        coordinate offsets, respectively.
+    """
+    if n_points < 3:
+        msg = f'n_points must be at least 3, got {n_points}'
+        raise ValueError(msg)
+
+    angles = np.linspace(0.0, 2.0 * np.pi, n_points, endpoint=False)
+    x = a * np.cos(angles)
+    y = b * np.sin(angles)
+    if swap_axes:
+        x, y = y, x
+
+    cos_t = np.cos(theta)
+    sin_t = np.sin(theta)
+
+    return np.column_stack([x * cos_t - y * sin_t,
+                            x * sin_t + y * cos_t])
 
 
 @deprecated('3.0', until='4.0')
@@ -337,8 +391,8 @@ class EllipticalAperture(PixelAperture):
 
     def to_polygon(self, n_points=100):
         """
-        Return a `~photutils.aperture.PolygonAperture` that
-        approximates this elliptical aperture.
+        Return a `~photutils.aperture.PolygonAperture` that approximates
+        this elliptical aperture.
 
         Parameters
         ----------
@@ -351,19 +405,8 @@ class EllipticalAperture(PixelAperture):
         aperture : `~photutils.aperture.PolygonAperture`
             A polygon aperture that approximates the ellipse.
         """
-        if n_points < 3:
-            msg = f'n_points must be at least 3, got {n_points}'
-            raise ValueError(msg)
-
-        theta = np.linspace(0.0, 2.0 * np.pi, n_points, endpoint=False)
-        x = self.a * np.cos(theta)
-        y = self.b * np.sin(theta)
-        rot = self.theta.to_value(u.radian)
-        cos_t = np.cos(rot)
-        sin_t = np.sin(rot)
-        offsets = np.column_stack([x * cos_t - y * sin_t,
-                                   x * sin_t + y * cos_t])
-
+        offsets = _elliptical_polygon_offsets(
+            self.a, self.b, self.theta.to_value(u.radian), n_points)
         return PolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
@@ -700,6 +743,28 @@ class SkyEllipticalAperture(SkyAperture):
         b = pix_height / 2
         return EllipticalAperture(positions=positions, a=a, b=b,
                                   theta=pix_angle)
+
+    def to_polygon(self, n_points=100):
+        """
+        Return a `~photutils.aperture.SkyPolygonAperture` that
+        approximates this elliptical aperture.
+
+        Parameters
+        ----------
+        n_points : int, optional
+            The number of polygon vertices used to approximate the
+            ellipse. Must be at least 3. Default is 100.
+
+        Returns
+        -------
+        aperture : `~photutils.aperture.SkyPolygonAperture`
+            A sky polygon aperture that approximates the ellipse.
+        """
+        unit = self.a.unit
+        offsets = _elliptical_polygon_offsets(
+            self.a.to_value(unit), self.b.to_value(unit),
+            self.theta.to_value(u.radian), n_points, swap_axes=True) * unit
+        return SkyPolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
 class SkyEllipticalAnnulus(SkyAperture):

@@ -17,7 +17,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            SkyCoordPositions)
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
-from photutils.aperture.polygon import PolygonAperture
+from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
 from photutils.geometry import rectangular_overlap_grid
 from photutils.geometry._batch_photometry import (SHAPE_RECTANGLE,
                                                   SHAPE_RECTANGULAR_ANNULUS)
@@ -33,6 +33,41 @@ __all__ = [
     'SkyRectangularAnnulus',
     'SkyRectangularAperture',
 ]
+
+
+def _rectangular_polygon_offsets(half_x, half_y, theta):
+    """
+    Compute the four corner offsets of a rectangle with half-extents
+    ``half_x`` and ``half_y`` along the unrotated first and second
+    coordinate axes, rotated by ``theta`` (in radians).
+
+    The corners are ordered counter-clockwise in the unrotated frame.
+
+    Parameters
+    ----------
+    half_x : float
+        Half of the rectangle width along the unrotated first coordinate
+        axis.
+
+    half_y : float
+        Half of the rectangle height along the unrotated second
+        coordinate axis.
+
+    theta : float
+        The rotation angle in radians from the unrotated first
+        coordinate axis.
+
+    Returns
+    -------
+    offsets : 2D `~numpy.ndarray`
+        The four corner offsets of the rectangle, shape (4, 2).
+    """
+    corners = np.array([[-half_x, -half_y], [half_x, -half_y],
+                        [half_x, half_y], [-half_x, half_y]])
+    cos_t = np.cos(theta)
+    sin_t = np.sin(theta)
+    rot_mat = np.array([[cos_t, -sin_t], [sin_t, cos_t]])
+    return corners @ rot_mat.T
 
 
 @deprecated('3.0', until='4.0')
@@ -379,17 +414,8 @@ class RectangularAperture(PixelAperture):
         aperture : `~photutils.aperture.PolygonAperture`
             A polygon aperture exactly equivalent to the rectangle.
         """
-        hw = 0.5 * self.w
-        hh = 0.5 * self.h
-        # Corners ordered counter-clockwise in the unrotated frame.
-        corners = np.array([[-hw, -hh], [hw, -hh],
-                            [hw, hh], [-hw, hh]])
-        rot = self.theta.to_value(u.radian)
-        cos_t = np.cos(rot)
-        sin_t = np.sin(rot)
-        rot_mat = np.array([[cos_t, -sin_t], [sin_t, cos_t]])
-        offsets = corners @ rot_mat.T
-
+        offsets = _rectangular_polygon_offsets(
+            0.5 * self.w, 0.5 * self.h, self.theta.to_value(u.radian))
         return PolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
@@ -738,6 +764,25 @@ class SkyRectangularAperture(SkyAperture):
 
         return RectangularAperture(positions=positions, w=pix_w, h=pix_h,
                                    theta=pix_angle)
+
+    def to_polygon(self):
+        """
+        Return a `~photutils.aperture.SkyPolygonAperture` with the four
+        corners of this rectangle as its vertices.
+
+        Returns
+        -------
+        aperture : `~photutils.aperture.SkyPolygonAperture`
+            A sky polygon aperture exactly equivalent to the rectangle.
+        """
+        unit = self.w.unit
+        # At theta=0, the width (w) is along +lat (North) and the height
+        # (h) is along +lon, so the unrotated first axis uses the
+        # half-height and the second axis uses the half-width.
+        offsets = _rectangular_polygon_offsets(
+            0.5 * self.h.to_value(unit), 0.5 * self.w.to_value(unit),
+            self.theta.to_value(u.radian)) * unit
+        return SkyPolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
 class SkyRectangularAnnulus(SkyAperture):
