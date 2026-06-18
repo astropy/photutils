@@ -130,8 +130,8 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     cdef double *buf_a_y = &work[2 * n_poly + buf_size]
     cdef double *buf_b_x = &work[2 * n_poly + 2 * buf_size]
     cdef double *buf_b_y = &work[2 * n_poly + 3 * buf_size]
-    cdef double[::1] vx_view = np.ascontiguousarray(vertices_x)
-    cdef double[::1] vy_view = np.ascontiguousarray(vertices_y)
+    cdef const double[::1] vx_view = np.ascontiguousarray(vertices_x)
+    cdef const double[::1] vy_view = np.ascontiguousarray(vertices_y)
     _ensure_ccw(vx_view, vy_view, n_poly, poly_x, poly_y)
 
     cdef np.ndarray[DTYPE_t, ndim=2] frac = np.zeros([ny, nx], dtype=DTYPE)
@@ -471,7 +471,7 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
     return hits / (subpixels * subpixels)
 
 
-cdef inline double _polygon_signed_area(double *xs, double *ys,
+cdef inline double _polygon_signed_area(const double *xs, const double *ys,
                                         int n) noexcept nogil:
     """
     Signed area of a polygon via the shoelace formula.
@@ -563,7 +563,7 @@ cdef inline int _clip_against_axis(double *xs_in, double *ys_in, int n_in,
     return n_out
 
 
-cdef void _ensure_ccw(double[::1] xs, double[::1] ys, int n,
+cdef void _ensure_ccw(const double[::1] xs, const double[::1] ys, int n,
                       double *out_x, double *out_y) noexcept nogil:
     """
     Copy ``(xs, ys)`` into ``(out_x, out_y)`` ensuring counter-clockwise
