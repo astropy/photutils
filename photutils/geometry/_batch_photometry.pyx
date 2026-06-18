@@ -62,10 +62,10 @@ SHAPE_RECTANGULAR_ANNULUS = _RECTANGULAR_ANNULUS
 SHAPE_POLYGON = _POLYGON
 
 
-def batch_aperture_sums(double[:, ::1] data, double[:, ::1] error,
+def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                         const unsigned char[:, ::1] mask,
-                        double[:, ::1] positions, int shape_code,
-                        double[::1] params, double ext_x, double ext_y,
+                        const double[:, ::1] positions, int shape_code,
+                        const double[::1] params, double ext_x, double ext_y,
                         int use_exact, int subpixels):
     """
     Compute aperture sums for many source positions in a single call.
