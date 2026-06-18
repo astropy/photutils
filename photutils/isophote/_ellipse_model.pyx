@@ -7,9 +7,6 @@ Faster evaluation of ellipses from model.py.
 
 import numpy as np
 
-cimport numpy as cnp
-
-cnp.import_array()
 
 cdef extern from "math.h" nogil:
     double cos(double x)
@@ -17,22 +14,21 @@ cdef extern from "math.h" nogil:
     double sqrt(double x)
 
 DTYPE = np.float64
-ctypedef cnp.float64_t DTYPE_t
 
 
 def build_ellipse_model_c(
     unsigned int n_rows,
     unsigned int n_cols,
-    cnp.ndarray[DTYPE_t, ndim=1] finely_spaced_sma,
-    cnp.ndarray[DTYPE_t, ndim=1] intens_array,
-    cnp.ndarray[DTYPE_t, ndim=1] eps_array,
-    cnp.ndarray[DTYPE_t, ndim=1] pa_array,
-    cnp.ndarray[DTYPE_t, ndim=1] x0_array,
-    cnp.ndarray[DTYPE_t, ndim=1] y0_array,
-    cnp.ndarray[DTYPE_t, ndim=1] a3_array = None,
-    cnp.ndarray[DTYPE_t, ndim=1] b3_array = None,
-    cnp.ndarray[DTYPE_t, ndim=1] a4_array = None,
-    cnp.ndarray[DTYPE_t, ndim=1] b4_array = None,
+    const double[:] finely_spaced_sma,
+    const double[:] intens_array,
+    const double[:] eps_array,
+    const double[:] pa_array,
+    const double[:] x0_array,
+    const double[:] y0_array,
+    const double[:] a3_array = None,
+    const double[:] b3_array = None,
+    const double[:] a4_array = None,
+    const double[:] b4_array = None,
     double phi_min = 0.,
     double phi_max = 2.0*np.pi,
 ):
