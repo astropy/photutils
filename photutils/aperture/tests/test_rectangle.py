@@ -8,7 +8,6 @@ import numpy as np
 import pytest
 from astropy.coordinates import Angle, SkyCoord
 from astropy.tests.helper import assert_quantity_allclose
-from astropy.wcs import WCS
 from numpy.testing import assert_allclose
 
 from photutils.aperture import PolygonAperture, SkyPolygonAperture
@@ -295,17 +294,9 @@ def test_sky_rectangular_aperture_to_polygon_multi_position():
     assert poly.vertices.shape == (2, 4)
 
 
-def _make_round_trip_wcs():
-    wcs = WCS(naxis=2)
-    wcs.wcs.crpix = [50.5, 50.5]
-    wcs.wcs.cdelt = [-0.001, 0.001]
-    wcs.wcs.crval = [10.0, 30.0]
-    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-    return wcs
-
-
 @pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
-def test_sky_rectangular_aperture_to_polygon_wcs_round_trip(theta_deg):
+def test_sky_rectangular_aperture_to_polygon_wcs_round_trip(
+        theta_deg, tan_wcs):
     """
     Test that converting a SkyRectangularAperture to a polygon and then
     to pixels matches converting to pixels and then to a polygon for all
@@ -313,19 +304,18 @@ def test_sky_rectangular_aperture_to_polygon_wcs_round_trip(theta_deg):
 
     The two pixel polygons share the same area and bounding-box extents.
     """
-    wcs = _make_round_trip_wcs()
     pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
     aper = SkyRectangularAperture(pos, w=4.0 * u.arcsec, h=2.0 * u.arcsec,
                                   theta=theta_deg * u.deg)
-    poly_from_sky = aper.to_polygon().to_pixel(wcs)
-    poly_from_pix = aper.to_pixel(wcs).to_polygon()
+    poly_from_sky = aper.to_polygon().to_pixel(tan_wcs)
+    poly_from_pix = aper.to_pixel(tan_wcs).to_polygon()
     assert_allclose(poly_from_sky.area, poly_from_pix.area, rtol=1e-6)
     assert_allclose(poly_from_sky._xy_extents, poly_from_pix._xy_extents,
                     rtol=1e-6)
 
 
 @pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
-def test_rectangular_aperture_to_polygon_to_sky_round_trip(theta_deg):
+def test_rectangular_aperture_to_polygon_to_sky_round_trip(theta_deg, tan_wcs):
     """
     Test that converting a RectangularAperture to a polygon and then to
     sky matches converting to sky and then to a polygon for all rotation
@@ -336,16 +326,15 @@ def test_rectangular_aperture_to_polygon_to_sky_round_trip(theta_deg):
     # linear (SVD) approximation, while the polygon ``to_sky`` maps
     # each vertex exactly, so only rotation-invariant quantities are
     # compared.
-    wcs = _make_round_trip_wcs()
     aper = RectangularAperture((50.0, 50.0), w=4.0, h=2.0,
                                theta=np.deg2rad(theta_deg))
-    sky_from_poly = aper.to_polygon().to_sky(wcs)
-    sky_from_aper = aper.to_sky(wcs).to_polygon()
+    sky_from_poly = aper.to_polygon().to_sky(tan_wcs)
+    sky_from_aper = aper.to_sky(tan_wcs).to_polygon()
     assert_allclose(sky_from_poly.positions.ra.deg,
                     sky_from_aper.positions.ra.deg)
     assert_allclose(sky_from_poly.positions.dec.deg,
                     sky_from_aper.positions.dec.deg)
     assert_allclose(sky_from_poly.perimeter.to_value(u.arcsec),
                     sky_from_aper.perimeter.to_value(u.arcsec), rtol=1e-6)
-    assert_allclose(sky_from_poly.to_pixel(wcs).area,
-                    sky_from_aper.to_pixel(wcs).area, rtol=1e-6)
+    assert_allclose(sky_from_poly.to_pixel(tan_wcs).area,
+                    sky_from_aper.to_pixel(tan_wcs).area, rtol=1e-6)

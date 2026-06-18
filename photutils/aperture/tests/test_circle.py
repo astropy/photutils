@@ -7,7 +7,6 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
-from astropy.wcs import WCS
 from numpy.testing import assert_allclose
 
 from photutils.aperture import PolygonAperture, SkyPolygonAperture
@@ -255,6 +254,19 @@ def test_circular_aperture_to_polygon():
     assert poly.is_regular
     assert abs(poly.area - aper.area) / aper.area < 1e-3
 
+    # All vertices lie on the circle of radius r
+    radii = np.hypot(*poly.vertex_offsets.T)
+    assert_allclose(radii, 5.0)
+
+
+def test_circular_aperture_to_polygon_float_n_vertices():
+    """
+    Test that a float n_vertices is coerced to an integer.
+    """
+    aper = CircularAperture((10.0, 20.0), r=1.0)
+    poly = aper.to_polygon(n_vertices=50.0)
+    assert poly.n_vertices == 50
+
 
 def test_circular_aperture_to_polygon_multi_position():
     aper = CircularAperture([(10.0, 20.0), (30.0, 40.0)], r=3.0)
@@ -295,31 +307,21 @@ def test_sky_circular_aperture_to_polygon_invalid_n_vertices():
         aper.to_polygon(n_vertices=2)
 
 
-def _make_round_trip_wcs():
-    wcs = WCS(naxis=2)
-    wcs.wcs.crpix = [50.5, 50.5]
-    wcs.wcs.cdelt = [-0.001, 0.001]
-    wcs.wcs.crval = [10.0, 30.0]
-    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-    return wcs
-
-
-def test_sky_circular_aperture_to_polygon_wcs_round_trip():
+def test_sky_circular_aperture_to_polygon_wcs_round_trip(tan_wcs):
     """
     Test that converting a SkyCircularAperture to a polygon and then to
     pixels is equivalent to converting to pixels and then to a polygon.
     """
-    wcs = _make_round_trip_wcs()
     pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
     aper = SkyCircularAperture(pos, r=5.0 * u.arcsec)
-    poly_from_sky = aper.to_polygon(n_vertices=200).to_pixel(wcs)
-    poly_from_pix = aper.to_pixel(wcs).to_polygon(n_vertices=200)
+    poly_from_sky = aper.to_polygon(n_vertices=200).to_pixel(tan_wcs)
+    poly_from_pix = aper.to_pixel(tan_wcs).to_polygon(n_vertices=200)
     assert_allclose(poly_from_sky.area, poly_from_pix.area, rtol=1e-6)
     assert_allclose(poly_from_sky._xy_extents, poly_from_pix._xy_extents,
                     rtol=1e-6)
 
 
-def test_circular_aperture_to_polygon_to_sky_round_trip():
+def test_circular_aperture_to_polygon_to_sky_round_trip(tan_wcs):
     """
     Test that converting a CircularAperture to a polygon and then to sky
     is equivalent to converting to sky and then to a polygon.
@@ -328,15 +330,14 @@ def test_circular_aperture_to_polygon_to_sky_round_trip():
     # the sky shape parameters from ``to_sky`` are derived from a local
     # linear (SVD) approximation, while the polygon ``to_sky`` maps each
     # vertex exactly, so only rotation-invariant quantities are compared.
-    wcs = _make_round_trip_wcs()
     aper = CircularAperture((50.0, 50.0), r=5.0)
-    sky_from_poly = aper.to_polygon(n_vertices=200).to_sky(wcs)
-    sky_from_aper = aper.to_sky(wcs).to_polygon(n_vertices=200)
+    sky_from_poly = aper.to_polygon(n_vertices=200).to_sky(tan_wcs)
+    sky_from_aper = aper.to_sky(tan_wcs).to_polygon(n_vertices=200)
     assert_allclose(sky_from_poly.positions.ra.deg,
                     sky_from_aper.positions.ra.deg)
     assert_allclose(sky_from_poly.positions.dec.deg,
                     sky_from_aper.positions.dec.deg)
     assert_allclose(sky_from_poly.perimeter.to_value(u.arcsec),
                     sky_from_aper.perimeter.to_value(u.arcsec), rtol=1e-6)
-    assert_allclose(sky_from_poly.to_pixel(wcs).area,
-                    sky_from_aper.to_pixel(wcs).area, rtol=1e-6)
+    assert_allclose(sky_from_poly.to_pixel(tan_wcs).area,
+                    sky_from_aper.to_pixel(tan_wcs).area, rtol=1e-6)
