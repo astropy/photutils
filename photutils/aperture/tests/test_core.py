@@ -11,7 +11,8 @@ from numpy.testing import assert_allclose
 
 from photutils.aperture import (Aperture, CircularAperture, EllipticalAperture,
                                 SkyCircularAperture)
-from photutils.aperture.core import _aperture_metadata
+from photutils.aperture.core import (_aperture_metadata,
+                                     _update_method_subpixels_docstring)
 
 POSITIONS = [(5, 5), (10, 10), (15, 15)]
 SCALAR_POS = (5, 5)
@@ -304,3 +305,91 @@ class TestApertureMetadata:
         assert 'aperture_a' in meta
         assert 'aperture_b' in meta
         assert 'aperture_theta' in meta
+
+
+class TestMethodSubpixelsDocstring:
+    """
+    Tests for the _update_method_subpixels_docstring decorator.
+    """
+
+    def test_insert_descriptions(self):
+        """
+        Test that the placeholder is replaced by the method and
+        subpixels descriptions.
+        """
+        @_update_method_subpixels_docstring
+        def func():
+            """
+            Summary.
+
+            Parameters
+            ----------
+            <method_subpixels_descriptions>
+            """
+
+        doc = func.__doc__
+        assert '<method_subpixels_descriptions>' not in doc
+        assert "method : {'exact', 'center', 'subpixel'}, optional" in doc
+        assert 'subpixels : int, optional' in doc
+
+    def test_indentation_preserved(self):
+        """
+        Test that the inserted text is indented to match the
+        placeholder.
+
+        The docstring is assigned manually to avoid the compile-time
+        docstring dedenting introduced in Python 3.13.
+        """
+        def func():
+            pass
+
+        func.__doc__ = ('Summary.\n\n'
+                        '        Parameters\n'
+                        '        ----------\n'
+                        '        <method_subpixels_descriptions>\n')
+        _update_method_subpixels_docstring(func)
+
+        lines = func.__doc__.splitlines()
+        method_line = next(line for line in lines
+                           if line.lstrip().startswith('method :'))
+        assert method_line.startswith('        method :')
+        subpixels_line = next(line for line in lines
+                              if line.lstrip().startswith('subpixels :'))
+        assert subpixels_line.startswith('        subpixels :')
+
+    def test_no_placeholder_noop(self):
+        """
+        Test that the decorator is a no-op if no placeholder is present.
+        """
+        @_update_method_subpixels_docstring
+        def func():
+            """Summary with no placeholder."""
+
+        assert func.__doc__ == 'Summary with no placeholder.'
+
+    def test_none_docstring_noop(self):
+        """
+        Test that the decorator is a no-op if no docstring exists.
+        """
+        @_update_method_subpixels_docstring
+        def func():
+            pass
+
+        assert func.__doc__ is None
+
+    def test_class_docstring(self):
+        """
+        Test that the decorator also updates a class docstring.
+        """
+        @_update_method_subpixels_docstring
+        class Example:
+            """
+            Summary.
+
+            Parameters
+            ----------
+            <method_subpixels_descriptions>
+            """
+
+        assert '<method_subpixels_descriptions>' not in Example.__doc__
+        assert 'subpixels : int, optional' in Example.__doc__
