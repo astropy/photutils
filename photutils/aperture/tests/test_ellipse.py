@@ -8,7 +8,9 @@ import numpy as np
 import pytest
 from astropy.coordinates import Angle, SkyCoord
 from astropy.tests.helper import assert_quantity_allclose
+from numpy.testing import assert_allclose
 
+from photutils.aperture import PolygonAperture, SkyPolygonAperture
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus,
                                         SkyEllipticalAperture)
@@ -205,3 +207,98 @@ def test_ellipse_annulus_theta_quantity():
 
     assert_quantity_allclose(aper1.theta, aper2.theta)
     assert_quantity_allclose(aper1.theta, aper3.theta)
+
+
+def test_elliptical_aperture_to_polygon():
+    aper = EllipticalAperture((10.0, 20.0), a=5.0, b=3.0, theta=np.pi / 4)
+    poly = aper.to_polygon(n_vertices=200)
+    assert isinstance(poly, PolygonAperture)
+    assert poly.n_vertices == 200
+    assert abs(poly.area - aper.area) / aper.area < 1e-3
+
+
+def test_elliptical_aperture_to_polygon_multi_position():
+    aper = EllipticalAperture([(10.0, 20.0), (30.0, 40.0)],
+                              a=4.0, b=2.0, theta=0.5)
+    poly = aper.to_polygon(n_vertices=50)
+    assert poly.vertices.shape == (2, 50, 2)
+
+
+def test_elliptical_aperture_to_polygon_invalid_n_vertices():
+    aper = EllipticalAperture((0.0, 0.0), a=1.0, b=1.0)
+    match = 'n_vertices must be at least 3'
+    with pytest.raises(ValueError, match=match):
+        aper.to_polygon(n_vertices=2)
+
+
+def test_sky_elliptical_aperture_to_polygon():
+    pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
+    aper = SkyEllipticalAperture(pos, a=5.0 * u.arcsec, b=3.0 * u.arcsec,
+                                 theta=30 * u.deg)
+    poly = aper.to_polygon(n_vertices=200)
+    assert isinstance(poly, SkyPolygonAperture)
+    assert poly.n_vertices == 200
+    assert poly.vertices.shape == (200,)
+    # The maximum and minimum vertex distances equal the semimajor and
+    # semiminor axes, respectively.
+    radii = np.hypot(*poly.vertex_offsets.to_value(u.arcsec).T)
+    assert_allclose(radii.max(), 5.0)
+    assert_allclose(radii.min(), 3.0)
+
+
+def test_sky_elliptical_aperture_to_polygon_multi_position():
+    pos = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
+    aper = SkyEllipticalAperture(pos, a=4.0 * u.arcsec, b=2.0 * u.arcsec,
+                                 theta=0.5 * u.rad)
+    poly = aper.to_polygon(n_vertices=50)
+    assert poly.vertices.shape == (2, 50)
+
+
+def test_sky_elliptical_aperture_to_polygon_invalid_n_vertices():
+    pos = SkyCoord(ra=0.0, dec=0.0, unit='deg')
+    aper = SkyEllipticalAperture(pos, a=1.0 * u.arcsec, b=1.0 * u.arcsec)
+    match = 'n_vertices must be at least 3'
+    with pytest.raises(ValueError, match=match):
+        aper.to_polygon(n_vertices=2)
+
+
+@pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
+def test_sky_elliptical_aperture_to_polygon_wcs_round_trip(theta_deg, tan_wcs):
+    """
+    Test that converting a SkyEllipticalAperture to a polygon and then
+    to pixels is equivalent to converting to pixels and then to a
+    polygon.
+    """
+    pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
+    aper = SkyEllipticalAperture(pos, a=5.0 * u.arcsec, b=3.0 * u.arcsec,
+                                 theta=theta_deg * u.deg)
+    poly_from_sky = aper.to_polygon(n_vertices=200).to_pixel(tan_wcs)
+    poly_from_pix = aper.to_pixel(tan_wcs).to_polygon(n_vertices=200)
+    assert_allclose(poly_from_sky.area, poly_from_pix.area, rtol=1e-6)
+    assert_allclose(poly_from_sky._xy_extents, poly_from_pix._xy_extents,
+                    rtol=1e-6)
+
+
+@pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
+def test_elliptical_aperture_to_polygon_to_sky_round_trip(theta_deg, tan_wcs):
+    """
+    Test that converting an EllipticalAperture to a polygon and then to
+    sky is equivalent to converting to sky and then to a polygon.
+    """
+    # The bounding-box orientation can differ at the ~1e-5 level because
+    # the sky shape parameters from ``to_sky`` are derived from a local
+    # linear (SVD) approximation, while the polygon ``to_sky`` maps
+    # each vertex exactly, so only rotation-invariant quantities are
+    # compared.
+    aper = EllipticalAperture((50.0, 50.0), a=5.0, b=3.0,
+                              theta=np.deg2rad(theta_deg))
+    sky_from_poly = aper.to_polygon(n_vertices=200).to_sky(tan_wcs)
+    sky_from_aper = aper.to_sky(tan_wcs).to_polygon(n_vertices=200)
+    assert_allclose(sky_from_poly.positions.ra.deg,
+                    sky_from_aper.positions.ra.deg)
+    assert_allclose(sky_from_poly.positions.dec.deg,
+                    sky_from_aper.positions.dec.deg)
+    assert_allclose(sky_from_poly.perimeter.to_value(u.arcsec),
+                    sky_from_aper.perimeter.to_value(u.arcsec), rtol=1e-6)
+    assert_allclose(sky_from_poly.to_pixel(tan_wcs).area,
+                    sky_from_aper.to_pixel(tan_wcs).area, rtol=1e-6)

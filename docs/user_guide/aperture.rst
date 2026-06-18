@@ -201,9 +201,13 @@ properties expose the geometric parameters of the shape.
 
 The built-in `~photutils.aperture.CircularAperture`,
 `~photutils.aperture.EllipticalAperture`, and
-`~photutils.aperture.RectangularAperture` classes also provide a
+`~photutils.aperture.RectangularAperture` classes (and their
+sky counterparts `~photutils.aperture.SkyCircularAperture`,
+`~photutils.aperture.SkyEllipticalAperture`, and
+`~photutils.aperture.SkyRectangularAperture`) also provide a
 ``to_polygon`` method to convert them to an approximating (or, for the
-rectangle, exactly equivalent) `~photutils.aperture.PolygonAperture`.
+rectangle, exactly equivalent) `~photutils.aperture.PolygonAperture` or
+`~photutils.aperture.SkyPolygonAperture`.
 
 
 Performing Aperture Photometry

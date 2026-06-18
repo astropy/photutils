@@ -874,6 +874,43 @@ class SkyPolygonAperture(SkyAperture):
         self.vertex_offsets = vertex_offsets
 
     @classmethod
+    def _from_convex_offsets(cls, positions, offsets):
+        """
+        Construct a `SkyPolygonAperture` from angular vertex offsets
+        that are known to define a simple polygon, skipping the
+        ``O(n^2)`` self-intersection check.
+
+        This is a fast-path internal constructor used by the
+        ``to_polygon`` methods of the built-in sky apertures, where the
+        generated polygon (a discretized circle, ellipse, or rectangle)
+        is guaranteed to be simple by construction. The cheap shape,
+        vertex-count, finiteness, zero-area, and counter-clockwise
+        normalization checks are still applied.
+
+        Parameters
+        ----------
+        positions : `~astropy.coordinates.SkyCoord`
+            The center position(s) in sky coordinates.
+
+        offsets : `~astropy.units.Quantity`
+            The ``(n_vertices, 2)`` angular Quantity of vertex offsets
+            ``(d_lon, d_lat)`` relative to ``positions``.
+
+        Returns
+        -------
+        aperture : `SkyPolygonAperture`
+            The sky polygon aperture.
+        """
+        verts = offsets.to_value(u.arcsec)
+        verts = _validate_simple_polygon(verts, name='vertex_offsets',
+                                         check_simple=False)
+        offsets = (verts * u.arcsec).to(offsets.unit)
+        obj = cls.__new__(cls)
+        obj.positions = positions
+        obj.__dict__['vertex_offsets'] = offsets
+        return obj
+
+    @classmethod
     def from_vertices(cls, vertices):
         """
         Construct a `SkyPolygonAperture` from a single set of absolute

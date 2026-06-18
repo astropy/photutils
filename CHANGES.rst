@@ -42,6 +42,10 @@ New Features
     for polygon apertures defined by a fixed shape applied at one or
     more positions. [#2297]
 
+  - Added ``to_polygon`` methods to the circular, elliptical, and
+    rectangular apertures (both pixel and sky variants) to convert them
+    to ``PolygonAperture`` or ``SkyPolygonAperture`` objects. [#2298]
+
 - ``photutils.isophote``
 
   - Optimized the ``build_ellipse_model_c`` Cython extension by

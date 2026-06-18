@@ -16,6 +16,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            SkyCoordPositions)
 from photutils.aperture.core import PixelAperture, SkyAperture
 from photutils.aperture.mask import ApertureMask
+from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
 from photutils.geometry import circular_overlap_grid
 from photutils.geometry._batch_photometry import (SHAPE_CIRCLE,
                                                   SHAPE_CIRCULAR_ANNULUS)
@@ -30,6 +31,40 @@ __all__ = [
     'SkyCircularAnnulus',
     'SkyCircularAperture',
 ]
+
+
+def _circular_polygon_offsets(r, n_vertices):
+    """
+    Compute the vertex offsets that approximate a circle of radius ``r``
+    using ``n_vertices`` equally spaced vertices.
+
+    ``r`` may be a plain number (pixel offsets) or a
+    `~astropy.units.Quantity` (angular offsets); the returned offsets
+    carry the same type.
+
+    Parameters
+    ----------
+    r : float or `~astropy.units.Quantity`
+        The radius of the circle.
+
+    n_vertices : int
+        The number of polygon vertices used to approximate the circle.
+
+    Returns
+    -------
+    offsets : 2D `~numpy.ndarray`
+        The vertex offsets that approximate the circle. The shape is
+        ``(n_vertices, 2)``, where the second axis corresponds to the
+        ``(x, y)`` offsets. The offsets are in the same units as the
+        input ``r``.
+    """
+    n_vertices = int(n_vertices)
+    if n_vertices < 3:
+        msg = f'n_vertices must be at least 3, got {n_vertices}'
+        raise ValueError(msg)
+
+    theta = np.linspace(0.0, 2.0 * np.pi, n_vertices, endpoint=False)
+    return np.column_stack([np.cos(theta), np.sin(theta)]) * r
 
 
 @deprecated('3.0')
@@ -275,6 +310,25 @@ class CircularAperture(PixelAperture):
 
         r = Angle(self.r * mean_scale, 'arcsec')
         return SkyCircularAperture(positions=positions, r=r)
+
+    def to_polygon(self, n_vertices=100):
+        """
+        Return a `~photutils.aperture.PolygonAperture` that
+        approximates this circular aperture.
+
+        Parameters
+        ----------
+        n_vertices : int, optional
+            The number of polygon vertices used to approximate the
+            circle. Must be at least 3. Default is 100.
+
+        Returns
+        -------
+        aperture : `~photutils.aperture.PolygonAperture`
+            A polygon aperture that approximates the circle.
+        """
+        offsets = _circular_polygon_offsets(self.r, n_vertices)
+        return PolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
 class CircularAnnulus(PixelAperture):
@@ -532,6 +586,26 @@ class SkyCircularAperture(SkyAperture):
 
         r = self.r.to_value(u.arcsec) * mean_scale
         return CircularAperture(positions=positions, r=r)
+
+    def to_polygon(self, n_vertices=100):
+        """
+        Return a `~photutils.aperture.SkyPolygonAperture` that
+        approximates this circular aperture.
+
+        Parameters
+        ----------
+        n_vertices : int, optional
+            The number of polygon vertices used to approximate the
+            circle. Must be at least 3. Default is 100.
+
+        Returns
+        -------
+        aperture : `~photutils.aperture.SkyPolygonAperture`
+            A sky polygon aperture that approximates the circle.
+        """
+        offsets = _circular_polygon_offsets(self.r, n_vertices)
+        return SkyPolygonAperture._from_convex_offsets(self.positions,
+                                                       offsets)
 
 
 class SkyCircularAnnulus(SkyAperture):

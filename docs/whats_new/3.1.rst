@@ -185,6 +185,22 @@ transformation of the polygon corners.
 `~regions.PolygonPixelRegion` and `~regions.PolygonSkyRegion`.
 
 
+Converting Apertures to Polygons
+================================
+
+The circular, elliptical, and rectangular apertures (both their pixel
+and sky variants) now have a ``to_polygon`` method that converts
+them to an equivalent `~photutils.aperture.PolygonAperture` or
+`~photutils.aperture.SkyPolygonAperture`. The circular and elliptical
+apertures are approximated by a polygon with a configurable number of
+vertices (``n_vertices``, default 100), while the rectangular aperture
+is converted exactly to a four-vertex polygon::
+
+    >>> from photutils.aperture import CircularAperture
+    >>> aper = CircularAperture((10.0, 20.0), r=5.0)
+    >>> poly = aper.to_polygon(n_vertices=100)
+
+
 .. _whatsnew-3.1-api-changes:
 
 API Changes

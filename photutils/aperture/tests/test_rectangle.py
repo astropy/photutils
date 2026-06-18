@@ -8,7 +8,9 @@ import numpy as np
 import pytest
 from astropy.coordinates import Angle, SkyCoord
 from astropy.tests.helper import assert_quantity_allclose
+from numpy.testing import assert_allclose
 
+from photutils.aperture import PolygonAperture, SkyPolygonAperture
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture,
                                           RectangularMaskMixin,
@@ -223,3 +225,116 @@ def test_deprecated_rectangular_mask_mixin(method, subpixels):
                                         subpixels=subpixels)
     expected = aper.to_mask(method=method, subpixels=subpixels)
     assert_quantity_allclose(mask.data, expected.data)
+
+
+def test_rectangular_aperture_to_polygon():
+    aper = RectangularAperture((10.0, 20.0), w=4.0, h=2.0)
+    poly = aper.to_polygon()
+    assert isinstance(poly, PolygonAperture)
+    assert poly.n_vertices == 4
+    # Area is exact (rectangle is itself a polygon)
+    assert_allclose(poly.area, aper.area)
+
+
+@pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
+def test_rectangular_aperture_to_polygon_rotation(theta_deg):
+    aper = RectangularAperture((10.0, 20.0), w=4.0, h=2.0,
+                               theta=np.deg2rad(theta_deg))
+    poly = aper.to_polygon()
+    assert poly.n_vertices == 4
+    assert_allclose(poly.area, aper.area, rtol=1e-12)
+    # Bounding-box extents should match the rotated rectangle's.
+    expected_x_extent = (0.5 * abs(aper.w * np.cos(aper.theta.value))
+                         + 0.5 * abs(aper.h * np.sin(aper.theta.value)))
+    expected_y_extent = (0.5 * abs(aper.w * np.sin(aper.theta.value))
+                         + 0.5 * abs(aper.h * np.cos(aper.theta.value)))
+    assert_allclose(poly._xy_extents[0], expected_x_extent, rtol=1e-12)
+    assert_allclose(poly._xy_extents[1], expected_y_extent, rtol=1e-12)
+
+
+def test_rectangular_aperture_to_polygon_multi_position():
+    aper = RectangularAperture([(10.0, 20.0), (30.0, 40.0)],
+                               w=4.0, h=3.0, theta=0.5)
+    poly = aper.to_polygon()
+    assert poly.vertices.shape == (2, 4, 2)
+
+
+def test_sky_rectangular_aperture_to_polygon():
+    pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
+    aper = SkyRectangularAperture(pos, w=4.0 * u.arcsec, h=2.0 * u.arcsec)
+    poly = aper.to_polygon()
+    assert isinstance(poly, SkyPolygonAperture)
+    assert poly.n_vertices == 4
+    assert poly.vertices.shape == (4,)
+    # At theta=0, the width (4) is along +lat (d_lat) and the height (2)
+    # is along +lon (d_lon).
+    offsets = poly.vertex_offsets.to_value(u.arcsec)
+    assert_allclose(np.sort(np.abs(offsets[:, 0])), [1.0, 1.0, 1.0, 1.0])
+    assert_allclose(np.sort(np.abs(offsets[:, 1])), [2.0, 2.0, 2.0, 2.0])
+
+
+@pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
+def test_sky_rectangular_aperture_to_polygon_rotation(theta_deg):
+    pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
+    aper = SkyRectangularAperture(pos, w=4.0 * u.arcsec, h=2.0 * u.arcsec,
+                                  theta=theta_deg * u.deg)
+    poly = aper.to_polygon()
+    assert poly.n_vertices == 4
+    # The perimeter and vertex distances are rotation-invariant.
+    assert_allclose(poly.perimeter.to_value(u.arcsec), 2 * (4.0 + 2.0))
+    radii = np.hypot(*poly.vertex_offsets.to_value(u.arcsec).T)
+    assert_allclose(radii, np.hypot(1.0, 2.0))
+
+
+def test_sky_rectangular_aperture_to_polygon_multi_position():
+    pos = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
+    aper = SkyRectangularAperture(pos, w=4.0 * u.arcsec, h=3.0 * u.arcsec,
+                                  theta=0.5 * u.rad)
+    poly = aper.to_polygon()
+    assert poly.vertices.shape == (2, 4)
+
+
+@pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
+def test_sky_rectangular_aperture_to_polygon_wcs_round_trip(
+        theta_deg, tan_wcs):
+    """
+    Test that converting a SkyRectangularAperture to a polygon and then
+    to pixels matches converting to pixels and then to a polygon for all
+    rotation angles.
+
+    The two pixel polygons share the same area and bounding-box extents.
+    """
+    pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
+    aper = SkyRectangularAperture(pos, w=4.0 * u.arcsec, h=2.0 * u.arcsec,
+                                  theta=theta_deg * u.deg)
+    poly_from_sky = aper.to_polygon().to_pixel(tan_wcs)
+    poly_from_pix = aper.to_pixel(tan_wcs).to_polygon()
+    assert_allclose(poly_from_sky.area, poly_from_pix.area, rtol=1e-6)
+    assert_allclose(poly_from_sky._xy_extents, poly_from_pix._xy_extents,
+                    rtol=1e-6)
+
+
+@pytest.mark.parametrize('theta_deg', [0.0, 30.0, 45.0, 90.0, 137.0])
+def test_rectangular_aperture_to_polygon_to_sky_round_trip(theta_deg, tan_wcs):
+    """
+    Test that converting a RectangularAperture to a polygon and then to
+    sky matches converting to sky and then to a polygon for all rotation
+    angles.
+    """
+    # The bounding-box orientation can differ at the ~1e-5 level because
+    # the sky shape parameters from ``to_sky`` are derived from a local
+    # linear (SVD) approximation, while the polygon ``to_sky`` maps
+    # each vertex exactly, so only rotation-invariant quantities are
+    # compared.
+    aper = RectangularAperture((50.0, 50.0), w=4.0, h=2.0,
+                               theta=np.deg2rad(theta_deg))
+    sky_from_poly = aper.to_polygon().to_sky(tan_wcs)
+    sky_from_aper = aper.to_sky(tan_wcs).to_polygon()
+    assert_allclose(sky_from_poly.positions.ra.deg,
+                    sky_from_aper.positions.ra.deg)
+    assert_allclose(sky_from_poly.positions.dec.deg,
+                    sky_from_aper.positions.dec.deg)
+    assert_allclose(sky_from_poly.perimeter.to_value(u.arcsec),
+                    sky_from_aper.perimeter.to_value(u.arcsec), rtol=1e-6)
+    assert_allclose(sky_from_poly.to_pixel(tan_wcs).area,
+                    sky_from_aper.to_pixel(tan_wcs).area, rtol=1e-6)
