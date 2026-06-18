@@ -185,3 +185,63 @@ def test_build_ellipse_model_c_threadsafe():
             result = future.result()
             assert_array_equal(result[0], expected[0])
             assert_array_equal(result[1], expected[1])
+
+
+def test_build_ellipse_model_c_readonly_arrays():
+    """
+    Test that read-only (non-writeable) input arrays are accepted by
+    build_ellipse_model_c and give results identical to writeable
+    arrays.
+    """
+    n = 16
+    sma = np.linspace(0.5, 20.0, n)
+    intens = np.full(n, 1.0)
+    eps = np.full(n, 0.3)
+    pa = np.full(n, 0.5)
+    x0 = np.full(n, 50.0)
+    y0 = np.full(n, 50.0)
+    arrays = (sma, intens, eps, pa, x0, y0)
+    expected = build_ellipse_model_c(100, 100, *arrays)
+
+    arrays_ro = []
+    for arr in arrays:
+        arr_ro = arr.copy()
+        arr_ro.setflags(write=False)
+        arrays_ro.append(arr_ro)
+    result = build_ellipse_model_c(100, 100, *arrays_ro)
+
+    assert_array_equal(result[0], expected[0])
+    assert_array_equal(result[1], expected[1])
+
+
+def test_build_ellipse_model_c_noncontiguous_arrays():
+    """
+    Test that non-contiguous (strided) input arrays are accepted by
+    build_ellipse_model_c and give results identical to contiguous
+    arrays.
+
+    The input arguments are declared as non-contiguous ``double[:]``
+    typed memoryviews. This test guards against a regression if they
+    were ever changed to C-contiguous ``double[::1]`` memoryviews, which
+    would reject strided arrays.
+    """
+    n = 16
+    sma = np.linspace(0.5, 20.0, n)
+    intens = np.full(n, 1.0)
+    eps = np.full(n, 0.3)
+    pa = np.full(n, 0.5)
+    x0 = np.full(n, 50.0)
+    y0 = np.full(n, 50.0)
+    arrays = (sma, intens, eps, pa, x0, y0)
+    expected = build_ellipse_model_c(100, 100, *arrays)
+
+    # Build strided (non-contiguous) views by interleaving and slicing
+    arrays_strided = []
+    for arr in arrays:
+        strided = np.repeat(arr, 2)[::2]
+        assert not strided.flags['C_CONTIGUOUS']
+        arrays_strided.append(strided)
+    result = build_ellipse_model_c(100, 100, *arrays_strided)
+
+    assert_array_equal(result[0], expected[0])
+    assert_array_equal(result[1], expected[1])
