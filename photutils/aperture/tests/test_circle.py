@@ -7,9 +7,10 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
+from astropy.wcs import WCS
 from numpy.testing import assert_allclose
 
-from photutils.aperture import PolygonAperture
+from photutils.aperture import PolygonAperture, SkyPolygonAperture
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAnnulus, SkyCircularAperture)
 from photutils.aperture.tests.test_aperture_common import BaseTestAperture
@@ -263,5 +264,79 @@ def test_circular_aperture_to_polygon_multi_position():
 
 def test_circular_aperture_to_polygon_invalid_n_points():
     aper = CircularAperture((0.0, 0.0), r=1.0)
-    with pytest.raises(ValueError, match='n_points must be at least 3'):
+    match = 'n_points must be at least 3'
+    with pytest.raises(ValueError, match=match):
         aper.to_polygon(n_points=2)
+
+
+def test_sky_circular_aperture_to_polygon():
+    pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
+    aper = SkyCircularAperture(pos, r=5.0 * u.arcsec)
+    poly = aper.to_polygon(n_points=200)
+    assert isinstance(poly, SkyPolygonAperture)
+    assert poly.n_vertices == 200
+    assert poly.is_regular
+    assert_allclose(poly.outer_radius.to_value(u.arcsec), 5.0)
+    assert poly.vertices.shape == (200,)
+
+
+def test_sky_circular_aperture_to_polygon_multi_position():
+    pos = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
+    aper = SkyCircularAperture(pos, r=3.0 * u.arcsec)
+    poly = aper.to_polygon(n_points=50)
+    assert poly.vertices.shape == (2, 50)
+
+
+def test_sky_circular_aperture_to_polygon_invalid_n_points():
+    pos = SkyCoord(ra=0.0, dec=0.0, unit='deg')
+    aper = SkyCircularAperture(pos, r=1.0 * u.arcsec)
+    match = 'n_points must be at least 3'
+    with pytest.raises(ValueError, match=match):
+        aper.to_polygon(n_points=2)
+
+
+def _make_round_trip_wcs():
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = [50.5, 50.5]
+    wcs.wcs.cdelt = [-0.001, 0.001]
+    wcs.wcs.crval = [10.0, 30.0]
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    return wcs
+
+
+def test_sky_circular_aperture_to_polygon_wcs_round_trip():
+    """
+    Test that converting a SkyCircularAperture to a polygon and then to
+    pixels is equivalent to converting to pixels and then to a polygon.
+    """
+    wcs = _make_round_trip_wcs()
+    pos = SkyCoord(ra=10.0, dec=30.0, unit='deg')
+    aper = SkyCircularAperture(pos, r=5.0 * u.arcsec)
+    poly_from_sky = aper.to_polygon(n_points=200).to_pixel(wcs)
+    poly_from_pix = aper.to_pixel(wcs).to_polygon(n_points=200)
+    assert_allclose(poly_from_sky.area, poly_from_pix.area, rtol=1e-6)
+    assert_allclose(poly_from_sky._xy_extents, poly_from_pix._xy_extents,
+                    rtol=1e-6)
+
+
+def test_circular_aperture_to_polygon_to_sky_round_trip():
+    """
+    Test that converting a CircularAperture to a polygon and then to sky
+    is equivalent to converting to sky and then to a polygon.
+    """
+    # The bounding-box orientation can differ at the ~1e-5 level because
+    # the sky shape parameters from ``to_sky`` are derived from a local
+    # linear (SVD) approximation, while the polygon ``to_sky`` maps each
+    # vertex exactly, so only rotation-invariant quantities are compared.
+    wcs = _make_round_trip_wcs()
+    aper = CircularAperture((50.0, 50.0), r=5.0)
+    sky_from_poly = aper.to_polygon(n_points=200).to_sky(wcs)
+    sky_from_aper = aper.to_sky(wcs).to_polygon(n_points=200)
+    assert_allclose(sky_from_poly.positions.ra.deg,
+                    sky_from_aper.positions.ra.deg)
+    assert_allclose(sky_from_poly.positions.dec.deg,
+                    sky_from_aper.positions.dec.deg)
+    assert_allclose(sky_from_poly.perimeter.to_value(u.arcsec),
+                    sky_from_aper.perimeter.to_value(u.arcsec), rtol=1e-6)
+    assert_allclose(sky_from_poly.to_pixel(wcs).area,
+                    sky_from_aper.to_pixel(wcs).area, rtol=1e-6)
