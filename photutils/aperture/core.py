@@ -26,46 +26,71 @@ __all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
 # shared by many aperture and profile docstrings. The text is stored
 # without leading indentation and is re-indented to match the
 # placeholder by ``_update_method_subpixels_docstring``.
-_METHOD_SUBPIXELS_DOC = """\
+_METHOD_INTRO = """\
 method : {'exact', 'center', 'subpixel'}, optional
     The method used to determine the pixel weights (the fraction
-    of the pixel area covered by the aperture):
+    of the pixel area covered by the aperture):"""
 
-    * ``'exact'`` (default):
-      Calculates the exact geometric overlap area. Weights are
-      continuous in the range [0, 1].
-    * ``'center'``:
-      Binary weighting based on the pixel center. Weights are
-      either 0 or 1. A pixel is included only if its center lies
-      strictly inside the aperture; pixel centers lying exactly
-      on the aperture boundary are excluded (weight 0).
-    * ``'subpixel'``:
-      Approximates the overlap by averaging binary samples on a
-      subgrid. The number of samples is set by the ``subpixels``
-      parameter. Weights are discrete in the range [0, 1]. A
-      subpixel is included only if its center lies strictly
-      inside the aperture; subpixel centers lying exactly on the
-      aperture boundary are excluded (weight 0).
+_METHOD_BULLETS = """\
+* ``'exact'`` (default):
+  Calculates the exact geometric overlap area. Weights are
+  continuous in the range [0, 1].
+* ``'center'``:
+  Binary weighting based on the pixel center. Weights are
+  either 0 or 1. A pixel is included only if its center lies
+  strictly inside the aperture; pixel centers lying exactly
+  on the aperture boundary are excluded (weight 0).
+* ``'subpixel'``:
+  Approximates the overlap by averaging binary samples on a
+  subgrid. The number of samples is set by the ``subpixels``
+  parameter. Weights are discrete in the range [0, 1]. A
+  subpixel is included only if its center lies strictly
+  inside the aperture; subpixel centers lying exactly on the
+  aperture boundary are excluded (weight 0)."""
 
+_SUBPIXELS_DOC = """\
 subpixels : int, optional
     The subsampling factor per axis used when
     ``method='subpixel'``. Each pixel is divided into a grid of
     ``subpixels**2`` subpixels to approximate the overlap. This
     parameter is ignored for other methods."""
 
-_METHOD_SUBPIXELS_PLACEHOLDER = re.compile(
-    r'^([ \t]*)<method_subpixels_descriptions>[ \t]*$', re.MULTILINE)
+_METHOD_SUBPIXELS_DOC = (
+    _METHOD_INTRO + '\n\n'
+    + textwrap.indent(_METHOD_BULLETS, '    ') + '\n\n'
+    + _SUBPIXELS_DOC)
+
+# Mapping of placeholder tags to their replacement text. Each tag must
+# appear alone on its own line in a docstring; the leading indentation
+# of the placeholder is applied to the inserted text.
+_DOC_PLACEHOLDERS = {
+    'method_subpixels_descriptions': _METHOD_SUBPIXELS_DOC,
+    'method_bullets': _METHOD_BULLETS,
+    'subpixels_description': _SUBPIXELS_DOC,
+}
+
+_DOC_PLACEHOLDER_RE = re.compile(
+    r'^([ \t]*)<(' + '|'.join(_DOC_PLACEHOLDERS) + r')>[ \t]*$',
+    re.MULTILINE)
 
 
 def _update_method_subpixels_docstring(obj):
     """
-    Decorator to insert the standard ``method`` and ``subpixels``
+    Decorator to insert standard ``method``, ``subpixels``, and related
     parameter descriptions into a docstring.
 
-    The descriptions replace a ``<method_subpixels_descriptions>``
-    placeholder, which must appear on its own line. The placeholder's
-    indentation is applied to the inserted text, so the same source
-    descriptions can be used at any docstring indentation level.
+    The following placeholders are supported, each of which must appear
+    alone on its own line. The leading indentation of the placeholder is
+    applied to the inserted text, so the same source descriptions can be
+    used at any docstring indentation level.
+
+    * ``<method_subpixels_descriptions>`` : the full ``method`` and
+      ``subpixels`` parameter descriptions.
+    * ``<method_bullets>`` : only the ``'exact'``, ``'center'``, and
+      ``'subpixel'`` bullet list, e.g., for a parameter that uses a
+      custom name and introduction.
+    * ``<subpixels_description>`` : only the ``subpixels`` parameter
+      description.
 
     Parameters
     ----------
@@ -83,9 +108,9 @@ def _update_method_subpixels_docstring(obj):
 
     def replace(match):
         indent = match.group(1)
-        return textwrap.indent(_METHOD_SUBPIXELS_DOC, indent)
+        return textwrap.indent(_DOC_PLACEHOLDERS[match.group(2)], indent)
 
-    obj.__doc__ = _METHOD_SUBPIXELS_PLACEHOLDER.sub(replace, docstring)
+    obj.__doc__ = _DOC_PLACEHOLDER_RE.sub(replace, docstring)
     return obj
 
 

@@ -393,3 +393,48 @@ class TestMethodSubpixelsDocstring:
 
         assert '<method_subpixels_descriptions>' not in Example.__doc__
         assert 'subpixels : int, optional' in Example.__doc__
+
+    def test_method_bullets_placeholder(self):
+        """
+        Test that the method-bullets placeholder is replaced by only the
+        method bullet list, without the method header or the subpixels
+        description.
+        """
+        @_update_method_subpixels_docstring
+        def func():
+            """
+            Summary.
+
+            Parameters
+            ----------
+            <method_bullets>
+            """
+
+        doc = func.__doc__
+        assert '<method_bullets>' not in doc
+        assert "* ``'exact'`` (default):" in doc
+        assert "* ``'center'``:" in doc
+        assert "* ``'subpixel'``:" in doc
+        assert "method : {'exact', 'center', 'subpixel'}, optional" not in doc
+        assert 'subpixels : int, optional' not in doc
+
+    def test_subpixels_description_placeholder(self):
+        """
+        Test that the subpixels-description placeholder is replaced by
+        only the subpixels parameter description.
+        """
+        @_update_method_subpixels_docstring
+        def func():
+            """
+            Summary.
+
+            Parameters
+            ----------
+            <subpixels_description>
+            """
+
+        doc = func.__doc__
+        assert '<subpixels_description>' not in doc
+        assert 'subpixels : int, optional' in doc
+        assert "method : {'exact', 'center', 'subpixel'}, optional" not in doc
+        assert "* ``'exact'`` (default):" not in doc
