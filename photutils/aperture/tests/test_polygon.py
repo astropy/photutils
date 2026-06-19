@@ -157,6 +157,65 @@ def test_pixel_polygon_accepts_concave_star():
     assert aper.vertex_offsets.shape == (10, 2)
 
 
+@pytest.mark.parametrize('n_spikes', [5, 6, 7, 8])
+def test_pixel_polygon_from_star(n_spikes):
+    """
+    Test that ``_from_star`` constructs a star-shaped polygon with the
+    correct area and that it raises for invalid parameters.
+    """
+    xypos = (5, 5)
+
+    match = 'must be at least 2'
+    with pytest.raises(ValueError, match=match):
+        PolygonAperture._from_star(xypos, 1, 5.0, 2.0)
+
+    match = 'must be a finite positive number'
+    with pytest.raises(ValueError, match=match):
+        PolygonAperture._from_star(xypos, 5, -2.0, 2.0)
+    with pytest.raises(ValueError, match=match):
+        PolygonAperture._from_star(xypos, 5, 5.0, -2.0)
+
+    match = 'inner_radius must be less than outer_radius'
+    with pytest.raises(ValueError, match=match):
+        PolygonAperture._from_star(xypos, 5, 5.0, 6.0)
+
+    match = 'optimal_shape and collinear_edges cannot both be True'
+    with pytest.raises(ValueError, match=match):
+        PolygonAperture._from_star(xypos, 5, 5.0, 2.0, optimal_shape=True,
+                                   collinear_edges=True)
+
+    match = 'collinear_edges requires n_spikes'
+    with pytest.raises(ValueError, match=match):
+        PolygonAperture._from_star(xypos, 4, 3.0, 2.0, collinear_edges=True)
+
+    match = 'inner_radius must be provided'
+    with pytest.raises(ValueError, match=match):
+        PolygonAperture._from_star(xypos, 5, 3.0)
+
+    data = np.ones((11, 11))
+    outer_radius = 5.0
+    inner_radius = 2.0
+    aper = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
+                                      inner_radius)
+    flux, _ = aper.do_photometry(data, method='exact')
+    assert_allclose(flux, aper.area)
+
+    aper1 = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
+                                       inner_radius, theta=10 * u.deg)
+    flux, _ = aper1.do_photometry(data, method='exact')
+    assert_allclose(flux, aper1.area)
+
+    aper2 = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
+                                       optimal_shape=True)
+    flux, _ = aper2.do_photometry(data, method='exact')
+    assert_allclose(flux, aper2.area)
+
+    aper3 = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
+                                       collinear_edges=True)
+    flux, _ = aper3.do_photometry(data, method='exact')
+    assert_allclose(flux, aper3.area)
+
+
 @pytest.mark.parametrize(
     ('p1', 'p2', 'p3', 'p4', 'expected'),
     [
