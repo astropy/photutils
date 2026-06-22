@@ -110,9 +110,7 @@ installed using::
 
     xcode-select --install
 
-Follow the onscreen instructions to install the command-line tools
-required.  Note that you do not need to install the full `XCode`_
-distribution (assuming you are using MacOS X 10.9 or later).
+Note that you do not need to install the full `XCode`_ distribution.
 
 
 Installing the development version

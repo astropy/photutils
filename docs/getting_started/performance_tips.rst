@@ -12,10 +12,21 @@ Bottleneck
 The optional `Bottleneck <https://github.com/pydata/bottleneck>`_
 package provides fast, NaN-aware replacements for NumPy's ``nansum``,
 ``nanmin``, ``nanmax``, ``nanmean``, ``nanmedian``, ``nanstd``, and
-``nanvar`` functions. When Bottleneck is installed, Photutils will
-automatically use it for these operations, improving performance for any
-workflow that computes statistics on arrays containing NaN values (e.g.,
-masked pixels).
+``nanvar`` functions. If Bottleneck is installed, Photutils will
+automatically leverage it for these operations to improve performance,
+particularly for workflows involving NaN values. This acceleration
+is currently limited to input arrays with ``float64`` data types and
+:ref:`native byte order <byteorder-performance>`.
+
+.. note::
+
+    Due to known accuracy issues in Bottleneck with ``float32``
+    arrays (see `bottleneck #379
+    <https://github.com/pydata/bottleneck/issues/379>`_ and
+    `bottleneck #462
+    <https://github.com/pydata/bottleneck/issues/462>`_),
+    Photutils uses Bottleneck only for ``float64`` arrays and falls back
+    to NumPy for other dtypes.
 
 Bottleneck acceleration is used internally by the following Photutils
 packages:
@@ -28,16 +39,6 @@ packages:
 * `~photutils.psf` — ePSF building
   (e.g., `~photutils.psf.EPSFBuilder`)
 * `~photutils.segmentation` — source detection and deblending
-
-.. note::
-
-    Due to known accuracy issues in Bottleneck with ``float32``
-    arrays (see `bottleneck #379
-    <https://github.com/pydata/bottleneck/issues/379>`_ and
-    `bottleneck #462
-    <https://github.com/pydata/bottleneck/issues/462>`_),
-    Photutils uses Bottleneck only for ``float64`` arrays and falls back
-    to NumPy for other dtypes.
 
 To install Bottleneck::
 
