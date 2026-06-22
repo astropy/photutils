@@ -15,7 +15,7 @@ The cdef functions are not intended to be called from Python code.
 They are pure C math functions declared ``noexcept nogil`` so they can
 be called without the GIL (e.g., from the batch aperture photometry
 driver), including from multiple threads on free-threaded Python builds.
-Their signatures are exported via _polygon_overlap.pxd.
+Their signatures are exported via polygon_overlap.pxd.
 """
 
 import numpy as np

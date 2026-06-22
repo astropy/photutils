@@ -8,6 +8,6 @@ These functions are not intended to be used directly by users, but
 are used by the higher-level `photutils.aperture` tools.
 """
 
-from .circular_overlap import *  # noqa: F401, F403
-from .elliptical_overlap import *  # noqa: F401, F403
-from .rectangular_overlap import *  # noqa: F401, F403
+from .circle_overlap import *  # noqa: F401, F403
+from .ellipse_overlap import *  # noqa: F401, F403
+from .rectangle_overlap import *  # noqa: F401, F403

@@ -9,7 +9,11 @@ The cdef function is not intended to be called from Python code.
 It is a pure C math function declared ``noexcept nogil`` so it can
 be called without the GIL (e.g., from the batch aperture photometry
 driver), including from multiple threads on free-threaded Python builds.
-Its signature is exported via rectangular_overlap.pxd.
+Its signature is exported via rectangle_overlap.pxd.
+
+NOTE: The ``rectangular_overlap_grid`` function should be named
+``rectangle_overlap_grid``, but it has been public for a long time and
+changing the name would break backwards compatibility.
 """
 
 import numpy as np
@@ -40,8 +44,8 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
                              double height, double theta, int use_exact,
                              int subpixels):
     """
-    rectangular_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, width, height,
-                             theta, use_exact, subpixels)
+    rectangle_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, width, height,
+                           theta, use_exact, subpixels)
 
     Calculate the fractional overlap between a rectangle and a pixel
     grid.
@@ -180,20 +184,20 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
             for j in range(ny):
                 pymin = ymin + j * dy
                 pymax = pymin + dy
-                frac_view[j, i] = rectangular_overlap_single_subpixel(
+                frac_view[j, i] = rectangle_overlap_single_subpixel(
                     pxmin, pymin, pxmax, pymax, half_width, half_height,
                     cos_theta, sin_theta, subpixels)
 
     return frac
 
 
-cdef double rectangular_overlap_single_subpixel(double x0, double y0,
-                                                double x1, double y1,
-                                                double half_width,
-                                                double half_height,
-                                                double cos_theta,
-                                                double sin_theta,
-                                                int subpixels) noexcept nogil:
+cdef double rectangle_overlap_single_subpixel(double x0, double y0,
+                                              double x1, double y1,
+                                              double half_width,
+                                              double half_height,
+                                              double cos_theta,
+                                              double sin_theta,
+                                              int subpixels) noexcept nogil:
     """
     Return the fraction of overlap between a rectangle and a single
     pixel with given extent, using a sub-pixel sampling method.
