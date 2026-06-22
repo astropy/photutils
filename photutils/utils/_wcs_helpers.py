@@ -604,6 +604,128 @@ def sky_shape_to_pixel_svd(skycoord, wcs, width_arcsec, height_arcsec,
     return center, pixel_width, pixel_height, pixel_angle
 
 
+def sky_to_pixel_svd_scales(skycoord, wcs):
+    """
+    Compute the pixel center, principal-axis scale factors, and pixel
+    angle for a sky-to-pixel conversion using SVD of the local Jacobian.
+
+    Uses the singular value decomposition (SVD) of the local Jacobian
+    ``J = d(pixel)/d(sky_arcsec)`` to find the natural principal axes
+    of the WCS transformation at the given sky position. The singular
+    values give the scale factors along the major and minor axes of the
+    ellipse that a unit circle in sky space maps to in pixel space. The
+    left singular vectors give the directions of those axes in pixel
+    coordinates.
+
+    This is the appropriate method for converting a circular sky region
+    to a pixel ellipse, as the resulting ellipse accurately represents
+    the true shape of the WCS mapping (i.e., the tightest-fitting pixel
+    ellipse that contains the sky circle).
+
+    Parameters
+    ----------
+    skycoord : `~astropy.coordinates.SkyCoord`
+        The sky coordinate of the region center.
+
+    wcs : WCS object
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+
+    Returns
+    -------
+    center : tuple of float
+        The ``(x, y)`` pixel center position.
+
+    scale_major : float
+        The scale factor along the major (maximum-stretch) axis
+        (pixels per arcsec).
+
+    scale_minor : float
+        The scale factor along the minor (minimum-stretch) axis
+        (pixels per arcsec).
+
+    pixel_angle : `~astropy.coordinates.Angle`
+        The pixel rotation angle of the major axis, measured
+        counterclockwise from the positive x-axis, wrapped to
+        [0, 360) degrees.
+    """
+    center, jacobian, _ = _sky_to_pixel_jacobian(skycoord, wcs)
+    u_mat, s_vals, _vt = np.linalg.svd(jacobian)
+
+    # Pixel angle of the major axis: direction of u_mat[:, 0] in pixel
+    # space. No parity correction is needed because pixel space has no
+    # axis reflection.
+    pixel_angle = Angle(
+        np.rad2deg(np.arctan2(u_mat[1, 0], u_mat[0, 0])) * u.deg,
+    ).wrap_at(360 * u.deg)
+
+    return center, s_vals[0], s_vals[1], pixel_angle
+
+
+def pixel_to_sky_svd_scales(pixcoord, wcs):
+    """
+    Compute the sky center, principal-axis scale factors, and sky angle
+    for a pixel-to-sky conversion using SVD of the inverse Jacobian.
+
+    Uses the singular value decomposition (SVD) of the local inverse
+    Jacobian ``J^{-1} = d(sky)/d(pixel)`` to find the natural principal
+    axes of the WCS transformation at the given pixel position. The
+    singular values give the scale factors along the major and minor
+    axes of the ellipse that a unit circle in pixel space maps to in sky
+    space. The left singular vectors give the directions of those axes
+    in tangent-plane coordinates.
+
+    This is the appropriate method for converting a circular pixel
+    region to a sky ellipse, as the resulting ellipse accurately
+    represents the true shape of the WCS mapping (i.e., the
+    tightest-fitting sky ellipse that contains the pixel circle).
+
+    Parameters
+    ----------
+    pixcoord : tuple of float
+        The ``(x, y)`` pixel coordinate of the region center.
+
+    wcs : WCS object
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+
+    Returns
+    -------
+    center : `~astropy.coordinates.SkyCoord`
+        The sky center position.
+
+    scale_major : float
+        The scale factor along the major (maximum-stretch) axis
+        (arcsec per pixel).
+
+    scale_minor : float
+        The scale factor along the minor (minimum-stretch) axis
+        (arcsec per pixel).
+
+    sky_angle : `~astropy.coordinates.Angle`
+        The sky position angle (PA) of the major axis, measured
+        counterclockwise from North (the latitude/Dec axis), wrapped to
+        [0, 360) degrees.
+    """
+    center, _, jacobian_inv, _ = _pixel_to_sky_jacobian(pixcoord, wcs)
+    u_mat, s_vals, _vt = np.linalg.svd(jacobian_inv)
+
+    # Sky position angle (PA) of the major axis, measured from North
+    # (eta/Dec) toward East (xi/RA). The columns of u_mat are
+    # tangent-plane vectors with components (xi=East, eta=North), so the
+    # PA is arctan2(xi, eta). The inverse Jacobian already encodes the
+    # WCS parity, so no manual parity correction is needed here.
+    sky_angle = Angle(
+        np.rad2deg(np.arctan2(u_mat[0, 0], u_mat[1, 0])) * u.deg,
+    ).wrap_at(360 * u.deg)
+
+    return center, s_vals[0], s_vals[1], sky_angle
+
+
 def wcs_pixel_scale_angle(skycoord, wcs):
     """
     Calculate the pixel coordinate, scale, and WCS rotation angle at the
