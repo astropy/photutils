@@ -1947,10 +1947,9 @@ def test_centroid_win_aperture_mask_none_in_loop(gauss_101_catalog):
             return None
         return original_method(aperture, **kwargs)
 
-    with patch.object(cat, '_aperture_to_mask',
-                      side_effect=mock_aperture_to_mask), \
-         patch.object(type(cat), 'flux_radius',
-                      return_value=hl_val):
+    with (patch.object(cat, '_aperture_to_mask',
+                       side_effect=mock_aperture_to_mask),
+          patch.object(type(cat), 'flux_radius', return_value=hl_val)):
         cwin = cat.centroid_win
         # NaN from the loop resets to isophotal centroid
         # because nan_hl is False (flux_radius was valid)

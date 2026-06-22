@@ -273,9 +273,9 @@ def test_optin_subclass():
             return super()._batch_shape_params()
 
     aperture = MyAperture(POSITIONS, r=5.5)
-    assert aperture._do_batch_photometry(DATA, error=None, mask=None,
-                                         method='exact', subpixels=5) \
-        is not None
+    result = aperture._do_batch_photometry(DATA, error=None, mask=None,
+                                           method='exact', subpixels=5)
+    assert result is not None
     assert_batch_matches_legacy(aperture, DATA, error=ERROR, mask=MASK)
 
 

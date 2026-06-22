@@ -73,8 +73,8 @@ def _segments_intersect(p1, p2, p3, p4):
     d4 = _orientation(p1, p2, p4)
 
     # The segments straddle each other (proper crossing).
-    if (((d1 > 0) and (d2 < 0)) or ((d1 < 0) and (d2 > 0))) and \
-       (((d3 > 0) and (d4 < 0)) or ((d3 < 0) and (d4 > 0))):
+    if ((((d1 > 0) and (d2 < 0)) or ((d1 < 0) and (d2 > 0)))
+            and (((d3 > 0) and (d4 < 0)) or ((d3 < 0) and (d4 > 0)))):
         return True
 
     # Collinear / touching endpoints.
