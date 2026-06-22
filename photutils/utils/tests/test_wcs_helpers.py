@@ -16,8 +16,10 @@ from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
                                           jacobian_sky_to_pixel_mean_scale,
                                           pixel_shape_to_sky_svd,
                                           pixel_to_sky_mean_scale,
+                                          pixel_to_sky_svd_scales,
                                           sky_shape_to_pixel_svd,
                                           sky_to_pixel_mean_scale,
+                                          sky_to_pixel_svd_scales,
                                           wcs_pixel_scale_angle)
 from photutils.utils.tests.conftest import WCS_CDELT_ARCSEC, WCS_CENTER
 
@@ -607,8 +609,8 @@ class TestSVDShapeConversions:
         assert_allclose(sh, 1.0, rtol=1e-3)
 
 
-def _project_sky_ellipse_boundary(skycoord, wcs, a_arcsec, b_arcsec,
-                                  pa_rad, *, npts=720):
+def _project_sky_ellipse_boundary(skycoord, wcs, a_arcsec, b_arcsec, pa_rad, *,
+                                  npts=720):
     """
     Project the boundary of a sky ellipse to pixel coordinates.
 
@@ -716,3 +718,222 @@ class TestFlippedParityWCS:
         assert_allclose(rw, sky_w, rtol=1e-6)
         assert_allclose(rh, sky_h, rtol=1e-6)
         assert_allclose(ra.rad, sky_a, rtol=1e-4)
+
+
+def _make_sheared_wcs():
+    """
+    Build an anisotropic, sheared (non-orthogonal CD matrix) TAN WCS.
+
+    The unequal, non-orthogonal CD terms make the local Jacobian both
+    anisotropic and rotated, so the SVD principal axes have a nontrivial
+    orientation. This exercises the angle convention of the scale
+    helpers.
+    """
+    wcs = APWCS(naxis=2)
+    wcs.wcs.crpix = [50, 50]
+    wcs.wcs.crval = [WCS_CENTER.ra.deg, WCS_CENTER.dec.deg]
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    wcs.wcs.cd = np.array([[-0.0008, 0.0003],
+                           [0.0002, 0.0005]])
+    return wcs
+
+
+def _project_pixel_circle_to_sky_tangent(pixcoord, wcs, radius_pix, *,
+                                         npts=720):
+    """
+    Project a pixel circle boundary to tangent-plane sky offsets.
+
+    The boundary points of a pixel circle are converted to sky
+    coordinates and expressed as tangent-plane offsets (``xi`` = East,
+    ``eta`` = North) in arcsec relative to the circle center, using
+    great-circle separation and position angle. This is an independent
+    ground truth for the sky image of a pixel circle.
+    """
+    theta = np.linspace(0, 2 * np.pi, npts, endpoint=False)
+    cx, cy = pixcoord
+    x = cx + radius_pix * np.cos(theta)
+    y = cy + radius_pix * np.sin(theta)
+    center = wcs.pixel_to_world(cx, cy)
+    pts = wcs.pixel_to_world(x, y)
+    arcsec_per_rad = 3600.0 * np.degrees(1)
+    sep = center.separation(pts).rad
+    posang = center.position_angle(pts).rad
+    xi = sep * np.sin(posang) * arcsec_per_rad
+    eta = sep * np.cos(posang) * arcsec_per_rad
+    return np.asarray(xi, dtype=float), np.asarray(eta, dtype=float)
+
+
+def _sky_ellipse_implicit_residual(xi, eta, width, height, pa_rad):
+    """
+    Evaluate the implicit sky-ellipse equation in the tangent plane.
+
+    The major axis (of full length ``width``) is at position angle
+    ``pa_rad`` measured from North (``eta``) toward East (``xi``).
+    Points exactly on the ellipse boundary yield 1.
+    """
+    cos_pa = np.cos(pa_rad)
+    sin_pa = np.sin(pa_rad)
+    p_major = xi * sin_pa + eta * cos_pa
+    p_minor = xi * cos_pa - eta * sin_pa
+    return (p_major / (width / 2)) ** 2 + (p_minor / (height / 2)) ** 2
+
+
+class TestSVDScales:
+    """
+    Tests for `sky_to_pixel_svd_scales` and `pixel_to_sky_svd_scales`.
+    """
+
+    def test_sky_to_pixel_return_types(self, simple_wcs):
+        """
+        Should return (tuple, float, float, Angle).
+        """
+        center, smaj, smin, angle = sky_to_pixel_svd_scales(
+            WCS_CENTER, simple_wcs)
+        assert isinstance(center, tuple)
+        assert isinstance(smaj, (float, np.floating))
+        assert isinstance(smin, (float, np.floating))
+        assert isinstance(angle, Angle)
+
+    def test_pixel_to_sky_return_types(self, simple_wcs, center_xy_coord):
+        """
+        Should return (SkyCoord, float, float, Angle).
+        """
+        center, smaj, smin, angle = pixel_to_sky_svd_scales(
+            center_xy_coord, simple_wcs)
+        assert isinstance(center, SkyCoord)
+        assert isinstance(smaj, (float, np.floating))
+        assert isinstance(smin, (float, np.floating))
+        assert isinstance(angle, Angle)
+
+    def test_sky_to_pixel_simple_isotropic(self, simple_wcs):
+        """
+        For a non-distorted, square-pixel WCS the two scale factors are
+        equal and match 1 / WCS_CDELT_ARCSEC (pixels per arcsec).
+        """
+        _, smaj, smin, angle = sky_to_pixel_svd_scales(
+            WCS_CENTER, simple_wcs)
+        expected = 1.0 / WCS_CDELT_ARCSEC
+        assert_allclose(smaj, expected, rtol=1e-6)
+        assert_allclose(smin, expected, rtol=1e-6)
+        assert 0.0 <= angle.deg < 360.0
+
+    def test_pixel_to_sky_simple_isotropic(self, simple_wcs, center_xy_coord):
+        """
+        For a non-distorted, square-pixel WCS the two scale factors are
+        equal and match WCS_CDELT_ARCSEC (arcsec per pixel).
+        """
+        _, smaj, smin, angle = pixel_to_sky_svd_scales(
+            center_xy_coord, simple_wcs)
+        assert_allclose(smaj, WCS_CDELT_ARCSEC, rtol=1e-6)
+        assert_allclose(smin, WCS_CDELT_ARCSEC, rtol=1e-6)
+        assert 0.0 <= angle.deg < 360.0
+
+    def test_sky_to_pixel_nonsquare_anisotropic(self, nonsquare_wcs):
+        """
+        For non-square pixels the major scale exceeds the minor scale,
+        and both match the inverse of the corresponding pixel scales.
+        """
+        _, smaj, smin, _ = sky_to_pixel_svd_scales(WCS_CENTER, nonsquare_wcs)
+        assert smaj > smin
+        # cdelt = [-0.03, 0.05] deg; pixels/arcsec = 1 / (cdelt_arcsec)
+        assert_allclose(smaj, 1.0 / (0.03 * 3600), rtol=1e-5)
+        assert_allclose(smin, 1.0 / (0.05 * 3600), rtol=1e-5)
+
+    def test_pixel_to_sky_nonsquare_anisotropic(self, nonsquare_wcs):
+        """
+        For non-square pixels the major scale exceeds the minor scale,
+        and both match the corresponding pixel scales (arcsec/pixel).
+        """
+        center, smaj, smin, _ = pixel_to_sky_svd_scales((9.5, 9.5),
+                                                        nonsquare_wcs)
+        assert isinstance(center, SkyCoord)
+        assert smaj > smin
+        assert_allclose(smaj, 0.05 * 3600, rtol=1e-5)
+        assert_allclose(smin, 0.03 * 3600, rtol=1e-5)
+
+    def test_scales_descending(self, sip_wcs):
+        """
+        The returned scales are singular values in descending order, so
+        the major scale is always >= the minor scale.
+        """
+        _, smaj_s, smin_s, _ = sky_to_pixel_svd_scales(WCS_CENTER, sip_wcs)
+        _, smaj_p, smin_p, _ = pixel_to_sky_svd_scales((9.5, 9.5), sip_wcs)
+        assert smaj_s >= smin_s
+        assert smaj_p >= smin_p
+
+    @pytest.mark.parametrize('wcs_name', ['rotated_wcs', 'flipped_wcs'])
+    def test_sky_to_pixel_matches_projection(self, wcs_name, request):
+        """
+        A circular sky region converted with the SVD scales must match
+        the true projection of the sky circle boundary, including the
+        correct major-axis orientation and parity.
+        """
+        wcs = request.getfixturevalue(wcs_name)
+        radius = 5.0  # arcsec
+        center, smaj, smin, pixel_angle = sky_to_pixel_svd_scales(
+            WCS_CENTER, wcs)
+        x, y = _project_sky_ellipse_boundary(
+            WCS_CENTER, wcs, radius, radius, 0.0)
+        resid = _ellipse_implicit_residual(
+            x, y, center, 2 * radius * smaj, 2 * radius * smin,
+            pixel_angle.rad)
+        assert_allclose(resid, 1.0, atol=1e-3)
+
+    def test_sky_to_pixel_matches_projection_sheared(self):
+        """
+        For an anisotropic, sheared WCS the projected sky circle is an
+        ellipse whose principal axes and orientation must match the SVD
+        scales and pixel angle.
+        """
+        wcs = _make_sheared_wcs()
+        radius = 20.0  # arcsec
+        center, smaj, smin, pixel_angle = sky_to_pixel_svd_scales(
+            WCS_CENTER, wcs)
+        assert smaj > smin
+        x, y = _project_sky_ellipse_boundary(
+            WCS_CENTER, wcs, radius, radius, 0.0)
+        resid = _ellipse_implicit_residual(
+            x, y, center, 2 * radius * smaj, 2 * radius * smin,
+            pixel_angle.rad)
+        assert_allclose(resid, 1.0, atol=2e-3)
+
+    def test_pixel_to_sky_matches_projection_sheared(self):
+        """
+        For an anisotropic, sheared WCS the sky image of a pixel circle
+        is an ellipse whose principal axes and position angle must match
+        the SVD scales and sky angle.
+        """
+        wcs = _make_sheared_wcs()
+        pixcoord = (50.0, 50.0)
+        radius_pix = 10.0
+        _, smaj, smin, sky_angle = pixel_to_sky_svd_scales(pixcoord, wcs)
+        assert smaj > smin
+        xi, eta = _project_pixel_circle_to_sky_tangent(
+            pixcoord, wcs, radius_pix)
+        resid = _sky_ellipse_implicit_residual(
+            xi, eta, 2 * radius_pix * smaj, 2 * radius_pix * smin,
+            sky_angle.rad)
+        assert_allclose(resid, 1.0, atol=2e-3)
+
+    def test_inverse_scale_consistency(self):
+        """
+        The singular values of the Jacobian and its inverse are
+        reciprocals, so the pixel-to-sky major (minor) scale equals the
+        reciprocal of the sky-to-pixel minor (major) scale.
+        """
+        wcs = _make_sheared_wcs()
+        center_pix, smaj_p, smin_p, _ = sky_to_pixel_svd_scales(
+            WCS_CENTER, wcs)
+        _, smaj_s, smin_s, _ = pixel_to_sky_svd_scales(center_pix, wcs)
+        assert_allclose(smaj_s, 1.0 / smin_p, rtol=1e-6)
+        assert_allclose(smin_s, 1.0 / smaj_p, rtol=1e-6)
+
+    def test_angles_wrapped(self):
+        """
+        Both helpers return angles wrapped to [0, 360) degrees.
+        """
+        wcs = _make_sheared_wcs()
+        _, _, _, pixel_angle = sky_to_pixel_svd_scales(WCS_CENTER, wcs)
+        _, _, _, sky_angle = pixel_to_sky_svd_scales((50.0, 50.0), wcs)
+        assert 0.0 <= pixel_angle.deg < 360.0
+        assert 0.0 <= sky_angle.deg < 360.0
