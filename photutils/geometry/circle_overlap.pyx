@@ -9,7 +9,11 @@ The cdef functions are not intended to be called from Python code.
 They are pure C math functions declared ``noexcept nogil`` so they can
 be called without the GIL (e.g., from the batch aperture photometry
 driver), including from multiple threads on free-threaded Python builds.
-Their signatures are exported via circular_overlap.pxd.
+Their signatures are exported via circle_overlap.pxd.
+
+NOTE: The ``circular_overlap_grid`` function should be named
+``circle_overlap_grid``, but it has been public for a long time and
+changing the name would break backwards compatibility.
 """
 
 import numpy as np
@@ -33,8 +37,8 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                           int nx, int ny, double r, int use_exact,
                           int subpixels):
     """
-    circular_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, r, use_exact,
-                          subpixels)
+    circle_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, r, use_exact,
+                        subpixels)
 
     Calculate the fractional overlap between a circle and a pixel grid.
 
@@ -132,12 +136,12 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                             # subpixel sampling:
                             if use_exact:
                                 frac_view[j, i] = (
-                                    circular_overlap_single_exact(
+                                    circle_overlap_single_exact(
                                         pxmin, pymin, pxmax, pymax, r)
                                     / (dx * dy))
                             else:
                                 frac_view[j, i] = (
-                                    circular_overlap_single_subpixel(
+                                    circle_overlap_single_subpixel(
                                         pxmin, pymin, pxmax, pymax, r,
                                         subpixels))
 
@@ -147,10 +151,10 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     return frac
 
 
-cdef double circular_overlap_single_subpixel(double x0, double y0,
-                                             double x1, double y1,
-                                             double r,
-                                             int subpixels) noexcept nogil:
+cdef double circle_overlap_single_subpixel(double x0, double y0,
+                                           double x1, double y1,
+                                           double r,
+                                           int subpixels) noexcept nogil:
     """
     Return the fraction of overlap between a circle and a single pixel
     with given extent, using a sub-pixel sampling method.
@@ -175,9 +179,9 @@ cdef double circular_overlap_single_subpixel(double x0, double y0,
     return frac / (subpixels * subpixels)
 
 
-cdef double circular_overlap_single_exact(double xmin, double ymin,
-                                          double xmax, double ymax,
-                                          double r) noexcept nogil:
+cdef double circle_overlap_single_exact(double xmin, double ymin,
+                                        double xmax, double ymax,
+                                        double r) noexcept nogil:
     """
     Calculate the area of overlap between a circle and a single pixel
     with given extent, using an exact method.
@@ -186,33 +190,33 @@ cdef double circular_overlap_single_exact(double xmin, double ymin,
     """
     if 0.0 <= xmin:
         if 0.0 <= ymin:
-            return circular_overlap_core(xmin, ymin, xmax, ymax, r)
+            return circle_overlap_core(xmin, ymin, xmax, ymax, r)
         elif 0.0 >= ymax:
-            return circular_overlap_core(-ymax, xmin, -ymin, xmax, r)
+            return circle_overlap_core(-ymax, xmin, -ymin, xmax, r)
         else:
-            return circular_overlap_single_exact(xmin, ymin, xmax, 0.0, r) \
-                + circular_overlap_single_exact(xmin, 0.0, xmax, ymax, r)
+            return circle_overlap_single_exact(xmin, ymin, xmax, 0.0, r) \
+                + circle_overlap_single_exact(xmin, 0.0, xmax, ymax, r)
     elif 0.0 >= xmax:
         if 0.0 <= ymin:
-            return circular_overlap_core(-xmax, ymin, -xmin, ymax, r)
+            return circle_overlap_core(-xmax, ymin, -xmin, ymax, r)
         elif 0.0 >= ymax:
-            return circular_overlap_core(-xmax, -ymax, -xmin, -ymin, r)
+            return circle_overlap_core(-xmax, -ymax, -xmin, -ymin, r)
         else:
-            return circular_overlap_single_exact(xmin, ymin, xmax, 0.0, r) \
-                + circular_overlap_single_exact(xmin, 0.0, xmax, ymax, r)
+            return circle_overlap_single_exact(xmin, ymin, xmax, 0.0, r) \
+                + circle_overlap_single_exact(xmin, 0.0, xmax, ymax, r)
     else:
         if 0.0 <= ymin or 0.0 >= ymax:
-            return circular_overlap_single_exact(xmin, ymin, 0.0, ymax, r) \
-                + circular_overlap_single_exact(0.0, ymin, xmax, ymax, r)
+            return circle_overlap_single_exact(xmin, ymin, 0.0, ymax, r) \
+                + circle_overlap_single_exact(0.0, ymin, xmax, ymax, r)
         else:
-            return circular_overlap_single_exact(xmin, ymin, 0.0, 0.0, r) \
-                + circular_overlap_single_exact(0.0, ymin, xmax, 0.0, r) \
-                + circular_overlap_single_exact(xmin, 0.0, 0.0, ymax, r) \
-                + circular_overlap_single_exact(0.0, 0.0, xmax, ymax, r)
+            return circle_overlap_single_exact(xmin, ymin, 0.0, 0.0, r) \
+                + circle_overlap_single_exact(0.0, ymin, xmax, 0.0, r) \
+                + circle_overlap_single_exact(xmin, 0.0, 0.0, ymax, r) \
+                + circle_overlap_single_exact(0.0, 0.0, xmax, ymax, r)
 
 
-cdef double circular_overlap_core(double xmin, double ymin, double xmax,
-                                  double ymax, double r) noexcept nogil:
+cdef double circle_overlap_core(double xmin, double ymin, double xmax,
+                                double ymax, double r) noexcept nogil:
     """
     Calculate the area of overlap between a circle and a rectangle,
     where the rectangle is in the first quadrant and the circle is

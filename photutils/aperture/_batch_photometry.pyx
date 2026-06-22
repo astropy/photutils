@@ -21,12 +21,12 @@ import numpy as np
 
 from photutils.geometry._polygon_overlap cimport (
     polygon_overlap_single_subpixel, polygon_pixel_overlap)
-from photutils.geometry.circular_overlap cimport (
-    circular_overlap_single_exact, circular_overlap_single_subpixel)
-from photutils.geometry.elliptical_overlap cimport (
-    elliptical_overlap_single_exact, elliptical_overlap_single_subpixel)
-from photutils.geometry.rectangular_overlap cimport (
-    rectangular_overlap_single_subpixel)
+from photutils.geometry.circle_overlap cimport (circle_overlap_single_exact,
+                                                circle_overlap_single_subpixel)
+from photutils.geometry.ellipse_overlap cimport (
+    ellipse_overlap_single_exact, ellipse_overlap_single_subpixel)
+from photutils.geometry.rectangle_overlap cimport (
+    rectangle_overlap_single_subpixel)
 
 __all__ = ['batch_aperture_sums']
 
@@ -414,10 +414,10 @@ cdef inline double _circle_pixel_frac(double pxmin, double pymin,
 
     if d < r + pixel_radius:  # pixel is close to the circle border
         if use_exact:
-            return circular_overlap_single_exact(pxmin, pymin, pxmax,
-                                                 pymax, r) / (dx * dy)
-        return circular_overlap_single_subpixel(pxmin, pymin, pxmax,
-                                                pymax, r, subpixels)
+            return circle_overlap_single_exact(pxmin, pymin, pxmax, pymax,
+                                               r) / (dx * dy)
+        return circle_overlap_single_subpixel(pxmin, pymin, pxmax, pymax, r,
+                                              subpixels)
 
     return 0.0  # pixel is fully outside the circle
 
@@ -446,10 +446,10 @@ cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
         return 0.0
 
     if use_exact:
-        return elliptical_overlap_single_exact(pxmin, pymin, pxmax, pymax,
-                                               rx, ry, theta) * norm
-    return elliptical_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
-                                              rx, ry, theta, subpixels)
+        return ellipse_overlap_single_exact(pxmin, pymin, pxmax, pymax, rx, ry,
+                                            theta) * norm
+    return ellipse_overlap_single_subpixel(pxmin, pymin, pxmax, pymax, rx, ry,
+                                           theta, subpixels)
 
 
 cdef inline double _rect_pixel_frac(double pxmin, double pymin,
@@ -486,10 +486,10 @@ cdef inline double _rect_pixel_frac(double pxmin, double pymin,
                                      buf_a_x, buf_a_y, buf_b_x, buf_b_y,
                                      32) / (dx * dy)
 
-    return rectangular_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
-                                               half_width, half_height,
-                                               cos_theta, sin_theta,
-                                               subpixels)
+    return rectangle_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
+                                             half_width, half_height,
+                                             cos_theta, sin_theta,
+                                             subpixels)
 
 
 cdef inline double _polygon_pixel_frac(double pxmin, double pymin,

@@ -14,7 +14,11 @@ The cdef functions are not intended to be called from Python code.
 They are pure C math functions declared ``noexcept nogil`` so they can
 be called without the GIL (e.g., from the batch aperture photometry
 driver), including from multiple threads on free-threaded Python builds.
-Their signatures are exported via elliptical_overlap.pxd.
+Their signatures are exported via ellipse_overlap.pxd.
+
+NOTE: The ``elliptical_overlap_grid`` function should be named
+``ellipse_overlap_grid``, but it has been public for a long time and
+changing the name would break backwards compatibility.
 """
 
 import numpy as np
@@ -39,8 +43,8 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                             int nx, int ny, double rx, double ry, double theta,
                             int use_exact, int subpixels):
     """
-    elliptical_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, rx, ry,
-                            theta, use_exact, subpixels)
+    ellipse_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, rx, ry,
+                         theta, use_exact, subpixels)
 
     Calculate the fractional overlap between an ellipse and a pixel
     grid.
@@ -139,22 +143,22 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                     if pymax > bymin and pymin < bymax:
                         if use_exact:
                             frac_view[j, i] = (
-                                elliptical_overlap_single_exact(
+                                ellipse_overlap_single_exact(
                                     pxmin, pymin, pxmax, pymax, rx, ry,
                                     theta) * norm)
                         else:
                             frac_view[j, i] = (
-                                elliptical_overlap_single_subpixel(
+                                ellipse_overlap_single_subpixel(
                                     pxmin, pymin, pxmax, pymax, rx, ry,
                                     theta, subpixels))
     return frac
 
 
-cdef double elliptical_overlap_single_subpixel(double x0, double y0,
-                                               double x1, double y1,
-                                               double rx, double ry,
-                                               double theta,
-                                               int subpixels) noexcept nogil:
+cdef double ellipse_overlap_single_subpixel(double x0, double y0,
+                                            double x1, double y1,
+                                            double rx, double ry,
+                                            double theta,
+                                            int subpixels) noexcept nogil:
     """
     Return the fraction of overlap between an ellipse and a single
     pixel with given extent, using a sub-pixel sampling method.
@@ -191,10 +195,10 @@ cdef double elliptical_overlap_single_subpixel(double x0, double y0,
     return frac / (subpixels * subpixels)
 
 
-cdef double elliptical_overlap_single_exact(double xmin, double ymin,
-                                            double xmax, double ymax,
-                                            double rx, double ry,
-                                            double theta) noexcept nogil:
+cdef double ellipse_overlap_single_exact(double xmin, double ymin,
+                                         double xmax, double ymax,
+                                         double rx, double ry,
+                                         double theta) noexcept nogil:
     """
     Return the area of overlap between a rectangle and an ellipse.
 
