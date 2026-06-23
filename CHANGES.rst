@@ -56,6 +56,14 @@ New Features
     branch for harmonic corrections. The module is now also marked as
     ``freethreading_compatible=True``. [#2293]
 
+- ``photutils.psf``
+
+  - Improved ``GriddedPSFModel`` evaluation performance by ~15% by
+    replacing the per-call grid lookup with a precomputed grid-cell
+    lookup table and implementing a scalar fast path for the bilinear
+    interpolation weights. [#2289]
+
+
 Bug Fixes
 ^^^^^^^^^
 

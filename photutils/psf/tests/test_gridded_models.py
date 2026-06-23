@@ -18,7 +18,7 @@ from photutils.psf import GriddedPSFModel, STDPSFGrid
 from photutils.segmentation import SourceCatalog, detect_sources
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
-# the first file has a single detector, the rest have multiple detectors
+# The first file has a single detector, the rest have multiple detectors
 STDPSF_FILENAMES = ('STDPSF_NRCA1_F150W_mock.fits',
                     'STDPSF_ACSWFC_F814W_mock.fits',
                     'STDPSF_NRCSW_F150W_mock.fits',
@@ -29,6 +29,66 @@ WEBBPSF_FILENAMES = ('nircam_nrca1_f200w_fovp101_samp4_npsf16_mock.fits',
                      'nircam_nrca1_f200w_fovp101_samp4_npsf4_mock.fits',
                      'nircam_nrca5_f444w_fovp101_samp4_npsf4_mock.fits',
                      'nircam_nrcb4_f150w_fovp101_samp4_npsf1_mock.fits')
+
+
+def _reference_find_bounding_points(model, x, y):
+    """
+    Reference implementation of the bounding-point lookup using the
+    pre-fast-path ``numpy.searchsorted``/``numpy.where`` algorithm.
+
+    This is used to verify that the optimized ``_find_bounding_points``
+    and ``_bounding_lookup`` produce equivalent results.
+    """
+    xidx = np.searchsorted(model._xgrid, x) - 1
+    yidx = np.searchsorted(model._ygrid, y) - 1
+    xidx = np.clip(xidx, 0, len(model._xgrid) - 2)
+    yidx = np.clip(yidx, 0, len(model._ygrid) - 2)
+
+    x0, x1 = model._xgrid[xidx], model._xgrid[xidx + 1]
+    y0, y1 = model._ygrid[yidx], model._ygrid[yidx + 1]
+
+    xcoords, ycoords = model.grid_xypos.T
+    lower_left = np.where((xcoords == x0) & (ycoords == y0))[0][0]
+    lower_right = np.where((xcoords == x1) & (ycoords == y0))[0][0]
+    upper_left = np.where((xcoords == x0) & (ycoords == y1))[0][0]
+    upper_right = np.where((xcoords == x1) & (ycoords == y1))[0][0]
+
+    grid_idx = np.array((lower_left, lower_right, upper_left, upper_right))
+    grid_xy = np.array((x0, x1, y0, y1))
+    return grid_idx, grid_xy
+
+
+def _reference_bilinear_weights(xi, yi, grid_xy):
+    """
+    Reference implementation of the bilinear weights using the
+    pre-fast-path ``numpy.clip`` algorithm.
+    """
+    x0, x1, y0, y1 = grid_xy
+    xi = np.clip(xi, x0, x1)
+    yi = np.clip(yi, y0, y1)
+    norm = (x1 - x0) * (y1 - y0)
+    return np.array([(x1 - xi) * (y1 - yi), (xi - x0) * (y1 - yi),
+                     (x1 - xi) * (yi - y0), (xi - x0) * (yi - y0)]) / norm
+
+
+def _reference_calc_model_values(model, x_0, y_0, xi, yi):
+    """
+    Reference implementation of ``_calc_model_values`` using the
+    pre-fast-path bounding-point and weight algorithms.
+    """
+    grid_idx, grid_xy = _reference_find_bounding_points(model, x_0, y_0)
+    interpolators = np.array([model._calc_interpolator(gidx)
+                              for gidx in grid_idx])
+    weights = _reference_bilinear_weights(x_0, y_0, grid_xy)
+
+    idx = np.where(weights != 0)
+    interpolators = interpolators[idx]
+    weights = weights[idx]
+
+    result = 0
+    for interp, weight in zip(interpolators, weights, strict=True):
+        result += interp(xi, yi, grid=False) * weight
+    return result
 
 
 @pytest.fixture(name='psfmodel')
@@ -69,7 +129,7 @@ class TestGriddedPSFModel:
         xypos = grid_xypos[idx]
         assert_allclose(xypos, grid_xypos)
 
-        # check that data and grid_xypos attributes are read-only
+        # Check that data and grid_xypos attributes are read-only
         match = 'object has no setter'
         with pytest.raises(AttributeError, match=match):
             psfmodel.data = np.ones((4, 5, 5))
@@ -135,15 +195,124 @@ class TestGriddedPSFModel:
         psf4 = psfmodel.evaluate(x=x, y=y, flux=100, x_0=220, y_0=220)
         assert_allclose(psf3, psf4)
 
+    def test_scalar_fastpath_caches(self, psfmodel):
+        """
+        The scalar fast-path lookup caches should have the expected
+        types and shapes.
+        """
+        nx = len(psfmodel._xgrid)
+        ny = len(psfmodel._ygrid)
+
+        assert isinstance(psfmodel._xgrid_list, list)
+        assert isinstance(psfmodel._ygrid_list, list)
+        assert all(isinstance(val, float) for val in psfmodel._xgrid_list)
+        assert all(isinstance(val, float) for val in psfmodel._ygrid_list)
+        assert_allclose(psfmodel._xgrid_list, psfmodel._xgrid)
+        assert_allclose(psfmodel._ygrid_list, psfmodel._ygrid)
+
+        lookup = psfmodel._bounding_lookup
+        assert lookup.shape == (nx - 1, ny - 1, 4)
+        assert lookup.dtype == np.int64
+
+    def test_bounding_lookup_table(self, psfmodel):
+        """
+        Each entry of the precomputed lookup table should map a grid
+        cell to the source indices of its four bounding ePSFs.
+        """
+        xcoords, ycoords = psfmodel.grid_xypos.T
+        lookup = psfmodel._bounding_lookup
+        for ix in range(len(psfmodel._xgrid) - 1):
+            for iy in range(len(psfmodel._ygrid) - 1):
+                x0 = psfmodel._xgrid[ix]
+                x1 = psfmodel._xgrid[ix + 1]
+                y0 = psfmodel._ygrid[iy]
+                y1 = psfmodel._ygrid[iy + 1]
+                expected = [
+                    np.where((xcoords == x0) & (ycoords == y0))[0][0],
+                    np.where((xcoords == x1) & (ycoords == y0))[0][0],
+                    np.where((xcoords == x0) & (ycoords == y1))[0][0],
+                    np.where((xcoords == x1) & (ycoords == y1))[0][0]]
+                assert_equal(lookup[ix, iy], expected)
+
+    def test_find_bounding_points_interior(self, psfmodel):
+        """
+        For interior points (not on a grid line), the optimized lookup
+        should match the reference algorithm exactly.
+        """
+        for x_0, y_0 in ((20, 30), (100, 100), (180, 170), (45.5, 61.5)):
+            grid_idx, grid_xy = psfmodel._find_bounding_points(x_0, y_0)
+            ref_idx, ref_xy = _reference_find_bounding_points(
+                psfmodel, x_0, y_0)
+            assert_equal(grid_idx, ref_idx)
+            assert_allclose(grid_xy, ref_xy)
+
+    def test_find_bounding_points_out_of_bounds(self, psfmodel):
+        """
+        Out-of-grid points should clamp to the nearest grid cell.
+        """
+        # Below the grid -> first cell
+        _, grid_xy = psfmodel._find_bounding_points(-10, -20)
+        assert_allclose(grid_xy, (psfmodel._xgrid[0], psfmodel._xgrid[1],
+                                  psfmodel._ygrid[0], psfmodel._ygrid[1]))
+
+        # Above the grid -> last cell
+        _, grid_xy = psfmodel._find_bounding_points(500, 500)
+        assert_allclose(grid_xy, (psfmodel._xgrid[-2], psfmodel._xgrid[-1],
+                                  psfmodel._ygrid[-2], psfmodel._ygrid[-1]))
+
+    def test_bilinear_weights(self, psfmodel):
+        """
+        Bilinear weights should sum to one, be non-negative, and clamp
+        out-of-cell coordinates to the cell bounds.
+        """
+        grid_xy = np.array((0.0, 40.0, 0.0, 60.0))
+
+        # Interior point
+        weights = psfmodel._calc_bilinear_weights(10.0, 15.0, grid_xy)
+        assert_allclose(weights.sum(), 1.0)
+        assert np.all(weights >= 0)
+
+        # Exact lower-left corner -> one-hot on the lower-left point
+        weights = psfmodel._calc_bilinear_weights(0.0, 0.0, grid_xy)
+        assert_allclose(weights, (1.0, 0.0, 0.0, 0.0))
+
+        # Exact upper-right corner -> one-hot on the upper-right point
+        weights = psfmodel._calc_bilinear_weights(40.0, 60.0, grid_xy)
+        assert_allclose(weights, (0.0, 0.0, 0.0, 1.0))
+
+        # Out-of-cell coordinates are clamped to the cell bounds
+        clamped = psfmodel._calc_bilinear_weights(-5.0, 80.0, grid_xy)
+        edge = psfmodel._calc_bilinear_weights(0.0, 60.0, grid_xy)
+        assert_allclose(clamped, edge)
+
+    def test_evaluate_matches_reference_algorithm(self, psfmodel):
+        """
+        The optimized evaluation must produce the same result as the
+        pre-fast-path reference algorithm for interior, on-grid, and
+        out-of-bounds positions.
+        """
+        y, x = np.mgrid[0:50, 0:50]
+        positions = ((20, 30), (100, 100), (180, 170), (45.5, 61.5),
+                     (40, 60), (160, 140), (0, 0), (200, 200),
+                     (-10, -20), (500, 500))
+        for x_0, y_0 in positions:
+            xi = psfmodel.oversampling[1] * (x.astype(float) - x_0)
+            yi = psfmodel.oversampling[0] * (y.astype(float) - y_0)
+            xi += psfmodel.origin[0]
+            yi += psfmodel.origin[1]
+            result = psfmodel._calc_model_values(x_0, y_0, xi, yi)
+            expected = _reference_calc_model_values(psfmodel, x_0, y_0, xi, yi)
+            assert_allclose(result, expected, rtol=1e-12, atol=1e-12)
+
     def test_gridded_psf_model_invalid_inputs(self):
         data = np.ones((4, 5, 5))
 
-        # check if NDData
+        # Check if NDData
         match = 'data must be an NDData instance'
         with pytest.raises(TypeError, match=match):
             GriddedPSFModel(data)
 
-        # check PSF data dimension
+        # Check PSF data dimension
         match = 'The NDData data attribute must be a 3D numpy ndarray'
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(NDData(np.ones((3, 3))))
@@ -164,21 +333,21 @@ class TestGriddedPSFModel:
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(NDData(data2))
 
-        # check that grid_xypos is in meta
+        # Check that grid_xypos is in meta
         meta = {'oversampling': 4}
         nddata = NDData(data, meta=meta)
         match = "'grid_xypos' must be in the nddata meta dictionary"
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
-        # check grid_xypos length
+        # Check grid_xypos length
         meta = {'grid_xypos': [[0, 0], [1, 0], [1, 0]], 'oversampling': 4}
         nddata = NDData(data, meta=meta)
         match = 'length of grid_xypos must match the number of input ePSFs'
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
-        # check if grid_xypos is a regular grid
+        # Check if grid_xypos is a regular grid
         meta = {'grid_xypos': [[0, 0], [1, 0], [1, 0], [3, 4]],
                 'oversampling': 4}
         nddata = NDData(data, meta=meta)
@@ -193,7 +362,7 @@ class TestGriddedPSFModel:
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
-        # check that oversampling is in meta
+        # Check that oversampling is in meta
         meta = {'grid_xypos': [[0, 0], [0, 1], [1, 0], [1, 1]]}
         nddata = NDData(data, meta=meta)
         match = "'oversampling' must be in the nddata meta dictionary"
@@ -303,7 +472,7 @@ class TestGriddedPSFModel:
         assert_equal(psfmodel.oversampling, [4, 4])
         assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
 
-        # test format auto-detect
+        # Test format auto-detect
         filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
         psfmodel = GriddedPSFModel.read(filename, detector_id=detector_id)
         assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
@@ -326,7 +495,7 @@ class TestGriddedPSFModel:
         assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
         psfmodel.plot_grid()
 
-        # test format auto-detect
+        # Test format auto-detect
         filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
         psfmodel = GriddedPSFModel.read(filename)
         assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
