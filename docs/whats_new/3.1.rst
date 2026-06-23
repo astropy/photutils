@@ -201,6 +201,15 @@ is converted exactly to a four-vertex polygon::
     >>> poly = aper.to_polygon(n_vertices=100)
 
 
+``GriddedPSFModel`` Performance Improvements
+============================================
+
+``GriddedPSFModel`` evaluations are now significantly faster, with
+typical performance improvements of approximately 20–25%. The
+optimizations reduce the overhead of PSF interpolation, improving the
+runtime of PSF photometry workflows.
+
+
 .. _whatsnew-3.1-api-changes:
 
 API Changes
