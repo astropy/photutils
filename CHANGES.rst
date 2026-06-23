@@ -58,10 +58,9 @@ New Features
 
 - ``photutils.psf``
 
-  - Improved ``GriddedPSFModel`` evaluation performance by ~15% by
-    replacing the per-call grid lookup with a precomputed grid-cell
-    lookup table and implementing a scalar fast path for the bilinear
-    interpolation weights. [#2289]
+  - Improved ``GriddedPSFModel`` evaluation performance by ~20-25%
+    through optimizations that reduce per-evaluation overhead and
+    streamline interpolation calculations. [#2289, #2307]
 
 
 Bug Fixes

@@ -671,16 +671,17 @@ class GriddedPSFModel(Fittable2DModel):
             coordinate.
         """
         grid_idx, grid_xy = self._find_bounding_points(x_0, y_0)
-        interpolators = np.array([self._calc_interpolator(gidx)
-                                  for gidx in grid_idx])
         weights = self._calc_bilinear_weights(x_0, y_0, grid_xy)
 
-        idx = np.where(weights != 0)
-        interpolators = interpolators[idx]
-        weights = weights[idx]
-
-        result = 0
-        for interp, weight in zip(interpolators, weights, strict=True):
+        # Accumulate the weighted interpolator evaluations using a plain
+        # Python loop. This avoids the overhead of building intermediate
+        # arrays and fancy-indexing (np.array, np.where), which is
+        # called once per model evaluation during fitting.
+        result = 0.0
+        for gidx, weight in zip(grid_idx, weights, strict=True):
+            if weight == 0.0:
+                continue
+            interp = self._calc_interpolator(int(gidx))
             result += interp(xi, yi, grid=False) * weight
 
         return result
