@@ -496,20 +496,39 @@ class GriddedPSFModel(Fittable2DModel):
 
     @lazyproperty
     def _xgrid_list(self):
-        """Plain Python list view of the sorted x-grid for fast bisect."""
+        """
+        A plain Python list of the sorted unique x grid positions.
+
+        This is used for fast scalar lookups with `bisect.bisect_right`,
+        which is faster than `numpy.searchsorted` for scalar inputs.
+        """
         return [float(v) for v in self._xgrid]
 
     @lazyproperty
     def _ygrid_list(self):
-        """Plain Python list view of the sorted y-grid for fast bisect."""
+        """
+        A plain Python list of the sorted unique y grid positions.
+
+        This is used for fast scalar lookups with `bisect.bisect_right`,
+        which is faster than `numpy.searchsorted` for scalar inputs.
+        """
         return [float(v) for v in self._ygrid]
 
     @lazyproperty
     def _bounding_lookup(self):
-        """Precomputed (xidx, yidx) -> [LL, LR, UL, UR] source indices.
+        """
+        A precomputed lookup table mapping grid-cell indices to the
+        source indices of the four bounding ePSF models.
 
-        Shape (nx-1, ny-1, 4), int64. Maps grid cell indices to the
-        source indices of the four bounding PSF models.
+        The array has shape ``(nx - 1, ny - 1, 4)`` and dtype int64,
+        where ``nx`` and ``ny`` are the number of unique x and y grid
+        positions, respectively. For a grid cell ``(xidx, yidx)``, the
+        last axis contains the source indices of the four bounding ePSFs
+        in the order (lower-left, lower-right, upper-left, upper-right).
+
+        Precomputing this table avoids the repeated `numpy.where`
+        searches over ``grid_xypos`` that would otherwise be performed
+        for every model evaluation.
         """
         nx = len(self._xgrid)
         ny = len(self._ygrid)
@@ -521,10 +540,12 @@ class GriddedPSFModel(Fittable2DModel):
                 x1 = self._xgrid[ix + 1]
                 y0 = self._ygrid[iy]
                 y1 = self._ygrid[iy + 1]
-                out[ix, iy, 0] = np.where((xcoords == x0) & (ycoords == y0))[0][0]
-                out[ix, iy, 1] = np.where((xcoords == x1) & (ycoords == y0))[0][0]
-                out[ix, iy, 2] = np.where((xcoords == x0) & (ycoords == y1))[0][0]
-                out[ix, iy, 3] = np.where((xcoords == x1) & (ycoords == y1))[0][0]
+                # Corners in (lower-left, lower-right, upper-left,
+                # upper-right) order
+                corners = ((x0, y0), (x1, y0), (x0, y1), (x1, y1))
+                for k, (xc, yc) in enumerate(corners):
+                    match = np.where((xcoords == xc) & (ycoords == yc))[0]
+                    out[ix, iy, k] = match[0]
         return out
 
     def _find_bounding_points(self, x, y):
@@ -535,10 +556,14 @@ class GriddedPSFModel(Fittable2DModel):
         If the point is outside the grid, the nearest grid points are
         selected. The input grid points do not need to be sorted.
 
+        This method is a scalar-only fast path: ``x`` and ``y`` must be
+        scalar values (the model ``x_0`` and ``y_0`` positions), which
+        is always the case when called from ``_calc_model_values``.
+
         Parameters
         ----------
         x, y : float
-            The (x_0, y_0) position of the model.
+            The scalar (x_0, y_0) position of the model.
 
         Returns
         -------
@@ -546,13 +571,17 @@ class GriddedPSFModel(Fittable2DModel):
             The indices of the four bounding points in the sorted
             grid. The order is lower-left, lower-right, upper-left,
             upper-right.
+
         grid_xy : `~numpy.ndarray`
             The x and y coordinates of the four bounding points. The
             order is left, right, bottom, top.
         """
-        # Use bisect on the float list and precomputed lookup table for
-        # efficient grid cell indexing. Indices are clamped so out-of-grid
-        # inputs select the nearest grid cell.
+        # Scalar fast path: use bisect on the precomputed float list and
+        # the precomputed corner lookup table for efficient grid-cell
+        # indexing. This avoids the numpy call overhead (searchsorted,
+        # clip, and where) that dominates for scalar inputs. The indices
+        # are clamped so that out-of-grid inputs select the nearest grid
+        # cell.
         nx = len(self._xgrid)
         ny = len(self._ygrid)
         xidx = bisect.bisect_right(self._xgrid_list, float(x)) - 1
@@ -578,10 +607,13 @@ class GriddedPSFModel(Fittable2DModel):
         Calculate the bilinear interpolation weights for a given (xi,
         yi) coordinate and the four bounding grid points.
 
+        This method is a scalar-only fast path: ``xi`` and ``yi`` must
+        be scalar values (the model ``x_0`` and ``y_0`` positions).
+
         Parameters
         ----------
         xi, yi : float
-            The (x_0, y_0) position of the model.
+            The scalar (x_0, y_0) position of the model.
 
         grid_xy : `~numpy.ndarray`
             The x and y coordinates of the four bounding points. The
@@ -596,7 +628,9 @@ class GriddedPSFModel(Fittable2DModel):
         """
         x0, x1, y0, y1 = grid_xy
 
-        # Clamp coordinates to grid bounds using conditional logic.
+        # Scalar fast path: clamp the coordinates to the grid bounds
+        # using scalar conditionals instead of numpy.clip, which avoids
+        # the numpy call overhead for scalar inputs.
         xi = float(xi)
         yi = float(yi)
         if xi < x0:
