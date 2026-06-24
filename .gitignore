@@ -14,8 +14,7 @@ __pycache__
 */version.py
 */cython_version.py
 MANIFEST
-build-oldest-constraints.txt
-install-oldest-constraints.txt
+*oldest_deps*.txt
 requirements-min.txt
 htmlcov
 .coverage*
