@@ -318,6 +318,9 @@ ignore = [
 'conftest.py' = [
     'D103',  # undocumented-public-function
 ]
+'scripts/*.py' = [
+    'INP001',  # not a package
+]
 'docs/conf.py' = [
     'ERA001',  # commented-out-code
     'INP001',  # implicit-namespace-package
