@@ -6,7 +6,7 @@ General
 
 - The minimum required astropy is now 6.1.7. [#2211]
 
-- The minimum required SciPy is now 1.14. [#2266]
+- The minimum required SciPy is now 1.14.1. [#2266, #2308]
 
 - The minimum required regions is now 0.10. [#2266]
 
