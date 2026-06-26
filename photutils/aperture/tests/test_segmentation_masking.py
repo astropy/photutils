@@ -183,16 +183,29 @@ class TestAperturePhotometry:
         assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
 
     def test_correct_matches_mask_path(self):
-        # The 'correct' method uses the Python mask path. Verify it runs
+        # The 'correct' method uses the Cython batch driver for circular
+        # apertures. Verify it exactly matches the Python mask code path
         # and differs from 'none' for a scene with a neighbor.
         data, segm = make_scene()
+        error = np.ones_like(data) * 2.0
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[22, 30] = True
         aper = CircularAperture([(21, 21)], r=10)
         none_phot = aperture_photometry(data, aper,
                                         aperture_mask_method='none')
-        corr_phot = aperture_photometry(data, aper, segmentation_image=segm,
-                                        labels=[1],
-                                        aperture_mask_method='correct')
-        assert corr_phot['aperture_sum'][0] != none_phot['aperture_sum'][0]
+
+        _, labels = process_segmentation_inputs(segm, None, 'correct',
+                                                [(21, 21)], data.shape)
+        batch_sum, batch_err = aper.do_photometry(
+            data, error=error, mask=mask, segmentation_image=segm,
+            labels=labels, aperture_mask_method='correct')
+        mask_sum, mask_err = aper._do_mask_photometry(
+            data, error=error, mask=mask, method='exact', subpixels=5,
+            segmentation=segm.astype(np.intp), labels=labels,
+            aperture_mask_method='correct')
+        assert_allclose(batch_sum, mask_sum, rtol=1e-12)
+        assert_allclose(batch_err, mask_err, rtol=1e-12)
+        assert batch_sum[0] != none_phot['aperture_sum'][0]
 
     def test_polygon_mask_path(self):
         # Polygon apertures have no batch driver, exercising the mask
@@ -447,3 +460,29 @@ class TestBatchDriverSegmentation:
             data, error, mask, positions, SHAPE_CIRCLE, params, 8.0, 8.0,
             1, 8)
         assert_allclose(sums, ref)
+
+    def test_correct_method_matches_mask_path(self):
+        # The batch 'correct' kernel (seg_method=3) must exactly match
+        # the Python mask-path 'correct' implementation.
+        rng = np.random.default_rng(3)
+        data = rng.normal(10.0, 1.0, (60, 60))
+        error = rng.random((60, 60)) + 0.5
+        mask = np.zeros((60, 60), dtype=bool)
+        mask[22, 30] = True
+        segm = np.zeros((60, 60), dtype=np.intp)
+        segm[18:25, 18:25] = 1  # target
+        segm[18:25, 25:31] = 2  # bright neighbor
+        data[18:25, 25:31] += 200.0
+        positions = [(21.0, 21.0)]
+        aper = CircularAperture(positions, r=8)
+        labels = np.array([1], dtype=np.intp)
+
+        batch_sum, batch_err = aper.do_photometry(
+            data, error=error, mask=mask, segmentation_image=segm,
+            labels=labels, aperture_mask_method='correct')
+        mask_sum, mask_err = aper._do_mask_photometry(
+            data, error=error, mask=mask, method='exact', subpixels=5,
+            segmentation=segm, labels=labels,
+            aperture_mask_method='correct')
+        assert_allclose(batch_sum, mask_sum, rtol=1e-12)
+        assert_allclose(batch_err, mask_err, rtol=1e-12)

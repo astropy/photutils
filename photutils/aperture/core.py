@@ -592,8 +592,9 @@ class PixelAperture(Aperture):
 
         This is the fallback code path for apertures or inputs that are
         not supported by the batch Cython driver. It also handles the
-        ``aperture_mask_method='correct'`` segmentation masking, which
-        is not supported by the batch driver.
+        ``aperture_mask_method='correct'`` segmentation masking for
+        apertures (e.g., `PolygonAperture`) or statistics (e.g.,
+        `ApertureStats`) that do not use the batch driver.
 
         Parameters
         ----------
@@ -713,8 +714,6 @@ class PixelAperture(Aperture):
             The validated segmentation array, per-aperture source
             labels, and masking method (see
             `~photutils.aperture._segmentation.process_segmentation_inputs`).
-            The ``'correct'`` method is not supported by the batch
-            driver, so `None` is returned in that case.
 
         Returns
         -------
@@ -724,11 +723,6 @@ class PixelAperture(Aperture):
             aperture or these inputs (in which case the caller should
             use the mask-based code path).
         """
-        # The symmetric 'correct' method modifies the data array and is
-        # only implemented in the mask-based code path.
-        if aperture_mask_method == 'correct':
-            return None
-
         # Use the batch driver only if the aperture's own class defines
         # the _batch_shape_params hook. Subclasses that do not define
         # it may override other behavior (e.g., to_mask) that the batch

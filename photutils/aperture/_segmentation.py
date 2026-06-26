@@ -18,12 +18,10 @@ from photutils.utils._round import round_half_away
 
 __all__ = []
 
-# The valid ``aperture_mask_method`` values and their integer codes
-# used by the batch Cython driver (see ``_batch_photometry.pyx``). The
-# ``'correct'`` method is not supported by the batch driver and falls
-# back to the mask-based code path.
+# The valid ``aperture_mask_method`` values and their integer codes used
+# by the batch Cython driver (see ``_batch_photometry.pyx``).
 APERTURE_MASK_METHODS = ('none', 'mask', 'source_only', 'correct')
-SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'source_only': 2}
+SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'source_only': 2, 'correct': 3}
 
 
 def process_segmentation_inputs(segmentation_image, labels,
