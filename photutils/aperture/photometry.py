@@ -10,6 +10,7 @@ import numpy as np
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.aperture._segmentation import process_segmentation_inputs
 from photutils.aperture.converters import region_to_aperture
 from photutils.aperture.core import (Aperture, SkyAperture, _aperture_metadata,
                                      _update_method_subpixels_docstring)
@@ -30,7 +31,9 @@ _DEPRECATED_COLUMNS: dict = {
 @_update_method_subpixels_docstring
 @deprecated_positional_kwargs(since='3.0', until='4.0')
 def aperture_photometry(data, apertures, error=None, mask=None,
-                        method='exact', subpixels=5, wcs=None):
+                        method='exact', subpixels=5, wcs=None,
+                        segmentation_image=None, labels=None,
+                        aperture_mask_method='none'):
     # numpydoc ignore: PR01,PR02,PR04,PR07
     """
     Perform aperture photometry on the input data by summing the flux
@@ -87,6 +90,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         coordinates of the input aperture center(s). This keyword is
         required if the input ``apertures`` contains a `SkyAperture` or
         `~regions.SkyRegion`.
+
+    <segmentation_descriptions>
 
     Returns
     -------
@@ -154,7 +159,10 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
         return aperture_photometry(data, apertures, error=error, mask=mask,
                                    method=method, subpixels=subpixels,
-                                   wcs=wcs)
+                                   wcs=wcs,
+                                   segmentation_image=segmentation_image,
+                                   labels=labels,
+                                   aperture_mask_method=aperture_mask_method)
 
     single_aperture = False
     if not isinstance(apertures, (list, tuple, np.ndarray)):
@@ -194,6 +202,14 @@ def aperture_photometry(data, apertures, error=None, mask=None,
             msg = 'Input apertures must all have identical positions'
             raise ValueError(msg)
 
+    # Validate the segmentation-masking inputs and resolve the
+    # per-aperture source labels once (the resolved labels are passed
+    # explicitly to do_photometry to avoid repeated auto-lookups and
+    # warnings)
+    segmentation, labels = process_segmentation_inputs(
+        segmentation_image, labels, aperture_mask_method,
+        np.atleast_2d(positions), np.shape(data))
+
     # Define output table meta data
     meta = _get_meta()
     calling_args = f"method='{method}', subpixels={subpixels}"
@@ -226,9 +242,10 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     sum_key_main = 'aperture_sum'
     sum_err_key_main = 'aperture_sum_err'
     for i, aper in enumerate(apertures):
-        aper_sum, aper_sum_err = aper.do_photometry(data, error=error,
-                                                    mask=mask, method=method,
-                                                    subpixels=subpixels)
+        aper_sum, aper_sum_err = aper.do_photometry(
+            data, error=error, mask=mask, method=method, subpixels=subpixels,
+            segmentation_image=segmentation, labels=labels,
+            aperture_mask_method=aperture_mask_method)
 
         sum_key = sum_key_main
         sum_err_key = sum_err_key_main
