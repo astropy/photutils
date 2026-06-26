@@ -780,7 +780,7 @@ class PixelAperture(Aperture):
     @_update_method_subpixels_docstring
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def do_photometry(self, data, error=None, mask=None, method='exact',
-                      subpixels=5, segmentation_image=None, labels=None,
+                      subpixels=5, *, segmentation_image=None, labels=None,
                       mask_method='none'):
         # numpydoc ignore: PR01,PR02,PR04,PR07
         """

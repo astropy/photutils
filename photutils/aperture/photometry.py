@@ -31,7 +31,7 @@ _DEPRECATED_COLUMNS: dict = {
 @_update_method_subpixels_docstring
 @deprecated_positional_kwargs(since='3.0', until='4.0')
 def aperture_photometry(data, apertures, error=None, mask=None,
-                        method='exact', subpixels=5, wcs=None,
+                        method='exact', subpixels=5, wcs=None, *,
                         segmentation_image=None, labels=None,
                         mask_method='none'):
     # numpydoc ignore: PR01,PR02,PR04,PR07
