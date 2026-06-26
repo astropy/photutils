@@ -69,20 +69,20 @@ array_like, or `None`, optional
     A 2D segmentation image with the same shape as ``data``, where
     background pixels have a value of 0 and sources are labeled with
     positive integers. If input, neighboring sources can be masked or
-    corrected within each aperture according to the
-    ``aperture_mask_method`` keyword. This keyword is required if
-    ``aperture_mask_method`` is not ``'none'``.
+    corrected within each aperture according to the ``mask_method``
+    keyword. This keyword is required if ``mask_method`` is not
+    ``'none'``.
 
 labels : int, 1D array_like, or `None`, optional
     The source label(s) in ``segmentation_image`` associated with the
-    aperture position(s). If input, ``labels`` must have the same
-    length as the number of aperture positions. If `None` (default),
-    the label for each aperture is determined by sampling
-    ``segmentation_image`` at the aperture center (rounded to the
-    nearest pixel). An aperture whose center falls on a background
-    pixel (label 0) has its masking behavior disabled.
+    aperture position(s). If input, ``labels`` must have the same length
+    as the number of aperture positions. If `None` (default), the label
+    for each aperture is determined by sampling ``segmentation_image``
+    at the aperture center (rounded to the nearest pixel). An aperture
+    whose center falls on a background pixel (label 0) has its masking
+    behavior disabled.
 
-aperture_mask_method : {'none', 'mask', 'source_only', 'correct'}, optional
+mask_method : {'none', 'mask', 'source_only', 'correct'}, optional
     The method used to handle neighboring sources within each aperture
     using the ``segmentation_image``:
 
@@ -586,15 +586,15 @@ class PixelAperture(Aperture):
 
     def _do_mask_photometry(self, data, *, error, mask, method, subpixels,
                             segmentation=None, labels=None,
-                            aperture_mask_method='none'):
+                            mask_method='none'):
         """
         Perform aperture photometry using per-source aperture masks.
 
         This is the fallback code path for apertures or inputs that are
         not supported by the batch Cython driver. It also handles the
-        ``aperture_mask_method='correct'`` segmentation masking for
-        apertures (e.g., `PolygonAperture`) or statistics (e.g.,
-        `ApertureStats`) that do not use the batch driver.
+        ``mask_method='correct'`` segmentation masking for apertures
+        (e.g., `PolygonAperture`) or statistics (e.g., `ApertureStats`)
+        that do not use the batch driver.
 
         Parameters
         ----------
@@ -606,7 +606,7 @@ class PixelAperture(Aperture):
             See `do_photometry`. Any units must already be stripped from
             ``error``.
 
-        segmentation, labels, aperture_mask_method
+        segmentation, labels, mask_method
             The validated segmentation array, per-aperture source
             labels, and masking method (see
             `~photutils.aperture._segmentation.process_segmentation_inputs`).
@@ -643,14 +643,14 @@ class PixelAperture(Aperture):
                 data_cutout = data[slc_large]
                 error_cutout = None if error is None else error[slc_large]
 
-                if segmentation is not None and aperture_mask_method != 'none':
+                if segmentation is not None and mask_method != 'none':
                     segm_cutout = segmentation[slc_large]
                     base_mask = None if mask is None else mask[slc_large]
                     cutout_xycen = (positions[idx, 0] - slc_large[1].start,
                                     positions[idx, 1] - slc_large[0].start)
                     (data_cutout, error_cutout,
                      exclude) = make_segmentation_exclusion(
-                        aperture_mask_method, segm_cutout, labels[idx],
+                        mask_method, segm_cutout, labels[idx],
                         data=data_cutout, error=error_cutout,
                         base_mask=base_mask, cutout_xycen=cutout_xycen)
                     pixel_mask = pixel_mask & ~exclude
@@ -692,7 +692,7 @@ class PixelAperture(Aperture):
 
     def _do_batch_photometry(self, data, *, error, mask, method, subpixels,
                              segmentation=None, labels=None,
-                             aperture_mask_method='none'):
+                             mask_method='none'):
         """
         Perform aperture photometry using the batch Cython driver.
 
@@ -710,7 +710,7 @@ class PixelAperture(Aperture):
             See `do_photometry`. Any units must already be stripped from
             ``error``.
 
-        segmentation, labels, aperture_mask_method
+        segmentation, labels, mask_method
             The validated segmentation array, per-aperture source
             labels, and masking method (see
             `~photutils.aperture._segmentation.process_segmentation_inputs`).
@@ -751,10 +751,10 @@ class PixelAperture(Aperture):
         seg_arr = None
         labels_arr = None
         seg_code = 0
-        if segmentation is not None and aperture_mask_method != 'none':
+        if segmentation is not None and mask_method != 'none':
             seg_arr = np.ascontiguousarray(segmentation, dtype=np.intp)
             labels_arr = np.ascontiguousarray(labels, dtype=np.intp)
-            seg_code = SEG_METHOD_CODES[aperture_mask_method]
+            seg_code = SEG_METHOD_CODES[mask_method]
 
         use_exact, subpixels = self._translate_mask_method(method, subpixels)
 
@@ -781,7 +781,7 @@ class PixelAperture(Aperture):
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def do_photometry(self, data, error=None, mask=None, method='exact',
                       subpixels=5, segmentation_image=None, labels=None,
-                      aperture_mask_method='none'):
+                      mask_method='none'):
         # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         Perform aperture photometry on the input data.
@@ -847,13 +847,13 @@ class PixelAperture(Aperture):
                 error = error.value
 
         segmentation, labels = process_segmentation_inputs(
-            segmentation_image, labels, aperture_mask_method,
+            segmentation_image, labels, mask_method,
             np.atleast_2d(self.positions), data.shape)
 
         result = self._do_batch_photometry(
             data, error=error, mask=mask, method=method, subpixels=subpixels,
             segmentation=segmentation, labels=labels,
-            aperture_mask_method=aperture_mask_method)
+            mask_method=mask_method)
 
         if result is not None:
             aperture_sums, aperture_sum_errs = result
@@ -861,7 +861,7 @@ class PixelAperture(Aperture):
             aperture_sums, aperture_sum_errs = self._do_mask_photometry(
                 data, error=error, mask=mask, method=method,
                 subpixels=subpixels, segmentation=segmentation,
-                labels=labels, aperture_mask_method=aperture_mask_method)
+                labels=labels, mask_method=mask_method)
 
         # Apply units
         if unit is not None:

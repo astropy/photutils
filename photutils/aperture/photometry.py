@@ -33,7 +33,7 @@ _DEPRECATED_COLUMNS: dict = {
 def aperture_photometry(data, apertures, error=None, mask=None,
                         method='exact', subpixels=5, wcs=None,
                         segmentation_image=None, labels=None,
-                        aperture_mask_method='none'):
+                        mask_method='none'):
     # numpydoc ignore: PR01,PR02,PR04,PR07
     """
     Perform aperture photometry on the input data by summing the flux
@@ -162,7 +162,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
                                    wcs=wcs,
                                    segmentation_image=segmentation_image,
                                    labels=labels,
-                                   aperture_mask_method=aperture_mask_method)
+                                   mask_method=mask_method)
 
     single_aperture = False
     if not isinstance(apertures, (list, tuple, np.ndarray)):
@@ -207,7 +207,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     # explicitly to do_photometry to avoid repeated auto-lookups and
     # warnings)
     segmentation, labels = process_segmentation_inputs(
-        segmentation_image, labels, aperture_mask_method,
+        segmentation_image, labels, mask_method,
         np.atleast_2d(positions), np.shape(data))
 
     # Define output table meta data
@@ -245,7 +245,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         aper_sum, aper_sum_err = aper.do_photometry(
             data, error=error, mask=mask, method=method, subpixels=subpixels,
             segmentation_image=segmentation, labels=labels,
-            aperture_mask_method=aperture_mask_method)
+            mask_method=mask_method)
 
         sum_key = sum_key_main
         sum_err_key = sum_err_key_main

@@ -51,7 +51,7 @@ class TestProcessSegmentationInputs:
 
     def test_invalid_method(self):
         data, segm = make_scene()
-        match = 'aperture_mask_method must be one of'
+        match = 'mask_method must be one of'
         with pytest.raises(ValueError, match=match):
             process_segmentation_inputs(segm, None, 'invalid', [(21, 21)],
                                         data.shape)
@@ -133,7 +133,7 @@ class TestAperturePhotometry:
         segm_in = SegmentationImage(segm) if use_segm_obj else segm
 
         phot = aperture_photometry(data, aper, segmentation_image=segm_in,
-                                   labels=[1], aperture_mask_method='mask')
+                                   labels=[1], mask_method='mask')
         manual_mask = (segm > 0) & (segm != 1)
         ref = aperture_photometry(data, aper, mask=manual_mask)
         assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
@@ -143,7 +143,7 @@ class TestAperturePhotometry:
         aper = CircularAperture([(21, 21)], r=8)
         phot = aperture_photometry(data, aper, segmentation_image=segm,
                                    labels=[1],
-                                   aperture_mask_method='source_only')
+                                   mask_method='source_only')
         manual_mask = segm != 1
         ref = aperture_photometry(data, aper, mask=manual_mask)
         assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
@@ -152,7 +152,7 @@ class TestAperturePhotometry:
         data, segm = make_scene()
         aper = CircularAperture([(21, 21)], r=8)
         phot = aperture_photometry(data, aper, segmentation_image=segm,
-                                   aperture_mask_method='none')
+                                   mask_method='none')
         ref = aperture_photometry(data, aper)
         assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
 
@@ -161,16 +161,15 @@ class TestAperturePhotometry:
         aper = CircularAperture([(21, 21)], r=8)
         match = 'segmentation_image must be input'
         with pytest.raises(ValueError, match=match):
-            aperture_photometry(data, aper, aperture_mask_method='mask')
+            aperture_photometry(data, aper, mask_method='mask')
 
     def test_mask_excludes_neighbor_flux(self):
         data, segm = make_scene()
         aper = CircularAperture([(21, 21)], r=10)
         none_phot = aperture_photometry(data, aper,
-                                        aperture_mask_method='none')
+                                        mask_method='none')
         mask_phot = aperture_photometry(data, aper, segmentation_image=segm,
-                                        labels=[1],
-                                        aperture_mask_method='mask')
+                                        labels=[1], mask_method='mask')
         # Masking the bright neighbor reduces the sum
         assert mask_phot['aperture_sum'][0] < none_phot['aperture_sum'][0]
 
@@ -178,7 +177,7 @@ class TestAperturePhotometry:
         data, segm = make_scene()
         aper = CircularAperture([(21, 21)], r=8)
         phot = aperture_photometry(data, aper, segmentation_image=segm,
-                                   labels=[0], aperture_mask_method='mask')
+                                   labels=[0], mask_method='mask')
         ref = aperture_photometry(data, aper)
         assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
 
@@ -192,17 +191,17 @@ class TestAperturePhotometry:
         mask[22, 30] = True
         aper = CircularAperture([(21, 21)], r=10)
         none_phot = aperture_photometry(data, aper,
-                                        aperture_mask_method='none')
+                                        mask_method='none')
 
         _, labels = process_segmentation_inputs(segm, None, 'correct',
                                                 [(21, 21)], data.shape)
         batch_sum, batch_err = aper.do_photometry(
             data, error=error, mask=mask, segmentation_image=segm,
-            labels=labels, aperture_mask_method='correct')
+            labels=labels, mask_method='correct')
         mask_sum, mask_err = aper._do_mask_photometry(
             data, error=error, mask=mask, method='exact', subpixels=5,
             segmentation=segm.astype(np.intp), labels=labels,
-            aperture_mask_method='correct')
+            mask_method='correct')
         assert_allclose(batch_sum, mask_sum, rtol=1e-12)
         assert_allclose(batch_err, mask_err, rtol=1e-12)
         assert batch_sum[0] != none_phot['aperture_sum'][0]
@@ -214,7 +213,7 @@ class TestAperturePhotometry:
         offsets = np.array([[-7, -7], [9, -7], [9, 9], [-7, 9]])
         aper = PolygonAperture((21, 21), offsets)
         phot = aperture_photometry(data, aper, segmentation_image=segm,
-                                   labels=[1], aperture_mask_method='mask')
+                                   labels=[1], mask_method='mask')
         manual_mask = (segm > 0) & (segm != 1)
         ref = aperture_photometry(data, aper, mask=manual_mask)
         assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
@@ -225,7 +224,7 @@ class TestAperturePhotometry:
         aper = CircularAperture([(21, 21)], r=8)
         phot = aperture_photometry(data, aper, error=error,
                                    segmentation_image=segm, labels=[1],
-                                   aperture_mask_method='mask')
+                                   mask_method='mask')
         manual_mask = (segm > 0) & (segm != 1)
         ref = aperture_photometry(data, aper, error=error, mask=manual_mask)
         assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
@@ -237,7 +236,7 @@ class TestAperturePhotometry:
         aper = CircularAperture([(21, 21)], r=8)
         phot = aperture_photometry(data * unit, aper,
                                    segmentation_image=segm, labels=[1],
-                                   aperture_mask_method='mask')
+                                   mask_method='mask')
         manual_mask = (segm > 0) & (segm != 1)
         ref = aperture_photometry(data * unit, aper, mask=manual_mask)
         assert_allclose(phot['aperture_sum'].value, ref['aperture_sum'].value)
@@ -249,7 +248,7 @@ class TestAperturePhotometry:
         match = 'centers on a background pixel'
         with pytest.warns(AstropyUserWarning, match=match):
             aperture_photometry(data, aper, segmentation_image=segm,
-                                aperture_mask_method='mask')
+                                mask_method='mask')
 
 
 class TestDoPhotometry:
@@ -263,7 +262,7 @@ class TestDoPhotometry:
                                                 data.shape)
         sums, _ = aper.do_photometry(data, segmentation_image=segm,
                                      labels=labels,
-                                     aperture_mask_method='mask')
+                                     mask_method='mask')
         for idx, label in enumerate(labels):
             manual_mask = (segm > 0) & (segm != label)
             ref, _ = CircularAperture(aper.positions[idx], r=6).do_photometry(
@@ -280,7 +279,7 @@ class TestApertureStats:
         kwargs = {}
         if method != 'none':
             kwargs = {'segmentation_image': segm, 'labels': [1, 2],
-                      'aperture_mask_method': method}
+                      'mask_method': method}
         phot = aperture_photometry(data, aper, **kwargs)
         stats = ApertureStats(data, aper, **kwargs)
         assert_allclose(stats.sum, phot['aperture_sum'], rtol=1e-10)
@@ -289,7 +288,7 @@ class TestApertureStats:
         data, segm = make_scene()
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
         stats = ApertureStats(data, aper, segmentation_image=segm,
-                              labels=[1, 2], aperture_mask_method='mask')
+                              labels=[1, 2], mask_method='mask')
         sub = stats[1]
         assert_allclose(sub.sum, stats.sum[1])
 
@@ -297,7 +296,7 @@ class TestApertureStats:
         data, segm = make_scene()
         aper = CircularAperture([(21, 21)], r=6)
         stats = ApertureStats(data, aper, segmentation_image=segm,
-                              labels=[1], aperture_mask_method='mask')
+                              labels=[1], mask_method='mask')
         copied = stats.copy()
         assert_allclose(copied.sum, stats.sum)
 
@@ -479,10 +478,10 @@ class TestBatchDriverSegmentation:
 
         batch_sum, batch_err = aper.do_photometry(
             data, error=error, mask=mask, segmentation_image=segm,
-            labels=labels, aperture_mask_method='correct')
+            labels=labels, mask_method='correct')
         mask_sum, mask_err = aper._do_mask_photometry(
             data, error=error, mask=mask, method='exact', subpixels=5,
             segmentation=segm, labels=labels,
-            aperture_mask_method='correct')
+            mask_method='correct')
         assert_allclose(batch_sum, mask_sum, rtol=1e-12)
         assert_allclose(batch_err, mask_err, rtol=1e-12)

@@ -758,14 +758,14 @@ The result is very different if a ``mask`` image is not provided::
 Masking Neighboring Sources with a Segmentation Image
 -----------------------------------------------------
 
-When apertures contain flux from neighboring sources, that
-contamination can be masked or corrected using a segmentation image
-(see :ref:`image_segmentation`). A segmentation image is an integer
+When apertures contain flux from neighboring sources, that contamination
+can be masked or corrected using a segmentation image (see :ref:`Image
+Segmentation <image_segmentation>`). A segmentation image is an integer
 image with the same shape as the data, where background pixels have a
 value of 0 and sources are labeled with positive integers.
 
-The behavior is controlled by the ``aperture_mask_method`` keyword,
-which accepts one of four values:
+The behavior is controlled by the ``mask_method`` keyword, which accepts
+one of four values:
 
 * ``'none'`` (default):
   The segmentation image is ignored and all pixels within the aperture
@@ -810,7 +810,7 @@ Without masking, the aperture sum includes the neighbor's flux::
 Masking the neighboring source excludes its flux::
 
     >>> t2 = aperture_photometry(data, aperture, segmentation_image=segm,
-    ...                          aperture_mask_method='mask')
+    ...                          mask_method='mask')
     >>> t2['aperture_sum'].info.format = '%.8g'  # for consistent table output
     >>> print(t2['aperture_sum'])
     aperture_sum
@@ -822,7 +822,7 @@ values mirrored across the aperture center, recovering an estimate of
 the obscured flux::
 
     >>> t3 = aperture_photometry(data, aperture, segmentation_image=segm,
-    ...                          aperture_mask_method='correct')
+    ...                          mask_method='correct')
     >>> t3['aperture_sum'].info.format = '%.8g'  # for consistent table output
     >>> print(t3['aperture_sum'])
     aperture_sum
@@ -830,7 +830,6 @@ the obscured flux::
        131.26548
 
 These keywords are also available in
-:meth:`~photutils.aperture.PixelAperture.do_photometry` and
 :class:`~photutils.aperture.ApertureStats`.
 
 

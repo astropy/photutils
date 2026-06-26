@@ -250,7 +250,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
                  sigma_clip=None, sum_method='exact', subpixels=5,
                  local_bkg=None, segmentation_image=None, labels=None,
-                 aperture_mask_method='none'):
+                 mask_method='none'):
 
         if isinstance(data, NDData):
             data, error, mask, wcs = self._unpack_nddata(data, error, mask,
@@ -314,11 +314,11 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
         # Validate the segmentation-masking inputs and resolve the
         # per-aperture source labels
-        self._aperture_mask_method = aperture_mask_method
+        self._mask_method = mask_method
         seg_positions = np.atleast_2d(self._pixel_aperture.positions)
         (self._segmentation,
          self._seg_labels) = process_segmentation_inputs(
-            segmentation_image, labels, aperture_mask_method,
+            segmentation_image, labels, mask_method,
             seg_positions, self._data.shape)
 
     @staticmethod
@@ -415,7 +415,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         init_attr = ('_data', '_data_unit', '_error', '_mask', '_wcs',
                      'sigma_clip', 'sum_method', 'subpixels',
                      'default_columns', 'meta', '_segmentation',
-                     '_aperture_mask_method')
+                     '_mask_method')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -751,13 +751,13 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
                 # Apply segmentation-based masking and/or symmetric
                 # neighbor correction
                 if (self._segmentation is not None
-                        and self._aperture_mask_method != 'none'):
+                        and self._mask_method != 'none'):
                     segm_cutout = self._segmentation[slc_large]
                     cutout_xycen = (positions[idx, 0] - slc_large[1].start,
                                     positions[idx, 1] - slc_large[0].start)
                     (data_cutout, error_cutout,
                      exclude) = make_segmentation_exclusion(
-                        self._aperture_mask_method, segm_cutout,
+                        self._mask_method, segm_cutout,
                         self._seg_labels[idx], data=data_cutout,
                         error=error_cutout, base_mask=data_mask,
                         cutout_xycen=cutout_xycen)

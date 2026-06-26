@@ -3,7 +3,7 @@
 Tools for segmentation-based masking of aperture photometry.
 
 These helpers validate the ``segmentation_image``, ``labels``, and
-``aperture_mask_method`` keywords shared by `aperture_photometry`,
+``mask_method`` keywords shared by `aperture_photometry`,
 `~photutils.aperture.PixelAperture.do_photometry`, and
 `~photutils.aperture.ApertureStats`. They also apply the local masking
 or symmetric-correction behavior to per-aperture cutouts.
@@ -18,14 +18,14 @@ from photutils.utils._round import round_half_away
 
 __all__ = []
 
-# The valid ``aperture_mask_method`` values and their integer codes used
+# The valid ``mask_method`` values and their integer codes used
 # by the batch Cython driver (see ``_batch_photometry.pyx``).
-APERTURE_MASK_METHODS = ('none', 'mask', 'source_only', 'correct')
+MASK_METHODS = ('none', 'mask', 'source_only', 'correct')
 SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'source_only': 2, 'correct': 3}
 
 
 def process_segmentation_inputs(segmentation_image, labels,
-                                aperture_mask_method, positions, data_shape):
+                                mask_method, positions, data_shape):
     """
     Validate the segmentation-masking inputs and resolve the
     per-aperture source labels.
@@ -42,7 +42,7 @@ def process_segmentation_inputs(segmentation_image, labels,
         If `None`, the labels are looked up automatically by sampling
         ``segmentation_image`` at the (rounded) aperture centers.
 
-    aperture_mask_method : {'none', 'mask', 'source_only', 'correct'}
+    mask_method : {'none', 'mask', 'source_only', 'correct'}
         The segmentation masking method.
 
     positions : 2D array_like
@@ -55,21 +55,24 @@ def process_segmentation_inputs(segmentation_image, labels,
     -------
     segmentation : 2D `~numpy.ndarray` (intp) or `None`
         The validated segmentation array, or `None` if
-        ``aperture_mask_method`` is ``'none'``.
+        ``mask_method`` is ``'none'``.
 
     labels : 1D `~numpy.ndarray` (intp) or `None`
         The resolved per-aperture source labels, or `None` if
-        ``aperture_mask_method`` is ``'none'``.
+        ``mask_method`` is ``'none'``.
     """
-    if aperture_mask_method not in APERTURE_MASK_METHODS:
-        msg = f'aperture_mask_method must be one of {APERTURE_MASK_METHODS}'
+    if mask_method not in MASK_METHODS:
+        msg = f'aperture_mask_method must be one of {MASK_METHODS}'
+
+    if mask_method not in MASK_METHODS:
+        msg = f'mask_method must be one of {MASK_METHODS}'
         raise ValueError(msg)
 
-    if aperture_mask_method == 'none':
+    if mask_method == 'none':
         return None, None
 
     if segmentation_image is None:
-        msg = ('segmentation_image must be input when aperture_mask_method '
+        msg = ('segmentation_image must be input when mask_method '
                "is not 'none'")
         raise ValueError(msg)
 
@@ -144,7 +147,7 @@ def _auto_lookup_labels(segmentation, positions):
     return labels
 
 
-def make_segmentation_exclusion(aperture_mask_method, segmentation_cutout,
+def make_segmentation_exclusion(mask_method, segmentation_cutout,
                                 label, *, data=None, error=None,
                                 base_mask=None, cutout_xycen=None):
     """
@@ -154,7 +157,7 @@ def make_segmentation_exclusion(aperture_mask_method, segmentation_cutout,
 
     Parameters
     ----------
-    aperture_mask_method : {'none', 'mask', 'source_only', 'correct'}
+    mask_method : {'none', 'mask', 'source_only', 'correct'}
         The segmentation masking method.
 
     segmentation_cutout : 2D `~numpy.ndarray`
@@ -194,14 +197,14 @@ def make_segmentation_exclusion(aperture_mask_method, segmentation_cutout,
     """
     exclude = np.zeros(segmentation_cutout.shape, dtype=bool)
 
-    if aperture_mask_method == 'none' or label == 0:
+    if mask_method == 'none' or label == 0:
         return data, error, exclude
 
-    if aperture_mask_method == 'mask':
+    if mask_method == 'mask':
         exclude = (segmentation_cutout > 0) & (segmentation_cutout != label)
         return data, error, exclude
 
-    if aperture_mask_method == 'source_only':
+    if mask_method == 'source_only':
         exclude = segmentation_cutout != label
         return data, error, exclude
 
