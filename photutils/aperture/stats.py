@@ -18,7 +18,10 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture._batch_stats import (batch_aperture_gather,
-                                             batch_moments, batch_value_stats)
+                                             batch_moments,
+                                             batch_sigma_clip_center,
+                                             batch_sigma_clip_sum,
+                                             batch_value_stats)
 from photutils.aperture._segmentation import (SEG_METHOD_CODES,
                                               make_segmentation_exclusion,
                                               process_segmentation_inputs)
@@ -665,19 +668,26 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         higher-tier statistics (order statistics and image moments) are
         reduced lazily from this buffer.
 
+        When a supported ``sigma_clip`` is set, the packed center buffer
+        and the ``sum_method`` scalars are sigma-clipped per source
+        before being returned, so the downstream reductions operate on
+        the clipped data transparently.
+
         `None` is returned (and the mask-based code path is used) when
         the aperture or inputs are not supported by the batch driver,
-        for example when ``sigma_clip`` is used, the aperture does not
-        opt in to the batch driver, or the data/mask dtypes are not
-        supported. The set of supported inputs matches
+        for example when an unsupported ``sigma_clip`` is used, the
+        aperture does not opt in to the batch driver, or the data/mask
+        dtypes are not supported. The set of supported inputs matches
         `~photutils.aperture.PixelAperture._do_batch_photometry`.
 
         The result is a tuple ``(values, local_x, local_y, starts,
-        counts, sum_aper, var_aper, sum_area, overlap)`` (see
+        counts, sum_aper, var_aper, sum_area, overlap, ...)`` (see
         `~photutils.aperture._batch_stats.batch_aperture_gather`).
         """
-        # The sigma-clip fast path is not yet implemented.
-        if self.sigma_clip is not None:
+        # A non-None sigma_clip is only supported when it maps to the
+        # fast clipping kernel; otherwise fall back to the mask path.
+        clip_spec = self._fast_clip_spec()
+        if self.sigma_clip is not None and clip_spec is None:
             return None
 
         aper = self._pixel_aperture
@@ -724,13 +734,74 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         if error is not None:
             error = np.ascontiguousarray(error, dtype=np.float64)
 
-        return batch_aperture_gather(
+        emit_sum = 1 if clip_spec is not None else 0
+        gather = batch_aperture_gather(
             np.ascontiguousarray(data, dtype=np.float64), error, mask,
             np.ascontiguousarray(aper._positions, dtype=np.float64),
             shape_code, np.array(params, dtype=np.float64),
             float(ext_x), float(ext_y), sum_use_exact, sum_subpixels,
             np.ascontiguousarray(self._local_bkg, dtype=np.float64),
-            seg_arr, labels_arr, seg_code)
+            seg_arr, labels_arr, seg_code, emit_sum)
+
+        if clip_spec is not None:
+            gather = self._apply_fast_clip(gather, clip_spec)
+        return gather
+
+    def _fast_clip_spec(self):
+        """
+        The fast sigma-clip parameters, or `None`.
+
+        Returns ``(sigma_lower, sigma_upper, maxiters, cenfunc_code,
+        stdfunc_code)`` when ``sigma_clip`` is a `SigmaClip` instance
+        supported by the fast clipping kernel, and `None` otherwise (in
+        which case the mask-based path is used). The fast path supports
+        the string ``cenfunc`` values 'median'/'mean', the string
+        ``stdfunc`` values 'std'/'mad_std', and no spatial growing.
+        """
+        sc = self.sigma_clip
+        if sc is None or not isinstance(sc, SigmaClip):
+            return None
+        if not (isinstance(sc.cenfunc, str) and sc.cenfunc in ('median',
+                                                               'mean')):
+            return None
+        if not (isinstance(sc.stdfunc, str) and sc.stdfunc in ('std',
+                                                               'mad_std')):
+            return None
+        if sc.grow:  # False or 0 is supported; spatial growing is not
+            return None
+        maxiters = sc.maxiters
+        if maxiters is None or maxiters == np.inf:
+            maxiters = -1
+        else:
+            maxiters = int(maxiters)
+            if maxiters < 1:
+                return None
+        cenfunc_code = 0 if sc.cenfunc == 'median' else 1
+        stdfunc_code = 0 if sc.stdfunc == 'std' else 1
+        return (float(sc.sigma_lower), float(sc.sigma_upper), maxiters,
+                cenfunc_code, stdfunc_code)
+
+    def _apply_fast_clip(self, gather, clip_spec):
+        """
+        Sigma-clip the packed gather buffers and return a gather tuple
+        with the same layout whose center buffer and ``sum_method``
+        scalars reflect the per-source clipped data.
+        """
+        sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc = clip_spec
+        (values, local_x, local_y, starts, counts, _sum, _var, _area,
+         overlap, sum_values, sum_fracs, sum_errsq, sum_counts) = gather
+
+        (cvalues, clx, cly, cstarts, ccounts) = batch_sigma_clip_center(
+            values, local_x, local_y, starts, counts, sigma_lower,
+            sigma_upper, maxiters, cenfunc, stdfunc)
+
+        has_error = 1 if self._error is not None else 0
+        (csum, cvar, carea) = batch_sigma_clip_sum(
+            sum_values, sum_fracs, sum_errsq, starts, sum_counts,
+            sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc, has_error)
+
+        return (cvalues, clx, cly, cstarts, ccounts, csum, cvar, carea,
+                overlap, None, None, None, None)
 
     @lazyproperty
     def _value_stats(self):

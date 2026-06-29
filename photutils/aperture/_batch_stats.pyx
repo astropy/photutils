@@ -28,7 +28,8 @@ from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
                                                 _rect_vertices)
 from photutils.geometry._polygon_overlap cimport convex_edge_normals
 
-__all__ = ['batch_aperture_gather', 'batch_moments', 'batch_value_stats']
+__all__ = ['batch_aperture_gather', 'batch_moments', 'batch_value_stats',
+           'batch_sigma_clip_center', 'batch_sigma_clip_sum']
 
 
 cdef extern from "math.h" nogil:
@@ -41,6 +42,7 @@ cdef extern from "math.h" nogil:
     double floor(double x)
     double ceil(double x)
     bint isfinite(double x)
+    const double NAN
 
 cdef extern from "stdlib.h" nogil:
     void qsort(void *base, size_t nmemb, size_t size,
@@ -69,6 +71,90 @@ cdef inline double _median_sorted(double *s, Py_ssize_t n) noexcept nogil:
     if n % 2 == 1:
         return s[n // 2]
     return 0.5 * (s[n // 2 - 1] + s[n // 2])
+
+
+# Sigma-clip center/scale function codes (must match the ``cenfunc`` and
+# ``stdfunc`` mapping in ``ApertureStats``).
+cdef enum:
+    _CEN_MEDIAN = 0
+    _CEN_MEAN = 1
+    _STD_STD = 0
+    _STD_MADSTD = 1
+
+
+cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
+                                    double sigma_lower, double sigma_upper,
+                                    Py_ssize_t maxiters, int cenfunc_code,
+                                    int stdfunc_code, double *out_min,
+                                    double *out_max) noexcept nogil:
+    """
+    Compute the converged sigma-clip bounds for one source.
+
+    The ascending-sorted values are in ``s[0:n]`` and ``work`` is a
+    scratch buffer of at least ``n`` elements. This reproduces
+    `astropy.stats.SigmaClip` for the no-axis, no-grow case: it
+    iteratively narrows the kept range and returns the final lower and
+    upper value bounds in ``out_min`` and ``out_max``. A source survives
+    the clip if its value ``v`` satisfies ``not (v < out_min) and not
+    (v > out_max)`` (so NaN bounds keep every value, matching astropy's
+    degenerate empty-set behavior).
+    """
+    cdef Py_ssize_t lo = 0, hi = n, new_lo, new_hi, cnt, i, iteration = 0
+    cdef Py_ssize_t nchanged = 1
+    cdef double cen, std, mu, ss, med2, minv, maxv
+
+    minv = NAN
+    maxv = NAN
+    while nchanged != 0 and (maxiters < 0 or iteration < maxiters):
+        iteration += 1
+        cnt = hi - lo
+        if cnt == 0:
+            minv = NAN
+            maxv = NAN
+            break
+
+        # Center.
+        if cenfunc_code == _CEN_MEDIAN:
+            cen = _median_sorted(&s[lo], cnt)
+        else:
+            mu = 0.0
+            for i in range(lo, hi):
+                mu += s[i]
+            cen = mu / cnt
+
+        # Scale.
+        if stdfunc_code == _STD_STD:
+            mu = 0.0
+            for i in range(lo, hi):
+                mu += s[i]
+            mu = mu / cnt
+            ss = 0.0
+            for i in range(lo, hi):
+                ss += (s[i] - mu) * (s[i] - mu)
+            std = sqrt(ss / cnt)
+        else:
+            med2 = _median_sorted(&s[lo], cnt)
+            for i in range(lo, hi):
+                work[i] = fabs(s[i] - med2)
+            qsort(&work[lo], <size_t>cnt, sizeof(double), &_cmp_double)
+            std = _median_sorted(&work[lo], cnt) * _MAD_STD_SCALE
+
+        minv = cen - std * sigma_lower
+        maxv = cen + std * sigma_upper
+
+        new_lo = lo
+        while new_lo < hi and s[new_lo] < minv:
+            new_lo += 1
+        new_hi = hi
+        while new_hi > new_lo and s[new_hi - 1] > maxv:
+            new_hi -= 1
+        nchanged = (hi - lo) - (new_hi - new_lo)
+        lo = new_lo
+        hi = new_hi
+
+    out_min[0] = minv
+    out_max[0] = maxv
+
 
 # Aperture shape codes. These must stay in sync with the private
 # ``_shape_params`` attributes defined by the aperture classes and with
@@ -157,7 +243,7 @@ def batch_aperture_gather(const double[:, ::1] data,
                           const double[::1] local_bkg,
                           const Py_ssize_t[:, ::1] segmentation=None,
                           const Py_ssize_t[::1] labels=None,
-                          int seg_method=0):
+                          int seg_method=0, int emit_sum=0):
     """
     Gather aperture statistics inputs for many source positions.
 
@@ -215,6 +301,13 @@ def batch_aperture_gather(const double[:, ::1] data,
     seg_method : int
         The segmentation masking method code (see `_batch_photometry`).
 
+    emit_sum : int, optional
+        If nonzero, also emit the packed ``sum_method`` member buffers
+        (``sum_values``, ``sum_fracs``, ``sum_errsq``, ``sum_counts``)
+        needed to recompute the aperture sum, variance, and area after
+        per-source sigma clipping. When zero (default), those four
+        outputs are `None`.
+
     Returns
     -------
     values : 1D ndarray of float64
@@ -247,6 +340,16 @@ def batch_aperture_gather(const double[:, ::1] data,
 
     overlap : 1D ndarray of bool
         Whether the aperture bounding box overlaps with the data.
+
+    sum_values, sum_fracs, sum_errsq : 1D ndarray of float64 or `None`
+        The packed ``sum_method`` member pixel values (background
+        subtracted), overlap fractions, and squared total errors. The
+        members for source ``k`` occupy the slice ``[starts[k]:starts[k]
+        + sum_counts[k]]``. `None` unless ``emit_sum`` is nonzero.
+
+    sum_counts : 1D ndarray of intp or `None`
+        The number of ``sum_method`` member pixels for each source.
+        `None` unless ``emit_sum`` is nonzero.
     """
     cdef Py_ssize_t n_src = positions.shape[0]
     cdef Py_ssize_t ny_data = data.shape[0]
@@ -382,6 +485,7 @@ def batch_aperture_gather(const double[:, ::1] data,
     cdef double pxmin, pymin, cfrac, sfrac, val, err_val
     cdef double s_sum, s_var, s_area
     cdef Py_ssize_t total = 0, pos
+    cdef Py_ssize_t spos = 0
 
     # Pass 1: compute the clipped bounding-box area per source (an upper
     # bound on the number of "center"-method survivors) to size and
@@ -413,6 +517,19 @@ def batch_aperture_gather(const double[:, ::1] data,
     cdef double[::1] values = values_arr
     cdef Py_ssize_t[::1] local_x = lx_arr
     cdef Py_ssize_t[::1] local_y = ly_arr
+
+    # The optional sum-method member buffers (for the sigma-clip path).
+    # They share the per-source ``starts`` offsets and capacity with the
+    # center buffer, since both are bounded by the clipped bbox area.
+    cdef Py_ssize_t sum_cap = total if emit_sum else 0
+    sum_values_arr = np.empty(sum_cap, dtype=np.float64)
+    sum_fracs_arr = np.empty(sum_cap, dtype=np.float64)
+    sum_errsq_arr = np.empty(sum_cap, dtype=np.float64)
+    scounts_arr = np.zeros(n_src if emit_sum else 0, dtype=np.intp)
+    cdef double[::1] sum_values = sum_values_arr
+    cdef double[::1] sum_fracs = sum_fracs_arr
+    cdef double[::1] sum_errsq = sum_errsq_arr
+    cdef Py_ssize_t[::1] scounts = scounts_arr
 
     # Pass 2: walk each bounding box once, gather center-method survivors
     # into the packed buffer, and accumulate the sum-method scalars.
@@ -465,6 +582,7 @@ def batch_aperture_gather(const double[:, ::1] data,
             s_sum = 0.0
             s_var = 0.0
             s_area = 0.0
+            spos = starts[k]
             for iy in range(iy0, iy1):
                 pymin = gymin + (iy - iymin) * dy
                 for ix in range(ix0, ix1):
@@ -529,21 +647,42 @@ def batch_aperture_gather(const double[:, ::1] data,
                         pbuf_a_y, pbuf_b_x, pbuf_b_y, poly_buf_size,
                         sum_use_exact, sum_subpixels)
 
-                    if sfrac > 0.0:
+                    # Annulus fractions are a difference of two shapes,
+                    # so floating-point noise can make a boundary pixel's
+                    # fraction a tiny nonzero (possibly negative) value.
+                    # The mask-based path masks only pixels whose weight
+                    # is exactly zero, so match it with ``!= 0`` here.
+                    if sfrac != 0.0:
                         s_sum += val * sfrac
                         s_area += sfrac
                         if has_error:
                             err_val = error[siy, six]
                             s_var += err_val * err_val * sfrac
+                        if emit_sum:
+                            sum_values[spos] = val
+                            sum_fracs[spos] = sfrac
+                            if has_error:
+                                err_val = error[siy, six]
+                                sum_errsq[spos] = err_val * err_val
+                            else:
+                                sum_errsq[spos] = 0.0
+                            spos += 1
 
             counts[k] = pos - starts[k]
             sum_aper[k] = s_sum
             sum_area[k] = s_area
             if has_error:
                 var_aper[k] = s_var
+            if emit_sum:
+                scounts[k] = spos - starts[k]
 
+    if emit_sum:
+        return (values_arr, lx_arr, ly_arr, starts_arr, counts_arr, sum_arr,
+                var_arr, area_arr, overlap_arr.view(bool), sum_values_arr,
+                sum_fracs_arr, sum_errsq_arr, scounts_arr)
     return (values_arr, lx_arr, ly_arr, starts_arr, counts_arr, sum_arr,
-            var_arr, area_arr, overlap_arr.view(bool))
+            var_arr, area_arr, overlap_arr.view(bool), None, None, None,
+            None)
 
 
 def batch_moments(const double[::1] values, const Py_ssize_t[::1] local_x,
@@ -788,3 +927,201 @@ def batch_value_stats(const double[::1] values,
 
     return (vmin_arr, vmax_arr, mean_arr, var_arr, median_arr,
             madstd_arr, biloc_arr, bivar_arr, gini_arr)
+
+
+def batch_sigma_clip_center(const double[::1] values,
+                            const Py_ssize_t[::1] local_x,
+                            const Py_ssize_t[::1] local_y,
+                            const Py_ssize_t[::1] starts,
+                            const Py_ssize_t[::1] counts,
+                            double sigma_lower, double sigma_upper,
+                            Py_ssize_t maxiters, int cenfunc_code,
+                            int stdfunc_code):
+    """
+    Sigma-clip each source's packed center buffer.
+
+    For each source the packed pixel values (and their cutout
+    coordinates) are sigma-clipped following `astropy.stats.SigmaClip`
+    (no-axis, no-grow case), and the surviving pixels are written to a
+    new packed buffer that reuses the input ``starts`` offsets. The
+    output can be fed directly to ``batch_value_stats`` and
+    ``batch_moments``.
+
+    Parameters
+    ----------
+    values : 1D ndarray of float64
+        The packed center pixel values (see ``batch_aperture_gather``).
+
+    local_x, local_y : 1D ndarray of intp
+        The packed pixel cutout coordinates.
+
+    starts, counts : 1D ndarray of intp
+        The per-source start offset and pixel count.
+
+    sigma_lower, sigma_upper : float
+        The lower and upper clipping limits in units of the scale.
+
+    maxiters : int
+        The maximum number of clipping iterations, or a negative value
+        to iterate until convergence.
+
+    cenfunc_code, stdfunc_code : int
+        The center and scale function codes (``0`` = median/std,
+        ``1`` = mean/mad_std).
+
+    Returns
+    -------
+    values, local_x, local_y, starts, counts : 1D ndarray
+        The clipped packed buffer (``starts`` is the input array,
+        unchanged) and the per-source surviving pixel counts.
+    """
+    cdef Py_ssize_t n_src = starts.shape[0]
+    out_values_arr = np.empty(values.shape[0], dtype=np.float64)
+    out_lx_arr = np.empty(values.shape[0], dtype=np.intp)
+    out_ly_arr = np.empty(values.shape[0], dtype=np.intp)
+    counts2_arr = np.zeros(n_src, dtype=np.intp)
+    cdef double[::1] out_values = out_values_arr
+    cdef Py_ssize_t[::1] out_lx = out_lx_arr
+    cdef Py_ssize_t[::1] out_ly = out_ly_arr
+    cdef Py_ssize_t[::1] counts2 = counts2_arr
+
+    cdef Py_ssize_t maxn = 0, k
+    for k in range(n_src):
+        if counts[k] > maxn:
+            maxn = counts[k]
+    if maxn == 0:
+        return (out_values_arr, out_lx_arr, out_ly_arr, np.asarray(starts),
+                counts2_arr)
+
+    sort_arr = np.empty(maxn, dtype=np.float64)
+    work_arr = np.empty(maxn, dtype=np.float64)
+    cdef double[::1] s = sort_arr
+    cdef double[::1] w = work_arr
+
+    cdef Py_ssize_t start, count, i, j
+    cdef double minv, maxv, v
+
+    with nogil:
+        for k in range(n_src):
+            count = counts[k]
+            if count == 0:
+                continue
+            start = starts[k]
+            for i in range(count):
+                s[i] = values[start + i]
+            qsort(&s[0], <size_t>count, sizeof(double), &_cmp_double)
+            _sigma_clip_bounds(&s[0], &w[0], count, sigma_lower, sigma_upper,
+                               maxiters, cenfunc_code, stdfunc_code,
+                               &minv, &maxv)
+            j = 0
+            for i in range(count):
+                v = values[start + i]
+                if not (v < minv) and not (v > maxv):
+                    out_values[start + j] = v
+                    out_lx[start + j] = local_x[start + i]
+                    out_ly[start + j] = local_y[start + i]
+                    j += 1
+            counts2[k] = j
+
+    return (out_values_arr, out_lx_arr, out_ly_arr, np.asarray(starts),
+            counts2_arr)
+
+
+def batch_sigma_clip_sum(const double[::1] sum_values,
+                         const double[::1] sum_fracs,
+                         const double[::1] sum_errsq,
+                         const Py_ssize_t[::1] starts,
+                         const Py_ssize_t[::1] sum_counts,
+                         double sigma_lower, double sigma_upper,
+                         Py_ssize_t maxiters, int cenfunc_code,
+                         int stdfunc_code, int has_error):
+    """
+    Sigma-clip each source's packed ``sum_method`` member buffer.
+
+    The sum members are sigma-clipped following
+    `astropy.stats.SigmaClip` (using the unweighted, background
+    subtracted pixel values), and the aperture sum, error variance, and
+    area are recomputed over the surviving members. Sources with no sum
+    members have NaN outputs.
+
+    Parameters
+    ----------
+    sum_values, sum_fracs, sum_errsq : 1D ndarray of float64
+        The packed ``sum_method`` member values, overlap fractions, and
+        squared total errors (see ``batch_aperture_gather`` with
+        ``emit_sum``).
+
+    starts, sum_counts : 1D ndarray of intp
+        The per-source start offset and member count.
+
+    sigma_lower, sigma_upper : float
+        The lower and upper clipping limits in units of the scale.
+
+    maxiters : int
+        The maximum number of clipping iterations, or a negative value
+        to iterate until convergence.
+
+    cenfunc_code, stdfunc_code : int
+        The center and scale function codes.
+
+    has_error : int
+        Whether the squared errors are available.
+
+    Returns
+    -------
+    sum_aper, var_aper, sum_area : 1D ndarray of float64
+        The clipped aperture sum, error variance, and area. NaN where
+        there are no sum members.
+    """
+    cdef Py_ssize_t n_src = starts.shape[0]
+    sum_arr = np.full(n_src, np.nan, dtype=np.float64)
+    var_arr = np.full(n_src, np.nan, dtype=np.float64)
+    area_arr = np.full(n_src, np.nan, dtype=np.float64)
+    cdef double[::1] sum_aper = sum_arr
+    cdef double[::1] var_aper = var_arr
+    cdef double[::1] sum_area = area_arr
+
+    cdef Py_ssize_t maxn = 0, k
+    for k in range(n_src):
+        if sum_counts[k] > maxn:
+            maxn = sum_counts[k]
+    if maxn == 0:
+        return (sum_arr, var_arr, area_arr)
+
+    sort_arr = np.empty(maxn, dtype=np.float64)
+    work_arr = np.empty(maxn, dtype=np.float64)
+    cdef double[::1] s = sort_arr
+    cdef double[::1] w = work_arr
+
+    cdef Py_ssize_t start, count, i
+    cdef double minv, maxv, v, frac, s_sum, s_area, s_var
+
+    with nogil:
+        for k in range(n_src):
+            count = sum_counts[k]
+            if count == 0:
+                continue
+            start = starts[k]
+            for i in range(count):
+                s[i] = sum_values[start + i]
+            qsort(&s[0], <size_t>count, sizeof(double), &_cmp_double)
+            _sigma_clip_bounds(&s[0], &w[0], count, sigma_lower, sigma_upper,
+                               maxiters, cenfunc_code, stdfunc_code,
+                               &minv, &maxv)
+            s_sum = 0.0
+            s_area = 0.0
+            s_var = 0.0
+            for i in range(count):
+                v = sum_values[start + i]
+                if not (v < minv) and not (v > maxv):
+                    frac = sum_fracs[start + i]
+                    s_sum += v * frac
+                    s_area += frac
+                    if has_error:
+                        s_var += sum_errsq[start + i] * frac
+            sum_aper[k] = s_sum
+            sum_area[k] = s_area
+            if has_error:
+                var_aper[k] = s_var
+
+    return (sum_arr, var_arr, area_arr)
