@@ -55,6 +55,12 @@ New Features
     and convex polygon aperture photometry, typically by a factor of ~2.
     [#2310]
 
+  - Significantly improved the performance of ``ApertureStats``,
+    typically by factors of ~5-15 depending on the requested
+    properties, by computing all sources in a single call into compiled
+    code. Sigma-clipped statistics are also computed in compiled code
+    for the common ``SigmaClip`` configurations. [#2314]
+
 - ``photutils.isophote``
 
   - Optimized the ``build_ellipse_model_c`` Cython extension by

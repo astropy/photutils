@@ -428,6 +428,56 @@ class TestApertureStats:
                         [(np.nan, np.nan), (np.nan, np.nan)] * u.pix**2)
         assert_allclose(apstats.fwhm, [0.67977799, np.nan] * u.pix)
 
+    @pytest.mark.parametrize('aperture', [
+        CircularAperture(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)), r=6),
+        CircularAnnulus(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)),
+                        r_in=4, r_out=8),
+        EllipticalAperture(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)),
+                           8, 4, theta=0.5),
+        EllipticalAnnulus(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)),
+                          4, 8, 5, theta=0.5),
+        RectangularAperture(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)),
+                            10, 6, theta=0.3),
+        RectangularAnnulus(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)),
+                           8, 12, 9, theta=0.3),
+    ])
+    @pytest.mark.parametrize('sigma_clip', [
+        None,
+        SigmaClip(sigma=3.0, maxiters=5),
+        SigmaClip(sigma=2.5, cenfunc='mean', stdfunc='mad_std',
+                  maxiters=None),
+    ])
+    def test_fast_path_matches_mask_path(self, aperture, sigma_clip):
+        """
+        Regression test that the fast Cython statistics path produces the
+        same results as the mask-based path for every property, including
+        when sigma-clipping is applied.
+        """
+        numeric_props = (
+            'sum', 'sum_err', 'sum_aper_area', 'center_aper_area',
+            'min', 'max', 'mean', 'median', 'mode', 'std', 'var',
+            'mad_std', 'biweight_location', 'biweight_midvariance', 'gini',
+            'x_centroid', 'y_centroid', 'fwhm', 'semimajor_axis',
+            'semiminor_axis', 'orientation', 'eccentricity', 'elongation',
+            'ellipticity', 'covariance_xx', 'covariance_yy',
+            'covariance_xy', 'moments', 'moments_central')
+
+        fast = ApertureStats(self.data, aperture, error=self.error,
+                             sigma_clip=sigma_clip)
+
+        # Force the mask-based path by disabling the fast gather.
+        with patch.object(ApertureStats, '_fast_gather',
+                          property(lambda _: None)):
+            slow = ApertureStats(self.data, aperture, error=self.error,
+                                 sigma_clip=sigma_clip)
+            slow_values = {prop: getattr(slow, prop)
+                           for prop in numeric_props}
+
+        for prop in numeric_props:
+            assert_allclose(getattr(fast, prop), slow_values[prop],
+                            rtol=1e-7, atol=1e-9, equal_nan=True,
+                            err_msg=f'mismatch in {prop}')
+
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_aperture_stats_region():
