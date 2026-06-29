@@ -33,7 +33,9 @@ __all__ = ['elliptical_overlap_grid']
 cdef extern from "math.h" nogil:
     double sin(double x)
     double cos(double x)
+    double sqrt(double x)
     double fmax(double x, double y)
+    double fmin(double x, double y)
 
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
@@ -107,6 +109,9 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     cdef double r
     cdef double bxmin, bxmax, bymin, bymax
     cdef double pxmin, pxmax, pymin, pymax
+    cdef double pxcen, pycen, rpix2
+    cdef double cos_theta, sin_theta, inv_rx2, inv_ry2
+    cdef double cxx, cyy, cxy, margin, f_in, f_out
     cdef double norm
 
     # Define output array
@@ -118,6 +123,27 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     dy = (ymax - ymin) / ny
 
     norm = 1.0 / (dx * dy)
+
+    # Quadratic-form coefficients of the ellipse, such that a point
+    # (x, y) lies inside the ellipse when
+    # ``cxx * x**2 + cyy * y**2 + cxy * x * y < 1``.
+    cos_theta = cos(theta)
+    sin_theta = sin(theta)
+    inv_rx2 = 1.0 / (rx * rx)
+    inv_ry2 = 1.0 / (ry * ry)
+    cxx = cos_theta * cos_theta * inv_rx2 + sin_theta * sin_theta * inv_ry2
+    cyy = sin_theta * sin_theta * inv_rx2 + cos_theta * cos_theta * inv_ry2
+    cxy = 2.0 * cos_theta * sin_theta * (inv_rx2 - inv_ry2)
+
+    # Boundary band for the interior/exterior fast path. A pixel is
+    # fully inside (or outside) the ellipse when its center is more than
+    # one pixel half-diagonal (measured in the ellipse metric) inside
+    # (or outside) the boundary. The metric gradient is bounded by
+    # ``1 / min(rx, ry)``, so this margin is conservative.
+    margin = 0.5 * sqrt(dx * dx + dy * dy) / fmin(rx, ry)
+    f_in = 1.0 - margin
+    f_in = f_in * f_in if f_in > 0.0 else 0.0
+    f_out = (1.0 + margin) * (1.0 + margin)
 
     # For now we use a bounding circle and then use that to find a
     # bounding box but of course this is inefficient and could be done
@@ -136,12 +162,21 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         for i in range(nx):
             pxmin = xmin + i * dx  # lower end of pixel
             pxmax = pxmin + dx  # upper end of pixel
+            pxcen = pxmin + 0.5 * dx
             if pxmax > bxmin and pxmin < bxmax:
                 for j in range(ny):
                     pymin = ymin + j * dy
                     pymax = pymin + dy
                     if pymax > bymin and pymin < bymax:
-                        if use_exact:
+                        pycen = pymin + 0.5 * dy
+                        rpix2 = (cxx * pxcen * pxcen
+                                 + cyy * pycen * pycen
+                                 + cxy * pxcen * pycen)
+                        if rpix2 >= f_out:
+                            continue  # pixel fully outside the ellipse
+                        if rpix2 <= f_in:
+                            frac_view[j, i] = 1.0  # fully inside
+                        elif use_exact:
                             frac_view[j, i] = (
                                 ellipse_overlap_single_exact(
                                     pxmin, pymin, pxmax, pymax, rx, ry,
