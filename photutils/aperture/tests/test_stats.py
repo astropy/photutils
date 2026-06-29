@@ -685,6 +685,72 @@ class TestApertureStats:
         assert apstats.mean_err.unit == self.unit
         assert apstats.median_err.unit == self.unit
 
+    @pytest.mark.parametrize('with_units', [False, True])
+    def test_ddof(self, with_units):
+        """
+        Test that the ``ddof`` keyword rescales ``var`` and ``std`` by
+        ``N / (N - ddof)`` and that the standard errors are unaffected.
+        """
+        data = self.data
+        error = self.error
+        if with_units:
+            data = data * self.unit
+            error = error * self.unit
+        apstats0 = ApertureStats(data, self.aperture, error=error)
+        apstats1 = ApertureStats(data, self.aperture, error=error, ddof=1)
+        npix = apstats0.center_aper_area.value
+        var0 = apstats0.var
+        std0 = apstats0.std
+        var1 = apstats1.var
+        std1 = apstats1.std
+        if with_units:
+            assert var1.unit == self.unit**2
+            assert std1.unit == self.unit
+            var0, std0 = var0.value, std0.value
+            var1, std1 = var1.value, std1.value
+        assert_allclose(var1, var0 * npix / (npix - 1.0))
+        assert_allclose(std1, std0 * np.sqrt(npix / (npix - 1.0)))
+        # the standard errors are defined with the sample std and are
+        # independent of the ``ddof`` keyword
+        assert_allclose(apstats0.mean_err, apstats1.mean_err, equal_nan=True)
+        assert_allclose(apstats0.median_err, apstats1.median_err,
+                        equal_nan=True)
+
+    def test_ddof_slow_path(self):
+        """
+        Test the ``ddof`` rescaling on the mask-based (slow) code path.
+        """
+        fast = ApertureStats(self.data, CircularAperture(self.positions, r=5),
+                             ddof=1)
+        slow = ApertureStats(self.data, _NoBatchCircular(self.positions, r=5),
+                             ddof=1)
+        assert slow._fast_gather is None
+        assert_allclose(fast.var, slow.var, equal_nan=True)
+        assert_allclose(fast.std, slow.std, equal_nan=True)
+
+    def test_ddof_undefined(self):
+        """
+        Test that ``var`` and ``std`` are NaN when ``N <= ddof``.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 1.0
+        aper = CircularAperture((5, 5), r=0.5)
+        apstats = ApertureStats(data, aper, ddof=1)
+        assert apstats.center_aper_area.value < 2
+        assert np.isnan(apstats.var)
+        assert np.isnan(apstats.std)
+        # the default (ddof=0) gives a finite (zero) variance
+        assert ApertureStats(data, aper).var == 0.0
+
+    def test_ddof_invalid(self):
+        """
+        Test that an invalid ``ddof`` raises a ``ValueError``.
+        """
+        match = 'ddof must be a non-negative integer'
+        for bad in (-1, 1.5):
+            with pytest.raises(ValueError, match=match):
+                ApertureStats(self.data, self.aperture, ddof=bad)
+
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 def test_aperture_stats_region():

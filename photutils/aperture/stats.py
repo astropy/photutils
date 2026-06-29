@@ -167,6 +167,20 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
     <subpixels_description>
 
+    ddof : int, optional
+        The delta degrees of freedom used when computing the ``var``
+        and ``std`` properties. The divisor used in the calculation
+        is ``N - ddof``, where ``N`` is the number of unmasked pixels
+        within the aperture. The default is ``ddof=0``, which gives the
+        population variance and standard deviation. Use ``ddof=1`` to
+        obtain the sample (unbiased) variance and standard deviation.
+        This keyword affects only the ``var`` and ``std`` properties.
+        All other properties are unaffected, including the ``mean_err``
+        and ``median_err`` standard errors, which are always computed
+        using the sample standard deviation. Apertures with ``N <=
+        ddof`` unmasked pixels have an undefined ``var`` and ``std`` and
+        are set to NaN.
+
     local_bkg : float, `~numpy.ndarray`, `~astropy.units.Quantity`, or `None`
         The per-pixel local background values to subtract from the data
         before performing measurements. If input as an array, the order
@@ -254,7 +268,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
     """
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
-                 sigma_clip=None, sum_method='exact', subpixels=5,
+                 sigma_clip=None, sum_method='exact', subpixels=5, ddof=0,
                  local_bkg=None, segmentation_image=None, labels=None,
                  mask_method='none'):
 
@@ -292,6 +306,11 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
         self.sum_method = sum_method
         self.subpixels = subpixels
+
+        if not isinstance(ddof, (int, np.integer)) or ddof < 0:
+            msg = 'ddof must be a non-negative integer'
+            raise ValueError(msg)
+        self.ddof = ddof
 
         self._local_bkg = np.zeros(self.n_apertures)  # no local bkg
         if local_bkg is not None:
@@ -419,7 +438,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         # Attributes defined in __init__ that are copied directly to the
         # new class
         init_attr = ('_data', '_data_unit', '_error', '_mask', '_wcs',
-                     'sigma_clip', 'sum_method', 'subpixels',
+                     'sigma_clip', 'sum_method', 'subpixels', 'ddof',
                      'default_columns', 'meta', '_segmentation',
                      '_mask_method')
         for attr in init_attr:
@@ -1780,19 +1799,43 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         return 3.0 * self.median - 2.0 * self.mean
 
     @lazyproperty
+    def _variance(self):
+        """
+        The variance of the unmasked pixel values within each aperture
+        as a plain `~numpy.ndarray` (without data units).
+
+        The population (``ddof=0``) variance is computed using the fast
+        Cython reduction when available and otherwise the mask-based
+        per-source code path. When ``self.ddof`` is nonzero, the result
+        is rescaled by ``N / (N - ddof)``, where ``N`` is the number of
+        unmasked pixels within the aperture. Apertures with ``N <=
+        ddof`` unmasked pixels are set to NaN.
+        """
+        var = self._reduce_value_stat('var', np.var, apply_unit=False)
+        if self.ddof == 0:
+            return var
+        npix = self._center_npixels
+        result = np.full(self.n_apertures, np.nan)
+        mask = npix > self.ddof
+        result[mask] = (var[mask] * npix[mask]
+                        / (npix[mask] - self.ddof))
+        return result
+
+    @lazyproperty
     @as_scalar
     def std(self):
         """
         The standard deviation of the unmasked pixel values within the
         aperture.
+
+        The divisor used in the calculation is ``N - ddof``, where ``N``
+        is the number of unmasked pixels within the aperture and ``ddof``
+        is the value of the ``ddof`` keyword (default 0).
         """
-        stats = self._value_stats
-        if stats is not None:
-            result = np.sqrt(stats['var'])
-            if self._data_unit is not None:
-                result <<= self._data_unit
-            return result
-        return self._calculate_stats(np.std)
+        result = np.sqrt(self._variance)
+        if self._data_unit is not None:
+            result <<= self._data_unit
+        return result
 
     @lazyproperty
     @as_scalar
@@ -1819,8 +1862,15 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
     def var(self):
         """
         The variance of the unmasked pixel values within the aperture.
+
+        The divisor used in the calculation is ``N - ddof``, where ``N``
+        is the number of unmasked pixels within the aperture and ``ddof``
+        is the value of the ``ddof`` keyword (default 0).
         """
-        return self._reduce_value_stat('var', np.var, square_unit=True)
+        result = self._variance.copy()
+        if self._data_unit is not None:
+            result <<= self._data_unit**2
+        return result
 
     @lazyproperty
     @as_scalar

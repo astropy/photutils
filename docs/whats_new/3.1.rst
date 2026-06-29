@@ -123,6 +123,33 @@ apertures with fewer than two unmasked pixels::
     0.27447881801886487
 
 
+Sample Variance and Standard Deviation
+======================================
+
+`~photutils.aperture.ApertureStats` now accepts a ``ddof`` keyword that
+sets the delta degrees of freedom used when computing the ``var`` and
+``std`` properties. The divisor used in the calculation is
+:math:`N - \mathrm{ddof}`, where :math:`N` is the number of unmasked
+pixels within the aperture. The default is ``ddof=0``, which gives the
+population variance and standard deviation (unchanged from previous
+versions). Use ``ddof=1`` to obtain the sample (unbiased) variance and
+standard deviation::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import ApertureStats, CircularAperture
+    >>> rng = np.random.default_rng(seed=0)
+    >>> data = rng.normal(100.0, 5.0, (100, 100))
+    >>> aper = CircularAperture((50, 50), r=10)
+    >>> stats = ApertureStats(data, aper, ddof=1)
+    >>> stats.std  # doctest: +FLOAT_CMP
+    4.793566477062262
+
+The ``ddof`` keyword affects only the ``var`` and ``std`` properties.
+All other properties, including the ``mean_err`` and ``median_err``
+standard errors (which are always computed using the sample standard
+deviation), are unaffected.
+
+
 Thread-Safe and Free-Threading-Compatible Aperture Photometry
 ==============================================================
 

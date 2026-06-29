@@ -66,6 +66,11 @@ New Features
     standard error of the median, respectively, for each aperture.
     [#2314]
 
+  - Added a ``ddof`` keyword to ``ApertureStats`` to set the delta
+    degrees of freedom used when computing the ``var`` and ``std``
+    properties. The default is ``ddof=0`` (population variance), and
+    ``ddof=1`` gives the sample (unbiased) variance. [#2314]
+
 - ``photutils.isophote``
 
   - Optimized the ``build_ellipse_model_c`` Cython extension by
