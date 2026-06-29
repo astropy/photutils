@@ -85,6 +85,20 @@ overlap method, with the largest gains for fields with many sources. The
 results are identical to those from previous versions.
 
 
+Faster Aperture Statistics
+==========================
+
+`~photutils.aperture.ApertureStats` is now significantly faster. The
+per-source statistics are computed in a single call into compiled code,
+reusing the same fast pixel-overlap machinery as the aperture photometry
+improvements above. The descriptive statistics (e.g., mean, median,
+standard deviation, biweight, and image moments) are reduced in compiled
+nogil kernels, and the common `~astropy.stats.SigmaClip` configurations
+are sigma-clipped in compiled code as well. Typical speedups range from
+~5x to ~15x, depending on which properties are requested. The results
+are unchanged from previous versions.
+
+
 Thread-Safe and Free-Threading-Compatible Aperture Photometry
 ==============================================================
 
