@@ -110,7 +110,7 @@ class TestProcessSegmentationInputs:
 
     def test_auto_lookup_background_warning(self):
         data, segm = make_scene()
-        match = 'centers on a background pixel'
+        match = 'on a background pixel'
         with pytest.warns(AstropyUserWarning, match=match):
             _, labels = process_segmentation_inputs(segm, None, 'mask',
                                                     [(5, 5)], data.shape)
@@ -118,7 +118,7 @@ class TestProcessSegmentationInputs:
 
     def test_auto_lookup_out_of_bounds_warning(self):
         data, segm = make_scene()
-        match = 'centers on a background pixel'
+        match = 'on a background pixel'
         with pytest.warns(AstropyUserWarning, match=match):
             _, labels = process_segmentation_inputs(segm, None, 'mask',
                                                     [(100, 100)], data.shape)
@@ -245,7 +245,7 @@ class TestAperturePhotometry:
     def test_auto_lookup_warning(self):
         data, segm = make_scene()
         aper = CircularAperture([(5, 5)], r=8)
-        match = 'centers on a background pixel'
+        match = 'on a background pixel'
         with pytest.warns(AstropyUserWarning, match=match):
             aperture_photometry(data, aper, segmentation_image=segm,
                                 mask_method='mask')

@@ -119,9 +119,10 @@ def _auto_lookup_labels(segmentation, positions):
     Look up the source label at each aperture center.
 
     The aperture center is rounded to the nearest pixel (rounding half
-    away from zero). Apertures whose centers fall outside the image or
-    on a background pixel (label 0) are assigned a label of 0, and an
-    `~astropy.utils.exceptions.AstropyUserWarning` is emitted.
+    away from zero). Apertures whose centers fall outside the image
+    or on a background pixel (label 0) are assigned a label of 0. A
+    single `~astropy.utils.exceptions.AstropyUserWarning` summarizing
+    the number of affected apertures is emitted.
     """
     ny, nx = segmentation.shape
     xpos = np.atleast_1d(positions[:, 0])
@@ -137,10 +138,11 @@ def _auto_lookup_labels(segmentation, positions):
         labels[in_bounds] = segmentation[yi[in_bounds].astype(np.intp),
                                          xi[in_bounds].astype(np.intp)]
 
-    for idx in np.nonzero(labels == 0)[0]:
-        msg = (f'Aperture at (x, y) = ({xpos[idx]}, {ypos[idx]}) centers '
-               'on a background pixel (label 0) in the segmentation map. '
-               'Masking behavior is disabled for this aperture. Use the '
+    n_background = np.count_nonzero(labels == 0)
+    if n_background > 0:
+        msg = (f'{n_background} aperture center(s) were on a background '
+               'pixel (label 0) in the segmentation image. Masking '
+               'behavior is disabled for these apertures. Use the '
                "'labels' argument to explicitly define source IDs.")
         warnings.warn(msg, AstropyUserWarning)
 
