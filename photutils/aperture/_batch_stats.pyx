@@ -28,7 +28,7 @@ from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
                                                 _rect_vertices)
 from photutils.geometry._polygon_overlap cimport convex_edge_normals
 
-__all__ = ['batch_aperture_gather', 'batch_moments']
+__all__ = ['batch_aperture_gather', 'batch_moments', 'batch_value_stats']
 
 
 cdef extern from "math.h" nogil:
@@ -41,6 +41,34 @@ cdef extern from "math.h" nogil:
     double floor(double x)
     double ceil(double x)
     bint isfinite(double x)
+
+cdef extern from "stdlib.h" nogil:
+    void qsort(void *base, size_t nmemb, size_t size,
+               int (*compar)(const void *, const void *))
+
+# Scale factor that converts the median absolute deviation to a robust
+# estimate of the standard deviation (1 / scipy.stats.norm.ppf(0.75)).
+# This must match ``astropy.stats.mad_std``.
+cdef double _MAD_STD_SCALE = 1.482602218505602
+
+
+cdef int _cmp_double(const void *a, const void *b) noexcept nogil:
+    cdef double da = (<const double *>a)[0]
+    cdef double db = (<const double *>b)[0]
+    if da < db:
+        return -1
+    if da > db:
+        return 1
+    return 0
+
+
+cdef inline double _median_sorted(double *s, Py_ssize_t n) noexcept nogil:
+    """
+    Median of an ascending-sorted buffer (matches ``np.median``).
+    """
+    if n % 2 == 1:
+        return s[n // 2]
+    return 0.5 * (s[n // 2 - 1] + s[n // 2])
 
 # Aperture shape codes. These must stay in sync with the private
 # ``_shape_params`` attributes defined by the aperture classes and with
@@ -595,3 +623,168 @@ def batch_moments(const double[::1] values, const Py_ssize_t[::1] local_x,
                         moments[k, i, j] += py[i] * val * px[j]
 
     return moments_arr
+
+
+def batch_value_stats(const double[::1] values,
+                      const Py_ssize_t[::1] starts,
+                      const Py_ssize_t[::1] counts):
+    """
+    Reduce a packed value buffer to per-source descriptive statistics.
+
+    For each source ``k`` the packed pixel values (the slice
+    ``[starts[k]:starts[k] + counts[k]]`` of ``values``) are sorted once
+    and reduced to the minimum, maximum, mean, variance, median, robust
+    standard deviation (``mad_std``), biweight location, biweight
+    midvariance, and Gini coefficient. The conventions match
+    `numpy.min`, `numpy.max`, `numpy.mean`, `numpy.var` (``ddof=0``),
+    `numpy.median`, `astropy.stats.mad_std`,
+    `astropy.stats.biweight_location` (``c=6``),
+    `astropy.stats.biweight_midvariance` (``c=9``), and
+    `photutils.morphology.gini`, respectively, so they are numerically
+    interchangeable with applying those functions to each source's
+    unmasked pixel values.
+
+    Sources with no pixels (``counts[k] == 0``) have all statistics set
+    to NaN.
+
+    Parameters
+    ----------
+    values : 1D ndarray of float64
+        The packed pixel values (see ``batch_aperture_gather``). All
+        values are assumed finite.
+
+    starts, counts : 1D ndarray of intp
+        The per-source start offset into ``values`` and the per-source
+        pixel count.
+
+    Returns
+    -------
+    vmin, vmax, mean, var, median, mad_std, biloc, bivar, gini : \
+            1D ndarray of float64
+        The per-source statistics, each of shape ``(n_sources,)``.
+    """
+    cdef Py_ssize_t n_src = starts.shape[0]
+    vmin_arr = np.full(n_src, np.nan, dtype=np.float64)
+    vmax_arr = np.full(n_src, np.nan, dtype=np.float64)
+    mean_arr = np.full(n_src, np.nan, dtype=np.float64)
+    var_arr = np.full(n_src, np.nan, dtype=np.float64)
+    median_arr = np.full(n_src, np.nan, dtype=np.float64)
+    madstd_arr = np.full(n_src, np.nan, dtype=np.float64)
+    biloc_arr = np.full(n_src, np.nan, dtype=np.float64)
+    bivar_arr = np.full(n_src, np.nan, dtype=np.float64)
+    gini_arr = np.full(n_src, np.nan, dtype=np.float64)
+
+    cdef double[::1] vmin = vmin_arr
+    cdef double[::1] vmax = vmax_arr
+    cdef double[::1] mean = mean_arr
+    cdef double[::1] var = var_arr
+    cdef double[::1] median = median_arr
+    cdef double[::1] madstd = madstd_arr
+    cdef double[::1] biloc = biloc_arr
+    cdef double[::1] bivar = bivar_arr
+    cdef double[::1] gini = gini_arr
+
+    # Largest per-source pixel count sizes the reusable sort scratch.
+    cdef Py_ssize_t maxn = 0
+    cdef Py_ssize_t k
+    for k in range(n_src):
+        if counts[k] > maxn:
+            maxn = counts[k]
+    if maxn == 0:
+        return (vmin_arr, vmax_arr, mean_arr, var_arr, median_arr,
+                madstd_arr, biloc_arr, bivar_arr, gini_arr)
+
+    sort_arr = np.empty(maxn, dtype=np.float64)
+    work_arr = np.empty(maxn, dtype=np.float64)
+    cdef double[::1] s = sort_arr
+    cdef double[::1] w = work_arr
+
+    cdef Py_ssize_t start, count, i
+    cdef double m, med, mad, dval, uu, weight, num, den
+    cdef double u2, omu, f1, f2, ssum, dsum, gsum, norm, meanabs
+
+    with nogil:
+        for k in range(n_src):
+            count = counts[k]
+            if count == 0:
+                continue
+            start = starts[k]
+
+            # Sort a copy of the source's pixel values once.
+            for i in range(count):
+                s[i] = values[start + i]
+            qsort(&s[0], <size_t>count, sizeof(double), &_cmp_double)
+
+            vmin[k] = s[0]
+            vmax[k] = s[count - 1]
+
+            ssum = 0.0
+            for i in range(count):
+                ssum += s[i]
+            m = ssum / count
+            mean[k] = m
+
+            dsum = 0.0
+            for i in range(count):
+                dval = s[i] - m
+                dsum += dval * dval
+            var[k] = dsum / count
+
+            med = _median_sorted(&s[0], count)
+            median[k] = med
+
+            # Median absolute deviation (sorted abs deviations).
+            for i in range(count):
+                w[i] = fabs(s[i] - med)
+            qsort(&w[0], <size_t>count, sizeof(double), &_cmp_double)
+            mad = _median_sorted(&w[0], count)
+            madstd[k] = mad * _MAD_STD_SCALE
+
+            # Biweight location (c=6) and midvariance (c=9).
+            if mad == 0.0:
+                biloc[k] = med
+                bivar[k] = 0.0
+            else:
+                num = 0.0
+                den = 0.0
+                f1 = 0.0
+                f2 = 0.0
+                for i in range(count):
+                    dval = s[i] - med
+                    uu = dval / (6.0 * mad)
+                    if fabs(uu) < 1.0:
+                        weight = (1.0 - uu * uu)
+                        weight = weight * weight
+                        num += dval * weight
+                        den += weight
+                    u2 = dval / (9.0 * mad)
+                    u2 = u2 * u2
+                    if u2 < 1.0:
+                        omu = 1.0 - u2
+                        f1 += dval * dval * omu * omu * omu * omu
+                        f2 += omu * (1.0 - 5.0 * u2)
+                biloc[k] = med + num / den
+                bivar[k] = count * f1 / (f2 * f2)
+
+            # Gini coefficient over the sorted absolute values.
+            if count == 1:
+                gini[k] = 0.0
+            else:
+                for i in range(count):
+                    w[i] = fabs(s[i])
+                qsort(&w[0], <size_t>count, sizeof(double), &_cmp_double)
+                gsum = 0.0
+                for i in range(count):
+                    gsum += w[i]
+                meanabs = gsum / count
+                norm = meanabs * count * (count - 1)
+                if norm == 0.0:
+                    gini[k] = 0.0
+                else:
+                    gsum = 0.0
+                    for i in range(count):
+                        gsum += (2.0 * i + 1.0 - count) * w[i]
+                    gini[k] = gsum / norm
+
+    return (vmin_arr, vmax_arr, mean_arr, var_arr, median_arr,
+            madstd_arr, biloc_arr, bivar_arr, gini_arr)

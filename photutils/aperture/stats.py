@@ -18,7 +18,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture._batch_stats import (batch_aperture_gather,
-                                             batch_moments)
+                                             batch_moments, batch_value_stats)
 from photutils.aperture._segmentation import (SEG_METHOD_CODES,
                                               make_segmentation_exclusion,
                                               process_segmentation_inputs)
@@ -440,6 +440,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         # The packed gather buffer is not per-source sliceable; the
         # sliced object recomputes it lazily from its sliced inputs.
         keys.discard('_fast_gather')
+        keys.discard('_value_stats')
         for key in keys:
             value = self.__dict__[key]
 
@@ -730,6 +731,65 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             float(ext_x), float(ext_y), sum_use_exact, sum_subpixels,
             np.ascontiguousarray(self._local_bkg, dtype=np.float64),
             seg_arr, labels_arr, seg_code)
+
+    @lazyproperty
+    def _value_stats(self):
+        """
+        The packed per-source descriptive statistics, or `None`.
+
+        When the fast gather path is active (see `_fast_gather`), the
+        packed value buffer is reduced to the per-source minimum,
+        maximum, mean, variance, median, ``mad_std``, biweight location,
+        biweight midvariance, and Gini coefficient in a single Cython
+        pass. The result is a dict keyed by statistic name. `None` is
+        returned when the fast path is unavailable, in which case the
+        mask-based per-source code path is used.
+        """
+        gather = self._fast_gather
+        if gather is None:
+            return None
+        values, starts, counts = gather[0], gather[3], gather[4]
+        keys = ('min', 'max', 'mean', 'var', 'median', 'mad_std',
+                'biweight_location', 'biweight_midvariance', 'gini')
+        return dict(zip(keys, batch_value_stats(values, starts, counts),
+                        strict=True))
+
+    def _reduce_value_stat(self, key, stat_func, *, square_unit=False,
+                           apply_unit=True):
+        """
+        Return a per-source value statistic, using the fast Cython
+        reduction when available and otherwise the mask-based per-source
+        code path.
+
+        Parameters
+        ----------
+        key : str
+            The statistic name in `_value_stats`.
+
+        stat_func : callable
+            The fallback callable applied to each source's 1D array of
+            unmasked pixel values when the fast path is unavailable.
+
+        square_unit : bool, optional
+            Whether the statistic has squared data units (e.g. variance).
+
+        apply_unit : bool, optional
+            Whether to apply the data unit at all (`False` for
+            dimensionless statistics such as the Gini coefficient).
+        """
+        stats = self._value_stats
+        if stats is not None:
+            result = stats[key].copy()
+        else:
+            result = np.array([stat_func(arr)
+                               for arr in self._data_values_center])
+        if apply_unit:
+            unit = self._data_unit
+            if unit is not None:
+                if square_unit:
+                    unit = unit**2
+                result <<= unit
+        return result
 
     @lazyproperty
     def _aperture_masks_center(self):
@@ -1537,7 +1597,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         The minimum of the unmasked pixel values within the aperture.
         """
-        return self._calculate_stats(np.min)
+        return self._reduce_value_stat('min', np.min)
 
     @lazyproperty
     @as_scalar
@@ -1545,7 +1605,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         The maximum of the unmasked pixel values within the aperture.
         """
-        return self._calculate_stats(np.max)
+        return self._reduce_value_stat('max', np.max)
 
     @lazyproperty
     @as_scalar
@@ -1553,7 +1613,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         The mean of the unmasked pixel values within the aperture.
         """
-        return self._calculate_stats(np.mean)
+        return self._reduce_value_stat('mean', np.mean)
 
     @lazyproperty
     @as_scalar
@@ -1561,7 +1621,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         The median of the unmasked pixel values within the aperture.
         """
-        return self._calculate_stats(np.median)
+        return self._reduce_value_stat('median', np.median)
 
     @lazyproperty
     @as_scalar
@@ -1580,6 +1640,12 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         The standard deviation of the unmasked pixel values within the
         aperture.
         """
+        stats = self._value_stats
+        if stats is not None:
+            result = np.sqrt(stats['var'])
+            if self._data_unit is not None:
+                result <<= self._data_unit
+            return result
         return self._calculate_stats(np.std)
 
     @lazyproperty
@@ -1600,7 +1666,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         where :math:`\Phi^{-1}(P)` is the normal inverse cumulative
         distribution function evaluated at probability :math:`P = 3/4`.
         """
-        return self._calculate_stats(mad_std)
+        return self._reduce_value_stat('mad_std', mad_std)
 
     @lazyproperty
     @as_scalar
@@ -1608,10 +1674,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         The variance of the unmasked pixel values within the aperture.
         """
-        unit = self._data_unit
-        if unit is not None:
-            unit **= 2
-        return self._calculate_stats(np.var, unit=unit)
+        return self._reduce_value_stat('var', np.var, square_unit=True)
 
     @lazyproperty
     @as_scalar
@@ -1622,7 +1685,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
         See `astropy.stats.biweight_location`.
         """
-        return self._calculate_stats(biweight_location)
+        return self._reduce_value_stat('biweight_location',
+                                       biweight_location)
 
     @lazyproperty
     @as_scalar
@@ -1633,10 +1697,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
         See `astropy.stats.biweight_midvariance`
         """
-        unit = self._data_unit
-        if unit is not None:
-            unit **= 2
-        return self._calculate_stats(biweight_midvariance, unit=unit)
+        return self._reduce_value_stat('biweight_midvariance',
+                                       biweight_midvariance, square_unit=True)
 
     @lazyproperty
     @as_scalar
@@ -1965,4 +2027,4 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         from the calculation. If only a single finite pixel remains
         after filtering, the Gini coefficient is 0.0.
         """
-        return np.array([gini_func(arr) for arr in self._data_values_center])
+        return self._reduce_value_stat('gini', gini_func, apply_unit=False)
