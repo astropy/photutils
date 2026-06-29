@@ -17,7 +17,9 @@ from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
-from photutils.aperture._segmentation import (make_segmentation_exclusion,
+from photutils.aperture._batch_stats import batch_aperture_gather
+from photutils.aperture._segmentation import (SEG_METHOD_CODES,
+                                              make_segmentation_exclusion,
                                               process_segmentation_inputs)
 from photutils.aperture.core import (_aperture_metadata,
                                      _update_method_subpixels_docstring)
@@ -434,6 +436,9 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         # Slice evaluated lazyproperty objects
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
         keys.add('_local_bkg')  # iterable defined in __init__
+        # The packed gather buffer is not per-source sliceable; the
+        # sliced object recomputes it lazily from its sliced inputs.
+        keys.discard('_fast_gather')
         for key in keys:
             value = self.__dict__[key]
 
@@ -645,6 +650,85 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         if isinstance(self.aperture, SkyAperture):
             return self.aperture.to_pixel(self._wcs)
         return self.aperture
+
+    @lazyproperty
+    def _fast_gather(self):
+        """
+        The result of the fast Cython statistics gather, or `None`.
+
+        When supported, this walks each aperture bounding box once and
+        returns a packed buffer of the unmasked "center"-method pixel
+        values (and their cutout coordinates) together with the
+        ``sum_method`` aperture sum, error variance, and area. The
+        higher-tier statistics (order statistics and image moments) are
+        reduced lazily from this buffer.
+
+        `None` is returned (and the mask-based code path is used) when
+        the aperture or inputs are not supported by the batch driver,
+        for example when ``sigma_clip`` is used, the aperture does not
+        opt in to the batch driver, or the data/mask dtypes are not
+        supported. The set of supported inputs matches
+        `~photutils.aperture.PixelAperture._do_batch_photometry`.
+
+        The result is a tuple ``(values, local_x, local_y, starts,
+        counts, sum_aper, var_aper, sum_area, overlap)`` (see
+        `~photutils.aperture._batch_stats.batch_aperture_gather`).
+        """
+        # The sigma-clip fast path is not yet implemented.
+        if self.sigma_clip is not None:
+            return None
+
+        aper = self._pixel_aperture
+
+        # Use the batch driver only if the aperture's own class defines
+        # the _batch_shape_params hook (see _do_batch_photometry).
+        if '_batch_shape_params' not in type(aper).__dict__:
+            return None
+        spec = aper._batch_shape_params()
+        if spec is None:
+            return None
+
+        data = self._data
+        error = self._error
+
+        def _supported(arr):
+            return (type(arr) is np.ndarray and arr.dtype.kind in 'fiub'
+                    and arr.dtype.itemsize <= 8)
+
+        if not _supported(data) or (error is not None
+                                    and not _supported(error)):
+            return None
+
+        mask = self._mask
+        if mask is not None:
+            if (not isinstance(mask, np.ndarray) or mask.dtype != bool
+                    or mask.shape != data.shape):
+                return None
+            mask = np.ascontiguousarray(mask, dtype=np.uint8)
+
+        seg_arr = None
+        labels_arr = None
+        seg_code = 0
+        if self._segmentation is not None and self._mask_method != 'none':
+            seg_arr = np.ascontiguousarray(self._segmentation, dtype=np.intp)
+            labels_arr = np.ascontiguousarray(self._seg_labels, dtype=np.intp)
+            seg_code = SEG_METHOD_CODES[self._mask_method]
+
+        shape_code, params = spec
+        sum_use_exact, sum_subpixels = aper._translate_mask_method(
+            self.sum_method, self.subpixels)
+        ext_x, ext_y = aper._xy_extents
+
+        if error is not None:
+            error = np.ascontiguousarray(error, dtype=np.float64)
+
+        return batch_aperture_gather(
+            np.ascontiguousarray(data, dtype=np.float64), error, mask,
+            np.ascontiguousarray(aper._positions, dtype=np.float64),
+            shape_code, np.array(params, dtype=np.float64),
+            float(ext_x), float(ext_y), sum_use_exact, sum_subpixels,
+            np.ascontiguousarray(self._local_bkg, dtype=np.float64),
+            seg_arr, labels_arr, seg_code)
 
     @lazyproperty
     def _aperture_masks_center(self):
@@ -1060,6 +1144,18 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         An array with a single NaN is returned for completely-masked
         sources.
         """
+        gather = self._fast_gather
+        if gather is not None:
+            values, _lx, _ly, starts, counts = gather[:5]
+            out = []
+            for k in range(self.n_apertures):
+                count = counts[k]
+                if count > 0:
+                    start = starts[k]
+                    out.append(values[start:start + count])
+                else:
+                    out.append(np.array([np.nan]))
+            return out
         return self._get_values(self.data_cutout)
 
     @lazyproperty
@@ -1296,6 +1392,12 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         The total area of the unmasked pixels within the aperture using
         the "center" aperture mask method.
         """
+        gather = self._fast_gather
+        if gather is not None:
+            counts = gather[4]
+            areas = counts.astype(float)
+            areas[counts == 0] = np.nan
+            return areas << (u.pix**2)
         areas = np.array([np.sum(weight.filled(0.0))
                           for weight in self._weight_cutout_center])
         areas[self._all_masked] = np.nan
@@ -1308,6 +1410,12 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         The total area of the unmasked pixels within the aperture using
         the input ``sum_method`` aperture mask method.
         """
+        gather = self._fast_gather
+        if gather is not None:
+            counts = gather[4]
+            areas = gather[7].copy()
+            areas[counts == 0] = np.nan
+            return areas << (u.pix**2)
         areas = np.array([np.sum(weight.filled(0.0))
                           for weight in self._weight_cutout])
         areas[self._all_masked] = np.nan
@@ -1330,6 +1438,16 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         Non-finite pixel values (NaN and inf) are excluded
         (automatically masked).
         """
+        gather = self._fast_gather
+        if gather is not None:
+            result, area, overlap = gather[5].copy(), gather[7], gather[8]
+            # No sum-method survivors -> NaN (matches the mask-based
+            # path, which returns NaN for an all-masked aperture).
+            result[overlap & (area == 0)] = np.nan
+            if self._data_unit is not None:
+                result <<= self._data_unit
+            return result
+
         if self.sum_method == 'center':
             return self._calculate_stats(np.sum)
 
@@ -1366,14 +1484,22 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             err = self._null_value
 
         else:
-            if self.sum_method == 'center':
-                variance = self._variance_cutout_center
+            gather = self._fast_gather
+            if gather is not None:
+                variance = gather[6].copy()
+                area = gather[7]
+                overlap = gather[8]
+                variance[overlap & (area == 0)] = np.nan
+                err = np.sqrt(variance)
             else:
-                variance = self._variance_cutout
+                if self.sum_method == 'center':
+                    variance = self._variance_cutout_center
+                else:
+                    variance = self._variance_cutout
 
-            var_values = [arr.compressed() if len(arr.compressed()) > 0
-                          else np.array([np.nan]) for arr in variance]
-            err = np.sqrt([np.sum(arr) for arr in var_values])
+                var_values = [arr.compressed() if len(arr.compressed()) > 0
+                              else np.array([np.nan]) for arr in variance]
+                err = np.sqrt([np.sum(arr) for arr in var_values])
 
         if self._data_unit is not None:
             err <<= self._data_unit
