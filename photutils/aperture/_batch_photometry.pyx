@@ -227,12 +227,16 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         rx_out = params[0]
         ry_out = params[1]
         theta = params[2]
+        cos_theta = cos(theta)
+        sin_theta = sin(theta)
     elif shape_code == _ELLIPTICAL_ANNULUS:
         rx_in = params[0]
         ry_in = params[1]
         rx_out = params[2]
         ry_out = params[3]
         theta = params[4]
+        cos_theta = cos(theta)
+        sin_theta = sin(theta)
     elif shape_code == _RECTANGLE or shape_code == _RECTANGULAR_ANNULUS:
         if shape_code == _RECTANGLE:
             half_width_out = 0.5 * params[0]
@@ -402,14 +406,16 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                     elif shape_code == _ELLIPSE:
                         frac = _ellipse_pixel_frac(
                             pxmin, pymin, dx, dy, norm, rx_out, ry_out,
-                            theta, use_exact, subpixels)
+                            cos_theta, sin_theta, use_exact, subpixels)
                     elif shape_code == _ELLIPTICAL_ANNULUS:
                         frac = (_ellipse_pixel_frac(
                                     pxmin, pymin, dx, dy, norm, rx_out,
-                                    ry_out, theta, use_exact, subpixels)
+                                    ry_out, cos_theta, sin_theta,
+                                    use_exact, subpixels)
                                 - _ellipse_pixel_frac(
                                     pxmin, pymin, dx, dy, norm, rx_in,
-                                    ry_in, theta, use_exact, subpixels))
+                                    ry_in, cos_theta, sin_theta,
+                                    use_exact, subpixels))
                     elif shape_code == _RECTANGLE:
                         frac = _rect_pixel_frac(
                             pxmin, pymin, dx, dy, half_width_out,
@@ -492,13 +498,17 @@ cdef inline double _circle_pixel_frac(double pxmin, double pymin,
 
 cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
                                        double dx, double dy, double norm,
-                                       double rx, double ry, double theta,
+                                       double rx, double ry,
+                                       double cos_theta, double sin_theta,
                                        int use_exact,
                                        int subpixels) noexcept nogil:
     """
     Fraction of a single pixel that overlaps an ellipse with semimajor
     and semiminor axes ``rx`` and ``ry`` and position angle ``theta``
     centered on the origin.
+
+    ``cos_theta`` and ``sin_theta`` are the cosine and sine of the
+    position angle, precomputed once per aperture by the caller.
 
     This replicates the per-pixel logic of ``elliptical_overlap_grid``,
     including the bounding-circle shortcut and the interior/exterior
@@ -508,7 +518,7 @@ cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
     cdef double pymax = pymin + dy
     cdef double r = fmax(rx, ry)  # bounding circle radius
     cdef double pxcen, pycen, rpix2
-    cdef double cos_theta, sin_theta, inv_rx2, inv_ry2
+    cdef double inv_rx2, inv_ry2
     cdef double cxx, cyy, cxy, margin, f_in, f_out
 
     # Bounding-box check
@@ -518,8 +528,6 @@ cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
 
     # Quadratic-form coefficients of the ellipse, such that a point
     # (x, y) lies inside when ``cxx*x**2 + cyy*y**2 + cxy*x*y < 1``.
-    cos_theta = cos(theta)
-    sin_theta = sin(theta)
     inv_rx2 = 1.0 / (rx * rx)
     inv_ry2 = 1.0 / (ry * ry)
     cxx = cos_theta * cos_theta * inv_rx2 + sin_theta * sin_theta * inv_ry2
@@ -543,9 +551,9 @@ cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
 
     if use_exact:
         return ellipse_overlap_single_exact(pxmin, pymin, pxmax, pymax, rx, ry,
-                                            theta) * norm
+                                            cos_theta, sin_theta) * norm
     return ellipse_overlap_single_subpixel(pxmin, pymin, pxmax, pymax, rx, ry,
-                                           theta, subpixels)
+                                           cos_theta, sin_theta, subpixels)
 
 
 cdef inline double _rect_pixel_frac(double pxmin, double pymin,

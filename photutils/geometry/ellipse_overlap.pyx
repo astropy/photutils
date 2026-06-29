@@ -180,30 +180,32 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                             frac_view[j, i] = (
                                 ellipse_overlap_single_exact(
                                     pxmin, pymin, pxmax, pymax, rx, ry,
-                                    theta) * norm)
+                                    cos_theta, sin_theta) * norm)
                         else:
                             frac_view[j, i] = (
                                 ellipse_overlap_single_subpixel(
                                     pxmin, pymin, pxmax, pymax, rx, ry,
-                                    theta, subpixels))
+                                    cos_theta, sin_theta, subpixels))
     return frac
 
 
 cdef double ellipse_overlap_single_subpixel(double x0, double y0,
                                             double x1, double y1,
                                             double rx, double ry,
-                                            double theta,
+                                            double cos_theta,
+                                            double sin_theta,
                                             int subpixels) noexcept nogil:
     """
     Return the fraction of overlap between an ellipse and a single
     pixel with given extent, using a sub-pixel sampling method.
+
+    ``cos_theta`` and ``sin_theta`` are the cosine and sine of the
+    ellipse position angle, precomputed by the caller.
     """
     cdef unsigned int i, j
     cdef double x, y
     cdef double frac = 0.0  # Accumulator.
     cdef double inv_rx_sq, inv_ry_sq
-    cdef double cos_theta = cos(theta)
-    cdef double sin_theta = sin(theta)
     cdef double dx, dy
     cdef double x_tr, y_tr
 
@@ -233,7 +235,8 @@ cdef double ellipse_overlap_single_subpixel(double x0, double y0,
 cdef double ellipse_overlap_single_exact(double xmin, double ymin,
                                          double xmax, double ymax,
                                          double rx, double ry,
-                                         double theta) noexcept nogil:
+                                         double cos_theta,
+                                         double sin_theta) noexcept nogil:
     """
     Return the area of overlap between a rectangle and an ellipse.
 
@@ -245,9 +248,14 @@ cdef double ellipse_overlap_single_exact(double xmin, double ymin,
     becomes the unit circle. It then computes the intersection area
     between each triangle and the unit circle, and sums them to get the
     total area of overlap.
+
+    ``cos_theta`` and ``sin_theta`` are the cosine and sine of the
+    ellipse position angle, precomputed by the caller.
     """
-    cdef double cos_m_theta = cos(-theta)
-    cdef double sin_m_theta = sin(-theta)
+    # The reprojection uses the -theta rotation, for which
+    # cos(-theta) = cos(theta) and sin(-theta) = -sin(theta).
+    cdef double cos_m_theta = cos_theta
+    cdef double sin_m_theta = -sin_theta
     cdef double scale
     cdef double x1, y1, x2, y2, x3, y3, x4, y4
 
