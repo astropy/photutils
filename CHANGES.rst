@@ -61,6 +61,11 @@ New Features
     code. Sigma-clipped statistics are also computed in compiled code
     for the common ``SigmaClip`` configurations. [#2314]
 
+  - Added ``mean_err`` and ``median_err`` properties to
+    ``ApertureStats`` providing the standard error of the mean and the
+    standard error of the median, respectively, for each aperture.
+    [#2314]
+
 - ``photutils.isophote``
 
   - Optimized the ``build_ellipse_model_c`` Cython extension by

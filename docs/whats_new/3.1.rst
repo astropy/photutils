@@ -99,6 +99,30 @@ are sigma-clipped in compiled code as well. Typical speedups range from
 are unchanged from previous versions.
 
 
+Aperture Statistics Error Estimates
+===================================
+
+`~photutils.aperture.ApertureStats` now provides standard-error
+estimates for its location statistics via the new ``mean_err`` and
+``median_err`` properties. The ``mean_err`` property returns the
+standard error of the mean, :math:`s / \sqrt{N}`, where :math:`s` is
+the sample standard deviation of the unmasked aperture pixels and
+:math:`N` is the number of those pixels. The ``median_err`` property
+returns the large-sample standard error of the median,
+:math:`\sqrt{\pi / 2} \, s / \sqrt{N}`, which assumes the pixel values
+are approximately normally distributed. Both properties are ``NaN`` for
+apertures with fewer than two unmasked pixels::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import ApertureStats, CircularAperture
+    >>> rng = np.random.default_rng(seed=0)
+    >>> data = rng.normal(100.0, 5.0, (100, 100))
+    >>> aper = CircularAperture((50, 50), r=10)
+    >>> stats = ApertureStats(data, aper)
+    >>> stats.mean_err  # doctest: +FLOAT_CMP
+    0.27447881801886487
+
+
 Thread-Safe and Free-Threading-Compatible Aperture Photometry
 ==============================================================
 

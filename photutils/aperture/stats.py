@@ -774,8 +774,6 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             maxiters = -1
         else:
             maxiters = int(maxiters)
-            if maxiters < 1:
-                return None
         cenfunc_code = 0 if sc.cenfunc == 'median' else 1
         stdfunc_code = 0 if sc.stdfunc == 'std' else 1
         return (float(sc.sigma_lower), float(sc.sigma_upper), maxiters,
@@ -1276,18 +1274,6 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         An array with a single NaN is returned for completely-masked
         sources.
         """
-        gather = self._fast_gather
-        if gather is not None:
-            values, _lx, _ly, starts, counts = gather[:5]
-            out = []
-            for k in range(self.n_apertures):
-                count = counts[k]
-                if count > 0:
-                    start = starts[k]
-                    out.append(values[start:start + count])
-                else:
-                    out.append(np.array([np.nan]))
-            return out
         return self._get_values(self.data_cutout)
 
     @lazyproperty
@@ -1543,22 +1529,58 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         return result
 
     @lazyproperty
+    def _center_npixels(self):
+        """
+        The number of unmasked pixels within each aperture using the
+        "center" mask method.
+
+        The result is a `~numpy.ndarray` of per-source pixel counts.
+        Sources with no unmasked pixels are set to NaN.
+        """
+        gather = self._fast_gather
+        if gather is not None:
+            counts = gather[4]
+            npix = counts.astype(float)
+            npix[counts == 0] = np.nan
+            return npix
+        npix = np.array([np.sum(weight.filled(0.0))
+                         for weight in self._weight_cutout_center])
+        npix[self._all_masked] = np.nan
+        return npix
+
+    @lazyproperty
+    def _sem(self):
+        """
+        The standard error of the mean for each aperture.
+
+        The result is a `~numpy.ndarray` (without data units). It is
+        computed as ``s / sqrt(N)``, where ``s`` is the sample (``N -
+        1``) standard deviation and ``N`` is the number of unmasked
+        pixels within the aperture. Sources with fewer than two unmasked
+        pixels are set to NaN.
+        """
+        stats = self._value_stats
+        if stats is not None:
+            var = stats['var']
+        else:
+            var = np.array([np.var(values)
+                            for values in self._data_values_center])
+        npix = self._center_npixels
+        sem = np.full(self.n_apertures, np.nan)
+        mask = npix >= 2
+        # var is the population (ddof=0) variance, so var / (N - 1)
+        # equals the squared standard error of the mean.
+        sem[mask] = np.sqrt(var[mask] / (npix[mask] - 1.0))
+        return sem
+
+    @lazyproperty
     @as_scalar
     def center_aper_area(self):
         """
         The total area of the unmasked pixels within the aperture using
         the "center" aperture mask method.
         """
-        gather = self._fast_gather
-        if gather is not None:
-            counts = gather[4]
-            areas = counts.astype(float)
-            areas[counts == 0] = np.nan
-            return areas << (u.pix**2)
-        areas = np.array([np.sum(weight.filled(0.0))
-                          for weight in self._weight_cutout_center])
-        areas[self._all_masked] = np.nan
-        return areas << (u.pix**2)
+        return self._center_npixels.copy() << (u.pix**2)
 
     @lazyproperty
     @as_scalar
@@ -1688,11 +1710,64 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
     @lazyproperty
     @as_scalar
+    def mean_err(self):
+        r"""
+        The standard error of the `mean`.
+
+        ``mean_err`` is the standard deviation of the sampling
+        distribution of the mean:
+
+        .. math::
+
+            \sigma_{\bar{x}} = \frac{s}{\sqrt{N}}
+
+        where :math:`s` is the sample standard deviation (computed with
+        ``N - 1`` in the denominator) and :math:`N` is the number of
+        unmasked pixels within the aperture (`center_aper_area`).
+
+        Apertures with fewer than two unmasked pixels have an undefined
+        standard error and are set to NaN.
+        """
+        result = self._sem.copy()
+        if self._data_unit is not None:
+            result <<= self._data_unit
+        return result
+
+    @lazyproperty
+    @as_scalar
     def median(self):
         """
         The median of the unmasked pixel values within the aperture.
         """
         return self._reduce_value_stat('median', np.median)
+
+    @lazyproperty
+    @as_scalar
+    def median_err(self):
+        r"""
+        The standard error of the `median`.
+
+        ``median_err`` is the large-sample approximation of the standard
+        error of the median:
+
+        .. math::
+
+            \sigma_{\mathrm{med}} \approx \sqrt{\frac{\pi}{2}}
+                \ \frac{s}{\sqrt{N}}
+
+        where :math:`s` is the sample standard deviation (computed with
+        ``N - 1`` in the denominator) and :math:`N` is the number of
+        unmasked pixels within the aperture (`center_aper_area`).
+
+        This approximation assumes that the pixel values are
+        approximately normally distributed. Apertures with fewer than
+        two unmasked pixels have an undefined standard error and are set
+        to NaN.
+        """
+        result = np.sqrt(np.pi / 2.0) * self._sem
+        if self._data_unit is not None:
+            result <<= self._data_unit
+        return result
 
     @lazyproperty
     @as_scalar
