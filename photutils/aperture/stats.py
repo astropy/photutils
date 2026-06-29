@@ -17,7 +17,8 @@ from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
-from photutils.aperture._batch_stats import batch_aperture_gather
+from photutils.aperture._batch_stats import (batch_aperture_gather,
+                                             batch_moments)
 from photutils.aperture._segmentation import (SEG_METHOD_CODES,
                                               make_segmentation_exclusion,
                                               process_segmentation_inputs)
@@ -1164,6 +1165,18 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         Spatial moments up to 3rd order of the source.
         """
+        gather = self._fast_gather
+        if gather is not None:
+            values, lx, ly, starts, counts = gather[:5]
+            overlap = gather[8]
+            zeros = np.zeros(self.n_apertures)
+            mom = batch_moments(values, lx, ly, starts, counts, zeros, zeros)
+            # No-overlap sources have NaN moments (the mask-based path
+            # uses an all-NaN cutout); all-masked overlapping sources
+            # have zero moments (an all-zero cutout).
+            mom[~overlap] = np.nan
+            return mom
+
         return np.array([_image_moments(arr, order=3)
                          for arr in self._moment_data_cutout])
 
@@ -1177,6 +1190,19 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         cutout_centroid = self.cutout_centroid
         if self.isscalar:
             cutout_centroid = cutout_centroid[np.newaxis, :]
+
+        gather = self._fast_gather
+        if gather is not None:
+            values, lx, ly, starts, counts = gather[:5]
+            cen_x = np.ascontiguousarray(cutout_centroid[:, 0])
+            cen_y = np.ascontiguousarray(cutout_centroid[:, 1])
+            mom = batch_moments(values, lx, ly, starts, counts, cen_x, cen_y)
+            # Empty sources (no overlap or fully masked) have a NaN
+            # centroid, so their central moments are NaN (matching the
+            # mask-based path).
+            mom[counts == 0] = np.nan
+            return mom
+
         return np.array([_image_moments(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
                          zip(self._moment_data_cutout, cutout_centroid[:, 0],

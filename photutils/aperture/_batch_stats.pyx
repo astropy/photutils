@@ -28,7 +28,7 @@ from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
                                                 _rect_vertices)
 from photutils.geometry._polygon_overlap cimport convex_edge_normals
 
-__all__ = ['batch_aperture_gather']
+__all__ = ['batch_aperture_gather', 'batch_moments']
 
 
 cdef extern from "math.h" nogil:
@@ -516,3 +516,82 @@ def batch_aperture_gather(const double[:, ::1] data,
 
     return (values_arr, lx_arr, ly_arr, starts_arr, counts_arr, sum_arr,
             var_arr, area_arr, overlap_arr.view(bool))
+
+
+def batch_moments(const double[::1] values, const Py_ssize_t[::1] local_x,
+                  const Py_ssize_t[::1] local_y,
+                  const Py_ssize_t[::1] starts,
+                  const Py_ssize_t[::1] counts, const double[::1] cx,
+                  const double[::1] cy):
+    """
+    Compute image moments up to 3rd order from a packed value buffer.
+
+    For each source ``k``, the ``(4, 4)`` moment matrix is
+
+    .. math::
+
+        M_{ij} = \\sum_p (y_p - c_y)^i \\, v_p \\, (x_p - c_x)^j
+
+    where the sum is over the packed pixels ``p`` of source ``k`` (the
+    slice ``[starts[k]:starts[k] + counts[k]]``), ``v_p`` is the pixel
+    value, ``(x_p, y_p)`` are its cutout coordinates, and ``(c_x, c_y) =
+    (cx[k], cy[k])``. This uses exactly the same definition as
+    `photutils.utils._moments._image_moments`, so passing ``cx = cy =
+    0`` gives the raw moments and passing the cutout centroid gives the
+    central moments.
+
+    Parameters
+    ----------
+    values : 1D ndarray of float64
+        The packed pixel values (see ``batch_aperture_gather``).
+
+    local_x, local_y : 1D ndarray of intp
+        The packed pixel cutout coordinates.
+
+    starts, counts : 1D ndarray of intp
+        The per-source start offset into ``values`` and the per-source
+        pixel count.
+
+    cx, cy : 1D ndarray of float64
+        The per-source ``(x, y)`` moment center.
+
+    Returns
+    -------
+    moments : 3D ndarray of float64
+        The ``(n_sources, 4, 4)`` image moments. Sources with no pixels
+        have all-zero moments.
+    """
+    cdef Py_ssize_t n_src = starts.shape[0]
+    moments_arr = np.zeros((n_src, 4, 4), dtype=np.float64)
+    cdef double[:, :, ::1] moments = moments_arr
+
+    cdef Py_ssize_t k, p, i, j, start, count
+    cdef double cxk, cyk, val, dxp, dyp
+    cdef double px[4]
+    cdef double py[4]
+
+    with nogil:
+        for k in range(n_src):
+            count = counts[k]
+            if count == 0:
+                continue
+            start = starts[k]
+            cxk = cx[k]
+            cyk = cy[k]
+            for p in range(start, start + count):
+                val = values[p]
+                dxp = <double>local_x[p] - cxk
+                dyp = <double>local_y[p] - cyk
+                px[0] = 1.0
+                px[1] = dxp
+                px[2] = dxp * dxp
+                px[3] = px[2] * dxp
+                py[0] = 1.0
+                py[1] = dyp
+                py[2] = dyp * dyp
+                py[3] = py[2] * dyp
+                for i in range(4):
+                    for j in range(4):
+                        moments[k, i, j] += py[i] * val * px[j]
+
+    return moments_arr
