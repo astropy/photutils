@@ -26,6 +26,7 @@ __all__ = ['polygon_overlap_grid']
 
 
 cdef extern from "math.h" nogil:
+    double sqrt(double x)
     double fabs(double x)
     double fmax(double x, double y)
     double fmin(double x, double y)
@@ -123,16 +124,22 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     # vertex count of a non-convex polygon, so after the four half-plane
     # clips the vertex count is bounded by 16 * n_poly.
     cdef int buf_size = 16 * n_poly
-    cdef double[::1] work = np.empty(2 * n_poly + 4 * buf_size, dtype=DTYPE)
+    cdef double[::1] work = np.empty(2 * n_poly + 4 * buf_size
+                                     + 3 * n_poly, dtype=DTYPE)
     cdef double *poly_x = &work[0]
     cdef double *poly_y = &work[n_poly]
     cdef double *buf_a_x = &work[2 * n_poly]
     cdef double *buf_a_y = &work[2 * n_poly + buf_size]
     cdef double *buf_b_x = &work[2 * n_poly + 2 * buf_size]
     cdef double *buf_b_y = &work[2 * n_poly + 3 * buf_size]
+    cdef double *edge_nx = &work[2 * n_poly + 4 * buf_size]
+    cdef double *edge_ny = &work[3 * n_poly + 4 * buf_size]
+    cdef double *edge_c = &work[4 * n_poly + 4 * buf_size]
     cdef const double[::1] vx_view = np.ascontiguousarray(vertices_x)
     cdef const double[::1] vy_view = np.ascontiguousarray(vertices_y)
     _ensure_ccw(vx_view, vy_view, n_poly, poly_x, poly_y)
+    cdef int is_convex = convex_edge_normals(poly_x, poly_y, n_poly,
+                                             edge_nx, edge_ny, edge_c)
 
     cdef np.ndarray[DTYPE_t, ndim=2] frac = np.zeros([ny, nx], dtype=DTYPE)
     cdef double[:, ::1] frac_view = frac
@@ -141,6 +148,7 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     cdef double pxmin, pxmax, pymin, pymax
     cdef double bbox_xmin, bbox_xmax, bbox_ymin, bbox_ymax
     cdef double pixel_area = dx * dy
+    cdef double margin = 0.5 * sqrt(dx * dx + dy * dy)
     cdef int i, j, k
     cdef int i_min, i_max, j_min, j_max
 
@@ -173,10 +181,11 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                     pymin = ymin + j * dy
                     pymax = pymin + dy
                     frac_view[j, i] = (
-                        polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
-                                              poly_x, poly_y, n_poly,
-                                              buf_a_x, buf_a_y,
-                                              buf_b_x, buf_b_y, buf_size)
+                        convex_polygon_pixel_overlap(
+                            pxmin, pymin, pxmax, pymax,
+                            poly_x, poly_y, n_poly,
+                            edge_nx, edge_ny, edge_c, is_convex, margin,
+                            buf_a_x, buf_a_y, buf_b_x, buf_b_y, buf_size)
                         / pixel_area)
     else:
         with nogil:
@@ -263,6 +272,105 @@ cdef double polygon_pixel_overlap(double pxmin, double pymin,
         return 0.0
 
     return fabs(_polygon_signed_area(nxt_x, nxt_y, n))
+
+
+cdef int convex_edge_normals(double *poly_x, double *poly_y, int n_poly,
+                             double *edge_nx, double *edge_ny,
+                             double *edge_c) noexcept nogil:
+    """
+    Test whether a counter-clockwise simple polygon is convex and, if
+    so, fill the per-edge unit inward normals and offsets.
+
+    For edge ``k`` (from vertex ``k`` to vertex ``k + 1``) of a
+    counter-clockwise convex polygon, the inward unit normal is
+    ``(-edge_y, edge_x)`` normalized, and the signed distance of a point
+    ``(x, y)`` from the edge line is ``edge_nx[k] * x + edge_ny[k] * y -
+    edge_c[k]``, positive on the interior side.
+
+    Returns 1 if the polygon is convex (and the three output arrays,
+    each of length ``n_poly``, are filled), 0 otherwise. A clockwise or
+    degenerate polygon also returns 0, in which case the caller should
+    fall back to the general Sutherland-Hodgman clip.
+    """
+    cdef int k, k1, k2
+    cdef double ex, ey, ex2, ey2, cross, length
+
+    if n_poly < 3:
+        return 0
+
+    for k in range(n_poly):
+        k1 = k + 1
+        if k1 == n_poly:
+            k1 = 0
+        k2 = k1 + 1
+        if k2 == n_poly:
+            k2 = 0
+        ex = poly_x[k1] - poly_x[k]
+        ey = poly_y[k1] - poly_y[k]
+        ex2 = poly_x[k2] - poly_x[k1]
+        ey2 = poly_y[k2] - poly_y[k1]
+
+        # Cross product of consecutive edges. For a counter-clockwise
+        # convex polygon every turn is a left turn (cross >= 0); a
+        # negative value marks a reflex vertex (non-convex), and a
+        # uniformly negative sign marks a clockwise polygon.
+        cross = ex * ey2 - ey * ex2
+        if cross < 0.0:
+            return 0
+        length = sqrt(ex * ex + ey * ey)
+        if length == 0.0:
+            return 0
+        edge_nx[k] = -ey / length
+        edge_ny[k] = ex / length
+        edge_c[k] = edge_nx[k] * poly_x[k] + edge_ny[k] * poly_y[k]
+
+    return 1
+
+
+cdef double convex_polygon_pixel_overlap(double pxmin, double pymin,
+                                         double pxmax, double pymax,
+                                         double *poly_x, double *poly_y,
+                                         int n_poly,
+                                         double *edge_nx, double *edge_ny,
+                                         double *edge_c, int is_convex,
+                                         double margin,
+                                         double *buf_a_x, double *buf_a_y,
+                                         double *buf_b_x, double *buf_b_y,
+                                         int buf_size) noexcept nogil:
+    """
+    Exact area of overlap between the pixel rectangle and a simple
+    polygon, with an interior/exterior fast path for convex polygons.
+
+    When ``is_convex`` is 1, ``edge_nx``/``edge_ny``/``edge_c``
+    hold the per-edge unit inward normals and offsets from
+    ``convex_edge_normals``, and ``margin`` is half the pixel diagonal.
+    Because each pixel point lies within ``margin`` of the pixel center,
+    a pixel is wholly inside the polygon when the center's smallest
+    signed edge distance exceeds ``margin`` (overlap = pixel area), and
+    wholly outside when it is below ``-margin`` (overlap = 0). Pixels in
+    the boundary band, and all pixels of non-convex polygons, fall back
+    to the exact Sutherland-Hodgman clip.
+    """
+    cdef double pxcen, pycen, min_dist, d
+    cdef int k
+
+    if is_convex:
+        pxcen = 0.5 * (pxmin + pxmax)
+        pycen = 0.5 * (pymin + pymax)
+        min_dist = edge_nx[0] * pxcen + edge_ny[0] * pycen - edge_c[0]
+        for k in range(1, n_poly):
+            d = edge_nx[k] * pxcen + edge_ny[k] * pycen - edge_c[k]
+            if d < min_dist:
+                min_dist = d
+        if min_dist > margin:
+            return (pxmax - pxmin) * (pymax - pymin)
+        if min_dist < -margin:
+            return 0.0
+
+    return polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
+                                 poly_x, poly_y, n_poly,
+                                 buf_a_x, buf_a_y, buf_b_x, buf_b_y,
+                                 buf_size)
 
 
 cdef int point_in_polygon(double x, double y, double *poly_x,

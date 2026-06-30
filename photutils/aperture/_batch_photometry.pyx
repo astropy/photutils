@@ -20,6 +20,7 @@ free-threaded Python builds.
 import numpy as np
 
 from photutils.geometry._polygon_overlap cimport (
+    convex_edge_normals, convex_polygon_pixel_overlap,
     polygon_overlap_single_subpixel, polygon_pixel_overlap)
 from photutils.geometry.circle_overlap cimport (circle_overlap_single_exact,
                                                 circle_overlap_single_subpixel)
@@ -209,6 +210,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     # alive by ``poly_work``) and accessed through raw pointers. They
     # are local to this call, so this function is thread safe.
     cdef int n_poly = 0, poly_buf_size = 0
+    cdef int is_poly_convex = 0
     cdef Py_ssize_t pk
     cdef double[::1] poly_work
     cdef double *poly_x = NULL
@@ -217,6 +219,9 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     cdef double *pbuf_a_y = NULL
     cdef double *pbuf_b_x = NULL
     cdef double *pbuf_b_y = NULL
+    cdef double *pedge_nx = NULL
+    cdef double *pedge_ny = NULL
+    cdef double *pedge_c = NULL
 
     if shape_code == _CIRCLE:
         r_out = params[0]
@@ -277,7 +282,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         # count of a non-convex polygon, so 16 * n_poly is a safe bound
         # (see ``polygon_overlap_grid``).
         poly_buf_size = 16 * n_poly
-        poly_work = np.empty(2 * n_poly + 4 * poly_buf_size,
+        poly_work = np.empty(2 * n_poly + 4 * poly_buf_size + 3 * n_poly,
                              dtype=np.float64)
         poly_x = &poly_work[0]
         poly_y = &poly_work[n_poly]
@@ -285,9 +290,17 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         pbuf_a_y = &poly_work[2 * n_poly + poly_buf_size]
         pbuf_b_x = &poly_work[2 * n_poly + 2 * poly_buf_size]
         pbuf_b_y = &poly_work[2 * n_poly + 3 * poly_buf_size]
+        pedge_nx = &poly_work[2 * n_poly + 4 * poly_buf_size]
+        pedge_ny = &poly_work[3 * n_poly + 4 * poly_buf_size]
+        pedge_c = &poly_work[4 * n_poly + 4 * poly_buf_size]
         for pk in range(n_poly):
             poly_x[pk] = params[2 * pk]
             poly_y[pk] = params[2 * pk + 1]
+
+        # One-time convexity test; convex polygons use an
+        # interior/exterior fast path in ``_polygon_pixel_frac``.
+        is_poly_convex = convex_edge_normals(poly_x, poly_y, n_poly,
+                                             pedge_nx, pedge_ny, pedge_c)
     else:
         msg = f'Invalid shape_code: {shape_code}'
         raise ValueError(msg)
@@ -440,9 +453,11 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                                     use_exact, subpixels))
                     else:
                         frac = _polygon_pixel_frac(
-                            pxmin, pymin, dx, dy, poly_x, poly_y, n_poly,
-                            pbuf_a_x, pbuf_a_y, pbuf_b_x, pbuf_b_y,
-                            poly_buf_size, use_exact, subpixels)
+                            pxmin, pymin, dx, dy, pixel_radius,
+                            poly_x, poly_y, n_poly, pedge_nx, pedge_ny,
+                            pedge_c, is_poly_convex, pbuf_a_x, pbuf_a_y,
+                            pbuf_b_x, pbuf_b_y, poly_buf_size, use_exact,
+                            subpixels)
 
                     if frac <= 0.0:
                         continue
@@ -614,30 +629,35 @@ cdef inline double _rect_pixel_frac(double pxmin, double pymin,
 
 
 cdef inline double _polygon_pixel_frac(double pxmin, double pymin,
-                                       double dx, double dy,
+                                       double dx, double dy, double margin,
                                        double *poly_x, double *poly_y,
                                        int n_poly,
+                                       double *edge_nx, double *edge_ny,
+                                       double *edge_c, int is_convex,
                                        double *buf_a_x, double *buf_a_y,
                                        double *buf_b_x, double *buf_b_y,
                                        int buf_size, int use_exact,
                                        int subpixels) noexcept nogil:
     """
     Fraction of a single pixel that overlaps a simple polygon supplied
-    as counter-clockwise vertices centered on the origin.
+    as counter-clockwise vertices centered on the origin. ``margin`` is
+    half the pixel diagonal.
 
     This replicates the per-pixel logic of ``polygon_overlap_grid``: the
-    exact mode clips the pixel against the polygon (Sutherland-Hodgman),
-    while the subpixel mode samples pixel centers with point-in-polygon
-    tests, so the result is identical to the grid function.
+    exact mode uses an interior/exterior fast path for convex polygons
+    (``is_convex``) and otherwise clips the pixel against the polygon
+    (Sutherland-Hodgman), while the subpixel mode samples pixel centers
+    with point-in-polygon tests, so the result is identical to the grid
+    function.
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
 
     if use_exact:
-        return polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
-                                     poly_x, poly_y, n_poly,
-                                     buf_a_x, buf_a_y, buf_b_x, buf_b_y,
-                                     buf_size) / (dx * dy)
+        return convex_polygon_pixel_overlap(
+            pxmin, pymin, pxmax, pymax, poly_x, poly_y, n_poly,
+            edge_nx, edge_ny, edge_c, is_convex, margin,
+            buf_a_x, buf_a_y, buf_b_x, buf_b_y, buf_size) / (dx * dy)
 
     return polygon_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
                                            poly_x, poly_y, n_poly,
