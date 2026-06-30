@@ -15,6 +15,9 @@ from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
 
 from photutils.aperture._batch_photometry import batch_aperture_sums
+from photutils.aperture._segmentation import (SEG_METHOD_CODES,
+                                              make_segmentation_exclusion,
+                                              process_segmentation_inputs)
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.mask import ApertureMask
 from photutils.utils._deprecation import deprecated_positional_kwargs
@@ -60,6 +63,43 @@ _METHOD_SUBPIXELS_DOC = (
     + textwrap.indent(_METHOD_BULLETS, '    ') + '\n\n'
     + _SUBPIXELS_DOC)
 
+_SEGMENTATION_DOC = """\
+segmentation_image : `~photutils.segmentation.SegmentationImage`, 2D \
+array_like, or `None`, optional
+    A 2D segmentation image with the same shape as ``data``, where
+    background pixels have a value of 0 and sources are labeled with
+    positive integers. If input, neighboring sources can be masked or
+    corrected within each aperture according to the ``mask_method``
+    keyword. This keyword is required if ``mask_method`` is not
+    ``'none'``.
+
+labels : int, 1D array_like, or `None`, optional
+    The source label(s) in ``segmentation_image`` associated with the
+    aperture position(s). If input, ``labels`` must have the same length
+    as the number of aperture positions. If `None` (default), the label
+    for each aperture is determined by sampling ``segmentation_image``
+    at the aperture center (rounded to the nearest pixel). An aperture
+    whose center falls on a background pixel (label 0) has its masking
+    behavior disabled.
+
+mask_method : {'none', 'mask', 'source_only', 'correct'}, optional
+    The method used to handle neighboring sources within each aperture
+    using the ``segmentation_image``:
+
+    * ``'none'`` (default):
+      The ``segmentation_image`` is ignored and all pixels within the
+      aperture are included.
+    * ``'mask'``:
+      Pixels belonging to neighboring sources (i.e., labeled but not
+      the target source) are excluded.
+    * ``'source_only'``:
+      Only pixels belonging to the target source are included; both
+      neighboring sources and background pixels are excluded.
+    * ``'correct'``:
+      Pixels belonging to neighboring sources are replaced by the
+      values of the pixels mirrored across the aperture center. If a
+      mirror pixel is unavailable, the pixel is excluded."""
+
 # Mapping of placeholder tags to their replacement text. Each tag must
 # appear alone on its own line in a docstring; the leading indentation
 # of the placeholder is applied to the inserted text.
@@ -67,6 +107,7 @@ _DOC_PLACEHOLDERS = {
     'method_subpixels_descriptions': _METHOD_SUBPIXELS_DOC,
     'method_bullets': _METHOD_BULLETS,
     'subpixels_description': _SUBPIXELS_DOC,
+    'segmentation_descriptions': _SEGMENTATION_DOC,
 }
 
 _DOC_PLACEHOLDER_RE = re.compile(
@@ -543,12 +584,17 @@ class PixelAperture(Aperture):
             The overlap array.
         """
 
-    def _do_mask_photometry(self, data, *, error, mask, method, subpixels):
+    def _do_mask_photometry(self, data, *, error, mask, method, subpixels,
+                            segmentation=None, labels=None,
+                            mask_method='none'):
         """
         Perform aperture photometry using per-source aperture masks.
 
         This is the fallback code path for apertures or inputs that are
-        not supported by the batch Cython driver.
+        not supported by the batch Cython driver. It also handles the
+        ``mask_method='correct'`` segmentation masking for apertures
+        (e.g., `PolygonAperture`) or statistics (e.g., `ApertureStats`)
+        that do not use the batch driver.
 
         Parameters
         ----------
@@ -560,6 +606,11 @@ class PixelAperture(Aperture):
             See `do_photometry`. Any units must already be stripped from
             ``error``.
 
+        segmentation, labels, mask_method
+            The validated segmentation array, per-aperture source
+            labels, and masking method (see
+            `~photutils.aperture._segmentation.process_segmentation_inputs`).
+
         Returns
         -------
         aperture_sums, aperture_sum_errs : `~numpy.ndarray`
@@ -569,13 +620,15 @@ class PixelAperture(Aperture):
         if self.isscalar:
             apermasks = (apermasks,)
 
+        positions = np.atleast_2d(self.positions)
+
         aperture_sums = []
         aperture_sum_errs = []
         with warnings.catch_warnings():
             # Ignore multiplication with non-finite data values
             warnings.simplefilter('ignore', RuntimeWarning)
 
-            for apermask in apermasks:
+            for idx, apermask in enumerate(apermasks):
                 (slc_large,
                  aper_weights,
                  pixel_mask) = apermask._get_overlap_cutouts(data.shape,
@@ -587,12 +640,26 @@ class PixelAperture(Aperture):
                     aperture_sum_errs.append(np.nan)
                     continue
 
-                values = (data[slc_large] * aper_weights)[pixel_mask]
+                data_cutout = data[slc_large]
+                error_cutout = None if error is None else error[slc_large]
+
+                if segmentation is not None and mask_method != 'none':
+                    segm_cutout = segmentation[slc_large]
+                    base_mask = None if mask is None else mask[slc_large]
+                    cutout_xycen = (positions[idx, 0] - slc_large[1].start,
+                                    positions[idx, 1] - slc_large[0].start)
+                    (data_cutout, error_cutout,
+                     exclude) = make_segmentation_exclusion(
+                        mask_method, segm_cutout, labels[idx],
+                        data=data_cutout, error=error_cutout,
+                        base_mask=base_mask, cutout_xycen=cutout_xycen)
+                    pixel_mask = pixel_mask & ~exclude
+
+                values = (data_cutout * aper_weights)[pixel_mask]
                 aperture_sums.append(values.sum())
 
                 if error is not None:
-                    variance = (error[slc_large]**2
-                                * aper_weights)[pixel_mask]
+                    variance = (error_cutout**2 * aper_weights)[pixel_mask]
                     aperture_sum_errs.append(np.sqrt(variance.sum()))
 
         return np.array(aperture_sums), np.array(aperture_sum_errs)
@@ -623,7 +690,9 @@ class PixelAperture(Aperture):
         """
         return
 
-    def _do_batch_photometry(self, data, *, error, mask, method, subpixels):
+    def _do_batch_photometry(self, data, *, error, mask, method, subpixels,
+                             segmentation=None, labels=None,
+                             mask_method='none'):
         """
         Perform aperture photometry using the batch Cython driver.
 
@@ -640,6 +709,11 @@ class PixelAperture(Aperture):
         error, mask, method, subpixels
             See `do_photometry`. Any units must already be stripped from
             ``error``.
+
+        segmentation, labels, mask_method
+            The validated segmentation array, per-aperture source
+            labels, and masking method (see
+            `~photutils.aperture._segmentation.process_segmentation_inputs`).
 
         Returns
         -------
@@ -674,6 +748,14 @@ class PixelAperture(Aperture):
                 return None
             mask = np.ascontiguousarray(mask, dtype=np.uint8)
 
+        seg_arr = None
+        labels_arr = None
+        seg_code = 0
+        if segmentation is not None and mask_method != 'none':
+            seg_arr = np.ascontiguousarray(segmentation, dtype=np.intp)
+            labels_arr = np.ascontiguousarray(labels, dtype=np.intp)
+            seg_code = SEG_METHOD_CODES[mask_method]
+
         use_exact, subpixels = self._translate_mask_method(method, subpixels)
 
         shape_code, params = spec
@@ -685,7 +767,8 @@ class PixelAperture(Aperture):
             np.ascontiguousarray(data, dtype=np.float64), error, mask,
             np.ascontiguousarray(self._positions, dtype=np.float64),
             shape_code, np.array(params, dtype=np.float64),
-            float(ext_x), float(ext_y), use_exact, subpixels)
+            float(ext_x), float(ext_y), use_exact, subpixels,
+            seg_arr, labels_arr, seg_code)
 
         if error is None:
             # Match the mask-based path, which collects one NaN per
@@ -697,7 +780,8 @@ class PixelAperture(Aperture):
     @_update_method_subpixels_docstring
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def do_photometry(self, data, error=None, mask=None, method='exact',
-                      subpixels=5):
+                      subpixels=5, *, segmentation_image=None, labels=None,
+                      mask_method='none'):
         # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         Perform aperture photometry on the input data.
@@ -721,6 +805,8 @@ class PixelAperture(Aperture):
             is masked. Masked data are excluded from all calculations.
 
         <method_subpixels_descriptions>
+
+        <segmentation_descriptions>
 
         Returns
         -------
@@ -760,16 +846,22 @@ class PixelAperture(Aperture):
             if error is not None:
                 error = error.value
 
-        result = self._do_batch_photometry(data, error=error, mask=mask,
-                                           method=method,
-                                           subpixels=subpixels)
+        segmentation, labels = process_segmentation_inputs(
+            segmentation_image, labels, mask_method,
+            np.atleast_2d(self.positions), data.shape)
+
+        result = self._do_batch_photometry(
+            data, error=error, mask=mask, method=method, subpixels=subpixels,
+            segmentation=segmentation, labels=labels,
+            mask_method=mask_method)
 
         if result is not None:
             aperture_sums, aperture_sum_errs = result
         else:
             aperture_sums, aperture_sum_errs = self._do_mask_photometry(
                 data, error=error, mask=mask, method=method,
-                subpixels=subpixels)
+                subpixels=subpixels, segmentation=segmentation,
+                labels=labels, mask_method=mask_method)
 
         # Apply units
         if unit is not None:

@@ -17,6 +17,8 @@ from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
+from photutils.aperture._segmentation import (make_segmentation_exclusion,
+                                              process_segmentation_inputs)
 from photutils.aperture.core import (_aperture_metadata,
                                      _update_method_subpixels_docstring)
 from photutils.morphology import gini as gini_func
@@ -170,6 +172,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         units, then ``local_bkg`` must be a `~astropy.units.Quantity`
         with the same units.
 
+    <segmentation_descriptions>
+
     Notes
     -----
     ``data`` should be background-subtracted for accurate source
@@ -245,7 +249,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
                  sigma_clip=None, sum_method='exact', subpixels=5,
-                 local_bkg=None):
+                 local_bkg=None, segmentation_image=None, labels=None,
+                 mask_method='none'):
 
         if isinstance(data, NDData):
             data, error, mask, wcs = self._unpack_nddata(data, error, mask,
@@ -306,6 +311,15 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         self.default_columns = DEFAULT_COLUMNS
         self.meta = _get_meta()
         self.meta.update(aperture_meta)
+
+        # Validate the segmentation-masking inputs and resolve the
+        # per-aperture source labels
+        self._mask_method = mask_method
+        seg_positions = np.atleast_2d(self._pixel_aperture.positions)
+        (self._segmentation,
+         self._seg_labels) = process_segmentation_inputs(
+            segmentation_image, labels, mask_method,
+            seg_positions, self._data.shape)
 
     @staticmethod
     def _unpack_nddata(data, error, mask, wcs):
@@ -400,7 +414,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         # new class
         init_attr = ('_data', '_data_unit', '_error', '_mask', '_wcs',
                      'sigma_clip', 'sum_method', 'subpixels',
-                     'default_columns', 'meta')
+                     'default_columns', 'meta', '_segmentation',
+                     '_mask_method')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -409,6 +424,12 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         attrs = ('aperture', '_ids')
         for attr in attrs:
             setattr(newcls, attr, getattr(self, attr)[index])
+
+        # Slice the per-aperture segmentation labels
+        if self._seg_labels is None:
+            newcls._seg_labels = None
+        else:
+            newcls._seg_labels = np.atleast_1d(self._seg_labels[index])
 
         # Slice evaluated lazyproperty objects
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
@@ -704,10 +725,11 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         weight_cutouts = []
         overlaps = []
 
-        for (data_cutout, apermask, slices) in zip(self._data_cutouts,
-                                                   aperture_masks,
-                                                   self._overlap_slices,
-                                                   strict=True):
+        positions = np.atleast_2d(self._pixel_aperture.positions)
+
+        for idx, (data_cutout, apermask, slices) in enumerate(
+                zip(self._data_cutouts, aperture_masks,
+                    self._overlap_slices, strict=True)):
 
             slc_large, slc_small = slices
             if slc_large is None:  # aperture does not overlap the data
@@ -722,6 +744,24 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
                 data_mask = ~np.isfinite(data_cutout)
                 if self._mask is not None:
                     data_mask |= self._mask[slc_large]
+
+                error_cutout = (None if self._error is None
+                                else self._error[slc_large])
+
+                # Apply segmentation-based masking and/or symmetric
+                # neighbor correction
+                if (self._segmentation is not None
+                        and self._mask_method != 'none'):
+                    segm_cutout = self._segmentation[slc_large]
+                    cutout_xycen = (positions[idx, 0] - slc_large[1].start,
+                                    positions[idx, 1] - slc_large[0].start)
+                    (data_cutout, error_cutout,
+                     exclude) = make_segmentation_exclusion(
+                        self._mask_method, segm_cutout,
+                        self._seg_labels[idx], data=data_cutout,
+                        error=error_cutout, base_mask=data_mask,
+                        cutout_xycen=cutout_xycen)
+                    data_mask = data_mask | exclude
 
                 overlap = True
                 aperweight_cutout = apermask.data[slc_small]
@@ -757,7 +797,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
                 else:
                     # Apply the exact weights and total mask;
                     # error_cutout will have zeros where mask_cutout is True
-                    variance = self._error[slc_large]**2
+                    variance = error_cutout**2
                     variance_cutout = (variance * aperweight_cutout
                                        * ~mask_cutout)
 

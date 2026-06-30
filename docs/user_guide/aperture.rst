@@ -755,6 +755,84 @@ The result is very different if a ``mask`` image is not provided::
        111.56637
 
 
+Masking Neighboring Sources with a Segmentation Image
+-----------------------------------------------------
+
+When apertures contain flux from neighboring sources, that contamination
+can be masked or corrected using a segmentation image (see :ref:`Image
+Segmentation <image_segmentation>`). A segmentation image is an integer
+image with the same shape as the data, where background pixels have a
+value of 0 and sources are labeled with positive integers.
+
+The behavior is controlled by the ``mask_method`` keyword, which accepts
+one of four values:
+
+* ``'none'`` (default):
+  The segmentation image is ignored and all pixels within the aperture
+  are included.
+* ``'mask'``:
+  Pixels belonging to neighboring sources (labeled, but not the target
+  source) are excluded.
+* ``'source_only'``:
+  Only pixels belonging to the target source are included; both
+  neighboring sources and background pixels are excluded.
+* ``'correct'``:
+  Pixels belonging to neighboring sources are replaced by the values of
+  the pixels mirrored across the aperture center. If a mirror pixel is
+  unavailable, the pixel is excluded.
+
+By default, the source label for each aperture is determined
+automatically by sampling the segmentation image at the aperture center.
+The labels may also be provided explicitly via the ``labels`` keyword.
+
+In this example, a circular aperture centered on the target source
+(label 1) also overlaps a bright neighboring source (label 2)::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import CircularAperture, aperture_photometry
+    >>> data = np.ones((11, 11))
+    >>> data[4:7, 4:7] = 10.0  # target source
+    >>> data[4:7, 7:10] = 50.0  # bright neighbor
+    >>> segm = np.zeros((11, 11), dtype=int)
+    >>> segm[4:7, 4:7] = 1
+    >>> segm[4:7, 7:10] = 2
+    >>> aperture = CircularAperture((5, 5), r=4)
+
+Without masking, the aperture sum includes the neighbor's flux::
+
+    >>> t1 = aperture_photometry(data, aperture)
+    >>> t1['aperture_sum'].info.format = '%.8g'  # for consistent table output
+    >>> print(t1['aperture_sum'])
+    aperture_sum
+    ------------
+       484.67785
+
+Masking the neighboring source excludes its flux::
+
+    >>> t2 = aperture_photometry(data, aperture, segmentation_image=segm,
+    ...                          mask_method='mask')
+    >>> t2['aperture_sum'].info.format = '%.8g'  # for consistent table output
+    >>> print(t2['aperture_sum'])
+    aperture_sum
+    ------------
+       124.05299
+
+The ``'correct'`` method instead replaces the neighbor's pixels with
+values mirrored across the aperture center, recovering an estimate of
+the obscured flux::
+
+    >>> t3 = aperture_photometry(data, aperture, segmentation_image=segm,
+    ...                          mask_method='correct')
+    >>> t3['aperture_sum'].info.format = '%.8g'  # for consistent table output
+    >>> print(t3['aperture_sum'])
+    aperture_sum
+    ------------
+       131.26548
+
+These keywords are also available in
+:class:`~photutils.aperture.ApertureStats`.
+
+
 Aperture Masks
 --------------
 

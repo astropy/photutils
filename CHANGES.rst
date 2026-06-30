@@ -46,6 +46,11 @@ New Features
     rectangular apertures (both pixel and sky variants) to convert them
     to ``PolygonAperture`` or ``SkyPolygonAperture`` objects. [#2298]
 
+  - Added ``segmentation_image``, ``labels``, and ``mask_method``
+    keywords to ``aperture_photometry`` and ``ApertureStats`` to mask or
+    correct the flux from neighboring sources within an aperture using a
+    segmentation map. [#2309]
+
 - ``photutils.isophote``
 
   - Optimized the ``build_ellipse_model_c`` Cython extension by

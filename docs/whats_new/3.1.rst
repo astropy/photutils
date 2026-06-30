@@ -201,6 +201,42 @@ is converted exactly to a four-vertex polygon::
     >>> poly = aper.to_polygon(n_vertices=100)
 
 
+Segmentation-Based Masking in Aperture Photometry
+=================================================
+
+`~photutils.aperture.aperture_photometry` and
+`~photutils.aperture.ApertureStats` now accept ``segmentation_image``,
+``labels``, and ``mask_method`` keywords to mask or correct
+the flux from neighboring sources that overlap an aperture.
+The ``segmentation_image`` (see :ref:`Image Segmentation
+<image_segmentation>`) labels each source with a positive integer, and
+the ``mask_method`` keyword selects how neighboring sources are handled:
+
+* ``'none'`` (default): the segmentation image is ignored.
+* ``'mask'``: pixels belonging to neighboring sources are excluded.
+* ``'source_only'``: only pixels belonging to the target source are
+  included.
+* ``'correct'``: neighboring-source pixels are replaced by the values
+  mirrored across the aperture center (excluded if the mirror pixel is
+  unavailable).
+
+By default, the source label for each aperture is determined
+automatically by sampling the segmentation image at the aperture center;
+labels may also be provided explicitly via the ``labels`` keyword::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import CircularAperture, aperture_photometry
+    >>> data = np.ones((11, 11))
+    >>> data[4:7, 4:7] = 10.0  # target source
+    >>> data[4:7, 7:10] = 50.0  # bright neighbor
+    >>> segm = np.zeros((11, 11), dtype=int)
+    >>> segm[4:7, 4:7] = 1
+    >>> segm[4:7, 7:10] = 2
+    >>> aperture = CircularAperture((5, 5), r=4)
+    >>> phot = aperture_photometry(data, aperture, segmentation_image=segm,
+    ...                            mask_method='mask')
+
+
 ``GriddedPSFModel`` Performance Improvements
 ============================================
 

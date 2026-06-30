@@ -67,7 +67,9 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                         const unsigned char[:, ::1] mask,
                         const double[:, ::1] positions, int shape_code,
                         const double[::1] params, double ext_x, double ext_y,
-                        int use_exact, int subpixels):
+                        int use_exact, int subpixels,
+                        const Py_ssize_t[:, ::1] segmentation=None,
+                        const Py_ssize_t[::1] labels=None, int seg_method=0):
     """
     Compute aperture sums for many source positions in a single call.
 
@@ -129,6 +131,30 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         The number of subpixels in each dimension when ``use_exact`` is
         0.
 
+    segmentation : 2D ndarray of intp (C-contiguous) or `None`
+        A segmentation array where background pixels are zero and
+        sources have positive integer labels. Must have the same shape
+        as ``data``. If `None`, no segmentation masking is applied.
+
+    labels : 1D ndarray of intp (C-contiguous) or `None`
+        The target source label for each position with shape
+        ``(n_sources,)``. A label of 0 disables segmentation masking for
+        that source. Required (not `None`) if ``segmentation`` is input.
+
+    seg_method : int
+        The segmentation masking method:
+
+        * 0: disables masking
+        * 1: excludes neighbor-source pixels
+             (``(seg > 0) & (seg != label)``)
+        * 2: excludes all pixels not assigned to the target source
+             (``seg != label``).
+        * 3: replaces neighbor-source pixels with the values mirrored
+             across the (rounded) aperture center (the symmetric
+             ``'correct'`` method). For method 3, a neighbor pixel whose
+             mirror falls outside the aperture bounding box, is itself a
+             neighbor, or is masked is excluded instead of replaced.
+
     Returns
     -------
     sums : 1D ndarray of float64
@@ -155,6 +181,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
     cdef bint has_error = error is not None
     cdef bint has_mask = mask is not None
+    cdef bint has_seg = segmentation is not None
+    cdef Py_ssize_t lbl = 0, seg_val
 
     # Aperture shape parameters (constant over all source positions)
     cdef double r_in = 0.0, r_out = 0.0
@@ -262,6 +290,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
     cdef Py_ssize_t k, ix, iy, ix0, ix1, iy0, iy1
     cdef Py_ssize_t ixmin, iymin, grid_nx, grid_ny
+    cdef Py_ssize_t six, siy, xm, ym, ccx = 0, ccy = 0, mseg
     cdef double cx, cy
     cdef double ixmin_d, ixmax_d, iymin_d, iymax_d
     cdef double gxmin, gxmax, gymin, gymax
@@ -272,6 +301,19 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         for k in range(n_src):
             cx = positions[k, 0]
             cy = positions[k, 1]
+            if has_seg:
+                lbl = labels[k]
+                if seg_method == 3:
+                    # Center pixel for the symmetric 'correct' mirror,
+                    # rounded half away from zero (round_half_away)
+                    if cx >= 0.0:
+                        ccx = <Py_ssize_t>floor(cx + 0.5)
+                    else:
+                        ccx = <Py_ssize_t>ceil(cx - 0.5)
+                    if cy >= 0.0:
+                        ccy = <Py_ssize_t>floor(cy + 0.5)
+                    else:
+                        ccy = <Py_ssize_t>ceil(cy - 0.5)
 
             # Replicate BoundingBox.from_float; the values are kept as
             # (integral) doubles to avoid integer overflow for apertures
@@ -318,6 +360,32 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                 for ix in range(ix0, ix1):
                     if has_mask and mask[iy, ix]:
                         continue
+                    six = ix
+                    siy = iy
+                    if has_seg and lbl != 0:
+                        seg_val = segmentation[iy, ix]
+                        if seg_method == 1:
+                            if seg_val != 0 and seg_val != lbl:
+                                continue
+                        elif seg_method == 2:
+                            if seg_val != lbl:
+                                continue
+                        elif seg_method == 3:
+                            if seg_val != 0 and seg_val != lbl:
+                                # Neighbor pixel: replace its value with
+                                # the pixel mirrored across the center.
+                                xm = 2 * ccx - ix
+                                ym = 2 * ccy - iy
+                                if (xm < ix0 or xm >= ix1
+                                        or ym < iy0 or ym >= iy1):
+                                    continue
+                                mseg = segmentation[ym, xm]
+                                if mseg != 0 and mseg != lbl:
+                                    continue
+                                if has_mask and mask[ym, xm]:
+                                    continue
+                                six = xm
+                                siy = ym
                     pxmin = gxmin + (ix - ixmin) * dx
 
                     if shape_code == _CIRCLE:
@@ -370,9 +438,9 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
                     if frac <= 0.0:
                         continue
-                    sum_val += data[iy, ix] * frac
+                    sum_val += data[siy, six] * frac
                     if has_error:
-                        err_val = error[iy, ix]
+                        err_val = error[siy, six]
                         var_val += err_val * err_val * frac
 
             sums[k] = sum_val
