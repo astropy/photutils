@@ -34,7 +34,6 @@ cdef extern from "math.h" nogil:
     double sin(double x)
     double cos(double x)
     double sqrt(double x)
-    double fmax(double x, double y)
     double fmin(double x, double y)
 
 DTYPE = np.float64
@@ -106,7 +105,7 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     """
     cdef unsigned int i, j
     cdef double dx, dy
-    cdef double r
+    cdef double bx, by
     cdef double bxmin, bxmax, bymin, bymax
     cdef double pxmin, pxmax, pymin, pymax
     cdef double pxcen, pycen, rpix2
@@ -145,18 +144,18 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     f_in = f_in * f_in if f_in > 0.0 else 0.0
     f_out = (1.0 + margin) * (1.0 + margin)
 
-    # For now we use a bounding circle and then use that to find a
-    # bounding box but of course this is inefficient and could be done
-    # better.
-
-    # Find bounding circle radius
-    r = fmax(rx, ry)
+    # Tight axis-aligned bounding box of the rotated ellipse. The
+    # half-extents are the maxima of |x| and |y| over the ellipse.
+    bx = sqrt(rx * rx * cos_theta * cos_theta
+              + ry * ry * sin_theta * sin_theta)
+    by = sqrt(rx * rx * sin_theta * sin_theta
+              + ry * ry * cos_theta * cos_theta)
 
     # Define bounding box
-    bxmin = -r - 0.5 * dx
-    bxmax = +r + 0.5 * dx
-    bymin = -r - 0.5 * dy
-    bymax = +r + 0.5 * dy
+    bxmin = -bx - 0.5 * dx
+    bxmax = +bx + 0.5 * dx
+    bymin = -by - 0.5 * dy
+    bymax = +by + 0.5 * dy
 
     with nogil:
         for i in range(nx):
