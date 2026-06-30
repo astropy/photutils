@@ -51,6 +51,10 @@ New Features
     correct the flux from neighboring sources within an aperture using a
     segmentation map. [#2309]
 
+  - Significantly improved the performance of elliptical, rectangular,
+    and convex polygon aperture photometry, typically by a factor of ~2.
+    [#2310]
+
 - ``photutils.isophote``
 
   - Optimized the ``build_ellipse_model_c`` Cython extension by
