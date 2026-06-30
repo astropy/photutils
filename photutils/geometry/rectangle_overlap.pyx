@@ -28,6 +28,7 @@ __all__ = ['rectangular_overlap_grid']
 cdef extern from "math.h" nogil:
     double sin(double x)
     double cos(double x)
+    double sqrt(double x)
     double fabs(double x)
     double fmax(double x, double y)
     double fmin(double x, double y)
@@ -113,6 +114,8 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
     cdef double sin_theta = sin(theta)
     cdef double pixel_area
     cdef double bbox_dx, bbox_dy
+    cdef double margin, w_in, w_out, h_in, h_out
+    cdef double pxcen, pycen, xrot, yrot, axrot, ayrot
     cdef double poly_x[4]
     cdef double poly_y[4]
     cdef double buf_a_x[32]
@@ -152,6 +155,20 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
                    + half_height * fabs(cos_theta))
         pixel_area = dx * dy
 
+        # Interior/exterior fast-path thresholds. Rotation into the
+        # rectangle frame is an isometry, so every point of a pixel lies
+        # within ``margin`` (half the pixel diagonal) of the rotated
+        # pixel center. A pixel is therefore wholly inside the rectangle
+        # if its rotated center is at least ``margin`` inside both
+        # half-extents, and wholly outside if it is at least ``margin``
+        # beyond either half-extent. Only the boundary band needs the
+        # exact polygon clip.
+        margin = 0.5 * sqrt(dx * dx + dy * dy)
+        w_in = fmax(0.0, half_width - margin)
+        w_out = half_width + margin
+        h_in = fmax(0.0, half_height - margin)
+        h_out = half_height + margin
+
         i_min = <int>fmax(0.0, fmin(<double>nx,
                                     floor((-bbox_dx - xmin) / dx)))
         i_max = <int>fmax(0.0, fmin(<double>nx,
@@ -165,9 +182,24 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
             for i in range(i_min, i_max):
                 pxmin = xmin + i * dx
                 pxmax = pxmin + dx
+                pxcen = pxmin + 0.5 * dx
                 for j in range(j_min, j_max):
                     pymin = ymin + j * dy
                     pymax = pymin + dy
+                    pycen = pymin + 0.5 * dy
+
+                    # Rotate the pixel center into the rectangle frame.
+                    xrot = pxcen * cos_theta + pycen * sin_theta
+                    yrot = -pxcen * sin_theta + pycen * cos_theta
+                    axrot = fabs(xrot)
+                    ayrot = fabs(yrot)
+
+                    if axrot >= w_out or ayrot >= h_out:
+                        continue  # wholly outside; frac stays 0
+                    if axrot <= w_in and ayrot <= h_in:
+                        frac_view[j, i] = 1.0  # wholly inside
+                        continue
+
                     frac_view[j, i] = (
                         polygon_pixel_overlap(pxmin, pymin, pxmax,
                                               pymax, poly_x, poly_y, 4,

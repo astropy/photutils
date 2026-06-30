@@ -9,9 +9,11 @@ that are safe to call without the GIL.
 cdef double ellipse_overlap_single_subpixel(double x0, double y0,
                                             double x1, double y1,
                                             double rx, double ry,
-                                            double theta,
+                                            double cos_theta,
+                                            double sin_theta,
                                             int subpixels) noexcept nogil
 cdef double ellipse_overlap_single_exact(double xmin, double ymin,
                                          double xmax, double ymax,
                                          double rx, double ry,
-                                         double theta) noexcept nogil
+                                         double cos_theta,
+                                         double sin_theta) noexcept nogil

@@ -20,6 +20,7 @@ free-threaded Python builds.
 import numpy as np
 
 from photutils.geometry._polygon_overlap cimport (
+    convex_edge_normals, convex_polygon_pixel_overlap,
     polygon_overlap_single_subpixel, polygon_pixel_overlap)
 from photutils.geometry.circle_overlap cimport (circle_overlap_single_exact,
                                                 circle_overlap_single_subpixel)
@@ -209,6 +210,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     # alive by ``poly_work``) and accessed through raw pointers. They
     # are local to this call, so this function is thread safe.
     cdef int n_poly = 0, poly_buf_size = 0
+    cdef int is_poly_convex = 0
     cdef Py_ssize_t pk
     cdef double[::1] poly_work
     cdef double *poly_x = NULL
@@ -217,6 +219,9 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     cdef double *pbuf_a_y = NULL
     cdef double *pbuf_b_x = NULL
     cdef double *pbuf_b_y = NULL
+    cdef double *pedge_nx = NULL
+    cdef double *pedge_ny = NULL
+    cdef double *pedge_c = NULL
 
     if shape_code == _CIRCLE:
         r_out = params[0]
@@ -227,12 +232,16 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         rx_out = params[0]
         ry_out = params[1]
         theta = params[2]
+        cos_theta = cos(theta)
+        sin_theta = sin(theta)
     elif shape_code == _ELLIPTICAL_ANNULUS:
         rx_in = params[0]
         ry_in = params[1]
         rx_out = params[2]
         ry_out = params[3]
         theta = params[4]
+        cos_theta = cos(theta)
+        sin_theta = sin(theta)
     elif shape_code == _RECTANGLE or shape_code == _RECTANGULAR_ANNULUS:
         if shape_code == _RECTANGLE:
             half_width_out = 0.5 * params[0]
@@ -273,7 +282,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         # count of a non-convex polygon, so 16 * n_poly is a safe bound
         # (see ``polygon_overlap_grid``).
         poly_buf_size = 16 * n_poly
-        poly_work = np.empty(2 * n_poly + 4 * poly_buf_size,
+        poly_work = np.empty(2 * n_poly + 4 * poly_buf_size + 3 * n_poly,
                              dtype=np.float64)
         poly_x = &poly_work[0]
         poly_y = &poly_work[n_poly]
@@ -281,9 +290,17 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         pbuf_a_y = &poly_work[2 * n_poly + poly_buf_size]
         pbuf_b_x = &poly_work[2 * n_poly + 2 * poly_buf_size]
         pbuf_b_y = &poly_work[2 * n_poly + 3 * poly_buf_size]
+        pedge_nx = &poly_work[2 * n_poly + 4 * poly_buf_size]
+        pedge_ny = &poly_work[3 * n_poly + 4 * poly_buf_size]
+        pedge_c = &poly_work[4 * n_poly + 4 * poly_buf_size]
         for pk in range(n_poly):
             poly_x[pk] = params[2 * pk]
             poly_y[pk] = params[2 * pk + 1]
+
+        # One-time convexity test; convex polygons use an
+        # interior/exterior fast path in ``_polygon_pixel_frac``.
+        is_poly_convex = convex_edge_normals(poly_x, poly_y, n_poly,
+                                             pedge_nx, pedge_ny, pedge_c)
     else:
         msg = f'Invalid shape_code: {shape_code}'
         raise ValueError(msg)
@@ -402,39 +419,45 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                     elif shape_code == _ELLIPSE:
                         frac = _ellipse_pixel_frac(
                             pxmin, pymin, dx, dy, norm, rx_out, ry_out,
-                            theta, use_exact, subpixels)
+                            cos_theta, sin_theta, use_exact, subpixels)
                     elif shape_code == _ELLIPTICAL_ANNULUS:
                         frac = (_ellipse_pixel_frac(
                                     pxmin, pymin, dx, dy, norm, rx_out,
-                                    ry_out, theta, use_exact, subpixels)
+                                    ry_out, cos_theta, sin_theta,
+                                    use_exact, subpixels)
                                 - _ellipse_pixel_frac(
                                     pxmin, pymin, dx, dy, norm, rx_in,
-                                    ry_in, theta, use_exact, subpixels))
+                                    ry_in, cos_theta, sin_theta,
+                                    use_exact, subpixels))
                     elif shape_code == _RECTANGLE:
                         frac = _rect_pixel_frac(
-                            pxmin, pymin, dx, dy, half_width_out,
-                            half_height_out, cos_theta, sin_theta,
-                            bbox_dx_out, bbox_dy_out, poly_x_out,
-                            poly_y_out, buf_a_x, buf_a_y, buf_b_x,
-                            buf_b_y, use_exact, subpixels)
+                            pxmin, pymin, dx, dy, pixel_radius,
+                            half_width_out, half_height_out, cos_theta,
+                            sin_theta, bbox_dx_out, bbox_dy_out,
+                            poly_x_out, poly_y_out, buf_a_x, buf_a_y,
+                            buf_b_x, buf_b_y, use_exact, subpixels)
                     elif shape_code == _RECTANGULAR_ANNULUS:
                         frac = (_rect_pixel_frac(
-                                    pxmin, pymin, dx, dy, half_width_out,
-                                    half_height_out, cos_theta, sin_theta,
-                                    bbox_dx_out, bbox_dy_out, poly_x_out,
-                                    poly_y_out, buf_a_x, buf_a_y, buf_b_x,
-                                    buf_b_y, use_exact, subpixels)
+                                    pxmin, pymin, dx, dy, pixel_radius,
+                                    half_width_out, half_height_out,
+                                    cos_theta, sin_theta, bbox_dx_out,
+                                    bbox_dy_out, poly_x_out, poly_y_out,
+                                    buf_a_x, buf_a_y, buf_b_x, buf_b_y,
+                                    use_exact, subpixels)
                                 - _rect_pixel_frac(
-                                    pxmin, pymin, dx, dy, half_width_in,
-                                    half_height_in, cos_theta, sin_theta,
-                                    bbox_dx_in, bbox_dy_in, poly_x_in,
-                                    poly_y_in, buf_a_x, buf_a_y, buf_b_x,
-                                    buf_b_y, use_exact, subpixels))
+                                    pxmin, pymin, dx, dy, pixel_radius,
+                                    half_width_in, half_height_in,
+                                    cos_theta, sin_theta, bbox_dx_in,
+                                    bbox_dy_in, poly_x_in, poly_y_in,
+                                    buf_a_x, buf_a_y, buf_b_x, buf_b_y,
+                                    use_exact, subpixels))
                     else:
                         frac = _polygon_pixel_frac(
-                            pxmin, pymin, dx, dy, poly_x, poly_y, n_poly,
-                            pbuf_a_x, pbuf_a_y, pbuf_b_x, pbuf_b_y,
-                            poly_buf_size, use_exact, subpixels)
+                            pxmin, pymin, dx, dy, pixel_radius,
+                            poly_x, poly_y, n_poly, pedge_nx, pedge_ny,
+                            pedge_c, is_poly_convex, pbuf_a_x, pbuf_a_y,
+                            pbuf_b_x, pbuf_b_y, poly_buf_size, use_exact,
+                            subpixels)
 
                     if frac <= 0.0:
                         continue
@@ -492,7 +515,8 @@ cdef inline double _circle_pixel_frac(double pxmin, double pymin,
 
 cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
                                        double dx, double dy, double norm,
-                                       double rx, double ry, double theta,
+                                       double rx, double ry,
+                                       double cos_theta, double sin_theta,
                                        int use_exact,
                                        int subpixels) noexcept nogil:
     """
@@ -500,28 +524,57 @@ cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
     and semiminor axes ``rx`` and ``ry`` and position angle ``theta``
     centered on the origin.
 
+    ``cos_theta`` and ``sin_theta`` are the cosine and sine of the
+    position angle, precomputed once per aperture by the caller.
+
     This replicates the per-pixel logic of ``elliptical_overlap_grid``,
-    including the bounding-circle shortcut, so the result is identical
-    to the grid function.
+    including the bounding-circle shortcut and the interior/exterior
+    fast path, so the result is identical to the grid function.
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
     cdef double r = fmax(rx, ry)  # bounding circle radius
+    cdef double pxcen, pycen, rpix2
+    cdef double inv_rx2, inv_ry2
+    cdef double cxx, cyy, cxy, margin, f_in, f_out
 
     # Bounding-box check
     if not (pxmax > -r - 0.5 * dx and pxmin < r + 0.5 * dx
             and pymax > -r - 0.5 * dy and pymin < r + 0.5 * dy):
         return 0.0
 
+    # Quadratic-form coefficients of the ellipse, such that a point
+    # (x, y) lies inside when ``cxx*x**2 + cyy*y**2 + cxy*x*y < 1``.
+    inv_rx2 = 1.0 / (rx * rx)
+    inv_ry2 = 1.0 / (ry * ry)
+    cxx = cos_theta * cos_theta * inv_rx2 + sin_theta * sin_theta * inv_ry2
+    cyy = sin_theta * sin_theta * inv_rx2 + cos_theta * cos_theta * inv_ry2
+    cxy = 2.0 * cos_theta * sin_theta * (inv_rx2 - inv_ry2)
+
+    # Boundary band for the interior/exterior fast path (see
+    # ``elliptical_overlap_grid``).
+    margin = 0.5 * sqrt(dx * dx + dy * dy) / fmin(rx, ry)
+    f_in = 1.0 - margin
+    f_in = f_in * f_in if f_in > 0.0 else 0.0
+    f_out = (1.0 + margin) * (1.0 + margin)
+
+    pxcen = pxmin + 0.5 * dx
+    pycen = pymin + 0.5 * dy
+    rpix2 = cxx * pxcen * pxcen + cyy * pycen * pycen + cxy * pxcen * pycen
+    if rpix2 >= f_out:
+        return 0.0  # pixel fully outside the ellipse
+    if rpix2 <= f_in:
+        return 1.0  # pixel fully inside the ellipse
+
     if use_exact:
         return ellipse_overlap_single_exact(pxmin, pymin, pxmax, pymax, rx, ry,
-                                            theta) * norm
+                                            cos_theta, sin_theta) * norm
     return ellipse_overlap_single_subpixel(pxmin, pymin, pxmax, pymax, rx, ry,
-                                           theta, subpixels)
+                                           cos_theta, sin_theta, subpixels)
 
 
 cdef inline double _rect_pixel_frac(double pxmin, double pymin,
-                                    double dx, double dy,
+                                    double dx, double dy, double margin,
                                     double half_width, double half_height,
                                     double cos_theta, double sin_theta,
                                     double bbox_dx, double bbox_dy,
@@ -534,21 +587,36 @@ cdef inline double _rect_pixel_frac(double pxmin, double pymin,
     Fraction of a single pixel that overlaps a rectangle of full width
     ``2 * half_width`` and full height ``2 * half_height`` rotated by
     ``theta`` (given as ``cos_theta``/``sin_theta``) centered on the
-    origin.
+    origin. ``margin`` is half the pixel diagonal.
 
     This replicates the per-pixel logic of ``rectangular_overlap_grid``
-    (the exact mode skips pixels outside the axis-aligned bounding box
-    of the rotated rectangle), so the result is identical to the grid
-    function.
+    (the exact mode uses an interior/exterior fast path and skips pixels
+    outside the axis-aligned bounding box of the rotated rectangle), so
+    the result is identical to the grid function.
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
+    cdef double pxcen, pycen, axrot, ayrot
 
     if use_exact:
         # Bounding-box check
         if (pxmax <= -bbox_dx or pxmin >= bbox_dx
                 or pymax <= -bbox_dy or pymin >= bbox_dy):
             return 0.0
+
+        # Interior/exterior fast path. Rotation into the rectangle frame
+        # is an isometry, so every point of the pixel lies within
+        # ``margin`` of the rotated pixel center.
+        pxcen = pxmin + 0.5 * dx
+        pycen = pymin + 0.5 * dy
+        axrot = fabs(pxcen * cos_theta + pycen * sin_theta)
+        ayrot = fabs(-pxcen * sin_theta + pycen * cos_theta)
+        if axrot >= half_width + margin or ayrot >= half_height + margin:
+            return 0.0  # wholly outside
+        if (axrot <= half_width - margin
+                and ayrot <= half_height - margin):
+            return 1.0  # wholly inside
+
         return polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
                                      poly_x, poly_y, 4,
                                      buf_a_x, buf_a_y, buf_b_x, buf_b_y,
@@ -561,30 +629,35 @@ cdef inline double _rect_pixel_frac(double pxmin, double pymin,
 
 
 cdef inline double _polygon_pixel_frac(double pxmin, double pymin,
-                                       double dx, double dy,
+                                       double dx, double dy, double margin,
                                        double *poly_x, double *poly_y,
                                        int n_poly,
+                                       double *edge_nx, double *edge_ny,
+                                       double *edge_c, int is_convex,
                                        double *buf_a_x, double *buf_a_y,
                                        double *buf_b_x, double *buf_b_y,
                                        int buf_size, int use_exact,
                                        int subpixels) noexcept nogil:
     """
     Fraction of a single pixel that overlaps a simple polygon supplied
-    as counter-clockwise vertices centered on the origin.
+    as counter-clockwise vertices centered on the origin. ``margin`` is
+    half the pixel diagonal.
 
     This replicates the per-pixel logic of ``polygon_overlap_grid``: the
-    exact mode clips the pixel against the polygon (Sutherland-Hodgman),
-    while the subpixel mode samples pixel centers with point-in-polygon
-    tests, so the result is identical to the grid function.
+    exact mode uses an interior/exterior fast path for convex polygons
+    (``is_convex``) and otherwise clips the pixel against the polygon
+    (Sutherland-Hodgman), while the subpixel mode samples pixel centers
+    with point-in-polygon tests, so the result is identical to the grid
+    function.
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
 
     if use_exact:
-        return polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
-                                     poly_x, poly_y, n_poly,
-                                     buf_a_x, buf_a_y, buf_b_x, buf_b_y,
-                                     buf_size) / (dx * dy)
+        return convex_polygon_pixel_overlap(
+            pxmin, pymin, pxmax, pymax, poly_x, poly_y, n_poly,
+            edge_nx, edge_ny, edge_c, is_convex, margin,
+            buf_a_x, buf_a_y, buf_b_x, buf_b_y, buf_size) / (dx * dy)
 
     return polygon_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
                                            poly_x, poly_y, n_poly,
