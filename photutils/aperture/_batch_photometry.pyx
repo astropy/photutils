@@ -418,24 +418,26 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                                     use_exact, subpixels))
                     elif shape_code == _RECTANGLE:
                         frac = _rect_pixel_frac(
-                            pxmin, pymin, dx, dy, half_width_out,
-                            half_height_out, cos_theta, sin_theta,
-                            bbox_dx_out, bbox_dy_out, poly_x_out,
-                            poly_y_out, buf_a_x, buf_a_y, buf_b_x,
-                            buf_b_y, use_exact, subpixels)
+                            pxmin, pymin, dx, dy, pixel_radius,
+                            half_width_out, half_height_out, cos_theta,
+                            sin_theta, bbox_dx_out, bbox_dy_out,
+                            poly_x_out, poly_y_out, buf_a_x, buf_a_y,
+                            buf_b_x, buf_b_y, use_exact, subpixels)
                     elif shape_code == _RECTANGULAR_ANNULUS:
                         frac = (_rect_pixel_frac(
-                                    pxmin, pymin, dx, dy, half_width_out,
-                                    half_height_out, cos_theta, sin_theta,
-                                    bbox_dx_out, bbox_dy_out, poly_x_out,
-                                    poly_y_out, buf_a_x, buf_a_y, buf_b_x,
-                                    buf_b_y, use_exact, subpixels)
+                                    pxmin, pymin, dx, dy, pixel_radius,
+                                    half_width_out, half_height_out,
+                                    cos_theta, sin_theta, bbox_dx_out,
+                                    bbox_dy_out, poly_x_out, poly_y_out,
+                                    buf_a_x, buf_a_y, buf_b_x, buf_b_y,
+                                    use_exact, subpixels)
                                 - _rect_pixel_frac(
-                                    pxmin, pymin, dx, dy, half_width_in,
-                                    half_height_in, cos_theta, sin_theta,
-                                    bbox_dx_in, bbox_dy_in, poly_x_in,
-                                    poly_y_in, buf_a_x, buf_a_y, buf_b_x,
-                                    buf_b_y, use_exact, subpixels))
+                                    pxmin, pymin, dx, dy, pixel_radius,
+                                    half_width_in, half_height_in,
+                                    cos_theta, sin_theta, bbox_dx_in,
+                                    bbox_dy_in, poly_x_in, poly_y_in,
+                                    buf_a_x, buf_a_y, buf_b_x, buf_b_y,
+                                    use_exact, subpixels))
                     else:
                         frac = _polygon_pixel_frac(
                             pxmin, pymin, dx, dy, poly_x, poly_y, n_poly,
@@ -557,7 +559,7 @@ cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
 
 
 cdef inline double _rect_pixel_frac(double pxmin, double pymin,
-                                    double dx, double dy,
+                                    double dx, double dy, double margin,
                                     double half_width, double half_height,
                                     double cos_theta, double sin_theta,
                                     double bbox_dx, double bbox_dy,
@@ -570,21 +572,36 @@ cdef inline double _rect_pixel_frac(double pxmin, double pymin,
     Fraction of a single pixel that overlaps a rectangle of full width
     ``2 * half_width`` and full height ``2 * half_height`` rotated by
     ``theta`` (given as ``cos_theta``/``sin_theta``) centered on the
-    origin.
+    origin. ``margin`` is half the pixel diagonal.
 
     This replicates the per-pixel logic of ``rectangular_overlap_grid``
-    (the exact mode skips pixels outside the axis-aligned bounding box
-    of the rotated rectangle), so the result is identical to the grid
-    function.
+    (the exact mode uses an interior/exterior fast path and skips pixels
+    outside the axis-aligned bounding box of the rotated rectangle), so
+    the result is identical to the grid function.
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
+    cdef double pxcen, pycen, axrot, ayrot
 
     if use_exact:
         # Bounding-box check
         if (pxmax <= -bbox_dx or pxmin >= bbox_dx
                 or pymax <= -bbox_dy or pymin >= bbox_dy):
             return 0.0
+
+        # Interior/exterior fast path. Rotation into the rectangle frame
+        # is an isometry, so every point of the pixel lies within
+        # ``margin`` of the rotated pixel center.
+        pxcen = pxmin + 0.5 * dx
+        pycen = pymin + 0.5 * dy
+        axrot = fabs(pxcen * cos_theta + pycen * sin_theta)
+        ayrot = fabs(-pxcen * sin_theta + pycen * cos_theta)
+        if axrot >= half_width + margin or ayrot >= half_height + margin:
+            return 0.0  # wholly outside
+        if (axrot <= half_width - margin
+                and ayrot <= half_height - margin):
+            return 1.0  # wholly inside
+
         return polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
                                      poly_x, poly_y, 4,
                                      buf_a_x, buf_a_y, buf_b_x, buf_b_y,
