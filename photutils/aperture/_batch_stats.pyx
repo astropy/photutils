@@ -43,7 +43,6 @@ cdef extern from "math.h" nogil:
     double fmin(double x, double y)
     double floor(double x)
     double ceil(double x)
-    bint isfinite(double x)
     const double NAN
 
 cdef extern from "stdlib.h" nogil:
@@ -171,71 +170,6 @@ cdef enum:
     _POLYGON = 6
 
 
-cdef inline double _shape_frac(int shape_code, double pxmin, double pymin,
-                               double dx, double dy, double pixel_radius,
-                               double norm, double r_in, double r_out,
-                               double rx_in, double ry_in, double rx_out,
-                               double ry_out, double cos_theta,
-                               double sin_theta, double hw_in, double hh_in,
-                               double hw_out, double hh_out, double bdx_in,
-                               double bdy_in, double bdx_out, double bdy_out,
-                               double *poly_x_in, double *poly_y_in,
-                               double *poly_x_out, double *poly_y_out,
-                               double *buf_a_x, double *buf_a_y,
-                               double *buf_b_x, double *buf_b_y,
-                               double *poly_x, double *poly_y, int n_poly,
-                               double *pedge_nx, double *pedge_ny,
-                               double *pedge_c, int is_poly_convex,
-                               double *pbuf_a_x, double *pbuf_a_y,
-                               double *pbuf_b_x, double *pbuf_b_y,
-                               int poly_buf_size, int use_exact,
-                               int subpixels) noexcept nogil:
-    """
-    Per-pixel overlap fraction for any aperture shape, dispatching to the
-    shared `_batch_overlap` helpers. Inlined into the per-pixel loop.
-    """
-    if shape_code == _CIRCLE:
-        return _circle_pixel_frac(pxmin, pymin, dx, dy, pixel_radius,
-                                  r_out, use_exact, subpixels)
-    if shape_code == _CIRCULAR_ANNULUS:
-        return (_circle_pixel_frac(pxmin, pymin, dx, dy, pixel_radius,
-                                   r_out, use_exact, subpixels)
-                - _circle_pixel_frac(pxmin, pymin, dx, dy, pixel_radius,
-                                     r_in, use_exact, subpixels))
-    if shape_code == _ELLIPSE:
-        return _ellipse_pixel_frac(pxmin, pymin, dx, dy, norm, rx_out,
-                                   ry_out, cos_theta, sin_theta, use_exact,
-                                   subpixels)
-    if shape_code == _ELLIPTICAL_ANNULUS:
-        return (_ellipse_pixel_frac(pxmin, pymin, dx, dy, norm, rx_out,
-                                    ry_out, cos_theta, sin_theta, use_exact,
-                                    subpixels)
-                - _ellipse_pixel_frac(pxmin, pymin, dx, dy, norm, rx_in,
-                                      ry_in, cos_theta, sin_theta, use_exact,
-                                      subpixels))
-    if shape_code == _RECTANGLE:
-        return _rect_pixel_frac(pxmin, pymin, dx, dy, pixel_radius, hw_out,
-                                hh_out, cos_theta, sin_theta, bdx_out,
-                                bdy_out, poly_x_out, poly_y_out, buf_a_x,
-                                buf_a_y, buf_b_x, buf_b_y, use_exact,
-                                subpixels)
-    if shape_code == _RECTANGULAR_ANNULUS:
-        return (_rect_pixel_frac(pxmin, pymin, dx, dy, pixel_radius, hw_out,
-                                 hh_out, cos_theta, sin_theta, bdx_out,
-                                 bdy_out, poly_x_out, poly_y_out, buf_a_x,
-                                 buf_a_y, buf_b_x, buf_b_y, use_exact,
-                                 subpixels)
-                - _rect_pixel_frac(pxmin, pymin, dx, dy, pixel_radius, hw_in,
-                                   hh_in, cos_theta, sin_theta, bdx_in,
-                                   bdy_in, poly_x_in, poly_y_in, buf_a_x,
-                                   buf_a_y, buf_b_x, buf_b_y, use_exact,
-                                   subpixels))
-    return _polygon_pixel_frac(pxmin, pymin, dx, dy, pixel_radius, poly_x,
-                               poly_y, n_poly, pedge_nx, pedge_ny, pedge_c,
-                               is_poly_convex, pbuf_a_x, pbuf_a_y, pbuf_b_x,
-                               pbuf_b_y, poly_buf_size, use_exact, subpixels)
-
-
 def batch_aperture_gather(const double[:, ::1] data,
                           const double[:, ::1] error,
                           const unsigned char[:, ::1] mask,
@@ -262,9 +196,12 @@ def batch_aperture_gather(const double[:, ::1] data,
     ``sum_method`` (``sum_use_exact``/``sum_subpixels``) is used for the
     aperture sum, error, and area.
 
-    Pixels that are masked, non-finite, or excluded by the segmentation
-    masking are skipped. The local background ``local_bkg[k]`` is
-    subtracted from each pixel value of source ``k``.
+    Pixels that are masked or excluded by the segmentation masking are
+    skipped. Non-finite ``data`` pixels are handled by the caller, which
+    folds them into ``mask`` (matching the mask-based path, which masks
+    non-finite data before any segmentation correction). The local
+    background ``local_bkg[k]`` is subtracted from each pixel value of
+    source ``k``.
 
     Parameters
     ----------
@@ -275,7 +212,8 @@ def batch_aperture_gather(const double[:, ::1] data,
         The pixel-wise 1-sigma errors, same shape as ``data``.
 
     mask : 2D ndarray of uint8 (C-contiguous) or `None`
-        A mask array where nonzero values indicate masked pixels.
+        A mask array where nonzero values indicate masked pixels. The
+        caller must also fold non-finite ``data`` pixels into this mask.
 
     positions : 2D ndarray of float64 (C-contiguous)
         The ``(x, y)`` source positions with shape ``(n_sources, 2)``.
@@ -593,103 +531,210 @@ def batch_aperture_gather(const double[:, ::1] data,
             iy0 = <Py_ssize_t>fmax(iymin_d, 0.0)
             iy1 = <Py_ssize_t>fmin(iymax_d, <double>ny_data)
 
-            pos = starts[k]
-            s_sum = 0.0
-            s_var = 0.0
-            s_area = 0.0
-            spos = starts[k]
-            for iy in range(iy0, iy1):
-                pymin = gymin + (iy - iymin) * dy
-                for ix in range(ix0, ix1):
-                    if has_mask and mask[iy, ix]:
-                        continue
-                    six = ix
-                    siy = iy
-                    if has_seg and lbl != 0:
-                        seg_val = segmentation[iy, ix]
-                        if seg_method == 1:
-                            if seg_val != 0 and seg_val != lbl:
-                                continue
-                        elif seg_method == 2:
-                            if seg_val != lbl:
-                                continue
-                        elif seg_method == 3:
-                            if seg_val != 0 and seg_val != lbl:
-                                xm = 2 * ccx - ix
-                                ym = 2 * ccy - iy
-                                if (xm < ix0 or xm >= ix1
-                                        or ym < iy0 or ym >= iy1):
+            # Non-finite ``data`` pixels are folded into ``mask`` by the
+            # caller, so pixel values are loaded lazily (only for pixels
+            # that actually contribute). The center-method and
+            # sum-method fractions are gathered in two separate pixel
+            # loops so that each hot loop body contains a single overlap
+            # computation (matching the lean ``do_photometry`` kernel);
+            # a merged loop is measurably slower.
+            if want_center:
+                pos = starts[k]
+                for iy in range(iy0, iy1):
+                    pymin = gymin + (iy - iymin) * dy
+                    for ix in range(ix0, ix1):
+                        if has_mask and mask[iy, ix]:
+                            continue
+                        six = ix
+                        siy = iy
+                        if has_seg and lbl != 0:
+                            seg_val = segmentation[iy, ix]
+                            if seg_method == 1:
+                                if seg_val != 0 and seg_val != lbl:
                                     continue
-                                mseg = segmentation[ym, xm]
-                                if mseg != 0 and mseg != lbl:
+                            elif seg_method == 2:
+                                if seg_val != lbl:
                                     continue
-                                if has_mask and mask[ym, xm]:
-                                    continue
-                                six = xm
-                                siy = ym
+                            elif seg_method == 3:
+                                if seg_val != 0 and seg_val != lbl:
+                                    xm = 2 * ccx - ix
+                                    ym = 2 * ccy - iy
+                                    if (xm < ix0 or xm >= ix1
+                                            or ym < iy0 or ym >= iy1):
+                                        continue
+                                    mseg = segmentation[ym, xm]
+                                    if mseg != 0 and mseg != lbl:
+                                        continue
+                                    if has_mask and mask[ym, xm]:
+                                        continue
+                                    six = xm
+                                    siy = ym
 
-                    val = data[siy, six]
-                    if not isfinite(val):  # NaN/inf data are masked
-                        continue
-                    val = val - lbk
-
-                    pxmin = gxmin + (ix - ixmin) * dx
-
-                    if want_center:
-                        cfrac = _shape_frac(
-                            shape_code, pxmin, pymin, dx, dy, pixel_radius,
-                            norm, r_in, r_out, rx_in, ry_in, rx_out, ry_out,
-                            cos_theta, sin_theta, hw_in, hh_in, hw_out,
-                            hh_out, bdx_in, bdy_in, bdx_out, bdy_out,
-                            poly_x_in, poly_y_in, poly_x_out, poly_y_out,
-                            buf_a_x, buf_a_y, buf_b_x, buf_b_y, poly_x,
-                            poly_y, n_poly, pedge_nx, pedge_ny, pedge_c,
-                            is_poly_convex, pbuf_a_x, pbuf_a_y, pbuf_b_x,
-                            pbuf_b_y, poly_buf_size, 0, 1)
+                        pxmin = gxmin + (ix - ixmin) * dx
+                        if shape_code == _CIRCLE:
+                            cfrac = _circle_pixel_frac(
+                                pxmin, pymin, dx, dy, pixel_radius, r_out,
+                                0, 1)
+                        elif shape_code == _CIRCULAR_ANNULUS:
+                            cfrac = (_circle_pixel_frac(
+                                pxmin, pymin, dx, dy, pixel_radius, r_out,
+                                0, 1)
+                                - _circle_pixel_frac(
+                                    pxmin, pymin, dx, dy, pixel_radius, r_in,
+                                    0, 1))
+                        elif shape_code == _ELLIPSE:
+                            cfrac = _ellipse_pixel_frac(
+                                pxmin, pymin, dx, dy, norm, rx_out, ry_out,
+                                cos_theta, sin_theta, 0, 1)
+                        elif shape_code == _ELLIPTICAL_ANNULUS:
+                            cfrac = (_ellipse_pixel_frac(
+                                pxmin, pymin, dx, dy, norm, rx_out, ry_out,
+                                cos_theta, sin_theta, 0, 1)
+                                - _ellipse_pixel_frac(
+                                    pxmin, pymin, dx, dy, norm, rx_in, ry_in,
+                                    cos_theta, sin_theta, 0, 1))
+                        elif shape_code == _RECTANGLE:
+                            cfrac = _rect_pixel_frac(
+                                pxmin, pymin, dx, dy, pixel_radius, hw_out,
+                                hh_out, cos_theta, sin_theta, bdx_out,
+                                bdy_out, poly_x_out, poly_y_out, buf_a_x,
+                                buf_a_y, buf_b_x, buf_b_y, 0, 1)
+                        elif shape_code == _RECTANGULAR_ANNULUS:
+                            cfrac = (_rect_pixel_frac(
+                                pxmin, pymin, dx, dy, pixel_radius, hw_out,
+                                hh_out, cos_theta, sin_theta, bdx_out,
+                                bdy_out, poly_x_out, poly_y_out, buf_a_x,
+                                buf_a_y, buf_b_x, buf_b_y, 0, 1)
+                                - _rect_pixel_frac(
+                                    pxmin, pymin, dx, dy, pixel_radius,
+                                    hw_in, hh_in, cos_theta, sin_theta,
+                                    bdx_in, bdy_in, poly_x_in, poly_y_in,
+                                    buf_a_x, buf_a_y, buf_b_x, buf_b_y, 0,
+                                    1))
+                        else:
+                            cfrac = _polygon_pixel_frac(
+                                pxmin, pymin, dx, dy, pixel_radius, poly_x,
+                                poly_y, n_poly, pedge_nx, pedge_ny, pedge_c,
+                                is_poly_convex, pbuf_a_x, pbuf_a_y, pbuf_b_x,
+                                pbuf_b_y, poly_buf_size, 0, 1)
 
                         if cfrac > 0.0:
-                            values[pos] = val
+                            values[pos] = data[siy, six] - lbk
                             local_x[pos] = ix - ix0
                             local_y[pos] = iy - iy0
                             pos += 1
+                counts[k] = pos - starts[k]
 
-                    if not want_sum:
-                        continue
+            if want_sum:
+                s_sum = 0.0
+                s_var = 0.0
+                s_area = 0.0
+                spos = starts[k]
+                for iy in range(iy0, iy1):
+                    pymin = gymin + (iy - iymin) * dy
+                    for ix in range(ix0, ix1):
+                        if has_mask and mask[iy, ix]:
+                            continue
+                        six = ix
+                        siy = iy
+                        if has_seg and lbl != 0:
+                            seg_val = segmentation[iy, ix]
+                            if seg_method == 1:
+                                if seg_val != 0 and seg_val != lbl:
+                                    continue
+                            elif seg_method == 2:
+                                if seg_val != lbl:
+                                    continue
+                            elif seg_method == 3:
+                                if seg_val != 0 and seg_val != lbl:
+                                    xm = 2 * ccx - ix
+                                    ym = 2 * ccy - iy
+                                    if (xm < ix0 or xm >= ix1
+                                            or ym < iy0 or ym >= iy1):
+                                        continue
+                                    mseg = segmentation[ym, xm]
+                                    if mseg != 0 and mseg != lbl:
+                                        continue
+                                    if has_mask and mask[ym, xm]:
+                                        continue
+                                    six = xm
+                                    siy = ym
 
-                    sfrac = _shape_frac(
-                        shape_code, pxmin, pymin, dx, dy, pixel_radius,
-                        norm, r_in, r_out, rx_in, ry_in, rx_out, ry_out,
-                        cos_theta, sin_theta, hw_in, hh_in, hw_out, hh_out,
-                        bdx_in, bdy_in, bdx_out, bdy_out, poly_x_in,
-                        poly_y_in, poly_x_out, poly_y_out, buf_a_x, buf_a_y,
-                        buf_b_x, buf_b_y, poly_x, poly_y, n_poly, pedge_nx,
-                        pedge_ny, pedge_c, is_poly_convex, pbuf_a_x,
-                        pbuf_a_y, pbuf_b_x, pbuf_b_y, poly_buf_size,
-                        sum_use_exact, sum_subpixels)
+                        pxmin = gxmin + (ix - ixmin) * dx
+                        if shape_code == _CIRCLE:
+                            sfrac = _circle_pixel_frac(
+                                pxmin, pymin, dx, dy, pixel_radius, r_out,
+                                sum_use_exact, sum_subpixels)
+                        elif shape_code == _CIRCULAR_ANNULUS:
+                            sfrac = (_circle_pixel_frac(
+                                pxmin, pymin, dx, dy, pixel_radius, r_out,
+                                sum_use_exact, sum_subpixels)
+                                - _circle_pixel_frac(
+                                    pxmin, pymin, dx, dy, pixel_radius, r_in,
+                                    sum_use_exact, sum_subpixels))
+                        elif shape_code == _ELLIPSE:
+                            sfrac = _ellipse_pixel_frac(
+                                pxmin, pymin, dx, dy, norm, rx_out, ry_out,
+                                cos_theta, sin_theta, sum_use_exact,
+                                sum_subpixels)
+                        elif shape_code == _ELLIPTICAL_ANNULUS:
+                            sfrac = (_ellipse_pixel_frac(
+                                pxmin, pymin, dx, dy, norm, rx_out, ry_out,
+                                cos_theta, sin_theta, sum_use_exact,
+                                sum_subpixels)
+                                - _ellipse_pixel_frac(
+                                    pxmin, pymin, dx, dy, norm, rx_in, ry_in,
+                                    cos_theta, sin_theta, sum_use_exact,
+                                    sum_subpixels))
+                        elif shape_code == _RECTANGLE:
+                            sfrac = _rect_pixel_frac(
+                                pxmin, pymin, dx, dy, pixel_radius, hw_out,
+                                hh_out, cos_theta, sin_theta, bdx_out,
+                                bdy_out, poly_x_out, poly_y_out, buf_a_x,
+                                buf_a_y, buf_b_x, buf_b_y, sum_use_exact,
+                                sum_subpixels)
+                        elif shape_code == _RECTANGULAR_ANNULUS:
+                            sfrac = (_rect_pixel_frac(
+                                pxmin, pymin, dx, dy, pixel_radius, hw_out,
+                                hh_out, cos_theta, sin_theta, bdx_out,
+                                bdy_out, poly_x_out, poly_y_out, buf_a_x,
+                                buf_a_y, buf_b_x, buf_b_y, sum_use_exact,
+                                sum_subpixels)
+                                - _rect_pixel_frac(
+                                    pxmin, pymin, dx, dy, pixel_radius,
+                                    hw_in, hh_in, cos_theta, sin_theta,
+                                    bdx_in, bdy_in, poly_x_in, poly_y_in,
+                                    buf_a_x, buf_a_y, buf_b_x, buf_b_y,
+                                    sum_use_exact, sum_subpixels))
+                        else:
+                            sfrac = _polygon_pixel_frac(
+                                pxmin, pymin, dx, dy, pixel_radius, poly_x,
+                                poly_y, n_poly, pedge_nx, pedge_ny, pedge_c,
+                                is_poly_convex, pbuf_a_x, pbuf_a_y, pbuf_b_x,
+                                pbuf_b_y, poly_buf_size, sum_use_exact,
+                                sum_subpixels)
 
-                    # Annulus fractions are a difference of two shapes,
-                    # so floating-point noise can make a boundary pixel's
-                    # fraction a tiny nonzero (possibly negative) value.
-                    # The mask-based path masks only pixels whose weight
-                    # is exactly zero, so match it with ``!= 0`` here.
-                    if sfrac != 0.0:
-                        s_sum += val * sfrac
-                        s_area += sfrac
-                        if has_error:
-                            err_val = error[siy, six]
-                            s_var += err_val * err_val * sfrac
-                        if emit_sum:
-                            sum_values[spos] = val
-                            sum_fracs[spos] = sfrac
+                        # Annulus fractions are a difference of two
+                        # shapes, so floating-point noise can make a
+                        # boundary pixel's fraction a tiny nonzero
+                        # (possibly negative) value. The mask-based path
+                        # masks only pixels whose weight is exactly zero,
+                        # so match it with ``!= 0`` here.
+                        if sfrac != 0.0:
+                            val = data[siy, six] - lbk
+                            s_sum += val * sfrac
+                            s_area += sfrac
                             if has_error:
                                 err_val = error[siy, six]
-                                sum_errsq[spos] = err_val * err_val
-                            else:
-                                sum_errsq[spos] = 0.0
-                            spos += 1
-
-            counts[k] = pos - starts[k]
-            if want_sum:
+                                s_var += err_val * err_val * sfrac
+                            if emit_sum:
+                                sum_values[spos] = val
+                                sum_fracs[spos] = sfrac
+                                if has_error:
+                                    sum_errsq[spos] = err_val * err_val
+                                else:
+                                    sum_errsq[spos] = 0.0
+                                spos += 1
                 sum_aper[k] = s_sum
                 sum_area[k] = s_area
                 if has_error:

@@ -737,10 +737,21 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             return None
 
         mask = self._mask
+        if mask is not None and (not isinstance(mask, np.ndarray)
+                                 or mask.dtype != bool
+                                 or mask.shape != data.shape):
+            return None
+
+        # Fold non-finite ``data`` values into the mask so the batch
+        # kernel can skip the per-pixel finiteness test (and defer the
+        # pixel-value load to contributing pixels only, like the
+        # ``do_photometry`` kernel). This matches the mask-based path,
+        # which masks non-finite data before any segmentation correction.
+        if data.dtype.kind == 'f':
+            nonfinite = ~np.isfinite(data)
+            if nonfinite.any():
+                mask = nonfinite if mask is None else (mask | nonfinite)
         if mask is not None:
-            if (not isinstance(mask, np.ndarray) or mask.dtype != bool
-                    or mask.shape != data.shape):
-                return None
             mask = np.ascontiguousarray(mask, dtype=np.uint8)
 
         seg_arr = None
