@@ -406,15 +406,15 @@ class TestBatchDriverSegmentation:
         segm[18:23, 23:28] = 2
         labels = np.array([1], dtype=np.intp)
 
-        sums, _, _ = batch_aperture_sums(
+        sums = batch_aperture_sums(
             data, error, mask, positions, SHAPE_CIRCLE, params, 8.0, 8.0,
-            1, 8, segm, labels, 1)
+            1, 8, segm, labels, 1)[0]
 
         # Reference via global mask
         manual_mask = ((segm > 0) & (segm != 1)).astype(np.uint8)
-        ref, _, _ = batch_aperture_sums(
+        ref = batch_aperture_sums(
             data, error, manual_mask, positions, SHAPE_CIRCLE, params,
-            8.0, 8.0, 1, 8)
+            8.0, 8.0, 1, 8)[0]
         assert_allclose(sums, ref)
 
     def test_source_only_method(self):
@@ -429,14 +429,14 @@ class TestBatchDriverSegmentation:
         segm[18:23, 18:23] = 1
         labels = np.array([1], dtype=np.intp)
 
-        sums, _, _ = batch_aperture_sums(
+        sums = batch_aperture_sums(
             data, error, mask, positions, SHAPE_CIRCLE, params, 8.0, 8.0,
-            1, 8, segm, labels, 2)
+            1, 8, segm, labels, 2)[0]
 
         manual_mask = (segm != 1).astype(np.uint8)
-        ref, _, _ = batch_aperture_sums(
+        ref = batch_aperture_sums(
             data, error, manual_mask, positions, SHAPE_CIRCLE, params,
-            8.0, 8.0, 1, 8)
+            8.0, 8.0, 1, 8)[0]
         assert_allclose(sums, ref)
 
     def test_label0_disables(self):
@@ -452,12 +452,12 @@ class TestBatchDriverSegmentation:
         segm[18:23, 23:28] = 2
         labels = np.array([0], dtype=np.intp)
 
-        sums, _, _ = batch_aperture_sums(
+        sums = batch_aperture_sums(
             data, error, mask, positions, SHAPE_CIRCLE, params, 8.0, 8.0,
-            1, 8, segm, labels, 1)
-        ref, _, _ = batch_aperture_sums(
+            1, 8, segm, labels, 1)[0]
+        ref = batch_aperture_sums(
             data, error, mask, positions, SHAPE_CIRCLE, params, 8.0, 8.0,
-            1, 8)
+            1, 8)[0]
         assert_allclose(sums, ref)
 
     def test_correct_method_matches_mask_path(self):

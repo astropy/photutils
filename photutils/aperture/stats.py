@@ -17,6 +17,7 @@ from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
+from photutils.aperture._batch_photometry import batch_aperture_sums
 from photutils.aperture._batch_stats import (batch_aperture_gather,
                                              batch_biweight, batch_gini,
                                              batch_mad, batch_mean_var,
@@ -798,22 +799,23 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         the fast batch driver is unavailable (see `_batch_inputs`).
 
         The result is a tuple ``(values, local_x, local_y, starts,
-        counts, sum_aper, var_aper, sum_area, overlap, ...)`` (see
-        `~photutils.aperture._batch_stats.batch_aperture_gather`). Only
-        the center-value entries and ``overlap`` are populated; the
-        ``sum_method`` entries are unused here.
+        counts, sum_aper, var_aper, sum_area, overlap, ...)`` (a 13-tuple
+        shared with `_fast_sum`). Only the center-value entries (indices
+        0-4) and ``overlap`` (index 8) are populated here; the
+        ``sum_method`` entries are `None`.
         """
         inputs = self._batch_inputs
         if inputs is None:
             return None
-        (data, error, mask, positions, shape_code, params, ext_x, ext_y,
-         sum_use_exact, sum_subpixels, local_bkg, seg_arr, labels_arr,
+        (data, _error, mask, positions, shape_code, params, ext_x, ext_y,
+         _sum_use_exact, _sum_subpixels, local_bkg, seg_arr, labels_arr,
          seg_code, clip_spec) = inputs
 
-        gather = batch_aperture_gather(
-            data, error, mask, positions, shape_code, params, ext_x, ext_y,
-            sum_use_exact, sum_subpixels, local_bkg, seg_arr, labels_arr,
-            seg_code, 0, 1, 0)  # emit_sum=0, want_center=1, want_sum=0
+        values, lx, ly, starts, counts, overlap = batch_aperture_gather(
+            data, mask, positions, shape_code, params, ext_x, ext_y,
+            local_bkg, seg_arr, labels_arr, seg_code)
+        gather = (values, lx, ly, starts, counts, None, None, None, overlap,
+                  None, None, None, None)
 
         if clip_spec is not None:
             gather = self._apply_center_clip(gather, clip_spec)
@@ -851,10 +853,13 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
          seg_code, clip_spec) = inputs
 
         emit_sum = 1 if clip_spec is not None else 0
-        gather = batch_aperture_gather(
+        (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
+         sum_errsq, scounts) = batch_aperture_sums(
             data, error, mask, positions, shape_code, params, ext_x, ext_y,
-            sum_use_exact, sum_subpixels, local_bkg, seg_arr, labels_arr,
-            seg_code, emit_sum, 0, 1)  # want_center=0, want_sum=1
+            sum_use_exact, sum_subpixels, seg_arr, labels_arr, seg_code,
+            local_bkg, emit_sum)
+        gather = (None, None, None, starts, None, sums, sum_var, area,
+                  overlap, sum_values, sum_fracs, sum_errsq, scounts)
 
         if clip_spec is not None:
             gather = self._apply_sum_clip(gather, clip_spec)

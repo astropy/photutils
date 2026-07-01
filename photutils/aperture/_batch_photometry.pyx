@@ -67,7 +67,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                         const double[::1] params, double ext_x, double ext_y,
                         int use_exact, int subpixels,
                         const Py_ssize_t[:, ::1] segmentation=None,
-                        const Py_ssize_t[::1] labels=None, int seg_method=0):
+                        const Py_ssize_t[::1] labels=None, int seg_method=0,
+                        const double[::1] local_bkg=None, int emit_sum=0):
     """
     Compute aperture sums for many source positions in a single call.
 
@@ -153,33 +154,76 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
              mirror falls outside the aperture bounding box, is itself a
              neighbor, or is masked is excluded instead of replaced.
 
+    local_bkg : 1D ndarray of float64 (C-contiguous) or `None`
+        The per-source local background to subtract from each pixel
+        value of that source. If `None`, no background is subtracted.
+
+    emit_sum : int, optional
+        If nonzero, also emit the packed per-pixel member buffers
+        (``sum_values``, ``sum_fracs``, ``sum_errsq``, ``sum_counts``)
+        needed to recompute the aperture sum, variance, and area after
+        per-source sigma clipping. When zero (default), those four
+        outputs are `None`.
+
     Returns
     -------
     sums : 1D ndarray of float64
         The aperture sums. NaN where the aperture bounding box does not
         overlap the data.
 
-    sum_errs : 1D ndarray of float64
-        The quadrature-summed errors. NaN where ``error`` is `None` or
-        the aperture bounding box does not overlap the data.
+    sum_vars : 1D ndarray of float64
+        The aperture error variances (the quadrature sum of the pixel
+        variances weighted by the overlap fractions). NaN where
+        ``error`` is `None` or the aperture bounding box does not overlap
+        the data. The caller takes the square root to obtain the error.
+
+    areas : 1D ndarray of float64
+        The total unmasked overlap area of the aperture (the sum of the
+        overlap fractions). NaN where the aperture bounding box does not
+        overlap the data.
 
     overlap : 1D ndarray of bool
         Whether the aperture bounding box overlaps with the data.
+
+    starts : 1D ndarray of intp
+        The per-source starting offset into the packed member buffers.
+        Zeros unless ``emit_sum`` is nonzero.
+
+    sum_values : 1D ndarray of float64 or `None`
+        The packed per-pixel ``data - local_bkg`` values, or `None`
+        unless ``emit_sum`` is nonzero.
+
+    sum_fracs : 1D ndarray of float64 or `None`
+        The packed per-pixel overlap fractions, or `None` unless
+        ``emit_sum`` is nonzero.
+
+    sum_errsq : 1D ndarray of float64 or `None`
+        The packed per-pixel squared errors (zero where ``error`` is
+        `None`), or `None` unless ``emit_sum`` is nonzero.
+
+    sum_counts : 1D ndarray of intp or `None`
+        The per-source count of packed contributing pixels, or `None`
+        unless ``emit_sum`` is nonzero.
     """
     cdef Py_ssize_t n_src = positions.shape[0]
     cdef Py_ssize_t ny_data = data.shape[0]
     cdef Py_ssize_t nx_data = data.shape[1]
 
     sums_arr = np.full(n_src, np.nan)
-    errs_arr = np.full(n_src, np.nan)
+    vars_arr = np.full(n_src, np.nan)
+    areas_arr = np.full(n_src, np.nan)
     overlap_arr = np.zeros(n_src, dtype=np.uint8)
+    starts_arr = np.zeros(n_src, dtype=np.intp)
     cdef double[::1] sums = sums_arr
-    cdef double[::1] errs = errs_arr
+    cdef double[::1] sum_vars = vars_arr
+    cdef double[::1] areas = areas_arr
     cdef unsigned char[::1] overlap = overlap_arr
+    cdef Py_ssize_t[::1] starts = starts_arr
 
     cdef bint has_error = error is not None
     cdef bint has_mask = mask is not None
     cdef bint has_seg = segmentation is not None
+    cdef bint has_bkg = local_bkg is not None
     cdef Py_ssize_t lbl = 0, seg_val
 
     # Aperture shape parameters (constant over all source positions)
@@ -303,18 +347,56 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         raise ValueError(msg)
 
     cdef Py_ssize_t k, ix, iy, ix0, ix1, iy0, iy1
-    cdef Py_ssize_t ixmin, iymin, grid_nx, grid_ny
+    cdef Py_ssize_t ixmin, iymin, grid_nx, grid_ny, area
     cdef Py_ssize_t six, siy, xm, ym, ccx = 0, ccy = 0, mseg
-    cdef double cx, cy
+    cdef double cx, cy, lbk = 0.0
     cdef double ixmin_d, ixmax_d, iymin_d, iymax_d
     cdef double gxmin, gxmax, gymin, gymax
     cdef double dx, dy, pixel_radius, norm
-    cdef double pxmin, pymin, frac, err_val, sum_val, var_val
+    cdef double pxmin, pymin, frac, err_val, sum_val, var_val, area_val, val
+    cdef Py_ssize_t total = 0, spos = 0
+
+    # Pass 1 (only when emitting the packed member buffers): compute the
+    # clipped bounding-box area per source (an upper bound on the number
+    # of contributing pixels) to size and offset the packed buffers.
+    # This is pure arithmetic; no pixel walk is performed here.
+    if emit_sum:
+        with nogil:
+            for k in range(n_src):
+                cx = positions[k, 0]
+                cy = positions[k, 1]
+                ixmin_d = floor(cx - ext_x + 0.5)
+                ixmax_d = ceil(cx + ext_x + 0.5)
+                iymin_d = floor(cy - ext_y + 0.5)
+                iymax_d = ceil(cy + ext_y + 0.5)
+                starts[k] = total
+                if (ixmin_d >= <double>nx_data or ixmax_d <= 0.0
+                        or iymin_d >= <double>ny_data or iymax_d <= 0.0):
+                    continue
+                ix0 = <Py_ssize_t>fmax(ixmin_d, 0.0)
+                ix1 = <Py_ssize_t>fmin(ixmax_d, <double>nx_data)
+                iy0 = <Py_ssize_t>fmax(iymin_d, 0.0)
+                iy1 = <Py_ssize_t>fmin(iymax_d, <double>ny_data)
+                area = (ix1 - ix0) * (iy1 - iy0)
+                if area > 0:
+                    total += area
+
+    cdef Py_ssize_t sum_cap = total if emit_sum else 0
+    sum_values_arr = np.empty(sum_cap, dtype=np.float64)
+    sum_fracs_arr = np.empty(sum_cap, dtype=np.float64)
+    sum_errsq_arr = np.empty(sum_cap, dtype=np.float64)
+    scounts_arr = np.zeros(n_src if emit_sum else 0, dtype=np.intp)
+    cdef double[::1] sum_values = sum_values_arr
+    cdef double[::1] sum_fracs = sum_fracs_arr
+    cdef double[::1] sum_errsq = sum_errsq_arr
+    cdef Py_ssize_t[::1] scounts = scounts_arr
 
     with nogil:
         for k in range(n_src):
             cx = positions[k, 0]
             cy = positions[k, 1]
+            if has_bkg:
+                lbk = local_bkg[k]
             if has_seg:
                 lbl = labels[k]
                 if seg_method == 3:
@@ -369,6 +451,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
             sum_val = 0.0
             var_val = 0.0
+            area_val = 0.0
+            spos = starts[k]
             for iy in range(iy0, iy1):
                 pymin = gymin + (iy - iymin) * dy
                 for ix in range(ix0, ix1):
@@ -456,15 +540,34 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                             pbuf_b_x, pbuf_b_y, poly_buf_size, use_exact,
                             subpixels)
 
-                    if frac <= 0.0:
-                        continue
-                    sum_val += data[siy, six] * frac
-                    if has_error:
-                        err_val = error[siy, six]
-                        var_val += err_val * err_val * frac
+                    # Annulus fractions are a difference of two shapes,
+                    # so floating-point noise can make a boundary pixel's
+                    # fraction a tiny nonzero (possibly negative) value.
+                    # The mask-based path weights every nonzero-fraction
+                    # pixel, so match it with ``!= 0`` here.
+                    if frac != 0.0:
+                        val = data[siy, six] - lbk
+                        sum_val += val * frac
+                        area_val += frac
+                        if has_error:
+                            err_val = error[siy, six]
+                            var_val += err_val * err_val * frac
+                        if emit_sum:
+                            sum_values[spos] = val
+                            sum_fracs[spos] = frac
+                            if has_error:
+                                sum_errsq[spos] = err_val * err_val
+                            else:
+                                sum_errsq[spos] = 0.0
+                            spos += 1
 
             sums[k] = sum_val
+            areas[k] = area_val
             if has_error:
-                errs[k] = sqrt(var_val)
+                sum_vars[k] = var_val
+            if emit_sum:
+                scounts[k] = spos - starts[k]
 
-    return sums_arr, errs_arr, overlap_arr.view(bool)
+    return (sums_arr, vars_arr, areas_arr, overlap_arr.view(bool),
+            starts_arr, sum_values_arr, sum_fracs_arr, sum_errsq_arr,
+            scounts_arr)

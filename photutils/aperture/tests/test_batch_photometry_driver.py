@@ -92,10 +92,9 @@ def test_batch_aperture_sums_threadsafe(shape_code, params, ext_x, ext_y,
         futures = [ex.submit(fn)
                    for _ in range(N_THREADS * N_CALLS_PER_THREAD)]
         for future in futures:
-            sums, errs, overlap = future.result()
-            assert_array_equal(sums, expected[0])
-            assert_array_equal(errs, expected[1])
-            assert_array_equal(overlap, expected[2])
+            result = future.result()
+            for res_arr, exp_arr in zip(result, expected, strict=True):
+                assert_array_equal(res_arr, exp_arr)
 
 
 def test_batch_aperture_sums_mixed_concurrent():
@@ -120,8 +119,7 @@ def test_batch_aperture_sums_mixed_concurrent():
         futures = {ex.submit(task, spec): spec[0]
                    for spec in _BATCH_SPECS for _ in range(N_THREADS)}
         for fut, shape_code in futures.items():
-            sums, errs, overlap = fut.result()
-            exp_sums, exp_errs, exp_overlap = expected[shape_code]
-            assert_array_equal(sums, exp_sums)
-            assert_array_equal(errs, exp_errs)
-            assert_array_equal(overlap, exp_overlap)
+            result = fut.result()
+            for res_arr, exp_arr in zip(result, expected[shape_code],
+                                        strict=True):
+                assert_array_equal(res_arr, exp_arr)
