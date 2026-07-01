@@ -453,6 +453,9 @@ class CircularAnnulus(PixelAperture):
         overlap -= circular_overlap_grid(edges[0], edges[1], edges[2],
                                          edges[3], nx, ny, self.r_in,
                                          use_exact, subpixels)
+        # Clip tiny negative values arising from floating-point noise in
+        # the subtraction.
+        np.maximum(overlap, 0.0, out=overlap)
         return overlap
 
     def to_sky(self, wcs):

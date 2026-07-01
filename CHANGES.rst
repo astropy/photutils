@@ -109,6 +109,12 @@ Bug Fixes
     (e.g., North down, East left). Previously, such apertures were
     mirrored about the x-axis. [#2288]
 
+  - Fixed ``CircularAnnulus``, ``EllipticalAnnulus``, and
+    ``RectangularAnnulus`` overlap masks so that pixel fractions are
+    never negative. Previously, boundary pixels could contain tiny
+    negative values (of order the floating-point epsilon) from
+    subtracting the inner and outer overlaps. [#2314]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a

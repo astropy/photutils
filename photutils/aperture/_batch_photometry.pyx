@@ -19,11 +19,10 @@ free-threaded Python builds.
 
 import numpy as np
 
-from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
-                                                _ellipse_pixel_frac,
-                                                _polygon_pixel_frac,
-                                                _rect_pixel_frac,
-                                                _rect_vertices)
+from photutils.aperture._batch_overlap cimport (
+    _circle_pixel_frac, _circular_annulus_pixel_frac, _ellipse_pixel_frac,
+    _elliptical_annulus_pixel_frac, _polygon_pixel_frac, _rect_pixel_frac,
+    _rect_vertices, _rectangular_annulus_pixel_frac)
 from photutils.geometry._polygon_overlap cimport convex_edge_normals
 
 __all__ = ['batch_aperture_sums']
@@ -491,25 +490,18 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                             pxmin, pymin, dx, dy, pixel_radius, r_out,
                             use_exact, subpixels)
                     elif shape_code == _CIRCULAR_ANNULUS:
-                        frac = (_circle_pixel_frac(
-                                    pxmin, pymin, dx, dy, pixel_radius,
-                                    r_out, use_exact, subpixels)
-                                - _circle_pixel_frac(
-                                    pxmin, pymin, dx, dy, pixel_radius,
-                                    r_in, use_exact, subpixels))
+                        frac = _circular_annulus_pixel_frac(
+                            pxmin, pymin, dx, dy, pixel_radius, r_in,
+                            r_out, use_exact, subpixels)
                     elif shape_code == _ELLIPSE:
                         frac = _ellipse_pixel_frac(
                             pxmin, pymin, dx, dy, norm, rx_out, ry_out,
                             cos_theta, sin_theta, use_exact, subpixels)
                     elif shape_code == _ELLIPTICAL_ANNULUS:
-                        frac = (_ellipse_pixel_frac(
-                                    pxmin, pymin, dx, dy, norm, rx_out,
-                                    ry_out, cos_theta, sin_theta,
-                                    use_exact, subpixels)
-                                - _ellipse_pixel_frac(
-                                    pxmin, pymin, dx, dy, norm, rx_in,
-                                    ry_in, cos_theta, sin_theta,
-                                    use_exact, subpixels))
+                        frac = _elliptical_annulus_pixel_frac(
+                            pxmin, pymin, dx, dy, norm, rx_in, ry_in,
+                            rx_out, ry_out, cos_theta, sin_theta,
+                            use_exact, subpixels)
                     elif shape_code == _RECTANGLE:
                         frac = _rect_pixel_frac(
                             pxmin, pymin, dx, dy, pixel_radius,
@@ -518,20 +510,14 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                             poly_x_out, poly_y_out, buf_a_x, buf_a_y,
                             buf_b_x, buf_b_y, use_exact, subpixels)
                     elif shape_code == _RECTANGULAR_ANNULUS:
-                        frac = (_rect_pixel_frac(
-                                    pxmin, pymin, dx, dy, pixel_radius,
-                                    half_width_out, half_height_out,
-                                    cos_theta, sin_theta, bbox_dx_out,
-                                    bbox_dy_out, poly_x_out, poly_y_out,
-                                    buf_a_x, buf_a_y, buf_b_x, buf_b_y,
-                                    use_exact, subpixels)
-                                - _rect_pixel_frac(
-                                    pxmin, pymin, dx, dy, pixel_radius,
-                                    half_width_in, half_height_in,
-                                    cos_theta, sin_theta, bbox_dx_in,
-                                    bbox_dy_in, poly_x_in, poly_y_in,
-                                    buf_a_x, buf_a_y, buf_b_x, buf_b_y,
-                                    use_exact, subpixels))
+                        frac = _rectangular_annulus_pixel_frac(
+                            pxmin, pymin, dx, dy, pixel_radius,
+                            half_width_in, half_height_in,
+                            half_width_out, half_height_out,
+                            cos_theta, sin_theta, bbox_dx_in, bbox_dy_in,
+                            bbox_dx_out, bbox_dy_out, poly_x_in, poly_y_in,
+                            poly_x_out, poly_y_out, buf_a_x, buf_a_y,
+                            buf_b_x, buf_b_y, use_exact, subpixels)
                     else:
                         frac = _polygon_pixel_frac(
                             pxmin, pymin, dx, dy, pixel_radius,
@@ -541,9 +527,9 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                             subpixels)
 
                     # Annulus fractions are a difference of two shapes,
-                    # so floating-point noise can make a boundary pixel's
-                    # fraction a tiny nonzero (possibly negative) value.
-                    # The mask-based path weights every nonzero-fraction
+                    # so floating-point noise can leave a boundary
+                    # pixel's fraction a tiny (nonnegative) value. The
+                    # mask-based path weights every nonzero-fraction
                     # pixel, so match it with ``!= 0`` here.
                     if frac != 0.0:
                         val = data[siy, six] - lbk

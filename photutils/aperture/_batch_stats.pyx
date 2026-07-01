@@ -21,11 +21,10 @@ free-threaded Python builds.
 
 import numpy as np
 
-from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
-                                                _ellipse_pixel_frac,
-                                                _polygon_pixel_frac,
-                                                _rect_pixel_frac,
-                                                _rect_vertices)
+from photutils.aperture._batch_overlap cimport (
+    _circle_pixel_frac, _circular_annulus_pixel_frac, _ellipse_pixel_frac,
+    _elliptical_annulus_pixel_frac, _polygon_pixel_frac, _rect_pixel_frac,
+    _rect_vertices, _rectangular_annulus_pixel_frac)
 from photutils.geometry._polygon_overlap cimport convex_edge_normals
 
 __all__ = ['batch_aperture_gather', 'batch_moments', 'batch_sort_values',
@@ -499,23 +498,17 @@ def batch_aperture_gather(const double[:, ::1] data,
                             pxmin, pymin, dx, dy, pixel_radius, r_out,
                             0, 1)
                     elif shape_code == _CIRCULAR_ANNULUS:
-                        cfrac = (_circle_pixel_frac(
-                            pxmin, pymin, dx, dy, pixel_radius, r_out,
-                            0, 1)
-                            - _circle_pixel_frac(
-                                pxmin, pymin, dx, dy, pixel_radius, r_in,
-                                0, 1))
+                        cfrac = _circular_annulus_pixel_frac(
+                            pxmin, pymin, dx, dy, pixel_radius, r_in,
+                            r_out, 0, 1)
                     elif shape_code == _ELLIPSE:
                         cfrac = _ellipse_pixel_frac(
                             pxmin, pymin, dx, dy, norm, rx_out, ry_out,
                             cos_theta, sin_theta, 0, 1)
                     elif shape_code == _ELLIPTICAL_ANNULUS:
-                        cfrac = (_ellipse_pixel_frac(
-                            pxmin, pymin, dx, dy, norm, rx_out, ry_out,
-                            cos_theta, sin_theta, 0, 1)
-                            - _ellipse_pixel_frac(
-                                pxmin, pymin, dx, dy, norm, rx_in, ry_in,
-                                cos_theta, sin_theta, 0, 1))
+                        cfrac = _elliptical_annulus_pixel_frac(
+                            pxmin, pymin, dx, dy, norm, rx_in, ry_in,
+                            rx_out, ry_out, cos_theta, sin_theta, 0, 1)
                     elif shape_code == _RECTANGLE:
                         cfrac = _rect_pixel_frac(
                             pxmin, pymin, dx, dy, pixel_radius, hw_out,
@@ -523,17 +516,12 @@ def batch_aperture_gather(const double[:, ::1] data,
                             bdy_out, poly_x_out, poly_y_out, buf_a_x,
                             buf_a_y, buf_b_x, buf_b_y, 0, 1)
                     elif shape_code == _RECTANGULAR_ANNULUS:
-                        cfrac = (_rect_pixel_frac(
-                            pxmin, pymin, dx, dy, pixel_radius, hw_out,
-                            hh_out, cos_theta, sin_theta, bdx_out,
-                            bdy_out, poly_x_out, poly_y_out, buf_a_x,
+                        cfrac = _rectangular_annulus_pixel_frac(
+                            pxmin, pymin, dx, dy, pixel_radius, hw_in,
+                            hh_in, hw_out, hh_out, cos_theta, sin_theta,
+                            bdx_in, bdy_in, bdx_out, bdy_out, poly_x_in,
+                            poly_y_in, poly_x_out, poly_y_out, buf_a_x,
                             buf_a_y, buf_b_x, buf_b_y, 0, 1)
-                            - _rect_pixel_frac(
-                                pxmin, pymin, dx, dy, pixel_radius,
-                                hw_in, hh_in, cos_theta, sin_theta,
-                                bdx_in, bdy_in, poly_x_in, poly_y_in,
-                                buf_a_x, buf_a_y, buf_b_x, buf_b_y, 0,
-                                1))
                     else:
                         cfrac = _polygon_pixel_frac(
                             pxmin, pymin, dx, dy, pixel_radius, poly_x,
