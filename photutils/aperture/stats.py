@@ -18,10 +18,12 @@ from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture._batch_stats import (batch_aperture_gather,
-                                             batch_moments,
+                                             batch_biweight, batch_gini,
+                                             batch_mad, batch_mean_var,
+                                             batch_moments, batch_order_stats,
                                              batch_sigma_clip_center,
                                              batch_sigma_clip_sum,
-                                             batch_value_stats)
+                                             batch_sort_values)
 from photutils.aperture._segmentation import (SEG_METHOD_CODES,
                                               make_segmentation_exclusion,
                                               process_segmentation_inputs)
@@ -36,6 +38,13 @@ from photutils.utils._moments import _image_moments
 from photutils.utils._quantity_helpers import process_quantities
 
 __all__ = ['ApertureStats']
+
+
+# Scale factor that converts the median absolute deviation to a robust
+# estimate of the standard deviation (1 / scipy.stats.norm.ppf(0.75)).
+# This must match ``astropy.stats.mad_std`` and the value in
+# ``photutils.aperture._batch_stats``.
+_MAD_STD_SCALE = 1.482602218505602
 
 
 # Default table columns for `to_table()` output
@@ -459,10 +468,18 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         # Slice evaluated lazyproperty objects
         keys = set(self.__dict__.keys()) & set(self._lazyproperties)
         keys.add('_local_bkg')  # iterable defined in __init__
-        # The packed gather buffer is not per-source sliceable; the
-        # sliced object recomputes it lazily from its sliced inputs.
+        # The packed gather buffers and their reductions are not
+        # per-source sliceable; the sliced object recomputes them
+        # lazily from its sliced inputs.
+        keys.discard('_batch_inputs')
         keys.discard('_fast_gather')
-        keys.discard('_value_stats')
+        keys.discard('_fast_sum')
+        keys.discard('_sorted_values')
+        keys.discard('_order_stats')
+        keys.discard('_mean_var')
+        keys.discard('_mad')
+        keys.discard('_biweight')
+        keys.discard('_gini')
         for key in keys:
             value = self.__dict__[key]
 
@@ -676,21 +693,14 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         return self.aperture
 
     @lazyproperty
-    def _fast_gather(self):
+    def _batch_inputs(self):
         """
-        The result of the fast Cython statistics gather, or `None`.
+        The validated inputs for the fast Cython batch driver, or `None`.
 
-        When supported, this walks each aperture bounding box once and
-        returns a packed buffer of the unmasked "center"-method pixel
-        values (and their cutout coordinates) together with the
-        ``sum_method`` aperture sum, error variance, and area. The
-        higher-tier statistics (order statistics and image moments) are
-        reduced lazily from this buffer.
-
-        When a supported ``sigma_clip`` is set, the packed center buffer
-        and the ``sum_method`` scalars are sigma-clipped per source
-        before being returned, so the downstream reductions operate on
-        the clipped data transparently.
+        Returns a tuple of the contiguous arrays and scalar parameters
+        shared by the center-value and ``sum_method`` gathers (see
+        `_fast_gather` and `_fast_sum`), together with the fast
+        sigma-clip specification (`None` when no clipping is performed).
 
         `None` is returned (and the mask-based code path is used) when
         the aperture or inputs are not supported by the batch driver,
@@ -698,10 +708,6 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         aperture does not opt in to the batch driver, or the data/mask
         dtypes are not supported. The set of supported inputs matches
         `~photutils.aperture.PixelAperture._do_batch_photometry`.
-
-        The result is a tuple ``(values, local_x, local_y, starts,
-        counts, sum_aper, var_aper, sum_area, overlap, ...)`` (see
-        `~photutils.aperture._batch_stats.batch_aperture_gather`).
         """
         # A non-None sigma_clip is only supported when it maps to the
         # fast clipping kernel; otherwise fall back to the mask path.
@@ -753,17 +759,94 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         if error is not None:
             error = np.ascontiguousarray(error, dtype=np.float64)
 
-        emit_sum = 1 if clip_spec is not None else 0
+        return (np.ascontiguousarray(data, dtype=np.float64), error, mask,
+                np.ascontiguousarray(aper._positions, dtype=np.float64),
+                shape_code, np.array(params, dtype=np.float64),
+                float(ext_x), float(ext_y), sum_use_exact, sum_subpixels,
+                np.ascontiguousarray(self._local_bkg, dtype=np.float64),
+                seg_arr, labels_arr, seg_code, clip_spec)
+
+    @lazyproperty
+    def _fast_gather(self):
+        """
+        The fast Cython "center"-method value gather, or `None`.
+
+        When supported, this walks each aperture bounding box once and
+        returns a packed buffer of the unmasked "center"-method pixel
+        values (and their cutout coordinates). The higher-tier
+        statistics (order statistics and image moments) are reduced
+        lazily from this buffer. The ``sum_method`` aperture sum, error
+        variance, and area are computed separately and lazily by
+        `_fast_sum`, so they are not paid for unless requested.
+
+        When a supported ``sigma_clip`` is set, the packed center buffer
+        is sigma-clipped per source before being returned, so the
+        downstream reductions operate on the clipped data transparently.
+
+        `None` is returned (and the mask-based code path is used) when
+        the fast batch driver is unavailable (see `_batch_inputs`).
+
+        The result is a tuple ``(values, local_x, local_y, starts,
+        counts, sum_aper, var_aper, sum_area, overlap, ...)`` (see
+        `~photutils.aperture._batch_stats.batch_aperture_gather`). Only
+        the center-value entries and ``overlap`` are populated; the
+        ``sum_method`` entries are unused here.
+        """
+        inputs = self._batch_inputs
+        if inputs is None:
+            return None
+        (data, error, mask, positions, shape_code, params, ext_x, ext_y,
+         sum_use_exact, sum_subpixels, local_bkg, seg_arr, labels_arr,
+         seg_code, clip_spec) = inputs
+
         gather = batch_aperture_gather(
-            np.ascontiguousarray(data, dtype=np.float64), error, mask,
-            np.ascontiguousarray(aper._positions, dtype=np.float64),
-            shape_code, np.array(params, dtype=np.float64),
-            float(ext_x), float(ext_y), sum_use_exact, sum_subpixels,
-            np.ascontiguousarray(self._local_bkg, dtype=np.float64),
-            seg_arr, labels_arr, seg_code, emit_sum)
+            data, error, mask, positions, shape_code, params, ext_x, ext_y,
+            sum_use_exact, sum_subpixels, local_bkg, seg_arr, labels_arr,
+            seg_code, 0, 1, 0)  # emit_sum=0, want_center=1, want_sum=0
 
         if clip_spec is not None:
-            gather = self._apply_fast_clip(gather, clip_spec)
+            gather = self._apply_center_clip(gather, clip_spec)
+        return gather
+
+    @lazyproperty
+    def _fast_sum(self):
+        """
+        The fast Cython ``sum_method`` aperture gather, or `None`.
+
+        When supported, this walks each aperture bounding box once and
+        returns the ``sum_method`` aperture sum, error variance, and
+        area. This is computed only when the ``sum``, ``sum_err``, or
+        ``sum_aper_area`` properties are requested, so the more
+        expensive exact/subpixel overlap fractions are not evaluated for
+        the value-statistics-only use cases.
+
+        When a supported ``sigma_clip`` is set, the packed ``sum_method``
+        members are sigma-clipped per source and the aperture sum,
+        variance, and area are recomputed over the survivors.
+
+        `None` is returned (and the mask-based code path is used) when
+        the fast batch driver is unavailable (see `_batch_inputs`).
+
+        The result is a tuple with the same layout as `_fast_gather`;
+        only the ``sum_aper`` (index 5), ``var_aper`` (index 6),
+        ``sum_area`` (index 7), and ``overlap`` (index 8) entries are
+        populated.
+        """
+        inputs = self._batch_inputs
+        if inputs is None:
+            return None
+        (data, error, mask, positions, shape_code, params, ext_x, ext_y,
+         sum_use_exact, sum_subpixels, local_bkg, seg_arr, labels_arr,
+         seg_code, clip_spec) = inputs
+
+        emit_sum = 1 if clip_spec is not None else 0
+        gather = batch_aperture_gather(
+            data, error, mask, positions, shape_code, params, ext_x, ext_y,
+            sum_use_exact, sum_subpixels, local_bkg, seg_arr, labels_arr,
+            seg_code, emit_sum, 0, 1)  # want_center=0, want_sum=1
+
+        if clip_spec is not None:
+            gather = self._apply_sum_clip(gather, clip_spec)
         return gather
 
     def _fast_clip_spec(self):
@@ -798,52 +881,133 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         return (float(sc.sigma_lower), float(sc.sigma_upper), maxiters,
                 cenfunc_code, stdfunc_code)
 
-    def _apply_fast_clip(self, gather, clip_spec):
+    def _apply_center_clip(self, gather, clip_spec):
         """
-        Sigma-clip the packed gather buffers and return a gather tuple
-        with the same layout whose center buffer and ``sum_method``
-        scalars reflect the per-source clipped data.
+        Sigma-clip the packed center buffer and return a gather tuple
+        with the same layout whose center buffer reflects the per-source
+        clipped data.
         """
         sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc = clip_spec
         (values, local_x, local_y, starts, counts, _sum, _var, _area,
-         overlap, sum_values, sum_fracs, sum_errsq, sum_counts) = gather
+         overlap, _sv, _sf, _se, _sc) = gather
 
         (cvalues, clx, cly, cstarts, ccounts) = batch_sigma_clip_center(
             values, local_x, local_y, starts, counts, sigma_lower,
             sigma_upper, maxiters, cenfunc, stdfunc)
+
+        return (cvalues, clx, cly, cstarts, ccounts, _sum, _var, _area,
+                overlap, None, None, None, None)
+
+    def _apply_sum_clip(self, gather, clip_spec):
+        """
+        Sigma-clip the packed ``sum_method`` member buffers and return a
+        gather tuple with the same layout whose aperture sum, variance,
+        and area reflect the per-source clipped data.
+        """
+        sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc = clip_spec
+        (values, local_x, local_y, starts, counts, _sum, _var, _area,
+         overlap, sum_values, sum_fracs, sum_errsq, sum_counts) = gather
 
         has_error = 1 if self._error is not None else 0
         (csum, cvar, carea) = batch_sigma_clip_sum(
             sum_values, sum_fracs, sum_errsq, starts, sum_counts,
             sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc, has_error)
 
-        return (cvalues, clx, cly, cstarts, ccounts, csum, cvar, carea,
+        return (values, local_x, local_y, starts, counts, csum, cvar, carea,
                 overlap, None, None, None, None)
 
     @lazyproperty
-    def _value_stats(self):
+    def _sorted_values(self):
         """
-        The packed per-source descriptive statistics, or `None`.
+        The packed per-source ascending-sorted center pixel values, or
+        `None`.
 
-        When the fast gather path is active (see `_fast_gather`), the
-        packed value buffer is reduced to the per-source minimum,
-        maximum, mean, variance, median, ``mad_std``, biweight location,
-        biweight midvariance, and Gini coefficient in a single Cython
-        pass. The result is a dict keyed by statistic name. `None` is
-        returned when the fast path is unavailable, in which case the
-        mask-based per-source code path is used.
+        When the fast gather path is active (see `_fast_gather`), each
+        source's packed pixel values are sorted once. The sorted buffer
+        is cached and shared by the order statistics (``min``, ``max``,
+        ``median``), ``mad_std``, and the biweight estimators, so the
+        per-source sort is performed only once. `None` is returned when
+        the fast path is unavailable.
         """
         gather = self._fast_gather
         if gather is None:
             return None
         values, starts, counts = gather[0], gather[3], gather[4]
-        keys = ('min', 'max', 'mean', 'var', 'median', 'mad_std',
-                'biweight_location', 'biweight_midvariance', 'gini')
-        return dict(zip(keys, batch_value_stats(values, starts, counts),
-                        strict=True))
+        return (batch_sort_values(values, starts, counts), starts, counts)
 
-    def _reduce_value_stat(self, key, stat_func, *, square_unit=False,
-                           apply_unit=True):
+    @lazyproperty
+    def _order_stats(self):
+        """
+        The per-source ``(min, max, median)`` arrays, or `None`.
+
+        Reduced from the cached sorted buffer (see `_sorted_values`).
+        `None` when the fast path is unavailable.
+        """
+        sorted_values = self._sorted_values
+        if sorted_values is None:
+            return None
+        return batch_order_stats(*sorted_values)
+
+    @lazyproperty
+    def _mean_var(self):
+        """
+        The per-source ``(mean, var)`` arrays, or `None`.
+
+        The population (``ddof=0``) variance is returned. Computed
+        directly from the packed center buffer (no sort required).
+        `None` when the fast path is unavailable.
+        """
+        gather = self._fast_gather
+        if gather is None:
+            return None
+        values, starts, counts = gather[0], gather[3], gather[4]
+        return batch_mean_var(values, starts, counts)
+
+    @lazyproperty
+    def _mad(self):
+        """
+        The per-source unscaled median absolute deviation, or `None`.
+
+        Reduced from the cached sorted buffer (see `_sorted_values`).
+        `None` when the fast path is unavailable.
+        """
+        sorted_values = self._sorted_values
+        if sorted_values is None:
+            return None
+        return batch_mad(*sorted_values)
+
+    @lazyproperty
+    def _biweight(self):
+        """
+        The per-source ``(biweight_location, biweight_midvariance)``
+        arrays, or `None`.
+
+        Reused from the cached sorted buffer, median (`_order_stats`),
+        and unscaled MAD (`_mad`). `None` when the fast path is
+        unavailable.
+        """
+        sorted_values = self._sorted_values
+        if sorted_values is None:
+            return None
+        _, _, median = self._order_stats
+        return batch_biweight(*sorted_values, median, self._mad)
+
+    @lazyproperty
+    def _gini(self):
+        """
+        The per-source Gini coefficient, or `None`.
+
+        Computed from the packed center buffer (the absolute values are
+        sorted internally). `None` when the fast path is unavailable.
+        """
+        gather = self._fast_gather
+        if gather is None:
+            return None
+        values, starts, counts = gather[0], gather[3], gather[4]
+        return batch_gini(values, starts, counts)
+
+    def _finalize_value_stat(self, fast_result, stat_func, *,
+                             square_unit=False, apply_unit=True):
         """
         Return a per-source value statistic, using the fast Cython
         reduction when available and otherwise the mask-based per-source
@@ -851,8 +1015,9 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
         Parameters
         ----------
-        key : str
-            The statistic name in `_value_stats`.
+        fast_result : `~numpy.ndarray` or `None`
+            The per-source statistic from the fast reduction, or `None`
+            to use the mask-based fallback.
 
         stat_func : callable
             The fallback callable applied to each source's 1D array of
@@ -865,9 +1030,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             Whether to apply the data unit at all (`False` for
             dimensionless statistics such as the Gini coefficient).
         """
-        stats = self._value_stats
-        if stats is not None:
-            result = stats[key].copy()
+        if fast_result is not None:
+            result = fast_result.copy()
         else:
             result = np.array([stat_func(arr)
                                for arr in self._data_values_center])
@@ -1578,9 +1742,9 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         pixels within the aperture. Sources with fewer than two unmasked
         pixels are set to NaN.
         """
-        stats = self._value_stats
+        stats = self._mean_var
         if stats is not None:
-            var = stats['var']
+            var = stats[1]
         else:
             var = np.array([np.var(values)
                             for values in self._data_values_center])
@@ -1608,12 +1772,11 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         The total area of the unmasked pixels within the aperture using
         the input ``sum_method`` aperture mask method.
         """
-        gather = self._fast_gather
+        gather = self._fast_sum
         if gather is not None:
-            counts = gather[4]
-            areas = gather[7].copy()
-            areas[counts == 0] = np.nan
-            return areas << (u.pix**2)
+            area, overlap = gather[7].copy(), gather[8]
+            area[overlap & (area == 0)] = np.nan
+            return area << (u.pix**2)
         areas = np.array([np.sum(weight.filled(0.0))
                           for weight in self._weight_cutout])
         areas[self._all_masked] = np.nan
@@ -1636,7 +1799,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         Non-finite pixel values (NaN and inf) are excluded
         (automatically masked).
         """
-        gather = self._fast_gather
+        gather = self._fast_sum
         if gather is not None:
             result, area, overlap = gather[5].copy(), gather[7], gather[8]
             # No sum-method survivors -> NaN (matches the mask-based
@@ -1682,7 +1845,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             err = self._null_value
 
         else:
-            gather = self._fast_gather
+            gather = self._fast_sum
             if gather is not None:
                 variance = gather[6].copy()
                 area = gather[7]
@@ -1709,7 +1872,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         The minimum of the unmasked pixel values within the aperture.
         """
-        return self._reduce_value_stat('min', np.min)
+        fast = None if self._order_stats is None else self._order_stats[0]
+        return self._finalize_value_stat(fast, np.min)
 
     @lazyproperty
     @as_scalar
@@ -1717,7 +1881,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         The maximum of the unmasked pixel values within the aperture.
         """
-        return self._reduce_value_stat('max', np.max)
+        fast = None if self._order_stats is None else self._order_stats[1]
+        return self._finalize_value_stat(fast, np.max)
 
     @lazyproperty
     @as_scalar
@@ -1725,7 +1890,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         The mean of the unmasked pixel values within the aperture.
         """
-        return self._reduce_value_stat('mean', np.mean)
+        fast = None if self._mean_var is None else self._mean_var[0]
+        return self._finalize_value_stat(fast, np.mean)
 
     @lazyproperty
     @as_scalar
@@ -1758,7 +1924,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         The median of the unmasked pixel values within the aperture.
         """
-        return self._reduce_value_stat('median', np.median)
+        fast = None if self._order_stats is None else self._order_stats[2]
+        return self._finalize_value_stat(fast, np.median)
 
     @lazyproperty
     @as_scalar
@@ -1811,7 +1978,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         unmasked pixels within the aperture. Apertures with ``N <=
         ddof`` unmasked pixels are set to NaN.
         """
-        var = self._reduce_value_stat('var', np.var, apply_unit=False)
+        fast = None if self._mean_var is None else self._mean_var[1]
+        var = self._finalize_value_stat(fast, np.var, apply_unit=False)
         if self.ddof == 0:
             return var
         npix = self._center_npixels
@@ -1855,7 +2023,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         where :math:`\Phi^{-1}(P)` is the normal inverse cumulative
         distribution function evaluated at probability :math:`P = 3/4`.
         """
-        return self._reduce_value_stat('mad_std', mad_std)
+        fast = None if self._mad is None else self._mad * _MAD_STD_SCALE
+        return self._finalize_value_stat(fast, mad_std)
 
     @lazyproperty
     @as_scalar
@@ -1881,8 +2050,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
         See `astropy.stats.biweight_location`.
         """
-        return self._reduce_value_stat('biweight_location',
-                                       biweight_location)
+        fast = None if self._biweight is None else self._biweight[0]
+        return self._finalize_value_stat(fast, biweight_location)
 
     @lazyproperty
     @as_scalar
@@ -1893,8 +2062,9 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
         See `astropy.stats.biweight_midvariance`
         """
-        return self._reduce_value_stat('biweight_midvariance',
-                                       biweight_midvariance, square_unit=True)
+        fast = None if self._biweight is None else self._biweight[1]
+        return self._finalize_value_stat(fast, biweight_midvariance,
+                                         square_unit=True)
 
     @lazyproperty
     @as_scalar
@@ -2223,4 +2393,5 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         from the calculation. If only a single finite pixel remains
         after filtering, the Gini coefficient is 0.0.
         """
-        return self._reduce_value_stat('gini', gini_func, apply_unit=False)
+        return self._finalize_value_stat(self._gini, gini_func,
+                                         apply_unit=False)
