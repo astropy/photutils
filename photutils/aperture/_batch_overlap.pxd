@@ -34,25 +34,32 @@ cdef extern from "math.h" nogil:
     double fmin(double x, double y)
 
 
-cdef inline double _circle_frac_from_d(double pxmin, double pymin,
-                                       double pxmax, double pymax,
-                                       double dx, double dy,
-                                       double pixel_radius, double d,
-                                       double r, int use_exact,
-                                       int subpixels) noexcept nogil:
+cdef inline double _circle_frac_from_d2(double pxmin, double pymin,
+                                        double pxmax, double pymax,
+                                        double dx, double dy,
+                                        double pixel_radius, double d2,
+                                        double r, int use_exact,
+                                        int subpixels) noexcept nogil:
     """
     Fraction of a single pixel that overlaps a circle of radius ``r``
-    centered on the origin, given the precomputed distance ``d`` from
-    the origin to the pixel center.
+    centered on the origin, given the precomputed squared distance
+    ``d2`` from the origin to the pixel center.
 
-    No bounding-box check is performed (the caller is responsible for
-    it), so this can be shared by the circle and circular-annulus
-    helpers to avoid recomputing ``d`` for each boundary.
+    Using the squared distance avoids a ``sqrt`` per pixel: the
+    interior/exterior fast-path thresholds ``r ± pixel_radius`` are
+    simply squared. No bounding-box check is performed (the caller is
+    responsible for it), so this can be shared by the circle and
+    circular-annulus helpers to avoid recomputing ``d2`` for each
+    boundary.
     """
-    if d < r - pixel_radius:  # pixel is well within the circle
+    cdef double r_inner = r - pixel_radius
+    cdef double r_outer = r + pixel_radius
+
+    # pixel is well within the circle
+    if r_inner > 0.0 and d2 < r_inner * r_inner:
         return 1.0
 
-    if d < r + pixel_radius:  # pixel is close to the circle border
+    if d2 < r_outer * r_outer:  # pixel is close to the circle border
         if use_exact:
             return circle_overlap_single_exact(pxmin, pymin, pxmax, pymax,
                                                r) / (dx * dy)
@@ -77,20 +84,20 @@ cdef inline double _circle_pixel_frac(double pxmin, double pymin,
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
-    cdef double pxcen, pycen, d
+    cdef double pxcen, pycen, d2
 
     # Bounding-box check
     if not (pxmax > -r - 0.5 * dx and pxmin < r + 0.5 * dx
             and pymax > -r - 0.5 * dy and pymin < r + 0.5 * dy):
         return 0.0
 
-    # Distance from circle center to pixel center
+    # Squared distance from circle center to pixel center
     pxcen = pxmin + dx * 0.5
     pycen = pymin + dy * 0.5
-    d = sqrt(pxcen * pxcen + pycen * pycen)
+    d2 = pxcen * pxcen + pycen * pycen
 
-    return _circle_frac_from_d(pxmin, pymin, pxmax, pymax, dx, dy,
-                               pixel_radius, d, r, use_exact, subpixels)
+    return _circle_frac_from_d2(pxmin, pymin, pxmax, pymax, dx, dy,
+                                pixel_radius, d2, r, use_exact, subpixels)
 
 
 cdef inline double _circular_annulus_pixel_frac(double pxmin, double pymin,
@@ -104,8 +111,8 @@ cdef inline double _circular_annulus_pixel_frac(double pxmin, double pymin,
     inner radius ``r_in`` and outer radius ``r_out`` centered on the
     origin.
 
-    The pixel-center distance and the (outer) bounding-box test are
-    computed once and shared by the outer and inner boundary
+    The squared pixel-center distance and the (outer) bounding-box test
+    are computed once and shared by the outer and inner boundary
     evaluations, avoiding the redundant setup of subtracting two
     independent ``_circle_pixel_frac`` calls. The result is clamped at
     zero: an annulus overlap can never be negative, but subtracting two
@@ -113,23 +120,23 @@ cdef inline double _circular_annulus_pixel_frac(double pxmin, double pymin,
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
-    cdef double pxcen, pycen, d, frac
+    cdef double pxcen, pycen, d2, frac
 
     # Outer bounding-box check
     if not (pxmax > -r_out - 0.5 * dx and pxmin < r_out + 0.5 * dx
             and pymax > -r_out - 0.5 * dy and pymin < r_out + 0.5 * dy):
         return 0.0
 
-    # Distance from the annulus center to the pixel center (shared)
+    # Squared distance from the annulus center to the pixel center (shared)
     pxcen = pxmin + dx * 0.5
     pycen = pymin + dy * 0.5
-    d = sqrt(pxcen * pxcen + pycen * pycen)
+    d2 = pxcen * pxcen + pycen * pycen
 
-    frac = (_circle_frac_from_d(pxmin, pymin, pxmax, pymax, dx, dy,
-                                pixel_radius, d, r_out, use_exact, subpixels)
-            - _circle_frac_from_d(pxmin, pymin, pxmax, pymax, dx, dy,
-                                  pixel_radius, d, r_in, use_exact,
-                                  subpixels))
+    frac = (_circle_frac_from_d2(pxmin, pymin, pxmax, pymax, dx, dy,
+                                 pixel_radius, d2, r_out, use_exact, subpixels)
+            - _circle_frac_from_d2(pxmin, pymin, pxmax, pymax, dx, dy,
+                                   pixel_radius, d2, r_in, use_exact,
+                                   subpixels))
     return frac if frac > 0.0 else 0.0
 
 
