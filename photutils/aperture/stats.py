@@ -317,7 +317,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         self.sum_method = sum_method
         self.subpixels = subpixels
 
-        if not isinstance(ddof, (int, np.integer)) or ddof < 0:
+        if (isinstance(ddof, bool)
+                or not isinstance(ddof, (int, np.integer)) or ddof < 0):
             msg = 'ddof must be a non-negative integer'
             raise ValueError(msg)
         self.ddof = ddof

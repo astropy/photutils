@@ -788,7 +788,7 @@ class TestApertureStats:
         Test that an invalid ``ddof`` raises a ``ValueError``.
         """
         match = 'ddof must be a non-negative integer'
-        for bad in (-1, 1.5):
+        for bad in (-1, 1.5, True, False):
             with pytest.raises(ValueError, match=match):
                 ApertureStats(self.data, self.aperture, ddof=bad)
 
