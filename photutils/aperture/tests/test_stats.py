@@ -10,7 +10,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.nddata import NDData, StdDevUncertainty
-from astropy.stats import SigmaClip
+from astropy.stats import SigmaClip, mad_std
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
@@ -20,7 +20,7 @@ from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus)
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture)
-from photutils.aperture.stats import ApertureStats
+from photutils.aperture.stats import _MAD_STD_SCALE, ApertureStats
 from photutils.datasets import make_100gaussians_image, make_wcs
 from photutils.utils._optional_deps import HAS_REGIONS
 
@@ -42,6 +42,22 @@ class _NoneSpecCircular(CircularAperture):
 
     def _batch_shape_params(self):
         return None
+
+
+def test_mad_std_scale():
+    """
+    Test that the hard-coded MAD-to-sigma scale factor matches
+    `astropy.stats.mad_std`.
+
+    The factor is duplicated in ``photutils.aperture.stats`` and
+    ``photutils.aperture._batch_stats`` (a Cython constant cannot be
+    shared directly); the fast-vs-mask regression tests cover the
+    Cython copy.
+    """
+    rng = np.random.default_rng(0)
+    values = rng.normal(size=101)
+    mad = np.median(np.abs(values - np.median(values)))
+    assert_allclose(_MAD_STD_SCALE * mad, mad_std(values), rtol=1e-14)
 
 
 class TestApertureStats:
