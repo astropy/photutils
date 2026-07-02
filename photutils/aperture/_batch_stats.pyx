@@ -241,9 +241,11 @@ def batch_aperture_gather(const double[:, ::1] data,
         (background subtracted). The values for source ``k`` occupy
         ``values[starts[k]:starts[k] + counts[k]]``.
 
-    local_x, local_y : 1D ndarray of intp
+    local_x, local_y : 1D ndarray of int32
         The packed pixel coordinates (relative to the clipped cutout
         origin) corresponding to ``values``, used for the image moments.
+        Cutout coordinates always fit in 32 bits, and the narrower
+        dtype reduces the packed-buffer memory footprint.
 
     starts : 1D ndarray of intp
         The start offset into ``values`` for each source.
@@ -408,11 +410,11 @@ def batch_aperture_gather(const double[:, ::1] data,
                 total += area
 
     values_arr = np.empty(total, dtype=np.float64)
-    lx_arr = np.empty(total, dtype=np.intp)
-    ly_arr = np.empty(total, dtype=np.intp)
+    lx_arr = np.empty(total, dtype=np.int32)
+    ly_arr = np.empty(total, dtype=np.int32)
     cdef double[::1] values = values_arr
-    cdef Py_ssize_t[::1] local_x = lx_arr
-    cdef Py_ssize_t[::1] local_y = ly_arr
+    cdef int[::1] local_x = lx_arr
+    cdef int[::1] local_y = ly_arr
 
     # Pass 2: walk each bounding box once and gather the "center"-method
     # survivors into the packed buffer.
@@ -536,8 +538,8 @@ def batch_aperture_gather(const double[:, ::1] data,
 
                     if cfrac > 0.0:
                         values[pos] = data[siy, six] - lbk
-                        local_x[pos] = ix - ix0
-                        local_y[pos] = iy - iy0
+                        local_x[pos] = <int>(ix - ix0)
+                        local_y[pos] = <int>(iy - iy0)
                         pos += 1
             counts[k] = pos - starts[k]
 
@@ -545,8 +547,8 @@ def batch_aperture_gather(const double[:, ::1] data,
             overlap_arr.view(bool))
 
 
-def batch_moments(const double[::1] values, const Py_ssize_t[::1] local_x,
-                  const Py_ssize_t[::1] local_y,
+def batch_moments(const double[::1] values, const int[::1] local_x,
+                  const int[::1] local_y,
                   const Py_ssize_t[::1] starts,
                   const Py_ssize_t[::1] counts, const double[::1] cx,
                   const double[::1] cy):
@@ -572,7 +574,7 @@ def batch_moments(const double[::1] values, const Py_ssize_t[::1] local_x,
     values : 1D ndarray of float64
         The packed pixel values (see ``batch_aperture_gather``).
 
-    local_x, local_y : 1D ndarray of intp
+    local_x, local_y : 1D ndarray of int32
         The packed pixel cutout coordinates.
 
     starts, counts : 1D ndarray of intp
@@ -982,8 +984,8 @@ def batch_gini(const double[::1] values,
 
 
 def batch_sigma_clip_center(const double[::1] values,
-                            const Py_ssize_t[::1] local_x,
-                            const Py_ssize_t[::1] local_y,
+                            const int[::1] local_x,
+                            const int[::1] local_y,
                             const Py_ssize_t[::1] starts,
                             const Py_ssize_t[::1] counts,
                             double sigma_lower, double sigma_upper,
@@ -1004,7 +1006,7 @@ def batch_sigma_clip_center(const double[::1] values,
     values : 1D ndarray of float64
         The packed center pixel values (see ``batch_aperture_gather``).
 
-    local_x, local_y : 1D ndarray of intp
+    local_x, local_y : 1D ndarray of int32
         The packed pixel cutout coordinates.
 
     starts, counts : 1D ndarray of intp
@@ -1029,12 +1031,12 @@ def batch_sigma_clip_center(const double[::1] values,
     """
     cdef Py_ssize_t n_src = starts.shape[0]
     out_values_arr = np.empty(values.shape[0], dtype=np.float64)
-    out_lx_arr = np.empty(values.shape[0], dtype=np.intp)
-    out_ly_arr = np.empty(values.shape[0], dtype=np.intp)
+    out_lx_arr = np.empty(values.shape[0], dtype=np.int32)
+    out_ly_arr = np.empty(values.shape[0], dtype=np.int32)
     counts2_arr = np.zeros(n_src, dtype=np.intp)
     cdef double[::1] out_values = out_values_arr
-    cdef Py_ssize_t[::1] out_lx = out_lx_arr
-    cdef Py_ssize_t[::1] out_ly = out_ly_arr
+    cdef int[::1] out_lx = out_lx_arr
+    cdef int[::1] out_ly = out_ly_arr
     cdef Py_ssize_t[::1] counts2 = counts2_arr
 
     cdef Py_ssize_t maxn = 0, k
