@@ -174,7 +174,7 @@ def batch_aperture_gather(const double[:, ::1] data,
                           const unsigned char[:, ::1] mask,
                           const double[:, ::1] positions, int shape_code,
                           const double[::1] params, double ext_x,
-                          double ext_y, const double[::1] local_bkg,
+                          double ext_y, const double[::1] local_bkg=None,
                           const Py_ssize_t[:, ::1] segmentation=None,
                           const Py_ssize_t[::1] labels=None,
                           int seg_method=0):
@@ -221,8 +221,9 @@ def batch_aperture_gather(const double[:, ::1] data,
     ext_x, ext_y : float
         The aperture bounding-box half-extents.
 
-    local_bkg : 1D ndarray of float64 (C-contiguous)
-        The per-source local background to subtract.
+    local_bkg : 1D ndarray of float64 (C-contiguous) or `None`
+        The per-source local background to subtract. If `None`, no
+        background is subtracted.
 
     segmentation : 2D ndarray of intp (C-contiguous) or `None`
         The segmentation image for segmentation-based masking.
@@ -259,6 +260,7 @@ def batch_aperture_gather(const double[:, ::1] data,
     cdef Py_ssize_t nx_data = data.shape[1]
 
     cdef bint has_mask = mask is not None
+    cdef bint has_bkg = local_bkg is not None
     cdef bint has_seg = segmentation is not None
     cdef Py_ssize_t lbl = 0, seg_val
 
@@ -418,7 +420,9 @@ def batch_aperture_gather(const double[:, ::1] data,
         for k in range(n_src):
             cx = positions[k, 0]
             cy = positions[k, 1]
-            lbk = local_bkg[k]
+            lbk = 0.0
+            if has_bkg:
+                lbk = local_bkg[k]
             if has_seg:
                 lbl = labels[k]
                 if seg_method == 3:
