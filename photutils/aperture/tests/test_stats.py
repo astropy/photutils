@@ -485,11 +485,17 @@ class TestApertureStats:
         fast = ApertureStats(self.data, aperture, error=self.error,
                              sigma_clip=sigma_clip)
 
-        # Force the mask-based path by disabling the fast gather.
-        with patch.object(ApertureStats, '_fast_gather',
+        # Force the mask-based path by disabling the batch-driver
+        # inputs, which disables both the fast center-value gather
+        # and the fast sum path. Patching only ``_fast_gather`` is
+        # insufficient because ``_fast_sum`` would still handle the
+        # ``sum``, ``sum_err``, and ``sum_aper_area`` comparisons.
+        with patch.object(ApertureStats, '_batch_inputs',
                           property(lambda _: None)):
             slow = ApertureStats(self.data, aperture, error=self.error,
                                  sigma_clip=sigma_clip)
+            assert slow._fast_gather is None
+            assert slow._fast_sum is None
             slow_values = {prop: getattr(slow, prop)
                            for prop in numeric_props}
 
@@ -563,7 +569,7 @@ class TestApertureStats:
         """
         data = np.ones((11, 11))
         aperture = CircularAperture((5.0, 5.0), r=1.4)
-        # Mask exactly the center-method pixels; the fractional
+        # Mask exactly the center-method pixels. The fractional
         # (exact-method) boundary pixels remain unmasked.
         mask = aperture.to_mask(method='center').to_image(data.shape) > 0
 
@@ -580,7 +586,7 @@ class TestApertureStats:
         assert_allclose(fast.sum_aper_area.value, fast.sum)
         assert_allclose(slow_sum, fast.sum)
         assert_allclose(slow_area, fast.sum_aper_area)
-        # the center-method statistics remain all-masked (NaN)
+        # The center-method statistics remain all-masked (NaN)
         assert np.isnan(fast.center_aper_area.value)
         assert np.isnan(fast.mean)
 
@@ -745,7 +751,7 @@ class TestApertureStats:
             var1, std1 = var1.value, std1.value
         assert_allclose(var1, var0 * npix / (npix - 1.0))
         assert_allclose(std1, std0 * np.sqrt(npix / (npix - 1.0)))
-        # the standard errors are defined with the sample std and are
+        # The standard errors are defined with the sample std and are
         # independent of the ``ddof`` keyword
         assert_allclose(apstats0.mean_err, apstats1.mean_err, equal_nan=True)
         assert_allclose(apstats0.median_err, apstats1.median_err,
@@ -774,7 +780,7 @@ class TestApertureStats:
         assert apstats.center_aper_area.value < 2
         assert np.isnan(apstats.var)
         assert np.isnan(apstats.std)
-        # the default (ddof=0) gives a finite (zero) variance
+        # The default (ddof=0) gives a finite (zero) variance
         assert ApertureStats(data, aper).var == 0.0
 
     def test_ddof_invalid(self):
