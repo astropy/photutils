@@ -1795,7 +1795,12 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             return area << (u.pix**2)
         areas = np.array([np.sum(weight.filled(0.0))
                           for weight in self._weight_cutout])
-        areas[self._all_masked] = np.nan
+        # NaN only when no sum-method pixel survives. The center-method
+        # ``_all_masked`` flag must not be used here: when ``sum_method``
+        # is not "center", unmasked boundary pixels can carry a nonzero
+        # fractional area even if every center-method pixel is masked
+        # (and their values then also contribute to ``sum``).
+        areas[areas == 0] = np.nan
         return areas << (u.pix**2)
 
     @lazyproperty

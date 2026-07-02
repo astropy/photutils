@@ -549,6 +549,41 @@ class TestApertureStats:
         assert_allclose(nohook.mean, ref.mean, equal_nan=True)
         assert_allclose(nospec.mean, ref.mean, equal_nan=True)
 
+    def test_sum_aper_area_center_masked(self):
+        """
+        Regression test that ``sum_aper_area`` is consistent with
+        ``sum`` (and identical between the fast and mask-based code
+        paths) when all center-method pixels are masked but the
+        ``sum_method`` aperture still contains unmasked fractional
+        boundary pixels.
+
+        Previously, the mask-based path returned NaN for the area (via
+        the center-method all-masked flag) while returning a finite
+        ``sum`` from the same surviving fractional pixels.
+        """
+        data = np.ones((11, 11))
+        aperture = CircularAperture((5.0, 5.0), r=1.4)
+        # Mask exactly the center-method pixels; the fractional
+        # (exact-method) boundary pixels remain unmasked.
+        mask = aperture.to_mask(method='center').to_image(data.shape) > 0
+
+        fast = ApertureStats(data, aperture, mask=mask)
+        with patch.object(ApertureStats, '_batch_inputs',
+                          property(lambda _: None)):
+            slow = ApertureStats(data, aperture, mask=mask)
+            slow_sum = slow.sum
+            slow_area = slow.sum_aper_area
+
+        assert fast._fast_sum is not None
+        assert fast.sum > 0
+        # data is all ones, so the sum equals the surviving area
+        assert_allclose(fast.sum_aper_area.value, fast.sum)
+        assert_allclose(slow_sum, fast.sum)
+        assert_allclose(slow_area, fast.sum_aper_area)
+        # the center-method statistics remain all-masked (NaN)
+        assert np.isnan(fast.center_aper_area.value)
+        assert np.isnan(fast.mean)
+
     def test_unsupported_data_mask_fallback(self):
         """
         Test that data/mask inputs not supported by the fast batch
