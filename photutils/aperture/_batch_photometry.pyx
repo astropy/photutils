@@ -163,7 +163,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         (``sum_values``, ``sum_fracs``, ``sum_errsq``, ``sum_counts``)
         needed to recompute the aperture sum, variance, and area after
         per-source sigma clipping. When zero (default), those four
-        outputs are `None`.
+        outputs are empty arrays.
 
     Returns
     -------
@@ -189,20 +189,20 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         The per-source starting offset into the packed member buffers.
         Zeros unless ``emit_sum`` is nonzero.
 
-    sum_values : 1D ndarray of float64 or `None`
-        The packed per-pixel ``data - local_bkg`` values, or `None`
-        unless ``emit_sum`` is nonzero.
-
-    sum_fracs : 1D ndarray of float64 or `None`
-        The packed per-pixel overlap fractions, or `None` unless
+    sum_values : 1D ndarray of float64
+        The packed per-pixel ``data - local_bkg`` values. Empty unless
         ``emit_sum`` is nonzero.
 
-    sum_errsq : 1D ndarray of float64 or `None`
-        The packed per-pixel squared errors (zero where ``error`` is
-        `None`), or `None` unless ``emit_sum`` is nonzero.
+    sum_fracs : 1D ndarray of float64
+        The packed per-pixel overlap fractions. Empty unless
+        ``emit_sum`` is nonzero.
 
-    sum_counts : 1D ndarray of intp or `None`
-        The per-source count of packed contributing pixels, or `None`
+    sum_errsq : 1D ndarray of float64
+        The packed per-pixel squared errors (zero where ``error`` is
+        `None`). Empty unless ``emit_sum`` is nonzero.
+
+    sum_counts : 1D ndarray of intp
+        The per-source count of packed contributing pixels. Empty
         unless ``emit_sum`` is nonzero.
     """
     cdef Py_ssize_t n_src = positions.shape[0]
@@ -354,6 +354,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     cdef double gxmin, gxmax, gymin, gymax
     cdef double dx, dy, pixel_radius, norm
     cdef double pxmin, pymin, frac, err_val, sum_val, var_val, area_val, val
+    cdef double errsq = 0.0
     cdef Py_ssize_t total = 0, spos = 0
 
     # Pass 1 (only when emitting the packed member buffers): compute the
@@ -538,14 +539,12 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                         area_val += frac
                         if has_error:
                             err_val = error[siy, six]
-                            var_val += err_val * err_val * frac
+                            errsq = err_val * err_val
+                            var_val += errsq * frac
                         if emit_sum:
                             sum_values[spos] = val
                             sum_fracs[spos] = frac
-                            if has_error:
-                                sum_errsq[spos] = err_val * err_val
-                            else:
-                                sum_errsq[spos] = 0.0
+                            sum_errsq[spos] = errsq if has_error else 0.0
                             spos += 1
 
             sums[k] = sum_val

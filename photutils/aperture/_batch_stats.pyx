@@ -996,8 +996,8 @@ def batch_sigma_clip_center(const double[::1] values,
     coordinates) are sigma-clipped following `astropy.stats.SigmaClip`
     (no-axis, no-grow case), and the surviving pixels are written to a
     new packed buffer that reuses the input ``starts`` offsets. The
-    output can be fed directly to ``batch_value_stats`` and
-    ``batch_moments``.
+    output can be fed directly to the packed-buffer reductions (e.g.,
+    ``batch_mean_var``, ``batch_sort_values``, and ``batch_moments``).
 
     Parameters
     ----------
@@ -1100,8 +1100,9 @@ def batch_sigma_clip_sum(const double[::1] sum_values,
     ----------
     sum_values, sum_fracs, sum_errsq : 1D ndarray of float64
         The packed ``sum_method`` member values, overlap fractions, and
-        squared total errors (see ``batch_aperture_gather`` with
-        ``emit_sum``).
+        squared total errors (see
+        `~photutils.aperture._batch_photometry.batch_aperture_sums`
+        with ``emit_sum``).
 
     starts, sum_counts : 1D ndarray of intp
         The per-source start offset and member count.

@@ -22,7 +22,7 @@ from photutils.geometry._polygon_overlap cimport (
 from photutils.geometry.circle_overlap cimport circle_frac_from_d2
 from photutils.geometry.ellipse_overlap cimport ellipse_frac_from_rpix2
 from photutils.geometry.rectangle_overlap cimport (
-    rect_vertices, rectangle_overlap_single_subpixel)
+    rectangle_overlap_single_subpixel)
 
 
 cdef extern from "math.h" nogil:
