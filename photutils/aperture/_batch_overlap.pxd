@@ -19,12 +19,10 @@ builds.
 from photutils.geometry._polygon_overlap cimport (
     convex_polygon_pixel_overlap, polygon_overlap_single_subpixel,
     polygon_pixel_overlap)
-from photutils.geometry.circle_overlap cimport (circle_overlap_single_exact,
-                                                circle_overlap_single_subpixel)
-from photutils.geometry.ellipse_overlap cimport (
-    ellipse_overlap_single_exact, ellipse_overlap_single_subpixel)
+from photutils.geometry.circle_overlap cimport circle_frac_from_d2
+from photutils.geometry.ellipse_overlap cimport ellipse_frac_from_rpix2
 from photutils.geometry.rectangle_overlap cimport (
-    rectangle_overlap_single_subpixel)
+    rect_vertices, rectangle_overlap_single_subpixel)
 
 
 cdef extern from "math.h" nogil:
@@ -32,41 +30,6 @@ cdef extern from "math.h" nogil:
     double fabs(double x)
     double fmax(double x, double y)
     double fmin(double x, double y)
-
-
-cdef inline double _circle_frac_from_d2(double pxmin, double pymin,
-                                        double pxmax, double pymax,
-                                        double dx, double dy,
-                                        double pixel_radius, double d2,
-                                        double r, int use_exact,
-                                        int subpixels) noexcept nogil:
-    """
-    Fraction of a single pixel that overlaps a circle of radius ``r``
-    centered on the origin, given the precomputed squared distance
-    ``d2`` from the origin to the pixel center.
-
-    Using the squared distance avoids a ``sqrt`` per pixel: the
-    interior/exterior fast-path thresholds ``r ± pixel_radius`` are
-    simply squared. No bounding-box check is performed (the caller is
-    responsible for it), so this can be shared by the circle and
-    circular-annulus helpers to avoid recomputing ``d2`` for each
-    boundary.
-    """
-    cdef double r_inner = r - pixel_radius
-    cdef double r_outer = r + pixel_radius
-
-    # pixel is well within the circle
-    if r_inner > 0.0 and d2 < r_inner * r_inner:
-        return 1.0
-
-    if d2 < r_outer * r_outer:  # pixel is close to the circle border
-        if use_exact:
-            return circle_overlap_single_exact(pxmin, pymin, pxmax, pymax,
-                                               r) / (dx * dy)
-        return circle_overlap_single_subpixel(pxmin, pymin, pxmax, pymax, r,
-                                              subpixels)
-
-    return 0.0  # pixel is fully outside the circle
 
 
 cdef inline double _circle_pixel_frac(double pxmin, double pymin,
@@ -96,8 +59,8 @@ cdef inline double _circle_pixel_frac(double pxmin, double pymin,
     pycen = pymin + dy * 0.5
     d2 = pxcen * pxcen + pycen * pycen
 
-    return _circle_frac_from_d2(pxmin, pymin, pxmax, pymax, dx, dy,
-                                pixel_radius, d2, r, use_exact, subpixels)
+    return circle_frac_from_d2(pxmin, pymin, pxmax, pymax, dx, dy,
+                               pixel_radius, d2, r, use_exact, subpixels)
 
 
 cdef inline double _circular_annulus_pixel_frac(double pxmin, double pymin,
@@ -132,11 +95,11 @@ cdef inline double _circular_annulus_pixel_frac(double pxmin, double pymin,
     pycen = pymin + dy * 0.5
     d2 = pxcen * pxcen + pycen * pycen
 
-    frac = (_circle_frac_from_d2(pxmin, pymin, pxmax, pymax, dx, dy,
-                                 pixel_radius, d2, r_out, use_exact, subpixels)
-            - _circle_frac_from_d2(pxmin, pymin, pxmax, pymax, dx, dy,
-                                   pixel_radius, d2, r_in, use_exact,
-                                   subpixels))
+    frac = (circle_frac_from_d2(pxmin, pymin, pxmax, pymax, dx, dy,
+                                pixel_radius, d2, r_out, use_exact, subpixels)
+            - circle_frac_from_d2(pxmin, pymin, pxmax, pymax, dx, dy,
+                                  pixel_radius, d2, r_in, use_exact,
+                                  subpixels))
     return frac if frac > 0.0 else 0.0
 
 
@@ -158,35 +121,27 @@ cdef inline double _ellipse_frac_core(double pxmin, double pymin,
     it), so this can be shared by the ellipse and elliptical-annulus
     helpers.
     """
-    cdef double inv_rx2, inv_ry2
+    cdef double inv_rx2 = 1.0 / (rx * rx)
+    cdef double inv_ry2 = 1.0 / (ry * ry)
     cdef double cxx, cyy, cxy, margin, f_in, f_out, rpix2
 
-    # Quadratic-form coefficients of the ellipse, such that a point
-    # (x, y) lies inside when ``cxx*x**2 + cyy*y**2 + cxy*x*y < 1``.
-    inv_rx2 = 1.0 / (rx * rx)
-    inv_ry2 = 1.0 / (ry * ry)
+    # Quadratic-form coefficients and fast-path thresholds. These are
+    # kept inline (rather than calling ``ellipse_quadratic_coeffs``) so
+    # they stay in registers in this per-pixel hot path; the shared
+    # decision core ``ellipse_frac_from_rpix2`` does the fast path and
+    # exact/subpixel dispatch.
     cxx = cos_theta * cos_theta * inv_rx2 + sin_theta * sin_theta * inv_ry2
     cyy = sin_theta * sin_theta * inv_rx2 + cos_theta * cos_theta * inv_ry2
     cxy = 2.0 * cos_theta * sin_theta * (inv_rx2 - inv_ry2)
-
-    # Boundary band for the interior/exterior fast path (see
-    # ``elliptical_overlap_grid``).
     margin = 0.5 * sqrt(dx * dx + dy * dy) / fmin(rx, ry)
     f_in = 1.0 - margin
     f_in = f_in * f_in if f_in > 0.0 else 0.0
     f_out = (1.0 + margin) * (1.0 + margin)
 
     rpix2 = cxx * pxcen * pxcen + cyy * pycen * pycen + cxy * pxcen * pycen
-    if rpix2 >= f_out:
-        return 0.0  # pixel fully outside the ellipse
-    if rpix2 <= f_in:
-        return 1.0  # pixel fully inside the ellipse
-
-    if use_exact:
-        return ellipse_overlap_single_exact(pxmin, pymin, pxmax, pymax, rx, ry,
-                                            cos_theta, sin_theta) * norm
-    return ellipse_overlap_single_subpixel(pxmin, pymin, pxmax, pymax, rx, ry,
-                                           cos_theta, sin_theta, subpixels)
+    return ellipse_frac_from_rpix2(pxmin, pymin, pxmax, pymax, norm, rx, ry,
+                                   cos_theta, sin_theta, rpix2, f_in, f_out,
+                                   use_exact, subpixels)
 
 
 cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
@@ -426,21 +381,3 @@ cdef inline double _polygon_pixel_frac(double pxmin, double pymin,
                                            poly_x, poly_y, n_poly,
                                            subpixels, buf_a_x, buf_a_y,
                                            buf_b_x)
-
-
-cdef inline void _rect_vertices(double half_width, double half_height,
-                                double cos_theta, double sin_theta,
-                                double *poly_x,
-                                double *poly_y) noexcept nogil:
-    """
-    Build the four CCW vertices of a rotated rectangle centered on the
-    origin (same arithmetic as ``rectangular_overlap_grid``).
-    """
-    poly_x[0] = -half_width * cos_theta - (-half_height) * sin_theta
-    poly_y[0] = -half_width * sin_theta + (-half_height) * cos_theta
-    poly_x[1] = half_width * cos_theta - (-half_height) * sin_theta
-    poly_y[1] = half_width * sin_theta + (-half_height) * cos_theta
-    poly_x[2] = half_width * cos_theta - half_height * sin_theta
-    poly_y[2] = half_width * sin_theta + half_height * cos_theta
-    poly_x[3] = -half_width * cos_theta - half_height * sin_theta
-    poly_y[3] = -half_width * sin_theta + half_height * cos_theta

@@ -89,10 +89,9 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         each pixel in the x and y direction, respectively.
     """
     cdef unsigned int i, j
-    cdef double dx, dy, d, pixel_radius
+    cdef double dx, dy, d2, pixel_radius
     cdef double bxmin, bxmax, bymin, bymax
     cdef double pxmin, pxcen, pxmax, pymin, pycen, pymax
-
     # Define output array
     cdef np.ndarray[DTYPE_t, ndim=2] frac = np.zeros([ny, nx], dtype=DTYPE)
     cdef double[:, ::1] frac_view = frac
@@ -121,32 +120,16 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                     pycen = pymin + dy * 0.5
                     pymax = pymin + dy
                     if pymax > bymin and pymin < bymax:
-                        # Distance from circle center to pixel center.
-                        d = sqrt(pxcen * pxcen + pycen * pycen)
+                        # Squared distance from circle center to pixel
+                        # center (avoids a per-pixel sqrt).
+                        d2 = pxcen * pxcen + pycen * pycen
 
-                        # If pixel center is "well within" circle,
-                        # count full pixel.
-                        if d < r - pixel_radius:
-                            frac_view[j, i] = 1.0
-
-                        # If pixel center is "close" to circle border,
-                        # find overlap.
-                        elif d < r + pixel_radius:
-                            # Either do exact calculation or use
-                            # subpixel sampling:
-                            if use_exact:
-                                frac_view[j, i] = (
-                                    circle_overlap_single_exact(
-                                        pxmin, pymin, pxmax, pymax, r)
-                                    / (dx * dy))
-                            else:
-                                frac_view[j, i] = (
-                                    circle_overlap_single_subpixel(
-                                        pxmin, pymin, pxmax, pymax, r,
-                                        subpixels))
-
-                        # Otherwise, it is fully outside circle.
-                        # No action needed.
+                        # Shared per-pixel decision core (interior/
+                        # exterior fast path and exact/subpixel
+                        # dispatch), identical to the batch helpers.
+                        frac_view[j, i] = circle_frac_from_d2(
+                            pxmin, pymin, pxmax, pymax, dx, dy,
+                            pixel_radius, d2, r, use_exact, subpixels)
 
     return frac
 

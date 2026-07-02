@@ -22,8 +22,9 @@ import numpy as np
 from photutils.aperture._batch_overlap cimport (
     _circle_pixel_frac, _circular_annulus_pixel_frac, _ellipse_pixel_frac,
     _elliptical_annulus_pixel_frac, _polygon_pixel_frac, _rect_pixel_frac,
-    _rect_vertices, _rectangular_annulus_pixel_frac)
+    _rectangular_annulus_pixel_frac)
 from photutils.geometry._polygon_overlap cimport convex_edge_normals
+from photutils.geometry.rectangle_overlap cimport rect_vertices
 
 __all__ = ['batch_aperture_sums']
 
@@ -296,15 +297,15 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
         cos_theta = cos(theta)
         sin_theta = sin(theta)
-        _rect_vertices(half_width_out, half_height_out, cos_theta,
-                       sin_theta, poly_x_out, poly_y_out)
+        rect_vertices(half_width_out, half_height_out, cos_theta,
+                      sin_theta, poly_x_out, poly_y_out)
         bbox_dx_out = (half_width_out * fabs(cos_theta)
                        + half_height_out * fabs(sin_theta))
         bbox_dy_out = (half_width_out * fabs(sin_theta)
                        + half_height_out * fabs(cos_theta))
         if shape_code == _RECTANGULAR_ANNULUS:
-            _rect_vertices(half_width_in, half_height_in, cos_theta,
-                           sin_theta, poly_x_in, poly_y_in)
+            rect_vertices(half_width_in, half_height_in, cos_theta,
+                          sin_theta, poly_x_in, poly_y_in)
             bbox_dx_in = (half_width_in * fabs(cos_theta)
                           + half_height_in * fabs(sin_theta))
             bbox_dy_in = (half_width_in * fabs(sin_theta)

@@ -131,18 +131,10 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
 
     if use_exact == 1:
         # Build the four CCW vertices of the rotated rectangle (centered
-        # on the origin). Local frame vertices in CCW order are
-        # (-w/2, -h/2), ( w/2, -h/2), ( w/2,  h/2), (-w/2,  h/2).
-        # Rotation by theta:  x' = x cos t - y sin t,
-        #                     y' = x sin t + y cos t.
-        poly_x[0] = -half_width * cos_theta - (-half_height) * sin_theta
-        poly_y[0] = -half_width * sin_theta + (-half_height) * cos_theta
-        poly_x[1] = half_width * cos_theta - (-half_height) * sin_theta
-        poly_y[1] = half_width * sin_theta + (-half_height) * cos_theta
-        poly_x[2] = half_width * cos_theta - half_height * sin_theta
-        poly_y[2] = half_width * sin_theta + half_height * cos_theta
-        poly_x[3] = -half_width * cos_theta - half_height * sin_theta
-        poly_y[3] = -half_width * sin_theta + half_height * cos_theta
+        # on the origin), shared with the batch helpers via
+        # ``rect_vertices``.
+        rect_vertices(half_width, half_height, cos_theta, sin_theta,
+                      poly_x, poly_y)
 
         # Axis-aligned bounding box of the rotated rectangle, used to
         # restrict the pixel loops to the bounding-box index range

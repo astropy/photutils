@@ -24,8 +24,9 @@ import numpy as np
 from photutils.aperture._batch_overlap cimport (
     _circle_pixel_frac, _circular_annulus_pixel_frac, _ellipse_pixel_frac,
     _elliptical_annulus_pixel_frac, _polygon_pixel_frac, _rect_pixel_frac,
-    _rect_vertices, _rectangular_annulus_pixel_frac)
+    _rectangular_annulus_pixel_frac)
 from photutils.geometry._polygon_overlap cimport convex_edge_normals
+from photutils.geometry.rectangle_overlap cimport rect_vertices
 
 __all__ = ['batch_aperture_gather', 'batch_moments', 'batch_sort_values',
            'batch_order_stats', 'batch_mean_var', 'batch_mad',
@@ -332,13 +333,13 @@ def batch_aperture_gather(const double[:, ::1] data,
 
         cos_theta = cos(theta)
         sin_theta = sin(theta)
-        _rect_vertices(hw_out, hh_out, cos_theta, sin_theta, poly_x_out,
-                       poly_y_out)
+        rect_vertices(hw_out, hh_out, cos_theta, sin_theta, poly_x_out,
+                      poly_y_out)
         bdx_out = hw_out * fabs(cos_theta) + hh_out * fabs(sin_theta)
         bdy_out = hw_out * fabs(sin_theta) + hh_out * fabs(cos_theta)
         if shape_code == _RECTANGULAR_ANNULUS:
-            _rect_vertices(hw_in, hh_in, cos_theta, sin_theta, poly_x_in,
-                           poly_y_in)
+            rect_vertices(hw_in, hh_in, cos_theta, sin_theta, poly_x_in,
+                          poly_y_in)
             bdx_in = hw_in * fabs(cos_theta) + hh_in * fabs(sin_theta)
             bdy_in = hw_in * fabs(sin_theta) + hh_in * fabs(cos_theta)
     elif shape_code == _POLYGON:
