@@ -11,6 +11,10 @@ bounding-box and interior/exterior fast paths). The helpers are
 importing module (e.g., ``_batch_photometry`` and ``_batch_stats``),
 avoiding a function call per pixel.
 
+This file also declares the aperture shape codes and the once-per-source
+helpers shared by the batch drivers (bounding-box/pixel-grid setup and
+packed-buffer presizing).
+
 These functions are pure C math and use no global mutable state, so they
 are safe to call without the GIL, including on free-threaded Python
 builds.
@@ -30,6 +34,132 @@ cdef extern from "math.h" nogil:
     double fabs(double x)
     double fmax(double x, double y)
     double fmin(double x, double y)
+    double floor(double x)
+    double ceil(double x)
+
+
+# Aperture shape codes. These must stay in sync with the private
+# ``_shape_params`` attributes defined by the aperture classes in
+# ``photutils.aperture`` (see also the Python-level ``SHAPE_*`` aliases
+# in ``_batch_photometry``).
+cdef enum:
+    _CIRCLE = 0
+    _CIRCULAR_ANNULUS = 1
+    _ELLIPSE = 2
+    _ELLIPTICAL_ANNULUS = 3
+    _RECTANGLE = 4
+    _RECTANGULAR_ANNULUS = 5
+    _POLYGON = 6
+
+
+cdef inline Py_ssize_t _round_half_away(double x) noexcept nogil:
+    """
+    Round to the nearest integer, with halves rounded away from zero
+    (replicates ``photutils.utils._round.round_half_away``).
+    """
+    if x >= 0.0:
+        return <Py_ssize_t>floor(x + 0.5)
+    return <Py_ssize_t>ceil(x - 0.5)
+
+
+cdef inline bint _source_grid_setup(double cx, double cy,
+                                    double ext_x, double ext_y,
+                                    Py_ssize_t nx_data, Py_ssize_t ny_data,
+                                    double *gxmin, double *gymin,
+                                    double *dx, double *dy,
+                                    double *pixel_radius, double *norm,
+                                    Py_ssize_t *ixmin, Py_ssize_t *iymin,
+                                    Py_ssize_t *ix0, Py_ssize_t *ix1,
+                                    Py_ssize_t *iy0,
+                                    Py_ssize_t *iy1) noexcept nogil:
+    """
+    Compute the bounding box and pixel grid of one source aperture.
+
+    This replicates ``BoundingBox.from_float`` (the box values are kept
+    as integral doubles to avoid integer overflow for apertures far
+    outside the data), ``BoundingBox.get_overlap_slices``, and the
+    ``Aperture._centered_edges`` grid setup of the `photutils.geometry`
+    grid functions, so the batch drivers walk exactly the same pixels
+    with exactly the same grid geometry as the mask-based code path.
+
+    Returns `False` (leaving the outputs unspecified) when the aperture
+    bounding box does not overlap the data. Otherwise the pixel-grid
+    edges relative to the aperture center (``gxmin``/``gymin``), the
+    pixel sizes (``dx``/``dy``), half the pixel diagonal
+    (``pixel_radius``), the inverse pixel area (``norm``), the unclipped
+    bounding-box origin (``ixmin``/``iymin``), and the clipped pixel
+    index ranges (``ix0``/``ix1``/``iy0``/``iy1``) are written through
+    the output pointers. This runs once per source (not per pixel), so
+    the output-pointer form has no effect on the per-pixel loops.
+    """
+    cdef double ixmin_d = floor(cx - ext_x + 0.5)
+    cdef double ixmax_d = ceil(cx + ext_x + 0.5)
+    cdef double iymin_d = floor(cy - ext_y + 0.5)
+    cdef double iymax_d = ceil(cy + ext_y + 0.5)
+    cdef double gxmax, gymax
+    cdef Py_ssize_t grid_nx, grid_ny
+
+    if (ixmin_d >= <double>nx_data or ixmax_d <= 0.0
+            or iymin_d >= <double>ny_data or iymax_d <= 0.0):
+        return False
+
+    gxmin[0] = ixmin_d - 0.5 - cx
+    gxmax = ixmax_d - 0.5 - cx
+    gymin[0] = iymin_d - 0.5 - cy
+    gymax = iymax_d - 0.5 - cy
+    grid_nx = <Py_ssize_t>(ixmax_d - ixmin_d)
+    grid_ny = <Py_ssize_t>(iymax_d - iymin_d)
+    dx[0] = (gxmax - gxmin[0]) / grid_nx
+    dy[0] = (gymax - gymin[0]) / grid_ny
+    pixel_radius[0] = 0.5 * sqrt(dx[0] * dx[0] + dy[0] * dy[0])
+    norm[0] = 1.0 / (dx[0] * dy[0])
+
+    ixmin[0] = <Py_ssize_t>ixmin_d
+    iymin[0] = <Py_ssize_t>iymin_d
+    ix0[0] = <Py_ssize_t>fmax(ixmin_d, 0.0)
+    ix1[0] = <Py_ssize_t>fmin(ixmax_d, <double>nx_data)
+    iy0[0] = <Py_ssize_t>fmax(iymin_d, 0.0)
+    iy1[0] = <Py_ssize_t>fmin(iymax_d, <double>ny_data)
+    return True
+
+
+cdef inline Py_ssize_t _presize_packed_offsets(
+        const double[:, ::1] positions, double ext_x, double ext_y,
+        Py_ssize_t nx_data, Py_ssize_t ny_data,
+        Py_ssize_t[::1] starts) noexcept nogil:
+    """
+    Compute the packed-buffer start offset for each source.
+
+    The clipped bounding-box area of each source is an upper bound on
+    its number of contributing pixels, so the cumulative areas size and
+    offset the packed per-pixel buffers emitted by the batch drivers.
+    The per-source offsets are written to ``starts`` and the total
+    buffer length is returned. This is pure arithmetic (using the same
+    bounding-box replication as ``_source_grid_setup``); no pixel walk
+    is performed.
+    """
+    cdef Py_ssize_t k, ix0, ix1, iy0, iy1, area, total = 0
+    cdef double cx, cy, ixmin_d, ixmax_d, iymin_d, iymax_d
+
+    for k in range(positions.shape[0]):
+        cx = positions[k, 0]
+        cy = positions[k, 1]
+        ixmin_d = floor(cx - ext_x + 0.5)
+        ixmax_d = ceil(cx + ext_x + 0.5)
+        iymin_d = floor(cy - ext_y + 0.5)
+        iymax_d = ceil(cy + ext_y + 0.5)
+        starts[k] = total
+        if (ixmin_d >= <double>nx_data or ixmax_d <= 0.0
+                or iymin_d >= <double>ny_data or iymax_d <= 0.0):
+            continue
+        ix0 = <Py_ssize_t>fmax(ixmin_d, 0.0)
+        ix1 = <Py_ssize_t>fmin(ixmax_d, <double>nx_data)
+        iy0 = <Py_ssize_t>fmax(iymin_d, 0.0)
+        iy1 = <Py_ssize_t>fmin(iymax_d, <double>ny_data)
+        area = (ix1 - ix0) * (iy1 - iy0)
+        if area > 0:
+            total += area
+    return total
 
 
 cdef inline double _circle_pixel_frac(double pxmin, double pymin,

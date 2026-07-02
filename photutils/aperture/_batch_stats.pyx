@@ -22,10 +22,15 @@ free-threaded Python builds.
 import numpy as np
 
 from photutils.aperture._batch_overlap cimport (
-    _circle_pixel_frac, _circular_annulus_pixel_frac, _ellipse_pixel_frac,
-    _elliptical_annulus_pixel_frac, _polygon_pixel_frac, _rect_pixel_frac,
-    _rectangular_annulus_pixel_frac)
-from photutils.geometry._polygon_overlap cimport convex_edge_normals
+    _CIRCLE, _CIRCULAR_ANNULUS, _ELLIPSE, _ELLIPTICAL_ANNULUS, _POLYGON,
+    _RECTANGLE, _RECTANGULAR_ANNULUS, _circle_pixel_frac,
+    _circular_annulus_pixel_frac, _ellipse_pixel_frac,
+    _elliptical_annulus_pixel_frac, _polygon_pixel_frac,
+    _presize_packed_offsets, _rect_pixel_frac, _rectangular_annulus_pixel_frac,
+    _round_half_away, _source_grid_setup)
+from photutils.geometry._polygon_overlap cimport (convex_edge_normals,
+                                                  polygon_work_partition,
+                                                  polygon_work_size)
 from photutils.geometry.rectangle_overlap cimport rect_vertices
 
 __all__ = ['batch_aperture_gather', 'batch_moments', 'batch_sort_values',
@@ -39,10 +44,6 @@ cdef extern from "math.h" nogil:
     double cos(double x)
     double sqrt(double x)
     double fabs(double x)
-    double fmax(double x, double y)
-    double fmin(double x, double y)
-    double floor(double x)
-    double ceil(double x)
     const double NAN
 
 cdef extern from "stdlib.h" nogil:
@@ -155,19 +156,6 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
 
     out_min[0] = minv
     out_max[0] = maxv
-
-
-# Aperture shape codes. These must stay in sync with the private
-# ``_shape_params`` attributes defined by the aperture classes and with
-# ``_batch_photometry``.
-cdef enum:
-    _CIRCLE = 0
-    _CIRCULAR_ANNULUS = 1
-    _ELLIPSE = 2
-    _ELLIPTICAL_ANNULUS = 3
-    _RECTANGLE = 4
-    _RECTANGULAR_ANNULUS = 5
-    _POLYGON = 6
 
 
 def batch_aperture_gather(const double[:, ::1] data,
@@ -353,18 +341,15 @@ def batch_aperture_gather(const double[:, ::1] data,
                    'of at least 3 vertices')
             raise ValueError(msg)
 
-        poly_buf_size = 16 * n_poly
-        poly_work = np.empty(2 * n_poly + 4 * poly_buf_size + 3 * n_poly,
+        # Single numpy block (kept alive by ``poly_work``) whose sizing
+        # and layout are shared with ``polygon_overlap_grid`` via
+        # ``polygon_work_size``/``polygon_work_partition``.
+        poly_work = np.empty(polygon_work_size(n_poly, &poly_buf_size),
                              dtype=np.float64)
-        poly_x = &poly_work[0]
-        poly_y = &poly_work[n_poly]
-        pbuf_a_x = &poly_work[2 * n_poly]
-        pbuf_a_y = &poly_work[2 * n_poly + poly_buf_size]
-        pbuf_b_x = &poly_work[2 * n_poly + 2 * poly_buf_size]
-        pbuf_b_y = &poly_work[2 * n_poly + 3 * poly_buf_size]
-        pedge_nx = &poly_work[2 * n_poly + 4 * poly_buf_size]
-        pedge_ny = &poly_work[3 * n_poly + 4 * poly_buf_size]
-        pedge_c = &poly_work[4 * n_poly + 4 * poly_buf_size]
+        polygon_work_partition(&poly_work[0], n_poly, poly_buf_size,
+                               &poly_x, &poly_y, &pbuf_a_x, &pbuf_a_y,
+                               &pbuf_b_x, &pbuf_b_y, &pedge_nx, &pedge_ny,
+                               &pedge_c)
         for pk in range(n_poly):
             poly_x[pk] = params[2 * pk]
             poly_y[pk] = params[2 * pk + 1]
@@ -376,38 +361,21 @@ def batch_aperture_gather(const double[:, ::1] data,
         raise ValueError(msg)
 
     cdef Py_ssize_t k, ix, iy, ix0, ix1, iy0, iy1
-    cdef Py_ssize_t ixmin, iymin, grid_nx, grid_ny, area
+    cdef Py_ssize_t ixmin, iymin
     cdef Py_ssize_t six, siy, xm, ym, ccx = 0, ccy = 0, mseg
     cdef double cx, cy, lbk
-    cdef double ixmin_d, ixmax_d, iymin_d, iymax_d
-    cdef double gxmin, gxmax, gymin, gymax
+    cdef double gxmin, gymin
     cdef double dx, dy, pixel_radius, norm
     cdef double pxmin, pymin, cfrac
     cdef Py_ssize_t total = 0, pos
 
-    # Pass 1: compute the clipped bounding-box area per source (an upper
-    # bound on the number of "center"-method survivors) to size and
-    # offset the packed value buffer. This is pure arithmetic; no pixel
-    # walk is performed here.
+    # Pass 1: size and offset the packed value buffer from the
+    # per-source clipped bounding-box areas (an upper bound on the
+    # number of "center"-method survivors). This is pure arithmetic; no
+    # pixel walk is performed here.
     with nogil:
-        for k in range(n_src):
-            cx = positions[k, 0]
-            cy = positions[k, 1]
-            ixmin_d = floor(cx - ext_x + 0.5)
-            ixmax_d = ceil(cx + ext_x + 0.5)
-            iymin_d = floor(cy - ext_y + 0.5)
-            iymax_d = ceil(cy + ext_y + 0.5)
-            starts[k] = total
-            if (ixmin_d >= <double>nx_data or ixmax_d <= 0.0
-                    or iymin_d >= <double>ny_data or iymax_d <= 0.0):
-                continue
-            ix0 = <Py_ssize_t>fmax(ixmin_d, 0.0)
-            ix1 = <Py_ssize_t>fmin(ixmax_d, <double>nx_data)
-            iy0 = <Py_ssize_t>fmax(iymin_d, 0.0)
-            iy1 = <Py_ssize_t>fmin(iymax_d, <double>ny_data)
-            area = (ix1 - ix0) * (iy1 - iy0)
-            if area > 0:
-                total += area
+        total = _presize_packed_offsets(positions, ext_x, ext_y, nx_data,
+                                        ny_data, starts)
 
     values_arr = np.empty(total, dtype=np.float64)
     lx_arr = np.empty(total, dtype=np.int32)
@@ -428,42 +396,18 @@ def batch_aperture_gather(const double[:, ::1] data,
             if has_seg:
                 lbl = labels[k]
                 if seg_method == 3:
-                    if cx >= 0.0:
-                        ccx = <Py_ssize_t>floor(cx + 0.5)
-                    else:
-                        ccx = <Py_ssize_t>ceil(cx - 0.5)
-                    if cy >= 0.0:
-                        ccy = <Py_ssize_t>floor(cy + 0.5)
-                    else:
-                        ccy = <Py_ssize_t>ceil(cy - 0.5)
+                    # Center pixel for the symmetric 'correct' mirror
+                    ccx = _round_half_away(cx)
+                    ccy = _round_half_away(cy)
 
-            ixmin_d = floor(cx - ext_x + 0.5)
-            ixmax_d = ceil(cx + ext_x + 0.5)
-            iymin_d = floor(cy - ext_y + 0.5)
-            iymax_d = ceil(cy + ext_y + 0.5)
-
-            if (ixmin_d >= <double>nx_data or ixmax_d <= 0.0
-                    or iymin_d >= <double>ny_data or iymax_d <= 0.0):
+            # Bounding box, overlap test, and pixel grid, replicated
+            # from the mask-based path (see ``_source_grid_setup``).
+            if not _source_grid_setup(cx, cy, ext_x, ext_y, nx_data,
+                                      ny_data, &gxmin, &gymin, &dx, &dy,
+                                      &pixel_radius, &norm, &ixmin,
+                                      &iymin, &ix0, &ix1, &iy0, &iy1):
                 continue
             overlap[k] = 1
-
-            gxmin = ixmin_d - 0.5 - cx
-            gxmax = ixmax_d - 0.5 - cx
-            gymin = iymin_d - 0.5 - cy
-            gymax = iymax_d - 0.5 - cy
-            grid_nx = <Py_ssize_t>(ixmax_d - ixmin_d)
-            grid_ny = <Py_ssize_t>(iymax_d - iymin_d)
-            dx = (gxmax - gxmin) / grid_nx
-            dy = (gymax - gymin) / grid_ny
-            pixel_radius = 0.5 * sqrt(dx * dx + dy * dy)
-            norm = 1.0 / (dx * dy)
-
-            ixmin = <Py_ssize_t>ixmin_d
-            iymin = <Py_ssize_t>iymin_d
-            ix0 = <Py_ssize_t>fmax(ixmin_d, 0.0)
-            ix1 = <Py_ssize_t>fmin(ixmax_d, <double>nx_data)
-            iy0 = <Py_ssize_t>fmax(iymin_d, 0.0)
-            iy1 = <Py_ssize_t>fmin(iymax_d, <double>ny_data)
 
             # Non-finite ``data`` pixels are folded into ``mask`` by the
             # caller, so pixel values are loaded lazily (only for pixels
