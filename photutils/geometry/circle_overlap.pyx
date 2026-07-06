@@ -159,7 +159,7 @@ cdef double circle_overlap_single_subpixel(double x0, double y0,
     Return the fraction of overlap between a circle and a single pixel
     with given extent, using a sub-pixel sampling method.
     """
-    cdef unsigned int i, j
+    cdef unsigned int _i, _j
     cdef double x, y, dx, dy, r_squared
     cdef double frac = 0.0  # accumulator
 
@@ -168,10 +168,10 @@ cdef double circle_overlap_single_subpixel(double x0, double y0,
     r_squared = r ** 2
 
     x = x0 - 0.5 * dx
-    for i in range(subpixels):
+    for _i in range(subpixels):
         x += dx
         y = y0 - 0.5 * dy
-        for j in range(subpixels):
+        for _j in range(subpixels):
             y += dy
             if x * x + y * y < r_squared:
                 frac += 1.0

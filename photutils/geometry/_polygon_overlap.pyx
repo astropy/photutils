@@ -492,7 +492,7 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
     driver), including from multiple threads on free-threaded Python
     builds.
     """
-    cdef int i, j, e, prev, m, a, b, ptr, h, hh
+    cdef int _i, _j, e, prev, m, a, b, ptr, h, hh
     cdef double x, y, dx, dy, hits
     cdef double xi, yi, xj, yj, tmp
     cdef bint inside
@@ -512,7 +512,7 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
 
     # Subpixel sampling (subpixels > 1): scanline parity fill.
     y = y0 + 0.5 * dy
-    for i in range(subpixels):
+    for _i in range(subpixels):
         # Characterize the polygon boundary on the horizontal line
         # at ``y``. Sloped and vertical edges that straddle the line
         # each contribute one crossing point (``xint_buf``), using
@@ -561,7 +561,7 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
         # x-span lies on that edge.
         x = x0 + 0.5 * dx
         ptr = 0
-        for j in range(subpixels):
+        for _j in range(subpixels):
             while ptr < m and xint_buf[ptr] < x:
                 ptr += 1
             inside = (((m - ptr) & 1) == 1

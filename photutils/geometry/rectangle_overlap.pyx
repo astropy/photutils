@@ -234,17 +234,17 @@ cdef double rectangle_overlap_single_subpixel(double x0, double y0,
     Return the fraction of overlap between a rectangle and a single
     pixel with given extent, using a sub-pixel sampling method.
     """
-    cdef unsigned int i, j
+    cdef unsigned int _i, _j
     cdef double x, y, x_tr, y_tr
     cdef double frac = 0.0
     cdef double dx = (x1 - x0) / subpixels
     cdef double dy = (y1 - y0) / subpixels
 
     x = x0 - 0.5 * dx
-    for i in range(subpixels):
+    for _i in range(subpixels):
         x += dx
         y = y0 - 0.5 * dy
-        for j in range(subpixels):
+        for _j in range(subpixels):
             y += dy
             x_tr = y * sin_theta + x * cos_theta
             y_tr = y * cos_theta - x * sin_theta
