@@ -201,7 +201,7 @@ cdef double ellipse_overlap_single_subpixel(double x0, double y0,
     ``cos_theta`` and ``sin_theta`` are the cosine and sine of the
     ellipse position angle, precomputed by the caller.
     """
-    cdef unsigned int i, j
+    cdef unsigned int _i, _j
     cdef double x, y
     cdef double frac = 0.0  # Accumulator.
     cdef double inv_rx_sq, inv_ry_sq
@@ -215,10 +215,10 @@ cdef double ellipse_overlap_single_subpixel(double x0, double y0,
     inv_ry_sq = 1.0 / (ry * ry)
 
     x = x0 - 0.5 * dx
-    for i in range(subpixels):
+    for _i in range(subpixels):
         x += dx
         y = y0 - 0.5 * dy
-        for j in range(subpixels):
+        for _j in range(subpixels):
             y += dy
 
             # Transform into frame of rotated ellipse

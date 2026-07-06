@@ -55,13 +55,13 @@ repos:
         # Enforce that all noqa annotations always occur with specific codes.
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.15.15'
+    rev: 'v0.15.20'
     hooks:
       - id: ruff-check
         args: ['--fix', '--show-fixes']
 
   - repo: https://github.com/scientific-python/cookie
-    rev: 2026.04.04
+    rev: 2026.06.18
     hooks:
       - id: sp-repo-review
 
@@ -83,17 +83,17 @@ repos:
         args: ['--ignore', 'E501,W503']
 
   - repo: https://github.com/MarcoGorelli/cython-lint
-    rev: v0.19.0
+    rev: v0.21.0
     hooks:
       - id: cython-lint
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.25.2
+    rev: v1.26.1
     hooks:
       - id: zizmor
 
   - repo: https://github.com/rbubley/mirrors-prettier
-    rev: v3.8.3
+    rev: v3.9.4
     hooks:
       - id: prettier
         types_or: [css, rst, json, yaml, toml, markdown]
@@ -114,7 +114,7 @@ repos:
           - tomli
 
   - repo: https://github.com/numpy/numpydoc
-    rev: v1.10.0
+    rev: v1.11.0rc0
     hooks:
       - id: numpydoc-validation
         exclude: 'extern/'
