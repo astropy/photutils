@@ -709,6 +709,28 @@ class TestApertureStats:
             assert_allclose(getattr(fast, prop), getattr(slow, prop),
                             rtol=1e-7, equal_nan=True, err_msg=prop)
 
+    def test_fast_path_mask_with_nonfinite_data(self):
+        """
+        Test that the fast batch driver correctly combines a
+        user-supplied ``mask`` with the mask derived from non-finite
+        ``data`` values, giving the same result as the mask-based code
+        path.
+        """
+        data = self.data.copy()
+        data[168, 145] = np.nan
+        rng = np.random.default_rng(123)
+        mask = rng.random(data.shape) > 0.7
+        fast = ApertureStats(data, CircularAperture(self.positions, r=5),
+                             error=self.error, mask=mask)
+        assert fast._batch_inputs is not None
+        slow = ApertureStats(data, _NoBatchCircular(self.positions, r=5),
+                             error=self.error, mask=mask)
+        assert slow._fast_gather is None
+        for prop in ('sum', 'mean', 'median', 'std', 'mean_err',
+                     'median_err'):
+            assert_allclose(getattr(fast, prop), getattr(slow, prop),
+                            rtol=1e-7, equal_nan=True, err_msg=prop)
+
     def test_mean_err_median_err(self):
         """
         Test the standard-error properties against their definitions.
