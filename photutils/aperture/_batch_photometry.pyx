@@ -460,10 +460,11 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
                     # Annulus fractions are a difference of two shapes,
                     # so floating-point noise can leave a boundary
-                    # pixel's fraction a tiny (nonnegative) value. The
-                    # mask-based path weights every nonzero-fraction
-                    # pixel, so match it with ``!= 0`` here.
-                    if frac != 0.0:
+                    # pixel's fraction a tiny negative value. Both the
+                    # mask-based path (via ``np.maximum``) and the batch
+                    # overlap functions clamp such fractions to zero, so
+                    # only strictly positive fractions contribute here.
+                    if frac > 0.0:
                         val = data[siy, six] - lbk
                         sum_val += val * frac
                         area_val += frac
