@@ -81,8 +81,7 @@ aperture shapes. The photometry for all sources is now computed in a
 single call into compiled code, avoiding the per-source Python overhead
 of creating individual aperture masks and cutouts. Typical speedups
 range from ~2x to more than 25x, depending on the aperture shape and
-overlap method, with the largest gains for fields with many sources. The
-results are identical to those from previous versions.
+overlap method, with the largest gains for fields with many sources.
 
 
 Faster Aperture Statistics
@@ -91,12 +90,10 @@ Faster Aperture Statistics
 `~photutils.aperture.ApertureStats` is now significantly faster. The
 per-source statistics are computed in a single call into compiled code,
 reusing the same fast pixel-overlap machinery as the aperture photometry
-improvements above. The descriptive statistics (e.g., mean, median,
-standard deviation, biweight, and image moments) are reduced in compiled
-nogil kernels, and the common `~astropy.stats.SigmaClip` configurations
-are sigma-clipped in compiled code as well. Typical speedups range from
-~5x to ~15x, depending on which properties are requested. The results
-are unchanged from previous versions.
+improvements above. Sigma-clipped statistics are also computed in
+compiled code for the common `~astropy.stats.SigmaClip` configurations.
+Typical speedups range from ~5x to ~15x, depending on which properties
+are requested.
 
 
 Aperture Statistics Error Estimates
@@ -145,9 +142,9 @@ standard deviation::
     4.793566477062262
 
 The ``ddof`` keyword affects only the ``var`` and ``std`` properties.
-All other properties, including the ``mean_err`` and ``median_err``
-standard errors (which are always computed using the sample standard
-deviation), are unaffected.
+All other properties are unaffected, including the ``mean_err`` and
+``median_err`` standard errors, which are always computed using the
+sample standard deviation regardless of the value of ``ddof``.
 
 
 Thread-Safe and Free-Threading-Compatible Aperture Photometry
