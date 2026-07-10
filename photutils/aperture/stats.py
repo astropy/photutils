@@ -1703,31 +1703,6 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         return np.transpose(self._bbox_bounds)[3]
 
-    def _calculate_stats(self, stat_func, *, unit=None):
-        """
-        Apply the input ``stat_func`` to the 1D array of unmasked data
-        values in the aperture.
-
-        Units are applied if the input ``data`` has units.
-
-        Parameters
-        ----------
-        stat_func : callable
-            The callable to apply to the 1D `~numpy.ndarray` of unmasked
-            data values.
-
-        unit : `None` or `astropy.unit.Unit`, optional
-            The unit to apply to the output data. This is used only
-            if the input ``data`` has units. If `None` then the input
-            ``data`` unit will be used.
-        """
-        result = np.array([stat_func(arr) for arr in self._data_values_center])
-        if unit is None:
-            unit = self._data_unit
-        if unit is not None:
-            result <<= unit
-        return result
-
     @lazyproperty
     def _center_npixels(self):
         """
@@ -1832,7 +1807,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             return result
 
         if self.sum_method == 'center':
-            return self._calculate_stats(np.sum)
+            return self._finalize_value_stat(None, np.sum)
 
         data_values = self._get_values(self.data_sum_cutout)
         result = np.array([np.sum(arr) for arr in data_values])
