@@ -1,7 +1,8 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 """
-Shared per-pixel aperture overlap helpers for the batch Cython drivers.
+Shared per-pixel aperture overlap helpers for the batch Cython drivers
+for aperture photometry.
 
 Each helper returns the fraction of a single pixel that overlaps an
 aperture shape centered on the origin, using exactly the same arithmetic
@@ -54,8 +55,20 @@ cdef enum:
 
 cdef inline Py_ssize_t _round_half_away(double x) noexcept nogil:
     """
-    Round to the nearest integer, with halves rounded away from zero
-    (replicates ``photutils.utils._round.round_half_away``).
+    Round to the nearest integer, rounding halfway values away from
+    zero.
+
+    This replicates ``photutils.utils._round.round_half_away``.
+
+    Parameters
+    ----------
+    x : double
+        The value to round.
+
+    Returns
+    -------
+    result : Py_ssize_t
+        The rounded integer value.
     """
     if x >= 0.0:
         return <Py_ssize_t>floor(x + 0.5)
@@ -73,24 +86,58 @@ cdef inline bint _source_grid_setup(double cx, double cy,
                                     Py_ssize_t *iy0,
                                     Py_ssize_t *iy1) noexcept nogil:
     """
-    Compute the bounding box and pixel grid of one source aperture.
+    Compute the pixel grid and bounding box for a single source
+    aperture.
 
-    This replicates ``BoundingBox.from_float`` (the box values are kept
-    as integral doubles to avoid integer overflow for apertures far
-    outside the data), ``BoundingBox.get_overlap_slices``, and the
-    ``Aperture._centered_edges`` grid setup of the `photutils.geometry`
-    grid functions, so the batch drivers walk exactly the same pixels
-    with exactly the same grid geometry as the mask-based code path.
+    This reproduces the geometry computed by ``BoundingBox.from_float``,
+    ``BoundingBox.get_overlap_slices``, and the
+    ``Aperture._centered_edges`` grid setup used by the
+    ``photutils.geometry`` routines. Consequently, the batch drivers
+    iterate over exactly the same pixels with the same grid geometry as
+    the mask-based code path.
 
-    Returns `False` (leaving the outputs unspecified) when the aperture
-    bounding box does not overlap the data. Otherwise the pixel-grid
-    edges relative to the aperture center (``gxmin``/``gymin``), the
-    pixel sizes (``dx``/``dy``), half the pixel diagonal
-    (``pixel_radius``), the inverse pixel area (``norm``), the unclipped
-    bounding-box origin (``ixmin``/``iymin``), and the clipped pixel
-    index ranges (``ix0``/``ix1``/``iy0``/``iy1``) are written through
-    the output pointers. This runs once per source (not per pixel), so
-    the output-pointer form has no effect on the per-pixel loops.
+    The bounding-box coordinates are stored as integral ``double``
+    values rather than integers to avoid overflow for apertures located
+    far outside the image.
+
+    Parameters
+    ----------
+    cx, cy : double
+        The aperture center, in data pixel coordinates.
+
+    ext_x, ext_y : double
+        Half the width and half the height of the aperture's bounding
+        box, in pixels.
+
+    nx_data, ny_data : Py_ssize_t
+        The shape of the data array in the x and y direction.
+
+    gxmin, gymin : double *
+        Output. The lower grid edges relative to the aperture center.
+
+    dx, dy : double *
+        Output. The pixel spacing of the grid. For the current pixel
+        grid, ``dx`` and ``dy`` are always equal to 1.0.
+
+    pixel_radius : double *
+        Output. Half the pixel diagonal.
+
+    norm : double *
+        Output. The inverse pixel area.
+
+    ixmin, iymin : Py_ssize_t *
+        Output. The unclipped bounding-box origin.
+
+    ix0, ix1, iy0, iy1 : Py_ssize_t *
+        Output. The bounding-box limits, clipped to the image.
+
+    Returns
+    -------
+    result : bint
+        `False` if the aperture bounding box does not overlap the
+        image, in which case the output values are unspecified.
+        Otherwise, returns `True` and writes the grid and bounding-box
+        values described above through the output pointers.
     """
     cdef double ixmin_d = floor(cx - ext_x + 0.5)
     cdef double ixmax_d = ceil(cx + ext_x + 0.5)
@@ -128,15 +175,40 @@ cdef inline Py_ssize_t _presize_packed_offsets(
         Py_ssize_t nx_data, Py_ssize_t ny_data,
         Py_ssize_t[::1] starts) noexcept nogil:
     """
-    Compute the packed-buffer start offset for each source.
+    Compute the starting offset of each source within packed per-pixel
+    buffers.
 
-    The clipped bounding-box area of each source is an upper bound on
-    its number of contributing pixels, so the cumulative areas size and
-    offset the packed per-pixel buffers emitted by the batch drivers.
-    The per-source offsets are written to ``starts`` and the total
-    buffer length is returned. This is pure arithmetic (using the same
-    bounding-box replication as ``_source_grid_setup``); no pixel walk
-    is performed.
+    For each source, the clipped bounding-box area provides an upper
+    bound on the number of pixels that may contribute. The cumulative
+    sum of these areas defines both the size of the packed per-pixel
+    buffers used by the batch drivers and the starting offset of each
+    source's region within those buffers.
+
+    This function performs only bounding-box and offset calculations
+    (using the same bounding-box logic as ``_source_grid_setup``). It
+    does not iterate over or evaluate individual pixels.
+
+    Parameters
+    ----------
+    positions : double[:, ::1]
+        The (x, y) center of each source aperture, in data pixel
+        coordinates, as an (N, 2) array.
+
+    ext_x, ext_y : double
+        Half the width and half the height of the aperture's bounding
+        box, in pixels. All sources share the same extent.
+
+    nx_data, ny_data : Py_ssize_t
+        The shape of the data array in the x and y direction.
+
+    starts : Py_ssize_t[::1]
+        Output. The starting offset of each source's region within the
+        packed per-pixel buffers.
+
+    Returns
+    -------
+    total : Py_ssize_t
+        The total required length of the packed per-pixel buffers.
     """
     cdef Py_ssize_t k, ix0, ix1, iy0, iy1, area, total = 0
     cdef double cx, cy, ixmin_d, ixmax_d, iymin_d, iymax_d
@@ -172,8 +244,37 @@ cdef inline double _circle_pixel_frac(double pxmin, double pymin,
     centered on the origin.
 
     This replicates the per-pixel logic of ``circular_overlap_grid``,
-    including the bounding-box and "well inside/outside" shortcuts, so
-    the result is identical to the grid function.
+    including the bounding-box check and the interior/exterior fast
+    path, so the result is identical to the grid function.
+
+    Parameters
+    ----------
+    pxmin, pymin : double
+        The lower edges of the pixel, relative to the circle center.
+
+    dx, dy : double
+        The pixel width and height.
+
+    pixel_radius : double
+        Half the pixel diagonal, used by the interior/exterior fast
+        path.
+
+    r : double
+        The radius of the circle.
+
+    use_exact : int
+        Set to 1 to use the exact geometric overlap calculation. Set
+        to 0 to use subpixel sampling instead.
+
+    subpixels : int
+        The number of subpixels (per dimension) used when
+        ``use_exact`` is 0.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        circle.
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
@@ -204,12 +305,42 @@ cdef inline double _circular_annulus_pixel_frac(double pxmin, double pymin,
     inner radius ``r_in`` and outer radius ``r_out`` centered on the
     origin.
 
-    The squared pixel-center distance and the (outer) bounding-box test
+    The squared pixel-center distance and the outer bounding-box check
     are computed once and shared by the outer and inner boundary
-    evaluations, avoiding the redundant setup of subtracting two
-    independent ``_circle_pixel_frac`` calls. The result is clamped at
-    zero: an annulus overlap can never be negative, but subtracting two
-    overlaps can yield a tiny negative value from floating-point noise.
+    evaluations, avoiding the redundant setup that two independent
+    ``_circle_pixel_frac`` calls would incur.
+
+    Parameters
+    ----------
+    pxmin, pymin : double
+        The lower edges of the pixel, relative to the annulus center.
+
+    dx, dy : double
+        The pixel width and height.
+
+    pixel_radius : double
+        Half the pixel diagonal, used by the interior/exterior fast
+        path.
+
+    r_in, r_out : double
+        The inner and outer radii of the annulus.
+
+    use_exact : int
+        Set to 1 to use the exact geometric overlap calculation. Set
+        to 0 to use subpixel sampling instead.
+
+    subpixels : int
+        The number of subpixels (per dimension) used when
+        ``use_exact`` is 0.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        annulus. The result is clamped at zero: an annulus overlap can
+        never be negative, but subtracting the inner overlap from the
+        outer overlap can otherwise yield a tiny negative value from
+        floating-point noise.
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
@@ -243,13 +374,48 @@ cdef inline double _ellipse_frac_core(double pxmin, double pymin,
                                       int subpixels) noexcept nogil:
     """
     Fraction of a single pixel that overlaps an ellipse with semi-axes
-    ``rx``/``ry`` and orientation ``cos_theta``/``sin_theta`` centered
-    on the origin, given the precomputed pixel center ``pxcen``/
-    ``pycen``.
+    ``rx``/``ry`` and orientation ``cos_theta``/``sin_theta``, centered
+    on the origin.
 
-    No bounding-box check is performed (the caller is responsible for
-    it), so this can be shared by the ellipse and elliptical-annulus
-    helpers.
+    This is the shared core used by both ``_ellipse_pixel_frac`` and
+    ``_elliptical_annulus_pixel_frac``, given the precomputed pixel
+    center ``pxcen``/``pycen``. The caller is responsible for the
+    bounding-box check; none is performed here.
+
+    Parameters
+    ----------
+    pxmin, pymin, pxmax, pymax : double
+        The pixel edges, relative to the ellipse center.
+
+    dx, dy : double
+        The pixel width and height.
+
+    norm : double
+        The inverse pixel area, used to normalize the exact overlap
+        calculation.
+
+    pxcen, pycen : double
+        The pixel center, relative to the ellipse center.
+
+    rx, ry : double
+        The semimajor and semiminor axes of the ellipse.
+
+    cos_theta, sin_theta : double
+        The cosine and sine of the ellipse's position angle.
+
+    use_exact : int
+        Set to 1 to use the exact geometric overlap calculation. Set
+        to 0 to use subpixel sampling instead.
+
+    subpixels : int
+        The number of subpixels (per dimension) used when
+        ``use_exact`` is 0.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        ellipse.
     """
     cdef double inv_rx2 = 1.0 / (rx * rx)
     cdef double inv_ry2 = 1.0 / (ry * ry)
@@ -282,15 +448,45 @@ cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
                                        int subpixels) noexcept nogil:
     """
     Fraction of a single pixel that overlaps an ellipse with semimajor
-    and semiminor axes ``rx`` and ``ry`` and position angle ``theta``
+    and semiminor axes ``rx`` and ``ry`` and position angle ``theta``,
     centered on the origin.
 
-    ``cos_theta`` and ``sin_theta`` are the cosine and sine of the
-    position angle, precomputed once per aperture by the caller.
-
     This replicates the per-pixel logic of ``elliptical_overlap_grid``,
-    including the bounding-circle shortcut and the interior/exterior
-    fast path, so the result is identical to the grid function.
+    including the bounding-circle check and the interior/exterior fast
+    path, so the result is identical to the grid function.
+
+    Parameters
+    ----------
+    pxmin, pymin : double
+        The lower edges of the pixel, relative to the ellipse center.
+
+    dx, dy : double
+        The pixel width and height.
+
+    norm : double
+        The inverse pixel area, used to normalize the exact overlap
+        calculation.
+
+    rx, ry : double
+        The semimajor and semiminor axes of the ellipse.
+
+    cos_theta, sin_theta : double
+        The cosine and sine of the ellipse's position angle ``theta``,
+        precomputed once per aperture by the caller.
+
+    use_exact : int
+        Set to 1 to use the exact geometric overlap calculation. Set
+        to 0 to use subpixel sampling instead.
+
+    subpixels : int
+        The number of subpixels (per dimension) used when
+        ``use_exact`` is 0.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        ellipse.
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
@@ -316,14 +512,49 @@ cdef inline double _elliptical_annulus_pixel_frac(
         int use_exact, int subpixels) noexcept nogil:
     """
     Fraction of a single pixel that overlaps an elliptical annulus with
-    inner semi-axes ``rx_in``/``ry_in`` and outer semi-axes ``rx_out``/
-    ``ry_out`` (shared orientation ``cos_theta``/``sin_theta``) centered
-    on the origin.
+    inner semi-axes ``rx_in``/``ry_in`` and outer semi-axes
+    ``rx_out``/``ry_out`` (sharing orientation
+    ``cos_theta``/``sin_theta``), centered on the origin.
 
-    The pixel center and the (outer) bounding-box test are computed once
-    and shared by the outer and inner boundary evaluations. The result
-    is clamped at zero to remove tiny negative values from
-    floating-point noise (an annulus overlap can never be negative).
+    The pixel center and the outer bounding-box check are computed once
+    and shared by the outer and inner boundary evaluations.
+
+    Parameters
+    ----------
+    pxmin, pymin : double
+        The lower edges of the pixel, relative to the annulus center.
+
+    dx, dy : double
+        The pixel width and height.
+
+    norm : double
+        The inverse pixel area, used to normalize the exact overlap
+        calculation.
+
+    rx_in, ry_in : double
+        The inner semimajor and semiminor axes of the annulus.
+
+    rx_out, ry_out : double
+        The outer semimajor and semiminor axes of the annulus.
+
+    cos_theta, sin_theta : double
+        The cosine and sine of the shared position angle ``theta``.
+
+    use_exact : int
+        Set to 1 to use the exact geometric overlap calculation. Set
+        to 0 to use subpixel sampling instead.
+
+    subpixels : int
+        The number of subpixels (per dimension) used when
+        ``use_exact`` is 0.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        annulus. The result is clamped at zero to remove tiny negative
+        values from floating-point noise (an annulus overlap can never
+        be negative).
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
@@ -360,12 +591,59 @@ cdef inline double _rect_frac_core(double pxmin, double pymin,
                                    int subpixels) noexcept nogil:
     """
     Fraction of a single pixel that overlaps a rotated rectangle
-    centered on the origin, given the precomputed rotated pixel-center
-    distances ``axrot``/``ayrot`` (used only by the exact
-    interior/exterior fast path).
+    centered on the origin.
 
-    This is shared by the rectangle and rectangular-annulus helpers so
-    the rotated pixel center is computed only once per pixel.
+    This is the shared core used by both ``_rect_pixel_frac`` and
+    ``_rectangular_annulus_pixel_frac``, so the rotated pixel center is
+    computed only once per pixel by the caller and passed in as
+    ``axrot``/``ayrot`` (used only by the exact interior/exterior fast
+    path).
+
+    Parameters
+    ----------
+    pxmin, pymin, pxmax, pymax : double
+        The pixel edges, relative to the rectangle center.
+
+    dx, dy : double
+        The pixel width and height.
+
+    margin : double
+        Half the pixel diagonal.
+
+    half_width, half_height : double
+        Half the width and half the height of the rectangle.
+
+    cos_theta, sin_theta : double
+        The cosine and sine of the rectangle's rotation angle.
+
+    bbox_dx, bbox_dy : double
+        Half the width and half the height of the rectangle's
+        axis-aligned bounding box.
+
+    axrot, ayrot : double
+        The rotated pixel-center distances from the rectangle center,
+        precomputed by the caller. Used only when ``use_exact`` is 1.
+
+    poly_x, poly_y : double *
+        Scratch buffers for the rectangle's polygon vertices, used by
+        the general (non-fast-path) exact overlap calculation.
+
+    buf_a_x, buf_a_y, buf_b_x, buf_b_y : double *
+        Scratch buffers used by the polygon-clipping routine.
+
+    use_exact : int
+        Set to 1 to use the exact geometric overlap calculation. Set
+        to 0 to use subpixel sampling instead.
+
+    subpixels : int
+        The number of subpixels (per dimension) used when
+        ``use_exact`` is 0.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        rectangle.
     """
     if use_exact:
         # Bounding-box check
@@ -402,14 +680,57 @@ cdef inline double _rect_pixel_frac(double pxmin, double pymin,
                                     int subpixels) noexcept nogil:
     """
     Fraction of a single pixel that overlaps a rectangle of full width
-    ``2 * half_width`` and full height ``2 * half_height`` rotated by
-    ``theta`` (given as ``cos_theta``/``sin_theta``) centered on the
-    origin. ``margin`` is half the pixel diagonal.
+    ``2 * half_width`` and full height ``2 * half_height``, rotated by
+    ``theta`` (given as ``cos_theta``/``sin_theta``) and centered on
+    the origin.
 
-    This replicates the per-pixel logic of ``rectangular_overlap_grid``
-    (the exact mode uses an interior/exterior fast path and skips pixels
-    outside the axis-aligned bounding box of the rotated rectangle), so
+    This replicates the per-pixel logic of ``rectangular_overlap_grid``:
+    the exact mode uses an interior/exterior fast path and skips pixels
+    outside the axis-aligned bounding box of the rotated rectangle, so
     the result is identical to the grid function.
+
+    Parameters
+    ----------
+    pxmin, pymin : double
+        The lower edges of the pixel, relative to the rectangle center.
+
+    dx, dy : double
+        The pixel width and height.
+
+    margin : double
+        Half the pixel diagonal.
+
+    half_width, half_height : double
+        Half the width and half the height of the rectangle.
+
+    cos_theta, sin_theta : double
+        The cosine and sine of the rectangle's rotation angle
+        ``theta``.
+
+    bbox_dx, bbox_dy : double
+        Half the width and half the height of the rectangle's
+        axis-aligned bounding box.
+
+    poly_x, poly_y : double *
+        Scratch buffers for the rectangle's polygon vertices, used by
+        the general (non-fast-path) exact overlap calculation.
+
+    buf_a_x, buf_a_y, buf_b_x, buf_b_y : double *
+        Scratch buffers used by the polygon-clipping routine.
+
+    use_exact : int
+        Set to 1 to use the exact geometric overlap calculation. Set
+        to 0 to use subpixel sampling instead.
+
+    subpixels : int
+        The number of subpixels (per dimension) used when
+        ``use_exact`` is 0.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        rectangle.
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
@@ -444,13 +765,65 @@ cdef inline double _rectangular_annulus_pixel_frac(
         int use_exact, int subpixels) noexcept nogil:
     """
     Fraction of a single pixel that overlaps a rectangular annulus
-    (shared orientation ``cos_theta``/``sin_theta``) centered on the
+    (sharing orientation ``cos_theta``/``sin_theta``), centered on the
     origin.
 
     The rotated pixel center is computed once and shared by the outer
-    and inner boundary evaluations. The result is clamped at zero to
-    remove tiny negative values from floating-point noise (an annulus
-    overlap can never be negative).
+    and inner boundary evaluations.
+
+    Parameters
+    ----------
+    pxmin, pymin : double
+        The lower edges of the pixel, relative to the annulus center.
+
+    dx, dy : double
+        The pixel width and height.
+
+    margin : double
+        Half the pixel diagonal.
+
+    half_width_in, half_height_in : double
+        Half the width and half the height of the inner rectangle.
+
+    half_width_out, half_height_out : double
+        Half the width and half the height of the outer rectangle.
+
+    cos_theta, sin_theta : double
+        The cosine and sine of the shared rotation angle ``theta``.
+
+    bbox_dx_in, bbox_dy_in : double
+        Half the width and half the height of the inner rectangle's
+        axis-aligned bounding box.
+
+    bbox_dx_out, bbox_dy_out : double
+        Half the width and half the height of the outer rectangle's
+        axis-aligned bounding box.
+
+    poly_x_in, poly_y_in : double *
+        Scratch buffers for the inner rectangle's polygon vertices.
+
+    poly_x_out, poly_y_out : double *
+        Scratch buffers for the outer rectangle's polygon vertices.
+
+    buf_a_x, buf_a_y, buf_b_x, buf_b_y : double *
+        Scratch buffers used by the polygon-clipping routine, shared
+        by the inner and outer boundary evaluations.
+
+    use_exact : int
+        Set to 1 to use the exact geometric overlap calculation. Set
+        to 0 to use subpixel sampling instead.
+
+    subpixels : int
+        The number of subpixels (per dimension) used when
+        ``use_exact`` is 0.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        annulus. The result is clamped at zero to remove tiny negative
+        values from floating-point noise (an annulus overlap can never
+        be negative).
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy
@@ -487,16 +860,62 @@ cdef inline double _polygon_pixel_frac(double pxmin, double pymin,
                                        int buf_size, int use_exact,
                                        int subpixels) noexcept nogil:
     """
-    Fraction of a single pixel that overlaps a simple polygon supplied
-    as counter-clockwise vertices centered on the origin. ``margin`` is
-    half the pixel diagonal.
+    Fraction of a single pixel that overlaps a simple polygon, supplied
+    as counter-clockwise vertices centered on the origin.
 
     This replicates the per-pixel logic of ``polygon_overlap_grid``: the
     exact mode uses an interior/exterior fast path for convex polygons
     (``is_convex``) and otherwise clips the pixel against the polygon
-    (Sutherland-Hodgman), while the subpixel mode samples pixel centers
-    with point-in-polygon tests, so the result is identical to the grid
-    function.
+    using the Sutherland-Hodgman algorithm; the subpixel mode instead
+    samples pixel centers with point-in-polygon tests. The result is
+    identical to the grid function.
+
+    Parameters
+    ----------
+    pxmin, pymin : double
+        The lower edges of the pixel, relative to the polygon center.
+
+    dx, dy : double
+        The pixel width and height.
+
+    margin : double
+        Half the pixel diagonal.
+
+    poly_x, poly_y : double *
+        The x and y coordinates of the polygon vertices, in
+        counter-clockwise order.
+
+    n_poly : int
+        The number of polygon vertices.
+
+    edge_nx, edge_ny, edge_c : double *
+        The precomputed edge normals and offsets used by the convex
+        interior/exterior fast path.
+
+    is_convex : int
+        Set to 1 if the polygon is convex, which enables the
+        interior/exterior fast path. Set to 0 for general (possibly
+        non-convex) polygons.
+
+    buf_a_x, buf_a_y, buf_b_x, buf_b_y : double *
+        Scratch buffers used by the polygon-clipping routine.
+
+    buf_size : int
+        The size of the scratch buffers.
+
+    use_exact : int
+        Set to 1 to use the exact geometric overlap calculation. Set
+        to 0 to use subpixel sampling instead.
+
+    subpixels : int
+        The number of subpixels (per dimension) used when
+        ``use_exact`` is 0.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        polygon.
     """
     cdef double pxmax = pxmin + dx
     cdef double pymax = pymin + dy

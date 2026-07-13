@@ -4,9 +4,9 @@
 """
 Tools to provide a batch driver for aperture statistics.
 
-For each source position, this module walks the aperture bounding box
-once and, using exactly the same per-pixel overlap arithmetic as the
-`photutils.geometry` grid functions (and the
+For each source position, this module iterates over the aperture
+bounding box once and, using exactly the same per-pixel overlap
+arithmetic as the `photutils.geometry` grid functions (and the
 `~photutils.aperture._batch_photometry` driver), gathers the unmasked
 "center"-method pixel values into a single packed buffer and accumulates
 the cheap streaming scalars (the ``sum_method`` aperture sum, error
@@ -68,7 +68,22 @@ cdef int _cmp_double(const void *a, const void *b) noexcept nogil:
 
 cdef inline double _median_sorted(double *s, Py_ssize_t n) noexcept nogil:
     """
-    Median of an ascending-sorted buffer (matches ``np.median``).
+    Median of an ascending-sorted buffer.
+
+    This matches ``np.median``.
+
+    Parameters
+    ----------
+    s : double *
+        The ascending-sorted buffer.
+
+    n : Py_ssize_t
+        The number of elements in ``s``.
+
+    Returns
+    -------
+    result : double
+        The median value.
     """
     if n % 2 == 1:
         return s[n // 2]
@@ -92,14 +107,39 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
     """
     Compute the converged sigma-clip bounds for one source.
 
-    The ascending-sorted values are in ``s[0:n]`` and ``work`` is a
-    scratch buffer of at least ``n`` elements. This reproduces
-    `astropy.stats.SigmaClip` for the no-axis, no-grow case: it
-    iteratively narrows the kept range and returns the final lower and
-    upper value bounds in ``out_min`` and ``out_max``. A source survives
-    the clip if its value ``v`` satisfies ``not (v < out_min) and not
-    (v > out_max)`` (so NaN bounds keep every value, matching astropy's
-    degenerate empty-set behavior).
+    This reproduces `astropy.stats.SigmaClip` for the no-axis, no-grow
+    case: it iteratively narrows the kept range and returns the final
+    lower and upper value bounds. A source survives the clip if its
+    value ``v`` satisfies ``not (v < out_min) and not (v > out_max)``,
+    so NaN bounds keep every value, matching astropy's degenerate
+    empty-set behavior.
+
+    Parameters
+    ----------
+    s : double *
+        The ascending-sorted values, as ``s[0:n]``.
+
+    work : double *
+        A scratch buffer of at least ``n`` elements.
+
+    n : Py_ssize_t
+        The number of values in ``s``.
+
+    sigma_lower, sigma_upper : double
+        The lower and upper clipping limits in units of the scale.
+
+    maxiters : Py_ssize_t
+        The maximum number of clipping iterations, or a negative value
+        to iterate until convergence.
+
+    cenfunc_code : int
+        The center function code (``_CEN_MEDIAN`` or ``_CEN_MEAN``).
+
+    stdfunc_code : int
+        The scale function code (``_STD_STD`` or ``_STD_MADSTD``).
+
+    out_min, out_max : double *
+        Output. The converged lower and upper value bounds.
     """
     cdef Py_ssize_t lo = 0, hi = n, new_lo, new_hi, cnt, i, iteration = 0
     cdef Py_ssize_t nchanged = 1
@@ -371,8 +411,9 @@ def batch_aperture_gather(const double[:, ::1] data,
 
     # Pass 1: size and offset the packed value buffer from the
     # per-source clipped bounding-box areas (an upper bound on the
-    # number of "center"-method survivors). This is pure arithmetic; no
-    # pixel walk is performed here.
+    # number of "center"-method survivors). This performs only
+    # bounding-box arithmetic; it does not iterate over or evaluate
+    # individual pixels.
     with nogil:
         total = _presize_packed_offsets(positions, ext_x, ext_y, nx_data,
                                         ny_data, starts)
@@ -384,8 +425,8 @@ def batch_aperture_gather(const double[:, ::1] data,
     cdef int[::1] local_x = lx_arr
     cdef int[::1] local_y = ly_arr
 
-    # Pass 2: walk each bounding box once and gather the "center"-method
-    # survivors into the packed buffer.
+    # Pass 2: iterate over each bounding box once and gather the
+    # "center"-method survivors into the packed buffer.
     with nogil:
         for k in range(n_src):
             cx = positions[k, 0]

@@ -341,7 +341,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
     # Pass 1 (only when emitting the packed member buffers): size and
     # offset the packed buffers from the per-source clipped bounding-box
-    # areas. This is pure arithmetic; no pixel walk is performed here.
+    # areas. This performs only bounding-box arithmetic; it does not
+    # iterate over or evaluate individual pixels.
     if emit_sum:
         with nogil:
             total = _presize_packed_offsets(positions, ext_x, ext_y,
