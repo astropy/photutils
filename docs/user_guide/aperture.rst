@@ -284,11 +284,11 @@ by a factor of 5 (``subpixels=5``) in each dimension::
 
     >>> phot_table = aperture_photometry(data, aperture, method='subpixel',
     ...                                  subpixels=5)
-    >>> print(phot_table)  # doctest: +SKIP
-     id x_center y_center aperture_sum
-    --- -------- -------- ------------
-      1     30.0     30.0        27.96
-      2     40.0     40.0        27.96
+    >>> print(phot_table)  # doctest: +FLOAT_CMP
+     id x_center y_center    aperture_sum
+    --- -------- -------- ------------------
+      1     30.0     30.0 27.959999999999997
+      2     40.0     40.0 27.959999999999997
 
 Note that the results differ from the exact value of 28.274333 (see
 above).
