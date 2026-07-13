@@ -45,8 +45,21 @@ cdef inline Py_ssize_t polygon_work_size(int n_poly,
     convex fast path (see ``polygon_work_partition`` for the layout).
     Each Sutherland-Hodgman clip can at most double the vertex count of
     a non-convex polygon, so after the four half-plane clips the vertex
-    count is bounded by ``16 * n_poly``; that bound is written to
-    ``buf_size``.
+    count is bounded by ``16 * n_poly``.
+
+    Parameters
+    ----------
+    n_poly : int
+        The number of polygon vertices.
+
+    buf_size : int *
+        Output. The per-buffer size (``16 * n_poly``) used for each of
+        the four Sutherland-Hodgman clip buffers.
+
+    Returns
+    -------
+    total : Py_ssize_t
+        The total number of doubles needed for the workspace.
     """
     buf_size[0] = 16 * n_poly
     return 2 * n_poly + 4 * buf_size[0] + 3 * n_poly
@@ -62,13 +75,36 @@ cdef inline void polygon_work_partition(double *base, int n_poly,
     """
     Partition a polygon overlap workspace into its component arrays.
 
-    ``base`` must point to a buffer of at least ``polygon_work_size``
-    doubles. The layout is the polygon vertex arrays (``n_poly`` each),
-    the four clip buffers (``buf_size`` each), and the three edge-normal
-    arrays (``n_poly`` each). Centralizing the offset arithmetic here
-    keeps ``polygon_overlap_grid`` and the aperture batch drivers in
-    sync. This runs once per call (not per pixel), so the
-    pointer-output form has no effect on the per-pixel loops.
+    Centralizing the offset arithmetic here keeps the buffer layout
+    consistent wherever it is used. This runs once per call (not per
+    pixel), so the pointer-output form has no effect on the per-pixel
+    loops.
+
+    Parameters
+    ----------
+    base : double *
+        The workspace buffer, of at least ``polygon_work_size(n_poly)``
+        doubles. The layout is the polygon vertex arrays (``n_poly``
+        each), the four clip buffers (``buf_size`` each), and the three
+        edge-normal arrays (``n_poly`` each).
+
+    n_poly : int
+        The number of polygon vertices.
+
+    buf_size : int
+        The size of each of the four clip buffers (see
+        ``polygon_work_size``).
+
+    poly_x, poly_y : double **
+        Output. Pointers into ``base`` for the polygon vertex arrays.
+
+    buf_a_x, buf_a_y, buf_b_x, buf_b_y : double **
+        Output. Pointers into ``base`` for the four Sutherland-Hodgman
+        clip buffers.
+
+    edge_nx, edge_ny, edge_c : double **
+        Output. Pointers into ``base`` for the three convex-fast-path
+        edge-normal arrays.
     """
     poly_x[0] = base
     poly_y[0] = base + n_poly

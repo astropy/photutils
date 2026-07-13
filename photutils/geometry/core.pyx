@@ -30,14 +30,22 @@ ctypedef struct intersections:
 
 cdef double floor_sqrt(double x) noexcept nogil:
     """
-    In some of the geometrical functions, we have to take the sqrt of a
-    number and we know that the number should be >= 0. However, in some
-    cases the value is e.g. -1e-10, but we want to treat it as zero,
-    which is what this function does.
+    Square root of a value expected to be non-negative, treating small
+    negative values (e.g., from floating-point round-off) as zero.
 
-    Note that this does **not** check whether negative values are close
-    or not to zero, so this should be used only in cases where the value
-    is expected to be positive.
+    This does not check whether a negative value is actually close to
+    zero, so it should be used only where the true value is expected
+    to be non-negative.
+
+    Parameters
+    ----------
+    x : double
+        The value to take the square root of.
+
+    Returns
+    -------
+    result : double
+        ``sqrt(x)`` if ``x > 0``, otherwise 0.
     """
     if x > 0:
         return sqrt(x)
@@ -54,6 +62,7 @@ cdef double distance(double x1, double y1, double x2,
     ----------
     x1, y1 : float
         The coordinates of the first point.
+
     x2, y2 : float
         The coordinates of the second point.
 
@@ -68,8 +77,25 @@ cdef double distance(double x1, double y1, double x2,
 cdef double area_arc(double x1, double y1, double x2, double y2,
                      double r) noexcept nogil:
     """
-    Area of a circle arc with radius r between points (x1, y1) and (x2,
-    y2).
+    Area of a circular segment: the region between the chord
+    connecting (x1, y1) and (x2, y2) and the circular arc of radius
+    ``r`` spanning the same two points.
+
+    Both points are assumed to lie on a circle of radius ``r`` centered
+    on the origin.
+
+    Parameters
+    ----------
+    x1, y1, x2, y2 : float
+        The coordinates of the two points defining the chord.
+
+    r : float
+        The radius of the circle.
+
+    Returns
+    -------
+    area : float
+        The area of the circular segment.
 
     References
     ----------
@@ -86,6 +112,16 @@ cdef double area_triangle(double x1, double y1, double x2, double y2,
                           double x3, double y3) noexcept nogil:
     """
     Area of a triangle defined by three vertices.
+
+    Parameters
+    ----------
+    x1, y1, x2, y2, x3, y3 : float
+        The coordinates of the three vertices.
+
+    Returns
+    -------
+    area : float
+        The (unsigned) area of the triangle.
     """
     return 0.5 * fabs(x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
 
@@ -93,8 +129,22 @@ cdef double area_triangle(double x1, double y1, double x2, double y2,
 cdef double area_arc_unit(double x1, double y1, double x2,
                           double y2) noexcept nogil:
     """
-    Area of a unit circle arc (radius of 1) between points (x1, y1) and
-    (x2, y2).
+    Area of a circular segment of the unit circle (radius 1): the
+    region between the chord connecting (x1, y1) and (x2, y2) and the
+    circular arc spanning the same two points.
+
+    Both points are assumed to lie on the unit circle centered on the
+    origin. This is equivalent to ``area_arc`` with ``r = 1``.
+
+    Parameters
+    ----------
+    x1, y1, x2, y2 : float
+        The coordinates of the two points defining the chord.
+
+    Returns
+    -------
+    area : float
+        The area of the circular segment.
 
     References
     ----------
@@ -110,7 +160,20 @@ cdef double area_arc_unit(double x1, double y1, double x2,
 cdef int in_triangle(double x, double y, double x1, double y1, double x2,
                      double y2, double x3, double y3) noexcept nogil:
     """
-    Check if a point (x,y) is inside a triangle.
+    Test whether a point lies inside a triangle.
+
+    Parameters
+    ----------
+    x, y : float
+        The coordinates of the point to test.
+
+    x1, y1, x2, y2, x3, y3 : float
+        The coordinates of the triangle's three vertices.
+
+    Returns
+    -------
+    result : int
+        1 if the point lies inside the triangle, 0 otherwise.
     """
     cdef int c = 0
 
@@ -124,10 +187,19 @@ cdef int in_triangle(double x, double y, double x1, double y1, double x2,
 cdef intersections circle_line(double x1, double y1, double x2,
                                double y2) noexcept nogil:
     """
-    Intersection of a line defined by two points with a unit circle.
+    Intersection of the infinite line through two points with the unit
+    circle.
 
-    Coordinates > 1 in the result indicate that there is no
-    intersection.
+    Parameters
+    ----------
+    x1, y1, x2, y2 : float
+        The coordinates of two distinct points defining the line.
+
+    Returns
+    -------
+    result : intersections
+        The two intersection points, ``p1`` and ``p2``. Coordinates
+        greater than 1 indicate that there is no intersection.
     """
     cdef double a, b, delta, dx, dy
     cdef double tolerance = 1.e-10
@@ -180,9 +252,18 @@ cdef intersections circle_line(double x1, double y1, double x2,
 cdef point circle_segment_single2(double x1, double y1, double x2,
                                   double y2) noexcept nogil:
     """
-    The intersection of a line with the unit circle.
+    Intersection of the infinite line through two points with the unit
+    circle, choosing the intersection closest to the second point.
 
-    The intersection closest to (x2, y2) is chosen.
+    Parameters
+    ----------
+    x1, y1, x2, y2 : float
+        The coordinates of two distinct points defining the line.
+
+    Returns
+    -------
+    result : point
+        The intersection point closest to ``(x2, y2)``.
     """
     cdef double dx1, dy1, dx2, dy2
     cdef intersections inter
@@ -216,9 +297,19 @@ cdef point circle_segment_single2(double x1, double y1, double x2,
 cdef intersections circle_segment(double x1, double y1, double x2,
                                   double y2) noexcept nogil:
     """
-    Intersection(s) of a segment with the unit circle.
+    Intersection(s) of a line segment with the unit circle.
 
-    Discard any solution not on the segment.
+    Parameters
+    ----------
+    x1, y1, x2, y2 : float
+        The coordinates of the segment's two endpoints.
+
+    Returns
+    -------
+    result : intersections
+        The two intersection points, ``p1`` and ``p2``. Any solution
+        that does not lie on the segment is discarded (coordinates set
+        to 2, which is outside the unit circle).
     """
     cdef intersections inter, inter_new
     cdef point pt1, pt2
@@ -251,8 +342,18 @@ cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2,
                                               double y2, double x3,
                                               double y3) noexcept nogil:
     """
-    Given a triangle defined by three points (x1, y1), (x2, y2), and
-    (x3, y3), find the area of overlap with the unit circle.
+    Area of overlap between a triangle and the unit circle centered on
+    the origin.
+
+    Parameters
+    ----------
+    x1, y1, x2, y2, x3, y3 : float
+        The coordinates of the triangle's three vertices.
+
+    Returns
+    -------
+    area : float
+        The area of overlap between the triangle and the unit circle.
     """
     cdef double d1, d2, d3
     cdef bint in1, in2, in3

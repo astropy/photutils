@@ -26,10 +26,10 @@ cdef inline double circle_frac_from_d2(double pxmin, double pymin,
     centered on the origin, given the precomputed squared distance
     ``d2`` from the origin to the pixel center.
 
-    This is the shared per-pixel decision core for the circular
-    overlap: it is called both by ``circular_overlap_grid`` and by the
-    batch aperture helpers, so the interior/exterior fast path and the
-    exact/subpixel dispatch live in a single place.
+    This is the per-pixel decision core for the circular overlap,
+    factored out of ``circular_overlap_grid`` so the interior/exterior
+    fast path and the exact/subpixel dispatch live in a single,
+    reusable place.
 
     Using the squared distance avoids a ``sqrt`` per pixel: the
     interior/exterior fast-path thresholds ``r ± pixel_radius`` are
@@ -37,6 +37,38 @@ cdef inline double circle_frac_from_d2(double pxmin, double pymin,
     responsible for it), so the same core can be shared by the circle
     and circular-annulus helpers to avoid recomputing ``d2`` for each
     boundary.
+
+    Parameters
+    ----------
+    pxmin, pymin, pxmax, pymax : double
+        The pixel edges, relative to the circle center.
+
+    dx, dy : double
+        The pixel width and height.
+
+    pixel_radius : double
+        Half the pixel diagonal.
+
+    d2 : double
+        The squared distance from the circle center to the pixel
+        center.
+
+    r : double
+        The radius of the circle.
+
+    use_exact : int
+        Set to 1 to use the exact geometric overlap calculation. Set
+        to 0 to use subpixel sampling instead.
+
+    subpixels : int
+        The number of subpixels (per dimension) used when
+        ``use_exact`` is 0.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        circle.
     """
     cdef double r_inner = r - pixel_radius
     cdef double r_outer = r + pixel_radius

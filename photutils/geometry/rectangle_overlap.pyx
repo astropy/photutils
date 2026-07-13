@@ -7,9 +7,9 @@ grid.
 
 The cdef function is not intended to be called from Python code.
 It is a pure C math function declared ``noexcept nogil`` so it can
-be called without the GIL (e.g., from the batch aperture photometry
-driver), including from multiple threads on free-threaded Python builds.
-Its signature is exported via rectangle_overlap.pxd.
+be called without the GIL, including from multiple threads on
+free-threaded Python builds. Its signature is exported via
+rectangle_overlap.pxd for reuse elsewhere.
 
 NOTE: The ``rectangular_overlap_grid`` function should be named
 ``rectangle_overlap_grid``, but it has been public for a long time and
@@ -131,8 +131,7 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
 
     if use_exact == 1:
         # Build the four CCW vertices of the rotated rectangle (centered
-        # on the origin), shared with the batch helpers via
-        # ``rect_vertices``.
+        # on the origin) via ``rect_vertices``.
         rect_vertices(half_width, half_height, cos_theta, sin_theta,
                       poly_x, poly_y)
 
@@ -223,8 +222,28 @@ cdef double rectangle_overlap_single_subpixel(double x0, double y0,
                                               double sin_theta,
                                               int subpixels) noexcept nogil:
     """
-    Return the fraction of overlap between a rectangle and a single
-    pixel with given extent, using a sub-pixel sampling method.
+    Fraction of overlap between a rectangle centered on the origin and
+    a single pixel, using subpixel sampling.
+
+    Parameters
+    ----------
+    x0, y0, x1, y1 : double
+        The lower and upper edges of the pixel.
+
+    half_width, half_height : double
+        Half the width and half the height of the rectangle.
+
+    cos_theta, sin_theta : double
+        The cosine and sine of the rectangle's rotation angle.
+
+    subpixels : int
+        The number of subpixels to sample in each dimension.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        rectangle.
     """
     cdef unsigned int _i, _j
     cdef double x, y, x_tr, y_tr

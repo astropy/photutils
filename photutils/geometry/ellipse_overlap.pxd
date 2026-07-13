@@ -41,9 +41,25 @@ cdef inline void ellipse_quadratic_coeffs(double rx, double ry,
     ``cxx*x**2 + cyy*y**2 + cxy*x*y < 1``. A pixel is wholly inside
     when its center value is ``<= f_in`` and wholly outside when it is
     ``>= f_out`` (see ``elliptical_overlap_grid``). The results are
-    returned through the output pointers so the same setup can be shared
-    by the grid kernel (computed once per grid) and the batch ellipse
-    helpers.
+    returned through the output pointers so the same setup can be
+    computed once and reused wherever it is needed.
+
+    Parameters
+    ----------
+    rx, ry : double
+        The semimajor and semiminor axes of the ellipse.
+
+    cos_theta, sin_theta : double
+        The cosine and sine of the ellipse's position angle.
+
+    dx, dy : double
+        The pixel width and height.
+
+    cxx, cyy, cxy : double *
+        Output. The quadratic-form coefficients.
+
+    f_in, f_out : double *
+        Output. The interior and exterior fast-path thresholds.
     """
     cdef double inv_rx2 = 1.0 / (rx * rx)
     cdef double inv_ry2 = 1.0 / (ry * ry)
@@ -71,12 +87,48 @@ cdef inline double ellipse_frac_from_rpix2(double pxmin, double pymin,
     precomputed quadratic-form value ``rpix2`` at the pixel center and
     the fast-path thresholds ``f_in``/``f_out``.
 
-    This is the shared per-pixel decision core for the elliptical
-    overlap (interior/exterior fast path and exact/subpixel dispatch),
-    called by both ``elliptical_overlap_grid`` and the batch ellipse
-    helpers. No bounding-box check is performed (the caller is
-    responsible for it), so it can be shared by the ellipse and
-    elliptical-annulus helpers.
+    This is the per-pixel decision core for the elliptical overlap
+    (interior/exterior fast path and exact/subpixel dispatch), factored
+    out of ``elliptical_overlap_grid`` so the same logic can be reused
+    by the ellipse and elliptical-annulus helpers. No bounding-box
+    check is performed (the caller is responsible for it).
+
+    Parameters
+    ----------
+    pxmin, pymin, pxmax, pymax : double
+        The pixel edges, relative to the ellipse center.
+
+    norm : double
+        The inverse pixel area, used to normalize the exact overlap
+        calculation.
+
+    rx, ry : double
+        The semimajor and semiminor axes of the ellipse.
+
+    cos_theta, sin_theta : double
+        The cosine and sine of the ellipse's position angle.
+
+    rpix2 : double
+        The quadratic-form value at the pixel center (see
+        ``ellipse_quadratic_coeffs``).
+
+    f_in, f_out : double
+        The interior and exterior fast-path thresholds (see
+        ``ellipse_quadratic_coeffs``).
+
+    use_exact : int
+        Set to 1 to use the exact geometric overlap calculation. Set
+        to 0 to use subpixel sampling instead.
+
+    subpixels : int
+        The number of subpixels (per dimension) used when
+        ``use_exact`` is 0.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        ellipse.
     """
     if rpix2 >= f_out:
         return 0.0  # pixel fully outside the ellipse

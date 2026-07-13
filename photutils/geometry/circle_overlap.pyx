@@ -7,9 +7,9 @@ grid.
 
 The cdef functions are not intended to be called from Python code.
 They are pure C math functions declared ``noexcept nogil`` so they can
-be called without the GIL (e.g., from the batch aperture photometry
-driver), including from multiple threads on free-threaded Python builds.
-Their signatures are exported via circle_overlap.pxd.
+be called without the GIL, including from multiple threads on
+free-threaded Python builds. Their signatures are exported via
+circle_overlap.pxd for reuse elsewhere.
 
 NOTE: The ``circular_overlap_grid`` function should be named
 ``circle_overlap_grid``, but it has been public for a long time and
@@ -124,9 +124,10 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                         # center (avoids a per-pixel sqrt).
                         d2 = pxcen * pxcen + pycen * pycen
 
-                        # Shared per-pixel decision core (interior/
-                        # exterior fast path and exact/subpixel
-                        # dispatch), identical to the batch helpers.
+                        # Per-pixel decision core (interior/exterior
+                        # fast path and exact/subpixel dispatch),
+                        # factored out into ``circle_frac_from_d2``
+                        # above.
                         frac_view[j, i] = circle_frac_from_d2(
                             pxmin, pymin, pxmax, pymax, dx, dy,
                             pixel_radius, d2, r, use_exact, subpixels)
@@ -139,8 +140,25 @@ cdef double circle_overlap_single_subpixel(double x0, double y0,
                                            double r,
                                            int subpixels) noexcept nogil:
     """
-    Return the fraction of overlap between a circle and a single pixel
-    with given extent, using a sub-pixel sampling method.
+    Fraction of overlap between a circle of radius ``r`` centered on
+    the origin and a single pixel, using subpixel sampling.
+
+    Parameters
+    ----------
+    x0, y0, x1, y1 : double
+        The lower and upper edges of the pixel.
+
+    r : double
+        The radius of the circle.
+
+    subpixels : int
+        The number of subpixels to sample in each dimension.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        circle.
     """
     cdef unsigned int _i, _j
     cdef double x, y, dx, dy, r_squared
@@ -166,10 +184,25 @@ cdef double circle_overlap_single_exact(double xmin, double ymin,
                                         double xmax, double ymax,
                                         double r) noexcept nogil:
     """
-    Calculate the area of overlap between a circle and a single pixel
-    with given extent, using an exact method.
+    Exact area of overlap between a circle centered on the origin and a
+    single pixel.
 
-    The circle is centered on the origin.
+    The pixel is split at the x and y axes as needed so that
+    ``circle_overlap_core`` can be applied to a quadrant-aligned
+    rectangle, and the partial areas are summed.
+
+    Parameters
+    ----------
+    xmin, ymin, xmax, ymax : double
+        The lower and upper edges of the pixel.
+
+    r : double
+        The radius of the circle.
+
+    Returns
+    -------
+    area : double
+        The area of overlap between the circle and the pixel.
     """
     if 0.0 <= xmin:
         if 0.0 <= ymin:
@@ -201,12 +234,26 @@ cdef double circle_overlap_single_exact(double xmin, double ymin,
 cdef double circle_overlap_core(double xmin, double ymin, double xmax,
                                 double ymax, double r) noexcept nogil:
     """
-    Calculate the area of overlap between a circle and a rectangle,
-    where the rectangle is in the first quadrant and the circle is
-    centered on the origin.
+    Exact area of overlap between a circle centered on the origin and a
+    rectangle confined to the first quadrant.
 
-    Assumes that the center of the circle is <= xmin, ymin (can always
-    modify input to conform to this).
+    This assumes ``0 <= xmin`` and ``0 <= ymin`` (the caller is
+    responsible for splitting a pixel that straddles either axis, as
+    done by ``circle_overlap_single_exact``).
+
+    Parameters
+    ----------
+    xmin, ymin, xmax, ymax : double
+        The lower and upper edges of the rectangle, with
+        ``0 <= xmin <= xmax`` and ``0 <= ymin <= ymax``.
+
+    r : double
+        The radius of the circle.
+
+    Returns
+    -------
+    area : double
+        The area of overlap between the circle and the rectangle.
     """
     cdef double area, d1, d2, x1, x2, y1, y2
 
