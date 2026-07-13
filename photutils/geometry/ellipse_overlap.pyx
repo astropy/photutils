@@ -12,9 +12,9 @@ unit circle.
 
 The cdef functions are not intended to be called from Python code.
 They are pure C math functions declared ``noexcept nogil`` so they can
-be called without the GIL (e.g., from the batch aperture photometry
-driver), including from multiple threads on free-threaded Python builds.
-Their signatures are exported via ellipse_overlap.pxd.
+be called without the GIL, including from multiple threads on
+free-threaded Python builds. Their signatures are exported via
+ellipse_overlap.pxd for reuse elsewhere.
 
 NOTE: The ``elliptical_overlap_grid`` function should be named
 ``ellipse_overlap_grid``, but it has been public for a long time and
@@ -122,8 +122,7 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     norm = 1.0 / (dx * dy)
 
     # Quadratic-form coefficients and interior/exterior fast-path
-    # thresholds. Computed once here and shared with the batch helpers
-    # via ``ellipse_quadratic_coeffs``.
+    # thresholds, computed once here via ``ellipse_quadratic_coeffs``.
     cos_theta = cos(theta)
     sin_theta = sin(theta)
     ellipse_quadratic_coeffs(rx, ry, cos_theta, sin_theta, dx, dy,
@@ -156,8 +155,8 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                         rpix2 = (cxx * pxcen * pxcen
                                  + cyy * pycen * pycen
                                  + cxy * pxcen * pycen)
-                        # Shared per-pixel decision core, identical to
-                        # the batch helpers.
+                        # Per-pixel decision core, factored out into
+                        # ``ellipse_frac_from_rpix2`` above.
                         frac_view[j, i] = ellipse_frac_from_rpix2(
                             pxmin, pymin, pxmax, pymax, norm, rx, ry,
                             cos_theta, sin_theta, rpix2, f_in, f_out,
@@ -172,11 +171,29 @@ cdef double ellipse_overlap_single_subpixel(double x0, double y0,
                                             double sin_theta,
                                             int subpixels) noexcept nogil:
     """
-    Return the fraction of overlap between an ellipse and a single
-    pixel with given extent, using a sub-pixel sampling method.
+    Fraction of overlap between an ellipse centered on the origin and a
+    single pixel, using subpixel sampling.
 
-    ``cos_theta`` and ``sin_theta`` are the cosine and sine of the
-    ellipse position angle, precomputed by the caller.
+    Parameters
+    ----------
+    x0, y0, x1, y1 : double
+        The lower and upper edges of the pixel.
+
+    rx, ry : double
+        The semimajor and semiminor axes of the ellipse.
+
+    cos_theta, sin_theta : double
+        The cosine and sine of the ellipse's position angle,
+        precomputed by the caller.
+
+    subpixels : int
+        The number of subpixels to sample in each dimension.
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        ellipse.
     """
     cdef unsigned int _i, _j
     cdef double x, y
@@ -214,19 +231,31 @@ cdef double ellipse_overlap_single_exact(double xmin, double ymin,
                                          double cos_theta,
                                          double sin_theta) noexcept nogil:
     """
-    Return the area of overlap between a rectangle and an ellipse.
+    Exact area of overlap between an ellipse centered on the origin and
+    a rectangle.
 
-    The rectangle is defined by (``xmin``, ``ymin``, ``xmax``, ``ymax``)
-    and the ellipse has major and minor axes ``rx`` and ``ry``,
-    respectively, position angle ``theta``, and is centered at the
-    origin. The method divides the pixel rectangle into two triangles
-    and reprojects them into a coordinate system where the ellipse
-    becomes the unit circle. It then computes the intersection area
-    between each triangle and the unit circle, and sums them to get the
-    total area of overlap.
+    The method divides the pixel rectangle into two triangles and
+    reprojects them into a coordinate system where the ellipse becomes
+    the unit circle. It then computes the intersection area between
+    each triangle and the unit circle, and sums the two areas to get
+    the total area of overlap.
 
-    ``cos_theta`` and ``sin_theta`` are the cosine and sine of the
-    ellipse position angle, precomputed by the caller.
+    Parameters
+    ----------
+    xmin, ymin, xmax, ymax : double
+        The lower and upper edges of the rectangle.
+
+    rx, ry : double
+        The semimajor and semiminor axes of the ellipse.
+
+    cos_theta, sin_theta : double
+        The cosine and sine of the ellipse's position angle,
+        precomputed by the caller.
+
+    Returns
+    -------
+    area : double
+        The area of overlap between the ellipse and the rectangle.
     """
     # The reprojection uses the -theta rotation, for which
     # cos(-theta) = cos(theta) and sin(-theta) = -sin(theta).

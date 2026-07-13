@@ -19,13 +19,27 @@ cdef inline void rect_vertices(double half_width, double half_height,
                                double cos_theta, double sin_theta,
                                double *poly_x, double *poly_y) noexcept nogil:
     """
-    Build the four CCW vertices of a rotated rectangle centered on the
-    origin. Shared by ``rectangular_overlap_grid`` and the batch
-    rectangle helpers so the vertex arithmetic lives in one place.
+    Build the four counter-clockwise vertices of a rotated rectangle
+    centered on the origin.
 
-    Local-frame vertices in CCW order are (-w/2, -h/2), (w/2, -h/2),
-    (w/2, h/2), (-w/2, h/2), rotated by theta:
-    ``x' = x cos t - y sin t``, ``y' = x sin t + y cos t``.
+    Factored out of ``rectangular_overlap_grid`` so the vertex
+    arithmetic lives in one reusable place. The local-frame vertices in
+    counter-clockwise order are (-w/2, -h/2), (w/2, -h/2), (w/2, h/2),
+    (-w/2, h/2), rotated by theta: ``x' = x cos t - y sin t``,
+    ``y' = x sin t + y cos t``.
+
+    Parameters
+    ----------
+    half_width, half_height : double
+        Half the width and half the height of the rectangle.
+
+    cos_theta, sin_theta : double
+        The cosine and sine of the rectangle's rotation angle.
+
+    poly_x, poly_y : double *
+        Output. The x and y coordinates of the four rectangle
+        vertices, in counter-clockwise order. Each must point to a
+        buffer of at least 4 doubles.
     """
     poly_x[0] = -half_width * cos_theta - (-half_height) * sin_theta
     poly_y[0] = -half_width * sin_theta + (-half_height) * cos_theta
