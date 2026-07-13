@@ -120,21 +120,23 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         raise ValueError(msg)
 
     # Working buffers, allocated once per call (not per pixel) as a
-    # single block. Each Sutherland-Hodgman clip can at most double the
-    # vertex count of a non-convex polygon, so after the four half-plane
-    # clips the vertex count is bounded by 16 * n_poly.
-    cdef int buf_size = 16 * n_poly
-    cdef double[::1] work = np.empty(2 * n_poly + 4 * buf_size
-                                     + 3 * n_poly, dtype=DTYPE)
-    cdef double *poly_x = &work[0]
-    cdef double *poly_y = &work[n_poly]
-    cdef double *buf_a_x = &work[2 * n_poly]
-    cdef double *buf_a_y = &work[2 * n_poly + buf_size]
-    cdef double *buf_b_x = &work[2 * n_poly + 2 * buf_size]
-    cdef double *buf_b_y = &work[2 * n_poly + 3 * buf_size]
-    cdef double *edge_nx = &work[2 * n_poly + 4 * buf_size]
-    cdef double *edge_ny = &work[3 * n_poly + 4 * buf_size]
-    cdef double *edge_c = &work[4 * n_poly + 4 * buf_size]
+    # single block whose sizing and layout are shared with the aperture
+    # batch drivers via ``polygon_work_size``/``polygon_work_partition``.
+    cdef int buf_size = 0
+    cdef double[::1] work = np.empty(polygon_work_size(n_poly, &buf_size),
+                                     dtype=DTYPE)
+    cdef double *poly_x = NULL
+    cdef double *poly_y = NULL
+    cdef double *buf_a_x = NULL
+    cdef double *buf_a_y = NULL
+    cdef double *buf_b_x = NULL
+    cdef double *buf_b_y = NULL
+    cdef double *edge_nx = NULL
+    cdef double *edge_ny = NULL
+    cdef double *edge_c = NULL
+    polygon_work_partition(&work[0], n_poly, buf_size, &poly_x, &poly_y,
+                           &buf_a_x, &buf_a_y, &buf_b_x, &buf_b_y,
+                           &edge_nx, &edge_ny, &edge_c)
     cdef const double[::1] vx_view = np.ascontiguousarray(vertices_x)
     cdef const double[::1] vy_view = np.ascontiguousarray(vertices_y)
     _ensure_ccw(vx_view, vy_view, n_poly, poly_x, poly_y)

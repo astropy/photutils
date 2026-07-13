@@ -19,15 +19,17 @@ free-threaded Python builds.
 
 import numpy as np
 
-from photutils.geometry._polygon_overlap cimport (
-    convex_edge_normals, convex_polygon_pixel_overlap,
-    polygon_overlap_single_subpixel, polygon_pixel_overlap)
-from photutils.geometry.circle_overlap cimport (circle_overlap_single_exact,
-                                                circle_overlap_single_subpixel)
-from photutils.geometry.ellipse_overlap cimport (
-    ellipse_overlap_single_exact, ellipse_overlap_single_subpixel)
-from photutils.geometry.rectangle_overlap cimport (
-    rectangle_overlap_single_subpixel)
+from photutils.aperture._batch_overlap cimport (
+    _CIRCLE, _CIRCULAR_ANNULUS, _ELLIPSE, _ELLIPTICAL_ANNULUS, _POLYGON,
+    _RECTANGLE, _RECTANGULAR_ANNULUS, _circle_pixel_frac,
+    _circular_annulus_pixel_frac, _ellipse_pixel_frac,
+    _elliptical_annulus_pixel_frac, _polygon_pixel_frac,
+    _presize_packed_offsets, _rect_pixel_frac, _rectangular_annulus_pixel_frac,
+    _round_half_away, _source_grid_setup)
+from photutils.geometry._polygon_overlap cimport (convex_edge_normals,
+                                                  polygon_work_partition,
+                                                  polygon_work_size)
+from photutils.geometry.rectangle_overlap cimport rect_vertices
 
 __all__ = ['batch_aperture_sums']
 
@@ -35,26 +37,10 @@ __all__ = ['batch_aperture_sums']
 cdef extern from "math.h" nogil:
     double sin(double x)
     double cos(double x)
-    double sqrt(double x)
     double fabs(double x)
-    double fmax(double x, double y)
-    double fmin(double x, double y)
-    double floor(double x)
-    double ceil(double x)
 
-# Aperture shape codes. These must stay in sync with the private
-# ``_shape_params`` attributes defined by the aperture classes in
-# ``photutils.aperture``.
-cdef enum:
-    _CIRCLE = 0
-    _CIRCULAR_ANNULUS = 1
-    _ELLIPSE = 2
-    _ELLIPTICAL_ANNULUS = 3
-    _RECTANGLE = 4
-    _RECTANGULAR_ANNULUS = 5
-    _POLYGON = 6
-
-# Python-level aliases of the shape codes
+# Python-level aliases of the shape codes (the ``cdef enum`` is shared
+# with ``_batch_stats`` via ``_batch_overlap.pxd``)
 SHAPE_CIRCLE = _CIRCLE
 SHAPE_CIRCULAR_ANNULUS = _CIRCULAR_ANNULUS
 SHAPE_ELLIPSE = _ELLIPSE
@@ -70,7 +56,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                         const double[::1] params, double ext_x, double ext_y,
                         int use_exact, int subpixels,
                         const Py_ssize_t[:, ::1] segmentation=None,
-                        const Py_ssize_t[::1] labels=None, int seg_method=0):
+                        const Py_ssize_t[::1] labels=None, int seg_method=0,
+                        const double[::1] local_bkg=None, int emit_sum=0):
     """
     Compute aperture sums for many source positions in a single call.
 
@@ -156,33 +143,76 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
              mirror falls outside the aperture bounding box, is itself a
              neighbor, or is masked is excluded instead of replaced.
 
+    local_bkg : 1D ndarray of float64 (C-contiguous) or `None`
+        The per-source local background to subtract from each pixel
+        value of that source. If `None`, no background is subtracted.
+
+    emit_sum : int, optional
+        If nonzero, also emit the packed per-pixel member buffers
+        (``sum_values``, ``sum_fracs``, ``sum_errsq``, ``sum_counts``)
+        needed to recompute the aperture sum, variance, and area after
+        per-source sigma clipping. When zero (default), those four
+        outputs are empty arrays.
+
     Returns
     -------
     sums : 1D ndarray of float64
         The aperture sums. NaN where the aperture bounding box does not
         overlap the data.
 
-    sum_errs : 1D ndarray of float64
-        The quadrature-summed errors. NaN where ``error`` is `None` or
-        the aperture bounding box does not overlap the data.
+    sum_vars : 1D ndarray of float64
+        The aperture error variances (the quadrature sum of the pixel
+        variances weighted by the overlap fractions). NaN where
+        ``error`` is `None` or the aperture bounding box does not overlap
+        the data. The caller takes the square root to obtain the error.
+
+    areas : 1D ndarray of float64
+        The total unmasked overlap area of the aperture (the sum of the
+        overlap fractions). NaN where the aperture bounding box does not
+        overlap the data.
 
     overlap : 1D ndarray of bool
         Whether the aperture bounding box overlaps with the data.
+
+    starts : 1D ndarray of intp
+        The per-source starting offset into the packed member buffers.
+        Zeros unless ``emit_sum`` is nonzero.
+
+    sum_values : 1D ndarray of float64
+        The packed per-pixel ``data - local_bkg`` values. Empty unless
+        ``emit_sum`` is nonzero.
+
+    sum_fracs : 1D ndarray of float64
+        The packed per-pixel overlap fractions. Empty unless
+        ``emit_sum`` is nonzero.
+
+    sum_errsq : 1D ndarray of float64
+        The packed per-pixel squared errors (zero where ``error`` is
+        `None`). Empty unless ``emit_sum`` is nonzero.
+
+    sum_counts : 1D ndarray of intp
+        The per-source count of packed contributing pixels. Empty
+        unless ``emit_sum`` is nonzero.
     """
     cdef Py_ssize_t n_src = positions.shape[0]
     cdef Py_ssize_t ny_data = data.shape[0]
     cdef Py_ssize_t nx_data = data.shape[1]
 
     sums_arr = np.full(n_src, np.nan)
-    errs_arr = np.full(n_src, np.nan)
+    vars_arr = np.full(n_src, np.nan)
+    areas_arr = np.full(n_src, np.nan)
     overlap_arr = np.zeros(n_src, dtype=np.uint8)
+    starts_arr = np.zeros(n_src, dtype=np.intp)
     cdef double[::1] sums = sums_arr
-    cdef double[::1] errs = errs_arr
+    cdef double[::1] sum_vars = vars_arr
+    cdef double[::1] areas = areas_arr
     cdef unsigned char[::1] overlap = overlap_arr
+    cdef Py_ssize_t[::1] starts = starts_arr
 
     cdef bint has_error = error is not None
     cdef bint has_mask = mask is not None
     cdef bint has_seg = segmentation is not None
+    cdef bint has_bkg = local_bkg is not None
     cdef Py_ssize_t lbl = 0, seg_val
 
     # Aperture shape parameters (constant over all source positions)
@@ -256,15 +286,15 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
         cos_theta = cos(theta)
         sin_theta = sin(theta)
-        _rect_vertices(half_width_out, half_height_out, cos_theta,
-                       sin_theta, poly_x_out, poly_y_out)
+        rect_vertices(half_width_out, half_height_out, cos_theta,
+                      sin_theta, poly_x_out, poly_y_out)
         bbox_dx_out = (half_width_out * fabs(cos_theta)
                        + half_height_out * fabs(sin_theta))
         bbox_dy_out = (half_width_out * fabs(sin_theta)
                        + half_height_out * fabs(cos_theta))
         if shape_code == _RECTANGULAR_ANNULUS:
-            _rect_vertices(half_width_in, half_height_in, cos_theta,
-                           sin_theta, poly_x_in, poly_y_in)
+            rect_vertices(half_width_in, half_height_in, cos_theta,
+                          sin_theta, poly_x_in, poly_y_in)
             bbox_dx_in = (half_width_in * fabs(cos_theta)
                           + half_height_in * fabs(sin_theta))
             bbox_dy_in = (half_width_in * fabs(sin_theta)
@@ -278,21 +308,15 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                    'of at least 3 vertices')
             raise ValueError(msg)
 
-        # Each Sutherland-Hodgman clip can at most double the vertex
-        # count of a non-convex polygon, so 16 * n_poly is a safe bound
-        # (see ``polygon_overlap_grid``).
-        poly_buf_size = 16 * n_poly
-        poly_work = np.empty(2 * n_poly + 4 * poly_buf_size + 3 * n_poly,
+        # Single numpy block (kept alive by ``poly_work``) whose sizing
+        # and layout are shared with ``polygon_overlap_grid`` via
+        # ``polygon_work_size``/``polygon_work_partition``.
+        poly_work = np.empty(polygon_work_size(n_poly, &poly_buf_size),
                              dtype=np.float64)
-        poly_x = &poly_work[0]
-        poly_y = &poly_work[n_poly]
-        pbuf_a_x = &poly_work[2 * n_poly]
-        pbuf_a_y = &poly_work[2 * n_poly + poly_buf_size]
-        pbuf_b_x = &poly_work[2 * n_poly + 2 * poly_buf_size]
-        pbuf_b_y = &poly_work[2 * n_poly + 3 * poly_buf_size]
-        pedge_nx = &poly_work[2 * n_poly + 4 * poly_buf_size]
-        pedge_ny = &poly_work[3 * n_poly + 4 * poly_buf_size]
-        pedge_c = &poly_work[4 * n_poly + 4 * poly_buf_size]
+        polygon_work_partition(&poly_work[0], n_poly, poly_buf_size,
+                               &poly_x, &poly_y, &pbuf_a_x, &pbuf_a_y,
+                               &pbuf_b_x, &pbuf_b_y, &pedge_nx, &pedge_ny,
+                               &pedge_c)
         for pk in range(n_poly):
             poly_x[pk] = params[2 * pk]
             poly_y[pk] = params[2 * pk + 1]
@@ -306,72 +330,61 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         raise ValueError(msg)
 
     cdef Py_ssize_t k, ix, iy, ix0, ix1, iy0, iy1
-    cdef Py_ssize_t ixmin, iymin, grid_nx, grid_ny
+    cdef Py_ssize_t ixmin, iymin
     cdef Py_ssize_t six, siy, xm, ym, ccx = 0, ccy = 0, mseg
-    cdef double cx, cy
-    cdef double ixmin_d, ixmax_d, iymin_d, iymax_d
-    cdef double gxmin, gxmax, gymin, gymax
+    cdef double cx, cy, lbk = 0.0
+    cdef double gxmin, gymin
     cdef double dx, dy, pixel_radius, norm
-    cdef double pxmin, pymin, frac, err_val, sum_val, var_val
+    cdef double pxmin, pymin, frac, err_val, sum_val, var_val, area_val, val
+    cdef double errsq = 0.0
+    cdef Py_ssize_t total = 0, spos = 0
+
+    # Pass 1 (only when emitting the packed member buffers): size and
+    # offset the packed buffers from the per-source clipped bounding-box
+    # areas. This performs only bounding-box arithmetic; it does not
+    # iterate over or evaluate individual pixels.
+    if emit_sum:
+        with nogil:
+            total = _presize_packed_offsets(positions, ext_x, ext_y,
+                                            nx_data, ny_data, starts)
+
+    cdef Py_ssize_t sum_cap = total if emit_sum else 0
+    sum_values_arr = np.empty(sum_cap, dtype=np.float64)
+    sum_fracs_arr = np.empty(sum_cap, dtype=np.float64)
+    sum_errsq_arr = np.empty(sum_cap, dtype=np.float64)
+    scounts_arr = np.zeros(n_src if emit_sum else 0, dtype=np.intp)
+    cdef double[::1] sum_values = sum_values_arr
+    cdef double[::1] sum_fracs = sum_fracs_arr
+    cdef double[::1] sum_errsq = sum_errsq_arr
+    cdef Py_ssize_t[::1] scounts = scounts_arr
 
     with nogil:
         for k in range(n_src):
             cx = positions[k, 0]
             cy = positions[k, 1]
+            if has_bkg:
+                lbk = local_bkg[k]
             if has_seg:
                 lbl = labels[k]
                 if seg_method == 3:
-                    # Center pixel for the symmetric 'correct' mirror,
-                    # rounded half away from zero (round_half_away)
-                    if cx >= 0.0:
-                        ccx = <Py_ssize_t>floor(cx + 0.5)
-                    else:
-                        ccx = <Py_ssize_t>ceil(cx - 0.5)
-                    if cy >= 0.0:
-                        ccy = <Py_ssize_t>floor(cy + 0.5)
-                    else:
-                        ccy = <Py_ssize_t>ceil(cy - 0.5)
+                    # Center pixel for the symmetric 'correct' mirror
+                    ccx = _round_half_away(cx)
+                    ccy = _round_half_away(cy)
 
-            # Replicate BoundingBox.from_float; the values are kept as
-            # (integral) doubles to avoid integer overflow for apertures
-            # far outside the data
-            ixmin_d = floor(cx - ext_x + 0.5)
-            ixmax_d = ceil(cx + ext_x + 0.5)
-            iymin_d = floor(cy - ext_y + 0.5)
-            iymax_d = ceil(cy + ext_y + 0.5)
-
-            # No overlap of the aperture bounding box with the data
-            # (replicates BoundingBox.get_overlap_slices); the sums stay
-            # NaN
-            if (ixmin_d >= <double>nx_data or ixmax_d <= 0.0
-                    or iymin_d >= <double>ny_data or iymax_d <= 0.0):
+            # Bounding box, overlap test, and pixel grid, replicated
+            # from the mask-based path (see ``_source_grid_setup``); the
+            # sums stay NaN when there is no overlap.
+            if not _source_grid_setup(cx, cy, ext_x, ext_y, nx_data,
+                                      ny_data, &gxmin, &gymin, &dx, &dy,
+                                      &pixel_radius, &norm, &ixmin,
+                                      &iymin, &ix0, &ix1, &iy0, &iy1):
                 continue
             overlap[k] = 1
 
-            # Pixel-grid edges relative to the aperture center
-            # (replicates Aperture._centered_edges and the grid setup of
-            # the photutils.geometry grid functions)
-            gxmin = ixmin_d - 0.5 - cx
-            gxmax = ixmax_d - 0.5 - cx
-            gymin = iymin_d - 0.5 - cy
-            gymax = iymax_d - 0.5 - cy
-            grid_nx = <Py_ssize_t>(ixmax_d - ixmin_d)
-            grid_ny = <Py_ssize_t>(iymax_d - iymin_d)
-            dx = (gxmax - gxmin) / grid_nx
-            dy = (gymax - gymin) / grid_ny
-            pixel_radius = 0.5 * sqrt(dx * dx + dy * dy)
-            norm = 1.0 / (dx * dy)
-
-            # Pixel index ranges clipped to the data
-            ixmin = <Py_ssize_t>ixmin_d
-            iymin = <Py_ssize_t>iymin_d
-            ix0 = <Py_ssize_t>fmax(ixmin_d, 0.0)
-            ix1 = <Py_ssize_t>fmin(ixmax_d, <double>nx_data)
-            iy0 = <Py_ssize_t>fmax(iymin_d, 0.0)
-            iy1 = <Py_ssize_t>fmin(iymax_d, <double>ny_data)
-
             sum_val = 0.0
             var_val = 0.0
+            area_val = 0.0
+            spos = starts[k]
             for iy in range(iy0, iy1):
                 pymin = gymin + (iy - iymin) * dy
                 for ix in range(ix0, ix1):
@@ -410,25 +423,18 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                             pxmin, pymin, dx, dy, pixel_radius, r_out,
                             use_exact, subpixels)
                     elif shape_code == _CIRCULAR_ANNULUS:
-                        frac = (_circle_pixel_frac(
-                                    pxmin, pymin, dx, dy, pixel_radius,
-                                    r_out, use_exact, subpixels)
-                                - _circle_pixel_frac(
-                                    pxmin, pymin, dx, dy, pixel_radius,
-                                    r_in, use_exact, subpixels))
+                        frac = _circular_annulus_pixel_frac(
+                            pxmin, pymin, dx, dy, pixel_radius, r_in,
+                            r_out, use_exact, subpixels)
                     elif shape_code == _ELLIPSE:
                         frac = _ellipse_pixel_frac(
                             pxmin, pymin, dx, dy, norm, rx_out, ry_out,
                             cos_theta, sin_theta, use_exact, subpixels)
                     elif shape_code == _ELLIPTICAL_ANNULUS:
-                        frac = (_ellipse_pixel_frac(
-                                    pxmin, pymin, dx, dy, norm, rx_out,
-                                    ry_out, cos_theta, sin_theta,
-                                    use_exact, subpixels)
-                                - _ellipse_pixel_frac(
-                                    pxmin, pymin, dx, dy, norm, rx_in,
-                                    ry_in, cos_theta, sin_theta,
-                                    use_exact, subpixels))
+                        frac = _elliptical_annulus_pixel_frac(
+                            pxmin, pymin, dx, dy, norm, rx_in, ry_in,
+                            rx_out, ry_out, cos_theta, sin_theta,
+                            use_exact, subpixels)
                     elif shape_code == _RECTANGLE:
                         frac = _rect_pixel_frac(
                             pxmin, pymin, dx, dy, pixel_radius,
@@ -437,20 +443,14 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                             poly_x_out, poly_y_out, buf_a_x, buf_a_y,
                             buf_b_x, buf_b_y, use_exact, subpixels)
                     elif shape_code == _RECTANGULAR_ANNULUS:
-                        frac = (_rect_pixel_frac(
-                                    pxmin, pymin, dx, dy, pixel_radius,
-                                    half_width_out, half_height_out,
-                                    cos_theta, sin_theta, bbox_dx_out,
-                                    bbox_dy_out, poly_x_out, poly_y_out,
-                                    buf_a_x, buf_a_y, buf_b_x, buf_b_y,
-                                    use_exact, subpixels)
-                                - _rect_pixel_frac(
-                                    pxmin, pymin, dx, dy, pixel_radius,
-                                    half_width_in, half_height_in,
-                                    cos_theta, sin_theta, bbox_dx_in,
-                                    bbox_dy_in, poly_x_in, poly_y_in,
-                                    buf_a_x, buf_a_y, buf_b_x, buf_b_y,
-                                    use_exact, subpixels))
+                        frac = _rectangular_annulus_pixel_frac(
+                            pxmin, pymin, dx, dy, pixel_radius,
+                            half_width_in, half_height_in,
+                            half_width_out, half_height_out,
+                            cos_theta, sin_theta, bbox_dx_in, bbox_dy_in,
+                            bbox_dx_out, bbox_dy_out, poly_x_in, poly_y_in,
+                            poly_x_out, poly_y_out, buf_a_x, buf_a_y,
+                            buf_b_x, buf_b_y, use_exact, subpixels)
                     else:
                         frac = _polygon_pixel_frac(
                             pxmin, pymin, dx, dy, pixel_radius,
@@ -459,225 +459,33 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                             pbuf_b_x, pbuf_b_y, poly_buf_size, use_exact,
                             subpixels)
 
-                    if frac <= 0.0:
-                        continue
-                    sum_val += data[siy, six] * frac
-                    if has_error:
-                        err_val = error[siy, six]
-                        var_val += err_val * err_val * frac
+                    # Annulus fractions are a difference of two shapes,
+                    # so floating-point noise can leave a boundary
+                    # pixel's fraction a tiny negative value. Both the
+                    # mask-based path (via ``np.maximum``) and the batch
+                    # overlap functions clamp such fractions to zero, so
+                    # only strictly positive fractions contribute here.
+                    if frac > 0.0:
+                        val = data[siy, six] - lbk
+                        sum_val += val * frac
+                        area_val += frac
+                        if has_error:
+                            err_val = error[siy, six]
+                            errsq = err_val * err_val
+                            var_val += errsq * frac
+                        if emit_sum:
+                            sum_values[spos] = val
+                            sum_fracs[spos] = frac
+                            sum_errsq[spos] = errsq if has_error else 0.0
+                            spos += 1
 
             sums[k] = sum_val
+            areas[k] = area_val
             if has_error:
-                errs[k] = sqrt(var_val)
+                sum_vars[k] = var_val
+            if emit_sum:
+                scounts[k] = spos - starts[k]
 
-    return sums_arr, errs_arr, overlap_arr.view(bool)
-
-
-cdef inline double _circle_pixel_frac(double pxmin, double pymin,
-                                      double dx, double dy,
-                                      double pixel_radius, double r,
-                                      int use_exact,
-                                      int subpixels) noexcept nogil:
-    """
-    Fraction of a single pixel that overlaps a circle of radius ``r``
-    centered on the origin.
-
-    This replicates the per-pixel logic of ``circular_overlap_grid``,
-    including the bounding-box and "well inside/outside" shortcuts, so
-    the result is identical to the grid function.
-    """
-    cdef double pxmax = pxmin + dx
-    cdef double pymax = pymin + dy
-    cdef double pxcen, pycen, d
-
-    # Bounding-box check
-    if not (pxmax > -r - 0.5 * dx and pxmin < r + 0.5 * dx
-            and pymax > -r - 0.5 * dy and pymin < r + 0.5 * dy):
-        return 0.0
-
-    # Distance from circle center to pixel center
-    pxcen = pxmin + dx * 0.5
-    pycen = pymin + dy * 0.5
-    d = sqrt(pxcen * pxcen + pycen * pycen)
-
-    if d < r - pixel_radius:  # pixel is well within the circle
-        return 1.0
-
-    if d < r + pixel_radius:  # pixel is close to the circle border
-        if use_exact:
-            return circle_overlap_single_exact(pxmin, pymin, pxmax, pymax,
-                                               r) / (dx * dy)
-        return circle_overlap_single_subpixel(pxmin, pymin, pxmax, pymax, r,
-                                              subpixels)
-
-    return 0.0  # pixel is fully outside the circle
-
-
-cdef inline double _ellipse_pixel_frac(double pxmin, double pymin,
-                                       double dx, double dy, double norm,
-                                       double rx, double ry,
-                                       double cos_theta, double sin_theta,
-                                       int use_exact,
-                                       int subpixels) noexcept nogil:
-    """
-    Fraction of a single pixel that overlaps an ellipse with semimajor
-    and semiminor axes ``rx`` and ``ry`` and position angle ``theta``
-    centered on the origin.
-
-    ``cos_theta`` and ``sin_theta`` are the cosine and sine of the
-    position angle, precomputed once per aperture by the caller.
-
-    This replicates the per-pixel logic of ``elliptical_overlap_grid``,
-    including the bounding-circle shortcut and the interior/exterior
-    fast path, so the result is identical to the grid function.
-    """
-    cdef double pxmax = pxmin + dx
-    cdef double pymax = pymin + dy
-    cdef double r = fmax(rx, ry)  # bounding circle radius
-    cdef double pxcen, pycen, rpix2
-    cdef double inv_rx2, inv_ry2
-    cdef double cxx, cyy, cxy, margin, f_in, f_out
-
-    # Bounding-box check
-    if not (pxmax > -r - 0.5 * dx and pxmin < r + 0.5 * dx
-            and pymax > -r - 0.5 * dy and pymin < r + 0.5 * dy):
-        return 0.0
-
-    # Quadratic-form coefficients of the ellipse, such that a point
-    # (x, y) lies inside when ``cxx*x**2 + cyy*y**2 + cxy*x*y < 1``.
-    inv_rx2 = 1.0 / (rx * rx)
-    inv_ry2 = 1.0 / (ry * ry)
-    cxx = cos_theta * cos_theta * inv_rx2 + sin_theta * sin_theta * inv_ry2
-    cyy = sin_theta * sin_theta * inv_rx2 + cos_theta * cos_theta * inv_ry2
-    cxy = 2.0 * cos_theta * sin_theta * (inv_rx2 - inv_ry2)
-
-    # Boundary band for the interior/exterior fast path (see
-    # ``elliptical_overlap_grid``).
-    margin = 0.5 * sqrt(dx * dx + dy * dy) / fmin(rx, ry)
-    f_in = 1.0 - margin
-    f_in = f_in * f_in if f_in > 0.0 else 0.0
-    f_out = (1.0 + margin) * (1.0 + margin)
-
-    pxcen = pxmin + 0.5 * dx
-    pycen = pymin + 0.5 * dy
-    rpix2 = cxx * pxcen * pxcen + cyy * pycen * pycen + cxy * pxcen * pycen
-    if rpix2 >= f_out:
-        return 0.0  # pixel fully outside the ellipse
-    if rpix2 <= f_in:
-        return 1.0  # pixel fully inside the ellipse
-
-    if use_exact:
-        return ellipse_overlap_single_exact(pxmin, pymin, pxmax, pymax, rx, ry,
-                                            cos_theta, sin_theta) * norm
-    return ellipse_overlap_single_subpixel(pxmin, pymin, pxmax, pymax, rx, ry,
-                                           cos_theta, sin_theta, subpixels)
-
-
-cdef inline double _rect_pixel_frac(double pxmin, double pymin,
-                                    double dx, double dy, double margin,
-                                    double half_width, double half_height,
-                                    double cos_theta, double sin_theta,
-                                    double bbox_dx, double bbox_dy,
-                                    double *poly_x, double *poly_y,
-                                    double *buf_a_x, double *buf_a_y,
-                                    double *buf_b_x, double *buf_b_y,
-                                    int use_exact,
-                                    int subpixels) noexcept nogil:
-    """
-    Fraction of a single pixel that overlaps a rectangle of full width
-    ``2 * half_width`` and full height ``2 * half_height`` rotated by
-    ``theta`` (given as ``cos_theta``/``sin_theta``) centered on the
-    origin. ``margin`` is half the pixel diagonal.
-
-    This replicates the per-pixel logic of ``rectangular_overlap_grid``
-    (the exact mode uses an interior/exterior fast path and skips pixels
-    outside the axis-aligned bounding box of the rotated rectangle), so
-    the result is identical to the grid function.
-    """
-    cdef double pxmax = pxmin + dx
-    cdef double pymax = pymin + dy
-    cdef double pxcen, pycen, axrot, ayrot
-
-    if use_exact:
-        # Bounding-box check
-        if (pxmax <= -bbox_dx or pxmin >= bbox_dx
-                or pymax <= -bbox_dy or pymin >= bbox_dy):
-            return 0.0
-
-        # Interior/exterior fast path. Rotation into the rectangle frame
-        # is an isometry, so every point of the pixel lies within
-        # ``margin`` of the rotated pixel center.
-        pxcen = pxmin + 0.5 * dx
-        pycen = pymin + 0.5 * dy
-        axrot = fabs(pxcen * cos_theta + pycen * sin_theta)
-        ayrot = fabs(-pxcen * sin_theta + pycen * cos_theta)
-        if axrot >= half_width + margin or ayrot >= half_height + margin:
-            return 0.0  # wholly outside
-        if (axrot <= half_width - margin
-                and ayrot <= half_height - margin):
-            return 1.0  # wholly inside
-
-        return polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
-                                     poly_x, poly_y, 4,
-                                     buf_a_x, buf_a_y, buf_b_x, buf_b_y,
-                                     32) / (dx * dy)
-
-    return rectangle_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
-                                             half_width, half_height,
-                                             cos_theta, sin_theta,
-                                             subpixels)
-
-
-cdef inline double _polygon_pixel_frac(double pxmin, double pymin,
-                                       double dx, double dy, double margin,
-                                       double *poly_x, double *poly_y,
-                                       int n_poly,
-                                       double *edge_nx, double *edge_ny,
-                                       double *edge_c, int is_convex,
-                                       double *buf_a_x, double *buf_a_y,
-                                       double *buf_b_x, double *buf_b_y,
-                                       int buf_size, int use_exact,
-                                       int subpixels) noexcept nogil:
-    """
-    Fraction of a single pixel that overlaps a simple polygon supplied
-    as counter-clockwise vertices centered on the origin. ``margin`` is
-    half the pixel diagonal.
-
-    This replicates the per-pixel logic of ``polygon_overlap_grid``: the
-    exact mode uses an interior/exterior fast path for convex polygons
-    (``is_convex``) and otherwise clips the pixel against the polygon
-    (Sutherland-Hodgman), while the subpixel mode samples pixel centers
-    with point-in-polygon tests, so the result is identical to the grid
-    function.
-    """
-    cdef double pxmax = pxmin + dx
-    cdef double pymax = pymin + dy
-
-    if use_exact:
-        return convex_polygon_pixel_overlap(
-            pxmin, pymin, pxmax, pymax, poly_x, poly_y, n_poly,
-            edge_nx, edge_ny, edge_c, is_convex, margin,
-            buf_a_x, buf_a_y, buf_b_x, buf_b_y, buf_size) / (dx * dy)
-
-    return polygon_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
-                                           poly_x, poly_y, n_poly,
-                                           subpixels, buf_a_x, buf_a_y,
-                                           buf_b_x)
-
-
-cdef inline void _rect_vertices(double half_width, double half_height,
-                                double cos_theta, double sin_theta,
-                                double *poly_x,
-                                double *poly_y) noexcept nogil:
-    """
-    Build the four CCW vertices of a rotated rectangle centered on the
-    origin (same arithmetic as ``rectangular_overlap_grid``).
-    """
-    poly_x[0] = -half_width * cos_theta - (-half_height) * sin_theta
-    poly_y[0] = -half_width * sin_theta + (-half_height) * cos_theta
-    poly_x[1] = half_width * cos_theta - (-half_height) * sin_theta
-    poly_y[1] = half_width * sin_theta + (-half_height) * cos_theta
-    poly_x[2] = half_width * cos_theta - half_height * sin_theta
-    poly_y[2] = half_width * sin_theta + half_height * cos_theta
-    poly_x[3] = -half_width * cos_theta - half_height * sin_theta
-    poly_y[3] = -half_width * sin_theta + half_height * cos_theta
+    return (sums_arr, vars_arr, areas_arr, overlap_arr.view(bool),
+            starts_arr, sum_values_arr, sum_fracs_arr, sum_errsq_arr,
+            scounts_arr)

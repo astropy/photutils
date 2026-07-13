@@ -55,6 +55,22 @@ New Features
     and convex polygon aperture photometry, typically by a factor of ~2.
     [#2310]
 
+  - Significantly improved the performance of ``ApertureStats``,
+    typically by factors of ~5-15 depending on the requested
+    properties, by computing all sources in a single call into compiled
+    code. Sigma-clipped statistics are also computed in compiled code
+    for the common ``SigmaClip`` configurations. [#2314]
+
+  - Added ``mean_err`` and ``median_err`` properties to
+    ``ApertureStats`` providing the standard error of the mean and the
+    standard error of the median, respectively, for each aperture.
+    [#2314]
+
+  - Added a ``ddof`` keyword to ``ApertureStats`` to set the delta
+    degrees of freedom used when computing the ``var`` and ``std``
+    properties. The default is ``ddof=0`` (population variance), and
+    ``ddof=1`` gives the sample (unbiased) variance. [#2314]
+
 - ``photutils.isophote``
 
   - Optimized the ``build_ellipse_model_c`` Cython extension by
@@ -92,6 +108,18 @@ Bug Fixes
     so that the orientation is correct for a WCS with a flipped parity
     (e.g., North down, East left). Previously, such apertures were
     mirrored about the x-axis. [#2288]
+
+  - Fixed ``CircularAnnulus``, ``EllipticalAnnulus``, and
+    ``RectangularAnnulus`` overlap masks so that pixel fractions are
+    never negative. Previously, boundary pixels could contain tiny
+    negative values (of order the floating-point epsilon) from
+    subtracting the inner and outer overlaps. [#2314]
+
+  - Fixed a corner case in ``ApertureStats`` where ``sum_aper_area``
+    was NaN while ``sum`` was finite. When all pixels selected by the
+    "center" method are masked but unmasked boundary pixels still have
+    nonzero ``sum_method`` overlap fractions, the fractional area of
+    those pixels is now returned, consistent with ``sum``. [#2314]
 
 - ``photutils.isophote``
 

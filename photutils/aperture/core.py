@@ -763,7 +763,7 @@ class PixelAperture(Aperture):
             error = np.ascontiguousarray(error, dtype=np.float64)
         ext_x, ext_y = self._xy_extents
 
-        sums, errs, overlap = batch_aperture_sums(
+        sums, sum_var, _area, overlap, *_ = batch_aperture_sums(
             np.ascontiguousarray(data, dtype=np.float64), error, mask,
             np.ascontiguousarray(self._positions, dtype=np.float64),
             shape_code, np.array(params, dtype=np.float64),
@@ -774,6 +774,8 @@ class PixelAperture(Aperture):
             # Match the mask-based path, which collects one NaN per
             # non-overlapping source when error is not input.
             errs = np.full(np.count_nonzero(~overlap), np.nan)
+        else:
+            errs = np.sqrt(sum_var)
 
         return sums, errs
 

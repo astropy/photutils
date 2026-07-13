@@ -10,7 +10,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.nddata import NDData, StdDevUncertainty
-from astropy.stats import SigmaClip
+from astropy.stats import SigmaClip, mad_std
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
@@ -20,9 +20,44 @@ from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus)
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture)
-from photutils.aperture.stats import ApertureStats
+from photutils.aperture.stats import _MAD_STD_SCALE, ApertureStats
 from photutils.datasets import make_100gaussians_image, make_wcs
 from photutils.utils._optional_deps import HAS_REGIONS
+
+
+class _NoBatchCircular(CircularAperture):
+    """
+    A `CircularAperture` subclass that does not define the
+    ``_batch_shape_params`` hook in its own class, so the fast batch
+    driver is not used and the mask-based code path is exercised.
+    """
+
+
+class _NoneSpecCircular(CircularAperture):
+    """
+    A `CircularAperture` subclass that defines the ``_batch_shape_params``
+    hook in its own class but returns `None`, so the fast batch driver is
+    not used and the mask-based code path is exercised.
+    """
+
+    def _batch_shape_params(self):
+        return None
+
+
+def test_mad_std_scale():
+    """
+    Test that the hard-coded MAD-to-sigma scale factor matches
+    `astropy.stats.mad_std`.
+
+    The factor is duplicated in ``photutils.aperture.stats`` and
+    ``photutils.aperture._batch_stats`` (a Cython constant cannot be
+    shared directly); the fast-vs-mask regression tests cover the
+    Cython copy.
+    """
+    rng = np.random.default_rng(0)
+    values = rng.normal(size=101)
+    mad = np.median(np.abs(values - np.median(values)))
+    assert_allclose(_MAD_STD_SCALE * mad, mad_std(values), rtol=1e-14)
 
 
 class TestApertureStats:
@@ -427,6 +462,373 @@ class TestApertureStats:
         assert_allclose(apstats[1].covariance,
                         [(np.nan, np.nan), (np.nan, np.nan)] * u.pix**2)
         assert_allclose(apstats.fwhm, [0.67977799, np.nan] * u.pix)
+
+    @pytest.mark.parametrize('aperture', [
+        CircularAperture(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)), r=6),
+        CircularAnnulus(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)),
+                        r_in=4, r_out=8),
+        EllipticalAperture(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)),
+                           8, 4, theta=0.5),
+        EllipticalAnnulus(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)),
+                          4, 8, 5, theta=0.5),
+        RectangularAperture(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)),
+                            10, 6, theta=0.3),
+        RectangularAnnulus(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)),
+                           8, 12, 9, theta=0.3),
+    ])
+    @pytest.mark.parametrize('sigma_clip', [
+        None,
+        SigmaClip(sigma=3.0, maxiters=5),
+        SigmaClip(sigma=2.5, cenfunc='mean', stdfunc='mad_std',
+                  maxiters=None),
+    ])
+    def test_fast_path_matches_mask_path(self, aperture, sigma_clip):
+        """
+        Regression test that the fast Cython statistics path produces the
+        same results as the mask-based path for every property, including
+        when sigma-clipping is applied.
+        """
+        numeric_props = (
+            'sum', 'sum_err', 'sum_aper_area', 'center_aper_area',
+            'min', 'max', 'mean', 'median', 'mode', 'std', 'var',
+            'mad_std', 'biweight_location', 'biweight_midvariance', 'gini',
+            'x_centroid', 'y_centroid', 'fwhm', 'semimajor_axis',
+            'semiminor_axis', 'orientation', 'eccentricity', 'elongation',
+            'ellipticity', 'covariance_xx', 'covariance_yy',
+            'covariance_xy', 'moments', 'moments_central',
+            'mean_err', 'median_err')
+
+        fast = ApertureStats(self.data, aperture, error=self.error,
+                             sigma_clip=sigma_clip)
+
+        # Force the mask-based path by disabling the batch-driver
+        # inputs, which disables both the fast center-value gather
+        # and the fast sum path. Patching only ``_fast_gather`` is
+        # insufficient because ``_fast_sum`` would still handle the
+        # ``sum``, ``sum_err``, and ``sum_aper_area`` comparisons.
+        with patch.object(ApertureStats, '_batch_inputs',
+                          property(lambda _: None)):
+            slow = ApertureStats(self.data, aperture, error=self.error,
+                                 sigma_clip=sigma_clip)
+            assert slow._fast_gather is None
+            assert slow._fast_sum is None
+            slow_values = {prop: getattr(slow, prop)
+                           for prop in numeric_props}
+
+        for prop in numeric_props:
+            assert_allclose(getattr(fast, prop), slow_values[prop],
+                            rtol=1e-7, atol=1e-9, equal_nan=True,
+                            err_msg=f'mismatch in {prop}')
+
+    @pytest.mark.parametrize('sigma_clip', [
+        SigmaClip(sigma=3.0, cenfunc=np.nanmedian),
+        SigmaClip(sigma=3.0, stdfunc=np.nanstd),
+        SigmaClip(sigma=3.0, grow=1.5),
+    ])
+    def test_unsupported_sigma_clip_fallback(self, sigma_clip):
+        """
+        Test that a SigmaClip not supported by the fast clipping kernel
+        (callable cenfunc/stdfunc or spatial growing) falls back to the
+        mask-based code path.
+        """
+        apstats = ApertureStats(self.data, self.aperture, error=self.error,
+                                sigma_clip=sigma_clip)
+        assert apstats._fast_gather is None
+        assert np.all(np.isfinite(apstats.mean))
+        assert np.all(np.isfinite(apstats.mean_err))
+
+    def test_sigma_clip_callable_matches_string(self):
+        """
+        Test that a SigmaClip with callable cenfunc/stdfunc (mask-based
+        path) gives the same results as the equivalent string
+        cenfunc/stdfunc (fast path).
+        """
+        fast = ApertureStats(self.data, self.aperture, error=self.error,
+                             sigma_clip=SigmaClip(sigma=3.0))
+        slow = ApertureStats(self.data, self.aperture, error=self.error,
+                             sigma_clip=SigmaClip(sigma=3.0,
+                                                  cenfunc=np.nanmedian,
+                                                  stdfunc=np.nanstd))
+        assert fast._fast_gather is not None
+        assert slow._fast_gather is None
+        for prop in ('mean', 'median', 'std', 'mean_err', 'median_err'):
+            assert_allclose(getattr(fast, prop), getattr(slow, prop),
+                            rtol=1e-7, equal_nan=True, err_msg=prop)
+
+    def test_aperture_batch_hook_fallback(self):
+        """
+        Test that apertures that do not opt into the batch driver (no
+        own-class hook, or a hook returning None) use the mask-based
+        path and give the same results as the fast path.
+        """
+        nohook = ApertureStats(self.data,
+                               _NoBatchCircular(self.positions, r=5))
+        nospec = ApertureStats(self.data,
+                               _NoneSpecCircular(self.positions, r=5))
+        assert nohook._fast_gather is None
+        assert nospec._fast_gather is None
+        ref = ApertureStats(self.data, self.aperture)
+        assert_allclose(nohook.mean, ref.mean, equal_nan=True)
+        assert_allclose(nospec.mean, ref.mean, equal_nan=True)
+
+    def test_sum_aper_area_center_masked(self):
+        """
+        Regression test that ``sum_aper_area`` is consistent with
+        ``sum`` (and identical between the fast and mask-based code
+        paths) when all center-method pixels are masked but the
+        ``sum_method`` aperture still contains unmasked fractional
+        boundary pixels.
+
+        Previously, the mask-based path returned NaN for the area (via
+        the center-method all-masked flag) while returning a finite
+        ``sum`` from the same surviving fractional pixels.
+        """
+        data = np.ones((11, 11))
+        aperture = CircularAperture((5.0, 5.0), r=1.4)
+        # Mask exactly the center-method pixels. The fractional
+        # (exact-method) boundary pixels remain unmasked.
+        mask = aperture.to_mask(method='center').to_image(data.shape) > 0
+
+        fast = ApertureStats(data, aperture, mask=mask)
+        with patch.object(ApertureStats, '_batch_inputs',
+                          property(lambda _: None)):
+            slow = ApertureStats(data, aperture, mask=mask)
+            slow_sum = slow.sum
+            slow_area = slow.sum_aper_area
+
+        assert fast._fast_sum is not None
+        assert fast.sum > 0
+        # data is all ones, so the sum equals the surviving area
+        assert_allclose(fast.sum_aper_area.value, fast.sum)
+        assert_allclose(slow_sum, fast.sum)
+        assert_allclose(slow_area, fast.sum_aper_area)
+        # The center-method statistics remain all-masked (NaN)
+        assert np.isnan(fast.center_aper_area.value)
+        assert np.isnan(fast.mean)
+
+    def test_unsupported_data_mask_fallback(self):
+        """
+        Test that data/mask inputs not supported by the fast batch
+        driver fall back to the mask-based code path.
+        """
+        mdata = np.ma.MaskedArray(
+            self.data, mask=np.zeros(self.data.shape, dtype=bool))
+        assert ApertureStats(mdata, self.aperture)._fast_gather is None
+        mask = np.zeros(self.data.shape, dtype=int)
+        assert ApertureStats(self.data, self.aperture,
+                             mask=mask)._fast_gather is None
+
+    @pytest.mark.parametrize('sum_method', ['exact', 'center'])
+    @pytest.mark.parametrize('with_units', [False, True])
+    def test_slow_path_extended(self, sum_method, with_units):
+        """
+        Test that the mask-based code path matches the fast path for data
+        units, ``sum_method='center'``, and a non-overlapping source,
+        exercising the unit-application and no-overlap branches.
+        """
+        positions = [*self.positions, (-50.0, -50.0)]  # last has no overlap
+        data = self.data
+        error = self.error
+        if with_units:
+            data = data * self.unit
+            error = error * self.unit
+        fast = ApertureStats(data, CircularAperture(positions, r=5),
+                             error=error, sum_method=sum_method)
+        slow = ApertureStats(data, _NoBatchCircular(positions, r=5),
+                             error=error, sum_method=sum_method)
+        assert fast._fast_gather is not None
+        assert slow._fast_gather is None
+        props = ('sum', 'sum_err', 'center_aper_area', 'sum_aper_area',
+                 'min', 'max', 'mean', 'median', 'mode', 'std', 'var',
+                 'mad_std', 'mean_err', 'median_err', 'moments',
+                 'moments_central')
+        for prop in props:
+            assert_allclose(np.asarray(getattr(fast, prop)),
+                            np.asarray(getattr(slow, prop)),
+                            rtol=1e-7, atol=1e-9, equal_nan=True,
+                            err_msg=prop)
+
+    def test_slow_path_scalar(self):
+        """
+        Test the mask-based code path for a scalar (single-aperture)
+        catalog, exercising the scalar branches of the mask-based
+        helpers.
+        """
+        slow = ApertureStats(self.data,
+                             _NoBatchCircular(self.positions[0], r=5),
+                             error=self.error)
+        fast = ApertureStats(self.data,
+                             CircularAperture(self.positions[0], r=5),
+                             error=self.error)
+        assert slow.isscalar
+        assert slow._fast_gather is None
+        for prop in ('mean', 'median', 'std', 'mean_err', 'median_err',
+                     'moments', 'sum'):
+            assert_allclose(np.asarray(getattr(fast, prop)),
+                            np.asarray(getattr(slow, prop)),
+                            rtol=1e-7, equal_nan=True, err_msg=prop)
+
+    def test_slow_path_segmentation(self):
+        """
+        Test that the mask-based code path applies segmentation-based
+        masking identically to the fast path.
+        """
+        data = np.ones((50, 50))
+        segm = np.zeros((50, 50), dtype=int)
+        data[18:25, 18:25] = 10.0
+        segm[18:25, 18:25] = 1
+        data[20:25, 26:32] = 100.0
+        segm[20:25, 26:32] = 2
+        positions = [(21, 21), (28, 22)]
+        kwargs = {'segmentation_image': segm, 'labels': [1, 2],
+                  'mask_method': 'mask'}
+        fast = ApertureStats(data, CircularAperture(positions, r=6),
+                             **kwargs)
+        slow = ApertureStats(data, _NoBatchCircular(positions, r=6),
+                             **kwargs)
+        assert slow._fast_gather is None
+        for prop in ('sum', 'mean', 'median', 'std', 'mean_err',
+                     'median_err'):
+            assert_allclose(getattr(fast, prop), getattr(slow, prop),
+                            rtol=1e-7, equal_nan=True, err_msg=prop)
+
+    def test_slow_path_mask(self):
+        """
+        Test that the mask-based code path applies the input ``mask``
+        identically to the fast path.
+        """
+        rng = np.random.default_rng(123)
+        mask = rng.random(self.data.shape) > 0.7
+        fast = ApertureStats(self.data, CircularAperture(self.positions, r=5),
+                             error=self.error, mask=mask)
+        slow = ApertureStats(self.data, _NoBatchCircular(self.positions, r=5),
+                             error=self.error, mask=mask)
+        assert slow._fast_gather is None
+        for prop in ('sum', 'mean', 'median', 'std', 'mean_err',
+                     'median_err'):
+            assert_allclose(getattr(fast, prop), getattr(slow, prop),
+                            rtol=1e-7, equal_nan=True, err_msg=prop)
+
+    def test_fast_path_mask_with_nonfinite_data(self):
+        """
+        Test that the fast batch driver correctly combines a
+        user-supplied ``mask`` with the mask derived from non-finite
+        ``data`` values, giving the same result as the mask-based code
+        path.
+        """
+        data = self.data.copy()
+        data[168, 145] = np.nan
+        rng = np.random.default_rng(123)
+        mask = rng.random(data.shape) > 0.7
+        fast = ApertureStats(data, CircularAperture(self.positions, r=5),
+                             error=self.error, mask=mask)
+        assert fast._batch_inputs is not None
+        slow = ApertureStats(data, _NoBatchCircular(self.positions, r=5),
+                             error=self.error, mask=mask)
+        assert slow._fast_gather is None
+        for prop in ('sum', 'mean', 'median', 'std', 'mean_err',
+                     'median_err'):
+            assert_allclose(getattr(fast, prop), getattr(slow, prop),
+                            rtol=1e-7, equal_nan=True, err_msg=prop)
+
+    def test_mean_err_median_err(self):
+        """
+        Test the standard-error properties against their definitions.
+        """
+        apstats = ApertureStats(self.data, self.aperture, error=self.error)
+        npix = apstats.center_aper_area.value
+        sample_std = apstats.std * np.sqrt(npix / (npix - 1.0))
+        expected_mean_err = sample_std / np.sqrt(npix)
+        assert_allclose(apstats.mean_err, expected_mean_err)
+        assert_allclose(apstats.median_err,
+                        np.sqrt(np.pi / 2.0) * expected_mean_err)
+
+    def test_mean_err_single_pixel(self):
+        """
+        Test that the standard error is NaN for apertures with fewer than
+        two unmasked pixels.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 1.0
+        apstats = ApertureStats(data, CircularAperture((5, 5), r=0.5))
+        assert apstats.center_aper_area.value < 2
+        assert np.isnan(apstats.mean_err)
+        assert np.isnan(apstats.median_err)
+
+    def test_mean_err_units(self):
+        """
+        Test that the standard-error properties carry the data unit.
+        """
+        apstats = ApertureStats(self.data * self.unit, self.aperture,
+                                error=self.error * self.unit)
+        assert apstats.mean_err.unit == self.unit
+        assert apstats.median_err.unit == self.unit
+
+    @pytest.mark.parametrize('with_units', [False, True])
+    def test_ddof(self, with_units):
+        """
+        Test that the ``ddof`` keyword rescales ``var`` and ``std`` by
+        ``N / (N - ddof)`` and that the standard errors are unaffected.
+        """
+        data = self.data
+        error = self.error
+        if with_units:
+            data = data * self.unit
+            error = error * self.unit
+        apstats0 = ApertureStats(data, self.aperture, error=error)
+        apstats1 = ApertureStats(data, self.aperture, error=error, ddof=1)
+        npix = apstats0.center_aper_area.value
+        var0 = apstats0.var
+        std0 = apstats0.std
+        var1 = apstats1.var
+        std1 = apstats1.std
+        if with_units:
+            assert var1.unit == self.unit**2
+            assert std1.unit == self.unit
+            var0, std0 = var0.value, std0.value
+            var1, std1 = var1.value, std1.value
+        assert_allclose(var1, var0 * npix / (npix - 1.0))
+        assert_allclose(std1, std0 * np.sqrt(npix / (npix - 1.0)))
+        # The standard errors are defined with the sample std and are
+        # independent of the ``ddof`` keyword
+        assert_allclose(apstats0.mean_err, apstats1.mean_err, equal_nan=True)
+        assert_allclose(apstats0.median_err, apstats1.median_err,
+                        equal_nan=True)
+
+    def test_ddof_slow_path(self):
+        """
+        Test the ``ddof`` rescaling on the mask-based (slow) code path.
+        """
+        fast = ApertureStats(self.data, CircularAperture(self.positions, r=5),
+                             ddof=1)
+        slow = ApertureStats(self.data, _NoBatchCircular(self.positions, r=5),
+                             ddof=1)
+        assert slow._fast_gather is None
+        assert_allclose(fast.var, slow.var, equal_nan=True)
+        assert_allclose(fast.std, slow.std, equal_nan=True)
+
+    def test_ddof_undefined(self):
+        """
+        Test that ``var`` and ``std`` are NaN when ``N <= ddof``.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 1.0
+        aper = CircularAperture((5, 5), r=0.5)
+        apstats = ApertureStats(data, aper, ddof=1)
+        assert apstats.center_aper_area.value < 2
+        assert np.isnan(apstats.var)
+        assert np.isnan(apstats.std)
+        # The default (ddof=0) gives a finite (zero) variance
+        assert ApertureStats(data, aper).var == 0.0
+
+    def test_ddof_invalid(self):
+        """
+        Test that an invalid ``ddof`` raises a ``ValueError``.
+        """
+        match = 'ddof must be a non-negative integer'
+        for bad in (-1, 1.5, True, False):
+            with pytest.raises(ValueError, match=match):
+                ApertureStats(self.data, self.aperture, ddof=bad)
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')

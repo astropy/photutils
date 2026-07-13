@@ -81,8 +81,70 @@ aperture shapes. The photometry for all sources is now computed in a
 single call into compiled code, avoiding the per-source Python overhead
 of creating individual aperture masks and cutouts. Typical speedups
 range from ~2x to more than 25x, depending on the aperture shape and
-overlap method, with the largest gains for fields with many sources. The
-results are identical to those from previous versions.
+overlap method, with the largest gains for fields with many sources.
+
+
+Faster Aperture Statistics
+==========================
+
+`~photutils.aperture.ApertureStats` is now significantly faster. The
+per-source statistics are computed in a single call into compiled code,
+reusing the same fast pixel-overlap machinery as the aperture photometry
+improvements above. Sigma-clipped statistics are also computed in
+compiled code for the common `~astropy.stats.SigmaClip` configurations.
+Typical speedups range from ~5x to ~15x, depending on which properties
+are requested.
+
+
+Aperture Statistics Error Estimates
+===================================
+
+`~photutils.aperture.ApertureStats` now provides standard-error
+estimates for its location statistics via the new ``mean_err`` and
+``median_err`` properties. The ``mean_err`` property returns the
+standard error of the mean, :math:`s / \sqrt{N}`, where :math:`s` is
+the sample standard deviation of the unmasked aperture pixels and
+:math:`N` is the number of those pixels. The ``median_err`` property
+returns the large-sample standard error of the median,
+:math:`\sqrt{\pi / 2} \, s / \sqrt{N}`, which assumes the pixel values
+are approximately normally distributed. Both properties are ``NaN`` for
+apertures with fewer than two unmasked pixels::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import ApertureStats, CircularAperture
+    >>> rng = np.random.default_rng(seed=0)
+    >>> data = rng.normal(100.0, 5.0, (100, 100))
+    >>> aper = CircularAperture((50, 50), r=10)
+    >>> stats = ApertureStats(data, aper)
+    >>> stats.mean_err  # doctest: +FLOAT_CMP
+    0.27447881801886487
+
+
+Sample Variance and Standard Deviation
+======================================
+
+`~photutils.aperture.ApertureStats` now accepts a ``ddof`` keyword that
+sets the delta degrees of freedom used when computing the ``var`` and
+``std`` properties. The divisor used in the calculation is
+:math:`N - \mathrm{ddof}`, where :math:`N` is the number of unmasked
+pixels within the aperture. The default is ``ddof=0``, which gives the
+population variance and standard deviation (unchanged from previous
+versions). Use ``ddof=1`` to obtain the sample (unbiased) variance and
+standard deviation::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import ApertureStats, CircularAperture
+    >>> rng = np.random.default_rng(seed=0)
+    >>> data = rng.normal(100.0, 5.0, (100, 100))
+    >>> aper = CircularAperture((50, 50), r=10)
+    >>> stats = ApertureStats(data, aper, ddof=1)
+    >>> stats.std  # doctest: +FLOAT_CMP
+    4.793566477062262
+
+The ``ddof`` keyword affects only the ``var`` and ``std`` properties.
+All other properties are unaffected, including the ``mean_err`` and
+``median_err`` standard errors, which are always computed using the
+sample standard deviation regardless of the value of ``ddof``.
 
 
 Thread-Safe and Free-Threading-Compatible Aperture Photometry

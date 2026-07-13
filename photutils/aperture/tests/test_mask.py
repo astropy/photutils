@@ -10,6 +10,7 @@ from numpy.testing import assert_allclose, assert_almost_equal
 
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.circle import CircularAnnulus, CircularAperture
+from photutils.aperture.ellipse import EllipticalAnnulus
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.rectangle import RectangularAnnulus
 
@@ -258,3 +259,30 @@ def test_rectangular_annulus_hin():
     mask = aper.to_mask(method='center')
     assert mask.data.shape == (21, 5)
     assert np.count_nonzero(mask.data) == 40
+
+
+@pytest.mark.parametrize('method', ['center', 'subpixel', 'exact'])
+def test_annulus_mask_nonnegative(method):
+    """
+    Regression test that annulus aperture masks never contain negative
+    overlap fractions.
+
+    An annulus overlap is computed as the difference of the outer and
+    inner overlaps, which can leave a boundary pixel with a tiny
+    negative value from floating-point noise. These must be clipped to
+    zero.
+    """
+    # Fractional positions place pixel centers near the annulus edges,
+    # where the subtraction is prone to tiny negative floating-point
+    # values.
+    positions = [(24.3, 27.7), (25.55, 22.15), (28.1, 29.9)]
+    apertures = [
+        CircularAnnulus(positions, r_in=3.0, r_out=6.0),
+        EllipticalAnnulus(positions, a_in=3.0, a_out=6.0, b_out=4.0,
+                          theta=0.5),
+        RectangularAnnulus(positions, w_in=3.0, w_out=6.0, h_out=4.0,
+                           theta=0.5),
+    ]
+    for aperture in apertures:
+        for mask in aperture.to_mask(method=method):
+            assert mask.data.min() >= 0.0

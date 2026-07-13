@@ -213,6 +213,7 @@ ignore-words-list = """
     exten,
     fom,
     ned,
+    reenable,
 """
 
 [tool.docformatter]

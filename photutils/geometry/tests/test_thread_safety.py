@@ -1,11 +1,15 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Test that the Cython overlap functions return identical results when run
-concurrently from multiple threads.
+Test that the Cython overlap functions are free-threading compatible and
+return identical results when run concurrently from multiple threads.
 
 This catches data races and shared-state issues introduced by ``with
-nogil:`` sections in the functions.
+nogil:`` sections in the functions, and verifies that each compiled
+module opts into free-threading (``freethreading_compatible=True``).
 """
+import importlib
+import sys
+import sysconfig
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
@@ -18,6 +22,44 @@ from photutils.geometry._polygon_overlap import polygon_overlap_grid
 
 N_THREADS = 8
 N_CALLS_PER_THREAD = 4
+
+# The compiled geometry modules that carry the
+# ``# cython: freethreading_compatible=True`` directive.
+GEOMETRY_MODULES = ('core', 'circle_overlap', 'ellipse_overlap',
+                    'rectangle_overlap', '_polygon_overlap')
+
+GIL_DISABLED = bool(sysconfig.get_config_var('Py_GIL_DISABLED'))
+
+
+@pytest.mark.parametrize('modname', GEOMETRY_MODULES)
+def test_geometry_module_importable(modname):
+    """
+    Test that each compiled geometry module imports cleanly.
+
+    On a free-threaded build, importing a module that was not compiled
+    with ``freethreading_compatible=True`` emits a ``RuntimeWarning``
+    and reenables the GIL. This import check is the entry point for the
+    free-threading verification below.
+    """
+    assert importlib.import_module(f'photutils.geometry.{modname}') is not None
+
+
+@pytest.mark.skipif(not GIL_DISABLED,
+                    reason='requires a free-threaded (GIL-disabled) build')
+def test_geometry_modules_do_not_reenable_gil():
+    """
+    Test that importing the geometry Cython modules does not reenable
+    the GIL on a free-threaded build.
+
+    Each module is compiled with the ``freethreading_compatible=True``
+    directive, which marks it as free-threading compatible
+    (``Py_MOD_GIL_NOT_USED``). A module lacking that directive would
+    force the runtime to reenable the GIL on import, which this test
+    detects.
+    """
+    for modname in GEOMETRY_MODULES:
+        importlib.import_module(f'photutils.geometry.{modname}')
+    assert sys._is_gil_enabled() is False
 
 
 def _run_concurrent(fn, *, n_threads=N_THREADS,
