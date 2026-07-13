@@ -2045,7 +2045,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         The biweight location of the unmasked pixel values within the
         aperture.
 
-        See `astropy.stats.biweight_location`.
+        The tuning constant is fixed at ``c=6``, the default value
+        used by `astropy.stats.biweight_location`.
         """
         fast = None if self._biweight is None else self._biweight[0]
         return self._finalize_value_stat(fast, biweight_location)
@@ -2057,7 +2058,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         The biweight midvariance of the unmasked pixel values within the
         aperture.
 
-        See `astropy.stats.biweight_midvariance`
+        The tuning constant is fixed at ``c=9``, the default value
+        used by `astropy.stats.biweight_midvariance`.
         """
         fast = None if self._biweight is None else self._biweight[1]
         return self._finalize_value_stat(fast, biweight_midvariance,
