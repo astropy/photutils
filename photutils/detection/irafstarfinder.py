@@ -352,7 +352,7 @@ class IRAFStarFinder(StarFinderBase):
             * ``roundness``: object roundness.
             * ``orientation``: the angle between the ``x`` axis and the
               major axis source measured counter-clockwise in the range
-              [0, 360) degrees.
+              (-90, 90] degrees.
             * ``n_pixels``: the total number of (positive) unmasked
               pixels.
             * ``peak``: the peak, sky-subtracted, pixel value of the object.

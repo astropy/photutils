@@ -2207,7 +2207,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         Gaussian function that has the same second-order moments as the
         source.
 
-        The angle increases in the counter-clockwise direction.
+        The angle increases in the counter-clockwise direction and is
+        in the range (-90, 90] degrees.
         """
         covar = self._covariance
         orient_radians = 0.5 * np.arctan2(2.0 * covar[:, 0, 1],

@@ -126,6 +126,23 @@ Bug Fixes
     not input. Previously, an all-NaN error array was returned only
     for sources with no overlap with the data. [#2316]
 
+- ``photutils.detection``
+
+  - Fixed ``DAOStarFinder`` and ``IRAFStarFinder`` ``orientation``
+    output to return a value in the range (-90, 90] degrees instead
+    of incorrectly wrapping it to [0, 360) degrees (which only ever
+    produced values in the disjoint ranges [0, 90] and (270, 360)). This
+    also makes it consistent with ``ApertureStats.orientation`` and
+    ``SourceCatalog.orientation``. [#2317]
+
+- ``photutils.segmentation``
+
+  - Fixed ``SourceCatalog.orientation`` to return a value in the range
+    (-90, 90] degrees instead of incorrectly wrapping it to [0, 360)
+    degrees (which only ever produced values in the disjoint ranges
+    [0, 90] and (270, 360)). This also makes it consistent with
+    ``ApertureStats.orientation``. [#2317]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a

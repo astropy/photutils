@@ -2841,13 +2841,13 @@ class SourceCatalog:
         Gaussian function that has the same second-order moments as the
         source.
 
-        The angle increases in the counter-clockwise direction and
-        will be in the range [0, 360) degrees.
+        The angle increases in the counter-clockwise direction and is
+        in the range (-90, 90] degrees.
         """
         covar = self._covariance
         orient_radians = 0.5 * np.arctan2(2.0 * covar[:, 0, 1],
                                           (covar[:, 0, 0] - covar[:, 1, 1]))
-        return (np.rad2deg(orient_radians) % 360) << u.deg
+        return np.rad2deg(orient_radians) * u.deg
 
     @lazyproperty
     @use_detcat
