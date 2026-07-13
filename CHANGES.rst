@@ -126,6 +126,16 @@ Bug Fixes
     not input. Previously, an all-NaN error array was returned only
     for sources with no overlap with the data. [#2316]
 
+- ``photutils.geometry``
+
+  - Fixed the ``'subpixel'`` overlap method for circular apertures so
+    that it returns identical results across platforms and compilers.
+    Previously, the squared-distance test for each subpixel center could
+    be contracted into a fused multiply-add on platforms with hardware
+    FMA (e.g., Apple silicon), giving slightly different results for
+    subpixel centers lying extremely close to the aperture boundary.
+    [#2320]
+
 - ``photutils.detection``
 
   - Fixed ``DAOStarFinder`` and ``IRAFStarFinder`` ``orientation``
