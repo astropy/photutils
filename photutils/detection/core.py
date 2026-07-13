@@ -509,12 +509,12 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         Gaussian function that has the same second-order moments as the
         source.
 
-        The angle increases in the counter-clockwise direction and
-        will be in the range [0, 360) degrees.
+        The angle increases in the counter-clockwise direction and is
+        in the range (-90, 90] degrees.
         """
         angle = 0.5 * np.arctan2(2.0 * self.moments_central[:, 1, 1],
                                  self.mu_diff)
-        return (np.rad2deg(angle) % 360) << u.deg
+        return np.rad2deg(angle) * u.deg
 
     @lazyproperty
     def roundness(self):

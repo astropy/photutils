@@ -199,7 +199,7 @@ class StarFinder(StarFinderBase):
             * ``roundness``: object roundness.
             * ``orientation``: the angle between the ``x`` axis and the
               major axis source measured counter-clockwise in the range
-              [0, 360) degrees.
+              (-90, 90] degrees.
             * ``max_value``: the maximum pixel value in the source
             * ``flux``: the source instrumental flux.
             * ``mag``: the source instrumental magnitude calculated as
