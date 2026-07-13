@@ -161,7 +161,7 @@ cdef double circle_overlap_single_subpixel(double x0, double y0,
         circle.
     """
     cdef unsigned int _i, _j
-    cdef double x, y, dx, dy, r_squared
+    cdef double x, y, xx, yy, dx, dy, r_squared
     cdef double frac = 0.0  # accumulator
 
     dx = (x1 - x0) / subpixels
@@ -174,7 +174,19 @@ cdef double circle_overlap_single_subpixel(double x0, double y0,
         y = y0 - 0.5 * dy
         for _j in range(subpixels):
             y += dy
-            if x * x + y * y < r_squared:
+            # Compute the two squares in separate statements before
+            # adding them. Writing ``x * x + y * y`` as a single
+            # expression allows the C compiler to contract it into a
+            # fused multiply-add (e.g. ``fma(x, x, y * y)``) on
+            # platforms with hardware FMA (such as Apple silicon),
+            # which rounds only once and is asymmetric in x and y. That
+            # produces platform-dependent results for subpixel centers
+            # lying within ~1e-15 of the circle boundary. Adding two
+            # pre-rounded products cannot be fused, so the comparison is
+            # deterministic across compilers and architectures.
+            xx = x * x
+            yy = y * y
+            if xx + yy < r_squared:
                 frac += 1.0
 
     return frac / (subpixels * subpixels)
