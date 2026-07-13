@@ -661,6 +661,8 @@ class PixelAperture(Aperture):
                 if error is not None:
                     variance = (error_cutout**2 * aper_weights)[pixel_mask]
                     aperture_sum_errs.append(np.sqrt(variance.sum()))
+                else:
+                    aperture_sum_errs.append(np.nan)
 
         return np.array(aperture_sums), np.array(aperture_sum_errs)
 
@@ -763,7 +765,7 @@ class PixelAperture(Aperture):
             error = np.ascontiguousarray(error, dtype=np.float64)
         ext_x, ext_y = self._xy_extents
 
-        sums, sum_var, _area, overlap, *_ = batch_aperture_sums(
+        sums, sum_var, _area, _overlap, *_ = batch_aperture_sums(
             np.ascontiguousarray(data, dtype=np.float64), error, mask,
             np.ascontiguousarray(self._positions, dtype=np.float64),
             shape_code, np.array(params, dtype=np.float64),
@@ -771,9 +773,10 @@ class PixelAperture(Aperture):
             seg_arr, labels_arr, seg_code)
 
         if error is None:
-            # Match the mask-based path, which collects one NaN per
-            # non-overlapping source when error is not input.
-            errs = np.full(np.count_nonzero(~overlap), np.nan)
+            # Match the mask-based path, which returns an all-NaN error
+            # array (with the same length as the fluxes) when error is
+            # not input.
+            errs = np.full(sums.shape, np.nan)
         else:
             errs = np.sqrt(sum_var)
 
