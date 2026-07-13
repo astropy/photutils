@@ -117,8 +117,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
         * ``'aperture_sum_err'``:
           The corresponding uncertainty in the ``'aperture_sum'``
-          values (always float64). Returned only if the input ``error``
-          is not `None`.
+          values (always float64). If the input ``error`` is `None`,
+          this column is filled with NaN values.
 
         The table metadata includes the Astropy and Photutils version
         numbers and the `aperture_photometry` calling arguments.
@@ -254,7 +254,6 @@ def aperture_photometry(data, apertures, error=None, mask=None,
             sum_err_key += f'_{i}'
 
         tbl[sum_key] = aper_sum
-        if error is not None:
-            tbl[sum_err_key] = aper_sum_err
+        tbl[sum_err_key] = aper_sum_err
 
     return tbl

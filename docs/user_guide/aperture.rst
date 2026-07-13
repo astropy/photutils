@@ -218,7 +218,7 @@ using the :func:`~photutils.aperture.aperture_photometry` function. We
 start by defining the aperture (at two positions) as described above::
 
     >>> positions = [(30.0, 30.0), (40.0, 40.0)]
-    >>> aperture = CircularAperture(positions, r=3.0)
+    >>> aperture = CircularAperture(positions, r=3.1)
 
 We then call the :func:`~photutils.aperture.aperture_photometry`
 function with the data and the apertures. Note that
@@ -232,20 +232,23 @@ here as an array of all ones::
     >>> phot_table = aperture_photometry(data, aperture)
     >>> phot_table['aperture_sum'].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id x_center y_center aperture_sum
-    --- -------- -------- ------------
-      1     30.0     30.0    28.274334
-      2     40.0     40.0    28.274334
+     id x_center y_center aperture_sum aperture_sum_err
+    --- -------- -------- ------------ ----------------
+      1     30.0     30.0    30.190705              nan
+      2     40.0     40.0    30.190705              nan
 
 This function returns the results of the photometry in an Astropy
-`~astropy.table.QTable`.  In this example, the table has four columns,
-named ``'id'``, ``'x_center'``, ``'y_center'``, and ``'aperture_sum'``.
+`~astropy.table.QTable`.  In this example, the table has five columns,
+named ``'id'``, ``'x_center'``, ``'y_center'``, ``'aperture_sum'``, and
+``'aperture_sum_err'``. Because no ``error`` was input, the
+``'aperture_sum_err'`` column is filled with NaN values (see
+:ref:`error_estimation`).
 
 Since all the data values are 1.0, the aperture sums are equal to the
 area of a circle with a radius of 3::
 
-    >>> print(np.pi * 3.0 ** 2)  # doctest: +FLOAT_CMP
-    28.2743338823
+    >>> print(np.pi * 3.1 ** 2)  # doctest: +FLOAT_CMP
+    30.190705400997917
 
 
 .. _photutils-aperture-overlap:
@@ -284,13 +287,13 @@ by a factor of 5 (``subpixels=5``) in each dimension::
 
     >>> phot_table = aperture_photometry(data, aperture, method='subpixel',
     ...                                  subpixels=5)
-    >>> print(phot_table)  # doctest: +SKIP
-     id x_center y_center aperture_sum
-    --- -------- -------- ------------
-      1     30.0     30.0        27.96
-      2     40.0     40.0        27.96
+    >>> print(phot_table)
+     id x_center y_center    aperture_sum    aperture_sum_err
+    --- -------- -------- ------------------ ----------------
+      1     30.0     30.0 29.959999999999997              nan
+      2     40.0     40.0 29.959999999999997              nan
 
-Note that the results differ from the exact value of 28.274333 (see
+Note that the results differ from the exact value of 30.19070 (see
 above).
 
 For the ``'subpixel'`` method, the default value is ``subpixels=5``,
@@ -321,11 +324,11 @@ Suppose that we wish to use three circular apertures, with radii of 3,
     >>> phot_table = aperture_photometry(data, apertures)
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
-    >>> print(phot_table)
-     id x_center y_center aperture_sum_0 aperture_sum_1 aperture_sum_2
-    --- -------- -------- -------------- -------------- --------------
-      1       30       30      28.274334      50.265482      78.539816
-      2       40       40      28.274334      50.265482      78.539816
+    >>> phot_table.pprint(max_width=-1)
+     id x_center y_center aperture_sum_0 aperture_sum_err_0 aperture_sum_1 aperture_sum_err_1 aperture_sum_2 aperture_sum_err_2
+    --- -------- -------- -------------- ------------------ -------------- ------------------ -------------- ------------------
+      1       30       30      28.274334                nan      50.265482                nan      78.539816                nan
+      2       40       40      28.274334                nan      50.265482                nan      78.539816                nan
 
 For multiple apertures, the output table column names are appended
 with the ``positions`` index.
@@ -344,10 +347,10 @@ specify ``a``, ``b``, and ``theta``::
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id x_center y_center aperture_sum
-    --- -------- -------- ------------
-      1       30       30     47.12389
-      2       40       40     47.12389
+     id x_center y_center aperture_sum aperture_sum_err
+    --- -------- -------- ------------ ----------------
+      1       30       30     47.12389              nan
+      2       40       40     47.12389              nan
 
 Again, for multiple apertures one should input a list of aperture
 objects, each with identical positions::
@@ -360,11 +363,11 @@ objects, each with identical positions::
     >>> phot_table = aperture_photometry(data, apertures)
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
-    >>> print(phot_table)
-     id x_center y_center aperture_sum_0 aperture_sum_1 aperture_sum_2
-    --- -------- -------- -------------- -------------- --------------
-      1       30       30       47.12389      75.398224      109.95574
-      2       40       40       47.12389      75.398224      109.95574
+    >>> phot_table.pprint(max_width=-1)
+     id x_center y_center aperture_sum_0 aperture_sum_err_0 aperture_sum_1 aperture_sum_err_1 aperture_sum_2 aperture_sum_err_2
+    --- -------- -------- -------------- ------------------ -------------- ------------------ -------------- ------------------
+      1       30       30       47.12389                nan      75.398224                nan      109.95574                nan
+      2       40       40       47.12389                nan      75.398224                nan      109.95574                nan
 
 
 .. _photutils-aperture-stats:
@@ -575,11 +578,11 @@ the photometry in the circular aperture (in the next example, we'll use
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id x_center y_center aperture_sum
-    --- -------- -------- ------------
-      1    145.1    168.3    1128.1245
-      2     84.5    224.1      735.739
-      3     48.3    200.3    1299.6341
+     id x_center y_center aperture_sum aperture_sum_err
+    --- -------- -------- ------------ ----------------
+      1    145.1    168.3    1128.1245              nan
+      2     84.5    224.1      735.739              nan
+      3     48.3    200.3    1299.6341              nan
 
 The total background within the circular aperture is the mean local
 per-pixel background times the circular aperture area. If you are
@@ -619,12 +622,12 @@ Finally, let's add these as columns to the photometry table::
     >>> phot_table['aperture_sum_bkgsub'] = phot_bkgsub
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
-    >>> print(phot_table)
-     id x_center y_center aperture_sum total_bkg aperture_sum_bkgsub
-    --- -------- -------- ------------ --------- -------------------
-      1    145.1    168.3    1128.1245 392.23708           735.88739
-      2     84.5    224.1      735.739  403.2968           332.44219
-      3     48.3    200.3    1299.6341 382.40618           917.22792
+    >>> phot_table.pprint(max_width=-1)
+     id x_center y_center aperture_sum aperture_sum_err total_bkg aperture_sum_bkgsub
+    --- -------- -------- ------------ ---------------- --------- -------------------
+      1    145.1    168.3    1128.1245              nan 392.23708           735.88739
+      2     84.5    224.1      735.739              nan  403.2968           332.44219
+      3     48.3    200.3    1299.6341              nan 382.40618           917.22792
 
 Sigma-clipped median within a circular annulus
 """"""""""""""""""""""""""""""""""""""""""""""
@@ -679,10 +682,10 @@ Aperture Photometry Error Estimation
 ------------------------------------
 
 If and only if the ``error`` keyword is input to
-:func:`~photutils.aperture.aperture_photometry`, the returned table
-will include a ``'aperture_sum_err'`` column in addition to
-``'aperture_sum'``.  ``'aperture_sum_err'`` provides the propagated
-uncertainty associated with ``'aperture_sum'``.
+:func:`~photutils.aperture.aperture_photometry`, the ``'aperture_sum_err'``
+column will contain the propagated uncertainty associated with
+``'aperture_sum'``. Otherwise, the ``'aperture_sum_err'`` column is
+filled with NaN values.
 
 For example, suppose we have previously calculated the error on each
 pixel value and saved it in the array ``error``::
