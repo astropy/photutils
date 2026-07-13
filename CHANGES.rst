@@ -159,6 +159,17 @@ Bug Fixes
 API Changes
 ^^^^^^^^^^^
 
+- ``photutils.aperture``
+
+  - ``aperture_photometry`` now always includes an
+    ``'aperture_sum_err'`` column in the returned table, filled with
+    NaN values if the ``error`` keyword is not input. Previously,
+    the column was omitted entirely in that case. This makes
+    the behavior consistent with ``ApertureStats.to_table()``,
+    ``SourceCatalog.to_table()``, and the ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` output tables, which always include
+    ``*_err`` columns (e.g., ``flux_err``). [#2319]
+
 
 3.0.0 (2026-04-17)
 ------------------
