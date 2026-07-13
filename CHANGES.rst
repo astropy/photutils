@@ -121,6 +121,11 @@ Bug Fixes
     nonzero ``sum_method`` overlap fractions, the fractional area of
     those pixels is now returned, consistent with ``sum``. [#2314]
 
+  - Fixed ``PixelAperture.do_photometry`` so that the returned flux
+    errors always have the same length as the fluxes when ``error`` is
+    not input. Previously, an all-NaN error array was returned only
+    for sources with no overlap with the data. [#2316]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a

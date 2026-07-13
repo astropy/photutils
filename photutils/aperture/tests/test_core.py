@@ -176,11 +176,14 @@ class TestPixelApertureDoPhotometry:
     def test_do_photometry_basic(self):
         """
         Test that do_photometry returns the expected aperture sum for a
-        uniform data array with no error input.
+        uniform data array with no error input, and that the returned
+        error array has the same length as the flux array, filled with
+        NaN.
         """
         sums, errs = self.aper.do_photometry(self.data)
         assert_allclose(sums[0], np.pi * 9, rtol=1e-3)
-        assert len(errs) == 0
+        assert len(errs) == len(sums)
+        assert_allclose(errs, np.nan)
 
 
 class TestApertureReprStr:

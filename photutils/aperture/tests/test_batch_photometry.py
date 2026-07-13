@@ -194,9 +194,8 @@ def test_no_overlap_nan_and_err_shape():
     """
     Test that sources with no overlap with the data give NaN sums.
 
-    Also, test that the error array has the same shape as the sums array
-    and contains NaN values for the non-overlapping sources when error
-    is not input.
+    Also, test that the error array always has the same shape as the
+    sums array, filled with NaN when error is not input.
     """
     aperture = CircularAperture(POSITIONS, r=5.5)
     n_outside = 3
@@ -204,13 +203,33 @@ def test_no_overlap_nan_and_err_shape():
     sums, errs = aperture._do_batch_photometry(DATA, error=None, mask=None,
                                                method='exact', subpixels=5)
     assert np.isnan(sums).sum() == n_outside
-    assert errs.shape == (n_outside,)
+    assert errs.shape == sums.shape
     assert np.all(np.isnan(errs))
 
     sums, errs = aperture._do_batch_photometry(DATA, error=ERROR, mask=None,
                                                method='exact', subpixels=5)
     assert errs.shape == sums.shape
     assert np.isnan(errs).sum() == n_outside
+
+
+@pytest.mark.parametrize('aperture', [
+    CircularAperture(POSITIONS, r=5.5),
+    PolygonAperture.from_regular_polygon(POSITIONS, 6, radius=5.5),
+])
+def test_do_photometry_no_error_flux_err_shape(aperture):
+    """
+    Test that `do_photometry` returns a ``flux_err`` array that always
+    has the same length as ``flux`` and is filled with NaN when
+    ``error`` is not input, both for sources with and without overlap.
+
+    ``CircularAperture`` exercises the batch code path and
+    ``PolygonAperture`` exercises the mask-based code path.
+    """
+    flux, flux_err = aperture.do_photometry(DATA, error=None)
+    assert flux_err.shape == flux.shape
+    assert np.any(np.isnan(flux))
+    assert np.any(~np.isnan(flux))
+    assert np.all(np.isnan(flux_err))
 
 
 def test_fallback_inputs():
