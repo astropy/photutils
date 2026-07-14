@@ -7,10 +7,9 @@ Introduction
 ------------
 
 The :func:`~photutils.aperture.aperture_photometry` function and the
-:class:`~photutils.aperture.ApertureStats` class are the main tools to
-perform aperture photometry on an astronomical image for a given set of
-apertures.
-
+:class:`~photutils.aperture.ApertureStats` class are the primary tools
+for performing aperture photometry. They work in conjunction with the
+aperture classes.
 
 .. _photutils-apertures:
 
@@ -18,46 +17,42 @@ Apertures
 ---------
 
 Photutils provides several apertures defined in pixel or sky
-coordinates.  The aperture classes that are defined in pixel
-coordinates are:
+coordinates.
 
-* `~photutils.aperture.CircularAperture`
-* `~photutils.aperture.CircularAnnulus`
-* `~photutils.aperture.EllipticalAperture`
-* `~photutils.aperture.EllipticalAnnulus`
-* `~photutils.aperture.RectangularAperture`
-* `~photutils.aperture.RectangularAnnulus`
-* `~photutils.aperture.PolygonAperture`
+.. list-table::
+   :header-rows: 1
 
-Each of these classes has a corresponding variant defined in sky
-coordinates:
+   * - Pixel coordinates
+     - Sky coordinates
+   * - `~photutils.aperture.CircularAperture`
+     - `~photutils.aperture.SkyCircularAperture`
+   * - `~photutils.aperture.CircularAnnulus`
+     - `~photutils.aperture.SkyCircularAnnulus`
+   * - `~photutils.aperture.EllipticalAperture`
+     - `~photutils.aperture.SkyEllipticalAperture`
+   * - `~photutils.aperture.EllipticalAnnulus`
+     - `~photutils.aperture.SkyEllipticalAnnulus`
+   * - `~photutils.aperture.RectangularAperture`
+     - `~photutils.aperture.SkyRectangularAperture`
+   * - `~photutils.aperture.RectangularAnnulus`
+     - `~photutils.aperture.SkyRectangularAnnulus`
+   * - `~photutils.aperture.PolygonAperture`
+     - `~photutils.aperture.SkyPolygonAperture`
 
-* `~photutils.aperture.SkyCircularAperture`
-* `~photutils.aperture.SkyCircularAnnulus`
-* `~photutils.aperture.SkyEllipticalAperture`
-* `~photutils.aperture.SkyEllipticalAnnulus`
-* `~photutils.aperture.SkyRectangularAperture`
-* `~photutils.aperture.SkyRectangularAnnulus`
-* `~photutils.aperture.SkyPolygonAperture`
+The :func:`~photutils.aperture.aperture_photometry` function and
+the :class:`~photutils.aperture.ApertureStats` class both accept
+:class:`~photutils.aperture.Aperture` objects. When using sky-based
+apertures, a WCS transformation must also be provided.
 
-To perform aperture photometry with sky-based apertures, one will need
-to specify a WCS transformation.
+They also accept supported `regions.Region` objects, i.e., region
+classes that correspond to the aperture classes listed above. The
+:func:`~photutils.aperture.aperture_photometry` function additionally
+accepts a list of :class:`~photutils.aperture.Aperture` and/or
+`regions.Region` objects, provided they all have identical positions.
 
-The :func:`~photutils.aperture.aperture_photometry` function
-and the :class:`~photutils.aperture.ApertureStats` class both
-accept `~photutils.aperture.Aperture` objects. They can also
-accept a supported `regions.Region` object, i.e. a region
-that corresponds to the above aperture classes, as input. The
-:func:`~photutils.aperture.aperture_photometry` function also accepts a
-list of `~photutils.aperture.Aperture` or `regions.Region` objects if
-each aperture/region has identical positions.
-
-The :func:`~photutils.aperture.region_to_aperture` convenience
-function can also be used to convert a `regions.Region` object to a
-`~photutils.aperture.Aperture` object.
-
-Users can also create their own custom apertures (see
-:ref:`custom-apertures`).
+The :func:`~photutils.aperture.region_to_aperture` convenience function
+can be used to convert a `regions.Region` object to the corresponding
+:class:`~photutils.aperture.Aperture` object.
 
 
 .. _creating-aperture-objects:
@@ -66,93 +61,104 @@ Creating Aperture Objects
 -------------------------
 
 The first step in performing aperture photometry is to create an
-aperture object.  An aperture object is defined by a position (or a
-list of positions) and parameters that define its size and possibly,
-orientation (e.g., an elliptical aperture).
+aperture object. An aperture is defined by one or more positions and the
+parameters that specify its size and, where applicable, its orientation
+(e.g., for elliptical apertures).
 
-We start with an example of creating a circular aperture in pixel
-coordinates using the :class:`~photutils.aperture.CircularAperture`
-class::
+The following example creates a circular aperture in pixel coordinates
+using the :class:`~photutils.aperture.CircularAperture` class::
 
     >>> from photutils.aperture import CircularAperture
-    >>> positions = [(30.0, 30.0), (40.0, 40.0)]
-    >>> aperture = CircularAperture(positions, r=3.0)
+    >>> positions = [(71.4, 23.9), (42.1, 41.7), (54.6, 68.2)]
+    >>> aperture = CircularAperture(positions, r=3.1)
 
-The positions should be either a single tuple of ``(x, y)``, a list of
-``(x, y)`` tuples, or an array with shape ``Nx2``, where ``N`` is the
-number of positions.  The above example defines two circular apertures
-located at pixel coordinates ``(30, 30)`` and ``(40, 40)`` with a
-radius of 3 pixels.
+The positions can be specified as a single ``(x, y)`` tuple, a list of
+``(x, y)`` tuples, or an ``N×2`` array, where ``N`` is the number of
+positions. In this example, three circular apertures with a radius of
+3.1 pixels are created at ``(x, y)`` pixel coordinates ``(71.4, 23.9)``,
+``(42.1, 41.7)``, and ``(54.6, 68.2)``.
 
-Creating an aperture object in sky coordinates is similar.  One first
-uses the :class:`~astropy.coordinates.SkyCoord` class to define sky
-coordinates and then the
-:class:`~photutils.aperture.SkyCircularAperture` class to define the
-aperture object::
+Creating an aperture in sky coordinates is similar.
+First, define the sky coordinates using the
+:class:`~astropy.coordinates.SkyCoord` class, then create the aperture
+using the :class:`~photutils.aperture.SkyCircularAperture` class::
 
     >>> from astropy import units as u
     >>> from astropy.coordinates import SkyCoord
     >>> from photutils.aperture import SkyCircularAperture
-    >>> positions = SkyCoord(l=[1.2, 2.3] * u.deg, b=[0.1, 0.2] * u.deg,
-    ...                      frame='galactic')
+    >>> positions = SkyCoord([101.20, 101.21], [45.14, 45.12], unit='deg',
+    ...                      frame='icrs')
     >>> aperture = SkyCircularAperture(positions, r=4.0 * u.arcsec)
 
 .. note::
-    Sky apertures are not defined completely in sky coordinates. They
-    simply use sky coordinates to define the central position, and the
-    remaining parameters are converted to pixels using the pixel scale
-    of the image at the central position. Projection distortions are
-    not taken into account. They are **not** defined as apertures on
-    the celestial sphere, but rather are meant to represent aperture
-    shapes on an image. If the apertures were defined completely in sky
-    coordinates, their shapes would not be preserved when converting to
-    or from pixel coordinates.
+
+    Sky apertures are not defined entirely in sky coordinates. The
+    aperture center is specified by sky coordinates, while the aperture
+    size is specified in angular units, and the orientation (``theta``,
+    where applicable) is defined in the sky coordinate frame. When
+    converting to pixel coordinates, the aperture size and orientation
+    are transformed using the local pixel scale and rotation at the
+    aperture center. Projection distortions are not taken into account.
+
+    Consequently, sky apertures are **not** apertures defined on the
+    celestial sphere. Instead, they represent aperture shapes on an
+    image that are anchored to a sky position. This design preserves the
+    aperture shape when converting between sky and pixel coordinates,
+    which would not generally be possible if the aperture were defined
+    as a true region on the celestial sphere.
 
 
 Converting Between Pixel and Sky Apertures
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The pixel apertures can be converted to sky apertures, and
-vice versa, given a WCS object. To accomplish this, use the
-:meth:`~photutils.aperture.PixelAperture.to_sky` method for pixel
-apertures. For this example, we'll use a sample WCS object::
+The pixel apertures can be converted to sky apertures, and vice
+versa, given a WCS object. To convert a pixel aperture to a sky
+aperture, use the :meth:`~photutils.aperture.PixelAperture.to_sky`
+method. The following example shows how to convert a
+:class:`~photutils.aperture.CircularAperture` to a
+:class:`~photutils.aperture.SkyCircularAperture` using a sample
+:class:`~astropy.wcs.WCS` object::
 
     >>> from photutils.datasets import make_wcs
     >>> wcs = make_wcs((100, 100))
-    >>> aperture = CircularAperture((10, 20), r=4.0)
+    >>> aperture = CircularAperture((12.3, 18.7), r=4.0)
     >>> sky_aperture = aperture.to_sky(wcs)
     >>> sky_aperture  # doctest: +FLOAT_CMP
     <SkyCircularAperture(<SkyCoord (ICRS): (ra, dec) in deg
-        (197.89234399, -1.36689653)>, r=0.39999999985539925 arcsec)>
+        (197.89228076, -1.36685926)>, r=0.39999999972155825 arcsec)>
 
-and the :meth:`~photutils.aperture.SkyAperture.to_pixel` method for
-sky apertures, e.g.,::
+To convert a sky aperture to a pixel aperture, use the
+:meth:`~photutils.aperture.SkyAperture.to_pixel` method::
 
-    >>> position = SkyCoord(197.893, -1.366, unit='deg', frame='icrs')
+    >>> position = SkyCoord(197.89228076, -1.36685926, unit='deg',
+    ...                     frame='icrs')
     >>> aperture = SkyCircularAperture(position, r=0.4 * u.arcsec)
     >>> pix_aperture = aperture.to_pixel(wcs)
     >>> pix_aperture  # doctest: +FLOAT_CMP
-    <CircularAperture([26.14628817, 56.58410628], r=4.000000000439743)>
+    <CircularAperture([12.29985329, 18.700118  ], r=4.000000002260265)>
 
 .. note::
 
-    A given aperture has a single fixed *shape* that is applied
-    identically at every position (e.g., a pixel circle must remain
-    a pixel circle of the same radius at all positions). Because a
-    WCS can have a spatially-varying scale, rotation, and distortion,
-    the local transformation generally differs from position to
-    position, so the shape cannot be preserved exactly at every
-    position when converting between pixel and sky apertures. To
-    keep the conversion deterministic and the shape well-defined,
-    a single reference position is used to compute the local WCS
-    properties (pixel scale, rotation angle), and by convention
-    this is the **first** position. This applies to all aperture
-    classes, including `~photutils.aperture.PolygonAperture` and
-    `~photutils.aperture.SkyPolygonAperture`, whose vertex offsets are
-    transformed using the WCS sampled at the first position. Apertures
-    with multiple positions used with a WCS that has spatially-varying
-    distortions may therefore produce inaccurate shape conversions for
-    positions far from the first position.
+    Each aperture has a single fixed shape that is applied identically
+    at every position (e.g., a circular pixel aperture has the same
+    radius at all positions). However, a WCS may have a spatially
+    varying pixel scale, rotation, or distortion, so there is generally
+    no single transformation that preserves the aperture shape at every
+    position simultaneously.
+
+    To ensure a deterministic conversion, the local WCS properties
+    (e.g., pixel scale and rotation angle) are computed at a single
+    reference position. By convention, this is the **first** aperture
+    position. This behavior applies to all aperture classes,
+    including :class:`~photutils.aperture.PolygonAperture` and
+    :class:`~photutils.aperture.SkyPolygonAperture`, whose vertex
+    offsets are transformed using the WCS evaluated at the first
+    position.
+
+    Consequently, when converting apertures with multiple positions
+    using a WCS with significant spatial variations, the converted
+    aperture shapes may become increasingly inaccurate for positions
+    farther from the first position.
 
 
 Polygon Apertures
@@ -167,7 +173,7 @@ its ``vertex_offsets``) that can be applied at one or more positions::
 
     >>> import numpy as np
     >>> from photutils.aperture import PolygonAperture
-    >>> positions = [(30.0, 30.0), (40.0, 40.0)]
+    >>> positions = [(71.4, 23.9), (42.1, 41.7), (54.6, 68.2)]
     >>> offsets = [(-3.0, -2.0), (3.0, -2.0), (3.0, 2.0), (-3.0, 2.0)]
     >>> aperture = PolygonAperture(positions, offsets)
 
@@ -191,7 +197,7 @@ interior angles) can be created with the
 method by specifying a center, the number of vertices, the circumradius,
 and an optional rotation angle::
 
-    >>> hexagon = PolygonAperture.from_regular_polygon((30.0, 30.0),
+    >>> hexagon = PolygonAperture.from_regular_polygon((31.4, 32.9),
     ...                                                n_vertices=6,
     ...                                                radius=5.0)
 
@@ -199,15 +205,21 @@ For regular polygons, the ``outer_radius``, ``inner_radius``,
 ``side_length``, ``interior_angle``, ``exterior_angle``, and ``theta``
 properties expose the geometric parameters of the shape.
 
-The built-in `~photutils.aperture.CircularAperture`,
-`~photutils.aperture.EllipticalAperture`, and
-`~photutils.aperture.RectangularAperture` classes (and their
-sky counterparts `~photutils.aperture.SkyCircularAperture`,
-`~photutils.aperture.SkyEllipticalAperture`, and
-`~photutils.aperture.SkyRectangularAperture`) also provide a
-``to_polygon`` method to convert them to an approximating (or, for the
-rectangle, exactly equivalent) `~photutils.aperture.PolygonAperture` or
-`~photutils.aperture.SkyPolygonAperture`.
+
+Converting to Polygon Apertures
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The built-in :class:`~photutils.aperture.CircularAperture`,
+:class:`~photutils.aperture.EllipticalAperture`,
+:class:`~photutils.aperture.RectangularAperture`,
+:class:`~photutils.aperture.SkyCircularAperture`,
+:class:`~photutils.aperture.SkyEllipticalAperture`, and
+:class:`~photutils.aperture.SkyRectangularAperture` classes provide a
+``to_polygon`` method that returns a
+:class:`~photutils.aperture.PolygonAperture` or
+:class:`~photutils.aperture.SkyPolygonAperture`. For circular and
+elliptical apertures, the returned polygon approximates the aperture
+boundary. For rectangular apertures, it is exactly equivalent.
 
 
 Performing Aperture Photometry
@@ -215,9 +227,9 @@ Performing Aperture Photometry
 
 After the aperture object is created, we can then perform the photometry
 using the :func:`~photutils.aperture.aperture_photometry` function. We
-start by defining the aperture (at two positions) as described above::
+start by defining the aperture (at three positions) as described above::
 
-    >>> positions = [(30.0, 30.0), (40.0, 40.0)]
+    >>> positions = [(71.4, 23.9), (42.1, 41.7), (54.6, 68.2)]
     >>> aperture = CircularAperture(positions, r=3.1)
 
 We then call the :func:`~photutils.aperture.aperture_photometry`
@@ -234,8 +246,9 @@ here as an array of all ones::
     >>> print(phot_table)
      id x_center y_center aperture_sum aperture_sum_err
     --- -------- -------- ------------ ----------------
-      1     30.0     30.0    30.190705              nan
-      2     40.0     40.0    30.190705              nan
+      1     71.4     23.9    30.190705              nan
+      2     42.1     41.7    30.190705              nan
+      3     54.6     68.2    30.190705              nan
 
 This function returns the results of the photometry in an Astropy
 `~astropy.table.QTable`.  In this example, the table has five columns,
@@ -245,10 +258,10 @@ named ``'id'``, ``'x_center'``, ``'y_center'``, ``'aperture_sum'``, and
 :ref:`error_estimation`).
 
 Since all the data values are 1.0, the aperture sums are equal to the
-area of a circle with a radius of 3::
+area of a circle with a radius of 3.1::
 
     >>> print(np.pi * 3.1 ** 2)  # doctest: +FLOAT_CMP
-    30.190705400997917
+    30.190705401
 
 
 .. _photutils-aperture-overlap:
@@ -256,7 +269,8 @@ area of a circle with a radius of 3::
 Aperture and Pixel Overlap
 --------------------------
 
-The overlap of the aperture with the data pixels can be handled using one of three methods:
+The overlap of the aperture with the data pixels can be handled using
+one of three methods:
 
 * ``'exact'`` (default):
   Calculates the exact geometric intersection of the aperture with each
@@ -290,52 +304,135 @@ by a factor of 5 (``subpixels=5``) in each dimension::
     >>> print(phot_table)
      id x_center y_center    aperture_sum    aperture_sum_err
     --- -------- -------- ------------------ ----------------
-      1     30.0     30.0 29.959999999999997              nan
-      2     40.0     40.0 29.959999999999997              nan
+      1     71.4     23.9               30.2              nan
+      2     42.1     41.7 29.599999999999998              nan
+      3     54.6     68.2 29.959999999999997              nan
 
-Note that the results differ from the exact value of 30.19070 (see
-above).
+Note that the ``'subpixel'`` sums differ from the exact value of
+30.190705 (see above). They also differ slightly from one another, even
+though every aperture has the same radius. This occurs because subpixel
+sampling is a discrete approximation: the number of subpixel centers
+that fall within an aperture depends on the aperture center's position
+relative to the pixel grid.
 
 For the ``'subpixel'`` method, the default value is ``subpixels=5``,
-meaning that each pixel is equally divided into 25 smaller pixels
-(this is the method and subsampling factor used in `SourceExtractor
-<https://sextractor.readthedocs.io/en/latest/>`_). The precision can
-be improved by increasing ``subpixels``, but the computation time will
-generally increase as a result.
+meaning that each pixel is divided into a 5 × 5 grid of
+smaller subpixels (25 subpixels total). This is the sampling
+method and subsampling factor used by `SourceExtractor
+<https://sextractor.readthedocs.io/en/latest/>`_. Increasing
+``subpixels`` improves the accuracy of the approximation, but also
+increases the computation time.
+
+
+.. _error_estimation:
+
+Aperture Photometry Error Estimation
+------------------------------------
+
+If the ``error`` keyword is provided to
+:func:`~photutils.aperture.aperture_photometry`, the
+``'aperture_sum_err'`` column contains the propagated uncertainty
+of ``'aperture_sum'``. If ``error`` is not provided, the
+``'aperture_sum_err'`` column is filled with NaN values.
+
+For example, suppose the uncertainty of each pixel value has already
+been calculated and stored in the array ``error``::
+
+    >>> positions = [(71.4, 23.9), (42.1, 41.7), (54.6, 68.2)]
+    >>> aperture = CircularAperture(positions, r=3.0)
+    >>> data = np.ones((100, 100))
+    >>> error = 0.1 * data
+
+    >>> phot_table = aperture_photometry(data, aperture, error=error)
+    >>> for col in phot_table.colnames:
+    ...     phot_table[col].info.format = '%.8g'  # for consistent table output
+    >>> print(phot_table)
+     id x_center y_center aperture_sum aperture_sum_err
+    --- -------- -------- ------------ ----------------
+      1     71.4     23.9    28.274334       0.53173616
+      2     42.1     41.7    28.274334       0.53173616
+      3     54.6     68.2    28.274334       0.53173616
+
+The ``'aperture_sum_err'`` values are calculated as:
+
+.. math:: \Delta F = \sqrt{\sum_{i \in A} \sigma_{\mathrm{tot}, i}^2}
+
+where :math:`A` denotes the unmasked pixels within the aperture and
+:math:`\sigma_{\mathrm{tot}, i}` is the corresponding value from the
+input ``error`` array.
+
+In the example above, the ``error`` keyword is assumed to specify the
+*total* uncertainty. That is, it either includes the Poisson noise from
+individual sources or the source Poisson noise is negligible. In many
+cases, however, the available uncertainty image represents only the
+background noise. Such a background-only error array does not include
+the additional Poisson noise from bright sources.
+
+To include source Poisson noise, the
+:func:`~photutils.utils.calc_total_error` function can be used
+to calculate the total error. For example, suppose we have a
+background-only error image named ``bkg_error``. If the data are in
+units of electrons/s, we use the exposure time as the effective gain::
+
+    >>> from photutils.utils import calc_total_error
+    >>> bkg_error = 0.1 * data  # background-only error
+    >>> effective_gain = 500  # seconds
+    >>> error = calc_total_error(data, bkg_error, effective_gain)
+    >>> phot_table = aperture_photometry(data, aperture, error=error)
+    >>> for col in phot_table.colnames:
+    ...     phot_table[col].info.format = '%.8g'  # for consistent table output
+    >>> print(phot_table)
+     id x_center y_center aperture_sum aperture_sum_err
+    --- -------- -------- ------------ ----------------
+      1     71.4     23.9    28.274334       0.58248777
+      2     42.1     41.7    28.274334       0.58248777
+      3     54.6     68.2    28.274334       0.58248777
+
+Note that the ``'aperture_sum_err'`` values are now larger than in the
+previous example because they include the additional Poisson noise from
+the source. Refer to the :func:`~photutils.utils.calc_total_error`
+documentation for more details on the calculation of the total error.
 
 
 Aperture Photometry with Multiple Apertures at Each Position
 ------------------------------------------------------------
 
-While the `~photutils.aperture.Aperture` objects support multiple
-positions, they must have a fixed size and shape (e.g., radius and
-orientation).
+While :class:`~photutils.aperture.Aperture` objects support multiple
+positions, a single aperture object must have the same size and shape
+at every position (e.g., the same radius and orientation).
 
-To perform photometry in multiple apertures at each position, one may
-input a list of aperture objects to the
-:func:`~photutils.aperture.aperture_photometry` function.  In this
-case, the apertures must all have identical position(s).
+To perform photometry using multiple aperture sizes or shapes at each
+position, pass a list of aperture objects to the
+:func:`~photutils.aperture.aperture_photometry` function. In this case,
+all aperture objects in the list must have identical position(s).
 
-Suppose that we wish to use three circular apertures, with radii of 3,
-4, and 5 pixels, on each source::
+For example, suppose we want to measure three circular apertures with
+radii of 3, 4, and 5 pixels at each source position. We therefore create
+a list of aperture objects, where each object has the same positions but
+a different radius. We also pass the ``error`` array defined above so
+that the ``'aperture_sum_err'`` columns are populated::
 
+    >>> positions = [(71.4, 23.9), (42.1, 41.7), (54.6, 68.2)]
     >>> radii = [3.0, 4.0, 5.0]
     >>> apertures = [CircularAperture(positions, r=r) for r in radii]
-    >>> phot_table = aperture_photometry(data, apertures)
+    >>> phot_table = aperture_photometry(data, apertures, error=error)
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> phot_table.pprint(max_width=-1)
      id x_center y_center aperture_sum_0 aperture_sum_err_0 aperture_sum_1 aperture_sum_err_1 aperture_sum_2 aperture_sum_err_2
     --- -------- -------- -------------- ------------------ -------------- ------------------ -------------- ------------------
-      1       30       30      28.274334                nan      50.265482                nan      78.539816                nan
-      2       40       40      28.274334                nan      50.265482                nan      78.539816                nan
+      1     71.4     23.9      28.274334         0.58248777      50.265482         0.77665037      78.539816         0.97081296
+      2     42.1     41.7      28.274334         0.58248777      50.265482         0.77665037      78.539816         0.97081296
+      3     54.6     68.2      28.274334         0.58248777      50.265482         0.77665037      78.539816         0.97081296
 
-For multiple apertures, the output table column names are appended
-with the ``positions`` index.
+When a list of aperture objects is provided, the output table column
+names are appended with the index of the aperture within the input
+list (e.g., ``aperture_sum_0`` for the first aperture,
+``aperture_sum_1`` for the second, and so on).
 
-Other apertures have multiple parameters specifying the aperture size
-and orientation.  For example, for elliptical apertures, one must
-specify ``a``, ``b``, and ``theta``::
+Other aperture classes have additional parameters that define their
+size and orientation. For example, an elliptical aperture requires
+``a``, ``b``, and ``theta`` parameters::
 
     >>> from astropy.coordinates import Angle
     >>> from photutils.aperture import EllipticalAperture
@@ -343,31 +440,144 @@ specify ``a``, ``b``, and ``theta``::
     >>> b = 3.0
     >>> theta = Angle(45, 'deg')
     >>> apertures = EllipticalAperture(positions, a, b, theta=theta)
-    >>> phot_table = aperture_photometry(data, apertures)
+    >>> phot_table = aperture_photometry(data, apertures, error=error)
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
      id x_center y_center aperture_sum aperture_sum_err
     --- -------- -------- ------------ ----------------
-      1       30       30     47.12389              nan
-      2       40       40     47.12389              nan
+      1     71.4     23.9     47.12389       0.75198848
+      2     42.1     41.7     47.12389       0.75198848
+      3     54.6     68.2     47.12389       0.75198848
 
-Again, for multiple apertures one should input a list of aperture
-objects, each with identical positions::
+To measure photometry using multiple elliptical apertures, provide a
+list of aperture objects with identical positions, but with different
+``a``, ``b``, and/or ``theta`` parameters::
 
     >>> a = [5.0, 6.0, 7.0]
     >>> b = [3.0, 4.0, 5.0]
     >>> theta = Angle(45, 'deg')
     >>> apertures = [EllipticalAperture(positions, a=ai, b=bi, theta=theta)
     ...              for (ai, bi) in zip(a, b)]
-    >>> phot_table = aperture_photometry(data, apertures)
+    >>> phot_table = aperture_photometry(data, apertures, error=error)
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> phot_table.pprint(max_width=-1)
      id x_center y_center aperture_sum_0 aperture_sum_err_0 aperture_sum_1 aperture_sum_err_1 aperture_sum_2 aperture_sum_err_2
     --- -------- -------- -------------- ------------------ -------------- ------------------ -------------- ------------------
-      1       30       30       47.12389                nan      75.398224                nan      109.95574                nan
-      2       40       40       47.12389                nan      75.398224                nan      109.95574                nan
+      1     71.4     23.9       47.12389         0.75198848      75.398224         0.95119855      109.95574          1.1486814
+      2     42.1     41.7       47.12389         0.75198848      75.398224         0.95119855      109.95574          1.1486814
+      3     54.6     68.2       47.12389         0.75198848      75.398224         0.95119855      109.95574          1.1486814
+
+
+Masking Pixels in Aperture Photometry
+--------------------------------------
+
+Masking Bad Pixels
+^^^^^^^^^^^^^^^^^^
+
+Pixels can be excluded (e.g., bad pixels) from the aperture photometry
+by providing a boolean image mask via the ``mask`` keyword::
+
+    >>> data = np.ones((5, 5))
+    >>> aperture = CircularAperture((2, 2), r=2.0)
+    >>> mask = np.zeros(data.shape, dtype=bool)
+    >>> data[2, 2] = 100.0  # bad pixel
+    >>> mask[2, 2] = True   # mask the bad pixel
+    >>> t1 = aperture_photometry(data, aperture, mask=mask)
+    >>> t1['aperture_sum'].info.format = '%.8g'  # for consistent table output
+    >>> print(t1['aperture_sum'])
+    aperture_sum
+    ------------
+       11.566371
+
+The result is very different if a ``mask`` image is not provided::
+
+    >>> t2 = aperture_photometry(data, aperture)
+    >>> t2['aperture_sum'].info.format = '%.8g'  # for consistent table output
+    >>> print(t2['aperture_sum'])
+    aperture_sum
+    ------------
+       111.56637
+
+
+Masking Neighboring Sources with a Segmentation Image
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When apertures contain flux from neighboring sources, that contamination
+can be masked or corrected using a segmentation image (see :ref:`Image
+Segmentation <image_segmentation>`). A segmentation image is an integer
+image with the same shape as the data, where background pixels have a
+value of 0 and sources are labeled with positive integers.
+
+The behavior is controlled by the ``mask_method`` keyword, which accepts
+one of four values:
+
+* ``'none'`` (default):
+  The segmentation image is ignored and all pixels within the aperture
+  are included.
+* ``'mask'``:
+  Pixels belonging to neighboring sources (labeled, but not the target
+  source) are excluded.
+* ``'source_only'``:
+  Only pixels belonging to the target source are included; both
+  neighboring sources and background pixels are excluded.
+* ``'correct'``:
+  Pixels belonging to neighboring sources are replaced by the values of
+  the pixels mirrored across the aperture center. If a mirror pixel is
+  unavailable, the pixel is excluded.
+
+The ``labels`` keyword is required whenever ``segmentation_image`` is
+provided and ``mask_method`` is not ``'none'``. It specifies the
+target source label associated with each aperture position, and it
+must have the same length as the number of aperture positions.
+
+In this example, a circular aperture centered on the target source
+(label 1) also overlaps a bright neighboring source (label 2)::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import CircularAperture, aperture_photometry
+    >>> data = np.ones((11, 11))
+    >>> data[4:7, 4:7] = 10.0  # target source
+    >>> data[4:7, 7:10] = 50.0  # bright neighbor
+    >>> segm = np.zeros((11, 11), dtype=int)
+    >>> segm[4:7, 4:7] = 1
+    >>> segm[4:7, 7:10] = 2
+    >>> aperture = CircularAperture((5, 5), r=4)
+
+Without masking, the aperture sum includes the neighbor's flux::
+
+    >>> t1 = aperture_photometry(data, aperture)
+    >>> t1['aperture_sum'].info.format = '%.8g'  # for consistent table output
+    >>> print(t1['aperture_sum'])
+    aperture_sum
+    ------------
+       484.67785
+
+Masking the neighboring source excludes its flux::
+
+    >>> t2 = aperture_photometry(data, aperture, segmentation_image=segm,
+    ...                          labels=1, mask_method='mask')
+    >>> t2['aperture_sum'].info.format = '%.8g'  # for consistent table output
+    >>> print(t2['aperture_sum'])
+    aperture_sum
+    ------------
+       124.05299
+
+The ``'correct'`` method instead replaces the neighbor's pixels with
+values mirrored across the aperture center, recovering an estimate of
+the obscured flux::
+
+    >>> t3 = aperture_photometry(data, aperture, segmentation_image=segm,
+    ...                          labels=1, mask_method='correct')
+    >>> t3['aperture_sum'].info.format = '%.8g'  # for consistent table output
+    >>> print(t3['aperture_sum'])
+    aperture_sum
+    ------------
+       131.26548
+
+These keywords are also available in
+:class:`~photutils.aperture.ApertureStats`.
 
 
 .. _photutils-aperture-stats:
@@ -432,40 +642,45 @@ background as the sigma-clipped median value::
     >>> data = make_4gaussians_image()
     >>> _, median, _ = sigma_clipped_stats(data, sigma=3.0)
     >>> data -= median  # subtract background from the data
-    >>> aper = CircularAperture((150, 25), 8)
+    >>> aper = CircularAperture((149.97, 24.97), r=10)
     >>> aperstats = ApertureStats(data, aper)  # doctest: +FLOAT_CMP
     >>> print(aperstats.x_centroid)  # doctest: +FLOAT_CMP
-    149.98963482915323
+    150.00123266400735
     >>> print(aperstats.y_centroid)  # doctest: +FLOAT_CMP
-    24.97165265459083
+    24.997448121496937
     >>> print(aperstats.centroid)  # doctest: +FLOAT_CMP
-    [149.98963483  24.97165265]
+    [150.00123266  24.99744812]
 
     >>> print(aperstats.mean, aperstats.median, aperstats.std)  # doctest: +FLOAT_CMP
-    42.38192194155781 26.53270189818481 39.19365538349298
+    27.269534935470567 11.751403764475224 36.56854575397058
 
     >>> print(aperstats.sum)  # doctest: +FLOAT_CMP
-    8204.777345704442
+    8487.061886925028
 
 Similar to `~photutils.aperture.aperture_photometry`, the input aperture
-can have multiple positions::
+can have multiple positions (but the same shape and size at each
+position). In this case, the :class:`~photutils.aperture.ApertureStats`
+class will calculate the statistics for each position and return the
+results as arrays::
 
-    >>> aper2 = CircularAperture(((150, 25), (90, 60)), 10)
+    >>> aper2 = CircularAperture([(24.9, 40.0), (89.9, 60.0), (149.97, 24.97)], r=10)
     >>> aperstats2 = ApertureStats(data, aper2)
     >>> print(aperstats2.x_centroid)  # doctest: +FLOAT_CMP
-    [149.98175939  89.97793821]
+    [ 25.08290339  89.90853538 150.00123266]
     >>> print(aperstats2.sum)  # doctest: +FLOAT_CMP
-    [ 8487.10695247 34963.45850824]
-    >>> columns = ('id', 'mean', 'median', 'std', 'var', 'sum')
+    [ 5210.72822517 34965.55786075  8487.06188693]
+    >>> columns = ('id', 'x_centroid', 'y_centroid', 'mean', 'median', 'std',
+    ...            'var', 'sum')
     >>> stats_table = aperstats2.to_table(columns=columns)
     >>> for col in stats_table.colnames:
     ...     stats_table[col].info.format = '%.8g'  # for consistent table output
 
     >>> print(stats_table)  # doctest: +FLOAT_CMP
-     id    mean     median     std       var       sum
-    --- --------- --------- --------- --------- ---------
-      1 27.915818 12.582676 36.628464 1341.6444  8487.107
-      2 113.18737 112.11505 49.756626 2475.7218 34963.459
+     id x_centroid y_centroid    mean     median     std       var       sum
+    --- ---------- ---------- --------- --------- --------- --------- ---------
+      1  25.082903  40.012769 16.694416  10.14227 19.059729 363.27325 5210.7282
+      2  89.908535  59.983205 111.65126 110.91821 50.389982 2539.1503 34965.558
+      3  150.00123  24.997448 27.269535 11.751404 36.568546 1337.2585 8487.0619
 
 Each row of the table corresponds to a single aperture position (i.e., a
 single source).
@@ -478,56 +693,54 @@ Global Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 :func:`~photutils.aperture.aperture_photometry` and
-:class:`~photutils.aperture.ApertureStats` assume that the input data
-have been background-subtracted. If ``bkg`` is a float value or an
-array representing the background of the data (e.g., determined by
-`~photutils.background.Background2D` or an external function), simply
-subtract the background from the data::
+:class:`~photutils.aperture.ApertureStats` both assume that the input
+data have already been background-subtracted. If ``bkg`` is a scalar or
+an array representing the background of the data (e.g., estimated by
+`~photutils.background.Background2D` or another method), subtract it
+from the data before performing aperture photometry::
 
     >>> phot_table = aperture_photometry(data - bkg, aperture)  # doctest: +SKIP
 
-In the case of a constant global background, you can pass in the background
-value using ``local_bkg`` in :class:`~photutils.aperture.ApertureStats`.
-This would avoid reading an entire memory-mapped array into memory
-beforehand, as would happen if you manually subtract the background as
-shown above. So instead you could do this::
+For :class:`~photutils.aperture.ApertureStats`, a constant background
+can instead be specified using the ``local_bkg`` keyword. This avoids
+creating a temporary background-subtracted array, which can be
+particularly beneficial when the input data are memory-mapped. For
+example::
 
     >>> aperstats = ApertureStats(data, aperture, local_bkg=bkg)  # doctest: +SKIP
 
 Local Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-One often wants to also estimate the local background around
-each source using a nearby aperture or annulus aperture
-surrounding each source. A simple method for doing this is to
-use the :class:`~photutils.aperture.ApertureStats` class (see
-:ref:`photutils-aperture-stats`) to compute the mean background level
-within the background aperture. This class can also be used to calculate
-more advanced statistics (e.g., a sigma-clipped median) within the
-background aperture (e.g., a circular annulus). We show examples of both
-below.
+A common approach is to estimate the local background around each
+source using a nearby aperture, typically an annulus surrounding the
+source. The :class:`~photutils.aperture.ApertureStats` class (see
+:ref:`photutils-aperture-stats`) can be used to compute the mean
+background level within such an aperture, as well as more robust
+statistics (e.g., a sigma-clipped median). Examples of both approaches
+are shown below.
 
-Let's start by generating a more realistic example dataset::
+We begin by generating a more realistic example dataset::
 
     >>> from photutils.datasets import make_100gaussians_image
     >>> data = make_100gaussians_image()
 
 This artificial image has a known constant background level of 5. In the
-following examples, we'll leave this global background in the image to
-be estimated using local backgrounds.
+following examples, we'll leave this global background in the image so
+that it can be estimated from the local background around each source.
 
-For this example we perform the photometry for three sources in a
-circular aperture with a radius of 5 pixels. The local background level
-around each source is estimated using a circular annulus of inner radius
-10 pixels and outer radius 15 pixels. Let's define the apertures::
+We perform aperture photometry for three sources using circular
+apertures with a radius of 5 pixels. The local background is estimated
+from circular annuli with an inner radius of 10 pixels and an outer
+radius of 15 pixels. First, define the source and background apertures::
 
     >>> from photutils.aperture import CircularAnnulus, CircularAperture
     >>> positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
     >>> aperture = CircularAperture(positions, r=5)
     >>> annulus_aperture = CircularAnnulus(positions, r_in=10, r_out=15)
 
-Now let's plot the circular apertures (white) and circular annulus
-apertures (red) on a cutout from the image containing the three sources:
+The following figure shows the source apertures (white) and background
+annuli (red) overlaid on a cutout containing the three sources:
 
 .. plot::
 
@@ -559,8 +772,8 @@ apertures (red) on a cutout from the image containing the three sources:
 Simple mean within a circular annulus
 """""""""""""""""""""""""""""""""""""
 
-We can use the :class:`~photutils.aperture.ApertureStats` class to
-compute the mean background level within the annulus aperture at each
+We first use the :class:`~photutils.aperture.ApertureStats` class to
+compute the mean background level within the annulus at each source
 position::
 
     >>> from photutils.aperture import ApertureStats
@@ -569,9 +782,10 @@ position::
     >>> print(bkg_mean)  # doctest: +FLOAT_CMP
     [4.99411764 5.1349344  4.86894665]
 
-Now let's use :func:`~photutils.aperture.aperture_photometry` to perform
-the photometry in the circular aperture (in the next example, we'll use
-:class:`~photutils.aperture.ApertureStats` to perform the photometry)::
+Next, we use :func:`~photutils.aperture.aperture_photometry` to measure
+the source fluxes in the circular apertures (the following example uses
+:class:`~photutils.aperture.ApertureStats` for both the background
+estimation and the aperture photometry)::
 
     >>> from photutils.aperture import aperture_photometry
     >>> phot_table = aperture_photometry(data, aperture)
@@ -584,23 +798,22 @@ the photometry in the circular aperture (in the next example, we'll use
       2     84.5    224.1      735.739              nan
       3     48.3    200.3    1299.6341              nan
 
-The total background within the circular aperture is the mean local
-per-pixel background times the circular aperture area. If you are
-using the default "exact" aperture (see :ref:`aperture-mask methods
-<photutils-aperture-overlap>`) and there are no masked pixels, the exact
-analytical aperture area can be accessed via the aperture ``area``
-attribute::
+The total background within each source aperture is the mean
+background per pixel multiplied by the aperture area. When using the
+default ``'exact'`` overlap method (see :ref:`aperture-mask methods
+<photutils-aperture-overlap>`) and no pixels are masked, the analytical
+aperture area is available from the ``area`` attribute::
 
     >>> aperture.area  # doctest: +FLOAT_CMP
     78.53981633974483
 
-However, in general you should use the
-:meth:`photutils.aperture.PixelAperture.area_overlap` method where
-a ``mask`` keyword can be input. This ensures you are using the
-same area over which the photometry was performed. If using a
-:class:`~photutils.aperture.SkyAperture`, you will first need to convert
-it to a :class:`~photutils.aperture.PixelAperture`. Since we are not
-using a mask, the results are identical::
+In general, however, you should use the
+:meth:`~photutils.aperture.PixelAperture.area_overlap` method to compute
+the aperture area. This method accepts a ``mask`` argument, ensuring
+that the area is computed consistently with the photometry. If using
+a :class:`~photutils.aperture.SkyAperture`, first convert it to a
+:class:`~photutils.aperture.PixelAperture`. In this example, no mask is
+used, so ``area_overlap`` returns the same value as ``area``::
 
     >>> aperture_area = aperture.area_overlap(data)
     >>> print(aperture_area)  # doctest: +FLOAT_CMP
@@ -612,11 +825,14 @@ The total background within the circular aperture is then::
     >>> print(total_bkg)  # doctest: +FLOAT_CMP
     [392.23708187 403.29680431 382.40617574]
 
-Thus, the background-subtracted photometry is::
+Subtracting this background estimate from the measured aperture sums
+gives the background-subtracted photometry::
 
     >>> phot_bkgsub = phot_table['aperture_sum'] - total_bkg
 
-Finally, let's add these as columns to the photometry table::
+Finally, we add the local background estimate, the total background
+within the aperture, and the background-subtracted photometry to the
+output table::
 
     >>> phot_table['total_bkg'] = total_bkg
     >>> phot_table['aperture_sum_bkgsub'] = phot_bkgsub
@@ -632,224 +848,63 @@ Finally, let's add these as columns to the photometry table::
 Sigma-clipped median within a circular annulus
 """"""""""""""""""""""""""""""""""""""""""""""
 
-For this example, the local background level around each source is
-estimated as the sigma-clipped median value within the circular annulus.
-We'll use the :class:`~photutils.aperture.ApertureStats` class to
-compute both the photometry (aperture sum) and the background level::
+In this example, the local background is estimated as the
+sigma-clipped median within each circular annulus. We use
+:class:`~photutils.aperture.ApertureStats` to compute both the source
+photometry and the local background::
 
     >>> from astropy.stats import SigmaClip
     >>> sigclip = SigmaClip(sigma=3.0, maxiters=10)
     >>> aper_stats = ApertureStats(data, aperture, sigma_clip=None)
     >>> bkg_stats = ApertureStats(data, annulus_aperture, sigma_clip=sigclip)
 
-The sigma-clipped median values in the background annulus apertures
-are::
+The sigma-clipped median background values are::
 
     >>> print(bkg_stats.median)  # doctest: +FLOAT_CMP
     [4.89374178 5.05655328 4.83268958]
 
-The total background within the circular apertures is then the per-pixel
-background level multiplied by the circular-aperture areas::
+The total background within each source aperture is the per-pixel
+background multiplied by the aperture area::
 
     >>> total_bkg = bkg_stats.median * aper_stats.sum_aper_area.value
     >>> print(total_bkg)  # doctest: +FLOAT_CMP
     [384.35358069 397.14076611 379.5585524 ]
 
-Finally, the local background-subtracted sum within the circular
-apertures is::
+Subtracting this background estimate from the measured aperture sums
+gives the local background-subtracted photometry::
 
     >>> apersum_bkgsub = aper_stats.sum - total_bkg
     >>> print(apersum_bkgsub)  # doctest: +FLOAT_CMP
     [743.77088731 338.59823118 920.07553956]
 
-Note that if you want to compute all the source properties (i.e., in
-addition to only :attr:`~photutils.aperture.ApertureStats.sum`) on the
-local-background-subtracted data, you may input the *per-pixel* local
-background values to :class:`~photutils.aperture.ApertureStats` via the
-``local_bkg`` keyword::
+If you want to compute additional source properties
+on the background-subtracted data (not just
+:attr:`~photutils.aperture.ApertureStats.sum`), pass the per-pixel local
+background values to :class:`~photutils.aperture.ApertureStats` using
+the ``local_bkg`` keyword. The local background is then subtracted
+internally when computing all source properties::
 
     >>> aper_stats_bkgsub = ApertureStats(data, aperture,
     ...                                   local_bkg=bkg_stats.median)
     >>> print(aper_stats_bkgsub.sum)  # doctest: +FLOAT_CMP
     [743.77088731 338.59823118 920.07553956]
 
-Note these background-subtracted values are the same as those above.
-
-
-.. _error_estimation:
-
-Aperture Photometry Error Estimation
-------------------------------------
-
-If and only if the ``error`` keyword is input to
-:func:`~photutils.aperture.aperture_photometry`, the ``'aperture_sum_err'``
-column will contain the propagated uncertainty associated with
-``'aperture_sum'``. Otherwise, the ``'aperture_sum_err'`` column is
-filled with NaN values.
-
-For example, suppose we have previously calculated the error on each
-pixel value and saved it in the array ``error``::
-
-    >>> positions = [(30.0, 30.0), (40.0, 40.0)]
-    >>> aperture = CircularAperture(positions, r=3.0)
-    >>> data = np.ones((100, 100))
-    >>> error = 0.1 * data
-
-    >>> phot_table = aperture_photometry(data, aperture, error=error)
-    >>> for col in phot_table.colnames:
-    ...     phot_table[col].info.format = '%.8g'  # for consistent table output
-    >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err
-    --- -------- -------- ------------ ----------------
-      1       30       30    28.274334       0.53173616
-      2       40       40    28.274334       0.53173616
-
-``'aperture_sum_err'`` values are given by:
-
-.. math:: \Delta F = \sqrt{\sum_{i \in A}
-          \sigma_{\mathrm{tot}, i}^2}
-
-where :math:`A` are the non-masked pixels in the aperture, and
-:math:`\sigma_{\mathrm{tot}, i}` is the input ``error`` array.
-
-In the example above, it is assumed that the ``error`` keyword
-specifies the *total* error --- either it includes Poisson noise
-due to individual sources or such noise is irrelevant. However, it
-is often the case that one has calculated a smooth "background-only
-error" array, which by design doesn't include increased noise on bright
-pixels. To include Poisson noise from the sources, we can use the
-:func:`~photutils.utils.calc_total_error` function.
-
-Let's assume we have a background-only image called ``bkg_error``.
-If our data are in units of electrons/s, we would use the exposure
-time as the effective gain::
-
-    >>> from photutils.utils import calc_total_error
-    >>> effective_gain = 500  # seconds
-    >>> error = calc_total_error(data, bkg_error, effective_gain)  # doctest: +SKIP
-    >>> phot_table = aperture_photometry(data - bkg, aperture, error=error)  # doctest: +SKIP
-
-
-Aperture Photometry with Pixel Masking
---------------------------------------
-
-Pixels can be ignored/excluded (e.g., bad pixels) from the aperture
-photometry by providing an image mask via the ``mask`` keyword::
-
-    >>> data = np.ones((5, 5))
-    >>> aperture = CircularAperture((2, 2), 2.0)
-    >>> mask = np.zeros(data.shape, dtype=bool)
-    >>> data[2, 2] = 100.0  # bad pixel
-    >>> mask[2, 2] = True
-    >>> t1 = aperture_photometry(data, aperture, mask=mask)
-    >>> t1['aperture_sum'].info.format = '%.8g'  # for consistent table output
-    >>> print(t1['aperture_sum'])
-    aperture_sum
-    ------------
-       11.566371
-
-The result is very different if a ``mask`` image is not provided::
-
-    >>> t2 = aperture_photometry(data, aperture)
-    >>> t2['aperture_sum'].info.format = '%.8g'  # for consistent table output
-    >>> print(t2['aperture_sum'])
-    aperture_sum
-    ------------
-       111.56637
-
-
-Masking Neighboring Sources with a Segmentation Image
------------------------------------------------------
-
-When apertures contain flux from neighboring sources, that contamination
-can be masked or corrected using a segmentation image (see :ref:`Image
-Segmentation <image_segmentation>`). A segmentation image is an integer
-image with the same shape as the data, where background pixels have a
-value of 0 and sources are labeled with positive integers.
-
-The behavior is controlled by the ``mask_method`` keyword, which accepts
-one of four values:
-
-* ``'none'`` (default):
-  The segmentation image is ignored and all pixels within the aperture
-  are included.
-* ``'mask'``:
-  Pixels belonging to neighboring sources (labeled, but not the target
-  source) are excluded.
-* ``'source_only'``:
-  Only pixels belonging to the target source are included; both
-  neighboring sources and background pixels are excluded.
-* ``'correct'``:
-  Pixels belonging to neighboring sources are replaced by the values of
-  the pixels mirrored across the aperture center. If a mirror pixel is
-  unavailable, the pixel is excluded.
-
-When a segmentation image is used (i.e., ``mask_method`` is not
-``'none'``), the source ``labels`` keyword must be provided explicitly.
-The ``labels`` keyword gives the target source label for each aperture
-and must have the same length as the number of aperture positions.
-
-In this example, a circular aperture centered on the target source
-(label 1) also overlaps a bright neighboring source (label 2)::
-
-    >>> import numpy as np
-    >>> from photutils.aperture import CircularAperture, aperture_photometry
-    >>> data = np.ones((11, 11))
-    >>> data[4:7, 4:7] = 10.0  # target source
-    >>> data[4:7, 7:10] = 50.0  # bright neighbor
-    >>> segm = np.zeros((11, 11), dtype=int)
-    >>> segm[4:7, 4:7] = 1
-    >>> segm[4:7, 7:10] = 2
-    >>> aperture = CircularAperture((5, 5), r=4)
-
-Without masking, the aperture sum includes the neighbor's flux::
-
-    >>> t1 = aperture_photometry(data, aperture)
-    >>> t1['aperture_sum'].info.format = '%.8g'  # for consistent table output
-    >>> print(t1['aperture_sum'])
-    aperture_sum
-    ------------
-       484.67785
-
-Masking the neighboring source excludes its flux::
-
-    >>> t2 = aperture_photometry(data, aperture, segmentation_image=segm,
-    ...                          labels=1, mask_method='mask')
-    >>> t2['aperture_sum'].info.format = '%.8g'  # for consistent table output
-    >>> print(t2['aperture_sum'])
-    aperture_sum
-    ------------
-       124.05299
-
-The ``'correct'`` method instead replaces the neighbor's pixels with
-values mirrored across the aperture center, recovering an estimate of
-the obscured flux::
-
-    >>> t3 = aperture_photometry(data, aperture, segmentation_image=segm,
-    ...                          labels=1, mask_method='correct')
-    >>> t3['aperture_sum'].info.format = '%.8g'  # for consistent table output
-    >>> print(t3['aperture_sum'])
-    aperture_sum
-    ------------
-       131.26548
-
-These keywords are also available in
-:class:`~photutils.aperture.ApertureStats`.
+The resulting aperture sums are identical to those computed above.
 
 
 Aperture Masks
 --------------
 
-All `~photutils.aperture.PixelAperture` objects have a
+All :class:`~photutils.aperture.PixelAperture` classes provide a
 :meth:`~photutils.aperture.PixelAperture.to_mask` method that returns
-a `~photutils.aperture.ApertureMask` object (for a single aperture
-position) or a list of `~photutils.aperture.ApertureMask` objects, one
-for each aperture position. The `~photutils.aperture.ApertureMask`
-object contains a cutout of the aperture mask weights and a
-`~photutils.aperture.BoundingBox` object that provides the bounding box
-where the mask is to be applied.
+an :class:`~photutils.aperture.ApertureMask` for a single aperture
+position, or a list of :class:`~photutils.aperture.ApertureMask`
+objects when the aperture has multiple positions. Each
+:class:`~photutils.aperture.ApertureMask` contains the aperture mask
+weights together with a :class:`~photutils.aperture.BoundingBox` that
+defines where the mask should be applied to an image.
 
-Let's start by creating a circular-annulus aperture::
+We begin by creating a circular annulus aperture::
 
     >>> from photutils.aperture import CircularAnnulus
     >>> from photutils.datasets import make_100gaussians_image
@@ -857,13 +912,14 @@ Let's start by creating a circular-annulus aperture::
     >>> positions = [(145.1, 168.3), (84.5, 224.1), (48.3, 200.3)]
     >>> aperture = CircularAnnulus(positions, r_in=10, r_out=15)
 
-Now let's create a list of `~photutils.aperture.ApertureMask` objects
-using the :meth:`~photutils.aperture.PixelAperture.to_mask` method using
-the aperture mask "exact" method::
+Next, we create the corresponding
+:class:`~photutils.aperture.ApertureMask` objects using the
+:meth:`~photutils.aperture.PixelAperture.to_mask` method with the
+``'exact'`` overlap method::
 
     >>> masks = aperture.to_mask(method='exact')
 
-Let's plot the first aperture mask:
+The following figure shows the first aperture mask:
 
 .. doctest-skip::
 
@@ -885,8 +941,8 @@ Let's plot the first aperture mask:
     fig, ax = plt.subplots()
     ax.imshow(masks[0], origin='lower')
 
-Let's now use the "center" aperture mask method and plot the resulting
-aperture mask:
+Now create a mask using the ``'center'`` overlap method and plot the
+result:
 
 .. doctest-skip::
 
@@ -908,10 +964,14 @@ aperture mask:
     fig, ax = plt.subplots()
     ax.imshow(masks2[0], origin='lower')
 
-We can also create an aperture mask-weighted cutout from the data,
-properly handling the cases of partial or no overlap of the aperture
-mask with the data. Let's plot the aperture mask weights (using the mask
-generated above with the "exact" method) multiplied with the data:
+The ``'center'`` method produces a binary mask, in contrast to the
+fractional weights returned by the ``'exact'`` method.
+
+We can also use an :class:`~photutils.aperture.ApertureMask` to create
+a mask-weighted cutout from the data, with partial or non-overlapping
+regions handled automatically. The following example plots the first
+cutout using the mask generated above with the ``'exact'`` overlap
+method:
 
 .. doctest-skip::
 
@@ -933,54 +993,25 @@ generated above with the "exact" method) multiplied with the data:
     fig, ax = plt.subplots()
     ax.imshow(masks[0].multiply(data), origin='lower')
 
-To get a 1D `~numpy.ndarray` of the non-zero weighted data values, use
-the :meth:`~photutils.aperture.ApertureMask.get_values` method:
+
+To obtain a one-dimensional `~numpy.ndarray` containing
+the non-zero, mask-weighted data values, use the
+:meth:`~photutils.aperture.ApertureMask.get_values` method:
 
 .. doctest-skip::
 
     >>> data_weighted_1d = masks[0].get_values(data)
 
-The :class:`~photutils.aperture.ApertureMask` class also provides a
-:meth:`~photutils.aperture.ApertureMask.to_image` method to obtain
-an image of the aperture mask in a 2D array of the given shape and a
-:meth:`~photutils.aperture.ApertureMask.cutout` method to create a
-cutout from the input data over the aperture mask bounding box. Both of
-these methods properly handle the cases of partial or no overlap of the
-aperture mask with the data.
+The :class:`~photutils.aperture.ApertureMask` class also provides
+a :meth:`~photutils.aperture.ApertureMask.to_image` method to
+create a 2D image of the mask with a specified shape, and a
+:meth:`~photutils.aperture.ApertureMask.cutout` method to extract a
+cutout of the input data over the mask bounding box. Both methods
+automatically handle cases where the mask partially overlaps or lies
+completely outside the input data.
 
-
-.. _custom-apertures:
-
-Defining Your Own Custom Apertures
-----------------------------------
-
-The :func:`~photutils.aperture.aperture_photometry` function can
-perform aperture photometry in arbitrary apertures.  This function
-accepts any `~photutils.aperture.Aperture`-derived objects, such as
-`~photutils.aperture.CircularAperture`.  This makes it simple to
-extend functionality: a new type of aperture photometry simply
-requires the definition of a new `~photutils.aperture.Aperture`
-subclass.
-
-All `~photutils.aperture.PixelAperture` subclasses must define
-a ``bbox`` property and ``to_mask()`` and ``plot()`` methods.
-They may also optionally define an ``area`` property. All
-`~photutils.aperture.SkyAperture` subclasses must only implement a
-``to_pixel()`` method.
-
-* ``bbox``: The minimal bounding box for the aperture. If the aperture
-  is scalar, then a single `~photutils.aperture.BoundingBox` is returned.
-  Otherwise, a list of `~photutils.aperture.BoundingBox` is returned.
-
-* ``area``: An optional property defining the exact analytical
-  area (in pixels**2) of the aperture.
-
-* ``to_mask()``: Return a mask for the aperture. If the aperture is
-  scalar, then a single `~photutils.aperture.ApertureMask` is returned.
-  Otherwise, a list of `~photutils.aperture.ApertureMask` is returned.
-
-* ``plot()``: A method to plot the aperture on a `matplotlib.axes.Axes`
-  instance.
+Together, these methods provide convenient access to both the aperture
+mask itself and the corresponding regions of the input data.
 
 
 API Reference
