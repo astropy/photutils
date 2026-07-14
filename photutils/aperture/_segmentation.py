@@ -62,9 +62,6 @@ def process_segmentation_inputs(segmentation_image, labels,
         ``mask_method`` is ``'none'``.
     """
     if mask_method not in MASK_METHODS:
-        msg = f'aperture_mask_method must be one of {MASK_METHODS}'
-
-    if mask_method not in MASK_METHODS:
         msg = f'mask_method must be one of {MASK_METHODS}'
         raise ValueError(msg)
 
