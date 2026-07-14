@@ -120,6 +120,21 @@ def aperture_photometry(data, apertures, error=None, mask=None,
           values (always float64). If the input ``error`` is `None`,
           this column is filled with NaN values.
 
+        * ``'area'``:
+          The total unmasked overlap area of the aperture(s)
+          (in ``pix**2``), taking into account the aperture
+          mask method, masked data pixels (``mask`` keyword),
+          segmentation masking, and partial/no overlap of
+          the aperture with the data. This is equivalent to
+          :meth:`~photutils.aperture.PixelAperture.area_overlap`
+          computed with the same inputs. The value is NaN where an
+          aperture does not overlap the data.
+
+        If multiple apertures are input, the ``'aperture_sum'``,
+        ``'aperture_sum_err'``, and ``'area'`` columns will have a
+        ``'_i'`` suffix (e.g., ``'aperture_sum_0'``), where ``i`` is the
+        index of the aperture in the input list.
+
         The table metadata includes the Astropy and Photutils version
         numbers and the `aperture_photometry` calling arguments.
 
@@ -241,19 +256,23 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
     sum_key_main = 'aperture_sum'
     sum_err_key_main = 'aperture_sum_err'
+    area_key_main = 'area'
     for i, aper in enumerate(apertures):
-        aper_sum, aper_sum_err = aper.do_photometry(
+        result = aper.do_photometry(
             data, error=error, mask=mask, method=method, subpixels=subpixels,
             segmentation_image=segmentation, labels=labels,
             mask_method=mask_method)
 
         sum_key = sum_key_main
         sum_err_key = sum_err_key_main
+        area_key = area_key_main
         if not single_aperture:
             sum_key += f'_{i}'
             sum_err_key += f'_{i}'
+            area_key += f'_{i}'
 
-        tbl[sum_key] = aper_sum
-        tbl[sum_err_key] = aper_sum_err
+        tbl[sum_key] = result.aperture_sum
+        tbl[sum_err_key] = result.aperture_sum_err
+        tbl[area_key] = result.area
 
     return tbl
