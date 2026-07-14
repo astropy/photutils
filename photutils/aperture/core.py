@@ -74,7 +74,7 @@ array_like, or `None`, optional
     ``'none'``. When ``segmentation_image`` is input, the ``labels``
     keyword must also be provided to ensure the correct target source is
     used for each aperture. If ``segmentation_image`` is `None`, then
-    the ``mask_method` keyword is ignored and no neighboring source
+    the ``mask_method`` keyword is ignored and no neighboring source
     masking or correction is performed.
 
 labels : int, 1D array_like, or `None`, optional
