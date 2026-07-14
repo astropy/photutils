@@ -1,24 +1,30 @@
 Pixel Coordinate Conventions
 ============================
 
-In Photutils, integer pixel coordinates are located at the center of
-pixels, and they are 0-indexed, matching the Python 0-based indexing.
-That means the first pixel is considered pixel ``0``, but pixel
-coordinate ``0`` is the *center* of that pixel. Hence, the first pixel
-spans pixel values ``-0.5`` to ``0.5``.
+Photutils uses 0-indexed pixel coordinates, consistent with standard
+Python and NumPy indexing. In this convention, integer pixel coordinates
+represent the *centers* of the pixels. For example, the center of the
+first pixel is at coordinate ``0``, meaning that pixel spans the range
+from ``-0.5`` to ``0.5``.
 
-For a 2-dimensional array, ``(x, y) = (0, 0)`` corresponds to
-the *center* of the bottom, leftmost array element. That means
-the first pixel spans the ``x`` and ``y`` pixel values from
-``-0.5`` to ``0.5``. Note that this differs from the IRAF, `FITS
-WCS <https://fits.gsfc.nasa.gov/fits_wcs.html>`_, `ds9`_, and
-`SourceExtractor`_ conventions, in which the center of the bottom,
-leftmost array element is ``(x, y) = (1, 1)``.
+For a two-dimensional image, the pixel center at ``(x, y) = (0, 0)``
+corresponds to the bottom-left array element. Consequently, this first
+pixel spans from ``-0.5`` to ``0.5`` in both the ``x`` and ``y``
+directions.
 
-Following Python indexing, two-dimensional arrays are indexed as
-``image[yi, xi]``, with 0 being the first index. The ``xi`` (column)
-index corresponds to the second (fast) array index and the ``yi`` (row)
-index corresponds to the first (slow) index.
+Because image data are standard NumPy arrays, they are accessed as
+``image[yi, xi]``, where ``yi`` is the row index (the first, or slow,
+array axis) and ``xi`` is the column index (the second, or fast, array
+axis). It is important to note that this array indexing order (``[y,
+x]``) is the reverse of the spatial coordinate order (``(x, y)``).
 
-.. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
+This 0-indexed convention differs from the `FITS WCS`_ standard, which
+uses 1-based pixel coordinates. In the FITS convention, the center of
+the bottom-left pixel is ``(x, y) = (1, 1)``. Software such as `ds9`_,
+`SourceExtractor`_, and IRAF follow the FITS convention. Therefore, to
+match coordinates from these tools with Photutils, you must subtract 1
+from their ``x`` and ``y`` coordinates.
+
+.. _FITS WCS: https://fits.gsfc.nasa.gov/fits_wcs.html
 .. _ds9: http://ds9.si.edu/
+.. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
