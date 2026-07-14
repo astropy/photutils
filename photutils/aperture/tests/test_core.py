@@ -185,6 +185,70 @@ class TestPixelApertureDoPhotometry:
         assert len(errs) == len(sums)
         assert_allclose(errs, np.nan)
 
+    def test_do_photometry_result_backward_compatible(self):
+        """
+        Test that the do_photometry result unpacks as a 2-tuple and
+        supports len() and integer indexing like the legacy tuple.
+        """
+        result = self.aper.do_photometry(self.data)
+        assert len(result) == 2
+
+        sums, errs = result
+        assert_allclose(sums, result.aperture_sum)
+        assert_allclose(errs, result.aperture_sum_err, equal_nan=True)
+        assert_allclose(result[0], result.aperture_sum)
+        assert_allclose(result[1], result.aperture_sum_err, equal_nan=True)
+
+    def test_do_photometry_area_matches_area_overlap(self):
+        """
+        Test that the result area matches area_overlap for a simple
+        non-masked, fully-overlapping aperture.
+        """
+        result = self.aper.do_photometry(self.data)
+        expected = self.aper.area_overlap(self.data)
+        assert result.area.unit == u.pix**2
+        assert_allclose(result.area.value, expected)
+
+    def test_do_photometry_area_no_overlap_nan(self):
+        """
+        Test that the result area is NaN for an aperture with no overlap
+        with the data.
+        """
+        aper = CircularAperture((-50, -50), r=3)
+        result = aper.do_photometry(self.data)
+        assert np.isnan(result.area.value).all()
+
+    def test_do_photometry_area_units(self):
+        """
+        Test that the result area always has units of pix**2 regardless
+        of whether the data/error are Quantity or plain arrays.
+        """
+        result = self.aper.do_photometry(self.data)
+        assert result.area.unit == u.pix**2
+
+        result_q = self.aper.do_photometry(self.data * u.Jy,
+                                           error=self.data * u.Jy)
+        assert result_q.area.unit == u.pix**2
+        assert_allclose(result.area.value, result_q.area.value,
+                        equal_nan=True)
+
+    def test_do_photometry_area_batch_vs_mask_path(self):
+        """
+        Test that the batch and mask code paths produce identical area
+        values.
+        """
+        aper = CircularAperture(POSITIONS, r=5.5)
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[5, 5] = True
+
+        batch = aper._do_batch_photometry(self.data, error=None, mask=mask,
+                                          method='exact', subpixels=5)
+        assert batch is not None
+        legacy = aper._do_mask_photometry(self.data, error=None, mask=mask,
+                                          method='exact', subpixels=5)
+        # areas are the third element of each result
+        assert_allclose(batch[2], legacy[2], rtol=1e-12, equal_nan=True)
+
 
 class TestApertureReprStr:
     """
