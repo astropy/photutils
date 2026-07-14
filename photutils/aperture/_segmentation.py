@@ -9,10 +9,7 @@ These helpers validate the ``segmentation_image``, ``labels``, and
 or symmetric-correction behavior to per-aperture cutouts.
 """
 
-import warnings
-
 import numpy as np
-from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.utils._round import round_half_away
 
@@ -39,8 +36,9 @@ def process_segmentation_inputs(segmentation_image, labels,
 
     labels : int, 1D array_like, or `None`
         The source label(s) associated with the aperture ``positions``.
-        If `None`, the labels are looked up automatically by sampling
-        ``segmentation_image`` at the (rounded) aperture centers.
+        ``labels`` is required (must not be `None`) when
+        ``segmentation_image`` is input and ``mask_method`` is not
+        ``'none'``.
 
     mask_method : {'none', 'mask', 'source_only', 'correct'}
         The segmentation masking method.
@@ -61,9 +59,6 @@ def process_segmentation_inputs(segmentation_image, labels,
         The resolved per-aperture source labels, or `None` if
         ``mask_method`` is ``'none'``.
     """
-    if mask_method not in MASK_METHODS:
-        msg = f'aperture_mask_method must be one of {MASK_METHODS}'
-
     if mask_method not in MASK_METHODS:
         msg = f'mask_method must be one of {MASK_METHODS}'
         raise ValueError(msg)
@@ -101,52 +96,19 @@ def process_segmentation_inputs(segmentation_image, labels,
     positions = np.atleast_2d(positions)
     n_positions = positions.shape[0]
 
-    if labels is not None:
-        labels = np.atleast_1d(labels)
-        if labels.shape[0] != n_positions:
-            msg = ('labels must have the same length as the number of '
-                   'aperture positions')
-            raise ValueError(msg)
-        labels = np.ascontiguousarray(labels, dtype=np.intp)
-    else:
-        labels = _auto_lookup_labels(segm, positions)
+    if labels is None:
+        msg = ('labels must be input when segmentation_image is input '
+               "and mask_method is not 'none'")
+        raise ValueError(msg)
+
+    labels = np.atleast_1d(labels)
+    if labels.shape[0] != n_positions:
+        msg = ('labels must have the same length as the number of '
+               'aperture positions')
+        raise ValueError(msg)
+    labels = np.ascontiguousarray(labels, dtype=np.intp)
 
     return segm, labels
-
-
-def _auto_lookup_labels(segmentation, positions):
-    """
-    Look up the source label at each aperture center.
-
-    The aperture center is rounded to the nearest pixel (rounding half
-    away from zero). Apertures whose centers fall outside the image
-    or on a background pixel (label 0) are assigned a label of 0. A
-    single `~astropy.utils.exceptions.AstropyUserWarning` summarizing
-    the number of affected apertures is emitted.
-    """
-    ny, nx = segmentation.shape
-    xpos = np.atleast_1d(positions[:, 0])
-    ypos = np.atleast_1d(positions[:, 1])
-
-    xi = np.atleast_1d(np.asarray(round_half_away(xpos)))
-    yi = np.atleast_1d(np.asarray(round_half_away(ypos)))
-
-    labels = np.zeros(positions.shape[0], dtype=np.intp)
-    in_bounds = (np.isfinite(xpos) & np.isfinite(ypos)
-                 & (xi >= 0) & (xi < nx) & (yi >= 0) & (yi < ny))
-    if np.any(in_bounds):
-        labels[in_bounds] = segmentation[yi[in_bounds].astype(np.intp),
-                                         xi[in_bounds].astype(np.intp)]
-
-    n_background = np.count_nonzero(labels == 0)
-    if n_background > 0:
-        msg = (f'{n_background} aperture center(s) were on a background '
-               'pixel (label 0) in the segmentation image. Masking '
-               'behavior is disabled for these apertures. Use the '
-               "'labels' argument to explicitly define source IDs.")
-        warnings.warn(msg, AstropyUserWarning)
-
-    return labels
 
 
 def make_segmentation_exclusion(mask_method, segmentation_cutout,

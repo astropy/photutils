@@ -784,9 +784,10 @@ one of four values:
   the pixels mirrored across the aperture center. If a mirror pixel is
   unavailable, the pixel is excluded.
 
-By default, the source label for each aperture is determined
-automatically by sampling the segmentation image at the aperture center.
-The labels may also be provided explicitly via the ``labels`` keyword.
+When a segmentation image is used (i.e., ``mask_method`` is not
+``'none'``), the source ``labels`` keyword must be provided explicitly.
+The ``labels`` keyword gives the target source label for each aperture
+and must have the same length as the number of aperture positions.
 
 In this example, a circular aperture centered on the target source
 (label 1) also overlaps a bright neighboring source (label 2)::
@@ -813,7 +814,7 @@ Without masking, the aperture sum includes the neighbor's flux::
 Masking the neighboring source excludes its flux::
 
     >>> t2 = aperture_photometry(data, aperture, segmentation_image=segm,
-    ...                          mask_method='mask')
+    ...                          labels=1, mask_method='mask')
     >>> t2['aperture_sum'].info.format = '%.8g'  # for consistent table output
     >>> print(t2['aperture_sum'])
     aperture_sum
@@ -825,7 +826,7 @@ values mirrored across the aperture center, recovering an estimate of
 the obscured flux::
 
     >>> t3 = aperture_photometry(data, aperture, segmentation_image=segm,
-    ...                          mask_method='correct')
+    ...                          labels=1, mask_method='correct')
     >>> t3['aperture_sum'].info.format = '%.8g'  # for consistent table output
     >>> print(t3['aperture_sum'])
     aperture_sum

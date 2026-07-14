@@ -49,7 +49,7 @@ New Features
   - Added ``segmentation_image``, ``labels``, and ``mask_method``
     keywords to ``aperture_photometry`` and ``ApertureStats`` to mask or
     correct the flux from neighboring sources within an aperture using a
-    segmentation map. [#2309]
+    segmentation map. [#2309, #2321]
 
   - Significantly improved the performance of elliptical, rectangular,
     and convex polygon aperture photometry, typically by a factor of ~2.

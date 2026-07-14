@@ -8,7 +8,6 @@ by `aperture_photometry`, `PixelAperture.do_photometry`, and
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
 from photutils.aperture._batch_photometry import (SHAPE_CIRCLE,
@@ -101,28 +100,12 @@ class TestProcessSegmentationInputs:
             process_segmentation_inputs(segm, [1, 2], 'mask', [(21, 21)],
                                         data.shape)
 
-    def test_auto_lookup(self):
+    def test_labels_required(self):
         data, segm = make_scene()
-        _, labels = process_segmentation_inputs(segm, None, 'mask',
-                                                [(21, 21), (28, 22)],
-                                                data.shape)
-        assert_allclose(labels, [1, 2])
-
-    def test_auto_lookup_background_warning(self):
-        data, segm = make_scene()
-        match = 'on a background pixel'
-        with pytest.warns(AstropyUserWarning, match=match):
-            _, labels = process_segmentation_inputs(segm, None, 'mask',
-                                                    [(5, 5)], data.shape)
-        assert_allclose(labels, [0])
-
-    def test_auto_lookup_out_of_bounds_warning(self):
-        data, segm = make_scene()
-        match = 'on a background pixel'
-        with pytest.warns(AstropyUserWarning, match=match):
-            _, labels = process_segmentation_inputs(segm, None, 'mask',
-                                                    [(100, 100)], data.shape)
-        assert_allclose(labels, [0])
+        match = 'labels must be input when segmentation_image is input'
+        with pytest.raises(ValueError, match=match):
+            process_segmentation_inputs(segm, None, 'mask',
+                                        [(21, 21), (28, 22)], data.shape)
 
 
 class TestAperturePhotometry:
@@ -193,8 +176,7 @@ class TestAperturePhotometry:
         none_phot = aperture_photometry(data, aper,
                                         mask_method='none')
 
-        _, labels = process_segmentation_inputs(segm, None, 'correct',
-                                                [(21, 21)], data.shape)
+        labels = [1]
         batch_sum, batch_err = aper.do_photometry(
             data, error=error, mask=mask, segmentation_image=segm,
             labels=labels, mask_method='correct')
@@ -242,11 +224,11 @@ class TestAperturePhotometry:
         assert_allclose(phot['aperture_sum'].value, ref['aperture_sum'].value)
         assert phot['aperture_sum'].unit == unit
 
-    def test_auto_lookup_warning(self):
+    def test_labels_required(self):
         data, segm = make_scene()
-        aper = CircularAperture([(5, 5)], r=8)
-        match = 'on a background pixel'
-        with pytest.warns(AstropyUserWarning, match=match):
+        aper = CircularAperture([(21, 21)], r=8)
+        match = 'labels must be input when segmentation_image is input'
+        with pytest.raises(ValueError, match=match):
             aperture_photometry(data, aper, segmentation_image=segm,
                                 mask_method='mask')
 
@@ -257,9 +239,7 @@ class TestDoPhotometry:
         # compare to the equivalent manual global mask.
         data, segm = make_scene()
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
-        _, labels = process_segmentation_inputs(segm, None, 'mask',
-                                                [(21, 21), (28, 22)],
-                                                data.shape)
+        labels = [1, 2]
         sums, _ = aper.do_photometry(data, segmentation_image=segm,
                                      labels=labels,
                                      mask_method='mask')

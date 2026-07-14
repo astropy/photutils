@@ -71,16 +71,18 @@ array_like, or `None`, optional
     positive integers. If input, neighboring sources can be masked or
     corrected within each aperture according to the ``mask_method``
     keyword. This keyword is required if ``mask_method`` is not
-    ``'none'``.
+    ``'none'``. When ``segmentation_image`` is input, the ``labels``
+    keyword must also be provided to ensure the correct target source is
+    used for each aperture. If ``segmentation_image`` is `None`, then
+    the ``mask_method` keyword is ignored and no neighboring source
+    masking or correction is performed.
 
 labels : int, 1D array_like, or `None`, optional
-    The source label(s) in ``segmentation_image`` associated with the
-    aperture position(s). If input, ``labels`` must have the same length
-    as the number of aperture positions. If `None` (default), the label
-    for each aperture is determined by sampling ``segmentation_image``
-    at the aperture center (rounded to the nearest pixel). An aperture
-    whose center falls on a background pixel (label 0) has its masking
-    behavior disabled.
+    The source label(s) in ``segmentation_image`` associated
+    with the aperture position(s). ``labels`` is required if
+    ``segmentation_image`` is input and ``mask_method`` is not
+    ``'none'``. ``labels`` must have the same length as the number of
+    aperture positions.
 
 mask_method : {'none', 'mask', 'source_only', 'correct'}, optional
     The method used to handle neighboring sources within each aperture
