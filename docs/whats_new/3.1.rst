@@ -344,6 +344,27 @@ include ``*_err`` columns (e.g., ``flux_err``)::
     nan
 
 
+Aperture Area Column
+--------------------
+
+`~photutils.aperture.aperture_photometry` now always includes an
+``'area'`` column (or ``'area_<i>'`` columns for multiple apertures)
+in the returned table. This is the total unmasked overlap area of
+the aperture with the data (in ``pix**2``), taking into account the
+aperture mask method, masked data pixels, segmentation masking, and
+partial/no overlap of the aperture with the data. It is equivalent to
+the `~photutils.aperture.PixelAperture.area_overlap` method computed
+with the same photometry inputs.
+
+Relatedly, `photutils.aperture.PixelAperture.do_photometry` now returns
+an ``ApertureResults`` object instead of a plain tuple. The result
+remains backward compatible: it can still be unpacked as a 2-tuple
+(``aperture_sum, aperture_sum_err = do_photometry(...)``) and supports
+``len()`` and integer indexing like the legacy tuple. The new ``area``
+attribute provides the total unmasked overlap area of each aperture (in
+``pix**2``).
+
+
 .. _whatsnew-3.1-deprecations:
 
 New Deprecations
