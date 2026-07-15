@@ -121,7 +121,7 @@ Bug Fixes
     nonzero ``sum_method`` overlap fractions, the fractional area of
     those pixels is now returned, consistent with ``sum``. [#2314]
 
-  - Fixed ``PixelAperture.do_photometry`` so that the returned flux
+  - Fixed ``PixelAperture.photometry`` so that the returned flux
     errors always have the same length as the fluxes when ``error`` is
     not input. Previously, an all-NaN error array was returned only
     for sources with no overlap with the data. [#2316]
@@ -176,13 +176,18 @@ API Changes
     ``pix**2``), equivalent to ``PixelAperture.area_overlap`` computed
     with the same inputs. [#2323]
 
-  - ``PixelAperture.do_photometry`` now returns an ``ApertureResults``
+  - ``PixelAperture.photometry`` now returns an ``ApertureResults``
     object instead of a plain tuple. The result remains backward
     compatible: it can still be unpacked as a 2-tuple (``aperture_sum,
-    aperture_sum_err = do_photometry(...)``) and supports ``len()`` and
-    integer indexing like the legacy tuple. The new ``area`` attribute
-    provides the total unmasked overlap area of each aperture (in
-    ``pix**2``). [#2323]
+    aperture_sum_err = aperture.photometry(...)``) and supports
+    ``len()`` and integer indexing like the legacy tuple. The new
+    ``area`` attribute provides the total unmasked overlap area of each
+    aperture (in ``pix**2``). [#2323]
+
+  - The ``PixelAperture.do_photometry`` method has been renamed to
+    ``photometry``. The old method name is deprecated and will be
+    removed in version 4.0. Note that in the new ``photometry`` method
+    all arguments except ``data`` are keyword-only. [#2324]
 
 
 3.0.0 (2026-04-17)

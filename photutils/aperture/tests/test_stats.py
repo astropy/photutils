@@ -176,10 +176,10 @@ class TestApertureStats:
             apstats = ApertureStats(self.data, self.aperture,
                                     error=self.error, sum_method=method,
                                     subpixels=subpixels)
-            apsum, apsum_err = self.aperture.do_photometry(self.data,
-                                                           error=self.error,
-                                                           method=method,
-                                                           subpixels=subpixels)
+            apsum, apsum_err = self.aperture.photometry(self.data,
+                                                        error=self.error,
+                                                        method=method,
+                                                        subpixels=subpixels)
             assert_allclose(apstats.sum, apsum)
             assert_allclose(apstats.sum_err, apsum_err)
 

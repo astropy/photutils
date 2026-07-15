@@ -7,6 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
 from photutils.aperture import (Aperture, CircularAperture, EllipticalAperture,
@@ -129,9 +130,9 @@ class TestPixelAperture:
         assert len(bbox) == len(POSITIONS)
 
 
-class TestPixelApertureDoPhotometry:
+class TestPixelAperturePhotometry:
     """
-    Tests for error-handling branches of PixelAperture.do_photometry.
+    Tests for error-handling branches of PixelAperture.photometry.
     """
 
     def setup_method(self):
@@ -141,56 +142,56 @@ class TestPixelApertureDoPhotometry:
         self.aper = CircularAperture(SCALAR_POS, r=3)
         self.data = np.ones((20, 20))
 
-    def test_do_photometry_1d_data_error(self):
+    def test_photometry_1d_data_error(self):
         """
-        Test that do_photometry raises ValueError when data is not a
+        Test that photometry raises ValueError when data is not a
         2D array.
         """
         match = 'data must be a 2D array'
         with pytest.raises(ValueError, match=match):
-            self.aper.do_photometry(np.ones(20))
+            self.aper.photometry(np.ones(20))
 
-    def test_do_photometry_error_shape_mismatch(self):
+    def test_photometry_error_shape_mismatch(self):
         """
-        Test that do_photometry raises ValueError when the error array
+        Test that photometry raises ValueError when the error array
         does not match the data shape.
         """
         match = 'error and data must have the same shape'
         with pytest.raises(ValueError, match=match):
-            self.aper.do_photometry(self.data, error=np.ones((5, 5)))
+            self.aper.photometry(self.data, error=np.ones((5, 5)))
 
-    def test_do_photometry_unit_mismatch_error(self):
+    def test_photometry_unit_mismatch_error(self):
         """
-        Test that do_photometry raises ValueError when data and error
+        Test that photometry raises ValueError when data and error
         have different units.
         """
         import astropy.units as u
 
         match = 'they both must have the same units'
         with pytest.raises(ValueError, match=match):
-            self.aper.do_photometry(
+            self.aper.photometry(
                 self.data * u.Jy,
                 error=self.data * u.ct,
             )
 
-    def test_do_photometry_basic(self):
+    def test_photometry_basic(self):
         """
-        Test that do_photometry returns the expected aperture sum for a
+        Test that photometry returns the expected aperture sum for a
         uniform data array with no error input, and that the returned
         error array has the same length as the flux array, filled with
         NaN.
         """
-        sums, errs = self.aper.do_photometry(self.data)
+        sums, errs = self.aper.photometry(self.data)
         assert_allclose(sums[0], np.pi * 9, rtol=1e-3)
         assert len(errs) == len(sums)
         assert_allclose(errs, np.nan)
 
-    def test_do_photometry_result_backward_compatible(self):
+    def test_photometry_result_backward_compatible(self):
         """
-        Test that the do_photometry result unpacks as a 2-tuple and
+        Test that the photometry result unpacks as a 2-tuple and
         supports len() and integer indexing like the legacy tuple.
         """
-        result = self.aper.do_photometry(self.data)
+        result = self.aper.photometry(self.data)
         assert len(result) == 2
 
         sums, errs = result
@@ -199,40 +200,40 @@ class TestPixelApertureDoPhotometry:
         assert_allclose(result[0], result.aperture_sum)
         assert_allclose(result[1], result.aperture_sum_err, equal_nan=True)
 
-    def test_do_photometry_area_matches_area_overlap(self):
+    def test_photometry_area_matches_area_overlap(self):
         """
         Test that the result area matches area_overlap for a simple
         non-masked, fully-overlapping aperture.
         """
-        result = self.aper.do_photometry(self.data)
+        result = self.aper.photometry(self.data)
         expected = self.aper.area_overlap(self.data)
         assert result.area.unit == u.pix**2
         assert_allclose(result.area.value, expected)
 
-    def test_do_photometry_area_no_overlap_nan(self):
+    def test_photometry_area_no_overlap_nan(self):
         """
         Test that the result area is NaN for an aperture with no overlap
         with the data.
         """
         aper = CircularAperture((-50, -50), r=3)
-        result = aper.do_photometry(self.data)
+        result = aper.photometry(self.data)
         assert np.isnan(result.area.value).all()
 
-    def test_do_photometry_area_units(self):
+    def test_photometry_area_units(self):
         """
         Test that the result area always has units of pix**2 regardless
         of whether the data/error are Quantity or plain arrays.
         """
-        result = self.aper.do_photometry(self.data)
+        result = self.aper.photometry(self.data)
         assert result.area.unit == u.pix**2
 
-        result_q = self.aper.do_photometry(self.data * u.Jy,
-                                           error=self.data * u.Jy)
+        result_q = self.aper.photometry(self.data * u.Jy,
+                                        error=self.data * u.Jy)
         assert result_q.area.unit == u.pix**2
         assert_allclose(result.area.value, result_q.area.value,
                         equal_nan=True)
 
-    def test_do_photometry_area_batch_vs_mask_path(self):
+    def test_photometry_area_batch_vs_mask_path(self):
         """
         Test that the batch and mask code paths produce identical area
         values.
@@ -241,13 +242,27 @@ class TestPixelApertureDoPhotometry:
         mask = np.zeros(self.data.shape, dtype=bool)
         mask[5, 5] = True
 
-        batch = aper._do_batch_photometry(self.data, error=None, mask=mask,
-                                          method='exact', subpixels=5)
+        batch = aper._batch_photometry(self.data, error=None, mask=mask,
+                                       method='exact', subpixels=5)
         assert batch is not None
-        legacy = aper._do_mask_photometry(self.data, error=None, mask=mask,
-                                          method='exact', subpixels=5)
+        legacy = aper._mask_photometry(self.data, error=None, mask=mask,
+                                       method='exact', subpixels=5)
         # areas are the third element of each result
         assert_allclose(batch[2], legacy[2], rtol=1e-12, equal_nan=True)
+
+    def test_do_photometry_deprecated(self):
+        """
+        Test that the deprecated do_photometry method emits a
+        deprecation warning and returns the same results as photometry.
+        """
+        error = np.full(self.data.shape, 0.1)
+        expected = self.aper.photometry(self.data, error=error)
+        match = r'Use photometry instead'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            result = self.aper.do_photometry(self.data, error=error)
+        assert_allclose(result.aperture_sum, expected.aperture_sum)
+        assert_allclose(result.aperture_sum_err, expected.aperture_sum_err)
+        assert_allclose(result.area.value, expected.area.value)
 
 
 class TestApertureReprStr:

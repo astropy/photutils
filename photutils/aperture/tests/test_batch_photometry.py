@@ -58,11 +58,11 @@ def assert_batch_matches_legacy(aperture, data, *, error=None, mask=None,
     Test that the batch photometry driver gives results identical to the
     legacy mask-based code path for the given inputs.
     """
-    batch = aperture._do_batch_photometry(data, error=error, mask=mask,
-                                          method=method, subpixels=subpixels)
+    batch = aperture._batch_photometry(data, error=error, mask=mask,
+                                       method=method, subpixels=subpixels)
     assert batch is not None
-    legacy = aperture._do_mask_photometry(data, error=error, mask=mask,
-                                          method=method, subpixels=subpixels)
+    legacy = aperture._mask_photometry(data, error=error, mask=mask,
+                                       method=method, subpixels=subpixels)
     for batch_arr, legacy_arr in zip(batch, legacy, strict=True):
         assert batch_arr.shape == legacy_arr.shape
         assert_allclose(batch_arr, legacy_arr, rtol=1e-12, atol=0,
@@ -111,10 +111,10 @@ def test_data_dtypes(dtype):
     rtol = 1e-5 if dtype == 'float32' else 1e-12
     aperture = CircularAperture(POSITIONS, r=5.5)
     data = (DATA > 100.0) if dtype == 'bool' else DATA.astype(dtype)
-    batch = aperture._do_batch_photometry(data, error=None, mask=None,
-                                          method='exact', subpixels=5)
-    legacy = aperture._do_mask_photometry(data, error=None, mask=None,
-                                          method='exact', subpixels=5)
+    batch = aperture._batch_photometry(data, error=None, mask=None,
+                                       method='exact', subpixels=5)
+    legacy = aperture._mask_photometry(data, error=None, mask=None,
+                                       method='exact', subpixels=5)
     assert batch is not None
     assert_allclose(batch[0], legacy[0], rtol=rtol, equal_nan=True)
 
@@ -137,28 +137,28 @@ def test_readonly_arrays(method, subpixels):
     for arr in (data, error, mask):
         arr.setflags(write=False)
 
-    batch = aperture._do_batch_photometry(data, error=error, mask=mask,
-                                          method=method, subpixels=subpixels)
+    batch = aperture._batch_photometry(data, error=error, mask=mask,
+                                       method=method, subpixels=subpixels)
     assert batch is not None
 
-    expected = aperture._do_batch_photometry(DATA, error=ERROR, mask=MASK,
-                                             method=method,
-                                             subpixels=subpixels)
+    expected = aperture._batch_photometry(DATA, error=ERROR, mask=MASK,
+                                          method=method,
+                                          subpixels=subpixels)
     for batch_arr, exp_arr in zip(batch, expected, strict=True):
         assert_allclose(batch_arr, exp_arr, rtol=1e-12, atol=0,
                         equal_nan=True)
 
 
-def test_readonly_data_do_photometry():
+def test_readonly_data_photometry():
     """
-    Test that ``do_photometry`` works with read-only data arrays.
+    Test that ``photometry`` works with read-only data arrays.
     """
     data = np.ones((10, 10))
     data.setflags(write=False)
     aperture = CircularAperture((4.5, 4.5), r=4.5)
-    sums, _ = aperture.do_photometry(data, method='exact')
+    sums, _ = aperture.photometry(data, method='exact')
 
-    expected, _ = aperture.do_photometry(np.ones((10, 10)), method='exact')
+    expected, _ = aperture.photometry(np.ones((10, 10)), method='exact')
     assert_allclose(sums, expected, rtol=1e-12)
 
 
@@ -182,10 +182,10 @@ def test_units():
     """
     unit = u.Jy
     aperture = CircularAperture(POSITIONS, r=5.5)
-    sums, errs = aperture.do_photometry(DATA << unit, error=ERROR << unit)
+    sums, errs = aperture.photometry(DATA << unit, error=ERROR << unit)
     assert sums.unit == unit
     assert errs.unit == unit
-    sums2, errs2 = aperture.do_photometry(DATA, error=ERROR)
+    sums2, errs2 = aperture.photometry(DATA, error=ERROR)
     assert_allclose(sums.value, sums2, equal_nan=True)
     assert_allclose(errs.value, errs2, equal_nan=True)
 
@@ -200,13 +200,13 @@ def test_no_overlap_nan_and_err_shape():
     aperture = CircularAperture(POSITIONS, r=5.5)
     n_outside = 3
 
-    sums, errs, _area = aperture._do_batch_photometry(
+    sums, errs, _area = aperture._batch_photometry(
         DATA, error=None, mask=None, method='exact', subpixels=5)
     assert np.isnan(sums).sum() == n_outside
     assert errs.shape == sums.shape
     assert np.all(np.isnan(errs))
 
-    sums, errs, _area = aperture._do_batch_photometry(
+    sums, errs, _area = aperture._batch_photometry(
         DATA, error=ERROR, mask=None, method='exact', subpixels=5)
     assert errs.shape == sums.shape
     assert np.isnan(errs).sum() == n_outside
@@ -216,16 +216,16 @@ def test_no_overlap_nan_and_err_shape():
     CircularAperture(POSITIONS, r=5.5),
     PolygonAperture.from_regular_polygon(POSITIONS, 6, radius=5.5),
 ])
-def test_do_photometry_no_error_flux_err_shape(aperture):
+def test_photometry_no_error_flux_err_shape(aperture):
     """
-    Test that `do_photometry` returns a ``flux_err`` array that always
+    Test that `photometry` returns a ``flux_err`` array that always
     has the same length as ``flux`` and is filled with NaN when
     ``error`` is not input, both for sources with and without overlap.
 
     ``CircularAperture`` exercises the batch code path and
     ``PolygonAperture`` exercises the mask-based code path.
     """
-    flux, flux_err = aperture.do_photometry(DATA, error=None)
+    flux, flux_err = aperture.photometry(DATA, error=None)
     assert flux_err.shape == flux.shape
     assert np.any(np.isnan(flux))
     assert np.any(~np.isnan(flux))
@@ -242,29 +242,29 @@ def test_fallback_inputs():
 
     # Masked-array data
     data = np.ma.MaskedArray(DATA, mask=MASK)
-    assert aperture._do_batch_photometry(data, error=None, mask=None,
-                                         method='exact', subpixels=5) is None
+    assert aperture._batch_photometry(data, error=None, mask=None,
+                                      method='exact', subpixels=5) is None
 
     # Non-bool mask
-    assert aperture._do_batch_photometry(DATA, error=None,
-                                         mask=MASK.astype(int),
-                                         method='exact', subpixels=5) is None
+    assert aperture._batch_photometry(DATA, error=None,
+                                      mask=MASK.astype(int),
+                                      method='exact', subpixels=5) is None
 
     # Mask with mismatched shape
-    assert aperture._do_batch_photometry(DATA, error=None, mask=MASK[1:, :],
-                                         method='exact', subpixels=5) is None
+    assert aperture._batch_photometry(DATA, error=None, mask=MASK[1:, :],
+                                      method='exact', subpixels=5) is None
 
     # Unsupported dtype
-    assert aperture._do_batch_photometry(DATA.astype(complex), error=None,
-                                         mask=None, method='exact',
-                                         subpixels=5) is None
+    assert aperture._batch_photometry(DATA.astype(complex), error=None,
+                                      mask=None, method='exact',
+                                      subpixels=5) is None
 
 
 def test_fallback_subclass():
     """
     Test that aperture subclasses that do not themselves define
     _batch_shape_params fall back to the mask-based code path in
-    do_photometry, so that any overridden behavior (e.g., to_mask) is
+    photometry, so that any overridden behavior (e.g., to_mask) is
     honored.
     """
 
@@ -274,10 +274,10 @@ def test_fallback_subclass():
         pass
 
     aperture = MyAperture(POSITIONS, r=5.5)
-    assert aperture._do_batch_photometry(DATA, error=None, mask=None,
-                                         method='exact', subpixels=5) is None
-    sums, _ = aperture.do_photometry(DATA)
-    sums2, _ = CircularAperture(POSITIONS, r=5.5).do_photometry(DATA)
+    assert aperture._batch_photometry(DATA, error=None, mask=None,
+                                      method='exact', subpixels=5) is None
+    sums, _ = aperture.photometry(DATA)
+    sums2, _ = CircularAperture(POSITIONS, r=5.5).photometry(DATA)
     assert_allclose(sums, sums2, rtol=1e-12, equal_nan=True)
 
 
@@ -292,8 +292,8 @@ def test_optin_subclass():
             return super()._batch_shape_params()
 
     aperture = MyAperture(POSITIONS, r=5.5)
-    result = aperture._do_batch_photometry(DATA, error=None, mask=None,
-                                           method='exact', subpixels=5)
+    result = aperture._batch_photometry(DATA, error=None, mask=None,
+                                        method='exact', subpixels=5)
     assert result is not None
     assert_batch_matches_legacy(aperture, DATA, error=ERROR, mask=MASK)
 
@@ -301,13 +301,13 @@ def test_optin_subclass():
 def test_optin_subclass_base_hook_returns_none():
     """
     Test that when a subclass defines _batch_shape_params (opting in)
-    but the method returns None, _do_batch_photometry falls back to
+    but the method returns None, _batch_photometry falls back to
     None.
 
     This covers:
     - PixelAperture._batch_shape_params (the base ``return`` on its own
       line, which is the hook's default no-op implementation), and
-    - the ``if spec is None: return None`` branch in _do_batch_photometry.
+    - the ``if spec is None: return None`` branch in _batch_photometry.
     """
 
     class MyAperture(CircularAperture):
@@ -318,8 +318,8 @@ def test_optin_subclass_base_hook_returns_none():
             return PixelAperture._batch_shape_params(self)
 
     aperture = MyAperture(POSITIONS, r=5.5)
-    assert aperture._do_batch_photometry(DATA, error=None, mask=None,
-                                         method='exact', subpixels=5) is None
+    assert aperture._batch_photometry(DATA, error=None, mask=None,
+                                      method='exact', subpixels=5) is None
 
 
 def test_thread_safety():
@@ -329,10 +329,10 @@ def test_thread_safety():
     and checking that they all give the same results.
     """
     aperture = CircularAperture(POSITIONS, r=5.5)
-    expected, _ = aperture.do_photometry(DATA, error=ERROR)
+    expected, _ = aperture.photometry(DATA, error=ERROR)
 
     def run(_):
-        return aperture.do_photometry(DATA, error=ERROR)[0]
+        return aperture.photometry(DATA, error=ERROR)[0]
 
     with ThreadPoolExecutor(max_workers=4) as executor:
         results = list(executor.map(run, range(8)))

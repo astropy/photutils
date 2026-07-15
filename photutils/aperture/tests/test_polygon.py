@@ -197,22 +197,22 @@ def test_pixel_polygon_from_star(n_spikes):
     inner_radius = 2.0
     aper = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
                                       inner_radius)
-    flux, _ = aper.do_photometry(data, method='exact')
+    flux, _ = aper.photometry(data, method='exact')
     assert_allclose(flux, aper.area)
 
     aper1 = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
                                        inner_radius, theta=10 * u.deg)
-    flux, _ = aper1.do_photometry(data, method='exact')
+    flux, _ = aper1.photometry(data, method='exact')
     assert_allclose(flux, aper1.area)
 
     aper2 = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
                                        optimal_shape=True)
-    flux, _ = aper2.do_photometry(data, method='exact')
+    flux, _ = aper2.photometry(data, method='exact')
     assert_allclose(flux, aper2.area)
 
     aper3 = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
                                        collinear_edges=True)
-    flux, _ = aper3.do_photometry(data, method='exact')
+    flux, _ = aper3.photometry(data, method='exact')
     assert_allclose(flux, aper3.area)
 
 
@@ -484,19 +484,19 @@ def test_indexing_scalar_raises():
         len(aper)
 
 
-def test_do_photometry():
+def test_photometry():
     data = np.ones((30, 30))
     aper = PolygonAperture((10.0, 10.0), SQUARE_OFFSETS)
-    flux, _ = aper.do_photometry(data, method='exact')
+    flux, _ = aper.photometry(data, method='exact')
     assert_allclose(flux, [4.0])
 
 
-def test_do_photometry_subpixel_on_horizontal_boundary():
+def test_photometry_subpixel_on_horizontal_boundary():
     """
-    Test that ``do_photometry`` excludes subpixel centers landing
+    Test that ``photometry`` excludes subpixel centers landing
     exactly on a horizontal polygon edge.
 
-    This is the ``do_photometry`` counterpart of
+    This is the ``photometry`` counterpart of
     ``test_polygon_overlap_subpixel_on_horizontal_boundary`` in
     ``photutils/geometry/tests/test_polygon_overlap_grid.py``,
     using the same wide rectangle (half-widths 2 in x, 1 in y) and
@@ -513,16 +513,16 @@ def test_do_photometry_subpixel_on_horizontal_boundary():
     offsets = np.array([[-2.0, -1.0], [2.0, -1.0],
                         [2.0, 1.0], [-2.0, 1.0]])
     aper = PolygonAperture((15.0, 15.0), offsets)
-    flux, _ = aper.do_photometry(data, method='subpixel', subpixels=3)
+    flux, _ = aper.photometry(data, method='subpixel', subpixels=3)
     assert_allclose(flux, [55.0 / 9.0])
 
 
-def test_do_photometry_subpixel_on_vertical_boundary():
+def test_photometry_subpixel_on_vertical_boundary():
     """
-    Test that ``do_photometry`` excludes subpixel centers landing
+    Test that ``photometry`` excludes subpixel centers landing
     exactly on a vertical polygon edge.
 
-    This is the ``do_photometry`` counterpart of
+    This is the ``photometry`` counterpart of
     ``test_polygon_overlap_subpixel_on_vertical_boundary``, using
     the same tall rectangle (half-widths 1 in x, 2 in y) and
     ``subpixels=3``. The vertical edges at x = center +/- 1 coincide
@@ -533,16 +533,16 @@ def test_do_photometry_subpixel_on_vertical_boundary():
     offsets = np.array([[-1.0, -2.0], [1.0, -2.0],
                         [1.0, 2.0], [-1.0, 2.0]])
     aper = PolygonAperture((15.0, 15.0), offsets)
-    flux, _ = aper.do_photometry(data, method='subpixel', subpixels=3)
+    flux, _ = aper.photometry(data, method='subpixel', subpixels=3)
     assert_allclose(flux, [55.0 / 9.0])
 
 
-def test_do_photometry_subpixel_on_all_boundaries():
+def test_photometry_subpixel_on_all_boundaries():
     """
-    Test that ``do_photometry`` excludes subpixel centers on horizontal
+    Test that ``photometry`` excludes subpixel centers on horizontal
     edges, vertical edges, and at corners.
 
-    This is the ``do_photometry`` counterpart of
+    This is the ``photometry`` counterpart of
     ``test_polygon_overlap_subpixel_on_all_boundaries``, using the same
     unit square (half-widths 1 in both axes) and ``subpixels=3``. At
     an integer position the four edges and four corners coincide with
@@ -552,7 +552,7 @@ def test_do_photometry_subpixel_on_all_boundaries():
     """
     data = np.ones((31, 31))
     aper = PolygonAperture((15.0, 15.0), SQUARE_OFFSETS)
-    flux, _ = aper.do_photometry(data, method='subpixel', subpixels=3)
+    flux, _ = aper.photometry(data, method='subpixel', subpixels=3)
     assert_allclose(flux, [25.0 / 9.0])
 
 
@@ -576,7 +576,7 @@ def test_array_photometry_matches_scalar(method, kwargs):
     offsets = _concave_star()
 
     aper = PolygonAperture(positions, offsets)
-    multi, _ = aper.do_photometry(data, method=method, **kwargs)
+    multi, _ = aper.photometry(data, method=method, **kwargs)
 
     ref = [PolygonAperture(pos, offsets)
            .to_mask(method=method, **kwargs).multiply(data).sum()

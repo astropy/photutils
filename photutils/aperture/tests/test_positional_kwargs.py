@@ -133,21 +133,6 @@ class TestApertureMethodsPositionalKwargs:
         with pytest.warns(AstropyDeprecationWarning, match=match):
             aper.to_mask('exact')
 
-    @pytest.mark.parametrize(('aperture_class', 'params'),
-                             PIXEL_TEST_APERTURES)
-    def test_do_photometry_no_warning(self, aperture_class, params):
-        aper = aperture_class(POSITION, **params)
-        aper.do_photometry(DATA, error=None, mask=None)
-
-    @pytest.mark.parametrize(('aperture_class', 'params'),
-                             PIXEL_TEST_APERTURES)
-    def test_do_photometry_positional_warning(self, aperture_class, params):
-        aper = aperture_class(POSITION, **params)
-        error = np.ones_like(DATA)
-        match = 'do_photometry'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
-            aper.do_photometry(DATA, error)
-
 
 class TestApertureInitPositionalKwargs:
     @pytest.mark.parametrize(('aperture_class', 'params'),

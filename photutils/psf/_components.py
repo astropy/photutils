@@ -481,7 +481,7 @@ class PSFDataProcessor:
         y_pos = init_params[self.param_mapper.init_colnames['y']]
         apertures = CircularAperture(zip(x_pos, y_pos, strict=True),
                                      r=self.aperture_radius)
-        flux, _ = apertures.do_photometry(data, mask=mask)
+        flux, _ = apertures.photometry(data, mask=mask)
         return flux
 
     def find_sources_if_needed(self, data, mask, init_params):

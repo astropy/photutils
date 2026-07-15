@@ -341,7 +341,7 @@ class ImageDepth:
 
             apers = CircularAperture(xycoords, r=self.aper_radius)
             apertures.append(apers)
-            fluxes, _ = apers.do_photometry(data)
+            fluxes, _ = apers.photometry(data)
             if self.sigma_clip is not None:
                 fluxes = self.sigma_clip(fluxes, masked=False)  # ndarray
             self.fluxes.append(fluxes)

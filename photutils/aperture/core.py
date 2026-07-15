@@ -22,7 +22,8 @@ from photutils.aperture._segmentation import (SEG_METHOD_CODES,
                                               process_segmentation_inputs)
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.mask import ApertureMask
-from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._deprecation import (deprecated,
+                                          deprecated_positional_kwargs)
 
 __all__ = ['Aperture', 'ApertureResults', 'PixelAperture', 'SkyAperture']
 
@@ -162,10 +163,10 @@ def _update_method_subpixels_docstring(obj):
 @dataclass(frozen=True)
 class ApertureResults:
     """
-    The results of `PixelAperture.do_photometry`.
+    The results of `PixelAperture.photometry`.
 
     For backward compatibility, this object can still be unpacked as a
-    2-tuple, ``aperture_sum, aperture_sum_err = do_photometry(...)``.
+    2-tuple, ``aperture_sum, aperture_sum_err = aper.photometry(...)``.
     Use the named attributes to access ``area``.
 
     Attributes
@@ -625,9 +626,9 @@ class PixelAperture(Aperture):
             The overlap array.
         """
 
-    def _do_mask_photometry(self, data, *, error, mask, method, subpixels,
-                            segmentation=None, labels=None,
-                            mask_method='none'):
+    def _mask_photometry(self, data, *, error, mask, method, subpixels,
+                         segmentation=None, labels=None,
+                         mask_method='none'):
         """
         Perform aperture photometry using per-source aperture masks.
 
@@ -644,7 +645,7 @@ class PixelAperture(Aperture):
             already stripped.
 
         error, mask, method, subpixels
-            See `do_photometry`. Any units must already be stripped from
+            See `photometry`. Any units must already be stripped from
             ``error``.
 
         segmentation, labels, mask_method
@@ -731,15 +732,15 @@ class PixelAperture(Aperture):
         Notes
         -----
         The batch driver is used only if this hook is defined in the
-        aperture instance's own class (see `_do_batch_photometry`),
+        aperture instance's own class (see `_batch_photometry`),
         so subclasses must define this method (e.g., by calling
         ``super()``) to opt in to the batch code path.
         """
         return
 
-    def _do_batch_photometry(self, data, *, error, mask, method, subpixels,
-                             segmentation=None, labels=None,
-                             mask_method='none'):
+    def _batch_photometry(self, data, *, error, mask, method, subpixels,
+                          segmentation=None, labels=None,
+                          mask_method='none'):
         """
         Perform aperture photometry using the batch Cython driver.
 
@@ -754,7 +755,7 @@ class PixelAperture(Aperture):
             already stripped.
 
         error, mask, method, subpixels
-            See `do_photometry`. Any units must already be stripped from
+            See `photometry`. Any units must already be stripped from
             ``error``.
 
         segmentation, labels, mask_method
@@ -828,13 +829,16 @@ class PixelAperture(Aperture):
         return sums, errs, area
 
     @_update_method_subpixels_docstring
-    @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def do_photometry(self, data, error=None, mask=None, method='exact',
-                      subpixels=5, *, segmentation_image=None, labels=None,
-                      mask_method='none'):
+    def photometry(self, data, *, error=None, mask=None, method='exact',
+                   subpixels=5, segmentation_image=None, labels=None,
+                   mask_method='none'):
         # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         Perform aperture photometry on the input data.
+
+        .. versionadded:: 3.1
+            This method replaces the deprecated ``do_photometry``
+            method. All arguments except ``data`` are keyword-only.
 
         Parameters
         ----------
@@ -863,7 +867,7 @@ class PixelAperture(Aperture):
         result : `ApertureResults`
             The aperture photometry results. For backward
             compatibility, this object can be unpacked as a 2-tuple,
-            ``aperture_sum, aperture_sum_err = do_photometry(...)``, and
+            ``aperture_sum, aperture_sum_err = photometry(...)``, and
             supports ``len()`` and integer indexing as if it were a
             2-tuple. It has the following attributes:
 
@@ -919,7 +923,7 @@ class PixelAperture(Aperture):
             segmentation_image, labels, mask_method,
             np.atleast_2d(self.positions), data.shape)
 
-        result = self._do_batch_photometry(
+        result = self._batch_photometry(
             data, error=error, mask=mask, method=method, subpixels=subpixels,
             segmentation=segmentation, labels=labels,
             mask_method=mask_method)
@@ -927,7 +931,7 @@ class PixelAperture(Aperture):
         if result is not None:
             aperture_sums, aperture_sum_errs, area = result
         else:
-            aperture_sums, aperture_sum_errs, area = self._do_mask_photometry(
+            aperture_sums, aperture_sum_errs, area = self._mask_photometry(
                 data, error=error, mask=mask, method=method,
                 subpixels=subpixels, segmentation=segmentation,
                 labels=labels, mask_method=mask_method)
@@ -943,6 +947,28 @@ class PixelAperture(Aperture):
 
         return ApertureResults(aperture_sum=aperture_sums,
                                aperture_sum_err=aperture_sum_errs, area=area)
+
+    @deprecated(since='3.1', alternative='photometry', until='4.0')
+    def do_photometry(self, data, error=None, mask=None, method='exact',
+                      subpixels=5, *, segmentation_image=None, labels=None,
+                      mask_method='none'):
+        # numpydoc ignore: PR01
+        """
+        Perform aperture photometry on the input data.
+
+        .. deprecated:: 3.1
+            Use `photometry` instead. Note that all arguments except
+            ``data`` are keyword-only in ``photometry``.
+
+        Returns
+        -------
+        result : `ApertureResults`
+            The aperture photometry results.
+        """
+        return self.photometry(data, error=error, mask=mask, method=method,
+                               subpixels=subpixels,
+                               segmentation_image=segmentation_image,
+                               labels=labels, mask_method=mask_method)
 
     @staticmethod
     def _make_annulus_path(patch_inner, patch_outer):
