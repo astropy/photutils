@@ -597,13 +597,13 @@ These keywords are also available in
 Aperture Quality Flags
 ----------------------
 
-The :func:`~photutils.aperture.aperture_photometry` table
-and the :meth:`~photutils.aperture.PixelAperture.photometry`
-results include bitwise quality flags for each source in a
-``'flags'`` column or attribute. A value of 0 means that no
-issues were detected. The flag values can be decoded using the
-:func:`~photutils.aperture.decode_aperture_flags` function. The flags
-are:
+The :func:`~photutils.aperture.aperture_photometry` table, the
+:meth:`~photutils.aperture.PixelAperture.photometry` results, and the
+:class:`~photutils.aperture.ApertureStats` class include bitwise quality
+flags for each source in a ``'flags'`` column or attribute. A value of 0
+means that no issues were detected. The flag values can be decoded using
+the :func:`~photutils.aperture.decode_aperture_flags` function. The
+flags are:
 
 * ``'no_overlap'`` (1): the aperture is fully outside the data (no
   pixel with nonzero aperture weight falls inside the data)
@@ -627,6 +627,15 @@ are:
 * ``'uncorrected_pixels'`` (256): with ``mask_method='correct'``, one
   or more neighbor pixels could not be corrected and were excluded
   instead
+* ``'sigma_clipped'`` (512): one or more pixels within the aperture
+  were rejected by sigma clipping (`~photutils.aperture.ApertureStats`
+  only)
+* ``'all_clipped'`` (1024): all valid pixels within the aperture were
+  rejected by sigma clipping (`~photutils.aperture.ApertureStats` only)
+* ``'too_few_pixels'`` (2048): too few valid pixels to compute a
+  requested statistic, e.g., the variance and standard deviation are
+  undefined when the number of valid pixels is not larger than ``ddof``
+  (`~photutils.aperture.ApertureStats` only)
 
 Multiple conditions combine bitwise. For example, an aperture that
 extends beyond the data edge and also contains a masked pixel has
@@ -660,6 +669,29 @@ The flag values can be decoded into human-readable names::
     1 ['masked_pixels']
     2 ['partial_overlap']
     3 ['no_overlap', 'no_pixels']
+
+The :class:`~photutils.aperture.ApertureStats` class provides the same
+flags in its :attr:`~photutils.aperture.ApertureStats.flags` property
+(also included in the default ``to_table()`` columns), along with a
+:meth:`~photutils.aperture.ApertureStats.decode_flags` convenience
+method::
+
+    >>> from photutils.aperture import ApertureStats
+    >>> aperstats = ApertureStats(data, aperture, mask=mask)
+    >>> print(aperstats.flags)
+    [8 2 5]
+    >>> for names in aperstats.decode_flags():
+    ...     print(names)
+    ['masked_pixels']
+    ['partial_overlap']
+    ['no_overlap', 'no_pixels']
+
+For `~photutils.aperture.ApertureStats`, the flags are evaluated on
+both the ``'center'``-method footprint used by the value statistics and
+the ``sum_method`` footprint used by the sum properties, and combined
+bitwise. Note that in `~photutils.aperture.ApertureStats` non-finite
+data values are automatically masked, so an aperture containing only NaN
+values has ``flags = 48`` (``'non_finite_data'`` + ``'all_masked'``).
 
 
 .. _photutils-aperture-stats:

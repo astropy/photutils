@@ -17,7 +17,14 @@ from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
-from photutils.aperture._batch_photometry import batch_aperture_sums
+from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
+                                                  FLAG_COL_MASKED,
+                                                  FLAG_COL_NONFINITE_DATA,
+                                                  FLAG_COL_NONFINITE_ERROR,
+                                                  FLAG_COL_NPIX, FLAG_COL_SEG,
+                                                  FLAG_COL_UNCORRECTED,
+                                                  FLAG_COL_VALID,
+                                                  batch_aperture_sums)
 from photutils.aperture._batch_stats import (batch_aperture_gather,
                                              batch_biweight, batch_gini,
                                              batch_mad, batch_mean_var,
@@ -30,6 +37,8 @@ from photutils.aperture._segmentation import (SEG_METHOD_CODES,
                                               process_segmentation_inputs)
 from photutils.aperture.core import (_aperture_metadata,
                                      _update_method_subpixels_docstring)
+from photutils.aperture.flags import (APERTURE_FLAGS, _counts_to_flag_bits,
+                                      decode_aperture_flags)
 from photutils.morphology import gini as gini_func
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_getattr,
@@ -54,7 +63,8 @@ DEFAULT_COLUMNS = ['id', 'x_centroid', 'y_centroid', 'sky_centroid',
                    'min', 'max', 'mean', 'median', 'mode', 'std',
                    'mad_std', 'var', 'biweight_location',
                    'biweight_midvariance', 'fwhm', 'semimajor_axis',
-                   'semiminor_axis', 'orientation', 'eccentricity']
+                   'semiminor_axis', 'orientation', 'eccentricity',
+                   'flags']
 
 # Remove in 4.0
 _DEPRECATED_ATTRIBUTES: dict = {
@@ -744,18 +754,29 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
                                  or mask.shape != data.shape):
             return None
 
-        # Fold non-finite ``data`` values into the mask so the batch
-        # kernel can skip the per-pixel finiteness test (and defer
-        # the pixel-value load to contributing pixels only, like
+        # Fold non-finite ``data`` values into the mask plane so the
+        # batch kernels can skip the per-pixel finiteness test (and
+        # defer the pixel-value load to contributing pixels only, like
         # the ``photometry`` method). This matches the mask-based
         # path, which masks non-finite data before any segmentation
-        # correction.
+        # correction. The plane distinguishes the two causes for the
+        # flag counts: bit 1 (value 1) marks input-masked pixels and bit
+        # 2 (value 2) marks non-finite data pixels. Any nonzero value
+        # excludes the pixel.
+        plane = None
+        if mask is not None:
+            plane = mask.astype(np.uint8)
         if data.dtype.kind == 'f':
             nonfinite = ~np.isfinite(data)
             if nonfinite.any():
-                mask = nonfinite if mask is None else (mask | nonfinite)
+                if plane is None:
+                    plane = np.zeros(data.shape, dtype=np.uint8)
+                    plane[nonfinite] = 2
+                else:
+                    plane[nonfinite & (plane == 0)] = 2
+        mask = plane
         if mask is not None:
-            mask = np.ascontiguousarray(mask, dtype=np.uint8)
+            mask = np.ascontiguousarray(mask)
 
         seg_arr = None
         labels_arr = None
@@ -1134,21 +1155,31 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
         Returns
         -------
-        data, variance, mask, weights : list of `~numpy.ndarray`
-            A list of cutout arrays for the data, variance, mask and weight
-            arrays for each source (aperture position).
+        result : list of `~numpy.ndarray`
+            A list of cutout arrays for the data, variance,
+            mask and weight arrays for each source (aperture
+            position), followed by the overlap indicator, per-source
+            flag counts (see the ``FLAG_COL_*`` constants in
+            `photutils.aperture._batch_photometry`, with semantics
+            identical to the batch drivers), and the number of
+            sigma-clipped pixels.
         """
         data_cutouts = []
         variance_cutouts = []
         mask_cutouts = []
         weight_cutouts = []
         overlaps = []
+        flag_counts = []
+        n_clipped = []
 
         positions = np.atleast_2d(self._pixel_aperture.positions)
 
         for idx, (data_cutout, apermask, slices) in enumerate(
                 zip(self._data_cutouts, aperture_masks,
                     self._overlap_slices, strict=True)):
+
+            fc_row = np.zeros(8, dtype=np.intp)
+            n_clipped_ = 0
 
             slc_large, slc_small = slices
             if slc_large is None:  # aperture does not overlap the data
@@ -1160,31 +1191,68 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             else:
                 # Create a mask of non-finite ``data`` values combined
                 # with the input ``mask`` array
-                data_mask = ~np.isfinite(data_cutout)
+                nonfinite_mask = ~np.isfinite(data_cutout)
                 if self._mask is not None:
-                    data_mask |= self._mask[slc_large]
+                    user_mask = self._mask[slc_large]
+                    data_mask = nonfinite_mask | user_mask
+                else:
+                    user_mask = None
+                    data_mask = nonfinite_mask
 
                 error_cutout = (None if self._error is None
                                 else self._error[slc_large])
 
                 # Apply segmentation-based masking and/or symmetric
                 # neighbor correction
+                exclude = None
+                affected = None
                 if (self._segmentation is not None
                         and self._mask_method != 'none'):
                     segm_cutout = self._segmentation[slc_large]
                     cutout_xycen = (positions[idx, 0] - slc_large[1].start,
                                     positions[idx, 1] - slc_large[0].start)
                     (data_cutout, error_cutout, exclude,
-                     _seg_affected) = make_segmentation_exclusion(
+                     affected) = make_segmentation_exclusion(
                         self._mask_method, segm_cutout,
                         self._seg_labels[idx], data=data_cutout,
                         error=error_cutout, base_mask=data_mask,
                         cutout_xycen=cutout_xycen)
+                    pre_seg_mask = data_mask
                     data_mask = data_mask | exclude
 
                 overlap = True
                 aperweight_cutout = apermask.data[slc_small]
                 weight_cutout = aperweight_cutout * ~data_mask
+
+                # Per-source pixel counts for the quality flags,
+                # matching the batch-driver semantics (computed before
+                # any sigma clipping)
+                weighted = aperweight_cutout > 0
+                fc_row[FLAG_COL_NPIX] = np.count_nonzero(weighted)
+                fc_row[FLAG_COL_BBOX_CLIPPED] = (
+                    aperweight_cutout.shape != apermask.data.shape)
+                if user_mask is not None:
+                    fc_row[FLAG_COL_MASKED] = np.count_nonzero(
+                        weighted & user_mask)
+                    fc_row[FLAG_COL_NONFINITE_DATA] = np.count_nonzero(
+                        weighted & nonfinite_mask & ~user_mask)
+                else:
+                    fc_row[FLAG_COL_NONFINITE_DATA] = np.count_nonzero(
+                        weighted & nonfinite_mask)
+                if affected is not None:
+                    pre_valid = weighted & ~pre_seg_mask
+                    fc_row[FLAG_COL_SEG] = np.count_nonzero(
+                        affected & pre_valid)
+                    if self._mask_method == 'correct':
+                        # In 'correct' mode, the excluded pixels are
+                        # exactly the uncorrectable neighbor pixels
+                        fc_row[FLAG_COL_UNCORRECTED] = np.count_nonzero(
+                            exclude & pre_valid)
+                fc_row[FLAG_COL_VALID] = np.count_nonzero(
+                    weighted & ~data_mask)
+                if error_cutout is not None:
+                    fc_row[FLAG_COL_NONFINITE_ERROR] = np.any(
+                        ~np.isfinite(error_cutout) & weighted & ~data_mask)
 
                 # Apply the aperture mask; for "exact" and "subpixel"
                 # this is an expanded boolean mask using the aperture
@@ -1203,6 +1271,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
                     # Define a mask of only the sigma-clipped pixels
                     sigclip_mask = data_sigclip.mask & ~mask_cutout
+                    n_clipped_ = np.count_nonzero(sigclip_mask)
                     weight_cutout *= ~sigclip_mask
 
                     mask_cutout = data_sigclip.mask
@@ -1225,11 +1294,14 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             mask_cutouts.append(mask_cutout)
             weight_cutouts.append(weight_cutout)
             overlaps.append(overlap)
+            flag_counts.append(fc_row)
+            n_clipped.append(n_clipped_)
 
         # Use zip (instead of np.transpose) because these may contain
         # arrays that have different shapes
         return list(zip(data_cutouts, variance_cutouts, mask_cutouts,
-                        weight_cutouts, overlaps, strict=True))
+                        weight_cutouts, overlaps, flag_counts, n_clipped,
+                        strict=True))
 
     @lazyproperty
     def _aperture_cutouts_center(self):
@@ -1456,6 +1528,153 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         True if there is no overlap of the aperture with the data.
         """
         return list(zip(*self._aperture_cutouts_center, strict=True))[4]
+
+    def _footprint_flag_inputs(self, footprint):
+        """
+        The per-source flag inputs for the given aperture footprint.
+
+        Parameters
+        ----------
+        footprint : {'center', 'sum'}
+            The aperture footprint: the "center" mask method used by the
+            value statistics, or the ``sum_method`` mask method used by
+            the sum properties.
+
+        Returns
+        -------
+        flag_counts : `~numpy.ndarray`
+            The per-source flag counts (see the ``FLAG_COL_*``
+            constants in `photutils.aperture._batch_photometry`).
+
+        overlap : `~numpy.ndarray` (bool)
+            Whether the aperture bounding box overlaps the data.
+
+        n_kept : `~numpy.ndarray` or `None`
+            For the center footprint, the per-source number of valid
+            pixels remaining after sigma clipping; `None` for the sum
+            footprint.
+        """
+        if footprint == 'center':
+            gather = self._fast_gather
+            if gather is not None:
+                return (gather[13], np.asarray(gather[8]),
+                        np.asarray(gather[4]))
+            cutouts = self._aperture_cutouts_center
+        else:
+            gather = self._fast_sum
+            if gather is not None:
+                return gather[13], np.asarray(gather[8]), None
+            cutouts = self._aperture_cutouts
+
+        flag_counts = np.array([cut[5] for cut in cutouts])
+        overlap = np.array([cut[4] for cut in cutouts])
+        n_kept = None
+        if footprint == 'center':
+            n_clipped = np.array([cut[6] for cut in cutouts])
+            n_kept = flag_counts[:, FLAG_COL_VALID] - n_clipped
+        return flag_counts, overlap, n_kept
+
+    def _footprint_flags(self, footprint):
+        """
+        The per-source flag bits for the given aperture footprint.
+
+        The bounding-box-clipped candidate sources are resolved to the
+        precise outside-weight test using per-source aperture masks.
+        """
+        flag_counts, overlap, _ = self._footprint_flag_inputs(footprint)
+        if footprint == 'center':
+            method, subpixels = 'center', 1
+        else:
+            method, subpixels = self.sum_method, self.subpixels
+        candidates = flag_counts[:, FLAG_COL_BBOX_CLIPPED].astype(bool)
+        w_out = self._pixel_aperture._resolve_outside_weights(
+            self._data.shape, method=method, subpixels=subpixels,
+            candidates=candidates)
+        return _counts_to_flag_bits(flag_counts, overlap, w_out)
+
+    @lazyproperty
+    @as_scalar
+    @_update_method_subpixels_docstring
+    def flags(self):
+        # numpydoc ignore: RT01
+        """
+        The bitwise quality flags for each source.
+
+        The flags are evaluated on both the "center"-method footprint
+        used by the value statistics and the ``sum_method`` footprint
+        used by the sum properties, and combined bitwise. The
+        ``'non_finite_error'`` flag is evaluated on the ``sum_method``
+        footprint. The ``'sigma_clipped'``, ``'all_clipped'``, and
+        ``'too_few_pixels'`` flags are evaluated on the "center"-method
+        footprint.
+
+        See `~photutils.aperture.decode_aperture_flags` for decoding
+        flag values. The flags are:
+
+        <flag_descriptions>
+        """
+        # The gather kernel and the center-method cutouts do not
+        # evaluate error values, so the non-finite-error bit is
+        # defined by the sum footprint only
+        center_flags = (self._footprint_flags('center')
+                        & ~APERTURE_FLAGS.NON_FINITE_ERROR)
+        flags = center_flags | self._footprint_flags('sum')
+
+        flag_counts, _, n_kept = self._footprint_flag_inputs('center')
+        n_valid = flag_counts[:, FLAG_COL_VALID]
+        if self.sigma_clip is not None:
+            n_clipped = n_valid - n_kept
+            flags[n_clipped > 0] |= APERTURE_FLAGS.SIGMA_CLIPPED
+            flags[(n_valid > 0)
+                  & (n_kept == 0)] |= APERTURE_FLAGS.ALL_CLIPPED
+
+        if self.ddof > 0:
+            w_in = flag_counts[:, FLAG_COL_NPIX]
+            flags[(w_in > 0)
+                  & (n_kept <= self.ddof)] |= APERTURE_FLAGS.TOO_FEW_PIXELS
+
+        return flags
+
+    def decode_flags(self, *, return_bit_values=False):
+        """
+        Decode the source quality flags into individual components.
+
+        This is a convenience method that calls
+        `~photutils.aperture.decode_aperture_flags` with the `flags`
+        property.
+
+        Parameters
+        ----------
+        return_bit_values : bool, optional
+            If `True`, return the decoded bit flags (integers) instead
+            of the flag names (strings).
+
+        Returns
+        -------
+        decoded : list of list of str or list of list of int
+            A list of the active flag names (or bit values) for each
+            source.
+
+        See Also
+        --------
+        photutils.aperture.decode_aperture_flags
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from photutils.aperture import ApertureStats, CircularAperture
+        >>> data = np.ones((25, 25))
+        >>> mask = np.zeros(data.shape, dtype=bool)
+        >>> mask[12, 12] = True
+        >>> aper = CircularAperture([(12.0, 12.0), (0.0, 12.0)], r=3.0)
+        >>> aperstats = ApertureStats(data, aper, mask=mask)
+        >>> for names in aperstats.decode_flags():
+        ...     print(names)
+        ['masked_pixels']
+        ['partial_overlap']
+        """
+        return decode_aperture_flags(np.atleast_1d(self.flags),
+                                     return_bit_values=return_bit_values)
 
     def _get_values(self, array):
         """
