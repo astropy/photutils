@@ -16,11 +16,19 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
 
-from photutils.aperture._batch_photometry import batch_aperture_sums
+from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
+                                                  FLAG_COL_MASKED,
+                                                  FLAG_COL_NONFINITE_DATA,
+                                                  FLAG_COL_NONFINITE_ERROR,
+                                                  FLAG_COL_NPIX, FLAG_COL_SEG,
+                                                  FLAG_COL_UNCORRECTED,
+                                                  FLAG_COL_VALID,
+                                                  batch_aperture_sums)
 from photutils.aperture._segmentation import (SEG_METHOD_CODES,
                                               make_segmentation_exclusion,
                                               process_segmentation_inputs)
 from photutils.aperture.bounding_box import BoundingBox
+from photutils.aperture.flags import APERTURE_FLAGS, _counts_to_flag_bits
 from photutils.aperture.mask import ApertureMask
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs)
@@ -105,6 +113,14 @@ mask_method : {'none', 'mask', 'source_only', 'correct'}, optional
       values of the pixels mirrored across the aperture center. If a
       mirror pixel is unavailable, the pixel is excluded."""
 
+# Bullet list of the aperture quality flags, generated from the central
+# flag registry, used in docstrings via the ``flag_descriptions``
+# placeholder.
+_FLAG_DESCRIPTIONS_DOC = '\n'.join(
+    f"* ``'{flag_def.name}'`` : bit {flag_def.bit_value}, "
+    f'{flag_def.description}'
+    for flag_def in APERTURE_FLAGS.FLAG_DEFINITIONS)
+
 # Mapping of placeholder tags to their replacement text. Each tag must
 # appear alone on its own line in a docstring; the leading indentation
 # of the placeholder is applied to the inserted text.
@@ -113,6 +129,7 @@ _DOC_PLACEHOLDERS = {
     'method_bullets': _METHOD_BULLETS,
     'subpixels_description': _SUBPIXELS_DOC,
     'segmentation_descriptions': _SEGMENTATION_DOC,
+    'flag_descriptions': _FLAG_DESCRIPTIONS_DOC,
 }
 
 _DOC_PLACEHOLDER_RE = re.compile(
@@ -167,7 +184,7 @@ class ApertureResults:
 
     For backward compatibility, this object can still be unpacked as a
     2-tuple, ``aperture_sum, aperture_sum_err = aper.photometry(...)``.
-    Use the named attributes to access ``area``.
+    Use the named attributes to access ``area`` and ``flags``.
 
     Attributes
     ----------
@@ -179,11 +196,16 @@ class ApertureResults:
 
     area : `~astropy.units.Quantity`
         The total unmasked overlap area of each aperture (in pix**2).
+
+    flags : `~numpy.ndarray`
+        The bitwise quality flags for each aperture. See
+        `~photutils.aperture.decode_aperture_flags` for decoding.
     """
 
     aperture_sum: np.ndarray
     aperture_sum_err: np.ndarray
     area: np.ndarray
+    flags: np.ndarray
 
     def __iter__(self):
         # Legacy 2-tuple unpacking only.
@@ -657,6 +679,18 @@ class PixelAperture(Aperture):
         -------
         aperture_sums, aperture_sum_errs, areas : `~numpy.ndarray`
             The aperture sums, errors, and total unmasked overlap areas.
+
+        flag_counts : `~numpy.ndarray`
+            The per-source pixel counts for the quality flags, with one
+            row per source and the columns given by the ``FLAG_COL_*``
+            constants in `photutils.aperture._batch_photometry`,
+            with semantics identical to the batch driver (the
+            ``FLAG_COL_BBOX_CLIPPED`` column is a candidate indicator
+            resolved by the caller, and the non-finite columns are 0/1
+            indicators).
+
+        overlap : `~numpy.ndarray` (bool)
+            Whether the aperture bounding box overlaps the data.
         """
         apermasks = self.to_mask(method=method, subpixels=subpixels)
         if self.isscalar:
@@ -664,9 +698,12 @@ class PixelAperture(Aperture):
 
         positions = np.atleast_2d(self.positions)
 
+        n_src = len(apermasks)
         aperture_sums = []
         aperture_sum_errs = []
         areas = []
+        flag_counts = np.zeros((n_src, 8), dtype=np.intp)
+        overlap = np.zeros(n_src, dtype=bool)
         with warnings.catch_warnings():
             # Ignore multiplication with non-finite data values
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -684,6 +721,16 @@ class PixelAperture(Aperture):
                     areas.append(np.nan)
                     continue
 
+                overlap[idx] = True
+                weighted = aper_weights > 0
+                w_in = np.count_nonzero(weighted)
+                flag_counts[idx, FLAG_COL_NPIX] = w_in
+                flag_counts[idx, FLAG_COL_BBOX_CLIPPED] = (
+                    aper_weights.shape != apermask.data.shape)
+                if mask is not None:
+                    flag_counts[idx, FLAG_COL_MASKED] = np.count_nonzero(
+                        weighted & mask[slc_large])
+
                 data_cutout = data[slc_large]
                 error_cutout = None if error is None else error[slc_large]
 
@@ -692,12 +739,27 @@ class PixelAperture(Aperture):
                     base_mask = None if mask is None else mask[slc_large]
                     cutout_xycen = (positions[idx, 0] - slc_large[1].start,
                                     positions[idx, 1] - slc_large[0].start)
-                    (data_cutout, error_cutout,
-                     exclude) = make_segmentation_exclusion(
+                    (data_cutout, error_cutout, exclude,
+                     affected) = make_segmentation_exclusion(
                         mask_method, segm_cutout, labels[idx],
                         data=data_cutout, error=error_cutout,
                         base_mask=base_mask, cutout_xycen=cutout_xycen)
+                    flag_counts[idx, FLAG_COL_SEG] = np.count_nonzero(
+                        affected & pixel_mask)
+                    if mask_method == 'correct':
+                        # In 'correct' mode, the excluded pixels are
+                        # exactly the uncorrectable neighbor pixels
+                        flag_counts[idx, FLAG_COL_UNCORRECTED] = (
+                            np.count_nonzero(exclude & pixel_mask))
                     pixel_mask = pixel_mask & ~exclude
+
+                flag_counts[idx, FLAG_COL_VALID] = np.count_nonzero(
+                    pixel_mask)
+                flag_counts[idx, FLAG_COL_NONFINITE_DATA] = np.any(
+                    ~np.isfinite(data_cutout) & pixel_mask)
+                if error is not None:
+                    flag_counts[idx, FLAG_COL_NONFINITE_ERROR] = np.any(
+                        ~np.isfinite(error_cutout) & pixel_mask)
 
                 values = (data_cutout * aper_weights)[pixel_mask]
                 aperture_sums.append(values.sum())
@@ -710,7 +772,7 @@ class PixelAperture(Aperture):
                     aperture_sum_errs.append(np.nan)
 
         return (np.array(aperture_sums), np.array(aperture_sum_errs),
-                np.array(areas))
+                np.array(areas), flag_counts, overlap)
 
     def _batch_shape_params(self):
         """
@@ -766,10 +828,16 @@ class PixelAperture(Aperture):
         Returns
         -------
         result : tuple of `~numpy.ndarray` or `None`
-            A ``(aperture_sums, aperture_sum_errs, areas)`` tuple of
-            float64 arrays, or `None` if the batch driver does not
-            support this aperture or these inputs (in which case the
-            caller should use the mask-based code path).
+            A ``(aperture_sums, aperture_sum_errs, areas, flag_counts,
+            overlap)`` tuple, or `None` if the batch driver does not
+            support this aperture or these inputs (in which case
+            the caller should use the mask-based code path). The
+            ``flag_counts`` columns are given by the ``FLAG_COL_*``
+            constants in `photutils.aperture._batch_photometry`; on this
+            code path the ``FLAG_COL_BBOX_CLIPPED`` column is only a
+            candidate indicator (bounding box clipped by a data edge)
+            that the caller must resolve to the precise outside-weight
+            test (see `_resolve_outside_weights`).
         """
         # Use the batch driver only if the aperture's own class defines
         # the _batch_shape_params hook. Subclasses that do not define
@@ -811,7 +879,7 @@ class PixelAperture(Aperture):
             error = np.ascontiguousarray(error, dtype=np.float64)
         ext_x, ext_y = self._xy_extents
 
-        sums, sum_var, area, _overlap, *_ = batch_aperture_sums(
+        sums, sum_var, area, overlap, *_, fcounts = batch_aperture_sums(
             np.ascontiguousarray(data, dtype=np.float64), error, mask,
             np.ascontiguousarray(self._positions, dtype=np.float64),
             shape_code, np.array(params, dtype=np.float64),
@@ -826,7 +894,7 @@ class PixelAperture(Aperture):
         else:
             errs = np.sqrt(sum_var)
 
-        return sums, errs, area
+        return sums, errs, area, fcounts, overlap
 
     @_update_method_subpixels_docstring
     def photometry(self, data, *, error=None, mask=None, method='exact',
@@ -890,6 +958,13 @@ class PixelAperture(Aperture):
                 is equivalent to `area_overlap` computed with the same
                 inputs. The value is ``NaN`` where the aperture does not
                 overlap the data.
+
+            - ``flags`` : `~numpy.ndarray`
+                The bitwise quality flags for each aperture. See
+                `~photutils.aperture.decode_aperture_flags` for decoding
+                flag values. The flags are:
+
+                <flag_descriptions>
         """
         data = np.asanyarray(data)
         if data.ndim != 2:
@@ -929,12 +1004,21 @@ class PixelAperture(Aperture):
             mask_method=mask_method)
 
         if result is not None:
-            aperture_sums, aperture_sum_errs, area = result
+            aperture_sums, aperture_sum_errs, area, fcounts, overlap = result
         else:
-            aperture_sums, aperture_sum_errs, area = self._mask_photometry(
+            (aperture_sums, aperture_sum_errs, area, fcounts,
+             overlap) = self._mask_photometry(
                 data, error=error, mask=mask, method=method,
                 subpixels=subpixels, segmentation=segmentation,
                 labels=labels, mask_method=mask_method)
+
+        # Resolve the precise outside-weight test only for the sources
+        # whose bounding box is clipped by a data edge
+        candidates = fcounts[:, FLAG_COL_BBOX_CLIPPED].astype(bool)
+        w_out = self._resolve_outside_weights(
+            data.shape, method=method, subpixels=subpixels,
+            candidates=candidates)
+        flags = _counts_to_flag_bits(fcounts, overlap, w_out)
 
         # Apply units
         if unit is not None:
@@ -946,7 +1030,8 @@ class PixelAperture(Aperture):
         area <<= (u.pix**2)
 
         return ApertureResults(aperture_sum=aperture_sums,
-                               aperture_sum_err=aperture_sum_errs, area=area)
+                               aperture_sum_err=aperture_sum_errs, area=area,
+                               flags=flags)
 
     @deprecated(since='3.1', alternative='photometry', until='4.0')
     def do_photometry(self, data, error=None, mask=None, method='exact',
@@ -969,6 +1054,55 @@ class PixelAperture(Aperture):
                                subpixels=subpixels,
                                segmentation_image=segmentation_image,
                                labels=labels, mask_method=mask_method)
+
+    def _resolve_outside_weights(self, shape, *, method, subpixels,
+                                 candidates):
+        """
+        Whether each aperture has nonzero mask weights outside the data.
+
+        The precise per-source test is evaluated (via per-source
+        aperture masks) only for the candidate sources, i.e., those
+        whose bounding box is clipped by a data edge; the result is
+        `False` for all other sources. Interior sources are never
+        candidates, so no aperture masks are built for them.
+
+        Parameters
+        ----------
+        shape : tuple of int
+            The shape of the data array.
+
+        method, subpixels
+            See `photometry`.
+
+        candidates : `~numpy.ndarray` (bool)
+            Whether each aperture bounding box is clipped by a data
+            edge.
+
+        Returns
+        -------
+        w_out : `~numpy.ndarray` (bool)
+            Whether each aperture has one or more pixels with nonzero
+            aperture weight outside the data.
+        """
+        w_out = np.zeros(candidates.shape, dtype=bool)
+        idx = np.flatnonzero(candidates)
+        if idx.size == 0:
+            return w_out
+
+        sub = self if self.isscalar else self[idx]
+        apermasks = sub.to_mask(method=method, subpixels=subpixels)
+        if sub.isscalar:
+            apermasks = [apermasks]
+
+        for i, apermask in zip(idx, apermasks, strict=True):
+            n_total = np.count_nonzero(apermask.data)
+            slc_large, slc_small = apermask.get_overlap_slices(shape)
+            if slc_large is None:
+                w_out[i] = n_total > 0
+            else:
+                n_in = np.count_nonzero(apermask.data[slc_small])
+                w_out[i] = n_total > n_in
+        return w_out
 
     @staticmethod
     def _make_annulus_path(patch_inner, patch_outer):

@@ -158,27 +158,37 @@ def make_segmentation_exclusion(mask_method, segmentation_cutout,
     exclude : 2D bool `~numpy.ndarray`
         A boolean mask where `True` indicates a pixel to exclude from
         the photometry.
+
+    affected : 2D bool `~numpy.ndarray`
+        A boolean mask where `True` indicates a pixel excluded,
+        replaced, or excluded-instead-of-replaced due to a neighboring
+        source (i.e., a labeled pixel that is not the target source).
+        Background pixels excluded by the ``'source_only'`` method are
+        not marked. For the ``'correct'`` method, ``exclude`` marks
+        exactly the neighbor pixels that could not be corrected.
     """
     exclude = np.zeros(segmentation_cutout.shape, dtype=bool)
 
     if mask_method == 'none' or label == 0:
-        return data, error, exclude
+        return data, error, exclude, exclude
+
+    neighbor = ((segmentation_cutout > 0)
+                & (segmentation_cutout != label))
 
     if mask_method == 'mask':
-        exclude = (segmentation_cutout > 0) & (segmentation_cutout != label)
-        return data, error, exclude
+        return data, error, neighbor, neighbor
 
     if mask_method == 'source_only':
         exclude = segmentation_cutout != label
-        return data, error, exclude
+        return data, error, exclude, neighbor
 
     # The remaining method is the symmetric 'correct' replacement.
-    return _correct_neighbors(segmentation_cutout, label, data, error,
-                              base_mask, cutout_xycen)
+    return _correct_neighbors(segmentation_cutout, neighbor, data,
+                              error, base_mask, cutout_xycen)
 
 
-def _correct_neighbors(segmentation_cutout, label, data, error, base_mask,
-                       cutout_xycen):
+def _correct_neighbors(segmentation_cutout, neighbor, data, error,
+                       base_mask, cutout_xycen):
     """
     Replace neighbor-source pixels with their values mirrored across the
     aperture center.
@@ -188,7 +198,6 @@ def _correct_neighbors(segmentation_cutout, label, data, error, base_mask,
     photometry instead of being replaced.
     """
     ny, nx = segmentation_cutout.shape
-    neighbor = (segmentation_cutout > 0) & (segmentation_cutout != label)
     exclude = np.zeros(segmentation_cutout.shape, dtype=bool)
 
     data = data.copy()
@@ -226,4 +235,4 @@ def _correct_neighbors(segmentation_cutout, label, data, error, base_mask,
     if error is not None:
         error[gy, gx] = error[gmy, gmx]
 
-    return data, error, exclude
+    return data, error, exclude, neighbor

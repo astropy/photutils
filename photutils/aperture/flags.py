@@ -6,6 +6,8 @@ including centralized flag definitions and decoding utilities.
 
 from typing import ClassVar
 
+import numpy as np
+
 from photutils.utils._flags import (FlagDefinition, FlagRegistry, decode_flags,
                                     update_flag_docstring)
 
@@ -242,3 +244,67 @@ def decode_aperture_flags(flags, *, return_bit_values=False):
     """
     return decode_flags(flags, APERTURE_FLAGS,
                         return_bit_values=return_bit_values)
+
+
+def _counts_to_flag_bits(flag_counts, overlap, w_out):
+    """
+    Map per-source pixel counts to aperture flag bit values.
+
+    Parameters
+    ----------
+    flag_counts : 2D `~numpy.ndarray` (int)
+        The per-source pixel counts, with one row per source and
+        the columns given by the ``FLAG_COL_*`` constants in
+        `photutils.aperture._batch_photometry`. Rows must be all zero
+        for sources whose aperture bounding box does not overlap the
+        data.
+
+    overlap : 1D `~numpy.ndarray` (bool)
+        Whether the aperture bounding box overlaps the data.
+
+    w_out : 1D `~numpy.ndarray` (bool)
+        Whether the aperture has one or more pixels with nonzero
+        aperture weight outside the data.
+
+    Returns
+    -------
+    flags : 1D `~numpy.ndarray` (int)
+        The bitwise quality flags for each source.
+    """
+    # Import here to avoid loading the compiled extension when only the
+    # registry or decoder is needed
+    from photutils.aperture._batch_photometry import (FLAG_COL_MASKED,
+                                                      FLAG_COL_NONFINITE_DATA,
+                                                      FLAG_COL_NONFINITE_ERROR,
+                                                      FLAG_COL_NPIX,
+                                                      FLAG_COL_SEG,
+                                                      FLAG_COL_UNCORRECTED,
+                                                      FLAG_COL_VALID)
+
+    flag_counts = np.atleast_2d(flag_counts)
+    overlap = np.atleast_1d(overlap)
+    w_out = np.atleast_1d(w_out)
+    w_in = flag_counts[:, FLAG_COL_NPIX]
+
+    flags = np.zeros(overlap.shape, dtype=int)
+    no_overlap = ~overlap | ((w_in == 0) & w_out)
+    flags[no_overlap] |= APERTURE_FLAGS.NO_OVERLAP
+    flags[(w_in > 0) & w_out] |= APERTURE_FLAGS.PARTIAL_OVERLAP
+    flags[w_in == 0] |= APERTURE_FLAGS.NO_PIXELS
+
+    # For sources without overlap, the counts are all zero, so the
+    # pixel-membership bits below are never set for them.
+    masked = flag_counts[:, FLAG_COL_MASKED] > 0
+    flags[masked] |= APERTURE_FLAGS.MASKED_PIXELS
+    all_masked = (w_in > 0) & (flag_counts[:, FLAG_COL_VALID] == 0)
+    flags[all_masked] |= APERTURE_FLAGS.ALL_MASKED
+    nonfinite = flag_counts[:, FLAG_COL_NONFINITE_DATA] > 0
+    flags[nonfinite] |= APERTURE_FLAGS.NON_FINITE_DATA
+    nonfinite_err = flag_counts[:, FLAG_COL_NONFINITE_ERROR] > 0
+    flags[nonfinite_err] |= APERTURE_FLAGS.NON_FINITE_ERROR
+    neighbor = flag_counts[:, FLAG_COL_SEG] > 0
+    flags[neighbor] |= APERTURE_FLAGS.NEIGHBOR_PIXELS
+    uncorrected = flag_counts[:, FLAG_COL_UNCORRECTED] > 0
+    flags[uncorrected] |= APERTURE_FLAGS.UNCORRECTED_PIXELS
+
+    return flags

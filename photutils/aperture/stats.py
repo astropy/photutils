@@ -1174,8 +1174,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
                     segm_cutout = self._segmentation[slc_large]
                     cutout_xycen = (positions[idx, 0] - slc_large[1].start,
                                     positions[idx, 1] - slc_large[0].start)
-                    (data_cutout, error_cutout,
-                     exclude) = make_segmentation_exclusion(
+                    (data_cutout, error_cutout, exclude,
+                     _seg_affected) = make_segmentation_exclusion(
                         self._mask_method, segm_cutout,
                         self._seg_labels[idx], data=data_cutout,
                         error=error_cutout, base_mask=data_mask,

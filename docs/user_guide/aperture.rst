@@ -246,23 +246,25 @@ here as an array of all ones::
     >>> phot_table['aperture_sum'].info.format = '%.8g'  # for consistent table output
     >>> phot_table['area'].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err    area
+     id x_center y_center aperture_sum aperture_sum_err    area   flags
                                                            pix2
-    --- -------- -------- ------------ ---------------- ---------
-      1     71.4     23.9    30.190705              nan 30.190705
-      2     42.1     41.7    30.190705              nan 30.190705
-      3     54.6     68.2    30.190705              nan 30.190705
+    --- -------- -------- ------------ ---------------- --------- -----
+      1     71.4     23.9    30.190705              nan 30.190705     0
+      2     42.1     41.7    30.190705              nan 30.190705     0
+      3     54.6     68.2    30.190705              nan 30.190705     0
 
 This function returns the results of the photometry in an Astropy
-`~astropy.table.QTable`. In this example, the table has six columns,
+`~astropy.table.QTable`. In this example, the table has seven columns,
 named ``'id'``, ``'x_center'``, ``'y_center'``, ``'aperture_sum'``,
-``'aperture_sum_err'``, and ``'area'``. Because no ``error``
-was input, the ``'aperture_sum_err'`` column is filled with NaN
-values (see :ref:`error_estimation`). The ``'area'`` column
-gives the total unmasked overlap area of the aperture with
-the data (in ``pix**2``). It is equivalent to the aperture
+``'aperture_sum_err'``, ``'area'``, and ``'flags'``. Because no
+``error`` was input, the ``'aperture_sum_err'`` column is filled
+with NaN values (see :ref:`error_estimation`). The ``'area'``
+column gives the total unmasked overlap area of the aperture
+with the data (in ``pix**2``). It is equivalent to the aperture
 :meth:`~photutils.aperture.PixelAperture.area_overlap` method computed
-with the same inputs.
+with the same inputs. The ``'flags'`` column contains bitwise quality
+flags for each aperture (see :ref:`aperture_flags`). A value of 0 means
+that no issues were detected.
 
 Since all the data values are 1.0, the aperture sums are equal to the
 area of a circle with a radius of 3.1::
@@ -311,12 +313,12 @@ by a factor of 5 (``subpixels=5``) in each dimension::
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err  area
+     id x_center y_center aperture_sum aperture_sum_err  area flags
                                                          pix2
-    --- -------- -------- ------------ ---------------- -----
-      1     71.4     23.9         30.2              nan  30.2
-      2     42.1     41.7         29.6              nan  29.6
-      3     54.6     68.2        29.96              nan 29.96
+    --- -------- -------- ------------ ---------------- ----- -----
+      1     71.4     23.9         30.2              nan  30.2     0
+      2     42.1     41.7         29.6              nan  29.6     0
+      3     54.6     68.2        29.96              nan 29.96     0
 
 Note that the ``'subpixel'`` sums differ from the exact value of
 30.190705 (see above). They also differ slightly from one another, even
@@ -357,12 +359,12 @@ been calculated and stored in the array ``error``::
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err    area
+     id x_center y_center aperture_sum aperture_sum_err    area   flags
                                                            pix2
-    --- -------- -------- ------------ ---------------- ---------
-      1     71.4     23.9    28.274334       0.53173616 28.274334
-      2     42.1     41.7    28.274334       0.53173616 28.274334
-      3     54.6     68.2    28.274334       0.53173616 28.274334
+    --- -------- -------- ------------ ---------------- --------- -----
+      1     71.4     23.9    28.274334       0.53173616 28.274334     0
+      2     42.1     41.7    28.274334       0.53173616 28.274334     0
+      3     54.6     68.2    28.274334       0.53173616 28.274334     0
 
 The ``'aperture_sum_err'`` values are calculated as:
 
@@ -393,12 +395,12 @@ units of electrons/s, we use the exposure time as the effective gain::
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err    area
+     id x_center y_center aperture_sum aperture_sum_err    area   flags
                                                            pix2
-    --- -------- -------- ------------ ---------------- ---------
-      1     71.4     23.9    28.274334       0.58248777 28.274334
-      2     42.1     41.7    28.274334       0.58248777 28.274334
-      3     54.6     68.2    28.274334       0.58248777 28.274334
+    --- -------- -------- ------------ ---------------- --------- -----
+      1     71.4     23.9    28.274334       0.58248777 28.274334     0
+      2     42.1     41.7    28.274334       0.58248777 28.274334     0
+      3     54.6     68.2    28.274334       0.58248777 28.274334     0
 
 Note that the ``'aperture_sum_err'`` values are now larger than in the
 previous example because they include the additional Poisson noise from
@@ -431,12 +433,12 @@ that the ``'aperture_sum_err'`` columns are populated::
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> phot_table.pprint(max_width=-1)
-     id x_center y_center aperture_sum_0 aperture_sum_err_0   area_0  aperture_sum_1 aperture_sum_err_1   area_1  aperture_sum_2 aperture_sum_err_2   area_2
-                                                               pix2                                        pix2                                        pix2
-    --- -------- -------- -------------- ------------------ --------- -------------- ------------------ --------- -------------- ------------------ ---------
-      1     71.4     23.9      28.274334         0.58248777 28.274334      50.265482         0.77665037 50.265482      78.539816         0.97081296 78.539816
-      2     42.1     41.7      28.274334         0.58248777 28.274334      50.265482         0.77665037 50.265482      78.539816         0.97081296 78.539816
-      3     54.6     68.2      28.274334         0.58248777 28.274334      50.265482         0.77665037 50.265482      78.539816         0.97081296 78.539816
+     id x_center y_center aperture_sum_0 aperture_sum_err_0   area_0  flags_0 aperture_sum_1 aperture_sum_err_1   area_1  flags_1 aperture_sum_2 aperture_sum_err_2   area_2  flags_2
+                                                               pix2                                                pix2                                                pix2
+    --- -------- -------- -------------- ------------------ --------- ------- -------------- ------------------ --------- ------- -------------- ------------------ --------- -------
+      1     71.4     23.9      28.274334         0.58248777 28.274334       0      50.265482         0.77665037 50.265482       0      78.539816         0.97081296 78.539816       0
+      2     42.1     41.7      28.274334         0.58248777 28.274334       0      50.265482         0.77665037 50.265482       0      78.539816         0.97081296 78.539816       0
+      3     54.6     68.2      28.274334         0.58248777 28.274334       0      50.265482         0.77665037 50.265482       0      78.539816         0.97081296 78.539816       0
 
 When a list of aperture objects is provided, the output table column
 names are appended with the index of the aperture within the input
@@ -457,12 +459,12 @@ size and orientation. For example, an elliptical aperture requires
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err   area
+     id x_center y_center aperture_sum aperture_sum_err   area   flags
                                                           pix2
-    --- -------- -------- ------------ ---------------- --------
-      1     71.4     23.9     47.12389       0.75198848 47.12389
-      2     42.1     41.7     47.12389       0.75198848 47.12389
-      3     54.6     68.2     47.12389       0.75198848 47.12389
+    --- -------- -------- ------------ ---------------- -------- -----
+      1     71.4     23.9     47.12389       0.75198848 47.12389     0
+      2     42.1     41.7     47.12389       0.75198848 47.12389     0
+      3     54.6     68.2     47.12389       0.75198848 47.12389     0
 
 To measure photometry using multiple elliptical apertures, provide a
 list of aperture objects with identical positions, but with different
@@ -477,12 +479,12 @@ list of aperture objects with identical positions, but with different
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> phot_table.pprint(max_width=-1)
-     id x_center y_center aperture_sum_0 aperture_sum_err_0  area_0  aperture_sum_1 aperture_sum_err_1   area_1  aperture_sum_2 aperture_sum_err_2   area_2
-                                                              pix2                                        pix2                                        pix2
-    --- -------- -------- -------------- ------------------ -------- -------------- ------------------ --------- -------------- ------------------ ---------
-      1     71.4     23.9       47.12389         0.75198848 47.12389      75.398224         0.95119855 75.398224      109.95574          1.1486814 109.95574
-      2     42.1     41.7       47.12389         0.75198848 47.12389      75.398224         0.95119855 75.398224      109.95574          1.1486814 109.95574
-      3     54.6     68.2       47.12389         0.75198848 47.12389      75.398224         0.95119855 75.398224      109.95574          1.1486814 109.95574
+     id x_center y_center aperture_sum_0 aperture_sum_err_0  area_0  flags_0 aperture_sum_1 aperture_sum_err_1   area_1  flags_1 aperture_sum_2 aperture_sum_err_2   area_2  flags_2
+                                                              pix2                                                pix2                                                pix2
+    --- -------- -------- -------------- ------------------ -------- ------- -------------- ------------------ --------- ------- -------------- ------------------ --------- -------
+      1     71.4     23.9       47.12389         0.75198848 47.12389       0      75.398224         0.95119855 75.398224       0      109.95574          1.1486814 109.95574       0
+      2     42.1     41.7       47.12389         0.75198848 47.12389       0      75.398224         0.95119855 75.398224       0      109.95574          1.1486814 109.95574       0
+      3     54.6     68.2       47.12389         0.75198848 47.12389       0      75.398224         0.95119855 75.398224       0      109.95574          1.1486814 109.95574       0
 
 
 Masking Pixels in Aperture Photometry
@@ -588,6 +590,76 @@ the obscured flux::
 
 These keywords are also available in
 :class:`~photutils.aperture.ApertureStats`.
+
+
+.. _aperture_flags:
+
+Aperture Quality Flags
+----------------------
+
+The :func:`~photutils.aperture.aperture_photometry` table
+and the :meth:`~photutils.aperture.PixelAperture.photometry`
+results include bitwise quality flags for each source in a
+``'flags'`` column or attribute. A value of 0 means that no
+issues were detected. The flag values can be decoded using the
+:func:`~photutils.aperture.decode_aperture_flags` function. The flags
+are:
+
+* ``'no_overlap'`` (1): the aperture is fully outside the data (no
+  pixel with nonzero aperture weight falls inside the data)
+* ``'partial_overlap'`` (2): the aperture is partially outside the
+  data (one or more pixels with nonzero aperture weight fall outside
+  the data)
+* ``'no_pixels'`` (4): the aperture contains zero pixels with nonzero
+  weight inside the data (e.g., a fully off-image aperture, or a tiny
+  aperture that contains no pixel centers with the ``'center'`` method)
+* ``'masked_pixels'`` (8): one or more input-masked pixels (``mask``
+  keyword) have nonzero aperture weight
+* ``'all_masked'`` (16): the aperture contains pixels, but none are
+  valid (all are masked or excluded)
+* ``'non_finite_data'`` (32): NaN or inf values are present among the
+  unmasked data values within the aperture
+* ``'non_finite_error'`` (64): NaN or inf values are present among the
+  unmasked error values within the aperture
+* ``'neighbor_pixels'`` (128): one or more pixels were excluded,
+  restricted, or corrected due to neighboring sources in the
+  segmentation image (``mask_method`` keyword)
+* ``'uncorrected_pixels'`` (256): with ``mask_method='correct'``, one
+  or more neighbor pixels could not be corrected and were excluded
+  instead
+
+Multiple conditions combine bitwise. For example, an aperture that
+extends beyond the data edge and also contains a masked pixel has
+``flags = 10`` (2 + 8). Note that ``'no_overlap'`` always implies
+``'no_pixels'`` (bits 1 + 4 = 5).
+
+For example::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import (CircularAperture,
+    ...                                 aperture_photometry,
+    ...                                 decode_aperture_flags)
+    >>> data = np.ones((25, 25))
+    >>> mask = np.zeros(data.shape, dtype=bool)
+    >>> mask[12, 12] = True  # bad pixel inside the first aperture
+    >>> positions = [(12.0, 12.0), (0.0, 12.0), (-50.0, 12.0)]
+    >>> aperture = CircularAperture(positions, r=3.0)
+    >>> phot_table = aperture_photometry(data, aperture, mask=mask)
+    >>> print(phot_table['flags'])
+    flags
+    -----
+        8
+        2
+        5
+
+The flag values can be decoded into human-readable names::
+
+    >>> decoded = decode_aperture_flags(phot_table['flags'])
+    >>> for source_id, names in zip(phot_table['id'], decoded):
+    ...     print(source_id, names)
+    1 ['masked_pixels']
+    2 ['partial_overlap']
+    3 ['no_overlap', 'no_pixels']
 
 
 .. _photutils-aperture-stats:
@@ -802,12 +874,12 @@ estimation and the aperture photometry)::
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err    area
+     id x_center y_center aperture_sum aperture_sum_err    area   flags
                                                            pix2
-    --- -------- -------- ------------ ---------------- ---------
-      1    145.1    168.3    1128.1245       0.88622693 78.539816
-      2     84.5    224.1      735.739       0.88622693 78.539816
-      3     48.3    200.3    1299.6341       0.88622693 78.539816
+    --- -------- -------- ------------ ---------------- --------- -----
+      1    145.1    168.3    1128.1245       0.88622693 78.539816     0
+      2     84.5    224.1      735.739       0.88622693 78.539816     0
+      3     48.3    200.3    1299.6341       0.88622693 78.539816     0
 
 The total background within each source aperture is the mean background
 per pixel multiplied by the aperture area. The aperture area is already
@@ -854,12 +926,12 @@ output table::
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> phot_table.pprint(max_width=-1)
-     id x_center y_center aperture_sum aperture_sum_err    area   total_bkg aperture_sum_bkgsub
+     id x_center y_center aperture_sum aperture_sum_err    area   flags total_bkg aperture_sum_bkgsub
                                                            pix2
-    --- -------- -------- ------------ ---------------- --------- --------- -------------------
-      1    145.1    168.3    1128.1245       0.88622693 78.539816 392.23708           735.88739
-      2     84.5    224.1      735.739       0.88622693 78.539816  403.2968           332.44219
-      3     48.3    200.3    1299.6341       0.88622693 78.539816 382.40618           917.22792
+    --- -------- -------- ------------ ---------------- --------- ----- --------- -------------------
+      1    145.1    168.3    1128.1245       0.88622693 78.539816     0 392.23708           735.88739
+      2     84.5    224.1      735.739       0.88622693 78.539816     0  403.2968           332.44219
+      3     48.3    200.3    1299.6341       0.88622693 78.539816     0 382.40618           917.22792
 
 
 Sigma-clipped median within a circular annulus
