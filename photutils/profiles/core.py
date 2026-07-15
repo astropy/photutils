@@ -193,7 +193,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
                 flux, flux_err = [0.0], [0.0]
                 area = 0.0
             else:
-                flux, flux_err = aperture.do_photometry(
+                flux, flux_err = aperture.photometry(
                     self.data, error=self.error, mask=self.mask,
                     method=self.method, subpixels=self.subpixels)
                 area = aperture.area_overlap(self.data, mask=self.mask,

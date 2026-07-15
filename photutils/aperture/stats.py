@@ -745,10 +745,11 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             return None
 
         # Fold non-finite ``data`` values into the mask so the batch
-        # kernel can skip the per-pixel finiteness test (and defer the
-        # pixel-value load to contributing pixels only, like the
-        # ``do_photometry`` kernel). This matches the mask-based path,
-        # which masks non-finite data before any segmentation correction.
+        # kernel can skip the per-pixel finiteness test (and defer
+        # the pixel-value load to contributing pixels only, like
+        # the ``photometry`` method). This matches the mask-based
+        # path, which masks non-finite data before any segmentation
+        # correction.
         if data.dtype.kind == 'f':
             nonfinite = ~np.isfinite(data)
             if nonfinite.any():

@@ -265,7 +265,7 @@ class ApertureMask:
         This method is separate from ``get_values`` to facilitate
         applying the same slices, aper_weights, and pixel_mask to
         multiple associated arrays (e.g., data and error arrays). It is
-        used in this way by the `PixelAperture.do_photometry` method.
+        used in this way by the `PixelAperture.photometry` method.
         """
         if mask is not None and mask.shape != shape:
             msg = 'mask and data must have the same shape'

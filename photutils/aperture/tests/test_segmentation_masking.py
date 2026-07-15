@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 Tests for segmentation-based masking of aperture photometry, shared
-by `aperture_photometry`, `PixelAperture.do_photometry`, and
+by `aperture_photometry`, `PixelAperture.photometry`, and
 `ApertureStats`.
 """
 
@@ -177,7 +177,7 @@ class TestAperturePhotometry:
                                         mask_method='none')
 
         labels = [1]
-        batch_sum, batch_err = aper.do_photometry(
+        batch_sum, batch_err = aper.photometry(
             data, error=error, mask=mask, segmentation_image=segm,
             labels=labels, mask_method='correct')
         mask_sum, mask_err, _area = aper._do_mask_photometry(
@@ -233,19 +233,21 @@ class TestAperturePhotometry:
                                 mask_method='mask')
 
 
-class TestDoPhotometry:
+class TestPhotometry:
     def test_batch_matches_mask_path(self):
-        # do_photometry uses the batch driver for circular apertures;
-        # compare to the equivalent manual global mask.
+        """
+        Test that the batch driver for circular apertures matches the
+        Python mask code path for segmentation masking.
+        """
         data, segm = make_scene()
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
         labels = [1, 2]
-        sums, _ = aper.do_photometry(data, segmentation_image=segm,
-                                     labels=labels,
-                                     mask_method='mask')
+        sums, _ = aper.photometry(data, segmentation_image=segm,
+                                  labels=labels,
+                                  mask_method='mask')
         for idx, label in enumerate(labels):
             manual_mask = (segm > 0) & (segm != label)
-            ref, _ = CircularAperture(aper.positions[idx], r=6).do_photometry(
+            ref, _ = CircularAperture(aper.positions[idx], r=6).photometry(
                 data, mask=manual_mask)
             assert_allclose(sums[idx], ref[0])
 
@@ -456,7 +458,7 @@ class TestBatchDriverSegmentation:
         aper = CircularAperture(positions, r=8)
         labels = np.array([1], dtype=np.intp)
 
-        batch_sum, batch_err = aper.do_photometry(
+        batch_sum, batch_err = aper.photometry(
             data, error=error, mask=mask, segmentation_image=segm,
             labels=labels, mask_method='correct')
         mask_sum, mask_err, _area = aper._do_mask_photometry(

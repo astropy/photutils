@@ -219,8 +219,8 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
     # Validate the segmentation-masking inputs and resolve the
     # per-aperture source labels once (the resolved labels are passed
-    # explicitly to do_photometry to avoid repeated auto-lookups and
-    # warnings)
+    # explicitly to PixelAperture.photometry to avoid repeated
+    # auto-lookups and warnings).
     segmentation, labels = process_segmentation_inputs(
         segmentation_image, labels, mask_method,
         np.atleast_2d(positions), np.shape(data))
@@ -258,7 +258,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     sum_err_key_main = 'aperture_sum_err'
     area_key_main = 'area'
     for i, aper in enumerate(apertures):
-        result = aper.do_photometry(
+        result = aper.photometry(
             data, error=error, mask=mask, method=method, subpixels=subpixels,
             segmentation_image=segmentation, labels=labels,
             mask_method=mask_method)
