@@ -692,16 +692,36 @@ def test_scalar_aperture():
     ap = CircularAperture((10, 10), r=3.0)
     colnames1 = aperture_photometry(data, ap, error=data).colnames
     assert (colnames1 == ['id', 'x_center', 'y_center', 'aperture_sum',
-                          'aperture_sum_err'])
+                          'aperture_sum_err', 'area'])
 
     colnames2 = aperture_photometry(data, [ap], error=data).colnames
     assert (colnames2 == ['id', 'x_center', 'y_center', 'aperture_sum_0',
-                          'aperture_sum_err_0'])
+                          'aperture_sum_err_0', 'area_0'])
 
     colnames3 = aperture_photometry(data, [ap, ap], error=data).colnames
     assert (colnames3 == ['id', 'x_center', 'y_center', 'aperture_sum_0',
-                          'aperture_sum_err_0', 'aperture_sum_1',
-                          'aperture_sum_err_1'])
+                          'aperture_sum_err_0', 'area_0',
+                          'aperture_sum_1', 'aperture_sum_err_1',
+                          'area_1'])
+
+
+def test_area_column():
+    """
+    Test that the ``'area'`` column matches ``area_overlap`` for
+    representative cases, with and without a mask.
+    """
+    data = np.ones((25, 25), dtype=float)
+    ap = CircularAperture([(10, 10), (15, 15)], r=4.0)
+
+    tbl = aperture_photometry(data, ap)
+    assert tbl['area'].unit == u.pix**2
+    assert_allclose(tbl['area'].value, ap.area_overlap(data))
+
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[10, 10] = True
+    tbl_mask = aperture_photometry(data, ap, mask=mask)
+    assert_allclose(tbl_mask['area'].value,
+                    ap.area_overlap(data, mask=mask))
 
 
 def test_nan_in_bbox():

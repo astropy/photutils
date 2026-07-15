@@ -9,7 +9,9 @@ import re
 import textwrap
 import warnings
 from copy import deepcopy
+from dataclasses import dataclass
 
+import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.utils import lazyproperty
@@ -22,7 +24,7 @@ from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.mask import ApertureMask
 from photutils.utils._deprecation import deprecated_positional_kwargs
 
-__all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
+__all__ = ['Aperture', 'ApertureResults', 'PixelAperture', 'SkyAperture']
 
 
 # Canonical descriptions of the ``method`` and ``subpixels`` parameters
@@ -155,6 +157,43 @@ def _update_method_subpixels_docstring(obj):
 
     obj.__doc__ = _DOC_PLACEHOLDER_RE.sub(replace, docstring)
     return obj
+
+
+@dataclass(frozen=True)
+class ApertureResults:
+    """
+    The results of `PixelAperture.do_photometry`.
+
+    For backward compatibility, this object can still be unpacked as a
+    2-tuple, ``aperture_sum, aperture_sum_err = do_photometry(...)``.
+    Use the named attributes to access ``area``.
+
+    Attributes
+    ----------
+    aperture_sum : `~numpy.ndarray` or `~astropy.units.Quantity`
+        The sum within each aperture.
+
+    aperture_sum_err : `~numpy.ndarray` or `~astropy.units.Quantity`
+        The errors on the sum within each aperture.
+
+    area : `~astropy.units.Quantity`
+        The total unmasked overlap area of each aperture (in pix**2).
+    """
+
+    aperture_sum: np.ndarray
+    aperture_sum_err: np.ndarray
+    area: np.ndarray
+
+    def __iter__(self):
+        # Legacy 2-tuple unpacking only.
+        yield self.aperture_sum
+        yield self.aperture_sum_err
+
+    def __len__(self):
+        return 2
+
+    def __getitem__(self, idx):
+        return (self.aperture_sum, self.aperture_sum_err)[idx]
 
 
 class Aperture(metaclass=abc.ABCMeta):
@@ -615,8 +654,8 @@ class PixelAperture(Aperture):
 
         Returns
         -------
-        aperture_sums, aperture_sum_errs : `~numpy.ndarray`
-            The aperture sums and errors.
+        aperture_sums, aperture_sum_errs, areas : `~numpy.ndarray`
+            The aperture sums, errors, and total unmasked overlap areas.
         """
         apermasks = self.to_mask(method=method, subpixels=subpixels)
         if self.isscalar:
@@ -626,6 +665,7 @@ class PixelAperture(Aperture):
 
         aperture_sums = []
         aperture_sum_errs = []
+        areas = []
         with warnings.catch_warnings():
             # Ignore multiplication with non-finite data values
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -640,6 +680,7 @@ class PixelAperture(Aperture):
                 if slc_large is None:
                     aperture_sums.append(np.nan)
                     aperture_sum_errs.append(np.nan)
+                    areas.append(np.nan)
                     continue
 
                 data_cutout = data[slc_large]
@@ -659,6 +700,7 @@ class PixelAperture(Aperture):
 
                 values = (data_cutout * aper_weights)[pixel_mask]
                 aperture_sums.append(values.sum())
+                areas.append(aper_weights[pixel_mask].sum())
 
                 if error is not None:
                     variance = (error_cutout**2 * aper_weights)[pixel_mask]
@@ -666,7 +708,8 @@ class PixelAperture(Aperture):
                 else:
                     aperture_sum_errs.append(np.nan)
 
-        return np.array(aperture_sums), np.array(aperture_sum_errs)
+        return (np.array(aperture_sums), np.array(aperture_sum_errs),
+                np.array(areas))
 
     def _batch_shape_params(self):
         """
@@ -722,10 +765,10 @@ class PixelAperture(Aperture):
         Returns
         -------
         result : tuple of `~numpy.ndarray` or `None`
-            A ``(aperture_sums, aperture_sum_errs)`` tuple of float64
-            arrays, or `None` if the batch driver does not support this
-            aperture or these inputs (in which case the caller should
-            use the mask-based code path).
+            A ``(aperture_sums, aperture_sum_errs, areas)`` tuple of
+            float64 arrays, or `None` if the batch driver does not
+            support this aperture or these inputs (in which case the
+            caller should use the mask-based code path).
         """
         # Use the batch driver only if the aperture's own class defines
         # the _batch_shape_params hook. Subclasses that do not define
@@ -767,7 +810,7 @@ class PixelAperture(Aperture):
             error = np.ascontiguousarray(error, dtype=np.float64)
         ext_x, ext_y = self._xy_extents
 
-        sums, sum_var, _area, _overlap, *_ = batch_aperture_sums(
+        sums, sum_var, area, _overlap, *_ = batch_aperture_sums(
             np.ascontiguousarray(data, dtype=np.float64), error, mask,
             np.ascontiguousarray(self._positions, dtype=np.float64),
             shape_code, np.array(params, dtype=np.float64),
@@ -782,7 +825,7 @@ class PixelAperture(Aperture):
         else:
             errs = np.sqrt(sum_var)
 
-        return sums, errs
+        return sums, errs, area
 
     @_update_method_subpixels_docstring
     @deprecated_positional_kwargs(since='3.0', until='4.0')
@@ -817,13 +860,32 @@ class PixelAperture(Aperture):
 
         Returns
         -------
-        aperture_sums : `~numpy.ndarray` or `~astropy.units.Quantity`
-            The sum within each aperture. The values are always
-            float64, regardless of the input ``data`` dtype.
+        result : `ApertureResults`
+            The aperture photometry results. For backward
+            compatibility, this object can be unpacked as a 2-tuple,
+            ``aperture_sum, aperture_sum_err = do_photometry(...)``, and
+            supports ``len()`` and integer indexing as if it were a
+            2-tuple. It has the following attributes:
 
-        aperture_sum_errs : `~numpy.ndarray` or `~astropy.units.Quantity`
-            The errors on the sum within each aperture. The values are
-            always float64, regardless of the input ``error`` dtype.
+            - ``aperture_sum`` : `~numpy.ndarray` or \
+              `~astropy.units.Quantity`
+                The sum within each aperture. The values are always
+                float64, regardless of the input ``data`` dtype.
+
+            - ``aperture_sum_err`` : `~numpy.ndarray` or \
+              `~astropy.units.Quantity`
+                The errors on the sum within each aperture. The values
+                are always float64, regardless of the input ``error``
+                dtype.
+
+            - ``area`` : `~astropy.units.Quantity`
+                The total unmasked overlap area of each aperture (in
+                ``pix**2``), taking into account the aperture mask
+                method, masked data pixels, segmentation masking, and
+                partial/no overlap of the aperture with the data. This
+                is equivalent to `area_overlap` computed with the same
+                inputs. The value is ``NaN`` where the aperture does not
+                overlap the data.
         """
         data = np.asanyarray(data)
         if data.ndim != 2:
@@ -863,9 +925,9 @@ class PixelAperture(Aperture):
             mask_method=mask_method)
 
         if result is not None:
-            aperture_sums, aperture_sum_errs = result
+            aperture_sums, aperture_sum_errs, area = result
         else:
-            aperture_sums, aperture_sum_errs = self._do_mask_photometry(
+            aperture_sums, aperture_sum_errs, area = self._do_mask_photometry(
                 data, error=error, mask=mask, method=method,
                 subpixels=subpixels, segmentation=segmentation,
                 labels=labels, mask_method=mask_method)
@@ -875,7 +937,12 @@ class PixelAperture(Aperture):
             aperture_sums <<= unit
             aperture_sum_errs <<= unit
 
-        return aperture_sums, aperture_sum_errs
+        # The area always has units of pix**2, regardless of whether
+        # data/error have units (matches ApertureStats.sum_aper_area).
+        area <<= (u.pix**2)
+
+        return ApertureResults(aperture_sum=aperture_sums,
+                               aperture_sum_err=aperture_sum_errs, area=area)
 
     @staticmethod
     def _make_annulus_path(patch_inner, patch_outer):
