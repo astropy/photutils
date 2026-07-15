@@ -5,10 +5,12 @@ Tests for the flags module.
 
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.psf import IterativePSFPhotometry, PSFPhotometry
-from photutils.psf.flags import (PSF_FLAGS, _PSFFlagDefinition, _PSFFlags,
+from photutils.psf.flags import (PSF_FLAGS, _PSFFlags,
                                  _update_decode_docstring, decode_psf_flags)
+from photutils.utils._flags import FlagDefinition
 
 
 def test_decode_psf_flags():
@@ -272,7 +274,7 @@ def test_psf_flags_properties():
     assert isinstance(all_flags, list)
     assert len(all_flags) == 12
     for flag_def in all_flags:
-        assert isinstance(flag_def, _PSFFlagDefinition)
+        assert isinstance(flag_def, FlagDefinition)
 
 
 def test_psf_flags_get_methods():
@@ -314,13 +316,13 @@ def test_psf_flags_get_definition():
     """
     # Test get_definition by bit value
     def_by_bit = PSF_FLAGS.get_definition(1)
-    assert isinstance(def_by_bit, _PSFFlagDefinition)
+    assert isinstance(def_by_bit, FlagDefinition)
     assert def_by_bit.bit_value == 1
     assert def_by_bit.name == 'n_pixels_fit_partial'
 
     # Test get_definition by name
     def_by_name = PSF_FLAGS.get_definition('n_pixels_fit_partial')
-    assert isinstance(def_by_name, _PSFFlagDefinition)
+    assert isinstance(def_by_name, FlagDefinition)
     assert def_by_name.bit_value == 1
     assert def_by_name.name == 'n_pixels_fit_partial'
 
@@ -341,12 +343,26 @@ def test_psf_flags_get_definition():
         PSF_FLAGS.get_definition(3.14)
 
 
+def test_psf_flags_get_definition_deprecated_name():
+    """
+    Test that get_definition resolves a deprecated flag name to its
+    current definition and warns.
+    """
+    match = ("The flag name 'npixfit_partial' is deprecated.*Use "
+             "'n_pixels_fit_partial' instead")
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        deprecated_def = PSF_FLAGS.get_definition('npixfit_partial')
+
+    current_def = PSF_FLAGS.get_definition('n_pixels_fit_partial')
+    assert deprecated_def is current_def
+
+
 def test_psf_flag_definition():
     """
-    Test _PSFFlagDefinition dataclass.
+    Test FlagDefinition dataclass.
     """
     # Create a flag definition
-    flag_def = _PSFFlagDefinition(
+    flag_def = FlagDefinition(
         bit_value=1,
         name='test_flag',
         description='test description',
@@ -364,7 +380,7 @@ def test_psf_flag_definition():
         flag_def.bit_value = 2
 
     # Test equality
-    flag_def2 = _PSFFlagDefinition(
+    flag_def2 = FlagDefinition(
         bit_value=1,
         name='test_flag',
         description='test description',
@@ -373,7 +389,7 @@ def test_psf_flag_definition():
     assert flag_def == flag_def2
 
     # Test inequality
-    flag_def3 = _PSFFlagDefinition(
+    flag_def3 = FlagDefinition(
         bit_value=2,
         name='test_flag',
         description='test description',
