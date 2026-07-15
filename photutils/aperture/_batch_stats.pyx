@@ -44,6 +44,7 @@ cdef extern from "math.h" nogil:
     double cos(double x)
     double sqrt(double x)
     double fabs(double x)
+    double ceil(double x)
     const double NAN
 
 cdef extern from "stdlib.h" nogil:
@@ -236,6 +237,9 @@ def batch_aperture_gather(const double[:, ::1] data,
     mask : 2D ndarray of uint8 (C-contiguous) or `None`
         A mask array where nonzero values indicate masked pixels. The
         caller must also fold non-finite ``data`` pixels into this mask.
+        For the flag counts, bit 1 (value 1) marks input-masked pixels
+        and bit 2 (value 2) marks non-finite data pixels. Any nonzero
+        value excludes the pixel.
 
     positions : 2D ndarray of float64 (C-contiguous)
         The ``(x, y)`` source positions with shape ``(n_sources, 2)``.
@@ -284,6 +288,30 @@ def batch_aperture_gather(const double[:, ::1] data,
 
     overlap : 1D ndarray of bool
         Whether the aperture bounding box overlaps with the data.
+
+    flag_counts : 2D ndarray of intp
+        Per-source pixel counts for the quality flags, with one row per
+        source and the columns given by the module-level ``FLAG_COL_*``
+        constants in `photutils.aperture._batch_photometry`:
+
+        * ``FLAG_COL_NPIX``: the number of nonzero-fraction pixels
+          inside the data
+        * ``FLAG_COL_MASKED``: the number of those pixels that are
+          input-masked
+        * ``FLAG_COL_NONFINITE_DATA``: the number of those pixels that
+          are non-finite in the data (masked or unmasked)
+        * ``FLAG_COL_NONFINITE_ERROR``: always zero (this function does
+          not read error values)
+        * ``FLAG_COL_SEG``: the number of those pixels that were
+          excluded or corrected by the segmentation masking
+        * ``FLAG_COL_UNCORRECTED``: the number of those pixels that
+          could not be corrected by the segmentation masking
+        * ``FLAG_COL_VALID``: the number of contributing pixels
+          (unmasked, finite, and not excluded by segmentation)
+        * ``FLAG_COL_BBOX_CLIPPED``: a 0/1 indicator of whether the
+          bounding box is clipped by a data edge
+        Rows are all zero where the aperture bounding box does not
+        overlap the data.
     """
     cdef Py_ssize_t n_src = positions.shape[0]
     cdef Py_ssize_t ny_data = data.shape[0]
@@ -297,9 +325,11 @@ def batch_aperture_gather(const double[:, ::1] data,
     starts_arr = np.zeros(n_src, dtype=np.intp)
     counts_arr = np.zeros(n_src, dtype=np.intp)
     overlap_arr = np.zeros(n_src, dtype=np.uint8)
+    fcounts_arr = np.zeros((n_src, 8), dtype=np.intp)
     cdef Py_ssize_t[::1] starts = starts_arr
     cdef Py_ssize_t[::1] counts = counts_arr
     cdef unsigned char[::1] overlap = overlap_arr
+    cdef Py_ssize_t[:, ::1] fcounts = fcounts_arr
 
     # Aperture shape parameters (constant over all source positions)
     cdef double r_in = 0.0, r_out = 0.0
@@ -408,6 +438,9 @@ def batch_aperture_gather(const double[:, ::1] data,
     cdef double dx, dy, pixel_radius, norm
     cdef double pxmin, pymin, cfrac
     cdef Py_ssize_t total = 0, pos
+    cdef Py_ssize_t n_pix, n_masked, n_nonfin, n_seg_px, n_uncorr, w_out
+    cdef Py_ssize_t ixmax_full, iymax_full
+    cdef unsigned char mbits
 
     # Pass 1: size and offset the packed value buffer from the
     # per-source clipped bounding-box areas (an upper bound on the
@@ -453,37 +486,15 @@ def batch_aperture_gather(const double[:, ::1] data,
             # Non-finite ``data`` pixels are folded into ``mask`` by the
             # caller, so pixel values are loaded lazily (only for pixels
             # that actually contribute).
+            n_pix = 0
+            n_masked = 0
+            n_nonfin = 0
+            n_seg_px = 0
+            n_uncorr = 0
             pos = starts[k]
             for iy in range(iy0, iy1):
                 pymin = gymin + (iy - iymin) * dy
                 for ix in range(ix0, ix1):
-                    if has_mask and mask[iy, ix]:
-                        continue
-                    six = ix
-                    siy = iy
-                    if has_seg and lbl != 0:
-                        seg_val = segmentation[iy, ix]
-                        if seg_method == 1:
-                            if seg_val != 0 and seg_val != lbl:
-                                continue
-                        elif seg_method == 2:
-                            if seg_val != lbl:
-                                continue
-                        elif seg_method == 3:
-                            if seg_val != 0 and seg_val != lbl:
-                                xm = 2 * ccx - ix
-                                ym = 2 * ccy - iy
-                                if (xm < ix0 or xm >= ix1
-                                        or ym < iy0 or ym >= iy1):
-                                    continue
-                                mseg = segmentation[ym, xm]
-                                if mseg != 0 and mseg != lbl:
-                                    continue
-                                if has_mask and mask[ym, xm]:
-                                    continue
-                                six = xm
-                                siy = ym
-
                     pxmin = gxmin + (ix - ixmin) * dx
                     if shape_code == _CIRCLE:
                         cfrac = _circle_pixel_frac(
@@ -521,15 +532,81 @@ def batch_aperture_gather(const double[:, ::1] data,
                             is_poly_convex, pbuf_a_x, pbuf_a_y, pbuf_b_x,
                             pbuf_b_y, poly_buf_size, 0, 1)
 
-                    if cfrac > 0.0:
-                        values[pos] = data[siy, six] - lbk
-                        local_x[pos] = <int>(ix - ix0)
-                        local_y[pos] = <int>(iy - iy0)
-                        pos += 1
+                    if cfrac <= 0.0:
+                        continue
+                    n_pix += 1
+
+                    if has_mask:
+                        mbits = mask[iy, ix]
+                        if mbits & 1:
+                            n_masked += 1
+                            continue
+                        if mbits & 2:
+                            n_nonfin += 1
+                            continue
+                    six = ix
+                    siy = iy
+                    if has_seg and lbl != 0:
+                        seg_val = segmentation[iy, ix]
+                        if seg_method == 1:
+                            if seg_val != 0 and seg_val != lbl:
+                                n_seg_px += 1
+                                continue
+                        elif seg_method == 2:
+                            if seg_val != lbl:
+                                # Only neighbor-source pixels (not
+                                # background pixels) count toward the
+                                # neighbor-pixels flag.
+                                if seg_val != 0:
+                                    n_seg_px += 1
+                                continue
+                        elif seg_method == 3:
+                            if seg_val != 0 and seg_val != lbl:
+                                n_seg_px += 1
+                                xm = 2 * ccx - ix
+                                ym = 2 * ccy - iy
+                                if (xm < ix0 or xm >= ix1
+                                        or ym < iy0 or ym >= iy1):
+                                    n_uncorr += 1
+                                    continue
+                                mseg = segmentation[ym, xm]
+                                if mseg != 0 and mseg != lbl:
+                                    n_uncorr += 1
+                                    continue
+                                if has_mask and mask[ym, xm]:
+                                    n_uncorr += 1
+                                    continue
+                                six = xm
+                                siy = ym
+
+                    values[pos] = data[siy, six] - lbk
+                    local_x[pos] = <int>(ix - ix0)
+                    local_y[pos] = <int>(iy - iy0)
+                    pos += 1
             counts[k] = pos - starts[k]
 
+            # Whether the bounding box is clipped by a data edge. The
+            # caller resolves this to the precise outside-weight test
+            # (nonzero aperture weights outside the data) only for these
+            # sources; unclipped interior sources are exactly 0.
+            ixmax_full = <Py_ssize_t>ceil(cx + ext_x + 0.5)
+            iymax_full = <Py_ssize_t>ceil(cy + ext_y + 0.5)
+            if (ixmin < ix0 or ixmax_full > ix1
+                    or iymin < iy0 or iymax_full > iy1):
+                w_out = 1  # bounding box clipped by a data edge
+            else:
+                w_out = 0  # bounding box fully inside the data
+
+            fcounts[k, 0] = n_pix
+            fcounts[k, 1] = n_masked
+            fcounts[k, 2] = n_nonfin
+            fcounts[k, 4] = n_seg_px
+            fcounts[k, 5] = n_uncorr
+            fcounts[k, 6] = counts[k]
+            fcounts[k, 7] = w_out
+
     return (values_arr, lx_arr, ly_arr, starts_arr, counts_arr,
-            overlap_arr.view(bool))
+            overlap_arr.view(bool), fcounts_arr)
 
 
 def batch_moments(const double[::1] values, const int[::1] local_x,

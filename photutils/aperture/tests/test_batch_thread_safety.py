@@ -104,11 +104,13 @@ def _assert_gather_equal(result, expected):
     is meaningful; the trailing entries are uninitialized and must not be
     compared.
     """
-    values, lx, ly, starts, counts, overlap = result
-    e_values, e_lx, e_ly, e_starts, e_counts, e_overlap = expected
+    values, lx, ly, starts, counts, overlap, fcounts = result
+    (e_values, e_lx, e_ly, e_starts, e_counts, e_overlap,
+     e_fcounts) = expected
     assert_array_equal(starts, e_starts)
     assert_array_equal(counts, e_counts)
     assert_array_equal(overlap, e_overlap)
+    assert_array_equal(fcounts, e_fcounts)
     for start, count in zip(starts, counts, strict=True):
         sl = slice(int(start), int(start) + int(count))
         assert_array_equal(values[sl], e_values[sl])

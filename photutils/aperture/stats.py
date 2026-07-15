@@ -801,10 +801,11 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         the fast batch driver is unavailable (see `_batch_inputs`).
 
         The result is a tuple ``(values, local_x, local_y, starts,
-        counts, sum_aper, var_aper, sum_area, overlap, ...)`` (a 13-tuple
-        shared with `_fast_sum`). Only the center-value entries (indices
-        0-4) and ``overlap`` (index 8) are populated here; the
-        ``sum_method`` entries are `None`.
+        counts, sum_aper, var_aper, sum_area, overlap, ...)`` (a
+        14-tuple shared with `_fast_sum`, whose last entry is the
+        per-source flag-count array). Only the center-value entries
+        (indices 0-4), ``overlap`` (index 8), and the flag counts (index
+        13) are populated here. The ``sum_method`` entries are `None`.
         """
         inputs = self._batch_inputs
         if inputs is None:
@@ -813,11 +814,12 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
          _sum_use_exact, _sum_subpixels, local_bkg, seg_arr, labels_arr,
          seg_code, clip_spec) = inputs
 
-        values, lx, ly, starts, counts, overlap = batch_aperture_gather(
+        (values, lx, ly, starts, counts, overlap,
+         flag_counts) = batch_aperture_gather(
             data, mask, positions, shape_code, params, ext_x, ext_y,
             local_bkg, seg_arr, labels_arr, seg_code)
         gather = (values, lx, ly, starts, counts, None, None, None, overlap,
-                  None, None, None, None)
+                  None, None, None, None, flag_counts)
 
         if clip_spec is not None:
             gather = self._apply_center_clip(gather, clip_spec)
@@ -856,12 +858,13 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
         emit_sum = 1 if clip_spec is not None else 0
         (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
-         sum_errsq, scounts) = batch_aperture_sums(
+         sum_errsq, scounts, flag_counts) = batch_aperture_sums(
             data, error, mask, positions, shape_code, params, ext_x, ext_y,
             sum_use_exact, sum_subpixels, seg_arr, labels_arr, seg_code,
             local_bkg, emit_sum)
         gather = (None, None, None, starts, None, sums, sum_var, area,
-                  overlap, sum_values, sum_fracs, sum_errsq, scounts)
+                  overlap, sum_values, sum_fracs, sum_errsq, scounts,
+                  flag_counts)
 
         if clip_spec is not None:
             gather = self._apply_sum_clip(gather, clip_spec)
@@ -907,14 +910,14 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc = clip_spec
         (values, local_x, local_y, starts, counts, _sum, _var, _area,
-         overlap, _sv, _sf, _se, _sc) = gather
+         overlap, _sv, _sf, _se, _sc, flag_counts) = gather
 
         (cvalues, clx, cly, cstarts, ccounts) = batch_sigma_clip_center(
             values, local_x, local_y, starts, counts, sigma_lower,
             sigma_upper, maxiters, cenfunc, stdfunc)
 
         return (cvalues, clx, cly, cstarts, ccounts, _sum, _var, _area,
-                overlap, None, None, None, None)
+                overlap, None, None, None, None, flag_counts)
 
     def _apply_sum_clip(self, gather, clip_spec):
         """
@@ -924,7 +927,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc = clip_spec
         (values, local_x, local_y, starts, counts, _sum, _var, _area,
-         overlap, sum_values, sum_fracs, sum_errsq, sum_counts) = gather
+         overlap, sum_values, sum_fracs, sum_errsq, sum_counts,
+         flag_counts) = gather
 
         has_error = 1 if self._error is not None else 0
         (csum, cvar, carea) = batch_sigma_clip_sum(
@@ -932,7 +936,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc, has_error)
 
         return (values, local_x, local_y, starts, counts, csum, cvar, carea,
-                overlap, None, None, None, None)
+                overlap, None, None, None, None, flag_counts)
 
     @lazyproperty
     def _sorted_values(self):
