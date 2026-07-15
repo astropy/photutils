@@ -242,11 +242,11 @@ class TestPixelAperturePhotometry:
         mask = np.zeros(self.data.shape, dtype=bool)
         mask[5, 5] = True
 
-        batch = aper._do_batch_photometry(self.data, error=None, mask=mask,
-                                          method='exact', subpixels=5)
+        batch = aper._batch_photometry(self.data, error=None, mask=mask,
+                                       method='exact', subpixels=5)
         assert batch is not None
-        legacy = aper._do_mask_photometry(self.data, error=None, mask=mask,
-                                          method='exact', subpixels=5)
+        legacy = aper._mask_photometry(self.data, error=None, mask=mask,
+                                       method='exact', subpixels=5)
         # areas are the third element of each result
         assert_allclose(batch[2], legacy[2], rtol=1e-12, equal_nan=True)
 

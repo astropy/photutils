@@ -709,7 +709,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         for example when an unsupported ``sigma_clip`` is used, the
         aperture does not opt in to the batch driver, or the data/mask
         dtypes are not supported. The set of supported inputs matches
-        `~photutils.aperture.PixelAperture._do_batch_photometry`.
+        `~photutils.aperture.PixelAperture._batch_photometry`.
         """
         # A non-None sigma_clip is only supported when it maps to the
         # fast clipping kernel; otherwise fall back to the mask path.
@@ -720,7 +720,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         aper = self._pixel_aperture
 
         # Use the batch driver only if the aperture's own class defines
-        # the _batch_shape_params hook (see _do_batch_photometry).
+        # the _batch_shape_params hook (see _batch_photometry).
         if '_batch_shape_params' not in type(aper).__dict__:
             return None
         spec = aper._batch_shape_params()

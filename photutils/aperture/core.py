@@ -626,9 +626,9 @@ class PixelAperture(Aperture):
             The overlap array.
         """
 
-    def _do_mask_photometry(self, data, *, error, mask, method, subpixels,
-                            segmentation=None, labels=None,
-                            mask_method='none'):
+    def _mask_photometry(self, data, *, error, mask, method, subpixels,
+                         segmentation=None, labels=None,
+                         mask_method='none'):
         """
         Perform aperture photometry using per-source aperture masks.
 
@@ -732,15 +732,15 @@ class PixelAperture(Aperture):
         Notes
         -----
         The batch driver is used only if this hook is defined in the
-        aperture instance's own class (see `_do_batch_photometry`),
+        aperture instance's own class (see `_batch_photometry`),
         so subclasses must define this method (e.g., by calling
         ``super()``) to opt in to the batch code path.
         """
         return
 
-    def _do_batch_photometry(self, data, *, error, mask, method, subpixels,
-                             segmentation=None, labels=None,
-                             mask_method='none'):
+    def _batch_photometry(self, data, *, error, mask, method, subpixels,
+                          segmentation=None, labels=None,
+                          mask_method='none'):
         """
         Perform aperture photometry using the batch Cython driver.
 
@@ -923,7 +923,7 @@ class PixelAperture(Aperture):
             segmentation_image, labels, mask_method,
             np.atleast_2d(self.positions), data.shape)
 
-        result = self._do_batch_photometry(
+        result = self._batch_photometry(
             data, error=error, mask=mask, method=method, subpixels=subpixels,
             segmentation=segmentation, labels=labels,
             mask_method=mask_method)
@@ -931,7 +931,7 @@ class PixelAperture(Aperture):
         if result is not None:
             aperture_sums, aperture_sum_errs, area = result
         else:
-            aperture_sums, aperture_sum_errs, area = self._do_mask_photometry(
+            aperture_sums, aperture_sum_errs, area = self._mask_photometry(
                 data, error=error, mask=mask, method=method,
                 subpixels=subpixels, segmentation=segmentation,
                 labels=labels, mask_method=mask_method)

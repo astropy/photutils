@@ -180,7 +180,7 @@ class TestAperturePhotometry:
         batch_sum, batch_err = aper.photometry(
             data, error=error, mask=mask, segmentation_image=segm,
             labels=labels, mask_method='correct')
-        mask_sum, mask_err, _area = aper._do_mask_photometry(
+        mask_sum, mask_err, _area = aper._mask_photometry(
             data, error=error, mask=mask, method='exact', subpixels=5,
             segmentation=segm.astype(np.intp), labels=labels,
             mask_method='correct')
@@ -461,7 +461,7 @@ class TestBatchDriverSegmentation:
         batch_sum, batch_err = aper.photometry(
             data, error=error, mask=mask, segmentation_image=segm,
             labels=labels, mask_method='correct')
-        mask_sum, mask_err, _area = aper._do_mask_photometry(
+        mask_sum, mask_err, _area = aper._mask_photometry(
             data, error=error, mask=mask, method='exact', subpixels=5,
             segmentation=segm, labels=labels,
             mask_method='correct')
