@@ -60,6 +60,7 @@ poetry.lock
 .tmp
 .*.sw[op]
 *~
+dev/
 
 # Eclipse editor project files
 .project
