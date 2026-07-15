@@ -71,6 +71,18 @@ New Features
     properties. The default is ``ddof=0`` (population variance), and
     ``ddof=1`` gives the sample (unbiased) variance. [#2314]
 
+  - Added per-source bitwise quality flags to aperture photometry
+    and statistics: ``aperture_photometry`` now includes a ``'flags'``
+    column (or ``'flags_<i>'`` columns for multiple apertures) in the
+    returned table, ``PixelAperture.photometry`` results have a new
+    ``flags`` attribute, and ``ApertureStats`` has new ``flags``
+    and ``decode_flags`` attributes. The flags indicate conditions
+    such as apertures that are partially or fully outside the data,
+    masked or non-finite pixels within the aperture, pixels affected
+    by segmentation masking, sigma-clipped pixels, and too few pixels
+    to compute a statistic. A new ``decode_aperture_flags`` function
+    decodes the flag values into human-readable names. [#2327]
+
 - ``photutils.isophote``
 
   - Optimized the ``build_ellipse_model_c`` Cython extension by
@@ -195,6 +207,11 @@ API Changes
     renamed to ``EPSFBuildResults`` for consistency with the new
     ``ApertureResults`` class. The old ``EPSFBuildResult`` name is
     deprecated and will be removed in a future version. [#2326]
+
+  - ``aperture_photometry`` now always includes a ``'flags'`` column
+    (or ``'flags_<i>'`` columns for multiple apertures) in the
+    returned table, and the default ``ApertureStats.to_table()``
+    columns now include ``'flags'``. [#2327]
 
 
 3.0.0 (2026-04-17)

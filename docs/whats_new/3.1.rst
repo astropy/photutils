@@ -307,6 +307,60 @@ Example of using the new segmentation-based masking::
     ...                            labels=1, mask_method='mask')
 
 
+.. _whatsnew-3.1-aperture-flags:
+
+Aperture Photometry Quality Flags
+=================================
+
+Aperture photometry and statistics now provide
+per-source bitwise quality flags, unified across
+`~photutils.aperture.aperture_photometry` (a new ``'flags'`` table
+column), `~photutils.aperture.PixelAperture.photometry` (a new ``flags``
+result attribute), and `~photutils.aperture.ApertureStats` (a new
+:attr:`~photutils.aperture.ApertureStats.flags` property, included in
+the default ``to_table()`` columns). A flag value of 0 means that no
+issues were detected. The flags indicate conditions such as:
+
+* the aperture is partially (``'partial_overlap'``) or fully
+  (``'no_overlap'``) outside the data
+* the aperture contains no pixels with nonzero weight
+  (``'no_pixels'``)
+* input-masked pixels within the aperture (``'masked_pixels'``), or
+  no valid pixels at all (``'all_masked'``)
+* non-finite data or error values within the aperture
+  (``'non_finite_data'``, ``'non_finite_error'``)
+* pixels excluded or corrected due to neighboring sources in a
+  segmentation image (``'neighbor_pixels'``, ``'uncorrected_pixels'``)
+* sigma-clipped pixels within the aperture (``'sigma_clipped'``,
+  ``'all_clipped'``) and too few pixels to compute a statistic
+  (``'too_few_pixels'``) in `~photutils.aperture.ApertureStats`
+
+The overlap flags are precise. They are based on the pixels with
+nonzero aperture weight, not simply the aperture bounding box. The new
+:func:`~photutils.aperture.decode_aperture_flags` function and the
+:meth:`~photutils.aperture.ApertureStats.decode_flags` method decode
+flag values into human-readable names::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import (CircularAperture,
+    ...                                 aperture_photometry,
+    ...                                 decode_aperture_flags)
+    >>> data = np.ones((25, 25))
+    >>> mask = np.zeros(data.shape, dtype=bool)
+    >>> mask[12, 12] = True  # bad pixel inside the first aperture
+    >>> positions = [(12.0, 12.0), (0.0, 12.0), (-50.0, 12.0)]
+    >>> aperture = CircularAperture(positions, r=3.0)
+    >>> phot = aperture_photometry(data, aperture, mask=mask)
+    >>> decoded = decode_aperture_flags(phot['flags'])
+    >>> for source_id, names in zip(phot['id'], decoded):
+    ...     print(source_id, names)
+    1 ['masked_pixels']
+    2 ['partial_overlap']
+    3 ['no_overlap', 'no_pixels']
+
+See :ref:`aperture_flags` for more details.
+
+
 ``GriddedPSFModel`` Performance Improvements
 ============================================
 
@@ -315,8 +369,8 @@ typical performance improvements of approximately 20–25%. The
 optimizations reduce the overhead of PSF interpolation, improving the
 runtime of PSF photometry workflows.
 
-
 .. _whatsnew-3.1-api-changes:
+
 
 API Changes
 ===========
@@ -363,6 +417,16 @@ remains backward compatible: it can still be unpacked as a 2-tuple
 ``len()`` and integer indexing like the legacy tuple. The new ``area``
 attribute provides the total unmasked overlap area of each aperture (in
 ``pix**2``).
+
+
+Aperture Photometry Flags Column
+--------------------------------
+
+`~photutils.aperture.aperture_photometry` now always includes
+a ``'flags'`` column (or ``'flags_<i>'`` columns for
+multiple apertures) in the returned table, and the default
+`photutils.aperture.ApertureStats.to_table` columns now include
+``'flags'``. See :ref:`whatsnew-3.1-aperture-flags` for details.
 
 
 .. _whatsnew-3.1-deprecations:
