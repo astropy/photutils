@@ -170,6 +170,20 @@ API Changes
     ``IterativePSFPhotometry`` output tables, which always include
     ``*_err`` columns (e.g., ``flux_err``). [#2319]
 
+  - ``aperture_photometry`` now always includes an ``'area'`` column
+    (or ``'area_<i>'`` columns for multiple apertures) in the returned
+    table. This is the total unmasked overlap area of the aperture (in
+    ``pix**2``), equivalent to ``PixelAperture.area_overlap`` computed
+    with the same inputs. [#2323]
+
+  - ``PixelAperture.do_photometry`` now returns an ``ApertureResults``
+    object instead of a plain tuple. The result remains backward
+    compatible: it can still be unpacked as a 2-tuple (``aperture_sum,
+    aperture_sum_err = do_photometry(...)``) and supports ``len()`` and
+    integer indexing like the legacy tuple. The new ``area`` attribute
+    provides the total unmasked overlap area of each aperture (in
+    ``pix**2``). [#2323]
+
 
 3.0.0 (2026-04-17)
 ------------------
