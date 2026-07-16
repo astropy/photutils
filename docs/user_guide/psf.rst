@@ -403,7 +403,7 @@ print the source ID along with the fit x, y, and flux values::
     >>> phot['x_fit'].info.format = '.4f'  # optional format
     >>> phot['y_fit'].info.format = '.4f'
     >>> phot['flux_fit'].info.format = '.4f'
-    >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
+    >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])
      id  x_fit   y_fit  flux_fit
     --- ------- ------- --------
       1 54.5658  7.7644 514.0091
@@ -481,7 +481,7 @@ astropy table)::
     >>> psfphot.finder_results['flux'].info.format = '.4f'
     >>> psfphot.finder_results['mag'].info.format = '.4f'
     >>> psfphot.finder_results['daofind_mag'].info.format = '.4f'
-    >>> print(psfphot.finder_results)  # doctest: +FLOAT_CMP
+    >>> print(psfphot.finder_results)
      id x_centroid y_centroid sharpness ...   peak    flux     mag   daofind_mag
     --- ---------- ---------- --------- ... ------- -------- ------- -----------
       1    54.5299     7.7460    0.6006 ... 53.5953 476.3221 -6.6948     -2.1093
@@ -521,7 +521,7 @@ The output table contains only the fit results for the input source::
     >>> phot['x_fit'].info.format = '.4f'  # optional format
     >>> phot['y_fit'].info.format = '.4f'
     >>> phot['flux_fit'].info.format = '.4f'
-    >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
+    >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])
      id  x_fit   y_fit  flux_fit
     --- ------- ------- --------
       1 63.2340 48.6408 563.3426
@@ -615,7 +615,7 @@ fit::
     >>> phot['flux_init'].info.format = '.4f'  # optional format
     >>> phot['flux_fit'].info.format = '.4f'
     >>> print(phot[('id', 'x_init', 'y_init', 'flux_init', 'x_fit',
-    ...             'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
+    ...             'y_fit', 'flux_fit')])
      id x_init y_init flux_init x_fit y_fit flux_fit
     --- ------ ------ --------- ----- ----- --------
       1     63     49  556.5067  63.0  49.0 500.2997
@@ -649,14 +649,14 @@ parameters. Here we constrain the flux to be greater than or equal to
 
     >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model3.flux.bounds = (0, None)
-    >>> psf_model3.bounds  # doctest: +FLOAT_CMP
+    >>> psf_model3.bounds
     {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (0.0, None)}
 
 The model parameter ``bounds`` can also be set using the ``min`` and/or
 ``max`` attributes. Here we set the minimum flux to be 0::
 
     >>> psf_model3.flux.min = 0
-    >>> psf_model3.bounds  # doctest: +FLOAT_CMP
+    >>> psf_model3.bounds
     {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (0.0, None)}
 
 For this example, let's constrain the flux value to be between
@@ -664,7 +664,7 @@ For this example, let's constrain the flux value to be between
 
     >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model3.flux.bounds = (400, 600)
-    >>> psf_model3.bounds  # doctest: +FLOAT_CMP
+    >>> psf_model3.bounds
     {'flux': (400.0, 600.0), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (0.0, None)}
 
 
@@ -731,7 +731,7 @@ clipping)::
 The local background values are output in the table::
 
     >>> phot['local_bkg'].info.format = '.4f'  # optional format
-    >>> print(phot[('id', 'local_bkg')])  # doctest: +FLOAT_CMP
+    >>> print(phot[('id', 'local_bkg')])
      id local_bkg
     --- ---------
       1   -0.0839
@@ -783,7 +783,7 @@ the source was detected::
     >>> phot['x_fit'].info.format = '.4f'  # optional format
     >>> phot['y_fit'].info.format = '.4f'
     >>> phot['flux_fit'].info.format = '.4f'
-    >>> print(phot[('id', 'iter_detected', 'x_fit', 'y_fit', 'flux_fit')])  # doctest: +FLOAT_CMP
+    >>> print(phot[('id', 'iter_detected', 'x_fit', 'y_fit', 'flux_fit')])
      id iter_detected  x_fit   y_fit  flux_fit
     --- ------------- ------- ------- --------
       1             1 54.5665  7.7641 514.2650
@@ -818,7 +818,7 @@ defined above::
    >>> finder_tbl = finder(data)
    >>> xypos = list(zip(finder_tbl['x_centroid'], finder_tbl['y_centroid']))
    >>> fwhm = fit_fwhm(data, xypos=xypos, error=error, fit_shape=(5, 5), fwhm=2)
-   >>> fwhm  # doctest: +FLOAT_CMP
+   >>> fwhm
    array([2.69735154, 2.70371211, 2.68917219, 2.69310558, 2.68931721,
           2.69804194, 2.69651045, 2.70423936, 2.71458867, 2.70285813])
 

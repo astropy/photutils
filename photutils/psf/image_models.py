@@ -323,7 +323,7 @@ class ImagePSF(Fittable2DModel):
         >>> psf_data = np.arange(30, dtype=float).reshape(5, 6)
         >>> psf_data /= np.sum(psf_data)
         >>> model = ImagePSF(psf_data, flux=1, x_0=0, y_0=0)
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-3.0, upper=3.0)

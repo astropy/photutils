@@ -52,12 +52,12 @@ def make_wcs(shape, galactic=False):
     >>> from photutils.datasets import make_wcs
     >>> shape = (100, 100)
     >>> wcs = make_wcs(shape)
-    >>> print(wcs.wcs.crpix)  # doctest: +FLOAT_CMP
+    >>> print(wcs.wcs.crpix)
     [50. 50.]
-    >>> print(wcs.wcs.crval)  # doctest: +FLOAT_CMP
+    >>> print(wcs.wcs.crval)
     [197.8925      -1.36555556]
     >>> skycoord = wcs.pixel_to_world(42, 57)
-    >>> print(skycoord)  # doctest: +FLOAT_CMP
+    >>> print(skycoord)
     <SkyCoord (ICRS): (ra, dec) in deg
         (197.89278975, -1.36561284)>
     """
@@ -125,7 +125,7 @@ def make_gwcs(shape, galactic=False):
     detector linear_transform
         icrs             None
     >>> skycoord = gwcs.pixel_to_world(42, 57)
-    >>> print(skycoord)  # doctest: +FLOAT_CMP
+    >>> print(skycoord)
     <SkyCoord (ICRS): (ra, dec) in deg
         (197.89278975, -1.36561284)>
     """

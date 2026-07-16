@@ -129,6 +129,11 @@ norecursedirs = [
 ]
 astropy_header = true
 doctest_plus = 'enabled'
+doctest_optionflags = [
+    'ELLIPSIS',  # default
+    'FLOAT_CMP',
+    'NORMALIZE_WHITESPACE',  # default
+]
 text_file_format = 'rst'
 addopts = [
     '-ra',
@@ -153,14 +158,9 @@ omit = [
     'photutils/**/conftest.py',
     'photutils/**/setup*',
     'photutils/**/tests/*',
+    'photutils/**/*.pyx',
     'photutils/extern/*',
     'photutils/version*',
-    '*/photutils/__init__*',
-    '*/photutils/**/conftest.py',
-    '*/photutils/**/setup*',
-    '*/photutils/**/tests/*',
-    '*/photutils/extern/*',
-    '*/photutils/version*',
 ]
 
 [tool.coverage.report]

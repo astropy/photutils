@@ -179,7 +179,7 @@ class ImageDepth:
     ...                    seed=123, zeropoint=23.9,
     ...                    progress_bar=False)
     >>> limits = depth(data, mask)
-    >>> print(np.array(limits))  # doctest: +FLOAT_CMP
+    >>> print(np.array(limits))
     [68.7403149  19.30697121]
 
     .. plot::

@@ -418,7 +418,7 @@ class CentroidQuadratic:
     >>> data = data[40:80, 70:110]
     >>> centroid_func = CentroidQuadratic(fit_boxsize=5)
     >>> x1, y1 = centroid_func(data)
-    >>> print(np.array((x1, y1)))  # doctest: +FLOAT_CMP
+    >>> print(np.array((x1, y1)))
     [19.94009505 20.06884997]
 
     Using with `~photutils.centroids.centroid_sources`::
@@ -576,9 +576,9 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     >>> y_init = (40, 61, 24, 71)
     >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
     ...                         centroid_func=centroid_2dg)
-    >>> print(x)  # doctest: +FLOAT_CMP
+    >>> print(x)
     [ 24.96807828  89.98684636 149.96545721 160.18810915]
-    >>> print(y)  # doctest: +FLOAT_CMP
+    >>> print(y)
     [40.03657613 60.01836631 24.96777946 69.80208702]
 
     .. plot::

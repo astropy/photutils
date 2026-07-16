@@ -123,7 +123,7 @@ method. The following example shows how to convert a
     >>> wcs = make_wcs((100, 100))
     >>> aperture = CircularAperture((12.3, 18.7), r=4.0)
     >>> sky_aperture = aperture.to_sky(wcs)
-    >>> sky_aperture  # doctest: +FLOAT_CMP
+    >>> sky_aperture
     <SkyCircularAperture(<SkyCoord (ICRS): (ra, dec) in deg
         (197.89228076, -1.36685926)>, r=0.39999999972155825 arcsec)>
 
@@ -134,7 +134,7 @@ To convert a sky aperture to a pixel aperture, use the
     ...                     frame='icrs')
     >>> aperture = SkyCircularAperture(position, r=0.4 * u.arcsec)
     >>> pix_aperture = aperture.to_pixel(wcs)
-    >>> pix_aperture  # doctest: +FLOAT_CMP
+    >>> pix_aperture
     <CircularAperture([12.29985329, 18.700118  ], r=4.000000002260265)>
 
 .. note::
@@ -267,7 +267,7 @@ with the same inputs.
 Since all the data values are 1.0, the aperture sums are equal to the
 area of a circle with a radius of 3.1::
 
-    >>> print(np.pi * 3.1 ** 2)  # doctest: +FLOAT_CMP
+    >>> print(np.pi * 3.1 ** 2)
     30.190705401
 
 
@@ -653,18 +653,18 @@ background as the sigma-clipped median value::
     >>> _, median, _ = sigma_clipped_stats(data, sigma=3.0)
     >>> data -= median  # subtract background from the data
     >>> aper = CircularAperture((149.97, 24.97), r=10)
-    >>> aperstats = ApertureStats(data, aper)  # doctest: +FLOAT_CMP
-    >>> print(aperstats.x_centroid)  # doctest: +FLOAT_CMP
+    >>> aperstats = ApertureStats(data, aper)
+    >>> print(aperstats.x_centroid)
     150.00123266400735
-    >>> print(aperstats.y_centroid)  # doctest: +FLOAT_CMP
+    >>> print(aperstats.y_centroid)
     24.997448121496937
-    >>> print(aperstats.centroid)  # doctest: +FLOAT_CMP
+    >>> print(aperstats.centroid)
     [150.00123266  24.99744812]
 
-    >>> print(aperstats.mean, aperstats.median, aperstats.std)  # doctest: +FLOAT_CMP
+    >>> print(aperstats.mean, aperstats.median, aperstats.std)
     27.269534935470567 11.751403764475224 36.56854575397058
 
-    >>> print(aperstats.sum)  # doctest: +FLOAT_CMP
+    >>> print(aperstats.sum)
     8487.061886925028
 
 Similar to `~photutils.aperture.aperture_photometry`, the input aperture
@@ -675,9 +675,9 @@ results as arrays::
 
     >>> aper2 = CircularAperture([(24.9, 40.0), (89.9, 60.0), (149.97, 24.97)], r=10)
     >>> aperstats2 = ApertureStats(data, aper2)
-    >>> print(aperstats2.x_centroid)  # doctest: +FLOAT_CMP
+    >>> print(aperstats2.x_centroid)
     [ 25.08290339  89.90853538 150.00123266]
-    >>> print(aperstats2.sum)  # doctest: +FLOAT_CMP
+    >>> print(aperstats2.sum)
     [ 5210.72822517 34965.55786075  8487.06188693]
     >>> columns = ('id', 'x_centroid', 'y_centroid', 'mean', 'median', 'std',
     ...            'var', 'sum')
@@ -685,7 +685,7 @@ results as arrays::
     >>> for col in stats_table.colnames:
     ...     stats_table[col].info.format = '%.8g'  # for consistent table output
 
-    >>> print(stats_table)  # doctest: +FLOAT_CMP
+    >>> print(stats_table)
      id x_centroid y_centroid    mean     median     std       var       sum
     --- ---------- ---------- --------- --------- --------- --------- ---------
       1  25.082903  40.012769 16.694416  10.14227 19.059729 363.27325 5210.7282
@@ -790,7 +790,7 @@ position::
     >>> from photutils.aperture import ApertureStats
     >>> aperstats = ApertureStats(data, annulus_aperture)
     >>> bkg_mean = aperstats.mean
-    >>> print(bkg_mean)  # doctest: +FLOAT_CMP
+    >>> print(bkg_mean)
     [4.99411764 5.1349344  4.86894665]
 
 Next, we use :func:`~photutils.aperture.aperture_photometry` to measure
@@ -819,7 +819,7 @@ default ``'exact'`` overlap method (see :ref:`aperture-mask methods
 <photutils-aperture-overlap>`) and no pixels are masked, the analytical
 aperture area is also available from the ``area`` attribute::
 
-    >>> aperture.area  # doctest: +FLOAT_CMP
+    >>> aperture.area
     78.53981633974483
 
 In general, however, you should use the ``'area'`` column or the
@@ -832,13 +832,13 @@ example, we used the default ``'exact'`` overlap method and no mask is
 used, so ``area_overlap`` returns the same value as ``area``::
 
     >>> aperture_area = aperture.area_overlap(data)
-    >>> print(aperture_area)  # doctest: +FLOAT_CMP
+    >>> print(aperture_area)
     [78.53981634 78.53981634 78.53981634]
 
 The total background within the circular aperture is then::
 
     >>> total_bkg = bkg_mean * aperture_area
-    >>> print(total_bkg)  # doctest: +FLOAT_CMP
+    >>> print(total_bkg)
     [392.23708187 403.29680431 382.40617574]
 
 Subtracting this background estimate from the measured aperture sums
@@ -878,21 +878,21 @@ photometry and the local background::
 
 The sigma-clipped median background values are::
 
-    >>> print(bkg_stats.median)  # doctest: +FLOAT_CMP
+    >>> print(bkg_stats.median)
     [4.89374178 5.05655328 4.83268958]
 
 The total background within each source aperture is the per-pixel
 background multiplied by the aperture area::
 
     >>> total_bkg = bkg_stats.median * aper_stats.sum_aper_area.value
-    >>> print(total_bkg)  # doctest: +FLOAT_CMP
+    >>> print(total_bkg)
     [384.35358069 397.14076611 379.5585524 ]
 
 Subtracting this background estimate from the measured aperture sums
 gives the local background-subtracted photometry::
 
     >>> apersum_bkgsub = aper_stats.sum - total_bkg
-    >>> print(apersum_bkgsub)  # doctest: +FLOAT_CMP
+    >>> print(apersum_bkgsub)
     [743.77088731 338.59823118 920.07553956]
 
 If you want to compute additional source properties
@@ -904,7 +904,7 @@ internally when computing all source properties::
 
     >>> aper_stats_bkgsub = ApertureStats(data, aperture,
     ...                                   local_bkg=bkg_stats.median)
-    >>> print(aper_stats_bkgsub.sum)  # doctest: +FLOAT_CMP
+    >>> print(aper_stats_bkgsub.sum)
     [743.77088731 338.59823118 920.07553956]
 
 The resulting aperture sums are identical to those computed above.

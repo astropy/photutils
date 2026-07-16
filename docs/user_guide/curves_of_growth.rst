@@ -65,7 +65,7 @@ First, we'll find the source centroid using the
 
     >>> from photutils.centroids import centroid_2dg
     >>> xycen = centroid_2dg(data)
-    >>> print(xycen)  # doctest: +FLOAT_CMP
+    >>> print(xycen)
     [47.76934534 52.3884076 ]
 
 The curve of growth will be centered at our centroid position. It will
@@ -81,7 +81,7 @@ of the circular apertures used to measure the profile, they can be used
 directly to measure the encircled energy/flux at a given radius. In
 other words, they are the radial values that enclose the given flux::
 
-    >>> print(cog.radius)  # doctest: +FLOAT_CMP
+    >>> print(cog.radius)
     [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
      25]
 
@@ -90,14 +90,14 @@ The `~photutils.profiles.CurveOfGrowth.profile` and
 output 1D `~numpy.ndarray` objects containing the curve-of-growth
 profile and propagated errors::
 
-    >>> print(cog.profile)  # doctest: +FLOAT_CMP
+    >>> print(cog.profile)
     [ 135.14750208  514.49674293 1076.4617132  1771.53866121 2510.94382666
      3238.51695898 3907.08459943 4456.90125492 4891.00892262 5236.59326527
      5473.66400376 5643.72239573 5738.24972738 5803.31693644 5842.00525018
      5850.45854739 5855.76123671 5844.9631235  5847.72359025 5843.23189459
      5852.05251106 5875.32009699 5869.86235184 5880.64741302 5872.16333953]
 
-    >>> print(cog.profile_error)  # doctest: +FLOAT_CMP
+    >>> print(cog.profile_error)
     [ 3.72215309  7.44430617 11.16645926 14.88861235 18.61076543 22.33291852
      26.05507161 29.7772247  33.49937778 37.22153087 40.94368396 44.66583704
      48.38799013 52.11014322 55.8322963  59.55444939 63.27660248 66.99875556
@@ -247,10 +247,10 @@ of growth we created above::
     >>> cog.normalize(method='max')
     >>> ee_rads = np.array([5, 7, 10, 15])
     >>> ee_vals = cog.calc_ee_at_radius(ee_rads)
-    >>> ee_vals  # doctest: +FLOAT_CMP
+    >>> ee_vals
     array([0.42698425, 0.66439702, 0.89047904, 0.99342893])
 
-    >>> cog.calc_radius_at_ee(ee_vals)  # doctest: +FLOAT_CMP
+    >>> cog.calc_radius_at_ee(ee_vals)
     array([ 5., 7., 10., 15.])
 
 Here we plot the encircled energy values.
@@ -320,7 +320,7 @@ above::
 The ensquared curve of growth profile represents the total flux within
 the square aperture as a function of the square half-size::
 
-    >>> print(ecog.half_size)  # doctest: +FLOAT_CMP
+    >>> print(ecog.half_size)
     [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
      25]
 
@@ -329,14 +329,14 @@ The `~photutils.profiles.EnsquaredCurveOfGrowth.profile` and
 contain output 1D `~numpy.ndarray` objects containing the ensquared
 curve-of-growth profile and propagated errors::
 
-    >>> print(ecog.profile)  # doctest: +FLOAT_CMP
+    >>> print(ecog.profile)
     [ 171.51682931  640.93965938 1328.92447125 2143.49339746 2954.67817356
      3718.43574763 4357.67409109 4845.38866928 5199.93124392 5481.4874771
      5641.60852855 5752.43870109 5791.01446371 5819.46039533 5832.44691816
      5825.39056549 5834.14890108 5833.42003487 5852.25143102 5856.59671815
      5869.46227464 5872.94734439 5868.92606685 5849.96903786 5839.55875017]
 
-    >>> print(ecog.profile_error)  # doctest: +FLOAT_CMP
+    >>> print(ecog.profile_error)
     [  4.2   8.4  12.6  16.8  21.   25.2  29.4  33.6  37.8  42.   46.2  50.4
       54.6  58.8  63.   67.2  71.4  75.6  79.8  84.   88.2  92.4  96.6 100.8
      105. ]
@@ -432,10 +432,10 @@ ensquared curve of growth we created above::
     >>> ecog.normalize(method='max')
     >>> ee_half_sizes = np.array([3, 6, 9])
     >>> ee_vals = ecog.calc_ee_at_half_size(ee_half_sizes)
-    >>> ee_vals  # doctest: +FLOAT_CMP
+    >>> ee_vals
     array([0.22627897, 0.63314645, 0.88540403])
 
-    >>> ecog.calc_half_size_at_ee(ee_vals)  # doctest: +FLOAT_CMP
+    >>> ecog.calc_half_size_at_ee(ee_vals)
     array([3., 6., 9.])
 
 Here, we plot the ensquared energy values.
@@ -521,7 +521,7 @@ with an axis ratio of 0.5 and a rotation angle of 42 degrees::
 The elliptical curve of growth profile represents the total flux within
 the elliptical aperture as a function of semimajor-axis length::
 
-    >>> print(ecog.radius)  # doctest: +FLOAT_CMP
+    >>> print(ecog.radius)
     [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
      25 26 27 28 29 30 31 32 33 34 35 36 37 38 39]
 
@@ -530,7 +530,7 @@ The `~photutils.profiles.EllipticalCurveOfGrowth.profile` and
 contain output 1D `~numpy.ndarray` objects containing the elliptical
 curve-of-growth profile and propagated errors::
 
-    >>> print(ecog.profile)  # doctest: +FLOAT_CMP
+    >>> print(ecog.profile)
     [   67.39762867   267.711181     588.47524874  1021.31994307
       1546.53867489  2152.12698084  2824.97954482  3541.64650208
       4284.363828    5040.93586551  5777.06397177  6488.33779084
@@ -542,7 +542,7 @@ curve-of-growth profile and propagated errors::
      11648.27293403 11660.34772581 11662.89065496 11643.07787619
      11630.36674411 11636.61537567 11636.60448497]
 
-    >>> print(ecog.profile_error)  # doctest: +FLOAT_CMP
+    >>> print(ecog.profile_error)
     [  2.63195969   5.26391938   7.89587907  10.52783875  13.15979844
       15.79175813  18.42371782  21.05567751  23.6876372   26.31959688
       28.95155657  31.58351626  34.21547595  36.84743564  39.47939533
@@ -646,10 +646,10 @@ for the elliptical curve of growth we created above::
     >>> ecog.normalize(method='max')
     >>> ee_rads = np.array([5, 10, 15, 20])
     >>> ee_vals = ecog.calc_ee_at_radius(ee_rads)
-    >>> ee_vals  # doctest: +FLOAT_CMP
+    >>> ee_vals
     array([0.13260338, 0.43222011, 0.72178335, 0.89835564])
 
-    >>> ecog.calc_radius_at_ee(ee_vals)  # doctest: +FLOAT_CMP
+    >>> ecog.calc_radius_at_ee(ee_vals)
     array([ 5., 10., 15., 20.])
 
 Here we plot the enclosed energy values.

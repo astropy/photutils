@@ -208,7 +208,7 @@ and methods to analyze the grouping results::
 
    >>> # Get the centroid of group 5
    >>> xy_center = groups.group_centers[5]
-   >>> print(f'Group 5 center: {xy_center}')  # doctest: +FLOAT_CMP
+   >>> print(f'Group 5 center: {xy_center}')
    Group 5 center: (48.35899721341876, 73.85258893310564)
 
 To visualize the results, we can use the

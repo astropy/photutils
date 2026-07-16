@@ -101,11 +101,11 @@ class RadialProfile(ProfileBase):
     >>> edge_radii = np.arange(25)
     >>> rp = RadialProfile(data, xycen, edge_radii, error=error)
 
-    >>> print(rp.radius)  # doctest: +FLOAT_CMP
+    >>> print(rp.radius)
     [ 0.5  1.5  2.5  3.5  4.5  5.5  6.5  7.5  8.5  9.5 10.5 11.5 12.5 13.5
      14.5 15.5 16.5 17.5 18.5 19.5 20.5 21.5 22.5 23.5]
 
-    >>> print(rp.profile)  # doctest: +FLOAT_CMP
+    >>> print(rp.profile)
     [ 4.30187860e+01  4.02502046e+01  3.57758011e+01  3.16071235e+01
       2.61511082e+01  2.10539746e+01  1.63701300e+01  1.16674718e+01
       8.12828014e+00  5.78962699e+00  3.59342666e+00  2.35353336e+00
@@ -113,7 +113,7 @@ class RadialProfile(ProfileBase):
       5.11484374e-02 -9.82041768e-02  2.37482124e-02 -3.66602855e-02
       6.84802299e-02  1.72239596e-01 -3.86056497e-02  7.30423743e-02]
 
-    >>> print(rp.profile_error)  # doctest: +FLOAT_CMP
+    >>> print(rp.profile_error)
     [1.18479813 0.68404352 0.52985783 0.4478116  0.39493271 0.35723008
      0.32860388 0.30591356 0.28735575 0.27181133 0.25854415 0.24704749
      0.23695963 0.22801451 0.22001149 0.21279603 0.20624688 0.20026744
@@ -226,13 +226,13 @@ class RadialProfile(ProfileBase):
     Fit 1D Gaussian and Moffat models to the normalized radial profile.
 
     >>> rp.normalize()
-    >>> rp.gaussian_fit  # doctest: +FLOAT_CMP
+    >>> rp.gaussian_fit
     <Gaussian1D(amplitude=0.98231088, mean=0., stddev=4.67512776)>
-    >>> rp.moffat_fit  # doctest: +ELLIPSIS
+    >>> rp.moffat_fit
     <Moffat1D(amplitude=..., x_0=0., gamma=..., alpha=...)>
-    >>> print(rp.gaussian_fwhm)  # doctest: +FLOAT_CMP
+    >>> print(rp.gaussian_fwhm)
     11.009084813327846
-    >>> print(rp.moffat_fwhm)  # doctest: +FLOAT_CMP
+    >>> print(rp.moffat_fwhm)
     10.868426507928344
 
     Plot the fitted 1D Gaussian and Moffat models on the radial profile.

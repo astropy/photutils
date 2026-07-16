@@ -75,7 +75,7 @@ sigma-clipped statistics::
     >>> hdu = load_simulated_hst_star_image()  # doctest: +REMOTE_DATA
     >>> data = hdu.data + make_noise_image(hdu.data.shape, distribution='gaussian', mean=10.0, stddev=5.0, seed=0)  # doctest: +REMOTE_DATA
     >>> mean, median, std = sigma_clipped_stats(data, sigma=3.0)  # doctest: +REMOTE_DATA
-    >>> print(np.array((mean, median, std)))  # doctest: +REMOTE_DATA, +FLOAT_CMP
+    >>> print(np.array((mean, median, std)))  # doctest: +REMOTE_DATA
     [10.44410657 10.39699777  5.09141794]
 
 Now we will subtract the background and use an instance of
@@ -110,7 +110,7 @@ Running the finder on the background-subtracted data::
     >>> for col in sources.colnames:  # doctest: +REMOTE_DATA
     ...     if col not in ('id', 'n_pixels'):
     ...         sources[col].info.format = '%.2f'  # for consistent table output
-    >>> sources.pprint(max_lines=12, max_width=76)  # doctest: +REMOTE_DATA, +FLOAT_CMP
+    >>> sources.pprint(max_lines=12, max_width=76)  # doctest: +REMOTE_DATA
      id x_centroid y_centroid sharpness ...   peak    flux   mag   daofind_mag
     --- ---------- ---------- --------- ... ------- ------- ------ -----------
       1     848.57       2.15      0.89 ... 1051.78 3999.02  -9.00       -3.80
@@ -235,7 +235,7 @@ are 5 sigma above the background using a box size of 11 pixels::
     >>> threshold = median + (5.0 * std)  # doctest: +REMOTE_DATA
     >>> tbl = find_peaks(data, threshold, box_size=11)  # doctest: +REMOTE_DATA
     >>> tbl['peak_value'].info.format = '%.8g'  # doctest: +REMOTE_DATA
-    >>> print(tbl)  # doctest: +REMOTE_DATA, +FLOAT_CMP
+    >>> print(tbl)  # doctest: +REMOTE_DATA
      id x_peak y_peak peak_value
     --- ------ ------ ----------
       1    849      2  1062.1752
