@@ -61,7 +61,7 @@ to find the source centroid from the simulated image defined above::
 
     >>> from photutils.centroids import centroid_2dg
     >>> xycen = centroid_2dg(data)
-    >>> print(xycen)  # doctest: +FLOAT_CMP
+    >>> print(xycen)
     [47.76934534 52.3884076 ]
 
 We'll use this centroid position as the center of our radial profile.
@@ -83,11 +83,11 @@ are defined as the arithmetic means of the input radial-bins edges
 (``radii``). Note that this is different from the input ``radii``, which
 are the radial bin edges rather than centers::
 
-    >>> print(rp.radii)  # doctest: +FLOAT_CMP
+    >>> print(rp.radii)
     [ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23
      24]
 
-    >>> print(rp.radius)  # doctest: +FLOAT_CMP
+    >>> print(rp.radius)
     [ 0.5  1.5  2.5  3.5  4.5  5.5  6.5  7.5  8.5  9.5 10.5 11.5 12.5 13.5
      14.5 15.5 16.5 17.5 18.5 19.5 20.5 21.5 22.5 23.5]
 
@@ -96,7 +96,7 @@ The `~photutils.profiles.RadialProfile.profile` and
 output 1D `~numpy.ndarray` objects containing the radial profile and
 propagated errors::
 
-    >>> print(rp.profile)  # doctest: +FLOAT_CMP
+    >>> print(rp.profile)
     [ 4.30187860e+01  4.02502046e+01  3.57758011e+01  3.16071235e+01
       2.61511082e+01  2.10539746e+01  1.63701300e+01  1.16674718e+01
       8.12828014e+00  5.78962699e+00  3.59342666e+00  2.35353336e+00
@@ -104,7 +104,7 @@ propagated errors::
       5.11484374e-02 -9.82041768e-02  2.37482124e-02 -3.66602855e-02
       6.84802299e-02  1.72239596e-01 -3.86056497e-02  7.30423743e-02]
 
-    >>> print(rp.profile_error)  # doctest: +FLOAT_CMP
+    >>> print(rp.profile_error)
     [1.18479813 0.68404352 0.52985783 0.4478116  0.39493271 0.35723008
      0.32860388 0.30591356 0.28735575 0.27181133 0.25854415 0.24704749
      0.23695963 0.22801451 0.22001149 0.21279603 0.20624688 0.20026744
@@ -266,7 +266,7 @@ models are accessible via the
 `~photutils.profiles.RadialProfile.moffat_fit` attributes,
 respectively::
 
-    >>> rp.gaussian_fit  # doctest: +FLOAT_CMP
+    >>> rp.gaussian_fit
     <Gaussian1D(amplitude=42.25782121, mean=0., stddev=4.67512787)>
 
     >>> rp.moffat_fit  # doctest: +ELLIPSIS
@@ -276,10 +276,10 @@ The FWHM of each fitted model is stored in the
 `~photutils.profiles.RadialProfile.gaussian_fwhm` and
 `~photutils.profiles.RadialProfile.moffat_fwhm` attributes::
 
-    >>> print(rp.gaussian_fwhm)  # doctest: +FLOAT_CMP
+    >>> print(rp.gaussian_fwhm)
     11.009084813327846
 
-    >>> print(rp.moffat_fwhm)  # doctest: +FLOAT_CMP
+    >>> print(rp.moffat_fwhm)
     10.868426520785151
 
 The fitted models evaluated at the profile radius values are stored in

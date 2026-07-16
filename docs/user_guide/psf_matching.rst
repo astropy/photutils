@@ -183,10 +183,10 @@ Both output kernels are 2D arrays representing the matching kernel that,
 when convolved with the source PSF, produces the target PSF. The output
 matching kernels are normalized such that they sum to 1::
 
-    >>> print(kernel1.sum())  # doctest: +FLOAT_CMP
+    >>> print(kernel1.sum())
     1.0
 
-    >>> print(kernel2.sum())  # doctest: +FLOAT_CMP
+    >>> print(kernel2.sum())
     1.0
 
 Let's plot both results side by side:

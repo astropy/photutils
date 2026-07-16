@@ -116,7 +116,7 @@ apertures with fewer than two unmasked pixels::
     >>> data = rng.normal(100.0, 5.0, (100, 100))
     >>> aper = CircularAperture((50, 50), r=10)
     >>> stats = ApertureStats(data, aper)
-    >>> stats.mean_err  # doctest: +FLOAT_CMP
+    >>> stats.mean_err
     0.27447881801886487
 
 
@@ -138,7 +138,7 @@ standard deviation::
     >>> data = rng.normal(100.0, 5.0, (100, 100))
     >>> aper = CircularAperture((50, 50), r=10)
     >>> stats = ApertureStats(data, aper, ddof=1)
-    >>> stats.std  # doctest: +FLOAT_CMP
+    >>> stats.std
     4.793566477062262
 
 The ``ddof`` keyword affects only the ``var`` and ``std`` properties.

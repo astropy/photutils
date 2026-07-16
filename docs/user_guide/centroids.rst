@@ -70,25 +70,25 @@ Now we can calculate the centroid of the object using each of the
 centroiding functions::
 
     >>> x1, y1 = centroid_com(data)
-    >>> print(np.array((x1, y1)))  # doctest: +FLOAT_CMP
+    >>> print(np.array((x1, y1)))
     [19.9796724  20.00992593]
 
 ::
 
     >>> x2, y2 = centroid_quadratic(data)
-    >>> print(np.array((x2, y2)))  # doctest: +FLOAT_CMP
+    >>> print(np.array((x2, y2)))
     [19.94009505 20.06884997]
 
 ::
 
     >>> x3, y3 = centroid_1dg(data)
-    >>> print(np.array((x3, y3)))  # doctest: +FLOAT_CMP
+    >>> print(np.array((x3, y3)))
     [19.96553246 20.04952841]
 
 ::
 
     >>> x4, y4 = centroid_2dg(data)
-    >>> print(np.array((x4, y4)))  # doctest: +FLOAT_CMP
+    >>> print(np.array((x4, y4)))
     [19.9851944  20.01490157]
 
 The measured centroids are all very close to the object's true centroid
@@ -163,9 +163,9 @@ are then calculated within their cutout images::
     >>> y_init = (40, 61, 24, 71)
     >>> x, y = centroid_sources(data, x_init, y_init, box_size=25,
     ...                         centroid_func=centroid_2dg)
-    >>> print(x)  # doctest: +FLOAT_CMP
+    >>> print(x)
     [ 24.96807828  89.98684636 149.96545721 160.18810915]
-    >>> print(y)  # doctest: +FLOAT_CMP
+    >>> print(y)
     [40.03657613 60.01836631 24.96777946 69.80208702]
 
 The measured centroids are all very close to the true centroids of the
