@@ -228,7 +228,7 @@ class RadialProfile(ProfileBase):
     >>> rp.normalize()
     >>> rp.gaussian_fit
     <Gaussian1D(amplitude=0.98231088, mean=0., stddev=4.67512776)>
-    >>> rp.moffat_fit  # doctest: +ELLIPSIS
+    >>> rp.moffat_fit
     <Moffat1D(amplitude=..., x_0=0., gamma=..., alpha=...)>
     >>> print(rp.gaussian_fwhm)
     11.009084813327846

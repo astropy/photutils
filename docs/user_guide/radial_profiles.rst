@@ -269,7 +269,7 @@ respectively::
     >>> rp.gaussian_fit
     <Gaussian1D(amplitude=42.25782121, mean=0., stddev=4.67512787)>
 
-    >>> rp.moffat_fit  # doctest: +ELLIPSIS
+    >>> rp.moffat_fit
     <Moffat1D(amplitude=..., x_0=0., gamma=..., alpha=...)>
 
 The FWHM of each fitted model is stored in the
