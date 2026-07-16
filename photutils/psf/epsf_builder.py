@@ -28,7 +28,7 @@ from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._round import round_half_away
 from photutils.utils._stats import nanmedian
 
-__all__ = ['EPSFBuildResult', 'EPSFBuilder', 'EPSFFitter']
+__all__ = ['EPSFBuildResults', 'EPSFBuilder', 'EPSFFitter']
 
 SIGMA_CLIP = SigmaClipSentinelDefault(sigma=3.0, maxiters=10)
 
@@ -615,7 +615,7 @@ class _ProgressReporter:
 
 
 @dataclass
-class EPSFBuildResult:
+class EPSFBuildResults:
     """
     Container for ePSF building results.
 
@@ -716,7 +716,7 @@ class EPSFBuildResult:
         if index == 1:
             return self.fitted_stars
 
-        msg = 'EPSFBuildResult index must be 0 (epsf) or 1 (fitted_stars)'
+        msg = 'EPSFBuildResults index must be 0 (epsf) or 1 (fitted_stars)'
         raise IndexError(msg)
 
 
@@ -1123,7 +1123,7 @@ class EPSFBuilder:
 
         Returns
         -------
-        result : `EPSFBuildResult`
+        result : `EPSFBuildResults`
             The result of the ePSF building process.
         """
         return self.build_epsf(stars)
@@ -1941,7 +1941,7 @@ class EPSFBuilder:
 
         Returns
         -------
-        result : `EPSFBuildResult`
+        result : `EPSFBuildResults`
             Structured result containing ePSF, stars, and build
             diagnostics.
         """
@@ -1951,7 +1951,7 @@ class EPSFBuilder:
         progress_reporter.close()
 
         # Create structured result
-        return EPSFBuildResult(
+        return EPSFBuildResults(
             epsf=epsf,
             fitted_stars=stars,
             iterations=iter_num,
@@ -1981,8 +1981,8 @@ class EPSFBuilder:
 
         Returns
         -------
-        result : `EPSFBuildResult` or tuple
-            The ePSF building results. Returns an `EPSFBuildResult` object
+        result : `EPSFBuildResults` or tuple
+            The ePSF building results. Returns an `EPSFBuildResults` object
             with detailed information about the building process. For
             backward compatibility, the result can be unpacked as a tuple:
             ``(epsf, fitted_stars) = epsf_builder(stars)``.
@@ -2049,3 +2049,15 @@ class EPSFBuilder:
                                     iter_num, final_converged,
                                     final_center_accuracy,
                                     excluded_star_indices)
+
+
+def __getattr__(name):
+    # EPSFBuildResult was renamed to EPSFBuildResults in 3.1.
+    if name == 'EPSFBuildResult':
+        msg = ('EPSFBuildResult is deprecated and will be removed in a '
+               'future version. Use EPSFBuildResults instead.')
+        warnings.warn(msg, AstropyDeprecationWarning, stacklevel=2)
+        return EPSFBuildResults
+
+    msg = f'module {__name__!r} has no attribute {name!r}'
+    raise AttributeError(msg)

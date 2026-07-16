@@ -19,7 +19,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 from photutils.centroids import (centroid_1dg, centroid_2dg, centroid_com,
                                  centroid_quadratic)
 from photutils.datasets import make_model_image
-from photutils.psf import (CircularGaussianPRF, EPSFBuilder, EPSFBuildResult,
+from photutils.psf import (CircularGaussianPRF, EPSFBuilder, EPSFBuildResults,
                            EPSFFitter, EPSFStar, EPSFStars, ImagePSF,
                            extract_stars, make_psf_model_image)
 from photutils.psf.epsf_builder import (_CoordinateTransformer, _EPSFValidator,
@@ -626,14 +626,14 @@ class TestProgressReporter:
         assert reporter._pbar is None
 
 
-class TestEPSFBuildResult:
+class TestEPSFBuildResults:
     """
-    Tests for the EPSFBuildResult class.
+    Tests for the EPSFBuildResults class.
     """
 
     def test_creation(self):
         """
-        Test EPSFBuildResult creation.
+        Test EPSFBuildResults creation.
         """
         # Create a simple PSF model for testing
         data = np.ones((5, 5))
@@ -642,7 +642,7 @@ class TestEPSFBuildResult:
         # Create stars list (can be empty for this test)
         stars = []
 
-        result = EPSFBuildResult(
+        result = EPSFBuildResults(
             epsf=psf,
             fitted_stars=stars,
             iterations=5,
@@ -658,7 +658,7 @@ class TestEPSFBuildResult:
 
     def test_with_data(self, epsf_test_data):
         """
-        Test EPSFBuildResult with actual data.
+        Test EPSFBuildResults with actual data.
         """
         stars = extract_stars(epsf_test_data['nddata'],
                               epsf_test_data['init_stars'][:5], size=11)
@@ -666,7 +666,7 @@ class TestEPSFBuildResult:
         builder = EPSFBuilder(oversampling=1, maxiters=2, progress_bar=False)
         epsf, fitted_stars = builder(stars)
 
-        result = EPSFBuildResult(
+        result = EPSFBuildResults(
             epsf=epsf,
             fitted_stars=fitted_stars,
             iterations=2,
@@ -682,13 +682,13 @@ class TestEPSFBuildResult:
 
     def test_getitem_invalid_index(self):
         """
-        Test EPSFBuildResult.__getitem__ with invalid index.
+        Test EPSFBuildResults.__getitem__ with invalid index.
         """
         data = np.ones((5, 5))
         psf = ImagePSF(data)
         stars = EPSFStars([])
 
-        result = EPSFBuildResult(
+        result = EPSFBuildResults(
             epsf=psf,
             fitted_stars=stars,
             iterations=5,
@@ -703,7 +703,7 @@ class TestEPSFBuildResult:
         assert result[1] is stars
 
         # Invalid index
-        match = 'EPSFBuildResult index must be 0'
+        match = 'EPSFBuildResults index must be 0'
         with pytest.raises(IndexError, match=match):
             result[2]
 
@@ -712,13 +712,13 @@ class TestEPSFBuildResult:
 
     def test_iteration(self):
         """
-        Test EPSFBuildResult iteration (tuple unpacking).
+        Test EPSFBuildResults iteration (tuple unpacking).
         """
         data = np.ones((5, 5))
         psf = ImagePSF(data)
         stars = EPSFStars([])
 
-        result = EPSFBuildResult(
+        result = EPSFBuildResults(
             epsf=psf,
             fitted_stars=stars,
             iterations=5,
@@ -741,7 +741,7 @@ class TestEPSFBuildResult:
 
     def test_attributes(self, epsf_test_data):
         """
-        Test EPSFBuildResult has all expected attributes.
+        Test EPSFBuildResults has all expected attributes.
         """
         builder = EPSFBuilder(oversampling=1, maxiters=3, progress_bar=False)
 
@@ -758,6 +758,22 @@ class TestEPSFBuildResult:
         assert isinstance(result.final_center_accuracy, (float, np.floating))
         assert isinstance(result.n_excluded_stars, int)
         assert isinstance(result.excluded_star_indices, list)
+
+    def test_deprecated_name(self):
+        """
+        Test that the old EPSFBuildResult name is a deprecated alias.
+        """
+        from photutils import psf
+        from photutils.psf import epsf_builder
+
+        match = 'EPSFBuildResult is deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            cls = psf.EPSFBuildResult
+        assert cls is EPSFBuildResults
+
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            cls = epsf_builder.EPSFBuildResult
+        assert cls is EPSFBuildResults
 
 
 class TestEPSFFitter:

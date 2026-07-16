@@ -45,11 +45,11 @@ The ePSF building tools have been significantly refactored for improved
 robustness, better diagnostics, and a cleaner API.
 
 
-New EPSFBuildResult class
--------------------------
+New EPSFBuildResults class
+--------------------------
 
 :class:`~photutils.psf.EPSFBuilder` now returns an
-:class:`~photutils.psf.EPSFBuildResult` dataclass instead of a plain
+:class:`~photutils.psf.EPSFBuildResults` dataclass instead of a plain
 tuple. The result object provides structured access to detailed build
 diagnostics::
 
@@ -75,7 +75,7 @@ Stars that repeatedly fail fitting are now automatically excluded from
 subsequent iterations, with informative warnings indicating the reason
 for exclusion (e.g., fit region extends beyond the cutout, or the fit
 did not converge). The number of excluded stars and their indices are
-reported in the :class:`~photutils.psf.EPSFBuildResult`.
+reported in the :class:`~photutils.psf.EPSFBuildResults`.
 
 
 Improved PSF Matching Tools

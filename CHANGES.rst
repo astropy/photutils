@@ -189,6 +189,13 @@ API Changes
     removed in version 4.0. Note that in the new ``photometry`` method
     all arguments except ``data`` are keyword-only. [#2324]
 
+- ``photutils.psf``
+
+  - The ``EPSFBuildResult`` class returned by ``EPSFBuilder`` has been
+    renamed to ``EPSFBuildResults`` for consistency with the new
+    ``ApertureResults`` class. The old ``EPSFBuildResult`` name is
+    deprecated and will be removed in a future version. [#2326]
+
 
 3.0.0 (2026-04-17)
 ------------------
