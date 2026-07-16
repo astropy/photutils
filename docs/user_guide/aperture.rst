@@ -684,8 +684,7 @@ results as arrays::
     >>> stats_table = aperstats2.to_table(columns=columns)
     >>> for col in stats_table.colnames:
     ...     stats_table[col].info.format = '%.8g'  # for consistent table output
-
-    >>> print(stats_table)
+    >>> stats_table.pprint(max_width=-1)
      id x_centroid y_centroid    mean     median     std       var       sum
     --- ---------- ---------- --------- --------- --------- --------- ---------
       1  25.082903  40.012769 16.694416  10.14227 19.059729 363.27325 5210.7282
