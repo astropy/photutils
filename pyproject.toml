@@ -153,14 +153,9 @@ omit = [
     'photutils/**/conftest.py',
     'photutils/**/setup*',
     'photutils/**/tests/*',
+    'photutils/**/*.pyx',
     'photutils/extern/*',
     'photutils/version*',
-    '*/photutils/__init__*',
-    '*/photutils/**/conftest.py',
-    '*/photutils/**/setup*',
-    '*/photutils/**/tests/*',
-    '*/photutils/extern/*',
-    '*/photutils/version*',
 ]
 
 [tool.coverage.report]
