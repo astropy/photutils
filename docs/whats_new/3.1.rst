@@ -386,6 +386,15 @@ The old method name is deprecated and will be removed in version
     aperture_sum, aperture_sum_err = aperture.photometry(data, error=error)
 
 
+``EPSFBuildResult`` Renamed to ``EPSFBuildResults``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``EPSFBuildResult`` class returned by `~photutils.psf.EPSFBuilder`
+has been renamed to `~photutils.psf.EPSFBuildResults` for consistency
+with the new ``ApertureResults`` class. The old ``EPSFBuildResult`` name
+is deprecated and will be removed in a future version.
+
+
 Removed Deprecations
 --------------------
 

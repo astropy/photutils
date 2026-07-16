@@ -289,7 +289,7 @@ to the instance::
     >>> result = epsf_builder(stars)  # doctest: +REMOTE_DATA
 
 The :class:`~photutils.psf.EPSFBuilder` returns an
-`~photutils.psf.EPSFBuildResult` object containing the constructed ePSF,
+`~photutils.psf.EPSFBuildResults` object containing the constructed ePSF,
 the fitted stars, and detailed information about the build process. This
 result object supports tuple unpacking, so both of the following work::
 
@@ -300,7 +300,7 @@ result object supports tuple unpacking, so both of the following work::
     >>> # Old style: tuple unpacking still works
     >>> epsf, fitted_stars = epsf_builder(stars)  # doctest: +REMOTE_DATA
 
-The `~photutils.psf.EPSFBuildResult` object provides useful diagnostic
+The `~photutils.psf.EPSFBuildResults` object provides useful diagnostic
 information about the build process::
 
     >>> result.converged  # doctest: +REMOTE_DATA
