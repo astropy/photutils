@@ -101,7 +101,7 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
     >>> params['x_0'].info.format = '.4f'  # optional format
     >>> params['y_0'].info.format = '.4f'
     >>> params['flux'].info.format = '.4f'
-    >>> print(params)  # doctest: +FLOAT_CMP
+    >>> print(params)
      id   x_0      y_0      flux
     --- -------- -------- --------
       1 125.2010  72.3184 147.9522

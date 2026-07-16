@@ -84,18 +84,18 @@ class CurveOfGrowth(ProfileBase):
     >>> radii = np.arange(1, 26)
     >>> cog = CurveOfGrowth(data, xycen, radii, error=error)
 
-    >>> print(cog.radius)  # doctest: +FLOAT_CMP
+    >>> print(cog.radius)
     [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
      25]
 
-    >>> print(cog.profile)  # doctest: +FLOAT_CMP
+    >>> print(cog.profile)
     [ 135.14750208  514.49674293 1076.4617132  1771.53866121 2510.94382666
      3238.51695898 3907.08459943 4456.90125492 4891.00892262 5236.59326527
      5473.66400376 5643.72239573 5738.24972738 5803.31693644 5842.00525018
      5850.45854739 5855.76123671 5844.9631235  5847.72359025 5843.23189459
      5852.05251106 5875.32009699 5869.86235184 5880.64741302 5872.16333953]
 
-    >>> print(cog.profile_error)  # doctest: +FLOAT_CMP
+    >>> print(cog.profile_error)
     [ 3.72215309  7.44430617 11.16645926 14.88861235 18.61076543 22.33291852
      26.05507161 29.7772247  33.49937778 37.22153087 40.94368396 44.66583704
      48.38799013 52.11014322 55.8322963  59.55444939 63.27660248 66.99875556
@@ -401,18 +401,18 @@ class EnsquaredCurveOfGrowth(ProfileBase):
     >>> half_sizes = np.arange(1, 26)
     >>> ecog = EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=error)
 
-    >>> print(ecog.half_size)  # doctest: +FLOAT_CMP
+    >>> print(ecog.half_size)
     [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
      25]
 
-    >>> print(ecog.profile)  # doctest: +FLOAT_CMP
+    >>> print(ecog.profile)
     [ 171.51682931  640.93965938 1328.92447125 2143.49339746 2954.67817356
      3718.43574763 4357.67409109 4845.38866928 5199.93124392 5481.4874771
      5641.60852855 5752.43870109 5791.01446371 5819.46039533 5832.44691816
      5825.39056549 5834.14890108 5833.42003487 5852.25143102 5856.59671815
      5869.46227464 5872.94734439 5868.92606685 5849.96903786 5839.55875017]
 
-    >>> print(ecog.profile_error)  # doctest: +FLOAT_CMP
+    >>> print(ecog.profile_error)
     [  4.2   8.4  12.6  16.8  21.   25.2  29.4  33.6  37.8  42.   46.2  50.4
       54.6  58.8  63.   67.2  71.4  75.6  79.8  84.   88.2  92.4  96.6 100.8
      105. ]
@@ -724,11 +724,11 @@ class EllipticalCurveOfGrowth(ProfileBase):
     >>> ecog = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
     ...                                theta=np.deg2rad(42), error=error)
 
-    >>> print(ecog.radius)  # doctest: +FLOAT_CMP
+    >>> print(ecog.radius)
     [ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
      25 26 27 28 29 30 31 32 33 34 35 36 37 38 39]
 
-    >>> print(ecog.profile)  # doctest: +FLOAT_CMP
+    >>> print(ecog.profile)
     [   67.39762867   267.711181     588.47524874  1021.31994307
       1546.53867489  2152.12698084  2824.97954482  3541.64650208
       4284.363828    5040.93586551  5777.06397177  6488.33779084
@@ -740,7 +740,7 @@ class EllipticalCurveOfGrowth(ProfileBase):
      11648.27293403 11660.34772581 11662.89065496 11643.07787619
      11630.36674411 11636.61537567 11636.60448497]
 
-    >>> print(ecog.profile_error)  # doctest: +FLOAT_CMP
+    >>> print(ecog.profile_error)
     [  2.63195969   5.26391938   7.89587907  10.52783875  13.15979844
       15.79175813  18.42371782  21.05567751  23.6876372   26.31959688
       28.95155657  31.58351626  34.21547595  36.84743564  39.47939533

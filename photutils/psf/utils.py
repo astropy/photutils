@@ -146,7 +146,7 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     >>> model = CircularGaussianPRF(x_0=22.17, y_0=28.87, fwhm=3.123, flux=9.7)
     >>> data = model(xx, yy)
     >>> fit = fit_2dgaussian(data, fix_fwhm=False, fit_shape=7)
-    >>> phot_tbl = fit.results  # doctest: +FLOAT_CMP
+    >>> phot_tbl = fit.results
     >>> cols = ['x_fit', 'y_fit', 'fwhm_fit', 'flux_fit']
     >>> for col in cols:
     ...     phot_tbl[col].info.format = '.4f'  # optional format
@@ -334,7 +334,7 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     >>> model = CircularGaussianPRF(x_0=22.17, y_0=28.87, fwhm=3.123, flux=9.7)
     >>> data = model(xx, yy)
     >>> fwhm = fit_fwhm(data, fit_shape=7)
-    >>> fwhm  # doctest: +FLOAT_CMP
+    >>> fwhm
     array([3.123])
 
     Fit the FWHMs of multiple sources in an image:
@@ -352,7 +352,7 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     >>> finder_tbl = finder(data)
     >>> xypos = zip(sources['x_0'], sources['y_0'])
     >>> fwhms = fit_fwhm(data, xypos=xypos, fit_shape=7)
-    >>> fwhms  # doctest: +FLOAT_CMP
+    >>> fwhms
     array([5.69467204, 5.21376414, 7.65508658, 3.20255356, 6.66003098])
     """
     with warnings.catch_warnings(record=True) as fit_warnings:

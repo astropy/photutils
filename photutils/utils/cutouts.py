@@ -72,13 +72,13 @@ class CutoutImage:
     >>> from photutils.utils import CutoutImage
     >>> data = np.arange(20.0).reshape(5, 4)
     >>> cutout = CutoutImage(data, (2, 2), (3, 3))
-    >>> print(cutout.data)  # doctest: +FLOAT_CMP
+    >>> print(cutout.data)
     [[ 5.  6.  7.]
      [ 9. 10. 11.]
      [13. 14. 15.]]
 
     >>> cutout2 = CutoutImage(data, (0, 0), (3, 3), mode='partial')
-    >>> print(cutout2.data)  # doctest: +FLOAT_CMP
+    >>> print(cutout2.data)
     [[nan nan nan]
      [nan  0.  1.]
      [nan  4.  5.]]

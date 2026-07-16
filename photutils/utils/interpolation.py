@@ -91,17 +91,17 @@ class ShepardIDWInterpolator:
         >>> x = rng.random(100)  # 100 random values
         >>> y = np.sin(x)
         >>> f = idw(x, y)
-        >>> float(f(0.4))  # doctest: +FLOAT_CMP
+        >>> float(f(0.4))
         0.38937843420912366
-        >>> float(np.sin(0.4))  # doctest: +FLOAT_CMP
+        >>> float(np.sin(0.4))
         0.3894183423086505
 
         >>> xi = rng.random(4)  # 4 random values
-        >>> xi  # doctest: +FLOAT_CMP
+        >>> xi
         array([0.47998792, 0.23237292, 0.80188058, 0.92353016])
-        >>> f(xi)  # doctest: +FLOAT_CMP
+        >>> f(xi)
         array([0.46577097, 0.22837422, 0.71856662, 0.80125391])
-        >>> np.sin(xi)  # doctest: +FLOAT_CMP
+        >>> np.sin(xi)
         array([0.46176846, 0.23028731, 0.71866503, 0.7977353 ])
 
     NOTE: In the last example, ``xi`` may be a ``Nx1`` array instead of
@@ -113,9 +113,9 @@ class ShepardIDWInterpolator:
         >>> pos = rng.random((1000, 2))
         >>> val = np.sin(pos[:, 0] + pos[:, 1])
         >>> f = idw(pos, val)
-        >>> float(f([0.5, 0.6]))  # doctest: +FLOAT_CMP
+        >>> float(f([0.5, 0.6]))
         0.8948257014687874
-        >>> float(np.sin(0.5 + 0.6))  # doctest: +FLOAT_CMP
+        >>> float(np.sin(0.5 + 0.6))
         0.8912073600614354
     """
 

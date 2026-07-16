@@ -431,7 +431,7 @@ class GriddedPSFModel(Fittable2DModel):
         >>> meta['oversampling'] = 4
         >>> nddata = NDData(psfs, meta=meta)
         >>> model = GriddedPSFModel(nddata, flux=1, x_0=0, y_0=0)
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-12.625, upper=12.625)

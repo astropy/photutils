@@ -233,7 +233,7 @@ class GaussianPSF(Fittable2DModel):
         --------
         >>> from photutils.psf import GaussianPSF
         >>> model = GaussianPSF(x_0=0, y_0=0, x_fwhm=2, y_fwhm=3)
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-4.671269901584105, upper=4.671269901584105)
@@ -243,7 +243,7 @@ class GaussianPSF(Fittable2DModel):
             order='C'
         )
         >>> model.bbox_factor = 7
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-5.945252602016134, upper=5.945252602016134)
@@ -583,7 +583,7 @@ class CircularGaussianPSF(Fittable2DModel):
         --------
         >>> from photutils.psf import CircularGaussianPSF
         >>> model = CircularGaussianPSF(x_0=0, y_0=0, fwhm=2)
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-4.671269901584105, upper=4.671269901584105)
@@ -593,7 +593,7 @@ class CircularGaussianPSF(Fittable2DModel):
             order='C'
         )
         >>> model.bbox_factor = 7
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-5.945252602016134, upper=5.945252602016134)
@@ -898,7 +898,7 @@ class GaussianPRF(Fittable2DModel):
         --------
         >>> from photutils.psf import GaussianPRF
         >>> model = GaussianPRF(x_0=0, y_0=0, x_fwhm=2, y_fwhm=3)
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-4.671269901584105, upper=4.671269901584105)
@@ -908,7 +908,7 @@ class GaussianPRF(Fittable2DModel):
             order='C'
         )
         >>> model.bbox_factor = 7
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-5.945252602016134, upper=5.945252602016134)
@@ -1164,7 +1164,7 @@ class CircularGaussianPRF(Fittable2DModel):
         --------
         >>> from photutils.psf import CircularGaussianPRF
         >>> model = CircularGaussianPRF(x_0=0, y_0=0, fwhm=2)
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-4.671269901584105, upper=4.671269901584105)
@@ -1174,7 +1174,7 @@ class CircularGaussianPRF(Fittable2DModel):
             order='C'
         )
         >>> model.bbox_factor = 7
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-5.945252602016134, upper=5.945252602016134)
@@ -1408,7 +1408,7 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         --------
         >>> from photutils.psf import CircularGaussianPRF
         >>> model = CircularGaussianPRF(x_0=0, y_0=0, fwhm=2)
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-4.671269901584105, upper=4.671269901584105)
@@ -1418,7 +1418,7 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
             order='C'
         )
         >>> model.bbox_factor = 7
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-5.945252602016134, upper=5.945252602016134)
@@ -1655,7 +1655,7 @@ class MoffatPSF(Fittable2DModel):
         --------
         >>> from photutils.psf import MoffatPSF
         >>> model = MoffatPSF(x_0=0, y_0=0, alpha=2, beta=3)
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-20.39298114135835, upper=20.39298114135835)
@@ -1665,7 +1665,7 @@ class MoffatPSF(Fittable2DModel):
             order='C'
         )
         >>> model.bbox_factor = 7
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-14.27508679895084, upper=14.27508679895084)
@@ -1904,7 +1904,7 @@ class AiryDiskPSF(Fittable2DModel):
         --------
         >>> from photutils.psf import AiryDiskPSF
         >>> model = AiryDiskPSF(x_0=0, y_0=0, radius=3)
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-25.30997880648709, upper=25.30997880648709)
@@ -1914,7 +1914,7 @@ class AiryDiskPSF(Fittable2DModel):
             order='C'
         )
         >>> model.bbox_factor = 7
-        >>> model.bounding_box  # doctest: +FLOAT_CMP
+        >>> model.bounding_box
         ModelBoundingBox(
             intervals={
                 x: Interval(lower=-17.71698516454096, upper=17.71698516454096)
