@@ -329,6 +329,10 @@ ignore = [
 'scripts/*.py' = [
     'INP001',  # not a package
 ]
+'dev/*' = [
+    'INP001',  # not a package
+    'T201',  # print
+]
 'docs/conf.py' = [
     'ERA001',  # commented-out-code
     'INP001',  # implicit-namespace-package
