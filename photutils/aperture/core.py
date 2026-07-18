@@ -1084,6 +1084,15 @@ class PixelAperture(Aperture):
             Whether each aperture has one or more pixels with nonzero
             aperture weight outside the data.
         """
+        # For the 'exact' method the minimal bounding box is tight (the
+        # aperture is tangent to each bbox side), so a bbox that is
+        # clipped by a data edge always leaves a positive-area sliver of
+        # the aperture outside the data. The precise outside-weight test
+        # therefore agrees exactly with the bbox-clipped candidates, and
+        # no per-source aperture masks need to be built.
+        if method == 'exact':
+            return candidates.copy()
+
         w_out = np.zeros(candidates.shape, dtype=bool)
         idx = np.flatnonzero(candidates)
         if idx.size == 0:

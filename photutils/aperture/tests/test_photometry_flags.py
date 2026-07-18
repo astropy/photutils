@@ -374,18 +374,115 @@ def test_resolve_outside_weights_no_mask_overlap():
     Test that _resolve_outside_weights returns True for a candidate
     whose aperture mask does not actually overlap the data.
 
-    In practice, the caller only ever marks a source as a candidate when
-    its aperture mask does overlap the data, so the mask's bounding box
-    is never actually clipped away entirely. This directly exercises
-    that defensive branch.
+    In practice, the caller only ever marks a source as a candidate
+    when its aperture mask does overlap the data, so the mask's
+    bounding box is never actually clipped away entirely. This
+    directly exercises that defensive branch. A non-'exact' method is
+    used because the 'exact' method takes the gated fast path (see
+    ``_resolve_outside_weights``).
     """
     aper = CircularAperture((-5.0, 12.0), r=3.0)
     shape = (25, 25)
-    mask = aper.to_mask(method='exact', subpixels=5)
+    mask = aper.to_mask(method='center')
     assert mask.get_overlap_slices(shape) == (None, None)
 
     candidates = np.array([True])
-    w_out = aper._resolve_outside_weights(shape, method='exact',
+    w_out = aper._resolve_outside_weights(shape, method='center',
                                           subpixels=5,
                                           candidates=candidates)
     assert w_out[0]
+
+
+def _bbox_clipped_candidates(aper, shape):
+    """
+    Per-source indicator of whether the aperture bounding
+    box overlaps the data but is clipped by a data edge (the
+    ``FLAG_COL_BBOX_CLIPPED`` candidate condition, computed from the
+    aperture bounding boxes).
+    """
+    ny, nx = shape
+    candidates = []
+    for bbox in aper._bbox:
+        overlap = (bbox.ixmin < nx and bbox.ixmax > 0
+                   and bbox.iymin < ny and bbox.iymax > 0)
+        clipped = (bbox.ixmin < 0 or bbox.iymin < 0
+                   or bbox.ixmax > nx or bbox.iymax > ny)
+        candidates.append(overlap and clipped)
+    return np.array(candidates, dtype=bool)
+
+
+def _bruteforce_outside_weights(aper, shape, *, method, subpixels, candidates):
+    """
+    Reference (non-gated) per-source outside-weight test, built from
+    explicit aperture masks. This replicates the mask-based branch of
+    ``_resolve_outside_weights``, including its restriction to the
+    candidate (bbox-clipped) sources.
+    """
+    w_out = np.zeros(candidates.shape, dtype=bool)
+    idx = np.flatnonzero(candidates)
+    if idx.size == 0:
+        return w_out
+
+    sub = aper if aper.isscalar else aper[idx]
+    masks = sub.to_mask(method=method, subpixels=subpixels)
+    if sub.isscalar:
+        masks = [masks]
+    for i, mask in zip(idx, masks, strict=True):
+        n_total = np.count_nonzero(mask.data)
+        slc_large, slc_small = mask.get_overlap_slices(shape)
+        if slc_large is None:
+            w_out[i] = n_total > 0
+        else:
+            n_in = np.count_nonzero(mask.data[slc_small])
+            w_out[i] = n_total > n_in
+    return w_out
+
+
+@pytest.mark.parametrize('factory', APERTURE_FACTORIES)
+def test_resolve_outside_weights_exact_gating(factory):
+    """
+    Test that the gated 'exact' fast path in _resolve_outside_weights
+    matches the explicit per-source mask computation.
+
+    For the 'exact' method the minimal bounding box is tight, so a
+    bbox that is clipped by a data edge always leaves a positive-area
+    aperture sliver outside the data. The gated path returns the
+    bbox-clipped candidates unchanged; this must equal the reference
+    mask-based outside-weight test for a mix of interior, edge, corner,
+    and fully off-image positions.
+    """
+    ny, nx = SHAPE
+    xy = [(12.0, 12.0),  # interior (not a candidate)
+          (0.0, 12.0), (nx - 1.0, 12.0),  # left/right edges
+          (12.0, 0.0), (12.0, ny - 1.0),  # bottom/top edges
+          (0.0, 0.0), (nx - 1.0, ny - 1.0),  # corners
+          (0.0, ny - 1.0), (nx - 1.0, 0.0),  # corners
+          (1.5, 12.0), (12.0, ny - 2.0),  # near edges
+          (-50.0, 12.0)]  # fully off-image (not a candidate)
+    aper = factory(xy)
+
+    candidates = _bbox_clipped_candidates(aper, SHAPE)
+    gated = aper._resolve_outside_weights(SHAPE, method='exact',
+                                          subpixels=5,
+                                          candidates=candidates)
+    brute = _bruteforce_outside_weights(aper, SHAPE, method='exact',
+                                        subpixels=5, candidates=candidates)
+
+    # The gated path returns the candidates unchanged.
+    assert_array_equal(gated, candidates)
+    # That exactly matches the explicit mask-based computation.
+    assert_array_equal(gated, brute)
+
+
+def test_resolve_outside_weights_exact_returns_copy():
+    """
+    Test that the gated 'exact' path returns a copy, not the input
+    candidates array.
+    """
+    aper = CircularAperture([(0.0, 12.0), (12.0, 12.0)], r=3.0)
+    candidates = _bbox_clipped_candidates(aper, SHAPE)
+    w_out = aper._resolve_outside_weights(SHAPE, method='exact',
+                                          subpixels=5,
+                                          candidates=candidates)
+    assert w_out is not candidates
+    assert_array_equal(w_out, candidates)
