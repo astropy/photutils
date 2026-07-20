@@ -233,17 +233,43 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
     `Aperture` object using the measured centroid and then re-run
     `~photutils.aperture.ApertureStats`.
 
-    Most source properties are calculated using the "center"
-    aperture-mask method, which gives aperture weights of 0 or 1. This
-    avoids the need to compute weighted statistics --- the ``data``
-    pixel values are directly used.
+    All properties other than the sum-related ones described below are
+    calculated using the "center" aperture-mask method, which assigns
+    aperture weights of either 0 or 1, so the ``data`` pixel values
+    are used directly and without weighting. This choice reflects a
+    fundamental limitation because, unlike the mean or variance, order
+    statistics (``min``, ``max``, ``median``) and robust estimators
+    (``mad_std``, ``biweight_location``, ``biweight_midvariance``) have
+    no standard, unambiguous definition for pixels with fractional
+    (partial) aperture weights. Accordingly, these quantities cannot be
+    rigorously computed from a weighted aperture footprint.
 
-    The input ``sum_method`` and ``subpixels`` keywords are used
-    to determine the aperture-mask method when calculating the
-    sum-related properties: ``sum``, ``sum_error``, ``sum_aper_area``,
-    ``data_sum_cutout``, and ``error_sum_cutout``. The default is
-    ``sum_method='exact'``, which produces exact aperture-weighted
-    photometry.
+    All properties other than the sum-related ones described below
+    are calculated using the "center" aperture-mask method, which
+    gives aperture weights of 0 or 1, so the ``data`` pixel values
+    are used directly and unweighted. This is due to fundamental
+    limitation. Unlike the mean or variance, order statistics
+    (``min``, ``max``, ``median``) and robust estimators (``mad_std``,
+    ``biweight_location``, ``biweight_midvariance``) have no standard,
+    unambiguous generalization to pixels with fractional (partial)
+    aperture weights, so they cannot be rigorously computed using a
+    weighted footprint.
+
+    The input ``sum_method`` and ``subpixels`` keywords are
+    used to determine the aperture-mask method only for the
+    sum-related properties: ``sum``, ``sum_err``, ``sum_aper_area``,
+    ``data_sum_cutout``, and ``error_sum_cutout`` (also listed in the
+    ``SUM_FOOTPRINT_PROPERTIES`` class attribute). All other properties,
+    including ``mean``, ``median``, ``std``, and the morphological
+    properties, always use the "center" aperture-mask method regardless
+    of ``sum_method``. The default is ``sum_method='exact'``, which
+    produces exact aperture-weighted photometry.
+
+    The sum-related properties have their own separate `sum_flags`
+    quality flags, distinct from the `flags` property used by all
+    other properties. To check for any quality issue across both
+    footprints, combine the two flag columns with a bitwise OR, e.g.,
+    ``aperstats.flags | aperstats.sum_flags``.
 
     The calculated statistics are always float64, regardless of the
     input ``data`` dtype (`~astropy.units.Quantity` values with float64
@@ -286,6 +312,13 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
     >>> print(aperstats2.sum)
     [10177.62548482 36653.97704059]
     """
+
+    # Properties computed using the ``sum_method`` aperture-mask
+    # footprint (set by the ``sum_method``/``subpixels`` keywords).
+    # All other properties use the "center" aperture-mask method.
+    SUM_FOOTPRINT_PROPERTIES = ('sum', 'sum_err', 'sum_aper_area',
+                                'data_sum_cutout', 'error_sum_cutout',
+                                'sum_flags')
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
                  sigma_clip=None, sum_method='exact', subpixels=5, ddof=0,
@@ -1143,7 +1176,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             cutouts.append(cutout)
         return cutouts
 
-    def _make_aperture_cutouts(self, aperture_masks):
+    def _make_aperture_cutouts(self, aperture_masks, *, count_clipped=True):
         """
         Make aperture-weighted cutouts for the data and variance, and
         cutouts for the total mask and aperture mask weights.
@@ -1152,6 +1185,13 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         ----------
         aperture_masks : list of `ApertureMask`
             A list of `ApertureMask` objects.
+
+        count_clipped : bool, optional
+            Whether to count the number of sigma-clipped pixels per
+            source. Only `_footprint_flag_inputs` for the "center"
+            footprint uses this count, so it is skipped (left at 0)
+            for the ``sum_method`` footprint to avoid the wasted
+            computation.
 
         Returns
         -------
@@ -1162,7 +1202,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             flag counts (see the ``FLAG_COL_*`` constants in
             `photutils.aperture._batch_photometry`, with semantics
             identical to the batch drivers), and the number of
-            sigma-clipped pixels.
+            sigma-clipped pixels (always 0 when ``count_clipped`` is
+            `False`).
         """
         data_cutouts = []
         variance_cutouts = []
@@ -1271,7 +1312,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
                     # Define a mask of only the sigma-clipped pixels
                     sigclip_mask = data_sigclip.mask & ~mask_cutout
-                    n_clipped_ = np.count_nonzero(sigclip_mask)
+                    if count_clipped:
+                        n_clipped_ = np.count_nonzero(sigclip_mask)
                     weight_cutout *= ~sigclip_mask
 
                     mask_cutout = data_sigclip.mask
@@ -1318,7 +1360,12 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         and aperture weights using the input ``sum_method`` aperture
         mask method.
         """
-        return self._make_aperture_cutouts(self._aperture_masks)
+        # The sigma-clipped pixel count is not tracked for this
+        # footprint: only the "center" footprint's flags use it (see
+        # `_footprint_flag_inputs`), so counting it here would be wasted
+        # computation.
+        return self._make_aperture_cutouts(self._aperture_masks,
+                                           count_clipped=False)
 
     @lazyproperty
     def _mask_cutout_center(self):
@@ -1605,7 +1652,9 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         The sum properties (``sum``, ``sum_err``, and ``sum_aper_area``)
         have their own separate `sum_flags`. The ``'sigma_clipped'``,
         ``'all_clipped'``, and ``'too_few_pixels'`` flags are evaluated
-        on this footprint.
+        on this footprint. To check for any quality issue across both
+        footprints, combine the two flag columns with a bitwise OR
+        (e.g., ``flags | sum_flags``).
 
         See `~photutils.aperture.decode_aperture_flags` for decoding
         flag values. The flags are:
@@ -1647,7 +1696,9 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         `flags`. The ``'non_finite_error'`` flag is evaluated on this
         footprint. The ``'sigma_clipped'``, ``'all_clipped'``, and
         ``'too_few_pixels'`` flags apply only to the value statistics
-        and are never set here.
+        and are never set here. To check for any quality issue across
+        both footprints, combine the two flag columns with a bitwise OR
+        (e.g., ``flags | sum_flags``).
 
         See `~photutils.aperture.decode_aperture_flags` for decoding
         flag values. The flags are:

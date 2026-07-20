@@ -696,12 +696,22 @@ evaluated on the ``'center'``-method footprint, and includes the
 The :attr:`~photutils.aperture.ApertureStats.sum_flags` property
 reports the flags for the sum properties (``sum``, ``sum_err``, and
 ``sum_aper_area``), evaluated on the ``sum_method`` footprint, and
-includes the ``'non_finite_error'`` flag. Both columns are included
-in the default ``to_table()`` output, and either can be decoded by
-passing ``column='flags'`` (the default) or ``column='sum_flags'``
-to :meth:`~photutils.aperture.ApertureStats.decode_flags`. Note that
-in `~photutils.aperture.ApertureStats` non-finite data values are
-automatically masked, so an aperture containing only NaN values has
+includes the ``'non_finite_error'`` flag. When ``sigma_clip`` is used,
+it is applied independently on each footprint, so the pixels clipped
+for the value statistics may differ from those clipped for the sum
+properties. Only ``flags`` reports whether clipping occurred (via
+the ``'sigma_clipped'``, ``'all_clipped'``, and ``'too_few_pixels'``
+bits); ``sum_flags`` never sets those bits, even though the sum-related
+properties are computed from the sigma-clipped ``sum_method`` footprint.
+
+Both columns are included in the default ``to_table()``
+output, and either can be decoded by passing
+``column='flags'`` (the default) or ``column='sum_flags'`` to
+:meth:`~photutils.aperture.ApertureStats.decode_flags`. To check for
+any quality issue across both footprints, combine the two flag columns
+with a bitwise OR, e.g., ``aperstats.flags | aperstats.sum_flags``.
+Note that in `~photutils.aperture.ApertureStats` non-finite data values
+are automatically masked, so an aperture containing only NaN values has
 ``flags = 48`` (``'non_finite_data'`` + ``'all_masked'``).
 
 
@@ -740,10 +750,13 @@ aperture weights of 0 or 1. This avoids the need to compute weighted
 statistics --- the ``data`` pixel values are directly used.
 
 The ``sum_method`` and ``subpixels`` keywords are used to determine
-the aperture-mask method when calculating the sum-related properties:
-``sum``, ``sum_error``, ``sum_aper_area``, ``data_sum_cutout``, and
-``error_sum_cutout``. The default is ``sum_method='exact'``, which
-produces exact aperture-weighted photometry.
+the aperture-mask method only for the sum-related properties:
+``sum``, ``sum_err``, ``sum_aper_area``, ``data_sum_cutout``, and
+``error_sum_cutout``. All other properties, including ``mean``,
+``median``, ``std``, and the morphological properties, always use the
+"center" aperture-mask method regardless of ``sum_method``. The default
+is ``sum_method='exact'``, which produces exact aperture-weighted
+photometry.
 
 The optional ``local_bkg`` keyword can be used to input the per-pixel
 local background of each source, which will be subtracted before
@@ -752,7 +765,11 @@ computing the aperture statistics.
 The optional ``sigma_clip`` keyword can be used to sigma clip the pixel
 values before computing the source properties. This keyword could be
 used, for example, to compute a sigma-clipped median of pixels in an
-annulus aperture to estimate the local background level.
+annulus aperture to estimate the local background level. Sigma clipping
+is applied independently on the "center" and ``sum_method`` footprints
+described above, so the sum-related properties are also computed from
+sigma-clipped data; see :ref:`aperture_flags` for how this affects the
+``flags`` and ``sum_flags`` properties.
 
 Here is a simple example using a circular aperture at one position.
 Note that like :func:`~photutils.aperture.aperture_photometry`,
