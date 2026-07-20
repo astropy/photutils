@@ -39,82 +39,82 @@ class _PSFFlags(FlagRegistry):
         FlagDefinition(
             bit_value=1,
             name='n_pixels_fit_partial',
-            description=('n_pixels_fit smaller than full fit_shape '
-                         'region'),
+            description=("``'n_pixels_fit'`` smaller than full "
+                         "``'fit_shape'`` region"),
             detailed_description=('The number of fitted pixels '
                                   '(n_pixels_fit) is smaller than the '
                                   'full fit_shape region, indicating '
-                                  'partial PSF fitting'),
+                                  'partial PSF fitting.'),
         ),
         FlagDefinition(
             bit_value=2,
             name='outside_bounds',
             description='fitted position outside input image bounds',
             detailed_description=('The fitted source position is outside the '
-                                  'bounds of the input image'),
+                                  'bounds of the input image.'),
         ),
         FlagDefinition(
             bit_value=4,
             name='negative_flux',
             description='non-positive flux',
             detailed_description=('The fitted flux value is negative or zero, '
-                                  'which is non-physical'),
+                                  'which is non-physical.'),
         ),
         FlagDefinition(
             bit_value=8,
             name='no_convergence',
             description='possible non-convergence',
             detailed_description=('The PSF fitting algorithm may not have '
-                                  'converged to a stable solution'),
+                                  'converged to a stable solution.'),
         ),
         FlagDefinition(
             bit_value=16,
             name='no_covariance',
             description='missing parameter covariance',
             detailed_description=('Parameter covariance matrix is not '
-                                  'available, preventing error estimation'),
+                                  'available, preventing error estimation.'),
         ),
         FlagDefinition(
             bit_value=32,
             name='near_bound',
             description='fitted parameter near a bound',
             detailed_description=('One or more fitted parameters are very '
-                                  'close to their imposed bounds'),
+                                  'close to their imposed bounds.'),
         ),
         FlagDefinition(
             bit_value=64,
             name='no_overlap',
             description='no overlap with data',
             detailed_description=('The source PSF fitting region has no '
-                                  'overlap with valid data pixels'),
+                                  'overlap with valid data pixels.'),
         ),
         FlagDefinition(
             bit_value=128,
             name='fully_masked',
             description='fully masked source',
             detailed_description=('All pixels in the source fitting region '
-                                  'are masked'),
+                                  'are masked.'),
         ),
         FlagDefinition(
             bit_value=256,
             name='too_few_pixels',
             description='too few pixels for fitting',
             detailed_description=('Insufficient unmasked pixels available '
-                                  'for reliable PSF fitting'),
+                                  'for reliable PSF fitting.'),
         ),
         FlagDefinition(
             bit_value=512,
             name='non_finite_position',
             description='non-finite fitted position',
             detailed_description=('The fitted x or y position is NaN or inf, '
-                                  'indicating an invalid or failed fit'),
+                                  'indicating an invalid or failed fit.'),
         ),
         FlagDefinition(
             bit_value=1024,
             name='non_finite_flux',
             description='non-finite fitted flux',
             detailed_description=('The fitted flux value is NaN or inf, '
-                                  'indicating an invalid or failed fit'),
+                                  'indicating an invalid or failed fit.'),
         ),
         FlagDefinition(
             bit_value=2048,
@@ -122,7 +122,7 @@ class _PSFFlags(FlagRegistry):
             description='non-finite local background',
             detailed_description=('The local background value is NaN or '
                                   'inf, so it was not subtracted before '
-                                  'fitting'),
+                                  'fitting.'),
         ),
     ]
 
@@ -165,7 +165,7 @@ def _update_decode_docstring(func):
     func : function
         The decorated function with updated docstring.
     """
-    return update_flag_docstring(func, PSF_FLAGS)
+    return update_flag_docstring(func, PSF_FLAGS, indent=4)
 
 
 @_update_decode_docstring
@@ -199,8 +199,7 @@ def decode_psf_flags(flags, return_bit_values=False):
         List of active flag names (or bit values), or list of lists
         if input is an array. Each string (or integer) represents a
         specific condition that was detected during PSF fitting. If no
-        flags are set, an empty list is returned. Possible flag names
-        are:
+        flags are set, an empty list is returned. Possible flags are:
         <flag_descriptions>
 
     Examples

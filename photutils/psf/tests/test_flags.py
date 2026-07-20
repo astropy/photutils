@@ -296,7 +296,9 @@ def test_psf_flags_get_methods():
 
     # Test get_description
     desc1 = PSF_FLAGS.get_description(1)
-    assert 'n_pixels_fit smaller than full fit_shape region' in desc1
+    assert 'n_pixels_fit' in desc1
+    assert 'smaller than full' in desc1
+    assert 'fit_shape' in desc1
 
     desc8 = PSF_FLAGS.get_description(8)
     assert 'possible non-convergence' in desc8
@@ -476,19 +478,19 @@ def test_psf_classes_docstrings():
         docstring = cls.__call__.__doc__
 
         # Should have flags section
-        assert '* ``flags`` : bitwise flag values' in docstring
+        assert "* ``'flags'`` : The bitwise quality flags" in docstring
 
         # Should have all dynamic flag descriptions
         dynamic_flags = [
-            'n_pixels_fit smaller than full fit_shape region',
-            'fitted position outside input image bounds',
-            'non-positive flux',
-            'possible non-convergence',
-            'missing parameter covariance',
-            'fitted parameter near a bound',
-            'no overlap with data',
-            'fully masked source',
-            'too few pixels for fitting',
+            'indicating partial PSF fitting',
+            'outside the bounds of the input image',
+            'negative or zero, which is non-physical',
+            'may not have converged to a stable solution',
+            'covariance matrix is not available',
+            'very close to their imposed bounds',
+            'no overlap with valid data pixels',
+            'All pixels in the source fitting region are masked',
+            'Insufficient unmasked pixels available for reliable PSF fitting',
         ]
 
         for flag_desc in dynamic_flags:
@@ -508,15 +510,15 @@ def test_decode_psf_flags_docstring():
 
     # Should have all expected flag names in the expected format
     expected_flags = [
-        "``'n_pixels_fit_partial'`` : bit 1",
-        "``'outside_bounds'`` : bit 2",
-        "``'negative_flux'`` : bit 4",
-        "``'no_convergence'`` : bit 8",
-        "``'no_covariance'`` : bit 16",
-        "``'near_bound'`` : bit 32",
-        "``'no_overlap'`` : bit 64",
-        "``'fully_masked'`` : bit 128",
-        "``'too_few_pixels'`` : bit 256",
+        "``'n_pixels_fit_partial'``",
+        "``'outside_bounds'``",
+        "``'negative_flux'``",
+        "``'no_convergence'``",
+        "``'no_covariance'``",
+        "``'near_bound'``",
+        "``'no_overlap'``",
+        "``'fully_masked'``",
+        "``'too_few_pixels'``",
     ]
 
     for flag_desc in expected_flags:
@@ -525,15 +527,15 @@ def test_decode_psf_flags_docstring():
 
     # Should have flag descriptions
     expected_descriptions = [
-        'n_pixels_fit smaller than full fit_shape region',
-        'fitted position outside input image bounds',
-        'non-positive flux',
-        'possible non-convergence',
-        'missing parameter covariance',
-        'fitted parameter near a bound',
-        'no overlap with data',
-        'fully masked source',
-        'too few pixels for fitting',
+        'indicating partial PSF fitting',
+        'outside the bounds of the input image',
+        'negative or zero, which is non-physical',
+        'may not have converged to a stable solution',
+        'covariance matrix is not available',
+        'very close to their imposed bounds',
+        'no overlap with valid data pixels',
+        'All pixels in the source fitting region are masked',
+        'Insufficient unmasked pixels available for reliable PSF fitting',
     ]
 
     for desc in expected_descriptions:
