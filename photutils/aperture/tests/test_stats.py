@@ -163,7 +163,7 @@ class TestApertureStats:
         for prop in apstats1.properties:
             if prop in scalar_props:
                 continue
-            if 'sum' in prop:
+            if 'sum' in prop and prop != 'sum_flags':
                 # Test that these properties are not equal
                 with pytest.raises(AssertionError):
                     assert_equal(getattr(apstats1, prop),
@@ -197,7 +197,7 @@ class TestApertureStats:
         assert apstats[1].sum_err < self.apstats1[1].sum_err
 
         exclude = ('isscalar', 'n_apertures', 'sky_centroid',
-                   'sky_centroid_icrs', 'flags')
+                   'sky_centroid_icrs', 'flags', 'sum_flags')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
             if (prop in exclude or 'bbox' in prop or 'cutout' in prop
@@ -255,7 +255,7 @@ class TestApertureStats:
         assert_equal(apstats._overlap, [True, True, False])
 
         exclude = ('isscalar', 'n_apertures', 'sky_centroid',
-                   'sky_centroid_icrs', 'flags')
+                   'sky_centroid_icrs', 'flags', 'sum_flags')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
             if (prop in exclude or 'bbox' in prop or 'cutout' in prop

@@ -73,15 +73,19 @@ New Features
 
   - Added per-source bitwise quality flags to aperture photometry
     and statistics: ``aperture_photometry`` now includes a ``'flags'``
-    column (or ``'flags_<i>'`` columns for multiple apertures) in the
-    returned table, ``PixelAperture.photometry`` results have a new
-    ``flags`` attribute, and ``ApertureStats`` has new ``flags``
-    and ``decode_flags`` attributes. The flags indicate conditions
-    such as apertures that are partially or fully outside the data,
-    masked or non-finite pixels within the aperture, pixels affected
-    by segmentation masking, sigma-clipped pixels, and too few pixels
-    to compute a statistic. A new ``decode_aperture_flags`` function
-    decodes the flag values into human-readable names. [#2327]
+    column (or ``'flags_<i>'`` columns for multiple apertures)
+    in the returned table, ``PixelAperture.photometry`` results
+    have a new ``flags`` attribute, and ``ApertureStats`` has new
+    ``flags``, ``sum_flags``, and ``decode_flags`` attributes. In
+    ``ApertureStats``, ``flags`` reports the quality flags for the value
+    statistics (the ``'center'``-method footprint) and ``sum_flags``
+    reports the flags for the sum properties (the ``sum_method``
+    footprint). The flags indicate conditions such as apertures that are
+    partially or fully outside the data, masked or non-finite pixels
+    within the aperture, pixels affected by segmentation masking,
+    sigma-clipped pixels, and too few pixels to compute a statistic. A
+    new ``decode_aperture_flags`` function decodes the flag values into
+    human-readable names. [#2327]
 
 - ``photutils.isophote``
 

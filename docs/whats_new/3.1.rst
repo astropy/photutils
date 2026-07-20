@@ -315,11 +315,16 @@ Aperture Photometry Quality Flags
 Aperture photometry and statistics now provide
 per-source bitwise quality flags, unified across
 `~photutils.aperture.aperture_photometry` (a new ``'flags'`` table
-column), `~photutils.aperture.PixelAperture.photometry` (a new ``flags``
-result attribute), and `~photutils.aperture.ApertureStats` (a new
-:attr:`~photutils.aperture.ApertureStats.flags` property, included in
-the default ``to_table()`` columns). A flag value of 0 means that no
-issues were detected. The flags indicate conditions such as:
+column), `~photutils.aperture.PixelAperture.photometry` (a new
+``flags`` result attribute), and `~photutils.aperture.ApertureStats`
+(new :attr:`~photutils.aperture.ApertureStats.flags`
+and :attr:`~photutils.aperture.ApertureStats.sum_flags`
+properties, included in the default ``to_table()`` columns). In
+`~photutils.aperture.ApertureStats`, ``flags`` reports the flags for the
+value statistics (the ``'center'``-method footprint) and ``sum_flags``
+reports the flags for the sum properties (the ``sum_method`` footprint).
+A flag value of 0 means that no issues were detected. The flags indicate
+conditions such as:
 
 * the aperture is partially (``'partial_overlap'``) or fully
   (``'no_overlap'``) outside the data

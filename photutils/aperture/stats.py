@@ -59,9 +59,9 @@ _MAD_STD_SCALE = 1.482602218505602
 
 # Default table columns for `to_table()` output
 DEFAULT_COLUMNS = ['id', 'x_centroid', 'y_centroid', 'sky_centroid',
-                   'sum', 'sum_err', 'sum_aper_area', 'center_aper_area',
-                   'min', 'max', 'mean', 'median', 'mode', 'std',
-                   'mad_std', 'var', 'biweight_location',
+                   'sum', 'sum_err', 'sum_aper_area', 'sum_flags',
+                   'center_aper_area', 'min', 'max', 'mean', 'median',
+                   'mode', 'std', 'mad_std', 'var', 'biweight_location',
                    'biweight_midvariance', 'fwhm', 'semimajor_axis',
                    'semiminor_axis', 'orientation', 'eccentricity',
                    'flags']
@@ -1598,15 +1598,14 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
     def flags(self):
         # numpydoc ignore: RT01
         """
-        The bitwise quality flags for each source.
+        The bitwise quality flags for the value statistics.
 
-        The flags are evaluated on both the "center"-method footprint
-        used by the value statistics and the ``sum_method`` footprint
-        used by the sum properties, and combined bitwise. The
-        ``'non_finite_error'`` flag is evaluated on the ``sum_method``
-        footprint. The ``'sigma_clipped'``, ``'all_clipped'``, and
-        ``'too_few_pixels'`` flags are evaluated on the "center"-method
-        footprint.
+        The flags are evaluated on the "center"-method footprint used
+        by the value statistics (e.g., ``mean``, ``median``, ``std``).
+        The sum properties (``sum``, ``sum_err``, and ``sum_aper_area``)
+        have their own separate `sum_flags`. The ``'sigma_clipped'``,
+        ``'all_clipped'``, and ``'too_few_pixels'`` flags are evaluated
+        on this footprint.
 
         See `~photutils.aperture.decode_aperture_flags` for decoding
         flag values. The flags are:
@@ -1614,11 +1613,10 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         <flag_descriptions>
         """
         # The gather kernel and the center-method cutouts do not
-        # evaluate error values, so the non-finite-error bit is
-        # defined by the sum footprint only
-        center_flags = (self._footprint_flags('center')
-                        & ~APERTURE_FLAGS.NON_FINITE_ERROR)
-        flags = center_flags | self._footprint_flags('sum')
+        # evaluate error values, so the non-finite-error bit is defined
+        # by the sum footprint only (see `sum_flags`).
+        flags = (self._footprint_flags('center')
+                 & ~APERTURE_FLAGS.NON_FINITE_ERROR)
 
         flag_counts, _, n_kept = self._footprint_flag_inputs('center')
         n_valid = flag_counts[:, FLAG_COL_VALID]
@@ -1635,16 +1633,44 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
         return flags
 
-    def decode_flags(self, *, return_bit_values=False):
+    @lazyproperty
+    @as_scalar
+    @_update_method_subpixels_docstring
+    def sum_flags(self):
+        # numpydoc ignore: RT01
+        """
+        The bitwise quality flags for the sum properties.
+
+        The flags are evaluated on the ``sum_method`` footprint
+        used by the sum properties (``sum``, ``sum_err``, and
+        ``sum_aper_area``). The value statistics have their own separate
+        `flags`. The ``'non_finite_error'`` flag is evaluated on this
+        footprint. The ``'sigma_clipped'``, ``'all_clipped'``, and
+        ``'too_few_pixels'`` flags apply only to the value statistics
+        and are never set here.
+
+        See `~photutils.aperture.decode_aperture_flags` for decoding
+        flag values. The flags are:
+
+        <flag_descriptions>
+        """
+        return self._footprint_flags('sum')
+
+    def decode_flags(self, *, column='flags', return_bit_values=False):
         """
         Decode the source quality flags into individual components.
 
         This is a convenience method that calls
-        `~photutils.aperture.decode_aperture_flags` with the `flags`
-        property.
+        `~photutils.aperture.decode_aperture_flags` with the `flags` or
+        `sum_flags` property.
 
         Parameters
         ----------
+        column : {'flags', 'sum_flags'}, optional
+            Which quality flags to decode: ``'flags'`` for the value
+            statistics (default) or ``'sum_flags'`` for the sum
+            properties.
+
         return_bit_values : bool, optional
             If `True`, return the decoded bit flags (integers) instead
             of the flag names (strings).
@@ -1673,7 +1699,12 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         ['masked_pixels']
         ['partial_overlap']
         """
-        return decode_aperture_flags(np.atleast_1d(self.flags),
+        if column not in ('flags', 'sum_flags'):
+            msg = "column must be 'flags' or 'sum_flags'"
+            raise ValueError(msg)
+
+        flags = self.flags if column == 'flags' else self.sum_flags
+        return decode_aperture_flags(np.atleast_1d(flags),
                                      return_bit_values=return_bit_values)
 
     def _get_values(self, array):

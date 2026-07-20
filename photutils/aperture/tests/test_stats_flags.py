@@ -111,17 +111,20 @@ def test_masked_pixels_sum_footprint_only():
     """
     Test that a masked boundary pixel touched only by the exact-method
     sum footprint (its center lies exactly on the aperture boundary)
-    still sets masked_pixels.
+    sets masked_pixels in sum_flags but not in the value-statistics
+    flags.
     """
     data = np.ones(SHAPE)
     aper = CircularAperture((12, 12), r=3.0)
     mask = np.zeros(SHAPE, dtype=bool)
     mask[15, 12] = True  # center at distance exactly 3.0 (boundary)
-    assert _stats_flags(data, aper,
-                        mask=mask) == APERTURE_FLAGS.MASKED_PIXELS
-    # The pixel is excluded from the center footprint
+    stats = ApertureStats(data, aper, mask=mask)
+    assert stats.sum_flags == APERTURE_FLAGS.MASKED_PIXELS
+    # The pixel is excluded from the center (value-statistics) footprint
+    assert stats.flags == 0
     stats = ApertureStats(data, aper, mask=mask, sum_method='center')
     assert stats.flags == 0
+    assert stats.sum_flags == 0
 
 
 @pytest.mark.usefixtures('maybe_mask_path')
@@ -162,9 +165,12 @@ def test_non_finite_error():
     error = np.ones(SHAPE)
     error[12, 12] = np.nan
     aper = CircularAperture((12, 12), r=3.0)
-    assert _stats_flags(data, aper,
-                        error=error) == APERTURE_FLAGS.NON_FINITE_ERROR
-    assert _stats_flags(data, aper) == 0
+    stats = ApertureStats(data, aper, error=error)
+    # non_finite_error is a sum-footprint flag, not a value-statistics
+    # flag, so it appears in sum_flags but not flags
+    assert stats.sum_flags == APERTURE_FLAGS.NON_FINITE_ERROR
+    assert stats.flags == 0
+    assert ApertureStats(data, aper).sum_flags == 0
 
 
 @pytest.mark.usefixtures('maybe_mask_path')
@@ -179,6 +185,10 @@ def test_sigma_clipped():
     sigclip = SigmaClip(sigma=3.0, maxiters=10)
     flags = _stats_flags(data, aper, sigma_clip=sigclip)
     assert flags == APERTURE_FLAGS.SIGMA_CLIPPED
+
+    # Sigma-clip flags apply only to the value statistics, not sum_flags
+    stats = ApertureStats(data, aper, sigma_clip=sigclip)
+    assert not stats.sum_flags & APERTURE_FLAGS.SIGMA_CLIPPED
 
     # Without clipping, no flag is set
     assert _stats_flags(data, aper) == 0
@@ -284,6 +294,7 @@ def test_fast_mask_path_parity():
             slow = ApertureStats(data, aper, **kwargs)
             assert slow._batch_inputs is None
             assert_array_equal(fast.flags, slow.flags)
+            assert_array_equal(fast.sum_flags, slow.sum_flags)
 
 
 def test_flags_in_table_and_properties():
@@ -295,10 +306,13 @@ def test_flags_in_table_and_properties():
     aper = CircularAperture([(12, 12), (-50, 12)], r=3.0)
     stats = ApertureStats(data, aper)
     assert 'flags' in stats.properties
+    assert 'sum_flags' in stats.properties
     tbl = stats.to_table()
     assert 'flags' in tbl.colnames
+    assert 'sum_flags' in tbl.colnames
     expected = [0, APERTURE_FLAGS.NO_OVERLAP | APERTURE_FLAGS.NO_PIXELS]
     assert_array_equal(tbl['flags'], expected)
+    assert_array_equal(tbl['sum_flags'], expected)
 
 
 def test_flags_slicing():
@@ -335,16 +349,25 @@ def test_decode_flags():
     assert decoded == [[APERTURE_FLAGS.MASKED_PIXELS],
                        [APERTURE_FLAGS.PARTIAL_OVERLAP]]
 
+    # Decode the sum flags via the column keyword
+    decoded = stats.decode_flags(column='sum_flags')
+    assert decoded == [['masked_pixels'], ['partial_overlap']]
+
+    match = "column must be 'flags' or 'sum_flags'"
+    with pytest.raises(ValueError, match=match):
+        stats.decode_flags(column='invalid')
+
     # Scalar ApertureStats also returns a list of lists
     stats = ApertureStats(data, CircularAperture((0.0, 12.0), r=3.0))
     assert stats.decode_flags() == [['partial_overlap']]
+    assert stats.decode_flags(column='sum_flags') == [['partial_overlap']]
 
 
 def test_flags_docstring():
     """
     Test that the flags docstring placeholder was substituted.
     """
-    for prop in (ApertureStats.flags,):
+    for prop in (ApertureStats.flags, ApertureStats.sum_flags):
         docstring = prop.__doc__
         assert '<flag_descriptions>' not in docstring
         assert "**1** (``'no_overlap'``)" in docstring

@@ -686,12 +686,23 @@ method::
     ['partial_overlap']
     ['no_overlap', 'no_pixels']
 
-For `~photutils.aperture.ApertureStats`, the flags are evaluated on
-both the ``'center'``-method footprint used by the value statistics and
-the ``sum_method`` footprint used by the sum properties, and combined
-bitwise. Note that in `~photutils.aperture.ApertureStats` non-finite
-data values are automatically masked, so an aperture containing only NaN
-values has ``flags = 48`` (``'non_finite_data'`` + ``'all_masked'``).
+For `~photutils.aperture.ApertureStats`, the value statistics
+and the sum properties are measured on two different
+footprints, so they have separate flag columns. The
+:attr:`~photutils.aperture.ApertureStats.flags` property reports the
+flags for the value statistics (e.g., ``mean``, ``median``, ``std``),
+evaluated on the ``'center'``-method footprint, and includes the
+``'sigma_clipped'``, ``'all_clipped'``, and ``'too_few_pixels'`` flags.
+The :attr:`~photutils.aperture.ApertureStats.sum_flags` property
+reports the flags for the sum properties (``sum``, ``sum_err``, and
+``sum_aper_area``), evaluated on the ``sum_method`` footprint, and
+includes the ``'non_finite_error'`` flag. Both columns are included
+in the default ``to_table()`` output, and either can be decoded by
+passing ``column='flags'`` (the default) or ``column='sum_flags'``
+to :meth:`~photutils.aperture.ApertureStats.decode_flags`. Note that
+in `~photutils.aperture.ApertureStats` non-finite data values are
+automatically masked, so an aperture containing only NaN values has
+``flags = 48`` (``'non_finite_data'`` + ``'all_masked'``).
 
 
 .. _photutils-aperture-stats:
