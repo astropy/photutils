@@ -32,6 +32,7 @@ from photutils.aperture.flags import APERTURE_FLAGS, _counts_to_flag_bits
 from photutils.aperture.mask import ApertureMask
 from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs)
+from photutils.utils._flags import define_flag_docstring
 
 __all__ = ['Aperture', 'ApertureResults', 'PixelAperture', 'SkyAperture']
 
@@ -116,10 +117,7 @@ mask_method : {'none', 'mask', 'source_only', 'correct'}, optional
 # Bullet list of the aperture quality flags, generated from the central
 # flag registry, used in docstrings via the ``flag_descriptions``
 # placeholder.
-_FLAG_DESCRIPTIONS_DOC = '\n'.join(
-    f"* ``'{flag_def.name}'`` : bit {flag_def.bit_value}, "
-    f'{flag_def.description}'
-    for flag_def in APERTURE_FLAGS.FLAG_DEFINITIONS)
+_FLAG_DESCRIPTIONS_DOC = '\n'.join(define_flag_docstring(APERTURE_FLAGS))
 
 # Mapping of placeholder tags to their replacement text. Each tag must
 # appear alone on its own line in a docstring; the leading indentation
@@ -199,7 +197,8 @@ class ApertureResults:
 
     flags : `~numpy.ndarray`
         The bitwise quality flags for each aperture. See
-        `~photutils.aperture.decode_aperture_flags` for decoding.
+        `~photutils.aperture.decode_aperture_flags` for decoding flag
+        values.
     """
 
     aperture_sum: np.ndarray

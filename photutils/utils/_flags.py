@@ -226,13 +226,50 @@ class FlagRegistry:
         return self.get_definition(bit_value).detailed_description
 
 
-def update_flag_docstring(func, registry,
+def define_flag_docstring(registry, *, indent=0):
+    """
+    Generate a bullet list of flag names, bit values, and descriptions.
+
+    Parameters
+    ----------
+    registry : `FlagRegistry`
+        The flag registry providing the flag definitions.
+
+    indent : int, optional
+        Number of spaces to indent the bullet list.
+
+    Returns
+    -------
+    flag_descriptions : list of str
+        List of strings representing the bullet list of flag bit values,
+        names, and brief descriptions.
+    """
+    if not isinstance(registry, FlagRegistry):
+        msg = 'registry must be an instance of FlagRegistry'
+        raise TypeError(msg)
+
+    indent_str = ' ' * indent
+
+    # Generate the flag descriptions
+    flag_descriptions = ['', f'{indent_str}* **0** : No flags set.']
+
+    for flag_def in registry.FLAG_DEFINITIONS:
+        name = flag_def.name
+        bit_val = flag_def.bit_value
+        desc = flag_def.detailed_description
+        line = f"{indent_str}* **{bit_val}** (``'{name}'``) : {desc}"
+        flag_descriptions.append(line)
+
+    return flag_descriptions
+
+
+def update_flag_docstring(func, registry, *, indent=0,
                           placeholder='<flag_descriptions>'):
     """
     Update a function docstring with flag documentation.
 
     The ``placeholder`` text in the function docstring is replaced with
-    a bullet list of the flag names, bit values, and brief descriptions
+    a bullet list of the flag bit values, names, and brief descriptions
     generated from the ``registry``.
 
     Parameters
@@ -242,6 +279,9 @@ def update_flag_docstring(func, registry,
 
     registry : `FlagRegistry`
         The flag registry providing the flag definitions.
+
+    indent : int, optional
+        Number of spaces to indent the bullet list.
 
     placeholder : str, optional
         The placeholder text to replace in the docstring.
@@ -257,16 +297,7 @@ def update_flag_docstring(func, registry,
     docstring = func.__doc__
 
     if placeholder in docstring:
-        # Generate the flag descriptions
-        flag_descriptions = ['']
-
-        indent = ' ' * 4
-        for flag_def in registry.FLAG_DEFINITIONS:
-            name = flag_def.name
-            bit_val = flag_def.bit_value
-            desc = flag_def.description
-            line = f"{indent}- ``'{name}'`` : bit {bit_val}, {desc}"
-            flag_descriptions.append(line)
+        flag_descriptions = define_flag_docstring(registry, indent=indent)
 
         # Replace the placeholder with the flag descriptions
         flag_text = '\n'.join(flag_descriptions)

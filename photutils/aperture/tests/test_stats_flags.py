@@ -344,6 +344,7 @@ def test_flags_docstring():
     """
     Test that the flags docstring placeholder was substituted.
     """
-    docstring = ApertureStats.flags.__doc__
-    assert '<flag_descriptions>' not in docstring
-    assert "``'no_overlap'`` : bit 1" in docstring
+    for prop in (ApertureStats.flags,):
+        docstring = prop.__doc__
+        assert '<flag_descriptions>' not in docstring
+        assert "**1** (``'no_overlap'``)" in docstring

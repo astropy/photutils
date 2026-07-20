@@ -48,7 +48,7 @@ class _ApertureFlags(FlagRegistry):
             detailed_description=('The aperture is fully outside the '
                                   'data array: no pixel with nonzero '
                                   'aperture weight falls inside the '
-                                  'data'),
+                                  'data.'),
         ),
         FlagDefinition(
             bit_value=2,
@@ -57,7 +57,7 @@ class _ApertureFlags(FlagRegistry):
             detailed_description=('The aperture is partially outside '
                                   'the data array: one or more pixels '
                                   'with nonzero aperture weight fall '
-                                  'outside the data'),
+                                  'outside the data.'),
         ),
         FlagDefinition(
             bit_value=4,
@@ -68,7 +68,7 @@ class _ApertureFlags(FlagRegistry):
                                   'e.g., a fully off-image aperture or '
                                   'a tiny aperture that contains no '
                                   'pixel (or subpixel) centers with '
-                                  'the "center" or "subpixel" methods'),
+                                  'the "center" or "subpixel" methods.'),
         ),
         FlagDefinition(
             bit_value=8,
@@ -76,7 +76,7 @@ class _ApertureFlags(FlagRegistry):
             description='masked pixels within the aperture',
             detailed_description=('One or more input-masked pixels '
                                   '(``mask`` keyword) have nonzero '
-                                  'aperture weight'),
+                                  'aperture weight.'),
         ),
         FlagDefinition(
             bit_value=16,
@@ -86,7 +86,7 @@ class _ApertureFlags(FlagRegistry):
                                   'none are valid: every nonzero-weight '
                                   'pixel inside the data is masked, '
                                   'non-finite, or excluded by '
-                                  'segmentation masking'),
+                                  'segmentation masking.'),
         ),
         FlagDefinition(
             bit_value=32,
@@ -94,7 +94,7 @@ class _ApertureFlags(FlagRegistry):
             description='non-finite data values within the aperture',
             detailed_description=('One or more unmasked data values '
                                   '(NaN or inf) with nonzero aperture '
-                                  'weight are non-finite'),
+                                  'weight are non-finite.'),
         ),
         FlagDefinition(
             bit_value=64,
@@ -102,7 +102,7 @@ class _ApertureFlags(FlagRegistry):
             description='non-finite error values within the aperture',
             detailed_description=('One or more unmasked error values '
                                   '(NaN or inf) with nonzero aperture '
-                                  'weight are non-finite'),
+                                  'weight are non-finite.'),
         ),
         FlagDefinition(
             bit_value=128,
@@ -111,7 +111,7 @@ class _ApertureFlags(FlagRegistry):
             detailed_description=('One or more pixels within the '
                                   'aperture were excluded, restricted, '
                                   'or corrected due to neighboring '
-                                  'sources in the segmentation image'),
+                                  'sources in the segmentation image.'),
         ),
         FlagDefinition(
             bit_value=256,
@@ -121,7 +121,7 @@ class _ApertureFlags(FlagRegistry):
                                   'or more neighbor-source pixels could '
                                   'not be corrected (the mirror pixel '
                                   'was unavailable) and were excluded '
-                                  'instead'),
+                                  'instead.'),
         ),
         FlagDefinition(
             bit_value=512,
@@ -129,14 +129,14 @@ class _ApertureFlags(FlagRegistry):
             description='sigma-clipped pixels within the aperture',
             detailed_description=('One or more pixels within the '
                                   'aperture were rejected by sigma '
-                                  'clipping'),
+                                  'clipping.'),
         ),
         FlagDefinition(
             bit_value=1024,
             name='all_clipped',
             description='all pixels within the aperture were sigma clipped',
             detailed_description=('All valid pixels within the aperture '
-                                  'were rejected by sigma clipping'),
+                                  'were rejected by sigma clipping.'),
         ),
         FlagDefinition(
             bit_value=2048,
@@ -147,7 +147,7 @@ class _ApertureFlags(FlagRegistry):
                                   'requested statistic (e.g., the '
                                   'variance and standard deviation are '
                                   'undefined when the number of valid '
-                                  'pixels is not larger than ``ddof``)'),
+                                  'pixels is not larger than ``ddof``).'),
         ),
     ]
 
@@ -177,7 +177,7 @@ def _update_decode_docstring(func):
     func : function
         The decorated function with updated docstring.
     """
-    return update_flag_docstring(func, APERTURE_FLAGS)
+    return update_flag_docstring(func, APERTURE_FLAGS, indent=4)
 
 
 @_update_decode_docstring
@@ -210,7 +210,7 @@ def decode_aperture_flags(flags, *, return_bit_values=False):
         List of active flag names (or bit values), or list of lists
         if the input is an array. Each string (or integer) represents
         a specific condition that was detected. If no flags are
-        set, an empty list is returned. Possible flag names are:
+        set, an empty list is returned. Possible flags are:
         <flag_descriptions>
 
     Examples

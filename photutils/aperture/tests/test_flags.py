@@ -210,5 +210,5 @@ def test_decode_aperture_flags_docstring():
     assert '<flag_descriptions>' not in docstring
 
     for name, bit_value in EXPECTED_FLAGS.items():
-        expected = f"``'{name}'`` : bit {bit_value}"
+        expected = f"**{bit_value}** (``'{name}'``)"
         assert expected in docstring
