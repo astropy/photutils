@@ -1,32 +1,78 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-"""
-Fixtures for the photutils PSF converters.
 
-Each fixture returns a tuple of ``(psf_instance, parameter_names)``,
-where ``parameter_names`` is the list of attributes to compare in
-round-trip tests.
 """
-
+Tests for the photutils PSF converters.
+"""
 import pytest
-from astropy import units as u
 
-from photutils.psf import AiryDiskPSF
-
-AIRY_DISK_PARAMETERS = ['flux', 'x_0', 'y_0', 'radius', 'bbox_factor']
+from photutils.converters.tests import examples
 
 
-@pytest.fixture(params=['no_units', 'units'], ids=['no_units', 'units'])
-def airy_disk_psf(request):
-    """
-    Return an AiryDiskPSF instance and its parameter names.
+@pytest.fixture
+def airy_disk_units():
+    return examples.airy_disk_units()
 
-    Parametrized to cover both unit-bearing and unit-less inputs.
-    """
-    if request.param == 'units':
-        psf = AiryDiskPSF(flux=1 * u.Jy, x_0=0 * u.arcsec,
-                          y_0=0 * u.arcsec, radius=1 * u.arcsec,
-                          bbox_factor=2)
-    else:
-        psf = AiryDiskPSF(flux=2, x_0=1, y_0=1, radius=2, bbox_factor=3)
 
-    return psf, AIRY_DISK_PARAMETERS
+@pytest.fixture
+def airy_disk():
+    return examples.airy_disk()
+
+
+@pytest.fixture
+def circular_gaussian_prf_units():
+    return examples.circular_gaussian_prf_units()
+
+
+@pytest.fixture
+def circular_gaussian_prf():
+    return examples.circular_gaussian_prf()
+
+
+@pytest.fixture
+def circular_gaussian_psf_units():
+    return examples.circular_gaussian_psf_units()
+
+
+@pytest.fixture
+def circular_gaussian_psf():
+    return examples.circular_gaussian_psf()
+
+
+@pytest.fixture
+def gaussian_prf_units():
+    return examples.gaussian_prf_units()
+
+
+@pytest.fixture
+def gaussian_prf():
+    return examples.gaussian_prf()
+
+
+@pytest.fixture
+def gaussian_psf_units():
+    return examples.gaussian_psf_units()
+
+
+@pytest.fixture
+def gaussian_psf():
+    return examples.gaussian_psf()
+
+
+@pytest.fixture
+def moffat_psf_units():
+    return examples.moffat_psf_units()
+
+
+@pytest.fixture
+def moffat_psf():
+    return examples.moffat_psf()
+
+
+@pytest.fixture
+def image_psf():
+    return examples.image_psf()
+
+
+@pytest.fixture
+def gridded_psf():
+    return examples.gridded_psf()
