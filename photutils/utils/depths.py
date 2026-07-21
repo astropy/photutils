@@ -302,7 +302,7 @@ class ImageDepth:
             calculated from the flux limit and the input ``zeropoint``.
         """
         # Prevent circular import
-        from photutils.aperture import CircularAperture
+        from photutils.aperture import AperturePhotometry, CircularAperture
 
         if mask is None or not np.any(mask):
             all_xycoords = self._make_all_coords_no_mask(data.shape)
@@ -341,7 +341,7 @@ class ImageDepth:
 
             apers = CircularAperture(xycoords, r=self.aper_radius)
             apertures.append(apers)
-            fluxes, _ = apers.photometry(data)
+            fluxes = AperturePhotometry(data, apers).flux
             if self.sigma_clip is not None:
                 fluxes = self.sigma_clip(fluxes, masked=False)  # ndarray
             self.fluxes.append(fluxes)

@@ -283,15 +283,15 @@ class AperturePhotometry:
     @lazyproperty
     def _photometry_results(self):
         """
-        The per-aperture `~photutils.aperture.ApertureResults`, one for
-        each input aperture.
+        The per-aperture photometry result objects, one for each input
+        aperture.
         """
-        return [aper.photometry(
+        return [aper._photometry(
             self._data, error=self._error, mask=self._mask,
             method=self.method, subpixels=self.subpixels,
             segmentation_image=self._segmentation,
             labels=self._seg_labels, mask_method=self.mask_method,
-            _mask_nonfinite=True)
+            mask_nonfinite=True)
             for aper in self._pixel_apertures]
 
     @lazyproperty
@@ -365,7 +365,7 @@ class AperturePhotometry:
         The values are always float64, regardless of the input ``data``
         dtype (a `~astropy.units.Quantity` if ``data`` has units).
         """
-        values = self._stack('aperture_sum')
+        values = self._stack('flux')
         if self._data_unit is not None:
             values <<= self._data_unit
         return values
@@ -379,7 +379,7 @@ class AperturePhotometry:
         dtype (a `~astropy.units.Quantity` if ``data`` has units). If the
         input ``error`` is `None`, this is filled with NaN values.
         """
-        values = self._stack('aperture_sum_err')
+        values = self._stack('flux_err')
         if self._data_unit is not None:
             values <<= self._data_unit
         return values
@@ -567,16 +567,16 @@ def aperture_photometry(data, apertures, error=None, mask=None,
           The sky coordinates of the input aperture center(s). Returned
           if a ``wcs`` is input.
 
-        * ``'aperture_sum'``:
+        * ``'flux'``:
           The sum of the values within the aperture(s). The values
           are always float64, regardless of the input ``data`` dtype
           (a `~astropy.units.Quantity` with float64 values if ``data``
           has units).
 
-        * ``'aperture_sum_err'``:
-          The corresponding uncertainty in the ``'aperture_sum'``
-          values (always float64). If the input ``error`` is `None`,
-          this column is filled with NaN values.
+        * ``'flux_err'``:
+          The corresponding uncertainty in the ``'flux'`` values (always
+          float64). If the input ``error`` is `None`, this column is
+          filled with NaN values.
 
         * ``'area'``:
           The total unmasked overlap area of the aperture(s)
@@ -595,10 +595,10 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
           <flag_descriptions>
 
-        If multiple apertures are input, the ``'aperture_sum'``,
-        ``'aperture_sum_err'``, ``'area'``, and ``'flags'`` columns will
-        have a ``'_i'`` suffix (e.g., ``'aperture_sum_0'``), where ``i``
-        is the index of the aperture in the input list.
+        If multiple apertures are input, the ``'flux'``, ``'flux_err'``,
+        ``'area'``, and ``'flags'`` columns will have a ``'_i'`` suffix
+        (e.g., ``'flux_0'``), where ``i`` is the index of the aperture
+        in the input list.
 
         The table metadata includes the Astropy and Photutils version
         numbers and the `aperture_photometry` calling arguments.
@@ -682,10 +682,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
             msg = 'Input apertures must all have identical positions'
             raise ValueError(msg)
 
-    # Validate the segmentation-masking inputs and resolve the
-    # per-aperture source labels once (the resolved labels are passed
-    # explicitly to PixelAperture.photometry to avoid repeated
-    # auto-lookups and warnings).
+    # Validate the segmentation-masking inputs
     segmentation, labels = process_segmentation_inputs(
         segmentation_image, labels, mask_method,
         np.atleast_2d(positions), np.shape(data))
@@ -719,28 +716,34 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     if wcs is not None and not skyaper:
         tbl['sky_center'] = wcs.pixel_to_world(*np.transpose(positions))
 
-    sum_key_main = 'aperture_sum'
-    sum_err_key_main = 'aperture_sum_err'
+    flux_key_main = 'flux'
+    flux_err_key_main = 'flux_err'
     area_key_main = 'area'
     flags_key_main = 'flags'
+    column_map = {
+        flux_key_main: 'aperture_sum',
+        flux_err_key_main: 'aperture_sum_err',
+    }
     for i, aper in enumerate(apertures):
-        result = aper.photometry(
+        result = aper._photometry(
             data, error=error, mask=mask, method=method, subpixels=subpixels,
             segmentation_image=segmentation, labels=labels,
             mask_method=mask_method)
 
-        sum_key = sum_key_main
-        sum_err_key = sum_err_key_main
+        # Apply column name mapping for legacy column names
+        flux_key = column_map.get(flux_key_main, flux_key_main)
+        flux_err_key = column_map.get(flux_err_key_main, flux_err_key_main)
+
         area_key = area_key_main
         flags_key = flags_key_main
         if not single_aperture:
-            sum_key += f'_{i}'
-            sum_err_key += f'_{i}'
+            flux_key += f'_{i}'
+            flux_err_key += f'_{i}'
             area_key += f'_{i}'
             flags_key += f'_{i}'
 
-        tbl[sum_key] = result.aperture_sum
-        tbl[sum_err_key] = result.aperture_sum_err
+        tbl[flux_key] = result.flux
+        tbl[flux_err_key] = result.flux_err
         tbl[area_key] = result.area
         tbl[flags_key] = result.flags
         tbl[flags_key].info.description = (

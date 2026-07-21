@@ -1,7 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
 Tests for segmentation-based masking of aperture photometry, shared
-by `aperture_photometry`, `PixelAperture.photometry`, and
+by `aperture_photometry`, `PixelAperture._photometry`, and
 `ApertureStats`.
 """
 
@@ -15,7 +15,8 @@ from photutils.aperture._batch_photometry import (SHAPE_CIRCLE,
 from photutils.aperture._segmentation import (make_segmentation_exclusion,
                                               process_segmentation_inputs)
 from photutils.aperture.circle import CircularAperture
-from photutils.aperture.photometry import aperture_photometry
+from photutils.aperture.photometry import (AperturePhotometry,
+                                           aperture_photometry)
 from photutils.aperture.polygon import PolygonAperture
 from photutils.aperture.stats import ApertureStats
 from photutils.segmentation import SegmentationImage
@@ -177,16 +178,16 @@ class TestAperturePhotometry:
                                         mask_method='none')
 
         labels = [1]
-        batch_sum, batch_err = aper.photometry(
+        batch = aper._photometry(
             data, error=error, mask=mask, segmentation_image=segm,
             labels=labels, mask_method='correct')
         mask_sum, mask_err, _area, *_ = aper._mask_photometry(
             data, error=error, mask=mask, method='exact', subpixels=5,
             segmentation=segm.astype(np.intp), labels=labels,
             mask_method='correct')
-        assert_allclose(batch_sum, mask_sum, rtol=1e-12)
-        assert_allclose(batch_err, mask_err, rtol=1e-12)
-        assert batch_sum[0] != none_phot['aperture_sum'][0]
+        assert_allclose(batch.flux, mask_sum, rtol=1e-12)
+        assert_allclose(batch.flux_err, mask_err, rtol=1e-12)
+        assert batch.flux[0] != none_phot['aperture_sum'][0]
 
     def test_polygon_mask_path(self):
         # Polygon apertures have no batch driver, exercising the mask
@@ -242,14 +243,14 @@ class TestPhotometry:
         data, segm = make_scene()
         aper = CircularAperture([(21, 21), (28, 22)], r=6)
         labels = [1, 2]
-        sums, _ = aper.photometry(data, segmentation_image=segm,
-                                  labels=labels,
-                                  mask_method='mask')
+        result = AperturePhotometry(data, aper, segmentation_image=segm,
+                                    labels=labels, mask_method='mask')
         for idx, label in enumerate(labels):
             manual_mask = (segm > 0) & (segm != label)
-            ref, _ = CircularAperture(aper.positions[idx], r=6).photometry(
-                data, mask=manual_mask)
-            assert_allclose(sums[idx], ref[0])
+            ref = AperturePhotometry(
+                data, CircularAperture(aper.positions[idx], r=6),
+                mask=manual_mask)
+            assert_allclose(result.flux[idx], ref.flux[0])
 
 
 class TestApertureStats:
@@ -468,12 +469,12 @@ class TestBatchDriverSegmentation:
         aper = CircularAperture(positions, r=8)
         labels = np.array([1], dtype=np.intp)
 
-        batch_sum, batch_err = aper.photometry(
+        batch = aper._photometry(
             data, error=error, mask=mask, segmentation_image=segm,
             labels=labels, mask_method='correct')
         mask_sum, mask_err, _area, *_ = aper._mask_photometry(
             data, error=error, mask=mask, method='exact', subpixels=5,
             segmentation=segm, labels=labels,
             mask_method='correct')
-        assert_allclose(batch_sum, mask_sum, rtol=1e-12)
-        assert_allclose(batch_err, mask_err, rtol=1e-12)
+        assert_allclose(batch.flux, mask_sum, rtol=1e-12)
+        assert_allclose(batch.flux_err, mask_err, rtol=1e-12)

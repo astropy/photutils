@@ -132,7 +132,7 @@ class TestPixelAperture:
 
 class TestPixelAperturePhotometry:
     """
-    Tests for error-handling branches of PixelAperture.photometry.
+    Tests for error-handling branches of PixelAperture._photometry.
     """
 
     def setup_method(self):
@@ -149,7 +149,7 @@ class TestPixelAperturePhotometry:
         """
         match = 'data must be a 2D array'
         with pytest.raises(ValueError, match=match):
-            self.aper.photometry(np.ones(20))
+            self.aper._photometry(np.ones(20))
 
     def test_photometry_error_shape_mismatch(self):
         """
@@ -158,7 +158,7 @@ class TestPixelAperturePhotometry:
         """
         match = 'error and data must have the same shape'
         with pytest.raises(ValueError, match=match):
-            self.aper.photometry(self.data, error=np.ones((5, 5)))
+            self.aper._photometry(self.data, error=np.ones((5, 5)))
 
     def test_photometry_unit_mismatch_error(self):
         """
@@ -169,43 +169,28 @@ class TestPixelAperturePhotometry:
 
         match = 'they both must have the same units'
         with pytest.raises(ValueError, match=match):
-            self.aper.photometry(
+            self.aper._photometry(
                 self.data * u.Jy,
                 error=self.data * u.ct,
             )
 
     def test_photometry_basic(self):
         """
-        Test that photometry returns the expected aperture sum for a
-        uniform data array with no error input, and that the returned
-        error array has the same length as the flux array, filled with
-        NaN.
+        Test that photometry returns the expected flux for a uniform
+        data array with no error input, and that the returned error
+        array has the same length as the flux array, filled with NaN.
         """
-        sums, errs = self.aper.photometry(self.data)
-        assert_allclose(sums[0], np.pi * 9, rtol=1e-3)
-        assert len(errs) == len(sums)
-        assert_allclose(errs, np.nan)
-
-    def test_photometry_result_backward_compatible(self):
-        """
-        Test that the photometry result unpacks as a 2-tuple and
-        supports len() and integer indexing like the legacy tuple.
-        """
-        result = self.aper.photometry(self.data)
-        assert len(result) == 2
-
-        sums, errs = result
-        assert_allclose(sums, result.aperture_sum)
-        assert_allclose(errs, result.aperture_sum_err, equal_nan=True)
-        assert_allclose(result[0], result.aperture_sum)
-        assert_allclose(result[1], result.aperture_sum_err, equal_nan=True)
+        result = self.aper._photometry(self.data)
+        assert_allclose(result.flux, np.pi * 9, rtol=1e-3)
+        assert len(result.flux_err) == len(result.flux)
+        assert_allclose(result.flux_err, np.nan)
 
     def test_photometry_area_matches_area_overlap(self):
         """
         Test that the result area matches area_overlap for a simple
         non-masked, fully-overlapping aperture.
         """
-        result = self.aper.photometry(self.data)
+        result = self.aper._photometry(self.data)
         expected = self.aper.area_overlap(self.data)
         assert result.area.unit == u.pix**2
         assert_allclose(result.area.value, expected)
@@ -216,7 +201,7 @@ class TestPixelAperturePhotometry:
         with the data.
         """
         aper = CircularAperture((-50, -50), r=3)
-        result = aper.photometry(self.data)
+        result = aper._photometry(self.data)
         assert np.isnan(result.area.value).all()
 
     def test_photometry_area_units(self):
@@ -224,11 +209,11 @@ class TestPixelAperturePhotometry:
         Test that the result area always has units of pix**2 regardless
         of whether the data/error are Quantity or plain arrays.
         """
-        result = self.aper.photometry(self.data)
+        result = self.aper._photometry(self.data)
         assert result.area.unit == u.pix**2
 
-        result_q = self.aper.photometry(self.data * u.Jy,
-                                        error=self.data * u.Jy)
+        result_q = self.aper._photometry(self.data * u.Jy,
+                                         error=self.data * u.Jy)
         assert result_q.area.unit == u.pix**2
         assert_allclose(result.area.value, result_q.area.value,
                         equal_nan=True)
@@ -253,16 +238,18 @@ class TestPixelAperturePhotometry:
     def test_do_photometry_deprecated(self):
         """
         Test that the deprecated do_photometry method emits a
-        deprecation warning and returns the same results as photometry.
+        deprecation warning and returns a plain (flux, flux_err)
+        2-tuple matching the private photometry engine.
         """
         error = np.full(self.data.shape, 0.1)
-        expected = self.aper.photometry(self.data, error=error)
-        match = r'Use photometry instead'
+        expected = self.aper._photometry(self.data, error=error)
+        match = r'Use AperturePhotometry instead'
         with pytest.warns(AstropyDeprecationWarning, match=match):
             result = self.aper.do_photometry(self.data, error=error)
-        assert_allclose(result.aperture_sum, expected.aperture_sum)
-        assert_allclose(result.aperture_sum_err, expected.aperture_sum_err)
-        assert_allclose(result.area.value, expected.area.value)
+        assert len(result) == 2
+        flux, flux_err = result
+        assert_allclose(flux, expected.flux)
+        assert_allclose(flux_err, expected.flux_err)
 
 
 class TestApertureReprStr:

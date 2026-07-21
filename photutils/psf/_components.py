@@ -21,7 +21,7 @@ from astropy.table import QTable, Table, hstack, join
 from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
 
-from photutils.aperture import CircularAperture
+from photutils.aperture import AperturePhotometry, CircularAperture
 from photutils.datasets import make_model_image as _make_model_image
 from photutils.utils._deprecation import DeprecatedColumnQTable
 from photutils.utils._misc import _get_meta
@@ -481,8 +481,7 @@ class PSFDataProcessor:
         y_pos = init_params[self.param_mapper.init_colnames['y']]
         apertures = CircularAperture(zip(x_pos, y_pos, strict=True),
                                      r=self.aperture_radius)
-        flux, _ = apertures.photometry(data, mask=mask)
-        return flux
+        return AperturePhotometry(data, apertures, mask=mask).flux
 
     def find_sources_if_needed(self, data, mask, init_params):
         """

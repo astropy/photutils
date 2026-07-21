@@ -11,6 +11,7 @@ from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture.core import _update_method_subpixels_docstring
+from photutils.aperture.photometry import AperturePhotometry
 from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._stats import nanmax, nansum
@@ -193,9 +194,10 @@ class ProfileBase(metaclass=abc.ABCMeta):
                 flux, flux_err = [0.0], [0.0]
                 area = 0.0
             else:
-                flux, flux_err = aperture.photometry(
-                    self.data, error=self.error, mask=self.mask,
+                result = AperturePhotometry(
+                    self.data, aperture, error=self.error, mask=self.mask,
                     method=self.method, subpixels=self.subpixels)
+                flux, flux_err = result.flux, result.flux_err
                 area = aperture.area_overlap(self.data, mask=self.mask,
                                              method=self.method,
                                              subpixels=self.subpixels)

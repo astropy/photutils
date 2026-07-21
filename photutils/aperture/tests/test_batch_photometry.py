@@ -151,15 +151,15 @@ def test_readonly_arrays(method, subpixels):
 
 def test_readonly_data_photometry():
     """
-    Test that ``photometry`` works with read-only data arrays.
+    Test that ``_photometry`` works with read-only data arrays.
     """
     data = np.ones((10, 10))
     data.setflags(write=False)
     aperture = CircularAperture((4.5, 4.5), r=4.5)
-    sums, _ = aperture.photometry(data, method='exact')
+    results = aperture._photometry(data, method='exact')
 
-    expected, _ = aperture.photometry(np.ones((10, 10)), method='exact')
-    assert_allclose(sums, expected, rtol=1e-12)
+    expected = aperture._photometry(np.ones((10, 10)), method='exact')
+    assert_allclose(results.flux, expected.flux, rtol=1e-12)
 
 
 def test_scalar_position():
@@ -182,12 +182,12 @@ def test_units():
     """
     unit = u.Jy
     aperture = CircularAperture(POSITIONS, r=5.5)
-    sums, errs = aperture.photometry(DATA << unit, error=ERROR << unit)
-    assert sums.unit == unit
-    assert errs.unit == unit
-    sums2, errs2 = aperture.photometry(DATA, error=ERROR)
-    assert_allclose(sums.value, sums2, equal_nan=True)
-    assert_allclose(errs.value, errs2, equal_nan=True)
+    results = aperture._photometry(DATA << unit, error=ERROR << unit)
+    assert results.flux.unit == unit
+    assert results.flux_err.unit == unit
+    results2 = aperture._photometry(DATA, error=ERROR)
+    assert_allclose(results.flux.value, results2.flux, equal_nan=True)
+    assert_allclose(results.flux_err.value, results2.flux_err, equal_nan=True)
 
 
 def test_no_overlap_nan_and_err_shape():
@@ -225,11 +225,11 @@ def test_photometry_no_error_flux_err_shape(aperture):
     ``CircularAperture`` exercises the batch code path and
     ``PolygonAperture`` exercises the mask-based code path.
     """
-    flux, flux_err = aperture.photometry(DATA, error=None)
-    assert flux_err.shape == flux.shape
-    assert np.any(np.isnan(flux))
-    assert np.any(~np.isnan(flux))
-    assert np.all(np.isnan(flux_err))
+    result = aperture._photometry(DATA, error=None)
+    assert result.flux_err.shape == result.flux.shape
+    assert np.any(np.isnan(result.flux))
+    assert np.any(~np.isnan(result.flux))
+    assert np.all(np.isnan(result.flux_err))
 
 
 def test_fallback_inputs():
@@ -276,9 +276,9 @@ def test_fallback_subclass():
     aperture = MyAperture(POSITIONS, r=5.5)
     assert aperture._batch_photometry(DATA, error=None, mask=None,
                                       method='exact', subpixels=5) is None
-    sums, _ = aperture.photometry(DATA)
-    sums2, _ = CircularAperture(POSITIONS, r=5.5).photometry(DATA)
-    assert_allclose(sums, sums2, rtol=1e-12, equal_nan=True)
+    result = aperture._photometry(DATA)
+    result2 = CircularAperture(POSITIONS, r=5.5)._photometry(DATA)
+    assert_allclose(result.flux, result2.flux, rtol=1e-12, equal_nan=True)
 
 
 def test_optin_subclass():
@@ -329,13 +329,14 @@ def test_thread_safety():
     and checking that they all give the same results.
     """
     aperture = CircularAperture(POSITIONS, r=5.5)
-    expected, _ = aperture.photometry(DATA, error=ERROR)
+    expected = aperture._photometry(DATA, error=ERROR)
 
     def run(_):
-        return aperture.photometry(DATA, error=ERROR)[0]
+        return aperture._photometry(DATA, error=ERROR)
 
     with ThreadPoolExecutor(max_workers=4) as executor:
         results = list(executor.map(run, range(8)))
 
     for result in results:
-        assert_allclose(result, expected, rtol=0, atol=0, equal_nan=True)
+        assert_allclose(result.flux, expected.flux, rtol=0, atol=0,
+                        equal_nan=True)

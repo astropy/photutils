@@ -464,16 +464,23 @@ class TestNonFiniteData:
         stats = ApertureStats(data, aper, mask=mask)
         assert phot.flags[0] == stats.flags
 
-    def test_legacy_function_still_poisons_nonfinite(self):
-        # The legacy aperture_photometry function keeps the 3.0.0
-        # behavior: non-finite data poison the sum (not masked).
+    def test_legacy_function_still_corrupts_nonfinite(self):
+        """
+        Test that the legacy aperture_photometry function still returns
+        NaN for the aperture sum when there are non-finite values in the
+        aperture, even though the new AperturePhotometry class masks
+        them and returns a finite sum.
+
+        This is to ensure backward compatibility with existing code that
+        relies on the old behavior.
+        """
         data = np.ones((25, 25))
         data[12, 12] = np.nan
+
         aper = CircularAperture((12, 12), r=5)
         tbl = aperture_photometry(data, aper)
         assert np.isnan(tbl['aperture_sum'][0])
 
-        # The mask-based path (PolygonAperture) also poisons.
         offsets = np.array([[-5, -5], [5, -5], [5, 5], [-5, 5]])
         poly = PolygonAperture((12, 12), offsets)
         tbl = aperture_photometry(data, poly)

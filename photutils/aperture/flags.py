@@ -20,10 +20,10 @@ class _ApertureFlags(FlagRegistry):
     flags.
 
     This class provides a single source of truth for all
-    aperture flag definitions, including bit values,
-    names, and descriptions. The same flag definitions are
-    used by `~photutils.aperture.aperture_photometry`,
-    `~photutils.aperture.PixelAperture.photometry`, and
+    aperture flag definitions, including bit values, names,
+    and descriptions. The same flag definitions are used
+    by `~photutils.aperture.PixelAperture._photometry`,
+    `~photutils.aperture.AperturePhotometry`, and
     `~photutils.aperture.ApertureStats`, so a given bit always has the
     same meaning.
 

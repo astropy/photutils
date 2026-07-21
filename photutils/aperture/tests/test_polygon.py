@@ -11,6 +11,7 @@ from astropy.tests.helper import assert_quantity_allclose
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose
 
+from photutils.aperture.photometry import AperturePhotometry
 from photutils.aperture.polygon import (PolygonAperture, SkyPolygonAperture,
                                         _polygon_is_simple,
                                         _segments_intersect,
@@ -197,23 +198,23 @@ def test_pixel_polygon_from_star(n_spikes):
     inner_radius = 2.0
     aper = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
                                       inner_radius)
-    flux, _ = aper.photometry(data, method='exact')
-    assert_allclose(flux, aper.area)
+    phot = AperturePhotometry(data, aper, method='exact')
+    assert_allclose(phot.flux, aper.area)
 
     aper1 = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
                                        inner_radius, theta=10 * u.deg)
-    flux, _ = aper1.photometry(data, method='exact')
-    assert_allclose(flux, aper1.area)
+    phot = AperturePhotometry(data, aper1, method='exact')
+    assert_allclose(phot.flux, aper1.area)
 
     aper2 = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
                                        optimal_shape=True)
-    flux, _ = aper2.photometry(data, method='exact')
-    assert_allclose(flux, aper2.area)
+    phot = AperturePhotometry(data, aper2, method='exact')
+    assert_allclose(phot.flux, aper2.area)
 
     aper3 = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
                                        collinear_edges=True)
-    flux, _ = aper3.photometry(data, method='exact')
-    assert_allclose(flux, aper3.area)
+    phot = AperturePhotometry(data, aper3, method='exact')
+    assert_allclose(phot.flux, aper3.area)
 
 
 @pytest.mark.parametrize(
@@ -487,8 +488,8 @@ def test_indexing_scalar_raises():
 def test_photometry():
     data = np.ones((30, 30))
     aper = PolygonAperture((10.0, 10.0), SQUARE_OFFSETS)
-    flux, _ = aper.photometry(data, method='exact')
-    assert_allclose(flux, [4.0])
+    phot = AperturePhotometry(data, aper, method='exact')
+    assert_allclose(phot.flux, [4.0])
 
 
 def test_photometry_subpixel_on_horizontal_boundary():
@@ -513,8 +514,8 @@ def test_photometry_subpixel_on_horizontal_boundary():
     offsets = np.array([[-2.0, -1.0], [2.0, -1.0],
                         [2.0, 1.0], [-2.0, 1.0]])
     aper = PolygonAperture((15.0, 15.0), offsets)
-    flux, _ = aper.photometry(data, method='subpixel', subpixels=3)
-    assert_allclose(flux, [55.0 / 9.0])
+    phot = AperturePhotometry(data, aper, method='subpixel', subpixels=3)
+    assert_allclose(phot.flux, [55.0 / 9.0])
 
 
 def test_photometry_subpixel_on_vertical_boundary():
@@ -533,8 +534,8 @@ def test_photometry_subpixel_on_vertical_boundary():
     offsets = np.array([[-1.0, -2.0], [1.0, -2.0],
                         [1.0, 2.0], [-1.0, 2.0]])
     aper = PolygonAperture((15.0, 15.0), offsets)
-    flux, _ = aper.photometry(data, method='subpixel', subpixels=3)
-    assert_allclose(flux, [55.0 / 9.0])
+    phot = AperturePhotometry(data, aper, method='subpixel', subpixels=3)
+    assert_allclose(phot.flux, [55.0 / 9.0])
 
 
 def test_photometry_subpixel_on_all_boundaries():
@@ -552,8 +553,8 @@ def test_photometry_subpixel_on_all_boundaries():
     """
     data = np.ones((31, 31))
     aper = PolygonAperture((15.0, 15.0), SQUARE_OFFSETS)
-    flux, _ = aper.photometry(data, method='subpixel', subpixels=3)
-    assert_allclose(flux, [25.0 / 9.0])
+    phot = AperturePhotometry(data, aper, method='subpixel', subpixels=3)
+    assert_allclose(phot.flux, [25.0 / 9.0])
 
 
 @pytest.mark.parametrize(('method', 'kwargs'),
@@ -576,12 +577,12 @@ def test_array_photometry_matches_scalar(method, kwargs):
     offsets = _concave_star()
 
     aper = PolygonAperture(positions, offsets)
-    multi, _ = aper.photometry(data, method=method, **kwargs)
+    phot = AperturePhotometry(data, aper, method=method, **kwargs)
 
     ref = [PolygonAperture(pos, offsets)
            .to_mask(method=method, **kwargs).multiply(data).sum()
            for pos in positions]
-    assert_allclose(multi, ref, rtol=1e-12)
+    assert_allclose(phot.flux, ref, rtol=1e-12)
 
 
 def test_invalid_mask_method():

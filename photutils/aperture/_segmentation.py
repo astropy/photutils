@@ -2,9 +2,10 @@
 """
 Tools for segmentation-based masking of aperture photometry.
 
-These helpers validate the ``segmentation_image``, ``labels``, and
-``mask_method`` keywords shared by `aperture_photometry`,
-`~photutils.aperture.PixelAperture.photometry`, and
+These helpers validate the ``segmentation_image``,
+``labels``, and ``mask_method`` keywords shared by
+`~photutils.aperture.PixelAperture._photometry`,
+`~photutils.aperture.AperturePhotometry`, and
 `~photutils.aperture.ApertureStats`. They also apply the local masking
 or symmetric-correction behavior to per-aperture cutouts.
 """
