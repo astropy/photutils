@@ -24,7 +24,6 @@ if _ASDF_ASTROPY_INSTALLED:
     from .image_models import GriddedPSFConverter, ImagePSFConverter
 
 
-
 __all__ = [
     'AiryDiskPSFConverter',
     'CircularApertureConverter',

@@ -5,6 +5,7 @@ Converters to and from the ASDF format for photutils.psf.image_models
 and photutils.psf.gridded_models.
 """
 import numpy as np
+
 from . import _ASDF_ASTROPY_INSTALLED
 
 if _ASDF_ASTROPY_INSTALLED:

@@ -9,7 +9,6 @@ from asdf.resource import DirectoryResourceMapping
 
 from .converters import apertures, functional_models, image_models
 
-
 __all__ = [
     'PHOTUTILS_APERTURE_CONVERTERS',
     'PHOTUTILS_MANIFEST_URIS',

@@ -37,7 +37,6 @@ psf_params = pytest.mark.parametrize('psfobj', [
 ], indirect=True)
 
 
-
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
 @psf_params
