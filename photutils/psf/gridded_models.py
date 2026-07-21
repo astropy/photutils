@@ -778,8 +778,11 @@ class STDPSFGrid:
     >>> fig = psfgrid.plot_grid()
     """
 
-    def __init__(self, filename):
-        grid_data = _read_stdpsf(filename)
+    def __init__(self, filename=None, **kwargs):
+        if filename is not None:
+            grid_data = _read_stdpsf(filename)
+        else:
+            grid_data = kwargs
         self.data = grid_data['data']
         self._xgrid = grid_data['xgrid']
         self._ygrid = grid_data['ygrid']
@@ -834,6 +837,13 @@ class STDPSFGrid:
 
     def __repr__(self):
         return self.__str__()
+    
+    @classmethod
+    def from_asdf(cls, filename):
+        import asdf
+        af = asdf.open(filename)
+
+
 
 
 with registry.delay_doc_updates(GriddedPSFModel):

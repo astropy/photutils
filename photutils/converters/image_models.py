@@ -15,7 +15,10 @@ else:
     TransformConverterBase = object
 
 
-__all__ = ['GriddedPSFConverter', 'ImagePSFConverter']
+__all__ = ['GriddedPSFConverter',
+           'ImagePSFConverter',
+           'STDPSFGridConverter',
+           ]
 
 
 class ImagePSFConverter(TransformConverterBase):
@@ -92,3 +95,27 @@ class GriddedPSFConverter(TransformConverterBase):
             y_0=node['y_0'],
             fill_value=node['fill_value'],
         )
+
+
+class STDPSFGridConverter(TransformConverterBase):
+    """
+    ASDF converter for STDPSFModel.
+    """
+
+    tags = ('tag:astropy.org:photutils/psf/stdpsf-*',)
+    types = ('photutils.psf.STDPSFGrid',)
+
+    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
+        return {
+            'data': model.data,
+            'npsfs': model.npsfs,
+            'nxpsfs': model.nxpsfs,
+            'nypsfs': model.nypsfs,
+            'xgrid': model.xgrid,
+            'ygrid': model.ygrid,
+        }
+
+    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
+        from photutils.psf import STDPSFGrid
+
+        return STDPSFGrid(node)

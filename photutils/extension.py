@@ -25,6 +25,7 @@ PHOTUTILS_PSF_CONVERTERS = [
     functional_models.MoffatPSFConverter(),
     image_models.ImagePSFConverter(),
     image_models.GriddedPSFConverter(),
+    image_models.STDPSFGridConverter(),
 ]
 
 PHOTUTILS_APERTURE_CONVERTERS = [
