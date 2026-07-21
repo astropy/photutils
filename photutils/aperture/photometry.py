@@ -489,17 +489,23 @@ class AperturePhotometry:
 @_update_method_subpixels_docstring
 @deprecated_positional_kwargs(since='3.0', until='4.0')
 def aperture_photometry(data, apertures, error=None, mask=None,
-                        method='exact', subpixels=5, wcs=None, *,
-                        segmentation_image=None, labels=None,
-                        mask_method='none'):
+                        method='exact', subpixels=5, wcs=None):
     # numpydoc ignore: PR01,PR02,PR04,PR07
     """
     Perform aperture photometry on the input data by summing the flux
     within the given aperture(s).
 
-    Note that this function returns the sum of the (weighted) input
-    ``data`` values within the aperture. It does not convert data
-    in surface brightness units to flux or counts. Conversion from
+    .. note::
+        This is a legacy function. It is not deprecated,
+        but new features are no longer added to it. The
+        :class:`~photutils.aperture.AperturePhotometry` class is the
+        recommended tool for aperture photometry. It provides additional
+        outputs (e.g., aperture areas, quality flags) and options (e.g.,
+        segmentation-based neighbor masking).
+
+    This function returns the sum of the (weighted) input ``data``
+    values within the aperture. It does not convert data in
+    surface brightness units to flux or counts. Conversion from
     surface-brightness units should be performed before using this
     function.
 
@@ -549,8 +555,6 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         required if the input ``apertures`` contains a `SkyAperture` or
         `~regions.SkyRegion`.
 
-    <segmentation_descriptions>
-
     Returns
     -------
     table : `~astropy.table.QTable`
@@ -567,36 +571,19 @@ def aperture_photometry(data, apertures, error=None, mask=None,
           The sky coordinates of the input aperture center(s). Returned
           if a ``wcs`` is input.
 
-        * ``'flux'``:
+        * ``'aperture_sum'``:
           The sum of the values within the aperture(s). The values
           are always float64, regardless of the input ``data`` dtype
           (a `~astropy.units.Quantity` with float64 values if ``data``
           has units).
 
-        * ``'flux_err'``:
-          The corresponding uncertainty in the ``'flux'`` values (always
-          float64). If the input ``error`` is `None`, this column is
-          filled with NaN values.
+        * ``'aperture_sum_err'``:
+          The corresponding uncertainty in the ``'aperture_sum'`` values
+          (always float64). Returned only if the input ``error`` is not
+          `None`.
 
-        * ``'area'``:
-          The total unmasked overlap area of the aperture(s)
-          (in ``pix**2``), taking into account the aperture
-          mask method, masked data pixels (``mask`` keyword),
-          segmentation masking, and partial/no overlap of
-          the aperture with the data. This is equivalent to
-          :meth:`~photutils.aperture.PixelAperture.area_overlap`
-          computed with the same inputs. The value is NaN where an
-          aperture does not overlap the data.
-
-        * ``'flags'``:
-          The bitwise quality flags for the aperture(s). See
-          :func:`~photutils.aperture.decode_aperture_flags` for decoding
-          flag values. The flags are:
-
-          <flag_descriptions>
-
-        If multiple apertures are input, the ``'flux'``, ``'flux_err'``,
-        ``'area'``, and ``'flags'`` columns will have a ``'_i'`` suffix
+        If multiple apertures are input, the ``'aperture_sum'``, and
+        ``'aperture_sumx_err'`` columns will have a ``'_i'`` suffix
         (e.g., ``'flux_0'``), where ``i`` is the index of the aperture
         in the input list.
 
@@ -639,10 +626,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
 
         return aperture_photometry(data, apertures, error=error, mask=mask,
                                    method=method, subpixels=subpixels,
-                                   wcs=wcs,
-                                   segmentation_image=segmentation_image,
-                                   labels=labels,
-                                   mask_method=mask_method)
+                                   wcs=wcs)
 
     single_aperture = False
     if not isinstance(apertures, (list, tuple, np.ndarray)):
@@ -682,11 +666,6 @@ def aperture_photometry(data, apertures, error=None, mask=None,
             msg = 'Input apertures must all have identical positions'
             raise ValueError(msg)
 
-    # Validate the segmentation-masking inputs
-    segmentation, labels = process_segmentation_inputs(
-        segmentation_image, labels, mask_method,
-        np.atleast_2d(positions), np.shape(data))
-
     # Define output table meta data
     meta = _get_meta()
     calling_args = f"method='{method}', subpixels={subpixels}"
@@ -716,37 +695,26 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     if wcs is not None and not skyaper:
         tbl['sky_center'] = wcs.pixel_to_world(*np.transpose(positions))
 
-    flux_key_main = 'flux'
-    flux_err_key_main = 'flux_err'
-    area_key_main = 'area'
-    flags_key_main = 'flags'
+    sum_key_main = 'flux'
+    sum_err_key_main = 'flux_err'
     column_map = {
-        flux_key_main: 'aperture_sum',
-        flux_err_key_main: 'aperture_sum_err',
+        sum_key_main: 'aperture_sum',
+        sum_err_key_main: 'aperture_sum_err',
     }
     for i, aper in enumerate(apertures):
         result = aper._photometry(
-            data, error=error, mask=mask, method=method, subpixels=subpixels,
-            segmentation_image=segmentation, labels=labels,
-            mask_method=mask_method)
+            data, error=error, mask=mask, method=method, subpixels=subpixels)
 
         # Apply column name mapping for legacy column names
-        flux_key = column_map.get(flux_key_main, flux_key_main)
-        flux_err_key = column_map.get(flux_err_key_main, flux_err_key_main)
+        sum_key = column_map.get(sum_key_main, sum_key_main)
+        sum_err_key = column_map.get(sum_err_key_main, sum_err_key_main)
 
-        area_key = area_key_main
-        flags_key = flags_key_main
         if not single_aperture:
-            flux_key += f'_{i}'
-            flux_err_key += f'_{i}'
-            area_key += f'_{i}'
-            flags_key += f'_{i}'
+            sum_key += f'_{i}'
+            sum_err_key += f'_{i}'
 
-        tbl[flux_key] = result.flux
-        tbl[flux_err_key] = result.flux_err
-        tbl[area_key] = result.area
-        tbl[flags_key] = result.flags
-        tbl[flags_key].info.description = (
-            'Aperture quality flags; see decode_aperture_flags')
+        tbl[sum_key] = result.flux
+        if error is not None:
+            tbl[sum_err_key] = result.flux_err
 
     return tbl

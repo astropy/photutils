@@ -11,7 +11,7 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.utils.exceptions import AstropyUserWarning
-from numpy.testing import assert_allclose, assert_equal
+from numpy.testing import assert_allclose
 
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAperture)
@@ -55,8 +55,6 @@ class TestAperturePhotometryParity:
         phot = AperturePhotometry(data, aper)
         ref = aperture_photometry(data, aper)
         assert_allclose(phot.flux, ref['aperture_sum'])
-        assert_allclose(phot.area.value, ref['area'].value)
-        assert_equal(phot.flags, ref['flags'])
 
     def test_multiple_positions(self):
         data = make_4gaussians_image()

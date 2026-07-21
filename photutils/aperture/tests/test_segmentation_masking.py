@@ -1,11 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for segmentation-based masking of aperture photometry, shared
-by `aperture_photometry`, `PixelAperture._photometry`, and
-`ApertureStats`.
+Tests for segmentation-based masking of aperture photometry, shared by
+`AperturePhotometry` and `ApertureStats`.
 """
 
-import astropy.units as u
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -15,9 +13,7 @@ from photutils.aperture._batch_photometry import (SHAPE_CIRCLE,
 from photutils.aperture._segmentation import (make_segmentation_exclusion,
                                               process_segmentation_inputs)
 from photutils.aperture.circle import CircularAperture
-from photutils.aperture.photometry import (AperturePhotometry,
-                                           aperture_photometry)
-from photutils.aperture.polygon import PolygonAperture
+from photutils.aperture.photometry import AperturePhotometry
 from photutils.aperture.stats import ApertureStats
 from photutils.segmentation import SegmentationImage
 
@@ -110,131 +106,6 @@ class TestProcessSegmentationInputs:
 
 
 class TestAperturePhotometry:
-    @pytest.mark.parametrize('use_segm_obj', [True, False])
-    def test_mask_method_matches_manual(self, use_segm_obj):
-        data, segm = make_scene()
-        aper = CircularAperture([(21, 21)], r=8)
-        segm_in = SegmentationImage(segm) if use_segm_obj else segm
-
-        phot = aperture_photometry(data, aper, segmentation_image=segm_in,
-                                   labels=[1], mask_method='mask')
-        manual_mask = (segm > 0) & (segm != 1)
-        ref = aperture_photometry(data, aper, mask=manual_mask)
-        assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
-
-    def test_source_only_matches_manual(self):
-        data, segm = make_scene()
-        aper = CircularAperture([(21, 21)], r=8)
-        phot = aperture_photometry(data, aper, segmentation_image=segm,
-                                   labels=[1],
-                                   mask_method='source_only')
-        manual_mask = segm != 1
-        ref = aperture_photometry(data, aper, mask=manual_mask)
-        assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
-
-    def test_none_method_ignores_segmentation(self):
-        data, segm = make_scene()
-        aper = CircularAperture([(21, 21)], r=8)
-        phot = aperture_photometry(data, aper, segmentation_image=segm,
-                                   mask_method='none')
-        ref = aperture_photometry(data, aper)
-        assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
-
-    def test_missing_segmentation_raises(self):
-        data, _ = make_scene()
-        aper = CircularAperture([(21, 21)], r=8)
-        match = 'segmentation_image must be input'
-        with pytest.raises(ValueError, match=match):
-            aperture_photometry(data, aper, mask_method='mask')
-
-    def test_mask_excludes_neighbor_flux(self):
-        data, segm = make_scene()
-        aper = CircularAperture([(21, 21)], r=10)
-        none_phot = aperture_photometry(data, aper,
-                                        mask_method='none')
-        mask_phot = aperture_photometry(data, aper, segmentation_image=segm,
-                                        labels=[1], mask_method='mask')
-        # Masking the bright neighbor reduces the sum
-        assert mask_phot['aperture_sum'][0] < none_phot['aperture_sum'][0]
-
-    def test_label0_disables_masking(self):
-        data, segm = make_scene()
-        aper = CircularAperture([(21, 21)], r=8)
-        phot = aperture_photometry(data, aper, segmentation_image=segm,
-                                   labels=[0], mask_method='mask')
-        ref = aperture_photometry(data, aper)
-        assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
-
-    def test_correct_matches_mask_path(self):
-        # The 'correct' method uses the Cython batch driver for circular
-        # apertures. Verify it exactly matches the Python mask code path
-        # and differs from 'none' for a scene with a neighbor.
-        data, segm = make_scene()
-        error = np.ones_like(data) * 2.0
-        mask = np.zeros(data.shape, dtype=bool)
-        mask[22, 30] = True
-        aper = CircularAperture([(21, 21)], r=10)
-        none_phot = aperture_photometry(data, aper,
-                                        mask_method='none')
-
-        labels = [1]
-        batch = aper._photometry(
-            data, error=error, mask=mask, segmentation_image=segm,
-            labels=labels, mask_method='correct')
-        mask_sum, mask_err, _area, *_ = aper._mask_photometry(
-            data, error=error, mask=mask, method='exact', subpixels=5,
-            segmentation=segm.astype(np.intp), labels=labels,
-            mask_method='correct')
-        assert_allclose(batch.flux, mask_sum, rtol=1e-12)
-        assert_allclose(batch.flux_err, mask_err, rtol=1e-12)
-        assert batch.flux[0] != none_phot['aperture_sum'][0]
-
-    def test_polygon_mask_path(self):
-        # Polygon apertures have no batch driver, exercising the mask
-        # code path for segmentation masking.
-        data, segm = make_scene()
-        offsets = np.array([[-7, -7], [9, -7], [9, 9], [-7, 9]])
-        aper = PolygonAperture((21, 21), offsets)
-        phot = aperture_photometry(data, aper, segmentation_image=segm,
-                                   labels=[1], mask_method='mask')
-        manual_mask = (segm > 0) & (segm != 1)
-        ref = aperture_photometry(data, aper, mask=manual_mask)
-        assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
-
-    def test_with_error(self):
-        data, segm = make_scene()
-        error = np.ones_like(data) * 2.0
-        aper = CircularAperture([(21, 21)], r=8)
-        phot = aperture_photometry(data, aper, error=error,
-                                   segmentation_image=segm, labels=[1],
-                                   mask_method='mask')
-        manual_mask = (segm > 0) & (segm != 1)
-        ref = aperture_photometry(data, aper, error=error, mask=manual_mask)
-        assert_allclose(phot['aperture_sum'], ref['aperture_sum'])
-        assert_allclose(phot['aperture_sum_err'], ref['aperture_sum_err'])
-
-    def test_with_units(self):
-        data, segm = make_scene()
-        unit = u.Jy
-        aper = CircularAperture([(21, 21)], r=8)
-        phot = aperture_photometry(data * unit, aper,
-                                   segmentation_image=segm, labels=[1],
-                                   mask_method='mask')
-        manual_mask = (segm > 0) & (segm != 1)
-        ref = aperture_photometry(data * unit, aper, mask=manual_mask)
-        assert_allclose(phot['aperture_sum'].value, ref['aperture_sum'].value)
-        assert phot['aperture_sum'].unit == unit
-
-    def test_labels_required(self):
-        data, segm = make_scene()
-        aper = CircularAperture([(21, 21)], r=8)
-        match = 'labels must be input when segmentation_image is input'
-        with pytest.raises(ValueError, match=match):
-            aperture_photometry(data, aper, segmentation_image=segm,
-                                mask_method='mask')
-
-
-class TestPhotometry:
     def test_batch_matches_mask_path(self):
         """
         Test that the batch driver for circular apertures matches the
@@ -263,9 +134,9 @@ class TestApertureStats:
         if method != 'none':
             kwargs = {'segmentation_image': segm, 'labels': [1, 2],
                       'mask_method': method}
-        phot = aperture_photometry(data, aper, **kwargs)
+        phot = AperturePhotometry(data, aper, **kwargs)
         stats = ApertureStats(data, aper, **kwargs)
-        assert_allclose(stats.sum, phot['aperture_sum'], rtol=1e-10)
+        assert_allclose(stats.sum, phot.flux, rtol=1e-10)
 
     def test_slicing_preserves_labels(self):
         data, segm = make_scene()

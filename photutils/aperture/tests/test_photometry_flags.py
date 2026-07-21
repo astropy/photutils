@@ -8,11 +8,10 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.aperture import (APERTURE_FLAGS, CircularAnnulus,
-                                CircularAperture, EllipticalAperture,
-                                RectangularAperture, aperture_photometry)
+from photutils.aperture import (APERTURE_FLAGS, AperturePhotometry,
+                                CircularAnnulus, CircularAperture,
+                                EllipticalAperture, RectangularAperture)
 from photutils.aperture.flags import _counts_to_flag_bits
-from photutils.aperture.photometry import AperturePhotometry
 
 SHAPE = (25, 25)
 
@@ -318,24 +317,23 @@ def test_mask_path_parity_segmentation():
         assert_array_equal(flags_batch, flags_nobatch)
 
 
-def test_aperture_photometry_flags_column():
+def test_aperture_photometry_flags():
     """
-    Test the flags column in the aperture_photometry table.
+    Test the AperturePhotometry flags.
     """
     data = np.ones(SHAPE)
     xy = [(12.0, 12.0), (-50.0, 12.0), (0.0, 12.0)]
     aper = CircularAperture(xy, r=3.0)
-    tbl = aperture_photometry(data, aper)
+    phot = AperturePhotometry(data, aper)
     expected = [0, APERTURE_FLAGS.NO_OVERLAP | APERTURE_FLAGS.NO_PIXELS,
                 APERTURE_FLAGS.PARTIAL_OVERLAP]
-    assert_array_equal(tbl['flags'], expected)
-    assert 'decode_aperture_flags' in tbl['flags'].info.description
+    assert_array_equal(phot.flags, expected)
 
-    # Multiple apertures use suffixed column names
+    # The flags are multi-dimensional for multiple apertures
     aper2 = CircularAperture(xy, r=4.0)
-    tbl = aperture_photometry(data, [aper, aper2])
-    assert_array_equal(tbl['flags_0'], expected)
-    assert_array_equal(tbl['flags_1'], expected)
+    phot = AperturePhotometry(data, [aper, aper2])
+    assert_array_equal(phot.flags[:, 0], expected)
+    assert_array_equal(phot.flags[:, 1], expected)
 
 
 def test_flags_with_units():
@@ -347,8 +345,8 @@ def test_flags_with_units():
     aper = CircularAperture((12, 12), r=3.0)
     result = AperturePhotometry(data, aper)
     assert result.flags[0] == APERTURE_FLAGS.NON_FINITE_DATA
-    tbl = aperture_photometry(data, aper)
-    assert tbl['flags'][0] == APERTURE_FLAGS.NON_FINITE_DATA
+    phot = AperturePhotometry(data, aper)
+    assert phot.flags[0] == APERTURE_FLAGS.NON_FINITE_DATA
 
 
 def test_counts_to_flag_bits_scalar_inputs():
