@@ -112,6 +112,26 @@ def as_scalar(method):
     return _decorator
 
 
+class _UncachedLazyProperty(lazyproperty):
+    """
+    A property that is discovered as a source property (like
+    `~astropy.utils.lazyproperty`) but is recomputed on every access
+    instead of being cached.
+
+    This is used for `ApertureStats.flags`, whose value can change
+    over the object's lifetime. It reflects whether covariance-derived
+    properties have been computed (see `ApertureStats.flags`). Caching
+    would freeze the first-computed value, so the getter runs on every
+    access. Subclassing `~astropy.utils.lazyproperty` keeps it in the
+    `ApertureStats.properties` list and the ``to_table`` machinery.
+    """
+
+    def __get__(self, obj, owner=None):
+        if obj is None:
+            return self
+        return self.fget(obj)
+
+
 @_update_method_subpixels_docstring
 class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
     """
@@ -274,8 +294,6 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
     The calculated statistics are always float64, regardless of the
     input ``data`` dtype (`~astropy.units.Quantity` values with float64
     dtype if the input ``data`` has units).
-
-    .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
 
     Examples
     --------
@@ -709,14 +727,30 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
 
         tbl.meta.update(self.meta)  # keep tbl.meta type
 
-        for column in table_columns:
+        # Evaluate the flag columns last (while preserving the
+        # requested column order in the output table). The ``flags``
+        # column reports the ``'singular_covariance'`` bit only if a
+        # covariance-derived shape property has already been computed
+        # (see `flags`). Evaluating the flag columns after all other
+        # columns ensures that any shape columns present in the same
+        # table are computed first, so the table's ``flags`` column
+        # consistently reflects the other columns it is shown alongside.
+        flag_columns = {'flags', 'sum_flags'}
+        eval_order = ([col for col in table_columns
+                       if col not in flag_columns]
+                      + [col for col in table_columns if col in flag_columns])
+        values_map = {}
+        for column in eval_order:
             values = getattr(self, column)
 
             # Column assignment requires an object with a length
             if self.isscalar:
                 values = (values,)
 
-            tbl[column] = values
+            values_map[column] = values
+
+        for column in table_columns:
+            tbl[column] = values_map[column]
         return tbl
 
     @lazyproperty
@@ -1640,26 +1674,15 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         return _counts_to_flag_bits(flag_counts, overlap, w_out)
 
     @lazyproperty
-    @as_scalar
-    @_update_method_subpixels_docstring
-    def flags(self):
-        # numpydoc ignore: RT01
+    def _base_flags(self):
         """
-        The bitwise quality flags for the value statistics.
+        The count-based value-statistics flag bits (1D int array).
 
-        The flags are evaluated on the "center"-method footprint used
-        by the value statistics (e.g., ``mean``, ``median``, ``std``).
-        The sum properties (``sum``, ``sum_err``, and ``sum_aper_area``)
-        have their own separate `sum_flags`. The ``'sigma_clipped'``,
-        ``'all_clipped'``, and ``'too_few_pixels'`` flags are evaluated
-        on this footprint. To check for any quality issue across both
-        footprints, combine the two flag columns with a bitwise OR
-        (e.g., ``flags | sum_flags``).
-
-        See `~photutils.aperture.decode_aperture_flags` for decoding
-        flag values. The flags are:
-
-        <flag_descriptions>
+        These are the flag bits that do not depend on any lazily
+        computed covariance property: the "center"-method
+        footprint bits plus the sigma-clip and ``ddof`` bits. The
+        ``singular_covariance`` bit is folded in by the `flags` property
+        only if a covariance-derived property has been computed.
         """
         # The gather kernel and the center-method cutouts do not
         # evaluate error values, so the non-finite-error bit is defined
@@ -1680,6 +1703,91 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             flags[(w_in > 0)
                   & (n_kept <= self.ddof)] |= APERTURE_FLAGS.TOO_FEW_PIXELS
 
+        return flags
+
+    @lazyproperty
+    def _singular_covariance_mask(self):
+        """
+        Boolean mask (1D) marking sources with a singular or nearly
+        singular covariance matrix.
+
+        A source is flagged when the minor-axis variance (the smaller
+        eigenvalue of its normalized second-moment covariance matrix)
+        falls below ``1/12``. This flags both unresolved, nearly
+        point-like sources, where the covariance determinant drops below
+        ``(1/12)**2``, and rank-1 degenerate sources, where one axis is
+        unresolved while the other is extended (which the determinant
+        alone would miss). Sources with undefined moments (no overlap or
+        fully masked) have a non-finite determinant and are not flagged
+        here. They are already reported by the overlap and masking bits.
+        """
+        covar = self._raw_covariance
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            covar_det = np.linalg.det(covar)
+            # Smaller eigenvalue (the minor-axis variance) of each 2x2
+            # symmetric covariance matrix, via the closed form
+            # lambda = tr/2 -/+ sqrt((tr/2)**2 - det). The discriminant
+            # ((lambda1 - lambda2)/2)**2 is non-negative for a real
+            # symmetric matrix; clip tiny negative rounding to zero.
+            half_trace = 0.5 * (covar[:, 0, 0] + covar[:, 1, 1])
+            disc = np.maximum(half_trace**2 - covar_det, 0.0)
+            min_eigval = half_trace - np.sqrt(disc)
+        # ``1/12`` is the variance of a uniform distribution across a
+        # single pixel, and hence the smallest second moment a resolved
+        # source can have given finite pixel size. The determinant test
+        # (det < (1/12)**2) flags the isotropic case where both axes are
+        # unresolved; the eigenvalue test (min_eigval < 1/12)
+        # additionally flags rank-1 degeneracy (one unresolved axis) and
+        # covariance matrices that are not positive semidefinite
+        # (det < 0).
+        delta = 1.0 / 12
+        finite = np.isfinite(covar_det) & np.isfinite(min_eigval)
+        return finite & ((covar_det < delta**2) | (min_eigval < delta))
+
+    @_UncachedLazyProperty
+    @as_scalar
+    @_update_method_subpixels_docstring
+    def flags(self):
+        # numpydoc ignore: RT01
+        """
+        The bitwise quality flags for the value statistics.
+
+        The flags are evaluated on the "center"-method footprint used
+        by the value statistics (e.g., ``mean``, ``median``, ``std``).
+        The sum properties (``sum``, ``sum_err``, and ``sum_aper_area``)
+        have their own separate `sum_flags`. The ``'sigma_clipped'``,
+        ``'all_clipped'``, and ``'too_few_pixels'`` flags are evaluated
+        on this footprint. To check for any quality issue across both
+        footprints, combine the two flag columns with a bitwise OR
+        (e.g., ``flags | sum_flags``).
+
+        The ``'singular_covariance'`` bit is special. It reports whether
+        a source's covariance matrix is singular or nearly singular,
+        a condition that is only knowable once a covariance-derived
+        shape property (e.g., ``semimajor_axis``, ``orientation``,
+        ``eccentricity``) has been computed. To avoid forcing that
+        computation, the bit is included only if such a property has
+        already been evaluated on this object; otherwise it is omitted.
+        This means the value of ``flags`` reflects the measurements
+        requested so far, so accessing a shape property and then
+        re-reading ``flags`` may set additional bits. The default
+        `to_table` always evaluates the shape properties, so its
+        ``flags`` column always reflects the ``'singular_covariance'``
+        bit.
+
+        See `~photutils.aperture.decode_aperture_flags` for decoding
+        flag values. The flags are:
+
+        <flag_descriptions>
+        """
+        # A fresh array is returned on every access (never mutating the
+        # cached `_base_flags`), so concurrent readers and previously
+        # returned arrays are never modified in place.
+        flags = self._base_flags.copy()
+        if '_covariance' in self.__dict__:
+            flags[self._singular_covariance_mask] |= (
+                APERTURE_FLAGS.SINGULAR_COVARIANCE)
         return flags
 
     @lazyproperty
@@ -2388,10 +2496,16 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         return tensor.reshape((tensor.shape[0], 2, 2)) * u.pix**2
 
     @lazyproperty
-    def _covariance(self):
+    def _raw_covariance(self):
         """
-        The covariance matrix of the 2D Gaussian function that has the
-        same second-order moments as the source, always as an iterable.
+        The raw ``(N, 2, 2)`` covariance matrix of the 2D Gaussian
+        function that has the same normalized second-order moments as
+        the source, before any regularization.
+
+        This unregularized matrix is shared by `_covariance` (which
+        regularizes a copy) and `_singular_covariance_mask` (which tests
+        it for singularity). Callers that modify the matrix in place
+        must operate on a copy so the cached value is not corrupted.
         """
         moments = self.moments_central
         if self.isscalar:
@@ -2400,31 +2514,51 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             mu_norm = moments / moments[:, 0, 0][:, np.newaxis, np.newaxis]
-
         covar = np.array([mu_norm[:, 0, 2], mu_norm[:, 1, 1],
                           mu_norm[:, 1, 1], mu_norm[:, 2, 0]]).swapaxes(0, 1)
-        covar = covar.reshape((covar.shape[0], 2, 2))
+        return covar.reshape((covar.shape[0], 2, 2))
 
-        # Modify the covariance matrix in the case of "infinitely" thin
-        # detections. This follows SourceExtractor's prescription of
-        # incrementally increasing the diagonal elements by 1/12.
+    @lazyproperty
+    def _covariance(self):
+        """
+        The covariance matrix of the 2D Gaussian function that has the
+        same second-order moments as the source, always as an iterable.
+        """
+        # Copy so the regularization below does not mutate the cached
+        # raw covariance shared with `_singular_covariance_mask`.
+        covar = self._raw_covariance.copy()
+
+        # Regularize the covariance matrix for "infinitely" thin
+        # detections by incrementally increasing the diagonal elements
+        # by 1/12, the variance of a uniform distribution across a
+        # single pixel (the smallest second moment a resolved source can
+        # have given finite pixel size).
         delta = 1.0 / 12
         delta2 = delta**2
         # Ignore RuntimeWarning from NaN values in covar
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             covar_det = np.linalg.det(covar)
+            covar_trace = covar[:, 0, 0] + covar[:, 1, 1]
 
-            # Covariance should be positive semidefinite
-            idx = np.where(covar_det < 0)[0]
-            covar[idx] = np.array([[np.nan, np.nan], [np.nan, np.nan]])
+            # A valid covariance is positive semidefinite (det >= 0
+            # and trace >= 0). Any matrix that is not (e.g., from
+            # net-negative flux weighting) has an undefined shape and is
+            # set to NaN.
+            bad = (covar_det < 0) | (covar_trace < 0)
+            covar[bad] = np.nan
 
+            # Regularize "infinitely" thin detections by adding 1/12
+            # (delta) to each diagonal. A single bump is sufficient.
+            # For a positive semidefinite matrix the bumped determinant
+            # exceeds the raw determinant by delta times the trace plus
+            # delta squared. Since the raw determinant and trace are
+            # both non-negative, the result is at least delta squared,
+            # which equals the delta2 threshold, so it clears the
+            # threshold in a single step.
             idx = np.where(covar_det < delta2)[0]
-            while idx.size > 0:
-                covar[idx, 0, 0] += delta
-                covar[idx, 1, 1] += delta
-                covar_det = np.linalg.det(covar)
-                idx = np.where(covar_det < delta2)[0]
+            covar[idx, 0, 0] += delta
+            covar[idx, 1, 1] += delta
         return covar
 
     @lazyproperty
@@ -2619,8 +2753,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
 
-        `SourceExtractor`_ reports that the isophotal limit of a source
-        is well represented by :math:`R \approx 3`.
+        The isophotal limit of a source is well represented by :math:`R
+        \approx 3`.
         """
         return ((np.cos(self.orientation) / self.semimajor_axis)**2
                 + (np.sin(self.orientation) / self.semiminor_axis)**2)
@@ -2642,8 +2776,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
 
-        `SourceExtractor`_ reports that the isophotal limit of a source
-        is well represented by :math:`R \approx 3`.
+        That the isophotal limit of a source is well represented by
+        :math:`R \approx 3`.
         """
         return ((np.sin(self.orientation) / self.semimajor_axis)**2
                 + (np.cos(self.orientation) / self.semiminor_axis)**2)
@@ -2665,8 +2799,8 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
 
-        `SourceExtractor`_ reports that the isophotal limit of a source
-        is well represented by :math:`R \approx 3`.
+        The isophotal limit of a source is well represented by :math:`R
+        \approx 3`.
         """
         return (2.0 * np.cos(self.orientation) * np.sin(self.orientation)
                 * ((1.0 / self.semimajor_axis**2)

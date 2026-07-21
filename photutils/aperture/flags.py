@@ -149,6 +149,24 @@ class _ApertureFlags(FlagRegistry):
                                   'undefined when the number of valid '
                                   'pixels is not larger than ``ddof``).'),
         ),
+        FlagDefinition(
+            bit_value=4096,
+            name='singular_covariance',
+            description='singular or nearly singular source covariance',
+            detailed_description=('The source covariance matrix is '
+                                  'singular or nearly singular (the '
+                                  'minor-axis variance is below '
+                                  '``1/12``, the variance of a uniform '
+                                  'distribution across a single pixel), '
+                                  'so covariance-derived shape '
+                                  'properties (e.g., '
+                                  '``semimajor_axis``, ``orientation``, '
+                                  '``eccentricity``) are ill-defined '
+                                  'and have been regularized or set to '
+                                  'NaN. This is a stats-only flag that '
+                                  'is set only when a covariance-derived '
+                                  'property has been computed.'),
+        ),
     ]
 
     domain: ClassVar = 'aperture'

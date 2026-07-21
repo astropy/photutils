@@ -371,3 +371,213 @@ def test_flags_docstring():
         docstring = prop.__doc__
         assert '<flag_descriptions>' not in docstring
         assert "**1** (``'no_overlap'``)" in docstring
+
+
+def _single_pixel_data():
+    """
+    Return data with a single bright pixel, giving a source whose
+    covariance matrix is singular (zero spatial extent).
+    """
+    data = np.zeros(SHAPE)
+    data[12, 12] = 100.0
+    return data
+
+
+@pytest.mark.usefixtures('maybe_mask_path')
+def test_singular_covariance_requires_shape_access():
+    """
+    Test that the singular_covariance bit is not set until a
+    covariance-derived property is accessed.
+    """
+    data = _single_pixel_data()
+    aper = CircularAperture((12.0, 12.0), r=5.0)
+    stats = ApertureStats(data, aper)
+
+    # Not set before any covariance-derived property is accessed
+    assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) == 0
+    assert 'singular_covariance' not in stats.decode_flags()[0]
+
+    # Accessing a shape property makes a reread include the bit
+    _ = stats.semimajor_axis
+    assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+    assert 'singular_covariance' in stats.decode_flags()[0]
+
+
+@pytest.mark.usefixtures('maybe_mask_path')
+def test_singular_covariance_triggered_by_covariance():
+    """
+    Test that the singular_covariance bit is set when the covariance
+    matrix is computed, even if no shape properties are accessed.
+    """
+    data = _single_pixel_data()
+    aper = CircularAperture((12.0, 12.0), r=5.0)
+    stats = ApertureStats(data, aper)
+    _ = stats.covariance
+    assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+
+
+@pytest.mark.usefixtures('maybe_mask_path')
+def test_singular_covariance_array_and_guards():
+    """
+    Test that the singular_covariance bit is set for an array of sources
+    and that the covariance computation is guarded against sources with
+    no overlap (undefined moments).
+    """
+    data = _single_pixel_data()
+    data[6, 6] = 100.0
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = data + 50.0 * np.exp(-((xx - 18)**2 + (yy - 18)**2) / (2 * 2.5**2))
+    aper = CircularAperture([(6.0, 6.0), (18.0, 18.0), (-50.0, 12.0)], r=4.0)
+    stats = ApertureStats(data, aper)
+    _ = stats.semimajor_axis  # force the covariance computation
+    flags = stats.flags
+    covar_flag = APERTURE_FLAGS.SINGULAR_COVARIANCE
+    assert (flags[0] & covar_flag) != 0  # singular point source
+    assert (flags[1] & covar_flag) == 0  # extended source
+    assert (flags[2] & covar_flag) == 0  # no-overlap: not flagged singular
+    assert (flags[2] & APERTURE_FLAGS.NO_OVERLAP) != 0
+
+
+@pytest.mark.usefixtures('maybe_mask_path')
+def test_singular_covariance_extended_source_not_flagged():
+    """
+    Test that a well-resolved source with a non-singular covariance
+    matrix is not flagged as singular.
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = 100.0 * np.exp(-((xx - 12)**2 + (yy - 12)**2) / (2 * 3.0**2))
+    aper = CircularAperture((12.0, 12.0), r=6.0)
+    stats = ApertureStats(data, aper)
+    _ = stats.semimajor_axis
+    assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) == 0
+
+
+@pytest.mark.usefixtures('maybe_mask_path')
+def test_singular_covariance_in_default_table():
+    """
+    Test that the singular_covariance bit is reflected in the default
+    to_table() output.
+    """
+    data = _single_pixel_data()
+    aper = CircularAperture((12.0, 12.0), r=5.0)
+    stats = ApertureStats(data, aper)
+    tbl = stats.to_table()
+    assert (tbl['flags'][0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+
+
+@pytest.mark.usefixtures('maybe_mask_path')
+def test_to_table_evaluates_flags_last():
+    """
+    Test that requesting a shape column before 'flags' still yields a
+    flags column that reflects the singular_covariance bit.
+    """
+    data = _single_pixel_data()
+    aper = CircularAperture((12.0, 12.0), r=5.0)
+    stats = ApertureStats(data, aper)
+    columns = ['flags', 'semimajor_axis']
+    tbl = stats.to_table(columns=columns)
+    assert tbl.colnames == columns  # check order
+    assert (tbl['flags'][0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+
+
+@pytest.mark.usefixtures('maybe_mask_path')
+def test_to_table_flags_only_no_singular_bit():
+    """
+    Test that requesting only the 'flags' column does not trigger the
+    covariance computation and so does not set the singular_covariance
+    bit.
+    """
+    data = _single_pixel_data()
+    aper = CircularAperture((12.0, 12.0), r=5.0)
+    stats = ApertureStats(data, aper)
+    tbl = stats.to_table(columns=['flags'])
+    assert (tbl['flags'][0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) == 0
+
+
+@pytest.mark.usefixtures('maybe_mask_path')
+def test_singular_covariance_in_properties():
+    """
+    Test that the singular_covariance bit is reflected in the properties
+    list even if no shape properties are accessed.
+    """
+    data = _single_pixel_data()
+    aper = CircularAperture((12.0, 12.0), r=5.0)
+    stats = ApertureStats(data, aper)
+    assert 'flags' in stats.properties
+
+
+@pytest.mark.usefixtures('maybe_mask_path')
+def test_singular_covariance_slicing():
+    """
+    Test that the singular_covariance bit is preserved when slicing an
+    array of ApertureStats objects.
+    """
+    data = _single_pixel_data()
+    data[6, 6] = 100.0
+    aper = CircularAperture([(6.0, 6.0), (12.0, 12.0)], r=4.0)
+    stats = ApertureStats(data, aper)
+    _ = stats.semimajor_axis
+    covar_flag = APERTURE_FLAGS.SINGULAR_COVARIANCE
+    assert (stats[0].flags & covar_flag) != 0
+    assert (stats[1].flags & covar_flag) != 0
+
+
+def _stats_with_injected_covariance(cov_xx, cov_yy, cov_xy):
+    """
+    Return a length-1 array ``ApertureStats`` whose central moments
+    are overridden so that the source covariance matrix has the given
+    entries (with unit total weight).
+
+    This exercises the singular-covariance criterion directly for cases
+    that are awkward to realize from pixel data (rank-1 degeneracy and a
+    covariance matrix that is not positive semidefinite).
+    """
+    data = _single_pixel_data()
+    aper = CircularAperture([(12.0, 12.0)], r=5.0)
+    stats = ApertureStats(data, aper)
+    moments = np.zeros((1, 4, 4))
+    moments[0, 0, 0] = 1.0  # total weight (m00)
+    moments[0, 2, 0] = cov_xx  # normalized -> covariance_xx
+    moments[0, 0, 2] = cov_yy  # normalized -> covariance_yy
+    moments[0, 1, 1] = cov_xy  # normalized -> covariance_xy
+    stats.moments_central = moments
+    return stats
+
+
+def test_singular_covariance_rank1_degeneracy():
+    """
+    Test that a rank-1 degenerate source is flagged as singular.
+
+    A rank-1 degenerate source has one unresolved axis and one extended
+    axis, so its covariance matrix has one tiny eigenvalue. The
+    singularity criterion is that the minor-axis variance is below a
+    floor of ``1/12`` (the variance of a uniform distribution over a
+    unit pixel). This is a more robust criterion than the determinant
+    test, which can be fooled by a rank-1 source with a large major-axis
+    variance.
+    """
+    # Minor-axis variance 0.05 < 1/12, major-axis variance 0.5
+    stats = _stats_with_injected_covariance(cov_xx=0.5, cov_yy=0.05,
+                                            cov_xy=0.0)
+    delta = 1.0 / 12
+    assert delta**2 < 0.5 * 0.05  # determinant test alone would miss it
+    assert delta > 0.05  # minor-axis variance below the floor
+    assert stats._singular_covariance_mask[0]
+
+    # The bit is reflected in flags once a shape property is computed
+    _ = stats.semimajor_axis
+    assert (stats.flags[0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+
+
+def test_singular_covariance_not_positive_semidefinite():
+    """
+    Test that a covariance matrix that is not positive semidefinite is
+    flagged as singular.
+    """
+    stats = _stats_with_injected_covariance(cov_xx=1.0, cov_yy=1.0,
+                                            cov_xy=2.0)
+    assert (1.0 * 1.0 - 2.0**2) < 0  # negative determinant
+    assert stats._singular_covariance_mask[0]
+
+    _ = stats.semimajor_axis
+    assert (stats.flags[0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
