@@ -3,6 +3,8 @@
 Tests for the AperturePhotometry class.
 """
 
+from unittest.mock import patch
+
 import astropy.units as u
 import numpy as np
 import pytest
@@ -16,6 +18,7 @@ from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
 from photutils.aperture.photometry import (AperturePhotometry,
                                            aperture_photometry)
 from photutils.aperture.polygon import PolygonAperture
+from photutils.aperture.stats import ApertureStats
 from photutils.datasets import make_4gaussians_image, make_wcs
 from photutils.segmentation import SegmentationImage
 from photutils.utils._optional_deps import HAS_REGIONS
@@ -370,6 +373,111 @@ class TestFlagsAndArea:
         phot = AperturePhotometry(data, aper, mask=mask)
         decoded = phot.decode_flags(return_bit_values=True)
         assert decoded[0] == [8]
+
+
+class TestNonFiniteData:
+    """
+    Non-finite ``data`` values (NaN and inf) must be automatically
+    masked (excluded from flux, flux_err, and area) and reported via the
+    ``non_finite_data`` flag, mirroring ``ApertureStats``.
+    """
+
+    def test_batch_path_masks_nonfinite(self):
+        data = np.ones((25, 25))
+        data[12, 12] = np.nan
+        data[11, 11] = np.inf
+        aper = CircularAperture((12, 12), r=5)
+        phot = AperturePhotometry(data, aper)
+        # The two non-finite interior pixels (each of weight 1) are
+        # excluded from the flux and area (all other pixels are 1.0).
+        assert np.isfinite(phot.flux[0])
+        assert_allclose(phot.flux[0], aper.area_overlap(data) - 2)
+        assert_allclose(phot.area.value[0], phot.flux[0])
+        assert phot.flags[0] == 32
+        assert phot.decode_flags()[0] == ['non_finite_data']
+
+    def test_mask_path_masks_nonfinite(self):
+        # Disable the batch Cython driver to exercise the slower
+        # mask-based code path (via a spec of None).
+        aper = CircularAperture((12, 12), r=5)
+        data = np.ones((25, 25))
+        data[12, 12] = np.nan
+        data[11, 11] = np.inf
+        with patch.object(CircularAperture, '_batch_shape_params',
+                          lambda _self: None):
+            phot = AperturePhotometry(data, aper)
+            flux = phot.flux[0]
+            flags = phot.flags[0]
+            decoded = phot.decode_flags()[0]
+        assert np.isfinite(flux)
+        assert_allclose(flux, aper.area_overlap(data) - 2)
+        assert flags == 32
+        assert decoded == ['non_finite_data']
+
+    @pytest.mark.parametrize('aperture_type', ['circle', 'polygon'])
+    def test_parity_with_aperture_stats(self, aperture_type):
+        data = np.ones((25, 25))
+        data[12, 12] = np.nan
+        data[11, 11] = np.inf
+        if aperture_type == 'circle':
+            aper = CircularAperture((12, 12), r=5)
+        else:
+            offsets = np.array([[-5, -5], [5, -5], [5, 5], [-5, 5]])
+            aper = PolygonAperture((12, 12), offsets)
+        phot = AperturePhotometry(data, aper)
+        stats = ApertureStats(data, aper)
+        assert_allclose(phot.flux[0], stats.sum)
+        assert_allclose(phot.area.value[0], stats.sum_aper_area.value)
+        assert phot.flags[0] == stats.flags
+
+    def test_nonfinite_outside_aperture_not_flagged(self):
+        data = np.ones((25, 25))
+        data[0, 0] = np.nan  # far outside the aperture
+        aper = CircularAperture((12, 12), r=5)
+        phot = AperturePhotometry(data, aper)
+        assert phot.flags[0] == 0
+        assert_allclose(phot.flux[0], aper.area_overlap(data))
+
+    def test_combined_mask_and_nonfinite(self):
+        data = np.ones((25, 25))
+        data[12, 12] = np.nan
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[11, 12] = True
+        aper = CircularAperture((12, 12), r=5)
+        phot = AperturePhotometry(data, aper, mask=mask)
+        assert np.isfinite(phot.flux[0])
+        # Both masked_pixels (8) and non_finite_data (32) are set.
+        assert phot.flags[0] == 8 | 32
+        assert set(phot.decode_flags()[0]) == {'masked_pixels',
+                                               'non_finite_data'}
+
+    def test_nonfinite_at_masked_pixel_counts_as_masked(self):
+        # A non-finite pixel that is also input-masked is reported as
+        # masked_pixels, not non_finite_data (matching ApertureStats).
+        data = np.ones((25, 25))
+        data[12, 12] = np.nan
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[12, 12] = True
+        aper = CircularAperture((12, 12), r=5)
+        phot = AperturePhotometry(data, aper, mask=mask)
+        assert phot.flags[0] == 8
+        stats = ApertureStats(data, aper, mask=mask)
+        assert phot.flags[0] == stats.flags
+
+    def test_legacy_function_still_poisons_nonfinite(self):
+        # The legacy aperture_photometry function keeps the 3.0.0
+        # behavior: non-finite data poison the sum (not masked).
+        data = np.ones((25, 25))
+        data[12, 12] = np.nan
+        aper = CircularAperture((12, 12), r=5)
+        tbl = aperture_photometry(data, aper)
+        assert np.isnan(tbl['aperture_sum'][0])
+
+        # The mask-based path (PolygonAperture) also poisons.
+        offsets = np.array([[-5, -5], [5, -5], [5, 5], [-5, 5]])
+        poly = PolygonAperture((12, 12), offsets)
+        tbl = aperture_photometry(data, poly)
+        assert np.isnan(tbl['aperture_sum'][0])
 
 
 class TestInputValidation:

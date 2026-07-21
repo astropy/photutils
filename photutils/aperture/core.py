@@ -649,7 +649,7 @@ class PixelAperture(Aperture):
 
     def _mask_photometry(self, data, *, error, mask, method, subpixels,
                          segmentation=None, labels=None,
-                         mask_method='none'):
+                         mask_method='none', _mask_nonfinite=False):
         """
         Perform aperture photometry using per-source aperture masks.
 
@@ -752,10 +752,25 @@ class PixelAperture(Aperture):
                             np.count_nonzero(exclude & pixel_mask))
                     pixel_mask = pixel_mask & ~exclude
 
+                # Non-finite ``data`` masking (used by the class path).
+                # Flag the contributing non-finite pixels, then exclude
+                # them from the sum, area, and valid-pixel count so they
+                # do not poison the result (matching `ApertureStats`).
+                # When ``_mask_nonfinite`` is `False` (the legacy
+                # function), the non-finite pixels are left in the
+                # computation so they poison the sum (the 3.0.0
+                # behavior).
+                nonfinite_data = ~np.isfinite(data_cutout)
+                if _mask_nonfinite:
+                    flag_counts[idx, FLAG_COL_NONFINITE_DATA] = np.any(
+                        nonfinite_data & pixel_mask)
+                    pixel_mask = pixel_mask & ~nonfinite_data
+
                 flag_counts[idx, FLAG_COL_VALID] = np.count_nonzero(
                     pixel_mask)
-                flag_counts[idx, FLAG_COL_NONFINITE_DATA] = np.any(
-                    ~np.isfinite(data_cutout) & pixel_mask)
+                if not _mask_nonfinite:
+                    flag_counts[idx, FLAG_COL_NONFINITE_DATA] = np.any(
+                        nonfinite_data & pixel_mask)
                 if error is not None:
                     flag_counts[idx, FLAG_COL_NONFINITE_ERROR] = np.any(
                         ~np.isfinite(error_cutout) & pixel_mask)
@@ -801,7 +816,7 @@ class PixelAperture(Aperture):
 
     def _batch_photometry(self, data, *, error, mask, method, subpixels,
                           segmentation=None, labels=None,
-                          mask_method='none'):
+                          mask_method='none', _mask_nonfinite=False):
         """
         Perform aperture photometry using the batch Cython driver.
 
@@ -857,11 +872,33 @@ class PixelAperture(Aperture):
                                     and not _supported(error)):
             return None
 
+        if mask is not None and (not isinstance(mask, np.ndarray)
+                                 or mask.dtype != bool
+                                 or mask.shape != data.shape):
+            return None
+
+        # Build a uint8 mask plane for the batch kernels. Bit 1
+        # (value 1) marks input-masked pixels and bit 2 (value 2) marks
+        # non-finite ``data`` pixels; any nonzero value excludes the
+        # pixel. Folding the non-finite pixels into the plane lets the
+        # class exclude them from the sum, area, and valid-pixel count
+        # while still flagging them as ``non_finite_data`` (not
+        # ``masked_pixels``), matching `ApertureStats`. When
+        # ``_mask_nonfinite`` is `False` (the legacy function), the
+        # non-finite pixels are left in the data so they poison the sum
+        # (the 3.0.0 behavior).
+        plane = None
         if mask is not None:
-            if (not isinstance(mask, np.ndarray) or mask.dtype != bool
-                    or mask.shape != data.shape):
-                return None
-            mask = np.ascontiguousarray(mask, dtype=np.uint8)
+            plane = mask.astype(np.uint8)
+        if _mask_nonfinite and data.dtype.kind == 'f':
+            nonfinite = ~np.isfinite(data)
+            if nonfinite.any():
+                if plane is None:
+                    plane = np.zeros(data.shape, dtype=np.uint8)
+                    plane[nonfinite] = 2
+                else:
+                    plane[nonfinite & (plane == 0)] = 2
+        mask = None if plane is None else np.ascontiguousarray(plane)
 
         seg_arr = None
         labels_arr = None
@@ -898,7 +935,7 @@ class PixelAperture(Aperture):
     @_update_method_subpixels_docstring
     def photometry(self, data, *, error=None, mask=None, method='exact',
                    subpixels=5, segmentation_image=None, labels=None,
-                   mask_method='none'):
+                   mask_method='none', _mask_nonfinite=False):
         # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         Perform aperture photometry on the input data.
@@ -1000,7 +1037,7 @@ class PixelAperture(Aperture):
         result = self._batch_photometry(
             data, error=error, mask=mask, method=method, subpixels=subpixels,
             segmentation=segmentation, labels=labels,
-            mask_method=mask_method)
+            mask_method=mask_method, _mask_nonfinite=_mask_nonfinite)
 
         if result is not None:
             aperture_sums, aperture_sum_errs, area, fcounts, overlap = result
@@ -1009,7 +1046,8 @@ class PixelAperture(Aperture):
              overlap) = self._mask_photometry(
                 data, error=error, mask=mask, method=method,
                 subpixels=subpixels, segmentation=segmentation,
-                labels=labels, mask_method=mask_method)
+                labels=labels, mask_method=mask_method,
+                _mask_nonfinite=_mask_nonfinite)
 
         # Resolve the precise outside-weight test only for the sources
         # whose bounding box is clipped by a data edge

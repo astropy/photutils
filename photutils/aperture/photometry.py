@@ -57,7 +57,8 @@ class AperturePhotometry:
         The 2D array on which to perform photometry. ``data`` should be
         background-subtracted. If ``data`` is a `~astropy.units.Quantity`
         array, then ``error`` (if input) must also be a
-        `~astropy.units.Quantity` array with the same units. See the
+        `~astropy.units.Quantity` array with the same units. Non-finite
+        ``data`` values (NaN and inf) are automatically masked. See the
         Notes section below for more information about
         `~astropy.nddata.NDData` input.
 
@@ -82,7 +83,9 @@ class AperturePhotometry:
     mask : array_like (bool), optional
         A boolean mask with the same shape as ``data`` where a `True`
         value indicates the corresponding element of ``data`` is masked.
-        Masked data are excluded from all calculations.
+        Masked data are excluded from all calculations. Non-finite
+        values (NaN and inf) in the input ``data`` are automatically
+        masked.
 
     wcs : WCS object, optional
         A world coordinate system (WCS) transformation that
@@ -120,6 +123,11 @@ class AperturePhotometry:
     1D arrays with one element per aperture position when a single
     aperture is input. If a list of apertures is input, they are 2D
     arrays with shape ``(n_positions, n_apertures)``.
+
+    Non-finite ``data`` values (NaN and inf) are automatically masked.
+    Such pixels are excluded from the `flux`, `flux_err`, and `area`
+    calculations and are indicated by the ``non_finite_data`` quality
+    flag (see `~photutils.aperture.decode_aperture_flags`).
 
     This class is immutable after initialization (its cached attributes
     use compute-once `~astropy.utils.decorators.lazyproperty` caching),
@@ -282,7 +290,8 @@ class AperturePhotometry:
             self._data, error=self._error, mask=self._mask,
             method=self.method, subpixels=self.subpixels,
             segmentation_image=self._segmentation,
-            labels=self._seg_labels, mask_method=self.mask_method)
+            labels=self._seg_labels, mask_method=self.mask_method,
+            _mask_nonfinite=True)
             for aper in self._pixel_apertures]
 
     @lazyproperty
