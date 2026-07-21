@@ -597,45 +597,12 @@ These keywords are also available in
 Aperture Quality Flags
 ----------------------
 
-The :func:`~photutils.aperture.aperture_photometry` table, the
-:meth:`~photutils.aperture.PixelAperture.photometry` results, and the
-:class:`~photutils.aperture.ApertureStats` class include bitwise quality
-flags for each source in a ``'flags'`` column or attribute. A value of 0
-means that no issues were detected. The flag values can be decoded using
-the :func:`~photutils.aperture.decode_aperture_flags` function. The
-flags are:
-
-* ``'no_overlap'`` (1): the aperture is fully outside the data (no
-  pixel with nonzero aperture weight falls inside the data)
-* ``'partial_overlap'`` (2): the aperture is partially outside the
-  data (one or more pixels with nonzero aperture weight fall outside
-  the data)
-* ``'no_pixels'`` (4): the aperture contains zero pixels with nonzero
-  weight inside the data (e.g., a fully off-image aperture, or a tiny
-  aperture that contains no pixel centers with the ``'center'`` method)
-* ``'masked_pixels'`` (8): one or more input-masked pixels (``mask``
-  keyword) have nonzero aperture weight
-* ``'all_masked'`` (16): the aperture contains pixels, but none are
-  valid (all are masked or excluded)
-* ``'non_finite_data'`` (32): NaN or inf values are present among the
-  unmasked data values within the aperture
-* ``'non_finite_error'`` (64): NaN or inf values are present among the
-  unmasked error values within the aperture
-* ``'neighbor_pixels'`` (128): one or more pixels were excluded,
-  restricted, or corrected due to neighboring sources in the
-  segmentation image (``mask_method`` keyword)
-* ``'uncorrected_pixels'`` (256): with ``mask_method='correct'``, one
-  or more neighbor pixels could not be corrected and were excluded
-  instead
-* ``'sigma_clipped'`` (512): one or more pixels within the aperture
-  were rejected by sigma clipping (`~photutils.aperture.ApertureStats`
-  only)
-* ``'all_clipped'`` (1024): all valid pixels within the aperture were
-  rejected by sigma clipping (`~photutils.aperture.ApertureStats` only)
-* ``'too_few_pixels'`` (2048): too few valid pixels to compute a
-  requested statistic, e.g., the variance and standard deviation are
-  undefined when the number of valid pixels is not larger than ``ddof``
-  (`~photutils.aperture.ApertureStats` only)
+The :class:`~photutils.aperture.AperturePhotometry` and
+:class:`~photutils.aperture.ApertureStats` classes include bitwise
+quality flags for each source in a ``'flags'`` column or attribute. See
+the :func:`~photutils.aperture.decode_aperture_flags` function for a a
+definition of the flags. This convenience method can be used to decode
+the flags into human-readable names.
 
 Multiple conditions combine bitwise. For example, an aperture that
 extends beyond the data edge and also contains a masked pixel has
@@ -645,26 +612,30 @@ extends beyond the data edge and also contains a masked pixel has
 For example::
 
     >>> import numpy as np
-    >>> from photutils.aperture import (CircularAperture,
-    ...                                 aperture_photometry,
+    >>> from photutils.aperture import (AperturePhotometry,
     ...                                 decode_aperture_flags)
     >>> data = np.ones((25, 25))
     >>> mask = np.zeros(data.shape, dtype=bool)
     >>> mask[12, 12] = True  # bad pixel inside the first aperture
     >>> positions = [(12.0, 12.0), (0.0, 12.0), (-50.0, 12.0)]
     >>> aperture = CircularAperture(positions, r=3.0)
-    >>> phot_table = aperture_photometry(data, aperture, mask=mask)
-    >>> print(phot_table['flags'])
-    flags
-    -----
-        8
-        2
-        5
+    >>> phot = AperturePhotometry(data, aperture, mask=mask)
+    >>> print(phot.flags)
+    [8, 2, 5]
 
 The flag values can be decoded into human-readable names::
 
-    >>> decoded = decode_aperture_flags(phot_table['flags'])
-    >>> for source_id, names in zip(phot_table['id'], decoded):
+    >>> decoded = decode_aperture_flags(phot.flags])
+    >>> for source_id, names in zip(phot.id, decoded):
+    ...     print(source_id, names)
+    1 ['masked_pixels']
+    2 ['partial_overlap']
+    3 ['no_overlap', 'no_pixels']
+
+or using the :meth:`~photutils.aperture.AperturePhotometry.decode_flags`
+convenience method::
+
+    >>> for source_id, names in zip(phot.id, phot.decode_flags()):
     ...     print(source_id, names)
     1 ['masked_pixels']
     2 ['partial_overlap']
