@@ -32,7 +32,8 @@ Source Detection
     :maxdepth: 1
 
     detection.rst
-    General Source Detection and Extraction (photutils.segmentation) <segmentation.rst>
+
+See also :doc:`General Source Detection and Extraction (photutils.segmentation) <segmentation>`.
 
 Segmentation and Source Measurements
 ------------------------------------
