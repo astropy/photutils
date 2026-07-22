@@ -582,10 +582,10 @@ def aperture_photometry(data, apertures, error=None, mask=None,
           (always float64). Returned only if the input ``error`` is not
           `None`.
 
-        If multiple apertures are input, the ``'aperture_sum'``, and
-        ``'aperture_sumx_err'`` columns will have a ``'_i'`` suffix
-        (e.g., ``'flux_0'``), where ``i`` is the index of the aperture
-        in the input list.
+        If multiple apertures are input, the ``'aperture_sum'`` and
+        ``'aperture_sum_err'`` columns will have a ``'_i'`` suffix
+        (e.g., ``'aperture_sum_0'``), where ``i`` is the index of the
+        aperture in the input list.
 
         The table metadata includes the Astropy and Photutils version
         numbers and the `aperture_photometry` calling arguments.
