@@ -522,7 +522,7 @@ list of aperture objects with identical positions, but with different
     >>> b = [3.0, 4.0, 5.0]
     >>> theta = Angle(45, 'deg')
     >>> apertures = [EllipticalAperture(positions, a=ai, b=bi, theta=theta)
-    ...              for (ai, bi) in zip(a, b)]
+    ...              for (ai, bi) in zip(a, b, strict=True)]
     >>> phot = AperturePhotometry(data, apertures, error=error)
     >>> phot_table = phot.to_table()
     >>> for col in phot_table.colnames:
@@ -718,7 +718,7 @@ The flag values can be decoded into human-readable names using the
 :meth:`~photutils.aperture.AperturePhotometry.decode_flags` convenience
 method::
 
-    >>> for source_id, names in zip(phot.id, phot.decode_flags()):
+    >>> for source_id, names in zip(phot.id, phot.decode_flags(), strict=True):
     ...     print(source_id, names)
     1 ['masked_pixels']
     2 ['partial_overlap']
@@ -728,7 +728,7 @@ or using the :func:`~photutils.aperture.decode_aperture_flags`
 function::
 
     >>> decoded = decode_aperture_flags(phot.flags)
-    >>> for source_id, names in zip(phot.id, decoded):
+    >>> for source_id, names in zip(phot.id, decoded, strict=True):
     ...     print(source_id, names)
     1 ['masked_pixels']
     2 ['partial_overlap']

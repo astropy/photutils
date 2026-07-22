@@ -402,11 +402,11 @@ defined above:
         'Tukey\n(alpha=0.5)',
         'Hanning',
         'Cosine Bell\n(alpha=0.5)',
-        'Top Hat\n(beta=0.4)'
+        'Top Hat\n(beta=0.4)',
     ]
 
     # Plot using the OO interface
-    for ax, window, title in zip(axes, windows, titles):
+    for ax, window, title in zip(axes, windows, titles, strict=True):
         ax.plot(window(shape)[y0, :])
         ax.set_title(title)
         ax.set_xlabel('x')
@@ -529,7 +529,7 @@ Let's display the matching kernel results from all methods:
               'make_wiener_kernel\n(biharmonic penalty)']
 
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 7))
-    for ax, kernel, title in zip(axes.ravel(), kernels, titles):
+    for ax, kernel, title in zip(axes.ravel(), kernels, titles, strict=True):
         axim = snorm.imshow(kernel, ax=ax, origin='lower')
         fig.colorbar(axim, ax=ax)
         ax.set_title(title)
@@ -597,7 +597,7 @@ channel 4 PSF:
 
     axes = [ax_main, ax_top_left, ax_top_right, ax_bot_left, ax_bot_right]
 
-    for ax, img, title in zip(axes, images, titles):
+    for ax, img, title in zip(axes, images, titles, strict=True):
         axim = snorm.imshow(img, ax=ax, origin='lower')
         fig.colorbar(axim, ax=ax, fraction=0.046, pad=0.04)
         ax.set_title(title)
@@ -657,7 +657,7 @@ channel 4 PSF target:
     residuals = [resid1, resid2, resid3, resid4]
 
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(9, 7))
-    for ax, resid, title in zip(axes.ravel(), residuals, titles):
+    for ax, resid, title in zip(axes.ravel(), residuals, titles, strict=True):
         axim = ax.imshow(resid, origin='lower', cmap='RdBu_r',
                          vmin=-vmax, vmax=vmax)
         fig.colorbar(axim, ax=ax)
@@ -742,7 +742,7 @@ agrees with the channel 4 target:
                  color='C0', ls='-')
     cog_ch4.plot(ax=ax_top, label='Channel 4 PSF', lw=3,
                  color='k')
-    for cog, label, ls in zip(cogs_matched, labels, ls_list):
+    for cog, label, ls in zip(cogs_matched, labels, ls_list, strict=True):
         cog.plot(ax=ax_top, label=label, lw=2, ls=ls)
     ax_top.set_ylabel('Normalized Encircled Energy')
     ax_top.set_title(
@@ -751,7 +751,7 @@ agrees with the channel 4 target:
     ax_top.set_xlabel('')
 
     # Residual subpanel (matched - ch4)
-    for cog, label, ls in zip(cogs_matched, labels, ls_list):
+    for cog, label, ls in zip(cogs_matched, labels, ls_list, strict=True):
         resid = cog.profile - cog_ch4.profile
         ax_bot.plot(cog.radius, resid, lw=2, ls=ls, label=label)
     ax_bot.axhline(0, color='k', lw=1, ls='-')

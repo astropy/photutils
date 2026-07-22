@@ -296,7 +296,7 @@ Here we plot the encircled energy values.
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
 
-    for ee_rad, ee_val in zip(ee_rads, ee_vals):
+    for ee_rad, ee_val in zip(ee_rads, ee_vals, strict=True):
         ax.text(ee_rad/2, ee_val, f'{ee_val:.2f}', ha='center', va='bottom')
 
 
@@ -481,7 +481,7 @@ Here, we plot the ensquared energy values.
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
 
-    for ee_hs, ee_val in zip(ee_half_sizes, ee_vals):
+    for ee_hs, ee_val in zip(ee_half_sizes, ee_vals, strict=True):
         ax.text(ee_hs/2, ee_val, f'{ee_val:.2f}', ha='center',
                 va='bottom')
 
@@ -696,7 +696,7 @@ Here we plot the enclosed energy values.
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
 
-    for ee_rad, ee_val in zip(ee_rads, ee_vals):
+    for ee_rad, ee_val in zip(ee_rads, ee_vals, strict=True):
         ax.text(ee_rad/2, ee_val, f'{ee_val:.2f}', ha='center',
                 va='bottom')
 

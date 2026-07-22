@@ -566,7 +566,8 @@ the location of the source that was fit and subtracted.
     phot = psfphot(data, error=error, init_params=init_params)
 
     resid = psfphot.make_residual_image(data)
-    aper = CircularAperture(zip(phot['x_fit'], phot['y_fit']), r=4)
+    xypos = zip(phot['x_fit'], phot['y_fit'], strict=True)
+    aper = CircularAperture(xypos, r=4)
 
     fig, ax = plt.subplots(ncols=3, figsize=(15, 5))
     norm = simple_norm(data, 'sqrt', percent=99)
@@ -816,7 +817,8 @@ defined above::
    >>> from photutils.psf import fit_fwhm
    >>> finder = DAOStarFinder(6.0, 2.0)
    >>> finder_tbl = finder(data)
-   >>> xypos = list(zip(finder_tbl['x_centroid'], finder_tbl['y_centroid']))
+   >>> xypos = list(zip(finder_tbl['x_centroid'],
+   ...                  finder_tbl['y_centroid'], strict=True))
    >>> fwhm = fit_fwhm(data, xypos=xypos, error=error, fit_shape=(5, 5), fwhm=2)
    >>> fwhm
    array([2.69735154, 2.70371211, 2.68917219, 2.69310558, 2.68931721,

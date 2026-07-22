@@ -121,7 +121,7 @@ we also include an inset plot zoomed in near the centroid:
     ms = 60
     colors = ('white', 'cyan', 'red', 'blue')
     labels = ('Center of Mass', 'Quadratic', '1D Gaussian', '2D Gaussian')
-    for xycen, color, label in zip(xycens, colors, labels):
+    for xycen, color, label in zip(xycens, colors, labels, strict=True):
         ax.scatter(*xycen, color=color, marker=marker, s=ms, label=label)
 
     ax.legend(loc='lower right', fontsize=12)
@@ -129,7 +129,7 @@ we also include an inset plot zoomed in near the centroid:
     ax2 = zoomed_inset_axes(ax, zoom=6, loc=9)
     ax2.imshow(data, vmin=190, vmax=220, origin='lower')
     ms = 1000
-    for xycen, color in zip(xycens, colors):
+    for xycen, color in zip(xycens, colors, strict=True):
         ax2.scatter(*xycen, color=color, marker=marker, s=ms)
     ax2.set_xlim(19, 21)
     ax2.set_ylim(19, 21)
