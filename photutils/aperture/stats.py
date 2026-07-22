@@ -58,15 +58,6 @@ __all__ = ['ApertureStats']
 _MAD_STD_SCALE = 1.482602218505602
 
 
-# Default table columns for `to_table()` output
-DEFAULT_COLUMNS = ['id', 'x_centroid', 'y_centroid', 'sky_centroid',
-                   'sum', 'sum_err', 'sum_aper_area', 'sum_flags',
-                   'center_aper_area', 'min', 'max', 'mean', 'median',
-                   'mode', 'std', 'mad_std', 'var', 'biweight_location',
-                   'biweight_midvariance', 'fwhm', 'semimajor_axis',
-                   'semiminor_axis', 'orientation', 'eccentricity',
-                   'flags']
-
 # Remove in 4.0
 _DEPRECATED_ATTRIBUTES: dict = {
     'covar_sigx2': 'covariance_xx',
@@ -134,7 +125,8 @@ class _UncachedLazyProperty(lazyproperty):
 
 
 @_update_method_subpixels_docstring
-class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
+class ApertureStats:
+    # numpydoc ignore: PR01,PR02,PR04,PR07
     """
     Class to create a catalog of statistics for pixels within an
     aperture.
@@ -395,7 +387,15 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             self._local_bkg = local_bkg  # always an iterable
 
         self._ids = np.arange(self.n_apertures) + 1
-        self.default_columns = DEFAULT_COLUMNS
+        self.default_columns = ['id', 'x_centroid', 'y_centroid',
+                                'sky_centroid', 'sum', 'sum_err',
+                                'sum_aper_area', 'sum_flags',
+                                'center_aper_area', 'min', 'max', 'mean',
+                                'median', 'mode', 'std', 'mad_std', 'var',
+                                'biweight_location', 'biweight_midvariance',
+                                'fwhm', 'semimajor_axis', 'semiminor_axis',
+                                'orientation', 'eccentricity', 'flags']
+
         self.meta = _get_meta()
         self.meta.update(aperture_meta)
 

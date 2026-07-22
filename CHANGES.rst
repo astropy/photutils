@@ -3442,10 +3442,6 @@ New Features
   - Significantly improved the performance of calculating the
     ``background_at_centroid`` property in ``SourceCatalog``. [#863]
 
-  - The default output table columns (source properties) are defined
-    in a publicly-accessible variable called
-    ``photutils.segmentation.properties.DEFAULT_COLUMNS``. [#863]
-
   - Added the ``gini`` source property representing the Gini
     coefficient. [#864]
 

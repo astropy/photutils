@@ -37,13 +37,6 @@ from photutils.utils.cutouts import CutoutImage
 __all__ = ['SourceCatalog']
 
 
-# Default table columns for `to_table()` output
-DEFAULT_COLUMNS = ['label', 'x_centroid', 'y_centroid', 'sky_centroid',
-                   'bbox_xmin', 'bbox_xmax', 'bbox_ymin', 'bbox_ymax',
-                   'area', 'semimajor_axis', 'semiminor_axis', 'orientation',
-                   'eccentricity', 'min_value', 'max_value', 'segment_flux',
-                   'segment_flux_err', 'kron_flux', 'kron_flux_err']
-
 # Remove in 4.0
 _DEPRECATED_ATTRIBUTES = {
     'add_extra_property': 'add_property',
@@ -435,7 +428,15 @@ class SourceCatalog:
             'cen_win': {'method': 'center'},
         }
 
-        self.default_columns = DEFAULT_COLUMNS
+        self.default_columns = ['label', 'x_centroid', 'y_centroid',
+                                'sky_centroid', 'bbox_xmin', 'bbox_xmax',
+                                'bbox_ymin', 'bbox_ymax', 'area',
+                                'semimajor_axis', 'semiminor_axis',
+                                'orientation', 'eccentricity', 'min_value',
+                                'max_value', 'segment_flux',
+                                'segment_flux_err', 'kron_flux',
+                                'kron_flux_err']
+
         self._custom_properties = []
         self._flux_radius_cache = {}
         self.meta = _get_meta()
