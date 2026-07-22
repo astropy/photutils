@@ -200,13 +200,13 @@ def test_no_overlap_nan_and_err_shape():
     aperture = CircularAperture(POSITIONS, r=5.5)
     n_outside = 3
 
-    sums, errs, _area = aperture._batch_photometry(
+    sums, errs, _area, *_ = aperture._batch_photometry(
         DATA, error=None, mask=None, method='exact', subpixels=5)
     assert np.isnan(sums).sum() == n_outside
     assert errs.shape == sums.shape
     assert np.all(np.isnan(errs))
 
-    sums, errs, _area = aperture._batch_photometry(
+    sums, errs, _area, *_ = aperture._batch_photometry(
         DATA, error=ERROR, mask=None, method='exact', subpixels=5)
     assert errs.shape == sums.shape
     assert np.isnan(errs).sum() == n_outside

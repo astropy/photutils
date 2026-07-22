@@ -180,7 +180,7 @@ class TestAperturePhotometry:
         batch_sum, batch_err = aper.photometry(
             data, error=error, mask=mask, segmentation_image=segm,
             labels=labels, mask_method='correct')
-        mask_sum, mask_err, _area = aper._mask_photometry(
+        mask_sum, mask_err, _area, *_ = aper._mask_photometry(
             data, error=error, mask=mask, method='exact', subpixels=5,
             segmentation=segm.astype(np.intp), labels=labels,
             mask_method='correct')
@@ -293,25 +293,32 @@ class TestApertureStats:
 class TestMakeSegmentationExclusion:
     def test_none_method(self):
         segm = np.array([[0, 1], [2, 1]])
-        _, _, exclude = make_segmentation_exclusion('none', segm, 1)
+        _, _, exclude, affected = make_segmentation_exclusion('none', segm, 1)
         assert not exclude.any()
+        assert not affected.any()
 
     def test_label_zero(self):
         segm = np.array([[0, 1], [2, 1]])
-        _, _, exclude = make_segmentation_exclusion('mask', segm, 0)
+        _, _, exclude, affected = make_segmentation_exclusion('mask', segm, 0)
         assert not exclude.any()
+        assert not affected.any()
 
     def test_mask_method(self):
         segm = np.array([[0, 1], [2, 1]])
-        _, _, exclude = make_segmentation_exclusion('mask', segm, 1)
+        _, _, exclude, affected = make_segmentation_exclusion('mask', segm, 1)
         expected = np.array([[False, False], [True, False]])
         assert_allclose(exclude, expected)
+        assert_allclose(affected, expected)
 
     def test_source_only_method(self):
         segm = np.array([[0, 1], [2, 1]])
-        _, _, exclude = make_segmentation_exclusion('source_only', segm, 1)
+        _, _, exclude, affected = make_segmentation_exclusion(
+            'source_only', segm, 1)
         expected = np.array([[True, False], [True, False]])
         assert_allclose(exclude, expected)
+        # Background exclusions are not marked as affected
+        expected_affected = np.array([[False, False], [True, False]])
+        assert_allclose(affected, expected_affected)
 
     def test_correct_replaces_neighbor(self):
         # 5x5 cutout, center (2, 2). A neighbor pixel at (1, 2) [x=1, y=2]
@@ -320,11 +327,13 @@ class TestMakeSegmentationExclusion:
         segm[2, 2] = 1  # target center
         segm[2, 1] = 2  # neighbor at x=1, y=2
         data = np.arange(25, dtype=float).reshape(5, 5)
-        out_data, _, exclude = make_segmentation_exclusion(
+        out_data, _, exclude, affected = make_segmentation_exclusion(
             'correct', segm, 1, data=data, cutout_xycen=(2, 2))
-        # neighbor replaced, not excluded
+        # Neighbor replaced, not excluded
         assert not exclude[2, 1]
-        # mirror of (x=1, y=2) is (x=3, y=2) -> data[2, 3]
+        # Replaced pixels are marked as affected
+        assert affected[2, 1]
+        # Mirror of (x=1, y=2) is (x=3, y=2) -> data[2, 3]
         assert out_data[2, 1] == data[2, 3]
 
     def test_correct_out_of_bounds_mirror(self):
@@ -334,9 +343,10 @@ class TestMakeSegmentationExclusion:
         segm2[1, 0] = 2  # neighbor x=0,y=1; mirror x=2*1-0=2 in bounds
         segm2[3, 3] = 2  # neighbor x=3,y=3; mirror x=2*1-3=-1 out of bounds
         data = np.ones((5, 5))
-        _, _, exclude = make_segmentation_exclusion(
+        _, _, exclude, affected = make_segmentation_exclusion(
             'correct', segm2, 1, data=data, cutout_xycen=(1, 1))
         assert exclude[3, 3]
+        assert affected[3, 3]
 
     def test_correct_neighbor_mirror(self):
         # A neighbor whose mirror is also a neighbor must be excluded.
@@ -345,7 +355,7 @@ class TestMakeSegmentationExclusion:
         segm[2, 1] = 2  # neighbor x=1,y=2; mirror x=3,y=2
         segm[2, 3] = 2  # neighbor x=3,y=2; mirror x=1,y=2 (both neighbors)
         data = np.ones((5, 5))
-        _, _, exclude = make_segmentation_exclusion(
+        _, _, exclude, _ = make_segmentation_exclusion(
             'correct', segm, 1, data=data, cutout_xycen=(2, 2))
         assert exclude[2, 1]
         assert exclude[2, 3]
@@ -358,7 +368,7 @@ class TestMakeSegmentationExclusion:
         base_mask = np.zeros((5, 5), dtype=bool)
         base_mask[2, 3] = True  # mask the mirror pixel
         data = np.ones((5, 5))
-        _, _, exclude = make_segmentation_exclusion(
+        _, _, exclude, _ = make_segmentation_exclusion(
             'correct', segm, 1, data=data, base_mask=base_mask,
             cutout_xycen=(2, 2))
         assert exclude[2, 1]
@@ -369,7 +379,7 @@ class TestMakeSegmentationExclusion:
         segm[2, 1] = 2
         data = np.arange(25, dtype=float).reshape(5, 5)
         error = np.arange(25, dtype=float).reshape(5, 5) * 0.1
-        _, out_error, _ = make_segmentation_exclusion(
+        _, out_error, _, _ = make_segmentation_exclusion(
             'correct', segm, 1, data=data, error=error, cutout_xycen=(2, 2))
         assert out_error[2, 1] == error[2, 3]
 
@@ -461,7 +471,7 @@ class TestBatchDriverSegmentation:
         batch_sum, batch_err = aper.photometry(
             data, error=error, mask=mask, segmentation_image=segm,
             labels=labels, mask_method='correct')
-        mask_sum, mask_err, _area = aper._mask_photometry(
+        mask_sum, mask_err, _area, *_ = aper._mask_photometry(
             data, error=error, mask=mask, method='exact', subpixels=5,
             segmentation=segm, labels=labels,
             mask_method='correct')

@@ -8,6 +8,7 @@ from .circle import *  # noqa: F401, F403
 from .converters import *  # noqa: F401, F403
 from .core import *  # noqa: F401, F403
 from .ellipse import *  # noqa: F401, F403
+from .flags import *  # noqa: F401, F403
 from .mask import *  # noqa: F401, F403
 from .photometry import *  # noqa: F401, F403
 from .polygon import *  # noqa: F401, F403

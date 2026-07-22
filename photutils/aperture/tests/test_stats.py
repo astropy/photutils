@@ -18,6 +18,7 @@ from numpy.testing import assert_allclose, assert_equal
 from photutils.aperture.circle import CircularAnnulus, CircularAperture
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus)
+from photutils.aperture.flags import APERTURE_FLAGS
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture)
 from photutils.aperture.stats import _MAD_STD_SCALE, ApertureStats
@@ -162,7 +163,7 @@ class TestApertureStats:
         for prop in apstats1.properties:
             if prop in scalar_props:
                 continue
-            if 'sum' in prop:
+            if 'sum' in prop and prop != 'sum_flags':
                 # Test that these properties are not equal
                 with pytest.raises(AssertionError):
                     assert_equal(getattr(apstats1, prop),
@@ -196,13 +197,18 @@ class TestApertureStats:
         assert apstats[1].sum_err < self.apstats1[1].sum_err
 
         exclude = ('isscalar', 'n_apertures', 'sky_centroid',
-                   'sky_centroid_icrs')
+                   'sky_centroid_icrs', 'flags', 'sum_flags')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
             if (prop in exclude or 'bbox' in prop or 'cutout' in prop
                     or 'moments' in prop):
                 continue
             assert np.all(np.isnan(getattr(apstats1, prop)))
+
+        # id=2 has masked pixels; id=3 is completely masked
+        assert apstats[1].flags == APERTURE_FLAGS.MASKED_PIXELS
+        assert apstats[2].flags == (APERTURE_FLAGS.MASKED_PIXELS
+                                    | APERTURE_FLAGS.ALL_MASKED)
 
         # Test that mask=None is the same as mask=np.ma.nomask
         apstats1 = ApertureStats(self.data, self.aperture, mask=None)
@@ -249,13 +255,17 @@ class TestApertureStats:
         assert_equal(apstats._overlap, [True, True, False])
 
         exclude = ('isscalar', 'n_apertures', 'sky_centroid',
-                   'sky_centroid_icrs')
+                   'sky_centroid_icrs', 'flags', 'sum_flags')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
             if (prop in exclude or 'bbox' in prop or 'cutout' in prop
                     or 'moments' in prop):
                 continue
             assert np.all(np.isnan(getattr(apstats1, prop)))
+
+        assert apstats[0].flags == APERTURE_FLAGS.PARTIAL_OVERLAP
+        assert apstats[2].flags == (APERTURE_FLAGS.NO_OVERLAP
+                                    | APERTURE_FLAGS.NO_PIXELS)
 
     def test_to_table(self):
         tbl = self.apstats1.to_table()

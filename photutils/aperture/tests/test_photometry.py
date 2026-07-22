@@ -692,17 +692,17 @@ def test_scalar_aperture():
     ap = CircularAperture((10, 10), r=3.0)
     colnames1 = aperture_photometry(data, ap, error=data).colnames
     assert (colnames1 == ['id', 'x_center', 'y_center', 'aperture_sum',
-                          'aperture_sum_err', 'area'])
+                          'aperture_sum_err', 'area', 'flags'])
 
     colnames2 = aperture_photometry(data, [ap], error=data).colnames
     assert (colnames2 == ['id', 'x_center', 'y_center', 'aperture_sum_0',
-                          'aperture_sum_err_0', 'area_0'])
+                          'aperture_sum_err_0', 'area_0', 'flags_0'])
 
     colnames3 = aperture_photometry(data, [ap, ap], error=data).colnames
     assert (colnames3 == ['id', 'x_center', 'y_center', 'aperture_sum_0',
-                          'aperture_sum_err_0', 'area_0',
+                          'aperture_sum_err_0', 'area_0', 'flags_0',
                           'aperture_sum_1', 'aperture_sum_err_1',
-                          'area_1'])
+                          'area_1', 'flags_1'])
 
 
 def test_area_column():

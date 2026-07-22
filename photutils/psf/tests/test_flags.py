@@ -5,10 +5,12 @@ Tests for the flags module.
 
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.psf import IterativePSFPhotometry, PSFPhotometry
-from photutils.psf.flags import (PSF_FLAGS, _PSFFlagDefinition, _PSFFlags,
+from photutils.psf.flags import (PSF_FLAGS, _PSFFlags,
                                  _update_decode_docstring, decode_psf_flags)
+from photutils.utils._flags import FlagDefinition
 
 
 def test_decode_psf_flags():
@@ -272,7 +274,7 @@ def test_psf_flags_properties():
     assert isinstance(all_flags, list)
     assert len(all_flags) == 12
     for flag_def in all_flags:
-        assert isinstance(flag_def, _PSFFlagDefinition)
+        assert isinstance(flag_def, FlagDefinition)
 
 
 def test_psf_flags_get_methods():
@@ -294,7 +296,9 @@ def test_psf_flags_get_methods():
 
     # Test get_description
     desc1 = PSF_FLAGS.get_description(1)
-    assert 'n_pixels_fit smaller than full fit_shape region' in desc1
+    assert 'n_pixels_fit' in desc1
+    assert 'smaller than full' in desc1
+    assert 'fit_shape' in desc1
 
     desc8 = PSF_FLAGS.get_description(8)
     assert 'possible non-convergence' in desc8
@@ -314,13 +318,13 @@ def test_psf_flags_get_definition():
     """
     # Test get_definition by bit value
     def_by_bit = PSF_FLAGS.get_definition(1)
-    assert isinstance(def_by_bit, _PSFFlagDefinition)
+    assert isinstance(def_by_bit, FlagDefinition)
     assert def_by_bit.bit_value == 1
     assert def_by_bit.name == 'n_pixels_fit_partial'
 
     # Test get_definition by name
     def_by_name = PSF_FLAGS.get_definition('n_pixels_fit_partial')
-    assert isinstance(def_by_name, _PSFFlagDefinition)
+    assert isinstance(def_by_name, FlagDefinition)
     assert def_by_name.bit_value == 1
     assert def_by_name.name == 'n_pixels_fit_partial'
 
@@ -341,12 +345,26 @@ def test_psf_flags_get_definition():
         PSF_FLAGS.get_definition(3.14)
 
 
+def test_psf_flags_get_definition_deprecated_name():
+    """
+    Test that get_definition resolves a deprecated flag name to its
+    current definition and warns.
+    """
+    match = ("The flag name 'npixfit_partial' is deprecated.*Use "
+             "'n_pixels_fit_partial' instead")
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        deprecated_def = PSF_FLAGS.get_definition('npixfit_partial')
+
+    current_def = PSF_FLAGS.get_definition('n_pixels_fit_partial')
+    assert deprecated_def is current_def
+
+
 def test_psf_flag_definition():
     """
-    Test _PSFFlagDefinition dataclass.
+    Test FlagDefinition dataclass.
     """
     # Create a flag definition
-    flag_def = _PSFFlagDefinition(
+    flag_def = FlagDefinition(
         bit_value=1,
         name='test_flag',
         description='test description',
@@ -364,7 +382,7 @@ def test_psf_flag_definition():
         flag_def.bit_value = 2
 
     # Test equality
-    flag_def2 = _PSFFlagDefinition(
+    flag_def2 = FlagDefinition(
         bit_value=1,
         name='test_flag',
         description='test description',
@@ -373,7 +391,7 @@ def test_psf_flag_definition():
     assert flag_def == flag_def2
 
     # Test inequality
-    flag_def3 = _PSFFlagDefinition(
+    flag_def3 = FlagDefinition(
         bit_value=2,
         name='test_flag',
         description='test description',
@@ -460,19 +478,19 @@ def test_psf_classes_docstrings():
         docstring = cls.__call__.__doc__
 
         # Should have flags section
-        assert '* ``flags`` : bitwise flag values' in docstring
+        assert "* ``'flags'`` : The bitwise quality flags" in docstring
 
         # Should have all dynamic flag descriptions
         dynamic_flags = [
-            'n_pixels_fit smaller than full fit_shape region',
-            'fitted position outside input image bounds',
-            'non-positive flux',
-            'possible non-convergence',
-            'missing parameter covariance',
-            'fitted parameter near a bound',
-            'no overlap with data',
-            'fully masked source',
-            'too few pixels for fitting',
+            'indicating partial PSF fitting',
+            'outside the bounds of the input image',
+            'negative or zero, which is non-physical',
+            'may not have converged to a stable solution',
+            'covariance matrix is not available',
+            'very close to their imposed bounds',
+            'no overlap with valid data pixels',
+            'All pixels in the source fitting region are masked',
+            'Insufficient unmasked pixels available for reliable PSF fitting',
         ]
 
         for flag_desc in dynamic_flags:
@@ -492,15 +510,15 @@ def test_decode_psf_flags_docstring():
 
     # Should have all expected flag names in the expected format
     expected_flags = [
-        "``'n_pixels_fit_partial'`` : bit 1",
-        "``'outside_bounds'`` : bit 2",
-        "``'negative_flux'`` : bit 4",
-        "``'no_convergence'`` : bit 8",
-        "``'no_covariance'`` : bit 16",
-        "``'near_bound'`` : bit 32",
-        "``'no_overlap'`` : bit 64",
-        "``'fully_masked'`` : bit 128",
-        "``'too_few_pixels'`` : bit 256",
+        "``'n_pixels_fit_partial'``",
+        "``'outside_bounds'``",
+        "``'negative_flux'``",
+        "``'no_convergence'``",
+        "``'no_covariance'``",
+        "``'near_bound'``",
+        "``'no_overlap'``",
+        "``'fully_masked'``",
+        "``'too_few_pixels'``",
     ]
 
     for flag_desc in expected_flags:
@@ -509,15 +527,15 @@ def test_decode_psf_flags_docstring():
 
     # Should have flag descriptions
     expected_descriptions = [
-        'n_pixels_fit smaller than full fit_shape region',
-        'fitted position outside input image bounds',
-        'non-positive flux',
-        'possible non-convergence',
-        'missing parameter covariance',
-        'fitted parameter near a bound',
-        'no overlap with data',
-        'fully masked source',
-        'too few pixels for fitting',
+        'indicating partial PSF fitting',
+        'outside the bounds of the input image',
+        'negative or zero, which is non-physical',
+        'may not have converged to a stable solution',
+        'covariance matrix is not available',
+        'very close to their imposed bounds',
+        'no overlap with valid data pixels',
+        'All pixels in the source fitting region are masked',
+        'Insufficient unmasked pixels available for reliable PSF fitting',
     ]
 
     for desc in expected_descriptions:

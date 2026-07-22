@@ -38,6 +38,8 @@ cdef extern from "math.h" nogil:
     double sin(double x)
     double cos(double x)
     double fabs(double x)
+    double ceil(double x)
+    bint isfinite(double x)
 
 # Python-level aliases of the shape codes (the ``cdef enum`` is shared
 # with ``_batch_stats`` via ``_batch_overlap.pxd``)
@@ -48,6 +50,18 @@ SHAPE_ELLIPTICAL_ANNULUS = _ELLIPTICAL_ANNULUS
 SHAPE_RECTANGLE = _RECTANGLE
 SHAPE_RECTANGULAR_ANNULUS = _RECTANGULAR_ANNULUS
 SHAPE_POLYGON = _POLYGON
+
+# Column indices of the per-source ``flag_counts`` arrays returned by
+# the batch drivers (see ``batch_aperture_sums`` and
+# ``photutils.aperture._batch_stats.batch_aperture_gather``)
+FLAG_COL_NPIX = 0
+FLAG_COL_MASKED = 1
+FLAG_COL_NONFINITE_DATA = 2
+FLAG_COL_NONFINITE_ERROR = 3
+FLAG_COL_SEG = 4
+FLAG_COL_UNCORRECTED = 5
+FLAG_COL_VALID = 6
+FLAG_COL_BBOX_CLIPPED = 7
 
 
 def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
@@ -82,7 +96,10 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
     mask : 2D ndarray of uint8 (C-contiguous) or `None`
         A mask array where nonzero values indicate masked (excluded)
-        pixels. Must have the same shape as ``data``.
+        pixels. Must have the same shape as ``data``. For the flag
+        counts, bit 1 (value 1) marks input-masked pixels and bit 2
+        (value 2) marks non-finite data pixels folded into the mask by
+        the caller. Any nonzero value excludes the pixel.
 
     positions : 2D ndarray of float64 (C-contiguous)
         The (x, y) source positions with shape ``(n_sources, 2)``.
@@ -193,6 +210,36 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     sum_counts : 1D ndarray of intp
         The per-source count of packed contributing pixels. Empty
         unless ``emit_sum`` is nonzero.
+
+    flag_counts : 2D ndarray of intp
+        Per-source pixel counts for the quality flags, with one row per
+        source and the columns given by the module-level ``FLAG_COL_*``
+        constants:
+
+        * ``FLAG_COL_NPIX``: the number of nonzero-fraction pixels
+          inside the data
+        * ``FLAG_COL_MASKED``: the number of those pixels that are
+          input-masked
+        * ``FLAG_COL_NONFINITE_DATA``: the number of those pixels that
+          are non-finite in the data (masked or unmasked)
+        * ``FLAG_COL_NONFINITE_ERROR``: the number of those pixels that
+          are non-finite in the error (masked or unmasked)
+        * ``FLAG_COL_SEG``: the number of those pixels that were
+          excluded or corrected by the segmentation masking
+        * ``FLAG_COL_UNCORRECTED``: the number of those pixels that
+          could not be corrected by the segmentation masking
+        * ``FLAG_COL_VALID``: the number of contributing pixels
+          (unmasked, finite, and not excluded by segmentation)
+        * ``FLAG_COL_BBOX_CLIPPED``: a 0/1 indicator of whether the
+          bounding box is clipped by a data edge
+
+        The ``FLAG_COL_NONFINITE_DATA`` and ``FLAG_COL_NONFINITE_ERROR``
+        columns are nonzero when non-finite data or error values
+        contribute to the aperture. Pixels marked non-finite in the mask
+        plane (bit 2) are counted exactly, while unmasked non-finite
+        contributions are detected from the accumulated sums as a 0/1
+        indicator. Rows are all zero where the aperture bounding box
+        does not overlap the data.
     """
     cdef Py_ssize_t n_src = positions.shape[0]
     cdef Py_ssize_t ny_data = data.shape[0]
@@ -203,11 +250,13 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     areas_arr = np.full(n_src, np.nan)
     overlap_arr = np.zeros(n_src, dtype=np.uint8)
     starts_arr = np.zeros(n_src, dtype=np.intp)
+    fcounts_arr = np.zeros((n_src, 8), dtype=np.intp)
     cdef double[::1] sums = sums_arr
     cdef double[::1] sum_vars = vars_arr
     cdef double[::1] areas = areas_arr
     cdef unsigned char[::1] overlap = overlap_arr
     cdef Py_ssize_t[::1] starts = starts_arr
+    cdef Py_ssize_t[:, ::1] fcounts = fcounts_arr
 
     cdef bint has_error = error is not None
     cdef bint has_mask = mask is not None
@@ -338,6 +387,10 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     cdef double pxmin, pymin, frac, err_val, sum_val, var_val, area_val, val
     cdef double errsq = 0.0
     cdef Py_ssize_t total = 0, spos = 0
+    cdef Py_ssize_t n_pix, n_masked, n_nonfin, n_nonfin_err
+    cdef Py_ssize_t n_seg_px, n_uncorr, n_valid, w_out
+    cdef Py_ssize_t ixmax_full, iymax_full
+    cdef unsigned char mbits
 
     # Pass 1 (only when emitting the packed member buffers): size and
     # offset the packed buffers from the per-source clipped bounding-box
@@ -384,38 +437,17 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             sum_val = 0.0
             var_val = 0.0
             area_val = 0.0
+            n_pix = 0
+            n_masked = 0
+            n_nonfin = 0
+            n_nonfin_err = 0
+            n_seg_px = 0
+            n_uncorr = 0
+            n_valid = 0
             spos = starts[k]
             for iy in range(iy0, iy1):
                 pymin = gymin + (iy - iymin) * dy
                 for ix in range(ix0, ix1):
-                    if has_mask and mask[iy, ix]:
-                        continue
-                    six = ix
-                    siy = iy
-                    if has_seg and lbl != 0:
-                        seg_val = segmentation[iy, ix]
-                        if seg_method == 1:
-                            if seg_val != 0 and seg_val != lbl:
-                                continue
-                        elif seg_method == 2:
-                            if seg_val != lbl:
-                                continue
-                        elif seg_method == 3:
-                            if seg_val != 0 and seg_val != lbl:
-                                # Neighbor pixel: replace its value with
-                                # the pixel mirrored across the center.
-                                xm = 2 * ccx - ix
-                                ym = 2 * ccy - iy
-                                if (xm < ix0 or xm >= ix1
-                                        or ym < iy0 or ym >= iy1):
-                                    continue
-                                mseg = segmentation[ym, xm]
-                                if mseg != 0 and mseg != lbl:
-                                    continue
-                                if has_mask and mask[ym, xm]:
-                                    continue
-                                six = xm
-                                siy = ym
                     pxmin = gxmin + (ix - ixmin) * dx
 
                     if shape_code == _CIRCLE:
@@ -465,19 +497,90 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                     # mask-based path (via ``np.maximum``) and the batch
                     # overlap functions clamp such fractions to zero, so
                     # only strictly positive fractions contribute here.
-                    if frac > 0.0:
-                        val = data[siy, six] - lbk
-                        sum_val += val * frac
-                        area_val += frac
-                        if has_error:
-                            err_val = error[siy, six]
-                            errsq = err_val * err_val
-                            var_val += errsq * frac
-                        if emit_sum:
-                            sum_values[spos] = val
-                            sum_fracs[spos] = frac
-                            sum_errsq[spos] = errsq if has_error else 0.0
-                            spos += 1
+                    if frac <= 0.0:
+                        continue
+                    n_pix += 1
+
+                    if has_mask:
+                        mbits = mask[iy, ix]
+                        if mbits & 1:
+                            n_masked += 1
+                            continue
+                        if mbits & 2:
+                            n_nonfin += 1
+                            continue
+                    six = ix
+                    siy = iy
+                    if has_seg and lbl != 0:
+                        seg_val = segmentation[iy, ix]
+                        if seg_method == 1:
+                            if seg_val != 0 and seg_val != lbl:
+                                n_seg_px += 1
+                                continue
+                        elif seg_method == 2:
+                            if seg_val != lbl:
+                                # Only neighbor-source pixels (not
+                                # background pixels) count toward the
+                                # neighbor-pixels flag.
+                                if seg_val != 0:
+                                    n_seg_px += 1
+                                continue
+                        elif seg_method == 3:
+                            if seg_val != 0 and seg_val != lbl:
+                                # Neighbor pixel: replace its value with
+                                # the pixel mirrored across the center.
+                                n_seg_px += 1
+                                xm = 2 * ccx - ix
+                                ym = 2 * ccy - iy
+                                if (xm < ix0 or xm >= ix1
+                                        or ym < iy0 or ym >= iy1):
+                                    n_uncorr += 1
+                                    continue
+                                mseg = segmentation[ym, xm]
+                                if mseg != 0 and mseg != lbl:
+                                    n_uncorr += 1
+                                    continue
+                                if has_mask and mask[ym, xm]:
+                                    n_uncorr += 1
+                                    continue
+                                six = xm
+                                siy = ym
+
+                    val = data[siy, six] - lbk
+                    n_valid += 1
+                    sum_val += val * frac
+                    area_val += frac
+                    if has_error:
+                        err_val = error[siy, six]
+                        errsq = err_val * err_val
+                        var_val += errsq * frac
+                    if emit_sum:
+                        sum_values[spos] = val
+                        sum_fracs[spos] = frac
+                        sum_errsq[spos] = errsq if has_error else 0.0
+                        spos += 1
+
+            # Unmasked non-finite data or error values corrupt the
+            # accumulated sums, so their presence is detected from the
+            # final sums (avoiding per-pixel finiteness tests in the hot
+            # loop). Non-finite pixels folded into the mask plane (bit
+            # 2) are counted exactly in the masked branch above.
+            if not isfinite(sum_val):
+                n_nonfin += 1
+            if has_error and not isfinite(var_val):
+                n_nonfin_err += 1
+
+            # Whether the bounding box is clipped by a data edge. The
+            # caller resolves this to the precise outside-weight test
+            # (nonzero aperture weights outside the data) only for
+            # these sources; unclipped interior sources are exactly 0.
+            ixmax_full = <Py_ssize_t>ceil(cx + ext_x + 0.5)
+            iymax_full = <Py_ssize_t>ceil(cy + ext_y + 0.5)
+            if (ixmin < ix0 or ixmax_full > ix1
+                    or iymin < iy0 or iymax_full > iy1):
+                w_out = 1  # bounding box clipped by data edge
+            else:
+                w_out = 0  # bounding box fully inside data
 
             sums[k] = sum_val
             areas[k] = area_val
@@ -485,7 +588,15 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                 sum_vars[k] = var_val
             if emit_sum:
                 scounts[k] = spos - starts[k]
+            fcounts[k, 0] = n_pix
+            fcounts[k, 1] = n_masked
+            fcounts[k, 2] = n_nonfin
+            fcounts[k, 3] = n_nonfin_err
+            fcounts[k, 4] = n_seg_px
+            fcounts[k, 5] = n_uncorr
+            fcounts[k, 6] = n_valid
+            fcounts[k, 7] = w_out
 
     return (sums_arr, vars_arr, areas_arr, overlap_arr.view(bool),
             starts_arr, sum_values_arr, sum_fracs_arr, sum_errsq_arr,
-            scounts_arr)
+            scounts_arr, fcounts_arr)

@@ -130,10 +130,17 @@ def aperture_photometry(data, apertures, error=None, mask=None,
           computed with the same inputs. The value is NaN where an
           aperture does not overlap the data.
 
+        * ``'flags'``:
+          The bitwise quality flags for the aperture(s). See
+          :func:`~photutils.aperture.decode_aperture_flags` for decoding
+          flag values. The flags are:
+
+          <flag_descriptions>
+
         If multiple apertures are input, the ``'aperture_sum'``,
-        ``'aperture_sum_err'``, and ``'area'`` columns will have a
-        ``'_i'`` suffix (e.g., ``'aperture_sum_0'``), where ``i`` is the
-        index of the aperture in the input list.
+        ``'aperture_sum_err'``, ``'area'``, and ``'flags'`` columns will
+        have a ``'_i'`` suffix (e.g., ``'aperture_sum_0'``), where ``i``
+        is the index of the aperture in the input list.
 
         The table metadata includes the Astropy and Photutils version
         numbers and the `aperture_photometry` calling arguments.
@@ -257,6 +264,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     sum_key_main = 'aperture_sum'
     sum_err_key_main = 'aperture_sum_err'
     area_key_main = 'area'
+    flags_key_main = 'flags'
     for i, aper in enumerate(apertures):
         result = aper.photometry(
             data, error=error, mask=mask, method=method, subpixels=subpixels,
@@ -266,13 +274,18 @@ def aperture_photometry(data, apertures, error=None, mask=None,
         sum_key = sum_key_main
         sum_err_key = sum_err_key_main
         area_key = area_key_main
+        flags_key = flags_key_main
         if not single_aperture:
             sum_key += f'_{i}'
             sum_err_key += f'_{i}'
             area_key += f'_{i}'
+            flags_key += f'_{i}'
 
         tbl[sum_key] = result.aperture_sum
         tbl[sum_err_key] = result.aperture_sum_err
         tbl[area_key] = result.area
+        tbl[flags_key] = result.flags
+        tbl[flags_key].info.description = (
+            'Aperture quality flags; see decode_aperture_flags')
 
     return tbl
