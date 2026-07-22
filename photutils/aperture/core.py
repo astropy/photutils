@@ -725,9 +725,30 @@ class PixelAperture(Aperture):
                 data_cutout = data[slc_large]
                 error_cutout = None if error is None else error[slc_large]
 
+                # Non-finite ``data`` masking (used by the class
+                # path). Flag the contributing non-finite pixels, then
+                # exclude them *before* the segmentation handling so
+                # the segmentation counts and the 'correct' mirror
+                # replacement never use non-finite pixels, matching the
+                # batch kernel (mask plane bit 2) and `ApertureStats`.
+                # When ``mask_nonfinite`` is `False` (the legacy
+                # function), the non-finite pixels are left in the
+                # computation so they corrupt the sum.
+                nonfinite_data = ~np.isfinite(data_cutout)
+                if mask_nonfinite:
+                    flag_counts[idx, FLAG_COL_NONFINITE_DATA] = np.any(
+                        nonfinite_data & pixel_mask)
+                    pixel_mask = pixel_mask & ~nonfinite_data
+
                 if segmentation is not None and mask_method != 'none':
                     segm_cutout = segmentation[slc_large]
                     base_mask = None if mask is None else mask[slc_large]
+                    if mask_nonfinite:
+                        # Fold the non-finite pixels into the base mask
+                        # so that non-finite mirror pixels are treated
+                        # as uncorrectable by the 'correct' method.
+                        base_mask = (nonfinite_data if base_mask is None
+                                     else base_mask | nonfinite_data)
                     cutout_xycen = (positions[idx, 0] - slc_large[1].start,
                                     positions[idx, 1] - slc_large[0].start)
                     (data_cutout, error_cutout, exclude,
@@ -743,20 +764,6 @@ class PixelAperture(Aperture):
                         flag_counts[idx, FLAG_COL_UNCORRECTED] = (
                             np.count_nonzero(exclude & pixel_mask))
                     pixel_mask = pixel_mask & ~exclude
-
-                # Non-finite ``data`` masking (used by the class
-                # path). Flag the contributing non-finite pixels, then
-                # exclude them from the sum, area, and valid-pixel
-                # count so they do not corrupt the result (matching
-                # `ApertureStats`). When ``mask_nonfinite`` is `False`
-                # (the legacy function), the non-finite pixels are left
-                # in the computation so they corrupt the sum (the 3.0.0
-                # behavior).
-                nonfinite_data = ~np.isfinite(data_cutout)
-                if mask_nonfinite:
-                    flag_counts[idx, FLAG_COL_NONFINITE_DATA] = np.any(
-                        nonfinite_data & pixel_mask)
-                    pixel_mask = pixel_mask & ~nonfinite_data
 
                 flag_counts[idx, FLAG_COL_VALID] = np.count_nonzero(
                     pixel_mask)

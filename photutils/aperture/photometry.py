@@ -129,12 +129,15 @@ class AperturePhotometry:
     calculations and are indicated by the ``non_finite_data`` quality
     flag (see `~photutils.aperture.decode_aperture_flags`).
 
-    This class is immutable after initialization (its cached attributes
-    use compute-once `~astropy.utils.decorators.lazyproperty` caching),
-    so a single instance can be safely shared across threads.
+    This class should be treated as immutable after
+    initialization (aside from the internal compute-once
+    `~astropy.utils.decorators.lazyproperty` cache), so a single
+    instance can be safely shared across threads. Do not reassign its
+    attributes after construction.
 
     Examples
     --------
+    >>> import numpy as np
     >>> from photutils.datasets import make_4gaussians_image
     >>> from photutils.aperture import AperturePhotometry, CircularAperture
     >>> data = make_4gaussians_image()
@@ -147,7 +150,7 @@ class AperturePhotometry:
     [1.41796308 1.41796308 1.41796308]
     >>> phot.to_table(columns=['id', 'flux', 'flux_err'])
     <QTable length=3>
-    id         flux             flux_err
+      id         flux             flux_err
     int64      float64            float64
     ----- ------------------ -----------------
         1  5853.596272924398 1.417963080724414
@@ -444,6 +447,15 @@ class AperturePhotometry:
         else:
             table_columns = columns
 
+        allowed_columns = ('id', 'x_center', 'y_center', 'sky_center',
+                           'flux', 'flux_err', 'area', 'flags')
+        invalid = [col for col in table_columns
+                   if col not in allowed_columns]
+        if invalid:
+            msg = (f'Invalid column name(s): {invalid!r}. The allowed '
+                   f'column names are: {", ".join(allowed_columns)}')
+            raise ValueError(msg)
+
         tbl = QTable()
         tbl.meta.update(self.meta)
 
@@ -476,7 +488,10 @@ class AperturePhotometry:
         -------
         decoded : list of list of str or list of list of int
             A list of the active flag names (or bit values) for each
-            aperture.
+            aperture. If a list of apertures was input (2D `flags`),
+            the result is a nested list with the same ``(n_positions,
+            n_apertures)`` shape as `flags`, so ``decoded[i][j]`` gives
+            the active flags for position ``i`` and aperture ``j``.
 
         See Also
         --------
@@ -695,19 +710,13 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     if wcs is not None and not skyaper:
         tbl['sky_center'] = wcs.pixel_to_world(*np.transpose(positions))
 
-    sum_key_main = 'flux'
-    sum_err_key_main = 'flux_err'
-    column_map = {
-        sum_key_main: 'aperture_sum',
-        sum_err_key_main: 'aperture_sum_err',
-    }
     for i, aper in enumerate(apertures):
         result = aper._photometry(
             data, error=error, mask=mask, method=method, subpixels=subpixels)
 
-        # Apply column name mapping for legacy column names
-        sum_key = column_map.get(sum_key_main, sum_key_main)
-        sum_err_key = column_map.get(sum_err_key_main, sum_err_key_main)
+        # Legacy column names
+        sum_key = 'aperture_sum'
+        sum_err_key = 'aperture_sum_err'
 
         if not single_aperture:
             sum_key += f'_{i}'

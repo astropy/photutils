@@ -2765,7 +2765,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
 
-        That the isophotal limit of a source is well represented by
+        The isophotal limit of a source is well represented by
         :math:`R \approx 3`.
         """
         return ((np.sin(self.orientation) / self.semimajor_axis)**2

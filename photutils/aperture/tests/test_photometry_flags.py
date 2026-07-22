@@ -9,8 +9,9 @@ import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.aperture import (APERTURE_FLAGS, AperturePhotometry,
-                                CircularAnnulus, CircularAperture,
-                                EllipticalAperture, RectangularAperture)
+                                ApertureStats, CircularAnnulus,
+                                CircularAperture, EllipticalAperture,
+                                RectangularAperture)
 from photutils.aperture.flags import _counts_to_flag_bits
 
 SHAPE = (25, 25)
@@ -317,6 +318,44 @@ def test_mask_path_parity_segmentation():
         assert_array_equal(flags_batch, flags_nobatch)
 
 
+@pytest.mark.parametrize('mask_method', ['mask', 'source_only', 'correct'])
+@pytest.mark.parametrize('nan_pixel', [(12, 14), (12, 10)],
+                         ids=['nan_neighbor', 'nan_mirror'])
+def test_mask_path_parity_nonfinite_segmentation(mask_method, nan_pixel):
+    """
+    Test batch/mask-path parity when non-finite masking (the
+    AperturePhotometry path) combines with segmentation masking.
+
+    Non-finite pixels must be masked before the segmentation handling,
+    so a NaN neighbor pixel is excluded as non-finite (not counted as
+    a neighbor pixel or mirror-corrected) and a NaN mirror pixel makes
+    its neighbor uncorrectable with mask_method='correct', matching the
+    batch kernel and ApertureStats.
+    """
+    data = np.ones(SHAPE)
+    data[nan_pixel] = np.nan
+    segm = np.zeros(SHAPE, dtype=int)
+    segm[10:15, 10:15] = 1
+    segm[12, 14] = 2  # neighbor pixel; its mirror is (12, 10)
+
+    kwargs = {'segmentation_image': segm, 'labels': [1],
+              'mask_method': mask_method}
+    batch_aper = CircularAperture((12.0, 12.0), r=3.0)
+    nobatch_aper = _NoBatchCircularAperture((12.0, 12.0), r=3.0)
+    result_batch = AperturePhotometry(data, batch_aper, **kwargs)
+    result_nobatch = AperturePhotometry(data, nobatch_aper, **kwargs)
+    assert_array_equal(result_batch.flags, result_nobatch.flags)
+    assert_allclose(result_batch.flux, result_nobatch.flux, rtol=1e-12)
+    assert_allclose(result_batch.area.value, result_nobatch.area.value,
+                    rtol=1e-12)
+
+    # The NaN pixel is excluded as non_finite_data in both paths
+    assert result_batch.flags[0] & APERTURE_FLAGS.NON_FINITE_DATA
+    stats = ApertureStats(data, batch_aper, **kwargs)
+    assert result_batch.flags[0] == stats.flags
+    assert_allclose(result_batch.flux[0], stats.sum, rtol=1e-12)
+
+
 def test_aperture_photometry_flags():
     """
     Test the AperturePhotometry flags.
@@ -343,8 +382,6 @@ def test_flags_with_units():
     data = np.ones(SHAPE) * u.Jy
     data[12, 12] = np.nan * u.Jy
     aper = CircularAperture((12, 12), r=3.0)
-    result = AperturePhotometry(data, aper)
-    assert result.flags[0] == APERTURE_FLAGS.NON_FINITE_DATA
     phot = AperturePhotometry(data, aper)
     assert phot.flags[0] == APERTURE_FLAGS.NON_FINITE_DATA
 

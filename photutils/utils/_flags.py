@@ -134,7 +134,9 @@ class FlagRegistry:
         KeyError
             If the identifier is not found.
         """
-        if isinstance(identifier, int):
+        if isinstance(identifier, (int, np.integer)) and not isinstance(
+                identifier, bool):
+            identifier = int(identifier)
             if identifier not in self._bit_to_def:
                 msg = f'No flag with bit value {identifier}'
                 raise KeyError(msg)
@@ -325,8 +327,10 @@ def decode_flags(flags, registry, *, return_bit_values=False):
     Returns
     -------
     decoded : list
-        List of active flag names (or bit values), or list of lists
-        if the input is an array.
+        List of active flag names (or bit values) for a scalar input.
+        For an array input, a nested list with the same shape as the
+        input is returned, where each innermost element is the list of
+        active flag names (or bit values) for the corresponding flag.
     """
     flag_definitions = registry.flag_dict
 
@@ -351,6 +355,15 @@ def decode_flags(flags, registry, *, return_bit_values=False):
                     active_flags.append(name)
         return active_flags
 
+    def _decode_array(arr):
+        """
+        Recursively decode an array, preserving its shape as nested
+        lists.
+        """
+        if arr.ndim == 1:
+            return [_decode_single_flag(flag) for flag in arr]
+        return [_decode_array(sub) for sub in arr]
+
     # Handle both single values and arrays
     if np.isscalar(flags):
         return _decode_single_flag(flags)
@@ -361,5 +374,5 @@ def decode_flags(flags, registry, *, return_bit_values=False):
         # Handle 0D arrays (scalar arrays)
         return _decode_single_flag(flags_array.item())
 
-    # Handle 1D or higher dimensional arrays
-    return [_decode_single_flag(flag) for flag in flags_array.flat]
+    # Handle 1D or higher dimensional arrays, preserving shape
+    return _decode_array(flags_array)

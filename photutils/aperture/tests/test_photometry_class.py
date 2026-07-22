@@ -321,6 +321,16 @@ class TestToTable:
         tbl = AperturePhotometry(data, aper).to_table(columns='flux')
         assert tbl.colnames == ['flux']
 
+    def test_invalid_column(self):
+        data = make_4gaussians_image()
+        aper = CircularAperture((150, 25), 8)
+        phot = AperturePhotometry(data, aper)
+        match = 'Invalid column name'
+        with pytest.raises(ValueError, match=match):
+            phot.to_table(columns='invalid')
+        with pytest.raises(ValueError, match=match):
+            phot.to_table(columns=['id', 'subpixels'])
+
     def test_multi_aperture_suffixes(self):
         data = make_4gaussians_image()
         pos = ((150, 25), (90, 60))
