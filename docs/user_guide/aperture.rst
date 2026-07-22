@@ -536,6 +536,38 @@ list of aperture objects with identical positions, but with different
       3     54.6     68.2 47.12389 75.398224 109.95574 0.75198848 0.95119855  1.1486814 47.12389 75.398224 109.95574       0       0       0
 
 
+Aperture Photometry on a 3D Data Cube
+-------------------------------------
+
+:class:`~photutils.aperture.AperturePhotometry` operates on a single
+2D image. To measure a source in a 3D data cube -- for example, a time
+series of images of the same field -- apply the same aperture to each 2D
+image in the stack and collect the results into a light curve.
+
+Here we create a small stack of five images in which a single source
+varies in brightness from frame to frame, and measure its flux in each
+frame using the same circular aperture::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import AperturePhotometry, CircularAperture
+    >>> scales = np.array([1.0, 1.5, 2.0, 1.8, 1.2])
+    >>> cube = scales[:, None, None] * np.ones((5, 50, 50))
+    >>> aperture = CircularAperture((25, 25), r=5)
+    >>> flux = np.array([AperturePhotometry(image, aperture).flux[0]
+    ...                  for image in cube])
+    >>> print(flux)  # doctest: +FLOAT_CMP
+    [ 78.53981634 117.80972451 157.07963268 141.37166941  94.24777961]
+
+Each element of ``flux`` corresponds to one image in the cube, giving
+the source's light curve. The same pattern extends to multiple sources
+and to per-frame uncertainties or quality flags: keep each results
+object and index the desired attribute (e.g.,
+:attr:`~photutils.aperture.AperturePhotometry.flux_err` or
+:attr:`~photutils.aperture.AperturePhotometry.flags`) for every frame,
+or build a table per frame with
+:meth:`~photutils.aperture.AperturePhotometry.to_table`.
+
+
 Masking Pixels in Aperture Photometry
 --------------------------------------
 
@@ -975,35 +1007,19 @@ the source fluxes in the circular apertures::
       3     48.3    200.3 1299.6341 0.88622693 78.539816     0
 
 The total background within each source aperture is the mean background
-per pixel multiplied by the aperture area. The aperture area is already
-available in the ``'area'`` column of the output table above, which is
-equivalent to the :meth:`~photutils.aperture.PixelAperture.area_overlap`
-method computed with the same photometry inputs. When using the
-default ``'exact'`` overlap method (see :ref:`aperture-mask methods
-<aperture-mask-methods>`) and no pixels are masked, the analytical
-aperture area is also available from the ``area`` attribute::
+per pixel multiplied by the aperture area. Rather than the analytical
+aperture area, use the unmasked overlap area that was actually used for
+the photometry, which is available in the ``'area'`` column of the
+output table above (equivalent to the
+:meth:`~photutils.aperture.PixelAperture.area_overlap` method computed
+with the same photometry inputs). Using this computed area ensures the
+background is scaled consistently with the photometry, correctly
+accounting for the overlap method and any masked pixels::
 
-    >>> aperture.area
-    78.53981633974483
-
-In general, however, you should use the ``'area'`` column or the
-:meth:`~photutils.aperture.PixelAperture.area_overlap` method to compute
-the aperture area. The ``area_overlap`` method accepts a ``mask``
-argument, ensuring that the area is computed consistently with the
-photometry. If using a :class:`~photutils.aperture.SkyAperture`, first
-convert it to a :class:`~photutils.aperture.PixelAperture`. In this
-example, we used the default ``'exact'`` overlap method and no mask is
-used, so ``area_overlap`` returns the same value as ``area``::
-
-    >>> aperture_area = aperture.area_overlap(data)
-    >>> print(aperture_area)
-    [78.53981634 78.53981634 78.53981634]
-
-The total background within the circular aperture is then::
-
+    >>> aperture_area = phot_table['area'].value
     >>> total_bkg = bkg_mean * aperture_area
     >>> print(total_bkg)
-    [392.23708187 403.29680431 382.40617574]
+    [392.23708187 403.29680431 382.40617607]
 
 Subtracting this background estimate from the measured aperture sums
 gives the background-subtracted photometry::
