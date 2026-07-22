@@ -281,7 +281,7 @@ quality flags are available as lazily-computed attributes (see
 :attr:`~photutils.aperture.AperturePhotometry.area`, and
 :attr:`~photutils.aperture.AperturePhotometry.flags`)::
 
-    >>> print(phot.flux)  # doctest: +FLOAT_CMP
+    >>> print(phot.flux)
     [30.1907054 30.1907054 30.1907054]
 
 The results can also be output as an Astropy `~astropy.table.QTable`
@@ -539,32 +539,38 @@ list of aperture objects with identical positions, but with different
 Aperture Photometry on a 3D Data Cube
 -------------------------------------
 
-:class:`~photutils.aperture.AperturePhotometry` operates on a single
-2D image. To measure a source in a 3D data cube -- for example, a time
-series of images of the same field -- apply the same aperture to each 2D
-image in the stack and collect the results into a light curve.
+:class:`~photutils.aperture.AperturePhotometry` operates on a single 2D
+image. To measure a source in a 3D data cube --- for example, a time
+series of images of the same field --- apply the same aperture to each
+2D image in the stack and collect the results into a light curve.
 
 Here we create a small stack of five images in which a single source
-varies in brightness from frame to frame, and measure its flux in each
-frame using the same circular aperture::
+varies in brightness from frame to frame, and measure its flux and
+uncertainty in each frame using the same circular aperture. Build the
+list of results objects first (a single photometry pass per frame), then
+read as many attributes as needed::
 
     >>> import numpy as np
     >>> from photutils.aperture import AperturePhotometry, CircularAperture
     >>> scales = np.array([1.0, 1.5, 2.0, 1.8, 1.2])
     >>> cube = scales[:, None, None] * np.ones((5, 50, 50))
+    >>> error = 0.1 * np.ones((50, 50))
     >>> aperture = CircularAperture((25, 25), r=5)
-    >>> flux = np.array([AperturePhotometry(image, aperture).flux[0]
-    ...                  for image in cube])
-    >>> print(flux)  # doctest: +FLOAT_CMP
+    >>> results = [AperturePhotometry(image, aperture, error=error)
+    ...            for image in cube]
+    >>> flux = np.array([phot.flux[0] for phot in results])
+    >>> flux_err = np.array([phot.flux_err[0] for phot in results])
+    >>> print(flux)
     [ 78.53981634 117.80972451 157.07963268 141.37166941  94.24777961]
+    >>> print(flux_err)
+    [0.88622693 0.88622693 0.88622693 0.88622693 0.88622693]
 
-Each element of ``flux`` corresponds to one image in the cube, giving
-the source's light curve. The same pattern extends to multiple sources
-and to per-frame uncertainties or quality flags: keep each results
-object and index the desired attribute (e.g.,
-:attr:`~photutils.aperture.AperturePhotometry.flux_err` or
-:attr:`~photutils.aperture.AperturePhotometry.flags`) for every frame,
-or build a table per frame with
+Each element of ``flux`` and ``flux_err`` corresponds to one image in
+the cube, together giving the source's light curve and its uncertainty.
+The same pattern extends to multiple sources and to other per-frame
+quantities: index the desired attribute (e.g.,
+:attr:`~photutils.aperture.AperturePhotometry.flags`) from each results
+object, or build a table per frame with
 :meth:`~photutils.aperture.AperturePhotometry.to_table`.
 
 
@@ -684,9 +690,9 @@ Aperture Quality Flags
 
 The :class:`~photutils.aperture.AperturePhotometry` and
 :class:`~photutils.aperture.ApertureStats` classes include bitwise
-quality flags for each source in a ``'flags'`` column or attribute. See
-the :func:`~photutils.aperture.decode_aperture_flags` function for a a
-definition of the flags. This convenience method can be used to decode
+quality flags for each source in a ``'flags'`` column or attribute.
+See the :func:`~photutils.aperture.decode_aperture_flags` function
+for a definition of the flags. This function can be used to decode
 the flags into human-readable names.
 
 Multiple conditions combine bitwise. For example, an aperture that
@@ -708,7 +714,7 @@ For example::
     >>> print(phot.flags)
     [8 2 5]
 
-The flag values can be decoded into human-readable names using the the
+The flag values can be decoded into human-readable names using the
 :meth:`~photutils.aperture.AperturePhotometry.decode_flags` convenience
 method::
 
@@ -771,7 +777,7 @@ Because non-finite values are automatically masked in
 both :class:`~photutils.aperture.AperturePhotometry` and
 :class:`~photutils.aperture.ApertureStats`, an aperture that contains
 only non-finite values will have ``flags = 48`` (``'non_finite_data'`` +
-``all_masked'``).
+``'all_masked'``).
 
 
 .. _photutils-aperture-stats:
@@ -1055,22 +1061,7 @@ photometry and the local background::
     >>> sigclip = SigmaClip(sigma=3.0, maxiters=10)
     >>> aper_stats = ApertureStats(data, aperture, sigma_clip=None)
     >>> bkg_stats = ApertureStats(data, annulus_aperture, sigma_clip=sigclip)
-
-The sigma-clipped median background values are::
-
-    >>> print(bkg_stats.median)
-    [4.89374178 5.05655328 4.83268958]
-
-The total background within each source aperture is the per-pixel
-background multiplied by the aperture area::
-
     >>> total_bkg = bkg_stats.median * aper_stats.sum_aper_area.value
-    >>> print(total_bkg)
-    [384.35358069 397.14076611 379.5585524 ]
-
-Subtracting this background estimate from the measured aperture sums
-gives the local background-subtracted photometry::
-
     >>> apersum_bkgsub = aper_stats.sum - total_bkg
     >>> print(apersum_bkgsub)
     [743.77088731 338.59823118 920.07553956]
