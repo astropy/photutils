@@ -73,6 +73,49 @@ algorithm::
     >>> mask = aper.to_mask(method='exact')
 
 
+New ``AperturePhotometry`` Class
+================================
+
+Photutils 3.1 introduces a new `~photutils.aperture.AperturePhotometry`
+class, which is now the recommended tool for aperture photometry. Like
+`~photutils.aperture.ApertureStats`, it uses a results-object pattern:
+the data, apertures, and options are supplied to the constructor, and
+the results are exposed as lazily-computed attributes or as an Astropy
+`~astropy.table.QTable` via the ``to_table`` method::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import AperturePhotometry, CircularAperture
+    >>> data = np.ones((100, 100))
+    >>> aperture = CircularAperture([(30.0, 30.0), (40.0, 40.0)], r=5.0)
+    >>> phot = AperturePhotometry(data, aperture)
+    >>> fluxes = phot.flux  # lazily computed
+    >>> phot_table = phot.to_table()
+
+The class reports the aperture
+:attr:`~photutils.aperture.AperturePhotometry.flux`,
+:attr:`~photutils.aperture.AperturePhotometry.flux_err`, unmasked
+overlap :attr:`~photutils.aperture.AperturePhotometry.area`, and
+bitwise quality :attr:`~photutils.aperture.AperturePhotometry.flags`
+as attributes, all of which are included in the
+default ``to_table()`` output. Compared to the legacy
+:func:`~photutils.aperture.aperture_photometry` function, it adds
+the aperture areas and quality flags and supports segmentation-based
+neighbor masking (see below). The flux columns use the names
+``'flux'`` and ``'flux_err'`` (rather than ``'aperture_sum'`` and
+``'aperture_sum_err'``).
+
+The class is immutable after construction (aside from the internal
+lazy-attribute cache), so a single instance is safe to share across
+threads, and independent frames can be processed concurrently (see
+:ref:`the thread-safety section <whatsnew-3.1-thread-safe-photometry>`
+below).
+
+The legacy :func:`~photutils.aperture.aperture_photometry`
+function remains available and is not deprecated, but it is now
+considered a legacy interface. New features are added only to the
+`~photutils.aperture.AperturePhotometry` class.
+
+
 Faster Aperture Photometry
 ==========================
 
@@ -147,6 +190,8 @@ All other properties are unaffected, including the ``mean_err`` and
 sample standard deviation regardless of the value of ``ddof``.
 
 
+.. _whatsnew-3.1-thread-safe-photometry:
+
 Thread-Safe and Free-Threading-Compatible Aperture Photometry
 ==============================================================
 
@@ -205,7 +250,7 @@ that can be applied at one or more positions::
     >>> aper = PolygonAperture(positions, offsets)
 
 The polygon must be simple (non-self-intersecting), but it does not need
-to be convex; non-convex shapes such as L-shapes or stars are fully
+to be convex. Non-convex shapes such as L-shapes or stars are fully
 supported.
 
 Regular polygons can be constructed by specifying a center,
@@ -385,6 +430,13 @@ API Changes
 
 New Deprecations
 ----------------
+
+``PixelAperture.do_photometry`` Deprecated
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``PixelAperture.do_photometry`` method is now deprecated
+and will be removed in a future version. Use the new
+`~photutils.aperture.AperturePhotometry` class instead.
 
 ``EPSFBuildResult`` Renamed to ``EPSFBuildResults``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
