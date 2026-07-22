@@ -208,9 +208,9 @@ its ``vertex_offsets``) that can be applied at one or more positions::
     >>> aperture = PolygonAperture(positions, offsets)
 
 The polygon must be simple (non-self-intersecting) with at least three
-vertices, but it does not need to be convex; non-convex shapes such as
+vertices, but it does not need to be convex. Non-convex shapes such as
 L-shapes or stars are fully supported. The vertices may be input in
-either clockwise or counter-clockwise order; they are normalized to
+either clockwise or counter-clockwise order. They are normalized to
 counter-clockwise order internally.
 
 A single polygon can also be constructed directly
@@ -224,8 +224,8 @@ which sets the aperture position to the polygon centroid::
 Regular polygons (equal-length sides and equal
 interior angles) can be created with the
 :meth:`~photutils.aperture.PolygonAperture.from_regular_polygon` class
-method by specifying a center, the number of vertices, the circumradius,
-and an optional rotation angle::
+method by specifying a center, the number of vertices, the outer radius
+(circumradius), and an optional rotation angle::
 
     >>> hexagon = PolygonAperture.from_regular_polygon((31.4, 32.9),
     ...                                                n_vertices=6,
