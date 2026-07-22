@@ -66,11 +66,7 @@ computing pixel-aperture overlap fractions. Previously, requesting
 `~photutils.aperture.RectangularAnnulus` was silently translated to a
 32x subpixel approximation. The new implementation computes the exact
 analytic overlap area using a Sutherland-Hodgman polygon-clipping
-algorithm::
-
-    >>> from photutils.aperture import RectangularAperture
-    >>> aper = RectangularAperture((10.0, 10.0), w=4.0, h=2.0, theta=0.5)
-    >>> mask = aper.to_mask(method='exact')
+algorithm.
 
 
 New ``AperturePhotometry`` Class
