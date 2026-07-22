@@ -264,17 +264,6 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
     (partial) aperture weights. Accordingly, these quantities cannot be
     rigorously computed from a weighted aperture footprint.
 
-    All properties other than the sum-related ones described below
-    are calculated using the "center" aperture-mask method, which
-    gives aperture weights of 0 or 1, so the ``data`` pixel values
-    are used directly and unweighted. This is due to fundamental
-    limitation. Unlike the mean or variance, order statistics
-    (``min``, ``max``, ``median``) and robust estimators (``mad_std``,
-    ``biweight_location``, ``biweight_midvariance``) have no standard,
-    unambiguous generalization to pixels with fractional (partial)
-    aperture weights, so they cannot be rigorously computed using a
-    weighted footprint.
-
     The input ``sum_method`` and ``subpixels`` keywords are
     used to determine the aperture-mask method only for the
     sum-related properties: ``sum``, ``sum_err``, ``sum_aper_area``,
@@ -2776,7 +2765,7 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         where :math:`R` is a parameter which scales the ellipse (in
         units of the axes lengths).
 
-        That the isophotal limit of a source is well represented by
+        The isophotal limit of a source is well represented by
         :math:`R \approx 3`.
         """
         return ((np.sin(self.orientation) / self.semimajor_axis)**2

@@ -194,12 +194,14 @@ def decode_psf_flags(flags, return_bit_values=False):
 
     Returns
     -------
-    decoded : list of str, list of int, list of list of str, or \
-            list of list of int
-        List of active flag names (or bit values), or list of lists
-        if input is an array. Each string (or integer) represents a
-        specific condition that was detected during PSF fitting. If no
-        flags are set, an empty list is returned. Possible flags are:
+    decoded : list of str, list of int, or nested list
+        List of active flag names (or bit values) for a scalar input.
+        For an array input, a nested list with the same shape as the
+        input is returned, where each innermost element is the list of
+        active flag names (or bit values) for the corresponding flag.
+        Each string (or integer) represents a specific condition that
+        was detected during PSF fitting. If no flags are set, an empty
+        list is returned. Possible flags are:
         <flag_descriptions>
 
     Examples

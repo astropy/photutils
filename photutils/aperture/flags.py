@@ -20,10 +20,10 @@ class _ApertureFlags(FlagRegistry):
     flags.
 
     This class provides a single source of truth for all
-    aperture flag definitions, including bit values,
-    names, and descriptions. The same flag definitions are
-    used by `~photutils.aperture.aperture_photometry`,
-    `~photutils.aperture.PixelAperture.photometry`, and
+    aperture flag definitions, including bit values, names,
+    and descriptions. The same flag definitions are used
+    by `~photutils.aperture.PixelAperture._photometry`,
+    `~photutils.aperture.AperturePhotometry`, and
     `~photutils.aperture.ApertureStats`, so a given bit always has the
     same meaning.
 
@@ -223,12 +223,12 @@ def decode_aperture_flags(flags, *, return_bit_values=False):
 
     Returns
     -------
-    decoded : list of str, list of int, list of list of str, or \
-            list of list of int
-        List of active flag names (or bit values), or list of lists
-        if the input is an array. Each string (or integer) represents
-        a specific condition that was detected. If no flags are
-        set, an empty list is returned. Possible flags are:
+    decoded : list of str, list of int, or nested list
+        List of active flag names (or bit values) for a scalar input.
+        For an array input, a nested list with the same shape as the
+        input is returned, where each innermost element is the list of
+        active flag names (or bit values) for the corresponding flag. If
+        no flags are set, an empty list is returned. Possible flags are:
         <flag_descriptions>
 
     Examples

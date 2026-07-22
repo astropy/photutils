@@ -19,6 +19,7 @@ from photutils.aperture.circle import CircularAnnulus, CircularAperture
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus)
 from photutils.aperture.flags import APERTURE_FLAGS
+from photutils.aperture.photometry import AperturePhotometry
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture)
 from photutils.aperture.stats import _MAD_STD_SCALE, ApertureStats
@@ -177,12 +178,11 @@ class TestApertureStats:
             apstats = ApertureStats(self.data, self.aperture,
                                     error=self.error, sum_method=method,
                                     subpixels=subpixels)
-            apsum, apsum_err = self.aperture.photometry(self.data,
-                                                        error=self.error,
-                                                        method=method,
-                                                        subpixels=subpixels)
-            assert_allclose(apstats.sum, apsum)
-            assert_allclose(apstats.sum_err, apsum_err)
+            phot = AperturePhotometry(self.data, self.aperture,
+                                      error=self.error, method=method,
+                                      subpixels=subpixels)
+            assert_allclose(apstats.sum, phot.flux)
+            assert_allclose(apstats.sum_err, phot.flux_err)
 
     def test_mask(self):
         mask = np.zeros(self.data.shape, dtype=bool)

@@ -6,10 +6,40 @@ Aperture Photometry (`photutils.aperture`)
 Introduction
 ------------
 
-The :func:`~photutils.aperture.aperture_photometry` function and the
+The :class:`~photutils.aperture.AperturePhotometry` class and the
 :class:`~photutils.aperture.ApertureStats` class are the primary tools
 for performing aperture photometry. They work in conjunction with the
 aperture classes.
+
+The :class:`~photutils.aperture.AperturePhotometry` class sums the
+(weighted) data values within one or more apertures and reports the
+aperture fluxes, uncertainties, unmasked overlap areas, and bitwise
+quality flags. The :class:`~photutils.aperture.ApertureStats`
+class computes per-source statistics (e.g., mean, median,
+standard deviation, sigma-clipped values, and morphological
+properties) for the pixels within an aperture. The legacy
+:func:`~photutils.aperture.aperture_photometry` function
+performs basic aperture photometry, returning only the aperture
+sums and (optionally) their uncertainties. It is retained
+for backwards compatibility, but new features are added only
+to the :class:`~photutils.aperture.AperturePhotometry` and
+:class:`~photutils.aperture.ApertureStats` classes.
+
+.. tip::
+
+    Which tool should I use?
+
+    * Use :class:`~photutils.aperture.AperturePhotometry` for aperture
+      fluxes (sums), errors, areas and quality flags. The calculated
+      values can be accessed as class attributes or output as an Astropy
+      `~astropy.table.QTable`. For aperture photometry, it is faster
+      than :class:`~photutils.aperture.ApertureStats`.
+    * Use :class:`~photutils.aperture.ApertureStats` for per-source
+      statistics such as the median, standard deviation, sigma-clipped
+      values, and morphological properties.
+    * Use the legacy
+      :func:`~photutils.aperture.aperture_photometry` function only if
+      you need its original output columns for backwards compatibility.
 
 .. _photutils-apertures:
 
@@ -39,14 +69,14 @@ coordinates.
    * - `~photutils.aperture.PolygonAperture`
      - `~photutils.aperture.SkyPolygonAperture`
 
-The :func:`~photutils.aperture.aperture_photometry` function and
+The :class:`~photutils.aperture.AperturePhotometry` class and
 the :class:`~photutils.aperture.ApertureStats` class both accept
 :class:`~photutils.aperture.Aperture` objects. When using sky-based
 apertures, a WCS transformation must also be provided.
 
 They also accept supported `regions.Region` objects, i.e., region
 classes that correspond to the aperture classes listed above. The
-:func:`~photutils.aperture.aperture_photometry` function additionally
+:class:`~photutils.aperture.AperturePhotometry` class additionally
 accepts a list of :class:`~photutils.aperture.Aperture` and/or
 `regions.Region` objects, provided they all have identical positions.
 
@@ -226,38 +256,52 @@ Performing Aperture Photometry
 ------------------------------
 
 After the aperture object is created, we can then perform the photometry
-using the :func:`~photutils.aperture.aperture_photometry` function. We
+using the :class:`~photutils.aperture.AperturePhotometry` class. We
 start by defining the aperture (at three positions) as described above::
 
     >>> from photutils.aperture import CircularAperture
     >>> positions = [(71.4, 23.9), (42.1, 41.7), (54.6, 68.2)]
     >>> aperture = CircularAperture(positions, r=3.1)
 
-We then call the :func:`~photutils.aperture.aperture_photometry`
-function with the data and the apertures. Note that
-:func:`~photutils.aperture.aperture_photometry` assumes that the input
+We then create an :class:`~photutils.aperture.AperturePhotometry`
+instance with the data and the apertures. Note that
+:class:`~photutils.aperture.AperturePhotometry` assumes that the input
 data have been background subtracted. For simplicity, we define the data
 here as an array of all ones::
 
     >>> import numpy as np
-    >>> from photutils.aperture import aperture_photometry
+    >>> from photutils.aperture import AperturePhotometry
     >>> data = np.ones((100, 100))
-    >>> phot_table = aperture_photometry(data, aperture)
-    >>> phot_table['aperture_sum'].info.format = '%.8g'  # for consistent table output
-    >>> phot_table['area'].info.format = '%.8g'  # for consistent table output
-    >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err    area   flags
-                                                           pix2
-    --- -------- -------- ------------ ---------------- --------- -----
-      1     71.4     23.9    30.190705              nan 30.190705     0
-      2     42.1     41.7    30.190705              nan 30.190705     0
-      3     54.6     68.2    30.190705              nan 30.190705     0
+    >>> phot = AperturePhotometry(data, aperture)
 
-This function returns the results of the photometry in an Astropy
-`~astropy.table.QTable`. In this example, the table has seven columns,
-named ``'id'``, ``'x_center'``, ``'y_center'``, ``'aperture_sum'``,
-``'aperture_sum_err'``, ``'area'``, and ``'flags'``. Because no
-``error`` was input, the ``'aperture_sum_err'`` column is filled
+The aperture fluxes, uncertainties, unmasked overlap areas, and
+quality flags are available as lazily-computed attributes (see
+:attr:`~photutils.aperture.AperturePhotometry.flux`,
+:attr:`~photutils.aperture.AperturePhotometry.flux_err`,
+:attr:`~photutils.aperture.AperturePhotometry.area`, and
+:attr:`~photutils.aperture.AperturePhotometry.flags`)::
+
+    >>> print(phot.flux)
+    [30.1907054 30.1907054 30.1907054]
+
+The results can also be output as an Astropy `~astropy.table.QTable`
+using the :meth:`~photutils.aperture.AperturePhotometry.to_table`
+method::
+
+    >>> phot_table = phot.to_table()
+    >>> phot_table['flux'].info.format = '%.8g'  # for consistent table output
+    >>> phot_table['area'].info.format = '%.8g'  # for consistent table output
+    >>> phot_table.pprint(max_width=-1)
+     id x_center y_center    flux   flux_err    area   flags
+                                                pix2
+    --- -------- -------- --------- -------- --------- -----
+      1     71.4     23.9 30.190705      nan 30.190705     0
+      2     42.1     41.7 30.190705      nan 30.190705     0
+      3     54.6     68.2 30.190705      nan 30.190705     0
+
+The default table has seven columns, named ``'id'``, ``'x_center'``,
+``'y_center'``, ``'flux'``, ``'flux_err'``, ``'area'``, and ``'flags'``.
+Because no ``error`` was input, the ``'flux_err'`` column is filled
 with NaN values (see :ref:`error_estimation`). The ``'area'``
 column gives the total unmasked overlap area of the aperture
 with the data (in ``pix**2``). It is equivalent to the aperture
@@ -273,7 +317,7 @@ area of a circle with a radius of 3.1::
     30.190705401
 
 
-.. _photutils-aperture-overlap:
+.. _aperture-mask-methods:
 
 Aperture and Pixel Overlap
 --------------------------
@@ -308,17 +352,18 @@ one of three methods:
 This example uses the ``'subpixel'`` method where pixels are resampled
 by a factor of 5 (``subpixels=5``) in each dimension::
 
-    >>> phot_table = aperture_photometry(data, aperture, method='subpixel',
-    ...                                  subpixels=5)
+    >>> phot = AperturePhotometry(data, aperture, method='subpixel',
+    ...                           subpixels=5)
+    >>> phot_table = phot.to_table()
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
-    >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err  area flags
-                                                         pix2
-    --- -------- -------- ------------ ---------------- ----- -----
-      1     71.4     23.9         30.2              nan  30.2     0
-      2     42.1     41.7         29.6              nan  29.6     0
-      3     54.6     68.2        29.96              nan 29.96     0
+    >>> phot_table.pprint(max_width=-1)
+     id x_center y_center  flux flux_err  area flags
+                                          pix2
+    --- -------- -------- ----- -------- ----- -----
+      1     71.4     23.9  30.2      nan  30.2     0
+      2     42.1     41.7  29.6      nan  29.6     0
+      3     54.6     68.2 29.96      nan 29.96     0
 
 Note that the ``'subpixel'`` sums differ from the exact value of
 30.190705 (see above). They also differ slightly from one another, even
@@ -342,10 +387,9 @@ Aperture Photometry Error Estimation
 ------------------------------------
 
 If the ``error`` keyword is provided to
-:func:`~photutils.aperture.aperture_photometry`, the
-``'aperture_sum_err'`` column contains the propagated uncertainty
-of ``'aperture_sum'``. If ``error`` is not provided, the
-``'aperture_sum_err'`` column is filled with NaN values.
+:class:`~photutils.aperture.AperturePhotometry`, the ``'flux_err'``
+column contains the propagated uncertainty of ``'flux'``. If ``error``
+is not provided, the ``'flux_err'`` column is filled with NaN values.
 
 For example, suppose the uncertainty of each pixel value has already
 been calculated and stored in the array ``error``::
@@ -355,18 +399,19 @@ been calculated and stored in the array ``error``::
     >>> data = np.ones((100, 100))
     >>> error = 0.1 * data
 
-    >>> phot_table = aperture_photometry(data, aperture, error=error)
+    >>> phot = AperturePhotometry(data, aperture, error=error)
+    >>> phot_table = phot.to_table()
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
-    >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err    area   flags
-                                                           pix2
-    --- -------- -------- ------------ ---------------- --------- -----
-      1     71.4     23.9    28.274334       0.53173616 28.274334     0
-      2     42.1     41.7    28.274334       0.53173616 28.274334     0
-      3     54.6     68.2    28.274334       0.53173616 28.274334     0
+    >>> phot_table.pprint(max_width=-1)
+     id x_center y_center    flux    flux_err     area   flags
+                                                  pix2
+    --- -------- -------- --------- ---------- --------- -----
+      1     71.4     23.9 28.274334 0.53173616 28.274334     0
+      2     42.1     41.7 28.274334 0.53173616 28.274334     0
+      3     54.6     68.2 28.274334 0.53173616 28.274334     0
 
-The ``'aperture_sum_err'`` values are calculated as:
+The ``'flux_err'`` values are calculated as:
 
 .. math:: \Delta F = \sqrt{\sum_{i \in A} \sigma_{\mathrm{tot}, i}^2}
 
@@ -391,18 +436,19 @@ units of electrons/s, we use the exposure time as the effective gain::
     >>> bkg_error = 0.1 * data  # background-only error
     >>> effective_gain = 500  # seconds
     >>> error = calc_total_error(data, bkg_error, effective_gain)
-    >>> phot_table = aperture_photometry(data, aperture, error=error)
+    >>> phot = AperturePhotometry(data, aperture, error=error)
+    >>> phot_table = phot.to_table()
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
-    >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err    area   flags
-                                                           pix2
-    --- -------- -------- ------------ ---------------- --------- -----
-      1     71.4     23.9    28.274334       0.58248777 28.274334     0
-      2     42.1     41.7    28.274334       0.58248777 28.274334     0
-      3     54.6     68.2    28.274334       0.58248777 28.274334     0
+    >>> phot_table.pprint(max_width=-1)
+     id x_center y_center    flux    flux_err     area   flags
+                                                  pix2
+    --- -------- -------- --------- ---------- --------- -----
+      1     71.4     23.9 28.274334 0.58248777 28.274334     0
+      2     42.1     41.7 28.274334 0.58248777 28.274334     0
+      3     54.6     68.2 28.274334 0.58248777 28.274334     0
 
-Note that the ``'aperture_sum_err'`` values are now larger than in the
+Note that the ``'flux_err'`` values are now larger than in the
 previous example because they include the additional Poisson noise from
 the source. Refer to the :func:`~photutils.utils.calc_total_error`
 documentation for more details on the calculation of the total error.
@@ -417,33 +463,34 @@ at every position (e.g., the same radius and orientation).
 
 To perform photometry using multiple aperture sizes or shapes at each
 position, pass a list of aperture objects to the
-:func:`~photutils.aperture.aperture_photometry` function. In this case,
+:class:`~photutils.aperture.AperturePhotometry` class. In this case,
 all aperture objects in the list must have identical position(s).
 
 For example, suppose we want to measure three circular apertures with
 radii of 3, 4, and 5 pixels at each source position. We therefore create
 a list of aperture objects, where each object has the same positions but
 a different radius. We also pass the ``error`` array defined above so
-that the ``'aperture_sum_err'`` columns are populated::
+that the ``'flux_err'`` columns are populated::
 
     >>> positions = [(71.4, 23.9), (42.1, 41.7), (54.6, 68.2)]
     >>> radii = [3.0, 4.0, 5.0]
     >>> apertures = [CircularAperture(positions, r=r) for r in radii]
-    >>> phot_table = aperture_photometry(data, apertures, error=error)
+    >>> phot = AperturePhotometry(data, apertures, error=error)
+    >>> phot_table = phot.to_table()
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> phot_table.pprint(max_width=-1)
-     id x_center y_center aperture_sum_0 aperture_sum_err_0   area_0  flags_0 aperture_sum_1 aperture_sum_err_1   area_1  flags_1 aperture_sum_2 aperture_sum_err_2   area_2  flags_2
-                                                               pix2                                                pix2                                                pix2
-    --- -------- -------- -------------- ------------------ --------- ------- -------------- ------------------ --------- ------- -------------- ------------------ --------- -------
-      1     71.4     23.9      28.274334         0.58248777 28.274334       0      50.265482         0.77665037 50.265482       0      78.539816         0.97081296 78.539816       0
-      2     42.1     41.7      28.274334         0.58248777 28.274334       0      50.265482         0.77665037 50.265482       0      78.539816         0.97081296 78.539816       0
-      3     54.6     68.2      28.274334         0.58248777 28.274334       0      50.265482         0.77665037 50.265482       0      78.539816         0.97081296 78.539816       0
+     id x_center y_center   flux_0    flux_1    flux_2  flux_err_0 flux_err_1 flux_err_2   area_0    area_1    area_2  flags_0 flags_1 flags_2
+                                                                                            pix2      pix2      pix2
+    --- -------- -------- --------- --------- --------- ---------- ---------- ---------- --------- --------- --------- ------- ------- -------
+      1     71.4     23.9 28.274334 50.265482 78.539816 0.58248777 0.77665037 0.97081296 28.274334 50.265482 78.539816       0       0       0
+      2     42.1     41.7 28.274334 50.265482 78.539816 0.58248777 0.77665037 0.97081296 28.274334 50.265482 78.539816       0       0       0
+      3     54.6     68.2 28.274334 50.265482 78.539816 0.58248777 0.77665037 0.97081296 28.274334 50.265482 78.539816       0       0       0
 
 When a list of aperture objects is provided, the output table column
 names are appended with the index of the aperture within the input
-list (e.g., ``aperture_sum_0`` for the first aperture,
-``aperture_sum_1`` for the second, and so on).
+list (e.g., ``flux_0`` for the first aperture, ``flux_1`` for the
+second, and so on).
 
 Other aperture classes have additional parameters that define their
 size and orientation. For example, an elliptical aperture requires
@@ -455,16 +502,17 @@ size and orientation. For example, an elliptical aperture requires
     >>> b = 3.0
     >>> theta = Angle(45, 'deg')
     >>> apertures = EllipticalAperture(positions, a, b, theta=theta)
-    >>> phot_table = aperture_photometry(data, apertures, error=error)
+    >>> phot = AperturePhotometry(data, apertures, error=error)
+    >>> phot_table = phot.to_table()
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
-    >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err   area   flags
-                                                          pix2
-    --- -------- -------- ------------ ---------------- -------- -----
-      1     71.4     23.9     47.12389       0.75198848 47.12389     0
-      2     42.1     41.7     47.12389       0.75198848 47.12389     0
-      3     54.6     68.2     47.12389       0.75198848 47.12389     0
+    >>> phot_table.pprint(max_width=-1)
+     id x_center y_center   flux    flux_err    area   flags
+                                                pix2
+    --- -------- -------- -------- ---------- -------- -----
+      1     71.4     23.9 47.12389 0.75198848 47.12389     0
+      2     42.1     41.7 47.12389 0.75198848 47.12389     0
+      3     54.6     68.2 47.12389 0.75198848 47.12389     0
 
 To measure photometry using multiple elliptical apertures, provide a
 list of aperture objects with identical positions, but with different
@@ -475,16 +523,55 @@ list of aperture objects with identical positions, but with different
     >>> theta = Angle(45, 'deg')
     >>> apertures = [EllipticalAperture(positions, a=ai, b=bi, theta=theta)
     ...              for (ai, bi) in zip(a, b)]
-    >>> phot_table = aperture_photometry(data, apertures, error=error)
+    >>> phot = AperturePhotometry(data, apertures, error=error)
+    >>> phot_table = phot.to_table()
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> phot_table.pprint(max_width=-1)
-     id x_center y_center aperture_sum_0 aperture_sum_err_0  area_0  flags_0 aperture_sum_1 aperture_sum_err_1   area_1  flags_1 aperture_sum_2 aperture_sum_err_2   area_2  flags_2
-                                                              pix2                                                pix2                                                pix2
-    --- -------- -------- -------------- ------------------ -------- ------- -------------- ------------------ --------- ------- -------------- ------------------ --------- -------
-      1     71.4     23.9       47.12389         0.75198848 47.12389       0      75.398224         0.95119855 75.398224       0      109.95574          1.1486814 109.95574       0
-      2     42.1     41.7       47.12389         0.75198848 47.12389       0      75.398224         0.95119855 75.398224       0      109.95574          1.1486814 109.95574       0
-      3     54.6     68.2       47.12389         0.75198848 47.12389       0      75.398224         0.95119855 75.398224       0      109.95574          1.1486814 109.95574       0
+     id x_center y_center  flux_0    flux_1    flux_2  flux_err_0 flux_err_1 flux_err_2  area_0    area_1    area_2  flags_0 flags_1 flags_2
+                                                                                          pix2      pix2      pix2
+    --- -------- -------- -------- --------- --------- ---------- ---------- ---------- -------- --------- --------- ------- ------- -------
+      1     71.4     23.9 47.12389 75.398224 109.95574 0.75198848 0.95119855  1.1486814 47.12389 75.398224 109.95574       0       0       0
+      2     42.1     41.7 47.12389 75.398224 109.95574 0.75198848 0.95119855  1.1486814 47.12389 75.398224 109.95574       0       0       0
+      3     54.6     68.2 47.12389 75.398224 109.95574 0.75198848 0.95119855  1.1486814 47.12389 75.398224 109.95574       0       0       0
+
+
+Aperture Photometry on a 3D Data Cube
+-------------------------------------
+
+:class:`~photutils.aperture.AperturePhotometry` operates on a single 2D
+image. To measure a source in a 3D data cube --- for example, a time
+series of images of the same field --- apply the same aperture to each
+2D image in the stack and collect the results into a light curve.
+
+Here we create a small stack of five images in which a single source
+varies in brightness from frame to frame, and measure its flux and
+uncertainty in each frame using the same circular aperture. Build the
+list of results objects first (a single photometry pass per frame), then
+read as many attributes as needed::
+
+    >>> import numpy as np
+    >>> from photutils.aperture import AperturePhotometry, CircularAperture
+    >>> scales = np.array([1.0, 1.5, 2.0, 1.8, 1.2])
+    >>> cube = scales[:, None, None] * np.ones((5, 50, 50))
+    >>> error = 0.1 * np.ones((50, 50))
+    >>> aperture = CircularAperture((25, 25), r=5)
+    >>> results = [AperturePhotometry(image, aperture, error=error)
+    ...            for image in cube]
+    >>> flux = np.array([phot.flux[0] for phot in results])
+    >>> flux_err = np.array([phot.flux_err[0] for phot in results])
+    >>> print(flux)
+    [ 78.53981634 117.80972451 157.07963268 141.37166941  94.24777961]
+    >>> print(flux_err)
+    [0.88622693 0.88622693 0.88622693 0.88622693 0.88622693]
+
+Each element of ``flux`` and ``flux_err`` corresponds to one image in
+the cube, together giving the source's light curve and its uncertainty.
+The same pattern extends to multiple sources and to other per-frame
+quantities: index the desired attribute (e.g.,
+:attr:`~photutils.aperture.AperturePhotometry.flags`) from each results
+object, or build a table per frame with
+:meth:`~photutils.aperture.AperturePhotometry.to_table`.
 
 
 Masking Pixels in Aperture Photometry
@@ -501,29 +588,39 @@ by providing a boolean image mask via the ``mask`` keyword::
     >>> mask = np.zeros(data.shape, dtype=bool)
     >>> data[2, 2] = 100.0  # bad pixel
     >>> mask[2, 2] = True   # mask the bad pixel
-    >>> t1 = aperture_photometry(data, aperture, mask=mask)
-    >>> print(t1['aperture_sum'])
-       aperture_sum
-    ------------------
-    11.566370614359172
+    >>> phot1 = AperturePhotometry(data, aperture, mask=mask)
+    >>> print(phot1.flux)
+    [11.566370614359172]
 
 The result is very different if a ``mask`` image is not provided::
 
-    >>> t2 = aperture_photometry(data, aperture)
-    >>> print(t2['aperture_sum'])
-       aperture_sum
-    ------------------
-    111.56637061435919
+    >>> phot2 = AperturePhotometry(data, aperture)
+    >>> print(phot2.flux)
+    [111.56637061435919]
+
+For :class:`~photutils.aperture.AperturePhotometry` and
+:class:`~photutils.aperture.ApertureStats`, non-finite values (NaN
+or Inf) in the input ``data`` are automatically masked, so they are
+automatically excluded from calculations. For example::
+
+    >>> data = np.ones((5, 5))
+    >>> data[2, 2] = np.nan
+    >>> aperture = CircularAperture((2, 2), r=2.0)
+    >>> phot = AperturePhotometry(data, aperture)
+    >>> print(phot.flux)
+    [11.566370614359172]
 
 
 Masking Neighboring Sources with a Segmentation Image
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-When apertures contain flux from neighboring sources, that contamination
-can be masked or corrected using a segmentation image (see :ref:`Image
-Segmentation <image_segmentation>`). A segmentation image is an integer
-image with the same shape as the data, where background pixels have a
-value of 0 and sources are labeled with positive integers.
+:class:`~photutils.aperture.AperturePhotometry` and
+:class:`~photutils.aperture.ApertureStats` support masking or correcting
+flux contamination from neighboring sources using a segmentation image
+(see :ref:`Image Segmentation <image_segmentation>`). A segmentation
+image is an integer image with the same shape as the data, where
+background pixels have a value of 0 and sources are labeled with
+positive integers.
 
 The behavior is controlled by the ``mask_method`` keyword, which accepts
 one of four values:
@@ -551,7 +648,7 @@ In this example, a circular aperture centered on the target source
 (label 1) also overlaps a bright neighboring source (label 2)::
 
     >>> import numpy as np
-    >>> from photutils.aperture import CircularAperture, aperture_photometry
+    >>> from photutils.aperture import AperturePhotometry, CircularAperture
     >>> data = np.ones((11, 11))
     >>> data[4:7, 4:7] = 10.0  # target source
     >>> data[4:7, 7:10] = 50.0  # bright neighbor
@@ -562,31 +659,25 @@ In this example, a circular aperture centered on the target source
 
 Without masking, the aperture sum includes the neighbor's flux::
 
-    >>> t1 = aperture_photometry(data, aperture)
-    >>> print(t1['aperture_sum'])
-       aperture_sum
-    ------------------
-    484.67784806278354
+    >>> phot1 = AperturePhotometry(data, aperture)
+    >>> print(phot1.flux)
+    [484.67784806278354]
 
 Masking the neighboring source excludes its flux::
 
-    >>> t2 = aperture_photometry(data, aperture, segmentation_image=segm,
-    ...                          labels=1, mask_method='mask')
-    >>> print(t2['aperture_sum'])
-       aperture_sum
-    ------------------
-    124.05298520018465
+    >>> phot2 = AperturePhotometry(data, aperture, segmentation_image=segm,
+    ...                            labels=1, mask_method='mask')
+    >>> print(phot2.flux)
+    [124.05298520018465]
 
 The ``'correct'`` method instead replaces the neighbor's pixels with
 values mirrored across the aperture center, recovering an estimate of
 the obscured flux::
 
-    >>> t3 = aperture_photometry(data, aperture, segmentation_image=segm,
-    ...                          labels=1, mask_method='correct')
-    >>> print(t3['aperture_sum'])
-       aperture_sum
-    ------------------
-    131.26548245743663
+    >>> phot3 = AperturePhotometry(data, aperture, segmentation_image=segm,
+    ...                            labels=1, mask_method='correct')
+    >>> print(phot3.flux)
+    [131.26548245743663]
 
 These keywords are also available in
 :class:`~photutils.aperture.ApertureStats`.
@@ -597,45 +688,12 @@ These keywords are also available in
 Aperture Quality Flags
 ----------------------
 
-The :func:`~photutils.aperture.aperture_photometry` table, the
-:meth:`~photutils.aperture.PixelAperture.photometry` results, and the
-:class:`~photutils.aperture.ApertureStats` class include bitwise quality
-flags for each source in a ``'flags'`` column or attribute. A value of 0
-means that no issues were detected. The flag values can be decoded using
-the :func:`~photutils.aperture.decode_aperture_flags` function. The
-flags are:
-
-* ``'no_overlap'`` (1): the aperture is fully outside the data (no
-  pixel with nonzero aperture weight falls inside the data)
-* ``'partial_overlap'`` (2): the aperture is partially outside the
-  data (one or more pixels with nonzero aperture weight fall outside
-  the data)
-* ``'no_pixels'`` (4): the aperture contains zero pixels with nonzero
-  weight inside the data (e.g., a fully off-image aperture, or a tiny
-  aperture that contains no pixel centers with the ``'center'`` method)
-* ``'masked_pixels'`` (8): one or more input-masked pixels (``mask``
-  keyword) have nonzero aperture weight
-* ``'all_masked'`` (16): the aperture contains pixels, but none are
-  valid (all are masked or excluded)
-* ``'non_finite_data'`` (32): NaN or inf values are present among the
-  unmasked data values within the aperture
-* ``'non_finite_error'`` (64): NaN or inf values are present among the
-  unmasked error values within the aperture
-* ``'neighbor_pixels'`` (128): one or more pixels were excluded,
-  restricted, or corrected due to neighboring sources in the
-  segmentation image (``mask_method`` keyword)
-* ``'uncorrected_pixels'`` (256): with ``mask_method='correct'``, one
-  or more neighbor pixels could not be corrected and were excluded
-  instead
-* ``'sigma_clipped'`` (512): one or more pixels within the aperture
-  were rejected by sigma clipping (`~photutils.aperture.ApertureStats`
-  only)
-* ``'all_clipped'`` (1024): all valid pixels within the aperture were
-  rejected by sigma clipping (`~photutils.aperture.ApertureStats` only)
-* ``'too_few_pixels'`` (2048): too few valid pixels to compute a
-  requested statistic, e.g., the variance and standard deviation are
-  undefined when the number of valid pixels is not larger than ``ddof``
-  (`~photutils.aperture.ApertureStats` only)
+The :class:`~photutils.aperture.AperturePhotometry` and
+:class:`~photutils.aperture.ApertureStats` classes include bitwise
+quality flags for each source in a ``'flags'`` column or attribute.
+See the :func:`~photutils.aperture.decode_aperture_flags` function
+for a definition of the flags. This function can be used to decode
+the flags into human-readable names.
 
 Multiple conditions combine bitwise. For example, an aperture that
 extends beyond the data edge and also contains a masked pixel has
@@ -645,26 +703,32 @@ extends beyond the data edge and also contains a masked pixel has
 For example::
 
     >>> import numpy as np
-    >>> from photutils.aperture import (CircularAperture,
-    ...                                 aperture_photometry,
+    >>> from photutils.aperture import (AperturePhotometry,
     ...                                 decode_aperture_flags)
     >>> data = np.ones((25, 25))
     >>> mask = np.zeros(data.shape, dtype=bool)
     >>> mask[12, 12] = True  # bad pixel inside the first aperture
     >>> positions = [(12.0, 12.0), (0.0, 12.0), (-50.0, 12.0)]
     >>> aperture = CircularAperture(positions, r=3.0)
-    >>> phot_table = aperture_photometry(data, aperture, mask=mask)
-    >>> print(phot_table['flags'])
-    flags
-    -----
-        8
-        2
-        5
+    >>> phot = AperturePhotometry(data, aperture, mask=mask)
+    >>> print(phot.flags)
+    [8 2 5]
 
-The flag values can be decoded into human-readable names::
+The flag values can be decoded into human-readable names using the
+:meth:`~photutils.aperture.AperturePhotometry.decode_flags` convenience
+method::
 
-    >>> decoded = decode_aperture_flags(phot_table['flags'])
-    >>> for source_id, names in zip(phot_table['id'], decoded):
+    >>> for source_id, names in zip(phot.id, phot.decode_flags()):
+    ...     print(source_id, names)
+    1 ['masked_pixels']
+    2 ['partial_overlap']
+    3 ['no_overlap', 'no_pixels']
+
+or using the :func:`~photutils.aperture.decode_aperture_flags`
+function::
+
+    >>> decoded = decode_aperture_flags(phot.flags)
+    >>> for source_id, names in zip(phot.id, decoded):
     ...     print(source_id, names)
     1 ['masked_pixels']
     2 ['partial_overlap']
@@ -696,13 +760,11 @@ evaluated on the ``'center'``-method footprint, and includes the
 The :attr:`~photutils.aperture.ApertureStats.sum_flags` property
 reports the flags for the sum properties (``sum``, ``sum_err``, and
 ``sum_aper_area``), evaluated on the ``sum_method`` footprint, and
-includes the ``'non_finite_error'`` flag. When ``sigma_clip`` is used,
-it is applied independently on each footprint, so the pixels clipped
-for the value statistics may differ from those clipped for the sum
-properties. Only ``flags`` reports whether clipping occurred (via
-the ``'sigma_clipped'``, ``'all_clipped'``, and ``'too_few_pixels'``
-bits); ``sum_flags`` never sets those bits, even though the sum-related
-properties are computed from the sigma-clipped ``sum_method`` footprint.
+includes the ``'non_finite_error'`` flag. Only ``flags`` reports whether
+clipping occurred (via the ``'sigma_clipped'``, ``'all_clipped'``, and
+``'too_few_pixels'`` bits). ``sum_flags`` never sets those bits, even
+though the sum-related properties are computed from the sigma-clipped
+``sum_method`` footprint.
 
 Both columns are included in the default ``to_table()``
 output, and either can be decoded by passing
@@ -710,9 +772,12 @@ output, and either can be decoded by passing
 :meth:`~photutils.aperture.ApertureStats.decode_flags`. To check for
 any quality issue across both footprints, combine the two flag columns
 with a bitwise OR, e.g., ``aperstats.flags | aperstats.sum_flags``.
-Note that in `~photutils.aperture.ApertureStats` non-finite data values
-are automatically masked, so an aperture containing only NaN values has
-``flags = 48`` (``'non_finite_data'`` + ``'all_masked'``).
+
+Because non-finite values are automatically masked in
+both :class:`~photutils.aperture.AperturePhotometry` and
+:class:`~photutils.aperture.ApertureStats`, an aperture that contains
+only non-finite values will have ``flags = 48`` (``'non_finite_data'`` +
+``'all_masked'``).
 
 
 .. _photutils-aperture-stats:
@@ -731,7 +796,7 @@ like :attr:`~photutils.aperture.ApertureStats.min`,
 :attr:`~photutils.aperture.ApertureStats.std`,
 :attr:`~photutils.aperture.ApertureStats.sum_aper_area`,
 and :attr:`~photutils.aperture.ApertureStats.sum`. It
-also can be used to calculate morphological properties
+also can be used to calculate shape properties
 like :attr:`~photutils.aperture.ApertureStats.centroid`,
 :attr:`~photutils.aperture.ApertureStats.fwhm`,
 :attr:`~photutils.aperture.ApertureStats.semimajor_axis`,
@@ -744,13 +809,20 @@ accessed using `~photutils.aperture.ApertureStats` attributes
 or output to an Astropy `~astropy.table.QTable` using the
 :meth:`~photutils.aperture.ApertureStats.to_table` method.
 
-Most of the source properties are calculated using the "center"
-:ref:`aperture-mask method <photutils-aperture-overlap>`, which gives
-aperture weights of 0 or 1. This avoids the need to compute weighted
-statistics --- the ``data`` pixel values are directly used.
+All properties other than the sum-related ones described below
+are calculated using the "center" :ref:`aperture-mask method
+<aperture-mask-methods>`, which assigns aperture weights of either
+0 or 1, so the ``data`` pixel values are used directly and without
+weighting. This choice reflects a fundamental limitation because,
+unlike the mean or variance, order statistics (``min``, ``max``,
+``median``) and robust estimators (``mad_std``, ``biweight_location``,
+``biweight_midvariance``) have no standard, unambiguous definition for
+pixels with fractional (partial) aperture weights. Accordingly, these
+quantities cannot be rigorously computed from a weighted aperture
+footprint.
 
-The ``sum_method`` and ``subpixels`` keywords are used to determine
-the aperture-mask method only for the sum-related properties:
+The input ``sum_method`` and ``subpixels`` keywords are used to
+determine the aperture-mask method only for the sum-related properties:
 ``sum``, ``sum_err``, ``sum_aper_area``, ``data_sum_cutout``, and
 ``error_sum_cutout``. All other properties, including ``mean``,
 ``median``, ``std``, and the morphological properties, always use the
@@ -772,7 +844,7 @@ sigma-clipped data; see :ref:`aperture_flags` for how this affects the
 ``flags`` and ``sum_flags`` properties.
 
 Here is a simple example using a circular aperture at one position.
-Note that like :func:`~photutils.aperture.aperture_photometry`,
+Note that like :class:`~photutils.aperture.AperturePhotometry`,
 :class:`~photutils.aperture.ApertureStats` expects the input data to
 be background subtracted. For simplicity, here we roughly estimate the
 background as the sigma-clipped median value::
@@ -799,7 +871,7 @@ background as the sigma-clipped median value::
     >>> print(aperstats.sum)
     8487.061886925028
 
-Similar to `~photutils.aperture.aperture_photometry`, the input aperture
+Similar to `~photutils.aperture.AperturePhotometry`, the input aperture
 can have multiple positions (but the same shape and size at each
 position). In this case, the :class:`~photutils.aperture.ApertureStats`
 class will calculate the statistics for each position and return the
@@ -833,14 +905,14 @@ Background Subtraction
 Global Background Subtraction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-:func:`~photutils.aperture.aperture_photometry` and
+:class:`~photutils.aperture.AperturePhotometry` and
 :class:`~photutils.aperture.ApertureStats` both assume that the input
 data have already been background-subtracted. If ``bkg`` is a scalar or
 an array representing the background of the data (e.g., estimated by
 `~photutils.background.Background2D` or another method), subtract it
 from the data before performing aperture photometry::
 
-    >>> phot_table = aperture_photometry(data - bkg, aperture)  # doctest: +SKIP
+    >>> phot = AperturePhotometry(data - bkg, aperture)  # doctest: +SKIP
 
 For :class:`~photutils.aperture.ApertureStats`, a constant background
 can instead be specified using the ``local_bkg`` keyword. This avoids
@@ -924,74 +996,57 @@ position::
     >>> print(bkg_mean)
     [4.99411764 5.1349344  4.86894665]
 
-Next, we use :func:`~photutils.aperture.aperture_photometry` to measure
-the source fluxes in the circular apertures (the following example uses
-:class:`~photutils.aperture.ApertureStats` for both the background
-estimation and the aperture photometry)::
+Next, we use :class:`~photutils.aperture.AperturePhotometry` to measure
+the source fluxes in the circular apertures::
 
-    >>> from photutils.aperture import aperture_photometry
-    >>> phot_table = aperture_photometry(data, aperture, error=error)
+    >>> from photutils.aperture import AperturePhotometry
+    >>> phot = AperturePhotometry(data, aperture, error=error)
+    >>> phot_table = phot.to_table()
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
-    >>> print(phot_table)
-     id x_center y_center aperture_sum aperture_sum_err    area   flags
-                                                           pix2
-    --- -------- -------- ------------ ---------------- --------- -----
-      1    145.1    168.3    1128.1245       0.88622693 78.539816     0
-      2     84.5    224.1      735.739       0.88622693 78.539816     0
-      3     48.3    200.3    1299.6341       0.88622693 78.539816     0
+    >>> phot_table.pprint(max_width=-1)
+     id x_center y_center    flux    flux_err     area   flags
+                                                  pix2
+    --- -------- -------- --------- ---------- --------- -----
+      1    145.1    168.3 1128.1245 0.88622693 78.539816     0
+      2     84.5    224.1   735.739 0.88622693 78.539816     0
+      3     48.3    200.3 1299.6341 0.88622693 78.539816     0
 
 The total background within each source aperture is the mean background
-per pixel multiplied by the aperture area. The aperture area is already
-available in the ``'area'`` column of the output table above, which is
-equivalent to the :meth:`~photutils.aperture.PixelAperture.area_overlap`
-method computed with the same photometry inputs. When using the
-default ``'exact'`` overlap method (see :ref:`aperture-mask methods
-<photutils-aperture-overlap>`) and no pixels are masked, the analytical
-aperture area is also available from the ``area`` attribute::
+per pixel multiplied by the aperture area. Rather than the analytical
+aperture area, use the unmasked overlap area that was actually used for
+the photometry, which is available in the ``'area'`` column of the
+output table above (equivalent to the
+:meth:`~photutils.aperture.PixelAperture.area_overlap` method computed
+with the same photometry inputs). Using this computed area ensures the
+background is scaled consistently with the photometry, correctly
+accounting for the overlap method and any masked pixels::
 
-    >>> aperture.area
-    78.53981633974483
-
-In general, however, you should use the ``'area'`` column or the
-:meth:`~photutils.aperture.PixelAperture.area_overlap` method to compute
-the aperture area. The ``area_overlap`` method accepts a ``mask``
-argument, ensuring that the area is computed consistently with the
-photometry. If using a :class:`~photutils.aperture.SkyAperture`, first
-convert it to a :class:`~photutils.aperture.PixelAperture`. In this
-example, we used the default ``'exact'`` overlap method and no mask is
-used, so ``area_overlap`` returns the same value as ``area``::
-
-    >>> aperture_area = aperture.area_overlap(data)
-    >>> print(aperture_area)
-    [78.53981634 78.53981634 78.53981634]
-
-The total background within the circular aperture is then::
-
+    >>> aperture_area = phot_table['area'].value
     >>> total_bkg = bkg_mean * aperture_area
     >>> print(total_bkg)
-    [392.23708187 403.29680431 382.40617574]
+    [392.23708187 403.29680431 382.40617607]
 
 Subtracting this background estimate from the measured aperture sums
 gives the background-subtracted photometry::
 
-    >>> phot_bkgsub = phot_table['aperture_sum'] - total_bkg
+    >>> phot_bkgsub = phot_table['flux'] - total_bkg
 
 Finally, we add the local background estimate, the total background
 within the aperture, and the background-subtracted photometry to the
 output table::
 
     >>> phot_table['total_bkg'] = total_bkg
-    >>> phot_table['aperture_sum_bkgsub'] = phot_bkgsub
+    >>> phot_table['flux_bkgsub'] = phot_bkgsub
     >>> for col in phot_table.colnames:
     ...     phot_table[col].info.format = '%.8g'  # for consistent table output
     >>> phot_table.pprint(max_width=-1)
-     id x_center y_center aperture_sum aperture_sum_err    area   flags total_bkg aperture_sum_bkgsub
-                                                           pix2
-    --- -------- -------- ------------ ---------------- --------- ----- --------- -------------------
-      1    145.1    168.3    1128.1245       0.88622693 78.539816     0 392.23708           735.88739
-      2     84.5    224.1      735.739       0.88622693 78.539816     0  403.2968           332.44219
-      3     48.3    200.3    1299.6341       0.88622693 78.539816     0 382.40618           917.22792
+     id x_center y_center    flux    flux_err     area   flags total_bkg flux_bkgsub
+                                                  pix2
+    --- -------- -------- --------- ---------- --------- ----- --------- -----------
+      1    145.1    168.3 1128.1245 0.88622693 78.539816     0 392.23708   735.88739
+      2     84.5    224.1   735.739 0.88622693 78.539816     0  403.2968   332.44219
+      3     48.3    200.3 1299.6341 0.88622693 78.539816     0 382.40618   917.22792
 
 
 Sigma-clipped median within a circular annulus
@@ -1006,22 +1061,7 @@ photometry and the local background::
     >>> sigclip = SigmaClip(sigma=3.0, maxiters=10)
     >>> aper_stats = ApertureStats(data, aperture, sigma_clip=None)
     >>> bkg_stats = ApertureStats(data, annulus_aperture, sigma_clip=sigclip)
-
-The sigma-clipped median background values are::
-
-    >>> print(bkg_stats.median)
-    [4.89374178 5.05655328 4.83268958]
-
-The total background within each source aperture is the per-pixel
-background multiplied by the aperture area::
-
     >>> total_bkg = bkg_stats.median * aper_stats.sum_aper_area.value
-    >>> print(total_bkg)
-    [384.35358069 397.14076611 379.5585524 ]
-
-Subtracting this background estimate from the measured aperture sums
-gives the local background-subtracted photometry::
-
     >>> apersum_bkgsub = aper_stats.sum - total_bkg
     >>> print(apersum_bkgsub)
     [743.77088731 338.59823118 920.07553956]

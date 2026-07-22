@@ -185,14 +185,14 @@ def test_decode_psf_flags_edge_cases():
     decoded = decode_psf_flags(empty_array)
     assert decoded == []
 
-    # Test with 2D array (should flatten)
+    # Test with 2D array (shape preserved as nested lists)
     flag_2d = np.array([[0, 1], [8, 136]])
     decoded = decode_psf_flags(flag_2d)
-    assert len(decoded) == 4  # Flattened to 4 elements
-    assert decoded[0] == []
-    assert decoded[1] == ['n_pixels_fit_partial']
-    assert decoded[2] == ['no_convergence']
-    assert set(decoded[3]) == {'no_convergence', 'fully_masked'}
+    assert len(decoded) == 2  # Shape preserved
+    assert decoded[0][0] == []
+    assert decoded[0][1] == ['n_pixels_fit_partial']
+    assert decoded[1][0] == ['no_convergence']
+    assert set(decoded[1][1]) == {'no_convergence', 'fully_masked'}
 
 
 def test_psf_flags_singleton():

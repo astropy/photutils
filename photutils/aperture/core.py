@@ -34,7 +34,7 @@ from photutils.utils._deprecation import (deprecated,
                                           deprecated_positional_kwargs)
 from photutils.utils._flags import define_flag_docstring
 
-__all__ = ['Aperture', 'ApertureResults', 'PixelAperture', 'SkyAperture']
+__all__ = ['Aperture', 'PixelAperture', 'SkyAperture']
 
 
 # Canonical descriptions of the ``method`` and ``subpixels`` parameters
@@ -176,21 +176,17 @@ def _update_method_subpixels_docstring(obj):
 
 
 @dataclass(frozen=True)
-class ApertureResults:
+class _ApertureResults:
     """
-    The results of `PixelAperture.photometry`.
-
-    For backward compatibility, this object can still be unpacked as a
-    2-tuple, ``aperture_sum, aperture_sum_err = aper.photometry(...)``.
-    Use the named attributes to access ``area`` and ``flags``.
+    The results of `PixelAperture._photometry`.
 
     Attributes
     ----------
-    aperture_sum : `~numpy.ndarray` or `~astropy.units.Quantity`
-        The sum within each aperture.
+    flux : `~numpy.ndarray` or `~astropy.units.Quantity`
+        The sum of the data within each aperture.
 
-    aperture_sum_err : `~numpy.ndarray` or `~astropy.units.Quantity`
-        The errors on the sum within each aperture.
+    flux_err : `~numpy.ndarray` or `~astropy.units.Quantity`
+        The uncertainty in the sum of the data within each aperture.
 
     area : `~astropy.units.Quantity`
         The total unmasked overlap area of each aperture (in pix**2).
@@ -201,21 +197,10 @@ class ApertureResults:
         values.
     """
 
-    aperture_sum: np.ndarray
-    aperture_sum_err: np.ndarray
+    flux: np.ndarray
+    flux_err: np.ndarray
     area: np.ndarray
     flags: np.ndarray
-
-    def __iter__(self):
-        # Legacy 2-tuple unpacking only.
-        yield self.aperture_sum
-        yield self.aperture_sum_err
-
-    def __len__(self):
-        return 2
-
-    def __getitem__(self, idx):
-        return (self.aperture_sum, self.aperture_sum_err)[idx]
 
 
 class Aperture(metaclass=abc.ABCMeta):
@@ -649,7 +634,7 @@ class PixelAperture(Aperture):
 
     def _mask_photometry(self, data, *, error, mask, method, subpixels,
                          segmentation=None, labels=None,
-                         mask_method='none'):
+                         mask_method='none', mask_nonfinite=False):
         """
         Perform aperture photometry using per-source aperture masks.
 
@@ -673,6 +658,13 @@ class PixelAperture(Aperture):
             The validated segmentation array, per-aperture source
             labels, and masking method (see
             `~photutils.aperture._segmentation.process_segmentation_inputs`).
+
+        mask_nonfinite : bool, optional
+            Whether to mask non-finite ``data`` values (matching
+            `ApertureStats`) instead of leaving them in the computation,
+            where they corrupt the sum (the 3.0.0 behavior, used by the
+            legacy `aperture_photometry` function). In both cases, the
+            non-finite pixels are flagged as ``non_finite_data``.
 
         Returns
         -------
@@ -733,9 +725,30 @@ class PixelAperture(Aperture):
                 data_cutout = data[slc_large]
                 error_cutout = None if error is None else error[slc_large]
 
+                # Non-finite ``data`` masking (used by the class
+                # path). Flag the contributing non-finite pixels, then
+                # exclude them *before* the segmentation handling so
+                # the segmentation counts and the 'correct' mirror
+                # replacement never use non-finite pixels, matching the
+                # batch kernel (mask plane bit 2) and `ApertureStats`.
+                # When ``mask_nonfinite`` is `False` (the legacy
+                # function), the non-finite pixels are left in the
+                # computation so they corrupt the sum.
+                nonfinite_data = ~np.isfinite(data_cutout)
+                if mask_nonfinite:
+                    flag_counts[idx, FLAG_COL_NONFINITE_DATA] = np.any(
+                        nonfinite_data & pixel_mask)
+                    pixel_mask = pixel_mask & ~nonfinite_data
+
                 if segmentation is not None and mask_method != 'none':
                     segm_cutout = segmentation[slc_large]
                     base_mask = None if mask is None else mask[slc_large]
+                    if mask_nonfinite:
+                        # Fold the non-finite pixels into the base mask
+                        # so that non-finite mirror pixels are treated
+                        # as uncorrectable by the 'correct' method.
+                        base_mask = (nonfinite_data if base_mask is None
+                                     else base_mask | nonfinite_data)
                     cutout_xycen = (positions[idx, 0] - slc_large[1].start,
                                     positions[idx, 1] - slc_large[0].start)
                     (data_cutout, error_cutout, exclude,
@@ -754,8 +767,9 @@ class PixelAperture(Aperture):
 
                 flag_counts[idx, FLAG_COL_VALID] = np.count_nonzero(
                     pixel_mask)
-                flag_counts[idx, FLAG_COL_NONFINITE_DATA] = np.any(
-                    ~np.isfinite(data_cutout) & pixel_mask)
+                if not mask_nonfinite:
+                    flag_counts[idx, FLAG_COL_NONFINITE_DATA] = np.any(
+                        nonfinite_data & pixel_mask)
                 if error is not None:
                     flag_counts[idx, FLAG_COL_NONFINITE_ERROR] = np.any(
                         ~np.isfinite(error_cutout) & pixel_mask)
@@ -801,7 +815,7 @@ class PixelAperture(Aperture):
 
     def _batch_photometry(self, data, *, error, mask, method, subpixels,
                           segmentation=None, labels=None,
-                          mask_method='none'):
+                          mask_method='none', mask_nonfinite=False):
         """
         Perform aperture photometry using the batch Cython driver.
 
@@ -823,6 +837,13 @@ class PixelAperture(Aperture):
             The validated segmentation array, per-aperture source
             labels, and masking method (see
             `~photutils.aperture._segmentation.process_segmentation_inputs`).
+
+        mask_nonfinite : bool, optional
+            Whether to mask non-finite ``data`` values (matching
+            `ApertureStats`) instead of leaving them in the computation,
+            where they corrupt the sum (the 3.0.0 behavior, used by the
+            legacy `aperture_photometry` function). In both cases, the
+            non-finite pixels are flagged as ``non_finite_data``.
 
         Returns
         -------
@@ -857,11 +878,33 @@ class PixelAperture(Aperture):
                                     and not _supported(error)):
             return None
 
+        if mask is not None and (not isinstance(mask, np.ndarray)
+                                 or mask.dtype != bool
+                                 or mask.shape != data.shape):
+            return None
+
+        # Build a uint8 mask plane for the batch kernels. Bit 1 (value
+        # 1) marks input-masked pixels and bit 2 (value 2) marks
+        # non-finite ``data`` pixels; any nonzero value excludes the
+        # pixel. Folding the non-finite pixels into the plane lets
+        # the class exclude them from the sum, area, and valid-pixel
+        # count while still flagging them as ``non_finite_data``
+        # (not ``masked_pixels``), matching `ApertureStats`. When
+        # ``mask_nonfinite`` is `False` (the legacy function), the
+        # non-finite pixels are left in the data so they corrupt the sum
+        # (the 3.0.0 behavior).
+        plane = None
         if mask is not None:
-            if (not isinstance(mask, np.ndarray) or mask.dtype != bool
-                    or mask.shape != data.shape):
-                return None
-            mask = np.ascontiguousarray(mask, dtype=np.uint8)
+            plane = mask.astype(np.uint8)
+        if mask_nonfinite and data.dtype.kind == 'f':
+            nonfinite = ~np.isfinite(data)
+            if nonfinite.any():
+                if plane is None:
+                    plane = np.zeros(data.shape, dtype=np.uint8)
+                    plane[nonfinite] = 2
+                else:
+                    plane[nonfinite & (plane == 0)] = 2
+        mask = None if plane is None else np.ascontiguousarray(plane)
 
         seg_arr = None
         labels_arr = None
@@ -896,16 +939,12 @@ class PixelAperture(Aperture):
         return sums, errs, area, fcounts, overlap
 
     @_update_method_subpixels_docstring
-    def photometry(self, data, *, error=None, mask=None, method='exact',
-                   subpixels=5, segmentation_image=None, labels=None,
-                   mask_method='none'):
+    def _photometry(self, data, *, error=None, mask=None, method='exact',
+                    subpixels=5, segmentation_image=None, labels=None,
+                    mask_method='none', mask_nonfinite=False):
         # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         Perform aperture photometry on the input data.
-
-        .. versionadded:: 3.1
-            This method replaces the deprecated ``do_photometry``
-            method. All arguments except ``data`` are keyword-only.
 
         Parameters
         ----------
@@ -929,41 +968,43 @@ class PixelAperture(Aperture):
 
         <segmentation_descriptions>
 
+        mask_nonfinite : bool, optional
+            Whether to mask non-finite ``data`` values (matching
+            `ApertureStats`) instead of leaving them in the computation,
+            where they corrupt the sum (the 3.0.0 behavior, used by the
+            legacy `aperture_photometry` function). In both cases, the
+            non-finite pixels are flagged as ``non_finite_data``.
+
         Returns
         -------
-        result : `ApertureResults`
-            The aperture photometry results. For backward
-            compatibility, this object can be unpacked as a 2-tuple,
-            ``aperture_sum, aperture_sum_err = photometry(...)``, and
-            supports ``len()`` and integer indexing as if it were a
-            2-tuple. It has the following attributes:
+        result : `_ApertureResults`
+            The aperture photometry results. It has the following
+            attributes:
 
-            - ``aperture_sum`` : `~numpy.ndarray` or \
-              `~astropy.units.Quantity`
-                The sum within each aperture. The values are always
-                float64, regardless of the input ``data`` dtype.
+            - ``flux`` : `~numpy.ndarray` or `~astropy.units.Quantity`
+              The sum within each aperture. The values are always
+              float64, regardless of the input ``data`` dtype.
 
-            - ``aperture_sum_err`` : `~numpy.ndarray` or \
-              `~astropy.units.Quantity`
-                The errors on the sum within each aperture. The values
-                are always float64, regardless of the input ``error``
-                dtype.
+            - ``flux_err`` : `~numpy.ndarray` or `~astropy.units.Quantity`
+              The errors on the sum within each aperture. The values
+              are always float64, regardless of the input ``error``
+              dtype.
 
             - ``area`` : `~astropy.units.Quantity`
-                The total unmasked overlap area of each aperture (in
-                ``pix**2``), taking into account the aperture mask
-                method, masked data pixels, segmentation masking, and
-                partial/no overlap of the aperture with the data. This
-                is equivalent to `area_overlap` computed with the same
-                inputs. The value is ``NaN`` where the aperture does not
-                overlap the data.
+              The total unmasked overlap area of each aperture (in
+              ``pix**2``), taking into account the aperture mask
+              method, masked data pixels, segmentation masking, and
+              partial/no overlap of the aperture with the data. This
+              is equivalent to `area_overlap` computed with the same
+              inputs. The value is ``NaN`` where the aperture does not
+              overlap the data.
 
             - ``flags`` : `~numpy.ndarray`
-                The bitwise quality flags for each aperture. See
-                `~photutils.aperture.decode_aperture_flags` for decoding
-                flag values. The flags are:
+              The bitwise quality flags for each aperture. See
+              `~photutils.aperture.decode_aperture_flags` for decoding
+              flag values. The flags are:
 
-                <flag_descriptions>
+              <flag_descriptions>
         """
         data = np.asanyarray(data)
         if data.ndim != 2:
@@ -1000,16 +1041,16 @@ class PixelAperture(Aperture):
         result = self._batch_photometry(
             data, error=error, mask=mask, method=method, subpixels=subpixels,
             segmentation=segmentation, labels=labels,
-            mask_method=mask_method)
+            mask_method=mask_method, mask_nonfinite=mask_nonfinite)
 
         if result is not None:
-            aperture_sums, aperture_sum_errs, area, fcounts, overlap = result
+            flux, flux_err, area, fcounts, overlap = result
         else:
-            (aperture_sums, aperture_sum_errs, area, fcounts,
-             overlap) = self._mask_photometry(
+            (flux, flux_err, area, fcounts, overlap) = self._mask_photometry(
                 data, error=error, mask=mask, method=method,
                 subpixels=subpixels, segmentation=segmentation,
-                labels=labels, mask_method=mask_method)
+                labels=labels, mask_method=mask_method,
+                mask_nonfinite=mask_nonfinite)
 
         # Resolve the precise outside-weight test only for the sources
         # whose bounding box is clipped by a data edge
@@ -1021,38 +1062,58 @@ class PixelAperture(Aperture):
 
         # Apply units
         if unit is not None:
-            aperture_sums <<= unit
-            aperture_sum_errs <<= unit
+            flux <<= unit
+            flux_err <<= unit
 
         # The area always has units of pix**2, regardless of whether
         # data/error have units (matches ApertureStats.sum_aper_area).
         area <<= (u.pix**2)
 
-        return ApertureResults(aperture_sum=aperture_sums,
-                               aperture_sum_err=aperture_sum_errs, area=area,
-                               flags=flags)
+        return _ApertureResults(flux=flux, flux_err=flux_err, area=area,
+                                flags=flags)
 
-    @deprecated(since='3.1', alternative='photometry', until='4.0')
+    @_update_method_subpixels_docstring
+    @deprecated(since='3.1', alternative='AperturePhotometry', until='4.0')
     def do_photometry(self, data, error=None, mask=None, method='exact',
-                      subpixels=5, *, segmentation_image=None, labels=None,
-                      mask_method='none'):
-        # numpydoc ignore: PR01
+                      subpixels=5):
+        # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         Perform aperture photometry on the input data.
 
         .. deprecated:: 3.1
-            Use `photometry` instead. Note that all arguments except
-            ``data`` are keyword-only in ``photometry``.
+            Use `~photutils.aperture.AperturePhotometry` instead.
+
+        Parameters
+        ----------
+        data : array_like or `~astropy.units.Quantity` instance
+            The 2D array on which to perform photometry. ``data`` should
+            be background subtracted.
+
+        error : array_like or `~astropy.units.Quantity`, optional
+            The pixel-wise Gaussian 1-sigma errors of the input
+            ``data``. ``error`` is assumed to include *all* sources
+            of error, including the Poisson error of the sources (see
+            `~photutils.utils.calc_total_error`). ``error`` must have
+            the same shape as the input ``data``.
+
+        mask : array_like (bool), optional
+            A boolean mask with the same shape as ``data`` where a
+            `True` value indicates the corresponding element of ``data``
+            is masked. Masked data are excluded from all calculations.
+
+        <method_subpixels_descriptions>
 
         Returns
         -------
-        result : `ApertureResults`
-            The aperture photometry results.
+        aperture_sums : `~numpy.ndarray` or `~astropy.units.Quantity`
+            The sum within each aperture.
+
+        aperture_sum_errs : `~numpy.ndarray` or `~astropy.units.Quantity`
+            The errors on the sum within each aperture.
         """
-        return self.photometry(data, error=error, mask=mask, method=method,
-                               subpixels=subpixels,
-                               segmentation_image=segmentation_image,
-                               labels=labels, mask_method=mask_method)
+        result = self._photometry(data, error=error, mask=mask,
+                                  method=method, subpixels=subpixels)
+        return result.flux, result.flux_err
 
     def _resolve_outside_weights(self, shape, *, method, subpixels,
                                  candidates):

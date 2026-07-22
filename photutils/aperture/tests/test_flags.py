@@ -8,7 +8,7 @@ import pytest
 
 from photutils.aperture.flags import (APERTURE_FLAGS, _ApertureFlags,
                                       decode_aperture_flags)
-from photutils.utils._flags import FlagDefinition
+from photutils.utils._flags import FlagDefinition, define_flag_docstring
 
 EXPECTED_FLAGS = {
     'no_overlap': 1,
@@ -73,10 +73,12 @@ def test_decode_aperture_flags():
     decoded = decode_aperture_flags(np.array([], dtype=int))
     assert decoded == []
 
-    # Test with 2D array (flattened)
+    # Test with 2D array (shape preserved as nested lists)
     decoded = decode_aperture_flags(np.array([[0, 1], [8, 24]]))
-    assert len(decoded) == 4
-    assert decoded[3] == ['masked_pixels', 'all_masked']
+    assert len(decoded) == 2
+    assert decoded == [[[], ['no_overlap']],
+                       [['masked_pixels'],
+                        ['masked_pixels', 'all_masked']]]
 
 
 def test_decode_aperture_flags_return_bit_values():
@@ -169,6 +171,11 @@ def test_aperture_flags_get_methods():
     assert def_by_bit is def_by_name
     assert def_by_bit.name == 'no_overlap'
 
+    # NumPy integers (e.g., values from a flags table column) are
+    # accepted as bit values
+    assert APERTURE_FLAGS.get_name(np.int64(8)) == 'masked_pixels'
+    assert APERTURE_FLAGS.get_definition(np.int32(1)) is def_by_bit
+
     # Test error cases
     match = 'No flag with bit value 999'
     with pytest.raises(KeyError, match=match):
@@ -201,6 +208,15 @@ def test_aperture_flags_completeness():
     for name in names:
         assert name.isidentifier()
         assert name == name.lower()
+
+
+def test_define_flag_docstring_invalid_registry():
+    """
+    Test that define_flag_docstring rejects a non-FlagRegistry input.
+    """
+    match = 'registry must be an instance of FlagRegistry'
+    with pytest.raises(TypeError, match=match):
+        define_flag_docstring('invalid')
 
 
 def test_decode_aperture_flags_docstring():

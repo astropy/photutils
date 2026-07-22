@@ -8,9 +8,10 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.aperture import (APERTURE_FLAGS, CircularAnnulus,
+from photutils.aperture import (APERTURE_FLAGS, AperturePhotometry,
+                                ApertureStats, CircularAnnulus,
                                 CircularAperture, EllipticalAperture,
-                                RectangularAperture, aperture_photometry)
+                                RectangularAperture)
 from photutils.aperture.flags import _counts_to_flag_bits
 
 SHAPE = (25, 25)
@@ -33,7 +34,7 @@ class _NoBatchCircularAperture(CircularAperture):
 
 
 def _flags(aperture, data, **kwargs):
-    return aperture.photometry(data, **kwargs).flags
+    return AperturePhotometry(data, aperture, **kwargs).flags
 
 
 def test_no_flags():
@@ -53,10 +54,11 @@ def test_no_overlap(factory, method, subpixels):
     """
     data = np.ones(SHAPE)
     aper = factory([(-50.0, 12.0), (12.0, 12.0)])
-    result = aper.photometry(data, method=method, subpixels=subpixels)
+    result = AperturePhotometry(data, aper, method=method,
+                                subpixels=subpixels)
     expected = APERTURE_FLAGS.NO_OVERLAP | APERTURE_FLAGS.NO_PIXELS
     assert result.flags[0] == expected
-    assert np.isnan(result.aperture_sum[0])
+    assert np.isnan(result.flux[0])
     assert result.flags[1] == 0
 
 
@@ -83,15 +85,15 @@ def test_no_overlap_close_to_edge():
     # bbox column 0 overlaps the data, but with the "center" method
     # the pixel center at x=0 (distance 1.2) is outside the circle
     aper = CircularAperture((-1.2, 12.0), r=0.8)
-    result = aper.photometry(data, method='center')
+    result = AperturePhotometry(data, aper, method='center')
     assert result.flags[0] == (APERTURE_FLAGS.NO_OVERLAP
                                | APERTURE_FLAGS.NO_PIXELS)
     # The sum is 0.0 (not NaN) here: the bounding box overlaps the
     # data, but no weighted pixel falls inside
-    assert result.aperture_sum[0] == 0.0
+    assert result.flux[0] == 0.0
 
     # With the exact method, the aperture area extends into the data
-    result = aper.photometry(data, method='exact')
+    result = AperturePhotometry(data, aper, method='exact')
     assert result.flags[0] == APERTURE_FLAGS.PARTIAL_OVERLAP
 
 
@@ -118,9 +120,9 @@ def test_no_pixels_tiny_aperture():
     data = np.ones(SHAPE)
     # Nearest pixel centers are sqrt(0.5) ~ 0.707 away
     aper = CircularAperture((12.5, 12.5), r=0.4)
-    result = aper.photometry(data, method='center')
+    result = AperturePhotometry(data, aper, method='center')
     assert result.flags[0] == APERTURE_FLAGS.NO_PIXELS
-    assert result.aperture_sum[0] == 0.0
+    assert result.flux[0] == 0.0
 
     # The exact method has a nonzero footprint
     assert_array_equal(_flags(aper, data, method='exact'), [0])
@@ -163,18 +165,23 @@ def test_non_finite_data():
 
     In photometry, unmasked non-finite values contribute to the sum
     (making it NaN). They do not set all_masked.
+
+    This tests the legacy (non-class) engine call directly
+    (``mask_nonfinite=False``, the default), which corrupts the sum
+    with the non-finite value instead of masking it out, unlike
+    `AperturePhotometry`.
     """
     data = np.ones(SHAPE)
     data[12, 12] = np.nan
     aper = CircularAperture((12, 12), r=3.0)
-    result = aper.photometry(data)
+    result = aper._photometry(data)
     assert result.flags[0] == APERTURE_FLAGS.NON_FINITE_DATA
-    assert np.isnan(result.aperture_sum[0])
+    assert np.isnan(result.flux[0])
 
     # An all-NaN aperture is still non_finite_data only (the pixels
     # contribute, so all_masked is not set)
     data = np.full(SHAPE, np.nan)
-    result = aper.photometry(data)
+    result = aper._photometry(data)
     assert result.flags[0] == APERTURE_FLAGS.NON_FINITE_DATA
 
     # A masked non-finite pixel counts only as masked
@@ -280,11 +287,11 @@ def test_mask_path_parity(method, subpixels):
 
     kwargs = {'error': error, 'mask': mask, 'method': method,
               'subpixels': subpixels}
-    result_batch = batch_aper.photometry(data, **kwargs)
-    result_nobatch = nobatch_aper.photometry(data, **kwargs)
+    result_batch = batch_aper._photometry(data, **kwargs)
+    result_nobatch = nobatch_aper._photometry(data, **kwargs)
     assert_array_equal(result_batch.flags, result_nobatch.flags)
-    assert_allclose(result_batch.aperture_sum,
-                    result_nobatch.aperture_sum, rtol=1e-12,
+    assert_allclose(result_batch.flux,
+                    result_nobatch.flux, rtol=1e-12,
                     equal_nan=True)
 
 
@@ -302,33 +309,70 @@ def test_mask_path_parity_segmentation():
     labels = [1, 3]
 
     for mask_method in ('mask', 'source_only', 'correct'):
-        flags_batch = CircularAperture(xy, r=3.0).photometry(
+        flags_batch = CircularAperture(xy, r=3.0)._photometry(
             data, segmentation_image=segm, labels=labels,
             mask_method=mask_method).flags
-        flags_nobatch = _NoBatchCircularAperture(xy, r=3.0).photometry(
+        flags_nobatch = _NoBatchCircularAperture(xy, r=3.0)._photometry(
             data, segmentation_image=segm, labels=labels,
             mask_method=mask_method).flags
         assert_array_equal(flags_batch, flags_nobatch)
 
 
-def test_aperture_photometry_flags_column():
+@pytest.mark.parametrize('mask_method', ['mask', 'source_only', 'correct'])
+@pytest.mark.parametrize('nan_pixel', [(12, 14), (12, 10)],
+                         ids=['nan_neighbor', 'nan_mirror'])
+def test_mask_path_parity_nonfinite_segmentation(mask_method, nan_pixel):
     """
-    Test the flags column in the aperture_photometry table.
+    Test batch/mask-path parity when non-finite masking (the
+    AperturePhotometry path) combines with segmentation masking.
+
+    Non-finite pixels must be masked before the segmentation handling,
+    so a NaN neighbor pixel is excluded as non-finite (not counted as
+    a neighbor pixel or mirror-corrected) and a NaN mirror pixel makes
+    its neighbor uncorrectable with mask_method='correct', matching the
+    batch kernel and ApertureStats.
+    """
+    data = np.ones(SHAPE)
+    data[nan_pixel] = np.nan
+    segm = np.zeros(SHAPE, dtype=int)
+    segm[10:15, 10:15] = 1
+    segm[12, 14] = 2  # neighbor pixel; its mirror is (12, 10)
+
+    kwargs = {'segmentation_image': segm, 'labels': [1],
+              'mask_method': mask_method}
+    batch_aper = CircularAperture((12.0, 12.0), r=3.0)
+    nobatch_aper = _NoBatchCircularAperture((12.0, 12.0), r=3.0)
+    result_batch = AperturePhotometry(data, batch_aper, **kwargs)
+    result_nobatch = AperturePhotometry(data, nobatch_aper, **kwargs)
+    assert_array_equal(result_batch.flags, result_nobatch.flags)
+    assert_allclose(result_batch.flux, result_nobatch.flux, rtol=1e-12)
+    assert_allclose(result_batch.area.value, result_nobatch.area.value,
+                    rtol=1e-12)
+
+    # The NaN pixel is excluded as non_finite_data in both paths
+    assert result_batch.flags[0] & APERTURE_FLAGS.NON_FINITE_DATA
+    stats = ApertureStats(data, batch_aper, **kwargs)
+    assert result_batch.flags[0] == stats.flags
+    assert_allclose(result_batch.flux[0], stats.sum, rtol=1e-12)
+
+
+def test_aperture_photometry_flags():
+    """
+    Test the AperturePhotometry flags.
     """
     data = np.ones(SHAPE)
     xy = [(12.0, 12.0), (-50.0, 12.0), (0.0, 12.0)]
     aper = CircularAperture(xy, r=3.0)
-    tbl = aperture_photometry(data, aper)
+    phot = AperturePhotometry(data, aper)
     expected = [0, APERTURE_FLAGS.NO_OVERLAP | APERTURE_FLAGS.NO_PIXELS,
                 APERTURE_FLAGS.PARTIAL_OVERLAP]
-    assert_array_equal(tbl['flags'], expected)
-    assert 'decode_aperture_flags' in tbl['flags'].info.description
+    assert_array_equal(phot.flags, expected)
 
-    # Multiple apertures use suffixed column names
+    # The flags are multi-dimensional for multiple apertures
     aper2 = CircularAperture(xy, r=4.0)
-    tbl = aperture_photometry(data, [aper, aper2])
-    assert_array_equal(tbl['flags_0'], expected)
-    assert_array_equal(tbl['flags_1'], expected)
+    phot = AperturePhotometry(data, [aper, aper2])
+    assert_array_equal(phot.flags[:, 0], expected)
+    assert_array_equal(phot.flags[:, 1], expected)
 
 
 def test_flags_with_units():
@@ -338,24 +382,8 @@ def test_flags_with_units():
     data = np.ones(SHAPE) * u.Jy
     data[12, 12] = np.nan * u.Jy
     aper = CircularAperture((12, 12), r=3.0)
-    result = aper.photometry(data)
-    assert result.flags[0] == APERTURE_FLAGS.NON_FINITE_DATA
-    tbl = aperture_photometry(data, aper)
-    assert tbl['flags'][0] == APERTURE_FLAGS.NON_FINITE_DATA
-
-
-def test_legacy_tuple_unpacking():
-    """
-    Test that the legacy 2-tuple unpacking of the photometry results
-    is unchanged by the flags attribute.
-    """
-    data = np.ones(SHAPE)
-    aper = CircularAperture((12, 12), r=3.0)
-    result = aper.photometry(data)
-    aperture_sum, _aperture_sum_err = result
-    assert len(result) == 2
-    assert_array_equal(result[0], aperture_sum)
-    assert result.flags is not None
+    phot = AperturePhotometry(data, aper)
+    assert phot.flags[0] == APERTURE_FLAGS.NON_FINITE_DATA
 
 
 def test_counts_to_flag_bits_scalar_inputs():

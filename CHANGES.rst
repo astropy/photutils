@@ -28,6 +28,12 @@ New Features
 
 - ``photutils.aperture``
 
+  - Added a new ``AperturePhotometry`` class, which is now the
+    recommended tool for aperture photometry. It uses a results-object
+    pattern, similar to ``ApertureStats``. The class is immutable after
+    construction, so instances are thread-safe and independent frames
+    can be processed concurrently. [#2328]
+
   - Rectangular apertures now support the ``method='exact'`` mask mode.
     Previously this fell back to a 32x subpixel approximation. [#2291]
 
@@ -47,9 +53,9 @@ New Features
     to ``PolygonAperture`` or ``SkyPolygonAperture`` objects. [#2298]
 
   - Added ``segmentation_image``, ``labels``, and ``mask_method``
-    keywords to ``aperture_photometry`` and ``ApertureStats`` to mask or
+    keywords to ``AperturePhotometry`` and ``ApertureStats`` to mask or
     correct the flux from neighboring sources within an aperture using a
-    segmentation map. [#2309, #2321]
+    segmentation map. [#2309, #2321, #2328]
 
   - Significantly improved the performance of elliptical, rectangular,
     and convex polygon aperture photometry, typically by a factor of ~2.
@@ -71,21 +77,14 @@ New Features
     properties. The default is ``ddof=0`` (population variance), and
     ``ddof=1`` gives the sample (unbiased) variance. [#2314]
 
-  - Added per-source bitwise quality flags to aperture photometry
-    and statistics: ``aperture_photometry`` now includes a ``'flags'``
-    column (or ``'flags_<i>'`` columns for multiple apertures)
-    in the returned table, ``PixelAperture.photometry`` results
-    have a new ``flags`` attribute, and ``ApertureStats`` has new
-    ``flags``, ``sum_flags``, and ``decode_flags`` attributes. In
-    ``ApertureStats``, ``flags`` reports the quality flags for the value
-    statistics (the ``'center'``-method footprint) and ``sum_flags``
-    reports the flags for the sum properties (the ``sum_method``
-    footprint). The flags indicate conditions such as apertures that are
-    partially or fully outside the data, masked or non-finite pixels
-    within the aperture, pixels affected by segmentation masking,
-    sigma-clipped pixels, and too few pixels to compute a statistic. A
-    new ``decode_aperture_flags`` function decodes the flag values into
-    human-readable names. [#2327]
+  - Added per-source bitwise quality flags to aperture photometry and
+    statistics. The ``AperturePhotometry`` and ``ApertureStats``
+    classes provide a ``flags`` attribute (and a ``'flags'`` column,
+    or ``'flags_<i>'`` columns for multiple apertures, in their
+    default ``to_table()`` output), and ``ApertureStats`` also
+    provides a ``sum_flags`` attribute for the sum properties. A new
+    ``decode_aperture_flags`` function decodes the flag values into
+    human-readable names. [#2327, #2328]
 
 - ``photutils.isophote``
 
@@ -137,8 +136,8 @@ Bug Fixes
     nonzero ``sum_method`` overlap fractions, the fractional area of
     those pixels is now returned, consistent with ``sum``. [#2314]
 
-  - Fixed ``PixelAperture.photometry`` so that the returned flux
-    errors always have the same length as the fluxes when ``error`` is
+  - Fixed the aperture photometry so that the returned flux errors
+    always have the same length as the fluxes when ``error`` is
     not input. Previously, an all-NaN error array was returned only
     for sources with no overlap with the data. [#2316]
 
@@ -177,45 +176,19 @@ API Changes
 
 - ``photutils.aperture``
 
-  - ``aperture_photometry`` now always includes an
-    ``'aperture_sum_err'`` column in the returned table, filled with
-    NaN values if the ``error`` keyword is not input. Previously,
-    the column was omitted entirely in that case. This makes
-    the behavior consistent with ``ApertureStats.to_table()``,
-    ``SourceCatalog.to_table()``, and the ``PSFPhotometry`` and
-    ``IterativePSFPhotometry`` output tables, which always include
-    ``*_err`` columns (e.g., ``flux_err``). [#2319]
-
-  - ``aperture_photometry`` now always includes an ``'area'`` column
-    (or ``'area_<i>'`` columns for multiple apertures) in the returned
-    table. This is the total unmasked overlap area of the aperture (in
-    ``pix**2``), equivalent to ``PixelAperture.area_overlap`` computed
-    with the same inputs. [#2323]
-
-  - ``PixelAperture.photometry`` now returns an ``ApertureResults``
-    object instead of a plain tuple. The result remains backward
-    compatible: it can still be unpacked as a 2-tuple (``aperture_sum,
-    aperture_sum_err = aperture.photometry(...)``) and supports
-    ``len()`` and integer indexing like the legacy tuple. The new
-    ``area`` attribute provides the total unmasked overlap area of each
-    aperture (in ``pix**2``). [#2323]
-
-  - The ``PixelAperture.do_photometry`` method has been renamed to
-    ``photometry``. The old method name is deprecated and will be
-    removed in version 4.0. Note that in the new ``photometry`` method
-    all arguments except ``data`` are keyword-only. [#2324]
+  - The ``PixelAperture.do_photometry`` method is now deprecated and
+    will be removed in version 4.0. Use the new ``AperturePhotometry``
+    class instead. [#2324, #2328]
 
 - ``photutils.psf``
 
   - The ``EPSFBuildResult`` class returned by ``EPSFBuilder`` has been
-    renamed to ``EPSFBuildResults`` for consistency with the new
-    ``ApertureResults`` class. The old ``EPSFBuildResult`` name is
-    deprecated and will be removed in a future version. [#2326]
+    renamed to ``EPSFBuildResults`` for consistency with the plural
+    naming of the other results classes. The old ``EPSFBuildResult``
+    name is deprecated and will be removed in a future version. [#2326]
 
-  - ``aperture_photometry`` now always includes a ``'flags'`` column
-    (or ``'flags_<i>'`` columns for multiple apertures) in the
-    returned table, and the default ``ApertureStats.to_table()``
-    columns now include ``'flags'``. [#2327]
+  - The default ``ApertureStats.to_table()`` columns now include a
+    ``'flags'`` column. [#2327]
 
 
 3.0.0 (2026-04-17)
