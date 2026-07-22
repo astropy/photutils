@@ -45,6 +45,7 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _image_moments
+from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import process_quantities
 
 __all__ = ['ApertureStats']
@@ -485,6 +486,11 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         lazyproperties = [name for name in self._lazyproperties if not
                           name.startswith('_')]
+        # isscalar and n_apertures are scalar values for the whole
+        # object, not per-source values, so they are not valid table
+        # columns
+        lazyproperties.remove('isscalar')
+        lazyproperties.remove('n_apertures')
         lazyproperties.sort()
         return lazyproperties
 
@@ -702,13 +708,22 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         -------
         table : `~astropy.table.QTable`
             A table of sources properties with one row per source.
+
+        Raises
+        ------
+        ValueError
+            If any name in ``columns`` is not a valid (or deprecated)
+            column name.
         """
         if columns is None:
             table_columns = self.default_columns
-        elif isinstance(columns, str):
-            table_columns = [columns]
         else:
-            table_columns = columns
+            # id is not included in self.properties because it is not
+            # a lazyproperty
+            allowed_columns = set(self.properties) | set(self.default_columns)
+            table_columns = validate_table_columns(
+                columns, allowed_columns,
+                deprecated_names=_DEPRECATED_ATTRIBUTES)
 
         # Replace with QTable in 4.0
         tbl = create_empty_deprecated_qtable(
@@ -739,7 +754,12 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             values_map[column] = values
 
         for column in table_columns:
-            tbl[column] = values_map[column]
+            # Use the canonical (non-deprecated) column name so that
+            # assigning into ``tbl`` does not trigger a second,
+            # redundant deprecation warning (the deprecated attribute
+            # access above already warned once).
+            canonical_column = _DEPRECATED_ATTRIBUTES.get(column, column)
+            tbl[canonical_column] = values_map[column]
         return tbl
 
     @lazyproperty
