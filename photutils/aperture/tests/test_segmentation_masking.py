@@ -121,7 +121,7 @@ class TestAperturePhotometry:
             ref = AperturePhotometry(
                 data, CircularAperture(aper.positions[idx], r=6),
                 mask=manual_mask)
-            assert_allclose(result.flux[idx], ref.flux[0])
+            assert_allclose(result.flux[idx], ref.flux)
 
 
 class TestApertureStats:

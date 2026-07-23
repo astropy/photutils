@@ -86,15 +86,15 @@ def test_no_overlap_close_to_edge():
     # the pixel center at x=0 (distance 1.2) is outside the circle
     aper = CircularAperture((-1.2, 12.0), r=0.8)
     result = AperturePhotometry(data, aper, method='center')
-    assert result.flags[0] == (APERTURE_FLAGS.NO_OVERLAP
-                               | APERTURE_FLAGS.NO_PIXELS)
+    assert result.flags == (APERTURE_FLAGS.NO_OVERLAP
+                            | APERTURE_FLAGS.NO_PIXELS)
     # The sum is 0.0 (not NaN) here: the bounding box overlaps the
     # data, but no weighted pixel falls inside
-    assert result.flux[0] == 0.0
+    assert result.flux == 0.0
 
     # With the exact method, the aperture area extends into the data
     result = AperturePhotometry(data, aper, method='exact')
-    assert result.flags[0] == APERTURE_FLAGS.PARTIAL_OVERLAP
+    assert result.flags == APERTURE_FLAGS.PARTIAL_OVERLAP
 
 
 def test_partial_overlap_clipped_bbox_only():
@@ -121,8 +121,8 @@ def test_no_pixels_tiny_aperture():
     # Nearest pixel centers are sqrt(0.5) ~ 0.707 away
     aper = CircularAperture((12.5, 12.5), r=0.4)
     result = AperturePhotometry(data, aper, method='center')
-    assert result.flags[0] == APERTURE_FLAGS.NO_PIXELS
-    assert result.flux[0] == 0.0
+    assert result.flags == APERTURE_FLAGS.NO_PIXELS
+    assert result.flux == 0.0
 
     # The exact method has a nonzero footprint
     assert_array_equal(_flags(aper, data, method='exact'), [0])
@@ -141,22 +141,22 @@ def test_masked_pixels(method, subpixels):
     aper = CircularAperture((12, 12), r=3.0)
     flags = _flags(aper, data, mask=mask, method=method,
                    subpixels=subpixels)
-    assert flags[0] == APERTURE_FLAGS.MASKED_PIXELS
+    assert flags == APERTURE_FLAGS.MASKED_PIXELS
 
     # Masked pixel inside the bounding box but outside the aperture
     mask = np.zeros(SHAPE, dtype=bool)
     mask[9, 9] = True
     flags = _flags(aper, data, mask=mask, method=method,
                    subpixels=subpixels)
-    assert flags[0] == 0
+    assert flags == 0
 
     # Fully masked aperture
     mask = np.zeros(SHAPE, dtype=bool)
     mask[8:17, 8:17] = True
     flags = _flags(aper, data, mask=mask, method=method,
                    subpixels=subpixels)
-    assert flags[0] == (APERTURE_FLAGS.MASKED_PIXELS
-                        | APERTURE_FLAGS.ALL_MASKED)
+    assert flags == (APERTURE_FLAGS.MASKED_PIXELS
+                     | APERTURE_FLAGS.ALL_MASKED)
 
 
 def test_non_finite_data():
@@ -190,7 +190,7 @@ def test_non_finite_data():
     mask = np.zeros(SHAPE, dtype=bool)
     mask[12, 12] = True
     flags = _flags(aper, data, mask=mask)
-    assert flags[0] == APERTURE_FLAGS.MASKED_PIXELS
+    assert flags == APERTURE_FLAGS.MASKED_PIXELS
 
 
 def test_non_finite_error():
@@ -202,7 +202,7 @@ def test_non_finite_error():
     error[12, 12] = np.inf
     aper = CircularAperture((12, 12), r=3.0)
     flags = _flags(aper, data, error=error)
-    assert flags[0] == APERTURE_FLAGS.NON_FINITE_ERROR
+    assert flags == APERTURE_FLAGS.NON_FINITE_ERROR
 
     # Without an error array, the flag is never set
     assert_array_equal(_flags(aper, data), [0])
@@ -220,14 +220,14 @@ def test_neighbor_pixels(mask_method):
     aper = CircularAperture((12, 12), r=3.0)
     flags = _flags(aper, data, segmentation_image=segm, labels=1,
                    mask_method=mask_method)
-    assert flags[0] == APERTURE_FLAGS.NEIGHBOR_PIXELS
+    assert flags == APERTURE_FLAGS.NEIGHBOR_PIXELS
 
     # Without any neighbor pixels inside the aperture, no flag is set
     segm2 = np.zeros(SHAPE, dtype=int)
     segm2[10:15, 10:15] = 1
     flags = _flags(aper, data, segmentation_image=segm2, labels=1,
                    mask_method=mask_method)
-    assert flags[0] == 0
+    assert flags == 0
 
 
 def test_uncorrected_pixels():
@@ -242,14 +242,14 @@ def test_uncorrected_pixels():
     aper = CircularAperture((12, 12), r=3.0)
     flags = _flags(aper, data, segmentation_image=segm, labels=1,
                    mask_method='correct')
-    assert flags[0] == (APERTURE_FLAGS.NEIGHBOR_PIXELS
-                        | APERTURE_FLAGS.UNCORRECTED_PIXELS)
+    assert flags == (APERTURE_FLAGS.NEIGHBOR_PIXELS
+                     | APERTURE_FLAGS.UNCORRECTED_PIXELS)
 
     # A correctable neighbor does not set uncorrected_pixels
     segm[12, 10] = 0
     flags = _flags(aper, data, segmentation_image=segm, labels=1,
                    mask_method='correct')
-    assert flags[0] == APERTURE_FLAGS.NEIGHBOR_PIXELS
+    assert flags == APERTURE_FLAGS.NEIGHBOR_PIXELS
 
 
 def test_flag_combinations():
@@ -262,8 +262,8 @@ def test_flag_combinations():
     mask[10, 1] = True
     aper = CircularAperture((0.0, 12.0), r=3.0)  # straddles left edge
     flags = _flags(aper, data, mask=mask)
-    assert flags[0] == (APERTURE_FLAGS.PARTIAL_OVERLAP
-                        | APERTURE_FLAGS.MASKED_PIXELS)
+    assert flags == (APERTURE_FLAGS.PARTIAL_OVERLAP
+                     | APERTURE_FLAGS.MASKED_PIXELS)
 
 
 @pytest.mark.parametrize(('method', 'subpixels'), METHODS)
@@ -350,10 +350,10 @@ def test_mask_path_parity_nonfinite_segmentation(mask_method, nan_pixel):
                     rtol=1e-12)
 
     # The NaN pixel is excluded as non_finite_data in both paths
-    assert result_batch.flags[0] & APERTURE_FLAGS.NON_FINITE_DATA
+    assert result_batch.flags & APERTURE_FLAGS.NON_FINITE_DATA
     stats = ApertureStats(data, batch_aper, **kwargs)
-    assert result_batch.flags[0] == stats.flags
-    assert_allclose(result_batch.flux[0], stats.sum, rtol=1e-12)
+    assert result_batch.flags == stats.flags
+    assert_allclose(result_batch.flux, stats.sum, rtol=1e-12)
 
 
 def test_aperture_photometry_flags():
@@ -383,7 +383,7 @@ def test_flags_with_units():
     data[12, 12] = np.nan * u.Jy
     aper = CircularAperture((12, 12), r=3.0)
     phot = AperturePhotometry(data, aper)
-    assert phot.flags[0] == APERTURE_FLAGS.NON_FINITE_DATA
+    assert phot.flags == APERTURE_FLAGS.NON_FINITE_DATA
 
 
 def test_counts_to_flag_bits_scalar_inputs():

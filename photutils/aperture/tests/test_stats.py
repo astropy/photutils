@@ -317,7 +317,7 @@ class TestApertureStats:
         _ = apstats.to_table()
         apstat0 = apstats[1]
         assert apstat0.n_apertures == 1
-        assert apstat0.ids == np.array([2])
+        assert apstat0.id == np.array([2])
         apstat1 = apstats.select_id(2)
         assert apstat1.n_apertures == 1
         assert apstat0.sum_aper_area == apstat1.sum_aper_area
@@ -342,18 +342,18 @@ class TestApertureStats:
         apstat0 = apstats[[2, 1, 0]]
         apstat1 = apstats.select_ids([3, 2, 1])
         assert len(apstat0) == len(apstat1) == 3
-        assert_equal(apstat0.ids, [3, 2, 1])
-        assert_equal(apstat1.ids, [3, 2, 1])
+        assert_equal(apstat0.id, [3, 2, 1])
+        assert_equal(apstat1.id, [3, 2, 1])
 
         # Test select_ids when ids are not sorted
         apstat0 = apstats[[2, 1, 0]]
         apstat1 = apstat0.select_ids(2)
-        assert apstat1.ids == 2
+        assert apstat1.id == 2
 
         mask = apstats.id >= 2
         apstat0 = apstats[mask]
         assert len(apstat0) == 2
-        assert_equal(apstat0.ids, [2, 3])
+        assert_equal(apstat0.id, [2, 3])
 
         # Test iter
         for (i, apstat) in enumerate(apstats):
@@ -379,7 +379,7 @@ class TestApertureStats:
     def test_scalar_aperture_stats(self):
         apstats = self.apstats1[0]
         assert apstats.n_apertures == 1
-        assert apstats.ids == np.array([1])
+        assert apstats.id == np.array([1])
         tbl = apstats.to_table()
         assert len(tbl) == 1
 
@@ -412,6 +412,22 @@ class TestApertureStats:
                 old_val = getattr(apstats, old_name)
             new_val = getattr(apstats, new_name)
             assert_equal(old_val, new_val)
+
+    def test_deprecated_ids(self):
+        """
+        Test that the ``ids`` attribute is deprecated and returns the
+        same value as the ``id`` attribute.
+        """
+        apstats = ApertureStats(self.data, self.aperture)
+        match = 'deprecated in version 3.1'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            old_val = apstats.ids
+        assert_equal(old_val, apstats.id)
+
+        # A scalar instance returns the scalar id
+        scalar = apstats[0]
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            assert scalar.ids == scalar.id
 
     def test_invalid_inputs(self):
         match = 'aperture must be an Aperture or Region object'

@@ -191,7 +191,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         areas = []
         for aperture in apertures:
             if aperture is None:
-                flux, flux_err = [0.0], [0.0]
+                flux, flux_err = 0.0, 0.0
                 area = 0.0
             else:
                 result = AperturePhotometry(
@@ -201,9 +201,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
                 area = aperture.area_overlap(self.data, mask=self.mask,
                                              method=self.method,
                                              subpixels=self.subpixels)
-            fluxes.append(flux[0])
+            fluxes.append(flux)
             if self.error is not None:
-                flux_errs.append(flux_err[0])
+                flux_errs.append(flux_err)
             areas.append(area)
 
         fluxes = np.array(fluxes)
