@@ -45,6 +45,6 @@ tags:
     title: MoffatPSF
     description: A 2D MoffatPSF model.
   - tag_uri: tag:astropy.org:photutils/psf/stdpsf-1.0.0
-    schema_uri: asdf://astropy.org/photutils/schemas/psf/std_psf-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/psf/stdpsf-1.0.0
     title: STDPSF
     description: STDPSF photutils model.

@@ -69,8 +69,8 @@ allOf:
           - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
           - type: number
         description: |
-          Rotation angle of the Gaussian profile in degrees. The angle is 
-          measured counter-clockwise from the positive x axis in degrees." 
+          Rotation angle of the Gaussian profile in degrees. The angle is
+          measured counter-clockwise from the positive x axis in degrees."
       bbox_factor:
         type: number
         description: Factor by which to multiply the radius to determine the size of the bounding box.

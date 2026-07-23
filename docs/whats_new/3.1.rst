@@ -54,12 +54,15 @@ So far, the following classes can be serialized to and deserialized from
 ASDF files:
 
 * `~photutils.psf.AiryDiskPSF`
-* `photutils.psf.CircularGaussianPRF`
-* `photutils.psf.CircularGaussianPSF`
-* `photutils.psf.CircularGaussianSigmaPRF`
-* `photutils.psf.GaussianPRF`
-* `photutils.psf.GaussianPSF`
-* `photutils.psf.MoffatPSF`
+* `~photutils.psf.CircularGaussianPRF`
+* `~photutils.psf.CircularGaussianPSF`
+* `~photutils.psf.CircularGaussianSigmaPRF`
+* `~photutils.psf.GaussianPRF`
+* `~photutils.psf.GaussianPSF`
+* `~photutils.psf.MoffatPSF`
+* `~photutils.psf.GriddedPSFModel`
+* `~photutils.psf.ImagePSFModel`
+* `~photutils.psf.STDPSFGrid.`
 * `~photutils.aperture.CircularAperture`
 
 

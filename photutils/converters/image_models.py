@@ -9,10 +9,12 @@ import numpy as np
 from . import _ASDF_ASTROPY_INSTALLED
 
 if _ASDF_ASTROPY_INSTALLED:
+    from asdf.extension import Converter
     from asdf_astropy.converters.transform.core import (TransformConverterBase,
                                                         parameter_to_value)
 else:
     TransformConverterBase = object
+    Converter = object
 
 
 __all__ = ['GriddedPSFConverter',
@@ -97,7 +99,7 @@ class GriddedPSFConverter(TransformConverterBase):
         )
 
 
-class STDPSFGridConverter(TransformConverterBase):
+class STDPSFGridConverter(Converter):
     """
     ASDF converter for STDPSFModel.
     """
@@ -105,17 +107,30 @@ class STDPSFGridConverter(TransformConverterBase):
     tags = ('tag:astropy.org:photutils/psf/stdpsf-*',)
     types = ('photutils.psf.STDPSFGrid',)
 
-    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
+    def to_yaml_tree(self, model, tag, ctx):  # noqa: ARG002
+        shape = model.data.shape
+        xypos = np.array(model.grid_xypos)
+        xgrid = np.array(list(set(xypos[:, 0])))
+        ygrid = np.array(list(set(xypos[:, 1])))
+        meta = {'STDPSF': model.meta.get('STDPSF', None),
+                'oversampling': model.meta['oversampling'],
+                'detector': model.meta['detector'],
+                'filter': model.meta['filter'],
+                'grid_shape': model.meta['grid_shape'],
+                'grid_xypos': xypos.copy(),
+
+                }
         return {
-            'data': model.data,
-            'npsfs': model.npsfs,
-            'nxpsfs': model.nxpsfs,
-            'nypsfs': model.nypsfs,
-            'xgrid': model.xgrid,
-            'ygrid': model.ygrid,
+            'data': model.data.copy(),
+            'npsfs': shape[0],
+            'nxpsfs': shape[-2],
+            'nypsfs': shape[-1],
+            'xgrid': xgrid.copy(),
+            'ygrid': ygrid.copy(),
+            'meta': meta,
         }
 
-    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
+    def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
         from photutils.psf import STDPSFGrid
 
-        return STDPSFGrid(node)
+        return STDPSFGrid(**node)

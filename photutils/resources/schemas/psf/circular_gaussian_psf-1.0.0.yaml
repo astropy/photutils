@@ -5,9 +5,9 @@ id: "asdf://astropy.org/photutils/schemas/psf/circular_gaussian_psf-1.0.0"
 title: A circular 2D Gaussian PSF model.
 description: |
   ASDF schema for serializing a photutils CircularGaussianPSF.
-  This model is a circular 2D Gaussian PSF defined by the total flux, 
-  center coordinates, and FWHM. 
- 
+  This model is a circular 2D Gaussian PSF defined by the total flux,
+  center coordinates, and FWHM.
+
   This model is evaluated by sampling the 2D Gaussian at the input
   coordinates. The Gaussian is normalized such that the analytical
   integral over the entire 2D plane is equal to the total flux.

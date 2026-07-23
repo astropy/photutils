@@ -10,7 +10,7 @@ allOf:
   - $ref: "http://stsci.edu/schemas/asdf/transform/transform-1.4.0"
   - type: object
     properties:
-      data: 
+      data:
         tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
         description: |
           A 3D array of shape (N, My, Mx) containing N ePSF
@@ -34,7 +34,7 @@ allOf:
       fill_value:
         type: number
         description: |
-          Assign value to pixels outside the input pixel grid 
+          Assign value to pixels outside the input pixel grid
           to avoid extrapolation.
       oversampling:
         tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
@@ -46,7 +46,7 @@ allOf:
         description: |
           A list of the (x, y) grid positions of each reference ePSF. The order of
           positions should match the first axis of the 3D `~numpy.ndarray` of ePSFs.
-          In other words, ``grid_xypos[i]`` should be the (x, y) position of the 
+          In other words, ``grid_xypos[i]`` should be the (x, y) position of the
           reference ePSF defined in ``nddata.data[i]``. The grid positions must form
           a rectangular grid.
     required: [data, oversampling, grid_xypos]
