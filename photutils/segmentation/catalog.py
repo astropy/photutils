@@ -12,6 +12,7 @@ from copy import deepcopy
 
 import astropy.units as u
 import numpy as np
+from astropy.coordinates import SkyCoord
 from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from astropy.utils import lazyproperty
 from scipy.ndimage import map_coordinates
@@ -92,38 +93,11 @@ _DEPRECATED_META_KEYS = {
     'apermask_method': 'aperture_mask_method',
 }
 
-
-def as_scalar(method):
-    """
-    Return a decorated method where it will always return a scalar value
-    (instead of a length-1 tuple/list/array) if the class is scalar.
-
-    Note that lazyproperties that begin with '_' should not have this
-    decorator applied. Such properties are assumed to always be iterable
-    and when slicing (see __getitem__) from a cached multi-object
-    catalog to create a single-object catalog, they will no longer be
-    scalar.
-
-    Parameters
-    ----------
-    method : function
-        The method to be decorated.
-
-    Returns
-    -------
-    decorator : function
-        The decorated method.
-    """
-    @functools.wraps(method)
-    def _as_scalar(*args, **kwargs):
-        result = method(*args, **kwargs)
-        try:
-            return (result[0] if args[0].isscalar and len(result) == 1
-                    else result)
-        except TypeError:  # if result has no len
-            return result
-
-    return _as_scalar
+# Public non-underscore attributes that must never be collapsed to a
+# scalar for a single-source (scalar) catalog (see __getattribute__).
+_SCALAR_EXCLUDE = frozenset({'isscalar', 'n_labels', 'labels', 'properties',
+                             'custom_properties', 'default_columns',
+                             'kron_params'})
 
 
 def use_detcat(method):
@@ -678,8 +652,10 @@ class SourceCatalog:
                 continue
 
             try:
-                # Keep _<attr> lazyproperties as length-1 iterables;
-                # _<attr> lazyproperties should not have @as_scalar applied
+                # Keep private ('_'-prefixed) lazyproperties as length-1
+                # iterables. Such properties are never collapsed by
+                # __getattribute__ and internal code relies on them
+                # always being iterable.
                 if newcls.isscalar and key.startswith('_'):
                     if isinstance(value, np.ndarray):
                         val = value[:, np.newaxis][index]
@@ -718,6 +694,40 @@ class SourceCatalog:
     def __getattr__(self, name):
         return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
                                   since='3.0', until='4.0')
+
+    def __getattribute__(self, name):
+        # Centralized scalar collapse: for a scalar (single-source)
+        # catalog, public properties that return a length-1
+        # array/list/tuple (or a scalar SkyCoord) are returned as a
+        # scalar value. Private ('_'-prefixed) attributes are always
+        # returned unchanged so that internal code can rely on iterable
+        # values.
+        value = super().__getattribute__(name)
+        if (not name.startswith('_')
+                and name not in _SCALAR_EXCLUDE
+                and isinstance(value, (np.ndarray, SkyCoord, list, tuple))
+                and self.isscalar):
+            try:
+                if len(value) == 1:
+                    return value[0]
+            except TypeError:  # value has no len
+                pass
+        return value
+
+    def _make_scalar(self, value):
+        """
+        Return a scalar value for a scalar catalog if ``value`` is a
+        length-1 sequence, otherwise return ``value`` unchanged.
+
+        This is the method-call analog of the scalar collapse performed
+        for attribute access by `__getattribute__`.
+        """
+        try:
+            if self.isscalar and len(value) == 1:
+                return value[0]
+        except TypeError:  # value has no len
+            pass
+        return value
 
     @lazyproperty
     def isscalar(self):
@@ -1187,7 +1197,6 @@ class SourceCatalog:
         return len(self.labels)
 
     @property
-    @as_scalar
     def label(self):
         """
         The source label number(s).
@@ -1215,7 +1224,6 @@ class SourceCatalog:
         return labels
 
     @property
-    @as_scalar
     def slices(self):
         """
         A tuple of slice objects defining the minimal bounding box of
@@ -1238,7 +1246,6 @@ class SourceCatalog:
         return _slices
 
     @lazyproperty
-    @as_scalar
     def segment_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout of the segmentation image using the
@@ -1252,7 +1259,6 @@ class SourceCatalog:
             masked=False)
 
     @lazyproperty
-    @as_scalar
     def segment_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout of the segmentation image
@@ -1270,7 +1276,6 @@ class SourceCatalog:
             masked=True)
 
     @lazyproperty
-    @as_scalar
     def data_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the data using the minimal
@@ -1283,7 +1288,6 @@ class SourceCatalog:
                                      masked=False, dtype=float)
 
     @lazyproperty
-    @as_scalar
     def data_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the data using the
@@ -1300,7 +1304,6 @@ class SourceCatalog:
                                      masked=True, dtype=float)
 
     @lazyproperty
-    @as_scalar
     def conv_data_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the convolved data using the
@@ -1313,7 +1316,6 @@ class SourceCatalog:
                                      masked=False, dtype=float)
 
     @lazyproperty
-    @as_scalar
     def conv_data_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the convolved data
@@ -1330,7 +1332,6 @@ class SourceCatalog:
                                      masked=True, dtype=float)
 
     @lazyproperty
-    @as_scalar
     def error_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the error array using the
@@ -1345,7 +1346,6 @@ class SourceCatalog:
                                      masked=False)
 
     @lazyproperty
-    @as_scalar
     def error_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the error array using
@@ -1364,7 +1364,6 @@ class SourceCatalog:
                                      masked=True)
 
     @lazyproperty
-    @as_scalar
     def background_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the background array using the
@@ -1379,7 +1378,6 @@ class SourceCatalog:
                                      masked=False)
 
     @lazyproperty
-    @as_scalar
     def background_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the background array.
@@ -1492,7 +1490,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def moments(self):
         """
         Spatial moments up to 3rd order of the source.
@@ -1509,7 +1506,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def moments_central(self):
         """
         Central moments (translation invariant) of the source up to 3rd
@@ -1532,7 +1528,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def cutout_centroid(self):
         """
         The ``(x, y)`` coordinate, relative to the cutout data, of the
@@ -1554,7 +1549,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def centroid(self):
         """
         The ``(x, y)`` coordinate of the centroid within the isophotal
@@ -1568,20 +1562,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    def _x_centroid(self):
-        """
-        The ``x`` coordinate of the `centroid` within the source
-        segment, always as an iterable.
-        """
-        if self.isscalar:
-            x_centroid = self.centroid[0:1]  # scalar array
-        else:
-            x_centroid = self.centroid[:, 0]
-        return x_centroid
-
-    @lazyproperty
-    @use_detcat
-    @as_scalar
     def x_centroid(self):
         """
         The ``x`` coordinate of the `centroid` within the source
@@ -1590,24 +1570,12 @@ class SourceCatalog:
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
         """
-        return self._x_centroid
-
-    @lazyproperty
-    @use_detcat
-    def _y_centroid(self):
-        """
-        The ``y`` coordinate of the `centroid` within the source
-        segment, always as an iterable.
-        """
         if self.isscalar:
-            y_centroid = self.centroid[1:2]  # scalar array
-        else:
-            y_centroid = self.centroid[:, 1]
-        return y_centroid
+            return self.centroid[0:1]  # length-1 array
+        return self.centroid[:, 0]
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def y_centroid(self):
         """
         The ``y`` coordinate of the `centroid` within the source
@@ -1616,11 +1584,12 @@ class SourceCatalog:
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
         """
-        return self._y_centroid
+        if self.isscalar:
+            return self.centroid[1:2]  # length-1 array
+        return self.centroid[:, 1]
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def centroid_win(self):
         """
         The ``(x, y)`` coordinate of the "windowed" centroid.
@@ -1667,6 +1636,10 @@ class SourceCatalog:
             desc = 'centroid_win'
             labels = add_progress_bar(labels, desc=desc)
 
+        # Centroids as iterable arrays regardless of scalar state
+        x_centroid = np.atleast_1d(self.x_centroid)
+        y_centroid = np.atleast_1d(self.y_centroid)
+
         # Pre-fetch arrays used in the inner loop
         data_arr = self._data
         mask_arr = self._mask
@@ -1682,8 +1655,8 @@ class SourceCatalog:
         xcen_win = []
         ycen_win = []
         for label, xcen, ycen, rad_hl, nan_hl_ in zip(
-                labels, self._x_centroid, self._y_centroid, radius_hl,
-                nan_hl, strict=True):
+                labels, x_centroid, y_centroid, radius_hl, nan_hl,
+                strict=True):
 
             if nan_hl_ or math.isnan(xcen) or math.isnan(ycen):
                 xcen_win.append(np.nan)
@@ -1811,8 +1784,8 @@ class SourceCatalog:
         # outside the 1-sigma ellipse or if the iteration failed (NaN
         # from aperture off-image). Sources with NaN half-light radius
         # keep NaN (no valid window size).
-        dx = self._x_centroid - xcen_win
-        dy = self._y_centroid - ycen_win
+        dx = x_centroid - xcen_win
+        dy = y_centroid - ycen_win
         cxx = self.ellipse_cxx.value
         cxy = self.ellipse_cxy.value
         cyy = self.ellipse_cyy.value
@@ -1825,14 +1798,13 @@ class SourceCatalog:
         nan_cen = np.isnan(xcen_win) | np.isnan(ycen_win)
         reset |= nan_cen & ~nan_hl
         if np.any(reset):
-            xcen_win[reset] = self._x_centroid[reset]
-            ycen_win[reset] = self._y_centroid[reset]
+            xcen_win[reset] = x_centroid[reset]
+            ycen_win[reset] = y_centroid[reset]
 
         return np.transpose((xcen_win, ycen_win))
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def x_centroid_win(self):
         """
         The ``x`` coordinate of the "windowed" centroid
@@ -1850,7 +1822,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def y_centroid_win(self):
         """
         The ``y`` coordinate of the "windowed" centroid
@@ -1868,7 +1839,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def cutout_centroid_win(self):
         """
         The ``(x, y)`` coordinate, relative to the cutout data, of the
@@ -1884,7 +1854,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def cutout_centroid_quad(self):
         """
         The ``(x, y)`` centroid coordinate, relative to the cutout data,
@@ -1995,7 +1964,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def centroid_quad(self):
         """
         The ``(x, y)`` centroid coordinate, calculated by fitting a 2D
@@ -2024,7 +1992,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def x_centroid_quad(self):
         """
         The ``x`` coordinate of the centroid (`centroid_quad`),
@@ -2039,7 +2006,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def y_centroid_quad(self):
         """
         The ``y`` coordinate of the centroid (`centroid_quad`),
@@ -2054,7 +2020,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def sky_centroid(self):
         """
         The sky coordinate of the `centroid` within the source segment,
@@ -2070,7 +2035,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def sky_centroid_icrs(self):
         """
         The sky coordinate in the International Celestial Reference
@@ -2085,7 +2049,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def sky_centroid_win(self):
         """
         The sky coordinate of the "windowed" centroid (`centroid_win`)
@@ -2103,7 +2066,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def sky_centroid_quad(self):
         """
         The sky coordinate of the centroid (`centroid_quad`), calculated
@@ -2132,7 +2094,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def bbox(self):
         """
         The `~photutils.aperture.BoundingBox` of the minimal rectangular
@@ -2145,7 +2106,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def bbox_xmin(self):
         """
         The minimum ``x`` pixel index within the minimal bounding box
@@ -2155,7 +2115,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def bbox_xmax(self):
         """
         The maximum ``x`` pixel index within the minimal bounding box
@@ -2167,7 +2126,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def bbox_ymin(self):
         """
         The minimum ``y`` pixel index within the minimal bounding box
@@ -2177,7 +2135,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def bbox_ymax(self):
         """
         The maximum ``y`` pixel index within the minimal bounding box
@@ -2225,7 +2182,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def sky_bbox_ll(self):
         """
         The sky coordinates of the lower-left corner vertex of the
@@ -2244,7 +2200,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def sky_bbox_ul(self):
         """
         The sky coordinates of the upper-left corner vertex of the
@@ -2263,7 +2218,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def sky_bbox_lr(self):
         """
         The sky coordinates of the lower-right corner vertex of the
@@ -2282,7 +2236,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def sky_bbox_ur(self):
         """
         The sky coordinates of the upper-right corner vertex of the
@@ -2300,7 +2253,6 @@ class SourceCatalog:
         return self.wcs.pixel_to_world(*np.transpose(self._bbox_corner_ur))
 
     @lazyproperty
-    @as_scalar
     def min_value(self):
         """
         The minimum pixel value of the ``data`` within the source
@@ -2313,7 +2265,6 @@ class SourceCatalog:
         return values
 
     @lazyproperty
-    @as_scalar
     def max_value(self):
         """
         The maximum pixel value of the ``data`` within the source
@@ -2326,7 +2277,6 @@ class SourceCatalog:
         return values
 
     @lazyproperty
-    @as_scalar
     def cutout_min_value_index(self):
         """
         The ``(y, x)`` coordinate, relative to the cutout data, of the
@@ -2347,7 +2297,6 @@ class SourceCatalog:
         return np.array(idx)
 
     @lazyproperty
-    @as_scalar
     def cutout_max_value_index(self):
         """
         The ``(y, x)`` coordinate, relative to the cutout data, of the
@@ -2368,7 +2317,6 @@ class SourceCatalog:
         return np.array(idx)
 
     @lazyproperty
-    @as_scalar
     def min_value_index(self):
         """
         The ``(y, x)`` coordinate of the minimum pixel value of the
@@ -2386,7 +2334,6 @@ class SourceCatalog:
         return np.array(out)
 
     @lazyproperty
-    @as_scalar
     def max_value_index(self):
         """
         The ``(y, x)`` coordinate of the maximum pixel value of the
@@ -2404,7 +2351,6 @@ class SourceCatalog:
         return np.array(out)
 
     @lazyproperty
-    @as_scalar
     def min_value_xindex(self):
         """
         The ``x`` coordinate of the minimum pixel value of the ``data``
@@ -2420,7 +2366,6 @@ class SourceCatalog:
         return xidx
 
     @lazyproperty
-    @as_scalar
     def min_value_yindex(self):
         """
         The ``y`` coordinate of the minimum pixel value of the ``data``
@@ -2436,7 +2381,6 @@ class SourceCatalog:
         return yidx
 
     @lazyproperty
-    @as_scalar
     def max_value_xindex(self):
         """
         The ``x`` coordinate of the maximum pixel value of the ``data``
@@ -2452,7 +2396,6 @@ class SourceCatalog:
         return xidx
 
     @lazyproperty
-    @as_scalar
     def max_value_yindex(self):
         """
         The ``y`` coordinate of the maximum pixel value of the ``data``
@@ -2468,7 +2411,6 @@ class SourceCatalog:
         return yidx
 
     @lazyproperty
-    @as_scalar
     def segment_flux(self):
         r"""
         The sum of the unmasked ``data`` values within the source
@@ -2495,7 +2437,6 @@ class SourceCatalog:
         return source_sum
 
     @lazyproperty
-    @as_scalar
     def segment_flux_err(self):
         r"""
         The uncertainty of `segment_flux`, propagated from the input
@@ -2529,7 +2470,6 @@ class SourceCatalog:
         return err
 
     @lazyproperty
-    @as_scalar
     def background_sum(self):
         """
         The sum of ``background`` values within the source segment.
@@ -2549,7 +2489,6 @@ class SourceCatalog:
         return bkg_sum
 
     @lazyproperty
-    @as_scalar
     def background_mean(self):
         """
         The mean of ``background`` values within the source segment.
@@ -2570,7 +2509,6 @@ class SourceCatalog:
         return bkg_mean
 
     @lazyproperty
-    @as_scalar
     def background_centroid(self):
         """
         The value of the per-pixel ``background`` at the position of the
@@ -2585,8 +2523,8 @@ class SourceCatalog:
         if self._background is None:
             bkg = self._null_values
         else:
-            xcen = self._x_centroid
-            ycen = self._y_centroid
+            xcen = np.atleast_1d(self.x_centroid)
+            ycen = np.atleast_1d(self.y_centroid)
             bkg = map_coordinates(self._background, (ycen, xcen), order=1,
                                   mode='nearest')
 
@@ -2599,7 +2537,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def segment_area(self):
         """
         The total area of the source segment in units of pixels**2.
@@ -2618,7 +2555,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def area(self):
         """
         The total unmasked area of the source in units of pixels**2.
@@ -2633,7 +2569,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def equivalent_radius(self):
         """
         The radius of a circle with the same `area` as the source
@@ -2643,7 +2578,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def perimeter(self):
         """
         The perimeter of the source segment, approximated as the total
@@ -2704,7 +2638,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def inertia_tensor(self):
         """
         The inertia tensor of the source for the rotation around its
@@ -2762,7 +2695,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def covariance(self):
         """
         The covariance matrix of the 2D Gaussian function that has the
@@ -2772,7 +2704,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def covariance_eigvals(self):
         """
         The two eigenvalues of the `covariance` matrix in decreasing
@@ -2797,7 +2728,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def semimajor_axis(self):
         """
         The 1-sigma standard deviation along the semimajor axis of the
@@ -2812,7 +2742,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def semiminor_axis(self):
         """
         The 1-sigma standard deviation along the semiminor axis of the
@@ -2827,7 +2756,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def fwhm(self):
         r"""
         The circularized full width at half maximum (FWHM) of the 2D
@@ -2849,7 +2777,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def orientation(self):
         """
         The angle between the ``x`` axis and the major axis of the 2D
@@ -2866,7 +2793,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def eccentricity(self):
         r"""
         The eccentricity of the 2D Gaussian function that has the same
@@ -2887,7 +2813,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def elongation(self):
         r"""
         The ratio of the lengths of the semimajor and semiminor axes.
@@ -2903,7 +2828,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def ellipticity(self):
         r"""
         1.0 minus the ratio of the lengths of the semimajor and
@@ -2920,7 +2844,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def covariance_xx(self):
         r"""
         The ``(0, 0)`` element of the `covariance` matrix, representing
@@ -2930,7 +2853,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def covariance_yy(self):
         r"""
         The ``(1, 1)`` element of the `covariance` matrix, representing
@@ -2940,7 +2862,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def covariance_xy(self):
         r"""
         The ``(0, 1)`` and ``(1, 0)`` elements of the `covariance`
@@ -2951,7 +2872,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def ellipse_cxx(self):
         r"""
         Coefficient for ``x**2`` in the generalized ellipse equation in
@@ -2975,7 +2895,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def ellipse_cyy(self):
         r"""
         Coefficient for ``y**2`` in the generalized ellipse equation in
@@ -2999,7 +2918,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def ellipse_cxy(self):
         r"""
         Coefficient for ``x * y`` in the generalized ellipse equation in
@@ -3024,7 +2942,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def gini(self):
         r"""
         The `Gini coefficient
@@ -3077,7 +2994,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def local_background_aperture(self):
         """
         The `~photutils.aperture.RectangularAnnulus` aperture used to
@@ -3142,7 +3058,6 @@ class SourceCatalog:
         return local_bkgs
 
     @lazyproperty
-    @as_scalar
     def local_background(self):
         """
         The local background value (per pixel) estimated using a
@@ -3244,14 +3159,16 @@ class SourceCatalog:
             position is not finite or where the source is completely
             masked.
         """
-        radius = np.broadcast_to(radius, len(self._x_centroid))
+        x_centroid = np.atleast_1d(self.x_centroid)
+        y_centroid = np.atleast_1d(self.y_centroid)
+        radius = np.broadcast_to(radius, len(x_centroid))
         if np.any(radius <= 0):
             msg = 'radius must be > 0'
             raise ValueError(msg)
 
         apertures = []
-        for (xcen, ycen, radius_, all_masked) in zip(self._x_centroid,
-                                                     self._y_centroid,
+        for (xcen, ycen, radius_, all_masked) in zip(x_centroid,
+                                                     y_centroid,
                                                      radius,
                                                      self._all_masked,
                                                      strict=True):
@@ -3263,7 +3180,6 @@ class SourceCatalog:
 
         return apertures
 
-    @as_scalar
     def make_circular_apertures(self, radius):
         """
         Make circular aperture for each source.
@@ -3285,9 +3201,8 @@ class SourceCatalog:
             `None` where the source `centroid` position is not finite or
             where the source is completely masked.
         """
-        return self._make_circular_apertures(radius)
+        return self._make_scalar(self._make_circular_apertures(radius))
 
-    @as_scalar
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def plot_circular_apertures(self, radius, ax=None, origin=(0, 0),
                                 **kwargs):
@@ -3333,7 +3248,7 @@ class SourceCatalog:
             if aperture is not None:
                 aperture.plot(ax=ax, origin=origin, **kwargs)
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
-        return patches
+        return self._make_scalar(patches)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def circular_photometry(self, radius, name=None, overwrite=False):
@@ -3426,15 +3341,11 @@ class SourceCatalog:
             `centroid` position or elliptical shape parameters are not
             finite or where the source is completely masked.
         """
-        xcen = self._x_centroid
-        ycen = self._y_centroid
-        major_size = self.semimajor_axis.value * scale
-        minor_size = self.semiminor_axis.value * scale
-        theta = self.orientation.to_value(u.radian)
-        if self.isscalar:
-            major_size = (major_size,)
-            minor_size = (minor_size,)
-            theta = (theta,)
+        xcen = np.atleast_1d(self.x_centroid)
+        ycen = np.atleast_1d(self.y_centroid)
+        major_size = np.atleast_1d(self.semimajor_axis.value) * scale
+        minor_size = np.atleast_1d(self.semiminor_axis.value) * scale
+        theta = np.atleast_1d(self.orientation.to_value(u.radian))
 
         aperture = []
         for values in zip(xcen, ycen, major_size, minor_size, theta,
@@ -3467,8 +3378,8 @@ class SourceCatalog:
         """
         scale = 6.0
 
-        xcen_arr = self._x_centroid
-        ycen_arr = self._y_centroid
+        xcen_arr = np.atleast_1d(self.x_centroid)
+        ycen_arr = np.atleast_1d(self.y_centroid)
         a_arr = self.semimajor_axis.value * scale
         b_arr = self.semiminor_axis.value * scale
         theta_arr = self.orientation.to_value(u.radian)
@@ -3617,7 +3528,6 @@ class SourceCatalog:
 
         return np.array(kron_radius)
 
-    @as_scalar
     def _calc_kron_radius(self, kron_params):
         """
         Calculate the *unscaled* first-moment Kron radius, applying any
@@ -3651,7 +3561,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def kron_radius(self):
         r"""
         The *unscaled* first-moment Kron radius.
@@ -3726,7 +3635,6 @@ class SourceCatalog:
 
     @lazyproperty
     @use_detcat
-    @as_scalar
     def kron_aperture(self):
         r"""
         The elliptical (or circular) Kron aperture.
@@ -3753,7 +3661,6 @@ class SourceCatalog:
         """
         return self._make_kron_apertures(self.kron_params)
 
-    @as_scalar
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def make_kron_apertures(self, kron_params=None):
         """
@@ -3798,9 +3705,8 @@ class SourceCatalog:
         """
         if kron_params is None:
             return self.kron_aperture
-        return self._make_kron_apertures(kron_params)
+        return self._make_scalar(self._make_kron_apertures(kron_params))
 
-    @as_scalar
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def plot_kron_apertures(self, kron_params=None, ax=None, origin=(0, 0),
                             **kwargs):
@@ -3868,7 +3774,7 @@ class SourceCatalog:
             if aperture is not None:
                 aperture.plot(ax=ax, origin=origin, **kwargs)
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
-        return patches
+        return self._make_scalar(patches)
 
     def _aperture_photometry(self, apertures, *, desc='', **kwargs):
         """
@@ -4148,7 +4054,6 @@ class SourceCatalog:
         return np.transpose(self._calc_kron_photometry(kron_params=None))
 
     @lazyproperty
-    @as_scalar
     def kron_flux(self):
         """
         The flux in the Kron aperture.
@@ -4167,7 +4072,6 @@ class SourceCatalog:
         return kron_flux
 
     @lazyproperty
-    @as_scalar
     def kron_flux_err(self):
         """
         The flux error in the Kron aperture.
@@ -4250,9 +4154,12 @@ class SourceCatalog:
             desc = 'flux_radius prep'
             labels = add_progress_bar(labels, desc=desc)
 
+        x_centroid = np.atleast_1d(self.x_centroid)
+        y_centroid = np.atleast_1d(self.y_centroid)
+
         args = []
         for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
-                labels, self._x_centroid, self._y_centroid,
+                labels, x_centroid, y_centroid,
                 kron_flux, self._local_background, max_radius, strict=True):
 
             if (np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_)))
@@ -4325,7 +4232,6 @@ class SourceCatalog:
 
         return args
 
-    @as_scalar
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def flux_radius(self, fraction, name=None, overwrite=False):
         """
@@ -4365,7 +4271,7 @@ class SourceCatalog:
             result = self._flux_radius_cache[fraction]
             if name is not None:
                 self.add_property(name, result, overwrite=overwrite)
-            return result
+            return self._make_scalar(result)
 
         args = self._flux_radius_optimizer_args
         if self.progress_bar:
@@ -4421,9 +4327,8 @@ class SourceCatalog:
         if name is not None:
             self.add_property(name, result, overwrite=overwrite)
 
-        return result
+        return self._make_scalar(result)
 
-    @as_scalar
     def make_cutouts(self, shape, *, array=None, mode='partial',
                      fill_value=np.nan):
         """
@@ -4482,8 +4387,8 @@ class SourceCatalog:
             raise ValueError(msg)
 
         cutouts = []
-        for (xcen, ycen, all_masked) in zip(self._x_centroid,
-                                            self._y_centroid,
+        for (xcen, ycen, all_masked) in zip(np.atleast_1d(self.x_centroid),
+                                            np.atleast_1d(self.y_centroid),
                                             self._all_masked, strict=True):
 
             if all_masked or np.any(~np.isfinite((xcen, ycen))):
@@ -4493,4 +4398,4 @@ class SourceCatalog:
             cutouts.append(CutoutImage(array, (ycen, xcen), shape,
                                        mode=mode, fill_value=fill_value))
 
-        return cutouts
+        return self._make_scalar(cutouts)

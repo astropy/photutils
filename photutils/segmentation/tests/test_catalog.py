@@ -2055,8 +2055,8 @@ def test_flux_radius_optimizer_args_off_image(gauss_101_catalog):
     # Cache kron_photometry, then move the centroid way off-image
     _ = cat._kron_photometry
     off = np.array([500.0])
-    cat.__dict__['_x_centroid'] = off
-    cat.__dict__['_y_centroid'] = off
+    cat.__dict__['x_centroid'] = off
+    cat.__dict__['y_centroid'] = off
     assert np.all(np.isnan(cat.flux_radius(0.5)))
 
 
@@ -2105,8 +2105,8 @@ def test_measured_kron_radius_off_image(gauss_101_catalog):
     _data, _segm, cat = gauss_101_catalog
 
     # Move the centroid off the image
-    cat.__dict__['_x_centroid'] = np.array([5000.0])
-    cat.__dict__['_y_centroid'] = np.array([5000.0])
+    cat.__dict__['x_centroid'] = np.array([5000.0])
+    cat.__dict__['y_centroid'] = np.array([5000.0])
     assert np.all(np.isnan(cat.kron_radius.value))
 
 
