@@ -281,6 +281,37 @@ class TestApertureStats:
         assert tbl.colnames == ['sum']
         assert len(tbl) == len(self.apstats1) == 3
 
+    @pytest.mark.parametrize('columns', ['invalid',
+                                         'sum_method',
+                                         'isscalar',
+                                         'n_apertures',
+                                         ['id', 'subpixels']])
+    def test_invalid_column(self, columns):
+        match = 'Invalid column name'
+        with pytest.raises(ValueError, match=match):
+            self.apstats1.to_table(columns=columns)
+
+    def test_properties_excludes_scalar_attrs(self):
+        """
+        Regression test to ensure that ``isscalar`` and ``n_apertures``
+        (scalar values for the whole object, not per-source values) are
+        not included in ``properties`` and so are not valid ``to_table``
+        columns.
+        """
+        assert 'isscalar' not in self.apstats1.properties
+        assert 'n_apertures' not in self.apstats1.properties
+
+    def test_deprecated_column(self):
+        """
+        Regression test to ensure that deprecated column names are still
+        accepted by ``to_table``, not rejected by the new column-name
+        validation.
+        """
+        match = "'xcentroid' attribute was deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            tbl = self.apstats1.to_table(columns='xcentroid')
+        assert tbl.colnames == ['x_centroid']
+
     def test_slicing(self):
         apstats = self.apstats1
         _ = apstats.to_table()

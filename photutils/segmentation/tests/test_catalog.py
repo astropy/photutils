@@ -385,6 +385,25 @@ class TestSourceCatalog:
             assert isinstance(col, str)
             assert not isinstance(col, np.str_)
 
+    @pytest.mark.parametrize('columns', ['invalid',
+                                         'kron_params',
+                                         ['_mask', '_slices']])
+    def test_invalid_column(self, columns):
+        match = 'Invalid column name'
+        with pytest.raises(ValueError, match=match):
+            self.cat.to_table(columns=columns)
+
+    def test_deprecated_column(self):
+        """
+        Regression test to ensure that deprecated column names are still
+        accepted by ``to_table``, not rejected by the new column-name
+        validation.
+        """
+        match = "'xcentroid' attribute was deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            tbl = self.cat.to_table(columns='xcentroid')
+        assert tbl.colnames == ['x_centroid']
+
     def test_invalid_inputs(self):
         """
         Test invalid inputs.

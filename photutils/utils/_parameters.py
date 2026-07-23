@@ -143,3 +143,52 @@ def as_pair(name, value, *, lower_bound=None, upper_bound=None,
                           min(value[1], upper_bound[1])))
 
     return value
+
+
+def validate_table_columns(columns, allowed_columns, *,
+                           deprecated_names=None):
+    """
+    Validate requested ``to_table()`` column names.
+
+    This is a helper function for ``to_table`` methods that accept a
+    ``columns`` keyword. It normalizes ``columns`` to a list and raises
+    a `ValueError` if any requested name is not in ``allowed_columns``
+    or ``deprecated_names``.
+
+    Parameters
+    ----------
+    columns : str or list of str
+        The requested column name(s).
+
+    allowed_columns : iterable of str
+        The allowed column names.
+
+    deprecated_names : iterable of str, optional
+        Deprecated column names (e.g., the keys of a class's
+        ``_DEPRECATED_ATTRIBUTES`` mapping) that should still be
+        accepted in addition to ``allowed_columns``.
+
+    Returns
+    -------
+    table_columns : list of str
+        ``columns`` normalized to a list of strings.
+
+    Raises
+    ------
+    ValueError
+        If any name in ``columns`` is not an allowed or deprecated
+        column name.
+    """
+    table_columns = [columns] if isinstance(columns, str) else list(columns)
+
+    allowed = set(allowed_columns)
+    if deprecated_names is not None:
+        allowed |= set(deprecated_names)
+
+    invalid = [col for col in table_columns if col not in allowed]
+    if invalid:
+        msg = (f'Invalid column name(s): {invalid!r}. The allowed '
+               f'column names are: {", ".join(sorted(allowed))}.')
+        raise ValueError(msg)
+
+    return table_columns

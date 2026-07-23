@@ -13,6 +13,7 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_getattr,
                                           deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
+from photutils.utils._parameters import validate_table_columns
 
 __all__ = ['Isophote', 'IsophoteList']
 
@@ -943,17 +944,45 @@ def _get_properties(isophote_list):
     result : dict
         An dictionary with the list of the isophote_list properties.
     """
-    # deprecated IsophoteList property names to exclude
-    _deprecated_props = {'npix_e', 'npix_c'}
-
     properties = {}
     for an_item in isophote_list.__class__.__dict__:
         p_type = isophote_list.__class__.__dict__[an_item]
-        # Exclude the sample property and deprecated properties
-        if (isinstance(p_type, property) and 'sample' not in an_item
-                and an_item not in _deprecated_props):
+        # Exclude the sample property
+        if isinstance(p_type, property) and 'sample' not in an_item:
             properties[str(an_item)] = str(an_item)
     return properties
+
+
+# The "main" isophote_list properties included in to_table() by default.
+_MAIN_PROPERTIES = ('sma', 'intens', 'int_err', 'eps', 'ellip_err',
+                    'pa', 'pa_err', 'grad', 'gradient_err',
+                    'gradient_rel_err', 'x0', 'x0_err', 'y0', 'y0_err',
+                    'n_data', 'n_flag', 'n_iter', 'stop_code')
+
+# Isophote_list property names renamed for their to_table() column names.
+_RENAME_MAP = {
+    'int_err': 'intens_err',
+    'eps': 'ellipticity',
+    'ellip_err': 'ellipticity_err',
+}
+
+
+def _rename_properties(names):
+    """
+    Map isophote_list property names to their to_table() column names.
+
+    Parameters
+    ----------
+    names : iterable of str
+        The isophote_list property names.
+
+    Returns
+    -------
+    properties : dict
+        A dictionary mapping each property name to its (possibly
+        renamed) table column name.
+    """
+    return {name: _RENAME_MAP.get(name, name) for name in names}
 
 
 def _isophote_list_to_table(isophote_list, *, columns='main'):
@@ -976,14 +1005,19 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
     -------
     result : `~astropy.table.QTable`
         An astropy QTable with the selected or all isophote parameters.
-    """
-    properties = {}
 
-    # Remove in 4.0
-    _deprecation_map = {
-        'grad_error': 'gradient_err',
-        'grad_rerror': 'gradient_rel_err',
-    }
+    Raises
+    ------
+    ValueError
+        If any name in ``columns`` is not a valid (or deprecated)
+        column name.
+    """
+    _deprecation_map = _DEPRECATED_ATTRIBUTES.copy()
+    all_names = _get_properties(isophote_list).keys()
+
+    allowed_columns = {*all_names, 'main', 'all'}
+    table_columns = validate_table_columns(
+        columns, allowed_columns, deprecated_names=_deprecation_map)
 
     # Replace with QTable in 4.0
     isotable = create_empty_deprecated_qtable(
@@ -991,58 +1025,17 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
 
     isotable.meta.update(_get_meta())  # keep isotable.meta type
 
-    # main_properties: `List`
-    # A list of main parameters matching the original names of
-    # the isophote_list parameters
-
-    def __rename_properties(properties, *,
-                            orig_names=('int_err', 'eps', 'ellip_err',
-                                        'n_flag'),
-                            new_names=('intens_err', 'ellipticity',
-                                       'ellipticity_err', 'n_flag')):
-        """
-        Simple renaming for some of the isophote_list parameters.
-
-        Parameters
-        ----------
-        properties : dict
-            A dictionary with the list of the isophote_list parameters.
-
-        orig_names : list
-            A list of original names in the isophote_list parameters to
-            be renamed.
-
-        new_names : list
-            A list of new names matching in length of the orig_names.
-
-        Returns
-        -------
-        properties : dict
-            A dictionary with the list of the renamed isophote_list
-            parameters.
-        """
-        main_properties = ['sma', 'intens', 'int_err', 'eps', 'ellip_err',
-                           'pa', 'pa_err', 'grad', 'gradient_err',
-                           'gradient_rel_err', 'x0', 'x0_err', 'y0',
-                           'y0_err', 'n_data', 'n_flag', 'n_iter',
-                           'stop_code']
-
-        for an_item in main_properties:
-            if an_item in orig_names:
-                properties[an_item] = new_names[orig_names.index(an_item)]
-            else:
-                properties[an_item] = an_item
-        return properties
-
-    if columns == 'all':
-        properties = _get_properties(isophote_list)
-        properties = __rename_properties(properties)
-
-    elif columns == 'main':
-        properties = __rename_properties(properties)
+    if table_columns == ['all']:
+        properties = _rename_properties(all_names)
+    elif table_columns == ['main']:
+        properties = _rename_properties(_MAIN_PROPERTIES)
     else:
-        for an_item in columns:
-            properties[an_item] = an_item
+        # Use the canonical (non-deprecated) column name so that
+        # assigning into ``isotable`` does not trigger a second,
+        # redundant deprecation warning (the deprecated attribute access
+        # below already warns once).
+        properties = {name: _deprecation_map.get(name, name)
+                      for name in table_columns}
 
     for k, v in properties.items():
         isotable[v] = np.array([getattr(iso, k) for iso in isophote_list])

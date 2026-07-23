@@ -45,6 +45,7 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _image_moments
+from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import process_quantities
 
 __all__ = ['ApertureStats']
@@ -56,15 +57,6 @@ __all__ = ['ApertureStats']
 # ``photutils.aperture._batch_stats``.
 _MAD_STD_SCALE = 1.482602218505602
 
-
-# Default table columns for `to_table()` output
-DEFAULT_COLUMNS = ['id', 'x_centroid', 'y_centroid', 'sky_centroid',
-                   'sum', 'sum_err', 'sum_aper_area', 'sum_flags',
-                   'center_aper_area', 'min', 'max', 'mean', 'median',
-                   'mode', 'std', 'mad_std', 'var', 'biweight_location',
-                   'biweight_midvariance', 'fwhm', 'semimajor_axis',
-                   'semiminor_axis', 'orientation', 'eccentricity',
-                   'flags']
 
 # Remove in 4.0
 _DEPRECATED_ATTRIBUTES: dict = {
@@ -133,7 +125,8 @@ class _UncachedLazyProperty(lazyproperty):
 
 
 @_update_method_subpixels_docstring
-class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
+class ApertureStats:
+    # numpydoc ignore: PR01,PR02,PR04,PR07
     """
     Class to create a catalog of statistics for pixels within an
     aperture.
@@ -394,7 +387,15 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             self._local_bkg = local_bkg  # always an iterable
 
         self._ids = np.arange(self.n_apertures) + 1
-        self.default_columns = DEFAULT_COLUMNS
+        self.default_columns = ['id', 'x_centroid', 'y_centroid',
+                                'sky_centroid', 'sum', 'sum_err',
+                                'sum_aper_area', 'sum_flags',
+                                'center_aper_area', 'min', 'max', 'mean',
+                                'median', 'mode', 'std', 'mad_std', 'var',
+                                'biweight_location', 'biweight_midvariance',
+                                'fwhm', 'semimajor_axis', 'semiminor_axis',
+                                'orientation', 'eccentricity', 'flags']
+
         self.meta = _get_meta()
         self.meta.update(aperture_meta)
 
@@ -485,6 +486,11 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         lazyproperties = [name for name in self._lazyproperties if not
                           name.startswith('_')]
+        # isscalar and n_apertures are scalar values for the whole
+        # object, not per-source values, so they are not valid table
+        # columns
+        lazyproperties.remove('isscalar')
+        lazyproperties.remove('n_apertures')
         lazyproperties.sort()
         return lazyproperties
 
@@ -702,13 +708,22 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
         -------
         table : `~astropy.table.QTable`
             A table of sources properties with one row per source.
+
+        Raises
+        ------
+        ValueError
+            If any name in ``columns`` is not a valid (or deprecated)
+            column name.
         """
         if columns is None:
             table_columns = self.default_columns
-        elif isinstance(columns, str):
-            table_columns = [columns]
         else:
-            table_columns = columns
+            # id is not included in self.properties because it is not
+            # a lazyproperty
+            allowed_columns = set(self.properties) | set(self.default_columns)
+            table_columns = validate_table_columns(
+                columns, allowed_columns,
+                deprecated_names=_DEPRECATED_ATTRIBUTES)
 
         # Replace with QTable in 4.0
         tbl = create_empty_deprecated_qtable(
@@ -739,7 +754,12 @@ class ApertureStats:  # numpydoc ignore: PR01,PR02,PR04,PR07
             values_map[column] = values
 
         for column in table_columns:
-            tbl[column] = values_map[column]
+            # Use the canonical (non-deprecated) column name so that
+            # assigning into ``tbl`` does not trigger a second,
+            # redundant deprecation warning (the deprecated attribute
+            # access above already warned once).
+            canonical_column = _DEPRECATED_ATTRIBUTES.get(column, column)
+            tbl[canonical_column] = values_map[column]
         return tbl
 
     @lazyproperty

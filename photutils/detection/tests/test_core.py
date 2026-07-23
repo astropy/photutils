@@ -5,6 +5,7 @@ Tests for the photutils.detection.core module.
 
 import numpy as np
 import pytest
+from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection import DAOStarFinder
@@ -189,11 +190,11 @@ def _make_minimal_catalog_class():
 
     class _MinimalCatalog(StarFinderCatalogBase):
 
-        @property
+        @lazyproperty
         def x_centroid(self):
             return self.cutout_x_centroid
 
-        @property
+        @lazyproperty
         def y_centroid(self):
             return self.cutout_y_centroid
 
@@ -271,6 +272,81 @@ class TestStarFinderCatalogBase:
         tbl = cat.to_table(columns=columns)
         assert len(tbl) == 1
         assert tbl.colnames == list(columns)
+
+    def test_to_table_invalid_column(self, minimal_catalog_cls):
+        """
+        Regression test for invalid column names not being validated
+        in to_table (e.g., ``data`` is an attribute, but not a valid
+        column name).
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 10.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        match = 'Invalid column name'
+        with pytest.raises(ValueError, match=match):
+            cat.to_table(columns=('id', 'data'))
+
+    def test_to_table_scalar_column(self, minimal_catalog_cls):
+        """
+        Regression test to ensure that ``isscalar`` (a scalar value
+        for the whole object, not a per-source value) is not a valid
+        ``to_table`` column.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 10.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        match = 'Invalid column name'
+        with pytest.raises(ValueError, match=match):
+            cat.to_table(columns='isscalar')
+
+    def test_to_table_deprecated_column(self, minimal_catalog_cls):
+        """
+        Regression test to ensure that deprecated column names are still
+        accepted by ``to_table``, not rejected by the new column-name
+        validation.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 10.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        match = "'xcentroid' attribute was deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            tbl = cat.to_table(columns='xcentroid')
+        assert tbl.colnames == ['x_centroid']
+
+    def test_to_table_str_column(self, minimal_catalog_cls):
+        """
+        Regression test to ensure that a single string column name (not
+        wrapped in a list) is accepted by ``to_table``.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 10.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        tbl = cat.to_table(columns='id')
+        assert tbl.colnames == ['id']
+
+    def test_properties(self, minimal_catalog_cls):
+        """
+        Test that the _properties attribute returns a sorted list of
+        lazyproperty names.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 10.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5]])
+        cat = minimal_catalog_cls(data, xypos, kernel)
+        assert cat._properties == sorted(cat._properties)
+        assert 'x_centroid' in cat._properties
+        assert 'y_centroid' in cat._properties
+        assert 'data' not in cat._properties
+        assert 'isscalar' not in cat._properties
 
     def test_getitem_integer_index(self, minimal_catalog_cls):
         """

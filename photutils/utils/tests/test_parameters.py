@@ -10,7 +10,8 @@ from astropy.stats import SigmaClip
 from numpy.testing import assert_equal
 
 from photutils.utils._parameters import (SigmaClipSentinelDefault, as_pair,
-                                         create_default_sigmaclip)
+                                         create_default_sigmaclip,
+                                         validate_table_columns)
 
 
 class TestAsPairBasic:
@@ -145,3 +146,41 @@ class TestCreateDefaultSigmaClip:
         assert isinstance(sc, SigmaClip)
         assert sc.sigma == 2.5
         assert sc.maxiters == 5
+
+
+class TestValidateTableColumns:
+    """
+    Tests for the ``validate_table_columns`` helper function.
+    """
+
+    def test_str_column(self):
+        result = validate_table_columns('a', ['a', 'b', 'c'])
+        assert result == ['a']
+
+    def test_list_column(self):
+        result = validate_table_columns(['a', 'c'], ['a', 'b', 'c'])
+        assert result == ['a', 'c']
+
+    def test_tuple_column(self):
+        result = validate_table_columns(('a', 'c'), ['a', 'b', 'c'])
+        assert result == ['a', 'c']
+
+    def test_invalid_column(self):
+        match = "Invalid column name\\(s\\): \\['invalid'\\]"
+        with pytest.raises(ValueError, match=match):
+            validate_table_columns(['a', 'invalid'], ['a', 'b', 'c'])
+
+    def test_deprecated_column_allowed(self):
+        result = validate_table_columns(
+            'old_name', ['new_name'], deprecated_names=['old_name'])
+        assert result == ['old_name']
+
+    def test_deprecated_column_not_allowed_without_map(self):
+        match = "Invalid column name\\(s\\): \\['old_name'\\]"
+        with pytest.raises(ValueError, match=match):
+            validate_table_columns('old_name', ['new_name'])
+
+    def test_error_message_lists_allowed_columns(self):
+        match = 'The allowed column names are: a, b, c'
+        with pytest.raises(ValueError, match=match):
+            validate_table_columns(['invalid'], ['c', 'a', 'b'])

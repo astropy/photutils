@@ -20,6 +20,7 @@ from photutils.aperture.flags import decode_aperture_flags
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
+from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
 
@@ -439,22 +440,18 @@ class AperturePhotometry:
         table : `~astropy.table.QTable`
             A table of the aperture photometry results with one row per
             aperture position.
-        """
-        if columns is None:
-            table_columns = self.default_columns
-        elif isinstance(columns, str):
-            table_columns = [columns]
-        else:
-            table_columns = columns
 
+        Raises
+        ------
+        ValueError
+            If any name in ``columns`` is not a valid column name.
+        """
         allowed_columns = ('id', 'x_center', 'y_center', 'sky_center',
                            'flux', 'flux_err', 'area', 'flags')
-        invalid = [col for col in table_columns
-                   if col not in allowed_columns]
-        if invalid:
-            msg = (f'Invalid column name(s): {invalid!r}. The allowed '
-                   f'column names are: {", ".join(allowed_columns)}')
-            raise ValueError(msg)
+        if columns is None:
+            table_columns = self.default_columns
+        else:
+            table_columns = validate_table_columns(columns, allowed_columns)
 
         tbl = QTable()
         tbl.meta.update(self.meta)

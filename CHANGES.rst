@@ -86,6 +86,17 @@ New Features
     ``decode_aperture_flags`` function decodes the flag values into
     human-readable names. [#2327, #2328]
 
+  - Added validation of the ``ApertureStats.to_table()`` ``columns``
+    keyword. [#2329]
+
+- ``photutils.detection``
+
+  - Added validation of the ``StarFinderCatalogBase.to_table()``
+    ``columns`` keyword. This is the base class used by the
+    ``DAOStarFinder``, ``IRAFStarFinder``, and ``StarFinder`` catalogs.
+    The ``columns`` keyword now accepts a single string in addition to a
+    list of column names. [#2329]
+
 - ``photutils.isophote``
 
   - Optimized the ``build_ellipse_model_c`` Cython extension by
@@ -96,11 +107,20 @@ New Features
     branch for harmonic corrections. The module is now also marked as
     ``freethreading_compatible=True``. [#2293]
 
+  - Added validation of the ``IsophoteList.to_table()`` ``columns``
+    keyword. Also restored the ``npix_e`` and ``npix_c`` properties to
+    the ``columns='all'`` output. [#2329]
+
 - ``photutils.psf``
 
   - Improved ``GriddedPSFModel`` evaluation performance by ~20-25%
     through optimizations that reduce per-evaluation overhead and
     streamline interpolation calculations. [#2289, #2307]
+
+- ``photutils.segmentation``
+
+  - Added validation of the ``SourceCatalog.to_table()`` ``columns``
+    keyword. [#2329]
 
 
 Bug Fixes
@@ -3441,10 +3461,6 @@ New Features
 
   - Significantly improved the performance of calculating the
     ``background_at_centroid`` property in ``SourceCatalog``. [#863]
-
-  - The default output table columns (source properties) are defined
-    in a publicly-accessible variable called
-    ``photutils.segmentation.properties.DEFAULT_COLUMNS``. [#863]
 
   - Added the ``gini`` source property representing the Gini
     coefficient. [#864]
