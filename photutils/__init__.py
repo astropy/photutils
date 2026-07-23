@@ -18,12 +18,13 @@ future_column_names = False
 """
 If `True`, all photutils functions return standard
 `~astropy.table.QTable` (or `~astropy.table.Table`) instances with the
-new column names instead of deprecated-column subclasses. Set this to
-`True` after updating your code to use the new column names to verify
-compatibility with the 4.0 behavior.
+new column names instead of deprecated-column subclasses. Use this with
+caution, as it is a global flag that affects all photutils functions
+across all packages that return tables.
 
-For a scoped override that does not affect the global flag, use
-`photutils.use_future_column_names` as a context manager::
+A better approach is to use photutils.use_future_column_names as a
+context manager. This provides a scoped override without modifying the
+global flag::
 
     with photutils.use_future_column_names():
         table = cat.to_table()  # returns a plain QTable

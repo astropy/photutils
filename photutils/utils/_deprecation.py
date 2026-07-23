@@ -352,11 +352,10 @@ class DeprecatedColumnMixin:
         msg = (f"The column name '{name}' was deprecated{since_str}. Use "
                f"'{new_name}' instead. It will be removed in "
                f'{remove_str}. Once you have updated your code to use '
-               f"'{new_name}', set photutils.future_column_names = True "
-               'to opt into a standard QTable without the deprecated '
-               'column name mapping.')
-        warnings.warn(msg, AstropyDeprecationWarning,
-                      stacklevel=stacklevel)
+               f"'{new_name}', you may use the context manager "
+               '``use_future_column_names()`` (recommended) to opt into a '
+               'standard QTable without the deprecated column name mapping.')
+        warnings.warn(msg, AstropyDeprecationWarning, stacklevel=stacklevel)
 
     def _translate_name(self, name, *, stacklevel=4):
         """
