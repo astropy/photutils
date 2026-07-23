@@ -383,6 +383,49 @@ class TestApertureStats:
         tbl = apstats.to_table()
         assert len(tbl) == 1
 
+    @pytest.mark.parametrize('cached', ['moments', 'moments_central',
+                                        'cutout_centroid', 'centroid',
+                                        'covariance_eigvals', 'data_cutout',
+                                        'bbox', 'x_centroid'])
+    def test_scalar_slice_after_cached_dependency(self, cached):
+        """
+        Test that per-source properties are computed correctly for a
+        scalar instance obtained by slicing a multi-source instance when
+        only *some* properties were cached on the parent before slicing.
+
+        The ``_array`` accessor is used internally by several properties
+        to index along the source axis. A per-source array can be stored
+        either with its leading length-1 axis intact (freshly computed
+        for a scalar instance) or with that axis removed (a multi-source
+        value cached on the parent and then sliced). If ``_array`` does
+        not normalize both cases, moment-derived properties such as
+        ``cutout_centroid`` raise an ``IndexError`` (or return wrong
+        values) when a dependency was cached on the parent but the
+        dependent property was not.
+
+        This parametrizes over the dependencies that feed other
+        properties through ``_array``, caches exactly one of them on
+        the parent, slices to a scalar, and checks that every property
+        matches the same scalar computed from scratch.
+        """
+        scalar_props = ('isscalar', 'n_apertures')
+
+        # Reference scalar instance that recomputes every property from
+        # scratch (nothing cached on the parent before slicing).
+        ref = ApertureStats(self.data, self.aperture, error=self.error,
+                            wcs=self.wcs, sigma_clip=None)[0]
+
+        # Cache exactly one dependency on the parent, then slice.
+        parent = ApertureStats(self.data, self.aperture, error=self.error,
+                               wcs=self.wcs, sigma_clip=None)
+        _ = getattr(parent, cached)
+        scalar = parent[0]
+
+        for prop in ref.properties:
+            if prop in scalar_props:
+                continue
+            assert_equal(getattr(scalar, prop), getattr(ref, prop))
+
     def test_deprecated_attributes(self):
         """
         Test that deprecated attributes are still available and
