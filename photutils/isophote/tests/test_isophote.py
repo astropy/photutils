@@ -6,6 +6,7 @@ Tests for the isophote module.
 import numpy as np
 import pytest
 from astropy.io import fits
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
 from photutils.datasets.load import _get_path
@@ -311,3 +312,33 @@ class TestIsophoteList:
         tbl = isolist.to_table(columns=['tflux_e', 'tflux_c', 'npix_e',
                                         'npix_c'])
         assert len(tbl.colnames) == 4
+
+    @pytest.mark.parametrize('columns', ['invalid', 'append',
+                                         ['id', 'n_iter']])
+    def test_invalid_column(self, columns):
+        test_img = make_test_image(nx=55, ny=55, x0=27, y0=27,
+                                   background=100.0, noise=1.0e-6, i0=100.0,
+                                   sma=10.0, eps=0.2, pa=0.0, seed=1)
+        g = EllipseGeometry(27, 27, 5, 0.2, 0)
+        ellipse = Ellipse(test_img, geometry=g, threshold=0.1)
+        isolist = ellipse.fit_image(maxsma=27)
+        match = 'Invalid column name'
+        with pytest.raises(ValueError, match=match):
+            isolist.to_table(columns=columns)
+
+    def test_deprecated_column(self):
+        """
+        Regression test to ensure that deprecated column names are still
+        accepted by ``to_table``, not rejected by the new column-name
+        validation.
+        """
+        test_img = make_test_image(nx=55, ny=55, x0=27, y0=27,
+                                   background=100.0, noise=1.0e-6, i0=100.0,
+                                   sma=10.0, eps=0.2, pa=0.0, seed=1)
+        g = EllipseGeometry(27, 27, 5, 0.2, 0)
+        ellipse = Ellipse(test_img, geometry=g, threshold=0.1)
+        isolist = ellipse.fit_image(maxsma=27)
+        match = "'grad_error' attribute was deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            tbl = isolist.to_table(columns=['grad_error'])
+        assert tbl.colnames == ['gradient_err']
