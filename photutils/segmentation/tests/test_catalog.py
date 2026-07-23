@@ -359,16 +359,64 @@ class TestSourceCatalog:
         with pytest.raises(ValueError, match=match):
             self.cat.select_labels([1, 2, 1000])
 
+    @pytest.mark.parametrize('cached', ['moments', 'moments_central',
+                                        'cutout_centroid', 'centroid',
+                                        'covariance_eigvals',
+                                        'data_cutout_masked', 'x_centroid',
+                                        'semimajor_axis', 'kron_radius',
+                                        'centroid_win', 'centroid_quad',
+                                        'min_value_index'])
+    def test_scalar_slice_after_cached_dependency(self, cached):
+        """
+        Test that per-source properties are computed correctly for a
+        scalar catalog obtained by slicing a multi-source catalog when
+        only some properties were cached on the parent before slicing.
+
+        The ``_array`` accessor is used internally by several properties
+        to index along the source axis. A per-source array can be stored
+        either with its leading length-1 axis intact (freshly computed
+        for a scalar catalog) or with that axis removed (a multi-source
+        value cached on the parent and then sliced). If ``_array`` does
+        not normalize both cases, moment-derived properties such as
+        ``cutout_centroid`` raise an ``IndexError`` (or return wrong
+        values) when a dependency was cached on the parent but the
+        dependent property was not.
+
+        This parametrizes over the dependencies that feed other
+        properties through ``_array``, caches exactly one of them on
+        the parent, slices to a scalar, and checks that every property
+        matches the same scalar computed from scratch.
+        """
+        kwargs = {'error': self.error, 'background': self.background,
+                  'mask': self.mask, 'wcs': self.wcs, 'local_bkg_width': 24}
+
+        # Source index 1 has no NaN values (see ``test_catalog``), which
+        # avoids NaN-vs-NaN comparison artifacts for properties such as
+        # ``sky_centroid``.
+        idx = 1
+
+        # Reference scalar catalog that recomputes every property from
+        # scratch (nothing cached on the parent before slicing).
+        ref = SourceCatalog(self.data, self.segm, **kwargs)[idx]
+
+        # Cache exactly one dependency on the parent, then slice.
+        parent = SourceCatalog(self.data, self.segm, **kwargs)
+        _ = getattr(parent, cached)
+        scalar = parent[idx]
+
+        for prop in ref.properties:
+            assert_equal(getattr(scalar, prop), getattr(ref, prop))
+
     def test_iter(self):
         """
-        Test iter.
+        Test that the catalog is iterable.
         """
         labels = [obj.label for obj in self.cat]
         assert len(labels) == len(self.cat)
 
     def test_table(self):
         """
-        Test table.
+        Test that the catalog can be converted to an Astropy Table.
         """
         columns = ['label', 'x_centroid', 'y_centroid']
         tbl = self.cat.to_table(columns=columns)
