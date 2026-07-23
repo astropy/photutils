@@ -24,6 +24,7 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 from photutils.utils._misc import _get_meta
+from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import check_units
 from photutils.utils._repr import make_repr
 from photutils.utils.cutouts import _make_cutouts
@@ -340,6 +341,19 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
                     [i[0] for i in inspect.getmembers(
                         cls, predicate=islazyproperty)])
         return getattr(cls, attr)
+
+    @property
+    def _properties(self):
+        """
+        A sorted list of the built-in source properties.
+        """
+        lazyproperties = [name for name in self._lazyproperties if not
+                          name.startswith('_')]
+        # isscalar is a scalar value for the whole object, not a
+        # per-source value, so it is not a valid table column
+        lazyproperties.remove('isscalar')
+        lazyproperties.sort()
+        return lazyproperties
 
     @lazyproperty
     def isscalar(self):
@@ -685,14 +699,20 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         Parameters
         ----------
-        columns : list of str, optional
-            List of column names to include in the table. If `None`,
+        columns : str or list of str, optional
+            Names of column(s) to include in the table. If `None`,
             uses ``self.default_columns``.
 
         Returns
         -------
         table : `~astropy.table.QTable`
             A table of the catalog properties.
+
+        Raises
+        ------
+        ValueError
+            If any name in ``columns`` is not a valid (or deprecated)
+            column name.
         """
         # Replace with QTable in 4.0
         table = create_empty_deprecated_qtable(
@@ -705,9 +725,25 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
                        'pass explicit column names or set '
                        'default_columns in the subclass __init__')
                 raise AttributeError(msg)
-            columns = self.default_columns
-        for column in columns:
-            table[column] = getattr(self, column)
+            table_columns = list(self.default_columns)
+        else:
+            # id is not included in self._properties because it is
+            # not a lazyproperty
+            allowed_columns = (set(self._properties) | {'id'}
+                               | set(self.default_columns))
+            table_columns = validate_table_columns(
+                columns, allowed_columns,
+                deprecated_names=_DEPRECATED_ATTRIBUTES)
+
+        for column in table_columns:
+            values = getattr(self, column)
+
+            # Use the canonical (non-deprecated) column name so that
+            # assigning into ``table`` does not trigger a second,
+            # redundant deprecation warning (the deprecated attribute
+            # access above already warned once).
+            canonical_column = _DEPRECATED_ATTRIBUTES.get(column, column)
+            table[canonical_column] = values
         return table
 
 
