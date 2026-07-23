@@ -32,7 +32,7 @@ New Features
     recommended tool for aperture photometry. It uses a results-object
     pattern, similar to ``ApertureStats``. The class is immutable after
     construction, so instances are thread-safe and independent frames
-    can be processed concurrently. [#2328]
+    can be processed concurrently. [#2328, #2331]
 
   - Rectangular apertures now support the ``method='exact'`` mask mode.
     Previously this fell back to a 32x subpixel approximation. [#2291]

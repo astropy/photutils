@@ -7,6 +7,7 @@ import warnings
 
 import astropy.units as u
 import numpy as np
+from astropy.coordinates import SkyCoord
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable
 from astropy.utils import lazyproperty
@@ -120,10 +121,16 @@ class AperturePhotometry:
     it must be defined in the ``uncertainty`` attribute with a
     `~astropy.nddata.StdDevUncertainty` instance.
 
-    The measured `flux`, `flux_err`, `area`, and `flags` attributes are
-    1D arrays with one element per aperture position when a single
-    aperture is input. If a list of apertures is input, they are 2D
-    arrays with shape ``(n_positions, n_apertures)``.
+    The measured `flux`, `flux_err`, `area`, and `flags` attributes
+    (as well as `id`, `x_center`, `y_center`, and `sky_center`) are
+    scalars if a single scalar aperture position is input (e.g.,
+    ``CircularAperture((10, 20), r=5)``). They are 1D arrays with
+    one element per position if multiple positions are input (e.g.,
+    ``CircularAperture([(10, 20)], r=5)`` or ``CircularAperture([(10,
+    20), (30, 40)], r=5)``). If a list of apertures is input, the
+    `flux`, `flux_err`, `area`, and `flags` attributes gain a trailing
+    aperture axis, giving shape ``(n_apertures,)`` for a single scalar
+    position and ``(n_positions, n_apertures)`` otherwise.
 
     Non-finite ``data`` values (NaN and inf) are automatically masked.
     Such pixels are excluded from the `flux`, `flux_err`, and `area`
@@ -283,6 +290,40 @@ class AperturePhotometry:
 
     def __str__(self):
         return make_repr(self, self._repr_params, long=True)
+
+    def __getattribute__(self, name):
+        # Collapse the leading position axis of the public array-valued
+        # output attributes to a scalar when a single scalar aperture
+        # position is input (e.g., ``CircularAperture((10, 20), r=5)``).
+        # These are the only public array-valued attributes, so the
+        # scalar conversion is applied centrally here instead of being
+        # repeated on each individual property.
+        value = super().__getattribute__(name)
+        if (not name.startswith('_')
+                and name not in ('isscalar', 'n_positions')
+                and isinstance(value, (np.ndarray, SkyCoord))
+                and self.isscalar):
+            return value[0]
+        return value
+
+    def _array(self, name):
+        """
+        Return the full (never scalar-collapsed) array for a public
+        output attribute, regardless of whether the instance is scalar.
+
+        This bypasses the scalar conversion performed in
+        ``__getattribute__`` so that the table-building and
+        flag-decoding machinery always operates on arrays.
+        """
+        return object.__getattribute__(self, name)
+
+    @lazyproperty
+    def isscalar(self):
+        """
+        Whether the instance is scalar (i.e., a single aperture
+        position).
+        """
+        return self._pixel_apertures[0].isscalar
 
     @lazyproperty
     def _photometry_results(self):
@@ -458,13 +499,13 @@ class AperturePhotometry:
 
         per_aperture = ('flux', 'flux_err', 'area', 'flags')
         for column in table_columns:
+            values = self._array(column)
             if column in per_aperture and not self._single_aperture:
-                values = getattr(self, column)
                 for i in range(len(self._pixel_apertures)):
                     name = f'{column}_{i}'
                     tbl[name] = values[:, i]
             else:
-                tbl[column] = getattr(self, column)
+                tbl[column] = values
         return tbl
 
     def decode_flags(self, *, return_bit_values=False):
@@ -494,7 +535,7 @@ class AperturePhotometry:
         --------
         photutils.aperture.decode_aperture_flags
         """
-        return decode_aperture_flags(np.atleast_1d(self.flags),
+        return decode_aperture_flags(self._array('flags'),
                                      return_bit_values=return_bit_values)
 
 

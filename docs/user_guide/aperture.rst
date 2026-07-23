@@ -558,8 +558,8 @@ read as many attributes as needed::
     >>> aperture = CircularAperture((25, 25), r=5)
     >>> results = [AperturePhotometry(image, aperture, error=error)
     ...            for image in cube]
-    >>> flux = np.array([phot.flux[0] for phot in results])
-    >>> flux_err = np.array([phot.flux_err[0] for phot in results])
+    >>> flux = np.array([phot.flux for phot in results])
+    >>> flux_err = np.array([phot.flux_err for phot in results])
     >>> print(flux)
     [ 78.53981634 117.80972451 157.07963268 141.37166941  94.24777961]
     >>> print(flux_err)
@@ -568,7 +568,7 @@ read as many attributes as needed::
 Each element of ``flux`` and ``flux_err`` corresponds to one image in
 the cube, together giving the source's light curve and its uncertainty.
 The same pattern extends to multiple sources and to other per-frame
-quantities: index the desired attribute (e.g.,
+quantities: read the desired attribute (e.g.,
 :attr:`~photutils.aperture.AperturePhotometry.flags`) from each results
 object, or build a table per frame with
 :meth:`~photutils.aperture.AperturePhotometry.to_table`.
@@ -590,13 +590,13 @@ by providing a boolean image mask via the ``mask`` keyword::
     >>> mask[2, 2] = True   # mask the bad pixel
     >>> phot1 = AperturePhotometry(data, aperture, mask=mask)
     >>> print(phot1.flux)
-    [11.566370614359172]
+    11.566370614359172
 
 The result is very different if a ``mask`` image is not provided::
 
     >>> phot2 = AperturePhotometry(data, aperture)
     >>> print(phot2.flux)
-    [111.56637061435919]
+    111.56637061435919
 
 For :class:`~photutils.aperture.AperturePhotometry` and
 :class:`~photutils.aperture.ApertureStats`, non-finite values (NaN
@@ -608,7 +608,7 @@ automatically excluded from calculations. For example::
     >>> aperture = CircularAperture((2, 2), r=2.0)
     >>> phot = AperturePhotometry(data, aperture)
     >>> print(phot.flux)
-    [11.566370614359172]
+    11.566370614359172
 
 
 Masking Neighboring Sources with a Segmentation Image
@@ -661,14 +661,14 @@ Without masking, the aperture sum includes the neighbor's flux::
 
     >>> phot1 = AperturePhotometry(data, aperture)
     >>> print(phot1.flux)
-    [484.67784806278354]
+    484.67784806278354
 
 Masking the neighboring source excludes its flux::
 
     >>> phot2 = AperturePhotometry(data, aperture, segmentation_image=segm,
     ...                            labels=1, mask_method='mask')
     >>> print(phot2.flux)
-    [124.05298520018465]
+    124.05298520018465
 
 The ``'correct'`` method instead replaces the neighbor's pixels with
 values mirrored across the aperture center, recovering an estimate of
@@ -677,7 +677,7 @@ the obscured flux::
     >>> phot3 = AperturePhotometry(data, aperture, segmentation_image=segm,
     ...                            labels=1, mask_method='correct')
     >>> print(phot3.flux)
-    [131.26548245743663]
+    131.26548245743663
 
 These keywords are also available in
 :class:`~photutils.aperture.ApertureStats`.
