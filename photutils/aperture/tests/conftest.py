@@ -6,6 +6,19 @@ Shared pytest fixtures for the aperture tests.
 import pytest
 from astropy.wcs import WCS
 
+from photutils.datasets import make_4gaussians_image
+
+
+@pytest.fixture(name='data')
+def fixture_data():
+    """
+    A 2D image containing four Gaussian sources on a noisy background.
+
+    The image is deterministic and must be treated as read-only by
+    tests.
+    """
+    return make_4gaussians_image()
+
 
 @pytest.fixture
 def tan_wcs():

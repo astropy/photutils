@@ -19,7 +19,7 @@ from photutils.aperture.photometry import (AperturePhotometry,
                                            aperture_photometry)
 from photutils.aperture.polygon import PolygonAperture
 from photutils.aperture.stats import ApertureStats
-from photutils.datasets import make_4gaussians_image, make_wcs
+from photutils.datasets import make_wcs
 from photutils.segmentation import SegmentationImage
 from photutils.utils._optional_deps import HAS_REGIONS
 
@@ -49,23 +49,20 @@ class TestAperturePhotometryParity:
     ``aperture_photometry`` function for all shared inputs.
     """
 
-    def test_single_aperture(self):
-        data = make_4gaussians_image()
+    def test_single_aperture(self, data):
         aper = CircularAperture((150, 25), 8)
         phot = AperturePhotometry(data, aper)
         ref = aperture_photometry(data, aper)
         assert_allclose(phot.flux, ref['aperture_sum'])
 
-    def test_multiple_positions(self):
-        data = make_4gaussians_image()
+    def test_multiple_positions(self, data):
         aper = CircularAperture(((150, 25), (90, 60)), 10)
         phot = AperturePhotometry(data, aper)
         ref = aperture_photometry(data, aper)
         assert_allclose(phot.flux, ref['aperture_sum'])
         assert phot.flux.shape == (2,)
 
-    def test_error_propagation(self):
-        data = make_4gaussians_image()
+    def test_error_propagation(self, data):
         error = np.sqrt(np.abs(data))
         aper = CircularAperture((150, 25), 8)
         phot = AperturePhotometry(data, aper, error=error)
@@ -73,14 +70,12 @@ class TestAperturePhotometryParity:
         assert_allclose(phot.flux, ref['aperture_sum'])
         assert_allclose(phot.flux_err, ref['aperture_sum_err'])
 
-    def test_no_error_is_nan(self):
-        data = make_4gaussians_image()
+    def test_no_error_is_nan(self, data):
         aper = CircularAperture((150, 25), 8)
         phot = AperturePhotometry(data, aper)
         assert np.all(np.isnan(phot.flux_err))
 
-    def test_mask(self):
-        data = make_4gaussians_image()
+    def test_mask(self, data):
         mask = np.zeros(data.shape, dtype=bool)
         mask[25, 150] = True
         aper = CircularAperture((150, 25), 8)
@@ -88,8 +83,7 @@ class TestAperturePhotometryParity:
         ref = aperture_photometry(data, aper, mask=mask)
         assert_allclose(phot.flux, ref['aperture_sum'])
 
-    def test_nomask(self):
-        data = make_4gaussians_image()
+    def test_nomask(self, data):
         aper = CircularAperture((150, 25), 8)
         phot = AperturePhotometry(data, aper, mask=np.ma.nomask)
         ref = aperture_photometry(data, aper)
@@ -98,8 +92,7 @@ class TestAperturePhotometryParity:
 
     @pytest.mark.parametrize(('method', 'subpixels'),
                              [('exact', 5), ('center', 5), ('subpixel', 7)])
-    def test_method_variants(self, method, subpixels):
-        data = make_4gaussians_image()
+    def test_method_variants(self, method, subpixels, data):
         aper = CircularAperture((150, 25), 8)
         phot = AperturePhotometry(data, aper, method=method,
                                   subpixels=subpixels)
@@ -107,8 +100,8 @@ class TestAperturePhotometryParity:
                                   subpixels=subpixels)
         assert_allclose(phot.flux, ref['aperture_sum'])
 
-    def test_units(self):
-        data = make_4gaussians_image() * u.Jy
+    def test_units(self, data):
+        data = data * u.Jy
         error = np.sqrt(np.abs(data.value)) * u.Jy
         aper = CircularAperture((150, 25), 8)
         phot = AperturePhotometry(data, aper, error=error)
@@ -121,8 +114,7 @@ class TestAperturePhotometryParity:
 
 
 class TestListOfApertures:
-    def test_flux_shape(self):
-        data = make_4gaussians_image()
+    def test_flux_shape(self, data):
         pos = ((150, 25), (90, 60))
         apers = [CircularAperture(pos, r) for r in (5, 8)]
         phot = AperturePhotometry(data, apers)
@@ -130,8 +122,7 @@ class TestListOfApertures:
         assert phot.area.shape == (2, 2)
         assert phot.flags.shape == (2, 2)
 
-    def test_matches_per_aperture(self):
-        data = make_4gaussians_image()
+    def test_matches_per_aperture(self, data):
         pos = ((150, 25), (90, 60))
         apers = [CircularAperture(pos, r) for r in (5, 8)]
         phot = AperturePhotometry(data, apers)
@@ -139,8 +130,7 @@ class TestListOfApertures:
             ref = aperture_photometry(data, aper)
             assert_allclose(phot.flux[:, i], ref['aperture_sum'])
 
-    def test_identical_positions_required(self):
-        data = make_4gaussians_image()
+    def test_identical_positions_required(self, data):
         apers = [CircularAperture((150, 25), 5),
                  CircularAperture((90, 60), 5)]
         match = 'Input apertures must all have identical positions'
@@ -149,23 +139,20 @@ class TestListOfApertures:
 
 
 class TestSkyApertures:
-    def test_sky_center_from_pixel_wcs(self):
-        data = make_4gaussians_image()
+    def test_sky_center_from_pixel_wcs(self, data):
         wcs = make_wcs(data.shape)
         aper = CircularAperture((150, 25), 8)
         phot = AperturePhotometry(data, aper, wcs=wcs)
         assert isinstance(phot.sky_center, SkyCoord)
         assert 'sky_center' in phot.to_table().colnames
 
-    def test_no_wcs_sky_center_none(self):
-        data = make_4gaussians_image()
+    def test_no_wcs_sky_center_none(self, data):
         aper = CircularAperture((150, 25), 8)
         phot = AperturePhotometry(data, aper)
         assert phot.sky_center is None
         assert 'sky_center' not in phot.to_table().colnames
 
-    def test_sky_aperture(self):
-        data = make_4gaussians_image()
+    def test_sky_aperture(self, data):
         wcs = make_wcs(data.shape)
         skycoord = wcs.pixel_to_world(150, 25)
         sky_aper = SkyCircularAperture(skycoord, r=0.7 * u.arcsec)
@@ -176,8 +163,7 @@ class TestSkyApertures:
         assert isinstance(phot.sky_center, SkyCoord)
         assert phot.sky_center.isscalar is True
 
-    def test_sky_aperture_multiple_positions(self):
-        data = make_4gaussians_image()
+    def test_sky_aperture_multiple_positions(self, data):
         wcs = make_wcs(data.shape)
         skycoord = wcs.pixel_to_world([150, 90], [25, 60])
         sky_aper = SkyCircularAperture(skycoord, r=0.7 * u.arcsec)
@@ -198,8 +184,7 @@ class TestSkyApertures:
 
 
 class TestNDDataInput:
-    def test_nddata(self):
-        data = make_4gaussians_image()
+    def test_nddata(self, data):
         error = np.sqrt(np.abs(data))
         uncertainty = StdDevUncertainty(error)
         nddata = NDData(data, uncertainty=uncertainty)
@@ -209,8 +194,7 @@ class TestNDDataInput:
         assert_allclose(phot.flux, ref['aperture_sum'])
         assert_allclose(phot.flux_err, ref['aperture_sum_err'])
 
-    def test_nddata_ignored_keywords_warn(self):
-        data = make_4gaussians_image()
+    def test_nddata_ignored_keywords_warn(self, data):
         nddata = NDData(data)
         aper = CircularAperture((150, 25), 8)
         mask = np.zeros(data.shape, dtype=bool)
@@ -218,15 +202,13 @@ class TestNDDataInput:
         with pytest.warns(AstropyUserWarning, match=match):
             AperturePhotometry(nddata, aper, mask=mask)
 
-    def test_nddata_units(self):
-        data = make_4gaussians_image()
+    def test_nddata_units(self, data):
         nddata = NDData(data * u.Jy)
         aper = CircularAperture((150, 25), 8)
         phot = AperturePhotometry(nddata, aper)
         assert phot.flux.unit == u.Jy
 
-    def test_nddata_uncertainty_with_unit(self):
-        data = make_4gaussians_image()
+    def test_nddata_uncertainty_with_unit(self, data):
         error = np.sqrt(np.abs(data))
         uncertainty = StdDevUncertainty(error, unit=u.Jy)
         nddata = NDData(data * u.Jy, uncertainty=uncertainty)
@@ -294,35 +276,30 @@ class TestSegmentationMasking:
 
 
 class TestToTable:
-    def test_default_columns(self):
-        data = make_4gaussians_image()
+    def test_default_columns(self, data):
         aper = CircularAperture((150, 25), 8)
         tbl = AperturePhotometry(data, aper).to_table()
         assert tbl.colnames == ['id', 'x_center', 'y_center', 'flux',
                                 'flux_err', 'area', 'flags']
 
-    def test_default_columns_with_wcs(self):
-        data = make_4gaussians_image()
+    def test_default_columns_with_wcs(self, data):
         wcs = make_wcs(data.shape)
         aper = CircularAperture((150, 25), 8)
         tbl = AperturePhotometry(data, aper, wcs=wcs).to_table()
         assert tbl.colnames == ['id', 'x_center', 'y_center', 'sky_center',
                                 'flux', 'flux_err', 'area', 'flags']
 
-    def test_columns_subset(self):
-        data = make_4gaussians_image()
+    def test_columns_subset(self, data):
         aper = CircularAperture((150, 25), 8)
         tbl = AperturePhotometry(data, aper).to_table(columns=['id', 'flux'])
         assert tbl.colnames == ['id', 'flux']
 
-    def test_columns_single_string(self):
-        data = make_4gaussians_image()
+    def test_columns_single_string(self, data):
         aper = CircularAperture((150, 25), 8)
         tbl = AperturePhotometry(data, aper).to_table(columns='flux')
         assert tbl.colnames == ['flux']
 
-    def test_invalid_column(self):
-        data = make_4gaussians_image()
+    def test_invalid_column(self, data):
         aper = CircularAperture((150, 25), 8)
         phot = AperturePhotometry(data, aper)
         match = 'Invalid column name'
@@ -331,8 +308,7 @@ class TestToTable:
         with pytest.raises(ValueError, match=match):
             phot.to_table(columns=['id', 'subpixels'])
 
-    def test_multi_aperture_suffixes(self):
-        data = make_4gaussians_image()
+    def test_multi_aperture_suffixes(self, data):
         pos = ((150, 25), (90, 60))
         apers = [CircularAperture(pos, r) for r in (5, 8)]
         tbl = AperturePhotometry(data, apers).to_table()
@@ -340,8 +316,7 @@ class TestToTable:
                                 'flux_1', 'flux_err_0', 'flux_err_1',
                                 'area_0', 'area_1', 'flags_0', 'flags_1']
 
-    def test_meta(self):
-        data = make_4gaussians_image()
+    def test_meta(self, data):
         aper = CircularAperture((150, 25), 8)
         tbl = AperturePhotometry(data, aper).to_table()
         assert 'version' in tbl.meta
@@ -389,8 +364,7 @@ class TestScalarBehavior:
     while array positions yield array outputs.
     """
 
-    def test_single_scalar_position(self):
-        data = make_4gaussians_image()
+    def test_single_scalar_position(self, data):
         error = 0.1 * np.ones_like(data)
         aper = CircularAperture((150, 25), r=8)
         phot = AperturePhotometry(data, aper, error=error)
@@ -401,9 +375,8 @@ class TestScalarBehavior:
         assert phot.area.isscalar
         assert np.ndim(phot.flags) == 0
 
-    def test_array_position_single_element(self):
+    def test_array_position_single_element(self, data):
         # A length-1 list of positions is not scalar.
-        data = make_4gaussians_image()
         aper = CircularAperture([(150, 25)], r=8)
         phot = AperturePhotometry(data, aper)
         assert phot.isscalar is False
@@ -412,28 +385,25 @@ class TestScalarBehavior:
         assert phot.area.shape == (1,)
         assert phot.flags.shape == (1,)
 
-    def test_multiple_positions_not_scalar(self):
-        data = make_4gaussians_image()
+    def test_multiple_positions_not_scalar(self, data):
         aper = CircularAperture(((150, 25), (90, 60)), r=8)
         phot = AperturePhotometry(data, aper)
         assert phot.isscalar is False
         assert phot.flux.shape == (2,)
 
-    def test_scalar_matches_array(self):
+    def test_scalar_matches_array(self, data):
         """
         Test that the scalar output from a single position matches
         the first element of the array output from a length-1 list of
         positions.
         """
-        data = make_4gaussians_image()
         scalar = AperturePhotometry(data, CircularAperture((150, 25), r=8))
         array = AperturePhotometry(data, CircularAperture([(150, 25)], r=8))
         assert_allclose(scalar.flux, array.flux[0])
         assert scalar.flags == array.flags[0]
         assert_allclose(scalar.x_center, array.x_center[0])
 
-    def test_list_of_apertures_scalar_position(self):
-        data = make_4gaussians_image()
+    def test_list_of_apertures_scalar_position(self, data):
         apers = [CircularAperture((150, 25), r=r) for r in (5, 8)]
         phot = AperturePhotometry(data, apers)
         assert phot.isscalar is True
@@ -449,40 +419,35 @@ class TestScalarBehavior:
         assert phot.area.shape == (2,)
         assert phot.flags.shape == (2,)
 
-    def test_list_of_apertures_array_position(self):
-        data = make_4gaussians_image()
+    def test_list_of_apertures_array_position(self, data):
         pos = ((150, 25), (90, 60))
         apers = [CircularAperture(pos, r=r) for r in (5, 8)]
         phot = AperturePhotometry(data, apers)
         assert phot.isscalar is False
         assert phot.flux.shape == (2, 2)
 
-    def test_sky_center_scalar(self):
-        data = make_4gaussians_image()
+    def test_sky_center_scalar(self, data):
         wcs = make_wcs(data.shape)
         phot = AperturePhotometry(data, CircularAperture((150, 25), r=8),
                                   wcs=wcs)
         assert isinstance(phot.sky_center, SkyCoord)
         assert phot.sky_center.isscalar is True
 
-    def test_sky_center_array(self):
-        data = make_4gaussians_image()
+    def test_sky_center_array(self, data):
         wcs = make_wcs(data.shape)
         phot = AperturePhotometry(data, CircularAperture([(150, 25)], r=8),
                                   wcs=wcs)
         assert phot.sky_center.isscalar is False
         assert len(phot.sky_center) == 1
 
-    def test_to_table_scalar_single_aperture(self):
-        data = make_4gaussians_image()
+    def test_to_table_scalar_single_aperture(self, data):
         aper = CircularAperture((150, 25), r=8)
         tbl = AperturePhotometry(data, aper).to_table()
         assert len(tbl) == 1
         assert tbl.colnames == ['id', 'x_center', 'y_center', 'flux',
                                 'flux_err', 'area', 'flags']
 
-    def test_to_table_scalar_list_of_apertures(self):
-        data = make_4gaussians_image()
+    def test_to_table_scalar_list_of_apertures(self, data):
         apers = [CircularAperture((150, 25), r=r) for r in (5, 8)]
         tbl = AperturePhotometry(data, apers).to_table()
         assert len(tbl) == 1
@@ -498,8 +463,7 @@ class TestScalarBehavior:
         phot = AperturePhotometry(data, aper, mask=mask)
         assert phot.decode_flags() == [['masked_pixels']]
 
-    def test_isscalar_matches_aperture_stats(self):
-        data = make_4gaussians_image()
+    def test_isscalar_matches_aperture_stats(self, data):
         scalar_aper = CircularAperture((150, 25), r=8)
         array_aper = CircularAperture([(150, 25)], r=8)
         assert (AperturePhotometry(data, scalar_aper).isscalar
@@ -649,25 +613,22 @@ class TestInputValidation:
 
 
 class TestReprAndImmutability:
-    def test_repr(self):
-        data = make_4gaussians_image()
+    def test_repr(self, data):
         aper = CircularAperture((150, 25), 8)
         phot = AperturePhotometry(data, aper)
         assert 'AperturePhotometry' in repr(phot)
         assert "method='exact'" in repr(phot)
 
-    def test_str(self):
-        data = make_4gaussians_image()
+    def test_str(self, data):
         aper = CircularAperture((150, 25), 8)
         phot = AperturePhotometry(data, aper)
         assert 'AperturePhotometry' in str(phot)
 
-    def test_no_new_attributes_after_init(self):
+    def test_no_new_attributes_after_init(self, data):
         """
         Only lazyproperty cache entries may appear after ``__init__``,
         which is required for the instance to be thread-safe.
         """
-        data = make_4gaussians_image()
         aper = CircularAperture(((150, 25), (90, 60)), 8)
         phot = AperturePhotometry(data, aper, error=np.ones_like(data),
                                   wcs=make_wcs(data.shape))
@@ -686,10 +647,9 @@ class TestReprAndImmutability:
                       'flux_err', 'area', 'flags', 'isscalar'}
         assert new_keys.issubset(lazy_names)
 
-    def test_concurrent_access(self):
+    def test_concurrent_access(self, data):
         from concurrent.futures import ThreadPoolExecutor
 
-        data = make_4gaussians_image()
         aper = CircularAperture(((150, 25), (90, 60)), 8)
         phot = AperturePhotometry(data, aper)
         with ThreadPoolExecutor(max_workers=4) as executor:

@@ -22,7 +22,7 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture,
                                           SkyRectangularAnnulus,
                                           SkyRectangularAperture)
-from photutils.datasets import make_4gaussians_image, make_wcs
+from photutils.datasets import make_wcs
 from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_REGIONS
 
 APERTURE_CL = [CircularAperture,
@@ -275,8 +275,7 @@ class TestInputNDData(BaseTestDifferentData):
         self.fluxunit = u.adu
 
 
-def test_input_wcs():
-    data = make_4gaussians_image()
+def test_input_wcs(data):
     wcs = make_wcs(data.shape)
 
     # Hard wired positions in make_4gaussian_image
@@ -294,8 +293,7 @@ def test_input_wcs():
     assert 'sky_center' in phot3.colnames
 
 
-def test_wcs_based_photometry():
-    data = make_4gaussians_image()
+def test_wcs_based_photometry(data):
     wcs = make_wcs(data.shape)
 
     # Hard wired positions in make_4gaussian_image
@@ -732,12 +730,11 @@ def test_nan_in_bbox():
     assert_allclose(tbl3['aperture_sum_err'], tbl4['aperture_sum_err'])
 
 
-def test_scalar_skycoord():
+def test_scalar_skycoord(data):
     """
     Regression test to check that scalar SkyCoords are added to the
     table as a length-1 SkyCoord array.
     """
-    data = make_4gaussians_image()
     wcs = make_wcs(data.shape)
     skycoord = wcs.pixel_to_world(90, 60)
     aper = SkyCircularAperture(skycoord, r=0.1 * u.arcsec)
