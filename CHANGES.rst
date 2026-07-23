@@ -200,6 +200,10 @@ API Changes
     will be removed in version 4.0. Use the new ``AperturePhotometry``
     class instead. [#2324, #2328]
 
+  - The ``ApertureStats.ids`` attribute is now deprecated and will
+    be removed in version 4.0. Use the ``ApertureStats.id`` attribute
+    instead. [#2331]
+
 - ``photutils.psf``
 
   - The ``EPSFBuildResult`` class returned by ``EPSFBuilder`` has been

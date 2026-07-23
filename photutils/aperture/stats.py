@@ -41,7 +41,7 @@ from photutils.aperture.flags import (APERTURE_FLAGS, _counts_to_flag_bits,
                                       decode_aperture_flags)
 from photutils.morphology import gini as gini_func
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
-                                          deprecated_getattr,
+                                          deprecated, deprecated_getattr,
                                           deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import _image_moments
@@ -80,8 +80,8 @@ _DEPRECATED_ATTRIBUTES: dict = {
 # Public attributes that are never collapsed to a scalar for a scalar
 # instance because they describe the whole object rather than a single
 # per-source value (see ``ApertureStats.__getattribute__``).
-_SCALAR_EXCLUDE = frozenset({'default_columns', 'ids', 'isscalar',
-                             'n_apertures', 'properties'})
+_SCALAR_EXCLUDE = frozenset({'default_columns', 'isscalar', 'n_apertures',
+                             'properties'})
 
 
 class _UncachedLazyProperty(lazyproperty):
@@ -491,11 +491,12 @@ class ApertureStats:
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
-        # Need to slice _aperture and _ids;
         # aperture determines isscalar (needed below)
-        attrs = ('aperture', '_ids')
-        for attr in attrs:
-            setattr(newcls, attr, getattr(self, attr)[index])
+        newcls.aperture = self.aperture[index]
+
+        # Keep _ids as a 1D array so a scalar instance's id is always
+        # backed by a length-1 iterable (see the id property).
+        newcls._ids = np.atleast_1d(self._ids[index])
 
         # Slice the per-aperture segmentation labels
         if self._seg_labels is None:
@@ -647,15 +648,15 @@ class ApertureStats:
         return self._ids
 
     @property
+    @deprecated('3.1', alternative="the 'id' attribute", until='4.0')
     def ids(self):
         """
-        The aperture identification number(s), always as an iterable
-        `~numpy.ndarray`.
+        The aperture identification number(s).
+
+        .. deprecated:: 3.1
+            Use the `id` attribute instead.
         """
-        _ids = self._ids
-        if self.isscalar:
-            _ids = np.array((_ids,))
-        return _ids
+        return self.id
 
     def select_id(self, id_num):
         """
@@ -692,7 +693,7 @@ class ApertureStats:
             the input ID numbers.
         """
         for id_num in np.atleast_1d(id_nums):
-            if id_num not in self.ids:
+            if id_num not in self._array('id'):
                 msg = f'{id_num} is not a valid source ID number'
                 raise ValueError(msg)
 
