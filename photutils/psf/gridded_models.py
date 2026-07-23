@@ -842,13 +842,6 @@ class STDPSFGrid:
 
     def __repr__(self):
         return self.__str__()
-    
-    @classmethod
-    def from_asdf(cls, filename):
-        import asdf
-        af = asdf.open(filename)
-
-
 
 
 with registry.delay_doc_updates(GriddedPSFModel):

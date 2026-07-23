@@ -82,11 +82,24 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
 
 
 def _read_stdpsf(filename):
+    """
+    Read a STScI standard-format ePSF (STDPSF) FITS or ASDF file.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the STDPDF FITS or ASDF file.
+
+    Returns
+    -------
+    data : dict
+        A dictionary containing the ePSF data and metadata.
+    """
     extens = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts', '.fts.gz')
     if (isinstance(filename, fits.HDUList) or
-        isinstance(filename, io.FileIO) and filename.name.lower().endswith(extens) or
-        filename.lower().endswith(extens)
-        ):
+            isinstance(filename, io.FileIO) and
+            filename.name.lower().endswith(extens) or
+            filename.lower().endswith(extens)):
         return _read_fits_stdpsf(filename)
     elif filename.endswith('asdf'):
         return _read_asdf_stdpsf(filename)
@@ -163,6 +176,19 @@ def _read_fits_stdpsf(filename):
 
 
 def _read_asdf_stdpsf(filename):
+    """
+    Read a STScI standard-format ePSF (STDPSF) ASDF file.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the STDPDF ASDF file.
+
+    Returns
+    -------
+    data : dict
+        A dictionary containing the ePSF data and metadata.
+    """
     import asdf
     with asdf.open(filename) as af:
         return {'data': af['stdpsf'].data,
