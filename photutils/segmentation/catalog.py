@@ -2670,11 +2670,16 @@ class SourceCatalog:
         return tensor.reshape((tensor.shape[0], 2, 2)) * u.pix**2
 
     @lazyproperty
-    @use_detcat
-    def _covariance(self):
+    def _raw_covariance(self):
         """
-        The covariance matrix of the 2D Gaussian function that has the
-        same second-order moments as the source, always as an iterable.
+        The raw ``(N, 2, 2)`` covariance matrix of the 2D Gaussian
+        function that has the same normalized second-order moments as
+        the source, before any regularization.
+
+        This unregularized matrix is shared by `_covariance` (which
+        regularizes a copy) and `_singular_covariance_mask` (which tests
+        it for singularity). Callers that modify the matrix in place
+        must operate on a copy so the cached value is not corrupted.
         """
         moments = self.moments_central
         if self.isscalar:
@@ -2683,31 +2688,52 @@ class SourceCatalog:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             mu_norm = moments / moments[:, 0, 0][:, np.newaxis, np.newaxis]
-
         covar = np.array([mu_norm[:, 0, 2], mu_norm[:, 1, 1],
                           mu_norm[:, 1, 1], mu_norm[:, 2, 0]]).swapaxes(0, 1)
-        covar = covar.reshape((covar.shape[0], 2, 2))
+        return covar.reshape((covar.shape[0], 2, 2))
 
-        # Modify the covariance matrix in the case of "infinitely" thin
-        # detections. This follows SourceExtractor's prescription of
-        # incrementally increasing the diagonal elements by 1/12.
+    @lazyproperty
+    @use_detcat
+    def _covariance(self):
+        """
+        The covariance matrix of the 2D Gaussian function that has the
+        same second-order moments as the source, always as an iterable.
+        """
+        # Copy so the regularization below does not mutate the cached
+        # raw covariance shared with `_singular_covariance_mask`.
+        covar = self._raw_covariance.copy()
+
+        # Regularize the covariance matrix for "infinitely" thin
+        # detections by incrementally increasing the diagonal elements
+        # by 1/12, the variance of a uniform distribution across a
+        # single pixel (the smallest second moment a resolved source can
+        # have given finite pixel size).
         delta = 1.0 / 12
         delta2 = delta**2
         # Ignore RuntimeWarning from NaN values in covar
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             covar_det = np.linalg.det(covar)
+            covar_trace = covar[:, 0, 0] + covar[:, 1, 1]
 
-            # Covariance should be positive semidefinite
-            idx = np.where(covar_det < 0)[0]
-            covar[idx] = np.array([[np.nan, np.nan], [np.nan, np.nan]])
+            # A valid covariance is positive semidefinite (det >= 0
+            # and trace >= 0). Any matrix that is not (e.g., from
+            # net-negative flux weighting) has an undefined shape and is
+            # set to NaN.
+            bad = (covar_det < 0) | (covar_trace < 0)
+            covar[bad] = np.nan
 
+            # Regularize "infinitely" thin detections by adding 1/12
+            # (delta) to each diagonal. A single bump is sufficient.
+            # For a positive semidefinite matrix the bumped determinant
+            # exceeds the raw determinant by delta times the trace plus
+            # delta squared. Since the raw determinant and trace are
+            # both non-negative, the result is at least delta squared,
+            # which equals the delta2 threshold, so it clears the
+            # threshold in a single step.
             idx = np.where(covar_det < delta2)[0]
-            while idx.size > 0:
-                covar[idx, 0, 0] += delta
-                covar[idx, 1, 1] += delta
-                covar_det = np.linalg.det(covar)
-                idx = np.where(covar_det < delta2)[0]
+            covar[idx, 0, 0] += delta
+            covar[idx, 1, 1] += delta
         return covar
 
     @lazyproperty
