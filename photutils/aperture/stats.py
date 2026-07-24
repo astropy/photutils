@@ -732,9 +732,21 @@ class ApertureStats:
             # id is not included in self.properties because it is not
             # a lazyproperty
             allowed_columns = set(self.properties) | set(self.default_columns)
+            # Remove 2D cutout images from the allowed columns
+            allowed_columns = {col for col in allowed_columns
+                               if '_cutout' not in col}
+
+            deprecated_names = _DEPRECATED_ATTRIBUTES.copy()
+            # These are not valid column names, but are deprecated
+            # attributes that are still accessible in 3.x. They will be
+            # removed in 4.0.
+            invalid = ('data_sumcutout', 'error_sumcutout', 'get_id',
+                       'get_ids')
+            for name in invalid:
+                deprecated_names.pop(name)
+
             table_columns = validate_table_columns(
-                columns, allowed_columns,
-                deprecated_names=_DEPRECATED_ATTRIBUTES)
+                columns, allowed_columns, deprecated_names=deprecated_names)
 
         # Replace with QTable in 4.0
         tbl = create_empty_deprecated_qtable(

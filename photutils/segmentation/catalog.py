@@ -1165,9 +1165,26 @@ class SourceCatalog:
         else:
             allowed_columns = (set(self.properties)
                                | set(self.custom_properties))
+            # Remove 2D cutout images from the allowed columns
+            allowed_columns = {col for col in allowed_columns
+                               if '_cutout' not in col}
+
+            deprecated_names = _DEPRECATED_ATTRIBUTES.copy()
+            # These are not valid column names, but are deprecated
+            # attributes that are still accessible in 3.x. They will be
+            # removed in 4.0.
+            invalid = ('add_extra_property', 'apermask_method', 'background',
+                       'background_ma', 'convdata', 'convdata_ma', 'data',
+                       'data_ma', 'error', 'error_ma', 'extra_properties',
+                       'fluxfrac_radius', 'get_label', 'get_labels',
+                       'localbkg_width', 'nlabels', 'remove_extra_properties',
+                       'remove_extra_property', 'rename_extra_property',
+                       'segment', 'segment_ma')
+            for name in invalid:
+                deprecated_names.pop(name)
+
             table_columns = validate_table_columns(
-                columns, allowed_columns,
-                deprecated_names=_DEPRECATED_ATTRIBUTES)
+                columns, allowed_columns, deprecated_names=deprecated_names)
 
         # Replace with QTable() in 4.0
         tbl = create_empty_deprecated_qtable(

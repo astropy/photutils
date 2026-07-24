@@ -181,6 +181,6 @@ class TestValidateTableColumns:
             validate_table_columns('old_name', ['new_name'])
 
     def test_error_message_lists_allowed_columns(self):
-        match = 'The allowed column names are: a, b, c'
+        match = "The allowed column names are: \\['a', 'b', 'c'\\]"
         with pytest.raises(ValueError, match=match):
             validate_table_columns(['invalid'], ['c', 'a', 'b'])

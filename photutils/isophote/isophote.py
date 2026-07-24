@@ -996,10 +996,12 @@ def _isophote_list_to_table(isophote_list, *, columns='main'):
             `~photutils.isophote.IsophoteList` instance
         A list of isophotes.
 
-    columns : list of str
+    columns : 'main', 'all', or list of str
         A list of properties to export from the ``isophote_list``. If
         ``columns`` is 'all' or 'main', it will pick all or few of the
-        main properties.
+        main properties. 'all' and 'main' must be passed by themselves
+        and not in a list containing other column names. The default is
+        'main'.
 
     Returns
     -------
