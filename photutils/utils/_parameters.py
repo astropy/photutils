@@ -188,7 +188,7 @@ def validate_table_columns(columns, allowed_columns, *,
     invalid = [col for col in table_columns if col not in allowed]
     if invalid:
         msg = (f'Invalid column name(s): {invalid!r}. The allowed '
-               f'column names are: {", ".join(sorted(allowed))}.')
+               f'column names are: {sorted(allowed)}.')
         raise ValueError(msg)
 
     return table_columns
