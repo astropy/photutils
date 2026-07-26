@@ -773,7 +773,7 @@ class STDPSFGrid:
         When `None`, ``kwargs`` are used to initialize the class.
     kwargs : dict
         A dictionary containing the array with PSFs and the meta data.
-        Used when initializing from an ASDF file. In this case 
+        Used when initializing from an ASDF file. In this case
         ``filename`` is  `None`.
 
     Examples
