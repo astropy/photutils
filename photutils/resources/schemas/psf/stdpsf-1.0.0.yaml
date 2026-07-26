@@ -66,19 +66,19 @@ properties:
   xgrid:
     tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
     description: |
-      An array containing the X coordinate of the fiducial point of the 
+      An array containing the X coordinate of the fiducial point of the
       PSF in the coordinate frame of the detector.
   ygrid:
     tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
     description: |
-      An array containing the Y coordinate of the fiducial point of the 
+      An array containing the Y coordinate of the fiducial point of the
       PSF in the coordinate frame of the detector.
   meta:
     type: object
     properties:
       STDPSF:
         type: string
-        title: The name of the file containing the PSFs/ 
+        title: The name of the file containing the PSFs.
       oversampling:
         type: integer
         description: |
