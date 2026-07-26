@@ -88,7 +88,7 @@ def _read_stdpsf(filename):
     Parameters
     ----------
     filename : str
-        The name of the STDPDF FITS or ASDF file.
+        The name of the STDPDF FITS file.
 
     Returns
     -------
@@ -96,14 +96,15 @@ def _read_stdpsf(filename):
         A dictionary containing the ePSF data and metadata.
     """
     extens = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts', '.fts.gz')
-    if (isinstance(filename, fits.HDUList)
-        or isinstance(filename, io.FileIO) 
-        and filename.name.lower().endswith(extens)
-        or filename.lower().endswith(extens)):
+    is_hdulist = isinstance(filename, fits.HDUList)
+    is_fileobj = (isinstance(filename, io.FileIO)
+                  and filename.name.lower().endswith(extens))
+    is_fits_ext = (isinstance(filename, str)
+                   and filename.lower().endswith(extens))
+    if is_hdulist or is_fileobj or is_fits_ext:
         return _read_fits_stdpsf(filename)
-    else:
-        msg = 'This interface supports only FITS files.'
-        raise TypeError(msg)
+    msg = 'This interface supports only FITS files.'
+    raise TypeError(msg)
 
 
 def _read_fits_stdpsf(filename):
