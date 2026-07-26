@@ -97,12 +97,13 @@ def _read_stdpsf(filename):
     """
     extens = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts', '.fts.gz')
     if (isinstance(filename, fits.HDUList)
-            or isinstance(filename, io.FileIO)
-            and filename.name.lower().endswith(extens)
-            or filename.lower().endswith(extens)):
+        or isinstance(filename, io.FileIO) 
+        and filename.name.lower().endswith(extens)
+        or filename.lower().endswith(extens)):
         return _read_fits_stdpsf(filename)
     else:
-        raise TypeError('This interface supports only FITS files.')
+        msg = 'This interface supports only FITS files.'
+        raise TypeError(msg)
 
 
 def _read_fits_stdpsf(filename):
