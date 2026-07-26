@@ -101,7 +101,7 @@ class GriddedPSFConverter(TransformConverterBase):
 
 class STDPSFGridConverter(Converter):
     """
-    ASDF converter for STDPSFModel.
+    ASDF converter for STDPSFGrid.
     """
 
     tags = ('tag:astropy.org:photutils/psf/stdpsf-*',)

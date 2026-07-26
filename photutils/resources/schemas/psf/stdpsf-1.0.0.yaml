@@ -49,40 +49,53 @@ type: object
 properties:
   data:
     tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
-    description: Total integrated flux of the PSF.
+    description: |
+      A 3D array with PSFs.
   npsfs:
     type: integer
     description: |
+      The number of PSFs in the array.
   nxpsfs:
     type: integer
     description: |
+      The size of the PSF array in X.
   nypsfs:
     type: integer
+    description: |
+      The size of the PSF array in Y.
   xgrid:
     tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
     description: |
+      An array containing the X coordinate of the fiducial point of the 
+      PSF in the coordinate frame of the detector.
   ygrid:
     tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
     description: |
-  detector:
-    type: string
-    description: |
+      An array containing the Y coordinate of the fiducial point of the 
+      PSF in the coordinate frame of the detector.
   meta:
     type: object
     properties:
       STDPSF:
         type: string
-        description: |
+        title: The name of the file containing the PSFs/ 
       oversampling:
         type: integer
+        description: |
+          Oversampling factor.
       detector:
         type: string
+        title: The name of the detector
       filter:
         type: string
+        title: The name of the filter.
       grid_shape:
         type: array
+        description: The shape of the array of PSFS in numpy order.
       grid_xypos:
         tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+        description: |
+          A list of the fiducials of the PSFs in the detector frame.
 
 required: [data, npsfs, nxpsfs, nypsfs, xgrid, ygrid, meta]
 ...

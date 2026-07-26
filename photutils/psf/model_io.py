@@ -83,7 +83,7 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
 
 def _read_stdpsf(filename):
     """
-    Read a STScI standard-format ePSF (STDPSF) FITS or ASDF file.
+    Read a STScI standard-format ePSF (STDPSF) FITS file.
 
     Parameters
     ----------
