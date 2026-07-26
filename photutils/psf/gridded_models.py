@@ -768,8 +768,13 @@ class STDPSFGrid:
 
     Parameters
     ----------
-    filename : str
+    filename : str or None
         The name of the STDPDF FITS file. A URL can also be used.
+        When `None`, ``kwargs`` are used to initialize the class.
+    kwargs : dict
+        A dictionary containing the array with PSFs and the meta data.
+        Used when initializing from an ASDF file. In this case 
+        ``filename`` is  `None`.
 
     Examples
     --------

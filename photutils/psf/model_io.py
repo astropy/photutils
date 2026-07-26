@@ -96,13 +96,13 @@ def _read_stdpsf(filename):
         A dictionary containing the ePSF data and metadata.
     """
     extens = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts', '.fts.gz')
-    if (isinstance(filename, fits.HDUList) or
-            isinstance(filename, io.FileIO) and
-            filename.name.lower().endswith(extens) or
-            filename.lower().endswith(extens)):
+    if (isinstance(filename, fits.HDUList)
+            or isinstance(filename, io.FileIO)
+            and filename.name.lower().endswith(extens)
+            or filename.lower().endswith(extens)):
         return _read_fits_stdpsf(filename)
     else:
-        raise TypeError("This interface supports only FITS files.")
+        raise TypeError('This interface supports only FITS files.')
 
 
 def _read_fits_stdpsf(filename):
