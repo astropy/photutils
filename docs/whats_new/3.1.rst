@@ -50,7 +50,7 @@ installing the ``asdf`` package. For some classes, the new optional
     >>> with asdf.open('aperture.asdf') as af:
     ...     aperture = af['aperture']
 
-So far, the following classes can be serialized to and deserialized from
+The following classes can be serialized to and deserialized from
 ASDF files:
 
 * `~photutils.psf.AiryDiskPSF`

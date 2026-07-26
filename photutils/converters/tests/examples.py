@@ -4,13 +4,16 @@
 Tests for the photutils PSF converters.
 All examples return a PSF instance and the list of parameters to test.
 """
+import os.path as op
+from pathlib import Path
+
 import numpy as np
 from astropy import units as u
 from astropy.nddata import NDData
 
 from photutils.psf import (AiryDiskPSF, CircularGaussianPRF,
                            CircularGaussianPSF, GaussianPRF, GaussianPSF,
-                           GriddedPSFModel, ImagePSF, MoffatPSF)
+                           GriddedPSFModel, ImagePSF, MoffatPSF, STDPSFGrid)
 
 parameters = {
     'AiryDiskPSF': ['flux', 'x_0', 'y_0', 'radius', 'bbox_factor'],
@@ -27,6 +30,7 @@ parameters = {
                  'fill_value', 'origin'],
     'GriddedPSF': ['data', 'flux', 'x_0', 'y_0', 'oversampling',
                    'fill_value', 'grid_xypos'],
+    'STDPSF': ['data', 'grid_xypos', 'oversampling'],
 }
 
 
@@ -145,3 +149,13 @@ def gridded_psf():
                             x_0=0.5, y_0=0.5,
                             fill_value=np.nan),
             parameters['GriddedPSF'])
+
+
+def stdpsf_single_detector():
+    """Return a STDPSFGrid object read from a FITS STDPSF file."""
+    filename = 'STDPSF_NRCA1_F150W_mock.fits'
+
+    filename = op.join(Path(__file__).resolve().parent.parent.parent,
+                       'psf', 'tests', 'data', filename)
+    psfgrid = STDPSFGrid(filename)
+    return psfgrid, parameters['STDPSF']

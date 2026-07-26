@@ -34,6 +34,7 @@ psf_params = pytest.mark.parametrize('psfobj', [
     'moffat_psf',
     'image_psf',
     'gridded_psf',
+    'stdpsf_single_detector',
 ], indirect=True)
 
 

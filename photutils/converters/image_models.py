@@ -112,6 +112,8 @@ class STDPSFGridConverter(Converter):
         xypos = np.array(model.grid_xypos)
         xgrid = np.array(list(set(xypos[:, 0])))
         ygrid = np.array(list(set(xypos[:, 1])))
+        xgrid.sort()
+        ygrid.sort()
         meta = {'STDPSF': model.meta.get('STDPSF', None),
                 'oversampling': model.meta['oversampling'],
                 'detector': model.meta['detector'],
@@ -121,12 +123,12 @@ class STDPSFGridConverter(Converter):
 
                 }
         return {
-            'data': model.data.copy(),
+            'data': model.data,
             'npsfs': shape[0],
             'nxpsfs': shape[-2],
             'nypsfs': shape[-1],
-            'xgrid': xgrid.copy(),
-            'ygrid': ygrid.copy(),
+            'xgrid': xgrid,
+            'ygrid': ygrid,
             'meta': meta,
         }
 

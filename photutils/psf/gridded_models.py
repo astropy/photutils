@@ -782,8 +782,6 @@ class STDPSFGrid:
         meta = None
         if filename is not None:
             grid_data = _read_stdpsf(filename)
-            if 'meta' in grid_data:
-                meta = grid_data.pop('meta')
         else:
             grid_data = kwargs
             meta = kwargs.pop('meta', None)

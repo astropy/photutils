@@ -76,3 +76,8 @@ def image_psf():
 @pytest.fixture
 def gridded_psf():
     return examples.gridded_psf()
+
+
+@pytest.fixture
+def stdpsf_single_detector():
+    return examples.stdpsf_single_detector()
