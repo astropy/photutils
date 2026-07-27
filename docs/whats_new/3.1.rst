@@ -21,15 +21,15 @@ Dependency Version Updates
 
 Photutils 3.1 bumps the minimum required versions of several key
 dependencies to provide users with access to the latest features and
-performance improvements:
+performance improvements. The minimum required versions are now:
 
-- Astropy minimum version is now 6.1.7
-- SciPy minimum version is now 1.14
-- Regions minimum version is now 0.10
-- scikit-image minimum version is now 0.24
-- gwcs minimum version is now 0.22
-- Shapely minimum version is now 2.1
-- tqdm minimum version is now 4.67
+- Astropy: 6.1.7
+- SciPy: 1.14
+- Regions: 0.10
+- scikit-image: 0.24
+- gwcs: 0.22
+- Shapely: 2.1
+- tqdm: 4.67
 
 
 ASDF Serialization Support
@@ -37,9 +37,9 @@ ASDF Serialization Support
 
 Photutils 3.1 introduces initial support for serializing
 photutils objects to the `Advanced Scientific Data Format (ASDF)
-<https://asdf.readthedocs.io/>`_ file format. This requires
-installing the ``asdf`` package. For some classes, the new optional
-``asdf-astropy`` package must also be installed.
+<https://asdf.readthedocs.io/>`_ file format. This requires installing
+the ``asdf`` package. For some classes, the optional ``asdf-astropy``
+package must also be installed.
 
     >>> import asdf
     >>> from photutils.aperture import CircularAperture
@@ -60,7 +60,8 @@ ASDF files:
 Exact Rectangular Aperture Overlap
 ==================================
 
-Rectangular apertures now support the ``method='exact'`` option for
+Rectangular apertures used for aperture photometry and related
+statistical measurements now support the ``method='exact'`` option for
 computing pixel-aperture overlap fractions. Previously, requesting
 ``method='exact'`` for a `~photutils.aperture.RectangularAperture` or
 `~photutils.aperture.RectangularAnnulus` was silently translated to a
@@ -73,11 +74,11 @@ New ``AperturePhotometry`` Class
 ================================
 
 Photutils 3.1 introduces a new `~photutils.aperture.AperturePhotometry`
-class, which is now the recommended tool for aperture photometry. Like
-`~photutils.aperture.ApertureStats`, it uses a results-object pattern:
-the data, apertures, and options are supplied to the constructor, and
-the results are exposed as lazily-computed attributes or as an Astropy
-`~astropy.table.QTable` via the ``to_table`` method::
+class, which is now the recommended tool for aperture photometry.
+Like `~photutils.aperture.ApertureStats`, the data, apertures, and
+options are supplied to the constructor, and the results are exposed as
+lazily-computed attributes or as an Astropy `~astropy.table.QTable` via
+the ``to_table`` method::
 
     >>> import numpy as np
     >>> from photutils.aperture import AperturePhotometry, CircularAperture
@@ -112,9 +113,10 @@ are scalars when a single scalar aperture position is input (e.g.,
 positions are input.
 
 The legacy :func:`~photutils.aperture.aperture_photometry`
-function remains available and is not deprecated, but it is now
-considered a legacy interface. New features are added only to the
-`~photutils.aperture.AperturePhotometry` class.
+function remains available and is not deprecated, but it is
+now considered a legacy interface. New features are added
+only to the `~photutils.aperture.AperturePhotometry` and
+`~photutils.aperture.ApertureStats` classes.
 
 
 Faster Aperture Photometry
@@ -146,11 +148,11 @@ Aperture Statistics Error Estimates
 `~photutils.aperture.ApertureStats` now provides standard-error
 estimates for its location statistics via the new ``mean_err`` and
 ``median_err`` properties. The ``mean_err`` property returns the
-standard error of the mean, :math:`s / \sqrt{N}`, where :math:`s` is
-the sample standard deviation of the unmasked aperture pixels and
-:math:`N` is the number of those pixels. The ``median_err`` property
-returns the large-sample standard error of the median,
-:math:`\sqrt{\pi / 2} \, s / \sqrt{N}`, which assumes the pixel values
+standard error of the mean, :math:`s / \sqrt{N}`, where :math:`s` is the
+sample standard deviation of the unmasked aperture pixels and :math:`N`
+is the number of those pixels. The ``median_err`` property returns the
+large-sample standard error of the median, :math:`\sqrt{\pi / 2} \, s /
+\sqrt{N} = \sqrt{\pi / (2 \, N)} \, s`, which assumes the pixel values
 are approximately normally distributed. Both properties are ``NaN`` for
 apertures with fewer than two unmasked pixels::
 
@@ -389,8 +391,8 @@ conditions such as:
 The overlap flags are precise. They are based on the pixels with
 nonzero aperture weight, not simply the aperture bounding box. The
 new :func:`~photutils.aperture.decode_aperture_flags` function and
-the :meth:`~photutils.aperture.AperturePhotometry.decode_flags` and
-:meth:`~photutils.aperture.ApertureStats.decode_flags` methods decode
+the :meth:`photutils.aperture.AperturePhotometry.decode_flags` and
+:meth:`photutils.aperture.ApertureStats.decode_flags` methods decode
 flag values into human-readable names::
 
     >>> import numpy as np
