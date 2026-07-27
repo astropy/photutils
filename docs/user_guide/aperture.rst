@@ -541,8 +541,10 @@ Aperture Photometry on a 3D Data Cube
 
 :class:`~photutils.aperture.AperturePhotometry` operates on a single 2D
 image. To measure a source in a 3D data cube --- for example, a time
-series of images of the same field --- apply the same aperture to each
-2D image in the stack and collect the results into a light curve.
+series of images of the same field or a spectroscopic integral field
+unit (IFU) data cube --- apply the same aperture to each 2D image in the
+stack and collect the measurements into into an output array or table.
+For a time series of images, these measurements form a light curve.
 
 Here we create a small stack of five images in which a single source
 varies in brightness from frame to frame, and measure its flux and
