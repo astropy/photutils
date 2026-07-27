@@ -596,14 +596,34 @@ class ApertureStats:
 
     def _array(self, name):
         """
-        Return the full (never scalar-collapsed) value for a public
-        output attribute, regardless of whether the instance is scalar.
+        Return the per-source attribute ``name`` with a leading (source)
+        axis, so that the table-building and flag-decoding machinery
+        always operates on arrays regardless of whether the instance is
+        scalar.
 
-        This bypasses the scalar conversion performed in
-        ``__getattribute__`` so that the table-building and
-        flag-decoding machinery always operates on arrays.
+        For a non-scalar instance this returns the attribute unchanged.
+        For a scalar instance the value is first read through the normal
+        attribute access, which applies the scalar collapse performed by
+        `__getattribute__` (e.g., ``moments`` becomes a ``(4, 4)`` array
+        and ``centroid`` a length-2 array). A single leading length-1
+        axis is then restored (``ndarray`` values are reshaped, while
+        other objects are wrapped in a length-1 list).
+
+        Reading the collapsed value rather than the raw stored value
+        is important. A per-source value can be stored either with
+        its leading length-1 axis intact (when computed directly
+        for a scalar instance) or with that axis already removed
+        (when a multi-source value is cached and then sliced to a
+        scalar via ``__getitem__``). Going through the scalar collapse
+        normalizes both cases to the same shape, so this method is
+        robust regardless of how the value was produced.
         """
-        return object.__getattribute__(self, name)
+        value = getattr(self, name)
+        if not self.isscalar:
+            return value
+        if isinstance(value, np.ndarray):
+            return value[np.newaxis, ...]
+        return [value]
 
     @lazyproperty
     def isscalar(self):

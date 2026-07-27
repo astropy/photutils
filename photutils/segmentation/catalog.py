@@ -729,6 +729,37 @@ class SourceCatalog:
             pass
         return value
 
+    def _array(self, name):
+        """
+        Return the per-source attribute ``name`` with a leading (source)
+        axis, so that internal code can always index along the source
+        axis without repeating ``if self.isscalar`` checks.
+
+        For a non-scalar (multi-source) catalog this simply returns the
+        attribute unchanged. For a scalar (single-source) catalog the
+        value is first read through the normal attribute access, which
+        applies the scalar collapse performed by `__getattribute__`
+        (e.g., ``moments`` becomes a ``(4, 4)`` array and ``centroid`` a
+        length-2 array). A single leading length-1 axis is then restored
+        (``ndarray`` values are reshaped, while other objects are
+        wrapped in a length-1 list).
+
+        Reading the collapsed value rather than the raw stored value
+        is important. A per-source array can be stored either with
+        its leading length-1 axis intact (when computed directly for
+        a scalar catalog) or with that axis already removed (when a
+        multi-source value is cached and then sliced to a scalar). Going
+        through the scalar collapse normalizes both cases to the same
+        shape, so this method is robust regardless of how the value was
+        produced.
+        """
+        value = getattr(self, name)
+        if not self.isscalar:
+            return value
+        if isinstance(value, np.ndarray):
+            return value[np.newaxis, ...]
+        return [value]
+
     @lazyproperty
     def isscalar(self):
         """
@@ -1427,8 +1458,6 @@ class SourceCatalog:
         An array with a single NaN is returned for completely-masked
         sources.
         """
-        if self.isscalar:
-            array = (array,)
         return [arr.compressed() if len(arr.compressed()) > 0
                 else np.array([np.nan]) for arr in array]
 
@@ -1479,7 +1508,7 @@ class SourceCatalog:
         An array with a single NaN is returned for completely-masked
         sources.
         """
-        return self._get_values(self.data_cutout_masked)
+        return self._get_values(self._array('data_cutout_masked'))
 
     @lazyproperty
     def _error_values(self):
@@ -1491,7 +1520,7 @@ class SourceCatalog:
         """
         if self._error is None:
             return self._null_objects
-        return self._get_values(self.error_cutout_masked)
+        return self._get_values(self._array('error_cutout_masked'))
 
     @lazyproperty
     def _background_values(self):
@@ -1503,7 +1532,7 @@ class SourceCatalog:
         """
         if self._background is None:
             return self._null_objects
-        return self._get_values(self.background_cutout_masked)
+        return self._get_values(self._array('background_cutout_masked'))
 
     @lazyproperty
     @use_detcat
@@ -1528,9 +1557,7 @@ class SourceCatalog:
         Central moments (translation invariant) of the source up to 3rd
         order.
         """
-        cutout_centroid = self.cutout_centroid
-        if self.isscalar:
-            cutout_centroid = cutout_centroid[np.newaxis, :]
+        cutout_centroid = self._array('cutout_centroid')
         result = []
         for arr, xcen, ycen in zip(self._moment_data_cutouts,
                                    cutout_centroid[:, 0],
@@ -1553,9 +1580,7 @@ class SourceCatalog:
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
         """
-        moments = self.moments
-        if self.isscalar:
-            moments = moments[np.newaxis, :]
+        moments = self._array('moments')
 
         # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
@@ -1587,9 +1612,7 @@ class SourceCatalog:
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
         """
-        if self.isscalar:
-            return self.centroid[0:1]  # length-1 array
-        return self.centroid[:, 0]
+        return self._array('centroid')[:, 0]
 
     @lazyproperty
     @use_detcat
@@ -1601,9 +1624,7 @@ class SourceCatalog:
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
         """
-        if self.isscalar:
-            return self.centroid[1:2]  # length-1 array
-        return self.centroid[:, 1]
+        return self._array('centroid')[:, 1]
 
     @lazyproperty
     @use_detcat
@@ -1803,13 +1824,9 @@ class SourceCatalog:
         # keep NaN (no valid window size).
         dx = x_centroid - xcen_win
         dy = y_centroid - ycen_win
-        cxx = self.ellipse_cxx.value
-        cxy = self.ellipse_cxy.value
-        cyy = self.ellipse_cyy.value
-        if self.isscalar:
-            cxx = (cxx,)
-            cxy = (cxy,)
-            cyy = (cyy,)
+        cxx = self._array('ellipse_cxx').value
+        cxy = self._array('ellipse_cxy').value
+        cyy = self._array('ellipse_cyy').value
 
         reset = ((cxx * dx**2 + cxy * dx * dy + cyy * dy**2) > 1)
         nan_cen = np.isnan(xcen_win) | np.isnan(ycen_win)
@@ -1831,11 +1848,7 @@ class SourceCatalog:
         to derive a more accurate centroid. It is equivalent to
         `SourceExtractor`_'s XWIN_IMAGE parameters.
         """
-        if self.isscalar:
-            x_centroid = self.centroid_win[0]  # scalar array
-        else:
-            x_centroid = self.centroid_win[:, 0]
-        return x_centroid
+        return self._array('centroid_win')[:, 0]
 
     @lazyproperty
     @use_detcat
@@ -1848,11 +1861,7 @@ class SourceCatalog:
         to derive a more accurate centroid. It is equivalent to
         `SourceExtractor`_'s YWIN_IMAGE parameters.
         """
-        if self.isscalar:
-            y_centroid = self.centroid_win[1]  # scalar array
-        else:
-            y_centroid = self.centroid_win[:, 1]
-        return y_centroid
+        return self._array('centroid_win')[:, 1]
 
     @lazyproperty
     @use_detcat
@@ -2015,11 +2024,7 @@ class SourceCatalog:
         calculated by fitting a 2D quadratic polynomial to the unmasked
         pixels in the source segment.
         """
-        if self.isscalar:
-            x_centroid = self.centroid_quad[0]  # scalar array
-        else:
-            x_centroid = self.centroid_quad[:, 0]
-        return x_centroid
+        return self._array('centroid_quad')[:, 0]
 
     @lazyproperty
     @use_detcat
@@ -2029,11 +2034,7 @@ class SourceCatalog:
         calculated by fitting a 2D quadratic polynomial to the unmasked
         pixels in the source segment.
         """
-        if self.isscalar:
-            y_centroid = self.centroid_quad[1]  # scalar array
-        else:
-            y_centroid = self.centroid_quad[:, 1]
-        return y_centroid
+        return self._array('centroid_quad')[:, 1]
 
     @lazyproperty
     @use_detcat
@@ -2302,9 +2303,7 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        data = self.data_cutout_masked
-        if self.isscalar:
-            data = (data,)
+        data = self._array('data_cutout_masked')
         idx = []
         for arr in data:
             if np.all(arr.mask):
@@ -2322,9 +2321,7 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        data = self.data_cutout_masked
-        if self.isscalar:
-            data = (data,)
+        data = self._array('data_cutout_masked')
         idx = []
         for arr in data:
             if np.all(arr.mask):
@@ -2342,9 +2339,7 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        index = self.cutout_min_value_index
-        if self.isscalar:
-            index = (index,)
+        index = self._array('cutout_min_value_index')
         out = []
         for idx, slc in zip(index, self._slices_iter, strict=True):
             out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
@@ -2359,9 +2354,7 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        index = self.cutout_max_value_index
-        if self.isscalar:
-            index = (index,)
+        index = self._array('cutout_max_value_index')
         out = []
         for idx, slc in zip(index, self._slices_iter, strict=True):
             out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
@@ -2376,11 +2369,7 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        if self.isscalar:
-            xidx = self.min_value_index[1]
-        else:
-            xidx = self.min_value_index[:, 1]
-        return xidx
+        return self._array('min_value_index')[:, 1]
 
     @lazyproperty
     def min_value_yindex(self):
@@ -2391,11 +2380,7 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        if self.isscalar:
-            yidx = self.min_value_index[0]
-        else:
-            yidx = self.min_value_index[:, 0]
-        return yidx
+        return self._array('min_value_index')[:, 0]
 
     @lazyproperty
     def max_value_xindex(self):
@@ -2406,11 +2391,7 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        if self.isscalar:
-            xidx = self.max_value_index[1]
-        else:
-            xidx = self.max_value_index[:, 1]
-        return xidx
+        return self._array('max_value_index')[:, 1]
 
     @lazyproperty
     def max_value_yindex(self):
@@ -2421,11 +2402,7 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        if self.isscalar:
-            yidx = self.max_value_index[0]
-        else:
-            yidx = self.max_value_index[:, 0]
-        return yidx
+        return self._array('max_value_index')[:, 0]
 
     @lazyproperty
     def segment_flux(self):
@@ -2660,9 +2637,7 @@ class SourceCatalog:
         The inertia tensor of the source for the rotation around its
         center of mass.
         """
-        moments = self.moments_central
-        if self.isscalar:
-            moments = moments[np.newaxis, :]
+        moments = self._array('moments_central')
         mu_02 = moments[:, 0, 2]
         mu_11 = -moments[:, 1, 1]
         mu_20 = moments[:, 2, 0]
@@ -2681,9 +2656,7 @@ class SourceCatalog:
         it for singularity). Callers that modify the matrix in place
         must operate on a copy so the cached value is not corrupted.
         """
-        moments = self.moments_central
-        if self.isscalar:
-            moments = moments[np.newaxis, :]
+        moments = self._array('moments_central')
         # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -2777,9 +2750,7 @@ class SourceCatalog:
         2D Gaussian function that has the same second-order central
         moments as the source.
         """
-        eigvals = self.covariance_eigvals
-        if self.isscalar:
-            eigvals = eigvals[np.newaxis, :]
+        eigvals = self._array('covariance_eigvals')
         # This matches SourceExtractor's A parameter
         return np.sqrt(eigvals[:, 0])
 
@@ -2791,9 +2762,7 @@ class SourceCatalog:
         2D Gaussian function that has the same second-order central
         moments as the source.
         """
-        eigvals = self.covariance_eigvals
-        if self.isscalar:
-            eigvals = eigvals[np.newaxis, :]
+        eigvals = self._array('covariance_eigvals')
         # This matches SourceExtractor's B parameter
         return np.sqrt(eigvals[:, 1])
 
@@ -3421,23 +3390,15 @@ class SourceCatalog:
         """
         scale = 6.0
 
-        xcen_arr = np.atleast_1d(self.x_centroid)
-        ycen_arr = np.atleast_1d(self.y_centroid)
-        a_arr = self.semimajor_axis.value * scale
-        b_arr = self.semiminor_axis.value * scale
-        theta_arr = self.orientation.to_value(u.radian)
-        cxx_arr = self.ellipse_cxx.value
-        cxy_arr = self.ellipse_cxy.value
-        cyy_arr = self.ellipse_cyy.value
+        xcen_arr = self._array('x_centroid')
+        ycen_arr = self._array('y_centroid')
+        a_arr = self._array('semimajor_axis').value * scale
+        b_arr = self._array('semiminor_axis').value * scale
+        theta_arr = self._array('orientation').to_value(u.radian)
+        cxx_arr = self._array('ellipse_cxx').value
+        cxy_arr = self._array('ellipse_cxy').value
+        cyy_arr = self._array('ellipse_cyy').value
         all_masked = self._all_masked
-
-        if self.isscalar:
-            a_arr = (a_arr,)
-            b_arr = (b_arr,)
-            theta_arr = (theta_arr,)
-            cxx_arr = (cxx_arr,)
-            cxy_arr = (cxy_arr,)
-            cyy_arr = (cyy_arr,)
 
         data_full = self._data
         data_shape = data_full.shape
@@ -3806,9 +3767,7 @@ class SourceCatalog:
             patches can be used, for example, when adding a plot legend.
         """
         if kron_params is None:
-            apertures = self.kron_aperture
-            if self.isscalar:
-                apertures = (apertures,)
+            apertures = self._array('kron_aperture')
         else:
             apertures = self._make_kron_apertures(kron_params)
 
@@ -3914,9 +3873,7 @@ class SourceCatalog:
             The Kron flux and flux error.
         """
         if kron_params is None:
-            kron_aperture = self.kron_aperture
-            if self.isscalar:
-                kron_aperture = (kron_aperture,)
+            kron_aperture = self._array('kron_aperture')
         else:
             kron_params = self._validate_kron_params(kron_params)
             kron_aperture = self._make_kron_apertures(kron_params)
@@ -4139,14 +4096,12 @@ class SourceCatalog:
         The maximum circular Kron radius used as the upper limit of
         ``flux_radius``.
         """
-        semimajor_sig = self.semimajor_axis.value
-        kron_radius = self.kron_radius.value
+        semimajor_sig = self._array('semimajor_axis').value
+        kron_radius = self._array('kron_radius').value
         radius = semimajor_sig * kron_radius * self.kron_params[0]
         mask = radius == 0
         if np.any(mask):
             radius[mask] = self.kron_params[2]
-        if self.isscalar:
-            radius = np.array([radius])
         return radius
 
     @staticmethod
