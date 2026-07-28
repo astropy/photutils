@@ -24,6 +24,8 @@ psf_params = pytest.mark.parametrize('psfobj', [
     'airy_disk',
     'circular_gaussian_prf_units',
     'circular_gaussian_prf',
+    'circular_gaussian_sigma_prf_units',
+    'circular_gaussian_sigma_prf',
     'circular_gaussian_psf_units',
     'circular_gaussian_psf',
     'gaussian_prf_units',

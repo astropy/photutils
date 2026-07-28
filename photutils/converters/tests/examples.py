@@ -12,8 +12,9 @@ from astropy import units as u
 from astropy.nddata import NDData
 
 from photutils.psf import (AiryDiskPSF, CircularGaussianPRF,
-                           CircularGaussianPSF, GaussianPRF, GaussianPSF,
-                           GriddedPSFModel, ImagePSF, MoffatPSF, STDPSFGrid)
+                           CircularGaussianPSF, CircularGaussianSigmaPRF,
+                           GaussianPRF, GaussianPSF, GriddedPSFModel, ImagePSF,
+                           MoffatPSF, STDPSFGrid)
 
 parameters = {
     'AiryDiskPSF': ['flux', 'x_0', 'y_0', 'radius', 'bbox_factor'],
@@ -59,6 +60,21 @@ def circular_gaussian_prf():
     """Return a CircularGaussianPRF without units."""
     return (CircularGaussianPRF(flux=2, x_0=1, y_0=1, fwhm=2, bbox_factor=3),
             parameters['CircularGaussianPRF'])
+
+
+def circular_gaussian_sigma_prf_units():
+    """Return a CircularGaussianPRF with units."""
+    return (CircularGaussianSigmaPRF(flux=71.4 * u.Jy,
+                                     x_0=24.3 * u.pix, y_0=25.2 * u.pix,
+                                     sigma=5.1 * u.pix),
+            parameters['CircularGaussianSigmaPRF'])
+
+
+def circular_gaussian_sigma_prf():
+    """Return a CircularGaussianPRF without units."""
+    return (CircularGaussianSigmaPRF(flux=71.4, x_0=24.3, y_0=25.2,
+                                     sigma=5.1),
+            parameters['CircularGaussianSigmaPRF'])
 
 
 def circular_gaussian_psf_units():

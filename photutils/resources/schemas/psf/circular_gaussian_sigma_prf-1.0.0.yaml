@@ -8,8 +8,9 @@ description: |
 
 examples:
   -
-    - A CircularGaussianSigmaPRF with a flux of 71.4, centered at (24.3, 25.2) pixels, and a FWHM of 5 pixels.
-      psf.CircularGaussianPRF(flux=71.4, x_0=24.3, y_0=25.2, sigma=5.1)
+    - A CircularGaussianSigmaPRF with a flux of 71.4, centered at (24.3, 25.2) pixels,
+      and a standard deviation of the Gaussian of 5.1 pixels.
+      psf.CircularGaussianSigmaPRF(flux=71.4, x_0=24.3, y_0=25.2, sigma=5.1)
     - |
       !<tag:astropy.org:photutils/psf/circular_gaussian_sigma_prf-1.0.0>
         bbox_factor: 10.0

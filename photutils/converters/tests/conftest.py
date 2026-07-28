@@ -1,7 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """
-Tests for the photutils PSF converters.
+Fixtures for the photutils PSF converters.
+
+Each fixture returns a tuple of ``(psf_instance, parameter_names)``,
+where ``parameter_names`` is the list of attributes to compare in
+round-trip tests.
 """
 import pytest
 
@@ -25,6 +29,16 @@ def circular_gaussian_prf_units():
 
 @pytest.fixture
 def circular_gaussian_prf():
+    return examples.circular_gaussian_prf()
+
+
+@pytest.fixture
+def circular_gaussian_sigma_prf_units():
+    return examples.circular_gaussian_prf_units()
+
+
+@pytest.fixture
+def circular_gaussian_sigma_prf():
     return examples.circular_gaussian_prf()
 
 

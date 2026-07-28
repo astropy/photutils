@@ -61,8 +61,8 @@ ASDF files:
 * `~photutils.psf.GaussianPSF`
 * `~photutils.psf.MoffatPSF`
 * `~photutils.psf.GriddedPSFModel`
-* `~photutils.psf.ImagePSFModel`
-* `~photutils.psf.STDPSFGrid.`
+* `~photutils.psf.ImagePSF`
+* `~photutils.psf.STDPSFGrid`
 * `~photutils.aperture.CircularAperture`
 
 
