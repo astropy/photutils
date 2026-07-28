@@ -430,7 +430,7 @@ class TestStarFinderCatalogBase:
         cat = minimal_catalog_cls(data, xypos, kernel)
         r = repr(cat)
         assert '_MinimalCatalog(' in r
-        assert 'nsources=2' in r
+        assert 'n_sources=2' in r
 
     def test_str(self, minimal_catalog_cls):
         """
@@ -443,7 +443,7 @@ class TestStarFinderCatalogBase:
         cat = minimal_catalog_cls(data, xypos, kernel)
         s = str(cat)
         assert '_MinimalCatalog' in s
-        assert 'nsources: 1' in s
+        assert 'n_sources: 1' in s
 
     def test_make_cutouts_partial_overlap(self, minimal_catalog_cls):
         """

@@ -258,13 +258,13 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         self.id = np.arange(len(self)) + 1
 
     def __repr__(self):
-        params = ('nsources',)
-        overrides = {'nsources': len(self)}
+        params = ('n_sources',)
+        overrides = {'n_sources': len(self)}
         return make_repr(self, params, brackets=True, overrides=overrides)
 
     def __str__(self):
-        params = ('nsources',)
-        overrides = {'nsources': len(self)}
+        params = ('n_sources',)
+        overrides = {'n_sources': len(self)}
         return make_repr(self, params, overrides=overrides, long=True)
 
     def __len__(self):
