@@ -13,10 +13,10 @@ examples:
       psf.CircularGaussianSigmaPRF(flux=71.4, x_0=24.3, y_0=25.2, sigma=5.1)
     - |
       !<tag:astropy.org:photutils/psf/circular_gaussian_sigma_prf-1.0.0>
-        bbox_factor: 10.0
+        bbox_factor: 5.5
         bounds:
-          fwhm: [1.1754943508222875e-38, null]
-        fixed: {fwhm: true}
+          sigma: [1.1754943508222875e-38, null]
+        fixed: {sigma: true}
         flux: 71.4
         inputs: [x, y]
         outputs: [z]

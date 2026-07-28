@@ -11,7 +11,7 @@ description: |
 examples:
   -
     - A MoffatPSF with a flux of 71.4, centered at (24.3, 25.2) pixels,
-      and alpha 0f 5.1 and beta 0f 3.2
+      and alpha of 5.1 and beta of 3.2
       psf.MoffatPSF(flux=71.4, x_0=24.3, y_0=25.2, alpha=5.1, beta=3.2)
     - |
       !<tag:astropy.org:photutils/psf/moffat_psf-1.0.0>

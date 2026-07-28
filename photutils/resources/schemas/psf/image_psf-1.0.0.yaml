@@ -13,22 +13,29 @@ examples:
       psf.ImagePSF(data=np.ones((11, 11)), flux=71.4, x_0=24.3, y_0=25.2)
     - |
       !<tag:astropy.org:photutils/psf/image_psf-1.0.0>
-        bbox_factor: 10.0
-        bounds:
-          data: [1.1754943508222875e-38, null]
-        fixed: {data: true}
         data: !core/ndarray-1.1.0
           source: 0
-          datatype: int64
+          datatype: float64
           byteorder: little
-          shape: [4, 6]
+          shape: [11, 11]
+        fill_value: 0.0
         flux: 71.4
         inputs: [x, y]
+        origin: !core/ndarray-1.1.0
+          source: 2
+          datatype: float64
+          byteorder: little
+          shape: [2]
+          offset: 8
+          strides: [-8]
         outputs: [z]
+        oversampling: !core/ndarray-1.1.0
+          source: 1
+          datatype: int64
+          byteorder: little
+          shape: [2]
         x_0: 24.3
         y_0: 25.2
-        fill_value: 0.0
-        oversampling: [1.0, 1.0]
 
 allOf:
   - $ref: "http://stsci.edu/schemas/asdf/transform/transform-1.4.0"
