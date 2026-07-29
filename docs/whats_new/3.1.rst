@@ -467,3 +467,11 @@ Removed Deprecations
 
 Breaking Changes
 ----------------
+
+``StarFinderCatalogBase`` Representation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``repr`` and ``str`` output of
+`~photutils.detection.StarFinderCatalogBase` now labels the number of
+sources as ``n_sources`` instead of ``nsources`` for naming consistency
+within photutils.

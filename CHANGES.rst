@@ -206,6 +206,12 @@ API Changes
     be removed in version 4.0. Use the ``ApertureStats.id`` attribute
     instead. [#2331]
 
+- ``photutils.detection``
+
+  - The ``repr`` and ``str`` output of ``StarFinderCatalogBase`` now
+    labels the number of sources as ``n_sources`` instead of
+    ``nsources`` for naming consistency. [#2338]
+
 - ``photutils.psf``
 
   - The ``EPSFBuildResult`` class returned by ``EPSFBuilder`` has been
