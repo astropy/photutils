@@ -787,14 +787,20 @@ class STDPSFGrid:
         meta = None
         if filename is not None:
             grid_data = _read_stdpsf(filename)
+            self.data = grid_data['data']
+            self._xgrid = grid_data['xgrid']
+            self._ygrid = grid_data['ygrid']
+            # itertools.product iterates over the last input first
+            xy_grid = [yx[::-1] for yx in itertools.product(self._ygrid,
+                                                            self._xgrid)]
         else:
-            grid_data = kwargs
-            meta = kwargs.pop('meta', None)
-        self.data = grid_data['data']
-        self._xgrid = grid_data['xgrid']
-        self._ygrid = grid_data['ygrid']
-        xy_grid = [yx[::-1] for yx in itertools.product(self._ygrid,
-                                                        self._xgrid)]
+            meta = kwargs['meta']
+            self.data = kwargs['data']
+            xy_grid = meta['grid_xypos']
+            xypos = np.asarray(xy_grid)
+            self._xgrid = np.unique(xypos[:, 0])  # sorted
+            self._ygrid = np.unique(xypos[:, 1])  # sorted
+
         oversampling = 4  # assumption for STDPSF files
         self.grid_xypos = xy_grid
         self.oversampling = as_pair('oversampling', oversampling,

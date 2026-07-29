@@ -20,29 +20,16 @@ examples:
           byteorder: big
           shape: [9, 101, 101]
         meta:
-          STDPSF: dev/photutils/STDPSF_WFC3IR_F153M.fits
+          STDPSF: STDPSF_WFC3IR_F153M.fits
           detector: WFC3IR
           filter: F153M
           grid_shape: [3, 3]
           grid_xypos: !core/ndarray-1.1.0
-            source: 3
+            source: 1
             datatype: int64
             byteorder: little
             shape: [9, 2]
           oversampling: 4
-        npsfs: 9
-        nx_psf: 101
-        ny_psf: 101
-        xgrid: !core/ndarray-1.1.0
-          source: 1
-          datatype: int64
-          byteorder: little
-          shape: [3]
-        ygrid: !core/ndarray-1.1.0
-          source: 2
-          datatype: int64
-          byteorder: little
-          shape: [3]
 
 
 type: object
@@ -51,28 +38,6 @@ properties:
     tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
     description: |
       A 3D array with PSFs.
-  npsfs:
-    type: integer
-    description: |
-      The number of PSFs in the array.
-  nx_psf:
-    type: integer
-    description: |
-      The size of each PSF image along the X axis.
-  ny_psf:
-    type: integer
-    description: |
-      The size of each PSF image along the Y axis.
-  xgrid:
-    tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
-    description: |
-      An array containing the X coordinate of the fiducial point of the
-      PSF in the coordinate frame of the detector.
-  ygrid:
-    tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
-    description: |
-      An array containing the Y coordinate of the fiducial point of the
-      PSF in the coordinate frame of the detector.
   meta:
     type: object
     properties:
@@ -95,8 +60,8 @@ properties:
       grid_xypos:
         tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
         description: |
-          A list of the fiducials of the PSFs in the detector frame.
+          A list of the fiducial positions of the PSFs in the detector frame.
     required: [oversampling, grid_shape, grid_xypos]
 
-required: [data, npsfs, nx_psf, ny_psf, xgrid, ygrid, meta]
+required: [data, meta]
 ...

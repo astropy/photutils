@@ -108,16 +108,10 @@ class STDPSFGridConverter(Converter):
     types = ('photutils.psf.STDPSFGrid',)
 
     def to_yaml_tree(self, model, tag, ctx):  # noqa: ARG002
-        shape = model.data.shape
-        xypos = np.array(model.grid_xypos)
-        xgrid = np.array(list(set(xypos[:, 0])))
-        ygrid = np.array(list(set(xypos[:, 1])))
-        xgrid.sort()
-        ygrid.sort()
         meta = {
             'oversampling': model.meta['oversampling'],
             'grid_shape': model.meta['grid_shape'],
-            'grid_xypos': xypos.copy(),
+            'grid_xypos': np.array(model.grid_xypos),
         }
         if 'filter' in model.meta:
             meta['filter'] = model.meta['filter']
@@ -127,11 +121,6 @@ class STDPSFGridConverter(Converter):
             meta['STDPSF'] = model.meta['STDPSF']
         return {
             'data': model.data,
-            'npsfs': shape[0],
-            'nx_psf': shape[2],
-            'ny_psf': shape[1],
-            'xgrid': xgrid,
-            'ygrid': ygrid,
             'meta': meta,
         }
 
