@@ -95,6 +95,32 @@ def _read_stdpsf(filename):
     data : dict
         A dictionary containing the ePSF data and metadata.
     """
+    extens = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts', '.fts.gz')
+    is_hdulist = isinstance(filename, fits.HDUList)
+    is_fileobj = (isinstance(filename, io.FileIO)
+                  and filename.name.lower().endswith(extens))
+    is_fits_ext = (isinstance(filename, str)
+                   and filename.lower().endswith(extens))
+    if is_hdulist or is_fileobj or is_fits_ext:
+        return _read_fits_stdpsf(filename)
+    msg = 'This interface supports only FITS files.'
+    raise TypeError(msg)
+
+
+def _read_fits_stdpsf(filename):
+    """
+    Read a STScI standard-format ePSF (STDPSF) FITS file.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the STDPDF FITS file.
+
+    Returns
+    -------
+    data : dict
+        A dictionary containing the ePSF data and metadata.
+    """
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', VerifyWarning)
         with fits.open(filename, ignore_missing_end=True) as hdulist:

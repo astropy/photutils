@@ -20,6 +20,8 @@ General
 
 - The ``asdf-astropy`` package is now an optional dependency. [#2211]
 
+- Added serialization to ASDF for all PSF models. [#2335]
+
 New Features
 ^^^^^^^^^^^^
 

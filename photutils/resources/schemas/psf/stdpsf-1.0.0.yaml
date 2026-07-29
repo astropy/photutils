@@ -1,0 +1,102 @@
+%YAML 1.1
+---
+$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
+id: "asdf://astropy.org/photutils/schemas/psf/stdpsf-1.0.0"
+title: STDPSF
+description: |
+  Schema for serializing "STDPSF" format ePSF grids to ASDF.
+
+  By convention the model is saved under a key "stdpsf".
+
+
+examples:
+  -
+    - An STDPSF ASDF file.
+    - |
+      !<tag:astropy.org:photutils/psf/stdpsf-1.0.0>
+        data: !core/ndarray-1.1.0
+          source: 0
+          datatype: float32
+          byteorder: big
+          shape: [9, 101, 101]
+        meta:
+          STDPSF: dev/photutils/STDPSF_WFC3IR_F153M.fits
+          detector: WFC3IR
+          filter: F153M
+          grid_shape: [3, 3]
+          grid_xypos: !core/ndarray-1.1.0
+            source: 3
+            datatype: int64
+            byteorder: little
+            shape: [9, 2]
+          oversampling: 4
+        npsfs: 9
+        nxpsfs: 101
+        nypsfs: 101
+        xgrid: !core/ndarray-1.1.0
+          source: 1
+          datatype: int64
+          byteorder: little
+          shape: [3]
+        ygrid: !core/ndarray-1.1.0
+          source: 2
+          datatype: int64
+          byteorder: little
+          shape: [3]
+
+
+type: object
+properties:
+  data:
+    tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+    description: |
+      A 3D array with PSFs.
+  npsfs:
+    type: integer
+    description: |
+      The number of PSFs in the array.
+  nxpsfs:
+    type: integer
+    description: |
+      The size of the PSF array in X.
+  nypsfs:
+    type: integer
+    description: |
+      The size of the PSF array in Y.
+  xgrid:
+    tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+    description: |
+      An array containing the X coordinate of the fiducial point of the
+      PSF in the coordinate frame of the detector.
+  ygrid:
+    tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+    description: |
+      An array containing the Y coordinate of the fiducial point of the
+      PSF in the coordinate frame of the detector.
+  meta:
+    type: object
+    properties:
+      STDPSF:
+        type: string
+        title: The name of the file containing the PSFs.
+      oversampling:
+        type: integer
+        description: |
+          Oversampling factor.
+      detector:
+        type: string
+        title: The name of the detector
+      filter:
+        type: string
+        title: The name of the filter.
+      grid_shape:
+        type: array
+        description: The shape of the array of PSFS in numpy order.
+      grid_xypos:
+        tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+        description: |
+          A list of the fiducials of the PSFs in the detector frame.
+    required: [oversampling, grid_shape, grid_xypos]
+
+required: [data, npsfs, nxpsfs, nypsfs, xgrid, ygrid, meta]
+...

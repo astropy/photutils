@@ -768,8 +768,13 @@ class STDPSFGrid:
 
     Parameters
     ----------
-    filename : str
+    filename : str or None
         The name of the STDPDF FITS file. A URL can also be used.
+        When `None`, ``kwargs`` are used to initialize the class.
+    **kwargs : dict
+        A dictionary containing the array with PSFs and the meta data.
+        Used when initializing from an ASDF file. In this case
+        ``filename`` is  `None`.
 
     Examples
     --------
@@ -778,8 +783,13 @@ class STDPSFGrid:
     >>> fig = psfgrid.plot_grid()
     """
 
-    def __init__(self, filename):
-        grid_data = _read_stdpsf(filename)
+    def __init__(self, filename=None, **kwargs):
+        meta = None
+        if filename is not None:
+            grid_data = _read_stdpsf(filename)
+        else:
+            grid_data = kwargs
+            meta = kwargs.pop('meta', None)
         self.data = grid_data['data']
         self._xgrid = grid_data['xgrid']
         self._ygrid = grid_data['ygrid']
@@ -789,15 +799,16 @@ class STDPSFGrid:
         self.grid_xypos = xy_grid
         self.oversampling = as_pair('oversampling', oversampling,
                                     lower_bound=(0, 0))
-        meta = {'grid_shape': (len(self._ygrid), len(self._xgrid)),
-                'grid_xypos': xy_grid,
-                'oversampling': oversampling}
+        if meta is None:
+            meta = {'grid_shape': (len(self._ygrid), len(self._xgrid)),
+                    'grid_xypos': xy_grid,
+                    'oversampling': oversampling}
 
-        # try to get additional metadata from the filename because this
-        # information is not currently available in the FITS headers
-        file_meta = _get_metadata(filename, None)
-        if file_meta is not None:
-            meta.update(file_meta)
+            # try to get additional metadata from the filename because this
+            # information is not currently available in the FITS headers
+            file_meta = _get_metadata(filename, None)
+            if file_meta is not None:
+                meta.update(file_meta)
 
         self.meta = meta
 

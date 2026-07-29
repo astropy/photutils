@@ -10,13 +10,44 @@ from numpy.testing import assert_array_equal
 from photutils.converters import _ASDF_ASTROPY_INSTALLED
 
 
+@pytest.fixture
+def psfobj(request):
+    """
+    A pytest fixture that returns a PSF model and the
+    list of parameters to test.
+    """
+    return request.getfixturevalue(request.param)
+
+
+psf_params = pytest.mark.parametrize('psfobj', [
+    'airy_disk_units',
+    'airy_disk',
+    'circular_gaussian_prf_units',
+    'circular_gaussian_prf',
+    'circular_gaussian_sigma_prf_units',
+    'circular_gaussian_sigma_prf',
+    'circular_gaussian_psf_units',
+    'circular_gaussian_psf',
+    'gaussian_prf_units',
+    'gaussian_prf',
+    'gaussian_psf_units',
+    'gaussian_psf',
+    'moffat_psf_units',
+    'moffat_psf',
+    'image_psf',
+    'gridded_psf',
+    'stdpsf_single_detector',
+], indirect=True)
+
+
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
-def test_psf_converters(tmp_path, airy_disk_psf):
+@psf_params
+def test_psf_converters(tmp_path, psfobj):
     """
     Test that the PSF converters can round-trip a PSF object.
     """
-    psf, pars = airy_disk_psf
+    psf, pars = psfobj
     with asdf.AsdfFile() as af:
         af['psf'] = psf
         af.write_to(tmp_path / 'psf.asdf')

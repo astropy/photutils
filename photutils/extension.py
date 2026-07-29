@@ -2,14 +2,12 @@
 """
 ASDF extension for photutils.
 """
-
 import importlib.resources as importlib_resources
 
 from asdf.extension import ManifestExtension
 from asdf.resource import DirectoryResourceMapping
 
-from .converters import apertures  # import CircularApertureConverter
-from .converters import functional_models  # import AiryDiskPSFConverter
+from .converters import apertures, functional_models, image_models
 
 __all__ = [
     'PHOTUTILS_APERTURE_CONVERTERS',
@@ -19,6 +17,15 @@ __all__ = [
 
 PHOTUTILS_PSF_CONVERTERS = [
     functional_models.AiryDiskPSFConverter(),
+    functional_models.CircularGaussianPRFConverter(),
+    functional_models.CircularGaussianPSFConverter(),
+    functional_models.CircularGaussianSigmaPRFConverter(),
+    functional_models.GaussianPRFConverter(),
+    functional_models.GaussianPSFConverter(),
+    functional_models.MoffatPSFConverter(),
+    image_models.ImagePSFConverter(),
+    image_models.GriddedPSFConverter(),
+    image_models.STDPSFGridConverter(),
 ]
 
 PHOTUTILS_APERTURE_CONVERTERS = [
@@ -26,6 +33,7 @@ PHOTUTILS_APERTURE_CONVERTERS = [
 ]
 
 PHOTUTILS_CONVERTERS = PHOTUTILS_PSF_CONVERTERS + PHOTUTILS_APERTURE_CONVERTERS
+
 
 # The order here is important; asdf will prefer to use extensions
 # that occur earlier in the list.
@@ -37,7 +45,6 @@ PHOTUTILS_MANIFEST_URIS = [
 def get_extensions():
     """
     Get the photutils extension.
-
     This method is registered with the asdf.extensions entry point.
 
     Returns
