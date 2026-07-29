@@ -216,28 +216,29 @@ def _split_detectors(grid_data, detector_data, detector_id):
     ny_grid = grid_data['ny_grid']
     xgrid = grid_data['xgrid']
     ygrid = grid_data['ygrid']
-    nxdet = detector_data['nxdet']
-    nydet = detector_data['nydet']
+    nx_det = detector_data['nx_det']
+    ny_det = detector_data['ny_det']
     det_map = detector_data['det_map']
     det_size = detector_data['det_size']
 
     ii = np.arange(n_psfs).reshape((ny_grid, nx_grid))
-    nx_grid //= nxdet
-    ny_grid //= nydet
-    ndet = nxdet * nydet
+    nx_grid //= nx_det
+    ny_grid //= ny_det
+    n_detectors = nx_det * ny_det
+
     ii = reshape_as_blocks(ii, (ny_grid, nx_grid))
-    ii = ii.reshape(ndet, n_psfs // ndet)
+    ii = ii.reshape(n_detectors, n_psfs // n_detectors)
 
     # detector_id -> index
     det_idx = det_map[detector_id]
     idx = ii[det_idx]
     data = data[idx]
 
-    xp = det_idx % nxdet
+    xp = det_idx % nx_det
     i0 = xp * nx_grid
     i1 = i0 + nx_grid
     xgrid = xgrid[i0:i1] - xp * det_size
-    ygrid = (ygrid[:ny_grid] if det_idx < nxdet
+    ygrid = (ygrid[:ny_grid] if det_idx < nx_det
              else ygrid[ny_grid:] - det_size)
 
     return data, xgrid, ygrid
@@ -319,8 +320,8 @@ def _split_wfpc2(grid_data, detector_id):
         msg = 'detector_id must be between 1 and 4, inclusive'
         raise ValueError(msg)
 
-    nxdet = 2
-    nydet = 2
+    nx_det = 2
+    ny_det = 2
     det_size = 800
 
     # det (exten:idx)
@@ -328,8 +329,8 @@ def _split_wfpc2(grid_data, detector_id):
     # WF3 (3:0)  WF4 (4:1)
     det_map = {1: 3, 2: 2, 3: 0, 4: 1}
 
-    detector_data = {'nxdet': nxdet,
-                     'nydet': nydet,
+    detector_data = {'nx_det': nx_det,
+                     'ny_det': ny_det,
                      'det_size': det_size,
                      'det_map': det_map}
 
@@ -366,8 +367,8 @@ def _split_nrcsw(grid_data, detector_id):
         msg = 'detector_id must be between 1 and 8, inclusive'
         raise ValueError(msg)
 
-    nxdet = 4
-    nydet = 2
+    nx_det = 4
+    ny_det = 2
     det_size = 2048
 
     # det (ext:idx)
@@ -375,8 +376,8 @@ def _split_nrcsw(grid_data, detector_id):
     # A1 (1:0)  A3 (3:1)  B4 (8:2)  B2 (6:3)
     det_map = {1: 0, 3: 1, 8: 2, 6: 3, 2: 4, 4: 5, 7: 6, 5: 7}
 
-    detector_data = {'nxdet': nxdet,
-                     'nydet': nydet,
+    detector_data = {'nx_det': nx_det,
+                     'ny_det': ny_det,
                      'det_size': det_size,
                      'det_map': det_map}
 

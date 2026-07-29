@@ -297,10 +297,10 @@ def _integrate_model(model, *, x_name=None, y_name=None, dx=50, dy=50,
 
     hx = (dx - 1) / 2
     hy = (dy - 1) / 2
-    nxpts = int(dx * subsample)
-    nypts = int(dy * subsample)
-    xvals = np.linspace(xc - hx, xc + hx, nxpts)
-    yvals = np.linspace(yc - hy, yc + hy, nypts)
+    nx_pts = int(dx * subsample)
+    ny_pts = int(dy * subsample)
+    xvals = np.linspace(xc - hx, xc + hx, nx_pts)
+    yvals = np.linspace(yc - hy, yc + hy, ny_pts)
 
     # evaluate the model on the subsampled grid
     data = model(xvals.reshape(-1, 1), yvals.reshape(1, -1))

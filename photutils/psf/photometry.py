@@ -466,9 +466,9 @@ class PSFPhotometry:
         n_sources : int
             The number of sources to initialize the arrays for.
         """
-        nfitparam = len(self._param_mapper.fitted_param_names)
+        n_fit_params = len(self._param_mapper.fitted_param_names)
         self._state.update({
-            'fit_param_errs': np.full((n_sources, nfitparam), np.nan),
+            'fit_param_errs': np.full((n_sources, n_fit_params), np.nan),
             'n_pixels_fit': np.zeros(n_sources, dtype=int),
             'invalid_reasons': [''] * n_sources,
             'sum_abs_residuals': np.full(n_sources, np.nan, dtype=float),
@@ -997,24 +997,24 @@ class PSFPhotometry:
         group_fit_info : dict
             The fit_info dictionary corresponding to the group fit.
         """
-        nfitparam = len(self._param_mapper.fitted_param_names)
+        n_fit_params = len(self._param_mapper.fitted_param_names)
         num_valid = int(np.count_nonzero(valid_mask))
 
         # Extract parameter errors from the group covariance matrix
         param_cov = group_fit_info.get('param_cov')
         if param_cov is None:
-            source_param_errs = np.full((num_valid, nfitparam), np.nan)
+            source_param_errs = np.full((num_valid, n_fit_params), np.nan)
             source_covs = [None] * num_valid
         else:
             param_err_1d = np.sqrt(np.diag(param_cov))
 
             # For grouped (flat) models, parameters are arranged as,
             # e.g., [flux_0, x_0_0, y_0_0, fwhm_0, flux_1, x_0_1, ...]
-            source_param_errs = param_err_1d.reshape(num_valid, nfitparam)
+            source_param_errs = param_err_1d.reshape(num_valid, n_fit_params)
 
             # Extract individual covariance matrices for each source
             source_covs = self._psf_fitter.extract_source_covariances(
-                param_cov, num_valid, nfitparam)
+                param_cov, num_valid, n_fit_params)
 
         # Split models and extract parameters
         if num_valid == 1:
@@ -1050,7 +1050,7 @@ class PSFPhotometry:
             valid_idx += 1
 
     def _calculate_residual_metrics(self, row_indices, valid_mask,
-                                    npixfit_full, cen_index_full, *,
+                                    n_pixels_fit_full, cen_index_full, *,
                                     error=None, xi_all=None, yi_all=None):
         """
         Calculate residual-based fit metrics for valid sources.
@@ -1063,7 +1063,7 @@ class PSFPhotometry:
         valid_mask : array-like
             Boolean mask for valid sources.
 
-        npixfit_full : array-like
+        n_pixels_fit_full : array-like
             Number of pixels used in fit for each source.
 
         cen_index_full : array-like
@@ -1116,24 +1116,25 @@ class PSFPhotometry:
         if residuals is not None:
             # convert to numpy arrays for vectorized operations
             valid_mask_arr = np.array(valid_mask, dtype=bool)
-            npixfit_arr = np.array(npixfit_full)
+            n_pixels_fit_arr = np.array(n_pixels_fit_full)
             cen_index_arr = np.array(cen_index_full)
 
             # get valid source indices
             valid_indices = np.where(valid_mask_arr)[0]
             if len(valid_indices) > 0:
-                npix_valid = npixfit_arr[valid_indices]
+                n_pixels_valid = n_pixels_fit_arr[valid_indices]
 
                 # calculate cumulative pixel positions
-                cumsum_npix = np.concatenate(([0], np.cumsum(npix_valid)))
+                cumsum_n_pixels = np.concatenate(
+                    ([0], np.cumsum(n_pixels_valid)))
 
                 # get the number of fitted parameters
-                nfitparam = len(self._param_mapper.fitted_param_names)
+                n_fit_params = len(self._param_mapper.fitted_param_names)
 
                 # process all valid sources
                 for idx, valid_idx in enumerate(valid_indices):
-                    start_pos = cumsum_npix[idx]
-                    end_pos = cumsum_npix[idx + 1]
+                    start_pos = cumsum_n_pixels[idx]
+                    end_pos = cumsum_n_pixels[idx + 1]
                     source_residuals = residuals[start_pos:end_pos]
 
                     # For qfit and cfit calculations, we need raw residuals
@@ -1169,7 +1170,7 @@ class PSFPhotometry:
                     # Calculate chi-squared. The residuals have already
                     # been weighted by (1 / error). If errors are not
                     # input, then reduced_chi2 will be NaN.
-                    dof = float(npix_valid[idx] - nfitparam)
+                    dof = float(n_pixels_valid[idx] - n_fit_params)
                     if (error is not None and xi_all is not None
                             and yi_all is not None):
                         # Extract error values for this source's pixels
@@ -1217,7 +1218,7 @@ class PSFPhotometry:
                                              desc='Fit source/group')
 
         y_offsets, x_offsets = self._data_processor.get_fit_offsets()
-        nfitparam_per_source = len(self._param_mapper.fitted_param_names)
+        n_fit_params_per_source = len(self._param_mapper.fitted_param_names)
 
         # sources are fit by groups in group ID order
         for source_group in source_groups:
@@ -1225,7 +1226,7 @@ class PSFPhotometry:
             xi_all = []
             yi_all = []
             cutout_all = []
-            npixfit_full = []
+            n_pixels_fit_full = []
             cen_index_full = []
             valid_mask_list = []
             invalid_reasons = []
@@ -1243,7 +1244,7 @@ class PSFPhotometry:
                         'xx': None,
                         'yy': None,
                         'cutout': None,
-                        'npix': 0,
+                        'n_pixels': 0,
                         'cen_index': np.nan,
                     }
                 else:
@@ -1251,18 +1252,20 @@ class PSFPhotometry:
                         row, data, mask, y_offsets, x_offsets)
 
                 # Common processing for all sources
-                npixfit_full.append(res['npix'])
+                n_pixels_fit_full.append(res['n_pixels'])
                 cen_index_full.append(res['cen_index'])
                 invalid_reasons.append(res['reason'])
                 row_indices.append(row['_row_index'])
 
-                if res['valid'] and res['npix'] >= nfitparam_per_source:
+                if (res['valid']
+                        and res['n_pixels'] >= n_fit_params_per_source):
                     valid_mask_list.append(True)
                     xi_all.append(res['xx'])
                     yi_all.append(res['yy'])
                     cutout_all.append(res['cutout'])
                 else:
-                    if res['valid'] and res['npix'] < nfitparam_per_source:
+                    if (res['valid']
+                            and res['n_pixels'] < n_fit_params_per_source):
                         invalid_reasons[-1] = 'too_few_pixels'
                     valid_mask_list.append(False)
 
@@ -1275,7 +1278,7 @@ class PSFPhotometry:
             row_indices_arr = np.array(row_indices)
             self._state['group_size'][row_indices_arr] = group_size
             self._state['n_pixels_fit'][row_indices_arr] = np.array(
-                npixfit_full, dtype=int)
+                n_pixels_fit_full, dtype=int)
 
             for i, row_index in enumerate(row_indices):
                 reason = invalid_reasons[i]
@@ -1307,7 +1310,7 @@ class PSFPhotometry:
 
             # Calculate residual metrics for valid sources
             self._calculate_residual_metrics(
-                row_indices, valid_mask, npixfit_full, cen_index_full,
+                row_indices, valid_mask, n_pixels_fit_full, cen_index_full,
                 error=error, xi_all=xi_all, yi_all=yi_all)
 
     def _get_fit_error_indices(self):

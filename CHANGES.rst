@@ -252,6 +252,19 @@ API Changes
     ``STDPSFGrid`` output now labels the grid shape as ``Grid shape``
     instead of ``Grid_shape``. [#2344]
 
+- ``photutils.segmentation``
+
+  - The ``deblend_sources`` "too many markers" warning key stored in
+    the returned ``SegmentationImage.info['warnings']`` dictionary has
+    been renamed from ``'nmarkers'`` to ``'n_markers'``, consistent
+    with the ``n_*`` naming used elsewhere in photutils. [#2335]
+
+- ``photutils.utils``
+
+  - The ``ShepardIDWInterpolator`` ``ncoords`` attribute has been
+    renamed to ``n_coords``, consistent with the ``n_*`` naming used
+    elsewhere in photutils. [#2335]
+
 
 3.0.0 (2026-04-17)
 ------------------

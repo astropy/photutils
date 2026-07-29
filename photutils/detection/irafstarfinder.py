@@ -466,12 +466,12 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         within the kernel footprint.
         """
         skymask = ~self.kernel.mask.astype(bool)  # True=sky, False=obj
-        # nsky is always > 0 because the kernel mask never covers the
+        # n_sky is always > 0 because the kernel mask never covers the
         # entire footprint (the Gaussian kernel is always truncated
         # within the array, leaving unmasked border pixels).
-        nsky = np.count_nonzero(skymask)
+        n_sky = np.count_nonzero(skymask)
         axis = (1, 2)
-        sky = np.sum(self.cutout_data_nosub * skymask, axis=axis) / nsky
+        sky = np.sum(self.cutout_data_nosub * skymask, axis=axis) / n_sky
 
         if self.unit is not None:
             sky <<= self.unit

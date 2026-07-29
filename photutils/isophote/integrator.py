@@ -248,7 +248,7 @@ class _AreaIntegrator(_Integrator):
         if ((i1 in self._i_range) and (j1 in self._j_range)
                 and (i2 in self._i_range) and (j2 in self._j_range)):
             # Scan rectangular image area, compute sample value.
-            npix = 0
+            n_pixels = 0
             accumulator = self.initialize_accumulator()
             for j in range(j1, j2):
                 for i in range(i1, i2):
@@ -273,12 +273,12 @@ class _AreaIntegrator(_Integrator):
                             # update accumulator with pixel value
                             pix_value = self._image[j][i]
                             if pix_value is not np.ma.masked:
-                                accumulator, npix = self.accumulate(
+                                accumulator, n_pixels = self.accumulate(
                                     pix_value, accumulator)
 
             # If 6 or less pixels were sampled, get the bilinear
             # interpolated value instead.
-            if npix in range(7):
+            if n_pixels in range(7):
                 # must reset integrator to remove older samples.
                 self._bilinear_integrator._reset()
                 self._bilinear_integrator.integrate(radius, phi)
@@ -289,7 +289,7 @@ class _AreaIntegrator(_Integrator):
                     sample_value = self._bilinear_integrator._intensities[0]
                     self._store_results(phi, radius, sample_value)
 
-            elif npix > 6:
+            elif n_pixels > 6:
                 sample_value = self.compute_sample_value(accumulator)
                 self._store_results(phi, radius, sample_value)
 

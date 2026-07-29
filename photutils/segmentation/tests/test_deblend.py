@@ -440,7 +440,7 @@ class TestDeblendSources:
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
-def test_nmarkers_fallback():
+def test_n_markers_fallback():
     """
     Test that if there are too many markers, a warning is raised.
     """
@@ -461,16 +461,17 @@ def test_nmarkers_fallback():
     match = 'The deblending mode of one or more source labels from the'
     with pytest.warns(AstropyUserWarning, match=match):
         segm2 = deblend_sources(data, segm, 1, mode='exponential')
-    assert segm2.info['warnings']['nmarkers']['input_labels'][0] == 1
-    mesg = segm2.info['warnings']['nmarkers']['message']
+    assert segm2.info['warnings']['n_markers']['input_labels'][0] == 1
+    mesg = segm2.info['warnings']['n_markers']['message']
     assert mesg.startswith('Deblending mode changed')
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
-def test_nmarkers_fallback_multiproc():
+def test_n_markers_fallback_multiproc():
     """
-    Test the nmarkers fallback warning via multiprocessing (n_processes=2).
-    This covers the multiprocessing result-processing block for nmarkers.
+    Test the n_markers fallback warning via multiprocessing
+    (n_processes=2). This covers the multiprocessing result-processing
+    block for n_markers.
     """
     size = 51
     data1 = np.resize([0, 0, 1, 1], size)
@@ -490,7 +491,7 @@ def test_nmarkers_fallback_multiproc():
     with pytest.warns(AstropyUserWarning, match=match):
         segm2 = deblend_sources(data, segm, 1, mode='exponential',
                                 n_processes=2)
-    assert segm2.info['warnings']['nmarkers']['input_labels'][0] == 1
+    assert segm2.info['warnings']['n_markers']['input_labels'][0] == 1
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
@@ -514,7 +515,7 @@ def test_nonposmin_multiproc():
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
-def test_nmarkers_fallback_returns_none():
+def test_n_markers_fallback_returns_none():
     """
     Test that deblend_source returns None when make_markers returns
     None on the linear-mode fallback (second attempt after >200

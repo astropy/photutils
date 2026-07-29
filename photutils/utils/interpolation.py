@@ -133,18 +133,18 @@ class ShepardIDWInterpolator:
 
         values = np.asanyarray(values).ravel()
 
-        ncoords = coordinates.shape[0]
-        if ncoords < 1:
+        n_coords = coordinates.shape[0]
+        if n_coords < 1:
             msg = 'coordinates must have at least one data point'
             raise ValueError(msg)
 
-        if values.shape[0] != ncoords:
+        if values.shape[0] != n_coords:
             msg = 'The number of values must match the number of coordinates.'
             raise ValueError(msg)
 
         if weights is not None:
             weights = np.asanyarray(weights).ravel()
-            if weights.shape[0] != ncoords:
+            if weights.shape[0] != n_coords:
                 msg = ('The number of weights must match the number of '
                        'coordinates.')
                 raise ValueError(msg)
@@ -153,7 +153,7 @@ class ShepardIDWInterpolator:
                 raise ValueError(msg)
 
         self.coordinates = coordinates
-        self.ncoords = ncoords
+        self.n_coords = n_coords
         self.coords_ndim = coordinates.shape[1]
         self.values = values
         self.weights = weights

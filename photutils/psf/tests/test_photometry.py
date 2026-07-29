@@ -1869,7 +1869,7 @@ def test_get_source_cutout_data_no_overlap():
     assert result['xx'] is None
     assert result['yy'] is None
     assert result['cutout'] is None
-    assert result['npix'] == 0
+    assert result['n_pixels'] == 0
     assert np.isnan(result['cen_index'])
 
 
