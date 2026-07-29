@@ -536,12 +536,8 @@ def stdpsf_reader(filename, detector_id=None):
     xy_grid = [yx[::-1] for yx in itertools.product(ygrid, xgrid)]
 
     oversampling = 4  # assumption for STDPSF files
-    nx_grid = xgrid.shape[0]
-    ny_grid = ygrid.shape[0]
     meta = {'grid_xypos': xy_grid,
-            'oversampling': oversampling,
-            'nx_grid': nx_grid,
-            'ny_grid': ny_grid}
+            'oversampling': oversampling}
 
     # try to get additional metadata from the filename because this
     # information is not currently available in the FITS headers

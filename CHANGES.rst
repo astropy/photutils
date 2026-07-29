@@ -224,9 +224,9 @@ API Changes
 
   - The ``nxpsfs`` and ``nypsfs`` metadata keys of the
     ``GriddedPSFModel`` returned when reading a STDPSF file have been
-    renamed to ``nx_grid`` and ``ny_grid``, respectively, to clarify
-    that they describe the shape of the ePSF grid and not the shape of
-    the ePSF images. [#2335]
+    removed. They were redundant with the ``grid_shape`` metadata key,
+    which is always set and contains the same information as
+    ``(nypsfs, nxpsfs)``. [#2335]
 
 
 3.0.0 (2026-04-17)
