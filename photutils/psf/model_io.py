@@ -128,16 +128,16 @@ def _read_fits_stdpsf(filename):
             data = hdulist[0].data
 
     try:
-        npsfs = header['NAXIS3']
-        nxpsfs = header['NXPSFS']
-        nypsfs = header['NYPSFS']
+        n_psfs = header['NAXIS3']
+        nx_grid = header['NXPSFS']
+        ny_grid = header['NYPSFS']
     except KeyError as exc:
         msg = 'Invalid STDPDF FITS file'
         raise ValueError(msg) from exc
 
     if 'IPSFX01' in header:
-        xgrid = [header[f'IPSFX{i:02d}'] for i in range(1, nxpsfs + 1)]
-        ygrid = [header[f'JPSFY{i:02d}'] for i in range(1, nypsfs + 1)]
+        xgrid = [header[f'IPSFX{i:02d}'] for i in range(1, nx_grid + 1)]
+        ygrid = [header[f'JPSFY{i:02d}'] for i in range(1, ny_grid + 1)]
     elif 'IPSFXA5' in header:
         xgrid = []
         ygrid = []
@@ -155,7 +155,7 @@ def _read_fits_stdpsf(filename):
     xgrid = np.array(xgrid) - 1
     ygrid = np.array(ygrid) - 1
 
-    # nypsfs, nxpsfs, detector
+    # ny_grid, nx_grid, detector
     # 6, 6     WFPC2, 4 det
     # 1, 1     ACS/HRC
     # 10, 9    ACS/WFC, 2 det
@@ -168,9 +168,9 @@ def _read_fits_stdpsf(filename):
     # 3, 3     MIRI
 
     return {'data': data,
-            'npsfs': npsfs,
-            'nxpsfs': nxpsfs,
-            'nypsfs': nypsfs,
+            'n_psfs': n_psfs,
+            'nx_grid': nx_grid,
+            'ny_grid': ny_grid,
             'xgrid': xgrid,
             'ygrid': ygrid}
 
@@ -211,9 +211,9 @@ def _split_detectors(grid_data, detector_data, detector_id):
     * JWST NIRCam "NRCSW" STDPSF file contains 8 detectors
     """
     data = grid_data['data']
-    npsfs = grid_data['npsfs']
-    nxpsfs = grid_data['nxpsfs']
-    nypsfs = grid_data['nypsfs']
+    n_psfs = grid_data['n_psfs']
+    nx_grid = grid_data['nx_grid']
+    ny_grid = grid_data['ny_grid']
     xgrid = grid_data['xgrid']
     ygrid = grid_data['ygrid']
     nxdet = detector_data['nxdet']
@@ -221,12 +221,12 @@ def _split_detectors(grid_data, detector_data, detector_id):
     det_map = detector_data['det_map']
     det_size = detector_data['det_size']
 
-    ii = np.arange(npsfs).reshape((nypsfs, nxpsfs))
-    nxpsfs //= nxdet
-    nypsfs //= nydet
+    ii = np.arange(n_psfs).reshape((ny_grid, nx_grid))
+    nx_grid //= nxdet
+    ny_grid //= nydet
     ndet = nxdet * nydet
-    ii = reshape_as_blocks(ii, (nypsfs, nxpsfs))
-    ii = ii.reshape(ndet, npsfs // ndet)
+    ii = reshape_as_blocks(ii, (ny_grid, nx_grid))
+    ii = ii.reshape(ndet, n_psfs // ndet)
 
     # detector_id -> index
     det_idx = det_map[detector_id]
@@ -234,11 +234,11 @@ def _split_detectors(grid_data, detector_data, detector_id):
     data = data[idx]
 
     xp = det_idx % nxdet
-    i0 = xp * nxpsfs
-    i1 = i0 + nxpsfs
+    i0 = xp * nx_grid
+    i1 = i0 + nx_grid
     xgrid = xgrid[i0:i1] - xp * det_size
-
-    ygrid = ygrid[:nypsfs] if det_idx < nxdet else ygrid[nypsfs:] - det_size
+    ygrid = (ygrid[:ny_grid] if det_idx < nxdet
+             else ygrid[ny_grid:] - det_size)
 
     return data, xgrid, ygrid
 
@@ -281,10 +281,10 @@ def _split_wfc_uvis(grid_data, detector_id):
     if detector_id == 2:
         ygrid -= 2048
 
-    npsfs = grid_data['npsfs']
+    n_psfs = grid_data['n_psfs']
     data = grid_data['data']
     data_ny, data_nx = data.shape[1:]
-    data = data.reshape((2, npsfs // 2, data_ny, data_nx))[detector_id - 1]
+    data = data.reshape((2, n_psfs // 2, data_ny, data_nx))[detector_id - 1]
 
     return data, xgrid, ygrid
 
@@ -516,13 +516,13 @@ def stdpsf_reader(filename, detector_id=None):
 
     grid_data = _read_stdpsf(filename)
 
-    npsfs = grid_data['npsfs']
-    if npsfs in (90, 56, 36, 200):
-        if npsfs in (90, 56):  # ACS/WFC or WFC3/UVIS data (2 chips)
+    n_psfs = grid_data['n_psfs']
+    if n_psfs in (90, 56, 36, 200):
+        if n_psfs in (90, 56):  # ACS/WFC or WFC3/UVIS data (2 chips)
             data, xgrid, ygrid = _split_wfc_uvis(grid_data, detector_id)
-        elif npsfs == 36:  # WFPC2 data (4 chips)
+        elif n_psfs == 36:  # WFPC2 data (4 chips)
             data, xgrid, ygrid = _split_wfpc2(grid_data, detector_id)
-        elif npsfs == 200:  # NIRCam SW data (8 chips)
+        elif n_psfs == 200:  # NIRCam SW data (8 chips)
             data, xgrid, ygrid = _split_nrcsw(grid_data, detector_id)
         else:
             msg = 'Unknown detector or STDPSF format'
@@ -536,12 +536,12 @@ def stdpsf_reader(filename, detector_id=None):
     xy_grid = [yx[::-1] for yx in itertools.product(ygrid, xgrid)]
 
     oversampling = 4  # assumption for STDPSF files
-    nxpsfs = xgrid.shape[0]
-    nypsfs = ygrid.shape[0]
+    nx_grid = xgrid.shape[0]
+    ny_grid = ygrid.shape[0]
     meta = {'grid_xypos': xy_grid,
             'oversampling': oversampling,
-            'nxpsfs': nxpsfs,
-            'nypsfs': nypsfs}
+            'nx_grid': nx_grid,
+            'ny_grid': ny_grid}
 
     # try to get additional metadata from the filename because this
     # information is not currently available in the FITS headers

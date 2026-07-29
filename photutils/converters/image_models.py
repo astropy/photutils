@@ -128,8 +128,8 @@ class STDPSFGridConverter(Converter):
         return {
             'data': model.data,
             'npsfs': shape[0],
-            'nxpsfs': shape[-2],
-            'nypsfs': shape[-1],
+            'nx_psf': shape[2],
+            'ny_psf': shape[1],
             'xgrid': xgrid,
             'ygrid': ygrid,
             'meta': meta,

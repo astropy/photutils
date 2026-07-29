@@ -222,6 +222,12 @@ API Changes
   - The default ``ApertureStats.to_table()`` columns now include a
     ``'flags'`` column. [#2327]
 
+  - The ``nxpsfs`` and ``nypsfs`` metadata keys of the
+    ``GriddedPSFModel`` returned when reading a STDPSF file have been
+    renamed to ``nx_grid`` and ``ny_grid``, respectively, to clarify
+    that they describe the shape of the ePSF grid and not the shape of
+    the ePSF images. [#2335]
+
 
 3.0.0 (2026-04-17)
 ------------------

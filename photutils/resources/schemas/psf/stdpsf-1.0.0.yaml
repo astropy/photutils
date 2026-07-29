@@ -31,8 +31,8 @@ examples:
             shape: [9, 2]
           oversampling: 4
         npsfs: 9
-        nxpsfs: 101
-        nypsfs: 101
+        nx_psf: 101
+        ny_psf: 101
         xgrid: !core/ndarray-1.1.0
           source: 1
           datatype: int64
@@ -55,14 +55,14 @@ properties:
     type: integer
     description: |
       The number of PSFs in the array.
-  nxpsfs:
+  nx_psf:
     type: integer
     description: |
-      The size of the PSF array in X.
-  nypsfs:
+      The size of each PSF image along the X axis.
+  ny_psf:
     type: integer
     description: |
-      The size of the PSF array in Y.
+      The size of each PSF image along the Y axis.
   xgrid:
     tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
     description: |
@@ -98,5 +98,5 @@ properties:
           A list of the fiducials of the PSFs in the detector frame.
     required: [oversampling, grid_shape, grid_xypos]
 
-required: [data, npsfs, nxpsfs, nypsfs, xgrid, ygrid, meta]
+required: [data, npsfs, nx_psf, ny_psf, xgrid, ygrid, meta]
 ...
