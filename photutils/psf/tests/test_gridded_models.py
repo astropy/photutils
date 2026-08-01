@@ -456,6 +456,7 @@ class TestGriddedPSFModel:
         filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
         psfmodel = GriddedPSFModel.read(filename)
         assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
+        assert isinstance(psfmodel.meta['grid_xypos'], np.ndarray)
         assert_equal(psfmodel.oversampling, [4, 4])
         assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
 
@@ -522,6 +523,8 @@ def test_stdpsfgrid(filename):
     assert 'oversampling' in psfgrid.meta
     assert_equal(psfgrid.oversampling, [4, 4])
     assert psfgrid.data.shape[0] == len(psfgrid.meta['grid_xypos'])
+    assert isinstance(psfgrid.grid_xypos, np.ndarray)
+    assert isinstance(psfgrid.meta['grid_xypos'], np.ndarray)
 
     psfgrid.plot_grid()
 

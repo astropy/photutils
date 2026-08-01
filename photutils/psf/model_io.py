@@ -533,7 +533,7 @@ def stdpsf_reader(filename, detector_id=None):
         ygrid = grid_data['ygrid']
 
     # itertools.product iterates over the last input first
-    xy_grid = [yx[::-1] for yx in itertools.product(ygrid, xgrid)]
+    xy_grid = np.array([yx[::-1] for yx in itertools.product(ygrid, xgrid)])
 
     oversampling = 4  # assumption for STDPSF files
     meta = {'grid_xypos': xy_grid,

@@ -239,7 +239,7 @@ class GriddedPSFModel(Fittable2DModel):
             If the input grid_xypos does not form a rectangular grid.
         """
         try:
-            grid_xypos = np.array(data.meta['grid_xypos'])
+            grid_xypos = np.asarray(data.meta['grid_xypos'])
         except KeyError as exc:
             msg = "'grid_xypos' must be in the nddata meta dictionary"
             raise ValueError(msg) from exc
@@ -274,7 +274,7 @@ class GriddedPSFModel(Fittable2DModel):
         self._validate_data(nddata)
         self._validate_grid(nddata)
 
-        grid_xypos = np.array(nddata.meta['grid_xypos'])
+        grid_xypos = np.asarray(nddata.meta['grid_xypos'])
         # sort by y and then by x (last key is primary)
         idx = np.lexsort((grid_xypos[:, 0], grid_xypos[:, 1]))
         return nddata.data[idx], grid_xypos[idx]
@@ -791,15 +791,15 @@ class STDPSFGrid:
             self._xgrid = grid_data['xgrid']
             self._ygrid = grid_data['ygrid']
             # itertools.product iterates over the last input first
-            xy_grid = [yx[::-1] for yx in itertools.product(self._ygrid,
-                                                            self._xgrid)]
+            xy_grid = np.array([yx[::-1] for yx in itertools.product(
+                self._ygrid, self._xgrid)])
+
         else:
             meta = kwargs['meta']
             self.data = kwargs['data']
-            xy_grid = meta['grid_xypos']
-            xypos = np.asarray(xy_grid)
-            self._xgrid = np.unique(xypos[:, 0])  # sorted
-            self._ygrid = np.unique(xypos[:, 1])  # sorted
+            xy_grid = np.asarray(meta['grid_xypos'])
+            self._xgrid = np.unique(xy_grid[:, 0])  # sorted
+            self._ygrid = np.unique(xy_grid[:, 1])  # sorted
 
         oversampling = 4  # assumption for STDPSF files
         self.grid_xypos = xy_grid
