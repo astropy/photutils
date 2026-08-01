@@ -17,7 +17,7 @@ else:
     Converter = object
 
 
-__all__ = ['GriddedPSFConverter',
+__all__ = ['GriddedPSFModelConverter',
            'ImagePSFConverter',
            'STDPSFGridConverter',
            ]
@@ -59,7 +59,7 @@ class ImagePSFConverter(TransformConverterBase):
         )
 
 
-class GriddedPSFConverter(TransformConverterBase):
+class GriddedPSFModelConverter(TransformConverterBase):
     """
     ASDF converter for GriddedPSFModel.
     """

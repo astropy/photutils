@@ -24,7 +24,7 @@ PHOTUTILS_PSF_CONVERTERS = [
     functional_models.GaussianPSFConverter(),
     functional_models.MoffatPSFConverter(),
     image_models.ImagePSFConverter(),
-    image_models.GriddedPSFConverter(),
+    image_models.GriddedPSFModelConverter(),
     image_models.STDPSFGridConverter(),
 ]
 

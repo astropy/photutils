@@ -22,7 +22,7 @@ if _ASDF_ASTROPY_INSTALLED:
         MoffatPSFConverter,
     )
     from .image_models import (
-        GriddedPSFConverter,
+        GriddedPSFModelConverter,
         ImagePSFConverter,
         STDPSFGridConverter,
     )
@@ -36,7 +36,7 @@ __all__ = [
     'CircularGaussianSigmaPRFConverter',
     'GaussianPRFConverter',
     'GaussianPSFConverter',
-    'GriddedPSFConverter',
+    'GriddedPSFModelConverter',
     'ImagePSFConverter',
     'MoffatPSFConverter',
     'STDPSFGridConverter',
