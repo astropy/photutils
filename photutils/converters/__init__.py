@@ -11,7 +11,15 @@ except ImportError:
     _ASDF_ASTROPY_INSTALLED = False
 
 if _ASDF_ASTROPY_INSTALLED:
-    from .apertures import CircularApertureConverter
+    from .apertures import (
+        CircularApertureConverter,
+        CircularAnnulusConverter,
+        EllipticalApertureConverter,
+        EllipticalAnnulusConverter,
+        PolygonApertureConverter,
+        RectangularApertureConverter,
+        RectangularAnnulusConverter,
+    )
     from .functional_models import (
         AiryDiskPSFConverter,
         CircularGaussianPRFConverter,
@@ -30,14 +38,20 @@ if _ASDF_ASTROPY_INSTALLED:
 
 __all__ = [
     'AiryDiskPSFConverter',
+    'CircularAnnulusConverter',
     'CircularApertureConverter',
     'CircularGaussianPRFConverter',
     'CircularGaussianPSFConverter',
     'CircularGaussianSigmaPRFConverter',
+    'EllipticalAnnulusConverter',
+    'EllipticalApertureConverter',
     'GaussianPRFConverter',
     'GaussianPSFConverter',
     'GriddedPSFConverter',
     'ImagePSFConverter',
     'MoffatPSFConverter',
+    'PolygonApertureConverter',
+    'RectangularAnnulusConverter',
+    'RectangularApertureConverter',
     'STDPSFGridConverter',
 ]

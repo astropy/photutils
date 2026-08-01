@@ -1,0 +1,96 @@
+%YAML 1.1
+---
+$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
+id: "asdf://astropy.org/photutils/schemas/aperture/rectangular_annulus-1.0.0"
+title: Rectangular annulus apertures
+description: |
+  ASDF schema for serializing a rectangular annulus aperture in pixel
+  or sky coordinates.
+examples:
+  -
+    - |
+      A RectangularAnnulus aperture with a single position,
+
+type: object
+properties:
+  positions:
+    title: Aperture position(s).
+    description: |
+      The coordinates of the aperture center(s) in one of the following formats.
+      If a CircularAnnulus in pixel coordinates:
+
+        * single ``(x, y)`` pair as an array
+        * `numpy.ndarray` of ``(x, y)`` pairs
+
+      If a SkyCircularAnnulus
+
+        * `astropy.coordinates.SkyCoord` object
+    anyOf:
+      - type: array
+        items:
+          type: number
+        maxItems: 2
+        minItems: 2
+      - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+      - tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+  w_in:
+    title: Inner radius.
+    description: |
+      RectangularAnnulus: the inner full width of the rectangular
+      annulus in pixels.
+      SkyCircularAnnulus: the inner full width of the rectangular
+      annulus in angular units. For ``theta=0`` the width side is along the North-South
+      axis.
+    anyOf:
+      - type: number
+      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+  w_out:
+    title: Outer width.
+    description: |
+      RectangularAnnulus: the outer full width of the rectangular
+      annulus in pixels.
+      SkyRectangularAnnulus: the  the outer full width of the rectangular
+      annulus in angular units. For ``theta=0`` the width side is along the North-South
+      axis.
+    anyOf:
+      - type: number
+      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+  h_in:
+    title: Inner height.
+    description: |
+      RectangularAnnulus: the inner full height of the rectangular
+      annulus in pixels.
+      SkyRectangularAnnulus: the inner full height of the rectangular
+      annulus in angular units. For ``theta=0`` the height
+      side is along the East-West axis.
+    anyOf:
+      - type: number
+      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+  h_out:
+    title: Outer height.
+    description: |
+      RectangularAnnulus: the outer height of the rectangular
+      annulus in pixels.
+      SkyRectangularAnnulus: the outer full height of the rectangular
+      annulus in angular units. For ``theta=0`` the height
+      side is along the East-West axis.
+    anyOf:
+      - type: number
+      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+  theta:
+    title: Rotation angle
+    description: |
+      RectangularAperture:
+        The rotation angle as an angular quantity
+        (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
+        value in radians (as a float) from the positive ``x`` axis. The
+        rotation angle increases counterclockwise.
+      SkyRectangularAperture:
+        For a right-handed world coordinate system, the position
+        angle increases counterclockwise from North (PA=0).
+    anyOf:
+      - type: number
+      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
+required: [positions, w_in, w_out, h_out]
+...

@@ -2,9 +2,10 @@
 ---
 $schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
 id: "asdf://astropy.org/photutils/schemas/aperture/circular_aperture-1.0.0"
-title: CircularAperture
+title: Circular aperture
 description: |
-  ASDF schema for serializing a CircularAperture with one or more positions.
+  ASDF schema for serializing a circular aperture with one or more positions
+  in pixel or sky coordinates.
 examples:
   -
     - A CircularAperture with a single position and radius of 5 pixels.
@@ -12,16 +13,46 @@ examples:
       !<tag:astropy.org:photutils/aperture/circular_aperture-1.0.0>
         positions: [1.0, 2.0]
         r: 5.0
+  -
+    - A SkyCircularAperture aperture with a single position and radius of
+      0.5 arcsec.
+    - |
+      !<tag:astropy.org:photutils/aperture/circular_aperture-1.0.0>
+        positions: !<tag:astropy.org:astropy/coordinates/skycoord-1.0.0>
+          dec: !<tag:astropy.org:astropy/coordinates/latitude-1.2.0>
+            unit: !unit/unit-1.0.0 deg
+            value: !core/ndarray-1.1.0
+              source: 1
+              datatype: float64
+              byteorder: little
+              shape: [2]
+          frame: icrs
+          ra: !<tag:astropy.org:astropy/coordinates/longitude-1.2.0>
+            unit: !unit/unit-1.0.0 deg
+            value: !core/ndarray-1.1.0
+              source: 0
+              datatype: float64
+              byteorder: little
+              shape: [2]
+            wrap_angle: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64,
+              unit: !unit/unit-1.0.0 deg, value: 360.0}
+          representation_type: spherical
+        r: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 5.0}
 
 type: object
 properties:
   positions:
     title: Aperture position(s).
     description: |
-      The pixel coordinates of the aperture center(s) in one of the following formats:
+      The pixel coordinates of the aperture center(s) in one of the following formats.
+      If a CircularAperture in pixel coordinates:
 
-        * single ``(x, y)`` pair as a tuple, list, or `numpy.ndarray`
-        * tuple, list, or `numpy.ndarray` of ``(x, y)`` pairs
+        * single ``(x, y)`` pair as an array
+        * `numpy.ndarray` of ``(x, y)`` pairs
+
+      If a SkyCircularAperture
+
+        * `astropy.coordinates.SkyCoord` object
     anyOf:
       - type: array
         items:
@@ -29,10 +60,15 @@ properties:
         maxItems: 2
         minItems: 2
       - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+      - tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
   r:
     title: Aperture radius.
     description: |
-      The radius of the circular aperture in pixels.
-    type: number
+      If ``CircularAperture`` - the radius of the circular aperture in pixels.
+      If ``SkyCircularAperture`` - the radius of the aperture on the sky in
+      angular units.
+    anyOf:
+      - type: number
+      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
 required: [positions, r]
 ...

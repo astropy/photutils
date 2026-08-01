@@ -63,7 +63,20 @@ ASDF files:
 * `~photutils.psf.GriddedPSFModel`
 * `~photutils.psf.ImagePSF`
 * `~photutils.psf.STDPSFGrid`
+* `~photutils.aperture.CircularAnnulus`
 * `~photutils.aperture.CircularAperture`
+* `~photutils.aperture.EllipticalAnnulus`
+* `~photutils.aperture.EllipticalAperture`
+* `~photutils.aperture.PolygonAperture`
+* `~photutils.aperture.RectangularAnnulus`
+* `~photutils.aperture.RectangularAperture`
+* `~photutils.aperture.SkyCircularAnnulus`
+* `~photutils.aperture.SkyCircularAperture`
+* `~photutils.aperture.SkyEllipticalAnnulus`
+* `~photutils.aperture.SkyEllipticalAperture`
+* `~photutils.aperture.SkyPolygonAperture`
+* `~photutils.aperture.SkyRectangularAnnulus`
+* `~photutils.aperture.zskyRectangularAperture`
 
 
 Exact Rectangular Aperture Overlap

@@ -95,3 +95,88 @@ def gridded_psf():
 @pytest.fixture
 def stdpsf_single_detector():
     return examples.stdpsf_single_detector()
+
+
+@pytest.fixture
+def circular_aperture_single_pos():
+    return examples.circular_aperture_single_pos()
+
+
+@pytest.fixture
+def circular_aperture_multi_pos():
+    return examples.circular_aperture_multi_pos()
+
+
+@pytest.fixture
+def circular_annulus_single_pos():
+    return examples.circular_annulus_single_pos()
+
+
+@pytest.fixture
+def circular_annulus_single_pos_tuple():
+    return examples.circular_annulus_single_pos_tuple()
+
+
+@pytest.fixture
+def circular_annulus_multi_pos():
+    return examples.circular_annulus_multi_pos()
+
+
+@pytest.fixture
+def sky_circular_annulus():
+    return examples.sky_circular_annulus()
+
+
+@pytest.fixture
+def sky_circular_aperture():
+    return examples.sky_circular_aperture()
+
+
+@pytest.fixture
+def elliptical_aperture():
+    return examples.elliptical_aperture()
+
+
+@pytest.fixture
+def elliptical_annulus():
+    return examples.elliptical_annulus()
+
+
+@pytest.fixture
+def sky_elliptical_annulus():
+    return examples.sky_elliptical_annulus()
+
+
+@pytest.fixture
+def polygon_aperture():
+    return examples.polygon_aperture()
+
+
+@pytest.fixture
+def polygon_aperture_vertices():
+    return examples.polygon_aperture_vertices()
+
+
+@pytest.fixture
+def sky_polygon_aperture():
+    return examples.sky_polygon_aperture()
+
+
+@pytest.fixture
+def rectangular_aperture():
+    return examples.rectangular_aperture()
+
+
+@pytest.fixture
+def sky_rectangular_aperture():
+    return examples.sky_rectangular_aperture()
+
+
+@pytest.fixture
+def rectangular_annulus():
+    return examples.rectangular_annulus()
+
+
+@pytest.fixture
+def sky_rectangular_annulus():
+    return examples.sky_rectangular_annulus()

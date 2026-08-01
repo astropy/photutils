@@ -1,0 +1,57 @@
+%YAML 1.1
+---
+$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
+id: "asdf://astropy.org/photutils/schemas/aperture/rectangular_aperture-1.0.0"
+title: Rectangular aperture
+description: |
+  ASDF schema for serializing a rectangular aperture with one or more positions
+  in pixel or sky coordinates.
+examples:
+  -
+    - |
+      A RectangularAperture
+
+type: object
+properties:
+  positions:
+    title: Aperture position(s).
+    description: |
+      The coordinates of the aperture center(s) in one of the following formats.
+      If a PolygonAperture in pixel coordinates:
+
+        * single ``(x, y)`` pair as an array
+        * `numpy.ndarray` of ``(x, y)`` pairs
+
+      If a SkyCircularAperture
+
+        * `astropy.coordinates.SkyCoord` object
+    anyOf:
+      - type: array
+        items:
+          type: number
+        maxItems: 2
+        minItems: 2
+      - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+      - tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+  w:
+    title: Full width.
+    description: |
+      The full width of the rectangle in pixels. For ``theta=0`` the
+        width side is along the ``x`` axis.
+  h:
+    title: Full height.
+    description: |
+      The full height of the rectangle in pixels. For ``theta=0`` the
+      height side is along the ``y`` axis.
+  theta:
+    title: Rotation angle
+    description: |
+      The rotation angle as an angular quantity
+      (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
+      value in radians (as a float) from the positive ``x`` axis. The
+      rotation angle increases counterclockwise.
+    anyOf:
+      - type: number
+      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
+required: [positions, w, h]
