@@ -772,12 +772,19 @@ class STDPSFGrid:
     Parameters
     ----------
     filename : str or None
-        The name of the STDPDF FITS file. A URL can also be used.
+        The name of the STDPSF FITS file. A URL can also be used.
         When `None`, ``kwargs`` are used to initialize the class.
+
     **kwargs : dict
-        A dictionary containing the array with PSFs and the meta data.
-        Used when initializing from an ASDF file. In this case
-        ``filename`` is  `None`.
+        Keyword arguments used to initialize the class when ``filename``
+        is `None` (e.g., when restoring from an ASDF archive). The
+        recognized keys are:
+
+        * ``'data'`` : `~numpy.ndarray` The 3D array of ePSF stacks.
+
+        * ``'meta'`` : `dict` A dictionary of metadata that must contain
+          at least ``'grid_xypos'``, a (N, 2) array of the (x, y) grid
+          positions in detector coordinates.
 
     Examples
     --------

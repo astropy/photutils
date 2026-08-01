@@ -88,7 +88,7 @@ def _read_stdpsf(filename):
     Parameters
     ----------
     filename : str
-        The name of the STDPDF FITS file.
+        The name of the STDPSF FITS file.
 
     Returns
     -------
@@ -114,7 +114,7 @@ def _read_fits_stdpsf(filename):
     Parameters
     ----------
     filename : str
-        The name of the STDPDF FITS file.
+        The name of the STDPSF FITS file.
 
     Returns
     -------
@@ -132,7 +132,7 @@ def _read_fits_stdpsf(filename):
         nx_grid = header['NXPSFS']
         ny_grid = header['NYPSFS']
     except KeyError as exc:
-        msg = 'Invalid STDPDF FITS file'
+        msg = 'Invalid STDPSF FITS file'
         raise ValueError(msg) from exc
 
     if 'IPSFX01' in header:
@@ -151,7 +151,7 @@ def _read_fits_stdpsf(filename):
         msg = 'Unknown STDPSF FITS file'
         raise ValueError(msg)
 
-    # STDPDF FITS positions are 1-indexed
+    # STDPSF FITS positions are 1-indexed
     xgrid = np.array(xgrid) - 1
     ygrid = np.array(ygrid) - 1
 
@@ -390,7 +390,7 @@ def _get_metadata(filename, detector_id):
     Parameters
     ----------
     filename : str
-        The name of the STDPDF FITS file.
+        The name of the STDPSF FITS file.
 
     detector_id : int
         The detector ID.
@@ -478,7 +478,7 @@ def stdpsf_reader(filename, detector_id=None):
     Parameters
     ----------
     filename : str
-        The name of the STDPDF FITS file. A URL can also be used.
+        The name of the STDPSF FITS file. A URL can also be used.
 
     detector_id : `None` or int, optional
         For STDPSF files that contain ePSF grids for multiple detectors,
