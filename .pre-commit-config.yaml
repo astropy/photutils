@@ -55,7 +55,7 @@ repos:
         # Enforce that all noqa annotations always occur with specific codes.
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.15.22'
+    rev: 'v0.16.1'
     hooks:
       - id: ruff-check
         args: ['--fix', '--show-fixes']
@@ -88,12 +88,12 @@ repos:
       - id: cython-lint
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.27.0
+    rev: v1.29.0
     hooks:
       - id: zizmor
 
   - repo: https://github.com/rbubley/mirrors-prettier
-    rev: v3.9.5
+    rev: v3.9.6
     hooks:
       - id: prettier
         types_or: [css, rst, json, yaml, toml, markdown]
