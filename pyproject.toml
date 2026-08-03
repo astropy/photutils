@@ -297,6 +297,7 @@ ignore = [
     'B028',  # no-explicit-stacklevel (warnings)
     'BLE001',  # blind-except
     'C901',  # complex-structure
+    'CPY001',  # missing-copyright-notice
     'D102',  # undocumented-public-method
     'D105',  # undocumented-magic-method
     'D200',  # unnecessary-multiline-docstring
@@ -309,6 +310,7 @@ ignore = [
     'PLC0415',  # import-outside-top-level
     'PLR0912',  # too-many-branches
     'PLR0913',  # too-many-arguments
+    'PLR0917',  # too-many-positional-arguments
     'PLR2004',  # magic-value-comparison
     'PLW1641',  # eq-without-hash
     'PLW2901',  # redefined-loop-name
