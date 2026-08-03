@@ -76,7 +76,7 @@ ASDF files:
 * `~photutils.aperture.SkyEllipticalAperture`
 * `~photutils.aperture.SkyPolygonAperture`
 * `~photutils.aperture.SkyRectangularAnnulus`
-* `~photutils.aperture.zskyRectangularAperture`
+* `~photutils.aperture.SkyRectangularAperture`
 
 
 Exact Rectangular Aperture Overlap
