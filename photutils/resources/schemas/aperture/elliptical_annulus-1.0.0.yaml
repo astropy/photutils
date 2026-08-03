@@ -21,6 +21,7 @@ examples:
         b_out: 1.0
         positions: [10.0, 20.0]
         theta: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 rad, value: 0.0}
+  -
     - |
       SkyEllipticalAnnulus aperture with a single position.
     - |

@@ -22,6 +22,8 @@ General
 
 - Added serialization to ASDF for all PSF models. [#2335]
 
+- Added serialization to ASDF for all apertures. [#2341]
+
 New Features
 ^^^^^^^^^^^^
 

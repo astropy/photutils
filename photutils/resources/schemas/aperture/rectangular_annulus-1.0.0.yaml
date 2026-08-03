@@ -10,6 +10,45 @@ examples:
   -
     - |
       A RectangularAnnulus aperture with a single position,
+    - |
+      !<tag:astropy.org:photutils/aperture/rectangular_annulus-1.0.0>
+        h_in: 2.0
+        h_out: 4.0
+        positions: [10.0, 20.0]
+        theta: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64, unit: !unit/unit-1.0.0 deg,
+          value: 80.0}
+        w_in: 3.0
+        w_out: 5.0
+  -
+    - |
+      A SkyRectangularAnnulus aperture with a single position
+    - |
+      !<tag:astropy.org:photutils/aperture/rectangular_annulus-1.0.0>
+        h_in: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 2.0}
+        h_out: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 4.0}
+        positions: !<tag:astropy.org:astropy/coordinates/skycoord-1.0.0>
+          dec: !<tag:astropy.org:astropy/coordinates/latitude-1.2.0>
+            unit: !unit/unit-1.0.0 deg
+            value: !core/ndarray-1.1.0
+              source: 1
+              datatype: float64
+              byteorder: little
+              shape: [2]
+          frame: icrs
+          ra: !<tag:astropy.org:astropy/coordinates/longitude-1.2.0>
+            unit: !unit/unit-1.0.0 deg
+            value: !core/ndarray-1.1.0
+              source: 0
+              datatype: float64
+              byteorder: little
+              shape: [2]
+            wrap_angle: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64,
+              unit: !unit/unit-1.0.0 deg, value: 360.0}
+          representation_type: spherical
+        theta: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64, unit: !unit/unit-1.0.0 deg,
+          value: 80.0}
+        w_in: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 3.0}
+        w_out: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 5.0}
 
 type: object
 properties:

@@ -10,6 +10,31 @@ examples:
   -
     - |
       A RectangularAperture
+    - |
+      !<tag:astropy.org:photutils/aperture/rectangular_aperture-1.0.0>
+        h: 3.0
+        positions: [10.0, 20.0]
+        theta: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64, unit: !unit/unit-1.0.0 deg,
+          value: 80.0}
+        w: 5.0
+  -
+    - SkyRectangularAperture
+    - |
+      !<tag:astropy.org:photutils/aperture/rectangular_aperture-1.0.0>
+        h: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 0.5}
+        positions: !<tag:astropy.org:astropy/coordinates/skycoord-1.0.0>
+          dec: !<tag:astropy.org:astropy/coordinates/latitude-1.2.0> {datatype: float64,
+            unit: !unit/unit-1.0.0 deg, value: 30.0}
+          frame: icrs
+          ra: !<tag:astropy.org:astropy/coordinates/longitude-1.2.0>
+            datatype: float64
+            unit: !unit/unit-1.0.0 deg
+            value: 10.0
+            wrap_angle: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64,
+              unit: !unit/unit-1.0.0 deg, value: 360.0}
+          representation_type: spherical
+        theta: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 deg, value: 0.0}
+        w: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 1.0}
 
 type: object
 properties:
