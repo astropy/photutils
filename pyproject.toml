@@ -240,7 +240,7 @@ checks = [
     'SS06',  # single-line summary
 ]
 
-# don't report on objects that match any of these regex;
+# Do not report on objects that match any of these regex;
 # remember to use single quotes for regex in TOML
 exclude = [
     '__init__',
