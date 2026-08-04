@@ -297,7 +297,6 @@ ignore = [
     'B028',  # no-explicit-stacklevel (warnings)
     'BLE001',  # blind-except
     'C901',  # complex-structure
-    'CPY001',  # missing-copyright-notice
     'D102',  # undocumented-public-method
     'D105',  # undocumented-magic-method
     'D200',  # unnecessary-multiline-docstring
@@ -348,11 +347,15 @@ ignore = [
     'ARG001',  # unused-function-argument
 ]
 
-[tool.ruff.lint.pydocstyle]
-convention = 'numpy'
-
 [tool.ruff.lint.flake8-quotes]
 inline-quotes = 'single'
+
+[tool.ruff.lint.flake8-copyright]
+min-file-size = 1  # skip empty files (< 1 byte), e.g., __init__.py
+notice-rgx = 'Licensed under a 3-clause BSD style license - see LICENSE.rst'
+
+[tool.ruff.lint.pydocstyle]
+convention = 'numpy'
 
 [tool.cython-lint]
 max-line-length = 79
