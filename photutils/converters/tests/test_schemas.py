@@ -361,3 +361,21 @@ def test_pixel_angular_theta_accepted(stem):
                              {**sizes, 'theta': _quantity(0.5)})
     with asdf.open(yaml_to_asdf(f'aper: {example}')) as af:
         assert af['aper'].theta == 0.5 * u.arcsec
+
+
+@pytest.mark.parametrize('stem', list(SIZE_PARAMS))
+def test_unknown_property_rejected(stem):
+    """
+    Test that an aperture with an unknown property fails schema
+    validation when read.
+
+    Without ``additionalProperties: false`` an unknown key is accepted
+    and then silently dropped, so a misspelled parameter would read
+    back as an aperture with default values.
+    """
+    params = _sizes(SIZE_PARAMS[stem], sky=False)
+    params['not_a_parameter'] = '999.0'
+    example = _aperture_yaml(stem, PIXEL_POSITIONS, params)
+    with pytest.raises(ValidationError), \
+            asdf.open(yaml_to_asdf(f'aper: {example}')):
+        pass

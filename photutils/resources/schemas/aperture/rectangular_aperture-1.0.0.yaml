@@ -86,6 +86,7 @@ properties:
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
       - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
 required: [positions, w, h]
+additionalProperties: false
 # RectangularAperture and SkyRectangularAperture share a tag, so this
 # requires a file to use pixel values or angular quantities
 # consistently. ``theta`` is constrained only in the sky branch because
