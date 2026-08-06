@@ -538,3 +538,16 @@ def test_stdpsfgrid_repr_str():
             'Oversampling')
     for key in keys:
         assert key in repr(psfgrid)
+
+
+def test_stdpsfgrid_kwargs_preserve_oversampling_and_meta():
+    data = np.ones((4, 4, 4))
+    grid_xypos = np.array([(0, 0), (1, 0), (0, 1), (1, 1)])
+    meta = {'grid_xypos': grid_xypos, 'oversampling': 8}
+
+    psfgrid = STDPSFGrid(data=data, meta=meta)
+
+    assert_equal(psfgrid.oversampling, [8, 8])
+    assert_equal(psfgrid.meta['oversampling'], (8, 8))
+    assert_equal(meta['oversampling'], 8)
+    assert 'grid_shape' not in meta

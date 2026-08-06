@@ -4,11 +4,13 @@ Tests for the photutils PSF converters.
 """
 
 import asdf
+import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
 
 from photutils.converters import _ASDF_ASTROPY_INSTALLED
 from photutils.converters.image_models import GriddedPSFModelConverter
+from photutils.psf import STDPSFGrid
 
 
 @pytest.fixture
@@ -82,3 +84,22 @@ def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path,
         psf2 = af['psf']
         assert_array_equal(psf2.oversampling, (2, 3))
         assert psf2.meta['oversampling'] == (2, 3)
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+def test_stdpsf_grid_converter_preserves_oversampling(tmp_path):
+    """Test that a non-default oversampling value survives a round trip."""
+    data = np.ones((4, 4, 4))
+    meta = {'grid_xypos': np.array([(0, 0), (1, 0), (0, 1), (1, 1)]),
+            'oversampling': 8}
+    psfgrid = STDPSFGrid(data=data, meta=meta)
+
+    filename = tmp_path / 'psf.asdf'
+    with asdf.AsdfFile() as af:
+        af['psf'] = psfgrid
+        af.write_to(filename)
+
+    with asdf.open(filename) as af:
+        psfgrid2 = af['psf']
+        assert_array_equal(psfgrid2.oversampling, (8, 8))
