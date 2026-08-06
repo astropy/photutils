@@ -59,21 +59,19 @@ class GriddedPSFModel(Fittable2DModel):
 
         The ``meta`` attribute must be a dictionary containing:
 
-            * ``'grid_xypos'``: A sequence of the fiducial ``(x, y)``
-              detector coordinates for each reference ePSF. The
-              order must match the first axis of ``data``; that
-              is, ``grid_xypos[i]`` gives the detector coordinates
-              of ``nddata.data[i]``. The coordinates must form a
-              rectangular grid.
+        * ``'grid_xypos'``: A sequence of the fiducial ``(x, y)``
+          detector coordinates for each reference ePSF. The order must
+          match the first axis of ``data``; that is, ``grid_xypos[i]``
+          gives the detector coordinates of ``nddata.data[i]``. The
+          coordinates must form a rectangular grid.
 
-            * ``'oversampling'``: The integer oversampling factor(s)
-              of the input ePSF images. If a scalar is provided, it is
-              applied to both axes. If two values are provided, they
-              must be in ``(y, x)`` order.
+        * ``'oversampling'``: The integer oversampling factor(s) of the
+          input ePSF images. If a scalar is provided, it is applied to
+          both axes. If two values are provided, they must be in ``(y,
+          x)`` order.
 
-            The ``meta`` dictionary may also contain additional
-            metadata, such as the telescope, instrument, detector, or
-            filter.
+        The ``meta`` dictionary may also contain additional metadata,
+        such as the telescope, instrument, detector, or filter.
 
     flux : float, optional
         The flux scaling factor. This corresponds to the total
