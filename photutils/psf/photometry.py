@@ -998,32 +998,32 @@ class PSFPhotometry:
             The fit_info dictionary corresponding to the group fit.
         """
         n_fit_params = len(self._param_mapper.fitted_param_names)
-        num_valid = int(np.count_nonzero(valid_mask))
+        n_valid = int(np.count_nonzero(valid_mask))
 
         # Extract parameter errors from the group covariance matrix
         param_cov = group_fit_info.get('param_cov')
         if param_cov is None:
-            source_param_errs = np.full((num_valid, n_fit_params), np.nan)
-            source_covs = [None] * num_valid
+            source_param_errs = np.full((n_valid, n_fit_params), np.nan)
+            source_covs = [None] * n_valid
         else:
             param_err_1d = np.sqrt(np.diag(param_cov))
 
             # For grouped (flat) models, parameters are arranged as,
             # e.g., [flux_0, x_0_0, y_0_0, fwhm_0, flux_1, x_0_1, ...]
-            source_param_errs = param_err_1d.reshape(num_valid, n_fit_params)
+            source_param_errs = param_err_1d.reshape(n_valid, n_fit_params)
 
             # Extract individual covariance matrices for each source
             source_covs = self._psf_fitter.extract_source_covariances(
-                param_cov, num_valid, n_fit_params)
+                param_cov, n_valid, n_fit_params)
 
         # Split models and extract parameters
-        if num_valid == 1:
+        if n_valid == 1:
             source_models = [group_model]
         else:
             # For grouped (flat) models, create individual models from
             # params
             source_models = self._psf_fitter.split_flat_model(group_model,
-                                                              num_valid)
+                                                              n_valid)
 
         # Store results for each valid source
         valid_idx = 0
@@ -1270,7 +1270,7 @@ class PSFPhotometry:
                     valid_mask_list.append(False)
 
             valid_mask = np.array(valid_mask_list, dtype=bool)
-            num_valid = int(np.count_nonzero(valid_mask))
+            n_valid = int(np.count_nonzero(valid_mask))
 
             # Store basic info for all sources in group.
             # row_indices is used to store results in the original
@@ -1286,7 +1286,7 @@ class PSFPhotometry:
                     '' if reason is None else reason
                 )
 
-            if num_valid == 0:
+            if n_valid == 0:
                 # Handle all-invalid group
                 for row_index in row_indices:
                     self._state['valid_mask_by_id'][row_index] = False

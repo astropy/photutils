@@ -1020,7 +1020,7 @@ class PSFFitter:
         return fit_model, fit_info
 
     # @staticmethod
-    def extract_source_covariances(self, group_cov, num_sources,
+    def extract_source_covariances(self, group_cov, n_sources,
                                    n_fit_params):
         """
         Extract individual source covariance matrices from group
@@ -1036,7 +1036,7 @@ class PSFFitter:
         group_cov : `~numpy.ndarray`
             2D covariance matrix for the entire group of sources.
 
-        num_sources : int
+        n_sources : int
             Number of sources in the group.
 
         n_fit_params : int
@@ -1049,7 +1049,7 @@ class PSFFitter:
             the group.
         """
         source_covs = []
-        for i in range(num_sources):
+        for i in range(n_sources):
             start = i * n_fit_params
             end = (i + 1) * n_fit_params
             source_cov = group_cov[start:end, start:end]
