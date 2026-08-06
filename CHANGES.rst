@@ -276,13 +276,6 @@ API Changes
     filename (e.g., ``STDPSF``, ``detector``, and ``filter``). Use the
     ``grid_xypos`` and ``oversampling`` attributes instead. [#2344]
 
-  - The ``STDPSFGrid`` ``data`` and ``grid_xypos`` attributes are now
-    read-only properties, matching the ``GriddedPSFModel`` attributes
-    of the same name. [#2347]
-
-  - ``SourceGrouper`` now raises a ``ValueError`` if ``min_separation``
-    is not a positive finite value. [#2347]
-
   - The ``STDPSFGrid`` ``grid_xypos`` attribute is now a ``numpy``
     array instead of a list, matching the ``GriddedPSFModel``
     attribute of the same name. The ``oversampling`` attribute is now
