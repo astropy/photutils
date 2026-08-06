@@ -119,6 +119,9 @@ New Features
     through optimizations that reduce per-evaluation overhead and
     streamline interpolation calculations. [#2289, #2307]
 
+  - Added a ``STDPSFGrid.grid_shape`` property returning the ``(ny,
+    nx)`` shape of the ePSF grid. [#2347]
+
 - ``photutils.segmentation``
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``
@@ -207,6 +210,11 @@ Bug Fixes
     previous swapped to the wrong detector positions for any grid whose
     x and y positions differ. [#2347]
 
+  - Fixed ``SourceGroups.plot`` to sample a user-supplied colormap over
+    its full range. Previously the colormap was indexed by the group
+    number, which gave nearly identical colors for every group (and
+    raised an ``IndexError`` for more than 256 groups). [#2347]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a
@@ -259,6 +267,13 @@ API Changes
     ``meta`` dictionary now contains only the metadata parsed from the
     filename (e.g., ``STDPSF``, ``detector``, and ``filter``). Use the
     ``grid_xypos`` and ``oversampling`` attributes instead. [#2344]
+
+  - The ``STDPSFGrid`` ``data`` and ``grid_xypos`` attributes are now
+    read-only properties, matching the ``GriddedPSFModel`` attributes
+    of the same name. [#2347]
+
+  - ``SourceGrouper`` now raises a ``ValueError`` if ``min_separation``
+    is not a positive finite value. [#2347]
 
   - The ``STDPSFGrid`` ``grid_xypos`` attribute is now a ``numpy``
     array instead of a list, matching the ``GriddedPSFModel``

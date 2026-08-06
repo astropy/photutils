@@ -159,7 +159,10 @@ class ImagePSF(Fittable2DModel):
             msg = 'All elements of input data must be finite'
             raise ValueError(msg)
 
-        # this is required by RectBivariateSpline for kx=3, ky=3
+        # The minimum number of data points required is 4 along each
+        # axis. This is because RectBivariateSpline requires at least 4
+        # points along each axis for cubic spline interpolation (kx=3,
+        # ky=3).
         if np.any(np.array(data.shape) < 4):
             msg = 'The length of the x and y axes must both be at least 4'
             raise ValueError(msg)
@@ -244,7 +247,7 @@ class ImagePSF(Fittable2DModel):
         """
         self._validate_data(value)
         self._data = value
-        # discard the cached interpolator, which is tied to the old data
+        # Discard the cached interpolator, which is tied to the old data
         self.__dict__.pop('interpolator', None)
 
     @property
@@ -353,11 +356,10 @@ class ImagePSF(Fittable2DModel):
         """
         dy, dx = np.array(self.data.shape) / 2 / self.oversampling
 
-        # apply the origin shift
-        # if origin is None, the origin is set to the center of the
-        # image and the shift is 0
-        xshift = np.array(self.data.shape[1] - 1) / 2 - self.origin[0]
-        yshift = np.array(self.data.shape[0] - 1) / 2 - self.origin[1]
+        # Apply the origin shift. If origin is None, the origin is set
+        # to the center of the image and the shift is 0.
+        xshift = (self.data.shape[1] - 1) / 2 - self.origin[0]
+        yshift = (self.data.shape[0] - 1) / 2 - self.origin[1]
         xshift /= self.oversampling[1]
         yshift /= self.oversampling[0]
 
@@ -418,9 +420,9 @@ class ImagePSF(Fittable2DModel):
         evaluated_model = flux * self.interpolator(xi, yi, grid=False)
 
         if self.fill_value is not None:
-            # set pixels that are outside the input pixel grid to the
-            # fill_value to avoid extrapolation; these bounds match the
-            # RegularGridInterpolator bounds
+            # Set pixels that are outside the input pixel grid to the
+            # fill_value to avoid extrapolation. These bounds match the
+            # RegularGridInterpolator bounds.
             ny, nx = self.data.shape
             invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
             evaluated_model[invalid] = self.fill_value

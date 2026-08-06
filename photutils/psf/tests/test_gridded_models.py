@@ -619,7 +619,7 @@ class TestGriddedPSFModel:
         psfmodel.plot_grid(deltas=True)
         psfmodel.plot_grid(deltas=True, peak_norm=True)
 
-        # simulate a grid where one or more ePSFS are blank (all zeros)
+        # Simulate a grid where one or more ePSFS are blank (all zeros)
         model = psfmodel.deepcopy()
         model.data[0] = 0.0
         model.plot_grid(deltas=True)
@@ -725,7 +725,7 @@ class TestSTDPSFGridFromASDF:
         meta = self.make_meta(grid_xypos=grid_xypos, grid_shape=(4, 2))
         psfgrid = STDPSFGrid._from_asdf(np.ones((8, 4, 4)), meta)
 
-        assert psfgrid._grid_shape == (4, 2)
+        assert psfgrid.grid_shape == (4, 2)
         assert_equal(psfgrid._xgrid, [0, 1])
         assert_equal(psfgrid._ygrid, [0, 5, 5, 9])
         assert 'Grid shape: (4, 2)' in repr(psfgrid)

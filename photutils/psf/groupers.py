@@ -234,6 +234,12 @@ class SourceGroups:
         elif isinstance(cmap, str):
             cmap = colormaps[cmap]
 
+        # Sample the colormap over its full range so that the group
+        # colors are distinct. Indexing a colormap by the group number
+        # would map every group to the low end of the colormap.
+        fractions = np.arange(self.n_groups) / max(self.n_groups - 1, 1)
+        colors = cmap(fractions)
+
         # Set default label kwargs
         if label_kwargs is None:
             label_kwargs = {'ha': 'center',
@@ -247,7 +253,7 @@ class SourceGroups:
             mask = self.groups == group_id
             xypos = zip(self.x[mask], self.y[mask], strict=True)
             ap = CircularAperture(xypos, r=radius)
-            color = cmap.colors[i] if hasattr(cmap, 'colors') else cmap(i)
+            color = colors[i]
             ap.plot(ax=ax, color=color, **kwargs)
 
             if label_groups:
@@ -318,6 +324,9 @@ class SourceGrouper:
     """
 
     def __init__(self, min_separation):
+        if not np.isfinite(min_separation) or min_separation <= 0:
+            msg = 'min_separation must be a positive finite value'
+            raise ValueError(msg)
         self.min_separation = min_separation
 
     def __repr__(self):
@@ -356,7 +365,7 @@ class SourceGrouper:
             msg = 'y coordinates must be finite (no NaN or inf values)'
             raise ValueError(msg)
 
-        # single source forms its own group
+        # A single source forms its own group
         if x.shape == (1,):
             return np.array([1])
 

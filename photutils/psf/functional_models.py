@@ -25,7 +25,7 @@ GAUSSIAN_FWHM_TO_SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
 
 def _gaussian_amplitude(flux, xsigma, ysigma):
-    # output units should match the input flux units
+    # Output units should match the input flux units
     if isinstance(xsigma, u.Quantity):
         xsigma = xsigma.value
         ysigma = ysigma.value
@@ -299,7 +299,7 @@ class GaussianPSF(Fittable2DModel):
         b = 0.5 * ((sin2t / xstd2) - (sin2t / ystd2))
         c = 0.5 * ((sint2 / xstd2) + (cost2 / ystd2))
 
-        # output units should match the input flux units
+        # Output units should match the input flux units
         if isinstance(xstd, u.Quantity):
             xstd = xstd.value
             ystd = ystd.value
@@ -392,7 +392,7 @@ class GaussianPSF(Fittable2DModel):
         dg_dxstd = damp_dxstd * exp + amplitude * dexp_dxstd
         dg_dystd = damp_dystd * exp + amplitude * dexp_dystd
 
-        # chain rule for change of variables from sigma to fwhm
+        # Chain rule for change of variables from sigma to fwhm
         # std => fwhm * GAUSSIAN_FWHM_TO_SIGMA
         # dstd/dfwhm => GAUSSIAN_FWHM_TO_SIGMA
         dg_dxfwhm = dg_dxstd * GAUSSIAN_FWHM_TO_SIGMA
@@ -400,7 +400,7 @@ class GaussianPSF(Fittable2DModel):
 
         dg_dtheta = g * (-(da_dtheta * xdiff2 + db_dtheta * xdiff * ydiff
                            + dc_dtheta * ydiff2))
-        # chain rule for unit change;
+        # Chain rule for unit change
         # theta[rad] => theta[deg] * pi / 180; drad/dtheta = pi / 180
         dg_dtheta *= np.pi / 180.0
 
@@ -419,8 +419,8 @@ class GaussianPSF(Fittable2DModel):
         return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
 
     def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
-        # Note that here we need to make sure that x and y are in the same
-        # units otherwise this can lead to issues since rotation is not well
+        # We need to make sure that x and y are in the same units
+        # otherwise this can lead to issues since rotation is not well
         # defined.
         if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
             msg = "Units of 'x' and 'y' inputs should match"
@@ -633,7 +633,7 @@ class CircularGaussianPSF(Fittable2DModel):
         """
         sigma2 = (fwhm * GAUSSIAN_FWHM_TO_SIGMA) ** 2
 
-        # output units should match the input flux units
+        # Output units should match the input flux units
         sigma2_norm = sigma2
         if isinstance(sigma2, u.Quantity):
             sigma2_norm = sigma2.value
@@ -993,8 +993,8 @@ class GaussianPRF(Fittable2DModel):
         return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
 
     def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
-        # Note that here we need to make sure that x and y are in the same
-        # units otherwise this can lead to issues since rotation is not well
+        # We need to make sure that x and y are in the same units
+        # otherwise this can lead to issues since rotation is not well
         # defined.
         if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
             msg = "Units of 'x' and 'y' inputs should match"
@@ -1489,8 +1489,8 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
 
     def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
-        # Note that here we need to make sure that x and y are in the same
-        # units otherwise this can lead to issues since rotation is not well
+        # We need to make sure that x and y are in the same units
+        # otherwise this can lead to issues since rotation is not well
         # defined.
         if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
             msg = "Units of 'x' and 'y' inputs should match"
@@ -1724,12 +1724,12 @@ class MoffatPSF(Fittable2DModel):
         result : `~numpy.ndarray`
             The value of the model evaluated at the input coordinates.
         """
-        # output units should match the input flux units
-        alpha2 = alpha.copy()
+        # Output units should match the input flux units
+        alpha_norm = alpha
         if isinstance(alpha, u.Quantity):
-            alpha2 = alpha.value
+            alpha_norm = alpha.value
 
-        amp = flux * (beta - 1) / (np.pi * alpha2 ** 2)
+        amp = flux * (beta - 1) / (np.pi * alpha_norm ** 2)
         r2 = (x - x_0) ** 2 + (y - y_0) ** 2
         return amp * (1 + (r2 / alpha**2)) ** (-beta)
 
@@ -1876,7 +1876,13 @@ class AiryDiskPSF(Fittable2DModel):
         fixed=True,
         description='Radius of the Airy disk at the first zero')
 
+    # The radius of the first zero of the Airy disk profile, in units of
+    # the profile scale radius, i.e., the solution of J1(pi * Rz) = 0.
     _rz = jn_zeros(1, 1)[0] / np.pi
+
+    # The half width at half maximum of the Airy disk profile, i.e., the
+    # solution of (2 * J1(x) / x)**2 = 1/2.
+    _hwhm = 1.616339948310703
 
     def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  radius=radius.default, bbox_factor=10.0, **kwargs):
@@ -1888,7 +1894,7 @@ class AiryDiskPSF(Fittable2DModel):
         """
         The FWHM of the Airy disk profile.
         """
-        return 2.0 * 1.616339948310703 * self.radius / self._rz / np.pi
+        return 2.0 * self._hwhm * self.radius / self._rz / np.pi
 
     def _calc_bounding_box(self, *, factor=10.0):
         """
@@ -1967,17 +1973,23 @@ class AiryDiskPSF(Fittable2DModel):
         r = np.sqrt((x - x_0) ** 2 + (y - y_0) ** 2) / (radius / self._rz)
 
         if isinstance(r, u.Quantity):
-            # scipy function cannot handle Quantity, so turn into array
+            # Convert to dimensionless_unscaled to avoid unit conversion
+            # issues in scipy functions, since they expect dimensionless
+            # inputs.
             r = r.to_value(u.dimensionless_unscaled)
+        r = np.asarray(r, dtype=float)
 
         # Since r can be zero, we have to take care to treat that case
-        # separately so as not to raise a numpy warning
-        z = np.ones(r.shape)
-        rt = np.pi * r[r > 0]
-        z[r > 0] = (2.0 * j1(rt) / rt) ** 2
+        # separately so as not to raise a numpy warning. The limit of
+        # (2 * J1(x) / x)**2 as x approaches zero is 1.
+        rt = np.pi * np.atleast_1d(r)
+        z = np.ones(rt.shape)
+        nonzero = rt > 0
+        z[nonzero] = (2.0 * j1(rt[nonzero]) / rt[nonzero]) ** 2
+        z = z.reshape(r.shape)
 
         if isinstance(flux, u.Quantity):
-            # make z a quantity to allow in-place multiplication
+            # Make z a quantity to allow in-place multiplication
             z <<= u.dimensionless_unscaled
 
         normalization = (4.0 / np.pi) * (radius / self._rz) ** 2

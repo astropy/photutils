@@ -6,6 +6,7 @@ Tools for reading and writing PSF models.
 import io
 import itertools
 import os
+import re
 import warnings
 
 import numpy as np
@@ -17,6 +18,13 @@ from photutils.utils._deprecation import deprecated_positional_kwargs
 
 __all__ = ['GriddedPSFModelRead', 'stdpsf_reader', 'webbpsf_reader']
 __doctest_skip__ = ['GriddedPSFModelRead']
+
+# Filename extensions recognized as FITS files
+_FITS_EXTENSIONS = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts',
+                    '.fts.gz')
+
+# Pattern matching the WebbPSF detector-position header keywords
+_DET_YX_PATTERN = re.compile(r'DET_YX(\d+)$')
 
 # Mapping of the STDPSF filename detector field to the (instrument,
 # detector) metadata values
@@ -76,7 +84,7 @@ class GriddedPSFModelRead(registry.UnifiedReadWrite):
     """
 
     def __init__(self, instance, cls):
-        # uses default global registry
+        # Use default global registry
         super().__init__(instance, cls, 'read', registry=None)
 
     def __call__(self, *args, **kwargs):
@@ -116,12 +124,11 @@ def _read_stdpsf(filename):
     data : dict
         A dictionary containing the ePSF data and metadata.
     """
-    extens = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts', '.fts.gz')
     is_hdulist = isinstance(filename, fits.HDUList)
     is_fileobj = (isinstance(filename, io.FileIO)
-                  and filename.name.lower().endswith(extens))
+                  and filename.name.lower().endswith(_FITS_EXTENSIONS))
     is_fits_ext = (isinstance(filename, str)
-                   and filename.lower().endswith(extens))
+                   and filename.lower().endswith(_FITS_EXTENSIONS))
     if is_hdulist or is_fileobj or is_fits_ext:
         return _read_fits_stdpsf(filename)
     msg = 'This interface supports only FITS files.'
@@ -249,7 +256,7 @@ def _split_detectors(grid_data, detector_data, detector_id):
     ii = reshape_as_blocks(ii, (ny_grid, nx_grid))
     ii = ii.reshape(n_detectors, n_psfs // n_detectors)
 
-    # detector_id -> index
+    # Map detector_id to index
     det_idx = det_map[detector_id]
     idx = ii[det_idx]
     data = data[idx]
@@ -344,6 +351,8 @@ def _split_wfpc2(grid_data, detector_id):
     ny_det = 2
     det_size = 800
 
+    # Map of detector ID to index in the 2x2 grid of detectors. The
+    # detector IDs are defined in the STDPSF filenames as follows:
     # det (exten:idx)
     # WF2 (2:2)  PC (1:3)
     # WF3 (3:0)  WF4 (4:1)
@@ -391,6 +400,8 @@ def _split_nrcsw(grid_data, detector_id):
     ny_det = 2
     det_size = 2048
 
+    # Map of detector ID to index in the 4x2 grid of detectors. The
+    # detector IDs are defined in the STDPSF filenames as follows:
     # det (ext:idx)
     # A2 (2:4)  A4 (4:5)  B3 (7:6)  B1 (5:7)
     # A1 (1:0)  A3 (3:1)  B4 (8:2)  B2 (6:3)
@@ -425,7 +436,7 @@ def _get_metadata(filename, detector_id):
         filename = filename.name
 
     # Strip the file extension (e.g., '.fits' or '.fits.gz') before
-    # splitting the filename into its underscore-separated fields
+    # splitting the filename into its underscore-separated fields.
     basename = os.path.basename(filename).split('.')[0]
     parts = basename.split('_')
     if len(parts) not in (3, 4):
@@ -545,8 +556,8 @@ def stdpsf_reader(filename, detector_id=None):
     meta = {'grid_xypos': xy_grid,
             'oversampling': oversampling}
 
-    # try to get additional metadata from the filename because this
-    # information is not currently available in the FITS headers
+    # Try to get additional metadata from the filename because this
+    # information is not currently available in the FITS headers.
     file_meta = _get_metadata(filename, detector_id)
     if file_meta is not None:
         meta.update(file_meta)
@@ -587,7 +598,7 @@ def webbpsf_reader(filename):
             header = hdulist[0].header
             data = hdulist[0].data
 
-    # handle the case of only one 2D PSF
+    # Handle the case of only one 2D PSF
     data = np.atleast_3d(data)
 
     if not any('DET_YX' in key for key in header):
@@ -597,7 +608,7 @@ def webbpsf_reader(filename):
         msg = 'Invalid WebbPSF FITS file; missing "OVERSAMP" header key'
         raise ValueError(msg)
 
-    # convert header to meta dict
+    # Convert header to meta dict
     header = header.copy(strip=True)
     header.pop('HISTORY', None)
     header.pop('COMMENT', None)
@@ -605,14 +616,21 @@ def webbpsf_reader(filename):
     meta = dict(header)
     meta = {key.lower(): meta[key] for key in meta}  # user lower-case keys
 
-    # Define grid_xypos from the DET_YX{} FITS header keywords. The
+    # Define grid_xypos from the DET_YX{i} FITS header keywords. The
+    # keywords are sorted by their numeric index so that the positions
+    # always match the order of the ePSF planes in the data array. The
     # header values are the '(y, x)' detector positions, but grid_xypos
     # is defined in (x, y) order.
+    det_yx_keys = {}
+    for key in header:
+        match = _DET_YX_PATTERN.match(key)
+        if match is not None:
+            det_yx_keys[int(match.group(1))] = key
+
     xypos = []
-    for key in meta:
-        if 'det_yx' in key:
-            vals = header[key].lstrip('(').rstrip(')').split(',')
-            xypos.append((float(vals[1]), float(vals[0])))
+    for index in sorted(det_yx_keys):
+        vals = header[det_yx_keys[index]].lstrip('(').rstrip(')').split(',')
+        xypos.append((float(vals[1]), float(vals[0])))
     meta['grid_xypos'] = xypos
 
     if 'oversampling' not in meta:
@@ -621,6 +639,35 @@ def webbpsf_reader(filename):
     ndd = NDData(data, meta=meta)
 
     return GriddedPSFModel(ndd)
+
+
+def _has_fits_header_keys(filepath, keys):
+    """
+    Determine whether a file is a FITS file whose primary header
+    contains all of the given keywords.
+
+    Parameters
+    ----------
+    filepath : str or `None`
+        The file path of the FITS file.
+
+    keys : tuple of str
+        The FITS header keywords that must all be present.
+
+    Returns
+    -------
+    result : bool
+        Returns `True` if the file is a FITS file containing all of the
+        input keywords.
+    """
+    if filepath is None or not filepath.lower().endswith(_FITS_EXTENSIONS):
+        return False
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', VerifyWarning)
+        header = fits.getheader(filepath)
+
+    return all(key in header for key in keys)
 
 
 def is_stdpsf(origin, filepath, fileobj, *args, **kwargs):
@@ -649,17 +696,7 @@ def is_stdpsf(origin, filepath, fileobj, *args, **kwargs):
     result : bool
         Returns `True` if the given file is a STDPSF FITS file.
     """
-    if filepath is not None:
-        extens = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts', '.fts.gz')
-        isfits = filepath.lower().endswith(extens)
-        if isfits:
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', VerifyWarning)
-                header = fits.getheader(filepath)
-            keys = ('NAXIS3', 'NXPSFS', 'NYPSFS')
-            return all(key in header for key in keys)
-
-    return False
+    return _has_fits_header_keys(filepath, ('NAXIS3', 'NXPSFS', 'NYPSFS'))
 
 
 def is_webbpsf(origin, filepath, fileobj, *args, **kwargs):
@@ -688,14 +725,4 @@ def is_webbpsf(origin, filepath, fileobj, *args, **kwargs):
     result : bool
         Returns `True` if the given file is a WebbPSF FITS file.
     """
-    if filepath is not None:
-        extens = ('.fits', '.fits.gz', '.fit', '.fit.gz', '.fts', '.fts.gz')
-        isfits = filepath.lower().endswith(extens)
-        if isfits:
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', VerifyWarning)
-                header = fits.getheader(filepath)
-            keys = ('NAXIS3', 'OVERSAMP', 'DET_YX0')
-            return all(key in header for key in keys)
-
-    return False
+    return _has_fits_header_keys(filepath, ('NAXIS3', 'OVERSAMP', 'DET_YX0'))

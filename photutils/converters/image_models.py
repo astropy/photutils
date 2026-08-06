@@ -46,9 +46,10 @@ class ImagePSFConverter(TransformConverterBase):
         from photutils.psf import ImagePSF
 
         return ImagePSF(
-            # Wrapping "data" as an ndarray to ensure the data is properly
-            # converted from NDArrayType. This is necessary because
-            # the validation in ImagePSF happens before "data" is assigned.
+            # Wrapping "data" as an ndarray to ensure the data is
+            # properly converted from NDArrayType. This is necessary
+            # because the validation in ImagePSF happens before "data"
+            # is assigned.
             data=np.array(node['data']),
             flux=node['flux'],
             x_0=node['x_0'],
@@ -121,7 +122,7 @@ class STDPSFGridConverter(Converter):
         meta.update({
             'oversampling': tuple(int(value)
                                   for value in model.oversampling),
-            'grid_shape': model._grid_shape,
+            'grid_shape': model.grid_shape,
             'grid_xypos': np.array(model.grid_xypos),
         })
         return {
@@ -132,6 +133,6 @@ class STDPSFGridConverter(Converter):
     def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
         from photutils.psf import STDPSFGrid
 
-        # Touch the array to load it into memory
-        node['meta']['grid_xypos'][0]
+        # Load the lazily-read grid positions into memory
+        node['meta']['grid_xypos'] = np.asarray(node['meta']['grid_xypos'])
         return STDPSFGrid._from_asdf(node['data'], node['meta'])
