@@ -180,6 +180,12 @@ Bug Fixes
     [0, 90] and (270, 360)). This also makes it consistent with
     ``ApertureStats.orientation``. [#2317]
 
+- ``photutils.psf``
+
+  - Fixed the ``CircularGaussianPSF.fit_deriv`` partial derivative with
+    respect to ``fwhm``. This affected only fits in which the ``fwhm``
+    parameter was unfixed. [#2347]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a

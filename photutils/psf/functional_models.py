@@ -666,8 +666,15 @@ class CircularGaussianPSF(Fittable2DModel):
             The list of partial derivatives with respect to each
             parameter.
         """
-        return GaussianPSF().fit_deriv(x, y, flux, x_0, y_0, fwhm, fwhm,
-                                       0.0)[:-2]
+        derivs = GaussianPSF.fit_deriv(x, y, flux, x_0, y_0, fwhm, fwhm, 0.0)
+
+        # The x and y FWHMs are the same variable for a circular
+        # Gaussian, so the chain rule gives the sum of the two partial
+        # derivatives. The theta derivative is dropped because theta is
+        # not a parameter of this model.
+        dg_dfwhm = derivs[3] + derivs[4]
+
+        return [*derivs[:3], dg_dfwhm]
 
     @property
     def input_units(self):

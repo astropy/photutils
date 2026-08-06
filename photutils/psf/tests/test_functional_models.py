@@ -153,6 +153,94 @@ def test_gaussian_prfs(name, use_units):
     gaussian_tests(name, use_units)
 
 
+class TestFitDeriv:
+    """
+    Tests of the analytic model derivatives against numerical
+    derivatives.
+    """
+
+    # (x, y) coordinates spanning the model peak
+    yy, xx = np.mgrid[20:30, 19:29]
+    xx = xx.astype(float)
+    yy = yy.astype(float)
+
+    gaussian_params = (71.4, 24.3, 25.2, 10.1, 5.82, 21.7)
+    circular_params = (71.4, 24.3, 25.2, 10.1)
+
+    def numerical_deriv(self, model, params, index, step=1e-6):
+        """
+        Calculate the central-difference derivative of a model with
+        respect to a single parameter.
+
+        Parameters
+        ----------
+        model : `~astropy.modeling.Fittable2DModel`
+            The model to evaluate.
+
+        params : tuple
+            The model parameter values.
+
+        index : int
+            The index of the parameter to differentiate.
+
+        step : float, optional
+            The parameter step size.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            The numerical partial derivative.
+        """
+        params_hi = list(params)
+        params_lo = list(params)
+        params_hi[index] += step
+        params_lo[index] -= step
+        data_hi = model.evaluate(self.xx, self.yy, *params_hi)
+        data_lo = model.evaluate(self.xx, self.yy, *params_lo)
+        return (data_hi - data_lo) / (2.0 * step)
+
+    @pytest.mark.parametrize(('model_class', 'params'),
+                             [(GaussianPSF, gaussian_params),
+                              (CircularGaussianPSF, circular_params)])
+    def test_fit_deriv(self, model_class, params):
+        model = model_class()
+        derivs = model.fit_deriv(self.xx, self.yy, *params)
+        assert len(derivs) == len(params)
+
+        for index in range(len(params)):
+            numerical = self.numerical_deriv(model, params, index)
+            assert_allclose(derivs[index], numerical, rtol=1e-5, atol=1e-9)
+
+    def test_circular_fwhm_deriv(self):
+        """
+        Test that the circular Gaussian FWHM derivative is the sum of
+        the x and y FWHM derivatives of the elliptical Gaussian model.
+        """
+        flux, x_0, y_0, fwhm = self.circular_params
+        circular = CircularGaussianPSF.fit_deriv(self.xx, self.yy, flux,
+                                                 x_0, y_0, fwhm)
+        elliptical = GaussianPSF.fit_deriv(self.xx, self.yy, flux, x_0, y_0,
+                                           fwhm, fwhm, 0.0)
+        assert_allclose(circular[3], elliptical[3] + elliptical[4])
+
+    def test_circular_fit_free_fwhm(self):
+        """
+        Test fitting a circular Gaussian with a free FWHM using the
+        analytic derivatives.
+        """
+        model = CircularGaussianPSF(flux=71.4, x_0=24.3, y_0=25.2, fwhm=6.1)
+        yy, xx = np.mgrid[0:51, 0:51]
+        data = model(xx, yy)
+
+        model_init = CircularGaussianPSF(flux=50.0, x_0=23.0, y_0=27.0,
+                                         fwhm=8.0)
+        model_init.fwhm.fixed = False
+        fitter = TRFLSQFitter()
+        fit_model = fitter(model_init, xx, yy, data)
+        assert_allclose(fit_model.flux.value, model.flux.value, rtol=1e-6)
+        assert_allclose(fit_model.fwhm.value, model.fwhm.value, rtol=1e-6)
+
+
 def test_gaussian_prf_sums():
     """
     Test that subpixel accuracy of Gaussian PRFs by checking the sum of
