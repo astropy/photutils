@@ -458,30 +458,30 @@ class TestIRAFStarFinder:
                                 roundness_range=(-np.inf, np.inf))
         cat = finder._get_raw_catalog(data)
         assert cat is not None
-        nsrc = len(cat)
+        n_sources = len(cat)
 
         # sky should be finite and have same length as nsources
         sky = cat.sky
-        assert sky.shape == (nsrc,)
+        assert sky.shape == (n_sources,)
         assert np.all(np.isfinite(sky))
 
-        # cutout_data_nosub should have shape (nsrc, ky, kx) with no
+        # cutout_data_nosub should have shape (n_sources, ky, kx) with no
         # sky subtraction
         cdata = cat.cutout_data_nosub
         assert cdata.ndim == 3
-        assert cdata.shape[0] == nsrc
+        assert cdata.shape[0] == n_sources
 
         # cutout_xorigin/cutout_yorigin should be finite 1D arrays
         xorig = cat.cutout_xorigin
         yorig = cat.cutout_yorigin
-        assert xorig.shape == (nsrc,)
-        assert yorig.shape == (nsrc,)
+        assert xorig.shape == (n_sources,)
+        assert yorig.shape == (n_sources,)
         assert np.all(np.isfinite(xorig))
         assert np.all(np.isfinite(yorig))
 
         # sharpness should be finite for detected sources
         sharpness = cat.sharpness
-        assert sharpness.shape == (nsrc,)
+        assert sharpness.shape == (n_sources,)
         assert np.all(np.isfinite(sharpness))
 
     def test_deprecated_sharplo_sharphi(self):

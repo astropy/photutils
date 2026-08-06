@@ -833,18 +833,20 @@ def test_grouper_init_params(test_data):
     init_params['y'] = phot0['y_init']
     init_params['flux'] = phot0['flux_init']
     phot1 = psfphot(data, error=error, init_params=init_params)
-    nsources = len(phot1)
+    n_sources = len(phot1)
     assert isinstance(phot1, QTable)
-    assert_equal(phot1['group_id'], np.ones(nsources, dtype=int))
-    assert_equal(phot1['group_size'], np.ones(nsources, dtype=int) * nsources)
+    assert_equal(phot1['group_id'], np.ones(n_sources, dtype=int))
+    assert_equal(phot1['group_size'],
+                 np.ones(n_sources, dtype=int) * n_sources)
 
     # test with grouper=None
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             grouper=None, aperture_radius=4)
     phot2 = psfphot(data, error=error, init_params=init_params)
     assert isinstance(phot2, QTable)
-    assert_equal(phot1['group_id'], np.ones(nsources, dtype=int))
-    assert_equal(phot1['group_size'], np.ones(nsources, dtype=int) * nsources)
+    assert_equal(phot1['group_id'], np.ones(n_sources, dtype=int))
+    assert_equal(phot1['group_size'],
+                 np.ones(n_sources, dtype=int) * n_sources)
 
 
 def test_large_group_warning():
@@ -1981,9 +1983,9 @@ def test_init_params_id_order(test_data, reorder, with_groups,
     data, error, sources = test_data
     init_params = sources.copy()
 
-    nsrc = len(sources)
+    n_sources = len(sources)
     rng = np.random.default_rng(seed=0)
-    init_params['id'] = np.arange(1, nsrc + 1)
+    init_params['id'] = np.arange(1, n_sources + 1)
     if with_groups:
         # same groupings, but different group ids
         if nonconsec_groups:
@@ -1991,7 +1993,7 @@ def test_init_params_id_order(test_data, reorder, with_groups,
         else:
             group_ids = [1, 2, 1, 2, 2, 3, 2, 3, 4, 4]
         init_params['group_id'] = group_ids
-    init_params['local_bkg'] = rng.normal(size=nsrc)
+    init_params['local_bkg'] = rng.normal(size=n_sources)
     init_params['x_0'][0] = 1000
     init_params['y_0'][0] = 1000
     init_params['x_0'][5] = 1000
@@ -2008,12 +2010,12 @@ def test_init_params_id_order(test_data, reorder, with_groups,
     if nonconsec_ids:
         # non-consecutive random ids
         # monotonically increasing so final results order should be same
-        steps = rng.integers(1, 51, size=nsrc - 1)
+        steps = rng.integers(1, 51, size=n_sources - 1)
         init_params2['id'] = np.concatenate(([1], 1 + np.cumsum(steps)))
     if reorder == 'reversed':
         init_params2 = init_params2[::-1]
     elif reorder == 'permutate':
-        init_params2 = init_params2[rng.permutation(nsrc)]
+        init_params2 = init_params2[rng.permutation(n_sources)]
 
     psfphot2 = PSFPhotometry(psf_model, fit_shape)
     phot2 = psfphot2(data, error=error, init_params=init_params2)

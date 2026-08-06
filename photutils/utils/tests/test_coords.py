@@ -16,11 +16,11 @@ def test_make_random_xycoords(min_sep):
     """
     xmin, xmax = 97, 903
     ymin, ymax = 0, 501
-    ncoords = 100
-    xycoords = make_random_xycoords(ncoords, (xmin, xmax), (ymin, ymax),
+    n_coords = 100
+    xycoords = make_random_xycoords(n_coords, (xmin, xmax), (ymin, ymax),
                                     min_separation=min_sep, seed=0)
 
-    assert xycoords.shape == (ncoords, 2)
+    assert xycoords.shape == (n_coords, 2)
     assert xycoords[:, 0].min() >= xmin
     assert xycoords[:, 0].max() <= xmax
     assert xycoords[:, 1].min() >= ymin

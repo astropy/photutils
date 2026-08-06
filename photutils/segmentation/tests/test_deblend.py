@@ -114,10 +114,10 @@ class TestDeblendSources:
                                  progress_bar=False)
         assert result.n_labels == 2
 
-    @pytest.mark.parametrize(('contrast', 'nlabels'),
+    @pytest.mark.parametrize(('contrast', 'n_labels'),
                              [(0.001, 6), (0.017, 5), (0.06, 4), (0.1, 3),
                               (0.15, 2), (0.45, 1)])
-    def test_deblend_contrast(self, contrast, nlabels):
+    def test_deblend_contrast(self, contrast, n_labels):
         """
         Test deblend contrast.
         """
@@ -135,7 +135,7 @@ class TestDeblendSources:
         segm2 = deblend_sources(data, segm, n_pixels, mode='linear',
                                 n_levels=32, contrast=contrast,
                                 progress_bar=False)
-        assert segm2.n_labels == nlabels
+        assert segm2.n_labels == n_labels
 
     def test_deblend_contrast_levels(self):
         """

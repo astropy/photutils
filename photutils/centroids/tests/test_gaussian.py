@@ -82,25 +82,25 @@ def test_centroids_nan_withmask(use_mask):
     if use_mask:
         mask = np.zeros(data.shape, dtype=bool)
         mask[20, :] = True
-        nwarn = 0
+        n_warn = 0
         ctx = nullcontext()
     else:
         mask = None
-        nwarn = 1
+        n_warn = 1
         match = 'Input data contains non-finite values'
         ctx = pytest.warns(AstropyUserWarning, match=match)
 
     with ctx as warnlist:
         xc, yc = centroid_1dg(data, mask=mask)
         assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.0e-3)
-        if nwarn == 1:
-            assert len(warnlist) == nwarn
+        if n_warn == 1:
+            assert len(warnlist) == n_warn
 
     with ctx as warnlist:
         xc, yc = centroid_2dg(data, mask=mask)
         assert_allclose([xc, yc], [xc_ref, yc_ref], rtol=0, atol=1.0e-3)
-        if nwarn == 1:
-            assert len(warnlist) == nwarn
+        if n_warn == 1:
+            assert len(warnlist) == n_warn
 
 
 def test_invalid_shapes():

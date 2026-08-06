@@ -610,7 +610,7 @@ class TestSVDShapeConversions:
 
 
 def _project_sky_ellipse_boundary(skycoord, wcs, a_arcsec, b_arcsec, pa_rad, *,
-                                  npts=720):
+                                  n_points=720):
     """
     Project the boundary of a sky ellipse to pixel coordinates.
 
@@ -620,7 +620,7 @@ def _project_sky_ellipse_boundary(skycoord, wcs, a_arcsec, b_arcsec, pa_rad, *,
     ``wcs.world_to_pixel``. This is an independent ground truth for the
     pixel image of a sky ellipse.
     """
-    theta = np.linspace(0, 2 * np.pi, npts, endpoint=False)
+    theta = np.linspace(0, 2 * np.pi, n_points, endpoint=False)
     xi = (a_arcsec * np.cos(theta) * np.sin(pa_rad)
           + b_arcsec * np.sin(theta) * np.cos(pa_rad))
     eta = (a_arcsec * np.cos(theta) * np.cos(pa_rad)
@@ -739,7 +739,7 @@ def _make_sheared_wcs():
 
 
 def _project_pixel_circle_to_sky_tangent(pixcoord, wcs, radius_pix, *,
-                                         npts=720):
+                                         n_points=720):
     """
     Project a pixel circle boundary to tangent-plane sky offsets.
 
@@ -749,7 +749,7 @@ def _project_pixel_circle_to_sky_tangent(pixcoord, wcs, radius_pix, *,
     great-circle separation and position angle. This is an independent
     ground truth for the sky image of a pixel circle.
     """
-    theta = np.linspace(0, 2 * np.pi, npts, endpoint=False)
+    theta = np.linspace(0, 2 * np.pi, n_points, endpoint=False)
     cx, cy = pixcoord
     x = cx + radius_pix * np.cos(theta)
     y = cy + radius_pix * np.sin(theta)

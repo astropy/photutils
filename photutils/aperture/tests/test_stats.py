@@ -836,9 +836,9 @@ class TestApertureStats:
         Test the standard-error properties against their definitions.
         """
         apstats = ApertureStats(self.data, self.aperture, error=self.error)
-        npix = apstats.center_aper_area.value
-        sample_std = apstats.std * np.sqrt(npix / (npix - 1.0))
-        expected_mean_err = sample_std / np.sqrt(npix)
+        n_pixels = apstats.center_aper_area.value
+        sample_std = apstats.std * np.sqrt(n_pixels / (n_pixels - 1.0))
+        expected_mean_err = sample_std / np.sqrt(n_pixels)
         assert_allclose(apstats.mean_err, expected_mean_err)
         assert_allclose(apstats.median_err,
                         np.sqrt(np.pi / 2.0) * expected_mean_err)
@@ -877,7 +877,7 @@ class TestApertureStats:
             error = error * self.unit
         apstats0 = ApertureStats(data, self.aperture, error=error)
         apstats1 = ApertureStats(data, self.aperture, error=error, ddof=1)
-        npix = apstats0.center_aper_area.value
+        n_pixels = apstats0.center_aper_area.value
         var0 = apstats0.var
         std0 = apstats0.std
         var1 = apstats1.var
@@ -887,8 +887,8 @@ class TestApertureStats:
             assert std1.unit == self.unit
             var0, std0 = var0.value, std0.value
             var1, std1 = var1.value, std1.value
-        assert_allclose(var1, var0 * npix / (npix - 1.0))
-        assert_allclose(std1, std0 * np.sqrt(npix / (npix - 1.0)))
+        assert_allclose(var1, var0 * n_pixels / (n_pixels - 1.0))
+        assert_allclose(std1, std0 * np.sqrt(n_pixels / (n_pixels - 1.0)))
         # The standard errors are defined with the sample std and are
         # independent of the ``ddof`` keyword
         assert_allclose(apstats0.mean_err, apstats1.mean_err, equal_nan=True)
