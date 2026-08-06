@@ -780,26 +780,8 @@ class STDPSFGrid:
 
     Parameters
     ----------
-    filename : str or None
-        The name or URL of a STDPSF FITS file. If `None`, the class is
-        initialized from ``kwargs``.
-
-    **kwargs : dict
-        Keyword arguments used to initialize the class when ``filename``
-        is `None` (e.g., when restoring from an ASDF file). Recognized
-        keys are:
-
-        * ``'data'`` : `~numpy.ndarray`
-            A 3D array containing the ePSF grid.
-
-        * ``'meta'`` : `dict`
-            A metadata dictionary containing at least ``'grid_xypos'``,
-            an ``(N, 2)`` array of fiducial ``(x, y)`` detector
-            coordinates. It may also contain ``'oversampling'``; if
-            omitted, the default is ``(4, 4)``. The structural keys
-            ``'grid_xypos'``, ``'oversampling'``, and ``'grid_shape'``
-            are consumed during initialization and are not retained in
-            ``meta``.
+    filename : str
+        The name or URL of a STDPSF FITS file.
 
     Examples
     --------
@@ -808,42 +790,101 @@ class STDPSFGrid:
     >>> fig = psfgrid.plot_grid()
     """
 
-    def __init__(self, filename=None, **kwargs):
-        # STDPSF files are assumed to have an oversampling factor of 4
-        # along both axes. This is the default if the oversampling is
-        # not provided in the meta dictionary.
-        oversampling_default = (4, 4)
+    # STDPSF files are assumed to have an oversampling factor of 4 along
+    # both axes
+    _default_oversampling = (4, 4)
 
-        if filename is not None:
-            grid_data = _read_stdpsf(filename)
-            data = grid_data['data']
-            xgrid = grid_data['xgrid']
-            ygrid = grid_data['ygrid']
-            # itertools.product iterates over the last input first
-            xy_grid = np.array([yx[::-1] for yx in itertools.product(
-                ygrid, xgrid)])
-            oversampling = oversampling_default
+    def __init__(self, filename):
+        grid_data = _read_stdpsf(filename)
+        xgrid = grid_data['xgrid']
+        ygrid = grid_data['ygrid']
 
-            # Try to get additional metadata from the filename because
-            # this information is not currently available in the FITS
-            # headers.
-            meta = _get_metadata(filename, None) or {}
-        else:
-            data = kwargs['data']
-            meta = kwargs['meta'].copy()
-            xy_grid = np.asarray(meta.pop('grid_xypos'))
-            oversampling = meta.pop('oversampling', oversampling_default)
-            meta.pop('grid_shape', None)
-            xgrid = np.unique(xy_grid[:, 0])  # sorted
-            ygrid = np.unique(xy_grid[:, 1])  # sorted
+        # itertools.product iterates over the last input first
+        grid_xypos = np.array([yx[::-1]
+                               for yx in itertools.product(ygrid, xgrid)])
 
+        # try to get additional metadata from the filename because this
+        # information is not currently available in the FITS headers
+        meta = _get_metadata(filename, None) or {}
+
+        self._init_grid(grid_data['data'], grid_xypos,
+                        (len(ygrid), len(xgrid)),
+                        self._default_oversampling, meta)
+
+    @classmethod
+    def _from_asdf(cls, data, meta):
+        """
+        Create a `STDPSFGrid` from the contents of an ASDF file.
+
+        Parameters
+        ----------
+        data : `~numpy.ndarray`
+            A 3D array containing the ePSF grid.
+
+        meta : dict
+            A metadata dictionary. It must contain a ``'grid_xypos'``
+            key holding an ``(N, 2)`` array of the fiducial ``(x, y)``
+            detector coordinates and a ``'grid_shape'`` key holding the
+            ``(ny, nx)`` shape of the grid. It may also contain an
+            ``'oversampling'`` key; if absent, the default is ``(4,
+            4)``. These three keys are consumed here and are not
+            retained in the ``meta`` attribute.
+
+        Returns
+        -------
+        result : `STDPSFGrid`
+            The ePSF grid.
+        """
+        meta = dict(meta)
+        for key in ('grid_xypos', 'grid_shape'):
+            if key not in meta:
+                msg = f'{key!r} must be in the meta dictionary'
+                raise ValueError(msg)
+
+        grid_xypos = np.asarray(meta.pop('grid_xypos'))
+        grid_shape = meta.pop('grid_shape')
+        oversampling = meta.pop('oversampling', cls._default_oversampling)
+
+        obj = cls.__new__(cls)
+        obj._init_grid(data, grid_xypos, grid_shape, oversampling, meta)
+        return obj
+
+    def _init_grid(self, data, grid_xypos, grid_shape, oversampling, meta):
+        """
+        Set the ePSF grid attributes.
+
+        Parameters
+        ----------
+        data : `~numpy.ndarray`
+            A 3D array containing the ePSF grid.
+
+        grid_xypos : `~numpy.ndarray`
+            An ``(N, 2)`` array of the fiducial ``(x, y)`` detector
+            coordinates of each ePSF, ordered along y and then x.
+
+        grid_shape : tuple of int
+            The ``(ny, nx)`` shape of the ePSF grid.
+
+        oversampling : int or array_like of int
+            The integer oversampling factor(s) of the ePSF images.
+
+        meta : dict
+            The metadata dictionary.
+        """
         self.data = data
-        self.grid_xypos = xy_grid
-        self._xgrid = xgrid
-        self._ygrid = ygrid
+        self.grid_xypos = grid_xypos
+        self.meta = meta
+        self._grid_shape = tuple(int(value) for value in grid_shape)
+
+        # The grid axes are extracted from the first row and column
+        # rather than with np.unique because a coordinate can be
+        # repeated where two detectors abut (e.g., ACS/WFC)
+        xypos = grid_xypos.reshape(*self._grid_shape, 2)
+        self._xgrid = xypos[0, :, 0]
+        self._ygrid = xypos[:, 0, 1]
+
         self._oversampling = as_pair('oversampling', oversampling,
                                      lower_bound=(0, 0))
-        self.meta = meta
 
     @property
     def oversampling(self):
@@ -871,7 +912,6 @@ class STDPSFGrid:
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
         cls_info = []
-        grid_shape = (self._ygrid.size, self._xgrid.size)
         # Use int to avoid printing numpy int64 values in the string
         # representation
         oversampling = tuple(int(value) for value in self.oversampling)
@@ -882,7 +922,7 @@ class STDPSFGrid:
                 name = key.capitalize() if key != 'STDPSF' else key
                 cls_info.append((name, self.meta[key]))
 
-        cls_info.extend([('Grid shape', grid_shape),
+        cls_info.extend([('Grid shape', self._grid_shape),
                          ('Number of PSFs', len(self.grid_xypos)),
                          ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),

@@ -3,6 +3,8 @@
 Tests for the photutils PSF converters.
 """
 
+import os.path as op
+
 import asdf
 import numpy as np
 import pytest
@@ -93,11 +95,12 @@ def test_stdpsf_grid_converter_preserves_oversampling(tmp_path):
     data = np.ones((4, 4, 4))
     meta = {
         'grid_xypos': np.array([(0, 0), (1, 0), (0, 1), (1, 1)]),
+        'grid_shape': (2, 2),
         'oversampling': 8,
         'instrument': 'test-instrument',
         'custom': {'value': 42},
     }
-    psfgrid = STDPSFGrid(data=data, meta=meta)
+    psfgrid = STDPSFGrid._from_asdf(data, meta)
 
     filename = tmp_path / 'psf.asdf'
     with asdf.AsdfFile() as af:
@@ -112,3 +115,30 @@ def test_stdpsf_grid_converter_preserves_oversampling(tmp_path):
         assert 'grid_xypos' not in psfgrid2.meta
         assert 'oversampling' not in psfgrid2.meta
         assert 'grid_shape' not in psfgrid2.meta
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+def test_stdpsf_grid_converter_repeated_grid_coordinate(tmp_path):
+    """
+    Test a round trip for an ACS/WFC grid, whose y coordinates are
+    repeated where the two detectors abut.
+    """
+    filename = op.join(op.dirname(op.abspath(__file__)), '..', '..', 'psf',
+                       'tests', 'data', 'STDPSF_ACSWFC_F814W_mock.fits')
+    psfgrid = STDPSFGrid(filename)
+    assert psfgrid._grid_shape == (10, 9)
+
+    asdf_filename = tmp_path / 'psf.asdf'
+    with asdf.AsdfFile() as af:
+        af['psf'] = psfgrid
+        af.write_to(asdf_filename)
+
+    with asdf.open(asdf_filename) as af:
+        psfgrid2 = af['psf']
+        assert psfgrid2._grid_shape == psfgrid._grid_shape
+        assert_array_equal(psfgrid2.grid_xypos, psfgrid.grid_xypos)
+        assert_array_equal(psfgrid2._xgrid, psfgrid._xgrid)
+        assert_array_equal(psfgrid2._ygrid, psfgrid._ygrid)
+        assert_array_equal(psfgrid2.data, psfgrid.data)
+        assert repr(psfgrid2) == repr(psfgrid)

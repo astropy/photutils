@@ -564,20 +564,84 @@ def test_stdpsfgrid_repr_str():
     assert 'Oversampling: (4, 4)' in grid_str
 
 
-def test_stdpsfgrid_kwargs_preserve_oversampling_and_meta():
-    data = np.ones((4, 4, 4))
-    grid_xypos = np.array([(0, 0), (1, 0), (0, 1), (1, 1)])
-    meta = {'grid_xypos': grid_xypos, 'oversampling': 8}
+class TestSTDPSFGridFromASDF:
+    """
+    Tests for the private STDPSFGrid._from_asdf constructor.
+    """
 
-    psfgrid = STDPSFGrid(data=data, meta=meta)
+    @staticmethod
+    def make_meta(**kwargs):
+        meta = {'grid_xypos': np.array([(0, 0), (1, 0), (0, 1), (1, 1)]),
+                'oversampling': 8,
+                'grid_shape': (2, 2)}
+        meta.update(kwargs)
+        return meta
 
-    assert_equal(psfgrid.oversampling, [8, 8])
-    assert 'grid_xypos' not in psfgrid.meta
-    assert 'oversampling' not in psfgrid.meta
-    assert 'grid_shape' not in psfgrid.meta
-    assert_equal(meta['oversampling'], 8)
-    assert 'grid_shape' not in meta
+    def test_grid_attributes(self):
+        data = np.ones((4, 4, 4))
+        psfgrid = STDPSFGrid._from_asdf(data, self.make_meta())
 
-    match = "property 'oversampling' of 'STDPSFGrid' object has no setter"
-    with pytest.raises(AttributeError, match=match):
-        psfgrid.oversampling = (4, 5)
+        assert_equal(psfgrid.data, data)
+        assert_equal(psfgrid.oversampling, [8, 8])
+        assert_equal(psfgrid.grid_xypos, [(0, 0), (1, 0), (0, 1), (1, 1)])
+        assert_equal(psfgrid._xgrid, [0, 1])
+        assert_equal(psfgrid._ygrid, [0, 1])
+
+    def test_structural_keys_removed(self):
+        psfgrid = STDPSFGrid._from_asdf(np.ones((4, 4, 4)), self.make_meta())
+
+        for key in ('grid_xypos', 'oversampling', 'grid_shape'):
+            assert key not in psfgrid.meta
+
+    def test_extra_meta_preserved(self):
+        meta = self.make_meta(detector='TEST', custom={'value': 42})
+        psfgrid = STDPSFGrid._from_asdf(np.ones((4, 4, 4)), meta)
+
+        assert psfgrid.meta == {'detector': 'TEST', 'custom': {'value': 42}}
+
+    def test_input_meta_not_modified(self):
+        meta = self.make_meta()
+        STDPSFGrid._from_asdf(np.ones((4, 4, 4)), meta)
+
+        assert meta['oversampling'] == 8
+        assert 'grid_shape' in meta
+        assert 'grid_xypos' in meta
+
+    def test_default_oversampling(self):
+        meta = self.make_meta()
+        del meta['oversampling']
+        psfgrid = STDPSFGrid._from_asdf(np.ones((4, 4, 4)), meta)
+
+        assert_equal(psfgrid.oversampling, [4, 4])
+
+    @pytest.mark.parametrize('key', ['grid_xypos', 'grid_shape'])
+    def test_missing_required_meta(self, key):
+        meta = self.make_meta()
+        del meta[key]
+
+        match = f"'{key}' must be in the meta dictionary"
+        with pytest.raises(ValueError, match=match):
+            STDPSFGrid._from_asdf(np.ones((4, 4, 4)), meta)
+
+    def test_repeated_grid_coordinate(self):
+        """
+        Test a grid where a coordinate is repeated because two
+        detectors abut (e.g., ACS/WFC).
+        """
+        grid_xypos = np.array([(0, 0), (1, 0), (0, 5), (1, 5),
+                               (0, 5), (1, 5), (0, 9), (1, 9)])
+        meta = self.make_meta(grid_xypos=grid_xypos, grid_shape=(4, 2))
+        psfgrid = STDPSFGrid._from_asdf(np.ones((8, 4, 4)), meta)
+
+        assert psfgrid._grid_shape == (4, 2)
+        assert_equal(psfgrid._xgrid, [0, 1])
+        assert_equal(psfgrid._ygrid, [0, 5, 5, 9])
+        assert 'Grid shape: (4, 2)' in repr(psfgrid)
+        assert 'Number of PSFs: 8' in repr(psfgrid)
+
+    def test_oversampling_is_read_only(self):
+        psfgrid = STDPSFGrid._from_asdf(np.ones((4, 4, 4)), self.make_meta())
+
+        match = "property 'oversampling' of 'STDPSFGrid' object has no setter"
+        with pytest.raises(AttributeError, match=match):
+            psfgrid.oversampling = (4, 5)

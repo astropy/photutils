@@ -79,10 +79,11 @@ class GriddedPSFModelConverter(TransformConverterBase):
         }
 
         # Preserve any additional meta items (e.g., 'STDPSF', 'detector',
-        # 'filter'). 'grid_xypos' and 'oversampling' are stored above.
+        # 'filter'). 'grid_xypos' and 'oversampling' are stored above and
+        # 'grid_shape' is recomputed when the model is initialized.
         node['meta'] = {
             key: value for key, value in model.meta.items()
-            if key not in ('grid_xypos', 'oversampling')
+            if key not in ('grid_xypos', 'oversampling', 'grid_shape')
         }
 
         return node
@@ -116,15 +117,12 @@ class STDPSFGridConverter(Converter):
     types = ('photutils.psf.STDPSFGrid',)
 
     def to_yaml_tree(self, model, tag, ctx):  # noqa: ARG002
-        grid_xypos = np.array(model.grid_xypos)
-        xgrid = np.unique(grid_xypos[:, 0])
-        ygrid = np.unique(grid_xypos[:, 1])
         meta = dict(model.meta)
         meta.update({
             'oversampling': tuple(int(value)
                                   for value in model.oversampling),
-            'grid_shape': (len(ygrid), len(xgrid)),
-            'grid_xypos': grid_xypos,
+            'grid_shape': model._grid_shape,
+            'grid_xypos': np.array(model.grid_xypos),
         })
         return {
             'data': model.data,
@@ -136,4 +134,4 @@ class STDPSFGridConverter(Converter):
 
         # Touch the array to load it into memory
         node['meta']['grid_xypos'][0]
-        return STDPSFGrid(**node)
+        return STDPSFGrid._from_asdf(node['data'], node['meta'])
