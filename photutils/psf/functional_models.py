@@ -20,7 +20,13 @@ __all__ = [
     'MoffatPSF',
 ]
 
+# The smallest positive normal float32 value (~1.2e-38), used as the
+# lower bound of the strictly-positive model parameters. Despite its
+# name, this is numpy.finfo.tiny and not the machine epsilon. The name
+# and definition match the constant of the same name in
+# astropy.modeling.functional_models.
 FLOAT_EPSILON = float(np.finfo(np.float32).tiny)
+
 GAUSSIAN_FWHM_TO_SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
 
@@ -1466,15 +1472,18 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         evaluated_model : `~numpy.ndarray`
             The evaluated model.
         """
-        dpix = 0.5
-        if isinstance(x_0, u.Quantity):
-            dpix *= x_0.unit
+        x0 = x - x_0
+        y0 = y - y_0
 
-        return (flux / 4
-                * ((erf((x - x_0 + dpix) / (np.sqrt(2) * sigma))
-                    - erf((x - x_0 - dpix) / (np.sqrt(2) * sigma)))
-                   * (erf((y - y_0 + dpix) / (np.sqrt(2) * sigma))
-                      - erf((y - y_0 - dpix) / (np.sqrt(2) * sigma)))))
+        dpix = 0.5
+        if isinstance(x0, u.Quantity):
+            dpix <<= x0.unit
+
+        return (flux / 4.0
+                * ((erf((x0 + dpix) / (np.sqrt(2) * sigma))
+                    - erf((x0 - dpix) / (np.sqrt(2) * sigma)))
+                   * (erf((y0 + dpix) / (np.sqrt(2) * sigma))
+                      - erf((y0 - dpix) / (np.sqrt(2) * sigma)))))
 
     @property
     def input_units(self):
