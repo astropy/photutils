@@ -142,6 +142,9 @@ class GriddedPSFModel(Fittable2DModel):
         self._xgrid = np.unique(self.grid_xypos[:, 0])  # sorted
         self._ygrid = np.unique(self.grid_xypos[:, 1])  # sorted
         self.meta['grid_shape'] = (len(self._ygrid), len(self._xgrid))
+        # Store the normalized (y, x) pair so meta always matches
+        # the oversampling attribute, regardless of the input form.
+        self.meta['oversampling'] = tuple(int(v) for v in self._oversampling)
 
         self._interpolator = {}
 
@@ -293,7 +296,7 @@ class GriddedPSFModel(Fittable2DModel):
                          ('Grid positions', self.grid_xypos.tolist()),
                          ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),
-                         ('Oversampling', self.oversampling.tolist()),
+                         ('Oversampling', tuple(self.oversampling.tolist())),
                          ('Fill Value', self.fill_value)])
 
         return self._format_str(keywords=keywords)
@@ -817,6 +820,11 @@ class STDPSFGrid:
                 meta.update(file_meta)
 
         self.meta = meta
+        # Store the normalized (y, x) pairs so meta always matches
+        # the oversampling attribute and grid shape, regardless of
+        # the input form (e.g., after an ASDF round trip).
+        self.meta['oversampling'] = tuple(int(v) for v in self.oversampling)
+        self.meta['grid_shape'] = (len(self._ygrid), len(self._xgrid))
 
     @_plot_grid_docstring
     def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
@@ -842,7 +850,7 @@ class STDPSFGrid:
         cls_info.extend([('Number of PSFs', len(self.grid_xypos)),
                          ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),
-                         ('Oversampling', self.oversampling)])
+                         ('Oversampling', tuple(self.oversampling.tolist()))])
 
         with np.printoptions(threshold=25, edgeitems=5):
             fmt = [f'{key}: {val}' for key, val in cls_info]

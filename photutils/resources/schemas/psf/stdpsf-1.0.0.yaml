@@ -29,7 +29,7 @@ examples:
             datatype: int64
             byteorder: little
             shape: [9, 2]
-          oversampling: 4
+          oversampling: [4, 4]
 
 
 type: object
@@ -45,9 +45,13 @@ properties:
         type: string
         title: The name of the file containing the PSFs.
       oversampling:
-        type: integer
+        type: array
         description: |
-          Oversampling factor.
+          Oversampling factor(s), as a 2-element (y, x) array.
+        items:
+          type: integer
+        minItems: 2
+        maxItems: 2
       detector:
         type: string
         title: The name of the detector

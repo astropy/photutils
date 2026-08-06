@@ -149,7 +149,7 @@ class TestGriddedPSFModel:
         assert 'GriddedPSFModel' in str_str
         assert 'Number of PSFs: 16' in str_str
         assert 'PSF shape (oversampled pixels): (101, 101)' in str_str
-        assert 'Oversampling: [4, 4]' in str_str
+        assert 'Oversampling: (4, 4)' in str_str
         assert 'Fill Value: 0.0' in str_str
 
     def test_gridded_psf_model_basic_eval(self, psfmodel):
