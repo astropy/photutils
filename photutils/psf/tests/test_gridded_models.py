@@ -289,6 +289,14 @@ class TestGriddedPSFModel:
         edge = psfmodel._calc_bilinear_weights(0.0, 60.0, grid_xy)
         assert_allclose(clamped, edge)
 
+    def test_origin(self, psfmodel):
+        """
+        Test that the origin is set to the center of the ePSF images.
+        """
+        ny, nx = psfmodel.data.shape[1:]
+        assert psfmodel.origin.shape == (2,)
+        assert_allclose(psfmodel.origin, ((nx - 1) / 2, (ny - 1) / 2))
+
     def test_evaluate_matches_reference_algorithm(self, psfmodel):
         """
         The optimized evaluation must produce the same result as the

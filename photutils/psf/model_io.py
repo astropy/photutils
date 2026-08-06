@@ -18,6 +18,27 @@ from photutils.utils._deprecation import deprecated_positional_kwargs
 __all__ = ['GriddedPSFModelRead', 'stdpsf_reader', 'webbpsf_reader']
 __doctest_skip__ = ['GriddedPSFModelRead']
 
+# Mapping of the STDPSF filename detector field to the (instrument,
+# detector) metadata values
+_STDPSF_DETECTOR_MAP = {'WFPC2': ('HST/WFPC2', 'WFPC2'),
+                        'ACSHRC': ('HST/ACS', 'HRC'),
+                        'ACSWFC': ('HST/ACS', 'WFC'),
+                        'WFC3UV': ('HST/WFC3', 'UVIS'),
+                        'WFC3IR': ('HST/WFC3', 'IR'),
+                        'NRCSW': ('JWST/NIRCam', 'NRCSW'),
+                        'NRCA1': ('JWST/NIRCam', 'A1'),
+                        'NRCA2': ('JWST/NIRCam', 'A2'),
+                        'NRCA3': ('JWST/NIRCam', 'A3'),
+                        'NRCA4': ('JWST/NIRCam', 'A4'),
+                        'NRCB1': ('JWST/NIRCam', 'B1'),
+                        'NRCB2': ('JWST/NIRCam', 'B2'),
+                        'NRCB3': ('JWST/NIRCam', 'B3'),
+                        'NRCB4': ('JWST/NIRCam', 'B4'),
+                        'NRCAL': ('JWST/NIRCam', 'A5'),
+                        'NRCBL': ('JWST/NIRCam', 'B5'),
+                        'NIRISS': ('JWST/NIRISS', 'NIRISS'),
+                        'MIRI': ('JWST/MIRI', 'MIRIM')}
+
 
 class GriddedPSFModelRead(registry.UnifiedReadWrite):
     """
@@ -403,7 +424,10 @@ def _get_metadata(filename, detector_id):
     if isinstance(filename, io.FileIO):
         filename = filename.name
 
-    parts = os.path.basename(filename).strip('.fits').split('_')
+    # Strip the file extension (e.g., '.fits' or '.fits.gz') before
+    # splitting the filename into its underscore-separated fields
+    basename = os.path.basename(filename).split('.')[0]
+    parts = basename.split('_')
     if len(parts) not in (3, 4):
         return None  # filename from astropy download_file
 
@@ -413,27 +437,9 @@ def _get_metadata(filename, detector_id):
             'filter': filter_name}
 
     if detector_id is not None:
-        detector_map = {'WFPC2': ['HST/WFPC2', 'WFPC2'],
-                        'ACSHRC': ['HST/ACS', 'HRC'],
-                        'ACSWFC': ['HST/ACS', 'WFC'],
-                        'WFC3UV': ['HST/WFC3', 'UVIS'],
-                        'WFC3IR': ['HST/WFC3', 'IR'],
-                        'NRCSW': ['JWST/NIRCam', 'NRCSW'],
-                        'NRCA1': ['JWST/NIRCam', 'A1'],
-                        'NRCA2': ['JWST/NIRCam', 'A2'],
-                        'NRCA3': ['JWST/NIRCam', 'A3'],
-                        'NRCA4': ['JWST/NIRCam', 'A4'],
-                        'NRCB1': ['JWST/NIRCam', 'B1'],
-                        'NRCB2': ['JWST/NIRCam', 'B2'],
-                        'NRCB3': ['JWST/NIRCam', 'B3'],
-                        'NRCB4': ['JWST/NIRCam', 'B4'],
-                        'NRCAL': ['JWST/NIRCam', 'A5'],
-                        'NRCBL': ['JWST/NIRCam', 'B5'],
-                        'NIRISS': ['JWST/NIRISS', 'NIRISS'],
-                        'MIRI': ['JWST/MIRI', 'MIRIM']}
-
         try:
-            inst_det = detector_map[detector]
+            # Copy so that the module-level map is never mutated
+            inst_det = list(_STDPSF_DETECTOR_MAP[detector])
         except KeyError as exc:
             msg = f'Unknown detector {detector}'
             raise ValueError(msg) from exc
@@ -516,17 +522,17 @@ def stdpsf_reader(filename, detector_id=None):
 
     grid_data = _read_stdpsf(filename)
 
-    n_psfs = grid_data['n_psfs']
-    if n_psfs in (90, 56, 36, 200):
-        if n_psfs in (90, 56):  # ACS/WFC or WFC3/UVIS data (2 chips)
-            data, xgrid, ygrid = _split_wfc_uvis(grid_data, detector_id)
-        elif n_psfs == 36:  # WFPC2 data (4 chips)
-            data, xgrid, ygrid = _split_wfpc2(grid_data, detector_id)
-        elif n_psfs == 200:  # NIRCam SW data (8 chips)
-            data, xgrid, ygrid = _split_nrcsw(grid_data, detector_id)
-        else:
-            msg = 'Unknown detector or STDPSF format'
-            raise ValueError(msg)
+    # Number of ePSFs in the STDPSF files that contain grids for
+    # multiple detectors, mapped to the function that extracts a single
+    # detector from the grid
+    splitters = {90: _split_wfc_uvis,  # ACS/WFC or WFC3/UVIS (2 chips)
+                 56: _split_wfc_uvis,  # ACS/WFC or WFC3/UVIS (2 chips)
+                 36: _split_wfpc2,  # WFPC2 (4 chips)
+                 200: _split_nrcsw}  # NIRCam SW (8 chips)
+
+    splitter = splitters.get(grid_data['n_psfs'])
+    if splitter is not None:
+        data, xgrid, ygrid = splitter(grid_data, detector_id)
     else:
         data = grid_data['data']
         xgrid = grid_data['xgrid']

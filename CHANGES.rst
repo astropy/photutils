@@ -192,6 +192,16 @@ Bug Fixes
     ``data`` and ``oversampling`` attributes are now also validated
     when set, not only when the model is created. [#2347]
 
+  - Fixed the ``GriddedPSFModel.origin`` attribute, which returned a
+    three-element array instead of the documented ``(x, y)`` pair. The
+    spurious third element was derived from the number of ePSFs in the
+    grid. Model evaluation was unaffected because it used only the first
+    two elements. [#2347]
+
+  - Fixed the ``filter`` metadata parsed from the filename when reading
+    a gzipped STDPSF file (e.g., ``.fits.gz``). The file extension was
+    not removed, so the filter name included the extension. [#2346]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a

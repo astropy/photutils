@@ -458,7 +458,9 @@ class GriddedPSFModel(Fittable2DModel):
         A 1D `~numpy.ndarray` (x, y) pixel coordinates within the
         model's 2D image of the origin of the coordinate system.
         """
-        xyorigin = (np.array(self.data.shape) - 1) / 2
+        # data.shape is (N_psf, ePSF_ny, ePSF_nx); the leading axis is
+        # excluded so that the result is the (x, y) image center
+        xyorigin = (np.array(self.data.shape[1:]) - 1) / 2
         return xyorigin[::-1]
 
     @lazyproperty
@@ -562,8 +564,8 @@ class GriddedPSFModel(Fittable2DModel):
         Find the grid indices and reference (x, y) points of the four
         bounding grid points for a given (x, y) coordinate.
 
-        If the point is outside the grid, the nearest grid points are
-        selected. The input grid points do not need to be sorted.
+        If the point is outside the grid, the nearest grid cell is
+        selected.
 
         This method is a scalar-only fast path: ``x`` and ``y`` must be
         scalar values (the model ``x_0`` and ``y_0`` positions), which
