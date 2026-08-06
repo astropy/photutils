@@ -6,10 +6,16 @@ Tools for interpolating data.
 import numpy as np
 from scipy.spatial import cKDTree
 
-from photutils.utils._deprecation import (deprecated_positional_kwargs,
+from photutils.utils._deprecation import (deprecated_getattr,
+                                          deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 
 __all__ = ['ShepardIDWInterpolator']
+
+# Remove in 4.0
+_DEPRECATED_ATTRIBUTES = {
+    'ncoords': 'n_coords',
+}
 
 
 class ShepardIDWInterpolator:
@@ -59,6 +65,32 @@ class ShepardIDWInterpolator:
         The number of points at which the k-d tree algorithm switches
         over to brute-force. ``leafsize`` must be positive. See
         `scipy.spatial.cKDTree` for further information.
+
+    Attributes
+    ----------
+    coordinates : NxM `~numpy.ndarray`
+        The coordinates of the known data points, where N is the number
+        of points and M is the dimension of the coordinate space.
+
+    ncoords : int
+        .. deprecated:: 3.1
+            Use ``n_coords`` instead.
+
+    n_coords : int
+        The number of known data points.
+
+    coords_ndim : int
+        The dimension of the coordinate space.
+
+    values : 1D `~numpy.ndarray`
+        The values of the known data points.
+
+    weights : 1D `~numpy.ndarray` or `None`
+        The weights associated with each data value, or `None` if no
+        weights were input.
+
+    kdtree : `scipy.spatial.cKDTree`
+        The k-d tree built from the input ``coordinates``.
 
     Notes
     -----
@@ -158,6 +190,11 @@ class ShepardIDWInterpolator:
         self.values = values
         self.weights = weights
         self.kdtree = cKDTree(coordinates, leafsize=leafsize)
+
+    def __getattr__(self, name):
+        return deprecated_getattr(self, name,
+                                  _DEPRECATED_ATTRIBUTES,
+                                  since='3.1', until='4.0')
 
     @deprecated_renamed_argument('reg', 'regularization', '3.0',
                                  until='4.0')

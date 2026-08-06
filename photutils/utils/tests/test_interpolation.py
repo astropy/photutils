@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
 from photutils.utils import ShepardIDWInterpolator as IDWInterp
@@ -63,6 +64,35 @@ class TestShepardIDWInterpolator:
         pos = np.indices(val.shape)
         f = IDWInterp(pos, val)
         assert_allclose(f([0.5, 0.5, 0.5]), 1.0)
+
+    @pytest.mark.parametrize(('coordinates', 'n_coords', 'coords_ndim'),
+                             [(np.arange(4.0), 4, 1),
+                              (np.zeros((7, 2)), 7, 2),
+                              (np.zeros((3, 4, 5)), 12, 5)])
+    def test_attributes(self, coordinates, n_coords, coords_ndim):
+        """
+        Test the number and dimension of the input coordinates.
+        """
+        values = np.ones(n_coords)
+        f = IDWInterp(coordinates, values)
+        assert f.n_coords == n_coords
+        assert f.coords_ndim == coords_ndim
+
+    def test_deprecated_attribute(self):
+        """
+        Test the deprecated ncoords attribute.
+        """
+        match = "The 'ncoords' attribute was deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            assert self.f.ncoords == self.f.n_coords
+
+    def test_invalid_attribute(self):
+        """
+        Test that an unknown attribute raises AttributeError.
+        """
+        match = "object has no attribute 'invalid'"
+        with pytest.raises(AttributeError, match=match):
+            _ = self.f.invalid
 
     def test_no_coordinates(self):
         """
