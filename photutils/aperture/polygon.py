@@ -642,8 +642,8 @@ class PolygonAperture(PixelAperture):
             raise ValueError(msg)
 
         # Determine which automatic mode to use, if any
-        num_auto_modes = sum([optimal_shape, collinear_edges])
-        if num_auto_modes > 1:
+        n_auto_modes = sum([optimal_shape, collinear_edges])
+        if n_auto_modes > 1:
             msg = 'optimal_shape and collinear_edges cannot both be True'
             raise ValueError(msg)
 
