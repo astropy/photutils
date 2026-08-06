@@ -519,12 +519,12 @@ class TestGriddedPSFModel:
 def test_stdpsfgrid(filename):
     filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
     psfgrid = STDPSFGrid(filename)
-    assert 'grid_xypos' in psfgrid.meta
-    assert 'oversampling' in psfgrid.meta
+    assert 'grid_xypos' not in psfgrid.meta
+    assert 'oversampling' not in psfgrid.meta
+    assert 'grid_shape' not in psfgrid.meta
     assert_equal(psfgrid.oversampling, [4, 4])
-    assert psfgrid.data.shape[0] == len(psfgrid.meta['grid_xypos'])
+    assert psfgrid.data.shape[0] == len(psfgrid.grid_xypos)
     assert isinstance(psfgrid.grid_xypos, np.ndarray)
-    assert isinstance(psfgrid.meta['grid_xypos'], np.ndarray)
 
     psfgrid.plot_grid()
 
@@ -548,6 +548,12 @@ def test_stdpsfgrid_kwargs_preserve_oversampling_and_meta():
     psfgrid = STDPSFGrid(data=data, meta=meta)
 
     assert_equal(psfgrid.oversampling, [8, 8])
-    assert_equal(psfgrid.meta['oversampling'], (8, 8))
+    assert 'grid_xypos' not in psfgrid.meta
+    assert 'oversampling' not in psfgrid.meta
+    assert 'grid_shape' not in psfgrid.meta
     assert_equal(meta['oversampling'], 8)
     assert 'grid_shape' not in meta
+
+    match = "property 'oversampling' of 'STDPSFGrid' object has no setter"
+    with pytest.raises(AttributeError, match=match):
+        psfgrid.oversampling = (4, 5)

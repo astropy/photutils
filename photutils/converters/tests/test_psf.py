@@ -91,8 +91,12 @@ def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path,
 def test_stdpsf_grid_converter_preserves_oversampling(tmp_path):
     """Test that a non-default oversampling value survives a round trip."""
     data = np.ones((4, 4, 4))
-    meta = {'grid_xypos': np.array([(0, 0), (1, 0), (0, 1), (1, 1)]),
-            'oversampling': 8}
+    meta = {
+        'grid_xypos': np.array([(0, 0), (1, 0), (0, 1), (1, 1)]),
+        'oversampling': 8,
+        'instrument': 'test-instrument',
+        'custom': {'value': 42},
+    }
     psfgrid = STDPSFGrid(data=data, meta=meta)
 
     filename = tmp_path / 'psf.asdf'
@@ -103,3 +107,8 @@ def test_stdpsf_grid_converter_preserves_oversampling(tmp_path):
     with asdf.open(filename) as af:
         psfgrid2 = af['psf']
         assert_array_equal(psfgrid2.oversampling, (8, 8))
+        assert psfgrid2.meta['instrument'] == 'test-instrument'
+        assert psfgrid2.meta['custom'] == {'value': 42}
+        assert 'grid_xypos' not in psfgrid2.meta
+        assert 'oversampling' not in psfgrid2.meta
+        assert 'grid_shape' not in psfgrid2.meta

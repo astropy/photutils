@@ -783,9 +783,14 @@ class STDPSFGrid:
 
         * ``'data'`` : `~numpy.ndarray` The 3D array of ePSF stacks.
 
-        * ``'meta'`` : `dict` A dictionary of metadata that must contain
-          at least ``'grid_xypos'``, a (N, 2) array of the (x, y) grid
-          positions in detector coordinates.
+                * ``'meta'`` : `dict`
+                    A metadata dictionary containing at least
+                    ``'grid_xypos'``, a (N, 2) array of the (x, y) grid
+                    positions in detector coordinates. It may also contain
+                    ``'oversampling'``; the default is 4. The structural keys
+                    ``'grid_xypos'``, ``'oversampling'``, and ``'grid_shape'``
+                    are consumed during initialization and are not retained
+                    in ``meta``.
 
     Examples
     --------
@@ -804,37 +809,40 @@ class STDPSFGrid:
             xy_grid = np.array([yx[::-1] for yx in itertools.product(
                 ygrid, xgrid)])
 
-            meta = {'grid_shape': (len(ygrid), len(xgrid)),
-                    'grid_xypos': xy_grid,
-                    'oversampling': 4}
+            oversampling = 4
 
             # Try to get additional metadata from the filename because this
             # information is not currently available in the FITS headers.
-            file_meta = _get_metadata(filename, None)
-            if file_meta is not None:
-                meta.update(file_meta)
+            meta = _get_metadata(filename, None) or {}
         else:
             data = kwargs['data']
             meta = kwargs['meta'].copy()
-            xy_grid = np.asarray(meta['grid_xypos'])
+            xy_grid = np.asarray(meta.pop('grid_xypos'))
+            oversampling = meta.pop('oversampling', 4)
+            meta.pop('grid_shape', None)
             xgrid = np.unique(xy_grid[:, 0])  # sorted
             ygrid = np.unique(xy_grid[:, 1])  # sorted
-            meta.setdefault('oversampling', 4)
 
         self.data = data
         self._xgrid = xgrid
         self._ygrid = ygrid
         self.grid_xypos = xy_grid
-        self.oversampling = as_pair('oversampling', meta['oversampling'],
-                                    lower_bound=(0, 0))
+        self._oversampling = as_pair('oversampling', oversampling,
+                                     lower_bound=(0, 0))
 
         self.meta = meta
-        self.meta['grid_xypos'] = xy_grid
-        # Store the normalized (y, x) pairs so meta always matches
-        # the oversampling attribute and grid shape, regardless of
-        # the input form (e.g., after an ASDF round trip).
-        self.meta['oversampling'] = tuple(int(v) for v in self.oversampling)
-        self.meta['grid_shape'] = (len(self._ygrid), len(self._xgrid))
+
+    @property
+    def oversampling(self):
+        """
+        The integer oversampling factor(s) of the input ePSF images.
+
+        Returns
+        -------
+        oversampling : `~numpy.ndarray`
+            The oversampling factors in ``(y, x)`` order.
+        """
+        return self._oversampling
 
     @_plot_grid_docstring
     def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
@@ -850,15 +858,17 @@ class STDPSFGrid:
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
         cls_info = []
+        grid_shape = (len(self._ygrid), len(self._xgrid))
         oversampling = tuple(int(value) for value in self.oversampling)
 
-        keys = ('STDPSF', 'detector', 'filter', 'grid_shape')
+        keys = ('STDPSF', 'detector', 'filter')
         for key in keys:
             if key in self.meta:
                 name = key.capitalize() if key != 'STDPSF' else key
                 cls_info.append((name, self.meta[key]))
 
-        cls_info.extend([('Number of PSFs', len(self.grid_xypos)),
+        cls_info.extend([('Grid_shape', grid_shape),
+                         ('Number of PSFs', len(self.grid_xypos)),
                          ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),
                          ('Oversampling', oversampling)])
