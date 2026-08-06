@@ -8,6 +8,7 @@ import pytest
 from numpy.testing import assert_array_equal
 
 from photutils.converters import _ASDF_ASTROPY_INSTALLED
+from photutils.converters.image_models import GriddedPSFModelConverter
 
 
 @pytest.fixture
@@ -67,6 +68,10 @@ def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path,
     """Test that a modified oversampling value survives a round trip."""
     psf, _ = psfobj
     psf.oversampling = (2, 3)
+
+    node = GriddedPSFModelConverter().to_yaml_tree_transform(psf, None, None)
+    assert 'oversampling' in node
+    assert 'oversampling' not in node['meta']
 
     filename = tmp_path / 'psf.asdf'
     with asdf.AsdfFile() as af:

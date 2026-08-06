@@ -79,11 +79,11 @@ class GriddedPSFModelConverter(TransformConverterBase):
         }
 
         # Preserve any additional meta items (e.g., 'STDPSF', 'detector',
-        # 'filter'). 'grid_xypos' is excluded because it is already stored
-        # above.
-        node['meta'] = {key: value for key, value in model.meta.items()
-                        if key != 'grid_xypos'}
-        node['meta']['oversampling'] = model.oversampling
+        # 'filter'). 'grid_xypos' and 'oversampling' are stored above.
+        node['meta'] = {
+            key: value for key, value in model.meta.items()
+            if key not in ('grid_xypos', 'oversampling')
+        }
 
         return node
 
@@ -94,6 +94,7 @@ class GriddedPSFModelConverter(TransformConverterBase):
 
         meta = dict(node['meta'])
         meta['grid_xypos'] = node['grid_xypos']
+        meta['oversampling'] = node['oversampling']
 
         nd_data = NDData(data=np.array(node['data']), meta=meta)
 
