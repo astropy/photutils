@@ -73,7 +73,8 @@ class GaussianPSF(Fittable2DModel):
 
     See Also
     --------
-    CircularGaussianPSF, GaussianPRF, CircularGaussianPRF, MoffatPSF
+    CircularGaussianPSF, GaussianPRF, CircularGaussianPRF,
+    CircularGaussianSigmaPRF, MoffatPSF, AiryDiskPSF
 
     Notes
     -----
@@ -465,7 +466,8 @@ class CircularGaussianPSF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, GaussianPRF, CircularGaussianPRF, MoffatPSF
+    GaussianPSF, GaussianPRF, CircularGaussianPRF,
+    CircularGaussianSigmaPRF, MoffatPSF, AiryDiskPSF
 
     Notes
     -----
@@ -739,7 +741,8 @@ class GaussianPRF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, CircularGaussianPSF, CircularGaussianPRF, MoffatPSF
+    GaussianPSF, CircularGaussianPSF, CircularGaussianPRF,
+    CircularGaussianSigmaPRF, MoffatPSF, AiryDiskPSF
 
     Notes
     -----
@@ -882,8 +885,8 @@ class GaussianPRF(Fittable2DModel):
         Parameters
         ----------
         factor : float, optional
-            The multiple of the x and y FWHMs used to define the limits.
-            zzzz
+            The multiple of the x and y standard deviations (sigma) used
+            to define the limits.
 
         Returns
         -------
@@ -1041,7 +1044,8 @@ class CircularGaussianPRF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPRF, GaussianPSF, CircularGaussianPSF, MoffatPSF
+    GaussianPSF, CircularGaussianPSF, GaussianPRF,
+    CircularGaussianSigmaPRF, MoffatPSF, AiryDiskPSF
 
     Notes
     -----
@@ -1290,7 +1294,8 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, GaussianPRF, CircularGaussianPSF, CircularGaussianPRF
+    GaussianPSF, CircularGaussianPSF, GaussianPRF, CircularGaussianPRF,
+    MoffatPSF, AiryDiskPSF
 
     Notes
     -----
@@ -1413,25 +1418,25 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
 
         Examples
         --------
-        >>> from photutils.psf import CircularGaussianPRF
-        >>> model = CircularGaussianPRF(x_0=0, y_0=0, fwhm=2)
+        >>> from photutils.psf import CircularGaussianSigmaPRF
+        >>> model = CircularGaussianSigmaPRF(x_0=0, y_0=0, sigma=2)
         >>> model.bounding_box
         ModelBoundingBox(
             intervals={
-                x: Interval(lower=-4.671269901584105, upper=4.671269901584105)
-                y: Interval(lower=-4.671269901584105, upper=4.671269901584105)
+                x: Interval(lower=-11.0, upper=11.0)
+                y: Interval(lower=-11.0, upper=11.0)
             }
-            model=CircularGaussianPRF(inputs=('x', 'y'))
+            model=CircularGaussianSigmaPRF(inputs=('x', 'y'))
             order='C'
         )
         >>> model.bbox_factor = 7
         >>> model.bounding_box
         ModelBoundingBox(
             intervals={
-                x: Interval(lower=-5.945252602016134, upper=5.945252602016134)
-                y: Interval(lower=-5.945252602016134, upper=5.945252602016134)
+                x: Interval(lower=-14.0, upper=14.0)
+                y: Interval(lower=-14.0, upper=14.0)
             }
-            model=CircularGaussianPRF(inputs=('x', 'y'))
+            model=CircularGaussianSigmaPRF(inputs=('x', 'y'))
             order='C'
         )
         """
@@ -1538,7 +1543,8 @@ class MoffatPSF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, CircularGaussianPSF, GaussianPRF, CircularGaussianPRF
+    GaussianPSF, CircularGaussianPSF, GaussianPRF, CircularGaussianPRF,
+    CircularGaussianSigmaPRF, AiryDiskPSF
 
     Notes
     -----
@@ -1778,7 +1784,8 @@ class AiryDiskPSF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, CircularGaussianPSF, MoffatPSF
+    GaussianPSF, CircularGaussianPSF, GaussianPRF, CircularGaussianPRF,
+    CircularGaussianSigmaPRF, MoffatPSF
 
     Notes
     -----

@@ -42,8 +42,11 @@ class ImagePSF(Fittable2DModel):
         assuming the input PSF image is properly normalized.
 
     x_0, y_0 : float, optional
-        The ``(x, y)`` coordinates of the PSF peak in the output coordinate
-        grid where the model is evaluated.
+        The x and y positions of a feature in the image in the output
+        coordinate grid on which the model is evaluated. Typically, this
+        refers to the position of the PSF peak, which is assumed to be
+        located at the center of the input image (see the ``origin``
+        keyword).
 
     origin : tuple of 2 float or None, optional
         The ``(x, y)`` coordinate in the input image corresponding to the

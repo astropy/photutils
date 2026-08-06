@@ -45,7 +45,7 @@ def _plot_grid_docstring(func):
         divider_color, divider_ls : str, optional
             Matplotlib color and linestyle options for the divider
             lines between ePSFs. These keywords have no effect unless
-            ``show_dividers=True``.
+            ``dividers=True``.
 
         figsize : (float, float), optional
             The figure (width, height) in inches.

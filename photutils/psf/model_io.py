@@ -203,7 +203,7 @@ def _split_detectors(grid_data, detector_data, detector_id):
 
     Notes
     -----
-    In particular::
+    The STDPSF files that contain multiple detectors are:
 
     * HST WFPC2 STDPSF file contains 4 detectors
     * HST ACS/WFC STDPSF file contains 2 detectors

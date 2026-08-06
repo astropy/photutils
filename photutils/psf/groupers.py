@@ -71,11 +71,11 @@ class SourceGroups:
 
     >>> print(f'Number of groups: {source_groups.n_groups}')
     Number of groups: 3
-    >>> source_groups.size_map  # doctest: +SKIP
+    >>> source_groups.size_map
     {1: 2, 2: 2, 3: 1}
     >>> source_groups.sizes
     array([2, 2, 2, 2, 1])
-    >>> source_groups.group_centers  # doctest: +SKIP
+    >>> source_groups.group_centers
     {1: (12.5, 22.5), 2: (52.5, 62.5), 3: (100.0, 90.0)}
     >>> x_group1, y_group1 = source_groups.get_group_sources(1)
     >>> print(x_group1, y_group1)
@@ -129,7 +129,7 @@ class SourceGroups:
 
         Returns
         -------
-        group_sizes : 1D int `~numpy.ndarray`
+        sizes : 1D int `~numpy.ndarray`
             A 1D array of the group sizes, in the same order as the
             sources. Each element indicates how many sources are in the
             same group as the corresponding source.
@@ -307,7 +307,7 @@ class SourceGrouper:
 
     >>> print(f'Number of groups: {groups.n_groups}')
     Number of groups: 3
-    >>> groups.size_map  # doctest: +SKIP
+    >>> groups.size_map
     {1: 2, 2: 2, 3: 1}
 
     Retrieve the (x, y) positions of sources from a specific group:
