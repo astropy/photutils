@@ -79,10 +79,11 @@ class GriddedPSFModelConverter(TransformConverterBase):
         }
 
         # Preserve any additional meta items (e.g., 'STDPSF', 'detector',
-        # 'filter') and the original 'oversampling' value. 'grid_xypos'
-        # is excluded because it is already stored above.
+        # 'filter'). 'grid_xypos' is excluded because it is already stored
+        # above.
         node['meta'] = {key: value for key, value in model.meta.items()
                         if key != 'grid_xypos'}
+        node['meta']['oversampling'] = model.oversampling
 
         return node
 

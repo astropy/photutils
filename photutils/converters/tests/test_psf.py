@@ -57,3 +57,23 @@ def test_psf_converters(tmp_path, psfobj):
             for parameter in pars:
                 assert_array_equal(getattr(psf, parameter),
                                    getattr(psf2, parameter))
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('psfobj', ['gridded_psf'], indirect=True)
+def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path,
+                                                               psfobj):
+    """Test that a modified oversampling value survives a round trip."""
+    psf, _ = psfobj
+    psf.oversampling = (2, 3)
+
+    filename = tmp_path / 'psf.asdf'
+    with asdf.AsdfFile() as af:
+        af['psf'] = psf
+        af.write_to(filename)
+
+    with asdf.open(filename) as af:
+        psf2 = af['psf']
+        assert_array_equal(psf2.oversampling, (2, 3))
+        assert psf2.meta['oversampling'] == (2, 3)
