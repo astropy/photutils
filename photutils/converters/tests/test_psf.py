@@ -69,7 +69,9 @@ def test_psf_converters(tmp_path, psfobj):
 @pytest.mark.parametrize('psfobj', ['gridded_psf'], indirect=True)
 def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path,
                                                                psfobj):
-    """Test that a modified oversampling value survives a round trip."""
+    """
+    Test that a modified oversampling value survives a round trip.
+    """
     psf, _ = psfobj
     psf.oversampling = (2, 3)
 
@@ -91,7 +93,9 @@ def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path,
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
 def test_stdpsf_grid_converter_preserves_oversampling(tmp_path):
-    """Test that a non-default oversampling value survives a round trip."""
+    """
+    Test that a non-default oversampling value survives a round trip.
+    """
     data = np.ones((4, 4, 4))
     meta = {
         'grid_xypos': np.array([(0, 0), (1, 0), (0, 1), (1, 1)]),

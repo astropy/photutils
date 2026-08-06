@@ -226,7 +226,31 @@ API Changes
     ``GriddedPSFModel`` returned when reading a STDPSF file have been
     removed. They were redundant with the ``grid_shape`` metadata key,
     which is always set and contains the same information as
-    ``(nypsfs, nxpsfs)``. [#2335]
+    ``(nypsfs, nxpsfs)``. [#2344]
+
+  - The ``grid_xypos``, ``oversampling``, and ``grid_shape`` keys have
+    been removed from the ``STDPSFGrid`` ``meta`` dictionary. The
+    ``meta`` dictionary now contains only the metadata parsed from the
+    filename (e.g., ``STDPSF``, ``detector``, and ``filter``). Use the
+    ``grid_xypos`` and ``oversampling`` attributes instead. [#2344]
+
+  - The ``STDPSFGrid`` ``grid_xypos`` attribute is now a ``numpy``
+    array instead of a list, matching the ``GriddedPSFModel``
+    attribute of the same name. The ``oversampling`` attribute is now
+    a read-only property. [#2344]
+
+  - The ``GriddedPSFModel`` ``meta`` dictionary now always stores
+    ``'grid_xypos'`` as the sorted array of grid positions and
+    ``'oversampling'`` as a normalized ``(y, x)`` tuple, so that both
+    always match the attributes of the same name. Previously, these
+    keys held the input values unchanged, which could differ from the
+    attributes in ordering, type, or shape. [#2344]
+
+  - The ``repr`` and ``str`` output of ``GriddedPSFModel``,
+    ``ImagePSF``, and ``STDPSFGrid`` now show the oversampling as a
+    tuple (e.g., ``(4, 4)``) instead of a list or ``numpy`` array. The
+    ``STDPSFGrid`` output now labels the grid shape as ``Grid shape``
+    instead of ``Grid_shape``. [#2344]
 
 
 3.0.0 (2026-04-17)

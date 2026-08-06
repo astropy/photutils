@@ -801,8 +801,8 @@ class STDPSFGrid:
         grid_xypos = np.array([yx[::-1]
                                for yx in itertools.product(ygrid, xgrid)])
 
-        # try to get additional metadata from the filename because this
-        # information is not currently available in the FITS headers
+        # Try to get additional metadata from the filename because this
+        # information is not currently available in the FITS headers.
         meta = _get_metadata(filename, None) or {}
 
         self._init_grid(grid_data['data'], grid_xypos,
