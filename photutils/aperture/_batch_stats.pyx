@@ -294,7 +294,7 @@ def batch_aperture_gather(const double[:, ::1] data,
         source and the columns given by the module-level ``FLAG_COL_*``
         constants in `photutils.aperture._batch_photometry`:
 
-        * ``FLAG_COL_NPIX``: the number of nonzero-fraction pixels
+        * ``FLAG_COL_N_PIXELS``: the number of nonzero-fraction pixels
           inside the data
         * ``FLAG_COL_MASKED``: the number of those pixels that are
           input-masked

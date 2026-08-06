@@ -19,9 +19,10 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_MASKED,
+                                                  FLAG_COL_N_PIXELS,
                                                   FLAG_COL_NONFINITE_DATA,
                                                   FLAG_COL_NONFINITE_ERROR,
-                                                  FLAG_COL_NPIX, FLAG_COL_SEG,
+                                                  FLAG_COL_SEG,
                                                   FLAG_COL_UNCORRECTED,
                                                   FLAG_COL_VALID,
                                                   batch_aperture_sums)
@@ -1355,7 +1356,7 @@ class ApertureStats:
                 # matching the batch-driver semantics (computed before
                 # any sigma clipping)
                 weighted = aperweight_cutout > 0
-                fc_row[FLAG_COL_NPIX] = np.count_nonzero(weighted)
+                fc_row[FLAG_COL_N_PIXELS] = np.count_nonzero(weighted)
                 fc_row[FLAG_COL_BBOX_CLIPPED] = (
                     aperweight_cutout.shape != apermask.data.shape)
                 if user_mask is not None:
@@ -1746,7 +1747,7 @@ class ApertureStats:
                   & (n_kept == 0)] |= APERTURE_FLAGS.ALL_CLIPPED
 
         if self.ddof > 0:
-            w_in = flag_counts[:, FLAG_COL_NPIX]
+            w_in = flag_counts[:, FLAG_COL_N_PIXELS]
             flags[(w_in > 0)
                   & (n_kept <= self.ddof)] |= APERTURE_FLAGS.TOO_FEW_PIXELS
 

@@ -10,9 +10,10 @@ from numpy.testing import assert_array_equal
 from photutils.aperture import CircularAperture
 from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_MASKED,
+                                                  FLAG_COL_N_PIXELS,
                                                   FLAG_COL_NONFINITE_DATA,
                                                   FLAG_COL_NONFINITE_ERROR,
-                                                  FLAG_COL_NPIX, FLAG_COL_SEG,
+                                                  FLAG_COL_SEG,
                                                   FLAG_COL_UNCORRECTED,
                                                   FLAG_COL_VALID, SHAPE_CIRCLE,
                                                   batch_aperture_sums)
@@ -54,12 +55,12 @@ def _gather_fcounts(data, positions, radius, *, mask=None,
 
 def test_interior_source():
     """
-    Test that a clean interior source has only npix/valid counts.
+    Test that a clean interior source has only n_pixels/valid counts.
     """
     data = np.ones(SHAPE)
     fc = _sums_fcounts(data, (12.0, 12.0), 3.0)[0]
-    assert fc[FLAG_COL_NPIX] > 0
-    assert fc[FLAG_COL_VALID] == fc[FLAG_COL_NPIX]
+    assert fc[FLAG_COL_N_PIXELS] > 0
+    assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS]
     assert fc[FLAG_COL_MASKED] == 0
     assert fc[FLAG_COL_NONFINITE_DATA] == 0
     assert fc[FLAG_COL_NONFINITE_ERROR] == 0
@@ -93,7 +94,7 @@ def test_masked_pixel_membership(use_exact):
     fc = _sums_fcounts(data, (12.0, 12.0), 3.0, mask=mask,
                        use_exact=use_exact)[0]
     assert fc[FLAG_COL_MASKED] == 1
-    assert fc[FLAG_COL_VALID] == fc[FLAG_COL_NPIX] - 1
+    assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS] - 1
 
     # Pixel inside the bounding box but outside the aperture (bbox
     # corner)
@@ -102,7 +103,7 @@ def test_masked_pixel_membership(use_exact):
     fc = _sums_fcounts(data, (12.0, 12.0), 3.0, mask=mask,
                        use_exact=use_exact)[0]
     assert fc[FLAG_COL_MASKED] == 0
-    assert fc[FLAG_COL_VALID] == fc[FLAG_COL_NPIX]
+    assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS]
 
 
 def test_mask_plane_bits():
@@ -119,7 +120,7 @@ def test_mask_plane_bits():
         fc = func(data, (12.0, 12.0), 3.0, mask=mask)[0]
         assert fc[FLAG_COL_MASKED] == 2
         assert fc[FLAG_COL_NONFINITE_DATA] == 1
-        assert fc[FLAG_COL_VALID] == fc[FLAG_COL_NPIX] - 3
+        assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS] - 3
 
 
 def test_nonfinite_data_unmasked():
@@ -135,7 +136,7 @@ def test_nonfinite_data_unmasked():
     data[12, 13] = np.inf
     fc = _sums_fcounts(data, (12.0, 12.0), 3.0)[0]
     assert fc[FLAG_COL_NONFINITE_DATA] == 1
-    assert fc[FLAG_COL_VALID] == fc[FLAG_COL_NPIX]
+    assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS]
 
 
 def test_nonfinite_error():
@@ -170,19 +171,19 @@ def test_bbox_clipped_indicator(use_exact):
     # Aperture straddling the left edge
     fc = _sums_fcounts(data, (0.0, 12.0), 3.0, use_exact=use_exact)[0]
     assert fc[FLAG_COL_BBOX_CLIPPED] == 1
-    assert fc[FLAG_COL_NPIX] > 0
+    assert fc[FLAG_COL_N_PIXELS] > 0
 
     # Clipped bbox whose "center"-method weights are all inside the data
     # (the caller resolves the precise outside-weight test)
     fc = _sums_fcounts(data, (0.2, 12.0), 0.8, use_exact=0,
                        subpixels=1)[0]
     assert fc[FLAG_COL_BBOX_CLIPPED] == 1
-    assert fc[FLAG_COL_NPIX] > 0
+    assert fc[FLAG_COL_N_PIXELS] > 0
 
 
 def test_bbox_clipped_parity_with_aperture_mask():
     """
-    Test that npix matches the nonzero in-data aperture-mask weights
+    Test that n_pixels matches the nonzero in-data aperture-mask weights
     and that the bbox-clipped indicator matches the overlap slices, for
     randomized positions including edge and rounding cases.
     """
@@ -206,7 +207,7 @@ def test_bbox_clipped_parity_with_aperture_mask():
                 assert_array_equal(fc, 0)
                 continue
             n_in = np.count_nonzero(apermask.data[slc_small])
-            assert fc[FLAG_COL_NPIX] == n_in
+            assert fc[FLAG_COL_N_PIXELS] == n_in
             full = (slice(0, apermask.data.shape[0]),
                     slice(0, apermask.data.shape[1]))
             assert fc[FLAG_COL_BBOX_CLIPPED] == int(slc_small != full)
@@ -228,7 +229,7 @@ def test_seg_counts():
                        labels=labels, seg_method=1)[0]
     assert fc[FLAG_COL_SEG] == 1
     assert fc[FLAG_COL_UNCORRECTED] == 0
-    assert fc[FLAG_COL_VALID] == fc[FLAG_COL_NPIX] - 1
+    assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS] - 1
 
     # Method 2 ('source_only'): background exclusions are not counted
     # as neighbor pixels
@@ -242,7 +243,7 @@ def test_seg_counts():
                        labels=labels, seg_method=3)[0]
     assert fc[FLAG_COL_SEG] == 1
     assert fc[FLAG_COL_UNCORRECTED] == 0
-    assert fc[FLAG_COL_VALID] == fc[FLAG_COL_NPIX]
+    assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS]
 
     # Method 3 with the mirror pixel also a neighbor: uncorrectable
     segm2 = segm.copy()
@@ -282,7 +283,7 @@ def test_gather_matches_sums_center():
                             subpixels=1)
     fc_gather = _gather_fcounts(data, xy, 3.0, mask=plane)
     # The gather kernel never reads error values
-    cols = [FLAG_COL_NPIX, FLAG_COL_MASKED, FLAG_COL_NONFINITE_DATA,
+    cols = [FLAG_COL_N_PIXELS, FLAG_COL_MASKED, FLAG_COL_NONFINITE_DATA,
             FLAG_COL_SEG, FLAG_COL_UNCORRECTED, FLAG_COL_VALID,
             FLAG_COL_BBOX_CLIPPED]
     assert_array_equal(fc_gather[:, cols], fc_sums[:, cols])

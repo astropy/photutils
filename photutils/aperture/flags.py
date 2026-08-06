@@ -292,9 +292,9 @@ def _counts_to_flag_bits(flag_counts, overlap, w_out):
     # Import here to avoid loading the compiled extension when only the
     # registry or decoder is needed
     from photutils.aperture._batch_photometry import (FLAG_COL_MASKED,
+                                                      FLAG_COL_N_PIXELS,
                                                       FLAG_COL_NONFINITE_DATA,
                                                       FLAG_COL_NONFINITE_ERROR,
-                                                      FLAG_COL_NPIX,
                                                       FLAG_COL_SEG,
                                                       FLAG_COL_UNCORRECTED,
                                                       FLAG_COL_VALID)
@@ -302,7 +302,7 @@ def _counts_to_flag_bits(flag_counts, overlap, w_out):
     flag_counts = np.atleast_2d(flag_counts)
     overlap = np.atleast_1d(overlap)
     w_out = np.atleast_1d(w_out)
-    w_in = flag_counts[:, FLAG_COL_NPIX]
+    w_in = flag_counts[:, FLAG_COL_N_PIXELS]
 
     flags = np.zeros(overlap.shape, dtype=int)
     no_overlap = ~overlap | ((w_in == 0) & w_out)
