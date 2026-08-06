@@ -444,19 +444,12 @@ class _SingleSourceDeblender:
 
         This method is useful for debugging and testing.
 
-        Parameters
-        ----------
-        deblend_mode : bool, optional
-            If `True` then only segmentation images with more than one
-            label will be returned. If `False` then all segmentation
-            images will be returned.
-
         Returns
         -------
-        segments : list of 2D `~numpy.ndarray`
+        segments : list of 2D `~numpy.ndarray` or `None`
             A list of segmentation images, one for each threshold.
-            Only segmentation images with more than one label will be
-            returned.
+            `None` is returned for thresholds that do not have more than
+            one label.
         """
         thresholds = self.compute_thresholds()
         segms = []
