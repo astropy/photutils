@@ -882,8 +882,8 @@ class STDPSFGrid:
                 name = key.capitalize() if key != 'STDPSF' else key
                 cls_info.append((name, self.meta[key]))
 
-        cls_info.extend([('Grid_shape', grid_shape),
-                         ('Number of PSFs', self.grid_xypos.size),
+        cls_info.extend([('Grid shape', grid_shape),
+                         ('Number of PSFs', len(self.grid_xypos)),
                          ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),
                          ('Oversampling', oversampling)])

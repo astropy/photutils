@@ -552,11 +552,16 @@ def test_stdpsfgrid_repr_str():
     filename = STDPSF_FILENAMES[0]
     filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
     psfgrid = STDPSFGrid(filename)
-    assert repr(psfgrid) == str(psfgrid)
-    keys = ('STDPSF', 'Grid_shape', 'Number of PSFs', 'PSF shape',
-            'Oversampling')
-    for key in keys:
-        assert key in repr(psfgrid)
+    grid_str = repr(psfgrid)
+    assert grid_str == str(psfgrid)
+
+    assert 'STDPSF_NRCA1_F150W_mock.fits' in grid_str
+    assert 'Detector: NRCA1' in grid_str
+    assert 'Filter: F150W' in grid_str
+    assert 'Grid shape: (5, 5)' in grid_str
+    assert f'Number of PSFs: {psfgrid.data.shape[0]}' in grid_str
+    assert 'PSF shape (oversampled pixels): (5, 5)' in grid_str
+    assert 'Oversampling: (4, 4)' in grid_str
 
 
 def test_stdpsfgrid_kwargs_preserve_oversampling_and_meta():
