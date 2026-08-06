@@ -225,7 +225,6 @@ def _split_detectors(grid_data, detector_data, detector_id):
     nx_grid //= nx_det
     ny_grid //= ny_det
     n_detectors = nx_det * ny_det
-
     ii = reshape_as_blocks(ii, (ny_grid, nx_grid))
     ii = ii.reshape(n_detectors, n_psfs // n_detectors)
 

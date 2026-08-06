@@ -546,8 +546,8 @@ class Background2D:
                 row_data = reshape_as_blocks(row_data, (1, self.box_size[1]))
                 row_data = np.moveaxis(row_data, 0, -1)
                 row_data = row_data.reshape((*row_data.shape[:-2], -1))
-                row_bkg, row_bkgrms, row_n_good = (
-                    self._compute_box_statistics(row_data, axis=-1))
+                row_bkg, row_bkgrms, row_n_good = self._compute_box_statistics(
+                    row_data, axis=-1)
 
             if extra_col:
                 # Extra column of boxes.
@@ -560,8 +560,8 @@ class Background2D:
                 col_data = reshape_as_blocks(col_data, (self.box_size[0], 1))
                 col_data = np.transpose(col_data, (0, 3, 1, 2))
                 col_data = col_data.reshape((*col_data.shape[:-2], -1))
-                col_bkg, col_bkgrms, col_n_good = (
-                    self._compute_box_statistics(col_data, axis=-1))
+                col_bkg, col_bkgrms, col_n_good = self._compute_box_statistics(
+                    col_data, axis=-1)
 
             if extra_row and extra_col:
                 # Extra corner box -- append to extra column.
@@ -570,8 +570,8 @@ class Background2D:
                 corner_data = self._data[y1:, x1:].copy()
                 corner_mask = mask[y1:, x1:]
                 corner_data[corner_mask] = np.nan
-                crn_bkg, crn_bkgrms, crn_n_good = (
-                    self._compute_box_statistics(corner_data, axis=None))
+                crn_bkg, crn_bkgrms, crn_n_good = self._compute_box_statistics(
+                    corner_data, axis=None)
                 col_bkg = np.vstack((col_bkg, crn_bkg))
                 col_bkgrms = np.vstack((col_bkgrms, crn_bkgrms))
                 col_n_good = np.vstack((col_n_good, crn_n_good))
