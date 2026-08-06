@@ -218,9 +218,8 @@ API Changes
 - ``photutils.psf``
 
   - The ``EPSFBuildResult`` class returned by ``EPSFBuilder`` has been
-    renamed to ``EPSFBuildResults`` for consistency with the plural
-    naming of the other results classes. The old ``EPSFBuildResult``
-    name is deprecated and will be removed in a future version. [#2326]
+    renamed to ``EPSFBuildResults``. The old ``EPSFBuildResult`` name is
+    deprecated and will be removed in a future version. [#2326]
 
   - The ``nxpsfs`` and ``nypsfs`` metadata keys of the
     ``GriddedPSFModel`` returned when reading a STDPSF file have been
@@ -257,13 +256,14 @@ API Changes
   - The ``deblend_sources`` "too many markers" warning key stored in
     the returned ``SegmentationImage.info['warnings']`` dictionary has
     been renamed from ``'nmarkers'`` to ``'n_markers'``, consistent
-    with the ``n_*`` naming used elsewhere in photutils. [#2335]
+    with the ``n_*`` naming used elsewhere in photutils. [#2346]
 
 - ``photutils.utils``
 
   - The ``ShepardIDWInterpolator`` ``ncoords`` attribute has been
     renamed to ``n_coords``, consistent with the ``n_*`` naming used
-    elsewhere in photutils. [#2335]
+    elsewhere in photutils. The old ``ncoords`` name is deprecated and
+    will be removed in version 4.0. [#2346]
 
 
 3.0.0 (2026-04-17)
