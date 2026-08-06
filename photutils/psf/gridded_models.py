@@ -139,17 +139,16 @@ class GriddedPSFModel(Fittable2DModel):
 
         self._data, self._grid_xypos = self._define_grid(nddata)
         self._meta = nddata.meta.copy()  # _meta to avoid the meta descriptor
-        self._oversampling = as_pair('oversampling',
-                                     nddata.meta['oversampling'],
-                                     lower_bound=(0, 0))
+        # The setter also stores the normalized (y, x) pair in meta
+        self.oversampling = nddata.meta['oversampling']
         self.fill_value = fill_value
 
         self._xgrid = np.unique(self.grid_xypos[:, 0])  # sorted
         self._ygrid = np.unique(self.grid_xypos[:, 1])  # sorted
         self.meta['grid_shape'] = (len(self._ygrid), len(self._xgrid))
-        # Store the normalized (y, x) pair so meta always matches
-        # the oversampling attribute, regardless of the input form.
-        self.meta['oversampling'] = tuple(int(v) for v in self._oversampling)
+        # Store the sorted grid positions so that meta always matches
+        # the grid_xypos attribute, regardless of the input form
+        self.meta['grid_xypos'] = self.grid_xypos
 
         self._interpolator = {}
 
@@ -401,6 +400,9 @@ class GriddedPSFModel(Fittable2DModel):
             ``(y, x)`` order.
         """
         self._oversampling = as_pair('oversampling', value, lower_bound=(0, 0))
+        # Keep meta in sync with the normalized (y, x) pair
+        self.meta['oversampling'] = tuple(int(val)
+                                          for val in self._oversampling)
 
     def _calc_bounding_box(self):
         """

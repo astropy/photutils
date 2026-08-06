@@ -129,6 +129,10 @@ class TestGriddedPSFModel:
         xypos = grid_xypos[idx]
         assert_allclose(xypos, grid_xypos)
 
+        # meta must store the sorted positions, not the input ordering
+        assert isinstance(psfmodel.meta['grid_xypos'], np.ndarray)
+        assert_equal(psfmodel.meta['grid_xypos'], grid_xypos)
+
         # Check that data and grid_xypos attributes are read-only
         match = 'object has no setter'
         with pytest.raises(AttributeError, match=match):
@@ -437,6 +441,21 @@ class TestGriddedPSFModel:
         nddata.meta['oversampling'] = [4, 4]
         psfmodel2 = GriddedPSFModel(nddata)
         assert_equal(psfmodel2.oversampling, psfmodel.oversampling)
+
+    def test_gridded_psf_oversampling_meta_sync(self, psfmodel):
+        """
+        Test that meta['oversampling'] tracks the oversampling setter.
+        """
+        model = psfmodel.copy()
+        assert model.meta['oversampling'] == (4, 4)
+
+        model.oversampling = (2, 3)
+        assert_equal(model.oversampling, [2, 3])
+        assert model.meta['oversampling'] == (2, 3)
+
+        model.oversampling = 5
+        assert_equal(model.oversampling, [5, 5])
+        assert model.meta['oversampling'] == (5, 5)
 
     def test_bounding_box(self, psfmodel):
         # oversampling is 4
