@@ -186,6 +186,12 @@ Bug Fixes
     respect to ``fwhm``. This affected only fits in which the ``fwhm``
     parameter was unfixed. [#2347]
 
+  - Fixed ``ImagePSF`` to discard its cached interpolator when the
+    ``data`` attribute is set. Previously, assigning a new image to an
+    existing model silently continued to evaluate the old image. The
+    ``data`` and ``oversampling`` attributes are now also validated
+    when set, not only when the model is created. [#2347]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a

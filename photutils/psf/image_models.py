@@ -138,11 +138,9 @@ class ImagePSF(Fittable2DModel):
                  y_0=y_0.default, origin=None, oversampling=1,
                  fill_value=0.0, **kwargs):
 
-        self._validate_data(data)
         self.data = data
         self.origin = origin
-        self.oversampling = as_pair('oversampling', oversampling,
-                                    lower_bound=(0, 0))
+        self.oversampling = oversampling
         self.fill_value = fill_value
 
         super().__init__(flux, x_0, y_0, **kwargs)
@@ -223,6 +221,33 @@ class ImagePSF(Fittable2DModel):
         return copy.deepcopy(self)
 
     @property
+    def data(self):
+        """
+        The 2D image of the PSF.
+
+        Setting this attribute revalidates the input array and discards
+        the cached `interpolator`. The `origin` is not updated, so it
+        should be reset explicitly if the new image has a different
+        shape or a different reference pixel.
+        """
+        return self._data
+
+    @data.setter
+    def data(self, value):
+        """
+        Set the 2D image of the PSF.
+
+        Parameters
+        ----------
+        value : 2D `~numpy.ndarray`
+            The 2D image of the PSF.
+        """
+        self._validate_data(value)
+        self._data = value
+        # discard the cached interpolator, which is tied to the old data
+        self.__dict__.pop('interpolator', None)
+
+    @property
     def shape(self):
         """
         The shape of the (oversampled) PSF data array.
@@ -233,6 +258,33 @@ class ImagePSF(Fittable2DModel):
             The shape of the (oversampled) PSF data array.
         """
         return self.data.shape
+
+    @property
+    def oversampling(self):
+        """
+        The integer oversampling factor(s) of the input PSF image.
+
+        If ``oversampling`` is a scalar then it will be used for both
+        axes. If ``oversampling`` has two elements, they must be in
+        ``(y, x)`` order.
+        """
+        return self._oversampling
+
+    @oversampling.setter
+    def oversampling(self, value):
+        """
+        Set the oversampling factor(s) of the input PSF image.
+
+        Parameters
+        ----------
+        value : int or tuple of int
+            The integer oversampling factor(s) of the input PSF image.
+            If ``oversampling`` is a scalar then it will be used for
+            both axes. If ``oversampling`` has two elements, they must
+            be in ``(y, x)`` order.
+        """
+        self._oversampling = as_pair('oversampling', value,
+                                     lower_bound=(0, 0))
 
     @property
     def origin(self):
