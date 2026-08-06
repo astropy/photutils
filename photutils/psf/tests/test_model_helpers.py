@@ -263,8 +263,11 @@ class TestGridFromEPSFs:
         with pytest.warns(AstropyDeprecationWarning):
             psf_grid = grid_from_epsfs(self.epsfs)
 
-        assert psf_grid.meta['grid_xypos'] == [(0.0, 0.0), (1000.0, 1000.0),
-                                               (0.0, 1000.0), (1000.0, 0.0)]
+        # meta stores the positions sorted by y and then by x
+        assert_equal(psf_grid.meta['grid_xypos'],
+                     [(0.0, 0.0), (1000.0, 0.0),
+                      (0.0, 1000.0), (1000.0, 1000.0)])
+        assert_equal(psf_grid.meta['grid_xypos'], psf_grid.grid_xypos)
 
         # or pass in a list
         grid_xypos = [(250.0, 250.0), (750.0, 750.0),
@@ -272,7 +275,10 @@ class TestGridFromEPSFs:
 
         with pytest.warns(AstropyDeprecationWarning):
             psf_grid = grid_from_epsfs(self.epsfs, grid_xypos=grid_xypos)
-        assert psf_grid.meta['grid_xypos'] == grid_xypos
+        assert_equal(psf_grid.meta['grid_xypos'],
+                     [(250.0, 250.0), (750.0, 250.0),
+                      (250.0, 750.0), (750.0, 750.0)])
+        assert_equal(psf_grid.meta['grid_xypos'], psf_grid.grid_xypos)
 
     def test_meta(self):
         """
@@ -294,6 +300,8 @@ class TestGridFromEPSFs:
             psf_grid = grid_from_epsfs(self.epsfs, meta=meta)
         for key in [*keys, 'extra_key']:
             assert key in psf_grid.meta
-        assert psf_grid.meta['grid_xypos'].sort() == self.grid_xypos.sort()
+        assert_equal(psf_grid.meta['grid_xypos'],
+                     [(0.0, 0.0), (1000.0, 0.0),
+                      (0.0, 1000.0), (1000.0, 1000.0)])
         assert_equal(psf_grid.meta['oversampling'], [4, 4])
         assert psf_grid.meta['fill_value'] == 0.0
