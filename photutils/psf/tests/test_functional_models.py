@@ -121,7 +121,7 @@ def gaussian_tests(name, use_units):
         else:
             assert_allclose(fit_model.fwhm.value, model.fwhm.value)
 
-    # test the model derivatives
+    # Test the model derivatives
     fit_model2 = fitter(model_init, xx, yy, data, estimate_jacobian=True)
     assert_allclose(fit_model2.x_0, fit_model.x_0)
     assert_allclose(fit_model2.y_0, fit_model.y_0)
@@ -159,7 +159,7 @@ class TestFitDeriv:
     derivatives.
     """
 
-    # (x, y) coordinates spanning the model peak
+    # Define (x, y) coordinates spanning the model peak
     yy, xx = np.mgrid[20:30, 19:29]
     xx = xx.astype(float)
     yy = yy.astype(float)
@@ -300,10 +300,55 @@ def test_moffat_psf_model(use_units):
     assert_allclose(fit_model.alpha.value, model.alpha.value)
     assert_allclose(fit_model.beta.value, model.beta.value)
 
-    # test bounding box
+    # Test bounding box
     model = MoffatPSF(x_0=0, y_0=0, alpha=1.0, beta=2.0)
     bbox = 12.871885058111655
     assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))
+
+
+def test_airydisk_psf_quantity_flux():
+    """
+    Test evaluating the Airy disk model with a flux Quantity.
+    """
+    model = AiryDiskPSF(flux=71.4 * u.Jy, x_0=24.3, y_0=25.2, radius=2.1)
+    yy, xx = np.mgrid[0:51, 0:51]
+    data = model(xx, yy)
+    assert isinstance(data, u.Quantity)
+    assert data.unit == u.Jy
+    assert_allclose(data.value.sum(), model.flux.value, rtol=0.015)
+
+
+def test_airydisk_psf_scalar_coords():
+    """
+    Test that the Airy disk model can be evaluated at a scalar
+    coordinate, including at the peak where the radius is zero.
+    """
+    model = AiryDiskPSF(flux=1.0, x_0=0.0, y_0=0.0, radius=2.0)
+    peak = model.evaluate(0.0, 0.0, 1.0, 0.0, 0.0, 2.0)
+    assert np.ndim(peak) == 0
+
+    normalization = (4.0 / np.pi) * (2.0 / model._rz) ** 2
+    assert_allclose(peak, 1.0 / normalization)
+    assert_allclose(model(0.0, 0.0), peak)
+
+
+def test_moffat_psf_scalar_coords():
+    """
+    Test that the Moffat model can be evaluated with plain float
+    parameters.
+    """
+    model = MoffatPSF(flux=71.4, x_0=0.0, y_0=0.0, alpha=5.1, beta=3.2)
+    value = model.evaluate(1.0, 2.0, 71.4, 0.0, 0.0, 5.1, 3.2)
+    assert_allclose(value, model(1.0, 2.0))
+
+
+def test_circular_gaussian_sigma_prf_unit_mismatch():
+    model = CircularGaussianSigmaPRF(flux=1.0, x_0=0.0, y_0=0.0, sigma=2.0)
+    inputs_unit = {'x': u.m, 'y': u.s}
+    outputs_unit = {'z': u.Jy}
+    match = "Units of 'x' and 'y' inputs should match"
+    with pytest.raises(u.UnitsError, match=match):
+        model._parameter_units_for_data_units(inputs_unit, outputs_unit)
 
 
 @pytest.mark.parametrize('use_units', [False, True])
@@ -333,7 +378,7 @@ def test_airydisk_psf_model(use_units):
     assert_allclose(fit_model.y_0.value, model.y_0.value)
     assert_allclose(fit_model.radius.value, model.radius.value)
 
-    # test bounding box
+    # Test bounding box
     model = AiryDiskPSF(x_0=0, y_0=0, radius=5)
     bbox = 42.18329801081182
     assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))

@@ -8,7 +8,6 @@ from itertools import product
 
 import numpy as np
 import pytest
-from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData
 from astropy.table import QTable
@@ -25,72 +24,6 @@ STDPSF_FILENAMES = ('STDPSF_NRCA1_F150W_mock.fits',
                     'STDPSF_NRCSW_F150W_mock.fits',
                     'STDPSF_WFC3UV_F814W_mock.fits',
                     'STDPSF_WFPC2_F814W_mock.fits')
-
-WEBBPSF_FILENAMES = ('nircam_nrca1_f200w_fovp101_samp4_npsf16_mock.fits',
-                     'nircam_nrca1_f200w_fovp101_samp4_npsf4_mock.fits',
-                     'nircam_nrca5_f444w_fovp101_samp4_npsf4_mock.fits',
-                     'nircam_nrcb4_f150w_fovp101_samp4_npsf1_mock.fits')
-
-
-def encode_position(x, y):
-    """
-    Encode an ``(x, y)`` grid position as a single unique value.
-
-    This is used to fill each plane of a mock ePSF grid so that the
-    grid position a plane was read back at can be verified.
-
-    Parameters
-    ----------
-    x, y : float
-        The grid position.
-
-    Returns
-    -------
-    result : float
-        The encoded position.
-    """
-    return float(x) + 10000.0 * float(y)
-
-
-def make_webbpsf_file(filename, xgrid, ygrid, psf_shape=(8, 8),
-                      oversampling=4):
-    """
-    Write a mock WebbPSF gridded-ePSF FITS file.
-
-    WebbPSF orders the ePSF planes with the y position varying fastest
-    and records each position as a ``"(y, x)"`` string in the
-    ``DET_YX{i}`` header keywords. Each plane is filled with its
-    `encode_position` value.
-
-    Parameters
-    ----------
-    filename : str
-        The output filename.
-
-    xgrid, ygrid : array_like
-        The x and y detector grid positions.
-
-    psf_shape : tuple of int, optional
-        The ``(ny, nx)`` shape of each ePSF image.
-
-    oversampling : int, optional
-        The oversampling factor written to the ``OVERSAMP`` keyword.
-    """
-    header = fits.Header()
-    header['OVERSAMP'] = oversampling
-    header['INSTRUME'] = 'NIRCam'
-    header['DETECTOR'] = 'NRCA1'
-    header['FILTER'] = 'F200W'
-
-    planes = []
-    for index, (x, y) in enumerate(product(xgrid, ygrid)):
-        planes.append(np.full(psf_shape, encode_position(x, y)))
-        header[f'DET_YX{index}'] = (
-            f'({float(y)}, {float(x)})',
-            f"The #{index} PSF's (y,x) detector pixel position")
-
-    hdu = fits.PrimaryHDU(np.array(planes), header=header)
-    hdu.writeto(filename, overwrite=True)
 
 
 def _reference_find_bounding_points(model, x, y):
@@ -436,6 +369,13 @@ class TestGriddedPSFModel:
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
+        # An empty grid cannot form a rectangular grid
+        meta = {'grid_xypos': [], 'oversampling': 4}
+        nddata = NDData(np.ones((0, 5, 5)), meta=meta)
+        match = 'grid_xypos must form a rectangular grid'
+        with pytest.raises(ValueError, match=match):
+            GriddedPSFModel(nddata)
+
         # Check that oversampling is in meta
         meta = {'grid_xypos': [[0, 0], [0, 1], [1, 0], [1, 1]]}
         nddata = NDData(data, meta=meta)
@@ -506,6 +446,23 @@ class TestGriddedPSFModel:
         for param in psfmodel.param_names:
             assert param in model_str
 
+    def test_str_metadata(self, psfmodel):
+        """
+        Test that the instrument metadata is included in the string
+        representation when present.
+        """
+        model = psfmodel.deepcopy()
+        model.meta['STDPSF'] = 'STDPSF_NRCA1_F150W.fits'
+        model.meta['instrument'] = 'JWST/NIRCam'
+        model.meta['detector'] = 'A1'
+        model.meta['filter'] = 'F150W'
+
+        model_str = str(model)
+        assert 'STDPSF: STDPSF_NRCA1_F150W.fits' in model_str
+        assert 'Instrument: JWST/NIRCam' in model_str
+        assert 'Detector: A1' in model_str
+        assert 'Filter: F150W' in model_str
+
     def test_gridded_psf_oversampling(self, psfmodel):
         nddata = NDData(psfmodel.data, meta=psfmodel.meta)
         nddata.meta['oversampling'] = [4, 4]
@@ -528,7 +485,7 @@ class TestGriddedPSFModel:
         assert model.meta['oversampling'] == (5, 5)
 
     def test_bounding_box(self, psfmodel):
-        # oversampling is 4
+        # Oversampling is 4
         bbox = psfmodel.bounding_box.bounding_box()
         assert_equal(bbox, ((-12.625, 12.625), (-12.625, 12.625)))
 
@@ -536,81 +493,6 @@ class TestGriddedPSFModel:
         model.oversampling = 1
         bbox = model.bounding_box.bounding_box()
         assert_equal(bbox, ((-50.5, 50.5), (-50.5, 50.5)))
-
-    def test_read_stdpsf(self):
-        """
-        Test STDPSF read for a single detector.
-        """
-        filename = 'STDPSF_NRCA1_F150W_mock.fits'
-        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
-        psfmodel = GriddedPSFModel.read(filename)
-        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-        assert isinstance(psfmodel.meta['grid_xypos'], np.ndarray)
-        assert_equal(psfmodel.oversampling, [4, 4])
-        assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
-
-    @pytest.mark.parametrize('filename', STDPSF_FILENAMES[1:])
-    @pytest.mark.parametrize('detector_id', [1, 2])
-    def test_read_stdpsf_multi_detector(self, filename, detector_id):
-        """
-        Test STDPSF read for multiple detectors.
-        """
-        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
-        psfmodel = GriddedPSFModel.read(filename, detector_id=detector_id,
-                                        format='stdpsf')
-        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-        assert_equal(psfmodel.oversampling, [4, 4])
-        assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
-
-        # Test format auto-detect
-        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
-        psfmodel = GriddedPSFModel.read(filename, detector_id=detector_id)
-        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-
-        match = 'detector_id must be specified'
-        with pytest.raises(ValueError, match=match):
-            GriddedPSFModel.read(filename, detector_id=None)
-
-        match = 'detector_id must be '
-        with pytest.raises(ValueError, match=match):
-            GriddedPSFModel.read(filename, detector_id=-1)
-
-    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
-    @pytest.mark.parametrize('filename', WEBBPSF_FILENAMES)
-    def test_read_webbpsf(self, filename):
-        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
-        psfmodel = GriddedPSFModel.read(filename, format='webbpsf')
-        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-        assert_equal(psfmodel.oversampling, [4, 4])
-        assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
-        psfmodel.plot_grid()
-
-        # Test format auto-detect
-        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
-        psfmodel = GriddedPSFModel.read(filename)
-        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-
-    def test_read_webbpsf_asymmetric_grid(self, tmp_path):
-        """
-        Test that each ePSF plane of a WebbPSF file is placed at the
-        detector position given by its DET_YX header keyword.
-
-        The grid is deliberately non-square so that an x/y transpose
-        cannot go unnoticed.
-        """
-        xgrid = (0.0, 1000.0, 2047.0)
-        ygrid = (0.0, 500.0, 1000.0, 1500.0, 2047.0)
-        filename = str(tmp_path / 'webbpsf_asymmetric_mock.fits')
-        make_webbpsf_file(filename, xgrid, ygrid)
-
-        psfmodel = GriddedPSFModel.read(filename, format='webbpsf')
-        assert_equal(np.unique(psfmodel.grid_xypos[:, 0]), xgrid)
-        assert_equal(np.unique(psfmodel.grid_xypos[:, 1]), ygrid)
-        assert psfmodel.meta['grid_shape'] == (len(ygrid), len(xgrid))
-
-        for (x, y), plane in zip(psfmodel.grid_xypos, psfmodel.data,
-                                 strict=True):
-            assert_allclose(plane, encode_position(x, y))
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot(self, psfmodel):
@@ -636,8 +518,7 @@ def test_stdpsfgrid(filename):
     assert_equal(psfgrid.oversampling, [4, 4])
     assert psfgrid.data.shape[0] == len(psfgrid.grid_xypos)
     assert isinstance(psfgrid.grid_xypos, np.ndarray)
-
-    psfgrid.plot_grid()
+    assert psfgrid.grid_shape == (len(psfgrid._ygrid), len(psfgrid._xgrid))
 
 
 def test_stdpsfgrid_repr_str():

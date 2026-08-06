@@ -33,7 +33,7 @@ class TestImagePSF:
 
         assert_allclose(model(xx, yy), gaussian_psf(xx, yy), atol=1e-6)
 
-        # subpixel should not match, but be reasonably close
+        # Subpixel should not match, but be reasonably close
         for x, y in [(0.5, 0.5), (-0.5, 1.75)]:
             assert_allclose(model(x, y), gaussian_psf(x, y), atol=4e-3)
 
@@ -58,7 +58,7 @@ class TestImagePSF:
             assert_allclose(model(x, y), gaussian_psf(x + x_0, y + y_0),
                             atol=3.0e-6)
 
-        # without oversampling the same tests should fail except for at
+        # Without oversampling the same tests should fail except for at
         # the origin
         model = ImagePSF(psf_data)
         assert_allclose(model(0, 0), gaussian_psf(0, 0))
@@ -142,6 +142,10 @@ class TestImagePSF:
         for oversampling in [np.nan, (1, np.inf)]:
             with pytest.raises(ValueError, match=match):
                 ImagePSF(data, oversampling=oversampling)
+
+    def test_shape(self, image_psf):
+        assert image_psf.shape == image_psf.data.shape
+        assert image_psf.shape == (21, 21)
 
     def test_data_setter(self):
         yy, xx = np.mgrid[0:25, 0:25]

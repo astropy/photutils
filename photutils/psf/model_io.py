@@ -116,8 +116,9 @@ def _read_stdpsf(filename):
 
     Parameters
     ----------
-    filename : str
-        The name of the STDPSF FITS file.
+    filename : str or `~astropy.io.fits.HDUList`
+        The name of the STDPSF FITS file, or an already-open
+        `~astropy.io.fits.HDUList`.
 
     Returns
     -------
@@ -141,8 +142,9 @@ def _read_fits_stdpsf(filename):
 
     Parameters
     ----------
-    filename : str
-        The name of the STDPSF FITS file.
+    filename : str or `~astropy.io.fits.HDUList`
+        The name of the STDPSF FITS file, or an already-open
+        `~astropy.io.fits.HDUList`.
 
     Returns
     -------
@@ -151,9 +153,13 @@ def _read_fits_stdpsf(filename):
     """
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', VerifyWarning)
-        with fits.open(filename, ignore_missing_end=True) as hdulist:
-            header = hdulist[0].header
-            data = hdulist[0].data
+        if isinstance(filename, fits.HDUList):
+            header = filename[0].header
+            data = filename[0].data
+        else:
+            with fits.open(filename, ignore_missing_end=True) as hdulist:
+                header = hdulist[0].header
+                data = hdulist[0].data
 
     try:
         n_psfs = header['NAXIS3']

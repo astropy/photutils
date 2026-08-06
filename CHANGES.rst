@@ -215,6 +215,14 @@ Bug Fixes
     number, which gave nearly identical colors for every group (and
     raised an ``IndexError`` for more than 256 groups). [#2347]
 
+  - Fixed reading a STDPSF file from an already-open
+    ``astropy.io.fits.HDUList``. Such input was accepted but then
+    raised a ``TypeError``. [#2347]
+
+  - Fixed the ``plot_grid`` title when the instrument, detector, or
+    filter metadata is missing. The missing values left stray spaces in
+    the title. [#2347]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a

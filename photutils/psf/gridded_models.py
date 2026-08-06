@@ -220,7 +220,8 @@ class GriddedPSFModel(Fittable2DModel):
             Returns `True` if the input ``grid_xypos`` forms a
             rectangular grid.
         """
-        if len(grid_xypos) < 4:  # pragma: no cover
+        # Fewer than 4 positions cannot form a 2D rectangular grid
+        if len(grid_xypos) < 4:
             return False
 
         x_vals = np.unique(grid_xypos[:, 0])  # sorted
