@@ -202,6 +202,9 @@ API Changes
     will be removed in version 4.0. Use the new ``AperturePhotometry``
     class instead. [#2324, #2328]
 
+  - The default ``ApertureStats.to_table()`` columns now include a
+    ``'flags'`` column. [#2327]
+
   - The ``ApertureStats.ids`` attribute is now deprecated and will
     be removed in version 4.0. Use the ``ApertureStats.id`` attribute
     instead. [#2331]
@@ -218,9 +221,6 @@ API Changes
     renamed to ``EPSFBuildResults`` for consistency with the plural
     naming of the other results classes. The old ``EPSFBuildResult``
     name is deprecated and will be removed in a future version. [#2326]
-
-  - The default ``ApertureStats.to_table()`` columns now include a
-    ``'flags'`` column. [#2327]
 
   - The ``nxpsfs`` and ``nypsfs`` metadata keys of the
     ``GriddedPSFModel`` returned when reading a STDPSF file have been
