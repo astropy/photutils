@@ -68,7 +68,7 @@ class GriddedPSFConverter(TransformConverterBase):
     types = ('photutils.psf.GriddedPSFModel',)
 
     def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
-        return {
+        node = {
             'data': model.data,
             'flux': parameter_to_value(model.flux),
             'x_0': parameter_to_value(model.x_0),
@@ -78,17 +78,23 @@ class GriddedPSFConverter(TransformConverterBase):
             'grid_xypos': model.grid_xypos,
         }
 
+        # Preserve any additional meta items (e.g., 'STDPSF', 'detector',
+        # 'filter') and the original 'oversampling' value. 'grid_xypos'
+        # is excluded because it is already stored above.
+        node['meta'] = {key: value for key, value in model.meta.items()
+                        if key != 'grid_xypos'}
+
+        return node
+
     def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
         from astropy.nddata import NDData
 
         from photutils.psf import GriddedPSFModel
 
-        nd_data = NDData(
-            data=np.array(node['data']),
-            meta={'grid_xypos': node['grid_xypos'],
-                  'oversampling': node['oversampling'],
-                  },
-        )
+        meta = dict(node['meta'])
+        meta['grid_xypos'] = node['grid_xypos']
+
+        nd_data = NDData(data=np.array(node['data']), meta=meta)
 
         return GriddedPSFModel(
             nddata=nd_data,
