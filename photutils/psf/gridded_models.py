@@ -27,65 +27,63 @@ __doctest_skip__ = ['STDPSFGrid']
 
 class GriddedPSFModel(Fittable2DModel):
     """
-    A model for a grid of 2D ePSF models.
+    A model representing a grid of 2D ePSF models.
 
-    The ePSF models are defined at fiducial detector locations and are
-    (x, y) detector position. The fiducial detector locations are must
-    form a rectangular grid.
+    The ePSF models are defined at fiducial detector locations specified
+    by their ``(x, y)`` detector coordinates. The fiducial locations
+    must form a rectangular grid.
 
-    The model has three model parameters: an image intensity scaling
-    factor (``flux``) which is applied to the input image, and two
-    positional parameters (``x_0`` and ``y_0``) indicating the location
-    of a feature in the coordinate grid on which the model is evaluated.
+    This model has three parameters: an image intensity scaling factor
+    (``flux``), which scales the input image, and two positional
+    parameters (``x_0`` and ``y_0``), which specify the location of the
+    feature in the coordinate grid where the model is evaluated.
 
-    When evaluating this model, it cannot be called with x and y arrays
-    that have greater than 2 dimensions.
+    When evaluating this model, the input ``x`` and ``y`` arrays must
+    have no more than two dimensions.
 
     Parameters
     ----------
     nddata : `~astropy.nddata.NDData`
-        A `~astropy.nddata.NDData` object containing the grid of
-        reference ePSF arrays. The data attribute must contain a 3D
-        `~numpy.ndarray` containing a stack of the 2D ePSFs with a shape
-        of ``(N_psf, ePSF_ny, ePSF_nx)``. The length of the x and y
-        axes must both be at least 4. ``N_psf`` must not be 2 or 3. All
-        elements of the input image data must be finite. The PSF peak is
-        assumed to be located at the center of the input image. Please
-        see the Notes section below for details on the normalization of
-        the input image data.
+        A `~astropy.nddata.NDData` object containing the reference ePSF
+        grid. Its ``data`` attribute must be a 3D `~numpy.ndarray` with
+        shape ``(N_psf, ePSF_ny, ePSF_nx)``, where each plane is a 2D
+        ePSF image. The x and y dimensions of each ePSF image must both
+        be at least 4 pixels. ``N_psf`` must not be 2 or 3. All values
+        in ``data`` must be finite. The ePSF peak is assumed to be
+        centered in each input image. See the Notes section for details
+        on the required normalization of the input ePSF images.
 
-        If ``N_psf`` is 1, the model will be evaluated using the single
-        ePSF image at every (x, y) position. This is equivalent to using
-        the `~photutils.psf.ImagePSF` model with the single ePSF.
+        If ``N_psf`` is 1, the single ePSF image is used at all detector
+        positions. This is equivalent to using `~photutils.psf.ImagePSF`
+        with the same ePSF image.
 
-        The meta attribute must be dictionary containing the following:
+        The ``meta`` attribute must be a dictionary containing:
 
-        * ``'grid_xypos'``: A list of the (x, y) grid positions of
-          each reference ePSF. The order of positions should match the
-          first axis of the 3D `~numpy.ndarray` of ePSFs. In other words,
-          ``grid_xypos[i]`` should be the (x, y) position of the reference
-          ePSF defined in ``nddata.data[i]``. The grid positions must form
-          a rectangular grid.
+        * ``'grid_xypos'``: A sequence of the fiducial ``(x, y)``
+          detector coordinates for each reference ePSF. The order must
+          match the first axis of ``data``; that is, ``grid_xypos[i]``
+          gives the detector coordinates of ``nddata.data[i]``. The
+          coordinates must form a rectangular grid.
 
         * ``'oversampling'``: The integer oversampling factor(s) of the
-          input ePSF images. If ``oversampling`` is a scalar then it will
-          be used for both axes. If ``oversampling`` has two elements,
-          they must be in ``(y, x)`` order.
+          input ePSF images. If a scalar is provided, it is applied to
+          both axes. If two values are provided, they must be in ``(y,
+          x)`` order.
 
-        The meta attribute may contain other properties such as the
-        telescope, instrument, detector, and filter of the ePSF.
+        The ``meta`` dictionary may also contain additional metadata,
+        such as the telescope, instrument, detector, or filter.
 
     flux : float, optional
-        The flux scaling factor for the model. This is the total flux
-        of the source, assuming the input ePSF images are properly
+        The flux scaling factor. This corresponds to the total
+        source flux, assuming the input ePSF images are properly
         normalized.
 
     x_0, y_0 : float, optional
-        The (x, y) position of the PSF peak in the image in the output
-        coordinate grid on which the model is evaluated.
+        The ``(x, y)`` coordinates of the ePSF peak in the output
+        coordinate grid where the model is evaluated.
 
     fill_value : float, optional
-        The value to use for points outside the input pixel grid. The
+        The value used for points outside the input pixel grid. The
         default is 0.0.
 
     Methods
@@ -98,26 +96,31 @@ class GriddedPSFModel(Fittable2DModel):
 
     Notes
     -----
-    The fitted PSF model flux represents the total flux of the source,
-    assuming the input image was properly normalized. This flux is
-    determined as a multiplicative scale factor applied to the input
-    image PSF, after accounting for any oversampling. Theoretically,
-    the sum of all values in the PSF image over an infinite grid should
-    equal 1.0 (assuming no oversampling). However, when the PSF is
-    represented over a finite region, the sum of the values may be less
-    than 1.0. For oversampled PSF images, the normalization should be
-    adjusted so that the sum of the array values equals the product
-    of the oversampling factors (e.g., oversampling squared if the
-    oversampling is the same along both axes). If the input image only
-    covers a finite region of the PSF, the sum may again be less than
-    the product of the oversampling factors. Correction factors based on
-    the encircled or ensquared energy of the PSF can be used to estimate
-    the proper scaling for the finite region of the input PSF image and
-    ensure correct flux normalization.
+    The fitted ``flux`` parameter represents the total source flux,
+    provided the input ePSF images are properly normalized. The fitted
+    flux is a multiplicative scale factor applied to the input ePSF
+    after accounting for any oversampling.
 
-    Internally, the grid of ePSFs will be arranged and stored such that
-    it is sorted first by the y reference pixel coordinate and then by
-    the x reference pixel coordinate.
+    For a fully sampled ePSF (i.e., no oversampling), the sum of
+    the ePSF values over an infinite grid is 1.0. Because ePSFs are
+    represented by finite images in practice, the sum of the array
+    values may be less than 1.0.
+
+    For oversampled ePSFs, the normalization should instead be such
+    that the sum of the array values over an infinite grid equals the
+    product of the oversampling factors (e.g., ``oversampling**2`` when
+    the oversampling is the same along both axes). Again, a finite image
+    will generally have a smaller sum because it does not contain the
+    full PSF wings.
+
+    If the input ePSF image covers only a finite region of the PSF,
+    correction factors based on the encircled or ensquared energy
+    can be used to estimate the missing flux and obtain the proper
+    normalization.
+
+    Internally, the ePSF grid is reordered so that the reference ePSFs
+    are sorted first by their y detector coordinate and then by their x
+    detector coordinate.
     """
 
     flux = Parameter(description='Intensity scaling factor for the ePSF '
@@ -134,14 +137,16 @@ class GriddedPSFModel(Fittable2DModel):
 
         self._data, self._grid_xypos = self._define_grid(nddata)
         self._meta = nddata.meta.copy()  # _meta to avoid the meta descriptor
-        self._oversampling = as_pair('oversampling',
-                                     nddata.meta['oversampling'],
-                                     lower_bound=(0, 0))
+        # The setter also stores the normalized (y, x) pair in meta
+        self.oversampling = nddata.meta['oversampling']
         self.fill_value = fill_value
 
         self._xgrid = np.unique(self.grid_xypos[:, 0])  # sorted
         self._ygrid = np.unique(self.grid_xypos[:, 1])  # sorted
         self.meta['grid_shape'] = (len(self._ygrid), len(self._xgrid))
+        # Store the sorted grid positions so that meta always matches
+        # the grid_xypos attribute, regardless of the input form
+        self.meta['grid_xypos'] = self.grid_xypos
 
         self._interpolator = {}
 
@@ -239,7 +244,7 @@ class GriddedPSFModel(Fittable2DModel):
             If the input grid_xypos does not form a rectangular grid.
         """
         try:
-            grid_xypos = np.array(data.meta['grid_xypos'])
+            grid_xypos = np.asarray(data.meta['grid_xypos'])
         except KeyError as exc:
             msg = "'grid_xypos' must be in the nddata meta dictionary"
             raise ValueError(msg) from exc
@@ -274,13 +279,14 @@ class GriddedPSFModel(Fittable2DModel):
         self._validate_data(nddata)
         self._validate_grid(nddata)
 
-        grid_xypos = np.array(nddata.meta['grid_xypos'])
+        grid_xypos = np.asarray(nddata.meta['grid_xypos'])
         # sort by y and then by x (last key is primary)
         idx = np.lexsort((grid_xypos[:, 0], grid_xypos[:, 1]))
         return nddata.data[idx], grid_xypos[idx]
 
     def __str__(self):
         keywords = []
+        oversampling = tuple(int(value) for value in self.oversampling)
 
         keys = ('STDPSF', 'instrument', 'detector', 'filter')
         for key in keys:
@@ -293,7 +299,7 @@ class GriddedPSFModel(Fittable2DModel):
                          ('Grid positions', self.grid_xypos.tolist()),
                          ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),
-                         ('Oversampling', self.oversampling.tolist()),
+                         ('Oversampling', oversampling),
                          ('Fill Value', self.fill_value)])
 
         return self._format_str(keywords=keywords)
@@ -392,6 +398,9 @@ class GriddedPSFModel(Fittable2DModel):
             ``(y, x)`` order.
         """
         self._oversampling = as_pair('oversampling', value, lower_bound=(0, 0))
+        # Keep meta in sync with the normalized (y, x) pair
+        self.meta['oversampling'] = tuple(int(val)
+                                          for val in self._oversampling)
 
     def _calc_bounding_box(self):
         """
@@ -758,23 +767,19 @@ class GriddedPSFModel(Fittable2DModel):
 
 class STDPSFGrid:
     """
-    Class to read and plot "STDPSF" format ePSF model grids.
+    Class to read and plot ePSF model grids stored in the STDPSF format.
 
-    STDPSF files are FITS files that contain a 3D array of ePSFs with
-    the header detailing where the fiducial ePSFs are located in the
-    detector coordinate frame.
+    STDPSF files are FITS files containing a 3D array of ePSF models.
+    The FITS header specifies the fiducial detector coordinates
+    associated with each ePSF in the grid.
 
-    The oversampling factor for STDPSF FITS files is assumed to be 4.
+    For STDPSF files, the oversampling factor is assumed to be 4 along
+    both axes.
 
     Parameters
     ----------
-    filename : str or None
-        The name of the STDPDF FITS file. A URL can also be used.
-        When `None`, ``kwargs`` are used to initialize the class.
-    **kwargs : dict
-        A dictionary containing the array with PSFs and the meta data.
-        Used when initializing from an ASDF file. In this case
-        ``filename`` is  `None`.
+    filename : str
+        The name or URL of a STDPSF FITS file.
 
     Examples
     --------
@@ -783,34 +788,113 @@ class STDPSFGrid:
     >>> fig = psfgrid.plot_grid()
     """
 
-    def __init__(self, filename=None, **kwargs):
-        meta = None
-        if filename is not None:
-            grid_data = _read_stdpsf(filename)
-        else:
-            grid_data = kwargs
-            meta = kwargs.pop('meta', None)
-        self.data = grid_data['data']
-        self._xgrid = grid_data['xgrid']
-        self._ygrid = grid_data['ygrid']
-        xy_grid = [yx[::-1] for yx in itertools.product(self._ygrid,
-                                                        self._xgrid)]
-        oversampling = 4  # assumption for STDPSF files
-        self.grid_xypos = xy_grid
-        self.oversampling = as_pair('oversampling', oversampling,
-                                    lower_bound=(0, 0))
-        if meta is None:
-            meta = {'grid_shape': (len(self._ygrid), len(self._xgrid)),
-                    'grid_xypos': xy_grid,
-                    'oversampling': oversampling}
+    # STDPSF files are assumed to have an oversampling factor of 4 along
+    # both axes
+    _default_oversampling = (4, 4)
 
-            # try to get additional metadata from the filename because this
-            # information is not currently available in the FITS headers
-            file_meta = _get_metadata(filename, None)
-            if file_meta is not None:
-                meta.update(file_meta)
+    def __init__(self, filename):
+        grid_data = _read_stdpsf(filename)
+        xgrid = grid_data['xgrid']
+        ygrid = grid_data['ygrid']
 
+        # itertools.product iterates over the last input first
+        grid_xypos = np.array([yx[::-1]
+                               for yx in itertools.product(ygrid, xgrid)])
+
+        # Try to get additional metadata from the filename because this
+        # information is not currently available in the FITS headers.
+        meta = _get_metadata(filename, None) or {}
+
+        self._init_grid(grid_data['data'], grid_xypos,
+                        (len(ygrid), len(xgrid)),
+                        self._default_oversampling, meta)
+
+    @classmethod
+    def _from_asdf(cls, data, meta):
+        """
+        Create a `STDPSFGrid` from the contents of an ASDF file.
+
+        Parameters
+        ----------
+        data : `~numpy.ndarray`
+            A 3D array containing the ePSF grid.
+
+        meta : dict
+            A metadata dictionary. It must contain a ``'grid_xypos'``
+            key holding an ``(N, 2)`` array of the fiducial ``(x, y)``
+            detector coordinates and a ``'grid_shape'`` key holding the
+            ``(ny, nx)`` shape of the grid. It may also contain an
+            ``'oversampling'`` key; if absent, the default is ``(4,
+            4)``. These three keys are consumed here and are not
+            retained in the ``meta`` attribute.
+
+        Returns
+        -------
+        result : `STDPSFGrid`
+            The ePSF grid.
+        """
+        meta = dict(meta)
+        for key in ('grid_xypos', 'grid_shape'):
+            if key not in meta:
+                msg = f'{key!r} must be in the meta dictionary'
+                raise ValueError(msg)
+
+        grid_xypos = np.asarray(meta.pop('grid_xypos'))
+        grid_shape = meta.pop('grid_shape')
+        oversampling = meta.pop('oversampling', cls._default_oversampling)
+
+        obj = cls.__new__(cls)
+        obj._init_grid(data, grid_xypos, grid_shape, oversampling, meta)
+        return obj
+
+    def _init_grid(self, data, grid_xypos, grid_shape, oversampling, meta):
+        """
+        Set the ePSF grid attributes.
+
+        Parameters
+        ----------
+        data : `~numpy.ndarray`
+            A 3D array containing the ePSF grid.
+
+        grid_xypos : `~numpy.ndarray`
+            An ``(N, 2)`` array of the fiducial ``(x, y)`` detector
+            coordinates of each ePSF, ordered along y and then x.
+
+        grid_shape : tuple of int
+            The ``(ny, nx)`` shape of the ePSF grid.
+
+        oversampling : int or array_like of int
+            The integer oversampling factor(s) of the ePSF images.
+
+        meta : dict
+            The metadata dictionary.
+        """
+        self.data = data
+        self.grid_xypos = grid_xypos
         self.meta = meta
+        self._grid_shape = tuple(int(value) for value in grid_shape)
+
+        # The grid axes are extracted from the first row and column
+        # rather than with np.unique because a coordinate can be
+        # repeated where two detectors abut (e.g., ACS/WFC)
+        xypos = grid_xypos.reshape(*self._grid_shape, 2)
+        self._xgrid = xypos[0, :, 0]
+        self._ygrid = xypos[:, 0, 1]
+
+        self._oversampling = as_pair('oversampling', oversampling,
+                                     lower_bound=(0, 0))
+
+    @property
+    def oversampling(self):
+        """
+        The integer oversampling factor(s) of the input ePSF images.
+
+        Returns
+        -------
+        oversampling : `~numpy.ndarray`
+            The oversampling factors in ``(y, x)`` order.
+        """
+        return self._oversampling
 
     @_plot_grid_docstring
     def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
@@ -826,17 +910,21 @@ class STDPSFGrid:
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
         cls_info = []
+        # Use int to avoid printing numpy int64 values in the string
+        # representation
+        oversampling = tuple(int(value) for value in self.oversampling)
 
-        keys = ('STDPSF', 'detector', 'filter', 'grid_shape')
+        keys = ('STDPSF', 'detector', 'filter')
         for key in keys:
             if key in self.meta:
                 name = key.capitalize() if key != 'STDPSF' else key
                 cls_info.append((name, self.meta[key]))
 
-        cls_info.extend([('Number of PSFs', len(self.grid_xypos)),
+        cls_info.extend([('Grid shape', self._grid_shape),
+                         ('Number of PSFs', len(self.grid_xypos)),
                          ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),
-                         ('Oversampling', self.oversampling)])
+                         ('Oversampling', oversampling)])
 
         with np.printoptions(threshold=25, edgeitems=5):
             fmt = [f'{key}: {val}' for key, val in cls_info]

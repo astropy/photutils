@@ -25,6 +25,10 @@ examples:
           byteorder: little
           shape: [5, 2]
         inputs: [x, y]
+        meta:
+          detector: NRCA1
+          filter: F150W
+          instrument: NIRCam
         outputs: [z]
         oversampling: !core/ndarray-1.1.0
           source: 1
@@ -77,5 +81,12 @@ allOf:
           In other words, ``grid_xypos[i]`` should be the (x, y) position of the
           reference ePSF defined in ``nddata.data[i]``. The grid positions must form
           a rectangular grid.
-    required: [data, oversampling, grid_xypos]
+      meta:
+        type: object
+        description: |
+          Additional metadata describing the ePSF grid, such as the telescope,
+          instrument, detector, or filter. The grid_xypos and oversampling items
+          are stored as separate properties and the grid_shape item is recomputed
+          when the model is initialized, so none of them appear here.
+    required: [data, oversampling, grid_xypos, meta]
 ...

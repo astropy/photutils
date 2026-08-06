@@ -17,7 +17,7 @@ else:
     Converter = object
 
 
-__all__ = ['GriddedPSFConverter',
+__all__ = ['GriddedPSFModelConverter',
            'ImagePSFConverter',
            'STDPSFGridConverter',
            ]
@@ -59,7 +59,7 @@ class ImagePSFConverter(TransformConverterBase):
         )
 
 
-class GriddedPSFConverter(TransformConverterBase):
+class GriddedPSFModelConverter(TransformConverterBase):
     """
     ASDF converter for GriddedPSFModel.
     """
@@ -68,7 +68,7 @@ class GriddedPSFConverter(TransformConverterBase):
     types = ('photutils.psf.GriddedPSFModel',)
 
     def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
-        return {
+        node = {
             'data': model.data,
             'flux': parameter_to_value(model.flux),
             'x_0': parameter_to_value(model.x_0),
@@ -78,17 +78,26 @@ class GriddedPSFConverter(TransformConverterBase):
             'grid_xypos': model.grid_xypos,
         }
 
+        # Preserve any additional meta items (e.g., 'STDPSF', 'detector',
+        # 'filter'). 'grid_xypos' and 'oversampling' are stored above and
+        # 'grid_shape' is recomputed when the model is initialized.
+        node['meta'] = {
+            key: value for key, value in model.meta.items()
+            if key not in ('grid_xypos', 'oversampling', 'grid_shape')
+        }
+
+        return node
+
     def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
         from astropy.nddata import NDData
 
         from photutils.psf import GriddedPSFModel
 
-        nd_data = NDData(
-            data=np.array(node['data']),
-            meta={'grid_xypos': node['grid_xypos'],
-                  'oversampling': node['oversampling'],
-                  },
-        )
+        meta = dict(node['meta'])
+        meta['grid_xypos'] = node['grid_xypos']
+        meta['oversampling'] = node['oversampling']
+
+        nd_data = NDData(data=np.array(node['data']), meta=meta)
 
         return GriddedPSFModel(
             nddata=nd_data,
@@ -108,30 +117,15 @@ class STDPSFGridConverter(Converter):
     types = ('photutils.psf.STDPSFGrid',)
 
     def to_yaml_tree(self, model, tag, ctx):  # noqa: ARG002
-        shape = model.data.shape
-        xypos = np.array(model.grid_xypos)
-        xgrid = np.array(list(set(xypos[:, 0])))
-        ygrid = np.array(list(set(xypos[:, 1])))
-        xgrid.sort()
-        ygrid.sort()
-        meta = {
-            'oversampling': model.meta['oversampling'],
-            'grid_shape': model.meta['grid_shape'],
-            'grid_xypos': xypos.copy(),
-        }
-        if 'filter' in model.meta:
-            meta['filter'] = model.meta['filter']
-        if 'detector' in model.meta:
-            meta['detector'] = model.meta['detector']
-        if 'STDPSF' in model.meta:
-            meta['STDPSF'] = model.meta['STDPSF']
+        meta = dict(model.meta)
+        meta.update({
+            'oversampling': tuple(int(value)
+                                  for value in model.oversampling),
+            'grid_shape': model._grid_shape,
+            'grid_xypos': np.array(model.grid_xypos),
+        })
         return {
             'data': model.data,
-            'npsfs': shape[0],
-            'nxpsfs': shape[-2],
-            'nypsfs': shape[-1],
-            'xgrid': xgrid,
-            'ygrid': ygrid,
             'meta': meta,
         }
 
@@ -140,4 +134,4 @@ class STDPSFGridConverter(Converter):
 
         # Touch the array to load it into memory
         node['meta']['grid_xypos'][0]
-        return STDPSFGrid(**node)
+        return STDPSFGrid._from_asdf(node['data'], node['meta'])

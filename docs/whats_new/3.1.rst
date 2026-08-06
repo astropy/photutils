@@ -475,3 +475,28 @@ The ``repr`` and ``str`` output of
 `~photutils.detection.StarFinderCatalogBase` now labels the number of
 sources as ``n_sources`` instead of ``nsources`` for naming consistency
 within photutils.
+
+``STDPSFGrid`` Metadata
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``grid_xypos``, ``oversampling``, and ``grid_shape`` keys have
+been removed from the `~photutils.psf.STDPSFGrid` ``meta`` dictionary.
+The ``meta`` dictionary now contains only the metadata parsed from the
+filename (e.g., ``STDPSF``, ``detector``, and ``filter``). The grid
+positions and oversampling factors are available as the ``grid_xypos``
+and ``oversampling`` attributes, which are now the single source of
+truth for this information::
+
+    >>> from photutils.psf import STDPSFGrid
+    >>> psfgrid = STDPSFGrid('STDPSF_ACSWFC_F814W.fits')
+    >>> psfgrid.grid_xypos  # instead of psfgrid.meta['grid_xypos']
+    >>> psfgrid.oversampling  # instead of psfgrid.meta['oversampling']
+
+The ``grid_xypos`` attribute is now a `~numpy.ndarray` instead of a
+list, matching the `~photutils.psf.GriddedPSFModel` attribute of the
+same name, and ``oversampling`` is now a read-only property.
+
+Relatedly, the `~photutils.psf.GriddedPSFModel` ``meta`` dictionary
+now always stores ``'grid_xypos'`` as the sorted array of grid
+positions and ``'oversampling'`` as a normalized ``(y, x)`` tuple, so
+that both always match the attributes of the same name.

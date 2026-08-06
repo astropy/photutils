@@ -96,12 +96,12 @@ class _ModelGridPlotter:
         reshaped_data : `numpy.ndarray`
             The 2D array of ePSF data.
         """
-        nypsfs = self.model._ygrid.shape[0]
-        nxpsfs = self.model._xgrid.shape[0]
+        ny_grid = self.model._ygrid.shape[0]
+        nx_grid = self.model._xgrid.shape[0]
         ny, nx = self.model.data.shape[1:]
-        return (data.reshape(nypsfs, nxpsfs, ny, nx)
+        return (data.reshape(ny_grid, nx_grid, ny, nx)
                 .transpose([0, 2, 1, 3])
-                .reshape(nypsfs * ny, nxpsfs * nx))
+                .reshape(ny_grid * ny, nx_grid * nx))
 
     @_plot_grid_docstring
     def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
@@ -152,9 +152,9 @@ class _ModelGridPlotter:
         # detector ePSF coordinates. This sets up axes to have, behind the
         # scenes, the ePSFs centered at integer coords 0, 1, 2, 3 etc.
         # extent order: left, right, bottom, top
-        nypsfs = self.model._ygrid.shape[0]
-        nxpsfs = self.model._xgrid.shape[0]
-        extent = [-0.5, nxpsfs - 0.5, -0.5, nypsfs - 0.5]
+        ny_grid = self.model._ygrid.shape[0]
+        nx_grid = self.model._xgrid.shape[0]
+        extent = [-0.5, nx_grid - 0.5, -0.5, ny_grid - 0.5]
 
         axim = ax.imshow(data, extent=extent, norm=norm, cmap=cmap,
                          origin='lower')
@@ -165,17 +165,17 @@ class _ModelGridPlotter:
         if self.model.meta.get('detector', '') == 'NRCSW':
             xticklabels = list(xticklabels[0:5]) * 4
             yticklabels = list(yticklabels[0:5]) * 2
-        ax.set_xticks(np.arange(nxpsfs))
+        ax.set_xticks(np.arange(nx_grid))
         ax.set_xticklabels(xticklabels)
         ax.set_xlabel('ePSF location in detector X pixels')
-        ax.set_yticks(np.arange(nypsfs))
+        ax.set_yticks(np.arange(ny_grid))
         ax.set_yticklabels(yticklabels)
         ax.set_ylabel('ePSF location in detector Y pixels')
 
         if dividers:
-            for ix in range(nxpsfs - 1):
+            for ix in range(nx_grid - 1):
                 ax.axvline(ix + 0.5, color=divider_color, ls=divider_ls)
-            for iy in range(nypsfs - 1):
+            for iy in range(ny_grid - 1):
                 ax.axhline(iy + 0.5, color=divider_color, ls=divider_ls)
 
         instrument = self.model.meta.get('instrument', '')
@@ -222,17 +222,17 @@ class _ModelGridPlotter:
         if self.model.meta.get('detector', '') == 'NRCSW':
             # NIRCam NRCSW STDPSF files contain all detectors.
             # The plot gets extra divider lines and SCA name labels.
-            nxpsfs = len(self.model._xgrid)
-            nypsfs = len(self.model._ygrid)
-            ax.axhline(nypsfs / 2 - 0.5, color='orange')
+            nx_grid = len(self.model._xgrid)
+            ny_grid = len(self.model._ygrid)
+            ax.axhline(ny_grid / 2 - 0.5, color='orange')
             for i in range(1, 4):
-                ax.axvline(nxpsfs / 4 * i - 0.5, color='orange')
+                ax.axvline(nx_grid / 4 * i - 0.5, color='orange')
 
             det_labels = [['A1', 'A3', 'B4', 'B2'], ['A2', 'A4', 'B3', 'B1']]
             for i in range(2):
                 for j in range(4):
-                    ax.text(j * nxpsfs / 4 - 0.45,
-                            (i + 1) * nypsfs / 2 - 0.55,
+                    ax.text(j * nx_grid / 4 - 0.45,
+                            (i + 1) * ny_grid / 2 - 0.55,
                             det_labels[i][j], color='orange',
                             verticalalignment='top', fontsize=12)
 
