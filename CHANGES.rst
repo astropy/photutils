@@ -202,6 +202,11 @@ Bug Fixes
     a gzipped STDPSF file (e.g., ``.fits.gz``). The file extension was
     not removed, so the filter name included the extension. [#2346]
 
+  - Fixed ``webbpsf_reader`` to swap the ``DET_YX{i}`` FITS header
+    values when defining ``grid_xypos``. The reference ePSFs were
+    previous swapped to the wrong detector positions for any grid whose
+    x and y positions differ. [#2347]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a

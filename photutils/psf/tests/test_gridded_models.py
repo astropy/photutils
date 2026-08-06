@@ -8,6 +8,7 @@ from itertools import product
 
 import numpy as np
 import pytest
+from astropy.io import fits
 from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData
 from astropy.table import QTable
@@ -29,6 +30,67 @@ WEBBPSF_FILENAMES = ('nircam_nrca1_f200w_fovp101_samp4_npsf16_mock.fits',
                      'nircam_nrca1_f200w_fovp101_samp4_npsf4_mock.fits',
                      'nircam_nrca5_f444w_fovp101_samp4_npsf4_mock.fits',
                      'nircam_nrcb4_f150w_fovp101_samp4_npsf1_mock.fits')
+
+
+def encode_position(x, y):
+    """
+    Encode an ``(x, y)`` grid position as a single unique value.
+
+    This is used to fill each plane of a mock ePSF grid so that the
+    grid position a plane was read back at can be verified.
+
+    Parameters
+    ----------
+    x, y : float
+        The grid position.
+
+    Returns
+    -------
+    result : float
+        The encoded position.
+    """
+    return float(x) + 10000.0 * float(y)
+
+
+def make_webbpsf_file(filename, xgrid, ygrid, psf_shape=(8, 8),
+                      oversampling=4):
+    """
+    Write a mock WebbPSF gridded-ePSF FITS file.
+
+    WebbPSF orders the ePSF planes with the y position varying fastest
+    and records each position as a ``"(y, x)"`` string in the
+    ``DET_YX{i}`` header keywords. Each plane is filled with its
+    `encode_position` value.
+
+    Parameters
+    ----------
+    filename : str
+        The output filename.
+
+    xgrid, ygrid : array_like
+        The x and y detector grid positions.
+
+    psf_shape : tuple of int, optional
+        The ``(ny, nx)`` shape of each ePSF image.
+
+    oversampling : int, optional
+        The oversampling factor written to the ``OVERSAMP`` keyword.
+    """
+    header = fits.Header()
+    header['OVERSAMP'] = oversampling
+    header['INSTRUME'] = 'NIRCam'
+    header['DETECTOR'] = 'NRCA1'
+    header['FILTER'] = 'F200W'
+
+    planes = []
+    for index, (x, y) in enumerate(product(xgrid, ygrid)):
+        planes.append(np.full(psf_shape, encode_position(x, y)))
+        header[f'DET_YX{index}'] = (
+            f'({float(y)}, {float(x)})',
+            f"The #{index} PSF's (y,x) detector pixel position")
+
+    hdu = fits.PrimaryHDU(np.array(planes), header=header)
+    hdu.writeto(filename, overwrite=True)
 
 
 def _reference_find_bounding_points(model, x, y):
@@ -527,6 +589,28 @@ class TestGriddedPSFModel:
         filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
         psfmodel = GriddedPSFModel.read(filename)
         assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
+
+    def test_read_webbpsf_asymmetric_grid(self, tmp_path):
+        """
+        Test that each ePSF plane of a WebbPSF file is placed at the
+        detector position given by its DET_YX header keyword.
+
+        The grid is deliberately non-square so that an x/y transpose
+        cannot go unnoticed.
+        """
+        xgrid = (0.0, 1000.0, 2047.0)
+        ygrid = (0.0, 500.0, 1000.0, 1500.0, 2047.0)
+        filename = str(tmp_path / 'webbpsf_asymmetric_mock.fits')
+        make_webbpsf_file(filename, xgrid, ygrid)
+
+        psfmodel = GriddedPSFModel.read(filename, format='webbpsf')
+        assert_equal(np.unique(psfmodel.grid_xypos[:, 0]), xgrid)
+        assert_equal(np.unique(psfmodel.grid_xypos[:, 1]), ygrid)
+        assert psfmodel.meta['grid_shape'] == (len(ygrid), len(xgrid))
+
+        for (x, y), plane in zip(psfmodel.grid_xypos, psfmodel.data,
+                                 strict=True):
+            assert_allclose(plane, encode_position(x, y))
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot(self, psfmodel):

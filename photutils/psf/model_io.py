@@ -605,12 +605,14 @@ def webbpsf_reader(filename):
     meta = dict(header)
     meta = {key.lower(): meta[key] for key in meta}  # user lower-case keys
 
-    # define grid_xypos from DET_YX{} FITS header keywords
+    # Define grid_xypos from the DET_YX{} FITS header keywords. The
+    # header values are the '(y, x)' detector positions, but grid_xypos
+    # is defined in (x, y) order.
     xypos = []
     for key in meta:
         if 'det_yx' in key:
             vals = header[key].lstrip('(').rstrip(')').split(',')
-            xypos.append((float(vals[0]), float(vals[1])))
+            xypos.append((float(vals[1]), float(vals[0])))
     meta['grid_xypos'] = xypos
 
     if 'oversampling' not in meta:

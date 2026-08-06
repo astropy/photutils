@@ -476,6 +476,19 @@ Removed Deprecations
 Breaking Changes
 ----------------
 
+WebbPSF ePSF Grid Positions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Reading a WebbPSF gridded-ePSF FITS file with
+:func:`~photutils.psf.webbpsf_reader` (or ``GriddedPSFModel.read(...,
+format='webbpsf')``) now assigns the reference ePSFs to the correct
+detector positions. The ``DET_YX{i}`` header keywords record each
+position as ``(y, x)``, but the values were previously stored as ``(x,
+y)``, which transposed the ePSF grid. Grids whose x and y fiducial
+positions are identical (such as the square NIRCam short-wavelength
+grids) are unaffected.
+
+
 ``StarFinderCatalogBase`` Representation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
