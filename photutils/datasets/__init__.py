@@ -13,6 +13,6 @@ from .model_params import *  # noqa: F401, F403
 from .noise import *  # noqa: F401, F403
 from .wcs import *  # noqa: F401, F403
 
-# prevent circular imports
+# Prevent circular imports
 # isort: off
 from .examples import *  # noqa: F401, F403

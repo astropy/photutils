@@ -52,7 +52,7 @@ def apply_poisson_noise(data, seed=None):
         data1 = make_4gaussians_image(noise=False)
         data2 = apply_poisson_noise(data1, seed=0)
 
-        # plot the images
+        # Plot the images
         fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(8, 8))
         ax1.imshow(data1, origin='lower')
         ax1.set_title('Original image')
@@ -122,13 +122,13 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
         import matplotlib.pyplot as plt
         from photutils.datasets import make_noise_image
 
-        # make Gaussian and Poisson noise images
+        # Make Gaussian and Poisson noise images
         shape = (100, 100)
         image1 = make_noise_image(shape, distribution='gaussian', mean=0.,
                                   stddev=5.)
         image2 = make_noise_image(shape, distribution='poisson', mean=5.)
 
-        # plot the images
+        # Plot the images
         fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(8, 4))
         ax1.imshow(image1, origin='lower')
         ax1.set_title(r'Gaussian noise ($\mu=0$, $\sigma=5.$)')

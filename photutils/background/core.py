@@ -113,7 +113,7 @@ def _prepare_data(sigma_clip, data, axis):
         return sigma_clip(data, axis=axis, masked=False)
 
     if isinstance(data, np.ma.MaskedArray):
-        # convert to ndarray with masked values replaced by NaN
+        # Convert to ndarray with masked values replaced by NaN
         return data.filled(np.nan)
 
     return data

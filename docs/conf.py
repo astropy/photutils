@@ -115,7 +115,7 @@ html_theme_options = {
         'image_light': 'photutils_logo_light_plain_path.svg',
         'image_dark': 'photutils_logo_dark_plain_path.svg',
     },
-    # alternate way to set the logo
+    # Alternate way to set the logo
     # 'github_url': 'https://github.com/astropy/photutils',
     'icon_links': [
         {'name': 'GitHub',
