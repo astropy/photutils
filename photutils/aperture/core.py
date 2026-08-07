@@ -360,6 +360,22 @@ class Aperture(metaclass=abc.ABCMeta):
         return self.shape == ()
 
 
+class _RotatableApertureMixin:
+    """
+    Mixin class for apertures that have a rotation angle ``theta``.
+    """
+
+    @lazyproperty
+    def _theta_rad(self):
+        """
+        The rotation angle in radians.
+
+        This is a lazyproperty so that it is invalidated together with
+        the other lazyproperties when ``theta`` is reassigned.
+        """
+        return self.theta.to_value(u.radian)
+
+
 class PixelAperture(Aperture):
     """
     Abstract base class for apertures defined in pixel coordinates.

@@ -18,6 +18,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            ScalarAngleOrValue,
                                            SkyCoordPositions)
 from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _RotatableApertureMixin,
                                      _update_method_subpixels_docstring)
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
@@ -185,7 +186,7 @@ def _calc_lower_left_positions(positions, width, height, theta_rad):
     return np.atleast_2d(positions) + np.array([xshift, yshift])
 
 
-class RectangularAperture(PixelAperture):
+class RectangularAperture(_RotatableApertureMixin, PixelAperture):
     """
     A rectangular aperture defined in pixel coordinates.
 
@@ -250,7 +251,6 @@ class RectangularAperture(PixelAperture):
         self.w = w
         self.h = h
         self.theta = theta
-        self._theta_rad = self.theta.to_value(u.radian)
 
     @lazyproperty
     def _xy_extents(self):
@@ -397,7 +397,7 @@ class RectangularAperture(PixelAperture):
         return PolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
-class RectangularAnnulus(PixelAperture):
+class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
     r"""
     A rectangular annulus aperture defined in pixel coordinates.
 
@@ -496,7 +496,6 @@ class RectangularAnnulus(PixelAperture):
         self.h_in = h_in
 
         self.theta = theta
-        self._theta_rad = self.theta.to_value(u.radian)
 
     @lazyproperty
     def _xy_extents(self):
@@ -655,7 +654,7 @@ class RectangularAnnulus(PixelAperture):
                                      h_in=h_in, theta=sky_angle)
 
 
-class SkyRectangularAperture(SkyAperture):
+class SkyRectangularAperture(_RotatableApertureMixin, SkyAperture):
     """
     A rectangular aperture defined in sky coordinates.
 
@@ -703,7 +702,6 @@ class SkyRectangularAperture(SkyAperture):
         self.w = w
         self.h = h
         self.theta = theta
-        self._theta_rad = self.theta.to_value(u.radian)
 
     def to_pixel(self, wcs):
         """
@@ -766,7 +764,7 @@ class SkyRectangularAperture(SkyAperture):
         return SkyPolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
-class SkyRectangularAnnulus(SkyAperture):
+class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
     r"""
     A rectangular annulus aperture defined in sky coordinates.
 
@@ -847,7 +845,6 @@ class SkyRectangularAnnulus(SkyAperture):
         self.h_in = h_in
 
         self.theta = theta
-        self._theta_rad = self.theta.to_value(u.radian)
 
     def to_pixel(self, wcs):
         """

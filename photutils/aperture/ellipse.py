@@ -18,6 +18,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            ScalarAngleOrValue,
                                            SkyCoordPositions)
 from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _RotatableApertureMixin,
                                      _update_method_subpixels_docstring)
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
@@ -179,7 +180,7 @@ def _calc_ellipse_extents(semimajor_axis, semiminor_axis, theta_rad):
     return x_extent, y_extent
 
 
-class EllipticalAperture(PixelAperture):
+class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
     """
     An elliptical aperture defined in pixel coordinates.
 
@@ -242,7 +243,6 @@ class EllipticalAperture(PixelAperture):
         self.a = a
         self.b = b
         self.theta = theta
-        self._theta_rad = self.theta.to_value(u.radian)
 
     @lazyproperty
     def _xy_extents(self):
@@ -392,7 +392,7 @@ class EllipticalAperture(PixelAperture):
         return PolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
-class EllipticalAnnulus(PixelAperture):
+class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
     r"""
     An elliptical annulus aperture defined in pixel coordinates.
 
@@ -487,7 +487,6 @@ class EllipticalAnnulus(PixelAperture):
         self.b_in = b_in
 
         self.theta = theta
-        self._theta_rad = self.theta.to_value(u.radian)
 
     @lazyproperty
     def _xy_extents(self):
@@ -638,7 +637,7 @@ class EllipticalAnnulus(PixelAperture):
                                     b_in=b_in, theta=sky_angle)
 
 
-class SkyEllipticalAperture(SkyAperture):
+class SkyEllipticalAperture(_RotatableApertureMixin, SkyAperture):
     """
     An elliptical aperture defined in sky coordinates.
 
@@ -684,7 +683,6 @@ class SkyEllipticalAperture(SkyAperture):
         self.a = a
         self.b = b
         self.theta = theta
-        self._theta_rad = self.theta.to_value(u.radian)
 
     def to_pixel(self, wcs):
         """
@@ -752,7 +750,7 @@ class SkyEllipticalAperture(SkyAperture):
         return SkyPolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
-class SkyEllipticalAnnulus(SkyAperture):
+class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
     r"""
     An elliptical annulus aperture defined in sky coordinates.
 
@@ -826,7 +824,6 @@ class SkyEllipticalAnnulus(SkyAperture):
         self.b_in = b_in
 
         self.theta = theta
-        self._theta_rad = self.theta.to_value(u.radian)
 
     def to_pixel(self, wcs):
         """
