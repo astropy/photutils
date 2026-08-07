@@ -119,6 +119,9 @@ New Features
     through optimizations that reduce per-evaluation overhead and
     streamline interpolation calculations. [#2289, #2307]
 
+  - Added a ``STDPSFGrid.grid_shape`` property returning the ``(ny,
+    nx)`` shape of the ePSF grid. [#2347]
+
 - ``photutils.segmentation``
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``
@@ -179,6 +182,46 @@ Bug Fixes
     degrees (which only ever produced values in the disjoint ranges
     [0, 90] and (270, 360)). This also makes it consistent with
     ``ApertureStats.orientation``. [#2317]
+
+- ``photutils.psf``
+
+  - Fixed the ``CircularGaussianPSF.fit_deriv`` partial derivative with
+    respect to ``fwhm``. This affected only fits in which the ``fwhm``
+    parameter was unfixed. [#2347]
+
+  - Fixed ``ImagePSF`` to discard its cached interpolator when the
+    ``data`` attribute is set. Previously, assigning a new image to an
+    existing model silently continued to evaluate the old image. The
+    ``data`` and ``oversampling`` attributes are now also validated
+    when set, not only when the model is created. [#2347]
+
+  - Fixed the ``GriddedPSFModel.origin`` attribute, which returned a
+    three-element array instead of the documented ``(x, y)`` pair. The
+    spurious third element was derived from the number of ePSFs in the
+    grid. Model evaluation was unaffected because it used only the first
+    two elements. [#2347]
+
+  - Fixed the ``filter`` metadata parsed from the filename when reading
+    a gzipped STDPSF file (e.g., ``.fits.gz``). The file extension was
+    not removed, so the filter name included the extension. [#2346]
+
+  - Fixed ``webbpsf_reader`` to swap the ``DET_YX{i}`` FITS header
+    values when defining ``grid_xypos``. The reference ePSFs were
+    previous swapped to the wrong detector positions for any grid whose
+    x and y positions differ. [#2347]
+
+  - Fixed ``SourceGroups.plot`` to sample a user-supplied colormap over
+    its full range. Previously the colormap was indexed by the group
+    number, which gave nearly identical colors for every group (and
+    raised an ``IndexError`` for more than 256 groups). [#2347]
+
+  - Fixed reading a STDPSF file from an already-open
+    ``astropy.io.fits.HDUList``. Such input was accepted but then
+    raised a ``TypeError``. [#2347]
+
+  - Fixed the ``plot_grid`` title when the instrument, detector, or
+    filter metadata is missing. The missing values left stray spaces in
+    the title. [#2347]
 
 - ``photutils.isophote``
 

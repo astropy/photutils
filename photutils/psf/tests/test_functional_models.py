@@ -121,7 +121,7 @@ def gaussian_tests(name, use_units):
         else:
             assert_allclose(fit_model.fwhm.value, model.fwhm.value)
 
-    # test the model derivatives
+    # Test the model derivatives
     fit_model2 = fitter(model_init, xx, yy, data, estimate_jacobian=True)
     assert_allclose(fit_model2.x_0, fit_model.x_0)
     assert_allclose(fit_model2.y_0, fit_model.y_0)
@@ -151,6 +151,94 @@ def test_gaussian_psfs(name, use_units):
 @pytest.mark.parametrize('use_units', [False, True])
 def test_gaussian_prfs(name, use_units):
     gaussian_tests(name, use_units)
+
+
+class TestFitDeriv:
+    """
+    Tests of the analytic model derivatives against numerical
+    derivatives.
+    """
+
+    # Define (x, y) coordinates spanning the model peak
+    yy, xx = np.mgrid[20:30, 19:29]
+    xx = xx.astype(float)
+    yy = yy.astype(float)
+
+    gaussian_params = (71.4, 24.3, 25.2, 10.1, 5.82, 21.7)
+    circular_params = (71.4, 24.3, 25.2, 10.1)
+
+    def numerical_deriv(self, model, params, index, step=1e-6):
+        """
+        Calculate the central-difference derivative of a model with
+        respect to a single parameter.
+
+        Parameters
+        ----------
+        model : `~astropy.modeling.Fittable2DModel`
+            The model to evaluate.
+
+        params : tuple
+            The model parameter values.
+
+        index : int
+            The index of the parameter to differentiate.
+
+        step : float, optional
+            The parameter step size.
+
+        Returns
+        -------
+        result : `~numpy.ndarray`
+            The numerical partial derivative.
+        """
+        params_hi = list(params)
+        params_lo = list(params)
+        params_hi[index] += step
+        params_lo[index] -= step
+        data_hi = model.evaluate(self.xx, self.yy, *params_hi)
+        data_lo = model.evaluate(self.xx, self.yy, *params_lo)
+        return (data_hi - data_lo) / (2.0 * step)
+
+    @pytest.mark.parametrize(('model_class', 'params'),
+                             [(GaussianPSF, gaussian_params),
+                              (CircularGaussianPSF, circular_params)])
+    def test_fit_deriv(self, model_class, params):
+        model = model_class()
+        derivs = model.fit_deriv(self.xx, self.yy, *params)
+        assert len(derivs) == len(params)
+
+        for index in range(len(params)):
+            numerical = self.numerical_deriv(model, params, index)
+            assert_allclose(derivs[index], numerical, rtol=1e-5, atol=1e-9)
+
+    def test_circular_fwhm_deriv(self):
+        """
+        Test that the circular Gaussian FWHM derivative is the sum of
+        the x and y FWHM derivatives of the elliptical Gaussian model.
+        """
+        flux, x_0, y_0, fwhm = self.circular_params
+        circular = CircularGaussianPSF.fit_deriv(self.xx, self.yy, flux,
+                                                 x_0, y_0, fwhm)
+        elliptical = GaussianPSF.fit_deriv(self.xx, self.yy, flux, x_0, y_0,
+                                           fwhm, fwhm, 0.0)
+        assert_allclose(circular[3], elliptical[3] + elliptical[4])
+
+    def test_circular_fit_free_fwhm(self):
+        """
+        Test fitting a circular Gaussian with a free FWHM using the
+        analytic derivatives.
+        """
+        model = CircularGaussianPSF(flux=71.4, x_0=24.3, y_0=25.2, fwhm=6.1)
+        yy, xx = np.mgrid[0:51, 0:51]
+        data = model(xx, yy)
+
+        model_init = CircularGaussianPSF(flux=50.0, x_0=23.0, y_0=27.0,
+                                         fwhm=8.0)
+        model_init.fwhm.fixed = False
+        fitter = TRFLSQFitter()
+        fit_model = fitter(model_init, xx, yy, data)
+        assert_allclose(fit_model.flux.value, model.flux.value, rtol=1e-6)
+        assert_allclose(fit_model.fwhm.value, model.fwhm.value, rtol=1e-6)
 
 
 def test_gaussian_prf_sums():
@@ -212,10 +300,55 @@ def test_moffat_psf_model(use_units):
     assert_allclose(fit_model.alpha.value, model.alpha.value)
     assert_allclose(fit_model.beta.value, model.beta.value)
 
-    # test bounding box
+    # Test bounding box
     model = MoffatPSF(x_0=0, y_0=0, alpha=1.0, beta=2.0)
     bbox = 12.871885058111655
     assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))
+
+
+def test_airydisk_psf_quantity_flux():
+    """
+    Test evaluating the Airy disk model with a flux Quantity.
+    """
+    model = AiryDiskPSF(flux=71.4 * u.Jy, x_0=24.3, y_0=25.2, radius=2.1)
+    yy, xx = np.mgrid[0:51, 0:51]
+    data = model(xx, yy)
+    assert isinstance(data, u.Quantity)
+    assert data.unit == u.Jy
+    assert_allclose(data.value.sum(), model.flux.value, rtol=0.015)
+
+
+def test_airydisk_psf_scalar_coords():
+    """
+    Test that the Airy disk model can be evaluated at a scalar
+    coordinate, including at the peak where the radius is zero.
+    """
+    model = AiryDiskPSF(flux=1.0, x_0=0.0, y_0=0.0, radius=2.0)
+    peak = model.evaluate(0.0, 0.0, 1.0, 0.0, 0.0, 2.0)
+    assert np.ndim(peak) == 0
+
+    normalization = (4.0 / np.pi) * (2.0 / model._rz) ** 2
+    assert_allclose(peak, 1.0 / normalization)
+    assert_allclose(model(0.0, 0.0), peak)
+
+
+def test_moffat_psf_scalar_coords():
+    """
+    Test that the Moffat model can be evaluated with plain float
+    parameters.
+    """
+    model = MoffatPSF(flux=71.4, x_0=0.0, y_0=0.0, alpha=5.1, beta=3.2)
+    value = model.evaluate(1.0, 2.0, 71.4, 0.0, 0.0, 5.1, 3.2)
+    assert_allclose(value, model(1.0, 2.0))
+
+
+def test_circular_gaussian_sigma_prf_unit_mismatch():
+    model = CircularGaussianSigmaPRF(flux=1.0, x_0=0.0, y_0=0.0, sigma=2.0)
+    inputs_unit = {'x': u.m, 'y': u.s}
+    outputs_unit = {'z': u.Jy}
+    match = "Units of 'x' and 'y' inputs should match"
+    with pytest.raises(u.UnitsError, match=match):
+        model._parameter_units_for_data_units(inputs_unit, outputs_unit)
 
 
 @pytest.mark.parametrize('use_units', [False, True])
@@ -245,7 +378,7 @@ def test_airydisk_psf_model(use_units):
     assert_allclose(fit_model.y_0.value, model.y_0.value)
     assert_allclose(fit_model.radius.value, model.radius.value)
 
-    # test bounding box
+    # Test bounding box
     model = AiryDiskPSF(x_0=0, y_0=0, radius=5)
     bbox = 42.18329801081182
     assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))

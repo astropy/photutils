@@ -33,7 +33,7 @@ class TestImagePSF:
 
         assert_allclose(model(xx, yy), gaussian_psf(xx, yy), atol=1e-6)
 
-        # subpixel should not match, but be reasonably close
+        # Subpixel should not match, but be reasonably close
         for x, y in [(0.5, 0.5), (-0.5, 1.75)]:
             assert_allclose(model(x, y), gaussian_psf(x, y), atol=4e-3)
 
@@ -58,7 +58,7 @@ class TestImagePSF:
             assert_allclose(model(x, y), gaussian_psf(x + x_0, y + y_0),
                             atol=3.0e-6)
 
-        # without oversampling the same tests should fail except for at
+        # Without oversampling the same tests should fail except for at
         # the origin
         model = ImagePSF(psf_data)
         assert_allclose(model(0, 0), gaussian_psf(0, 0))
@@ -142,6 +142,58 @@ class TestImagePSF:
         for oversampling in [np.nan, (1, np.inf)]:
             with pytest.raises(ValueError, match=match):
                 ImagePSF(data, oversampling=oversampling)
+
+    def test_shape(self, image_psf):
+        assert image_psf.shape == image_psf.data.shape
+        assert image_psf.shape == (21, 21)
+
+    def test_data_setter(self):
+        yy, xx = np.mgrid[0:25, 0:25]
+        data1 = CircularGaussianPSF(x_0=12, y_0=12, fwhm=3.0)(xx, yy)
+        data2 = CircularGaussianPSF(x_0=12, y_0=12, fwhm=8.0)(xx, yy)
+
+        model = ImagePSF(data1, x_0=12, y_0=12)
+        assert_allclose(model(12.0, 12.0), data1[12, 12])
+
+        # The cached interpolator must be discarded when data is set
+        model.data = data2
+        assert_allclose(model(12.0, 12.0), data2[12, 12])
+
+    def test_data_setter_validation(self):
+        model = ImagePSF(np.ones((10, 10)))
+
+        match = 'Input data must be a 2D numpy array'
+        with pytest.raises(TypeError, match=match):
+            model.data = 42
+        with pytest.raises(ValueError, match=match):
+            model.data = np.ones(10)
+
+        match = 'The length of the x and y axes must both be at least 4'
+        with pytest.raises(ValueError, match=match):
+            model.data = np.ones((3, 4))
+
+    def test_data_setter_copy_independence(self, gaussian_psf):
+        yy, xx = np.mgrid[0:25, 0:25]
+        data1 = gaussian_psf(xx, yy)
+        data2 = CircularGaussianPSF(x_0=12, y_0=12, fwhm=8.0)(xx, yy)
+
+        model = ImagePSF(data1, x_0=12, y_0=12)
+        value = model(12.0, 12.0)  # populate the interpolator cache
+
+        model_copy = model.copy()
+        model_copy.data = data2
+        assert_allclose(model(12.0, 12.0), value)
+        assert_allclose(model_copy(12.0, 12.0), data2[12, 12])
+
+    def test_oversampling_setter(self):
+        model = ImagePSF(np.ones((10, 10)))
+        model.oversampling = 4
+        assert_equal(model.oversampling, (4, 4))
+
+        match = 'oversampling must be > 0'
+        with pytest.raises(ValueError, match=match):
+            model.oversampling = -3
+        assert_equal(model.oversampling, (4, 4))
 
     def test_origin_inputs(self):
         match = 'origin must be 1D and have 2-elements'

@@ -45,7 +45,7 @@ def _plot_grid_docstring(func):
         divider_color, divider_ls : str, optional
             Matplotlib color and linestyle options for the divider
             lines between ePSFs. These keywords have no effect unless
-            ``show_dividers=True``.
+            ``dividers=True``.
 
         figsize : (float, float), optional
             The figure (width, height) in inches.
@@ -132,7 +132,7 @@ class _ModelGridPlotter:
             fig = ax.get_figure()
 
         if peak_norm and data.max() != 0:
-            # normalize relative to peak
+            # Normalize relative to peak
             data /= data.max()
 
         if deltas:
@@ -151,7 +151,7 @@ class _ModelGridPlotter:
         # Set up the coordinate axes to later set tick labels based on
         # detector ePSF coordinates. This sets up axes to have, behind the
         # scenes, the ePSFs centered at integer coords 0, 1, 2, 3 etc.
-        # extent order: left, right, bottom, top
+        # Extent order: left, right, bottom, top
         ny_grid = self.model._ygrid.shape[0]
         nx_grid = self.model._xgrid.shape[0]
         extent = [-0.5, nx_grid - 0.5, -0.5, ny_grid - 0.5]
@@ -193,9 +193,12 @@ class _ModelGridPlotter:
         if isinstance(filtername, (tuple, list, np.ndarray)):
             filtername = filtername[0]
 
-        title = f'{instrument} {detector} {filtername}'
-        if title != '':
-            # add extra space at end
+        # Join only the metadata values that are present so that
+        # missing values do not leave stray spaces in the title
+        title = ' '.join(str(value) for value in
+                         (instrument, detector, filtername) if value)
+        if title:
+            # Add extra space at end
             title += ' '
 
         if deltas:

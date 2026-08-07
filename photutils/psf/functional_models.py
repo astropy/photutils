@@ -20,12 +20,16 @@ __all__ = [
     'MoffatPSF',
 ]
 
-FLOAT_EPSILON = float(np.finfo(np.float32).tiny)
-GAUSSIAN_FWHM_TO_SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+# The smallest positive normal float32 value (~1.2e-38), used as the
+# lower bound of the strictly-positive model parameters.
+_FLOAT_TINY = float(np.finfo(np.float32).tiny)
+
+# Conversion factor from a Gaussian FWHM to its standard deviation.
+_GAUSSIAN_FWHM_TO_SIGMA = 1.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
 
 def _gaussian_amplitude(flux, xsigma, ysigma):
-    # output units should match the input flux units
+    # Output units should match the input flux units
     if isinstance(xsigma, u.Quantity):
         xsigma = xsigma.value
         ysigma = ysigma.value
@@ -73,7 +77,8 @@ class GaussianPSF(Fittable2DModel):
 
     See Also
     --------
-    CircularGaussianPSF, GaussianPRF, CircularGaussianPRF, MoffatPSF
+    CircularGaussianPSF, GaussianPRF, CircularGaussianPRF,
+    CircularGaussianSigmaPRF, MoffatPSF, AiryDiskPSF
 
     Notes
     -----
@@ -160,12 +165,12 @@ class GaussianPSF(Fittable2DModel):
         default=0, description='Position of the peak along the y axis')
     x_fwhm = Parameter(
         default=1,
-        bounds=(FLOAT_EPSILON, None),
+        bounds=(_FLOAT_TINY, None),
         fixed=True,
         description='FWHM of the Gaussian along the x axis')
     y_fwhm = Parameter(
         default=1,
-        bounds=(FLOAT_EPSILON, None),
+        bounds=(_FLOAT_TINY, None),
         fixed=True,
         description='FWHM of the Gaussian along the y axis')
     theta = Parameter(
@@ -192,14 +197,14 @@ class GaussianPSF(Fittable2DModel):
         """
         Gaussian sigma (standard deviation) along the x-axis.
         """
-        return self.x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        return self.x_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
 
     @property
     def y_sigma(self):
         """
         Gaussian sigma (standard deviation) along the y-axis.
         """
-        return self.y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        return self.y_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
 
     def _calc_bounding_box(self, *, factor=5.5):
         """
@@ -288,8 +293,8 @@ class GaussianPSF(Fittable2DModel):
         cost2 = np.cos(theta) ** 2
         sint2 = np.sin(theta) ** 2
         sin2t = np.sin(2.0 * theta)
-        xstd = x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
-        ystd = y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        xstd = x_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
+        ystd = y_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
         xstd2 = xstd ** 2
         ystd2 = ystd ** 2
         xdiff = x - x_0
@@ -298,7 +303,7 @@ class GaussianPSF(Fittable2DModel):
         b = 0.5 * ((sin2t / xstd2) - (sin2t / ystd2))
         c = 0.5 * ((sint2 / xstd2) + (cost2 / ystd2))
 
-        # output units should match the input flux units
+        # Output units should match the input flux units
         if isinstance(xstd, u.Quantity):
             xstd = xstd.value
             ystd = ystd.value
@@ -346,8 +351,8 @@ class GaussianPSF(Fittable2DModel):
         sint2 = sint ** 2
         cos2t = np.cos(2.0 * theta)
         sin2t = np.sin(2.0 * theta)
-        xstd = x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
-        ystd = y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        xstd = x_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
+        ystd = y_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
         xstd2 = xstd ** 2
         ystd2 = ystd ** 2
         xstd3 = xstd ** 3
@@ -391,15 +396,15 @@ class GaussianPSF(Fittable2DModel):
         dg_dxstd = damp_dxstd * exp + amplitude * dexp_dxstd
         dg_dystd = damp_dystd * exp + amplitude * dexp_dystd
 
-        # chain rule for change of variables from sigma to fwhm
-        # std => fwhm * GAUSSIAN_FWHM_TO_SIGMA
-        # dstd/dfwhm => GAUSSIAN_FWHM_TO_SIGMA
-        dg_dxfwhm = dg_dxstd * GAUSSIAN_FWHM_TO_SIGMA
-        dg_dyfwhm = dg_dystd * GAUSSIAN_FWHM_TO_SIGMA
+        # Chain rule for change of variables from sigma to fwhm
+        # std => fwhm * _GAUSSIAN_FWHM_TO_SIGMA
+        # dstd/dfwhm => _GAUSSIAN_FWHM_TO_SIGMA
+        dg_dxfwhm = dg_dxstd * _GAUSSIAN_FWHM_TO_SIGMA
+        dg_dyfwhm = dg_dystd * _GAUSSIAN_FWHM_TO_SIGMA
 
         dg_dtheta = g * (-(da_dtheta * xdiff2 + db_dtheta * xdiff * ydiff
                            + dc_dtheta * ydiff2))
-        # chain rule for unit change;
+        # Chain rule for unit change
         # theta[rad] => theta[deg] * pi / 180; drad/dtheta = pi / 180
         dg_dtheta *= np.pi / 180.0
 
@@ -418,8 +423,8 @@ class GaussianPSF(Fittable2DModel):
         return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
 
     def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
-        # Note that here we need to make sure that x and y are in the same
-        # units otherwise this can lead to issues since rotation is not well
+        # We need to make sure that x and y are in the same units
+        # otherwise this can lead to issues since rotation is not well
         # defined.
         if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
             msg = "Units of 'x' and 'y' inputs should match"
@@ -465,7 +470,8 @@ class CircularGaussianPSF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, GaussianPRF, CircularGaussianPRF, MoffatPSF
+    GaussianPSF, GaussianPRF, CircularGaussianPRF,
+    CircularGaussianSigmaPRF, MoffatPSF, AiryDiskPSF
 
     Notes
     -----
@@ -531,7 +537,7 @@ class CircularGaussianPSF(Fittable2DModel):
         default=0, description='Position of the peak along the y axis')
     fwhm = Parameter(
         default=1,
-        bounds=(FLOAT_EPSILON, None),
+        bounds=(_FLOAT_TINY, None),
         fixed=True,
         description='FWHM of the Gaussian')
 
@@ -552,7 +558,7 @@ class CircularGaussianPSF(Fittable2DModel):
         """
         Gaussian sigma (standard deviation).
         """
-        return self.fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        return self.fwhm * _GAUSSIAN_FWHM_TO_SIGMA
 
     def _calc_bounding_box(self, *, factor=5.5):
         """
@@ -629,9 +635,9 @@ class CircularGaussianPSF(Fittable2DModel):
         result : `~numpy.ndarray`
             The value of the model evaluated at the input coordinates.
         """
-        sigma2 = (fwhm * GAUSSIAN_FWHM_TO_SIGMA) ** 2
+        sigma2 = (fwhm * _GAUSSIAN_FWHM_TO_SIGMA) ** 2
 
-        # output units should match the input flux units
+        # Output units should match the input flux units
         sigma2_norm = sigma2
         if isinstance(sigma2, u.Quantity):
             sigma2_norm = sigma2.value
@@ -666,8 +672,15 @@ class CircularGaussianPSF(Fittable2DModel):
             The list of partial derivatives with respect to each
             parameter.
         """
-        return GaussianPSF().fit_deriv(x, y, flux, x_0, y_0, fwhm, fwhm,
-                                       0.0)[:-2]
+        derivs = GaussianPSF.fit_deriv(x, y, flux, x_0, y_0, fwhm, fwhm, 0.0)
+
+        # The x and y FWHMs are the same variable for a circular
+        # Gaussian, so the chain rule gives the sum of the two partial
+        # derivatives. The theta derivative is dropped because theta is
+        # not a parameter of this model.
+        dg_dfwhm = derivs[3] + derivs[4]
+
+        return [*derivs[:3], dg_dfwhm]
 
     @property
     def input_units(self):
@@ -732,7 +745,8 @@ class GaussianPRF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, CircularGaussianPSF, CircularGaussianPRF, MoffatPSF
+    GaussianPSF, CircularGaussianPSF, CircularGaussianPRF,
+    CircularGaussianSigmaPRF, MoffatPSF, AiryDiskPSF
 
     Notes
     -----
@@ -825,12 +839,12 @@ class GaussianPRF(Fittable2DModel):
         default=0, description='Position of the peak along the y axis')
     x_fwhm = Parameter(
         default=1,
-        bounds=(FLOAT_EPSILON, None),
+        bounds=(_FLOAT_TINY, None),
         fixed=True,
         description='FWHM of the Gaussian along the x axis')
     y_fwhm = Parameter(
         default=1,
-        bounds=(FLOAT_EPSILON, None),
+        bounds=(_FLOAT_TINY, None),
         fixed=True,
         description='FWHM of the Gaussian along the y axis')
     theta = Parameter(
@@ -857,14 +871,14 @@ class GaussianPRF(Fittable2DModel):
         """
         Gaussian sigma (standard deviation) along the x-axis.
         """
-        return self.x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        return self.x_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
 
     @property
     def y_sigma(self):
         """
         Gaussian sigma (standard deviation) along the y-axis.
         """
-        return self.y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        return self.y_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
 
     def _calc_bounding_box(self, *, factor=5.5):
         """
@@ -875,8 +889,8 @@ class GaussianPRF(Fittable2DModel):
         Parameters
         ----------
         factor : float, optional
-            The multiple of the x and y FWHMs used to define the limits.
-            zzzz
+            The multiple of the x and y standard deviations (sigma) used
+            to define the limits.
 
         Returns
         -------
@@ -951,8 +965,8 @@ class GaussianPRF(Fittable2DModel):
         if not isinstance(theta, u.Quantity):
             theta = np.deg2rad(theta)
 
-        x_sigma = x_fwhm * GAUSSIAN_FWHM_TO_SIGMA
-        y_sigma = y_fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        x_sigma = x_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
+        y_sigma = y_fwhm * _GAUSSIAN_FWHM_TO_SIGMA
         dx = x - x_0
         dy = y - y_0
         cost = np.cos(theta)
@@ -983,8 +997,8 @@ class GaussianPRF(Fittable2DModel):
         return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
 
     def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
-        # Note that here we need to make sure that x and y are in the same
-        # units otherwise this can lead to issues since rotation is not well
+        # We need to make sure that x and y are in the same units
+        # otherwise this can lead to issues since rotation is not well
         # defined.
         if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
             msg = "Units of 'x' and 'y' inputs should match"
@@ -1034,7 +1048,8 @@ class CircularGaussianPRF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPRF, GaussianPSF, CircularGaussianPSF, MoffatPSF
+    GaussianPSF, CircularGaussianPSF, GaussianPRF,
+    CircularGaussianSigmaPRF, MoffatPSF, AiryDiskPSF
 
     Notes
     -----
@@ -1112,7 +1127,7 @@ class CircularGaussianPRF(Fittable2DModel):
         default=0, description='Position of the peak along the y axis')
     fwhm = Parameter(
         default=1,
-        bounds=(FLOAT_EPSILON, None),
+        bounds=(_FLOAT_TINY, None),
         fixed=True,
         description='FWHM of the Gaussian')
 
@@ -1133,7 +1148,7 @@ class CircularGaussianPRF(Fittable2DModel):
         """
         Gaussian sigma (standard deviation).
         """
-        return self.fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        return self.fwhm * _GAUSSIAN_FWHM_TO_SIGMA
 
     def _calc_bounding_box(self, *, factor=5.5):
         """
@@ -1212,7 +1227,7 @@ class CircularGaussianPRF(Fittable2DModel):
         """
         x0 = x - x_0
         y0 = y - y_0
-        sigma = fwhm * GAUSSIAN_FWHM_TO_SIGMA
+        sigma = fwhm * _GAUSSIAN_FWHM_TO_SIGMA
 
         dpix = 0.5
         if isinstance(x0, u.Quantity):
@@ -1283,7 +1298,8 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, GaussianPRF, CircularGaussianPSF, CircularGaussianPRF
+    GaussianPSF, CircularGaussianPSF, GaussianPRF, CircularGaussianPRF,
+    MoffatPSF, AiryDiskPSF
 
     Notes
     -----
@@ -1356,7 +1372,7 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         default=0, description='Position of the peak along the y axis')
     sigma = Parameter(
         default=1,
-        bounds=(FLOAT_EPSILON, None),
+        bounds=(_FLOAT_TINY, None),
         fixed=True,
         description='Sigma (standard deviation) of the Gaussian')
 
@@ -1377,7 +1393,7 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         """
         Gaussian FWHM.
         """
-        return self.sigma / GAUSSIAN_FWHM_TO_SIGMA
+        return self.sigma / _GAUSSIAN_FWHM_TO_SIGMA
 
     def _calc_bounding_box(self, *, factor=5.5):
         """
@@ -1406,25 +1422,25 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
 
         Examples
         --------
-        >>> from photutils.psf import CircularGaussianPRF
-        >>> model = CircularGaussianPRF(x_0=0, y_0=0, fwhm=2)
+        >>> from photutils.psf import CircularGaussianSigmaPRF
+        >>> model = CircularGaussianSigmaPRF(x_0=0, y_0=0, sigma=2)
         >>> model.bounding_box
         ModelBoundingBox(
             intervals={
-                x: Interval(lower=-4.671269901584105, upper=4.671269901584105)
-                y: Interval(lower=-4.671269901584105, upper=4.671269901584105)
+                x: Interval(lower=-11.0, upper=11.0)
+                y: Interval(lower=-11.0, upper=11.0)
             }
-            model=CircularGaussianPRF(inputs=('x', 'y'))
+            model=CircularGaussianSigmaPRF(inputs=('x', 'y'))
             order='C'
         )
         >>> model.bbox_factor = 7
         >>> model.bounding_box
         ModelBoundingBox(
             intervals={
-                x: Interval(lower=-5.945252602016134, upper=5.945252602016134)
-                y: Interval(lower=-5.945252602016134, upper=5.945252602016134)
+                x: Interval(lower=-14.0, upper=14.0)
+                y: Interval(lower=-14.0, upper=14.0)
             }
-            model=CircularGaussianPRF(inputs=('x', 'y'))
+            model=CircularGaussianSigmaPRF(inputs=('x', 'y'))
             order='C'
         )
         """
@@ -1454,15 +1470,18 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         evaluated_model : `~numpy.ndarray`
             The evaluated model.
         """
-        dpix = 0.5
-        if isinstance(x_0, u.Quantity):
-            dpix *= x_0.unit
+        x0 = x - x_0
+        y0 = y - y_0
 
-        return (flux / 4
-                * ((erf((x - x_0 + dpix) / (np.sqrt(2) * sigma))
-                    - erf((x - x_0 - dpix) / (np.sqrt(2) * sigma)))
-                   * (erf((y - y_0 + dpix) / (np.sqrt(2) * sigma))
-                      - erf((y - y_0 - dpix) / (np.sqrt(2) * sigma)))))
+        dpix = 0.5
+        if isinstance(x0, u.Quantity):
+            dpix <<= x0.unit
+
+        return (flux / 4.0
+                * ((erf((x0 + dpix) / (np.sqrt(2) * sigma))
+                    - erf((x0 - dpix) / (np.sqrt(2) * sigma)))
+                   * (erf((y0 + dpix) / (np.sqrt(2) * sigma))
+                      - erf((y0 - dpix) / (np.sqrt(2) * sigma)))))
 
     @property
     def input_units(self):
@@ -1477,8 +1496,8 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
 
     def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
-        # Note that here we need to make sure that x and y are in the same
-        # units otherwise this can lead to issues since rotation is not well
+        # We need to make sure that x and y are in the same units
+        # otherwise this can lead to issues since rotation is not well
         # defined.
         if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
             msg = "Units of 'x' and 'y' inputs should match"
@@ -1531,7 +1550,8 @@ class MoffatPSF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, CircularGaussianPSF, GaussianPRF, CircularGaussianPRF
+    GaussianPSF, CircularGaussianPSF, GaussianPRF, CircularGaussianPRF,
+    CircularGaussianSigmaPRF, AiryDiskPSF
 
     Notes
     -----
@@ -1604,12 +1624,12 @@ class MoffatPSF(Fittable2DModel):
         default=0, description='Position of the peak along the y axis')
     alpha = Parameter(
         default=1,
-        bounds=(FLOAT_EPSILON, None),
+        bounds=(_FLOAT_TINY, None),
         fixed=True,
         description='Characteristic radius of the Moffat profile')
     beta = Parameter(
         default=2,
-        bounds=(1.0 + FLOAT_EPSILON, None),
+        bounds=(1.0 + _FLOAT_TINY, None),
         fixed=True,
         description='Power-law index of the Moffat profile')
 
@@ -1711,12 +1731,12 @@ class MoffatPSF(Fittable2DModel):
         result : `~numpy.ndarray`
             The value of the model evaluated at the input coordinates.
         """
-        # output units should match the input flux units
-        alpha2 = alpha.copy()
+        # Output units should match the input flux units
+        alpha_norm = alpha
         if isinstance(alpha, u.Quantity):
-            alpha2 = alpha.value
+            alpha_norm = alpha.value
 
-        amp = flux * (beta - 1) / (np.pi * alpha2 ** 2)
+        amp = flux * (beta - 1) / (np.pi * alpha_norm ** 2)
         r2 = (x - x_0) ** 2 + (y - y_0) ** 2
         return amp * (1 + (r2 / alpha**2)) ** (-beta)
 
@@ -1771,7 +1791,8 @@ class AiryDiskPSF(Fittable2DModel):
 
     See Also
     --------
-    GaussianPSF, CircularGaussianPSF, MoffatPSF
+    GaussianPSF, CircularGaussianPSF, GaussianPRF, CircularGaussianPRF,
+    CircularGaussianSigmaPRF, MoffatPSF
 
     Notes
     -----
@@ -1858,11 +1879,17 @@ class AiryDiskPSF(Fittable2DModel):
         default=0, description='Position of the peak along the y axis')
     radius = Parameter(
         default=1,
-        bounds=(FLOAT_EPSILON, None),
+        bounds=(_FLOAT_TINY, None),
         fixed=True,
         description='Radius of the Airy disk at the first zero')
 
+    # The radius of the first zero of the Airy disk profile, in units of
+    # the profile scale radius, i.e., the solution of J1(pi * Rz) = 0.
     _rz = jn_zeros(1, 1)[0] / np.pi
+
+    # The half width at half maximum of the Airy disk profile, i.e., the
+    # solution of (2 * J1(x) / x)**2 = 1/2.
+    _hwhm = 1.616339948310703
 
     def __init__(self, *, flux=flux.default, x_0=x_0.default, y_0=y_0.default,
                  radius=radius.default, bbox_factor=10.0, **kwargs):
@@ -1874,7 +1901,7 @@ class AiryDiskPSF(Fittable2DModel):
         """
         The FWHM of the Airy disk profile.
         """
-        return 2.0 * 1.616339948310703 * self.radius / self._rz / np.pi
+        return 2.0 * self._hwhm * self.radius / self._rz / np.pi
 
     def _calc_bounding_box(self, *, factor=10.0):
         """
@@ -1953,17 +1980,23 @@ class AiryDiskPSF(Fittable2DModel):
         r = np.sqrt((x - x_0) ** 2 + (y - y_0) ** 2) / (radius / self._rz)
 
         if isinstance(r, u.Quantity):
-            # scipy function cannot handle Quantity, so turn into array
+            # Convert to dimensionless_unscaled to avoid unit conversion
+            # issues in scipy functions, since they expect dimensionless
+            # inputs.
             r = r.to_value(u.dimensionless_unscaled)
+        r = np.asarray(r, dtype=float)
 
         # Since r can be zero, we have to take care to treat that case
-        # separately so as not to raise a numpy warning
-        z = np.ones(r.shape)
-        rt = np.pi * r[r > 0]
-        z[r > 0] = (2.0 * j1(rt) / rt) ** 2
+        # separately so as not to raise a numpy warning. The limit of
+        # (2 * J1(x) / x)**2 as x approaches zero is 1.
+        rt = np.pi * np.atleast_1d(r)
+        z = np.ones(rt.shape)
+        nonzero = rt > 0
+        z[nonzero] = (2.0 * j1(rt[nonzero]) / rt[nonzero]) ** 2
+        z = z.reshape(r.shape)
 
         if isinstance(flux, u.Quantity):
-            # make z a quantity to allow in-place multiplication
+            # Make z a quantity to allow in-place multiplication
             z <<= u.dimensionless_unscaled
 
         normalization = (4.0 / np.pi) * (radius / self._rz) ** 2

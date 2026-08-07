@@ -25,11 +25,6 @@ STDPSF_FILENAMES = ('STDPSF_NRCA1_F150W_mock.fits',
                     'STDPSF_WFC3UV_F814W_mock.fits',
                     'STDPSF_WFPC2_F814W_mock.fits')
 
-WEBBPSF_FILENAMES = ('nircam_nrca1_f200w_fovp101_samp4_npsf16_mock.fits',
-                     'nircam_nrca1_f200w_fovp101_samp4_npsf4_mock.fits',
-                     'nircam_nrca5_f444w_fovp101_samp4_npsf4_mock.fits',
-                     'nircam_nrcb4_f150w_fovp101_samp4_npsf1_mock.fits')
-
 
 def _reference_find_bounding_points(model, x, y):
     """
@@ -289,6 +284,14 @@ class TestGriddedPSFModel:
         edge = psfmodel._calc_bilinear_weights(0.0, 60.0, grid_xy)
         assert_allclose(clamped, edge)
 
+    def test_origin(self, psfmodel):
+        """
+        Test that the origin is set to the center of the ePSF images.
+        """
+        ny, nx = psfmodel.data.shape[1:]
+        assert psfmodel.origin.shape == (2,)
+        assert_allclose(psfmodel.origin, ((nx - 1) / 2, (ny - 1) / 2))
+
     def test_evaluate_matches_reference_algorithm(self, psfmodel):
         """
         The optimized evaluation must produce the same result as the
@@ -366,6 +369,13 @@ class TestGriddedPSFModel:
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
+        # An empty grid cannot form a rectangular grid
+        meta = {'grid_xypos': [], 'oversampling': 4}
+        nddata = NDData(np.ones((0, 5, 5)), meta=meta)
+        match = 'grid_xypos must form a rectangular grid'
+        with pytest.raises(ValueError, match=match):
+            GriddedPSFModel(nddata)
+
         # Check that oversampling is in meta
         meta = {'grid_xypos': [[0, 0], [0, 1], [1, 0], [1, 1]]}
         nddata = NDData(data, meta=meta)
@@ -436,6 +446,23 @@ class TestGriddedPSFModel:
         for param in psfmodel.param_names:
             assert param in model_str
 
+    def test_str_metadata(self, psfmodel):
+        """
+        Test that the instrument metadata is included in the string
+        representation when present.
+        """
+        model = psfmodel.deepcopy()
+        model.meta['STDPSF'] = 'STDPSF_NRCA1_F150W.fits'
+        model.meta['instrument'] = 'JWST/NIRCam'
+        model.meta['detector'] = 'A1'
+        model.meta['filter'] = 'F150W'
+
+        model_str = str(model)
+        assert 'STDPSF: STDPSF_NRCA1_F150W.fits' in model_str
+        assert 'Instrument: JWST/NIRCam' in model_str
+        assert 'Detector: A1' in model_str
+        assert 'Filter: F150W' in model_str
+
     def test_gridded_psf_oversampling(self, psfmodel):
         nddata = NDData(psfmodel.data, meta=psfmodel.meta)
         nddata.meta['oversampling'] = [4, 4]
@@ -458,7 +485,7 @@ class TestGriddedPSFModel:
         assert model.meta['oversampling'] == (5, 5)
 
     def test_bounding_box(self, psfmodel):
-        # oversampling is 4
+        # Oversampling is 4
         bbox = psfmodel.bounding_box.bounding_box()
         assert_equal(bbox, ((-12.625, 12.625), (-12.625, 12.625)))
 
@@ -467,59 +494,6 @@ class TestGriddedPSFModel:
         bbox = model.bounding_box.bounding_box()
         assert_equal(bbox, ((-50.5, 50.5), (-50.5, 50.5)))
 
-    def test_read_stdpsf(self):
-        """
-        Test STDPSF read for a single detector.
-        """
-        filename = 'STDPSF_NRCA1_F150W_mock.fits'
-        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
-        psfmodel = GriddedPSFModel.read(filename)
-        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-        assert isinstance(psfmodel.meta['grid_xypos'], np.ndarray)
-        assert_equal(psfmodel.oversampling, [4, 4])
-        assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
-
-    @pytest.mark.parametrize('filename', STDPSF_FILENAMES[1:])
-    @pytest.mark.parametrize('detector_id', [1, 2])
-    def test_read_stdpsf_multi_detector(self, filename, detector_id):
-        """
-        Test STDPSF read for multiple detectors.
-        """
-        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
-        psfmodel = GriddedPSFModel.read(filename, detector_id=detector_id,
-                                        format='stdpsf')
-        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-        assert_equal(psfmodel.oversampling, [4, 4])
-        assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
-
-        # Test format auto-detect
-        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
-        psfmodel = GriddedPSFModel.read(filename, detector_id=detector_id)
-        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-
-        match = 'detector_id must be specified'
-        with pytest.raises(ValueError, match=match):
-            GriddedPSFModel.read(filename, detector_id=None)
-
-        match = 'detector_id must be '
-        with pytest.raises(ValueError, match=match):
-            GriddedPSFModel.read(filename, detector_id=-1)
-
-    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
-    @pytest.mark.parametrize('filename', WEBBPSF_FILENAMES)
-    def test_read_webbpsf(self, filename):
-        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
-        psfmodel = GriddedPSFModel.read(filename, format='webbpsf')
-        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-        assert_equal(psfmodel.oversampling, [4, 4])
-        assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
-        psfmodel.plot_grid()
-
-        # Test format auto-detect
-        filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)
-        psfmodel = GriddedPSFModel.read(filename)
-        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
-
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot(self, psfmodel):
         psfmodel.plot_grid()
@@ -527,7 +501,7 @@ class TestGriddedPSFModel:
         psfmodel.plot_grid(deltas=True)
         psfmodel.plot_grid(deltas=True, peak_norm=True)
 
-        # simulate a grid where one or more ePSFS are blank (all zeros)
+        # Simulate a grid where one or more ePSFS are blank (all zeros)
         model = psfmodel.deepcopy()
         model.data[0] = 0.0
         model.plot_grid(deltas=True)
@@ -544,8 +518,7 @@ def test_stdpsfgrid(filename):
     assert_equal(psfgrid.oversampling, [4, 4])
     assert psfgrid.data.shape[0] == len(psfgrid.grid_xypos)
     assert isinstance(psfgrid.grid_xypos, np.ndarray)
-
-    psfgrid.plot_grid()
+    assert psfgrid.grid_shape == (len(psfgrid._ygrid), len(psfgrid._xgrid))
 
 
 def test_stdpsfgrid_repr_str():
@@ -633,7 +606,7 @@ class TestSTDPSFGridFromASDF:
         meta = self.make_meta(grid_xypos=grid_xypos, grid_shape=(4, 2))
         psfgrid = STDPSFGrid._from_asdf(np.ones((8, 4, 4)), meta)
 
-        assert psfgrid._grid_shape == (4, 2)
+        assert psfgrid.grid_shape == (4, 2)
         assert_equal(psfgrid._xgrid, [0, 1])
         assert_equal(psfgrid._ygrid, [0, 5, 5, 9])
         assert 'Grid shape: (4, 2)' in repr(psfgrid)

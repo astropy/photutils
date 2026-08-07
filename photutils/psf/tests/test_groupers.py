@@ -23,6 +23,16 @@ class TestSourceGrouper:
         grouper = SourceGrouper(min_separation=10.0)
         assert grouper.min_separation == 10.0
 
+    @pytest.mark.parametrize('min_separation', [0, -1, -10.0, np.nan, np.inf])
+    def test_invalid_min_separation(self, min_separation):
+        """
+        Test that a non-positive or non-finite min_separation raises
+        ValueError.
+        """
+        match = 'min_separation must be a positive finite value'
+        with pytest.raises(ValueError, match=match):
+            SourceGrouper(min_separation=min_separation)
+
     def test_repr(self):
         """
         Test string representation.

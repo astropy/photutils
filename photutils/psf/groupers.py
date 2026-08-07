@@ -71,11 +71,11 @@ class SourceGroups:
 
     >>> print(f'Number of groups: {source_groups.n_groups}')
     Number of groups: 3
-    >>> source_groups.size_map  # doctest: +SKIP
+    >>> source_groups.size_map
     {1: 2, 2: 2, 3: 1}
     >>> source_groups.sizes
     array([2, 2, 2, 2, 1])
-    >>> source_groups.group_centers  # doctest: +SKIP
+    >>> source_groups.group_centers
     {1: (12.5, 22.5), 2: (52.5, 62.5), 3: (100.0, 90.0)}
     >>> x_group1, y_group1 = source_groups.get_group_sources(1)
     >>> print(x_group1, y_group1)
@@ -129,7 +129,7 @@ class SourceGroups:
 
         Returns
         -------
-        group_sizes : 1D int `~numpy.ndarray`
+        sizes : 1D int `~numpy.ndarray`
             A 1D array of the group sizes, in the same order as the
             sources. Each element indicates how many sources are in the
             same group as the corresponding source.
@@ -234,6 +234,12 @@ class SourceGroups:
         elif isinstance(cmap, str):
             cmap = colormaps[cmap]
 
+        # Sample the colormap over its full range so that the group
+        # colors are distinct. Indexing a colormap by the group number
+        # would map every group to the low end of the colormap.
+        fractions = np.arange(self.n_groups) / max(self.n_groups - 1, 1)
+        colors = cmap(fractions)
+
         # Set default label kwargs
         if label_kwargs is None:
             label_kwargs = {'ha': 'center',
@@ -247,7 +253,7 @@ class SourceGroups:
             mask = self.groups == group_id
             xypos = zip(self.x[mask], self.y[mask], strict=True)
             ap = CircularAperture(xypos, r=radius)
-            color = cmap.colors[i] if hasattr(cmap, 'colors') else cmap(i)
+            color = colors[i]
             ap.plot(ax=ax, color=color, **kwargs)
 
             if label_groups:
@@ -307,7 +313,7 @@ class SourceGrouper:
 
     >>> print(f'Number of groups: {groups.n_groups}')
     Number of groups: 3
-    >>> groups.size_map  # doctest: +SKIP
+    >>> groups.size_map
     {1: 2, 2: 2, 3: 1}
 
     Retrieve the (x, y) positions of sources from a specific group:
@@ -318,6 +324,9 @@ class SourceGrouper:
     """
 
     def __init__(self, min_separation):
+        if not np.isfinite(min_separation) or min_separation <= 0:
+            msg = 'min_separation must be a positive finite value'
+            raise ValueError(msg)
         self.min_separation = min_separation
 
     def __repr__(self):
@@ -356,7 +365,7 @@ class SourceGrouper:
             msg = 'y coordinates must be finite (no NaN or inf values)'
             raise ValueError(msg)
 
-        # single source forms its own group
+        # A single source forms its own group
         if x.shape == (1,):
             return np.array([1])
 
