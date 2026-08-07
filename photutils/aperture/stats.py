@@ -36,7 +36,7 @@ from photutils.aperture._common import (SCALAR_COLLAPSE_TYPES,
                                         batch_mask_plane,
                                         batch_segmentation_arrays,
                                         collapse_scalar_value, unpack_nddata,
-                                        validate_array)
+                                        validate_array, validate_mask_method)
 from photutils.aperture._segmentation import (make_segmentation_exclusion,
                                               process_segmentation_inputs)
 from photutils.aperture.core import (_aperture_metadata,
@@ -84,8 +84,9 @@ _DEPRECATED_ATTRIBUTES: dict = {
 # Public attributes that are never collapsed to a scalar for a scalar
 # instance because they describe the whole object rather than a single
 # per-source value (see ``ApertureStats.__getattribute__``).
-_SCALAR_EXCLUDE = frozenset({'default_columns', 'isscalar', 'n_apertures',
-                             'properties'})
+_SCALAR_EXCLUDE = frozenset({'default_columns', 'isscalar', 'labels',
+                             'n_apertures', 'properties',
+                             'segmentation_image'})
 
 
 class _UncachedLazyProperty(lazyproperty):
@@ -341,6 +342,11 @@ class ApertureStats:
             raise TypeError(msg)
         self.sigma_clip = sigma_clip
 
+        # Validate the mask-method keywords here so that an invalid
+        # value is reported at construction rather than at the first
+        # access of a measured property, far from its cause.
+        validate_mask_method(sum_method, subpixels,
+                             method_name='sum_method')
         self.sum_method = sum_method
         self.subpixels = subpixels
 
@@ -384,8 +390,10 @@ class ApertureStats:
         self.meta.update(aperture_meta)
 
         # Validate the segmentation-masking inputs and resolve the
-        # per-aperture source labels
-        self._mask_method = mask_method
+        # per-aperture source labels.
+        self.segmentation_image = segmentation_image
+        self.labels = labels
+        self.mask_method = mask_method
         seg_positions = np.atleast_2d(self._pixel_aperture.positions)
         (self._segmentation,
          self._seg_labels) = process_segmentation_inputs(
@@ -453,7 +461,7 @@ class ApertureStats:
         init_attr = ('_data', '_data_unit', '_error', '_mask', '_wcs',
                      'sigma_clip', 'sum_method', 'subpixels', 'ddof',
                      'default_columns', 'meta', '_segmentation',
-                     '_mask_method')
+                     'segmentation_image', 'mask_method')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -464,7 +472,14 @@ class ApertureStats:
         # backed by a length-1 iterable (see the id property).
         newcls._ids = np.atleast_1d(self._ids[index])
 
-        # Slice the per-aperture segmentation labels
+        # Slice the per-aperture segmentation labels. Both the input
+        # ``labels`` and the resolved ``_seg_labels`` have one entry per
+        # aperture, so the sliced object reports the labels of the
+        # apertures it actually contains.
+        if self.labels is None:
+            newcls.labels = None
+        else:
+            newcls.labels = np.atleast_1d(self.labels)[index]
         if self._seg_labels is None:
             newcls._seg_labels = None
         else:
@@ -844,7 +859,7 @@ class ApertureStats:
         # non-finite data before any segmentation correction.
         mask = batch_mask_plane(data, self._mask, mask_nonfinite=True)
         seg_arr, labels_arr, seg_code = batch_segmentation_arrays(
-            self._segmentation, self._seg_labels, self._mask_method)
+            self._segmentation, self._seg_labels, self.mask_method)
 
         shape_code, params = spec
         sum_use_exact, sum_subpixels = aper._translate_mask_method(
@@ -1275,13 +1290,13 @@ class ApertureStats:
                 exclude = None
                 affected = None
                 if (self._segmentation is not None
-                        and self._mask_method != 'none'):
+                        and self.mask_method != 'none'):
                     segm_cutout = self._segmentation[slc_large]
                     cutout_xycen = (positions[idx, 0] - slc_large[1].start,
                                     positions[idx, 1] - slc_large[0].start)
                     (data_cutout, error_cutout, exclude,
                      affected) = make_segmentation_exclusion(
-                        self._mask_method, segm_cutout,
+                        self.mask_method, segm_cutout,
                         self._seg_labels[idx], data=data_cutout,
                         error=error_cutout, base_mask=data_mask,
                         cutout_xycen=cutout_xycen)
@@ -1311,7 +1326,7 @@ class ApertureStats:
                     pre_valid = weighted & ~pre_seg_mask
                     fc_row[FLAG_COL_SEG] = np.count_nonzero(
                         affected & pre_valid)
-                    if self._mask_method == 'correct':
+                    if self.mask_method == 'correct':
                         # In 'correct' mode, the excluded pixels are
                         # exactly the uncorrectable neighbor pixels
                         fc_row[FLAG_COL_UNCORRECTED] = np.count_nonzero(

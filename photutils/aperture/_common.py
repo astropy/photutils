@@ -147,6 +147,43 @@ def collapse_scalar_value(value):
     return value
 
 
+def validate_mask_method(method, subpixels, *, method_name='mask method'):
+    """
+    Validate the aperture-mask method and subpixels keywords.
+
+    Parameters
+    ----------
+    method : {'exact', 'center', 'subpixel'}
+        The aperture-mask method.
+
+    subpixels : int
+        The subsampling factor per axis used when
+        ``method='subpixel'``. It is not validated for the other
+        methods, which ignore it.
+
+    method_name : str, optional
+        The name of the method keyword, used in the error message.
+
+    Raises
+    ------
+    ValueError
+        If ``method`` is not one of ``'exact'``, ``'center'``, or
+        ``'subpixel'``, or if ``subpixels`` is not a strictly positive
+        integer when ``method='subpixel'``.
+    """
+    if method not in ('center', 'subpixel', 'exact'):
+        msg = f'Invalid {method_name}: {method!r}'
+        raise ValueError(msg)
+
+    # bool is a subclass of int, so it is rejected explicitly to
+    # prevent subpixels=True from being silently used as 1
+    if ((method == 'subpixel')
+            and (isinstance(subpixels, bool)
+                 or not isinstance(subpixels, int) or subpixels <= 0)):
+        msg = 'subpixels must be a strictly positive integer'
+        raise ValueError(msg)
+
+
 def batch_array_supported(array):
     """
     Whether an array has a dtype supported by the batch Cython drivers.

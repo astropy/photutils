@@ -11,7 +11,7 @@ from astropy.utils import lazyproperty
 
 from photutils.aperture._common import (SCALAR_COLLAPSE_TYPES,
                                         collapse_scalar_value, unpack_nddata,
-                                        validate_array)
+                                        validate_array, validate_mask_method)
 from photutils.aperture._segmentation import process_segmentation_inputs
 from photutils.aperture.converters import region_to_aperture
 from photutils.aperture.core import (Aperture, SkyAperture, _aperture_metadata,
@@ -191,6 +191,11 @@ class AperturePhotometry:
         self._error = validate_array(error, 'error', shape=data_shape)
         self._mask = validate_array(mask, 'mask', shape=data_shape)
         self._wcs = wcs
+
+        # Validate the mask-method keywords here so that an invalid
+        # value is reported at construction rather than at the first
+        # access of a measured attribute, far from its cause.
+        validate_mask_method(method, subpixels, method_name='method')
         self.method = method
         self.subpixels = subpixels
         self.mask_method = mask_method
@@ -245,7 +250,8 @@ class AperturePhotometry:
 
         # Define output table metadata
         self.meta = _get_meta()
-        calling_args = f"method='{method}', subpixels={subpixels}"
+        calling_args = (f"method='{method}', subpixels={subpixels}, "
+                        f"mask_method='{mask_method}'")
         self.meta['aperture_photometry_args'] = calling_args
         self.meta.update(aper_meta)
 

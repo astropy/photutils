@@ -27,7 +27,8 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   batch_aperture_sums)
 from photutils.aperture._common import (batch_inputs_supported,
                                         batch_mask_plane,
-                                        batch_segmentation_arrays)
+                                        batch_segmentation_arrays,
+                                        validate_mask_method)
 from photutils.aperture._segmentation import (make_segmentation_exclusion,
                                               process_segmentation_inputs)
 from photutils.aperture.bounding_box import BoundingBox
@@ -430,17 +431,7 @@ class PixelAperture(Aperture):
         subpixels : int
             The number of subpixels for subpixel method.
         """
-        if method not in ('center', 'subpixel', 'exact'):
-            msg = f'Invalid mask method: {method}'
-            raise ValueError(msg)
-
-        # bool is a subclass of int, so it is rejected explicitly to
-        # prevent subpixels=True from being silently used as 1
-        if ((method == 'subpixel')
-                and (isinstance(subpixels, bool)
-                     or not isinstance(subpixels, int) or subpixels <= 0)):
-            msg = 'subpixels must be a strictly positive integer'
-            raise ValueError(msg)
+        validate_mask_method(method, subpixels)
 
         if method == 'center':
             use_exact = 0
