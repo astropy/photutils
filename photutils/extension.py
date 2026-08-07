@@ -30,6 +30,12 @@ PHOTUTILS_PSF_CONVERTERS = [
 
 PHOTUTILS_APERTURE_CONVERTERS = [
     apertures.CircularApertureConverter(),
+    apertures.CircularAnnulusConverter(),
+    apertures.EllipticalApertureConverter(),
+    apertures.EllipticalAnnulusConverter(),
+    apertures.PolygonApertureConverter(),
+    apertures.RectangularApertureConverter(),
+    apertures.RectangularAnnulusConverter(),
 ]
 
 PHOTUTILS_CONVERTERS = PHOTUTILS_PSF_CONVERTERS + PHOTUTILS_APERTURE_CONVERTERS
