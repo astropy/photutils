@@ -2622,12 +2622,14 @@ class ApertureStats:
     @lazyproperty
     def ellipticity(self):
         r"""
-        1.0 minus the ratio of the lengths of the semimajor and
-        semiminor axes (or 1.0 minus the `elongation`).
+        1.0 minus the ratio of the lengths of the semiminor and
+        semimajor axes (or 1.0 divided by the `elongation`, subtracted
+        from 1.0).
 
         .. math::
 
-            \mathrm{ellipticity} = 1 - \frac{b}{a}
+            \mathrm{ellipticity} = \frac{a - b}{a} = 1 - \frac{b}{a}
+                                 = 1 - \frac{1}{\mathrm{elongation}}
 
         where :math:`a` and :math:`b` are the lengths of the semimajor
         and semiminor axes, respectively.

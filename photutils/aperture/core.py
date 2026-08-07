@@ -118,6 +118,30 @@ mask_method : {'none', 'mask', 'source_only', 'correct'}, optional
       values of the pixels mirrored across the aperture center. If a
       mirror pixel is unavailable, the pixel is excluded."""
 
+_COMPUTE_OVERLAP_DOC = """\
+Parameters
+----------
+edges : tuple of float
+    The ``(xmin, xmax, ymin, ymax)`` pixel edges of the aperture
+    bounding box, recentered at the origin.
+
+nx, ny : int
+    The number of pixels in the x and y directions.
+
+use_exact : int
+    Whether to compute the exact overlap area (1) or to use
+    subpixel sampling (0).
+
+subpixels : int
+    The number of subpixels in each dimension used when
+    ``use_exact`` is 0.
+
+Returns
+-------
+overlap : 2D `~numpy.ndarray`
+    The fraction of each pixel that overlaps the aperture. The
+    values are between 0 (no overlap) and 1 (full overlap)."""
+
 # Bullet list of the aperture quality flags, generated from the central
 # flag registry, used in docstrings via the ``flag_descriptions``
 # placeholder.
@@ -132,6 +156,7 @@ _DOC_PLACEHOLDERS = {
     'subpixels_description': _SUBPIXELS_DOC,
     'segmentation_descriptions': _SEGMENTATION_DOC,
     'flag_descriptions': _FLAG_DESCRIPTIONS_DOC,
+    'compute_overlap_docs': _COMPUTE_OVERLAP_DOC,
 }
 
 _DOC_PLACEHOLDER_RE = re.compile(
@@ -156,6 +181,12 @@ def _update_method_subpixels_docstring(obj):
       custom name and introduction.
     * ``<subpixels_description>`` : only the ``subpixels`` parameter
       description.
+    * ``<segmentation_descriptions>`` : the ``segmentation_image``,
+      ``labels``, and ``mask_method`` parameter descriptions.
+    * ``<flag_descriptions>`` : the bullet list of aperture quality
+      flags.
+    * ``<compute_overlap_docs>`` : the Parameters and Returns sections
+      of the ``_compute_overlap`` method.
 
     Parameters
     ----------
@@ -636,29 +667,12 @@ class PixelAperture(Aperture):
         return masks
 
     @abc.abstractmethod
+    @_update_method_subpixels_docstring
     def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
         """
         Compute the overlap of the aperture for a single position.
 
-        Parameters
-        ----------
-        edges : tuple of float
-            The ``(xmin, xmax, ymin, ymax)`` pixel edges centered at
-            the origin.
-
-        nx, ny : int
-            The number of pixels in x and y.
-
-        use_exact : int
-            Whether to use exact method (1) or not (0).
-
-        subpixels : int
-            The number of subpixels for subpixel method.
-
-        Returns
-        -------
-        overlap : 2D `~numpy.ndarray`
-            The overlap array.
+        <compute_overlap_docs>
         """
 
     def _mask_photometry(self, data, *, error, mask, method, subpixels,

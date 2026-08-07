@@ -292,7 +292,7 @@ def aperture_to_region(aperture):
         msg = 'Input aperture must be an Aperture object'
         raise TypeError(msg)
 
-    if aperture.shape == ():
+    if aperture.isscalar:
         return _scalar_aperture_to_region(aperture)
 
     # Multiple aperture positions return a Regions object
@@ -325,7 +325,7 @@ def _scalar_aperture_to_region(aperture):
                          RectangleAnnulusSkyRegion, RectanglePixelRegion,
                          RectangleSkyRegion)
 
-    if aperture.shape != ():
+    if not aperture.isscalar:
         msg = 'Only scalar (single-position) apertures are supported'
         raise ValueError(msg)
 
@@ -428,7 +428,7 @@ def _shapely_polygon_to_region(polygon, *, label=None, visual_kwargs=None):
 
     Returns
     -------
-    result : list of `regions.PolygonPixelRegion` or `regions.Regions`
+    result : `regions.PolygonPixelRegion` or `regions.Regions`
         If the polygon is a `shapely.Polygon`, then a
         `regions.PolygonPixelRegion` object is returned. If the polygon
         is a `shapely.MultiPolygon`, then a `regions.Regions` object is

@@ -151,6 +151,15 @@ class AperturePhotometry:
     instance can be safely shared across threads. Do not reassign its
     attributes after construction.
 
+    One caveat applies to apertures that are not supported by the
+    compiled batch code path (e.g., a `~photutils.aperture.Aperture`
+    subclass that overrides ``to_mask``). That path suppresses warnings
+    using `warnings.catch_warnings`, which mutates process-global
+    warning-filter state, so concurrent calls can transiently affect
+    the warning filters seen by other threads. On free-threaded Python
+    builds the warning filters are context-aware, so this does not
+    apply.
+
     Examples
     --------
     >>> import numpy as np
@@ -639,6 +648,11 @@ def aperture_photometry(data, apertures, error=None, mask=None,
                                    method=method, subpixels=subpixels,
                                    wcs=wcs)
 
+    # The aperture-list handling, sky-to-pixel conversion, and
+    # position-equality checking below duplicate the equivalent code in
+    # AperturePhotometry.__init__. The duplication is intentional. This
+    # function is frozen and must not gain new behavior, so it must not
+    # be refactored to share the class logic.
     single_aperture = False
     if not isinstance(apertures, (list, tuple, np.ndarray)):
         single_aperture = True

@@ -586,11 +586,11 @@ def test_scalar_aperture_to_region_unknown_type():
 
     class _FakeAperture:
         """
-        Minimal fake aperture with shape=() that passes the scalar check
-        but has no matching isinstance branch.
+        Minimal fake scalar aperture that passes the scalar check but
+        has no matching isinstance branch.
         """
 
-        shape = ()
+        isscalar = True
 
     match = 'Cannot convert input aperture to a Region object'
     with pytest.raises(TypeError, match=match):
