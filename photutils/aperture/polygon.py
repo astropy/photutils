@@ -436,6 +436,11 @@ class PolygonAperture(PixelAperture):
         'The (n_vertices, 2) array of pixel offsets of the polygon '
         'vertices, measured relative to ``positions``.')
 
+    # The bounding box is symmetric about ``positions`` (see
+    # ``_xy_extents``), so it is not tight for a polygon whose vertices
+    # are not symmetric about ``positions``.
+    _bbox_is_tight = False
+
     def __init__(self, positions, vertex_offsets):
         self.positions = positions
         self.vertex_offsets = vertex_offsets

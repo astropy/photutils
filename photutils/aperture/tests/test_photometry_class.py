@@ -11,7 +11,7 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.utils.exceptions import AstropyUserWarning
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAperture)
@@ -462,6 +462,27 @@ class TestScalarBehavior:
         aper = CircularAperture((12, 12), r=3)
         phot = AperturePhotometry(data, aper, mask=mask)
         assert phot.decode_flags() == [['masked_pixels']]
+
+    @pytest.mark.parametrize('use_segm_obj', [True, False])
+    def test_scalar_input_attributes_not_collapsed(self, use_segm_obj):
+        """
+        Test that the ``segmentation_image`` and ``labels`` inputs are
+        echoed back unchanged for a scalar instance, i.e., that they are
+        not treated as per-position output arrays.
+        """
+        data, segm = make_scene()
+        segm_in = SegmentationImage(segm) if use_segm_obj else segm
+        aper = CircularAperture((21, 21), r=8)
+        phot = AperturePhotometry(data, aper, segmentation_image=segm_in,
+                                  labels=np.array([1]), mask_method='mask')
+        assert phot.isscalar is True
+        assert phot.segmentation_image is segm_in
+        assert_equal(phot.labels, np.array([1]))
+
+        # The photometry itself is unaffected
+        ref = AperturePhotometry(data, aper,
+                                 mask=(segm > 0) & (segm != 1))
+        assert_allclose(phot.flux, ref.flux)
 
     def test_isscalar_matches_aperture_stats(self, data):
         scalar_aper = CircularAperture((150, 25), r=8)

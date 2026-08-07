@@ -12,16 +12,18 @@ from numpy.testing import assert_allclose
 
 from photutils.aperture import (Aperture, AperturePhotometry, CircularAperture,
                                 EllipticalAnnulus, EllipticalAperture,
-                                RectangularAnnulus, RectangularAperture,
-                                SkyCircularAperture, SkyEllipticalAnnulus,
-                                SkyEllipticalAperture, SkyRectangularAnnulus,
-                                SkyRectangularAperture)
+                                PolygonAperture, RectangularAnnulus,
+                                RectangularAperture, SkyCircularAperture,
+                                SkyEllipticalAnnulus, SkyEllipticalAperture,
+                                SkyRectangularAnnulus, SkyRectangularAperture)
 from photutils.aperture.core import (_aperture_metadata,
                                      _update_method_subpixels_docstring)
 
 POSITIONS = [(5, 5), (10, 10), (15, 15)]
 SCALAR_POS = (5, 5)
 SCALAR_POS_20 = (20.0, 20.0)
+TRIANGLE_OFFSETS = [(0.0, 1.0), (-1.0, -1.0), (1.0, -1.0)]
+SQUARE_OFFSETS = [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)]
 
 # Apertures with a ``theta`` rotation angle, with the size parameters
 # needed to construct them. The annuli pass their inner axis explicitly
@@ -126,6 +128,40 @@ class TestAperture:
         # TypeError on != comparison, mimicking incompatible SkyCoords.
         aper1.__dict__['positions'] = RaisesOnCompare()
         aper2.__dict__['positions'] = RaisesOnCompare()
+        assert aper1 != aper2
+
+    def test_eq_polygons_different_vertex_counts(self):
+        """
+        Test that __eq__ returns False (rather than propagating the
+        broadcasting ValueError) for polygons with different numbers of
+        vertices.
+        """
+        aper1 = PolygonAperture(SCALAR_POS, TRIANGLE_OFFSETS)
+        aper2 = PolygonAperture(SCALAR_POS, SQUARE_OFFSETS)
+        assert aper1 != aper2
+        assert aper2 != aper1
+        assert not aper1 == aper2  # noqa: SIM201
+
+    def test_eq_polygons_different_vertex_counts_containment(self):
+        """
+        Test that container operations that rely on __eq__ work for
+        polygons with different numbers of vertices.
+        """
+        aper1 = PolygonAperture(SCALAR_POS, TRIANGLE_OFFSETS)
+        aper2 = PolygonAperture(SCALAR_POS, SQUARE_OFFSETS)
+        apertures = [aper2, aper1]
+        assert aper1 in apertures
+        apertures.remove(aper1)
+        assert apertures == [aper2]
+
+    def test_eq_different_position_counts(self):
+        """
+        Test that __eq__ returns False (rather than propagating the
+        broadcasting ValueError) for apertures with different numbers of
+        positions.
+        """
+        aper1 = CircularAperture(POSITIONS, r=3)
+        aper2 = CircularAperture(POSITIONS[:2], r=3)
         assert aper1 != aper2
 
 

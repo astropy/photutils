@@ -35,6 +35,15 @@ _DEPRECATED_COLUMNS: dict = {
 }
 
 
+# Public attributes that are never collapsed to a scalar for a scalar
+# instance because they are not per-position output values (see
+# ``AperturePhotometry.__getattribute__``). ``segmentation_image`` and
+# ``labels`` are the inputs echoed back to the user, and the others
+# describe the whole object.
+_SCALAR_EXCLUDE = frozenset({'default_columns', 'isscalar', 'labels',
+                             'n_positions', 'segmentation_image'})
+
+
 @_update_method_subpixels_docstring
 class AperturePhotometry:
     # numpydoc ignore: PR01,PR02,PR04,PR07
@@ -295,12 +304,14 @@ class AperturePhotometry:
         # Collapse the leading position axis of the public array-valued
         # output attributes to a scalar when a single scalar aperture
         # position is input (e.g., ``CircularAperture((10, 20), r=5)``).
-        # These are the only public array-valued attributes, so the
-        # scalar conversion is applied centrally here instead of being
-        # repeated on each individual property.
+        # The scalar conversion is applied centrally here instead of
+        # being repeated on each individual property. Public attributes
+        # that are not per-position outputs are excluded, so that, for
+        # example, the input ``segmentation_image`` is not reduced to
+        # its first row.
         value = super().__getattribute__(name)
         if (not name.startswith('_')
-                and name not in ('isscalar', 'n_positions')
+                and name not in _SCALAR_EXCLUDE
                 and isinstance(value, (np.ndarray, SkyCoord))
                 and self.isscalar):
             return value[0]
