@@ -65,6 +65,22 @@ class MinimalAperture(Aperture):
         return np.array([[5.0, 5.0]])
 
 
+class _CachedMaskAperture(CircularAperture):
+    """
+    A CircularAperture that caches and reuses its aperture mask, so that
+    any in-place modification of the mask data is observable.
+    """
+
+    def to_mask(self, method='exact', subpixels=5):
+        """
+        Return the cached aperture mask, computing it if needed.
+        """
+        if '_mask_cache' not in self.__dict__:
+            self.__dict__['_mask_cache'] = super().to_mask(
+                method=method, subpixels=subpixels)
+        return self.__dict__['_mask_cache']
+
+
 class RaisesOnCompare:
     """
     Helper object that raises TypeError on any != comparison, used to
@@ -190,6 +206,34 @@ class TestPixelAperture:
         bbox = aper.bbox
         assert isinstance(bbox, list)
         assert len(bbox) == len(POSITIONS)
+
+    @pytest.mark.parametrize('subpixels', [True, False])
+    def test_to_mask_bool_subpixels(self, subpixels):
+        """
+        Test that a bool subpixels value is rejected. bool is a subclass
+        of int, so True would otherwise be silently used as subpixels=1.
+        """
+        aper = CircularAperture(SCALAR_POS, r=3)
+        match = 'subpixels must be a strictly positive integer'
+        with pytest.raises(ValueError, match=match):
+            aper.to_mask(method='subpixel', subpixels=subpixels)
+
+    def test_area_overlap_does_not_modify_mask(self):
+        """
+        Test that area_overlap does not modify the data of the aperture
+        mask it is given, which it would if a cached mask were reused.
+        """
+        data = np.ones((25, 25))
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[12, 12] = True
+
+        aper = _CachedMaskAperture((12, 12), r=5)
+        expected = aper.to_mask().data.copy()
+        area = aper.area_overlap(data, mask=mask)
+
+        assert_allclose(aper.to_mask().data, expected)
+        # The masked pixel is still excluded from the area
+        assert_allclose(area, aper.area_overlap(data) - 1.0)
 
 
 class TestPixelAperturePhotometry:

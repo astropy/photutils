@@ -673,7 +673,21 @@ class ApertureStats:
         result : `ApertureStats`
             A new `ApertureStats` object containing only the sources with
             the input ID numbers.
+
+        Raises
+        ------
+        TypeError
+            If this is a scalar `ApertureStats` object, which cannot be
+            indexed.
+
+        ValueError
+            If any input ID number is not a valid source ID number.
         """
+        if self.isscalar:
+            msg = (f'A scalar {self.__class__.__name__!r} object cannot '
+                   'be indexed')
+            raise TypeError(msg)
+
         for id_num in np.atleast_1d(id_nums):
             if id_num not in self._array('id'):
                 msg = f'{id_num} is not a valid source ID number'
@@ -2485,10 +2499,10 @@ class ApertureStats:
         The two eigenvalues of the `covariance` matrix in decreasing
         order.
         """
-        eigvals = np.empty((self.n_apertures, 2))
-        eigvals.fill(np.nan)
-        # np.linalg.eigvalsh requires finite input values
-        idx = np.unique(np.where(np.isfinite(self._covariance))[0])
+        eigvals = np.full((self.n_apertures, 2), np.nan)
+        # np.linalg.eigvalsh requires that every element of a covariance
+        # matrix be finite, so select only the wholly finite matrices
+        idx = np.flatnonzero(np.isfinite(self._covariance).all(axis=(1, 2)))
         eigvals[idx] = np.linalg.eigvalsh(self._covariance[idx])
 
         # Check for negative variance

@@ -434,8 +434,11 @@ class PixelAperture(Aperture):
             msg = f'Invalid mask method: {method}'
             raise ValueError(msg)
 
+        # bool is a subclass of int, so it is rejected explicitly to
+        # prevent subpixels=True from being silently used as 1
         if ((method == 'subpixel')
-                and (not isinstance(subpixels, int) or subpixels <= 0)):
+                and (isinstance(subpixels, bool)
+                     or not isinstance(subpixels, int) or subpixels <= 0)):
             msg = 'subpixels must be a strictly positive integer'
             raise ValueError(msg)
 
@@ -594,6 +597,9 @@ class PixelAperture(Aperture):
             else:
                 aper_weights = apermask.data[slc_small]
                 if mask is not None:
+                    # Copy aper_weights before modifying it, because the
+                    # slice above is a view.
+                    aper_weights = aper_weights.copy()
                     aper_weights[mask[slc_large]] = 0.0
                 area = np.sum(aper_weights)
 
