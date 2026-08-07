@@ -49,77 +49,83 @@ _BATCH_SPECS = [
 ]
 
 
-@pytest.mark.parametrize('use_exact', [1, 0])
-def test_readonly_arrays(use_exact):
+class TestBatchApertureSums:
     """
-    Test that the batch driver accepts read-only (non-writeable) data,
-    error, positions, and params arrays and returns results identical to
-    writeable arrays.
-
-    The data, error, positions, and params arguments are declared as
-    ``const`` typed memoryviews so that read-only arrays do not raise a
-    ``ValueError``.
+    Tests for the batch_aperture_sums Cython driver.
     """
-    data, error, mask, positions = _batch_inputs()
-    params = np.array([8.0], dtype=np.float64)
 
-    expected = batch_aperture_sums(data, error, mask, positions, SHAPE_CIRCLE,
-                                   params, 8.0, 8.0, use_exact, 8)
+    @pytest.mark.parametrize('use_exact', [1, 0])
+    def test_readonly_arrays(self, use_exact):
+        """
+        Test that the batch driver accepts read-only (non-writeable) data,
+        error, positions, and params arrays and returns results identical to
+        writeable arrays.
 
-    for arr in (data, error, positions, params):
-        arr.setflags(write=False)
-    result = batch_aperture_sums(data, error, mask, positions, SHAPE_CIRCLE,
-                                 params, 8.0, 8.0, use_exact, 8)
+        The data, error, positions, and params arguments are declared as
+        ``const`` typed memoryviews so that read-only arrays do not raise a
+        ``ValueError``.
+        """
+        data, error, mask, positions = _batch_inputs()
+        params = np.array([8.0], dtype=np.float64)
 
-    for res_arr, exp_arr in zip(result, expected, strict=True):
-        assert_array_equal(res_arr, exp_arr)
+        expected = batch_aperture_sums(data, error, mask, positions,
+                                       SHAPE_CIRCLE,
+                                       params, 8.0, 8.0, use_exact, 8)
 
+        for arr in (data, error, positions, params):
+            arr.setflags(write=False)
+        result = batch_aperture_sums(data, error, mask, positions,
+                                     SHAPE_CIRCLE,
+                                     params, 8.0, 8.0, use_exact, 8)
 
-@pytest.mark.parametrize(('shape_code', 'params', 'ext_x', 'ext_y'),
-                         _BATCH_SPECS)
-@pytest.mark.parametrize('use_exact', [1, 0])
-def test_batch_aperture_sums_threadsafe(shape_code, params, ext_x, ext_y,
-                                        use_exact):
-    data, error, mask, positions = _batch_inputs()
-    params = np.array(params, dtype=np.float64)
+        for res_arr, exp_arr in zip(result, expected, strict=True):
+            assert_array_equal(res_arr, exp_arr)
 
-    def fn():
-        return batch_aperture_sums(data, error, mask, positions, shape_code,
-                                   params, ext_x, ext_y, use_exact, 8)
-
-    expected = fn()
-    with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
-        futures = [ex.submit(fn)
-                   for _ in range(N_THREADS * N_CALLS_PER_THREAD)]
-        for future in futures:
-            result = future.result()
-            for res_arr, exp_arr in zip(result, expected, strict=True):
-                assert_array_equal(res_arr, exp_arr)
-
-
-def test_batch_aperture_sums_mixed_concurrent():
-    """
-    Run every aperture shape through the batch driver concurrently.
-
-    Mixing shapes within the thread pool surfaces interference between
-    calls if any shared mutable state (e.g., a module-level scratch
-    buffer) were introduced into the ``nogil`` source loop.
-    """
-    data, error, mask, positions = _batch_inputs()
-
-    def task(spec):
-        shape_code, params, ext_x, ext_y = spec
+    @pytest.mark.parametrize(('shape_code', 'params', 'ext_x', 'ext_y'),
+                             _BATCH_SPECS)
+    @pytest.mark.parametrize('use_exact', [1, 0])
+    def test_threadsafe(self, shape_code, params, ext_x, ext_y, use_exact):
+        data, error, mask, positions = _batch_inputs()
         params = np.array(params, dtype=np.float64)
-        return batch_aperture_sums(data, error, mask, positions, shape_code,
-                                   params, ext_x, ext_y, 1, 5)
 
-    expected = {spec[0]: task(spec) for spec in _BATCH_SPECS}
+        def fn():
+            return batch_aperture_sums(data, error, mask, positions,
+                                       shape_code, params, ext_x, ext_y,
+                                       use_exact, 8)
 
-    with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
-        futures = {ex.submit(task, spec): spec[0]
-                   for spec in _BATCH_SPECS for _ in range(N_THREADS)}
-        for fut, shape_code in futures.items():
-            result = fut.result()
-            for res_arr, exp_arr in zip(result, expected[shape_code],
-                                        strict=True):
-                assert_array_equal(res_arr, exp_arr)
+        expected = fn()
+        with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
+            futures = [ex.submit(fn)
+                       for _ in range(N_THREADS * N_CALLS_PER_THREAD)]
+            for future in futures:
+                result = future.result()
+                for res_arr, exp_arr in zip(result, expected, strict=True):
+                    assert_array_equal(res_arr, exp_arr)
+
+    def test_mixed_concurrent(self):
+        """
+        Run every aperture shape through the batch driver concurrently.
+
+        Mixing shapes within the thread pool surfaces interference between
+        calls if any shared mutable state (e.g., a module-level scratch
+        buffer) were introduced into the ``nogil`` source loop.
+        """
+        data, error, mask, positions = _batch_inputs()
+
+        def task(spec):
+            shape_code, params, ext_x, ext_y = spec
+            params = np.array(params, dtype=np.float64)
+            return batch_aperture_sums(data, error, mask, positions,
+                                       shape_code, params, ext_x, ext_y,
+                                       1, 5)
+
+        expected = {spec[0]: task(spec) for spec in _BATCH_SPECS}
+
+        with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
+            futures = {ex.submit(task, spec): spec[0]
+                       for spec in _BATCH_SPECS for _ in range(N_THREADS)}
+            for fut, shape_code in futures.items():
+                result = fut.result()
+                for res_arr, exp_arr in zip(result, expected[shape_code],
+                                            strict=True):
+                    assert_array_equal(res_arr, exp_arr)

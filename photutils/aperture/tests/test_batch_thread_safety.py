@@ -40,37 +40,6 @@ APERTURE_MODULES = ('_batch_photometry', '_batch_stats')
 GIL_DISABLED = bool(sysconfig.get_config_var('Py_GIL_DISABLED'))
 
 
-@pytest.mark.parametrize('modname', APERTURE_MODULES)
-def test_aperture_module_importable(modname):
-    """
-    Test that each compiled aperture batch module imports cleanly.
-
-    On a free-threaded build, importing a module that was not compiled
-    with ``freethreading_compatible=True`` emits a ``RuntimeWarning``
-    and reenables the GIL. This import check is the entry point for the
-    free-threading verification below.
-    """
-    assert importlib.import_module(f'photutils.aperture.{modname}') is not None
-
-
-@pytest.mark.skipif(not GIL_DISABLED,
-                    reason='requires a free-threaded (GIL-disabled) build')
-def test_aperture_modules_do_not_reenable_gil():
-    """
-    Test that importing the aperture Cython batch modules does not
-    reenable the GIL on a free-threaded build.
-
-    Each module is compiled with the ``freethreading_compatible=True``
-    directive, which marks it as free-threading compatible
-    (``Py_MOD_GIL_NOT_USED``). A module lacking that directive would
-    force the runtime to reenable the GIL on import, which this test
-    detects.
-    """
-    for modname in APERTURE_MODULES:
-        importlib.import_module(f'photutils.aperture.{modname}')
-    assert sys._is_gil_enabled() is False
-
-
 def _gather_inputs():
     """
     Build deterministic data, mask, and source positions for the
@@ -118,72 +87,6 @@ def _assert_gather_equal(result, expected):
         assert_array_equal(ly[sl], e_ly[sl])
 
 
-def test_batch_aperture_gather_accepts_none_local_bkg():
-    """
-    Test that ``batch_aperture_gather`` accepts ``local_bkg=None`` and
-    matches an all-zero local background.
-
-    The per-pixel background subtraction is guarded by a ``has_bkg``
-    check so that a `None` ``local_bkg`` is treated as no subtraction
-    rather than dereferencing a NULL memoryview.
-    """
-    data, mask, positions = _gather_inputs()
-    params = np.array([8.0], dtype=np.float64)
-    zeros = np.zeros(positions.shape[0], dtype=np.float64)
-
-    none_result = batch_aperture_gather(data, mask, positions, SHAPE_CIRCLE,
-                                        params, 8.0, 8.0, None)
-    zero_result = batch_aperture_gather(data, mask, positions, SHAPE_CIRCLE,
-                                        params, 8.0, 8.0, zeros)
-
-    _assert_gather_equal(none_result, zero_result)
-
-
-@pytest.mark.parametrize(('shape_code', 'params', 'ext_x', 'ext_y'),
-                         _GATHER_SPECS)
-def test_batch_aperture_gather_threadsafe(shape_code, params, ext_x, ext_y):
-    data, mask, positions = _gather_inputs()
-    params = np.array(params, dtype=np.float64)
-    local_bkg = np.linspace(0.0, 0.5, positions.shape[0])
-
-    def fn():
-        return batch_aperture_gather(data, mask, positions, shape_code,
-                                     params, ext_x, ext_y, local_bkg)
-
-    expected = fn()
-    with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
-        futures = [ex.submit(fn)
-                   for _ in range(N_THREADS * N_CALLS_PER_THREAD)]
-        for future in futures:
-            _assert_gather_equal(future.result(), expected)
-
-
-def test_batch_aperture_gather_mixed_concurrent():
-    """
-    Run every aperture shape through the gatherer concurrently.
-
-    Mixing shapes within the thread pool surfaces interference between
-    calls if any shared mutable state (e.g., a module-level scratch
-    buffer) were introduced into the ``nogil`` gather loop.
-    """
-    data, mask, positions = _gather_inputs()
-    local_bkg = np.linspace(0.0, 0.5, positions.shape[0])
-
-    def task(spec):
-        shape_code, params, ext_x, ext_y = spec
-        params = np.array(params, dtype=np.float64)
-        return batch_aperture_gather(data, mask, positions, shape_code,
-                                     params, ext_x, ext_y, local_bkg)
-
-    expected = {spec[0]: task(spec) for spec in _GATHER_SPECS}
-
-    with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
-        futures = {ex.submit(task, spec): spec[0]
-                   for spec in _GATHER_SPECS for _ in range(N_THREADS)}
-        for fut, shape_code in futures.items():
-            _assert_gather_equal(fut.result(), expected[shape_code])
-
-
 # Properties that exercise the ``_batch_stats`` order-statistic, moment,
 # MAD, biweight, Gini, and mean/variance nogil kernels.
 _STATS_PROPERTIES = ('mean', 'median', 'std', 'mad_std', 'biweight_location',
@@ -191,31 +94,147 @@ _STATS_PROPERTIES = ('mean', 'median', 'std', 'mad_std', 'biweight_location',
                      'sum', 'var', 'centroid')
 
 
-@pytest.mark.parametrize('use_sigma_clip', [False, True])
-def test_aperture_stats_threadsafe(use_sigma_clip):
+class TestFreeThreadingSupport:
     """
-    Test that `ApertureStats` releases the GIL and is thread-safe by
-    running many concurrent calls that drive the ``_batch_stats`` nogil
-    kernels and checking that they all give identical results.
+    The compiled aperture modules must not re-enable the GIL on a
+    free-threaded build.
     """
-    data = make_100gaussians_image()
-    error = np.sqrt(np.abs(data))
-    positions = ((145.1, 168.3), (84.7, 224.1), (48.3, 200.3), (200.0, 100.0))
-    aperture = CircularAperture(positions, r=6.0)
-    sigma_clip = SigmaClip(sigma=3.0, maxiters=10) if use_sigma_clip else None
 
-    def compute():
-        stats = ApertureStats(data, aperture, error=error,
-                              sigma_clip=sigma_clip)
-        return {name: np.asarray(getattr(stats, name))
-                for name in _STATS_PROPERTIES}
+    @pytest.mark.parametrize('modname', APERTURE_MODULES)
+    def test_module_importable(self, modname):
+        """
+        Test that each compiled aperture batch module imports cleanly.
 
-    expected = compute()
-    with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
-        futures = [ex.submit(compute)
-                   for _ in range(N_THREADS * N_CALLS_PER_THREAD)]
-        for future in futures:
-            result = future.result()
-            for name in _STATS_PROPERTIES:
-                assert_allclose(result[name], expected[name],
-                                rtol=0, atol=0, equal_nan=True)
+        On a free-threaded build, importing a module that was not compiled
+        with ``freethreading_compatible=True`` emits a ``RuntimeWarning``
+        and reenables the GIL. This import check is the entry point for the
+        free-threading verification below.
+        """
+        module = importlib.import_module(f'photutils.aperture.{modname}')
+        assert module is not None
+
+    @pytest.mark.skipif(not GIL_DISABLED,
+                        reason='requires a free-threaded (GIL-disabled) build')
+    def test_gil_not_reenabled(self):
+        """
+        Test that importing the aperture Cython batch modules does not
+        reenable the GIL on a free-threaded build.
+
+        Each module is compiled with the ``freethreading_compatible=True``
+        directive, which marks it as free-threading compatible
+        (``Py_MOD_GIL_NOT_USED``). A module lacking that directive would
+        force the runtime to reenable the GIL on import, which this test
+        detects.
+        """
+        for modname in APERTURE_MODULES:
+            importlib.import_module(f'photutils.aperture.{modname}')
+        assert sys._is_gil_enabled() is False
+
+
+class TestBatchApertureGather:
+    """
+    Tests for the batch_aperture_gather Cython driver.
+    """
+
+    def test_accepts_none_local_bkg(self):
+        """
+        Test that ``batch_aperture_gather`` accepts ``local_bkg=None`` and
+        matches an all-zero local background.
+
+        The per-pixel background subtraction is guarded by a ``has_bkg``
+        check so that a `None` ``local_bkg`` is treated as no subtraction
+        rather than dereferencing a NULL memoryview.
+        """
+        data, mask, positions = _gather_inputs()
+        params = np.array([8.0], dtype=np.float64)
+        zeros = np.zeros(positions.shape[0], dtype=np.float64)
+
+        none_result = batch_aperture_gather(data, mask, positions,
+                                            SHAPE_CIRCLE, params, 8.0, 8.0,
+                                            None)
+        zero_result = batch_aperture_gather(data, mask, positions,
+                                            SHAPE_CIRCLE, params, 8.0, 8.0,
+                                            zeros)
+
+        _assert_gather_equal(none_result, zero_result)
+
+    @pytest.mark.parametrize(('shape_code', 'params', 'ext_x', 'ext_y'),
+                             _GATHER_SPECS)
+    def test_threadsafe(self, shape_code, params, ext_x, ext_y):
+        data, mask, positions = _gather_inputs()
+        params = np.array(params, dtype=np.float64)
+        local_bkg = np.linspace(0.0, 0.5, positions.shape[0])
+
+        def fn():
+            return batch_aperture_gather(data, mask, positions, shape_code,
+                                         params, ext_x, ext_y, local_bkg)
+
+        expected = fn()
+        with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
+            futures = [ex.submit(fn)
+                       for _ in range(N_THREADS * N_CALLS_PER_THREAD)]
+            for future in futures:
+                _assert_gather_equal(future.result(), expected)
+
+    def test_mixed_concurrent(self):
+        """
+        Run every aperture shape through the gatherer concurrently.
+
+        Mixing shapes within the thread pool surfaces interference between
+        calls if any shared mutable state (e.g., a module-level scratch
+        buffer) were introduced into the ``nogil`` gather loop.
+        """
+        data, mask, positions = _gather_inputs()
+        local_bkg = np.linspace(0.0, 0.5, positions.shape[0])
+
+        def task(spec):
+            shape_code, params, ext_x, ext_y = spec
+            params = np.array(params, dtype=np.float64)
+            return batch_aperture_gather(data, mask, positions, shape_code,
+                                         params, ext_x, ext_y, local_bkg)
+
+        expected = {spec[0]: task(spec) for spec in _GATHER_SPECS}
+
+        with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
+            futures = {ex.submit(task, spec): spec[0]
+                       for spec in _GATHER_SPECS for _ in range(N_THREADS)}
+            for fut, shape_code in futures.items():
+                _assert_gather_equal(fut.result(), expected[shape_code])
+
+
+class TestApertureStatsThreadSafety:
+    """
+    ApertureStats must give identical results when computed
+    concurrently.
+    """
+
+    @pytest.mark.parametrize('use_sigma_clip', [False, True])
+    def test_concurrent_stats(self, use_sigma_clip):
+        """
+        Test that `ApertureStats` releases the GIL and is thread-safe by
+        running many concurrent calls that drive the ``_batch_stats`` nogil
+        kernels and checking that they all give identical results.
+        """
+        data = make_100gaussians_image()
+        error = np.sqrt(np.abs(data))
+        positions = ((145.1, 168.3), (84.7, 224.1), (48.3, 200.3),
+                     (200.0, 100.0))
+        aperture = CircularAperture(positions, r=6.0)
+        sigma_clip = (SigmaClip(sigma=3.0, maxiters=10) if use_sigma_clip
+                      else None)
+
+        def compute():
+            stats = ApertureStats(data, aperture, error=error,
+                                  sigma_clip=sigma_clip)
+            return {name: np.asarray(getattr(stats, name))
+                    for name in _STATS_PROPERTIES}
+
+        expected = compute()
+        with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
+            futures = [ex.submit(compute)
+                       for _ in range(N_THREADS * N_CALLS_PER_THREAD)]
+            for future in futures:
+                result = future.result()
+                for name in _STATS_PROPERTIES:
+                    assert_allclose(result[name], expected[name],
+                                    rtol=0, atol=0, equal_nan=True)
