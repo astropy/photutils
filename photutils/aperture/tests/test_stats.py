@@ -46,23 +46,12 @@ class _NoneSpecCircular(CircularAperture):
         return None
 
 
-def test_mad_std_scale():
+class BaseApertureStatsData:
     """
-    Test that the hard-coded MAD-to-sigma scale factor matches
-    `astropy.stats.mad_std`.
-
-    The factor is duplicated in ``photutils.aperture.stats`` and
-    ``photutils.aperture._batch_stats`` (a Cython constant cannot be
-    shared directly); the fast-vs-mask regression tests cover the
-    Cython copy.
+    Shared data, aperture, and ApertureStats objects used by the
+    ApertureStats test classes below.
     """
-    rng = np.random.default_rng(0)
-    values = rng.normal(size=101)
-    mad = np.median(np.abs(values - np.median(values)))
-    assert_allclose(_MAD_STD_SCALE * mad, mad_std(values), rtol=1e-14)
 
-
-class TestApertureStats:
     data = make_100gaussians_image()
     error = np.sqrt(np.abs(data))
     wcs = make_wcs(data.shape)
@@ -82,6 +71,12 @@ class TestApertureStats:
     apstats2_units = ApertureStats(data * u.Jy, aperture,
                                    error=error * u.Jy, wcs=wcs,
                                    sigma_clip=sigclip)
+
+
+class TestProperties(BaseApertureStatsData):
+    """
+    Tests for the computed source properties.
+    """
 
     @pytest.mark.parametrize('with_units', [True, False])
     @pytest.mark.parametrize('with_sigmaclip', [True, False])
@@ -130,16 +125,6 @@ class TestApertureStats:
         with pytest.raises(ValueError, match=match):
             _ = ApertureStats(self.data, skyaper)
 
-    def test_lazyproperties_class_cache(self):
-        """
-        Test that _lazyproperties is cached on the class and shared
-        across instances.
-        """
-        apstats2 = ApertureStats(self.data, self.aperture)
-        result1 = self.apstats1._lazyproperties
-        result2 = apstats2._lazyproperties
-        assert result1 is result2
-
     def test_minimal_inputs(self):
         apstats = ApertureStats(self.data, self.aperture)
         props = ('sky_centroid', 'sky_centroid_icrs', 'error_sum_cutout')
@@ -150,6 +135,53 @@ class TestApertureStats:
 
         apstats = ApertureStats(self.data, self.aperture, sum_method='center')
         assert set(apstats._variance_cutout_center) == {None}
+
+    def test_tiny_source(self):
+        data = np.zeros((21, 21))
+        data[5, 5] = 1.0
+        aperture = CircularAperture(((5, 5), (15, 15)), r=1)
+        apstats = ApertureStats(data, aperture)
+        assert_allclose(apstats.sum, (1.0, 0.0))
+        assert_allclose(apstats[0].covariance,
+                        [(1 / 12, 0), (0, 1 / 12)] * u.pix**2)
+        assert_allclose(apstats[1].covariance,
+                        [(np.nan, np.nan), (np.nan, np.nan)] * u.pix**2)
+        assert_allclose(apstats.fwhm, [0.67977799, np.nan] * u.pix)
+
+    def test_data_dtype(self):
+        """
+        Regression test that input ``data`` with int dtype does not
+        raise UFuncTypeError due to subtraction of float array from int
+        array.
+        """
+        data = np.ones((25, 25), dtype=np.uint16)
+        aper = CircularAperture((12, 12), 5)
+        apstats = ApertureStats(data, aper)
+        assert apstats.min == 1.0
+        assert apstats.max == 1.0
+        assert apstats.mean == 1.0
+        assert apstats.x_centroid == 12.0
+        assert apstats.y_centroid == 12.0
+
+    def test_lazyproperties_class_cache(self):
+        """
+        Test that _lazyproperties is cached on the class and shared
+        across instances.
+        """
+        apstats2 = ApertureStats(self.data, self.aperture)
+        result1 = self.apstats1._lazyproperties
+        result2 = apstats2._lazyproperties
+        assert result1 is result2
+
+    def test_repr_str(self):
+        assert repr(self.apstats1) == str(self.apstats1)
+        assert 'Length: 3' in repr(self.apstats1)
+
+
+class TestSumMethod(BaseApertureStatsData):
+    """
+    Tests for the sum_method aperture-mask footprint.
+    """
 
     @pytest.mark.parametrize('sum_method', ['exact', 'subpixel'])
     def test_sum_method(self, sum_method):
@@ -183,6 +215,48 @@ class TestApertureStats:
                                       subpixels=subpixels)
             assert_allclose(apstats.sum, phot.flux)
             assert_allclose(apstats.sum_err, phot.flux_err)
+
+    def test_sum_aper_area_center_masked(self):
+        """
+        Regression test that ``sum_aper_area`` is consistent with
+        ``sum`` (and identical between the fast and mask-based code
+        paths) when all center-method pixels are masked but the
+        ``sum_method`` aperture still contains unmasked fractional
+        boundary pixels.
+
+        Previously, the mask-based path returned NaN for the area (via
+        the center-method all-masked flag) while returning a finite
+        ``sum`` from the same surviving fractional pixels.
+        """
+        data = np.ones((11, 11))
+        aperture = CircularAperture((5.0, 5.0), r=1.4)
+        # Mask exactly the center-method pixels. The fractional
+        # (exact-method) boundary pixels remain unmasked.
+        mask = aperture.to_mask(method='center').to_image(data.shape) > 0
+
+        fast = ApertureStats(data, aperture, mask=mask)
+        with patch.object(ApertureStats, '_batch_inputs',
+                          property(lambda _: None)):
+            slow = ApertureStats(data, aperture, mask=mask)
+            slow_sum = slow.sum
+            slow_area = slow.sum_aper_area
+
+        assert fast._fast_sum is not None
+        assert fast.sum > 0
+        # data is all ones, so the sum equals the surviving area
+        assert_allclose(fast.sum_aper_area.value, fast.sum)
+        assert_allclose(slow_sum, fast.sum)
+        assert_allclose(slow_area, fast.sum_aper_area)
+        # The center-method statistics remain all-masked (NaN)
+        assert np.isnan(fast.center_aper_area.value)
+        assert np.isnan(fast.mean)
+
+
+class TestMasking(BaseApertureStatsData):
+    """
+    Tests for the mask keyword, local background, and apertures
+    that do not overlap the data.
+    """
 
     def test_mask(self):
         mask = np.zeros(self.data.shape, dtype=bool)
@@ -267,6 +341,12 @@ class TestApertureStats:
         assert apstats[2].flags == (APERTURE_FLAGS.NO_OVERLAP
                                     | APERTURE_FLAGS.NO_PIXELS)
 
+
+class TestTable(BaseApertureStatsData):
+    """
+    Tests for the to_table output and the properties list.
+    """
+
     def test_to_table(self):
         tbl = self.apstats1.to_table()
         assert tbl.colnames == self.apstats1.default_columns
@@ -311,6 +391,12 @@ class TestApertureStats:
         with pytest.warns(AstropyDeprecationWarning, match=match):
             tbl = self.apstats1.to_table(columns='xcentroid')
         assert tbl.colnames == ['x_centroid']
+
+
+class TestIndexing(BaseApertureStatsData):
+    """
+    Tests for indexing, slicing, and scalar ApertureStats objects.
+    """
 
     def test_slicing(self):
         apstats = self.apstats1
@@ -399,7 +485,7 @@ class TestApertureStats:
                                         'cutout_centroid', 'centroid',
                                         'covariance_eigvals', 'data_cutout',
                                         'bbox', 'x_centroid'])
-    def test_scalar_slice_after_cached_dependency(self, cached):
+    def test_scalar_slice_after_cache(self, cached):
         """
         Test that per-source properties are computed correctly for a
         scalar instance obtained by slicing a multi-source instance when
@@ -437,6 +523,12 @@ class TestApertureStats:
             if prop in scalar_props:
                 continue
             assert_equal(getattr(scalar, prop), getattr(ref, prop))
+
+
+class TestDeprecations(BaseApertureStatsData):
+    """
+    Tests for the deprecated attributes and columns.
+    """
 
     def test_deprecated_attributes(self):
         """
@@ -484,6 +576,12 @@ class TestApertureStats:
         with pytest.warns(AstropyDeprecationWarning, match=match):
             assert scalar.ids == scalar.id
 
+
+class TestInputValidation(BaseApertureStatsData):
+    """
+    Tests for the input validation and NDData input.
+    """
+
     def test_invalid_inputs(self):
         match = 'aperture must be an Aperture or Region object'
         with pytest.raises(TypeError, match=match):
@@ -508,25 +606,6 @@ class TestApertureStats:
         match = 'data and error must have the same shape'
         with pytest.raises(ValueError, match=match):
             ApertureStats(self.data, self.aperture, error=np.ones((3, 3)))
-
-    def test_repr_str(self):
-        assert repr(self.apstats1) == str(self.apstats1)
-        assert 'Length: 3' in repr(self.apstats1)
-
-    def test_data_dtype(self):
-        """
-        Regression test that input ``data`` with int dtype does not
-        raise UFuncTypeError due to subtraction of float array from int
-        array.
-        """
-        data = np.ones((25, 25), dtype=np.uint16)
-        aper = CircularAperture((12, 12), 5)
-        apstats = ApertureStats(data, aper)
-        assert apstats.min == 1.0
-        assert apstats.max == 1.0
-        assert apstats.mean == 1.0
-        assert apstats.x_centroid == 12.0
-        assert apstats.y_centroid == 12.0
 
     @pytest.mark.parametrize('with_units', [True, False])
     def test_nddata_input(self, with_units):
@@ -563,17 +642,12 @@ class TestApertureStats:
         with pytest.warns(AstropyUserWarning, match=match):
             ApertureStats(nddata, self.aperture, mask=mask)
 
-    def test_tiny_source(self):
-        data = np.zeros((21, 21))
-        data[5, 5] = 1.0
-        aperture = CircularAperture(((5, 5), (15, 15)), r=1)
-        apstats = ApertureStats(data, aperture)
-        assert_allclose(apstats.sum, (1.0, 0.0))
-        assert_allclose(apstats[0].covariance,
-                        [(1 / 12, 0), (0, 1 / 12)] * u.pix**2)
-        assert_allclose(apstats[1].covariance,
-                        [(np.nan, np.nan), (np.nan, np.nan)] * u.pix**2)
-        assert_allclose(apstats.fwhm, [0.67977799, np.nan] * u.pix)
+
+class TestMaskPathParity(BaseApertureStatsData):
+    """
+    The mask-based code path must give the same results as the
+    fast batch code path.
+    """
 
     @pytest.mark.parametrize('aperture', [
         CircularAperture(((145.1, 168.3), (84.7, 224.1), (48.3, 200.3)), r=6),
@@ -594,7 +668,7 @@ class TestApertureStats:
         SigmaClip(sigma=2.5, cenfunc='mean', stdfunc='mad_std',
                   maxiters=None),
     ])
-    def test_fast_path_matches_mask_path(self, aperture, sigma_clip):
+    def test_fast_matches_mask(self, aperture, sigma_clip):
         """
         Regression test that the fast Cython statistics path produces the
         same results as the mask-based path for every property, including
@@ -637,7 +711,7 @@ class TestApertureStats:
         SigmaClip(sigma=3.0, stdfunc=np.nanstd),
         SigmaClip(sigma=3.0, grow=1.5),
     ])
-    def test_unsupported_sigma_clip_fallback(self, sigma_clip):
+    def test_sigma_clip_fallback(self, sigma_clip):
         """
         Test that a SigmaClip not supported by the fast clipping kernel
         (callable cenfunc/stdfunc or spatial growing) falls back to the
@@ -649,7 +723,7 @@ class TestApertureStats:
         assert np.all(np.isfinite(apstats.mean))
         assert np.all(np.isfinite(apstats.mean_err))
 
-    def test_sigma_clip_callable_matches_string(self):
+    def test_sigma_clip_callable(self):
         """
         Test that a SigmaClip with callable cenfunc/stdfunc (mask-based
         path) gives the same results as the equivalent string
@@ -667,7 +741,7 @@ class TestApertureStats:
             assert_allclose(getattr(fast, prop), getattr(slow, prop),
                             rtol=1e-7, equal_nan=True, err_msg=prop)
 
-    def test_aperture_batch_hook_fallback(self):
+    def test_batch_hook_fallback(self):
         """
         Test that apertures that do not opt into the batch driver (no
         own-class hook, or a hook returning None) use the mask-based
@@ -683,42 +757,7 @@ class TestApertureStats:
         assert_allclose(nohook.mean, ref.mean, equal_nan=True)
         assert_allclose(nospec.mean, ref.mean, equal_nan=True)
 
-    def test_sum_aper_area_center_masked(self):
-        """
-        Regression test that ``sum_aper_area`` is consistent with
-        ``sum`` (and identical between the fast and mask-based code
-        paths) when all center-method pixels are masked but the
-        ``sum_method`` aperture still contains unmasked fractional
-        boundary pixels.
-
-        Previously, the mask-based path returned NaN for the area (via
-        the center-method all-masked flag) while returning a finite
-        ``sum`` from the same surviving fractional pixels.
-        """
-        data = np.ones((11, 11))
-        aperture = CircularAperture((5.0, 5.0), r=1.4)
-        # Mask exactly the center-method pixels. The fractional
-        # (exact-method) boundary pixels remain unmasked.
-        mask = aperture.to_mask(method='center').to_image(data.shape) > 0
-
-        fast = ApertureStats(data, aperture, mask=mask)
-        with patch.object(ApertureStats, '_batch_inputs',
-                          property(lambda _: None)):
-            slow = ApertureStats(data, aperture, mask=mask)
-            slow_sum = slow.sum
-            slow_area = slow.sum_aper_area
-
-        assert fast._fast_sum is not None
-        assert fast.sum > 0
-        # data is all ones, so the sum equals the surviving area
-        assert_allclose(fast.sum_aper_area.value, fast.sum)
-        assert_allclose(slow_sum, fast.sum)
-        assert_allclose(slow_area, fast.sum_aper_area)
-        # The center-method statistics remain all-masked (NaN)
-        assert np.isnan(fast.center_aper_area.value)
-        assert np.isnan(fast.mean)
-
-    def test_unsupported_data_mask_fallback(self):
+    def test_data_mask_fallback(self):
         """
         Test that data/mask inputs not supported by the fast batch
         driver fall back to the mask-based code path.
@@ -821,7 +860,7 @@ class TestApertureStats:
             assert_allclose(getattr(fast, prop), getattr(slow, prop),
                             rtol=1e-7, equal_nan=True, err_msg=prop)
 
-    def test_fast_path_mask_with_nonfinite_data(self):
+    def test_mask_nonfinite_data(self):
         """
         Test that the fast batch driver correctly combines a
         user-supplied ``mask`` with the mask derived from non-finite
@@ -842,6 +881,12 @@ class TestApertureStats:
                      'median_err'):
             assert_allclose(getattr(fast, prop), getattr(slow, prop),
                             rtol=1e-7, equal_nan=True, err_msg=prop)
+
+
+class TestStandardErrors(BaseApertureStatsData):
+    """
+    Tests for the mean_err and median_err standard errors.
+    """
 
     def test_mean_err_median_err(self):
         """
@@ -875,6 +920,12 @@ class TestApertureStats:
                                 error=self.error * self.unit)
         assert apstats.mean_err.unit == self.unit
         assert apstats.median_err.unit == self.unit
+
+
+class TestDdof(BaseApertureStatsData):
+    """
+    Tests for the ddof keyword used by the var and std properties.
+    """
 
     @pytest.mark.parametrize('with_units', [False, True])
     def test_ddof(self, with_units):
@@ -943,56 +994,90 @@ class TestApertureStats:
                 ApertureStats(self.data, self.aperture, ddof=bad)
 
 
-@pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
-def test_aperture_stats_region():
-    from regions import CirclePixelRegion, PixCoord
-    region = CirclePixelRegion(center=PixCoord(5, 5), radius=3)
-    aperture = CircularAperture((5, 5), r=3)
-    data = np.ones((10, 10))
-    apstats1 = ApertureStats(data, region)
-    apstats2 = ApertureStats(data, aperture)
-    tbl = apstats1.to_table()
-    for colname in tbl.colnames:
-        val1 = getattr(apstats1, colname)
-        if val1 is not None:
-            assert_allclose(val1, getattr(apstats2, colname))
+class TestMadStdScale:
+    """
+    The mad_std scale factor must match astropy.stats.mad_std.
+    """
+
+    def test_scale(self):
+        """
+        Test that the hard-coded MAD-to-sigma scale factor matches
+        `astropy.stats.mad_std`.
+
+        The factor is duplicated in ``photutils.aperture.stats`` and
+        ``photutils.aperture._batch_stats`` (a Cython constant cannot be
+        shared directly); the fast-vs-mask regression tests cover the
+        Cython copy.
+        """
+        rng = np.random.default_rng(0)
+        values = rng.normal(size=101)
+        mad = np.median(np.abs(values - np.median(values)))
+        assert_allclose(_MAD_STD_SCALE * mad, mad_std(values), rtol=1e-14)
 
 
-def test_aperture_metadata():
-    x = [10, 20, 3]
-    y = [3, 5, 10]
-    xypos = list(zip(x, y, strict=False))
-    a1 = CircularAperture(xypos, r=3)
-    a2 = CircularAperture(xypos, r=4)
-    a3 = CircularAnnulus(xypos, 5, 10)
-    a4 = EllipticalAperture(xypos, 10, 5, theta=10 * u.deg)
-    a5 = EllipticalAnnulus(xypos, a_in=5, a_out=10, b_in=3, b_out=5,
-                           theta=20 * u.deg)
-    a6 = RectangularAperture(xypos, 10, 5, theta=30 * u.deg)
-    a7 = RectangularAnnulus(xypos, w_in=5, w_out=10, h_in=3, h_out=5,
-                            theta=40 * u.deg)
-    apers = (a1, a2, a3, a4, a5, a6, a7)
-    data = np.ones((50, 50))
+class TestRegionInput:
+    """
+    A regions.Region input must give the same results as the
+    equivalent aperture.
+    """
 
-    for aper in apers:
-        apstats = ApertureStats(data, aper)
+    @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
+    def test_region_matches_aperture(self):
+        from regions import CirclePixelRegion, PixCoord
+        region = CirclePixelRegion(center=PixCoord(5, 5), radius=3)
+        aperture = CircularAperture((5, 5), r=3)
+        data = np.ones((10, 10))
+        apstats1 = ApertureStats(data, region)
+        apstats2 = ApertureStats(data, aperture)
+        tbl = apstats1.to_table()
+        for colname in tbl.colnames:
+            val1 = getattr(apstats1, colname)
+            if val1 is not None:
+                assert_allclose(val1, getattr(apstats2, colname))
+
+
+class TestApertureMetadata:
+    """
+    Tests for the aperture metadata stored in the output table.
+    """
+
+    def test_metadata(self):
+        x = [10, 20, 3]
+        y = [3, 5, 10]
+        xypos = list(zip(x, y, strict=False))
+        a1 = CircularAperture(xypos, r=3)
+        a2 = CircularAperture(xypos, r=4)
+        a3 = CircularAnnulus(xypos, 5, 10)
+        a4 = EllipticalAperture(xypos, 10, 5, theta=10 * u.deg)
+        a5 = EllipticalAnnulus(xypos, a_in=5, a_out=10, b_in=3, b_out=5,
+                               theta=20 * u.deg)
+        a6 = RectangularAperture(xypos, 10, 5, theta=30 * u.deg)
+        a7 = RectangularAnnulus(xypos, w_in=5, w_out=10, h_in=3, h_out=5,
+                                theta=40 * u.deg)
+        apers = (a1, a2, a3, a4, a5, a6, a7)
+        data = np.ones((50, 50))
+
+        for aper in apers:
+            apstats = ApertureStats(data, aper)
+            tbl = apstats.to_table()
+            assert tbl.meta['aperture'] == aper.__class__.__name__
+            params = aper._params
+            for param in params:
+                if param != 'positions':
+                    assert (tbl.meta[f'aperture_{param}']
+                            == getattr(aper, param))
+
+        wcs = make_wcs(data.shape)
+        skycoord = wcs.pixel_to_world(10, 10)
+        unit = u.arcsec
+        saper = SkyEllipticalAnnulus(skycoord, a_in=0.1 * unit,
+                                     a_out=0.2 * unit,
+                                     b_in=0.05 * unit, b_out=0.1 * unit,
+                                     theta=10 * u.deg)
+        apstats = ApertureStats(data, saper, wcs=wcs)
         tbl = apstats.to_table()
-        assert tbl.meta['aperture'] == aper.__class__.__name__
-        params = aper._params
-        for param in params:
-            if param != 'positions':
-                assert tbl.meta[f'aperture_{param}'] == getattr(aper, param)
-
-    wcs = make_wcs(data.shape)
-    skycoord = wcs.pixel_to_world(10, 10)
-    unit = u.arcsec
-    saper = SkyEllipticalAnnulus(skycoord, a_in=0.1 * unit, a_out=0.2 * unit,
-                                 b_in=0.05 * unit, b_out=0.1 * unit,
-                                 theta=10 * u.deg)
-    apstats = ApertureStats(data, saper, wcs=wcs)
-    tbl = apstats.to_table()
-    assert tbl.meta['aperture'] == saper.__class__.__name__
-    assert tbl.meta['aperture_a_in'] == saper.a_in
-    assert tbl.meta['aperture_a_out'] == saper.a_out
-    assert tbl.meta['aperture_b_out'] == saper.b_out
-    assert tbl.meta['aperture_theta'] == saper.theta
+        assert tbl.meta['aperture'] == saper.__class__.__name__
+        assert tbl.meta['aperture_a_in'] == saper.a_in
+        assert tbl.meta['aperture_a_out'] == saper.a_out
+        assert tbl.meta['aperture_b_out'] == saper.b_out
+        assert tbl.meta['aperture_theta'] == saper.theta
