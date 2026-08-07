@@ -464,8 +464,8 @@ class SourceCatalog:
         if np.ndim(kron_params) != 1:
             msg = 'kron_params must be 1D'
             raise ValueError(msg)
-        nparams = len(kron_params)
-        if nparams not in (2, 3):
+        n_params = len(kron_params)
+        if n_params not in (2, 3):
             msg = 'kron_params must have 2 or 3 elements'
             raise ValueError(msg)
         if kron_params[0] <= 0:
@@ -474,7 +474,7 @@ class SourceCatalog:
         if kron_params[1] <= 0:
             msg = 'kron_params[1] must be > 0'
             raise ValueError(msg)
-        if nparams == 3 and kron_params[2] < 0:
+        if n_params == 3 and kron_params[2] < 0:
             msg = 'kron_params[2] must be >= 0'
             raise ValueError(msg)
         return tuple(kron_params)

@@ -54,7 +54,7 @@ SHAPE_POLYGON = _POLYGON
 # Column indices of the per-source ``flag_counts`` arrays returned by
 # the batch drivers (see ``batch_aperture_sums`` and
 # ``photutils.aperture._batch_stats.batch_aperture_gather``)
-FLAG_COL_NPIX = 0
+FLAG_COL_N_PIXELS = 0
 FLAG_COL_MASKED = 1
 FLAG_COL_NONFINITE_DATA = 2
 FLAG_COL_NONFINITE_ERROR = 3
@@ -216,7 +216,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         source and the columns given by the module-level ``FLAG_COL_*``
         constants:
 
-        * ``FLAG_COL_NPIX``: the number of nonzero-fraction pixels
+        * ``FLAG_COL_N_PIXELS``: the number of nonzero-fraction pixels
           inside the data
         * ``FLAG_COL_MASKED``: the number of those pixels that are
           input-masked

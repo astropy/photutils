@@ -19,9 +19,10 @@ from astropy.utils.exceptions import AstropyUserWarning
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_MASKED,
+                                                  FLAG_COL_N_PIXELS,
                                                   FLAG_COL_NONFINITE_DATA,
                                                   FLAG_COL_NONFINITE_ERROR,
-                                                  FLAG_COL_NPIX, FLAG_COL_SEG,
+                                                  FLAG_COL_SEG,
                                                   FLAG_COL_UNCORRECTED,
                                                   FLAG_COL_VALID,
                                                   batch_aperture_sums)
@@ -1355,7 +1356,7 @@ class ApertureStats:
                 # matching the batch-driver semantics (computed before
                 # any sigma clipping)
                 weighted = aperweight_cutout > 0
-                fc_row[FLAG_COL_NPIX] = np.count_nonzero(weighted)
+                fc_row[FLAG_COL_N_PIXELS] = np.count_nonzero(weighted)
                 fc_row[FLAG_COL_BBOX_CLIPPED] = (
                     aperweight_cutout.shape != apermask.data.shape)
                 if user_mask is not None:
@@ -1746,7 +1747,7 @@ class ApertureStats:
                   & (n_kept == 0)] |= APERTURE_FLAGS.ALL_CLIPPED
 
         if self.ddof > 0:
-            w_in = flag_counts[:, FLAG_COL_NPIX]
+            w_in = flag_counts[:, FLAG_COL_N_PIXELS]
             flags[(w_in > 0)
                   & (n_kept <= self.ddof)] |= APERTURE_FLAGS.TOO_FEW_PIXELS
 
@@ -2122,7 +2123,7 @@ class ApertureStats:
         return np.transpose(self._bbox_bounds)[3]
 
     @lazyproperty
-    def _center_npixels(self):
+    def _center_n_pixels(self):
         """
         The number of unmasked pixels within each aperture using the
         "center" mask method.
@@ -2133,13 +2134,13 @@ class ApertureStats:
         gather = self._fast_gather
         if gather is not None:
             counts = gather[4]
-            npix = counts.astype(float)
-            npix[counts == 0] = np.nan
-            return npix
-        npix = np.array([np.sum(weight.filled(0.0))
-                         for weight in self._weight_cutout_center])
-        npix[self._all_masked] = np.nan
-        return npix
+            n_pixels = counts.astype(float)
+            n_pixels[counts == 0] = np.nan
+            return n_pixels
+        n_pixels = np.array([np.sum(weight.filled(0.0))
+                             for weight in self._weight_cutout_center])
+        n_pixels[self._all_masked] = np.nan
+        return n_pixels
 
     @lazyproperty
     def _sem(self):
@@ -2158,12 +2159,12 @@ class ApertureStats:
         else:
             var = np.array([np.var(values)
                             for values in self._data_values_center])
-        npix = self._center_npixels
+        n_pixels = self._center_n_pixels
         sem = np.full(self.n_apertures, np.nan)
-        mask = npix >= 2
+        mask = n_pixels >= 2
         # var is the population (ddof=0) variance, so var / (N - 1)
         # equals the squared standard error of the mean.
-        sem[mask] = np.sqrt(var[mask] / (npix[mask] - 1.0))
+        sem[mask] = np.sqrt(var[mask] / (n_pixels[mask] - 1.0))
         return sem
 
     @lazyproperty
@@ -2172,7 +2173,7 @@ class ApertureStats:
         The total area of the unmasked pixels within the aperture using
         the "center" aperture mask method.
         """
-        return self._center_npixels * (u.pix**2)
+        return self._center_n_pixels * (u.pix**2)
 
     @lazyproperty
     def sum_aper_area(self):
@@ -2386,11 +2387,11 @@ class ApertureStats:
         var = self._finalize_value_stat(fast, np.var, apply_unit=False)
         if self.ddof == 0:
             return var
-        npix = self._center_npixels
+        n_pixels = self._center_n_pixels
         result = np.full(self.n_apertures, np.nan)
-        mask = npix > self.ddof
-        result[mask] = (var[mask] * npix[mask]
-                        / (npix[mask] - self.ddof))
+        mask = n_pixels > self.ddof
+        result[mask] = (var[mask] * n_pixels[mask]
+                        / (n_pixels[mask] - self.ddof))
         return result
 
     @lazyproperty

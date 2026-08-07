@@ -18,9 +18,10 @@ from astropy.utils import lazyproperty
 
 from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_MASKED,
+                                                  FLAG_COL_N_PIXELS,
                                                   FLAG_COL_NONFINITE_DATA,
                                                   FLAG_COL_NONFINITE_ERROR,
-                                                  FLAG_COL_NPIX, FLAG_COL_SEG,
+                                                  FLAG_COL_SEG,
                                                   FLAG_COL_UNCORRECTED,
                                                   FLAG_COL_VALID,
                                                   batch_aperture_sums)
@@ -715,7 +716,7 @@ class PixelAperture(Aperture):
                 overlap[idx] = True
                 weighted = aper_weights > 0
                 w_in = np.count_nonzero(weighted)
-                flag_counts[idx, FLAG_COL_NPIX] = w_in
+                flag_counts[idx, FLAG_COL_N_PIXELS] = w_in
                 flag_counts[idx, FLAG_COL_BBOX_CLIPPED] = (
                     aper_weights.shape != apermask.data.shape)
                 if mask is not None:

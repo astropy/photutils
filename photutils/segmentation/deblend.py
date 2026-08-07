@@ -203,7 +203,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
             label_indices = add_progress_bar(label_indices, desc=desc)
 
         nonposmin_labels = []
-        nmarkers_labels = []
+        n_markers_labels = []
         for label, label_idx in zip(labels, label_indices, strict=True):
             if not isinstance(label_indices, np.ndarray):
                 label_indices.set_postfix_str(f'ID: {label}')
@@ -218,8 +218,8 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
             if warns:
                 if 'nonposmin' in warns:
                     nonposmin_labels.append(label)
-                if 'nmarkers' in warns:
-                    nmarkers_labels.append(label)
+                if 'n_markers' in warns:
+                    n_markers_labels.append(label)
 
             if source_deblended is not None:
                 source_mask = source_deblended > 0
@@ -276,7 +276,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
 
         # Process the results
         nonposmin_labels = []
-        nmarkers_labels = []
+        n_markers_labels = []
         for label, source_slice, source_deblended in zip(labels,
                                                          all_source_slices,
                                                          results, strict=True):
@@ -285,8 +285,8 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
             if warns:
                 if 'nonposmin' in warns:
                     nonposmin_labels.append(label)
-                if 'nmarkers' in warns:
-                    nmarkers_labels.append(label)
+                if 'n_markers' in warns:
+                    n_markers_labels.append(label)
 
             if source_deblended is not None:
                 source_mask = source_deblended > 0
@@ -299,7 +299,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
 
     # Process any warnings during deblending
     warning_info = {}
-    if nonposmin_labels or nmarkers_labels:
+    if nonposmin_labels or n_markers_labels:
         msg = ('The deblending mode of one or more source labels from the '
                f'input segmentation image was changed from "{mode}" to '
                '"linear". See the "info" attribute for the list of affected '
@@ -313,12 +313,12 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
             warn = {'message': msg, 'input_labels': nonposmin_labels}
             warning_info['nonposmin'] = warn
 
-        if nmarkers_labels:
-            nmarkers_labels = np.array(nmarkers_labels)
+        if n_markers_labels:
+            n_markers_labels = np.array(n_markers_labels)
             msg = (f'Deblending mode changed from {mode} to linear due to '
                    'too many potential deblended sources.')
-            warn = {'message': msg, 'input_labels': nmarkers_labels}
-            warning_info['nmarkers'] = warn
+            warn = {'message': msg, 'input_labels': n_markers_labels}
+            warning_info['n_markers'] = warn
 
     if relabel:
         relabel_map = _create_relabel_map(segm_deblended, start_label=1)
@@ -620,10 +620,10 @@ class _SingleSourceDeblender:
         # This mostly affects the "exponential" mode, where there are
         # many levels at low thresholds, so here we try again with
         # "linear" mode.
-        nlabels = len(_get_labels(markers))
-        if self.mode != 'linear' and nlabels > 200:
+        n_labels = len(_get_labels(markers))
+        if self.mode != 'linear' and n_labels > 200:
             del markers  # free memory
-            self.warnings['nmarkers'] = 'too many markers'
+            self.warnings['n_markers'] = 'too many markers'
             self.mode = 'linear'
             markers = self.make_markers()
             if markers is None:

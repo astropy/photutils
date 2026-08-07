@@ -2097,7 +2097,7 @@ class TestEPSFBuilder:
         xdithers = np.transpose(xydithers)[0]
         ydithers = np.transpose(xydithers)[1]
 
-        nstars = oversamp**2
+        n_stars = oversamp**2
         fwhm = 7.0
         sources = Table()
         offset = 50
@@ -2105,7 +2105,7 @@ class TestEPSFBuilder:
         y, x = np.mgrid[0:oversamp, 0:oversamp] * offset + offset
         sources['x_0'] = x.ravel() + xdithers
         sources['y_0'] = y.ravel() + ydithers
-        sources['fwhm'] = np.full((nstars,), fwhm)
+        sources['fwhm'] = np.full((n_stars,), fwhm)
 
         psf_model = CircularGaussianPRF(fwhm=fwhm)
         shape = (size, size)

@@ -215,8 +215,8 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
 
     # NOTE: recasting segment_img to int and using output=segment_img
     # gives similar performance
-    segment_img, nlabels = ndi_label(segment_img, structure=footprint)
-    labels = np.arange(nlabels, dtype=segment_img.dtype) + 1
+    segment_img, n_labels = ndi_label(segment_img, structure=footprint)
+    labels = np.arange(n_labels, dtype=segment_img.dtype) + 1
 
     # Remove objects with less than n_pixels
     # NOTE: making cutout images and setting their pixels to 0 is
@@ -241,11 +241,11 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
         # Relabel the segmentation image with consecutive numbers;
         # ndimage.label returns segment_img with dtype = np.int32
         # unless the input array has more than 2**31 - 1 pixels
-        nlabels = len(segm_labels)
-        if len(labels) != nlabels:
+        n_labels = len(segm_labels)
+        if len(labels) != n_labels:
             label_map = np.zeros(np.max(labels) + 1,
                                  dtype=segment_img.dtype)
-            labels = np.arange(nlabels, dtype=segment_img.dtype) + 1
+            labels = np.arange(n_labels, dtype=segment_img.dtype) + 1
             label_map[segm_labels] = labels
             segment_img = label_map[segment_img]
     else:

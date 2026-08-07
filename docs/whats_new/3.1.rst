@@ -458,6 +458,14 @@ has been renamed to `~photutils.psf.EPSFBuildResults`. The old
 ``EPSFBuildResult`` name is deprecated and will be removed in a future
 version.
 
+``ShepardIDWInterpolator.ncoords`` Renamed
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The `~photutils.utils.ShepardIDWInterpolator` ``ncoords`` attribute has
+been renamed to ``n_coords`` for naming consistency within photutils.
+The old ``ncoords`` name is deprecated and will be removed in version
+4.0.
+
 
 Removed Deprecations
 --------------------
@@ -500,3 +508,11 @@ Relatedly, the `~photutils.psf.GriddedPSFModel` ``meta`` dictionary
 now always stores ``'grid_xypos'`` as the sorted array of grid
 positions and ``'oversampling'`` as a normalized ``(y, x)`` tuple, so
 that both always match the attributes of the same name.
+
+Deblending ``n_markers`` Warning Key
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The "too many markers" warning entry recorded by
+`~photutils.segmentation.deblend_sources` in the returned
+`~photutils.segmentation.SegmentationImage` ``info['warnings']``
+dictionary has been renamed from ``'nmarkers'`` to ``'n_markers'``.

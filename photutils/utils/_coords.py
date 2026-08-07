@@ -103,15 +103,15 @@ def make_random_xycoords(size, x_range, y_range, *, min_separation=0.0,
         msg = 'x_range and y_range must be (min, max) with min < max.'
         raise ValueError(msg)
 
-    ncoords = size
+    n_coords = size
     if min_separation > 0:
         # Scale the number of random coordinates to account for
         # some being discarded due to min_separation
-        ncoords *= oversample
+        n_coords *= oversample
 
     rng = np.random.default_rng(seed)
-    xc = rng.uniform(x_range[0], x_range[1], ncoords)
-    yc = rng.uniform(y_range[0], y_range[1], ncoords)
+    xc = rng.uniform(x_range[0], x_range[1], n_coords)
+    yc = rng.uniform(y_range[0], y_range[1], n_coords)
     xycoords = np.transpose(np.array((xc, yc)))
 
     xycoords = apply_separation(xycoords, min_separation)

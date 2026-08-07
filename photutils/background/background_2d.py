@@ -257,7 +257,7 @@ class Background2D:
         self.bkg_estimator = bkg_estimator
         self.bkg_rms_estimator = bkg_rms_estimator
 
-        self._box_npixels = None
+        self._box_n_pixels = None
 
         # Store the interpolator keyword arguments for later use
         # (before self._data is deleted in self._calculate_stats)
@@ -272,7 +272,7 @@ class Background2D:
         # arrays and to keep the memory usage minimal
         (self._bkg_stats,
          self._bkgrms_stats,
-         self._ngood) = self._calculate_stats()
+         self._n_good) = self._calculate_stats()
 
         # This is used to selectively filter the low-resolution maps
         self._min_bkg_stats = nanmin(self._bkg_stats)
@@ -394,7 +394,7 @@ class Background2D:
         return total_mask
 
     @lazyproperty
-    def _good_npixels_threshold(self):
+    def _good_n_pixels_threshold(self):
         """
         The minimum number of required unmasked pixels in a box used for
         it to be included in the low-resolution map.
@@ -405,7 +405,7 @@ class Background2D:
 
         Boxes that are completely masked are always excluded.
         """
-        return (1 - (self.exclude_percentile / 100.0)) * self._box_npixels
+        return (1 - (self.exclude_percentile / 100.0)) * self._box_n_pixels
 
     def _sigmaclip_boxes(self, data, axis):
         """
@@ -470,8 +470,8 @@ class Background2D:
         bkgrms = self.bkg_rms_estimator(data, axis=axis)
 
         # Mask boxes with too few unmasked pixels
-        ngood = np.count_nonzero(~np.isnan(data), axis=axis)
-        box_mask = ngood <= self._good_npixels_threshold
+        n_good = np.count_nonzero(~np.isnan(data), axis=axis)
+        box_mask = n_good <= self._good_n_pixels_threshold
 
         if np.ndim(bkg) == 0:
             if box_mask:  # single corner box
@@ -484,7 +484,7 @@ class Background2D:
             bkg[box_mask] = np.nan
             bkgrms[box_mask] = np.nan
 
-        return bkg, bkgrms, ngood
+        return bkg, bkgrms, n_good
 
     def _calculate_stats(self):
         """
@@ -499,7 +499,7 @@ class Background2D:
         bkgrms : 2D `~numpy.ndarray`
             The background RMS statistics in each box.
 
-        ngood : 2D `~numpy.ndarray`
+        n_good : 2D `~numpy.ndarray`
             The number of unmasked pixels in each box.
         """
         # If needed, copy the data to a float32 array to insert NaNs
@@ -510,9 +510,9 @@ class Background2D:
         # masked and combine all masks
         mask = self._combine_all_masks(~np.isfinite(self._data))
 
-        self._box_npixels = np.prod(self.box_size)
-        nboxes = self._data.shape // self.box_size
-        y1, x1 = nboxes * self.box_size
+        self._box_n_pixels = np.prod(self.box_size)
+        n_boxes = self._data.shape // self.box_size
+        y1, x1 = n_boxes * self.box_size
 
         # Core boxes - the part of the data array that is an integer
         # multiple of the box size.
@@ -527,10 +527,10 @@ class Background2D:
         # array is (y1, x1) (i.e., box_size = data.shape).
         core = reshape_as_blocks(self._data[:y1, :x1].copy(), self.box_size)
         core_mask = reshape_as_blocks(mask[:y1, :x1], self.box_size)
-        core = core.reshape((*nboxes, -1))
-        core_mask = core_mask.reshape((*nboxes, -1))
+        core = core.reshape((*n_boxes, -1))
+        core_mask = core_mask.reshape((*n_boxes, -1))
         core[core_mask] = np.nan
-        bkg, bkgrms, ngood = self._compute_box_statistics(core, axis=-1)
+        bkg, bkgrms, n_good = self._compute_box_statistics(core, axis=-1)
 
         extra_row = y1 < self._data.shape[0]
         extra_col = x1 < self._data.shape[1]
@@ -546,7 +546,7 @@ class Background2D:
                 row_data = reshape_as_blocks(row_data, (1, self.box_size[1]))
                 row_data = np.moveaxis(row_data, 0, -1)
                 row_data = row_data.reshape((*row_data.shape[:-2], -1))
-                row_bkg, row_bkgrms, row_ngood = self._compute_box_statistics(
+                row_bkg, row_bkgrms, row_n_good = self._compute_box_statistics(
                     row_data, axis=-1)
 
             if extra_col:
@@ -560,7 +560,7 @@ class Background2D:
                 col_data = reshape_as_blocks(col_data, (self.box_size[0], 1))
                 col_data = np.transpose(col_data, (0, 3, 1, 2))
                 col_data = col_data.reshape((*col_data.shape[:-2], -1))
-                col_bkg, col_bkgrms, col_ngood = self._compute_box_statistics(
+                col_bkg, col_bkgrms, col_n_good = self._compute_box_statistics(
                     col_data, axis=-1)
 
             if extra_row and extra_col:
@@ -570,26 +570,26 @@ class Background2D:
                 corner_data = self._data[y1:, x1:].copy()
                 corner_mask = mask[y1:, x1:]
                 corner_data[corner_mask] = np.nan
-                crn_bkg, crn_bkgrms, crn_ngood = self._compute_box_statistics(
+                crn_bkg, crn_bkgrms, crn_n_good = self._compute_box_statistics(
                     corner_data, axis=None)
                 col_bkg = np.vstack((col_bkg, crn_bkg))
                 col_bkgrms = np.vstack((col_bkgrms, crn_bkgrms))
-                col_ngood = np.vstack((col_ngood, crn_ngood))
+                col_n_good = np.vstack((col_n_good, crn_n_good))
 
             # Combine the core and extra boxes to construct the
             # complete 2D bkg and bkgrms arrays
             if extra_row:
                 bkg = np.vstack([bkg, row_bkg[:, 0]])
                 bkgrms = np.vstack([bkgrms, row_bkgrms[:, 0]])
-                ngood = np.vstack([ngood, row_ngood[:, 0]])
+                n_good = np.vstack([n_good, row_n_good[:, 0]])
 
             if extra_col:
                 bkg = np.hstack([bkg, col_bkg])
                 bkgrms = np.hstack([bkgrms, col_bkgrms])
-                ngood = np.hstack([ngood, col_ngood])
+                n_good = np.hstack([n_good, col_n_good])
 
         if np.all(np.isnan(bkg)):
-            msg = (f'All boxes contain <= {self._good_npixels_threshold} '
+            msg = (f'All boxes contain <= {self._good_n_pixels_threshold} '
                    f'unmasked or finite pixels ({self.box_size=}, '
                    f'{self.exclude_percentile=}). Please check your data '
                    'or increase "exclude_percentile" to allow more boxes to '
@@ -600,7 +600,7 @@ class Background2D:
         del self._data
         del self._mask
 
-        return bkg, bkgrms, ngood
+        return bkg, bkgrms, n_good
 
     def _interpolate_grid(self, data, *, n_neighbors=10, eps=0.0, power=1.0,
                           regularization=0.0):
@@ -792,7 +792,7 @@ class Background2D:
         .. deprecated:: 3.0
             Use ``n_pixels_mesh`` instead.
         """
-        return self._ngood
+        return self._n_good
 
     @property
     def n_pixels_mesh(self):
@@ -800,7 +800,7 @@ class Background2D:
         A 2D array of the number pixels used to compute the statistics
         in each mesh.
         """
-        return self._ngood
+        return self._n_good
 
     @property
     @deprecated(since='3.0', alternative='n_pixels_map', until='4.0')

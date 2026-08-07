@@ -739,7 +739,7 @@ class PSFDataProcessor:
             - 'xx' : array, x pixel coordinates (flattened)
             - 'yy' : array, y pixel coordinates (flattened)
             - 'cutout' : array, data values (background-subtracted)
-            - 'npix' : int, number of pixels in cutout
+            - 'n_pixels' : int, number of pixels in cutout
             - 'cen_index' : int or nan, index of center pixel
         """
         x_cen = row[self.param_mapper.init_colnames['x']]
@@ -754,7 +754,7 @@ class PSFDataProcessor:
                     'xx': None,
                     'yy': None,
                     'cutout': None,
-                    'npix': 0,
+                    'n_pixels': 0,
                     'cen_index': np.nan,
                     }
 
@@ -775,7 +775,7 @@ class PSFDataProcessor:
                         'xx': None,
                         'yy': None,
                         'cutout': None,
-                        'npix': 0,
+                        'n_pixels': 0,
                         'cen_index': np.nan,
                         }
 
@@ -812,7 +812,7 @@ class PSFDataProcessor:
                 'xx': xx_flat,
                 'yy': yy_flat,
                 'cutout': cutout,
-                'npix': len(xx_flat),
+                'n_pixels': len(xx_flat),
                 'cen_index': cen_index,
                 }
 
@@ -1020,7 +1020,8 @@ class PSFFitter:
         return fit_model, fit_info
 
     # @staticmethod
-    def extract_source_covariances(self, group_cov, num_sources, nfitparam):
+    def extract_source_covariances(self, group_cov, n_sources,
+                                   n_fit_params):
         """
         Extract individual source covariance matrices from group
         covariance.
@@ -1035,10 +1036,10 @@ class PSFFitter:
         group_cov : `~numpy.ndarray`
             2D covariance matrix for the entire group of sources.
 
-        num_sources : int
+        n_sources : int
             Number of sources in the group.
 
-        nfitparam : int
+        n_fit_params : int
             Number of fitted parameters per source.
 
         Returns
@@ -1048,9 +1049,9 @@ class PSFFitter:
             the group.
         """
         source_covs = []
-        for i in range(num_sources):
-            start = i * nfitparam
-            end = (i + 1) * nfitparam
+        for i in range(n_sources):
+            start = i * n_fit_params
+            end = (i + 1) * n_fit_params
             source_cov = group_cov[start:end, start:end]
             source_covs.append(source_cov)
 
@@ -1319,9 +1320,9 @@ class PSFResultsAssembler:
         if isinstance(flux_vals, u.Quantity):
             flux_vals = flux_vals.value
 
-        nsrc = len(sum_abs_residuals)
-        qfit = np.full(nsrc, np.nan, dtype=float)
-        cfit = np.full(nsrc, np.nan, dtype=float)
+        n_sources = len(sum_abs_residuals)
+        qfit = np.full(n_sources, np.nan, dtype=float)
+        cfit = np.full(n_sources, np.nan, dtype=float)
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)

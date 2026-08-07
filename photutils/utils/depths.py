@@ -546,9 +546,9 @@ class ImageDepth:
 
         return np.column_stack((xi, yi))
 
-    def _make_coords(self, xycoords, napers):
+    def _make_coords(self, xycoords, n_apertures):
         """
-        Randomly choose ``napers`` (without replacement) coordinates
+        Randomly choose ``n_apertures`` (without replacement) coordinates
         from the input ``xycoords``.
 
         This function also adds < +/-0.5 pixel random shifts so that the
@@ -558,7 +558,7 @@ class ImageDepth:
         ----------
         xycoords : 2xN `~numpy.ndarray`
             The (x, y) coordinates.
-        napers : int
+        n_apertures : int
             The number of aperture to make.
 
         Returns
@@ -566,11 +566,11 @@ class ImageDepth:
         xycoords : 2xN `~numpy.ndarray`
             The (x, y) coordinates.
         """
-        if napers > xycoords.shape[0]:
+        if n_apertures > xycoords.shape[0]:
             msg = 'Too many apertures for given unmasked area'
             raise ValueError(msg)
 
-        idx = self.rng.choice(xycoords.shape[0], napers, replace=False)
+        idx = self.rng.choice(xycoords.shape[0], n_apertures, replace=False)
         xycoords = xycoords[idx, :].astype(float)
 
         shift = self.rng.uniform(-0.5, 0.5, size=xycoords.shape)

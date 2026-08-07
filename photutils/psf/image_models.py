@@ -17,67 +17,59 @@ __all__ = ['ImagePSF']
 
 class ImagePSF(Fittable2DModel):
     """
-    A model for a 2D image PSF.
+    A model representing a 2D image PSF.
 
-    This class takes 2D image data and computes the values of the model
-    at arbitrary locations, including fractional pixel positions, within
-    the image using spline interpolation provided by
-    :py:class:`~scipy.interpolate.RectBivariateSpline`.
+    This class evaluates a 2D image PSF at arbitrary positions,
+    including fractional pixel coordinates, using spline interpolation
+    provided by `~scipy.interpolate.RectBivariateSpline`.
 
-    The model has three model parameters: an image intensity scaling
-    factor (``flux``) which is applied to the input image, and two
-    positional parameters (``x_0`` and ``y_0``) indicating the location
-    of a feature in the coordinate grid on which the model is evaluated.
+    This model has three parameters: an image intensity scaling factor
+    (``flux``), which scales the input image, and two positional
+    parameters (``x_0`` and ``y_0``), which specify the location of the
+    feature in the coordinate grid where the model is evaluated.
 
     Parameters
     ----------
     data : 2D `~numpy.ndarray`
-        Array containing the 2D image. The length of the x and y axes
-        must both be at least 4. All elements of the input image data
-        must be finite. By default, the PSF peak is assumed to be
-        located at the center of the input image (see the ``origin``
-        keyword). Please see the Notes section below for details on the
-        normalization of the input image data.
+        A 2D array containing the PSF image. The x and y dimensions
+        must both be at least 4 pixels. All values must be finite. By
+        default, the PSF peak is assumed to be centered in the input
+        image (see ``origin``). See the Notes section for details on the
+        required normalization of the input image.
 
     flux : float, optional
-        The total flux of the source, assuming the input image
-        was properly normalized.
+        The flux scaling factor. This corresponds to the total source flux,
+        assuming the input PSF image is properly normalized.
 
-    x_0, y_0 : float
-        The x and y positions of a feature in the image in the output
-        coordinate grid on which the model is evaluated. Typically, this
-        refers to the position of the PSF peak, which is assumed to be
-        located at the center of the input image (see the ``origin``
-        keyword).
+    x_0, y_0 : float, optional
+        The ``(x, y)`` coordinates of the PSF peak in the output coordinate
+        grid where the model is evaluated.
 
     origin : tuple of 2 float or None, optional
-        The ``(x, y)`` coordinate with respect to the input image data
-        array that represents the reference pixel of the input data.
+        The ``(x, y)`` coordinate in the input image corresponding to the
+        reference pixel.
 
-        The reference ``origin`` pixel will be placed at the model
-        ``x_0`` and ``y_0`` coordinates in the output coordinate system
-        on which the model is evaluated.
+        The reference pixel is placed at the model ``x_0`` and ``y_0``
+        coordinates in the output coordinate grid.
 
-        Most typically, the input PSF should be centered in the input
-        image, and thus the origin should be set to the central pixel of
-        the ``data`` array.
+        In most cases, the PSF should be centered in the input image, so
+        ``origin`` should be set to the central pixel of ``data``.
 
-        If the origin is set to `None`, then the origin will be set to
-        the center of the ``data`` array (``(npix - 1) / 2.0``).
+        If `None`, ``origin`` is set to the center of the input image,
+        ``((n_x - 1) / 2, (n_y - 1) / 2)``.
 
     oversampling : int or array_like (int), optional
-        The integer oversampling factor(s) of the input PSF image. If
-        ``oversampling`` is a scalar then it will be used for both axes.
-        If ``oversampling`` has two elements, they must be in ``(y, x)``
-        order.
+        The integer oversampling factor(s) of the input PSF image. If a
+        scalar is provided, it is applied to both axes. If two values are
+        provided, they must be in ``(y, x)`` order.
 
     fill_value : float, optional
-        The value to use for points outside the input pixel grid. The
-        default is 0.0.
+        The value used for points outside the input pixel grid. The default
+        is 0.0.
 
     **kwargs : dict, optional
-        Additional optional keyword arguments to be passed to the
-        `astropy.modeling.Model` base class.
+        Additional keyword arguments passed to the
+        `~astropy.modeling.Model` base class.
 
     See Also
     --------
@@ -85,22 +77,27 @@ class ImagePSF(Fittable2DModel):
 
     Notes
     -----
-    The fitted PSF model flux represents the total flux of the source,
-    assuming the input image was properly normalized. This flux is
-    determined as a multiplicative scale factor applied to the input
-    image PSF, after accounting for any oversampling. Theoretically,
-    the sum of all values in the PSF image over an infinite grid should
-    equal 1.0 (assuming no oversampling). However, when the PSF is
-    represented over a finite region, the sum of the values may be less
-    than 1.0. For oversampled PSF images, the normalization should be
-    adjusted so that the sum of the array values equals the product
-    of the oversampling factors (e.g., oversampling squared if the
-    oversampling is the same along both axes). If the input image only
-    covers a finite region of the PSF, the sum may again be less than
-    the product of the oversampling factors. Correction factors based on
-    the encircled or ensquared energy of the PSF can be used to estimate
-    the proper scaling for the finite region of the input PSF image and
-    ensure correct flux normalization.
+    The fitted ``flux`` parameter represents the total source flux,
+    provided the input PSF image is properly normalized. The fitted flux
+    is a multiplicative scale factor applied to the input PSF after
+    accounting for any oversampling.
+
+    For a fully sampled ePSF (i.e., no oversampling), the sum of
+    the ePSF values over an infinite grid is 1.0. Because ePSFs are
+    represented by finite images in practice, the sum of the array
+    values may be less than 1.0.
+
+    For oversampled ePSF images, the normalization should instead be
+    such that the sum of the array values over an infinite grid equals
+    the product of the oversampling factors (e.g., ``oversampling**2``
+    when the oversampling is the same along both axes). Again, a finite
+    image will generally have a smaller sum because it does not contain
+    the full PSF wings.
+
+    If the input PSF image covers only a finite region of the PSF,
+    correction factors based on the encircled or ensquared energy
+    can be used to estimate the missing flux and obtain the proper
+    normalization.
 
     Examples
     --------
@@ -249,7 +246,7 @@ class ImagePSF(Fittable2DModel):
         the ``data`` array.
 
         If the origin is set to `None`, then the origin will be set to
-        the center of the ``data`` array (``(npix - 1) / 2.0``).
+        the center of the ``data`` array (``(n_pixels - 1) / 2.0``).
         """
         return self._origin
 
