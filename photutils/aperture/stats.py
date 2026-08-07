@@ -9,12 +9,10 @@ from copy import deepcopy
 
 import astropy.units as u
 import numpy as np
-from astropy.coordinates import SkyCoord
-from astropy.nddata import NDData, StdDevUncertainty
+from astropy.nddata import NDData
 from astropy.stats import (SigmaClip, biweight_location, biweight_midvariance,
                            mad_std)
 from astropy.utils import lazyproperty
-from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
@@ -33,8 +31,13 @@ from photutils.aperture._batch_stats import (batch_aperture_gather,
                                              batch_sigma_clip_center,
                                              batch_sigma_clip_sum,
                                              batch_sort_values)
-from photutils.aperture._segmentation import (SEG_METHOD_CODES,
-                                              make_segmentation_exclusion,
+from photutils.aperture._common import (SCALAR_COLLAPSE_TYPES,
+                                        batch_inputs_supported,
+                                        batch_mask_plane,
+                                        batch_segmentation_arrays,
+                                        collapse_scalar_value, unpack_nddata,
+                                        validate_array)
+from photutils.aperture._segmentation import (make_segmentation_exclusion,
                                               process_segmentation_inputs)
 from photutils.aperture.core import (_aperture_metadata,
                                      _update_method_subpixels_docstring)
@@ -307,15 +310,14 @@ class ApertureStats:
                  mask_method='none'):
 
         if isinstance(data, NDData):
-            data, error, mask, wcs = self._unpack_nddata(data, error, mask,
-                                                         wcs)
+            data, error, mask, wcs = unpack_nddata(data, error, mask, wcs)
 
         inputs = (data, error, local_bkg)
         names = ('data', 'error', 'local_bkg')
         inputs, unit = process_quantities(inputs, names)
         (data, error, local_bkg) = inputs
 
-        self._data = self._validate_array(data, 'data', shape=False)
+        self._data = validate_array(data, 'data')
         self._data_unit = unit
         self._input_aperture = self._validate_aperture(aperture)
         aperture_meta = _aperture_metadata(aperture)  # use input aperture
@@ -329,8 +331,9 @@ class ApertureStats:
             aperture = region_to_aperture(aperture)
         self.aperture = aperture
 
-        self._error = self._validate_array(error, 'error')
-        self._mask = self._validate_array(mask, 'mask')
+        data_shape = self._data.shape
+        self._error = validate_array(error, 'error', shape=data_shape)
+        self._mask = validate_array(mask, 'mask', shape=data_shape)
         self._wcs = wcs
 
         if sigma_clip is not None and not isinstance(sigma_clip, SigmaClip):
@@ -390,31 +393,6 @@ class ApertureStats:
             seg_positions, self._data.shape)
 
     @staticmethod
-    def _unpack_nddata(data, error, mask, wcs):
-        nddata_attr = {'error': error, 'mask': mask, 'wcs': wcs}
-        for key, value in nddata_attr.items():
-            if value is not None:
-                msg = (f'The {key!r} keyword will be ignored. Its value '
-                       'is obtained from the input NDData object.')
-                warnings.warn(msg, AstropyUserWarning)
-
-        mask = data.mask
-        wcs = data.wcs
-
-        if isinstance(data.uncertainty, StdDevUncertainty):
-            if data.uncertainty.unit is None:
-                error = data.uncertainty.array
-            else:
-                error = data.uncertainty.array * data.uncertainty.unit
-
-        if data.unit is not None:
-            data = u.Quantity(data.data, unit=data.unit)
-        else:
-            data = data.data
-
-        return data, error, mask, wcs
-
-    @staticmethod
     def _validate_aperture(aperture):
         try:
             from regions import Region
@@ -426,19 +404,6 @@ class ApertureStats:
             msg = 'aperture must be an Aperture or Region object'
             raise TypeError(msg)
         return aperture
-
-    def _validate_array(self, array, name, *, ndim=2, shape=True):
-        if name == 'mask' and array is np.ma.nomask:
-            array = None
-        if array is not None:
-            array = np.asanyarray(array)
-            if array.ndim != ndim:
-                msg = f'{name} must be a {ndim}D array'
-                raise ValueError(msg)
-            if shape and array.shape != self._data.shape:
-                msg = f'data and {name} must have the same shape'
-                raise ValueError(msg)
-        return array
 
     @property
     def _lazyproperties(self):
@@ -586,13 +551,9 @@ class ApertureStats:
         value = super().__getattribute__(name)
         if (not name.startswith('_')
                 and name not in _SCALAR_EXCLUDE
-                and isinstance(value, (np.ndarray, SkyCoord, list, tuple))
+                and isinstance(value, SCALAR_COLLAPSE_TYPES)
                 and self.isscalar):
-            try:
-                if len(value) == 1:
-                    return value[0]
-            except TypeError:  # value has no len
-                pass
+            return collapse_scalar_value(value)
         return value
 
     def _array(self, name):
@@ -859,52 +820,17 @@ class ApertureStats:
 
         data = self._data
         error = self._error
-
-        def _supported(arr):
-            return (type(arr) is np.ndarray and arr.dtype.kind in 'fiub'
-                    and arr.dtype.itemsize <= 8)
-
-        if not _supported(data) or (error is not None
-                                    and not _supported(error)):
+        if not batch_inputs_supported(data, error, self._mask):
             return None
 
-        mask = self._mask
-        if mask is not None and (not isinstance(mask, np.ndarray)
-                                 or mask.dtype != bool
-                                 or mask.shape != data.shape):
-            return None
-
-        # Fold non-finite ``data`` values into the mask plane so the
-        # batch kernels can skip the per-pixel finiteness test (and
-        # defer the pixel-value load to contributing pixels only, like
-        # the ``photometry`` method). This matches the mask-based
-        # path, which masks non-finite data before any segmentation
-        # correction. The plane distinguishes the two causes for the
-        # flag counts: bit 1 (value 1) marks input-masked pixels and bit
-        # 2 (value 2) marks non-finite data pixels. Any nonzero value
-        # excludes the pixel.
-        plane = None
-        if mask is not None:
-            plane = mask.astype(np.uint8)
-        if data.dtype.kind == 'f':
-            nonfinite = ~np.isfinite(data)
-            if nonfinite.any():
-                if plane is None:
-                    plane = np.zeros(data.shape, dtype=np.uint8)
-                    plane[nonfinite] = 2
-                else:
-                    plane[nonfinite & (plane == 0)] = 2
-        mask = plane
-        if mask is not None:
-            mask = np.ascontiguousarray(mask)
-
-        seg_arr = None
-        labels_arr = None
-        seg_code = 0
-        if self._segmentation is not None and self._mask_method != 'none':
-            seg_arr = np.ascontiguousarray(self._segmentation, dtype=np.intp)
-            labels_arr = np.ascontiguousarray(self._seg_labels, dtype=np.intp)
-            seg_code = SEG_METHOD_CODES[self._mask_method]
+        # Non-finite ``data`` values are always folded into the mask
+        # plane so the batch kernels can skip the per-pixel finiteness
+        # test (and defer the pixel-value load to contributing pixels
+        # only). This matches the mask-based path, which masks
+        # non-finite data before any segmentation correction.
+        mask = batch_mask_plane(data, self._mask, mask_nonfinite=True)
+        seg_arr, labels_arr, seg_code = batch_segmentation_arrays(
+            self._segmentation, self._seg_labels, self._mask_method)
 
         shape_code, params = spec
         sum_use_exact, sum_subpixels = aper._translate_mask_method(

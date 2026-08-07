@@ -3,16 +3,15 @@
 Tools for performing aperture photometry.
 """
 
-import warnings
-
 import astropy.units as u
 import numpy as np
-from astropy.coordinates import SkyCoord
-from astropy.nddata import NDData, StdDevUncertainty
+from astropy.nddata import NDData
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.aperture._common import (SCALAR_COLLAPSE_TYPES,
+                                        collapse_scalar_value, unpack_nddata,
+                                        validate_array)
 from photutils.aperture._segmentation import process_segmentation_inputs
 from photutils.aperture.converters import region_to_aperture
 from photutils.aperture.core import (Aperture, SkyAperture, _aperture_metadata,
@@ -182,15 +181,15 @@ class AperturePhotometry:
                  labels=None, mask_method='none'):
 
         if isinstance(data, NDData):
-            data, error, mask, wcs = self._unpack_nddata(data, error, mask,
-                                                         wcs)
+            data, error, mask, wcs = unpack_nddata(data, error, mask, wcs)
 
         (data, error), unit = process_quantities(
             (data, error), ('data', 'error'))
-        self._data = self._validate_array(data, 'data', shape=False)
+        self._data = validate_array(data, 'data')
         self._data_unit = unit
-        self._error = self._validate_array(error, 'error')
-        self._mask = self._validate_array(mask, 'mask')
+        data_shape = self._data.shape
+        self._error = validate_array(error, 'error', shape=data_shape)
+        self._mask = validate_array(mask, 'mask', shape=data_shape)
         self._wcs = wcs
         self.method = method
         self.subpixels = subpixels
@@ -256,44 +255,6 @@ class AperturePhotometry:
         default_columns += ['flux', 'flux_err', 'area', 'flags']
         self.default_columns = default_columns
 
-    @staticmethod
-    def _unpack_nddata(data, error, mask, wcs):
-        nddata_attr = {'error': error, 'mask': mask, 'wcs': wcs}
-        for key, value in nddata_attr.items():
-            if value is not None:
-                msg = (f'The {key!r} keyword is ignored. Its value '
-                       'is obtained from the input NDData object.')
-                warnings.warn(msg, AstropyUserWarning)
-
-        mask = data.mask
-        wcs = data.wcs
-
-        if isinstance(data.uncertainty, StdDevUncertainty):
-            if data.uncertainty.unit is None:
-                error = data.uncertainty.array
-            else:
-                error = data.uncertainty.array * data.uncertainty.unit
-
-        if data.unit is not None:
-            data = u.Quantity(data.data, unit=data.unit)
-        else:
-            data = data.data
-
-        return data, error, mask, wcs
-
-    def _validate_array(self, array, name, *, ndim=2, shape=True):
-        if name == 'mask' and array is np.ma.nomask:
-            array = None
-        if array is not None:
-            array = np.asanyarray(array)
-            if array.ndim != ndim:
-                msg = f'{name} must be a {ndim}D array'
-                raise ValueError(msg)
-            if shape and array.shape != self._data.shape:
-                msg = f'data and {name} must have the same shape'
-                raise ValueError(msg)
-        return array
-
     def __repr__(self):
         return make_repr(self, self._repr_params)
 
@@ -312,9 +273,9 @@ class AperturePhotometry:
         value = super().__getattribute__(name)
         if (not name.startswith('_')
                 and name not in _SCALAR_EXCLUDE
-                and isinstance(value, (np.ndarray, SkyCoord))
+                and isinstance(value, SCALAR_COLLAPSE_TYPES)
                 and self.isscalar):
-            return value[0]
+            return collapse_scalar_value(value)
         return value
 
     def _array(self, name):
@@ -667,27 +628,7 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     `~astropy.nddata.StdDevUncertainty` instance.
     """
     if isinstance(data, NDData):
-        nddata_attr = {'error': error, 'mask': mask, 'wcs': wcs}
-        for key, value in nddata_attr.items():
-            if value is not None:
-                msg = (f'The {key!r} keyword is ignored. Its value '
-                       'is obtained from the input NDData object.')
-                warnings.warn(msg, AstropyUserWarning)
-
-        mask = data.mask
-        wcs = data.wcs
-
-        if isinstance(data.uncertainty, StdDevUncertainty):
-            if data.uncertainty.unit is None:
-                error = data.uncertainty.array
-            else:
-                error = data.uncertainty.array * data.uncertainty.unit
-
-        if data.unit is not None:
-            data = u.Quantity(data.data, unit=data.unit)
-        else:
-            data = data.data
-
+        data, error, mask, wcs = unpack_nddata(data, error, mask, wcs)
         return aperture_photometry(data, apertures, error=error, mask=mask,
                                    method=method, subpixels=subpixels,
                                    wcs=wcs)

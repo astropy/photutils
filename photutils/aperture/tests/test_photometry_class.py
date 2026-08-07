@@ -202,6 +202,24 @@ class TestNDDataInput:
         with pytest.warns(AstropyUserWarning, match=match):
             AperturePhotometry(nddata, aper, mask=mask)
 
+    def test_nddata_error_keyword_is_ignored(self, data):
+        """
+        Test that the ``error`` keyword is ignored, as warned, when the
+        NDData object has no StdDevUncertainty, matching the handling of
+        the ``mask`` and ``wcs`` keywords.
+        """
+        nddata = NDData(data)
+        aper = CircularAperture((150, 25), 8)
+        error = np.sqrt(np.abs(data))
+        match = 'is obtained from the input NDData object'
+        with pytest.warns(AstropyUserWarning, match=match):
+            phot = AperturePhotometry(nddata, aper, error=error)
+        assert np.isnan(phot.flux_err)
+
+        with pytest.warns(AstropyUserWarning, match=match):
+            stats = ApertureStats(nddata, aper, error=error)
+        assert np.isnan(stats.sum_err)
+
     def test_nddata_units(self, data):
         nddata = NDData(data * u.Jy)
         aper = CircularAperture((150, 25), 8)

@@ -232,6 +232,13 @@ def test_photometry_no_error_flux_err_shape(aperture):
     assert np.all(np.isnan(result.flux_err))
 
 
+class _ErrorSubclass(np.ndarray):
+    """
+    An ndarray subclass, which the batch driver does not accept because
+    it may override the array behavior it relies on.
+    """
+
+
 def test_fallback_inputs():
     """
     Test that inputs not supported by the batch photometry driver cause
@@ -254,10 +261,32 @@ def test_fallback_inputs():
     assert aperture._batch_photometry(DATA, error=None, mask=MASK[1:, :],
                                       method='exact', subpixels=5) is None
 
-    # Unsupported dtype
+    # Unsupported data dtype
     assert aperture._batch_photometry(DATA.astype(complex), error=None,
                                       mask=None, method='exact',
                                       subpixels=5) is None
+
+    # Unsupported error dtype
+    assert aperture._batch_photometry(DATA, error=ERROR.astype(complex),
+                                      mask=None, method='exact',
+                                      subpixels=5) is None
+
+
+def test_fallback_error_subclass_matches_mask_path():
+    """
+    Test that an ``error`` array that the batch driver does not accept
+    gives the same results via the mask-based code path.
+    """
+    aperture = CircularAperture(POSITIONS, r=5.5)
+    error = ERROR.view(_ErrorSubclass)
+    assert aperture._batch_photometry(DATA, error=error, mask=None,
+                                      method='exact', subpixels=5) is None
+
+    result = aperture._photometry(DATA, error=error)
+    expected = aperture._photometry(DATA, error=ERROR)
+    assert_allclose(result.flux, expected.flux, rtol=1e-12, equal_nan=True)
+    assert_allclose(result.flux_err, expected.flux_err, rtol=1e-12,
+                    equal_nan=True)
 
 
 def test_fallback_subclass():

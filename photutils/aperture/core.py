@@ -25,8 +25,10 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_UNCORRECTED,
                                                   FLAG_COL_VALID,
                                                   batch_aperture_sums)
-from photutils.aperture._segmentation import (SEG_METHOD_CODES,
-                                              make_segmentation_exclusion,
+from photutils.aperture._common import (batch_inputs_supported,
+                                        batch_mask_plane,
+                                        batch_segmentation_arrays)
+from photutils.aperture._segmentation import (make_segmentation_exclusion,
                                               process_segmentation_inputs)
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.flags import APERTURE_FLAGS, _counts_to_flag_bits
@@ -900,49 +902,12 @@ class PixelAperture(Aperture):
         if spec is None:
             return None
 
-        def _supported(arr):
-            return (type(arr) is np.ndarray and arr.dtype.kind in 'fiub'
-                    and arr.dtype.itemsize <= 8)
-
-        if not _supported(data) or (error is not None
-                                    and not _supported(error)):
+        if not batch_inputs_supported(data, error, mask):
             return None
 
-        if mask is not None and (not isinstance(mask, np.ndarray)
-                                 or mask.dtype != bool
-                                 or mask.shape != data.shape):
-            return None
-
-        # Build a uint8 mask plane for the batch kernels. Bit 1 (value
-        # 1) marks input-masked pixels and bit 2 (value 2) marks
-        # non-finite ``data`` pixels; any nonzero value excludes the
-        # pixel. Folding the non-finite pixels into the plane lets
-        # the class exclude them from the sum, area, and valid-pixel
-        # count while still flagging them as ``non_finite_data``
-        # (not ``masked_pixels``), matching `ApertureStats`. When
-        # ``mask_nonfinite`` is `False` (the legacy function), the
-        # non-finite pixels are left in the data so they corrupt the sum
-        # (the 3.0.0 behavior).
-        plane = None
-        if mask is not None:
-            plane = mask.astype(np.uint8)
-        if mask_nonfinite and data.dtype.kind == 'f':
-            nonfinite = ~np.isfinite(data)
-            if nonfinite.any():
-                if plane is None:
-                    plane = np.zeros(data.shape, dtype=np.uint8)
-                    plane[nonfinite] = 2
-                else:
-                    plane[nonfinite & (plane == 0)] = 2
-        mask = None if plane is None else np.ascontiguousarray(plane)
-
-        seg_arr = None
-        labels_arr = None
-        seg_code = 0
-        if segmentation is not None and mask_method != 'none':
-            seg_arr = np.ascontiguousarray(segmentation, dtype=np.intp)
-            labels_arr = np.ascontiguousarray(labels, dtype=np.intp)
-            seg_code = SEG_METHOD_CODES[mask_method]
+        mask = batch_mask_plane(data, mask, mask_nonfinite=mask_nonfinite)
+        seg_arr, labels_arr, seg_code = batch_segmentation_arrays(
+            segmentation, labels, mask_method)
 
         use_exact, subpixels = self._translate_mask_method(method, subpixels)
 

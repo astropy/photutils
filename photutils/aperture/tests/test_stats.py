@@ -545,7 +545,7 @@ class TestApertureStats:
         if with_units:
             assert apstats1.sum.unit == unit
 
-        match = 'keyword will be ignored'
+        match = 'keyword is ignored. Its value is obtained from the input'
         nddata = NDData(self.data, uncertainty=uncertainty, mask=mask,
                         wcs=self.wcs, unit=unit)
         with pytest.warns(AstropyUserWarning, match=match):
