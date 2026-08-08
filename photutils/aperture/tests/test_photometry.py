@@ -43,27 +43,54 @@ TEST_APERTURES = list(zip(APERTURE_CL,
                             'h_in': 16.0 / 3.0, 'theta': np.pi / 8}),
                           strict=True))
 
+# The aperture position(s) used by the shape-specific photometry tests
+POSITION = (20.0, 20.0)
+POSITIONS = ((20.0, 20.0), (25.0, 25.0))
+
+
+@pytest.fixture(name='ones_data')
+def fixture_ones_data():
+    """
+    A 40x40 image of ones.
+
+    A fresh array is returned for each test, so it may be modified.
+    """
+    return np.ones((40, 40), dtype=float)
+
 
 class BaseTestAperturePhotometry:
-    def test_array_error(self):
+    """
+    Tests shared by the shape-specific aperture photometry classes.
+
+    Each subclass defines the ``aperture`` to measure, along with its
+    true ``area`` and ``true_flux`` in an image of ones. A subclass that
+    masks a data pixel also overrides the ``mask`` fixture.
+    """
+
+    @pytest.fixture(name='mask')
+    def fixture_mask(self):
+        """
+        The data mask, `None` unless a subclass overrides it.
+        """
+        return
+
+    def test_array_error(self, ones_data, mask):
         # Array error
-        error = np.ones(self.data.shape, dtype=float)
-        if not hasattr(self, 'mask'):
-            mask = None
+        error = np.ones(ones_data.shape, dtype=float)
+        if mask is None:
             true_error = np.sqrt(self.area)
         else:
-            mask = self.mask
             # 1 masked pixel
             true_error = np.sqrt(self.area - 1)
 
-        table1 = aperture_photometry(self.data,
+        table1 = aperture_photometry(ones_data,
                                      self.aperture, method='center',
                                      mask=mask, error=error)
-        table2 = aperture_photometry(self.data,
+        table2 = aperture_photometry(ones_data,
                                      self.aperture,
                                      method='subpixel', subpixels=12,
                                      mask=mask, error=error)
-        table3 = aperture_photometry(self.data,
+        table3 = aperture_photometry(ones_data,
                                      self.aperture, method='exact',
                                      mask=mask, error=error)
 
@@ -83,132 +110,110 @@ class BaseTestAperturePhotometry:
 
 
 class TestCircular(BaseTestAperturePhotometry):
-    def setup_class(self):
-        self.data = np.ones((40, 40), dtype=float)
-        position = (20.0, 20.0)
-        r = 10.0
-        self.aperture = CircularAperture(position, r)
-        self.area = np.pi * r * r
-        self.true_flux = self.area
+    r = 10.0
+    aperture = CircularAperture(POSITION, r)
+    area = np.pi * r * r
+    true_flux = area
 
 
 class TestCircularArray(BaseTestAperturePhotometry):
-    def setup_class(self):
-        self.data = np.ones((40, 40), dtype=float)
-        position = ((20.0, 20.0), (25.0, 25.0))
-        r = 10.0
-        self.aperture = CircularAperture(position, r)
-        self.area = np.pi * r * r
-        self.area = np.array((self.area,) * 2)
-        self.true_flux = self.area
+    r = 10.0
+    aperture = CircularAperture(POSITIONS, r)
+    area = np.full(len(POSITIONS), np.pi * r * r)
+    true_flux = area
 
 
 class TestCircularAnnulus(BaseTestAperturePhotometry):
-    def setup_class(self):
-        self.data = np.ones((40, 40), dtype=float)
-        position = (20.0, 20.0)
-        r_in = 8.0
-        r_out = 10.0
-        self.aperture = CircularAnnulus(position, r_in, r_out)
-        self.area = np.pi * (r_out * r_out - r_in * r_in)
-        self.true_flux = self.area
+    r_in = 8.0
+    r_out = 10.0
+    aperture = CircularAnnulus(POSITION, r_in, r_out)
+    area = np.pi * (r_out * r_out - r_in * r_in)
+    true_flux = area
 
 
 class TestCircularAnnulusArray(BaseTestAperturePhotometry):
-    def setup_class(self):
-        self.data = np.ones((40, 40), dtype=float)
-        position = ((20.0, 20.0), (25.0, 25.0))
-        r_in = 8.0
-        r_out = 10.0
-        self.aperture = CircularAnnulus(position, r_in, r_out)
-        self.area = np.pi * (r_out * r_out - r_in * r_in)
-        self.area = np.array((self.area,) * 2)
-        self.true_flux = self.area
+    r_in = 8.0
+    r_out = 10.0
+    aperture = CircularAnnulus(POSITIONS, r_in, r_out)
+    area = np.full(len(POSITIONS), np.pi * (r_out * r_out - r_in * r_in))
+    true_flux = area
 
 
 class TestElliptical(BaseTestAperturePhotometry):
-    def setup_class(self):
-        self.data = np.ones((40, 40), dtype=float)
-        position = (20.0, 20.0)
-        a = 10.0
-        b = 5.0
-        theta = -np.pi / 4.0
-        self.aperture = EllipticalAperture(position, a, b, theta=theta)
-        self.area = np.pi * a * b
-        self.true_flux = self.area
+    a = 10.0
+    b = 5.0
+    aperture = EllipticalAperture(POSITION, a, b, theta=-np.pi / 4.0)
+    area = np.pi * a * b
+    true_flux = area
 
 
 class TestEllipticalAnnulus(BaseTestAperturePhotometry):
-    def setup_class(self):
-        self.data = np.ones((40, 40), dtype=float)
-        position = (20.0, 20.0)
-        a_in = 5.0
-        a_out = 8.0
-        b_out = 5.0
-        theta = -np.pi / 4.0
-        self.aperture = EllipticalAnnulus(position, a_in, a_out, b_out,
-                                          theta=theta)
-        self.area = (np.pi * (a_out * b_out)
-                     - np.pi * (a_in * b_out * a_in / a_out))
-        self.true_flux = self.area
+    a_in = 5.0
+    a_out = 8.0
+    b_out = 5.0
+    aperture = EllipticalAnnulus(POSITION, a_in, a_out, b_out,
+                                 theta=-np.pi / 4.0)
+    area = (np.pi * (a_out * b_out)
+            - np.pi * (a_in * b_out * a_in / a_out))
+    true_flux = area
 
 
 class TestRectangularAperture(BaseTestAperturePhotometry):
-    def setup_class(self):
-        self.data = np.ones((40, 40), dtype=float)
-        position = (20.0, 20.0)
-        h = 5.0
-        w = 8.0
-        theta = np.pi / 4.0
-        self.aperture = RectangularAperture(position, w, h, theta=theta)
-        self.area = h * w
-        self.true_flux = self.area
+    w = 8.0
+    h = 5.0
+    aperture = RectangularAperture(POSITION, w, h, theta=np.pi / 4.0)
+    area = h * w
+    true_flux = area
 
 
 class TestRectangularAnnulus(BaseTestAperturePhotometry):
-    def setup_class(self):
-        self.data = np.ones((40, 40), dtype=float)
-        position = (20.0, 20.0)
-        h_out = 8.0
-        w_in = 8.0
-        w_out = 12.0
-        h_in = w_in * h_out / w_out
-        theta = np.pi / 8.0
-        self.aperture = RectangularAnnulus(position, w_in, w_out, h_out,
-                                           theta=theta)
-        self.area = h_out * w_out - h_in * w_in
-        self.true_flux = self.area
+    w_in = 8.0
+    w_out = 12.0
+    h_out = 8.0
+    h_in = w_in * h_out / w_out
+    aperture = RectangularAnnulus(POSITION, w_in, w_out, h_out,
+                                  theta=np.pi / 8.0)
+    area = h_out * w_out - h_in * w_in
+    true_flux = area
 
 
 class TestPolygon(BaseTestAperturePhotometry):
-    def setup_class(self):
-        self.data = np.ones((40, 40), dtype=float)
-        position = (20.0, 20.0)
-        n_vertices = 5
-        radius = 6.0
-        theta = 30 * u.deg
-        self.aperture = PolygonAperture.from_regular_polygon(
-            position, n_vertices, radius, theta=theta)
-        self.area = self.aperture.area
-        self.true_flux = self.area
+    n_vertices = 5
+    radius = 6.0
+    aperture = PolygonAperture.from_regular_polygon(POSITION, n_vertices,
+                                                    radius, theta=30 * u.deg)
+    area = aperture.area
+    true_flux = area
 
 
 class TestMaskedSkipCircular(BaseTestAperturePhotometry):
-    def setup_class(self):
-        self.data = np.ones((40, 40), dtype=float)
-        self.mask = np.zeros((40, 40), dtype=bool)
-        self.mask[20, 20] = True
-        position = (20.0, 20.0)
-        r = 10.0
-        self.aperture = CircularAperture(position, r)
-        self.area = np.pi * r * r
-        self.true_flux = self.area - 1
+    r = 10.0
+    aperture = CircularAperture(POSITION, r)
+    area = np.pi * r * r
+    true_flux = area - 1
+
+    @pytest.fixture(name='mask')
+    def fixture_mask(self, ones_data):
+        """
+        A mask with the single pixel at the aperture center masked.
+        """
+        mask = np.zeros(ones_data.shape, dtype=bool)
+        mask[20, 20] = True
+        return mask
 
 
 class BaseTestDifferentData:
-    def test_basic_circular_aperture_photometry(self):
+    """
+    Tests shared by the classes using a different type of data input.
+
+    Each subclass defines an ``input_data`` fixture returning the data
+    to measure, along with the aperture ``position``, ``radius``, and
+    the expected ``true_flux`` and ``fluxunit``.
+    """
+
+    def test_basic_circular_aperture_photometry(self, input_data):
         aperture = CircularAperture(self.position, self.radius)
-        table = aperture_photometry(self.data, aperture,
+        table = aperture_photometry(input_data, aperture,
                                     method='exact')
 
         assert_allclose(table['aperture_sum'].value, self.true_flux)
@@ -221,13 +226,18 @@ class BaseTestDifferentData:
 
 
 class TestInputNDData(BaseTestDifferentData):
-    def setup_class(self):
-        data = np.ones((40, 40), dtype=float)
-        self.data = NDData(data, unit=u.adu)
-        self.radius = 3
-        self.position = [(20, 20), (30, 30)]
-        self.true_flux = np.pi * self.radius * self.radius
-        self.fluxunit = u.adu
+    radius = 3
+    position = ((20, 20), (30, 30))
+    true_flux = np.pi * radius * radius
+    fluxunit = u.adu
+
+    @pytest.fixture(name='input_data')
+    def fixture_input_data(self, ones_data):
+        """
+        An image of ones as an `~astropy.nddata.NDData` object with
+        units.
+        """
+        return NDData(ones_data, unit=self.fluxunit)
 
 
 TEST_ELLIPSE_EXACT_APERTURES = [(3.469906, 3.923861394, 3.0),
@@ -236,25 +246,35 @@ TEST_ELLIPSE_EXACT_APERTURES = [(3.469906, 3.923861394, 3.0),
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 class BaseTestRegionPhotometry:
-    def test_region_matches_aperture(self):
-        data = np.ones((40, 40), dtype=float)
-        error = np.ones(data.shape, dtype=float)
+    """
+    Tests that a region gives the same photometry as its equivalent
+    aperture.
+
+    Each subclass defines a ``region_aperture`` fixture returning the
+    equivalent ``(region, aperture)`` pair. The ``regions`` package is
+    imported within the fixture so that the module can be collected
+    without it installed.
+    """
+
+    def test_region_matches_aperture(self, ones_data, region_aperture):
+        region, aperture = region_aperture
+        error = np.ones(ones_data.shape, dtype=float)
         region_tables = [
-            aperture_photometry(data, self.region, method='center',
+            aperture_photometry(ones_data, region, method='center',
                                 error=error),
-            aperture_photometry(data, self.region,
+            aperture_photometry(ones_data, region,
                                 method='subpixel', subpixels=12,
                                 error=error),
-            aperture_photometry(data, self.region, method='exact',
+            aperture_photometry(ones_data, region, method='exact',
                                 error=error),
         ]
         aperture_tables = [
-            aperture_photometry(data, self.aperture, method='center',
+            aperture_photometry(ones_data, aperture, method='center',
                                 error=error),
-            aperture_photometry(data, self.aperture,
+            aperture_photometry(ones_data, aperture,
                                 method='subpixel', subpixels=12,
                                 error=error),
-            aperture_photometry(data, self.aperture, method='exact',
+            aperture_photometry(ones_data, aperture, method='exact',
                                 error=error),
         ]
 
@@ -268,86 +288,110 @@ class BaseTestRegionPhotometry:
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 class TestCircleRegionPhotometry(BaseTestRegionPhotometry):
-    def setup_class(self):
+    @pytest.fixture(name='region_aperture')
+    def fixture_region_aperture(self):
+        """
+        A circular region and the equivalent aperture.
+        """
         from regions import CirclePixelRegion, PixCoord
-        position = (20.0, 20.0)
+
         r = 10.0
-        self.region = CirclePixelRegion(PixCoord(*position), r)
-        self.aperture = CircularAperture(position, r)
+        region = CirclePixelRegion(PixCoord(*POSITION), r)
+        aperture = CircularAperture(POSITION, r)
+        return region, aperture
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 class TestCircleAnnulusRegionPhotometry(BaseTestRegionPhotometry):
-    def setup_class(self):
+    @pytest.fixture(name='region_aperture')
+    def fixture_region_aperture(self):
+        """
+        A circular annulus region and the equivalent aperture.
+        """
         from regions import CircleAnnulusPixelRegion, PixCoord
-        position = (20.0, 20.0)
+
         r_in = 8.0
         r_out = 10.0
-        self.region = CircleAnnulusPixelRegion(PixCoord(*position), r_in,
-                                               r_out)
-        self.aperture = CircularAnnulus(position, r_in, r_out)
+        region = CircleAnnulusPixelRegion(PixCoord(*POSITION), r_in, r_out)
+        aperture = CircularAnnulus(POSITION, r_in, r_out)
+        return region, aperture
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 class TestEllipseRegionPhotometry(BaseTestRegionPhotometry):
-    def setup_class(self):
+    @pytest.fixture(name='region_aperture')
+    def fixture_region_aperture(self):
+        """
+        An elliptical region and the equivalent aperture.
+        """
         from regions import EllipsePixelRegion, PixCoord
-        position = (20.0, 20.0)
+
         a = 10.0
         b = 5.0
         theta = (-np.pi / 4.0) * u.rad
-        self.region = EllipsePixelRegion(PixCoord(*position), a * 2, b * 2,
-                                         theta)
-        self.aperture = EllipticalAperture(position, a, b, theta=theta)
+        region = EllipsePixelRegion(PixCoord(*POSITION), a * 2, b * 2, theta)
+        aperture = EllipticalAperture(POSITION, a, b, theta=theta)
+        return region, aperture
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 class TestEllipseAnnulusRegionPhotometry(BaseTestRegionPhotometry):
-    def setup_class(self):
+    @pytest.fixture(name='region_aperture')
+    def fixture_region_aperture(self):
+        """
+        An elliptical annulus region and the equivalent aperture.
+        """
         from regions import EllipseAnnulusPixelRegion, PixCoord
-        position = (20.0, 20.0)
+
         a_in = 5.0
         a_out = 8.0
         b_in = 3.0
         b_out = 5.0
         theta = (-np.pi / 4.0) * u.rad
-        self.region = EllipseAnnulusPixelRegion(PixCoord(*position),
-                                                a_in * 2, a_out * 2,
-                                                b_in * 2, b_out * 2,
-                                                theta)
-        self.aperture = EllipticalAnnulus(position,
-                                          a_in, a_out,
-                                          b_out, b_in=b_in,
-                                          theta=theta)
+        region = EllipseAnnulusPixelRegion(PixCoord(*POSITION),
+                                           a_in * 2, a_out * 2,
+                                           b_in * 2, b_out * 2, theta)
+        aperture = EllipticalAnnulus(POSITION, a_in, a_out, b_out,
+                                     b_in=b_in, theta=theta)
+        return region, aperture
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 class TestRectangleRegionPhotometry(BaseTestRegionPhotometry):
-    def setup_class(self):
+    @pytest.fixture(name='region_aperture')
+    def fixture_region_aperture(self):
+        """
+        A rectangular region and the equivalent aperture.
+        """
         from regions import PixCoord, RectanglePixelRegion
-        position = (20.0, 20.0)
-        h = 5.0
+
         w = 8.0
+        h = 5.0
         theta = (np.pi / 4.0) * u.rad
-        self.region = RectanglePixelRegion(PixCoord(*position), w, h, theta)
-        self.aperture = RectangularAperture(position, w, h, theta=theta)
+        region = RectanglePixelRegion(PixCoord(*POSITION), w, h, theta)
+        aperture = RectangularAperture(POSITION, w, h, theta=theta)
+        return region, aperture
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
 class TestRectangleAnnulusRegionPhotometry(BaseTestRegionPhotometry):
-    def setup_class(self):
+    @pytest.fixture(name='region_aperture')
+    def fixture_region_aperture(self):
+        """
+        A rectangular annulus region and the equivalent aperture.
+        """
         from regions import PixCoord, RectangleAnnulusPixelRegion
-        position = (20.0, 20.0)
-        h_out = 8.0
+
         w_in = 8.0
         w_out = 12.0
+        h_out = 8.0
         h_in = w_in * h_out / w_out
         theta = (np.pi / 8.0) * u.rad
-        self.region = RectangleAnnulusPixelRegion(PixCoord(*position),
-                                                  w_in, w_out, h_in, h_out,
-                                                  theta)
-        self.aperture = RectangularAnnulus(position, w_in, w_out,
-                                           h_out, h_in=h_in, theta=theta)
+        region = RectangleAnnulusPixelRegion(PixCoord(*POSITION), w_in, w_out,
+                                             h_in, h_out, theta)
+        aperture = RectangularAnnulus(POSITION, w_in, w_out, h_out,
+                                      h_in=h_in, theta=theta)
+        return region, aperture
 
 
 class TestArrayBounds:
