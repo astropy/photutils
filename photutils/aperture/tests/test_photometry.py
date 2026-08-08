@@ -217,7 +217,7 @@ class BaseTestDifferentData:
                                     method='exact')
 
         assert_allclose(table['aperture_sum'].value, self.true_flux)
-        assert table['aperture_sum'].unit, self.fluxunit
+        assert table['aperture_sum'].unit == self.fluxunit
 
         assert np.all(table['x_center'].value
                       == np.transpose(self.position)[0])
