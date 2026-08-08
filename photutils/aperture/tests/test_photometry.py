@@ -202,30 +202,11 @@ class TestMaskedSkipCircular(BaseTestAperturePhotometry):
         return mask
 
 
-class BaseTestDifferentData:
+class TestInputNDData:
     """
-    Tests shared by the classes using a different type of data input.
-
-    Each subclass defines an ``input_data`` fixture returning the data
-    to measure, along with the aperture ``position``, ``radius``, and
-    the expected ``true_flux`` and ``fluxunit``.
+    Tests for photometry with `~astropy.nddata.NDData` input.
     """
 
-    def test_basic_circular_aperture_photometry(self, input_data):
-        aperture = CircularAperture(self.position, self.radius)
-        table = aperture_photometry(input_data, aperture,
-                                    method='exact')
-
-        assert_allclose(table['aperture_sum'].value, self.true_flux)
-        assert table['aperture_sum'].unit == self.fluxunit
-
-        assert np.all(table['x_center'].value
-                      == np.transpose(self.position)[0])
-        assert np.all(table['y_center'].value
-                      == np.transpose(self.position)[1])
-
-
-class TestInputNDData(BaseTestDifferentData):
     radius = 3
     position = ((20, 20), (30, 30))
     true_flux = np.pi * radius * radius
@@ -238,6 +219,18 @@ class TestInputNDData(BaseTestDifferentData):
         units.
         """
         return NDData(ones_data, unit=self.fluxunit)
+
+    def test_basic_circular_aperture_photometry(self, input_data):
+        aperture = CircularAperture(self.position, self.radius)
+        table = aperture_photometry(input_data, aperture, method='exact')
+
+        assert_allclose(table['aperture_sum'].value, self.true_flux)
+        assert table['aperture_sum'].unit == self.fluxunit
+
+        assert np.all(table['x_center'].value
+                      == np.transpose(self.position)[0])
+        assert np.all(table['y_center'].value
+                      == np.transpose(self.position)[1])
 
 
 TEST_ELLIPSE_EXACT_APERTURES = [(3.469906, 3.923861394, 3.0),
