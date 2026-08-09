@@ -8,6 +8,8 @@ where ``parameter_names`` is the list of attributes to compare in
 round-trip tests.
 """
 import pytest
+from astropy import units as u
+from astropy.coordinates import Angle
 
 from photutils.converters.tests import examples
 
@@ -132,14 +134,25 @@ def sky_circular_aperture():
     return examples.sky_circular_aperture()
 
 
-@pytest.fixture
-def elliptical_aperture():
-    return examples.elliptical_aperture()
+@pytest.fixture(params=[0.23, 0.5 * u.deg, Angle(80, 'deg')])
+def theta(request):
+    """Used to test different types of rotation angles."""
+    return request.param
 
 
 @pytest.fixture
-def elliptical_annulus():
-    return examples.elliptical_annulus()
+def elliptical_aperture(theta):
+    return examples.elliptical_aperture(theta)
+
+
+@pytest.fixture
+def sky_elliptical_aperture():
+    return examples.sky_elliptical_aperture()
+
+
+@pytest.fixture
+def elliptical_annulus(theta):
+    return examples.elliptical_annulus(theta)
 
 
 @pytest.fixture
@@ -163,8 +176,8 @@ def sky_polygon_aperture():
 
 
 @pytest.fixture
-def rectangular_aperture():
-    return examples.rectangular_aperture()
+def rectangular_aperture(theta):
+    return examples.rectangular_aperture(theta)
 
 
 @pytest.fixture
@@ -173,8 +186,8 @@ def sky_rectangular_aperture():
 
 
 @pytest.fixture
-def rectangular_annulus():
-    return examples.rectangular_annulus()
+def rectangular_annulus(theta):
+    return examples.rectangular_annulus(theta)
 
 
 @pytest.fixture

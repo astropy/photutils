@@ -4,7 +4,7 @@ $schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
 id: "asdf://astropy.org/photutils/schemas/aperture/elliptical_annulus-1.0.0"
 title: EllipticalAnnulus
 description: |
-  ASDF schema for serializing an elliptica annulus aperture in pixel
+  ASDF schema for serializing an elliptical annulus aperture in pixel
   and sky coordinates.
 examples:
   -
@@ -50,12 +50,12 @@ properties:
     title: Aperture position(s).
     description: |
       The coordinates of the aperture center(s) in one of the following formats.
-      If a CircularAperture in pixel coordinates:
+      If an EllipticalAnnulus in pixel coordinates:
 
         * single ``(x, y)`` pair as an array
         * `numpy.ndarray` of ``(x, y)`` pairs
 
-      If a SkyCircularAperture
+      If a SkyEllipticalAnnulus
 
         * `astropy.coordinates.SkyCoord` object
     anyOf:
@@ -70,8 +70,8 @@ properties:
     title: Inner semimajor axis.
     description: |
       The inner semimajor axis of the elliptical annulus.
-      EllipticalAperture: in pixels
-      SkyEllipticalAperture: in angular units
+      EllipticalAnnulus: in pixels
+      SkyEllipticalAnnulus: in angular units
     anyOf:
       - type: number
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
@@ -79,8 +79,8 @@ properties:
     title: Outer semimajor axis.
     description: |
       The outer semimajor axis of the elliptical annulus.
-      EllipticalAperture: in pixels
-      SkyEllipticalAperture: in angular units
+      EllipticalAnnulus: in pixels
+      SkyEllipticalAnnulus: in angular units
     anyOf:
       - type: number
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
@@ -88,8 +88,8 @@ properties:
     title: Inner semiminor axis.
     description: |
       The inner semiminor axis of the elliptical annulus.
-      EllipticalAperture: in pixels
-      SkyEllipticalAperture: in angular units
+      EllipticalAnnulus: in pixels
+      SkyEllipticalAnnulus: in angular units
     anyOf:
       - type: number
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
@@ -97,19 +97,19 @@ properties:
     title: Outer semiminor axis.
     description: |
       The outer semiminor axis of the elliptical annulus.
-      EllipticalAperture: in pixels
-      SkyEllipticalAperture: in angular units
+      EllipticalAnnulus: in pixels
+      SkyEllipticalAnnulus: in angular units
     anyOf:
       - type: number
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
   theta:
     title: Rotation angle of the ellipse.
     description: |
-      EllipticalAperture:
+      EllipticalAnnulus:
         The rotation angle as an angular quantity from the positive ``x`` axis.
         The rotation angle increases counterclockwise. If a number, it's assumed
         to be in radians.
-      SkyEllipticalAperture:
+      SkyEllipticalAnnulus:
         The position angle (in angular units) of the ellipse semimajor
         axis. For a right-handed world coordinate system, the position
         angle increases counterclockwise from North (PA=0).

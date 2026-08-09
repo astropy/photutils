@@ -53,7 +53,7 @@ properties:
         * single ``(x, y)`` pair as an array
         * `numpy.ndarray` of ``(x, y)`` pairs
 
-      If a SkyCircularAperture
+      If a SkyPolygonAperture
 
         * `astropy.coordinates.SkyCoord` object
     anyOf:
@@ -79,3 +79,4 @@ properties:
       - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
 required: [positions, vertex_offsets]
+...

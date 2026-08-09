@@ -92,7 +92,7 @@ def circular_gaussian_sigma_prf():
 
 
 def circular_gaussian_psf_units():
-    """""Return a CircularGaussianPSF with units."""
+    """Return a CircularGaussianPSF with units."""
     return (CircularGaussianPSF(flux=1 * u.Jy,
                                 x_0=0 * u.arcsec, y_0=0 * u.arcsec,
                                 fwhm=1 * u.arcsec, bbox_factor=2),
@@ -200,7 +200,7 @@ def circular_aperture_single_pos():
 
 
 def circular_aperture_multi_pos():
-    """Circular aperture with multiplt positions."""
+    """Circular aperture with multiple positions."""
     return (aperture.CircularAperture(positions=[(1, 2), (3, 4)], r=5),
             parameters['CircularAperture'])
 
@@ -237,23 +237,40 @@ def sky_circular_aperture():
             parameters['CircularAperture'])
 
 
-def elliptical_aperture():
-    """Elliptical aperture in pix coordinates with several values of theta."""
-    theta_values = [None, 0.23, Angle(.05 * u.rad), 0.5 * u.deg]
-    for theta in theta_values:
-        if theta is not None:
-            return (aperture.EllipticalAperture(positions=(5, 6),
-                                                a=7, b=3, theta=theta),
-                    parameters['EllipticalAperture'])
-        return (aperture.EllipticalAperture(positions=(5, 6), a=7, b=3),
-                parameters['EllipticalAperture'])
-    return None
+def elliptical_aperture(theta):
+    """Elliptical aperture in pix coordinates with several values of theta.
+
+    Parameters
+    ----------
+    theta : float, `~astropy.units.Quantity`, `~astropy.coordinates.Angle`
+        Rotation angle.
+    """
+    return (aperture.EllipticalAperture(positions=(5, 6),
+                                        a=7, b=3, theta=theta),
+            parameters['EllipticalAperture'])
 
 
-def elliptical_annulus():
-    """Elliptical annulus aperture in pixel space."""
+def sky_elliptical_aperture():
+    """Elliptical aperture on the sky."""
+    sky = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
+
+    return (aperture.SkyEllipticalAperture(sky,
+                                           a=3 * u.arcsec,
+                                           b=5 * u.arcsec,
+                                           theta=0.5 * u.deg),
+            parameters['EllipticalAperture'])
+
+
+def elliptical_annulus(theta):
+    """Elliptical annulus aperture in pixel space.
+
+    Parameters
+    ----------
+    theta : float, `~astropy.units.Quantity`, `~astropy.coordinates.Angle`
+        Rotation angle.
+    """
     return (aperture.EllipticalAnnulus(positions=(5, 6), a_in=3, a_out=5,
-                                       b_out=5),
+                                       b_out=5, theta=theta),
             parameters['EllipticalAnnulus'])
 
 
@@ -261,9 +278,10 @@ def sky_elliptical_annulus():
     """Elliptical annulus aperture on the sky."""
     sky = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     return (aperture.SkyEllipticalAnnulus(sky,
-                                          a_in=3 * u.arcsec,
-                                          a_out=5 * u.arcsec,
-                                          b_out=5 * u.arcsec),
+            a_in=3 * u.arcsec,
+            a_out=5 * u.arcsec,
+            b_out=5 * u.arcsec,
+            theta=0.5 * u.deg),
             parameters['EllipticalAnnulus'])
 
 
@@ -294,9 +312,14 @@ def sky_polygon_aperture():
             parameters['PolygonAperture'])
 
 
-def rectangular_aperture():
-    """Rectangular aperture in pixel space."""
-    theta = Angle(80, 'deg')
+def rectangular_aperture(theta):
+    """Rectangular aperture in pixel space.
+
+    Parameters
+    ----------
+    theta : float, `~astropy.units.Quantity`, `~astropy.coordinates.Angle`
+        Rotation angle.
+    """
     return (aperture.RectangularAperture((10, 20), 5, 3, theta=theta),
             parameters['RectangularAperture'])
 
@@ -310,9 +333,14 @@ def sky_rectangular_aperture():
             parameters['RectangularAperture'])
 
 
-def rectangular_annulus():
-    """Rectangular annulus aperture in pixel space."""
-    theta = Angle(80, 'deg')
+def rectangular_annulus(theta):
+    """Rectangular annulus aperture in pixel space.
+
+    Parameters
+    ----------
+    theta : float, `~astropy.units.Quantity`, `~astropy.coordinates.Angle`
+        Rotation angle.
+    """
     return (aperture.RectangularAnnulus((10, 20), w_in=3, w_out=5,
                                         h_in=2, h_out=4, theta=theta),
             parameters['RectangularAnnulus'])

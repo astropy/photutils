@@ -21,7 +21,7 @@ examples:
         A SkyCircularAnnulus aperture with 2 positions, inner radius of
         0.5 arcsec and outer radius of 1 arcsec.
     - |
-      !<tag:astropy.org:photutils/aperture/sky_circular_annulus-1.0.0>
+      !<tag:astropy.org:photutils/aperture/circular_annulus-1.0.0>
         positions: !<tag:astropy.org:astropy/coordinates/skycoord-1.0.0>
           dec: !<tag:astropy.org:astropy/coordinates/latitude-1.2.0>
             unit: !unit/unit-1.0.0 deg
