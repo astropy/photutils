@@ -1,0 +1,167 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the photutils ASDF manifests and schemas.
+"""
+
+import re
+import textwrap
+
+import pytest
+import yaml
+from asdf import get_config, treeutil
+
+from photutils.extension import PHOTUTILS_MANIFEST_URIS
+
+# Matches the top-level YAML tag that opens a schema example.
+EXAMPLE_TAG_PATTERN = re.compile(r'!<([^>]+)>')
+
+
+def _load_resource(uri):
+    """
+    Load a YAML resource registered with ASDF.
+    """
+    return yaml.safe_load(get_config().resource_manager[uri])
+
+
+def _iter_examples(schema):
+    """
+    Yield each entry of every ``examples`` block in a schema.
+    """
+    for node in treeutil.iter_tree(schema):
+        if isinstance(node, dict) and isinstance(node.get('examples'), list):
+            yield from node['examples']
+
+
+def _example_text(example):
+    """
+    Return the example source from a schema ``examples`` entry.
+
+    Entries are ``[description, text]``, or ``[description, version,
+    text]`` when an ASDF Standard version is pinned.
+    """
+    return example[2] if len(example) > 2 else example[-1]
+
+
+def _manifest_tags():
+    """
+    Map each tag URI defined by the photutils manifests to its schema.
+    """
+    tags = {}
+    for manifest_uri in PHOTUTILS_MANIFEST_URIS:
+        for tag in _load_resource(manifest_uri)['tags']:
+            tags[tag['tag_uri']] = tag['schema_uri']
+    return tags
+
+
+def _schema_example_tags(schema):
+    """
+    Yield the ``(index, tag)`` of every example in a schema.
+
+    ``tag`` is `None` if the example is not tagged.
+    """
+    for index, example in enumerate(_iter_examples(schema)):
+        text = _example_text(example).strip()
+        match = EXAMPLE_TAG_PATTERN.match(text)
+        yield index, match[1] if match else None
+
+
+def _example_tags(manifest_tags):
+    """
+    Collect the top-level tag of every example in every schema.
+
+    Returns a list of ``(schema_uri, example_index, tag)`` tuples, where
+    ``tag`` is `None` if the example is not tagged.
+    """
+    examples = []
+    for schema_uri in dict.fromkeys(manifest_tags.values()):
+        schema = _load_resource(schema_uri)
+        examples.extend((schema_uri, index, tag)
+                        for index, tag in _schema_example_tags(schema))
+    return examples
+
+
+CIRCULAR_APERTURE_URI = ('asdf://astropy.org/photutils/schemas/aperture/'
+                         'circular_aperture-1.0.0')
+CIRCULAR_ANNULUS_TAG = ('tag:astropy.org:photutils/aperture/'
+                        'circular_annulus-1.0.0')
+
+
+def _circular_aperture_schema(example_tag):
+    """
+    Build a circular aperture schema whose single example carries
+    ``example_tag``.
+
+    ``example_tag`` is `None` for an untagged example.
+    """
+    body = 'positions: [1.0, 2.0]\nr: 5.0\n'
+    if example_tag is not None:
+        body = f'!<{example_tag}>\n' + textwrap.indent(body, '  ')
+    example = textwrap.indent(body, ' ' * 6).rstrip()
+    return f"""%YAML 1.1
+---
+$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
+id: "{CIRCULAR_APERTURE_URI}"
+title: Circular aperture
+examples:
+  -
+    - A CircularAperture with a single position and radius of 5 pixels.
+    - |
+{example}
+type: object
+...
+"""
+
+
+MANIFEST_TAGS = _manifest_tags()
+EXAMPLE_TAGS = _example_tags(MANIFEST_TAGS)
+EXAMPLE_IDS = [f'{uri.rsplit("/", 1)[-1]}-example{index}'
+               for uri, index, _ in EXAMPLE_TAGS]
+
+
+def test_manifest_schemas_are_registered():
+    """
+    Test that every schema referenced by the manifests is registered.
+    """
+    assert MANIFEST_TAGS
+    for tag_uri, schema_uri in MANIFEST_TAGS.items():
+        schema = _load_resource(schema_uri)
+        assert schema['id'] == schema_uri, tag_uri
+
+
+@pytest.mark.parametrize(('schema_uri', 'index', 'tag'), EXAMPLE_TAGS,
+                         ids=EXAMPLE_IDS)
+def test_example_tag_in_manifest(schema_uri, index, tag):
+    """
+    Test that each schema example is tagged with the manifest tag of the
+    schema that contains it.
+
+    The ASDF schema example self-tests validate a tagged tree, so the
+    schema applied to an example is selected by its tag. An unrecognized
+    tag selects no schema at all, which makes the example self-test pass
+    without validating anything.
+    """
+    assert tag is not None, f'{schema_uri} example {index} is untagged'
+    assert tag in MANIFEST_TAGS, f'{tag} is not defined in the manifest'
+    assert MANIFEST_TAGS[tag] == schema_uri, (
+        f'{tag} is defined by a different schema')
+
+
+@pytest.mark.parametrize(('example_tag', 'match'), [
+    (None, 'example 0 is untagged'),
+    ('tag:astropy.org:photutils/aperture/circular_apperture-1.0.0',
+     'is not defined in the manifest'),
+    (CIRCULAR_ANNULUS_TAG, 'is defined by a different schema')],
+    ids=['untagged', 'misspelled', 'other_schema'])
+def test_invalid_example_tag_is_detected(example_tag, match):
+    """
+    Test that a schema example carrying an invalid tag is rejected.
+
+    The tag is extracted from the schema source, so this exercises the
+    same path as the schemas registered by the manifests.
+    """
+    schema = yaml.safe_load(_circular_aperture_schema(example_tag))
+    [(index, tag)] = _schema_example_tags(schema)
+    assert tag == example_tag
+
+    with pytest.raises(AssertionError, match=match):
+        test_example_tag_in_manifest(schema['id'], index, tag)
