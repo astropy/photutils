@@ -681,11 +681,14 @@ class PixelAperture(Aperture):
         """
         Perform aperture photometry using per-source aperture masks.
 
-        This is the fallback code path for apertures or inputs that are
-        not supported by the batch Cython driver. It also handles the
-        ``mask_method='correct'`` segmentation masking for apertures
-        (e.g., `PolygonAperture`) or statistics (e.g., `ApertureStats`)
-        that do not use the batch driver.
+        This is the fallback code path for apertures or inputs that
+        are not supported by the batch Cython driver, including
+        the segmentation masking methods for such apertures. All
+        of the built-in apertures opt in to the batch driver, so
+        this path is reached only for an unsupported input (see
+        `~photutils.aperture._common.batch_inputs_supported`)
+        or for an `Aperture` subclass that does not define the
+        ``_batch_shape_params`` hook in its own class.
 
         Parameters
         ----------
