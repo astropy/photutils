@@ -80,9 +80,7 @@ properties:
       The rotation angle as an angular quantity
       (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
       value in radians (as a float) from the positive ``x`` axis. The
-      rotation angle increases counterclockwise.anyOf:
-      - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      rotation angle increases counterclockwise.
     anyOf:
       - type: number
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
