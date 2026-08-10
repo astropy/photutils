@@ -261,8 +261,8 @@ API Changes
     will be removed in version 4.0. Use the new ``AperturePhotometry``
     class instead. [#2324, #2328]
 
-  - The default ``ApertureStats.to_table()`` columns now include a
-    ``'flags'`` column. [#2327]
+  - The default ``ApertureStats.to_table()`` columns now include
+    ``'flags'`` and ``'sum_flags'`` columns. [#2327]
 
   - The ``ApertureStats.ids`` attribute is now deprecated and will
     be removed in version 4.0. Use the ``ApertureStats.id`` attribute
