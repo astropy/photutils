@@ -95,4 +95,27 @@ properties:
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
       - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
 required: [positions, a, b]
+# EllipticalAperture and SkyEllipticalAperture share a tag, so this
+# requires a file to use pixel values or angular quantities
+# consistently. ``theta`` is excluded because EllipticalAperture also
+# accepts an angular quantity.
+oneOf:
+  - title: Pixel coordinates
+    properties:
+      positions:
+        anyOf:
+          - type: array
+          - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+      a:
+        type: number
+      b:
+        type: number
+  - title: Sky coordinates
+    properties:
+      positions:
+        tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+      a:
+        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      b:
+        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
 ...

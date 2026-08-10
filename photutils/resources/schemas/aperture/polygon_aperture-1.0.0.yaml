@@ -79,4 +79,21 @@ properties:
       - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
 required: [positions, vertex_offsets]
+# PolygonAperture and SkyPolygonAperture share a tag, so this requires
+# a file to use pixel values or angular quantities consistently.
+oneOf:
+  - title: Pixel coordinates
+    properties:
+      positions:
+        anyOf:
+          - type: array
+          - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+      vertex_offsets:
+        tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+  - title: Sky coordinates
+    properties:
+      positions:
+        tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+      vertex_offsets:
+        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
 ...

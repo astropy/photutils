@@ -85,4 +85,25 @@ properties:
       - type: number
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
 required: [positions, r_in, r_out]
+# CircularAnnulus and SkyCircularAnnulus share a tag, so this requires
+# a file to use pixel values or angular quantities consistently.
+oneOf:
+  - title: Pixel coordinates
+    properties:
+      positions:
+        anyOf:
+          - type: array
+          - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+      r_in:
+        type: number
+      r_out:
+        type: number
+  - title: Sky coordinates
+    properties:
+      positions:
+        tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+      r_in:
+        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      r_out:
+        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
 ...
