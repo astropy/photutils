@@ -48,24 +48,27 @@ parameters = {
 }
 
 
-# PSF examples
-
-
 def airy_disk_units():
-    """Return an AiryDiskPSF with units."""
+    """
+    Return an AiryDiskPSF with units.
+    """
     return (AiryDiskPSF(flux=1 * u.Jy, x_0=0 * u.arcsec, y_0=0 * u.arcsec,
                         radius=1 * u.arcsec, bbox_factor=2),
             parameters['AiryDiskPSF'])
 
 
 def airy_disk():
-    """Return an AiryDiskPSF without units."""
+    """
+    Return an AiryDiskPSF without units.
+    """
     return (AiryDiskPSF(flux=2, x_0=1, y_0=1, radius=2, bbox_factor=3),
             parameters['AiryDiskPSF'])
 
 
 def circular_gaussian_prf_units():
-    """Return a CircularGaussianPRF with units."""
+    """
+    Return a CircularGaussianPRF with units.
+    """
     return (CircularGaussianPRF(flux=1 * u.Jy,
                                 x_0=0 * u.arcsec, y_0=0 * u.arcsec,
                                 fwhm=1 * u.arcsec, bbox_factor=2),
@@ -73,13 +76,17 @@ def circular_gaussian_prf_units():
 
 
 def circular_gaussian_prf():
-    """Return a CircularGaussianPRF without units."""
+    """
+    Return a CircularGaussianPRF without units.
+    """
     return (CircularGaussianPRF(flux=2, x_0=1, y_0=1, fwhm=2, bbox_factor=3),
             parameters['CircularGaussianPRF'])
 
 
 def circular_gaussian_sigma_prf_units():
-    """Return a CircularGaussianPRF with units."""
+    """
+    Return a CircularGaussianPRF with units.
+    """
     return (CircularGaussianSigmaPRF(flux=71.4 * u.Jy,
                                      x_0=24.3 * u.pix, y_0=25.2 * u.pix,
                                      sigma=5.1 * u.pix),
@@ -87,14 +94,18 @@ def circular_gaussian_sigma_prf_units():
 
 
 def circular_gaussian_sigma_prf():
-    """Return a CircularGaussianPRF without units."""
+    """
+    Return a CircularGaussianPRF without units.
+    """
     return (CircularGaussianSigmaPRF(flux=71.4, x_0=24.3, y_0=25.2,
                                      sigma=5.1),
             parameters['CircularGaussianSigmaPRF'])
 
 
 def circular_gaussian_psf_units():
-    """Return a CircularGaussianPSF with units."""
+    """
+    Return a CircularGaussianPSF with units.
+    """
     return (CircularGaussianPSF(flux=1 * u.Jy,
                                 x_0=0 * u.arcsec, y_0=0 * u.arcsec,
                                 fwhm=1 * u.arcsec, bbox_factor=2),
@@ -102,14 +113,18 @@ def circular_gaussian_psf_units():
 
 
 def circular_gaussian_psf():
-    """Return a CircularGaussianPSF without units."""
+    """
+    Return a CircularGaussianPSF without units.
+    """
     return (CircularGaussianPSF(flux=2, x_0=1, y_0=1, fwhm=2,
                                 bbox_factor=3),
             parameters['CircularGaussianPSF'])
 
 
 def gaussian_prf_units():
-    """Return a GaussianPRF with units."""
+    """
+    Return a GaussianPRF with units.
+    """
     return (GaussianPRF(flux=1 * u.Jy,
                         x_0=0 * u.arcsec, y_0=0 * u.arcsec,
                         x_fwhm=1 * u.arcsec, y_fwhm=1 * u.arcsec,
@@ -118,7 +133,9 @@ def gaussian_prf_units():
 
 
 def gaussian_prf():
-    """Return a GaussianPRF without units."""
+    """
+    Return a GaussianPRF without units.
+    """
     return (GaussianPRF(flux=2, x_0=1, y_0=1, x_fwhm=2, y_fwhm=2,
                         theta=0,
                         bbox_factor=3),
@@ -126,7 +143,9 @@ def gaussian_prf():
 
 
 def gaussian_psf_units():
-    """Return a GaussianPSF with units."""
+    """
+    Return a GaussianPSF with units.
+    """
     return (GaussianPSF(flux=1 * u.Jy, x_0=0 * u.arcsec, y_0=0 * u.arcsec,
                         x_fwhm=1 * u.arcsec, y_fwhm=1 * u.arcsec,
                         theta=0 * u.deg, bbox_factor=2),
@@ -134,7 +153,9 @@ def gaussian_psf_units():
 
 
 def gaussian_psf():
-    """Return a GaussianPSF without units."""
+    """
+    Return a GaussianPSF without units.
+    """
     return (GaussianPSF(flux=2, x_0=1, y_0=1,
                         x_fwhm=2, y_fwhm=2,
                         theta=0, bbox_factor=3),
@@ -142,7 +163,9 @@ def gaussian_psf():
 
 
 def moffat_psf_units():
-    """Return a MoffatPSF with units."""
+    """
+    Return a MoffatPSF with units.
+    """
     return (MoffatPSF(flux=71.4 * u.Jy,
                       x_0=24.3 * u.pix, y_0=25.2 * u.pix,
                       alpha=5.1 * u.pix, beta=3.2),
@@ -150,13 +173,17 @@ def moffat_psf_units():
 
 
 def moffat_psf():
-    """Return a MoffatPSF without units."""
+    """
+    Return a MoffatPSF without units.
+    """
     return (MoffatPSF(flux=71.4, x_0=24.3, y_0=25.2, alpha=5.1, beta=3.2),
             parameters['MoffatPSF'])
 
 
 def image_psf():
-    """Return an ImagePSF without units."""
+    """
+    Return an ImagePSF without units.
+    """
     return (ImagePSF(data=np.arange(36).reshape((6, 6)),
                      flux=6,
                      x_0=0.5, y_0=0.5,
@@ -167,7 +194,9 @@ def image_psf():
 
 
 def gridded_psf():
-    """Return a GriddedPSFModel without units."""
+    """
+    Return a GriddedPSFModel without units.
+    """
     nd_data = NDData(data=np.arange(180).reshape((5, 6, 6)),
                      meta={'oversampling': 1,
                            'grid_xypos': [(2, 2),
@@ -184,7 +213,9 @@ def gridded_psf():
 
 
 def stdpsf_single_detector():
-    """Return a STDPSFGrid object read from a FITS STDPSF file."""
+    """
+    Return a STDPSFGrid object read from a FITS STDPSF file.
+    """
     filename = 'STDPSF_NRCA1_F150W_mock.fits'
 
     filename = op.join(Path(__file__).resolve().parent.parent.parent,
@@ -193,54 +224,67 @@ def stdpsf_single_detector():
     return psfgrid, parameters['STDPSF']
 
 
-# Aperture examples
-
 def circular_aperture_single_pos():
-    """Circular Aperture with a single position."""
+    """
+    Circular Aperture with a single position.
+    """
     return (aperture.CircularAperture(positions=(5, 6), r=7),
             parameters['CircularAperture'])
 
 
 def circular_aperture_multi_pos():
-    """Circular aperture with multiple positions."""
+    """
+    Circular aperture with multiple positions.
+    """
     return (aperture.CircularAperture(positions=[(1, 2), (3, 4)], r=5),
             parameters['CircularAperture'])
 
 
 def circular_annulus_single_pos():
-    """Circular annulus aperture with a single position and theta=0."""
+    """
+    Circular annulus aperture with a single position and theta=0.
+    """
     return (aperture.CircularAnnulus([10.0, 20.0], 3.0, 5.0),
             parameters['CircularAnnulus'])
 
 
 def circular_annulus_single_pos_tuple():
-    """Circular annulus aperture with a single position as a tuple."""
+    """
+    Circular annulus aperture with a single position as a tuple.
+    """
     return (aperture.CircularAnnulus((10.0, 20.0), 3.0, 5.0),
             parameters['CircularAnnulus'])
 
 
 def circular_annulus_multi_pos():
-    """Circular annulus aperture with multiple positions."""
+    """
+    Circular annulus aperture with multiple positions.
+    """
     return (aperture.CircularAnnulus([(10, 20), (30, 40)], 3, 5),
             parameters['CircularAnnulus'])
 
 
 def sky_circular_annulus():
-    """Circular annulus aperture on the sky."""
+    """
+    Circular annulus aperture on the sky.
+    """
     sky = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     return (aperture.SkyCircularAnnulus(sky, 3.0 * u.arcsec, 5.0 * u.arcsec),
             parameters['CircularAnnulus'])
 
 
 def sky_circular_aperture():
-    """Circular aperture on the sky."""
+    """
+    Circular aperture on the sky.
+    """
     sky = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     return (aperture.SkyCircularAperture(sky, 3.0 * u.arcsec),
             parameters['CircularAperture'])
 
 
 def elliptical_aperture(theta):
-    """Elliptical aperture in pix coordinates with several values of theta.
+    """
+    Elliptical aperture in pix coordinates with several values of theta.
 
     Parameters
     ----------
@@ -253,7 +297,9 @@ def elliptical_aperture(theta):
 
 
 def sky_elliptical_aperture():
-    """Elliptical aperture on the sky."""
+    """
+    Elliptical aperture on the sky.
+    """
     sky = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
 
     return (aperture.SkyEllipticalAperture(sky,
@@ -264,7 +310,8 @@ def sky_elliptical_aperture():
 
 
 def elliptical_annulus(theta):
-    """Elliptical annulus aperture in pixel space.
+    """
+    Elliptical annulus aperture in pixel space.
 
     Parameters
     ----------
@@ -277,7 +324,9 @@ def elliptical_annulus(theta):
 
 
 def sky_elliptical_annulus():
-    """Elliptical annulus aperture on the sky."""
+    """
+    Elliptical annulus aperture on the sky.
+    """
     sky = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     return (aperture.SkyEllipticalAnnulus(sky,
             a_in=3 * u.arcsec,
@@ -288,7 +337,9 @@ def sky_elliptical_annulus():
 
 
 def polygon_aperture():
-    """Polygon aperture on pixel space."""
+    """
+    Polygon aperture on pixel space.
+    """
     theta = np.linspace(0.0, 2 * np.pi, 6, endpoint=False)
     offsets = np.column_stack([5.0 * np.cos(theta),
                                5.0 * np.sin(theta)])
@@ -297,14 +348,18 @@ def polygon_aperture():
 
 
 def polygon_aperture_vertices():
-    """Polygon aperture in pixel space from vertices."""
+    """
+    Polygon aperture in pixel space from vertices.
+    """
     verts = [(0.0, 0.0), (4.0, 0.0), (4.0, 3.0)]
     return (aperture.PolygonAperture.from_vertices(verts),
             parameters['PolygonAperture'])
 
 
 def sky_polygon_aperture():
-    """Polygon aperture on the sky."""
+    """
+    Polygon aperture on the sky.
+    """
     sky = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     theta = np.linspace(0, 2 * np.pi, 5, endpoint=False)
     r = 1.0
@@ -315,7 +370,8 @@ def sky_polygon_aperture():
 
 
 def rectangular_aperture(theta):
-    """Rectangular aperture in pixel space.
+    """
+    Rectangular aperture in pixel space.
 
     Parameters
     ----------
@@ -327,7 +383,9 @@ def rectangular_aperture(theta):
 
 
 def sky_rectangular_aperture():
-    """Rectangular aperture on the sky."""
+    """
+    Rectangular aperture on the sky.
+    """
     positions = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     return (aperture.SkyRectangularAperture(positions,
                                             1.0 * u.arcsec,
@@ -336,7 +394,8 @@ def sky_rectangular_aperture():
 
 
 def rectangular_annulus(theta):
-    """Rectangular annulus aperture in pixel space.
+    """
+    Rectangular annulus aperture in pixel space.
 
     Parameters
     ----------
@@ -349,7 +408,9 @@ def rectangular_annulus(theta):
 
 
 def sky_rectangular_annulus():
-    """Rectangular annulus aperture on the sky."""
+    """
+    Rectangular annulus aperture on the sky.
+    """
     positions = SkyCoord(ra=[10.0, 20.0], dec=[30.0, 40.0], unit='deg')
     theta = Angle(80, 'deg')
     return (aperture.SkyRectangularAnnulus(positions,

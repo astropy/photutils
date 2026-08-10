@@ -618,12 +618,18 @@ class TestMethodSubpixelsDocstring:
     def test_no_placeholder_noop(self):
         """
         Test that the decorator is a no-op if no placeholder is present.
-        """
-        @_update_method_subpixels_docstring
-        def func():
-            """Summary with no placeholder."""
 
-        assert func.__doc__ == 'Summary with no placeholder.'
+        The docstring is assigned manually to avoid the compile-time
+        docstring dedenting introduced in Python 3.13.
+        """
+        def func():
+            pass
+
+        docstring = '\n        Summary with no placeholder.\n        '
+        func.__doc__ = docstring
+
+        assert _update_method_subpixels_docstring(func) is func
+        assert func.__doc__ == docstring
 
     def test_none_docstring_noop(self):
         """

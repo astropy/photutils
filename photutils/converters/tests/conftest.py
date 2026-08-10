@@ -136,7 +136,12 @@ def sky_circular_aperture():
 
 @pytest.fixture(params=[0.23, 0.5 * u.deg, Angle(80, 'deg')])
 def theta(request):
-    """Used to test different types of rotation angles."""
+    """
+    Fixture that returns a rotation angle value.
+
+    The fixture is parametrized with three different types of rotation
+    angles: a float, a Quantity, and an Angle.
+    """
     return request.param
 
 

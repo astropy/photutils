@@ -19,7 +19,7 @@ def aperobj(request):
     return request.getfixturevalue(request.param)
 
 
-# fixtures without parameters
+# Fixtures without parameters
 aper_params = pytest.mark.parametrize('aperobj', [
     'circular_aperture_single_pos',
     'circular_aperture_multi_pos',
@@ -38,7 +38,7 @@ aper_params = pytest.mark.parametrize('aperobj', [
 ], indirect=True)
 
 
-# a parameter ``theta`` is passed to these fixtures
+# Fixtures with a ``theta`` parameter
 aper_theta = pytest.mark.parametrize('aperobj', [
     'elliptical_annulus',
     'elliptical_aperture',
@@ -70,7 +70,9 @@ def test_aperture_converters(tmp_path, aperobj):
 
 
 def _run(tmp_path, aper):
-    """Run the comparison test."""
+    """
+    Run the comparison test.
+    """
     aperture, pars = aper
     with asdf.AsdfFile() as af:
         af['aper'] = aperture
