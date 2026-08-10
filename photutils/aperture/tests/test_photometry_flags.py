@@ -87,21 +87,21 @@ class TestOverlapFlags:
     Tests for the no_overlap, partial_overlap, and no_pixels flags.
     """
 
-    def test_no_flags(self):
+    def test_no_flags(self, unit_data):
         """
         Test that a clean interior source has no flags set.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         aper = CircularAperture((12, 12), r=3.0)
         assert_array_equal(_flags(aper, data), [0])
 
     @pytest.mark.parametrize('factory', APERTURE_FACTORIES)
     @pytest.mark.parametrize(('method', 'subpixels'), METHODS)
-    def test_no_overlap(self, factory, method, subpixels):
+    def test_no_overlap(self, unit_data, factory, method, subpixels):
         """
         Test that fully off-image apertures set no_overlap and no_pixels.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         aper = factory([(-50.0, 12.0), (12.0, 12.0)])
         result = AperturePhotometry(data, aper, method=method,
                                     subpixels=subpixels)
@@ -112,23 +112,23 @@ class TestOverlapFlags:
 
     @pytest.mark.parametrize('factory', APERTURE_FACTORIES)
     @pytest.mark.parametrize(('method', 'subpixels'), METHODS)
-    def test_partial_overlap(self, factory, method, subpixels):
+    def test_partial_overlap(self, unit_data, factory, method, subpixels):
         """
         Test that apertures straddling an edge set partial_overlap.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         aper = factory([(0.0, 12.0), (12.0, 24.5), (12.0, 12.0)])
         flags = _flags(aper, data, method=method, subpixels=subpixels)
         assert flags[0] == APERTURE_FLAGS.PARTIAL_OVERLAP
         assert flags[1] == APERTURE_FLAGS.PARTIAL_OVERLAP
         assert flags[2] == 0
 
-    def test_no_overlap_close_to_edge(self):
+    def test_no_overlap_close_to_edge(self, unit_data):
         """
         Test an aperture whose bounding box overlaps the data but whose
         nonzero-weight pixels are all outside (precise no_overlap).
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         # bbox column 0 overlaps the data, but with the "center" method
         # the pixel center at x=0 (distance 1.2) is outside the circle
         aper = CircularAperture((-1.2, 12.0), r=0.8)
@@ -143,12 +143,12 @@ class TestOverlapFlags:
         result = AperturePhotometry(data, aper, method='exact')
         assert result.flags == APERTURE_FLAGS.PARTIAL_OVERLAP
 
-    def test_clipped_bbox_only(self):
+    def test_clipped_bbox_only(self, unit_data):
         """
         Test that a clipped bounding box alone does not set
         partial_overlap when all nonzero weights are inside the data.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         # bbox extends to column -1, but the pixel center at x=-1
         # (distance 1.2 > r=0.8) is outside the circle
         aper = CircularAperture((0.2, 12.0), r=0.8)
@@ -158,11 +158,11 @@ class TestOverlapFlags:
         flags = _flags(aper, data, method='exact')
         assert_array_equal(flags, [APERTURE_FLAGS.PARTIAL_OVERLAP])
 
-    def test_no_pixels_tiny_aperture(self):
+    def test_no_pixels_tiny_aperture(self, unit_data):
         """
         Test that a tiny aperture with the "center" method sets no_pixels.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         # Nearest pixel centers are sqrt(0.5) ~ 0.707 away
         aper = CircularAperture((12.5, 12.5), r=0.4)
         result = AperturePhotometry(data, aper, method='center')
@@ -225,11 +225,11 @@ class TestMaskedAndNonFiniteFlags:
     """
 
     @pytest.mark.parametrize(('method', 'subpixels'), METHODS)
-    def test_masked_pixels(self, method, subpixels):
+    def test_masked_pixels(self, unit_data, method, subpixels):
         """
         Test the masked_pixels and all_masked flags.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
 
         # One masked pixel inside the aperture
         mask = np.zeros(SHAPE, dtype=bool)
@@ -254,7 +254,7 @@ class TestMaskedAndNonFiniteFlags:
         assert flags == (APERTURE_FLAGS.MASKED_PIXELS
                          | APERTURE_FLAGS.ALL_MASKED)
 
-    def test_non_finite_data(self):
+    def test_non_finite_data(self, unit_mask):
         """
         Test the non_finite_data flag.
 
@@ -282,16 +282,16 @@ class TestMaskedAndNonFiniteFlags:
         # A masked non-finite pixel counts only as masked
         data = np.ones(SHAPE)
         data[12, 12] = np.nan
-        mask = np.zeros(SHAPE, dtype=bool)
+        mask = unit_mask
         mask[12, 12] = True
         flags = _flags(aper, data, mask=mask)
         assert flags == APERTURE_FLAGS.MASKED_PIXELS
 
-    def test_non_finite_error(self):
+    def test_non_finite_error(self, unit_data):
         """
         Test the non_finite_error flag.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         error = np.ones(SHAPE)
         error[12, 12] = np.inf
         aper = CircularAperture((12, 12), r=3.0)
@@ -308,11 +308,11 @@ class TestSegmentationFlags:
     """
 
     @pytest.mark.parametrize('mask_method', ['mask', 'source_only', 'correct'])
-    def test_neighbor_pixels(self, mask_method):
+    def test_neighbor_pixels(self, unit_data, mask_method):
         """
         Test the neighbor_pixels flag for all segmentation mask methods.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         segm = np.zeros(SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2  # neighbor pixel inside the aperture
@@ -328,11 +328,11 @@ class TestSegmentationFlags:
                        mask_method=mask_method)
         assert flags == 0
 
-    def test_uncorrected_pixels(self):
+    def test_uncorrected_pixels(self, unit_data):
         """
         Test the uncorrected_pixels flag with mask_method='correct'.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         segm = np.zeros(SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2  # neighbor; its mirror (12, 10) is source pixel
@@ -357,7 +357,7 @@ class TestMaskPathParity:
     """
 
     @pytest.mark.parametrize(('method', 'subpixels'), METHODS)
-    def test_basic(self, method, subpixels):
+    def test_basic(self, unit_mask, method, subpixels):
         """
         Test that the mask-based code path produces flags identical to the
         batch Cython driver.
@@ -367,7 +367,7 @@ class TestMaskPathParity:
         data[13, 12] = np.nan
         error = np.ones(SHAPE)
         error[10, 12] = np.inf
-        mask = np.zeros(SHAPE, dtype=bool)
+        mask = unit_mask
         mask[12, 12] = True
 
         xy = [(12.0, 12.0), (0.0, 12.0), (-50.0, 12.0), (24.5, 24.5),
@@ -384,11 +384,11 @@ class TestMaskPathParity:
                         result_nobatch.flux, rtol=1e-12,
                         equal_nan=True)
 
-    def test_segmentation(self):
+    def test_segmentation(self, unit_data):
         """
         Test batch/mask-path flag parity with segmentation masking.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         segm = np.zeros(SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2
@@ -409,7 +409,7 @@ class TestMaskPathParity:
     @pytest.mark.parametrize('mask_method', ['mask', 'source_only', 'correct'])
     @pytest.mark.parametrize('nan_pixel', [(12, 14), (12, 10)],
                              ids=['nan_neighbor', 'nan_mirror'])
-    def test_nonfinite_segmentation(self, mask_method, nan_pixel):
+    def test_nonfinite_segmentation(self, unit_data, mask_method, nan_pixel):
         """
         Test batch/mask-path parity when non-finite masking (the
         AperturePhotometry path) combines with segmentation masking.
@@ -420,7 +420,7 @@ class TestMaskPathParity:
         its neighbor uncorrectable with mask_method='correct', matching the
         batch kernel and ApertureStats.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         data[nan_pixel] = np.nan
         segm = np.zeros(SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
@@ -449,24 +449,24 @@ class TestFlagsAPI:
     Tests for how the flags are exposed by the photometry classes.
     """
 
-    def test_flag_combinations(self):
+    def test_flag_combinations(self, unit_data, unit_mask):
         """
         Test that multiple conditions combine bitwise.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         data[12, 6] = np.nan  # outside the r=3 aperture at (0, 12)
-        mask = np.zeros(SHAPE, dtype=bool)
+        mask = unit_mask
         mask[10, 1] = True
         aper = CircularAperture((0.0, 12.0), r=3.0)  # straddles left edge
         flags = _flags(aper, data, mask=mask)
         assert flags == (APERTURE_FLAGS.PARTIAL_OVERLAP
                          | APERTURE_FLAGS.MASKED_PIXELS)
 
-    def test_legacy_function_has_no_flags(self):
+    def test_legacy_function_has_no_flags(self, unit_data):
         """
         Test the AperturePhotometry flags.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         xy = [(12.0, 12.0), (-50.0, 12.0), (0.0, 12.0)]
         aper = CircularAperture(xy, r=3.0)
         phot = AperturePhotometry(data, aper)

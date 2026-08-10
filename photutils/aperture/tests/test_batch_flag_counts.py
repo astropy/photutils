@@ -59,11 +59,11 @@ class TestPixelCounts:
     drivers.
     """
 
-    def test_interior_source(self):
+    def test_interior_source(self, unit_data):
         """
         Test that a clean interior source has only n_pixels/valid counts.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0)[0]
         assert fc[FLAG_COL_N_PIXELS] > 0
         assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS]
@@ -74,23 +74,23 @@ class TestPixelCounts:
         assert fc[FLAG_COL_UNCORRECTED] == 0
         assert fc[FLAG_COL_BBOX_CLIPPED] == 0
 
-    def test_no_bbox_overlap(self):
+    def test_no_bbox_overlap(self, unit_data):
         """
         Test that a source with no bounding-box overlap has all-zero counts.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         fc = _sums_fcounts(data, (100.0, 100.0), 3.0)[0]
         assert_array_equal(fc, 0)
         fc = _gather_fcounts(data, (100.0, 100.0), 3.0)[0]
         assert_array_equal(fc, 0)
 
     @pytest.mark.parametrize('use_exact', [0, 1])
-    def test_masked_pixel_membership(self, use_exact):
+    def test_masked_pixel_membership(self, unit_data, use_exact):
         """
         Test that only masked pixels with nonzero overlap fraction are
         counted.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
 
         # Pixel inside the aperture
         mask = np.zeros(SHAPE, dtype=np.uint8)
@@ -109,12 +109,12 @@ class TestPixelCounts:
         assert fc[FLAG_COL_MASKED] == 0
         assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS]
 
-    def test_mask_plane_bits(self):
+    def test_mask_plane_bits(self, unit_data):
         """
         Test that mask-plane bit 1 counts as masked and bit 2 as non-finite
         data, with bit 1 taking precedence.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         mask = np.zeros(SHAPE, dtype=np.uint8)
         mask[12, 12] = 1  # input-masked
         mask[12, 13] = 2  # non-finite data
@@ -157,7 +157,7 @@ class TestNonFiniteCounts:
     Tests for the non-finite data and error indicator counts.
     """
 
-    def test_nonfinite_data_unmasked(self):
+    def test_nonfinite_data_unmasked(self, unit_data):
         """
         Test that unmasked non-finite data values are detected (and still
         contribute) in the photometry kernel.
@@ -165,19 +165,19 @@ class TestNonFiniteCounts:
         Unmasked non-finite contributions are detected from the accumulated
         sums as a 0/1 indicator.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         data[12, 12] = np.nan
         data[12, 13] = np.inf
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0)[0]
         assert fc[FLAG_COL_NONFINITE_DATA] == 1
         assert fc[FLAG_COL_VALID] == fc[FLAG_COL_N_PIXELS]
 
-    def test_nonfinite_error(self):
+    def test_nonfinite_error(self, unit_data):
         """
         Test that non-finite error values among contributing pixels are
         counted.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         error = np.ones(SHAPE)
         error[12, 12] = np.nan
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, error=error)[0]
@@ -196,11 +196,11 @@ class TestBboxClipped:
     """
 
     @pytest.mark.parametrize('use_exact', [0, 1])
-    def test_indicator(self, use_exact):
+    def test_indicator(self, unit_data, use_exact):
         """
         Test the bbox-clipped indicator for interior and edge sources.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
 
         # Interior source
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, use_exact=use_exact)[0]
@@ -218,14 +218,14 @@ class TestBboxClipped:
         assert fc[FLAG_COL_BBOX_CLIPPED] == 1
         assert fc[FLAG_COL_N_PIXELS] > 0
 
-    def test_parity_with_mask(self):
+    def test_parity_with_mask(self, unit_data):
         """
         Test that n_pixels matches the nonzero in-data aperture-mask weights
         and that the bbox-clipped indicator matches the overlap slices, for
         randomized positions including edge and rounding cases.
         """
         rng = np.random.default_rng(0)
-        data = np.ones(SHAPE)
+        data = unit_data
         n_src = 50
         xy = rng.uniform(-6.0, 30.0, size=(n_src, 2))
         # Include exact half-integer rounding cases
@@ -255,12 +255,12 @@ class TestSegmentationCounts:
     Tests for the segmentation neighbor and uncorrected pixel counts.
     """
 
-    def test_seg_counts(self):
+    def test_seg_counts(self, unit_data):
         """
         Test the segmentation-affected pixel counts for the mask,
         source_only, and correct methods.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         segm = np.zeros(SHAPE, dtype=np.intp)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2  # neighbor pixel inside the aperture

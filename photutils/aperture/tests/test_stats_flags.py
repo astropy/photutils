@@ -77,21 +77,21 @@ class TestOverlapFlags:
     """
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_no_flags(self):
+    def test_no_flags(self, unit_data):
         """
         Test that a clean interior source has no flags set.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         aper = CircularAperture((12, 12), r=3.0)
         stats = ApertureStats(data, aper)
         assert stats.flags == 0  # scalar aperture gives a scalar flag
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_overlap_flags(self):
+    def test_overlap_flags(self, unit_data):
         """
         Test the no_overlap, partial_overlap, and no_pixels flags.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         aper = CircularAperture([(12.0, 12.0), (0.0, 12.0), (-50.0, 12.0)],
                                 r=3.0)
         stats = ApertureStats(data, aper)
@@ -101,13 +101,13 @@ class TestOverlapFlags:
                                   | APERTURE_FLAGS.NO_PIXELS)
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_no_pixels(self):
+    def test_no_pixels(self, unit_data):
         """
         Test that an empty "center" footprint sets no_pixels even when the
         default exact-method sum footprint is populated (the per-footprint
         flag bits are combined with OR).
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         # Nearest pixel centers are sqrt(0.5) ~ 0.707 away
         aper = CircularAperture((12.5, 12.5), r=0.4)
         stats = ApertureStats(data, aper)
@@ -122,11 +122,11 @@ class TestMaskedAndNonFiniteFlags:
     """
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_masked_pixels(self):
+    def test_masked_pixels(self, unit_data):
         """
         Test the masked_pixels and all_masked flags.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         aper = CircularAperture((12, 12), r=3.0)
 
         mask = np.zeros(SHAPE, dtype=bool)
@@ -146,16 +146,16 @@ class TestMaskedAndNonFiniteFlags:
             APERTURE_FLAGS.MASKED_PIXELS | APERTURE_FLAGS.ALL_MASKED)
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_sum_footprint_only(self):
+    def test_sum_footprint_only(self, unit_data, unit_mask):
         """
         Test that a masked boundary pixel touched only by the exact-method
         sum footprint (its center lies exactly on the aperture boundary)
         sets masked_pixels in sum_flags but not in the value-statistics
         flags.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         aper = CircularAperture((12, 12), r=3.0)
-        mask = np.zeros(SHAPE, dtype=bool)
+        mask = unit_mask
         mask[15, 12] = True  # center at distance exactly 3.0 (boundary)
         stats = ApertureStats(data, aper, mask=mask)
         assert stats.sum_flags == APERTURE_FLAGS.MASKED_PIXELS
@@ -166,7 +166,7 @@ class TestMaskedAndNonFiniteFlags:
         assert stats.sum_flags == 0
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_non_finite_data(self):
+    def test_non_finite_data(self, unit_mask):
         """
         Test the non_finite_data flag.
 
@@ -188,17 +188,17 @@ class TestMaskedAndNonFiniteFlags:
         # masked
         data = np.ones(SHAPE)
         data[12, 12] = np.nan
-        mask = np.zeros(SHAPE, dtype=bool)
+        mask = unit_mask
         mask[12, 12] = True
         assert _stats_flags(data, aper,
                             mask=mask) == APERTURE_FLAGS.MASKED_PIXELS
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_non_finite_error(self):
+    def test_non_finite_error(self, unit_data):
         """
         Test the non_finite_error flag (evaluated on the sum footprint).
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         error = np.ones(SHAPE)
         error[12, 12] = np.nan
         aper = CircularAperture((12, 12), r=3.0)
@@ -235,7 +235,7 @@ class TestSigmaClipFlags:
         # Without clipping, no flag is set
         assert _stats_flags(data, aper) == 0
 
-    def test_all_clipped(self):
+    def test_all_clipped(self, unit_data):
         """
         Test the all_clipped flag using a SigmaClip subclass that rejects
         every pixel (only reachable via the mask-based path).
@@ -245,7 +245,7 @@ class TestSigmaClipFlags:
                 return np.ma.masked_array(data,
                                           mask=np.ones(data.shape, dtype=bool))
 
-        data = np.ones(SHAPE)
+        data = unit_data
         aper = CircularAperture((12, 12), r=3.0)
         # A callable cenfunc is not supported by the fast clipping kernel,
         # forcing the mask-based path
@@ -256,11 +256,11 @@ class TestSigmaClipFlags:
         assert np.isnan(stats.mean)
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_too_few_pixels(self):
+    def test_too_few_pixels(self, unit_data):
         """
         Test the too_few_pixels flag with ddof.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         # The r=1.1 center footprint contains exactly 5 pixels
         aper = CircularAperture((12, 12), r=1.1)
 
@@ -280,11 +280,11 @@ class TestSegmentationFlags:
 
     @pytest.mark.parametrize('mask_method', ['mask', 'source_only', 'correct'])
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_neighbor_pixels(self, mask_method):
+    def test_neighbor_pixels(self, unit_data, mask_method):
         """
         Test the neighbor_pixels flag for all segmentation mask methods.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         segm = np.zeros(SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2  # neighbor pixel inside the aperture
@@ -294,11 +294,11 @@ class TestSegmentationFlags:
         assert flags == APERTURE_FLAGS.NEIGHBOR_PIXELS
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_uncorrected_pixels(self):
+    def test_uncorrected_pixels(self, unit_data):
         """
         Test the uncorrected_pixels flag with mask_method='correct'.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         segm = np.zeros(SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2
@@ -316,7 +316,7 @@ class TestMaskPathParity:
     driver.
     """
 
-    def test_parity(self):
+    def test_parity(self, unit_mask):
         """
         Test that the fast batch path and the mask-based path produce
         identical flags for a mix of conditions.
@@ -327,7 +327,7 @@ class TestMaskPathParity:
         data[5, 5] = 100.0  # sigma-clip outlier
         error = np.ones(SHAPE)
         error[10, 12] = np.inf
-        mask = np.zeros(SHAPE, dtype=bool)
+        mask = unit_mask
         mask[12, 12] = True
 
         xy = [(12.0, 12.0), (5.0, 5.0), (0.0, 12.0), (-50.0, 12.0),
@@ -352,12 +352,12 @@ class TestFlagsAPI:
     Tests for how the flags are exposed by ApertureStats.
     """
 
-    def test_flags_in_table_and_properties(self):
+    def test_flags_in_table_and_properties(self, unit_data):
         """
         Test that flags appears in the properties list and the default
         to_table() columns.
         """
-        data = np.ones(SHAPE)
+        data = unit_data
         aper = CircularAperture([(12, 12), (-50, 12)], r=3.0)
         stats = ApertureStats(data, aper)
         assert 'flags' in stats.properties
@@ -369,12 +369,12 @@ class TestFlagsAPI:
         assert_array_equal(tbl['flags'], expected)
         assert_array_equal(tbl['sum_flags'], expected)
 
-    def test_flags_slicing(self):
+    def test_flags_slicing(self, unit_data, unit_mask):
         """
         Test that flags are sliced correctly by __getitem__.
         """
-        data = np.ones(SHAPE)
-        mask = np.zeros(SHAPE, dtype=bool)
+        data = unit_data
+        mask = unit_mask
         mask[12, 12] = True
         aper = CircularAperture([(12, 12), (0.0, 12.0)], r=3.0)
         stats = ApertureStats(data, aper, mask=mask)
@@ -386,12 +386,12 @@ class TestFlagsAPI:
         stats2 = ApertureStats(data, aper, mask=mask)
         assert stats2[1].flags == flags[1]
 
-    def test_decode_flags(self):
+    def test_decode_flags(self, unit_data, unit_mask):
         """
         Test the decode_flags convenience method.
         """
-        data = np.ones(SHAPE)
-        mask = np.zeros(SHAPE, dtype=bool)
+        data = unit_data
+        mask = unit_mask
         mask[12, 12] = True
         aper = CircularAperture([(12.0, 12.0), (0.0, 12.0)], r=3.0)
         stats = ApertureStats(data, aper, mask=mask)
