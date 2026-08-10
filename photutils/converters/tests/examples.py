@@ -1,8 +1,10 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 """
-Tests for the photutils PSF converters.
-All examples return a PSF instance and the list of parameters to test.
+Examples for testing the photutils ASDF converters.
+
+Each example returns a tuple containing a photutils object and the list
+of parameter names to compare in round-trip tests.
 """
 import os.path as op
 from pathlib import Path
