@@ -12,7 +12,9 @@ import yaml
 from asdf import get_config, treeutil
 from asdf.exceptions import ValidationError
 from asdf.testing.helpers import yaml_to_asdf
+from astropy import units as u
 
+from photutils.converters import _ASDF_ASTROPY_INSTALLED
 from photutils.extension import PHOTUTILS_MANIFEST_URIS
 
 # Matches the top-level YAML tag that opens a schema example.
@@ -265,3 +267,61 @@ def test_mixed_pixel_and_sky_rejected(example):
     with pytest.raises(ValidationError), \
             asdf.open(yaml_to_asdf(f'aper: {example}')):
         pass
+
+
+# The size parameters that each aperture schema requires. The remaining
+# parameters of these apertures (``theta`` for all of them, plus the
+# inner size of the annuli) are optional.
+REQUIRED_SIZE_PARAMS = {
+    'elliptical_aperture': ('a', 'b'),
+    'elliptical_annulus': ('a_in', 'a_out', 'b_out'),
+    'rectangular_aperture': ('w', 'h'),
+    'rectangular_annulus': ('w_in', 'w_out', 'h_out'),
+}
+
+
+def _read_minimal_aperture(stem, *, sky):
+    """
+    Read an aperture from a file containing only its required
+    parameters.
+    """
+    example = _aperture_yaml(stem,
+                             SKY_POSITIONS if sky else PIXEL_POSITIONS,
+                             _sizes(REQUIRED_SIZE_PARAMS[stem], sky=sky))
+    with asdf.open(yaml_to_asdf(f'aper: {example}')) as af:
+        return af['aper']
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('sky', [False, True], ids=['pixel', 'sky'])
+@pytest.mark.parametrize('stem', list(REQUIRED_SIZE_PARAMS))
+def test_optional_theta_uses_default(stem, sky):
+    """
+    Test that an aperture file that omits ``theta`` is read using the
+    default rotation angle of its aperture class.
+
+    ``theta`` is optional in both the aperture classes and the schemas,
+    and its default differs between the pixel and sky apertures.
+    """
+    aperture = _read_minimal_aperture(stem, sky=sky)
+    assert aperture.theta == (0.0 * u.deg if sky else 0.0)
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('sky', [False, True], ids=['pixel', 'sky'])
+def test_optional_inner_size_uses_default(sky):
+    """
+    Test that an annulus file that omits its inner size is read using
+    the inner size derived by its aperture class.
+
+    ``b_in`` and ``h_in`` are optional in both the aperture classes and
+    the schemas.
+    """
+    ellipse = _read_minimal_aperture('elliptical_annulus', sky=sky)
+    assert ellipse.b_in == ellipse.b_out * ellipse.a_in / ellipse.a_out
+
+    rectangle = _read_minimal_aperture('rectangular_annulus', sky=sky)
+    assert (rectangle.h_in
+            == rectangle.w_in * rectangle.h_out / rectangle.w_out)

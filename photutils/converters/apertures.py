@@ -17,6 +17,18 @@ __all__ = [
 ]
 
 
+def _optional_theta(node):
+    """
+    Return ``theta`` as a keyword dict, or an empty dict if it is
+    absent.
+
+    ``theta`` is optional in the aperture schemas. It is omitted instead
+    of being passed as `None` because its default differs between the
+    pixel and sky apertures.
+    """
+    return {'theta': node['theta']} if 'theta' in node else {}
+
+
 class CircularApertureConverter(Converter):
     """
     ASDF converter for circular apertures.
@@ -115,7 +127,7 @@ class EllipticalApertureConverter(Converter):
             positions=node['positions'],
             a=node['a'],
             b=node['b'],
-            theta=node['theta'],
+            **_optional_theta(node),
         )
 
 
@@ -153,9 +165,9 @@ class EllipticalAnnulusConverter(Converter):
             positions=node['positions'],
             a_in=node['a_in'],
             a_out=node['a_out'],
-            b_in=node['b_in'],
+            b_in=node.get('b_in'),
             b_out=node['b_out'],
-            theta=node['theta'],
+            **_optional_theta(node),
         )
 
 
@@ -223,7 +235,7 @@ class RectangularApertureConverter(Converter):
             positions=node['positions'],
             w=node['w'],
             h=node['h'],
-            theta=node['theta'],
+            **_optional_theta(node),
         )
 
 
@@ -261,7 +273,7 @@ class RectangularAnnulusConverter(Converter):
             positions=node['positions'],
             w_in=node['w_in'],
             w_out=node['w_out'],
-            h_in=node['h_in'],
+            h_in=node.get('h_in'),
             h_out=node['h_out'],
-            theta=node['theta'],
+            **_optional_theta(node),
         )
