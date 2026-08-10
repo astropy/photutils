@@ -1,0 +1,121 @@
+%YAML 1.1
+---
+$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
+id: "asdf://astropy.org/photutils/schemas/aperture/elliptical_annulus-1.0.0"
+title: EllipticalAnnulus
+description: |
+  ASDF schema for serializing an elliptical annulus aperture in pixel
+  and sky coordinates.
+examples:
+  -
+    - |
+      An EllipticalAnnulus aperture with a single position, with inner
+      semimajor axis of 0.5 arcsec, outer semimajor axis of 2 arcsec,
+      inner semiminor axis of 0.25 arcsec, outer semiminor axis of 1 arcsec,
+      and rotation angle of 0.
+    - |
+      !<tag:astropy.org:photutils/aperture/elliptical_annulus-1.0.0>
+        a_in: 0.5
+        a_out: 2.0
+        b_in: 0.25
+        b_out: 1.0
+        positions: [10.0, 20.0]
+        theta: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 rad, value: 0.0}
+  -
+    - |
+      SkyEllipticalAnnulus aperture with a single position.
+    - |
+      !<tag:astropy.org:photutils/aperture/elliptical_annulus-1.0.0>
+        a_in: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 0.5}
+        a_out: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 2.0}
+        b_in: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 0.25}
+        b_out: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 1.0}
+        positions: !<tag:astropy.org:astropy/coordinates/skycoord-1.0.0>
+          dec: !<tag:astropy.org:astropy/coordinates/latitude-1.2.0> {datatype: float64,
+            unit: !unit/unit-1.0.0 deg, value: 30.0}
+          frame: icrs
+          ra: !<tag:astropy.org:astropy/coordinates/longitude-1.2.0>
+            datatype: float64
+            unit: !unit/unit-1.0.0 deg
+            value: 10.0
+            wrap_angle: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64,
+              unit: !unit/unit-1.0.0 deg, value: 360.0}
+          representation_type: spherical
+        theta: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 deg, value: 0.0}
+
+
+type: object
+properties:
+  positions:
+    title: Aperture position(s).
+    description: |
+      The coordinates of the aperture center(s) in one of the following formats.
+      If an EllipticalAnnulus in pixel coordinates:
+
+        * single ``(x, y)`` pair as an array
+        * `numpy.ndarray` of ``(x, y)`` pairs
+
+      If a SkyEllipticalAnnulus
+
+        * `astropy.coordinates.SkyCoord` object
+    anyOf:
+      - type: array
+        items:
+          type: number
+        maxItems: 2
+        minItems: 2
+      - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+      - tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+  a_in:
+    title: Inner semimajor axis.
+    description: |
+      The inner semimajor axis of the elliptical annulus.
+      EllipticalAnnulus: in pixels
+      SkyEllipticalAnnulus: in angular units
+    anyOf:
+      - type: number
+      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+  a_out:
+    title: Outer semimajor axis.
+    description: |
+      The outer semimajor axis of the elliptical annulus.
+      EllipticalAnnulus: in pixels
+      SkyEllipticalAnnulus: in angular units
+    anyOf:
+      - type: number
+      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+  b_in:
+    title: Inner semiminor axis.
+    description: |
+      The inner semiminor axis of the elliptical annulus.
+      EllipticalAnnulus: in pixels
+      SkyEllipticalAnnulus: in angular units
+    anyOf:
+      - type: number
+      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+  b_out:
+    title: Outer semiminor axis.
+    description: |
+      The outer semiminor axis of the elliptical annulus.
+      EllipticalAnnulus: in pixels
+      SkyEllipticalAnnulus: in angular units
+    anyOf:
+      - type: number
+      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+  theta:
+    title: Rotation angle of the ellipse.
+    description: |
+      EllipticalAnnulus:
+        The rotation angle as an angular quantity from the positive ``x`` axis.
+        The rotation angle increases counterclockwise. If a number, it's assumed
+        to be in radians.
+      SkyEllipticalAnnulus:
+        The position angle (in angular units) of the ellipse semimajor
+        axis. For a right-handed world coordinate system, the position
+        angle increases counterclockwise from North (PA=0).
+    anyOf:
+      - type: number
+      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
+required: [positions, a_in, a_out, b_out]
+...

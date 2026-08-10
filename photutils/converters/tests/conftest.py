@@ -8,6 +8,8 @@ where ``parameter_names`` is the list of attributes to compare in
 round-trip tests.
 """
 import pytest
+from astropy import units as u
+from astropy.coordinates import Angle
 
 from photutils.converters.tests import examples
 
@@ -95,3 +97,99 @@ def gridded_psf():
 @pytest.fixture
 def stdpsf_single_detector():
     return examples.stdpsf_single_detector()
+
+
+@pytest.fixture
+def circular_aperture_single_pos():
+    return examples.circular_aperture_single_pos()
+
+
+@pytest.fixture
+def circular_aperture_multi_pos():
+    return examples.circular_aperture_multi_pos()
+
+
+@pytest.fixture
+def circular_annulus_single_pos():
+    return examples.circular_annulus_single_pos()
+
+
+@pytest.fixture
+def circular_annulus_single_pos_tuple():
+    return examples.circular_annulus_single_pos_tuple()
+
+
+@pytest.fixture
+def circular_annulus_multi_pos():
+    return examples.circular_annulus_multi_pos()
+
+
+@pytest.fixture
+def sky_circular_annulus():
+    return examples.sky_circular_annulus()
+
+
+@pytest.fixture
+def sky_circular_aperture():
+    return examples.sky_circular_aperture()
+
+
+@pytest.fixture(params=[0.23, 0.5 * u.deg, Angle(80, 'deg')])
+def theta(request):
+    """Used to test different types of rotation angles."""
+    return request.param
+
+
+@pytest.fixture
+def elliptical_aperture(theta):
+    return examples.elliptical_aperture(theta)
+
+
+@pytest.fixture
+def sky_elliptical_aperture():
+    return examples.sky_elliptical_aperture()
+
+
+@pytest.fixture
+def elliptical_annulus(theta):
+    return examples.elliptical_annulus(theta)
+
+
+@pytest.fixture
+def sky_elliptical_annulus():
+    return examples.sky_elliptical_annulus()
+
+
+@pytest.fixture
+def polygon_aperture():
+    return examples.polygon_aperture()
+
+
+@pytest.fixture
+def polygon_aperture_vertices():
+    return examples.polygon_aperture_vertices()
+
+
+@pytest.fixture
+def sky_polygon_aperture():
+    return examples.sky_polygon_aperture()
+
+
+@pytest.fixture
+def rectangular_aperture(theta):
+    return examples.rectangular_aperture(theta)
+
+
+@pytest.fixture
+def sky_rectangular_aperture():
+    return examples.sky_rectangular_aperture()
+
+
+@pytest.fixture
+def rectangular_annulus(theta):
+    return examples.rectangular_annulus(theta)
+
+
+@pytest.fixture
+def sky_rectangular_annulus():
+    return examples.sky_rectangular_annulus()

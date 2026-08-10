@@ -6,8 +6,32 @@ description: |-
 tags:
   - tag_uri: tag:astropy.org:photutils/aperture/circular_aperture-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/aperture/circular_aperture-1.0.0
-    title: CircularAperture
+    title: Circular apertures
     description: Circular aperture with one or more positions.
+  - tag_uri: tag:astropy.org:photutils/aperture/circular_annulus-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/aperture/circular_annulus-1.0.0
+    title: Circular annulus apertures
+    description: CircularAnnulus aperture with one or more positions.
+  - tag_uri: tag:astropy.org:photutils/aperture/elliptical_aperture-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/aperture/elliptical_aperture-1.0.0
+    title: Elliptical apertures
+    description: Elliptical aperture with one or more positions.
+  - tag_uri: tag:astropy.org:photutils/aperture/elliptical_annulus-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/aperture/elliptical_annulus-1.0.0
+    title: Elliptical annulus apertures
+    description: Elliptical annulus aperture with one or more positions.
+  - tag_uri: tag:astropy.org:photutils/aperture/polygon_aperture-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/aperture/polygon_aperture-1.0.0
+    title: Polygon apertures
+    description: Polygon aperture with one or more positions.
+  - tag_uri: tag:astropy.org:photutils/aperture/rectangular_aperture-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/aperture/rectangular_aperture-1.0.0
+    title: Rectangular apertures
+    description: Rectangular aperture with one or more positions.
+  - tag_uri: tag:astropy.org:photutils/aperture/rectangular_annulus-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/aperture/rectangular_annulus-1.0.0
+    title: Rectangular annulus
+    description: Rectangular annulus with one or more positions.
   - tag_uri: tag:astropy.org:photutils/psf/airy_disk_psf-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/psf/airy_disk_psf-1.0.0
     title: AiryDiskPSF
