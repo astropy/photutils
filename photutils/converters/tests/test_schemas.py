@@ -325,3 +325,39 @@ def test_optional_inner_size_uses_default(sky):
     rectangle = _read_minimal_aperture('rectangular_annulus', sky=sky)
     assert (rectangle.h_in
             == rectangle.w_in * rectangle.h_out / rectangle.w_out)
+
+
+@pytest.mark.parametrize('stem', list(REQUIRED_SIZE_PARAMS))
+def test_sky_numeric_theta_rejected(stem):
+    """
+    Test that a sky aperture with a numeric ``theta`` fails schema
+    validation when read.
+
+    The sky apertures require an angular ``theta``, so a number is
+    excluded by the sky branch of the ``oneOf`` in the schema.
+    """
+    sizes = _sizes(REQUIRED_SIZE_PARAMS[stem], sky=True)
+    example = _aperture_yaml(stem, SKY_POSITIONS,
+                             {**sizes, 'theta': '0.5'})
+    with pytest.raises(ValidationError), \
+            asdf.open(yaml_to_asdf(f'aper: {example}')):
+        pass
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('stem', list(REQUIRED_SIZE_PARAMS))
+def test_pixel_angular_theta_accepted(stem):
+    """
+    Test that a pixel aperture with an angular ``theta`` is read
+    without error.
+
+    The pixel apertures accept either a number or an angular quantity,
+    so ``theta`` is constrained only in the sky branch of the ``oneOf``
+    in the schema.
+    """
+    sizes = _sizes(REQUIRED_SIZE_PARAMS[stem], sky=False)
+    example = _aperture_yaml(stem, PIXEL_POSITIONS,
+                             {**sizes, 'theta': _quantity(0.5)})
+    with asdf.open(yaml_to_asdf(f'aper: {example}')) as af:
+        assert af['aper'].theta == 0.5 * u.arcsec
