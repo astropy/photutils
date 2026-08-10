@@ -6,14 +6,49 @@ Tests for the photutils ASDF manifests and schemas.
 import re
 import textwrap
 
+import asdf
 import pytest
 import yaml
 from asdf import get_config, treeutil
+from asdf.exceptions import ValidationError
+from asdf.testing.helpers import yaml_to_asdf
+from astropy import units as u
 
+from photutils.converters import _ASDF_ASTROPY_INSTALLED
 from photutils.extension import PHOTUTILS_MANIFEST_URIS
 
 # Matches the top-level YAML tag that opens a schema example.
 EXAMPLE_TAG_PATTERN = re.compile(r'!<([^>]+)>')
+
+PIXEL_POSITIONS = '[10.0, 20.0]'
+
+SKY_POSITIONS = """!<tag:astropy.org:astropy/coordinates/skycoord-1.0.0>
+      dec: !<tag:astropy.org:astropy/coordinates/latitude-1.2.0>
+        {unit: !unit/unit-1.0.0 deg, value: 20.0}
+      frame: icrs
+      ra: !<tag:astropy.org:astropy/coordinates/longitude-1.2.0>
+        {unit: !unit/unit-1.0.0 deg, value: 10.0,
+         wrap_angle: !<tag:astropy.org:astropy/coordinates/angle-1.2.0>
+           {unit: !unit/unit-1.0.0 deg, value: 360.0}}
+      representation_type: spherical"""
+
+VERTICES = '[[5.0, 0.0], [0.0, 5.0], [-5.0, 0.0]]'
+PIXEL_OFFSETS = f'!core/ndarray-1.1.0 {VERTICES}'
+SKY_OFFSETS = ('!unit/quantity-1.3.0 {unit: !unit/unit-1.0.0 arcsec, '
+               f'value: !core/ndarray-1.1.0 {VERTICES}}}')
+
+# The parameters of each aperture that must agree with ``positions``.
+# ``theta`` is excluded because the pixel apertures also accept an
+# angular quantity.
+SIZE_PARAMS = {
+    'circular_aperture': ('r',),
+    'circular_annulus': ('r_in', 'r_out'),
+    'elliptical_aperture': ('a', 'b'),
+    'elliptical_annulus': ('a_in', 'a_out', 'b_in', 'b_out'),
+    'polygon_aperture': ('vertex_offsets',),
+    'rectangular_aperture': ('w', 'h'),
+    'rectangular_annulus': ('w_in', 'w_out', 'h_in', 'h_out'),
+}
 
 
 def _load_resource(uri):
@@ -165,3 +200,164 @@ def test_invalid_example_tag_is_detected(example_tag, match):
 
     with pytest.raises(AssertionError, match=match):
         test_example_tag_in_manifest(schema['id'], index, tag)
+
+
+def _quantity(value):
+    """
+    Build the YAML for a scalar angular quantity.
+    """
+    return ('!unit/quantity-1.3.0 '
+            f'{{unit: !unit/unit-1.0.0 arcsec, value: {value}}}')
+
+
+def _sizes(names, *, sky=False):
+    """
+    Build the size parameters of an aperture in pixel or sky form.
+    """
+    values = {}
+    for index, name in enumerate(names):
+        if name == 'vertex_offsets':
+            values[name] = SKY_OFFSETS if sky else PIXEL_OFFSETS
+        elif sky:
+            values[name] = _quantity(index + 3.0)
+        else:
+            values[name] = f'{index + 3.0}'
+    return values
+
+
+def _aperture_yaml(stem, positions, sizes):
+    """
+    Build the tagged YAML for a photutils aperture.
+    """
+    params = {'positions': positions, **sizes}
+    body = '\n'.join(f'  {key}: {value}' for key, value in params.items())
+    return f'!<tag:astropy.org:photutils/aperture/{stem}-1.0.0>\n{body}'
+
+
+def _mixed_apertures():
+    """
+    Build apertures that mix pixel values with angular quantities.
+    """
+    mixed = []
+    for stem, names in SIZE_PARAMS.items():
+        mixed.append((f'{stem}-sky-positions',
+                      _aperture_yaml(stem, SKY_POSITIONS,
+                                     _sizes(names, sky=False))))
+        mixed.append((f'{stem}-sky-sizes',
+                      _aperture_yaml(stem, PIXEL_POSITIONS,
+                                     _sizes(names, sky=True))))
+    return mixed
+
+
+MIXED_APERTURES = _mixed_apertures()
+
+
+@pytest.mark.parametrize('example', [case[1] for case in MIXED_APERTURES],
+                         ids=[case[0] for case in MIXED_APERTURES])
+def test_mixed_pixel_and_sky_rejected(example):
+    """
+    Test that an aperture mixing pixel values with angular quantities
+    fails schema validation when read.
+
+    The pixel and sky variants of each aperture share a tag, so this
+    combination is excluded only by the ``oneOf`` in the schema. Valid
+    pixel and sky files are covered by the round-trip tests in
+    ``test_apertures.py``.
+    """
+    with pytest.raises(ValidationError), \
+            asdf.open(yaml_to_asdf(f'aper: {example}')):
+        pass
+
+
+# The size parameters that each aperture schema requires. The remaining
+# parameters of these apertures (``theta`` for all of them, plus the
+# inner size of the annuli) are optional.
+REQUIRED_SIZE_PARAMS = {
+    'elliptical_aperture': ('a', 'b'),
+    'elliptical_annulus': ('a_in', 'a_out', 'b_out'),
+    'rectangular_aperture': ('w', 'h'),
+    'rectangular_annulus': ('w_in', 'w_out', 'h_out'),
+}
+
+
+def _read_minimal_aperture(stem, *, sky):
+    """
+    Read an aperture from a file containing only its required
+    parameters.
+    """
+    example = _aperture_yaml(stem,
+                             SKY_POSITIONS if sky else PIXEL_POSITIONS,
+                             _sizes(REQUIRED_SIZE_PARAMS[stem], sky=sky))
+    with asdf.open(yaml_to_asdf(f'aper: {example}')) as af:
+        return af['aper']
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('sky', [False, True], ids=['pixel', 'sky'])
+@pytest.mark.parametrize('stem', list(REQUIRED_SIZE_PARAMS))
+def test_optional_theta_uses_default(stem, sky):
+    """
+    Test that an aperture file that omits ``theta`` is read using the
+    default rotation angle of its aperture class.
+
+    ``theta`` is optional in both the aperture classes and the schemas,
+    and its default differs between the pixel and sky apertures.
+    """
+    aperture = _read_minimal_aperture(stem, sky=sky)
+    assert aperture.theta == (0.0 * u.deg if sky else 0.0)
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('sky', [False, True], ids=['pixel', 'sky'])
+def test_optional_inner_size_uses_default(sky):
+    """
+    Test that an annulus file that omits its inner size is read using
+    the inner size derived by its aperture class.
+
+    ``b_in`` and ``h_in`` are optional in both the aperture classes and
+    the schemas.
+    """
+    ellipse = _read_minimal_aperture('elliptical_annulus', sky=sky)
+    assert ellipse.b_in == ellipse.b_out * ellipse.a_in / ellipse.a_out
+
+    rectangle = _read_minimal_aperture('rectangular_annulus', sky=sky)
+    assert (rectangle.h_in
+            == rectangle.w_in * rectangle.h_out / rectangle.w_out)
+
+
+@pytest.mark.parametrize('stem', list(REQUIRED_SIZE_PARAMS))
+def test_sky_numeric_theta_rejected(stem):
+    """
+    Test that a sky aperture with a numeric ``theta`` fails schema
+    validation when read.
+
+    The sky apertures require an angular ``theta``, so a number is
+    excluded by the sky branch of the ``oneOf`` in the schema.
+    """
+    sizes = _sizes(REQUIRED_SIZE_PARAMS[stem], sky=True)
+    example = _aperture_yaml(stem, SKY_POSITIONS,
+                             {**sizes, 'theta': '0.5'})
+    with pytest.raises(ValidationError), \
+            asdf.open(yaml_to_asdf(f'aper: {example}')):
+        pass
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('stem', list(REQUIRED_SIZE_PARAMS))
+def test_pixel_angular_theta_accepted(stem):
+    """
+    Test that a pixel aperture with an angular ``theta`` is read
+    without error.
+
+    The pixel apertures accept either a number or an angular quantity,
+    so ``theta`` is constrained only in the sky branch of the ``oneOf``
+    in the schema.
+    """
+    sizes = _sizes(REQUIRED_SIZE_PARAMS[stem], sky=False)
+    example = _aperture_yaml(stem, PIXEL_POSITIONS,
+                             {**sizes, 'theta': _quantity(0.5)})
+    with asdf.open(yaml_to_asdf(f'aper: {example}')) as af:
+        assert af['aper'].theta == 0.5 * u.arcsec

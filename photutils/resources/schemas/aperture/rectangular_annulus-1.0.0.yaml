@@ -132,4 +132,39 @@ properties:
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
       - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
 required: [positions, w_in, w_out, h_out]
+# RectangularAnnulus and SkyRectangularAnnulus share a tag, so this
+# requires a file to use pixel values or angular quantities
+# consistently. ``theta`` is constrained only in the sky branch because
+# RectangularAnnulus also accepts an angular quantity.
+oneOf:
+  - title: Pixel coordinates
+    properties:
+      positions:
+        anyOf:
+          - type: array
+          - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+      w_in:
+        type: number
+      w_out:
+        type: number
+      h_in:
+        type: number
+      h_out:
+        type: number
+  - title: Sky coordinates
+    properties:
+      positions:
+        tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+      w_in:
+        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      w_out:
+        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      h_in:
+        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      h_out:
+        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      theta:
+        anyOf:
+          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
 ...

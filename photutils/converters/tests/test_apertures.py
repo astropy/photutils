@@ -28,11 +28,11 @@ aper_params = pytest.mark.parametrize('aperobj', [
     'circular_annulus_multi_pos',
     'polygon_aperture',
     'polygon_aperture_vertices',
-    'sky_polygon_aperture',
     'sky_circular_annulus',
     'sky_circular_aperture',
     'sky_elliptical_annulus',
     'sky_elliptical_aperture',
+    'sky_polygon_aperture',
     'sky_rectangular_aperture',
     'sky_rectangular_annulus',
 ], indirect=True)
