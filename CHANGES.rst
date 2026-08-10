@@ -168,6 +168,20 @@ Bug Fixes
     not input. Previously, an all-NaN error array was returned only
     for sources with no overlap with the data. [#2316]
 
+  - Fixed the elliptical and rectangular apertures (and their annulus
+    and sky variants) so that reassigning ``theta`` after construction
+    updates the aperture geometry. Previously, the rotation angle was
+    computed only once, so the bounding box, aperture mask, and
+    photometry silently continued to use the original angle. [#2348]
+
+  - Fixed ``BoundingBox`` so that it can be used in a `set` or as a
+    `dict` key. Defining ``__eq__`` without ``__hash__`` had left the
+    class unhashable. [#2348]
+
+  - Fixed ``PixelAperture.area_overlap`` so that it no longer modifies
+    the data of the aperture mask it creates when a ``mask`` is input.
+    [#2348]
+
 - ``photutils.detection``
 
   - Fixed ``DAOStarFinder`` and ``IRAFStarFinder`` ``orientation``
@@ -253,6 +267,24 @@ API Changes
   - The ``ApertureStats.ids`` attribute is now deprecated and will
     be removed in version 4.0. Use the ``ApertureStats.id`` attribute
     instead. [#2331]
+
+  - ``AperturePhotometry`` and ``ApertureStats`` now validate the
+    ``method``/``sum_method`` and ``subpixels`` keywords when the
+    object is created instead of when a measured attribute is first
+    accessed. [#2348]
+
+  - ``ApertureStats`` now stores the ``segmentation_image``,
+    ``labels``, and ``mask_method`` inputs as public attributes,
+    matching ``AperturePhotometry``. [#2348]
+
+  - The ``'aperture_photometry_args'`` metadata in the
+    ``AperturePhotometry.to_table()`` output now also records the
+    ``mask_method`` keyword. [#2348]
+
+  - ``BoundingBox.__eq__`` now returns `NotImplemented` instead of
+    raising a ``TypeError`` when the other object is not a
+    ``BoundingBox``, so that comparing a ``BoundingBox`` to another
+    type returns `False` rather than raising. [#2348]
 
 - ``photutils.detection``
 

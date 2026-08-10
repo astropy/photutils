@@ -220,32 +220,12 @@ class CircularAperture(PixelAperture):
 
         return patches
 
+    @_update_method_subpixels_docstring
     def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
         """
         Compute the overlap of the aperture on the pixel grid.
 
-        Parameters
-        ----------
-        edges : list of 4 1D `~numpy.ndarray`
-            The edges of the pixel grid in the form of
-            ``[x_edges, y_edges, x_centers, y_centers]``.
-
-        nx, ny : int
-            The number of pixels in the x and y directions.
-
-        use_exact : bool
-            Whether to use the exact method for calculating the overlap.
-
-        subpixels : int
-            The number of subpixels to use in each dimension for the
-            subpixel method.
-
-        Returns
-        -------
-        overlap : 2D `~numpy.ndarray`
-            The overlap of the aperture on the pixel grid. The values
-            will be between 0 and 1, where 0 means no overlap and 1
-            means full overlap.
+        <compute_overlap_docs>
         """
         return circular_overlap_grid(edges[0], edges[1], edges[2],
                                      edges[3], nx, ny, self.r,
@@ -420,32 +400,12 @@ class CircularAnnulus(PixelAperture):
 
         return patches
 
+    @_update_method_subpixels_docstring
     def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
         """
         Compute the overlap of the aperture on the pixel grid.
 
-        Parameters
-        ----------
-        edges : list of 4 1D `~numpy.ndarray`
-            The edges of the pixel grid in the form of
-            ``[x_edges, y_edges, x_centers, y_centers]``.
-
-        nx, ny : int
-            The number of pixels in the x and y directions.
-
-        use_exact : bool
-            Whether to use the exact method for calculating the overlap.
-
-        subpixels : int
-            The number of subpixels to use in each dimension for the
-            subpixel method.
-
-        Returns
-        -------
-        overlap : 2D `~numpy.ndarray`
-            The overlap of the aperture on the pixel grid. The values
-            will be between 0 and 1, where 0 means no overlap and 1
-            means full overlap.
+        <compute_overlap_docs>
         """
         overlap = circular_overlap_grid(edges[0], edges[1], edges[2],
                                         edges[3], nx, ny, self.r_out,

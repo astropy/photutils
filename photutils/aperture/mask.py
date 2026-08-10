@@ -104,8 +104,9 @@ class ApertureMask:
 
         Returns
         -------
-        result : `~numpy.ndarray`
-            A 2D array of the mask.
+        result : `~numpy.ndarray` or `None`
+            A 2D array of the mask. `None` is returned if there is no
+            overlap of the mask with the output image shape.
         """
         if len(shape) != 2:
             msg = 'input shape must have 2 elements'

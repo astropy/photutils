@@ -62,9 +62,30 @@ def test_bounding_box_eq():
     assert bbox != BoundingBox(1, 10, 9, 20)
     assert bbox != BoundingBox(1, 10, 2, 99)
 
-    match = 'Can compare BoundingBox only to another BoundingBox'
-    with pytest.raises(TypeError, match=match):
-        assert bbox == (1, 10, 2, 20)
+
+def test_bounding_box_eq_other_type():
+    """
+    Test that comparing to a non-BoundingBox returns False instead of
+    raising, so that ``!=`` and container membership work.
+    """
+    bbox = BoundingBox(1, 10, 2, 20)
+    assert bbox != (1, 10, 2, 20)
+    assert bbox != 3
+    assert not bbox == (1, 10, 2, 20)  # noqa: SIM201
+    assert bbox not in [(1, 10, 2, 20), 3]
+    assert bbox in [3, BoundingBox(1, 10, 2, 20)]
+
+
+def test_bounding_box_hash():
+    """
+    Test that a BoundingBox is hashable and that equal bounding boxes
+    hash equally.
+    """
+    bbox = BoundingBox(1, 10, 2, 20)
+    assert hash(bbox) == hash(BoundingBox(1, 10, 2, 20))
+    assert hash(bbox) != hash(BoundingBox(1, 10, 2, 21))
+    assert len({bbox, BoundingBox(1, 10, 2, 20)}) == 1
+    assert {bbox: 'value'}[BoundingBox(1, 10, 2, 20)] == 'value'
 
 
 def test_bounding_box_repr():

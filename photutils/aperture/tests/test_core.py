@@ -10,13 +10,41 @@ from astropy.coordinates import SkyCoord
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
-from photutils.aperture import (Aperture, CircularAperture, EllipticalAperture,
-                                SkyCircularAperture)
+from photutils.aperture import (Aperture, AperturePhotometry, CircularAperture,
+                                EllipticalAnnulus, EllipticalAperture,
+                                PolygonAperture, RectangularAnnulus,
+                                RectangularAperture, SkyCircularAperture,
+                                SkyEllipticalAnnulus, SkyEllipticalAperture,
+                                SkyRectangularAnnulus, SkyRectangularAperture)
 from photutils.aperture.core import (_aperture_metadata,
                                      _update_method_subpixels_docstring)
 
 POSITIONS = [(5, 5), (10, 10), (15, 15)]
 SCALAR_POS = (5, 5)
+SCALAR_POS_20 = (20.0, 20.0)
+TRIANGLE_OFFSETS = [(0.0, 1.0), (-1.0, -1.0), (1.0, -1.0)]
+SQUARE_OFFSETS = [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)]
+
+# Apertures with a ``theta`` rotation angle, with the size parameters
+# needed to construct them. The annuli pass their inner axis explicitly
+# so that no parameter is derived from another at construction, letting
+# the mutation tests below vary a single parameter in isolation.
+ROTATABLE_PIXEL_APERTURES = [
+    (EllipticalAperture, {'a': 6.0, 'b': 2.0}),
+    (EllipticalAnnulus, {'a_in': 3.0, 'a_out': 6.0, 'b_in': 1.5,
+                         'b_out': 4.0}),
+    (RectangularAperture, {'w': 9.0, 'h': 3.0}),
+    (RectangularAnnulus, {'w_in': 4.0, 'w_out': 9.0, 'h_in': 2.0,
+                          'h_out': 6.0}),
+]
+ROTATABLE_SKY_APERTURES = [
+    (SkyEllipticalAperture, {'a': 6.0 * u.arcsec, 'b': 2.0 * u.arcsec}),
+    (SkyEllipticalAnnulus, {'a_in': 3.0 * u.arcsec, 'a_out': 6.0 * u.arcsec,
+                            'b_out': 4.0 * u.arcsec}),
+    (SkyRectangularAperture, {'w': 9.0 * u.arcsec, 'h': 3.0 * u.arcsec}),
+    (SkyRectangularAnnulus, {'w_in': 4.0 * u.arcsec, 'w_out': 9.0 * u.arcsec,
+                             'h_out': 6.0 * u.arcsec}),
+]
 
 
 class MinimalAperture(Aperture):
@@ -35,6 +63,22 @@ class MinimalAperture(Aperture):
         Return a fixed single position.
         """
         return np.array([[5.0, 5.0]])
+
+
+class _CachedMaskAperture(CircularAperture):
+    """
+    A CircularAperture that caches and reuses its aperture mask, so that
+    any in-place modification of the mask data is observable.
+    """
+
+    def to_mask(self, method='exact', subpixels=5):
+        """
+        Return the cached aperture mask, computing it if needed.
+        """
+        if '_mask_cache' not in self.__dict__:
+            self.__dict__['_mask_cache'] = super().to_mask(
+                method=method, subpixels=subpixels)
+        return self.__dict__['_mask_cache']
 
 
 class RaisesOnCompare:
@@ -102,6 +146,40 @@ class TestAperture:
         aper2.__dict__['positions'] = RaisesOnCompare()
         assert aper1 != aper2
 
+    def test_eq_polygons_different_vertex_counts(self):
+        """
+        Test that __eq__ returns False (rather than propagating the
+        broadcasting ValueError) for polygons with different numbers of
+        vertices.
+        """
+        aper1 = PolygonAperture(SCALAR_POS, TRIANGLE_OFFSETS)
+        aper2 = PolygonAperture(SCALAR_POS, SQUARE_OFFSETS)
+        assert aper1 != aper2
+        assert aper2 != aper1
+        assert not aper1 == aper2  # noqa: SIM201
+
+    def test_eq_polygons_different_vertex_counts_containment(self):
+        """
+        Test that container operations that rely on __eq__ work for
+        polygons with different numbers of vertices.
+        """
+        aper1 = PolygonAperture(SCALAR_POS, TRIANGLE_OFFSETS)
+        aper2 = PolygonAperture(SCALAR_POS, SQUARE_OFFSETS)
+        apertures = [aper2, aper1]
+        assert aper1 in apertures
+        apertures.remove(aper1)
+        assert apertures == [aper2]
+
+    def test_eq_different_position_counts(self):
+        """
+        Test that __eq__ returns False (rather than propagating the
+        broadcasting ValueError) for apertures with different numbers of
+        positions.
+        """
+        aper1 = CircularAperture(POSITIONS, r=3)
+        aper2 = CircularAperture(POSITIONS[:2], r=3)
+        assert aper1 != aper2
+
 
 class TestPixelAperture:
     """
@@ -128,6 +206,34 @@ class TestPixelAperture:
         bbox = aper.bbox
         assert isinstance(bbox, list)
         assert len(bbox) == len(POSITIONS)
+
+    @pytest.mark.parametrize('subpixels', [True, False])
+    def test_to_mask_bool_subpixels(self, subpixels):
+        """
+        Test that a bool subpixels value is rejected. bool is a subclass
+        of int, so True would otherwise be silently used as subpixels=1.
+        """
+        aper = CircularAperture(SCALAR_POS, r=3)
+        match = 'subpixels must be a strictly positive integer'
+        with pytest.raises(ValueError, match=match):
+            aper.to_mask(method='subpixel', subpixels=subpixels)
+
+    def test_area_overlap_does_not_modify_mask(self):
+        """
+        Test that area_overlap does not modify the data of the aperture
+        mask it is given, which it would if a cached mask were reused.
+        """
+        data = np.ones((25, 25))
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[12, 12] = True
+
+        aper = _CachedMaskAperture((12, 12), r=5)
+        expected = aper.to_mask().data.copy()
+        area = aper.area_overlap(data, mask=mask)
+
+        assert_allclose(aper.to_mask().data, expected)
+        # The masked pixel is still excluded from the area
+        assert_allclose(area, aper.area_overlap(data) - 1.0)
 
 
 class TestPixelAperturePhotometry:
@@ -250,6 +356,89 @@ class TestPixelAperturePhotometry:
         flux, flux_err = result
         assert_allclose(flux, expected.flux)
         assert_allclose(flux_err, expected.flux_err)
+
+
+class TestApertureParameterMutation:
+    """
+    Tests that reassigning an aperture parameter after construction
+    gives results identical to a freshly constructed aperture.
+    """
+
+    @staticmethod
+    def _assert_same_geometry(aper, expected):
+        assert_allclose(aper._xy_extents, expected._xy_extents)
+        assert aper.bbox == expected.bbox
+        assert_allclose(aper.to_mask().data, expected.to_mask().data)
+        assert_allclose(aper.area, expected.area)
+
+        data = np.arange(41 * 41, dtype=float).reshape((41, 41))
+        assert_allclose(AperturePhotometry(data, aper).flux,
+                        AperturePhotometry(data, expected).flux)
+
+    @pytest.mark.parametrize(('aperture_class', 'params'),
+                             ROTATABLE_PIXEL_APERTURES)
+    def test_theta_reassignment(self, aperture_class, params):
+        """
+        Test that reassigning theta invalidates all of the cached
+        geometry, including the rotation angle in radians.
+        """
+        theta = 0.7
+        aper = aperture_class(SCALAR_POS_20, theta=0.0, **params)
+        # Cache the lazyproperties derived from the original theta
+        aper.to_mask()
+        aper.theta = theta
+
+        expected = aperture_class(SCALAR_POS_20, theta=theta, **params)
+        assert aper._theta_rad == expected._theta_rad
+        self._assert_same_geometry(aper, expected)
+
+    @pytest.mark.parametrize(('aperture_class', 'params'),
+                             ROTATABLE_PIXEL_APERTURES)
+    def test_size_reassignment(self, aperture_class, params):
+        """
+        Test that reassigning a size parameter invalidates all of the
+        cached geometry.
+        """
+        name, value = next(iter(params.items()))
+        aper = aperture_class(SCALAR_POS_20, theta=0.3, **params)
+        aper.to_mask()
+        setattr(aper, name, value * 0.5)
+
+        expected = aperture_class(SCALAR_POS_20, theta=0.3,
+                                  **{**params, name: value * 0.5})
+        self._assert_same_geometry(aper, expected)
+
+    @pytest.mark.parametrize(('aperture_class', 'params'),
+                             ROTATABLE_PIXEL_APERTURES)
+    def test_positions_reassignment(self, aperture_class, params):
+        """
+        Test that reassigning positions invalidates all of the cached
+        geometry.
+        """
+        aper = aperture_class(SCALAR_POS_20, theta=0.3, **params)
+        aper.to_mask()
+        aper.positions = (23.0, 17.0)
+
+        expected = aperture_class((23.0, 17.0), theta=0.3, **params)
+        self._assert_same_geometry(aper, expected)
+
+    @pytest.mark.parametrize(('aperture_class', 'params'),
+                             ROTATABLE_SKY_APERTURES)
+    def test_sky_theta_reassignment(self, aperture_class, params, tan_wcs):
+        """
+        Test that reassigning theta on a sky aperture invalidates the
+        cached rotation angle in radians.
+        """
+        theta = 35.0 * u.deg
+        position = SkyCoord(ra=10.0, dec=30.0, unit='deg')
+        aper = aperture_class(position, theta=0.0 * u.deg, **params)
+        # Cache the lazyproperties derived from the original theta
+        aper.to_pixel(tan_wcs)
+        aper.theta = theta
+
+        expected = aperture_class(position, theta=theta, **params)
+        assert aper._theta_rad == expected._theta_rad
+        assert aper.to_pixel(tan_wcs) == expected.to_pixel(tan_wcs)
 
 
 class TestApertureReprStr:

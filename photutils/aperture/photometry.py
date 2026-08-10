@@ -3,16 +3,15 @@
 Tools for performing aperture photometry.
 """
 
-import warnings
-
 import astropy.units as u
 import numpy as np
-from astropy.coordinates import SkyCoord
-from astropy.nddata import NDData, StdDevUncertainty
+from astropy.nddata import NDData
 from astropy.table import QTable
 from astropy.utils import lazyproperty
-from astropy.utils.exceptions import AstropyUserWarning
 
+from photutils.aperture._common import (SCALAR_COLLAPSE_TYPES,
+                                        collapse_scalar_value, unpack_nddata,
+                                        validate_array, validate_mask_method)
 from photutils.aperture._segmentation import process_segmentation_inputs
 from photutils.aperture.converters import region_to_aperture
 from photutils.aperture.core import (Aperture, SkyAperture, _aperture_metadata,
@@ -33,6 +32,15 @@ _DEPRECATED_COLUMNS: dict = {
     'xcenter': 'x_center',
     'ycenter': 'y_center',
 }
+
+
+# Public attributes that are never collapsed to a scalar for a scalar
+# instance because they are not per-position output values (see
+# ``AperturePhotometry.__getattribute__``). ``segmentation_image`` and
+# ``labels`` are the inputs echoed back to the user, and the others
+# describe the whole object.
+_SCALAR_EXCLUDE = frozenset({'default_columns', 'isscalar', 'labels',
+                             'n_positions', 'segmentation_image'})
 
 
 @_update_method_subpixels_docstring
@@ -143,6 +151,15 @@ class AperturePhotometry:
     instance can be safely shared across threads. Do not reassign its
     attributes after construction.
 
+    One caveat applies to apertures that are not supported by the
+    compiled batch code path (e.g., a `~photutils.aperture.Aperture`
+    subclass that overrides ``to_mask``). That path suppresses warnings
+    using `warnings.catch_warnings`, which mutates process-global
+    warning-filter state, so concurrent calls can transiently affect
+    the warning filters seen by other threads. On free-threaded Python
+    builds the warning filters are context-aware, so this does not
+    apply.
+
     Examples
     --------
     >>> import numpy as np
@@ -173,16 +190,21 @@ class AperturePhotometry:
                  labels=None, mask_method='none'):
 
         if isinstance(data, NDData):
-            data, error, mask, wcs = self._unpack_nddata(data, error, mask,
-                                                         wcs)
+            data, error, mask, wcs = unpack_nddata(data, error, mask, wcs)
 
         (data, error), unit = process_quantities(
             (data, error), ('data', 'error'))
-        self._data = self._validate_array(data, 'data', shape=False)
+        self._data = validate_array(data, 'data')
         self._data_unit = unit
-        self._error = self._validate_array(error, 'error')
-        self._mask = self._validate_array(mask, 'mask')
+        data_shape = self._data.shape
+        self._error = validate_array(error, 'error', shape=data_shape)
+        self._mask = validate_array(mask, 'mask', shape=data_shape)
         self._wcs = wcs
+
+        # Validate the mask-method keywords here so that an invalid
+        # value is reported at construction rather than at the first
+        # access of a measured attribute, far from its cause.
+        validate_mask_method(method, subpixels, method_name='method')
         self.method = method
         self.subpixels = subpixels
         self.mask_method = mask_method
@@ -237,7 +259,8 @@ class AperturePhotometry:
 
         # Define output table metadata
         self.meta = _get_meta()
-        calling_args = f"method='{method}', subpixels={subpixels}"
+        calling_args = (f"method='{method}', subpixels={subpixels}, "
+                        f"mask_method='{mask_method}'")
         self.meta['aperture_photometry_args'] = calling_args
         self.meta.update(aper_meta)
 
@@ -246,44 +269,6 @@ class AperturePhotometry:
             default_columns.append('sky_center')
         default_columns += ['flux', 'flux_err', 'area', 'flags']
         self.default_columns = default_columns
-
-    @staticmethod
-    def _unpack_nddata(data, error, mask, wcs):
-        nddata_attr = {'error': error, 'mask': mask, 'wcs': wcs}
-        for key, value in nddata_attr.items():
-            if value is not None:
-                msg = (f'The {key!r} keyword is ignored. Its value '
-                       'is obtained from the input NDData object.')
-                warnings.warn(msg, AstropyUserWarning)
-
-        mask = data.mask
-        wcs = data.wcs
-
-        if isinstance(data.uncertainty, StdDevUncertainty):
-            if data.uncertainty.unit is None:
-                error = data.uncertainty.array
-            else:
-                error = data.uncertainty.array * data.uncertainty.unit
-
-        if data.unit is not None:
-            data = u.Quantity(data.data, unit=data.unit)
-        else:
-            data = data.data
-
-        return data, error, mask, wcs
-
-    def _validate_array(self, array, name, *, ndim=2, shape=True):
-        if name == 'mask' and array is np.ma.nomask:
-            array = None
-        if array is not None:
-            array = np.asanyarray(array)
-            if array.ndim != ndim:
-                msg = f'{name} must be a {ndim}D array'
-                raise ValueError(msg)
-            if shape and array.shape != self._data.shape:
-                msg = f'data and {name} must have the same shape'
-                raise ValueError(msg)
-        return array
 
     def __repr__(self):
         return make_repr(self, self._repr_params)
@@ -295,15 +280,17 @@ class AperturePhotometry:
         # Collapse the leading position axis of the public array-valued
         # output attributes to a scalar when a single scalar aperture
         # position is input (e.g., ``CircularAperture((10, 20), r=5)``).
-        # These are the only public array-valued attributes, so the
-        # scalar conversion is applied centrally here instead of being
-        # repeated on each individual property.
+        # The scalar conversion is applied centrally here instead of
+        # being repeated on each individual property. Public attributes
+        # that are not per-position outputs are excluded, so that, for
+        # example, the input ``segmentation_image`` is not reduced to
+        # its first row.
         value = super().__getattribute__(name)
         if (not name.startswith('_')
-                and name not in ('isscalar', 'n_positions')
-                and isinstance(value, (np.ndarray, SkyCoord))
+                and name not in _SCALAR_EXCLUDE
+                and isinstance(value, SCALAR_COLLAPSE_TYPES)
                 and self.isscalar):
-            return value[0]
+            return collapse_scalar_value(value)
         return value
 
     def _array(self, name):
@@ -656,31 +643,16 @@ def aperture_photometry(data, apertures, error=None, mask=None,
     `~astropy.nddata.StdDevUncertainty` instance.
     """
     if isinstance(data, NDData):
-        nddata_attr = {'error': error, 'mask': mask, 'wcs': wcs}
-        for key, value in nddata_attr.items():
-            if value is not None:
-                msg = (f'The {key!r} keyword is ignored. Its value '
-                       'is obtained from the input NDData object.')
-                warnings.warn(msg, AstropyUserWarning)
-
-        mask = data.mask
-        wcs = data.wcs
-
-        if isinstance(data.uncertainty, StdDevUncertainty):
-            if data.uncertainty.unit is None:
-                error = data.uncertainty.array
-            else:
-                error = data.uncertainty.array * data.uncertainty.unit
-
-        if data.unit is not None:
-            data = u.Quantity(data.data, unit=data.unit)
-        else:
-            data = data.data
-
+        data, error, mask, wcs = unpack_nddata(data, error, mask, wcs)
         return aperture_photometry(data, apertures, error=error, mask=mask,
                                    method=method, subpixels=subpixels,
                                    wcs=wcs)
 
+    # The aperture-list handling, sky-to-pixel conversion, and
+    # position-equality checking below duplicate the equivalent code in
+    # AperturePhotometry.__init__. The duplication is intentional. This
+    # function is frozen and must not gain new behavior, so it must not
+    # be refactored to share the class logic.
     single_aperture = False
     if not isinstance(apertures, (list, tuple, np.ndarray)):
         single_aperture = True

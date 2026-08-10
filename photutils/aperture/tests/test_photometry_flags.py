@@ -11,7 +11,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 from photutils.aperture import (APERTURE_FLAGS, AperturePhotometry,
                                 ApertureStats, CircularAnnulus,
                                 CircularAperture, EllipticalAperture,
-                                RectangularAperture)
+                                PolygonAperture, RectangularAperture)
 from photutils.aperture.flags import _counts_to_flag_bits
 
 SHAPE = (25, 25)
@@ -111,6 +111,47 @@ def test_partial_overlap_clipped_bbox_only():
     # The exact-method footprint does extend outside
     flags = _flags(aper, data, method='exact')
     assert_array_equal(flags, [APERTURE_FLAGS.PARTIAL_OVERLAP])
+
+
+@pytest.mark.parametrize(('method', 'subpixels'), METHODS)
+def test_polygon_offcenter_no_partial_overlap(method, subpixels):
+    """
+    Test that a polygon lying entirely inside the data is not flagged as
+    partial_overlap even though its bounding box, which is symmetric
+    about ``positions``, is clipped by a data edge.
+    """
+    data = np.ones((12, 12))
+    # The centroid of this triangle is well off-center, so the symmetric
+    # bounding box extends outside the data on two sides
+    aper = PolygonAperture.from_vertices([(1.0, 1.0), (9.0, 1.0),
+                                          (9.0, 9.0)])
+    bbox = aper.bbox
+    assert bbox.ixmax > data.shape[1] or bbox.iymin < 0
+
+    result = AperturePhotometry(data, aper, method=method,
+                                subpixels=subpixels)
+    assert result.flags == 0
+    stats = ApertureStats(data, aper, sum_method=method,
+                          subpixels=subpixels)
+    assert stats.sum_flags == 0
+    assert stats.flags == 0
+
+
+@pytest.mark.parametrize(('method', 'subpixels'), METHODS)
+def test_polygon_partial_overlap(method, subpixels):
+    """
+    Test that a polygon extending past a data edge is still flagged as
+    partial_overlap.
+    """
+    data = np.ones((12, 12))
+    aper = PolygonAperture.from_vertices([(-2.0, 1.0), (9.0, 1.0),
+                                          (9.0, 9.0)])
+    result = AperturePhotometry(data, aper, method=method,
+                                subpixels=subpixels)
+    assert result.flags == APERTURE_FLAGS.PARTIAL_OVERLAP
+    stats = ApertureStats(data, aper, sum_method=method,
+                          subpixels=subpixels)
+    assert stats.sum_flags == APERTURE_FLAGS.PARTIAL_OVERLAP
 
 
 def test_no_pixels_tiny_aperture():

@@ -18,6 +18,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            ScalarAngleOrValue,
                                            SkyCoordPositions)
 from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _RotatableApertureMixin,
                                      _update_method_subpixels_docstring)
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
@@ -107,7 +108,7 @@ class RectangularMaskMixin:  # pragma: no cover
             w = self.w_out
             h = self.h_out
         else:
-            msg = 'Cannot determine the aperture radius'
+            msg = 'Cannot determine the aperture width and height'
             raise ValueError(msg)
 
         masks = []
@@ -185,7 +186,7 @@ def _calc_lower_left_positions(positions, width, height, theta_rad):
     return np.atleast_2d(positions) + np.array([xshift, yshift])
 
 
-class RectangularAperture(PixelAperture):
+class RectangularAperture(_RotatableApertureMixin, PixelAperture):
     """
     A rectangular aperture defined in pixel coordinates.
 
@@ -250,7 +251,6 @@ class RectangularAperture(PixelAperture):
         self.w = w
         self.h = h
         self.theta = theta
-        self._theta_rad = self.theta.to_value(u.radian)
 
     @lazyproperty
     def _xy_extents(self):
@@ -309,32 +309,12 @@ class RectangularAperture(PixelAperture):
 
         return patches
 
+    @_update_method_subpixels_docstring
     def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
         """
         Compute the overlap of the aperture on the pixel grid.
 
-        Parameters
-        ----------
-        edges : list of 4 1D `~numpy.ndarray`
-            The edges of the pixel grid in the form of
-            ``[x_edges, y_edges, x_centers, y_centers]``.
-
-        nx, ny : int
-            The number of pixels in the x and y directions.
-
-        use_exact : bool
-            Whether to use the exact method for calculating the overlap.
-
-        subpixels : int
-            The number of subpixels to use in each dimension for the
-            subpixel method.
-
-        Returns
-        -------
-        overlap : 2D `~numpy.ndarray`
-            The overlap of the aperture on the pixel grid. The values
-            will be between 0 and 1, where 0 means no overlap and 1
-            means full overlap.
+        <compute_overlap_docs>
         """
         return rectangular_overlap_grid(edges[0], edges[1], edges[2],
                                         edges[3], nx, ny, self.w,
@@ -397,7 +377,7 @@ class RectangularAperture(PixelAperture):
         return PolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
-class RectangularAnnulus(PixelAperture):
+class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
     r"""
     A rectangular annulus aperture defined in pixel coordinates.
 
@@ -496,7 +476,6 @@ class RectangularAnnulus(PixelAperture):
         self.h_in = h_in
 
         self.theta = theta
-        self._theta_rad = self.theta.to_value(u.radian)
 
     @lazyproperty
     def _xy_extents(self):
@@ -568,32 +547,12 @@ class RectangularAnnulus(PixelAperture):
 
         return patches
 
+    @_update_method_subpixels_docstring
     def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
         """
         Compute the overlap of the aperture on the pixel grid.
 
-        Parameters
-        ----------
-        edges : list of 4 1D `~numpy.ndarray`
-            The edges of the pixel grid in the form of
-            ``[x_edges, y_edges, x_centers, y_centers]``.
-
-        nx, ny : int
-            The number of pixels in the x and y directions.
-
-        use_exact : bool
-            Whether to use the exact method for calculating the overlap.
-
-        subpixels : int
-            The number of subpixels to use in each dimension for the
-            subpixel method.
-
-        Returns
-        -------
-        overlap : 2D `~numpy.ndarray`
-            The overlap of the aperture on the pixel grid. The values
-            will be between 0 and 1, where 0 means no overlap and 1
-            means full overlap.
+        <compute_overlap_docs>
         """
         overlap = rectangular_overlap_grid(edges[0], edges[1], edges[2],
                                            edges[3], nx, ny, self.w_out,
@@ -655,7 +614,7 @@ class RectangularAnnulus(PixelAperture):
                                      h_in=h_in, theta=sky_angle)
 
 
-class SkyRectangularAperture(SkyAperture):
+class SkyRectangularAperture(_RotatableApertureMixin, SkyAperture):
     """
     A rectangular aperture defined in sky coordinates.
 
@@ -703,7 +662,6 @@ class SkyRectangularAperture(SkyAperture):
         self.w = w
         self.h = h
         self.theta = theta
-        self._theta_rad = self.theta.to_value(u.radian)
 
     def to_pixel(self, wcs):
         """
@@ -766,7 +724,7 @@ class SkyRectangularAperture(SkyAperture):
         return SkyPolygonAperture._from_convex_offsets(self.positions, offsets)
 
 
-class SkyRectangularAnnulus(SkyAperture):
+class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
     r"""
     A rectangular annulus aperture defined in sky coordinates.
 
@@ -847,7 +805,6 @@ class SkyRectangularAnnulus(SkyAperture):
         self.h_in = h_in
 
         self.theta = theta
-        self._theta_rad = self.theta.to_value(u.radian)
 
     def to_pixel(self, wcs):
         """

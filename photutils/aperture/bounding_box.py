@@ -124,14 +124,22 @@ class BoundingBox:
         return cls(ixmin, ixmax, iymin, iymax)
 
     def __eq__(self, other):
+        # NotImplemented lets Python fall back to the reflected
+        # comparison and then to identity, so that comparing to a
+        # non-BoundingBox returns False instead of raising. This keeps
+        # ``!=``, ``in``, and ``list.remove`` usable.
         if not isinstance(other, BoundingBox):
-            msg = 'Can compare BoundingBox only to another BoundingBox.'
-            raise TypeError(msg)
+            return NotImplemented
 
         return ((self.ixmin == other.ixmin)
                 and (self.ixmax == other.ixmax)
                 and (self.iymin == other.iymin)
                 and (self.iymax == other.iymax))
+
+    def __hash__(self):
+        # Return a hash value for the BoundingBox using its four
+        # defining indices.
+        return hash((self.ixmin, self.ixmax, self.iymin, self.iymax))
 
     def __or__(self, other):
         return self.union(other)
@@ -345,9 +353,10 @@ class BoundingBox:
 
         Returns
         -------
-        result : `BoundingBox`
+        result : `BoundingBox` or `None`
             A `BoundingBox` representing the intersection of the input
-            `BoundingBox` with this one.
+            `BoundingBox` with this one. `None` is returned if the two
+            bounding boxes do not overlap.
         """
         if not isinstance(other, BoundingBox):
             msg = ('BoundingBox can be intersected only with another '

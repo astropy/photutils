@@ -501,7 +501,6 @@ y)``, which transposed the ePSF grid. Grids whose x and y fiducial
 positions are identical (such as the square NIRCam short-wavelength
 grids) are unaffected.
 
-
 ``StarFinderCatalogBase`` Representation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

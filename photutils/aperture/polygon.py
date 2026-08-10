@@ -11,7 +11,8 @@ from astropy.utils import lazyproperty
 from photutils.aperture._batch_photometry import SHAPE_POLYGON
 from photutils.aperture.attributes import (ApertureAttribute, PixelPositions,
                                            SkyCoordPositions)
-from photutils.aperture.core import PixelAperture, SkyAperture
+from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _update_method_subpixels_docstring)
 from photutils.geometry._polygon_overlap import polygon_overlap_grid
 
 __all__ = [
@@ -436,6 +437,11 @@ class PolygonAperture(PixelAperture):
         'The (n_vertices, 2) array of pixel offsets of the polygon '
         'vertices, measured relative to ``positions``.')
 
+    # The bounding box is symmetric about ``positions`` (see
+    # ``_xy_extents``), so it is not tight for a polygon whose vertices
+    # are not symmetric about ``positions``.
+    _bbox_is_tight = False
+
     def __init__(self, positions, vertex_offsets):
         self.positions = positions
         self.vertex_offsets = vertex_offsets
@@ -669,7 +675,7 @@ class PolygonAperture(PixelAperture):
         else:
             if inner_radius is None:
                 msg = ('inner_radius must be provided if both optimal_shape '
-                       'and horizontal_edges are False')
+                       'and collinear_edges are False')
                 raise ValueError(msg)
 
             inner_radius = float(inner_radius)
@@ -866,9 +872,19 @@ class PolygonAperture(PixelAperture):
         `~astropy.units.Quantity` in degrees.
 
         The angle is measured counter-clockwise from the ``+y``
-        axis to the first vertex, in the range ``[0, 360) deg``.
-        This convention matches the ``theta`` parameter of
+        axis to the first stored vertex, in the range ``[0, 360)
+        deg``. This convention matches the ``theta`` parameter of
         `~PolygonAperture.from_regular_polygon`.
+
+        Note that the rotation of a regular polygon with ``n``
+        vertices is defined only modulo ``360 / n`` degrees, because
+        rotating it by its exterior angle reproduces the same shape.
+        The reported value therefore depends on which vertex is stored
+        first, which is not necessarily the first vertex the user
+        input: clockwise ``vertex_offsets`` are reversed when they are
+        normalized to counter-clockwise order. For example, a square
+        specified clockwise reports ``90 deg`` where the identical
+        square specified counter-clockwise reports ``0 deg``.
 
         This attribute is only defined for regular polygons. Accessing
         it for a non-regular polygon raises `ValueError`.
@@ -876,32 +892,12 @@ class PolygonAperture(PixelAperture):
         self._check_regular('theta')
         return self._regular_geometry.theta
 
+    @_update_method_subpixels_docstring
     def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
         """
         Compute the overlap of the aperture on the pixel grid.
 
-        Parameters
-        ----------
-        edges : list of 4 1D `~numpy.ndarray`
-            The edges of the pixel grid in the form of
-            ``[x_edges, y_edges, x_centers, y_centers]``.
-
-        nx, ny : int
-            The number of pixels in the x and y directions.
-
-        use_exact : bool
-            Whether to use the exact method for calculating the overlap.
-
-        subpixels : int
-            The number of subpixels to use in each dimension for the
-            subpixel method.
-
-        Returns
-        -------
-        overlap : 2D `~numpy.ndarray`
-            The overlap of the aperture on the pixel grid. The values
-            will be between 0 and 1, where 0 means no overlap and 1
-            means full overlap.
+        <compute_overlap_docs>
         """
         verts_x = np.ascontiguousarray(self.vertex_offsets[:, 0])
         verts_y = np.ascontiguousarray(self.vertex_offsets[:, 1])
@@ -1289,12 +1285,20 @@ class SkyPolygonAperture(SkyAperture):
         The rotation angle of the regular polygon as an angular
         `~astropy.units.Quantity` in degrees.
 
-        The angle is measured counter-clockwise from the ``+lat``
-        axis on the local tangent plane to the first vertex, in
+        The angle is measured counter-clockwise from the ``+lat`` axis
+        on the local tangent plane to the first stored vertex, in
         the range ``[0, 360) deg``. This assumes a right-handed
         coordinate system (e.g., standard celestial coordinates).
         This convention matches the ``theta`` parameter of
         `~SkyPolygonAperture.from_regular_polygon`.
+
+        Note that the rotation of a regular polygon with ``n``
+        vertices is defined only modulo ``360 / n`` degrees, because
+        rotating it by its exterior angle reproduces the same shape.
+        The reported value therefore depends on which vertex is stored
+        first, which is not necessarily the first vertex the user
+        input: clockwise ``vertex_offsets`` are reversed when they are
+        normalized to counter-clockwise order.
 
         This attribute is only defined for regular polygons. Accessing
         it for a non-regular polygon raises `ValueError`.

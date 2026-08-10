@@ -383,6 +383,18 @@ class TestApertureStats:
         tbl = apstats.to_table()
         assert len(tbl) == 1
 
+    def test_select_ids_scalar(self):
+        """
+        Test that select_id(s) on a scalar object raises the same clear
+        TypeError as indexing it.
+        """
+        apstats = self.apstats1[0]
+        match = "A scalar 'ApertureStats' object cannot be indexed"
+        with pytest.raises(TypeError, match=match):
+            apstats.select_ids(1)
+        with pytest.raises(TypeError, match=match):
+            apstats.select_id(1)
+
     @pytest.mark.parametrize('cached', ['moments', 'moments_central',
                                         'cutout_centroid', 'centroid',
                                         'covariance_eigvals', 'data_cutout',
@@ -545,7 +557,7 @@ class TestApertureStats:
         if with_units:
             assert apstats1.sum.unit == unit
 
-        match = 'keyword will be ignored'
+        match = 'keyword is ignored. Its value is obtained from the input'
         nddata = NDData(self.data, uncertainty=uncertainty, mask=mask,
                         wcs=self.wcs, unit=unit)
         with pytest.warns(AstropyUserWarning, match=match):

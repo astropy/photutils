@@ -11,6 +11,7 @@ __all__ = [
     'ApertureAttribute',
     'PixelPositions',
     'PositiveScalar',
+    'PositiveScalarAngle',
     'ScalarAngle',
     'ScalarAngleOrValue',
     'SkyCoordPositions',
@@ -156,25 +157,15 @@ class ScalarAngle(ApertureAttribute):
             raise TypeError(msg)
 
 
-class PositiveScalarAngle(ApertureAttribute):
+class PositiveScalarAngle(ScalarAngle):
     """
-    Check that value is a positive scalar angle, either as a
-    `~astropy.coordinates.Angle` or `~astropy.units.Quantity` with
+    Check that value is a strictly positive (> 0) scalar angle, either
+    as a `~astropy.coordinates.Angle` or `~astropy.units.Quantity` with
     angular units.
     """
 
     def _validate(self, value):
-        if isinstance(value, u.Quantity):
-            if not value.isscalar:
-                msg = f'{self.name!r} must be a scalar'
-                raise ValueError(msg)
-
-            if value.unit.physical_type != 'angle':
-                msg = f'{self.name!r} must have angular units'
-                raise ValueError(msg)
-        else:
-            msg = f'{self.name!r} must be a scalar angle'
-            raise TypeError(msg)
+        super()._validate(value)
 
         if value <= 0:
             msg = f'{self.name!r} must be greater than zero'

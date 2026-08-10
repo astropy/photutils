@@ -11,7 +11,7 @@ import pytest
 from astropy.coordinates import SkyCoord
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.utils.exceptions import AstropyUserWarning
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAperture)
@@ -201,6 +201,24 @@ class TestNDDataInput:
         match = 'is obtained from the input NDData object'
         with pytest.warns(AstropyUserWarning, match=match):
             AperturePhotometry(nddata, aper, mask=mask)
+
+    def test_nddata_error_keyword_is_ignored(self, data):
+        """
+        Test that the ``error`` keyword is ignored, as warned, when the
+        NDData object has no StdDevUncertainty, matching the handling of
+        the ``mask`` and ``wcs`` keywords.
+        """
+        nddata = NDData(data)
+        aper = CircularAperture((150, 25), 8)
+        error = np.sqrt(np.abs(data))
+        match = 'is obtained from the input NDData object'
+        with pytest.warns(AstropyUserWarning, match=match):
+            phot = AperturePhotometry(nddata, aper, error=error)
+        assert np.isnan(phot.flux_err)
+
+        with pytest.warns(AstropyUserWarning, match=match):
+            stats = ApertureStats(nddata, aper, error=error)
+        assert np.isnan(stats.sum_err)
 
     def test_nddata_units(self, data):
         nddata = NDData(data * u.Jy)
@@ -463,6 +481,27 @@ class TestScalarBehavior:
         phot = AperturePhotometry(data, aper, mask=mask)
         assert phot.decode_flags() == [['masked_pixels']]
 
+    @pytest.mark.parametrize('use_segm_obj', [True, False])
+    def test_scalar_input_attributes_not_collapsed(self, use_segm_obj):
+        """
+        Test that the ``segmentation_image`` and ``labels`` inputs are
+        echoed back unchanged for a scalar instance, i.e., that they are
+        not treated as per-position output arrays.
+        """
+        data, segm = make_scene()
+        segm_in = SegmentationImage(segm) if use_segm_obj else segm
+        aper = CircularAperture((21, 21), r=8)
+        phot = AperturePhotometry(data, aper, segmentation_image=segm_in,
+                                  labels=np.array([1]), mask_method='mask')
+        assert phot.isscalar is True
+        assert phot.segmentation_image is segm_in
+        assert_equal(phot.labels, np.array([1]))
+
+        # The photometry itself is unaffected
+        ref = AperturePhotometry(data, aper,
+                                 mask=(segm > 0) & (segm != 1))
+        assert_allclose(phot.flux, ref.flux)
+
     def test_isscalar_matches_aperture_stats(self, data):
         scalar_aper = CircularAperture((150, 25), r=8)
         array_aper = CircularAperture([(150, 25)], r=8)
@@ -610,6 +649,97 @@ class TestInputValidation:
         aper = CircularAperture((5, 5), r=3)
         with pytest.raises(ValueError, match='must all have the same units'):
             AperturePhotometry(data, aper, error=np.ones((11, 11)))
+
+    @pytest.mark.parametrize('method', ['exact ', 'Exact', 'invalid'])
+    def test_invalid_method_at_init(self, method):
+        """
+        Test that an invalid method is reported at construction rather
+        than at the first access of a measured attribute.
+        """
+        data = np.ones((11, 11))
+        aper = CircularAperture((5, 5), r=3)
+        with pytest.raises(ValueError, match=f'Invalid method: {method!r}'):
+            AperturePhotometry(data, aper, method=method)
+        with pytest.raises(ValueError,
+                           match=f'Invalid sum_method: {method!r}'):
+            ApertureStats(data, aper, sum_method=method)
+
+    @pytest.mark.parametrize('subpixels', [0, -1, 2.5, True])
+    def test_invalid_subpixels_at_init(self, subpixels):
+        """
+        Test that an invalid subpixels value is reported at
+        construction.
+        """
+        data = np.ones((11, 11))
+        aper = CircularAperture((5, 5), r=3)
+        match = 'subpixels must be a strictly positive integer'
+        with pytest.raises(ValueError, match=match):
+            AperturePhotometry(data, aper, method='subpixel',
+                               subpixels=subpixels)
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data, aper, sum_method='subpixel',
+                          subpixels=subpixels)
+
+    def test_invalid_mask_method_at_init(self):
+        data = np.ones((11, 11))
+        aper = CircularAperture((5, 5), r=3)
+        match = 'mask_method must be one of'
+        with pytest.raises(ValueError, match=match):
+            AperturePhotometry(data, aper, mask_method='invalid')
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data, aper, mask_method='invalid')
+
+
+class TestSegmentationAttributes:
+    """
+    Both classes echo the segmentation-masking inputs back as public
+    attributes.
+    """
+
+    @pytest.mark.parametrize('cls', [AperturePhotometry, ApertureStats])
+    def test_defaults(self, cls):
+        data = np.ones((11, 11))
+        aper = CircularAperture((5, 5), r=3)
+        obj = cls(data, aper)
+        assert obj.segmentation_image is None
+        assert obj.labels is None
+        assert obj.mask_method == 'none'
+
+    @pytest.mark.parametrize('cls', [AperturePhotometry, ApertureStats])
+    def test_inputs_echoed(self, cls):
+        data, segm = make_scene()
+        aper = CircularAperture([(21, 21)], r=8)
+        obj = cls(data, aper, segmentation_image=segm, labels=[1],
+                  mask_method='mask')
+        assert obj.segmentation_image is segm
+        assert_equal(obj.labels, [1])
+        assert obj.mask_method == 'mask'
+
+    def test_stats_slicing_slices_labels(self):
+        """
+        Test that slicing an ApertureStats also slices the per-aperture
+        ``labels``, so the sliced object reports the labels of the
+        apertures it contains.
+        """
+        data, segm = make_scene()
+        aper = CircularAperture([(21, 21), (21, 21)], r=8)
+        stats = ApertureStats(data, aper, segmentation_image=segm,
+                              labels=[1, 2], mask_method='mask')
+        assert_equal(stats.labels, [1, 2])
+        assert_equal(stats[1:].labels, [2])
+        assert stats[0].labels == 1
+        assert stats[0].mask_method == 'mask'
+        assert stats[0].segmentation_image is segm
+
+    def test_photometry_meta_records_mask_method(self):
+        data, segm = make_scene()
+        aper = CircularAperture([(21, 21)], r=8)
+        phot = AperturePhotometry(data, aper, segmentation_image=segm,
+                                  labels=[1], mask_method='mask')
+        args = phot.to_table().meta['aperture_photometry_args']
+        assert "method='exact'" in args
+        assert 'subpixels=5' in args
+        assert "mask_method='mask'" in args
 
 
 class TestReprAndImmutability:

@@ -25,8 +25,11 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_UNCORRECTED,
                                                   FLAG_COL_VALID,
                                                   batch_aperture_sums)
-from photutils.aperture._segmentation import (SEG_METHOD_CODES,
-                                              make_segmentation_exclusion,
+from photutils.aperture._common import (batch_inputs_supported,
+                                        batch_mask_plane,
+                                        batch_segmentation_arrays,
+                                        validate_mask_method)
+from photutils.aperture._segmentation import (make_segmentation_exclusion,
                                               process_segmentation_inputs)
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.flags import APERTURE_FLAGS, _counts_to_flag_bits
@@ -115,6 +118,30 @@ mask_method : {'none', 'mask', 'source_only', 'correct'}, optional
       values of the pixels mirrored across the aperture center. If a
       mirror pixel is unavailable, the pixel is excluded."""
 
+_COMPUTE_OVERLAP_DOC = """\
+Parameters
+----------
+edges : tuple of float
+    The ``(xmin, xmax, ymin, ymax)`` pixel edges of the aperture
+    bounding box, recentered at the origin.
+
+nx, ny : int
+    The number of pixels in the x and y directions.
+
+use_exact : int
+    Whether to compute the exact overlap area (1) or to use
+    subpixel sampling (0).
+
+subpixels : int
+    The number of subpixels in each dimension used when
+    ``use_exact`` is 0.
+
+Returns
+-------
+overlap : 2D `~numpy.ndarray`
+    The fraction of each pixel that overlaps the aperture. The
+    values are between 0 (no overlap) and 1 (full overlap)."""
+
 # Bullet list of the aperture quality flags, generated from the central
 # flag registry, used in docstrings via the ``flag_descriptions``
 # placeholder.
@@ -129,6 +156,7 @@ _DOC_PLACEHOLDERS = {
     'subpixels_description': _SUBPIXELS_DOC,
     'segmentation_descriptions': _SEGMENTATION_DOC,
     'flag_descriptions': _FLAG_DESCRIPTIONS_DOC,
+    'compute_overlap_docs': _COMPUTE_OVERLAP_DOC,
 }
 
 _DOC_PLACEHOLDER_RE = re.compile(
@@ -153,6 +181,12 @@ def _update_method_subpixels_docstring(obj):
       custom name and introduction.
     * ``<subpixels_description>`` : only the ``subpixels`` parameter
       description.
+    * ``<segmentation_descriptions>`` : the ``segmentation_image``,
+      ``labels``, and ``mask_method`` parameter descriptions.
+    * ``<flag_descriptions>`` : the bullet list of aperture quality
+      flags.
+    * ``<compute_overlap_docs>`` : the Parameters and Returns sections
+      of the ``_compute_overlap`` method.
 
     Parameters
     ----------
@@ -296,10 +330,14 @@ class Aperture(metaclass=abc.ABCMeta):
                 # np.any is used for SkyCoord array comparisons
                 if np.any(getattr(self, param) != getattr(other, param)):
                     return False
-        except TypeError:
-            # TypeError is raised from SkyCoord comparison when they do
-            # not have equivalent frames. Here return False instead of
-            # the TypeError.
+        except (TypeError, ValueError):
+            # A TypeError is raised by a SkyCoord comparison when
+            # the two coordinates do not have equivalent frames. A
+            # ValueError is raised by an array comparison when the two
+            # parameters do not broadcast together (e.g., polygons with
+            # different numbers of vertices). Both mean the apertures
+            # are not equal, so return False instead of propagating the
+            # exception.
             return False
 
         return True
@@ -360,10 +398,35 @@ class Aperture(metaclass=abc.ABCMeta):
         return self.shape == ()
 
 
+class _RotatableApertureMixin:
+    """
+    Mixin class for apertures that have a rotation angle ``theta``.
+    """
+
+    @lazyproperty
+    def _theta_rad(self):
+        """
+        The rotation angle in radians.
+
+        This is a lazyproperty so that it is invalidated together with
+        the other lazyproperties when ``theta`` is reassigned.
+        """
+        return self.theta.to_value(u.radian)
+
+
 class PixelAperture(Aperture):
     """
     Abstract base class for apertures defined in pixel coordinates.
     """
+
+    # Whether the minimal bounding box is tight, i.e., whether the
+    # aperture is tangent to each side of its bounding box. This holds
+    # for any aperture whose ``_xy_extents`` are the true half-extents
+    # of its shape, which is the case for all of the built-in apertures
+    # except `~photutils.aperture.PolygonAperture` (whose extents are
+    # symmetric about ``positions``, while the polygon itself need not
+    # be). See `_resolve_outside_weights`.
+    _bbox_is_tight = True
 
     @lazyproperty
     def _default_patch_properties(self):
@@ -399,14 +462,7 @@ class PixelAperture(Aperture):
         subpixels : int
             The number of subpixels for subpixel method.
         """
-        if method not in ('center', 'subpixel', 'exact'):
-            msg = f'Invalid mask method: {method}'
-            raise ValueError(msg)
-
-        if ((method == 'subpixel')
-                and (not isinstance(subpixels, int) or subpixels <= 0)):
-            msg = 'subpixels must be a strictly positive integer'
-            raise ValueError(msg)
+        validate_mask_method(method, subpixels)
 
         if method == 'center':
             use_exact = 0
@@ -563,6 +619,9 @@ class PixelAperture(Aperture):
             else:
                 aper_weights = apermask.data[slc_small]
                 if mask is not None:
+                    # Copy aper_weights before modifying it, because the
+                    # slice above is a view.
+                    aper_weights = aper_weights.copy()
                     aper_weights[mask[slc_large]] = 0.0
                 area = np.sum(aper_weights)
 
@@ -608,29 +667,12 @@ class PixelAperture(Aperture):
         return masks
 
     @abc.abstractmethod
+    @_update_method_subpixels_docstring
     def _compute_overlap(self, edges, nx, ny, use_exact, subpixels):
         """
         Compute the overlap of the aperture for a single position.
 
-        Parameters
-        ----------
-        edges : tuple of float
-            The ``(xmin, xmax, ymin, ymax)`` pixel edges centered at
-            the origin.
-
-        nx, ny : int
-            The number of pixels in x and y.
-
-        use_exact : int
-            Whether to use exact method (1) or not (0).
-
-        subpixels : int
-            The number of subpixels for subpixel method.
-
-        Returns
-        -------
-        overlap : 2D `~numpy.ndarray`
-            The overlap array.
+        <compute_overlap_docs>
         """
 
     def _mask_photometry(self, data, *, error, mask, method, subpixels,
@@ -871,49 +913,12 @@ class PixelAperture(Aperture):
         if spec is None:
             return None
 
-        def _supported(arr):
-            return (type(arr) is np.ndarray and arr.dtype.kind in 'fiub'
-                    and arr.dtype.itemsize <= 8)
-
-        if not _supported(data) or (error is not None
-                                    and not _supported(error)):
+        if not batch_inputs_supported(data, error, mask):
             return None
 
-        if mask is not None and (not isinstance(mask, np.ndarray)
-                                 or mask.dtype != bool
-                                 or mask.shape != data.shape):
-            return None
-
-        # Build a uint8 mask plane for the batch kernels. Bit 1 (value
-        # 1) marks input-masked pixels and bit 2 (value 2) marks
-        # non-finite ``data`` pixels; any nonzero value excludes the
-        # pixel. Folding the non-finite pixels into the plane lets
-        # the class exclude them from the sum, area, and valid-pixel
-        # count while still flagging them as ``non_finite_data``
-        # (not ``masked_pixels``), matching `ApertureStats`. When
-        # ``mask_nonfinite`` is `False` (the legacy function), the
-        # non-finite pixels are left in the data so they corrupt the sum
-        # (the 3.0.0 behavior).
-        plane = None
-        if mask is not None:
-            plane = mask.astype(np.uint8)
-        if mask_nonfinite and data.dtype.kind == 'f':
-            nonfinite = ~np.isfinite(data)
-            if nonfinite.any():
-                if plane is None:
-                    plane = np.zeros(data.shape, dtype=np.uint8)
-                    plane[nonfinite] = 2
-                else:
-                    plane[nonfinite & (plane == 0)] = 2
-        mask = None if plane is None else np.ascontiguousarray(plane)
-
-        seg_arr = None
-        labels_arr = None
-        seg_code = 0
-        if segmentation is not None and mask_method != 'none':
-            seg_arr = np.ascontiguousarray(segmentation, dtype=np.intp)
-            labels_arr = np.ascontiguousarray(labels, dtype=np.intp)
-            seg_code = SEG_METHOD_CODES[mask_method]
+        mask = batch_mask_plane(data, mask, mask_nonfinite=mask_nonfinite)
+        seg_arr, labels_arr, seg_code = batch_segmentation_arrays(
+            segmentation, labels, mask_method)
 
         use_exact, subpixels = self._translate_mask_method(method, subpixels)
 
@@ -1145,13 +1150,17 @@ class PixelAperture(Aperture):
             Whether each aperture has one or more pixels with nonzero
             aperture weight outside the data.
         """
-        # For the 'exact' method the minimal bounding box is tight (the
-        # aperture is tangent to each bbox side), so a bbox that is
-        # clipped by a data edge always leaves a positive-area sliver of
-        # the aperture outside the data. The precise outside-weight test
-        # therefore agrees exactly with the bbox-clipped candidates, and
-        # no per-source aperture masks need to be built.
-        if method == 'exact':
+        # For the 'exact' method, if the bounding box is tight (the
+        # aperture is tangent to each bbox side), then a bbox that
+        # is clipped by a data edge always leaves a positive-area
+        # portion of the aperture outside the data. The precise
+        # outside-weight test therefore agrees exactly with the
+        # bbox-clipped candidates, and no per-source aperture masks
+        # need to be built. An aperture with a non-tight bounding box
+        # (e.g., an off-center polygon) can have a clipped bbox with no
+        # aperture area outside the data, so it must use the precise
+        # test below.
+        if method == 'exact' and self._bbox_is_tight:
             return candidates.copy()
 
         w_out = np.zeros(candidates.shape, dtype=bool)

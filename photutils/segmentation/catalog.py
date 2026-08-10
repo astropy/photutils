@@ -2842,8 +2842,8 @@ class SourceCatalog:
     @use_detcat
     def ellipticity(self):
         r"""
-        1.0 minus the ratio of the lengths of the semimajor and
-        semiminor axes.
+        1.0 minus the ratio of the lengths of the semiminor and
+        semimajor axes.
 
         .. math::
 
