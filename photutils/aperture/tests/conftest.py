@@ -3,10 +3,14 @@
 Shared pytest fixtures for the aperture tests.
 """
 
+import numpy as np
 import pytest
 from astropy.wcs import WCS
 
 from photutils.datasets import make_4gaussians_image
+
+# The shape of the small uniform image used by the quality-flag tests
+UNIT_SHAPE = (25, 25)
 
 
 @pytest.fixture(name='data')
@@ -18,6 +22,26 @@ def fixture_data():
     tests.
     """
     return make_4gaussians_image()
+
+
+@pytest.fixture(name='unit_data')
+def fixture_unit_data():
+    """
+    A small uniform image of ones.
+
+    A fresh array is returned for each test, so it may be modified.
+    """
+    return np.ones(UNIT_SHAPE)
+
+
+@pytest.fixture(name='unit_mask')
+def fixture_unit_mask():
+    """
+    An all-`False` boolean mask matching the ``unit_data`` shape.
+
+    A fresh array is returned for each test, so it may be modified.
+    """
+    return np.zeros(UNIT_SHAPE, dtype=bool)
 
 
 @pytest.fixture

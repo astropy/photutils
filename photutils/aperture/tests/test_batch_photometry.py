@@ -69,169 +69,6 @@ def assert_batch_matches_legacy(aperture, data, *, error=None, mask=None,
                         equal_nan=True)
 
 
-@pytest.mark.parametrize('aperture', APERTURES)
-@pytest.mark.parametrize(('method', 'subpixels'), METHODS)
-def test_matches_legacy(aperture, method, subpixels):
-    """
-    Test that the batch photometry driver gives results identical to the
-    legacy mask-based code path for the given inputs.
-    """
-    assert_batch_matches_legacy(aperture, DATA, method=method,
-                                subpixels=subpixels)
-
-
-@pytest.mark.parametrize('aperture', APERTURES)
-@pytest.mark.parametrize(('method', 'subpixels'), METHODS)
-def test_matches_legacy_error_mask(aperture, method, subpixels):
-    """
-    Test that the batch photometry driver gives results identical to the
-    legacy mask-based code path for the given inputs, including error
-    and mask.
-    """
-    assert_batch_matches_legacy(aperture, DATA, error=ERROR, mask=MASK,
-                                method=method, subpixels=subpixels)
-
-
-@pytest.mark.parametrize('aperture', APERTURES)
-def test_matches_legacy_nan_data(aperture):
-    """
-    Test that the batch photometry driver gives results identical to the
-    legacy mask-based code path for data containing NaN values.
-    """
-    assert_batch_matches_legacy(aperture, DATA_NAN, error=ERROR)
-
-
-@pytest.mark.parametrize('dtype', ['int32', 'uint16', 'float32', 'bool'])
-def test_data_dtypes(dtype):
-    """
-    Test that the batch photometry driver gives results identical to the
-    legacy mask-based code path for different data dtypes, including
-    bool.
-    """
-    rtol = 1e-5 if dtype == 'float32' else 1e-12
-    aperture = CircularAperture(POSITIONS, r=5.5)
-    data = (DATA > 100.0) if dtype == 'bool' else DATA.astype(dtype)
-    batch = aperture._batch_photometry(data, error=None, mask=None,
-                                       method='exact', subpixels=5)
-    legacy = aperture._mask_photometry(data, error=None, mask=None,
-                                       method='exact', subpixels=5)
-    assert batch is not None
-    assert_allclose(batch[0], legacy[0], rtol=rtol, equal_nan=True)
-
-
-@pytest.mark.parametrize(('method', 'subpixels'), METHODS)
-def test_readonly_arrays(method, subpixels):
-    """
-    Test that read-only (non-writeable) data, error, and mask arrays are
-    accepted by the batch photometry driver and give results identical
-    to writeable arrays.
-
-    The batch Cython driver buffers the data, error, and positions into
-    ``const`` typed memoryviews so that read-only arrays do not raise a
-    ``ValueError``.
-    """
-    aperture = CircularAperture(POSITIONS, r=5.5)
-    data = DATA.copy()
-    error = ERROR.copy()
-    mask = MASK.copy()
-    for arr in (data, error, mask):
-        arr.setflags(write=False)
-
-    batch = aperture._batch_photometry(data, error=error, mask=mask,
-                                       method=method, subpixels=subpixels)
-    assert batch is not None
-
-    expected = aperture._batch_photometry(DATA, error=ERROR, mask=MASK,
-                                          method=method,
-                                          subpixels=subpixels)
-    for batch_arr, exp_arr in zip(batch, expected, strict=True):
-        assert_allclose(batch_arr, exp_arr, rtol=1e-12, atol=0,
-                        equal_nan=True)
-
-
-def test_readonly_data_photometry():
-    """
-    Test that ``_photometry`` works with read-only data arrays.
-    """
-    data = np.ones((10, 10))
-    data.setflags(write=False)
-    aperture = CircularAperture((4.5, 4.5), r=4.5)
-    results = aperture._photometry(data, method='exact')
-
-    expected = aperture._photometry(np.ones((10, 10)), method='exact')
-    assert_allclose(results.flux, expected.flux, rtol=1e-12)
-
-
-def test_scalar_position():
-    """
-    Test that the batch photometry driver gives results identical to the
-    legacy mask-based code path for a single scalar position.
-    """
-    aperture = CircularAperture((70.0, 80.0), r=5.5)
-    assert_batch_matches_legacy(aperture, DATA, error=ERROR)
-
-    aperture = EllipticalAperture((70.0, 80.0), 10.124, 5.073)
-    assert_batch_matches_legacy(aperture, DATA, error=ERROR)
-
-
-def test_units():
-    """
-    Test that the batch photometry driver gives results with the same
-    units as the input data and error, and that the values match the
-    legacy code path.
-    """
-    unit = u.Jy
-    aperture = CircularAperture(POSITIONS, r=5.5)
-    results = aperture._photometry(DATA << unit, error=ERROR << unit)
-    assert results.flux.unit == unit
-    assert results.flux_err.unit == unit
-    results2 = aperture._photometry(DATA, error=ERROR)
-    assert_allclose(results.flux.value, results2.flux, equal_nan=True)
-    assert_allclose(results.flux_err.value, results2.flux_err, equal_nan=True)
-
-
-def test_no_overlap_nan_and_err_shape():
-    """
-    Test that sources with no overlap with the data give NaN sums.
-
-    Also, test that the error array always has the same shape as the
-    sums array, filled with NaN when error is not input.
-    """
-    aperture = CircularAperture(POSITIONS, r=5.5)
-    n_outside = 3
-
-    sums, errs, _area, *_ = aperture._batch_photometry(
-        DATA, error=None, mask=None, method='exact', subpixels=5)
-    assert np.isnan(sums).sum() == n_outside
-    assert errs.shape == sums.shape
-    assert np.all(np.isnan(errs))
-
-    sums, errs, _area, *_ = aperture._batch_photometry(
-        DATA, error=ERROR, mask=None, method='exact', subpixels=5)
-    assert errs.shape == sums.shape
-    assert np.isnan(errs).sum() == n_outside
-
-
-@pytest.mark.parametrize('aperture', [
-    CircularAperture(POSITIONS, r=5.5),
-    PolygonAperture.from_regular_polygon(POSITIONS, 6, radius=5.5),
-])
-def test_photometry_no_error_flux_err_shape(aperture):
-    """
-    Test that `photometry` returns a ``flux_err`` array that always
-    has the same length as ``flux`` and is filled with NaN when
-    ``error`` is not input, both for sources with and without overlap.
-
-    ``CircularAperture`` exercises the batch code path and
-    ``PolygonAperture`` exercises the mask-based code path.
-    """
-    result = aperture._photometry(DATA, error=None)
-    assert result.flux_err.shape == result.flux.shape
-    assert np.any(np.isnan(result.flux))
-    assert np.any(~np.isnan(result.flux))
-    assert np.all(np.isnan(result.flux_err))
-
-
 class _ErrorSubclass(np.ndarray):
     """
     An ndarray subclass, which the batch driver does not accept because
@@ -239,133 +76,314 @@ class _ErrorSubclass(np.ndarray):
     """
 
 
-def test_fallback_inputs():
+class TestMaskPathParity:
     """
-    Test that inputs not supported by the batch photometry driver cause
-    it to return None so that the caller falls back to the mask-based
+    The batch driver must give results identical to the mask-based
     code path.
     """
-    aperture = CircularAperture(POSITIONS, r=5.5)
 
-    # Masked-array data
-    data = np.ma.MaskedArray(DATA, mask=MASK)
-    assert aperture._batch_photometry(data, error=None, mask=None,
-                                      method='exact', subpixels=5) is None
+    @pytest.mark.parametrize('aperture', APERTURES)
+    @pytest.mark.parametrize(('method', 'subpixels'), METHODS)
+    def test_basic(self, aperture, method, subpixels):
+        """
+        Test that the batch photometry driver gives results identical to the
+        legacy mask-based code path for the given inputs.
+        """
+        assert_batch_matches_legacy(aperture, DATA, method=method,
+                                    subpixels=subpixels)
 
-    # Non-bool mask
-    assert aperture._batch_photometry(DATA, error=None,
-                                      mask=MASK.astype(int),
-                                      method='exact', subpixels=5) is None
+    @pytest.mark.parametrize('aperture', APERTURES)
+    @pytest.mark.parametrize(('method', 'subpixels'), METHODS)
+    def test_error_and_mask(self, aperture, method, subpixels):
+        """
+        Test that the batch photometry driver gives results identical to the
+        legacy mask-based code path for the given inputs, including error
+        and mask.
+        """
+        assert_batch_matches_legacy(aperture, DATA, error=ERROR, mask=MASK,
+                                    method=method, subpixels=subpixels)
 
-    # Mask with mismatched shape
-    assert aperture._batch_photometry(DATA, error=None, mask=MASK[1:, :],
-                                      method='exact', subpixels=5) is None
+    @pytest.mark.parametrize('aperture', APERTURES)
+    def test_nan_data(self, aperture):
+        """
+        Test that the batch photometry driver gives results identical to the
+        legacy mask-based code path for data containing NaN values.
+        """
+        assert_batch_matches_legacy(aperture, DATA_NAN, error=ERROR)
 
-    # Unsupported data dtype
-    assert aperture._batch_photometry(DATA.astype(complex), error=None,
-                                      mask=None, method='exact',
-                                      subpixels=5) is None
+    @pytest.mark.parametrize('dtype', ['int32', 'uint16', 'float32', 'bool'])
+    def test_data_dtypes(self, dtype):
+        """
+        Test that the batch photometry driver gives results identical to the
+        legacy mask-based code path for different data dtypes, including
+        bool.
+        """
+        rtol = 1e-5 if dtype == 'float32' else 1e-12
+        aperture = CircularAperture(POSITIONS, r=5.5)
+        data = (DATA > 100.0) if dtype == 'bool' else DATA.astype(dtype)
+        batch = aperture._batch_photometry(data, error=None, mask=None,
+                                           method='exact', subpixels=5)
+        legacy = aperture._mask_photometry(data, error=None, mask=None,
+                                           method='exact', subpixels=5)
+        assert batch is not None
+        assert_allclose(batch[0], legacy[0], rtol=rtol, equal_nan=True)
 
-    # Unsupported error dtype
-    assert aperture._batch_photometry(DATA, error=ERROR.astype(complex),
-                                      mask=None, method='exact',
-                                      subpixels=5) is None
+    def test_scalar_position(self):
+        """
+        Test that the batch photometry driver gives results identical to the
+        legacy mask-based code path for a single scalar position.
+        """
+        aperture = CircularAperture((70.0, 80.0), r=5.5)
+        assert_batch_matches_legacy(aperture, DATA, error=ERROR)
 
+        aperture = EllipticalAperture((70.0, 80.0), 10.124, 5.073)
+        assert_batch_matches_legacy(aperture, DATA, error=ERROR)
 
-def test_fallback_error_subclass_matches_mask_path():
-    """
-    Test that an ``error`` array that the batch driver does not accept
-    gives the same results via the mask-based code path.
-    """
-    aperture = CircularAperture(POSITIONS, r=5.5)
-    error = ERROR.view(_ErrorSubclass)
-    assert aperture._batch_photometry(DATA, error=error, mask=None,
-                                      method='exact', subpixels=5) is None
-
-    result = aperture._photometry(DATA, error=error)
-    expected = aperture._photometry(DATA, error=ERROR)
-    assert_allclose(result.flux, expected.flux, rtol=1e-12, equal_nan=True)
-    assert_allclose(result.flux_err, expected.flux_err, rtol=1e-12,
-                    equal_nan=True)
-
-
-def test_fallback_subclass():
-    """
-    Test that aperture subclasses that do not themselves define
-    _batch_shape_params fall back to the mask-based code path in
-    photometry, so that any overridden behavior (e.g., to_mask) is
-    honored.
-    """
-
-    class MyAperture(CircularAperture):
-        # Inherits _batch_shape_params, but does not define it in its
-        # own class, so the batch driver must not be used.
-        pass
-
-    aperture = MyAperture(POSITIONS, r=5.5)
-    assert aperture._batch_photometry(DATA, error=None, mask=None,
-                                      method='exact', subpixels=5) is None
-    result = aperture._photometry(DATA)
-    result2 = CircularAperture(POSITIONS, r=5.5)._photometry(DATA)
-    assert_allclose(result.flux, result2.flux, rtol=1e-12, equal_nan=True)
-
-
-def test_optin_subclass():
-    """
-    Test that aperture subclasses that define the _batch_shape_params
-    hook in their own class opt in to the batch code path.
-    """
-
-    class MyAperture(CircularAperture):
-        def _batch_shape_params(self):
-            return super()._batch_shape_params()
-
-    aperture = MyAperture(POSITIONS, r=5.5)
-    result = aperture._batch_photometry(DATA, error=None, mask=None,
-                                        method='exact', subpixels=5)
-    assert result is not None
-    assert_batch_matches_legacy(aperture, DATA, error=ERROR, mask=MASK)
-
-
-def test_optin_subclass_base_hook_returns_none():
-    """
-    Test that when a subclass defines _batch_shape_params (opting in)
-    but the method returns None, _batch_photometry falls back to
-    None.
-
-    This covers:
-    - PixelAperture._batch_shape_params (the base ``return`` on its own
-      line, which is the hook's default no-op implementation), and
-    - the ``if spec is None: return None`` branch in _batch_photometry.
-    """
-
-    class MyAperture(CircularAperture):
-        def _batch_shape_params(self):
-            # Explicitly delegate to the base PixelAperture hook, which
-            # returns None, signalling that the batch driver is not
-            # supported for this subclass.
-            return PixelAperture._batch_shape_params(self)
-
-    aperture = MyAperture(POSITIONS, r=5.5)
-    assert aperture._batch_photometry(DATA, error=None, mask=None,
-                                      method='exact', subpixels=5) is None
-
-
-def test_thread_safety():
-    """
-    Test that the batch driver releases the GIL and is therefore
-    thread-safe by running multiple photometry calls in parallel threads
-    and checking that they all give the same results.
-    """
-    aperture = CircularAperture(POSITIONS, r=5.5)
-    expected = aperture._photometry(DATA, error=ERROR)
-
-    def run(_):
-        return aperture._photometry(DATA, error=ERROR)
-
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        results = list(executor.map(run, range(8)))
-
-    for result in results:
-        assert_allclose(result.flux, expected.flux, rtol=0, atol=0,
+    def test_units(self):
+        """
+        Test that the batch photometry driver gives results with the same
+        units as the input data and error, and that the values match the
+        legacy code path.
+        """
+        unit = u.Jy
+        aperture = CircularAperture(POSITIONS, r=5.5)
+        results = aperture._photometry(DATA << unit, error=ERROR << unit)
+        assert results.flux.unit == unit
+        assert results.flux_err.unit == unit
+        results2 = aperture._photometry(DATA, error=ERROR)
+        assert_allclose(results.flux.value, results2.flux, equal_nan=True)
+        assert_allclose(results.flux_err.value, results2.flux_err,
                         equal_nan=True)
+
+
+class TestReadonlyArrays:
+    """
+    Read-only input arrays must be accepted by the batch driver.
+    """
+
+    @pytest.mark.parametrize(('method', 'subpixels'), METHODS)
+    def test_batch_driver(self, method, subpixels):
+        """
+        Test that read-only (non-writeable) data, error, and mask arrays are
+        accepted by the batch photometry driver and give results identical
+        to writeable arrays.
+
+        The batch Cython driver buffers the data, error, and positions into
+        ``const`` typed memoryviews so that read-only arrays do not raise a
+        ``ValueError``.
+        """
+        aperture = CircularAperture(POSITIONS, r=5.5)
+        data = DATA.copy()
+        error = ERROR.copy()
+        mask = MASK.copy()
+        for arr in (data, error, mask):
+            arr.setflags(write=False)
+
+        batch = aperture._batch_photometry(data, error=error, mask=mask,
+                                           method=method, subpixels=subpixels)
+        assert batch is not None
+
+        expected = aperture._batch_photometry(DATA, error=ERROR, mask=MASK,
+                                              method=method,
+                                              subpixels=subpixels)
+        for batch_arr, exp_arr in zip(batch, expected, strict=True):
+            assert_allclose(batch_arr, exp_arr, rtol=1e-12, atol=0,
+                            equal_nan=True)
+
+    def test_photometry(self):
+        """
+        Test that ``_photometry`` works with read-only data arrays.
+        """
+        data = np.ones((10, 10))
+        data.setflags(write=False)
+        aperture = CircularAperture((4.5, 4.5), r=4.5)
+        results = aperture._photometry(data, method='exact')
+
+        expected = aperture._photometry(np.ones((10, 10)), method='exact')
+        assert_allclose(results.flux, expected.flux, rtol=1e-12)
+
+
+class TestErrorArrayShape:
+    """
+    The flux errors must always have the same shape as the fluxes.
+    """
+
+    def test_no_overlap(self):
+        """
+        Test that sources with no overlap with the data give NaN sums.
+
+        Also, test that the error array always has the same shape as the
+        sums array, filled with NaN when error is not input.
+        """
+        aperture = CircularAperture(POSITIONS, r=5.5)
+        n_outside = 3
+
+        sums, errs, _area, *_ = aperture._batch_photometry(
+            DATA, error=None, mask=None, method='exact', subpixels=5)
+        assert np.isnan(sums).sum() == n_outside
+        assert errs.shape == sums.shape
+        assert np.all(np.isnan(errs))
+
+        sums, errs, _area, *_ = aperture._batch_photometry(
+            DATA, error=ERROR, mask=None, method='exact', subpixels=5)
+        assert errs.shape == sums.shape
+        assert np.isnan(errs).sum() == n_outside
+
+    @pytest.mark.parametrize('aperture', [
+        CircularAperture(POSITIONS, r=5.5),
+        PolygonAperture.from_regular_polygon(POSITIONS, 6, radius=5.5),
+    ])
+    def test_no_error_input(self, aperture):
+        """
+        Test that `photometry` returns a ``flux_err`` array that always
+        has the same length as ``flux`` and is filled with NaN when
+        ``error`` is not input, both for sources with and without overlap.
+
+        ``CircularAperture`` exercises the batch code path and
+        ``PolygonAperture`` exercises the mask-based code path.
+        """
+        result = aperture._photometry(DATA, error=None)
+        assert result.flux_err.shape == result.flux.shape
+        assert np.any(np.isnan(result.flux))
+        assert np.any(~np.isnan(result.flux))
+        assert np.all(np.isnan(result.flux_err))
+
+
+class TestFallback:
+    """
+    Inputs and apertures that the batch driver does not support must
+    fall back to the mask-based code path.
+    """
+
+    def test_unsupported_inputs(self):
+        """
+        Test that inputs not supported by the batch photometry driver cause
+        it to return None so that the caller falls back to the mask-based
+        code path.
+        """
+        aperture = CircularAperture(POSITIONS, r=5.5)
+
+        # Masked-array data
+        data = np.ma.MaskedArray(DATA, mask=MASK)
+        assert aperture._batch_photometry(data, error=None, mask=None,
+                                          method='exact', subpixels=5) is None
+
+        # Non-bool mask
+        assert aperture._batch_photometry(DATA, error=None,
+                                          mask=MASK.astype(int),
+                                          method='exact', subpixels=5) is None
+
+        # Mask with mismatched shape
+        assert aperture._batch_photometry(DATA, error=None, mask=MASK[1:, :],
+                                          method='exact', subpixels=5) is None
+
+        # Unsupported data dtype
+        assert aperture._batch_photometry(DATA.astype(complex), error=None,
+                                          mask=None, method='exact',
+                                          subpixels=5) is None
+
+        # Unsupported error dtype
+        assert aperture._batch_photometry(DATA, error=ERROR.astype(complex),
+                                          mask=None, method='exact',
+                                          subpixels=5) is None
+
+    def test_error_subclass_matches_mask_path(self):
+        """
+        Test that an ``error`` array that the batch driver does not accept
+        gives the same results via the mask-based code path.
+        """
+        aperture = CircularAperture(POSITIONS, r=5.5)
+        error = ERROR.view(_ErrorSubclass)
+        assert aperture._batch_photometry(DATA, error=error, mask=None,
+                                          method='exact', subpixels=5) is None
+
+        result = aperture._photometry(DATA, error=error)
+        expected = aperture._photometry(DATA, error=ERROR)
+        assert_allclose(result.flux, expected.flux, rtol=1e-12, equal_nan=True)
+        assert_allclose(result.flux_err, expected.flux_err, rtol=1e-12,
+                        equal_nan=True)
+
+    def test_subclass_without_hook(self):
+        """
+        Test that aperture subclasses that do not themselves define
+        _batch_shape_params fall back to the mask-based code path in
+        photometry, so that any overridden behavior (e.g., to_mask) is
+        honored.
+        """
+
+        class MyAperture(CircularAperture):
+            # Inherits _batch_shape_params, but does not define it in its
+            # own class, so the batch driver must not be used.
+            pass
+
+        aperture = MyAperture(POSITIONS, r=5.5)
+        assert aperture._batch_photometry(DATA, error=None, mask=None,
+                                          method='exact', subpixels=5) is None
+        result = aperture._photometry(DATA)
+        result2 = CircularAperture(POSITIONS, r=5.5)._photometry(DATA)
+        assert_allclose(result.flux, result2.flux, rtol=1e-12, equal_nan=True)
+
+    def test_subclass_with_hook(self):
+        """
+        Test that aperture subclasses that define the _batch_shape_params
+        hook in their own class opt in to the batch code path.
+        """
+
+        class MyAperture(CircularAperture):
+            def _batch_shape_params(self):
+                return super()._batch_shape_params()
+
+        aperture = MyAperture(POSITIONS, r=5.5)
+        result = aperture._batch_photometry(DATA, error=None, mask=None,
+                                            method='exact', subpixels=5)
+        assert result is not None
+        assert_batch_matches_legacy(aperture, DATA, error=ERROR, mask=MASK)
+
+    def test_base_hook_none(self):
+        """
+        Test that when a subclass defines _batch_shape_params (opting in)
+        but the method returns None, _batch_photometry falls back to
+        None.
+
+        This covers:
+        - PixelAperture._batch_shape_params (the base ``return`` on its own
+          line, which is the hook's default no-op implementation), and
+        - the ``if spec is None: return None`` branch in _batch_photometry.
+        """
+
+        class MyAperture(CircularAperture):
+            def _batch_shape_params(self):
+                # Explicitly delegate to the base PixelAperture hook, which
+                # returns None, signalling that the batch driver is not
+                # supported for this subclass.
+                return PixelAperture._batch_shape_params(self)
+
+        aperture = MyAperture(POSITIONS, r=5.5)
+        assert aperture._batch_photometry(DATA, error=None, mask=None,
+                                          method='exact', subpixels=5) is None
+
+
+class TestThreadSafety:
+    """
+    The batch driver must give identical results when called
+    concurrently.
+    """
+
+    def test_concurrent_photometry(self):
+        """
+        Test that the batch driver releases the GIL and is therefore
+        thread-safe by running multiple photometry calls in parallel threads
+        and checking that they all give the same results.
+        """
+        aperture = CircularAperture(POSITIONS, r=5.5)
+        expected = aperture._photometry(DATA, error=ERROR)
+
+        def run(_):
+            return aperture._photometry(DATA, error=ERROR)
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            results = list(executor.map(run, range(8)))
+
+        for result in results:
+            assert_allclose(result.flux, expected.flux, rtol=0, atol=0,
+                            equal_nan=True)

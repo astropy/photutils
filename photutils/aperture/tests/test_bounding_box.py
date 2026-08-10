@@ -11,186 +11,198 @@ from photutils.aperture.rectangle import RectangularAperture
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 
-def test_bounding_box_init():
-    bbox = BoundingBox(1, 10, 2, 20)
-    assert bbox.ixmin == 1
-    assert bbox.ixmax == 10
-    assert bbox.iymin == 2
-    assert bbox.iymax == 20
-
-
-def test_bounding_box_init_minmax():
-    match = 'ixmin must be <= ixmax'
-    with pytest.raises(ValueError, match=match):
-        BoundingBox(100, 1, 1, 100)
-    match = 'iymin must be <= iymax'
-    with pytest.raises(ValueError, match=match):
-        BoundingBox(1, 100, 100, 1)
-
-
-def test_bounding_box_inputs():
-    match = 'ixmin, ixmax, iymin, and iymax must all be integers'
-    with pytest.raises(TypeError, match=match):
-        BoundingBox([1], [10], [2], [9])
-    with pytest.raises(TypeError, match=match):
-        BoundingBox([1, 2], 10, 2, 9)
-    with pytest.raises(TypeError, match=match):
-        BoundingBox(1.0, 10.0, 2.0, 9.0)
-    with pytest.raises(TypeError, match=match):
-        BoundingBox(1.3, 10, 2, 9)
-    with pytest.raises(TypeError, match=match):
-        BoundingBox(1, 10.3, 2, 9)
-    with pytest.raises(TypeError, match=match):
-        BoundingBox(1, 10, 2.3, 9)
-    with pytest.raises(TypeError, match=match):
-        BoundingBox(1, 10, 2, 9.3)
-
-
-def test_bounding_box_from_float():
-    bbox = BoundingBox.from_float(xmin=1.0, xmax=10.0, ymin=2.0, ymax=20.0)
-    assert bbox == BoundingBox(ixmin=1, ixmax=11, iymin=2, iymax=21)
-
-    bbox = BoundingBox.from_float(xmin=1.4, xmax=10.4, ymin=1.6, ymax=10.6)
-    assert bbox == BoundingBox(ixmin=1, ixmax=11, iymin=2, iymax=12)
-
-
-def test_bounding_box_eq():
-    bbox = BoundingBox(1, 10, 2, 20)
-    assert bbox == BoundingBox(1, 10, 2, 20)
-    assert bbox != BoundingBox(9, 10, 2, 20)
-    assert bbox != BoundingBox(1, 99, 2, 20)
-    assert bbox != BoundingBox(1, 10, 9, 20)
-    assert bbox != BoundingBox(1, 10, 2, 99)
-
-
-def test_bounding_box_eq_other_type():
+class TestConstruction:
     """
-    Test that comparing to a non-BoundingBox returns False instead of
-    raising, so that ``!=`` and container membership work.
+    Tests for creating BoundingBox objects and validating their inputs.
     """
-    bbox = BoundingBox(1, 10, 2, 20)
-    assert bbox != (1, 10, 2, 20)
-    assert bbox != 3
-    assert not bbox == (1, 10, 2, 20)  # noqa: SIM201
-    assert bbox not in [(1, 10, 2, 20), 3]
-    assert bbox in [3, BoundingBox(1, 10, 2, 20)]
+
+    def test_init(self):
+        bbox = BoundingBox(1, 10, 2, 20)
+        assert bbox.ixmin == 1
+        assert bbox.ixmax == 10
+        assert bbox.iymin == 2
+        assert bbox.iymax == 20
+
+    def test_init_minmax(self):
+        match = 'ixmin must be <= ixmax'
+        with pytest.raises(ValueError, match=match):
+            BoundingBox(100, 1, 1, 100)
+        match = 'iymin must be <= iymax'
+        with pytest.raises(ValueError, match=match):
+            BoundingBox(1, 100, 100, 1)
+
+    @pytest.mark.parametrize('inputs', [([1], [10], [2], [9]),
+                                        ([1, 2], 10, 2, 9),
+                                        (1.0, 10.0, 2.0, 9.0),
+                                        (1.3, 10, 2, 9),
+                                        (1, 10.3, 2, 9),
+                                        (1, 10, 2.3, 9),
+                                        (1, 10, 2, 9.3)])
+    def test_non_integer_inputs(self, inputs):
+        match = 'ixmin, ixmax, iymin, and iymax must all be integers'
+        with pytest.raises(TypeError, match=match):
+            BoundingBox(*inputs)
+
+    def test_from_float(self):
+        bbox = BoundingBox.from_float(xmin=1.0, xmax=10.0, ymin=2.0, ymax=20.0)
+        assert bbox == BoundingBox(ixmin=1, ixmax=11, iymin=2, iymax=21)
+
+        bbox = BoundingBox.from_float(xmin=1.4, xmax=10.4, ymin=1.6, ymax=10.6)
+        assert bbox == BoundingBox(ixmin=1, ixmax=11, iymin=2, iymax=12)
 
 
-def test_bounding_box_hash():
+class TestEqualityAndHashing:
     """
-    Test that a BoundingBox is hashable and that equal bounding boxes
-    hash equally.
+    Tests for BoundingBox comparison and hashing.
     """
-    bbox = BoundingBox(1, 10, 2, 20)
-    assert hash(bbox) == hash(BoundingBox(1, 10, 2, 20))
-    assert hash(bbox) != hash(BoundingBox(1, 10, 2, 21))
-    assert len({bbox, BoundingBox(1, 10, 2, 20)}) == 1
-    assert {bbox: 'value'}[BoundingBox(1, 10, 2, 20)] == 'value'
+
+    def test_eq(self):
+        bbox = BoundingBox(1, 10, 2, 20)
+        assert bbox == BoundingBox(1, 10, 2, 20)
+        assert bbox != BoundingBox(9, 10, 2, 20)
+        assert bbox != BoundingBox(1, 99, 2, 20)
+        assert bbox != BoundingBox(1, 10, 9, 20)
+        assert bbox != BoundingBox(1, 10, 2, 99)
+
+    def test_eq_other_type(self):
+        """
+        Test that comparing to a non-BoundingBox returns False instead
+        of raising, so that ``!=`` and container membership work.
+        """
+        bbox = BoundingBox(1, 10, 2, 20)
+        assert bbox != (1, 10, 2, 20)
+        assert bbox != 3
+        assert not bbox == (1, 10, 2, 20)  # noqa: SIM201
+        assert bbox not in [(1, 10, 2, 20), 3]
+        assert bbox in [3, BoundingBox(1, 10, 2, 20)]
+
+    def test_hash(self):
+        """
+        Test that a BoundingBox is hashable and that equal bounding
+        boxes hash equally.
+        """
+        bbox = BoundingBox(1, 10, 2, 20)
+        assert hash(bbox) == hash(BoundingBox(1, 10, 2, 20))
+        assert hash(bbox) != hash(BoundingBox(1, 10, 2, 21))
+        assert len({bbox, BoundingBox(1, 10, 2, 20)}) == 1
+        assert {bbox: 'value'}[BoundingBox(1, 10, 2, 20)] == 'value'
 
 
-def test_bounding_box_repr():
-    bbox = BoundingBox(1, 10, 2, 20)
-    assert repr(bbox) == 'BoundingBox(ixmin=1, ixmax=10, iymin=2, iymax=20)'
-
-
-def test_bounding_box_shape():
-    bbox = BoundingBox(1, 10, 2, 20)
-    assert bbox.shape == (18, 9)
-
-
-def test_bounding_box_center():
-    bbox = BoundingBox(1, 10, 2, 20)
-    assert bbox.center == (10.5, 5)
-
-
-def test_bounding_box_get_overlap_slices():
-    bbox = BoundingBox(1, 10, 2, 20)
-    slc = ((slice(2, 20, None), slice(1, 10, None)),
-           (slice(0, 18, None), slice(0, 9, None)))
-    assert bbox.get_overlap_slices((50, 50)) == slc
-
-    bbox = BoundingBox(-10, -1, 2, 20)
-    assert bbox.get_overlap_slices((50, 50)) == (None, None)
-
-    bbox = BoundingBox(-10, 10, -10, 20)
-    slc = ((slice(0, 20, None), slice(0, 10, None)),
-           (slice(10, 30, None), slice(10, 20, None)))
-    assert bbox.get_overlap_slices((50, 50)) == slc
-
-
-def test_bounding_box_get_overlap_slices_invalid_shape():
+class TestProperties:
     """
-    Test that get_overlap_slices raises ValueError when shape does not
-    have exactly 2 elements.
+    Tests for the BoundingBox geometric properties and repr.
     """
-    bbox = BoundingBox(1, 10, 2, 20)
-    match = 'input shape must have 2 elements'
-    with pytest.raises(ValueError, match=match):
-        bbox.get_overlap_slices((50,))
+
+    def test_repr(self):
+        bbox = BoundingBox(1, 10, 2, 20)
+        expected = 'BoundingBox(ixmin=1, ixmax=10, iymin=2, iymax=20)'
+        assert repr(bbox) == expected
+
+    def test_shape(self):
+        bbox = BoundingBox(1, 10, 2, 20)
+        assert bbox.shape == (18, 9)
+
+    def test_center(self):
+        bbox = BoundingBox(1, 10, 2, 20)
+        assert bbox.center == (10.5, 5)
+
+    def test_extent(self):
+        bbox = BoundingBox(1, 10, 2, 20)
+        assert_allclose(bbox.extent, (0.5, 9.5, 1.5, 19.5))
 
 
-def test_bounding_box_extent():
-    bbox = BoundingBox(1, 10, 2, 20)
-    assert_allclose(bbox.extent, (0.5, 9.5, 1.5, 19.5))
+class TestOverlapSlices:
+    """
+    Tests for the BoundingBox get_overlap_slices method.
+    """
+
+    def test_get_overlap_slices(self):
+        bbox = BoundingBox(1, 10, 2, 20)
+        slc = ((slice(2, 20, None), slice(1, 10, None)),
+               (slice(0, 18, None), slice(0, 9, None)))
+        assert bbox.get_overlap_slices((50, 50)) == slc
+
+        bbox = BoundingBox(-10, -1, 2, 20)
+        assert bbox.get_overlap_slices((50, 50)) == (None, None)
+
+        bbox = BoundingBox(-10, 10, -10, 20)
+        slc = ((slice(0, 20, None), slice(0, 10, None)),
+               (slice(10, 30, None), slice(10, 20, None)))
+        assert bbox.get_overlap_slices((50, 50)) == slc
+
+    def test_get_overlap_slices_invalid_shape(self):
+        """
+        Test that get_overlap_slices raises ValueError when shape does
+        not have exactly 2 elements.
+        """
+        bbox = BoundingBox(1, 10, 2, 20)
+        match = 'input shape must have 2 elements'
+        with pytest.raises(ValueError, match=match):
+            bbox.get_overlap_slices((50,))
+
+
+class TestSetOperations:
+    """
+    Tests for the BoundingBox union and intersection methods.
+    """
+
+    def test_union(self):
+        bbox1 = BoundingBox(1, 10, 2, 20)
+        bbox2 = BoundingBox(5, 21, 7, 32)
+        bbox_union_expected = BoundingBox(1, 21, 2, 32)
+        bbox_union1 = bbox1 | bbox2
+        bbox_union2 = bbox1.union(bbox2)
+
+        assert bbox_union1 == bbox_union_expected
+        assert bbox_union1 == bbox_union2
+
+        match = 'BoundingBox can be joined only with another BoundingBox'
+        with pytest.raises(TypeError, match=match):
+            bbox1.union((5, 21, 7, 32))
+
+    def test_intersect(self):
+        bbox1 = BoundingBox(1, 10, 2, 20)
+        bbox2 = BoundingBox(5, 21, 7, 32)
+        bbox_intersect_expected = BoundingBox(5, 10, 7, 20)
+        bbox_intersect1 = bbox1 & bbox2
+        bbox_intersect2 = bbox1.intersection(bbox2)
+
+        assert bbox_intersect1 == bbox_intersect_expected
+        assert bbox_intersect1 == bbox_intersect2
+
+        match = 'BoundingBox can be intersected only with another BoundingBox'
+        with pytest.raises(TypeError, match=match):
+            bbox1.intersection((5, 21, 7, 32))
+
+        assert bbox1.intersection(BoundingBox(30, 40, 50, 60)) is None
 
 
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
-def test_bounding_box_as_artist():
-    bbox = BoundingBox(1, 10, 2, 20)
-    patch = bbox.as_artist()
+class TestPlotting:
+    """
+    Tests for the BoundingBox matplotlib and aperture conversions.
+    """
 
-    assert_allclose(patch.get_xy(), (0.5, 1.5))
-    assert_allclose(patch.get_width(), 9)
-    assert_allclose(patch.get_height(), 18)
+    def test_as_artist(self):
+        bbox = BoundingBox(1, 10, 2, 20)
+        patch = bbox.as_artist()
 
+        assert_allclose(patch.get_xy(), (0.5, 1.5))
+        assert_allclose(patch.get_width(), 9)
+        assert_allclose(patch.get_height(), 18)
 
-@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
-def test_bounding_box_plot():
-    from matplotlib.patches import Rectangle
-    bbox = BoundingBox(1, 10, 2, 20)
-    patch = bbox.plot()
-    assert isinstance(patch, Rectangle)
+    def test_plot(self):
+        from matplotlib.patches import Rectangle
+        bbox = BoundingBox(1, 10, 2, 20)
+        patch = bbox.plot()
+        assert isinstance(patch, Rectangle)
 
+    def test_to_aperture(self):
+        bbox = BoundingBox(1, 10, 2, 20)
+        aper = RectangularAperture((5.0, 10.5), w=9.0, h=18.0, theta=0.0)
+        bbox_aper = bbox.to_aperture()
 
-@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
-def test_bounding_box_to_aperture():
-    bbox = BoundingBox(1, 10, 2, 20)
-    aper = RectangularAperture((5.0, 10.5), w=9.0, h=18.0, theta=0.0)
-    bbox_aper = bbox.to_aperture()
-
-    assert_allclose(bbox_aper.positions, aper.positions)
-    assert bbox_aper.w == aper.w
-    assert bbox_aper.h == aper.h
-    assert bbox_aper.theta == aper.theta
-
-
-def test_bounding_box_union():
-    bbox1 = BoundingBox(1, 10, 2, 20)
-    bbox2 = BoundingBox(5, 21, 7, 32)
-    bbox_union_expected = BoundingBox(1, 21, 2, 32)
-    bbox_union1 = bbox1 | bbox2
-    bbox_union2 = bbox1.union(bbox2)
-
-    assert bbox_union1 == bbox_union_expected
-    assert bbox_union1 == bbox_union2
-
-    match = 'BoundingBox can be joined only with another BoundingBox'
-    with pytest.raises(TypeError, match=match):
-        bbox1.union((5, 21, 7, 32))
-
-
-def test_bounding_box_intersect():
-    bbox1 = BoundingBox(1, 10, 2, 20)
-    bbox2 = BoundingBox(5, 21, 7, 32)
-    bbox_intersect_expected = BoundingBox(5, 10, 7, 20)
-    bbox_intersect1 = bbox1 & bbox2
-    bbox_intersect2 = bbox1.intersection(bbox2)
-
-    assert bbox_intersect1 == bbox_intersect_expected
-    assert bbox_intersect1 == bbox_intersect2
-
-    match = 'BoundingBox can be intersected only with another BoundingBox'
-    with pytest.raises(TypeError, match=match):
-        bbox1.intersection((5, 21, 7, 32))
-
-    assert bbox1.intersection(BoundingBox(30, 40, 50, 60)) is None
+        assert_allclose(bbox_aper.positions, aper.positions)
+        assert bbox_aper.w == aper.w
+        assert bbox_aper.h == aper.h
+        assert bbox_aper.theta == aper.theta
