@@ -85,6 +85,7 @@ properties:
       - type: number
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
 required: [positions, r_in, r_out]
+additionalProperties: false
 # CircularAnnulus and SkyCircularAnnulus share a tag, so this requires
 # a file to use pixel values or angular quantities consistently.
 oneOf:
