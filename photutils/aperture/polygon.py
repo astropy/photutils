@@ -437,11 +437,6 @@ class PolygonAperture(PixelAperture):
         'The (n_vertices, 2) array of pixel offsets of the polygon '
         'vertices, measured relative to ``positions``.')
 
-    # The bounding box is symmetric about ``positions`` (see
-    # ``_xy_extents``), so it is not tight for a polygon whose vertices
-    # are not symmetric about ``positions``.
-    _bbox_is_tight = False
-
     def __init__(self, positions, vertex_offsets):
         self.positions = positions
         self.vertex_offsets = vertex_offsets
@@ -736,13 +731,34 @@ class PolygonAperture(PixelAperture):
         return self.positions[:, np.newaxis, :] + offsets[np.newaxis, :, :]
 
     @lazyproperty
+    def _xy_bounds(self):
+        """
+        The ``(xmin, xmax, ymin, ymax)`` offsets of the polygon's
+        axis-aligned bounding box, relative to ``positions``.
+        """
+        offsets = self.vertex_offsets
+        return (float(offsets[:, 0].min()), float(offsets[:, 0].max()),
+                float(offsets[:, 1].min()), float(offsets[:, 1].max()))
+
+    @lazyproperty
     def _xy_extents(self):
         """
         Half the extents of the polygon's axis-aligned bounding box.
         """
-        x_extent = float(np.max(np.abs(self.vertex_offsets[:, 0])))
-        y_extent = float(np.max(np.abs(self.vertex_offsets[:, 1])))
-        return x_extent, y_extent
+        xmin, xmax, ymin, ymax = self._xy_bounds
+        return 0.5 * (xmax - xmin), 0.5 * (ymax - ymin)
+
+    @lazyproperty
+    def _xy_bbox_offset(self):
+        """
+        The (x, y) offset of the bounding box center from ``positions``.
+
+        A polygon's vertices need not be symmetric about ``positions``,
+        so its minimal bounding box is generally not centered on the
+        aperture position.
+        """
+        xmin, xmax, ymin, ymax = self._xy_bounds
+        return 0.5 * (xmin + xmax), 0.5 * (ymin + ymax)
 
     def _batch_shape_params(self):
         # The vertex offsets are counter-clockwise (normalized when the

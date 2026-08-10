@@ -175,24 +175,28 @@ class TestOverlapFlags:
 
 class TestPolygonOverlapFlags:
     """
-    A polygon bounding box is symmetric about its positions, so it can
-    be clipped by a data edge while the polygon is fully inside.
+    A polygon whose vertices are not centered on its positions still has
+    a tight bounding box, so the partial_overlap flag tracks the polygon
+    itself rather than the box.
     """
 
     @pytest.mark.parametrize(('method', 'subpixels'), METHODS)
     def test_offcenter_inside(self, method, subpixels):
         """
         Test that a polygon lying entirely inside the data is not flagged as
-        partial_overlap even though its bounding box, which is symmetric
-        about ``positions``, is clipped by a data edge.
+        partial_overlap.
         """
         data = np.ones((12, 12))
-        # The centroid of this triangle is well off-center, so the symmetric
-        # bounding box extends outside the data on two sides
+        # The centroid of this triangle is well off-center from the
+        # vertices, so its bounding box is not centered on ``positions``
         aper = PolygonAperture.from_vertices([(1.0, 1.0), (9.0, 1.0),
                                               (9.0, 9.0)])
+        # The tight bounding box lies entirely within the data
         bbox = aper.bbox
-        assert bbox.ixmax > data.shape[1] or bbox.iymin < 0
+        assert bbox.ixmin >= 0
+        assert bbox.ixmax <= data.shape[1]
+        assert bbox.iymin >= 0
+        assert bbox.iymax <= data.shape[0]
 
         result = AperturePhotometry(data, aper, method=method,
                                     subpixels=subpixels)
@@ -209,8 +213,12 @@ class TestPolygonOverlapFlags:
         partial_overlap.
         """
         data = np.ones((12, 12))
-        aper = PolygonAperture.from_vertices([(-2.0, 1.0), (9.0, 1.0),
+        # The part of this triangle beyond the left data edge contains
+        # whole pixels, so every mask method sees weight outside the data
+        aper = PolygonAperture.from_vertices([(-3.0, 4.0), (9.0, 1.0),
                                               (9.0, 9.0)])
+        assert aper.bbox.ixmin < 0
+
         result = AperturePhotometry(data, aper, method=method,
                                     subpixels=subpixels)
         assert result.flags == APERTURE_FLAGS.PARTIAL_OVERLAP

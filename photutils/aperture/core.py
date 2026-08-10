@@ -419,15 +419,6 @@ class PixelAperture(Aperture):
     Abstract base class for apertures defined in pixel coordinates.
     """
 
-    # Whether the minimal bounding box is tight, i.e., whether the
-    # aperture is tangent to each side of its bounding box. This holds
-    # for any aperture whose ``_xy_extents`` are the true half-extents
-    # of its shape, which is the case for all of the built-in apertures
-    # except `~photutils.aperture.PolygonAperture` (whose extents are
-    # symmetric about ``positions``, while the polygon itself need not
-    # be). See `_resolve_outside_weights`.
-    _bbox_is_tight = True
-
     @lazyproperty
     def _default_patch_properties(self):
         """
@@ -1166,17 +1157,14 @@ class PixelAperture(Aperture):
             Whether each aperture has one or more pixels with nonzero
             aperture weight outside the data.
         """
-        # For the 'exact' method, if the bounding box is tight (the
-        # aperture is tangent to each bbox side), then a bbox that
+        # For the 'exact' method the minimal bounding box is tight
+        # (the aperture is tangent to each bbox side), so a bbox that
         # is clipped by a data edge always leaves a positive-area
         # portion of the aperture outside the data. The precise
         # outside-weight test therefore agrees exactly with the
-        # bbox-clipped candidates, and no per-source aperture masks
-        # need to be built. An aperture with a non-tight bounding box
-        # (e.g., an off-center polygon) can have a clipped bbox with no
-        # aperture area outside the data, so it must use the precise
-        # test below.
-        if method == 'exact' and self._bbox_is_tight:
+        # bbox-clipped candidates, and no per-source aperture masks need
+        # to be built.
+        if method == 'exact':
             return candidates.copy()
 
         w_out = np.zeros(candidates.shape, dtype=bool)
