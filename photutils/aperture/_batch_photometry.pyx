@@ -68,6 +68,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                         const unsigned char[:, ::1] mask,
                         const double[:, ::1] positions, int shape_code,
                         const double[::1] params, double ext_x, double ext_y,
+                        double off_x, double off_y,
                         int use_exact, int subpixels,
                         const Py_ssize_t[:, ::1] segmentation=None,
                         const Py_ssize_t[::1] labels=None, int seg_method=0,
@@ -127,6 +128,11 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     ext_x, ext_y : float
         The half-extents of the aperture minimal bounding box in the x
         and y directions (i.e., ``Aperture._xy_extents``).
+
+    off_x, off_y : float
+        The (x, y) offset of the bounding-box center from each source
+        position (i.e., ``Aperture._xy_bbox_offset``). This is zero for
+        an aperture whose bounding box is centered on its position.
 
     use_exact : int
         Whether to compute exact overlap fractions (1) or use subpixel
@@ -399,7 +405,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     if emit_sum:
         with nogil:
             total = _presize_packed_offsets(positions, ext_x, ext_y,
-                                            nx_data, ny_data, starts)
+                                            off_x, off_y, nx_data, ny_data,
+                                            starts)
 
     cdef Py_ssize_t sum_cap = total if emit_sum else 0
     sum_values_arr = np.empty(sum_cap, dtype=np.float64)
@@ -427,9 +434,9 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             # Bounding box, overlap test, and pixel grid, replicated
             # from the mask-based path (see ``_source_grid_setup``); the
             # sums stay NaN when there is no overlap.
-            if not _source_grid_setup(cx, cy, ext_x, ext_y, nx_data,
-                                      ny_data, &gxmin, &gymin, &dx, &dy,
-                                      &pixel_radius, &norm, &ixmin,
+            if not _source_grid_setup(cx, cy, ext_x, ext_y, off_x, off_y,
+                                      nx_data, ny_data, &gxmin, &gymin,
+                                      &dx, &dy, &pixel_radius, &norm, &ixmin,
                                       &iymin, &ix0, &ix1, &iy0, &iy1):
                 continue
             overlap[k] = 1
@@ -574,8 +581,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             # caller resolves this to the precise outside-weight test
             # (nonzero aperture weights outside the data) only for
             # these sources; unclipped interior sources are exactly 0.
-            ixmax_full = <Py_ssize_t>ceil(cx + ext_x + 0.5)
-            iymax_full = <Py_ssize_t>ceil(cy + ext_y + 0.5)
+            ixmax_full = <Py_ssize_t>ceil(cx + off_x + ext_x + 0.5)
+            iymax_full = <Py_ssize_t>ceil(cy + off_y + ext_y + 0.5)
             if (ixmin < ix0 or ixmax_full > ix1
                     or iymin < iy0 or iymax_full > iy1):
                 w_out = 1  # bounding box clipped by data edge

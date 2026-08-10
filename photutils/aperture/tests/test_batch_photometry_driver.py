@@ -69,14 +69,14 @@ class TestBatchApertureSums:
         params = np.array([8.0], dtype=np.float64)
 
         expected = batch_aperture_sums(data, error, mask, positions,
-                                       SHAPE_CIRCLE,
-                                       params, 8.0, 8.0, use_exact, 8)
+                                       SHAPE_CIRCLE, params, 8.0, 8.0,
+                                       0.0, 0.0, use_exact, 8)
 
         for arr in (data, error, positions, params):
             arr.setflags(write=False)
         result = batch_aperture_sums(data, error, mask, positions,
-                                     SHAPE_CIRCLE,
-                                     params, 8.0, 8.0, use_exact, 8)
+                                     SHAPE_CIRCLE, params, 8.0, 8.0,
+                                     0.0, 0.0, use_exact, 8)
 
         for res_arr, exp_arr in zip(result, expected, strict=True):
             assert_array_equal(res_arr, exp_arr)
@@ -91,7 +91,7 @@ class TestBatchApertureSums:
         def fn():
             return batch_aperture_sums(data, error, mask, positions,
                                        shape_code, params, ext_x, ext_y,
-                                       use_exact, 8)
+                                       0.0, 0.0, use_exact, 8)
 
         expected = fn()
         with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
@@ -117,7 +117,7 @@ class TestBatchApertureSums:
             params = np.array(params, dtype=np.float64)
             return batch_aperture_sums(data, error, mask, positions,
                                        shape_code, params, ext_x, ext_y,
-                                       1, 5)
+                                       0.0, 0.0, 1, 5)
 
         expected = {spec[0]: task(spec) for spec in _BATCH_SPECS}
 

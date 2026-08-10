@@ -11,6 +11,7 @@ from astropy.tests.helper import assert_quantity_allclose
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose
 
+from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.photometry import AperturePhotometry
 from photutils.aperture.polygon import (PolygonAperture, SkyPolygonAperture,
                                         _polygon_is_simple,
@@ -495,6 +496,51 @@ class TestPolygonConstruction:
         _ = aper.vertices
         aper.vertex_offsets = TRIANGLE_OFFSETS
         assert aper.vertices.shape == (3, 2)
+
+
+class TestPolygonBoundingBox:
+    """
+    Tests for the PolygonAperture minimal bounding box.
+    """
+
+    def test_bbox_is_tight(self):
+        """
+        Test that the bounding box of a polygon whose vertices are not
+        centered on ``positions`` is the minimal box enclosing the
+        polygon.
+        """
+        aper = PolygonAperture.from_vertices([(1.0, 1.0), (9.0, 1.0),
+                                              (9.0, 9.0)])
+        assert aper.bbox == BoundingBox(ixmin=1, ixmax=10, iymin=1, iymax=10)
+
+    def test_bbox_offset(self):
+        """
+        Test the bounding-box extents and center offset of an off-center
+        polygon.
+        """
+        # A triangle whose centroid is at (2, 1), giving vertex offsets
+        # spanning x in [-2, 4] and y in [-1, 2]
+        aper = PolygonAperture.from_vertices([(0.0, 0.0), (6.0, 0.0),
+                                              (0.0, 3.0)])
+        assert_allclose(aper.positions, (2.0, 1.0))
+        assert_allclose(aper._xy_extents, (3.0, 1.5))
+        assert_allclose(aper._xy_bbox_offset, (1.0, 0.5))
+        assert aper.bbox == BoundingBox(ixmin=0, ixmax=7, iymin=0, iymax=4)
+
+    def test_bbox_offset_zero_for_symmetric_polygon(self):
+        aper = PolygonAperture((10.0, 20.0), SQUARE_OFFSETS)
+        assert_allclose(aper._xy_bbox_offset, (0.0, 0.0))
+        assert aper.bbox == BoundingBox(ixmin=9, ixmax=12, iymin=19, iymax=22)
+
+    def test_bbox_offset_resets_with_offsets(self):
+        aper = PolygonAperture((0.0, 0.0), SQUARE_OFFSETS)
+        assert_allclose(aper._xy_bbox_offset, (0.0, 0.0))
+        aper.vertex_offsets = TRIANGLE_OFFSETS
+        assert_allclose(aper._xy_bbox_offset,
+                        (0.5 * (TRIANGLE_OFFSETS[:, 0].min()
+                                + TRIANGLE_OFFSETS[:, 0].max()),
+                         0.5 * (TRIANGLE_OFFSETS[:, 1].min()
+                                + TRIANGLE_OFFSETS[:, 1].max())))
 
 
 class TestPolygonMasks:
