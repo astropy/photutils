@@ -33,8 +33,8 @@ def _sums_fcounts(data, positions, radius, *, error=None, mask=None,
     params = np.array([radius], dtype=np.float64)
     result = batch_aperture_sums(
         np.ascontiguousarray(data, dtype=np.float64), error, mask,
-        positions, SHAPE_CIRCLE, params, radius, radius, use_exact,
-        subpixels, segmentation, labels, seg_method)
+        positions, SHAPE_CIRCLE, params, radius, radius, 0.0, 0.0,
+        use_exact, subpixels, segmentation, labels, seg_method)
     return result[-1]
 
 
@@ -48,8 +48,8 @@ def _gather_fcounts(data, positions, radius, *, mask=None,
     params = np.array([radius], dtype=np.float64)
     result = batch_aperture_gather(
         np.ascontiguousarray(data, dtype=np.float64), mask, positions,
-        SHAPE_CIRCLE, params, radius, radius, None, segmentation,
-        labels, seg_method)
+        SHAPE_CIRCLE, params, radius, radius, 0.0, 0.0, None,
+        segmentation, labels, seg_method)
     return result[-1]
 
 

@@ -77,6 +77,7 @@ cdef inline Py_ssize_t _round_half_away(double x) noexcept nogil:
 
 cdef inline bint _source_grid_setup(double cx, double cy,
                                     double ext_x, double ext_y,
+                                    double off_x, double off_y,
                                     Py_ssize_t nx_data, Py_ssize_t ny_data,
                                     double *gxmin, double *gymin,
                                     double *dx, double *dy,
@@ -109,6 +110,11 @@ cdef inline bint _source_grid_setup(double cx, double cy,
         Half the width and half the height of the aperture's bounding
         box, in pixels.
 
+    off_x, off_y : double
+        The (x, y) offset of the bounding-box center from the aperture
+        center, in pixels. This is zero for an aperture whose bounding
+        box is centered on the aperture position.
+
     nx_data, ny_data : Py_ssize_t
         The shape of the data array in the x and y direction.
 
@@ -139,10 +145,10 @@ cdef inline bint _source_grid_setup(double cx, double cy,
         Otherwise, returns `True` and writes the grid and bounding-box
         values described above through the output pointers.
     """
-    cdef double ixmin_d = floor(cx - ext_x + 0.5)
-    cdef double ixmax_d = ceil(cx + ext_x + 0.5)
-    cdef double iymin_d = floor(cy - ext_y + 0.5)
-    cdef double iymax_d = ceil(cy + ext_y + 0.5)
+    cdef double ixmin_d = floor(cx + off_x - ext_x + 0.5)
+    cdef double ixmax_d = ceil(cx + off_x + ext_x + 0.5)
+    cdef double iymin_d = floor(cy + off_y - ext_y + 0.5)
+    cdef double iymax_d = ceil(cy + off_y + ext_y + 0.5)
     cdef double gxmax, gymax
     cdef Py_ssize_t grid_nx, grid_ny
 
@@ -172,6 +178,7 @@ cdef inline bint _source_grid_setup(double cx, double cy,
 
 cdef inline Py_ssize_t _presize_packed_offsets(
         const double[:, ::1] positions, double ext_x, double ext_y,
+        double off_x, double off_y,
         Py_ssize_t nx_data, Py_ssize_t ny_data,
         Py_ssize_t[::1] starts) noexcept nogil:
     """
@@ -198,6 +205,10 @@ cdef inline Py_ssize_t _presize_packed_offsets(
         Half the width and half the height of the aperture's bounding
         box, in pixels. All sources share the same extent.
 
+    off_x, off_y : double
+        The (x, y) offset of the bounding-box center from the aperture
+        center, in pixels. All sources share the same offset.
+
     nx_data, ny_data : Py_ssize_t
         The shape of the data array in the x and y direction.
 
@@ -216,10 +227,10 @@ cdef inline Py_ssize_t _presize_packed_offsets(
     for k in range(positions.shape[0]):
         cx = positions[k, 0]
         cy = positions[k, 1]
-        ixmin_d = floor(cx - ext_x + 0.5)
-        ixmax_d = ceil(cx + ext_x + 0.5)
-        iymin_d = floor(cy - ext_y + 0.5)
-        iymax_d = ceil(cy + ext_y + 0.5)
+        ixmin_d = floor(cx + off_x - ext_x + 0.5)
+        ixmax_d = ceil(cx + off_x + ext_x + 0.5)
+        iymin_d = floor(cy + off_y - ext_y + 0.5)
+        iymax_d = ceil(cy + off_y + ext_y + 0.5)
         starts[k] = total
         if (ixmin_d >= <double>nx_data or ixmax_d <= 0.0
                 or iymin_d >= <double>ny_data or iymax_d <= 0.0):

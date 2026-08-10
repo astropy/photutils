@@ -865,6 +865,7 @@ class ApertureStats:
         sum_use_exact, sum_subpixels = aper._translate_mask_method(
             self.sum_method, self.subpixels)
         ext_x, ext_y = aper._xy_extents
+        off_x, off_y = aper._xy_bbox_offset
 
         if error is not None:
             error = np.ascontiguousarray(error, dtype=np.float64)
@@ -872,7 +873,8 @@ class ApertureStats:
         return (np.ascontiguousarray(data, dtype=np.float64), error, mask,
                 np.ascontiguousarray(aper._positions, dtype=np.float64),
                 shape_code, np.array(params, dtype=np.float64),
-                float(ext_x), float(ext_y), sum_use_exact, sum_subpixels,
+                float(ext_x), float(ext_y), float(off_x), float(off_y),
+                sum_use_exact, sum_subpixels,
                 np.ascontiguousarray(self._local_bkg, dtype=np.float64),
                 seg_arr, labels_arr, seg_code, clip_spec)
 
@@ -907,13 +909,13 @@ class ApertureStats:
         if inputs is None:
             return None
         (data, _error, mask, positions, shape_code, params, ext_x, ext_y,
-         _sum_use_exact, _sum_subpixels, local_bkg, seg_arr, labels_arr,
-         seg_code, clip_spec) = inputs
+         off_x, off_y, _sum_use_exact, _sum_subpixels, local_bkg, seg_arr,
+         labels_arr, seg_code, clip_spec) = inputs
 
         (values, lx, ly, starts, counts, overlap,
          flag_counts) = batch_aperture_gather(
             data, mask, positions, shape_code, params, ext_x, ext_y,
-            local_bkg, seg_arr, labels_arr, seg_code)
+            off_x, off_y, local_bkg, seg_arr, labels_arr, seg_code)
         gather = (values, lx, ly, starts, counts, None, None, None, overlap,
                   None, None, None, None, flag_counts)
 
@@ -949,15 +951,15 @@ class ApertureStats:
         if inputs is None:
             return None
         (data, error, mask, positions, shape_code, params, ext_x, ext_y,
-         sum_use_exact, sum_subpixels, local_bkg, seg_arr, labels_arr,
-         seg_code, clip_spec) = inputs
+         off_x, off_y, sum_use_exact, sum_subpixels, local_bkg, seg_arr,
+         labels_arr, seg_code, clip_spec) = inputs
 
         emit_sum = 1 if clip_spec is not None else 0
         (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
          sum_errsq, scounts, flag_counts) = batch_aperture_sums(
             data, error, mask, positions, shape_code, params, ext_x, ext_y,
-            sum_use_exact, sum_subpixels, seg_arr, labels_arr, seg_code,
-            local_bkg, emit_sum)
+            off_x, off_y, sum_use_exact, sum_subpixels, seg_arr, labels_arr,
+            seg_code, local_bkg, emit_sum)
         gather = (None, None, None, starts, None, sums, sum_var, area,
                   overlap, sum_values, sum_fracs, sum_errsq, scounts,
                   flag_counts)

@@ -203,7 +203,8 @@ def batch_aperture_gather(const double[:, ::1] data,
                           const unsigned char[:, ::1] mask,
                           const double[:, ::1] positions, int shape_code,
                           const double[::1] params, double ext_x,
-                          double ext_y, const double[::1] local_bkg=None,
+                          double ext_y, double off_x, double off_y,
+                          const double[::1] local_bkg=None,
                           const Py_ssize_t[:, ::1] segmentation=None,
                           const Py_ssize_t[::1] labels=None,
                           int seg_method=0):
@@ -252,6 +253,10 @@ def batch_aperture_gather(const double[:, ::1] data,
 
     ext_x, ext_y : float
         The aperture bounding-box half-extents.
+
+    off_x, off_y : float
+        The (x, y) offset of the bounding-box center from each source
+        position (see `_batch_photometry`).
 
     local_bkg : 1D ndarray of float64 (C-contiguous) or `None`
         The per-source local background to subtract. If `None`, no
@@ -448,8 +453,8 @@ def batch_aperture_gather(const double[:, ::1] data,
     # bounding-box arithmetic; it does not iterate over or evaluate
     # individual pixels.
     with nogil:
-        total = _presize_packed_offsets(positions, ext_x, ext_y, nx_data,
-                                        ny_data, starts)
+        total = _presize_packed_offsets(positions, ext_x, ext_y, off_x, off_y,
+                                        nx_data, ny_data, starts)
 
     values_arr = np.empty(total, dtype=np.float64)
     lx_arr = np.empty(total, dtype=np.int32)
@@ -476,9 +481,9 @@ def batch_aperture_gather(const double[:, ::1] data,
 
             # Bounding box, overlap test, and pixel grid, replicated
             # from the mask-based path (see ``_source_grid_setup``).
-            if not _source_grid_setup(cx, cy, ext_x, ext_y, nx_data,
-                                      ny_data, &gxmin, &gymin, &dx, &dy,
-                                      &pixel_radius, &norm, &ixmin,
+            if not _source_grid_setup(cx, cy, ext_x, ext_y, off_x, off_y,
+                                      nx_data, ny_data, &gxmin, &gymin,
+                                      &dx, &dy, &pixel_radius, &norm, &ixmin,
                                       &iymin, &ix0, &ix1, &iy0, &iy1):
                 continue
             overlap[k] = 1
@@ -589,8 +594,8 @@ def batch_aperture_gather(const double[:, ::1] data,
             # caller resolves this to the precise outside-weight test
             # (nonzero aperture weights outside the data) only for these
             # sources; unclipped interior sources are exactly 0.
-            ixmax_full = <Py_ssize_t>ceil(cx + ext_x + 0.5)
-            iymax_full = <Py_ssize_t>ceil(cy + ext_y + 0.5)
+            ixmax_full = <Py_ssize_t>ceil(cx + off_x + ext_x + 0.5)
+            iymax_full = <Py_ssize_t>ceil(cy + off_y + ext_y + 0.5)
             if (ixmin < ix0 or ixmax_full > ix1
                     or iymin < iy0 or iymax_full > iy1):
                 w_out = 1  # bounding box clipped by a data edge
