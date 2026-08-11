@@ -1,15 +1,14 @@
 %YAML 1.1
 ---
-$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
-id: "asdf://astropy.org/photutils/schemas/aperture/rectangular_aperture-1.0.0"
+$schema: 'http://stsci.edu/schemas/yaml-schema/draft-01'
+id: 'asdf://astropy.org/photutils/schemas/aperture/rectangular_aperture-1.0.0'
 title: Rectangular aperture
 description: |
   ASDF schema for serializing a rectangular aperture with one or more
   positions, in pixel or sky coordinates.
 
 examples:
-  -
-    - |
+  - - |
       A RectangularAperture with a single position, a full width of
       5 pixels, a full height of 3 pixels, and a rotation angle of
       80 degrees.
@@ -17,30 +16,44 @@ examples:
       !<tag:astropy.org:photutils/aperture/rectangular_aperture-1.0.0>
         h: 3.0
         positions: [10.0, 20.0]
-        theta: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64, unit: !unit/unit-1.0.0 deg,
-          value: 80.0}
+        theta: !<tag:astropy.org:astropy/coordinates/angle-1.2.0>
+          datatype: float64
+          unit: !unit/unit-1.0.0 deg
+          value: 80.0
         w: 5.0
-  -
-    - |
+  - - |
       A SkyRectangularAperture with a single position, a full width of
       1 arcsec, a full height of 0.5 arcsec, and a position angle of
       0 degrees.
     - |
       !<tag:astropy.org:photutils/aperture/rectangular_aperture-1.0.0>
-        h: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 0.5}
+        h: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 arcsec
+          value: 0.5
         positions: !<tag:astropy.org:astropy/coordinates/skycoord-1.0.0>
-          dec: !<tag:astropy.org:astropy/coordinates/latitude-1.2.0> {datatype: float64,
-            unit: !unit/unit-1.0.0 deg, value: 30.0}
+          dec: !<tag:astropy.org:astropy/coordinates/latitude-1.2.0>
+            datatype: float64
+            unit: !unit/unit-1.0.0 deg
+            value: 30.0
           frame: icrs
           ra: !<tag:astropy.org:astropy/coordinates/longitude-1.2.0>
             datatype: float64
             unit: !unit/unit-1.0.0 deg
             value: 10.0
-            wrap_angle: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64,
-              unit: !unit/unit-1.0.0 deg, value: 360.0}
+            wrap_angle: !<tag:astropy.org:astropy/coordinates/angle-1.2.0>
+              datatype: float64
+              unit: !unit/unit-1.0.0 deg
+              value: 360.0
           representation_type: spherical
-        theta: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 deg, value: 0.0}
-        w: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 1.0}
+        theta: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 deg
+          value: 0.0
+        w: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 arcsec
+          value: 1.0
 
 type: object
 properties:
@@ -64,8 +77,8 @@ properties:
           type: number
         maxItems: 2
         minItems: 2
-      - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
-      - tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+      - tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
+      - tag: 'tag:astropy.org:astropy/coordinates/skycoord-1.0.0'
   w:
     title: Full width.
     description: |
@@ -76,7 +89,7 @@ properties:
       axis.
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
   h:
     title: Full height.
     description: |
@@ -87,7 +100,7 @@ properties:
       East-West axis.
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
   theta:
     title: Rotation angle.
     description: |
@@ -100,8 +113,8 @@ properties:
       (PA=0).
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
-      - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
+      - tag: 'tag:astropy.org:astropy/coordinates/angle-1.*'
 required: [positions, w, h]
 additionalProperties: false
 # RectangularAperture and SkyRectangularAperture share a tag, so this
@@ -114,7 +127,7 @@ oneOf:
       positions:
         anyOf:
           - type: array
-          - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+          - tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
       w:
         type: number
       h:
@@ -122,13 +135,13 @@ oneOf:
   - title: Sky coordinates
     properties:
       positions:
-        tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+        tag: 'tag:astropy.org:astropy/coordinates/skycoord-1.0.0'
       w:
-        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+        tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
       h:
-        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+        tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
       theta:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
-          - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
+          - tag: 'tag:astropy.org:astropy/coordinates/angle-1.*'
 ...

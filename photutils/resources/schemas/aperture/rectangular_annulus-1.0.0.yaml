@@ -1,15 +1,14 @@
 %YAML 1.1
 ---
-$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
-id: "asdf://astropy.org/photutils/schemas/aperture/rectangular_annulus-1.0.0"
+$schema: 'http://stsci.edu/schemas/yaml-schema/draft-01'
+id: 'asdf://astropy.org/photutils/schemas/aperture/rectangular_annulus-1.0.0'
 title: Rectangular annulus aperture
 description: |
   ASDF schema for serializing a rectangular annulus aperture with one or more
   positions, in pixel or sky coordinates.
 
 examples:
-  -
-    - |
+  - - |
       A RectangularAnnulus aperture with a single position, inner full
       width and height of 3 and 2 pixels, outer full width and height of
       5 and 4 pixels, and a rotation angle of 80 degrees.
@@ -18,19 +17,26 @@ examples:
         h_in: 2.0
         h_out: 4.0
         positions: [10.0, 20.0]
-        theta: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64, unit: !unit/unit-1.0.0 deg,
-          value: 80.0}
+        theta: !<tag:astropy.org:astropy/coordinates/angle-1.2.0>
+          datatype: float64
+          unit: !unit/unit-1.0.0 deg
+          value: 80.0
         w_in: 3.0
         w_out: 5.0
-  -
-    - |
+  - - |
       A SkyRectangularAnnulus aperture with two positions, inner full
       width and height of 3 and 2 arcsec, outer full width and height of
       5 and 4 arcsec, and a position angle of 80 degrees.
     - |
       !<tag:astropy.org:photutils/aperture/rectangular_annulus-1.0.0>
-        h_in: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 2.0}
-        h_out: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 4.0}
+        h_in: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 arcsec
+          value: 2.0
+        h_out: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 arcsec
+          value: 4.0
         positions: !<tag:astropy.org:astropy/coordinates/skycoord-1.0.0>
           dec: !<tag:astropy.org:astropy/coordinates/latitude-1.2.0>
             unit: !unit/unit-1.0.0 deg
@@ -47,13 +53,23 @@ examples:
               datatype: float64
               byteorder: little
               shape: [2]
-            wrap_angle: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64,
-              unit: !unit/unit-1.0.0 deg, value: 360.0}
+            wrap_angle: !<tag:astropy.org:astropy/coordinates/angle-1.2.0>
+              datatype: float64
+              unit: !unit/unit-1.0.0 deg
+              value: 360.0
           representation_type: spherical
-        theta: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64, unit: !unit/unit-1.0.0 deg,
-          value: 80.0}
-        w_in: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 3.0}
-        w_out: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 5.0}
+        theta: !<tag:astropy.org:astropy/coordinates/angle-1.2.0>
+          datatype: float64
+          unit: !unit/unit-1.0.0 deg
+          value: 80.0
+        w_in: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 arcsec
+          value: 3.0
+        w_out: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 arcsec
+          value: 5.0
 
 type: object
 properties:
@@ -77,8 +93,8 @@ properties:
           type: number
         maxItems: 2
         minItems: 2
-      - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
-      - tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+      - tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
+      - tag: 'tag:astropy.org:astropy/coordinates/skycoord-1.0.0'
   w_in:
     title: Inner width.
     description: |
@@ -89,7 +105,7 @@ properties:
       the North-South axis.
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
   w_out:
     title: Outer width.
     description: |
@@ -100,7 +116,7 @@ properties:
       the North-South axis.
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
   h_in:
     title: Inner height.
     description: |
@@ -111,7 +127,7 @@ properties:
       side is along the East-West axis.
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
   h_out:
     title: Outer height.
     description: |
@@ -122,7 +138,7 @@ properties:
       side is along the East-West axis.
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
   theta:
     title: Rotation angle.
     description: |
@@ -135,8 +151,8 @@ properties:
       (PA=0).
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
-      - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
+      - tag: 'tag:astropy.org:astropy/coordinates/angle-1.*'
 required: [positions, w_in, w_out, h_out]
 additionalProperties: false
 # RectangularAnnulus and SkyRectangularAnnulus share a tag, so this
@@ -149,7 +165,7 @@ oneOf:
       positions:
         anyOf:
           - type: array
-          - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+          - tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
       w_in:
         type: number
       w_out:
@@ -161,17 +177,17 @@ oneOf:
   - title: Sky coordinates
     properties:
       positions:
-        tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+        tag: 'tag:astropy.org:astropy/coordinates/skycoord-1.0.0'
       w_in:
-        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+        tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
       w_out:
-        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+        tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
       h_in:
-        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+        tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
       h_out:
-        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+        tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
       theta:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
-          - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
+          - tag: 'tag:astropy.org:astropy/coordinates/angle-1.*'
 ...

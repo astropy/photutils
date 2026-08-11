@@ -1,7 +1,7 @@
 %YAML 1.1
 ---
-$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
-id: "asdf://astropy.org/photutils/schemas/psf/moffat_psf-1.0.0"
+$schema: 'http://stsci.edu/schemas/yaml-schema/draft-01'
+id: 'asdf://astropy.org/photutils/schemas/psf/moffat_psf-1.0.0'
 title: MoffatPSF
 description: |
   ASDF schema for serializing a MoffatPSF model, a 2D Moffat PSF
@@ -9,8 +9,7 @@ description: |
   parameters.
 
 examples:
-  -
-    - |
+  - - |
       A MoffatPSF with a flux of 71.4, centered at (24.3, 25.2) pixels,
       with an alpha of 5.1 and a beta of 3.2:
       MoffatPSF(flux=71.4, x_0=24.3, y_0=25.2, alpha=5.1, beta=3.2)
@@ -30,30 +29,30 @@ examples:
         beta: 3.2
 
 allOf:
-  - $ref: "http://stsci.edu/schemas/asdf/transform/transform-1.4.0"
+  - $ref: 'http://stsci.edu/schemas/asdf/transform/transform-1.4.0'
   - type: object
     properties:
       flux:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Total integrated flux of the PSF.
       x_0:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Position of the peak along the x axis.
       y_0:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Position of the peak along the y axis.
       alpha:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Characteristic radius of the Moffat profile.

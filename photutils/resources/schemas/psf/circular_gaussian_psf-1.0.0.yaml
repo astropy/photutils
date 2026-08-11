@@ -1,7 +1,7 @@
 %YAML 1.1
 ---
-$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
-id: "asdf://astropy.org/photutils/schemas/psf/circular_gaussian_psf-1.0.0"
+$schema: 'http://stsci.edu/schemas/yaml-schema/draft-01'
+id: 'asdf://astropy.org/photutils/schemas/psf/circular_gaussian_psf-1.0.0'
 title: CircularGaussianPSF
 description: |
   ASDF schema for serializing a CircularGaussianPSF model, a circular
@@ -9,8 +9,7 @@ description: |
   FWHM.
 
 examples:
-  -
-    - |
+  - - |
       A CircularGaussianPSF with a flux of 71.4, centered at
       (24.3, 25.2) pixels, and a FWHM of 5 pixels:
       CircularGaussianPSF(flux=71.4, x_0=24.3, y_0=25.2, fwhm=5)
@@ -27,32 +26,31 @@ examples:
         x_0: 24.3
         y_0: 25.2
 
-
 allOf:
-  - $ref: "http://stsci.edu/schemas/asdf/transform/transform-1.4.0"
+  - $ref: 'http://stsci.edu/schemas/asdf/transform/transform-1.4.0'
   - type: object
     properties:
       flux:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Total integrated flux of the PSF.
       x_0:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Position of the peak along the x axis.
       y_0:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Position of the peak along the y axis.
       fwhm:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Full width at half maximum of the Gaussian profile, in

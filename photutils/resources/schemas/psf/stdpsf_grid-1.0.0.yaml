@@ -1,15 +1,14 @@
 %YAML 1.1
 ---
-$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
-id: "asdf://astropy.org/photutils/schemas/psf/stdpsf_grid-1.0.0"
+$schema: 'http://stsci.edu/schemas/yaml-schema/draft-01'
+id: 'asdf://astropy.org/photutils/schemas/psf/stdpsf_grid-1.0.0'
 title: STDPSFGrid
 description: |
   ASDF schema for serializing a STDPSFGrid, a grid of 2D ePSF models
   read from a file in the STDPSF format.
 
 examples:
-  -
-    - |
+  - - |
       A STDPSFGrid with nine 101x101 ePSF images on a 3x3 grid, read
       from a WFC3/IR F153M STDPSF file.
     - |
@@ -34,7 +33,7 @@ examples:
 type: object
 properties:
   data:
-    tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+    tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
     description: |
       A 3D array of shape (N, My, Mx) containing the N ePSF images of
       shape (My, Mx).
@@ -71,7 +70,7 @@ properties:
         minItems: 2
         maxItems: 2
       grid_xypos:
-        tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+        tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
         description: |
           The ``(x, y)`` fiducial detector position of each ePSF, in the
           same order as the first axis of ``data``.

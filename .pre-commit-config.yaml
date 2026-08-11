@@ -98,11 +98,10 @@ repos:
       - id: prettier
         types_or: [css, rst, json, yaml, toml, markdown]
         args: ['--single-quote']
-        # Exclude codeql.yml, dependabot.yml, and schemas/**/*.yaml
+        # Exclude codeql.yml and dependabot.yml
         exclude: |
           (?x)^(
-            (.*\/)?(codeql\.yml|dependabot\.yml)$|
-            .*schemas\/.*\.yaml$
+            (.*\/)?(codeql\.yml|dependabot\.yml)$
           )
 
   - repo: https://github.com/codespell-project/codespell

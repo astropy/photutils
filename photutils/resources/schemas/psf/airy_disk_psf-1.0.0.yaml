@@ -1,15 +1,14 @@
 %YAML 1.1
 ---
-$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
-id: "asdf://astropy.org/photutils/schemas/psf/airy_disk_psf-1.0.0"
+$schema: 'http://stsci.edu/schemas/yaml-schema/draft-01'
+id: 'asdf://astropy.org/photutils/schemas/psf/airy_disk_psf-1.0.0'
 title: AiryDiskPSF
 description: |
   ASDF schema for serializing an AiryDiskPSF model, a 2D Airy disk PSF
   defined by the total flux, center coordinates, and radius.
 
 examples:
-  -
-    - |
+  - - |
       An AiryDiskPSF with a flux of 71.4, centered at (24.3, 25.2)
       pixels, and a radius of 5 pixels:
       AiryDiskPSF(flux=71.4, x_0=24.3, y_0=25.2, radius=5)
@@ -26,32 +25,31 @@ examples:
         x_0: 24.3
         y_0: 25.2
 
-
 allOf:
-  - $ref: "http://stsci.edu/schemas/asdf/transform/transform-1.4.0"
+  - $ref: 'http://stsci.edu/schemas/asdf/transform/transform-1.4.0'
   - type: object
     properties:
       flux:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Total integrated flux of the PSF.
       x_0:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Position of the peak along the x axis.
       y_0:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Position of the peak along the y axis.
       radius:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Radius of the Airy disk at the first zero, in pixels.

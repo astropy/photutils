@@ -1,7 +1,7 @@
 %YAML 1.1
 ---
-$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
-id: "asdf://astropy.org/photutils/schemas/psf/gridded_psf_model-1.0.0"
+$schema: 'http://stsci.edu/schemas/yaml-schema/draft-01'
+id: 'asdf://astropy.org/photutils/schemas/psf/gridded_psf_model-1.0.0'
 title: GriddedPSFModel
 description: |
   ASDF schema for serializing a GriddedPSFModel, a grid of 2D ePSF
@@ -9,8 +9,7 @@ description: |
   grid.
 
 examples:
-  -
-    - |
+  - - |
       A GriddedPSFModel with four 6x6 ePSF images on a 2x2 grid, a flux
       of 6, and an oversampling factor of 1 along both axes.
     - |
@@ -42,11 +41,11 @@ examples:
         y_0: 0.5
 
 allOf:
-  - $ref: "http://stsci.edu/schemas/asdf/transform/transform-1.4.0"
+  - $ref: 'http://stsci.edu/schemas/asdf/transform/transform-1.4.0'
   - type: object
     properties:
       data:
-        tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+        tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
         description: |
           A 3D array of shape (N, My, Mx) containing the N ePSF images
           of shape (My, Mx).
@@ -71,12 +70,12 @@ allOf:
           Assign value to pixels outside the input pixel grid
           to avoid extrapolation.
       oversampling:
-        tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+        tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
         description: |
           The integer oversampling factor of the input ePSF images
           along each axis, in numpy ``(y, x)`` order.
       grid_xypos:
-        tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+        tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
         description: |
           The ``(x, y)`` grid position of each reference ePSF, in the
           same order as the first axis of ``data``; that is,

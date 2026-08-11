@@ -1,7 +1,7 @@
 %YAML 1.1
 ---
-$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
-id: "asdf://astropy.org/photutils/schemas/psf/gaussian_prf-1.0.0"
+$schema: 'http://stsci.edu/schemas/yaml-schema/draft-01'
+id: 'asdf://astropy.org/photutils/schemas/psf/gaussian_prf-1.0.0'
 title: GaussianPRF
 description: |
   ASDF schema for serializing a GaussianPRF model, a 2D Gaussian PSF
@@ -9,8 +9,7 @@ description: |
   coordinates, FWHMs, and rotation angle.
 
 examples:
-  -
-    - |
+  - - |
       A GaussianPRF with a flux of 71.4, centered at (24.3, 25.2)
       pixels, with FWHMs of 5 pixels along the x axis and 6 pixels along
       the y axis, and a rotation angle of 21.7 degrees:
@@ -32,46 +31,45 @@ examples:
         y_0: 25.2
         y_fwhm: 6.0
 
-
 allOf:
-  - $ref: "http://stsci.edu/schemas/asdf/transform/transform-1.4.0"
+  - $ref: 'http://stsci.edu/schemas/asdf/transform/transform-1.4.0'
   - type: object
     properties:
       flux:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Total integrated flux of the PSF.
       x_0:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Position of the peak along the x axis.
       y_0:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Position of the peak along the y axis.
       x_fwhm:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Full width at half maximum of the Gaussian profile along
           the x axis, in pixels.
       y_fwhm:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Full width at half maximum of the Gaussian profile along
           the y axis, in pixels.
       theta:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
           - type: number
         description: |
           Rotation angle of the Gaussian profile, either as a number in
