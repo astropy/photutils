@@ -29,6 +29,8 @@ PHOTUTILS_APERTURE_CONVERTERS = [
     apertures.RectangularAnnulusConverter(),
 ]
 
+PHOTUTILS_PSF_CONVERTERS = []
+
 # The PSF converters are built on the asdf-astropy transform machinery.
 # asdf rejects an entire extension that contains a converter which does
 # not implement its interface, so registering the PSF converters when
@@ -37,7 +39,7 @@ PHOTUTILS_APERTURE_CONVERTERS = [
 if _ASDF_ASTROPY_INSTALLED:
     from .converters import functional_models, image_models
 
-    PHOTUTILS_PSF_CONVERTERS = [
+    PHOTUTILS_PSF_CONVERTERS += [
         functional_models.AiryDiskPSFConverter(),
         functional_models.CircularGaussianPRFConverter(),
         functional_models.CircularGaussianPSFConverter(),
@@ -49,8 +51,6 @@ if _ASDF_ASTROPY_INSTALLED:
         image_models.GriddedPSFModelConverter(),
         image_models.STDPSFGridConverter(),
     ]
-else:
-    PHOTUTILS_PSF_CONVERTERS = []
 
 PHOTUTILS_CONVERTERS = PHOTUTILS_PSF_CONVERTERS + PHOTUTILS_APERTURE_CONVERTERS
 
