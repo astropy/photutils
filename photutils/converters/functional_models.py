@@ -18,212 +18,116 @@ __all__ = ['AiryDiskPSFConverter',
            ]
 
 
-class AiryDiskPSFConverter(TransformConverterBase):
+class _PSFModelConverter(TransformConverterBase):
     """
-    Converter for AiryDiskPSF.
+    Base class for the photutils PSF model converters.
+
+    Subclasses name the model parameters that describe the profile;
+    ``flux``, ``x_0``, ``y_0``, and ``bbox_factor`` are common to every
+    model and are handled here.
+
+    Every parameter is written to the file. Those in
+    ``optional_model_params``, and ``bbox_factor``, may be absent when
+    reading, in which case the model class supplies its default.
+    """
+
+    model_params = ()
+    optional_model_params = ()
+
+    def _model_class(self):
+        """
+        Return the model class handled by this converter.
+        """
+        from photutils import psf
+
+        return getattr(psf, self.types[0].rsplit('.', 1)[-1])
+
+    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
+        names = ('flux', 'x_0', 'y_0', *self.model_params,
+                 *self.optional_model_params)
+        node = {name: parameter_to_value(getattr(model, name))
+                for name in names}
+        node['bbox_factor'] = model.bbox_factor
+        return node
+
+    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
+        names = ('flux', 'x_0', 'y_0', *self.model_params)
+        params = {name: node[name] for name in names}
+
+        return self._model_class()(
+            **params,
+            **optional_params(node, *self.optional_model_params,
+                              'bbox_factor'),
+        )
+
+
+class AiryDiskPSFConverter(_PSFModelConverter):
+    """
+    ASDF converter for the AiryDiskPSF model.
     """
 
     tags = ('tag:astropy.org:photutils/psf/airy_disk_psf-*',)
     types = ('photutils.psf.AiryDiskPSF',)
-
-    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
-        return {
-            'flux': parameter_to_value(model.flux),
-            'x_0': parameter_to_value(model.x_0),
-            'y_0': parameter_to_value(model.y_0),
-            'radius': parameter_to_value(model.radius),
-            'bbox_factor': model.bbox_factor,
-        }
-
-    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
-        from photutils.psf import AiryDiskPSF
-
-        return AiryDiskPSF(
-            flux=node['flux'],
-            x_0=node['x_0'],
-            y_0=node['y_0'],
-            radius=node['radius'],
-            **optional_params(node, 'bbox_factor'),
-        )
+    model_params = ('radius',)
 
 
-class CircularGaussianPRFConverter(TransformConverterBase):
+class CircularGaussianPRFConverter(_PSFModelConverter):
     """
-    ASDF converter for CircularGaussianPRF model.
+    ASDF converter for the CircularGaussianPRF model.
     """
 
     tags = ('tag:astropy.org:photutils/psf/circular_gaussian_prf-*',)
     types = ('photutils.psf.CircularGaussianPRF',)
-
-    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
-        return {
-            'flux': parameter_to_value(model.flux),
-            'x_0': parameter_to_value(model.x_0),
-            'y_0': parameter_to_value(model.y_0),
-            'fwhm': parameter_to_value(model.fwhm),
-            'bbox_factor': model.bbox_factor,
-        }
-
-    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
-        from photutils.psf import CircularGaussianPRF
-
-        return CircularGaussianPRF(
-            flux=node['flux'],
-            x_0=node['x_0'],
-            y_0=node['y_0'],
-            fwhm=node['fwhm'],
-            **optional_params(node, 'bbox_factor'),
-        )
+    model_params = ('fwhm',)
 
 
-class CircularGaussianPSFConverter(TransformConverterBase):
+class CircularGaussianPSFConverter(_PSFModelConverter):
     """
-    ASDF converter for CircularGaussianPSF model.
+    ASDF converter for the CircularGaussianPSF model.
     """
 
     tags = ('tag:astropy.org:photutils/psf/circular_gaussian_psf-*',)
     types = ('photutils.psf.CircularGaussianPSF',)
-
-    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
-        return {
-            'flux': parameter_to_value(model.flux),
-            'x_0': parameter_to_value(model.x_0),
-            'y_0': parameter_to_value(model.y_0),
-            'fwhm': parameter_to_value(model.fwhm),
-            'bbox_factor': model.bbox_factor,
-        }
-
-    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
-        from photutils.psf import CircularGaussianPSF
-
-        return CircularGaussianPSF(
-            flux=node['flux'],
-            x_0=node['x_0'],
-            y_0=node['y_0'],
-            fwhm=node['fwhm'],
-            **optional_params(node, 'bbox_factor'),
-        )
+    model_params = ('fwhm',)
 
 
-class CircularGaussianSigmaPRFConverter(TransformConverterBase):
+class CircularGaussianSigmaPRFConverter(_PSFModelConverter):
     """
-    ASDF converter for CircularGaussianSigmaPRF model.
+    ASDF converter for the CircularGaussianSigmaPRF model.
     """
 
     tags = ('tag:astropy.org:photutils/psf/circular_gaussian_sigma_prf-*',)
     types = ('photutils.psf.CircularGaussianSigmaPRF',)
-
-    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
-        return {
-            'flux': parameter_to_value(model.flux),
-            'x_0': parameter_to_value(model.x_0),
-            'y_0': parameter_to_value(model.y_0),
-            'sigma': parameter_to_value(model.sigma),
-            'bbox_factor': model.bbox_factor,
-        }
-
-    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
-        from photutils.psf import CircularGaussianSigmaPRF
-
-        return CircularGaussianSigmaPRF(
-            flux=node['flux'],
-            x_0=node['x_0'],
-            y_0=node['y_0'],
-            sigma=node['sigma'],
-            **optional_params(node, 'bbox_factor'),
-        )
+    model_params = ('sigma',)
 
 
-class GaussianPRFConverter(TransformConverterBase):
+class GaussianPRFConverter(_PSFModelConverter):
     """
-    ASDF converter for GaussianPRF model.
+    ASDF converter for the GaussianPRF model.
     """
 
     tags = ('tag:astropy.org:photutils/psf/gaussian_prf-*',)
     types = ('photutils.psf.GaussianPRF',)
-
-    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
-        return {
-            'flux': parameter_to_value(model.flux),
-            'x_0': parameter_to_value(model.x_0),
-            'y_0': parameter_to_value(model.y_0),
-            'x_fwhm': parameter_to_value(model.x_fwhm),
-            'y_fwhm': parameter_to_value(model.y_fwhm),
-            'theta': parameter_to_value(model.theta),
-            'bbox_factor': model.bbox_factor,
-        }
-
-    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
-        from photutils.psf import GaussianPRF
-
-        return GaussianPRF(
-            flux=node['flux'],
-            x_0=node['x_0'],
-            y_0=node['y_0'],
-            x_fwhm=node['x_fwhm'],
-            y_fwhm=node['y_fwhm'],
-            **optional_params(node, 'theta', 'bbox_factor'),
-        )
+    model_params = ('x_fwhm', 'y_fwhm')
+    optional_model_params = ('theta',)
 
 
-class GaussianPSFConverter(TransformConverterBase):
+class GaussianPSFConverter(_PSFModelConverter):
     """
-    ASDF converter for GaussianPSF model.
+    ASDF converter for the GaussianPSF model.
     """
 
     tags = ('tag:astropy.org:photutils/psf/gaussian_psf-*',)
     types = ('photutils.psf.GaussianPSF',)
-
-    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
-        return {
-            'flux': parameter_to_value(model.flux),
-            'x_0': parameter_to_value(model.x_0),
-            'y_0': parameter_to_value(model.y_0),
-            'x_fwhm': parameter_to_value(model.x_fwhm),
-            'y_fwhm': parameter_to_value(model.y_fwhm),
-            'theta': parameter_to_value(model.theta),
-            'bbox_factor': model.bbox_factor,
-        }
-
-    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
-        from photutils.psf import GaussianPSF
-
-        return GaussianPSF(
-            flux=node['flux'],
-            x_0=node['x_0'],
-            y_0=node['y_0'],
-            x_fwhm=node['x_fwhm'],
-            y_fwhm=node['y_fwhm'],
-            **optional_params(node, 'theta', 'bbox_factor'),
-        )
+    model_params = ('x_fwhm', 'y_fwhm')
+    optional_model_params = ('theta',)
 
 
-class MoffatPSFConverter(TransformConverterBase):
+class MoffatPSFConverter(_PSFModelConverter):
     """
-    ASDF converter for MoffatPSF model.
+    ASDF converter for the MoffatPSF model.
     """
 
     tags = ('tag:astropy.org:photutils/psf/moffat_psf-*',)
     types = ('photutils.psf.MoffatPSF',)
-
-    def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
-        return {
-            'flux': parameter_to_value(model.flux),
-            'x_0': parameter_to_value(model.x_0),
-            'y_0': parameter_to_value(model.y_0),
-            'alpha': parameter_to_value(model.alpha),
-            'beta': parameter_to_value(model.beta),
-            'bbox_factor': model.bbox_factor,
-        }
-
-    def from_yaml_tree_transform(self, node, tag, ctx):  # noqa: ARG002
-        from photutils.psf import MoffatPSF
-
-        return MoffatPSF(
-            flux=node['flux'],
-            x_0=node['x_0'],
-            y_0=node['y_0'],
-            alpha=node['alpha'],
-            beta=node['beta'],
-            **optional_params(node, 'bbox_factor'),
-        )
+    model_params = ('alpha', 'beta')
