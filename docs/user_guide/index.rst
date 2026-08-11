@@ -94,6 +94,15 @@ Datasets and Simulation
     datasets.rst
 
 
+Serialization
+-------------
+
+.. toctree::
+    :maxdepth: 1
+
+    asdf.rst
+
+
 Utilities
 ---------
 
