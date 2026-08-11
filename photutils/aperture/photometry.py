@@ -13,10 +13,10 @@ from photutils.aperture._common import (SCALAR_COLLAPSE_TYPES,
                                         collapse_scalar_value, unpack_nddata,
                                         validate_array, validate_mask_method)
 from photutils.aperture._segmentation import process_segmentation_inputs
-from photutils.aperture.converters import region_to_aperture
 from photutils.aperture.core import (Aperture, SkyAperture, _aperture_metadata,
                                      _update_method_subpixels_docstring)
 from photutils.aperture.flags import decode_aperture_flags
+from photutils.aperture.region_converters import region_to_aperture
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
