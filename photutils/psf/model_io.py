@@ -116,7 +116,7 @@ def _read_stdpsf(filename):
 
     Parameters
     ----------
-    filename : str or `~astropy.io.fits.HDUList`
+    filename : str, path-like, or `~astropy.io.fits.HDUList`
         The name of the STDPSF FITS file, or an already-open
         `~astropy.io.fits.HDUList`.
 
@@ -125,6 +125,9 @@ def _read_stdpsf(filename):
     data : dict
         A dictionary containing the ePSF data and metadata.
     """
+    if isinstance(filename, os.PathLike):
+        filename = os.fspath(filename)
+
     is_hdulist = isinstance(filename, fits.HDUList)
     is_fileobj = (isinstance(filename, io.FileIO)
                   and filename.name.lower().endswith(_FITS_EXTENSIONS))
@@ -142,7 +145,7 @@ def _read_fits_stdpsf(filename):
 
     Parameters
     ----------
-    filename : str or `~astropy.io.fits.HDUList`
+    filename : str, path-like, or `~astropy.io.fits.HDUList`
         The name of the STDPSF FITS file, or an already-open
         `~astropy.io.fits.HDUList`.
 
@@ -427,7 +430,7 @@ def _get_metadata(filename, detector_id):
 
     Parameters
     ----------
-    filename : str
+    filename : str or path-like
         The name of the STDPSF FITS file.
 
     detector_id : int
@@ -440,6 +443,8 @@ def _get_metadata(filename, detector_id):
     """
     if isinstance(filename, io.FileIO):
         filename = filename.name
+    elif isinstance(filename, os.PathLike):
+        filename = os.fspath(filename)
 
     # Strip the file extension (e.g., '.fits' or '.fits.gz') before
     # splitting the filename into its underscore-separated fields.
@@ -500,7 +505,7 @@ def stdpsf_reader(filename, detector_id=None):
 
     Parameters
     ----------
-    filename : str
+    filename : str or path-like
         The name of the STDPSF FITS file. A URL can also be used.
 
     detector_id : `None` or int, optional
@@ -588,7 +593,7 @@ def webbpsf_reader(filename):
 
     Parameters
     ----------
-    filename : str
+    filename : str or path-like
         The name of the WebbPSF FITS file. A URL can also be used.
 
     Returns
@@ -654,7 +659,7 @@ def _has_fits_header_keys(filepath, keys):
 
     Parameters
     ----------
-    filepath : str or `None`
+    filepath : str, path-like, or `None`
         The file path of the FITS file.
 
     keys : tuple of str
@@ -666,6 +671,9 @@ def _has_fits_header_keys(filepath, keys):
         Returns `True` if the file is a FITS file containing all of the
         input keywords.
     """
+    if isinstance(filepath, os.PathLike):
+        filepath = os.fspath(filepath)
+
     if filepath is None or not filepath.lower().endswith(_FITS_EXTENSIONS):
         return False
 
@@ -686,7 +694,7 @@ def is_stdpsf(origin, filepath, fileobj, *args, **kwargs):
         A string indicating whether the file is to be opened for reading
         or writing.
 
-    filepath : str
+    filepath : str or path-like
         The file path of the FITS file.
 
     fileobj : file-like object
@@ -715,7 +723,7 @@ def is_webbpsf(origin, filepath, fileobj, *args, **kwargs):
         A string indicating whether the file is to be opened for reading
         or writing.
 
-    filepath : str
+    filepath : str or path-like
         The file path of the FITS file.
 
     fileobj : file-like object

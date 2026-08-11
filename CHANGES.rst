@@ -124,6 +124,10 @@ New Features
   - Added a ``STDPSFGrid.grid_shape`` property returning the ``(ny,
     nx)`` shape of the ePSF grid. [#2347]
 
+  - ``STDPSFGrid`` and the ``GriddedPSFModel`` ``read`` method now
+    accept path-like inputs (e.g., ``pathlib.Path``) in addition to
+    strings. [#2355]
+
 - ``photutils.segmentation``
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``
