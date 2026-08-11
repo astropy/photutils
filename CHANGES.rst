@@ -124,6 +124,11 @@ New Features
   - Added a ``STDPSFGrid.grid_shape`` property returning the ``(ny,
     nx)`` shape of the ePSF grid. [#2347]
 
+  - Added a ``GriddedPSFModel.grid_shape`` property returning the
+    ``(ny, nx)`` shape of the ePSF grid, matching the ``STDPSFGrid``
+    property of the same name. It contains the same information as the
+    ``grid_shape`` metadata key. [#2360]
+
   - ``STDPSFGrid`` and the ``GriddedPSFModel`` ``read`` method now
     accept path-like inputs (e.g., ``pathlib.Path``) in addition to
     strings. [#2355]

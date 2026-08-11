@@ -136,6 +136,27 @@ class TestGriddedPSFModel:
         with pytest.raises(AttributeError, match=match):
             psfmodel.grid_xypos = [[0, 0], [1, 1]]
 
+    def test_grid_shape(self, psfmodel):
+        assert psfmodel.grid_shape == (4, 4)
+        assert all(isinstance(value, int) for value in psfmodel.grid_shape)
+        assert psfmodel.meta['grid_shape'] == psfmodel.grid_shape
+
+        match = 'object has no setter'
+        with pytest.raises(AttributeError, match=match):
+            psfmodel.grid_shape = (2, 2)
+
+    def test_grid_shape_rectangular(self):
+        """
+        Test that grid_shape is in (ny, nx) order.
+        """
+        xgrid = [0, 10, 20]
+        ygrid = [0, 5, 15, 25]
+        meta = {'grid_xypos': list(product(xgrid, ygrid)),
+                'oversampling': 1}
+        data = np.ones((len(xgrid) * len(ygrid), 5, 5))
+        psfmodel = GriddedPSFModel(NDData(data, meta=meta))
+        assert psfmodel.grid_shape == (len(ygrid), len(xgrid))
+
     def test_repr_str(self, psfmodel):
         repr_str = repr(psfmodel)
         assert 'GriddedPSFModel' in repr_str
@@ -444,6 +465,7 @@ class TestGriddedPSFModel:
         keys = ('Grid shape', 'Number of PSFs', 'PSF shape', 'Oversampling')
         for key in keys:
             assert key in model_str
+        assert 'Grid shape: (4, 4)' in model_str
         for param in psfmodel.param_names:
             assert param in model_str
 
