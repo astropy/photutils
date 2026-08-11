@@ -18,17 +18,17 @@ examples:
           datatype: float32
           byteorder: big
           shape: [9, 101, 101]
+        grid_shape: [3, 3]
+        grid_xypos: !core/ndarray-1.1.0
+          source: 1
+          datatype: int64
+          byteorder: little
+          shape: [9, 2]
         meta:
           STDPSF: STDPSF_WFC3IR_F153M.fits
           detector: WFC3IR
           filter: F153M
-          grid_shape: [3, 3]
-          grid_xypos: !core/ndarray-1.1.0
-            source: 1
-            datatype: int64
-            byteorder: little
-            shape: [9, 2]
-          oversampling: [4, 4]
+        oversampling: [4, 4]
 
 type: object
 properties:
@@ -37,22 +37,40 @@ properties:
     description: |
       A 3D array of shape (N, My, Mx) containing the N ePSF images of
       shape (My, Mx).
+  grid_xypos:
+    tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
+    description: |
+      The ``(x, y)`` fiducial detector position of each ePSF, in the
+      same order as the first axis of ``data``.
+  grid_shape:
+    type: array
+    description: |
+      The shape of the ePSF grid in numpy ``(ny, nx)`` order.
+    items:
+      type: integer
+    minItems: 2
+    maxItems: 2
+  oversampling:
+    type: array
+    description: |
+      The integer oversampling factor of the ePSF images along each
+      axis, in numpy ``(y, x)`` order.
+    items:
+      type: integer
+    minItems: 2
+    maxItems: 2
   meta:
     type: object
+    description: |
+      Additional metadata describing the ePSF grid, such as the STDPSF
+      file it was read from, the detector, or the filter. The
+      ``grid_xypos``, ``grid_shape``, and ``oversampling`` items are
+      stored as separate properties, so none of them appear here.
     properties:
       STDPSF:
         type: string
         description: |
           The name of the STDPSF file that the ePSFs were read from.
-      oversampling:
-        type: array
-        description: |
-          The integer oversampling factor of the ePSF images along each
-          axis, in numpy ``(y, x)`` order.
-        items:
-          type: integer
-        minItems: 2
-        maxItems: 2
       detector:
         type: string
         description: |
@@ -61,21 +79,6 @@ properties:
         type: string
         description: |
           The name of the filter.
-      grid_shape:
-        type: array
-        description: |
-          The shape of the ePSF grid in numpy ``(ny, nx)`` order.
-        items:
-          type: integer
-        minItems: 2
-        maxItems: 2
-      grid_xypos:
-        tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
-        description: |
-          The ``(x, y)`` fiducial detector position of each ePSF, in the
-          same order as the first axis of ``data``.
-    required: [oversampling, grid_shape, grid_xypos]
-
-required: [data, meta]
+required: [data, grid_xypos, grid_shape, meta]
 additionalProperties: false
 ...

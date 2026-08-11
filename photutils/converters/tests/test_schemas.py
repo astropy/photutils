@@ -425,8 +425,10 @@ REQUIRED_PSF_PARAMS = {
                           'grid_xypos': GRID_XYPOS,
                           'meta': '{}'},
     'stdpsf_grid': {'data': PSF_GRID,
-                    'meta': ('{oversampling: [4, 4], grid_shape: [2, 2], '
-                             f'grid_xypos: {GRID_XYPOS}}}')},
+                    'grid_xypos': GRID_XYPOS,
+                    'grid_shape': '[2, 2]',
+                    'oversampling': '[4, 4]',
+                    'meta': '{}'},
 }
 
 # The models whose parameters are all plain numbers, so that a reference

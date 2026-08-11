@@ -126,6 +126,36 @@ def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path,
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
+@pytest.mark.parametrize(('name', 'converter_name', 'method'), [
+    # GriddedPSFModel is an astropy model, so its converter builds the
+    # tree in to_yaml_tree_transform; STDPSFGrid is not a model, so its
+    # converter uses to_yaml_tree.
+    ('gridded_psf', 'GriddedPSFModelConverter', 'to_yaml_tree_transform'),
+    ('stdpsf_single_detector', 'STDPSFGridConverter', 'to_yaml_tree'),
+])
+def test_grid_structure_is_stored_outside_meta(name, converter_name, method):
+    """
+    Test that both grid converters store the grid structure as
+    top-level properties rather than inside ``meta``.
+
+    GriddedPSFModel keeps the grid structure in its meta attribute
+    and STDPSFGrid keeps it in private attributes, so the converters
+    normalize it to a single layout in the file.
+    """
+    from photutils.converters import image_models
+
+    obj, _ = getattr(examples, name)()
+    converter = getattr(image_models, converter_name)()
+    node = getattr(converter, method)(obj, None, None)
+
+    for key in ('grid_xypos', 'oversampling'):
+        assert key in node
+        assert key not in node['meta']
+    assert 'grid_shape' not in node['meta']
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
 def test_stdpsf_grid_converter_preserves_oversampling(tmp_path):
     """
     Test that a non-default oversampling value survives a round trip.
