@@ -144,7 +144,6 @@ class GriddedPSFModel(Fittable2DModel):
         self._xgrid = np.unique(self.grid_xypos[:, 0])  # sorted
         self._ygrid = np.unique(self.grid_xypos[:, 1])  # sorted
         self._grid_shape = (len(self._ygrid), len(self._xgrid))
-        self.meta['grid_shape'] = self._grid_shape
         # Store the sorted grid positions so that meta always matches
         # the grid_xypos attribute, regardless of the input form
         self.meta['grid_xypos'] = self.grid_xypos

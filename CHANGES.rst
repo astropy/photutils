@@ -126,8 +126,8 @@ New Features
 
   - Added a ``GriddedPSFModel.grid_shape`` property returning the
     ``(ny, nx)`` shape of the ePSF grid, matching the ``STDPSFGrid``
-    property of the same name. It contains the same information as the
-    ``grid_shape`` metadata key. [#2360]
+    property of the same name. It replaces the ``grid_shape`` metadata
+    key, which has been removed. [#2360]
 
   - ``STDPSFGrid`` and the ``GriddedPSFModel`` ``read`` method now
     accept path-like inputs (e.g., ``pathlib.Path``) in addition to
@@ -137,7 +137,6 @@ New Features
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``
     keyword. [#2329]
-
 
 Bug Fixes
 ^^^^^^^^^
@@ -309,9 +308,13 @@ API Changes
 
   - The ``nxpsfs`` and ``nypsfs`` metadata keys of the
     ``GriddedPSFModel`` returned when reading a STDPSF file have been
-    removed. They were redundant with the ``grid_shape`` metadata key,
-    which is always set and contains the same information as
-    ``(nypsfs, nxpsfs)``. [#2344]
+    removed. They were redundant with the ``grid_shape`` attribute,
+    which contains the same information as ``(nypsfs, nxpsfs)``.
+    [#2344]
+
+  - The ``'grid_shape'`` key has been removed from the
+    ``GriddedPSFModel`` ``meta`` dictionary. Use the new
+    ``GriddedPSFModel.grid_shape`` attribute instead. [#2360]
 
   - The ``grid_xypos``, ``oversampling``, and ``grid_shape`` keys have
     been removed from the ``STDPSFGrid`` ``meta`` dictionary. The

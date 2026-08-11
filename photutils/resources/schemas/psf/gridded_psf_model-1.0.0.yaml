@@ -86,9 +86,8 @@ allOf:
         description: |
           Additional metadata describing the ePSF grid, such as the
           telescope, instrument, detector, or filter. The ``grid_xypos``
-          and ``oversampling`` items are stored as separate properties
-          and the ``grid_shape`` item is recomputed when the model is
-          initialized, so none of them appear here.
+          and ``oversampling`` items are stored as separate properties,
+          so neither appears here.
       # The properties of the referenced transform schema are repeated
       # here because "additionalProperties" applies only to the
       # properties defined in the same subschema.

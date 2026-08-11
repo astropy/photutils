@@ -139,7 +139,7 @@ class TestGriddedPSFModel:
     def test_grid_shape(self, psfmodel):
         assert psfmodel.grid_shape == (4, 4)
         assert all(isinstance(value, int) for value in psfmodel.grid_shape)
-        assert psfmodel.meta['grid_shape'] == psfmodel.grid_shape
+        assert 'grid_shape' not in psfmodel.meta
 
         match = 'object has no setter'
         with pytest.raises(AttributeError, match=match):
@@ -434,6 +434,7 @@ class TestGriddedPSFModel:
         assert_equal(model_copy.grid_xypos, psfmodel.grid_xypos)
         assert_equal(model_copy.oversampling, psfmodel.oversampling)
         assert_equal(model_copy.meta, psfmodel.meta)
+        assert model_copy.grid_shape == psfmodel.grid_shape
         assert model_copy.flux.value == psfmodel.flux.value
         assert model_copy.x_0.value == psfmodel.x_0.value
         assert model_copy.y_0.value == psfmodel.y_0.value
