@@ -6,6 +6,8 @@ Converters to and from the ASDF format for photutils.psf.functional_models.
 from asdf_astropy.converters.transform.core import (TransformConverterBase,
                                                     parameter_to_value)
 
+from photutils.converters._utils import optional_params
+
 __all__ = ['AiryDiskPSFConverter',
            'CircularGaussianPRFConverter',
            'CircularGaussianPSFConverter',
@@ -41,7 +43,7 @@ class AiryDiskPSFConverter(TransformConverterBase):
             x_0=node['x_0'],
             y_0=node['y_0'],
             radius=node['radius'],
-            bbox_factor=node['bbox_factor'],
+            **optional_params(node, 'bbox_factor'),
         )
 
 
@@ -70,7 +72,7 @@ class CircularGaussianPRFConverter(TransformConverterBase):
             x_0=node['x_0'],
             y_0=node['y_0'],
             fwhm=node['fwhm'],
-            bbox_factor=node['bbox_factor'],
+            **optional_params(node, 'bbox_factor'),
         )
 
 
@@ -99,7 +101,7 @@ class CircularGaussianPSFConverter(TransformConverterBase):
             x_0=node['x_0'],
             y_0=node['y_0'],
             fwhm=node['fwhm'],
-            bbox_factor=node['bbox_factor'],
+            **optional_params(node, 'bbox_factor'),
         )
 
 
@@ -128,7 +130,7 @@ class CircularGaussianSigmaPRFConverter(TransformConverterBase):
             x_0=node['x_0'],
             y_0=node['y_0'],
             sigma=node['sigma'],
-            bbox_factor=node['bbox_factor'],
+            **optional_params(node, 'bbox_factor'),
         )
 
 
@@ -160,8 +162,7 @@ class GaussianPRFConverter(TransformConverterBase):
             y_0=node['y_0'],
             x_fwhm=node['x_fwhm'],
             y_fwhm=node['y_fwhm'],
-            theta=node['theta'],
-            bbox_factor=node['bbox_factor'],
+            **optional_params(node, 'theta', 'bbox_factor'),
         )
 
 
@@ -193,8 +194,7 @@ class GaussianPSFConverter(TransformConverterBase):
             y_0=node['y_0'],
             x_fwhm=node['x_fwhm'],
             y_fwhm=node['y_fwhm'],
-            theta=node['theta'],
-            bbox_factor=node['bbox_factor'],
+            **optional_params(node, 'theta', 'bbox_factor'),
         )
 
 
@@ -225,5 +225,5 @@ class MoffatPSFConverter(TransformConverterBase):
             y_0=node['y_0'],
             alpha=node['alpha'],
             beta=node['beta'],
-            bbox_factor=node['bbox_factor'],
+            **optional_params(node, 'bbox_factor'),
         )

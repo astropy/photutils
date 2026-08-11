@@ -6,6 +6,8 @@ Converters to and from the ASDF data format for photutils apertures.
 from asdf.extension import Converter
 from astropy.coordinates import SkyCoord
 
+from photutils.converters._utils import optional_params
+
 __all__ = [
     'CircularAnnulusConverter',
     'CircularApertureConverter',
@@ -15,18 +17,6 @@ __all__ = [
     'RectangularAnnulusConverter',
     'RectangularApertureConverter',
 ]
-
-
-def _optional_theta(node):
-    """
-    Return ``theta`` as a keyword dict, or an empty dict if it is
-    absent.
-
-    ``theta`` is optional in the aperture schemas. It is omitted instead
-    of being passed as `None` because its default differs between the
-    pixel and sky apertures.
-    """
-    return {'theta': node['theta']} if 'theta' in node else {}
 
 
 class CircularApertureConverter(Converter):
@@ -127,7 +117,7 @@ class EllipticalApertureConverter(Converter):
             positions=node['positions'],
             a=node['a'],
             b=node['b'],
-            **_optional_theta(node),
+            **optional_params(node, 'theta'),
         )
 
 
@@ -165,9 +155,8 @@ class EllipticalAnnulusConverter(Converter):
             positions=node['positions'],
             a_in=node['a_in'],
             a_out=node['a_out'],
-            b_in=node.get('b_in'),
             b_out=node['b_out'],
-            **_optional_theta(node),
+            **optional_params(node, 'b_in', 'theta'),
         )
 
 
@@ -235,7 +224,7 @@ class RectangularApertureConverter(Converter):
             positions=node['positions'],
             w=node['w'],
             h=node['h'],
-            **_optional_theta(node),
+            **optional_params(node, 'theta'),
         )
 
 
@@ -273,7 +262,6 @@ class RectangularAnnulusConverter(Converter):
             positions=node['positions'],
             w_in=node['w_in'],
             w_out=node['w_out'],
-            h_in=node.get('h_in'),
             h_out=node['h_out'],
-            **_optional_theta(node),
+            **optional_params(node, 'h_in', 'theta'),
         )

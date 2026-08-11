@@ -80,5 +80,18 @@ allOf:
         - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
         description: |
           The integer oversampling factor(s) of the input PSF image in (y, x) order.
+      # The properties of the referenced transform schema are repeated
+      # here because "additionalProperties" applies only to the
+      # properties defined in the same subschema.
+      bounding_box: {}
+      bounds: {}
+      fixed: {}
+      input_units_equivalencies: {}
+      inputs: {}
+      inverse: {}
+      name: {}
+      outputs: {}
+
+    additionalProperties: false
     required: [data]
 ...

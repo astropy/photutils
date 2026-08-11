@@ -51,6 +51,18 @@ allOf:
       bbox_factor:
         type: number
         description: Factor by which to multiply the radius to determine the size of the bounding box.
+      # The properties of the referenced transform schema are repeated
+      # here because "additionalProperties" applies only to the
+      # properties defined in the same subschema.
+      bounding_box: {}
+      bounds: {}
+      fixed: {}
+      input_units_equivalencies: {}
+      inputs: {}
+      inverse: {}
+      name: {}
+      outputs: {}
 
+    additionalProperties: false
     required: [flux, x_0, y_0, fwhm]
 ...

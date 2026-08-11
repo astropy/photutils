@@ -9,6 +9,8 @@ from asdf.extension import Converter
 from asdf_astropy.converters.transform.core import (TransformConverterBase,
                                                     parameter_to_value)
 
+from photutils.converters._utils import optional_params
+
 __all__ = ['GriddedPSFModelConverter',
            'ImagePSFConverter',
            'STDPSFGridConverter',
@@ -43,12 +45,8 @@ class ImagePSFConverter(TransformConverterBase):
             # because the validation in ImagePSF happens before "data"
             # is assigned.
             data=np.array(node['data']),
-            flux=node['flux'],
-            x_0=node['x_0'],
-            y_0=node['y_0'],
-            oversampling=node['oversampling'],
-            fill_value=node['fill_value'],
-            origin=node['origin'],
+            **optional_params(node, 'flux', 'x_0', 'y_0', 'oversampling',
+                              'fill_value', 'origin'),
         )
 
 
@@ -94,10 +92,7 @@ class GriddedPSFModelConverter(TransformConverterBase):
 
         return GriddedPSFModel(
             nddata=nd_data,
-            flux=node['flux'],
-            x_0=node['x_0'],
-            y_0=node['y_0'],
-            fill_value=node['fill_value'],
+            **optional_params(node, 'flux', 'x_0', 'y_0', 'fill_value'),
         )
 
 

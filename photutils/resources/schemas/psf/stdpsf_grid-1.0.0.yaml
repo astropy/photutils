@@ -68,4 +68,5 @@ properties:
     required: [oversampling, grid_shape, grid_xypos]
 
 required: [data, meta]
+additionalProperties: false
 ...
