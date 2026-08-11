@@ -38,7 +38,8 @@ Photutils also optionally depends on other packages for some features:
 * `asdf-astropy <https://asdf-astropy.readthedocs.io/en/latest/>`_ 0.10
   or later: Required to serialize objects that store a
   `~astropy.units.Quantity` or a `~astropy.coordinates.SkyCoord` to
-  ASDF, which includes all PSF models and all sky apertures.
+  ASDF, which includes all PSF models and all sky apertures. See
+  :ref:`asdf` for details.
 
 * `Bottleneck <https://github.com/pydata/bottleneck>`_ 1.4 or later:
   Improves the performance of sigma clipping and other functionality that

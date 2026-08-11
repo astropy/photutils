@@ -38,8 +38,12 @@ ASDF Serialization Support
 Photutils 3.1 introduces initial support for serializing
 photutils objects to the `Advanced Scientific Data Format (ASDF)
 <https://asdf.readthedocs.io/>`_ file format. This requires installing
-the ``asdf`` package. For some classes, the optional ``asdf-astropy``
-package must also be installed.
+the ``asdf`` package. Objects that store an `~astropy.units.Quantity`
+or a `~astropy.coordinates.SkyCoord` also require the optional
+``asdf-astropy`` package, which provides the converters for those
+Astropy types. That includes all of the PSF models, all of the sky
+apertures, and any pixel aperture whose rotation angle is given as an
+angular quantity.
 
     >>> import asdf
     >>> from photutils.aperture import CircularAperture
@@ -77,6 +81,8 @@ ASDF files:
 * `~photutils.aperture.SkyPolygonAperture`
 * `~photutils.aperture.SkyRectangularAnnulus`
 * `~photutils.aperture.SkyRectangularAperture`
+
+See :ref:`asdf` for more details.
 
 
 Exact Rectangular Aperture Overlap
