@@ -73,13 +73,13 @@ properties:
       - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
       - tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
   w_in:
-    title: Inner radius.
+    title: Inner width.
     description: |
       RectangularAnnulus: the inner full width of the rectangular
       annulus in pixels.
       SkyRectangularAnnulus: the inner full width of the rectangular
-      annulus in angular units. For ``theta=0`` the width side is along the North-South
-      axis.
+      annulus in angular units. For ``theta=0`` the width side is along
+      the North-South axis.
     anyOf:
       - type: number
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
@@ -108,7 +108,7 @@ properties:
   h_out:
     title: Outer height.
     description: |
-      RectangularAnnulus: the outer height of the rectangular
+      RectangularAnnulus: the outer full height of the rectangular
       annulus in pixels.
       SkyRectangularAnnulus: the outer full height of the rectangular
       annulus in angular units. For ``theta=0`` the height

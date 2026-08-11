@@ -73,7 +73,9 @@ allOf:
           measured counter-clockwise from the positive x axis in degrees."
       bbox_factor:
         type: number
-        description: Factor by which to multiply the radius to determine the size of the bounding box.
+        description: |
+          The multiple of the x and y standard deviations (sigma) used
+          to define the bounding box limits.
       # The properties of the referenced transform schema are repeated
       # here because "additionalProperties" applies only to the
       # properties defined in the same subschema.
