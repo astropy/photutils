@@ -5,17 +5,9 @@ Converters to and from the ASDF format for photutils.psf.image_models
 and photutils.psf.gridded_models.
 """
 import numpy as np
-
-from . import _ASDF_ASTROPY_INSTALLED
-
-if _ASDF_ASTROPY_INSTALLED:
-    from asdf.extension import Converter
-    from asdf_astropy.converters.transform.core import (TransformConverterBase,
-                                                        parameter_to_value)
-else:
-    TransformConverterBase = object
-    Converter = object
-
+from asdf.extension import Converter
+from asdf_astropy.converters.transform.core import (TransformConverterBase,
+                                                    parameter_to_value)
 
 __all__ = ['GriddedPSFModelConverter',
            'ImagePSFConverter',

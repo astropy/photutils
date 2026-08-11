@@ -3,13 +3,8 @@
 Converters to and from the ASDF format for photutils.psf.functional_models.
 """
 
-from . import _ASDF_ASTROPY_INSTALLED
-
-if _ASDF_ASTROPY_INSTALLED:
-    from asdf_astropy.converters.transform.core import (TransformConverterBase,
-                                                        parameter_to_value)
-else:
-    TransformConverterBase = object
+from asdf_astropy.converters.transform.core import (TransformConverterBase,
+                                                    parameter_to_value)
 
 __all__ = ['AiryDiskPSFConverter',
            'CircularGaussianPRFConverter',
