@@ -18,10 +18,10 @@ from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 SkyCircularAperture, SkyEllipticalAnnulus,
                                 SkyEllipticalAperture, SkyPolygonAperture,
                                 SkyRectangularAnnulus, SkyRectangularAperture)
-from photutils.aperture.converters import (_scalar_aperture_to_region,
-                                           _shapely_polygon_to_region,
-                                           aperture_to_region,
-                                           region_to_aperture)
+from photutils.aperture.region_converters import (_scalar_aperture_to_region,
+                                                  _shapely_polygon_to_region,
+                                                  aperture_to_region,
+                                                  region_to_aperture)
 from photutils.utils._optional_deps import HAS_REGIONS, HAS_SHAPELY
 
 

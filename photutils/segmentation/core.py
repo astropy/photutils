@@ -16,7 +16,7 @@ from scipy.ndimage import find_objects, grey_dilation
 from scipy.signal import fftconvolve
 
 from photutils.aperture import BoundingBox
-from photutils.aperture.converters import _shapely_polygon_to_region
+from photutils.aperture.region_converters import _shapely_polygon_to_region
 from photutils.utils._deprecation import (deprecated_getattr,
                                           deprecated_positional_kwargs)
 from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY

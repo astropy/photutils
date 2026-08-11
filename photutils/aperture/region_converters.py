@@ -445,7 +445,8 @@ def _shapely_polygon_to_region(polygon, *, label=None, visual_kwargs=None):
     Examples
     --------
     >>> from shapely import Polygon
-    >>> from photutils.aperture.converters import _shapely_polygon_to_region
+    >>> from photutils.aperture.region_converters import (
+    ...     _shapely_polygon_to_region)
     >>> polygon = Polygon([(1, 1), (3, 1), (2, 4), (1, 2)])
     >>> region = _shapely_polygon_to_region(polygon)
     >>> region
