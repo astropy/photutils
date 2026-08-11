@@ -56,10 +56,10 @@ tags:
     schema_uri: asdf://astropy.org/photutils/schemas/psf/gaussian_psf-1.0.0
     title: GaussianPSF
     description: A 2D GaussianPSF model.
-  - tag_uri: tag:astropy.org:photutils/psf/gridded_psf-1.0.0
-    schema_uri: asdf://astropy.org/photutils/schemas/psf/gridded_psf-1.0.0
-    title: GriddedPSF
-    description: GriddedPSF model.
+  - tag_uri: tag:astropy.org:photutils/psf/gridded_psf_model-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/psf/gridded_psf_model-1.0.0
+    title: GriddedPSFModel
+    description: GriddedPSFModel model.
   - tag_uri: tag:astropy.org:photutils/psf/image_psf-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/psf/image_psf-1.0.0
     title: ImagePSF
@@ -68,7 +68,7 @@ tags:
     schema_uri: asdf://astropy.org/photutils/schemas/psf/moffat_psf-1.0.0
     title: MoffatPSF
     description: A 2D MoffatPSF model.
-  - tag_uri: tag:astropy.org:photutils/psf/stdpsf-1.0.0
-    schema_uri: asdf://astropy.org/photutils/schemas/psf/stdpsf-1.0.0
-    title: STDPSF
-    description: STDPSF grid container.
+  - tag_uri: tag:astropy.org:photutils/psf/stdpsf_grid-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/psf/stdpsf_grid-1.0.0
+    title: STDPSFGrid
+    description: STDPSFGrid container.

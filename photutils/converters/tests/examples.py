@@ -33,9 +33,9 @@ parameters = {
     'MoffatPSF': ['flux', 'x_0', 'y_0', 'alpha', 'beta', 'bbox_factor'],
     'ImagePSF': ['data', 'flux', 'x_0', 'y_0', 'oversampling',
                  'fill_value', 'origin'],
-    'GriddedPSF': ['data', 'flux', 'x_0', 'y_0', 'oversampling',
-                   'fill_value', 'grid_xypos'],
-    'STDPSF': ['data', 'grid_xypos', 'oversampling'],
+    'GriddedPSFModel': ['data', 'flux', 'x_0', 'y_0', 'oversampling',
+                        'fill_value', 'grid_xypos'],
+    'STDPSFGrid': ['data', 'grid_xypos', 'oversampling'],
     'CircularAperture': ['positions', 'r'],
     'CircularAnnulus': ['positions', 'r_in', 'r_out'],
     'EllipticalAperture': ['positions', 'a', 'b', 'theta'],
@@ -209,7 +209,7 @@ def gridded_psf():
     return (GriddedPSFModel(nddata=nd_data, flux=6,
                             x_0=0.5, y_0=0.5,
                             fill_value=np.nan),
-            parameters['GriddedPSF'])
+            parameters['GriddedPSFModel'])
 
 
 def stdpsf_single_detector():
@@ -221,7 +221,7 @@ def stdpsf_single_detector():
     filename = op.join(Path(__file__).resolve().parent.parent.parent,
                        'psf', 'tests', 'data', filename)
     psfgrid = STDPSFGrid(filename)
-    return psfgrid, parameters['STDPSF']
+    return psfgrid, parameters['STDPSFGrid']
 
 
 def circular_aperture_single_pos():

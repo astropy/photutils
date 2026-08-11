@@ -57,7 +57,7 @@ class GriddedPSFModelConverter(TransformConverterBase):
     ASDF converter for GriddedPSFModel.
     """
 
-    tags = ('tag:astropy.org:photutils/psf/gridded_psf-*',)
+    tags = ('tag:astropy.org:photutils/psf/gridded_psf_model-*',)
     types = ('photutils.psf.GriddedPSFModel',)
 
     def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
@@ -106,7 +106,7 @@ class STDPSFGridConverter(Converter):
     ASDF converter for STDPSFGrid.
     """
 
-    tags = ('tag:astropy.org:photutils/psf/stdpsf-*',)
+    tags = ('tag:astropy.org:photutils/psf/stdpsf_grid-*',)
     types = ('photutils.psf.STDPSFGrid',)
 
     def to_yaml_tree(self, model, tag, ctx):  # noqa: ARG002

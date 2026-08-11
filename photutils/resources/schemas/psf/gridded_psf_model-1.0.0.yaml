@@ -1,8 +1,8 @@
 %YAML 1.1
 ---
 $schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
-id: "asdf://astropy.org/photutils/schemas/psf/gridded_psf-1.0.0"
-title: GriddedPSF
+id: "asdf://astropy.org/photutils/schemas/psf/gridded_psf_model-1.0.0"
+title: GriddedPSFModel
 description: |
   ASDF schema for serializing a 2D Gridded PSF model.
 
@@ -11,7 +11,7 @@ examples:
     - A GriddedPSF model example.
 
     - |
-      !<tag:astropy.org:photutils/psf/gridded_psf-1.0.0>
+      !<tag:astropy.org:photutils/psf/gridded_psf_model-1.0.0>
         data: !core/ndarray-1.1.0
           source: 0
           datatype: int64

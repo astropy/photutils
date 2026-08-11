@@ -1,8 +1,8 @@
 %YAML 1.1
 ---
 $schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
-id: "asdf://astropy.org/photutils/schemas/psf/stdpsf-1.0.0"
-title: STDPSF
+id: "asdf://astropy.org/photutils/schemas/psf/stdpsf_grid-1.0.0"
+title: STDPSFGrid
 description: |
   Schema for serializing "STDPSF" format ePSF grids to ASDF.
 
@@ -13,7 +13,7 @@ examples:
   -
     - An STDPSF ASDF file.
     - |
-      !<tag:astropy.org:photutils/psf/stdpsf-1.0.0>
+      !<tag:astropy.org:photutils/psf/stdpsf_grid-1.0.0>
         data: !core/ndarray-1.1.0
           source: 0
           datatype: float32
