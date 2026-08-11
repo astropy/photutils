@@ -30,11 +30,15 @@ Photutils also optionally depends on other packages for some features:
   Required in `~photutils.datasets.make_gwcs` to create a simple celestial
   gwcs object.
 
-* `asdf-astropy <https://asdf-astropy.readthedocs.io/en/latest/>`_ 0.10
-  or later:
-  Required to serialize objects to the `Advanced Scientific Data Format
-  (ASDF) <https://www.asdf-format.org/projects/asdf/en/latest/>`_
+* `asdf <https://asdf.readthedocs.io/>`_ 3.3 or later: Required to
+  serialize apertures and PSF models to the `Advanced Scientific Data
+  Format (ASDF) <https://www.asdf-format.org/projects/asdf/en/latest/>`_
   format.
+
+* `asdf-astropy <https://asdf-astropy.readthedocs.io/en/latest/>`_ 0.10
+  or later: Required to serialize objects that store a
+  `~astropy.units.Quantity` or a `~astropy.coordinates.SkyCoord` to
+  ASDF, which includes all PSF models and all sky apertures.
 
 * `Bottleneck <https://github.com/pydata/bottleneck>`_ 1.4 or later:
   Improves the performance of sigma clipping and other functionality that

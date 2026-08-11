@@ -1,18 +1,18 @@
 %YAML 1.1
 ---
-$schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
-id: "asdf://astropy.org/photutils/schemas/aperture/elliptical_annulus-1.0.0"
-title: EllipticalAnnulus
+$schema: 'http://stsci.edu/schemas/yaml-schema/draft-01'
+id: 'asdf://astropy.org/photutils/schemas/aperture/elliptical_annulus-1.0.0'
+title: Elliptical annulus aperture
 description: |
-  ASDF schema for serializing an elliptical annulus aperture in pixel
-  and sky coordinates.
+  ASDF schema for serializing an elliptical annulus aperture with one or more
+  positions, in pixel or sky coordinates.
+
 examples:
-  -
-    - |
-      An EllipticalAnnulus aperture with a single position, with inner
-      semimajor axis of 0.5 arcsec, outer semimajor axis of 2 arcsec,
-      inner semiminor axis of 0.25 arcsec, outer semiminor axis of 1 arcsec,
-      and rotation angle of 0.
+  - - |
+      An EllipticalAnnulus aperture with a single position, inner
+      semimajor and semiminor axes of 0.5 and 0.25 pixels, outer
+      semimajor and semiminor axes of 2 and 1 pixels, and a rotation
+      angle of 0 radians.
     - |
       !<tag:astropy.org:photutils/aperture/elliptical_annulus-1.0.0>
         a_in: 0.5
@@ -20,42 +20,67 @@ examples:
         b_in: 0.25
         b_out: 1.0
         positions: [10.0, 20.0]
-        theta: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 rad, value: 0.0}
-  -
-    - |
-      SkyEllipticalAnnulus aperture with a single position.
+        theta: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 rad
+          value: 0.0
+  - - |
+      A SkyEllipticalAnnulus aperture with a single position, inner
+      semimajor and semiminor axes of 0.5 and 0.25 arcsec, outer
+      semimajor and semiminor axes of 2 and 1 arcsec, and a position
+      angle of 0 degrees.
     - |
       !<tag:astropy.org:photutils/aperture/elliptical_annulus-1.0.0>
-        a_in: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 0.5}
-        a_out: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 2.0}
-        b_in: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 0.25}
-        b_out: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 1.0}
+        a_in: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 arcsec
+          value: 0.5
+        a_out: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 arcsec
+          value: 2.0
+        b_in: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 arcsec
+          value: 0.25
+        b_out: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 arcsec
+          value: 1.0
         positions: !<tag:astropy.org:astropy/coordinates/skycoord-1.0.0>
-          dec: !<tag:astropy.org:astropy/coordinates/latitude-1.2.0> {datatype: float64,
-            unit: !unit/unit-1.0.0 deg, value: 30.0}
+          dec: !<tag:astropy.org:astropy/coordinates/latitude-1.2.0>
+            datatype: float64
+            unit: !unit/unit-1.0.0 deg
+            value: 30.0
           frame: icrs
           ra: !<tag:astropy.org:astropy/coordinates/longitude-1.2.0>
             datatype: float64
             unit: !unit/unit-1.0.0 deg
             value: 10.0
-            wrap_angle: !<tag:astropy.org:astropy/coordinates/angle-1.2.0> {datatype: float64,
-              unit: !unit/unit-1.0.0 deg, value: 360.0}
+            wrap_angle: !<tag:astropy.org:astropy/coordinates/angle-1.2.0>
+              datatype: float64
+              unit: !unit/unit-1.0.0 deg
+              value: 360.0
           representation_type: spherical
-        theta: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 deg, value: 0.0}
-
+        theta: !unit/quantity-1.3.0
+          datatype: float64
+          unit: !unit/unit-1.0.0 deg
+          value: 0.0
 
 type: object
 properties:
   positions:
     title: Aperture position(s).
     description: |
-      The coordinates of the aperture center(s) in one of the following formats.
-      If an EllipticalAnnulus in pixel coordinates:
+      The coordinates of the aperture center(s) in one of the following
+      formats.
+
+      If a EllipticalAnnulus in pixel coordinates:
 
         * single ``(x, y)`` pair as an array
         * `numpy.ndarray` of ``(x, y)`` pairs
 
-      If a SkyEllipticalAnnulus
+      If a SkyEllipticalAnnulus:
 
         * `astropy.coordinates.SkyCoord` object
     anyOf:
@@ -64,8 +89,8 @@ properties:
           type: number
         maxItems: 2
         minItems: 2
-      - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
-      - tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+      - tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
+      - tag: 'tag:astropy.org:astropy/coordinates/skycoord-1.0.0'
   a_in:
     title: Inner semimajor axis.
     description: |
@@ -74,7 +99,7 @@ properties:
       SkyEllipticalAnnulus: in angular units
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
   a_out:
     title: Outer semimajor axis.
     description: |
@@ -83,7 +108,7 @@ properties:
       SkyEllipticalAnnulus: in angular units
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
   b_in:
     title: Inner semiminor axis.
     description: |
@@ -92,7 +117,7 @@ properties:
       SkyEllipticalAnnulus: in angular units
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
   b_out:
     title: Outer semiminor axis.
     description: |
@@ -101,22 +126,21 @@ properties:
       SkyEllipticalAnnulus: in angular units
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
   theta:
-    title: Rotation angle of the ellipse.
+    title: Rotation angle.
     description: |
-      EllipticalAnnulus:
-        The rotation angle as an angular quantity from the positive ``x`` axis.
-        The rotation angle increases counterclockwise. If a number, it's assumed
-        to be in radians.
-      SkyEllipticalAnnulus:
-        The position angle (in angular units) of the ellipse semimajor
-        axis. For a right-handed world coordinate system, the position
-        angle increases counterclockwise from North (PA=0).
+      EllipticalAnnulus: the rotation angle of the ellipse from the
+      positive ``x`` axis, as an angular quantity or as a number in
+      radians. The rotation angle increases counterclockwise.
+      SkyEllipticalAnnulus: the position angle (in angular units) of the
+      ellipse semimajor axis. For a right-handed world coordinate
+      system, the position angle increases counterclockwise from North
+      (PA=0).
     anyOf:
       - type: number
-      - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
-      - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
+      - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
+      - tag: 'tag:astropy.org:astropy/coordinates/angle-1.*'
 required: [positions, a_in, a_out, b_out]
 additionalProperties: false
 # EllipticalAnnulus and SkyEllipticalAnnulus share a tag, so this
@@ -129,7 +153,7 @@ oneOf:
       positions:
         anyOf:
           - type: array
-          - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+          - tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
       a_in:
         type: number
       a_out:
@@ -141,17 +165,17 @@ oneOf:
   - title: Sky coordinates
     properties:
       positions:
-        tag: "tag:astropy.org:astropy/coordinates/skycoord-1.0.0"
+        tag: 'tag:astropy.org:astropy/coordinates/skycoord-1.0.0'
       a_in:
-        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+        tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
       a_out:
-        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+        tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
       b_in:
-        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+        tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
       b_out:
-        tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
+        tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
       theta:
         anyOf:
-          - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
-          - tag: "tag:astropy.org:astropy/coordinates/angle-1.*"
+          - tag: 'tag:stsci.edu:asdf/unit/quantity-1.*'
+          - tag: 'tag:astropy.org:astropy/coordinates/angle-1.*'
 ...

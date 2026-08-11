@@ -48,6 +48,7 @@ Documentation = 'https://photutils.readthedocs.io/en/stable/'
 
 [project.optional-dependencies]
 all = [
+    'asdf >= 3.3',
     'asdf-astropy >= 0.10',
     'bottleneck >= 1.4',
     'gwcs >= 0.22',
@@ -59,6 +60,7 @@ all = [
     'tqdm >= 4.67',
 ]
 test = [
+    'asdf >= 3.3',
     'asdf-astropy >= 0.10',
     'pytest-asdf-plugin',
     'pytest-astropy >= 0.11',

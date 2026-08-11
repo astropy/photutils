@@ -3,8 +3,6 @@
 Tests for the photutils PSF converters.
 """
 
-import os.path as op
-
 import asdf
 import numpy as np
 import pytest
@@ -12,6 +10,8 @@ from numpy.testing import assert_array_equal
 
 from photutils.converters import _ASDF_ASTROPY_INSTALLED
 from photutils.converters.image_models import GriddedPSFModelConverter
+from photutils.converters.tests import examples
+from photutils.extension import PHOTUTILS_PSF_CONVERTERS
 from photutils.psf import STDPSFGrid
 
 
@@ -24,7 +24,7 @@ def psfobj(request):
     return request.getfixturevalue(request.param)
 
 
-psf_params = pytest.mark.parametrize('psfobj', [
+PSF_EXAMPLE_NAMES = [
     'airy_disk_units',
     'airy_disk',
     'circular_gaussian_prf_units',
@@ -42,7 +42,41 @@ psf_params = pytest.mark.parametrize('psfobj', [
     'image_psf',
     'gridded_psf',
     'stdpsf_single_detector',
-], indirect=True)
+]
+
+psf_params = pytest.mark.parametrize('psfobj', PSF_EXAMPLE_NAMES,
+                                     indirect=True)
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('name', PSF_EXAMPLE_NAMES)
+def test_psf_fixture_matches_example(request, name):
+    """
+    Test that each fixture returns the example of the same name.
+
+    The fixtures wrap the example functions, so a fixture wired to the
+    wrong function would silently drop a model from the round-trip test.
+    """
+    expected, expected_params = getattr(examples, name)()
+    psf, params = request.getfixturevalue(name)
+    assert type(psf) is type(expected)
+    assert params == expected_params
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+def test_psf_examples_cover_all_converters():
+    """
+    Test that the round-trip test exercises every type handled by a PSF
+    converter.
+    """
+    covered = {type(getattr(examples, name)()[0]).__name__
+               for name in PSF_EXAMPLE_NAMES}
+    handled = {name.rsplit('.', 1)[-1]
+               for converter in PHOTUTILS_PSF_CONVERTERS
+               for name in converter.types}
+    assert covered == handled
 
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
@@ -92,6 +126,36 @@ def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path,
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
+@pytest.mark.parametrize(('name', 'converter_name', 'method'), [
+    # GriddedPSFModel is an astropy model, so its converter builds the
+    # tree in to_yaml_tree_transform; STDPSFGrid is not a model, so its
+    # converter uses to_yaml_tree.
+    ('gridded_psf', 'GriddedPSFModelConverter', 'to_yaml_tree_transform'),
+    ('stdpsf_single_detector', 'STDPSFGridConverter', 'to_yaml_tree'),
+])
+def test_grid_structure_is_stored_outside_meta(name, converter_name, method):
+    """
+    Test that both grid converters store the grid structure as
+    top-level properties rather than inside ``meta``.
+
+    GriddedPSFModel keeps the grid structure in its meta attribute
+    and STDPSFGrid keeps it in private attributes, so the converters
+    normalize it to a single layout in the file.
+    """
+    from photutils.converters import image_models
+
+    obj, _ = getattr(examples, name)()
+    converter = getattr(image_models, converter_name)()
+    node = getattr(converter, method)(obj, None, None)
+
+    for key in ('grid_xypos', 'oversampling'):
+        assert key in node
+        assert key not in node['meta']
+    assert 'grid_shape' not in node['meta']
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
 def test_stdpsf_grid_converter_preserves_oversampling(tmp_path):
     """
     Test that a non-default oversampling value survives a round trip.
@@ -128,9 +192,8 @@ def test_stdpsf_grid_converter_repeated_grid_coordinate(tmp_path):
     Test a round trip for an ACS/WFC grid, whose y coordinates are
     repeated where the two detectors abut.
     """
-    filename = op.join(op.dirname(op.abspath(__file__)), '..', '..', 'psf',
-                       'tests', 'data', 'STDPSF_ACSWFC_F814W_mock.fits')
-    psfgrid = STDPSFGrid(filename)
+    filename = examples.PSF_DATA_DIR / 'STDPSF_ACSWFC_F814W_mock.fits'
+    psfgrid = STDPSFGrid(str(filename))
     assert psfgrid._grid_shape == (10, 9)
 
     asdf_filename = tmp_path / 'psf.asdf'

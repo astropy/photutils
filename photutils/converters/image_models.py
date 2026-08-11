@@ -1,21 +1,15 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """
 Converters to and from the ASDF format for photutils.psf.image_models
 and photutils.psf.gridded_models.
 """
+
 import numpy as np
+from asdf.extension import Converter
+from asdf_astropy.converters.transform.core import (TransformConverterBase,
+                                                    parameter_to_value)
 
-from . import _ASDF_ASTROPY_INSTALLED
-
-if _ASDF_ASTROPY_INSTALLED:
-    from asdf.extension import Converter
-    from asdf_astropy.converters.transform.core import (TransformConverterBase,
-                                                        parameter_to_value)
-else:
-    TransformConverterBase = object
-    Converter = object
-
+from photutils.converters._utils import optional_params
 
 __all__ = ['GriddedPSFModelConverter',
            'ImagePSFConverter',
@@ -25,7 +19,7 @@ __all__ = ['GriddedPSFModelConverter',
 
 class ImagePSFConverter(TransformConverterBase):
     """
-    ASDF converter for ImagePSF model.
+    ASDF converter for ImagePSF.
     """
 
     tags = ('tag:astropy.org:photutils/psf/image_psf-*',)
@@ -51,12 +45,8 @@ class ImagePSFConverter(TransformConverterBase):
             # because the validation in ImagePSF happens before "data"
             # is assigned.
             data=np.array(node['data']),
-            flux=node['flux'],
-            x_0=node['x_0'],
-            y_0=node['y_0'],
-            oversampling=node['oversampling'],
-            fill_value=node['fill_value'],
-            origin=node['origin'],
+            **optional_params(node, 'flux', 'x_0', 'y_0', 'oversampling',
+                              'fill_value', 'origin'),
         )
 
 
@@ -65,7 +55,7 @@ class GriddedPSFModelConverter(TransformConverterBase):
     ASDF converter for GriddedPSFModel.
     """
 
-    tags = ('tag:astropy.org:photutils/psf/gridded_psf-*',)
+    tags = ('tag:astropy.org:photutils/psf/gridded_psf_model-*',)
     types = ('photutils.psf.GriddedPSFModel',)
 
     def to_yaml_tree_transform(self, model, tag, ctx):  # noqa: ARG002
@@ -102,10 +92,7 @@ class GriddedPSFModelConverter(TransformConverterBase):
 
         return GriddedPSFModel(
             nddata=nd_data,
-            flux=node['flux'],
-            x_0=node['x_0'],
-            y_0=node['y_0'],
-            fill_value=node['fill_value'],
+            **optional_params(node, 'flux', 'x_0', 'y_0', 'fill_value'),
         )
 
 
@@ -114,25 +101,31 @@ class STDPSFGridConverter(Converter):
     ASDF converter for STDPSFGrid.
     """
 
-    tags = ('tag:astropy.org:photutils/psf/stdpsf-*',)
+    tags = ('tag:astropy.org:photutils/psf/stdpsf_grid-*',)
     types = ('photutils.psf.STDPSFGrid',)
 
     def to_yaml_tree(self, model, tag, ctx):  # noqa: ARG002
-        meta = dict(model.meta)
-        meta.update({
-            'oversampling': tuple(int(value)
-                                  for value in model.oversampling),
-            'grid_shape': model.grid_shape,
-            'grid_xypos': np.array(model.grid_xypos),
-        })
+        # The grid structure is stored as separate properties, as it is
+        # for GriddedPSFModel, leaving 'meta' for the remaining metadata
+        # (e.g., 'STDPSF', 'detector', 'filter'). STDPSFGrid consumes
+        # these three items when it is initialized, so they never appear
+        # in its meta attribute.
         return {
             'data': model.data,
-            'meta': meta,
+            'grid_xypos': np.array(model.grid_xypos),
+            'grid_shape': model.grid_shape,
+            'oversampling': tuple(int(value)
+                                  for value in model.oversampling),
+            'meta': dict(model.meta),
         }
 
     def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
         from photutils.psf import STDPSFGrid
 
+        meta = dict(node['meta'])
         # Load the lazily-read grid positions into memory
-        node['meta']['grid_xypos'] = np.asarray(node['meta']['grid_xypos'])
-        return STDPSFGrid._from_asdf(node['data'], node['meta'])
+        meta['grid_xypos'] = np.asarray(node['grid_xypos'])
+        meta['grid_shape'] = node['grid_shape']
+        meta['oversampling'] = node['oversampling']
+
+        return STDPSFGrid._from_asdf(node['data'], meta)

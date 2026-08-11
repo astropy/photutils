@@ -6,30 +6,69 @@ Converters to and from the ASDF data format for photutils apertures.
 from asdf.extension import Converter
 from astropy.coordinates import SkyCoord
 
-__all__ = [
-    'CircularAnnulusConverter',
-    'CircularApertureConverter',
-    'EllipticalAnnulusConverter',
-    'EllipticalApertureConverter',
-    'PolygonApertureConverter',
-    'RectangularAnnulusConverter',
-    'RectangularApertureConverter',
-]
+from photutils.converters._utils import optional_params
+
+__all__ = ['CircularAnnulusConverter',
+           'CircularApertureConverter',
+           'EllipticalAnnulusConverter',
+           'EllipticalApertureConverter',
+           'PolygonApertureConverter',
+           'RectangularAnnulusConverter',
+           'RectangularApertureConverter',
+           ]
 
 
-def _optional_theta(node):
+class _ApertureConverter(Converter):
     """
-    Return ``theta`` as a keyword dict, or an empty dict if it is
-    absent.
+    Base class for the photutils aperture converters.
 
-    ``theta`` is optional in the aperture schemas. It is omitted instead
-    of being passed as `None` because its default differs between the
-    pixel and sky apertures.
+    The pixel and sky variants of an aperture share a tag, so a single
+    converter handles both. Subclasses list the pixel class first and
+    the sky class second in ``types``, and name the aperture parameters
+    that accompany ``positions``.
+
+    Every parameter is written to the file. Those in
+    ``optional_aperture_params`` may be absent when reading, in which
+    case the aperture class supplies its default. They are omitted
+    rather than passed as `None` because the defaults are not always
+    `None` and differ between the pixel and sky apertures.
     """
-    return {'theta': node['theta']} if 'theta' in node else {}
+
+    aperture_params = ()
+    optional_aperture_params = ()
+
+    def _aperture_class(self, positions):
+        """
+        Return the pixel or sky aperture class for ``positions``.
+        """
+        from photutils import aperture
+
+        index = 1 if isinstance(positions, SkyCoord) else 0
+        return getattr(aperture, self.types[index].rsplit('.', 1)[-1])
+
+    def to_yaml_tree(self, obj, tag, ctx):  # noqa: ARG002
+        positions = obj.positions
+        if not isinstance(positions, SkyCoord) and positions.shape == (2,):
+            # store a single pixel position as a plain (x, y) pair
+            positions = positions.tolist()
+
+        node = {'positions': positions}
+        for name in (*self.aperture_params, *self.optional_aperture_params):
+            node[name] = getattr(obj, name)
+        return node
+
+    def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
+        positions = node['positions']
+        params = {name: node[name] for name in self.aperture_params}
+
+        return self._aperture_class(positions)(
+            positions=positions,
+            **params,
+            **optional_params(node, *self.optional_aperture_params),
+        )
 
 
-class CircularApertureConverter(Converter):
+class CircularApertureConverter(_ApertureConverter):
     """
     ASDF converter for circular apertures.
     """
@@ -38,30 +77,10 @@ class CircularApertureConverter(Converter):
     types = ('photutils.aperture.CircularAperture',
              'photutils.aperture.SkyCircularAperture',
              )
-
-    def to_yaml_tree(self, obj, tag, ctx):  # noqa: ARG002
-        pos = obj.positions
-        if not isinstance(pos, SkyCoord) and obj.positions.shape == (2,):
-            pos = obj.positions.tolist()
-
-        return {
-            'positions': pos,
-            'r': obj.r,
-        }
-
-    def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
-        if isinstance(node['positions'], SkyCoord):
-            from photutils.aperture import SkyCircularAperture as Aper
-        else:
-            from photutils.aperture import CircularAperture as Aper
-
-        return Aper(
-            positions=node['positions'],
-            r=node['r'],
-        )
+    aperture_params = ('r',)
 
 
-class CircularAnnulusConverter(Converter):
+class CircularAnnulusConverter(_ApertureConverter):
     """
     ASDF converter for circular annulus apertures.
     """
@@ -70,32 +89,10 @@ class CircularAnnulusConverter(Converter):
     types = ('photutils.aperture.CircularAnnulus',
              'photutils.aperture.SkyCircularAnnulus',
              )
-
-    def to_yaml_tree(self, obj, tag, ctx):  # noqa: ARG002
-        pos = obj.positions
-        if not isinstance(pos, SkyCoord) and obj.positions.shape == (2,):
-            pos = obj.positions.tolist()
-
-        return {
-            'positions': pos,
-            'r_in': obj.r_in,
-            'r_out': obj.r_out,
-        }
-
-    def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
-        if isinstance(node['positions'], SkyCoord):
-            from photutils.aperture import SkyCircularAnnulus as Aper
-        else:
-            from photutils.aperture import CircularAnnulus as Aper
-
-        return Aper(
-            positions=node['positions'],
-            r_in=node['r_in'],
-            r_out=node['r_out'],
-        )
+    aperture_params = ('r_in', 'r_out')
 
 
-class EllipticalApertureConverter(Converter):
+class EllipticalApertureConverter(_ApertureConverter):
     """
     ASDF converter for elliptical apertures.
     """
@@ -104,34 +101,11 @@ class EllipticalApertureConverter(Converter):
     types = ('photutils.aperture.EllipticalAperture',
              'photutils.aperture.SkyEllipticalAperture',
              )
-
-    def to_yaml_tree(self, obj, tag, ctx):  # noqa: ARG002
-        pos = obj.positions
-        if not isinstance(pos, SkyCoord) and obj.positions.shape == (2,):
-            pos = obj.positions.tolist()
-
-        return {
-            'positions': pos,
-            'a': obj.a,
-            'b': obj.b,
-            'theta': obj.theta,
-        }
-
-    def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
-        if isinstance(node['positions'], SkyCoord):
-            from photutils.aperture import SkyEllipticalAperture as Aper
-        else:
-            from photutils.aperture import EllipticalAperture as Aper
-
-        return Aper(
-            positions=node['positions'],
-            a=node['a'],
-            b=node['b'],
-            **_optional_theta(node),
-        )
+    aperture_params = ('a', 'b')
+    optional_aperture_params = ('theta',)
 
 
-class EllipticalAnnulusConverter(Converter):
+class EllipticalAnnulusConverter(_ApertureConverter):
     """
     ASDF converter for elliptical annulus apertures.
     """
@@ -140,38 +114,11 @@ class EllipticalAnnulusConverter(Converter):
     types = ('photutils.aperture.EllipticalAnnulus',
              'photutils.aperture.SkyEllipticalAnnulus',
              )
-
-    def to_yaml_tree(self, obj, tag, ctx):  # noqa: ARG002
-        pos = obj.positions
-        if not isinstance(pos, SkyCoord) and obj.positions.shape == (2,):
-            pos = obj.positions.tolist()
-
-        return {
-            'positions': pos,
-            'a_in': obj.a_in,
-            'a_out': obj.a_out,
-            'b_in': obj.b_in,
-            'b_out': obj.b_out,
-            'theta': obj.theta,
-        }
-
-    def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
-        if isinstance(node['positions'], SkyCoord):
-            from photutils.aperture import SkyEllipticalAnnulus as Aper
-        else:
-            from photutils.aperture import EllipticalAnnulus as Aper
-
-        return Aper(
-            positions=node['positions'],
-            a_in=node['a_in'],
-            a_out=node['a_out'],
-            b_in=node.get('b_in'),
-            b_out=node['b_out'],
-            **_optional_theta(node),
-        )
+    aperture_params = ('a_in', 'a_out', 'b_out')
+    optional_aperture_params = ('b_in', 'theta')
 
 
-class PolygonApertureConverter(Converter):
+class PolygonApertureConverter(_ApertureConverter):
     """
     ASDF converter for polygon apertures.
     """
@@ -180,30 +127,10 @@ class PolygonApertureConverter(Converter):
     types = ('photutils.aperture.PolygonAperture',
              'photutils.aperture.SkyPolygonAperture',
              )
-
-    def to_yaml_tree(self, obj, tag, ctx):  # noqa: ARG002
-        pos = obj.positions
-        if not isinstance(pos, SkyCoord) and obj.positions.shape == (2,):
-            pos = obj.positions.tolist()
-
-        return {
-            'positions': pos,
-            'vertex_offsets': obj.vertex_offsets,
-        }
-
-    def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
-        if isinstance(node['positions'], SkyCoord):
-            from photutils.aperture import SkyPolygonAperture as Aper
-        else:
-            from photutils.aperture import PolygonAperture as Aper
-
-        return Aper(
-            positions=node['positions'],
-            vertex_offsets=node['vertex_offsets'],
-        )
+    aperture_params = ('vertex_offsets',)
 
 
-class RectangularApertureConverter(Converter):
+class RectangularApertureConverter(_ApertureConverter):
     """
     ASDF converter for rectangular apertures.
     """
@@ -212,34 +139,11 @@ class RectangularApertureConverter(Converter):
     types = ('photutils.aperture.RectangularAperture',
              'photutils.aperture.SkyRectangularAperture',
              )
-
-    def to_yaml_tree(self, obj, tag, ctx):  # noqa: ARG002
-        pos = obj.positions
-        if not isinstance(pos, SkyCoord) and obj.positions.shape == (2,):
-            pos = obj.positions.tolist()
-
-        return {
-            'positions': pos,
-            'w': obj.w,
-            'h': obj.h,
-            'theta': obj.theta,
-        }
-
-    def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
-        if isinstance(node['positions'], SkyCoord):
-            from photutils.aperture import SkyRectangularAperture as Aper
-        else:
-            from photutils.aperture import RectangularAperture as Aper
-
-        return Aper(
-            positions=node['positions'],
-            w=node['w'],
-            h=node['h'],
-            **_optional_theta(node),
-        )
+    aperture_params = ('w', 'h')
+    optional_aperture_params = ('theta',)
 
 
-class RectangularAnnulusConverter(Converter):
+class RectangularAnnulusConverter(_ApertureConverter):
     """
     ASDF converter for rectangular annulus apertures.
     """
@@ -248,32 +152,5 @@ class RectangularAnnulusConverter(Converter):
     types = ('photutils.aperture.RectangularAnnulus',
              'photutils.aperture.SkyRectangularAnnulus',
              )
-
-    def to_yaml_tree(self, obj, tag, ctx):  # noqa: ARG002
-        pos = obj.positions
-        if not isinstance(pos, SkyCoord) and obj.positions.shape == (2,):
-            pos = obj.positions.tolist()
-
-        return {
-            'positions': pos,
-            'w_in': obj.w_in,
-            'w_out': obj.w_out,
-            'h_in': obj.h_in,
-            'h_out': obj.h_out,
-            'theta': obj.theta,
-        }
-
-    def from_yaml_tree(self, node, tag, ctx):  # noqa: ARG002
-        if isinstance(node['positions'], SkyCoord):
-            from photutils.aperture import SkyRectangularAnnulus as Aper
-        else:
-            from photutils.aperture import RectangularAnnulus as Aper
-
-        return Aper(
-            positions=node['positions'],
-            w_in=node['w_in'],
-            w_out=node['w_out'],
-            h_in=node.get('h_in'),
-            h_out=node['h_out'],
-            **_optional_theta(node),
-        )
+    aperture_params = ('w_in', 'w_out', 'h_out')
+    optional_aperture_params = ('h_in', 'theta')

@@ -7,15 +7,19 @@ import re
 import textwrap
 
 import asdf
+import numpy as np
 import pytest
 import yaml
 from asdf import get_config, treeutil
 from asdf.exceptions import ValidationError
 from asdf.testing.helpers import yaml_to_asdf
 from astropy import units as u
+from astropy.nddata import NDData
+from numpy.testing import assert_array_equal
 
 from photutils.converters import _ASDF_ASTROPY_INSTALLED
 from photutils.extension import PHOTUTILS_MANIFEST_URIS
+from photutils.psf import ImagePSF
 
 # Matches the top-level YAML tag that opens a schema example.
 EXAMPLE_TAG_PATTERN = re.compile(r'!<([^>]+)>')
@@ -379,3 +383,168 @@ def test_unknown_property_rejected(stem):
     with pytest.raises(ValidationError), \
             asdf.open(yaml_to_asdf(f'aper: {example}')):
         pass
+
+
+def _ndarray(values):
+    """
+    Build the inline YAML for an ndarray.
+    """
+    return f'!core/ndarray-1.1.0 {np.asarray(values).tolist()}'
+
+
+# A 4x4 image, the smallest accepted by the image-based PSF models,
+# four copies of it (one per grid position), and the grid positions.
+PSF_IMAGE_VALUES = np.arange(16.0).reshape((4, 4))
+PSF_GRID_VALUES = np.repeat(PSF_IMAGE_VALUES[np.newaxis], 4, axis=0)
+GRID_XYPOS_VALUES = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
+
+PSF_IMAGE = _ndarray(PSF_IMAGE_VALUES)
+PSF_GRID = _ndarray(PSF_GRID_VALUES)
+GRID_XYPOS = _ndarray(GRID_XYPOS_VALUES)
+
+# The parameters that each PSF schema requires. The remaining
+# parameters are optional; ``bbox_factor`` is optional in every
+# functional-model schema, as is ``theta`` for the elliptical Gaussians.
+REQUIRED_PSF_PARAMS = {
+    'airy_disk_psf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0, 'radius': 4.0},
+    'circular_gaussian_prf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0,
+                              'fwhm': 4.0},
+    'circular_gaussian_psf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0,
+                              'fwhm': 4.0},
+    'circular_gaussian_sigma_prf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0,
+                                    'sigma': 4.0},
+    'gaussian_prf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0, 'x_fwhm': 4.0,
+                     'y_fwhm': 5.0},
+    'gaussian_psf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0, 'x_fwhm': 4.0,
+                     'y_fwhm': 5.0},
+    'moffat_psf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0, 'alpha': 4.0,
+                   'beta': 5.0},
+    'image_psf': {'data': PSF_IMAGE},
+    'gridded_psf_model': {'data': PSF_GRID,
+                          'oversampling': '!core/ndarray-1.1.0 [1, 1]',
+                          'grid_xypos': GRID_XYPOS,
+                          'meta': '{}'},
+    'stdpsf_grid': {'data': PSF_GRID,
+                    'grid_xypos': GRID_XYPOS,
+                    'grid_shape': '[2, 2]',
+                    'oversampling': '[4, 4]',
+                    'meta': '{}'},
+}
+
+# The models whose parameters are all plain numbers, so that a reference
+# model can be built from the same required parameters.
+FUNCTIONAL_PSF_STEMS = list(REQUIRED_PSF_PARAMS)[:7]
+
+
+def _psf_yaml(stem, params):
+    """
+    Build the tagged YAML for a photutils PSF model.
+    """
+    body = '\n'.join(f'  {key}: {value}' for key, value in params.items())
+    return f'!<tag:astropy.org:photutils/psf/{stem}-1.0.0>\n{body}'
+
+
+def _read_psf(stem, params):
+    """
+    Read a PSF model from a file containing only ``params``.
+    """
+    with asdf.open(yaml_to_asdf(f'psf: {_psf_yaml(stem, params)}')) as af:
+        return af['psf']
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('stem', FUNCTIONAL_PSF_STEMS)
+def test_optional_psf_params_use_defaults(stem):
+    """
+    Test that a PSF file containing only the parameters required by its
+    schema is read using the defaults of its model class.
+
+    ``bbox_factor`` is optional in every functional-model schema, as is
+    ``theta`` for the elliptical Gaussian models, so a schema-valid file
+    may omit them.
+    """
+    params = REQUIRED_PSF_PARAMS[stem]
+    model = _read_psf(stem, params)
+    reference = type(model)(**params)
+
+    for name, value in params.items():
+        assert getattr(model, name) == value
+    assert model.bbox_factor == reference.bbox_factor
+    if hasattr(model, 'theta'):
+        assert model.theta == reference.theta
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+def test_optional_image_psf_params_use_defaults():
+    """
+    Test that an ImagePSF file containing only ``data`` is read using
+    the defaults of the model class.
+    """
+    model = _read_psf('image_psf', REQUIRED_PSF_PARAMS['image_psf'])
+    reference = ImagePSF(data=PSF_IMAGE_VALUES)
+
+    assert_array_equal(model.data, PSF_IMAGE_VALUES)
+    for name in ('flux', 'x_0', 'y_0', 'fill_value'):
+        assert getattr(model, name) == getattr(reference, name)
+    assert_array_equal(model.oversampling, reference.oversampling)
+    assert_array_equal(model.origin, reference.origin)
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+def test_optional_gridded_psf_model_params_use_defaults():
+    """
+    Test that a GriddedPSFModel file containing only the parameters
+    required by its schema is read using the defaults of the model
+    class.
+    """
+    from photutils.psf import GriddedPSFModel
+
+    model = _read_psf('gridded_psf_model',
+                      REQUIRED_PSF_PARAMS['gridded_psf_model'])
+    nddata = NDData(data=PSF_GRID_VALUES,
+                    meta={'oversampling': 1, 'grid_xypos': GRID_XYPOS_VALUES})
+    reference = GriddedPSFModel(nddata=nddata)
+
+    assert_array_equal(model.data, PSF_GRID_VALUES)
+    for name in ('flux', 'x_0', 'y_0', 'fill_value'):
+        assert getattr(model, name) == getattr(reference, name)
+
+
+@pytest.mark.parametrize('stem', list(REQUIRED_PSF_PARAMS))
+def test_unknown_psf_property_rejected(stem):
+    """
+    Test that a PSF model with an unknown property fails schema
+    validation when read.
+
+    Without ``additionalProperties: false`` an unknown key is accepted
+    and then silently dropped, so a misspelled parameter would read back
+    as a model with default values. The properties of the transform
+    schema referenced by the PSF models are repeated in each schema so
+    that they remain allowed.
+    """
+    params = {**REQUIRED_PSF_PARAMS[stem], 'not_a_parameter': '999.0'}
+    with pytest.raises(ValidationError), \
+            asdf.open(yaml_to_asdf(f'psf: {_psf_yaml(stem, params)}')):
+        pass
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('stem', FUNCTIONAL_PSF_STEMS)
+def test_transform_properties_accepted(stem):
+    """
+    Test that the properties of the referenced transform schema are
+    accepted by the PSF schemas.
+
+    They are repeated in each schema so that ``additionalProperties``
+    rejects only unknown keys.
+    """
+    params = {**REQUIRED_PSF_PARAMS[stem], 'name': 'psf',
+              'inputs': '[x, y]', 'outputs': '[z]'}
+    model = _read_psf(stem, params)
+    assert model.name == 'psf'
+    assert model.inputs == ('x', 'y')
+    assert model.outputs == ('z',)

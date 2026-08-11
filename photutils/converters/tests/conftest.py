@@ -1,5 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """
 Fixtures for the photutils ASDF converters.
 
@@ -7,6 +6,7 @@ Object fixtures return a photutils object and parameter names for
 round-trip comparisons. The ``theta`` fixture supplies rotation-angle
 values for parametrized aperture fixtures.
 """
+
 import pytest
 from astropy import units as u
 from astropy.coordinates import Angle
@@ -36,12 +36,12 @@ def circular_gaussian_prf():
 
 @pytest.fixture
 def circular_gaussian_sigma_prf_units():
-    return examples.circular_gaussian_prf_units()
+    return examples.circular_gaussian_sigma_prf_units()
 
 
 @pytest.fixture
 def circular_gaussian_sigma_prf():
-    return examples.circular_gaussian_prf()
+    return examples.circular_gaussian_sigma_prf()
 
 
 @pytest.fixture
@@ -136,7 +136,12 @@ def sky_circular_aperture():
 
 @pytest.fixture(params=[0.23, 0.5 * u.deg, Angle(80, 'deg')])
 def theta(request):
-    """Used to test different types of rotation angles."""
+    """
+    Fixture that returns a rotation angle value.
+
+    The fixture is parametrized with three different types of rotation
+    angles: a float, a Quantity, and an Angle.
+    """
     return request.param
 
 

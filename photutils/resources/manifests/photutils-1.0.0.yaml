@@ -6,32 +6,32 @@ description: |-
 tags:
   - tag_uri: tag:astropy.org:photutils/aperture/circular_aperture-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/aperture/circular_aperture-1.0.0
-    title: Circular apertures
-    description: Circular aperture with one or more positions.
+    title: Circular aperture
+    description: A circular aperture in pixel or sky coordinates.
   - tag_uri: tag:astropy.org:photutils/aperture/circular_annulus-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/aperture/circular_annulus-1.0.0
-    title: Circular annulus apertures
-    description: CircularAnnulus aperture with one or more positions.
+    title: Circular annulus aperture
+    description: A circular annulus aperture in pixel or sky coordinates.
   - tag_uri: tag:astropy.org:photutils/aperture/elliptical_aperture-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/aperture/elliptical_aperture-1.0.0
-    title: Elliptical apertures
-    description: Elliptical aperture with one or more positions.
+    title: Elliptical aperture
+    description: An elliptical aperture in pixel or sky coordinates.
   - tag_uri: tag:astropy.org:photutils/aperture/elliptical_annulus-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/aperture/elliptical_annulus-1.0.0
-    title: Elliptical annulus apertures
-    description: Elliptical annulus aperture with one or more positions.
+    title: Elliptical annulus aperture
+    description: An elliptical annulus aperture in pixel or sky coordinates.
   - tag_uri: tag:astropy.org:photutils/aperture/polygon_aperture-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/aperture/polygon_aperture-1.0.0
-    title: Polygon apertures
-    description: Polygon aperture with one or more positions.
+    title: Polygon aperture
+    description: A polygon aperture in pixel or sky coordinates.
   - tag_uri: tag:astropy.org:photutils/aperture/rectangular_aperture-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/aperture/rectangular_aperture-1.0.0
-    title: Rectangular apertures
-    description: Rectangular aperture with one or more positions.
+    title: Rectangular aperture
+    description: A rectangular aperture in pixel or sky coordinates.
   - tag_uri: tag:astropy.org:photutils/aperture/rectangular_annulus-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/aperture/rectangular_annulus-1.0.0
-    title: Rectangular annulus
-    description: Rectangular annulus with one or more positions.
+    title: Rectangular annulus aperture
+    description: A rectangular annulus aperture in pixel or sky coordinates.
   - tag_uri: tag:astropy.org:photutils/psf/airy_disk_psf-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/psf/airy_disk_psf-1.0.0
     title: AiryDiskPSF
@@ -39,36 +39,36 @@ tags:
   - tag_uri: tag:astropy.org:photutils/psf/circular_gaussian_prf-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/psf/circular_gaussian_prf-1.0.0
     title: CircularGaussianPRF
-    description: CircularGaussianPRF model.
+    description: A circular 2D Gaussian PRF model.
   - tag_uri: tag:astropy.org:photutils/psf/circular_gaussian_psf-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/psf/circular_gaussian_psf-1.0.0
     title: CircularGaussianPSF
-    description: CircularGaussianPSF model.
+    description: A circular 2D Gaussian PSF model.
   - tag_uri: tag:astropy.org:photutils/psf/circular_gaussian_sigma_prf-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/psf/circular_gaussian_sigma_prf-1.0.0
     title: CircularGaussianSigmaPRF
-    description: CircularGaussianSigmaPRF model.
+    description: A circular 2D Gaussian PRF model parameterized by sigma.
   - tag_uri: tag:astropy.org:photutils/psf/gaussian_prf-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/psf/gaussian_prf-1.0.0
     title: GaussianPRF
-    description: A 2D GaussianPRF model.
+    description: A 2D Gaussian PRF model.
   - tag_uri: tag:astropy.org:photutils/psf/gaussian_psf-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/psf/gaussian_psf-1.0.0
     title: GaussianPSF
-    description: A 2D GaussianPSF model.
-  - tag_uri: tag:astropy.org:photutils/psf/gridded_psf-1.0.0
-    schema_uri: asdf://astropy.org/photutils/schemas/psf/gridded_psf-1.0.0
-    title: GriddedPSF
-    description: GriddedPSF model.
+    description: A 2D Gaussian PSF model.
+  - tag_uri: tag:astropy.org:photutils/psf/gridded_psf_model-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/psf/gridded_psf_model-1.0.0
+    title: GriddedPSFModel
+    description: A grid of 2D ePSF models.
   - tag_uri: tag:astropy.org:photutils/psf/image_psf-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/psf/image_psf-1.0.0
     title: ImagePSF
-    description: A 2D ImagePSF model.
+    description: A 2D image PSF model.
   - tag_uri: tag:astropy.org:photutils/psf/moffat_psf-1.0.0
     schema_uri: asdf://astropy.org/photutils/schemas/psf/moffat_psf-1.0.0
     title: MoffatPSF
-    description: A 2D MoffatPSF model.
-  - tag_uri: tag:astropy.org:photutils/psf/stdpsf-1.0.0
-    schema_uri: asdf://astropy.org/photutils/schemas/psf/stdpsf-1.0.0
-    title: STDPSF
-    description: STDPSF grid container.
+    description: A 2D Moffat PSF model.
+  - tag_uri: tag:astropy.org:photutils/psf/stdpsf_grid-1.0.0
+    schema_uri: asdf://astropy.org/photutils/schemas/psf/stdpsf_grid-1.0.0
+    title: STDPSFGrid
+    description: A grid of 2D ePSF models in the STDPSF format.
