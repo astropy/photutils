@@ -6,6 +6,7 @@ Tests for the model_io module.
 import io
 import os.path as op
 from itertools import product
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -14,7 +15,8 @@ from numpy.testing import assert_allclose, assert_equal
 
 from photutils.psf import GriddedPSFModel
 from photutils.psf.model_io import (_get_metadata, _has_fits_header_keys,
-                                    _read_stdpsf, is_stdpsf, is_webbpsf)
+                                    _read_stdpsf, is_stdpsf, is_webbpsf,
+                                    stdpsf_reader)
 
 # The first file has a single detector, the rest have multiple detectors
 STDPSF_FILENAMES = ('STDPSF_NRCA1_F150W_mock.fits',
@@ -129,6 +131,23 @@ class TestSTDPSFReader:
         assert isinstance(psfmodel.meta['grid_xypos'], np.ndarray)
         assert_equal(psfmodel.oversampling, [4, 4])
         assert_equal(psfmodel.meta['oversampling'], psfmodel.oversampling)
+
+    def test_read_stdpsf_path(self):
+        """
+        Test STDPSF read with a pathlib.Path.
+
+        The reader is called directly because the astropy unified-I/O
+        registry converts a path-like input to a string before
+        dispatching to the reader.
+        """
+        filename = Path(get_data_filename('STDPSF_NRCA1_F150W_mock.fits'))
+        psfmodel = stdpsf_reader(filename)
+        assert psfmodel.data.shape[0] == len(psfmodel.meta['grid_xypos'])
+        assert_equal(psfmodel.oversampling, [4, 4])
+        assert psfmodel.meta['STDPSF'] == str(filename)
+
+        psfmodel2 = GriddedPSFModel.read(filename, format='stdpsf')
+        assert_equal(psfmodel2.data, psfmodel.data)
 
     @pytest.mark.parametrize('filename', STDPSF_FILENAMES[1:])
     @pytest.mark.parametrize('detector_id', [1, 2])
@@ -358,7 +377,13 @@ class TestFormatIdentifiers:
         assert is_webbpsf('read', filename, None)
         assert not is_stdpsf('read', filename, None)
 
-    @pytest.mark.parametrize('filepath', [None, 'filename.txt'])
+    def test_path_input(self):
+        filename = Path(get_data_filename('STDPSF_NRCA1_F150W_mock.fits'))
+        assert is_stdpsf('read', filename, None)
+        assert not is_webbpsf('read', filename, None)
+
+    @pytest.mark.parametrize('filepath', [None, 'filename.txt',
+                                          Path('filename.txt')])
     def test_not_a_fits_file(self, filepath):
         assert not is_stdpsf('read', filepath, None)
         assert not is_webbpsf('read', filepath, None)

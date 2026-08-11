@@ -5,6 +5,7 @@ Tests for the gridded_models module.
 
 import os.path as op
 from itertools import product
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -519,6 +520,13 @@ def test_stdpsfgrid(filename):
     assert psfgrid.data.shape[0] == len(psfgrid.grid_xypos)
     assert isinstance(psfgrid.grid_xypos, np.ndarray)
     assert psfgrid.grid_shape == (len(psfgrid._ygrid), len(psfgrid._xgrid))
+
+
+def test_stdpsfgrid_path():
+    filename = Path(__file__).parent / 'data' / STDPSF_FILENAMES[0]
+    psfgrid = STDPSFGrid(filename)
+    assert psfgrid.data.shape[0] == len(psfgrid.grid_xypos)
+    assert psfgrid.meta['STDPSF'] == str(filename)
 
 
 def test_stdpsfgrid_repr_str():
