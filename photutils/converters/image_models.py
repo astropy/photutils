@@ -1,9 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """
 Converters to and from the ASDF format for photutils.psf.image_models
 and photutils.psf.gridded_models.
 """
+
 import numpy as np
 from asdf.extension import Converter
 from asdf_astropy.converters.transform.core import (TransformConverterBase,
@@ -19,7 +19,7 @@ __all__ = ['GriddedPSFModelConverter',
 
 class ImagePSFConverter(TransformConverterBase):
     """
-    ASDF converter for ImagePSF model.
+    ASDF converter for ImagePSF.
     """
 
     tags = ('tag:astropy.org:photutils/psf/image_psf-*',)

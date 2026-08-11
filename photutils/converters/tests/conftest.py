@@ -1,5 +1,4 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """
 Fixtures for the photutils ASDF converters.
 
@@ -7,6 +6,7 @@ Object fixtures return a photutils object and parameter names for
 round-trip comparisons. The ``theta`` fixture supplies rotation-angle
 values for parametrized aperture fixtures.
 """
+
 import pytest
 from astropy import units as u
 from astropy.coordinates import Angle

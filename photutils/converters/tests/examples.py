@@ -1,11 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
-
 """
 Examples for testing the photutils ASDF converters.
 
 Each example returns a tuple containing a photutils object and the list
 of parameter names to compare in round-trip tests.
 """
+
 from pathlib import Path
 
 import numpy as np

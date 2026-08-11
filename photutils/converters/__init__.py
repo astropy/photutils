@@ -23,51 +23,41 @@ except ImportError:
 __all__ = []
 
 if _ASDF_INSTALLED:
-    from .apertures import (
-        CircularAnnulusConverter,
-        CircularApertureConverter,
-        EllipticalAnnulusConverter,
-        EllipticalApertureConverter,
-        PolygonApertureConverter,
-        RectangularAnnulusConverter,
-        RectangularApertureConverter,
-    )
+    from .apertures import (CircularAnnulusConverter,
+                            CircularApertureConverter,
+                            EllipticalAnnulusConverter,
+                            EllipticalApertureConverter,
+                            PolygonApertureConverter,
+                            RectangularAnnulusConverter,
+                            RectangularApertureConverter)
 
-    __all__ += [
-        'CircularAnnulusConverter',
-        'CircularApertureConverter',
-        'EllipticalAnnulusConverter',
-        'EllipticalApertureConverter',
-        'PolygonApertureConverter',
-        'RectangularAnnulusConverter',
-        'RectangularApertureConverter',
-    ]
+    __all__ += ['CircularAnnulusConverter',
+                'CircularApertureConverter',
+                'EllipticalAnnulusConverter',
+                'EllipticalApertureConverter',
+                'PolygonApertureConverter',
+                'RectangularAnnulusConverter',
+                'RectangularApertureConverter',
+                ]
 
 if _ASDF_ASTROPY_INSTALLED:
-    from .functional_models import (
-        AiryDiskPSFConverter,
-        CircularGaussianPRFConverter,
-        CircularGaussianPSFConverter,
-        CircularGaussianSigmaPRFConverter,
-        GaussianPRFConverter,
-        GaussianPSFConverter,
-        MoffatPSFConverter,
-    )
-    from .image_models import (
-        GriddedPSFModelConverter,
-        ImagePSFConverter,
-        STDPSFGridConverter,
-    )
+    from .functional_models import (AiryDiskPSFConverter,
+                                    CircularGaussianPRFConverter,
+                                    CircularGaussianPSFConverter,
+                                    CircularGaussianSigmaPRFConverter,
+                                    GaussianPRFConverter, GaussianPSFConverter,
+                                    MoffatPSFConverter)
+    from .image_models import (GriddedPSFModelConverter, ImagePSFConverter,
+                               STDPSFGridConverter)
 
-    __all__ += [
-        'AiryDiskPSFConverter',
-        'CircularGaussianPRFConverter',
-        'CircularGaussianPSFConverter',
-        'CircularGaussianSigmaPRFConverter',
-        'GaussianPRFConverter',
-        'GaussianPSFConverter',
-        'GriddedPSFModelConverter',
-        'ImagePSFConverter',
-        'MoffatPSFConverter',
-        'STDPSFGridConverter',
-    ]
+    __all__ += ['AiryDiskPSFConverter',
+                'CircularGaussianPRFConverter',
+                'CircularGaussianPSFConverter',
+                'CircularGaussianSigmaPRFConverter',
+                'GaussianPRFConverter',
+                'GaussianPSFConverter',
+                'GriddedPSFModelConverter',
+                'ImagePSFConverter',
+                'MoffatPSFConverter',
+                'STDPSFGridConverter',
+                ]

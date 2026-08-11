@@ -2,6 +2,7 @@
 """
 ASDF extension for photutils.
 """
+
 import importlib.resources as importlib_resources
 
 from asdf.extension import ManifestExtension

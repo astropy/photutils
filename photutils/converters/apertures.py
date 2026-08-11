@@ -8,15 +8,14 @@ from astropy.coordinates import SkyCoord
 
 from photutils.converters._utils import optional_params
 
-__all__ = [
-    'CircularAnnulusConverter',
-    'CircularApertureConverter',
-    'EllipticalAnnulusConverter',
-    'EllipticalApertureConverter',
-    'PolygonApertureConverter',
-    'RectangularAnnulusConverter',
-    'RectangularApertureConverter',
-]
+__all__ = ['CircularAnnulusConverter',
+           'CircularApertureConverter',
+           'EllipticalAnnulusConverter',
+           'EllipticalApertureConverter',
+           'PolygonApertureConverter',
+           'RectangularAnnulusConverter',
+           'RectangularApertureConverter',
+           ]
 
 
 class _ApertureConverter(Converter):

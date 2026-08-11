@@ -63,7 +63,7 @@ class _PSFModelConverter(TransformConverterBase):
 
 class AiryDiskPSFConverter(_PSFModelConverter):
     """
-    ASDF converter for the AiryDiskPSF model.
+    ASDF converter for AiryDiskPSF.
     """
 
     tags = ('tag:astropy.org:photutils/psf/airy_disk_psf-*',)
@@ -73,7 +73,7 @@ class AiryDiskPSFConverter(_PSFModelConverter):
 
 class CircularGaussianPRFConverter(_PSFModelConverter):
     """
-    ASDF converter for the CircularGaussianPRF model.
+    ASDF converter for CircularGaussianPRF.
     """
 
     tags = ('tag:astropy.org:photutils/psf/circular_gaussian_prf-*',)
@@ -83,7 +83,7 @@ class CircularGaussianPRFConverter(_PSFModelConverter):
 
 class CircularGaussianPSFConverter(_PSFModelConverter):
     """
-    ASDF converter for the CircularGaussianPSF model.
+    ASDF converter for CircularGaussianPSF.
     """
 
     tags = ('tag:astropy.org:photutils/psf/circular_gaussian_psf-*',)
@@ -93,7 +93,7 @@ class CircularGaussianPSFConverter(_PSFModelConverter):
 
 class CircularGaussianSigmaPRFConverter(_PSFModelConverter):
     """
-    ASDF converter for the CircularGaussianSigmaPRF model.
+    ASDF converter for CircularGaussianSigmaPRF.
     """
 
     tags = ('tag:astropy.org:photutils/psf/circular_gaussian_sigma_prf-*',)
@@ -103,7 +103,7 @@ class CircularGaussianSigmaPRFConverter(_PSFModelConverter):
 
 class GaussianPRFConverter(_PSFModelConverter):
     """
-    ASDF converter for the GaussianPRF model.
+    ASDF converter for GaussianPRF.
     """
 
     tags = ('tag:astropy.org:photutils/psf/gaussian_prf-*',)
@@ -114,7 +114,7 @@ class GaussianPRFConverter(_PSFModelConverter):
 
 class GaussianPSFConverter(_PSFModelConverter):
     """
-    ASDF converter for the GaussianPSF model.
+    ASDF converter for GaussianPSF.
     """
 
     tags = ('tag:astropy.org:photutils/psf/gaussian_psf-*',)
@@ -125,7 +125,7 @@ class GaussianPSFConverter(_PSFModelConverter):
 
 class MoffatPSFConverter(_PSFModelConverter):
     """
-    ASDF converter for the MoffatPSF model.
+    ASDF converter for MoffatPSF.
     """
 
     tags = ('tag:astropy.org:photutils/psf/moffat_psf-*',)
