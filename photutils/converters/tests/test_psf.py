@@ -14,54 +14,52 @@ from photutils.converters.tests import examples
 from photutils.extension import PHOTUTILS_PSF_CONVERTERS
 from photutils.psf import STDPSFGrid
 
-
-@pytest.fixture
-def psfobj(request):
-    """
-    A pytest fixture that returns a PSF model and the
-    list of parameters to test.
-    """
-    return request.getfixturevalue(request.param)
-
-
-PSF_EXAMPLE_NAMES = [
-    'airy_disk_units',
-    'airy_disk',
-    'circular_gaussian_prf_units',
-    'circular_gaussian_prf',
-    'circular_gaussian_sigma_prf_units',
-    'circular_gaussian_sigma_prf',
-    'circular_gaussian_psf_units',
-    'circular_gaussian_psf',
-    'gaussian_prf_units',
-    'gaussian_prf',
-    'gaussian_psf_units',
-    'gaussian_psf',
-    'moffat_psf_units',
-    'moffat_psf',
-    'image_psf',
-    'gridded_psf',
-    'stdpsf_single_detector',
+PSF_EXAMPLES = [
+    examples.airy_disk_units,
+    examples.airy_disk,
+    examples.circular_gaussian_prf_units,
+    examples.circular_gaussian_prf,
+    examples.circular_gaussian_sigma_prf_units,
+    examples.circular_gaussian_sigma_prf,
+    examples.circular_gaussian_psf_units,
+    examples.circular_gaussian_psf,
+    examples.gaussian_prf_units,
+    examples.gaussian_prf,
+    examples.gaussian_psf_units,
+    examples.gaussian_psf,
+    examples.moffat_psf_units,
+    examples.moffat_psf,
+    examples.image_psf,
+    examples.gridded_psf,
+    examples.stdpsf_single_detector,
 ]
 
-psf_params = pytest.mark.parametrize('psfobj', PSF_EXAMPLE_NAMES,
-                                     indirect=True)
+
+def _example_id(example):
+    """
+    Return the test ID of an example function.
+    """
+    return example.__name__
 
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
-@pytest.mark.parametrize('name', PSF_EXAMPLE_NAMES)
-def test_psf_fixture_matches_example(request, name):
+@pytest.mark.parametrize('example', PSF_EXAMPLES, ids=_example_id)
+def test_psf_converters(tmp_path, example):
     """
-    Test that each fixture returns the example of the same name.
+    Test that the PSF converters can round-trip a PSF object.
+    """
+    psf, params = example()
 
-    The fixtures wrap the example functions, so a fixture wired to the
-    wrong function would silently drop a model from the round-trip test.
-    """
-    expected, expected_params = getattr(examples, name)()
-    psf, params = request.getfixturevalue(name)
-    assert type(psf) is type(expected)
-    assert params == expected_params
+    filename = tmp_path / 'psf.asdf'
+    with asdf.AsdfFile() as af:
+        af['psf'] = psf
+        af.write_to(filename)
+
+    with asdf.open(filename) as af:
+        psf2 = af['psf']
+        for param in params:
+            assert_array_equal(getattr(psf, param), getattr(psf2, param))
 
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
@@ -71,8 +69,7 @@ def test_psf_examples_cover_all_converters():
     Test that the round-trip test exercises every type handled by a PSF
     converter.
     """
-    covered = {type(getattr(examples, name)()[0]).__name__
-               for name in PSF_EXAMPLE_NAMES}
+    covered = {type(example()[0]).__name__ for example in PSF_EXAMPLES}
     handled = {name.rsplit('.', 1)[-1]
                for converter in PHOTUTILS_PSF_CONVERTERS
                for name in converter.types}
@@ -81,32 +78,11 @@ def test_psf_examples_cover_all_converters():
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
-@psf_params
-def test_psf_converters(tmp_path, psfobj):
-    """
-    Test that the PSF converters can round-trip a PSF object.
-    """
-    psf, pars = psfobj
-    with asdf.AsdfFile() as af:
-        af['psf'] = psf
-        af.write_to(tmp_path / 'psf.asdf')
-
-        with asdf.open(tmp_path / 'psf.asdf') as af:
-            psf2 = af['psf']
-            for parameter in pars:
-                assert_array_equal(getattr(psf, parameter),
-                                   getattr(psf2, parameter))
-
-
-@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
-                    reason='asdf-astropy is not installed')
-@pytest.mark.parametrize('psfobj', ['gridded_psf'], indirect=True)
-def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path,
-                                                               psfobj):
+def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path):
     """
     Test that a modified oversampling value survives a round trip.
     """
-    psf, _ = psfobj
+    psf, _ = examples.gridded_psf()
     psf.oversampling = (2, 3)
 
     node = GriddedPSFModelConverter().to_yaml_tree_transform(psf, None, None)
@@ -126,14 +102,16 @@ def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path,
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
-@pytest.mark.parametrize(('name', 'converter_name', 'method'), [
+@pytest.mark.parametrize(('example', 'converter_name', 'method'), [
     # GriddedPSFModel is an astropy model, so its converter builds the
     # tree in to_yaml_tree_transform; STDPSFGrid is not a model, so its
     # converter uses to_yaml_tree.
-    ('gridded_psf', 'GriddedPSFModelConverter', 'to_yaml_tree_transform'),
-    ('stdpsf_single_detector', 'STDPSFGridConverter', 'to_yaml_tree'),
-])
-def test_grid_structure_is_stored_outside_meta(name, converter_name, method):
+    (examples.gridded_psf, 'GriddedPSFModelConverter',
+     'to_yaml_tree_transform'),
+    (examples.stdpsf_single_detector, 'STDPSFGridConverter', 'to_yaml_tree'),
+], ids=['gridded_psf_model', 'stdpsf_grid'])
+def test_grid_structure_is_stored_outside_meta(example, converter_name,
+                                               method):
     """
     Test that both grid converters store the grid structure as
     top-level properties rather than inside ``meta``.
@@ -144,7 +122,7 @@ def test_grid_structure_is_stored_outside_meta(name, converter_name, method):
     """
     from photutils.converters import image_models
 
-    obj, _ = getattr(examples, name)()
+    obj, _ = example()
     converter = getattr(image_models, converter_name)()
     node = getattr(converter, method)(obj, None, None)
 
