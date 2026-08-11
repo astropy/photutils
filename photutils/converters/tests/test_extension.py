@@ -3,6 +3,10 @@
 Tests for the photutils ASDF extension.
 """
 
+import re
+from pathlib import Path
+
+import pytest
 import yaml
 from asdf import get_config
 from asdf.extension import Converter, ExtensionProxy, ManifestExtension
@@ -135,3 +139,20 @@ def test_public_names_are_importable():
     assert converters.__all__
     for name in converters.__all__:
         assert hasattr(converters, name)
+
+
+def test_documented_tags_match_the_manifest():
+    """
+    Test that the tags listed in the ASDF documentation match those
+    defined by the manifests.
+
+    The documentation table is written by hand, so it would otherwise
+    go stale when a tag is added, removed, or renamed.
+    """
+    docs = (Path(__file__).parents[3] / 'docs' / 'user_guide' / 'asdf.rst')
+    if not docs.is_file():
+        pytest.skip('the documentation is not part of the installed package')
+
+    documented = set(re.findall(r'``(photutils/\w+/[\w.-]+)``',
+                                docs.read_text()))
+    assert documented == {tag.split(':')[-1] for tag in _manifest_tags()}

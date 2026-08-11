@@ -7,18 +7,13 @@ on the ``asdf-astropy`` transform machinery, so they are defined only
 when that optional dependency is installed.
 """
 
-_ASDF_INSTALLED = True
-_ASDF_ASTROPY_INSTALLED = True
+from importlib.util import find_spec
 
-try:
-    import asdf  # noqa: F401
-except ImportError:
-    _ASDF_INSTALLED = False
+_ASDF_INSTALLED = find_spec('asdf') is not None
 
-try:
-    import asdf_astropy  # noqa: F401
-except ImportError:
-    _ASDF_ASTROPY_INSTALLED = False
+# asdf-astropy imports asdf, so it is unusable without it.
+_ASDF_ASTROPY_INSTALLED = (_ASDF_INSTALLED
+                           and find_spec('asdf_astropy') is not None)
 
 __all__ = []
 
