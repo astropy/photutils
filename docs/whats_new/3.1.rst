@@ -540,6 +540,14 @@ now always stores ``'grid_xypos'`` as the sorted array of grid
 positions and ``'oversampling'`` as a normalized ``(y, x)`` tuple, so
 that both always match the attributes of the same name.
 
+``GriddedPSFModel`` ``'grid_shape'`` Metadata Key
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``'grid_shape'`` key has been removed from the
+`~photutils.psf.GriddedPSFModel` ``meta`` dictionary. Use the new
+``grid_shape`` attribute instead, i.e., ``psfmodel.grid_shape`` instead
+of ``psfmodel.meta['grid_shape']``.
+
 Deblending ``n_markers`` Warning Key
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

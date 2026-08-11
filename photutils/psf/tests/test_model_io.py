@@ -252,7 +252,7 @@ class TestWebbPSFReader:
         psfmodel = GriddedPSFModel.read(filename, format='webbpsf')
         assert_equal(np.unique(psfmodel.grid_xypos[:, 0]), xgrid)
         assert_equal(np.unique(psfmodel.grid_xypos[:, 1]), ygrid)
-        assert psfmodel.meta['grid_shape'] == (len(ygrid), len(xgrid))
+        assert psfmodel.grid_shape == (len(ygrid), len(xgrid))
 
         for (x, y), plane in zip(psfmodel.grid_xypos, psfmodel.data,
                                  strict=True):
