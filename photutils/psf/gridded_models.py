@@ -791,7 +791,7 @@ class STDPSFGrid:
 
     Parameters
     ----------
-    filename : str
+    filename : str or path-like
         The name or URL of a STDPSF FITS file.
 
     Examples
