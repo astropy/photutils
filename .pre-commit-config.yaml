@@ -104,6 +104,21 @@ repos:
             (.*\/)?(codeql\.yml|dependabot\.yml)$
           )
 
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        name: yamllint (ASDF resources)
+        # Prettier does not reach inside the block scalars that hold the
+        # schema examples, so the line length is enforced here. The tag
+        # and schema URIs cannot be wrapped, so a value that is a single
+        # long word is exempt.
+        files: ^photutils/resources/.*\.yaml$
+        args:
+          - '-d'
+          - '{rules: {line-length: {max: 79,
+            allow-non-breakable-inline-mappings: true}}}'
+
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.3
     hooks:
