@@ -4,13 +4,15 @@ $schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
 id: "asdf://astropy.org/photutils/schemas/psf/image_psf-1.0.0"
 title: ImagePSF
 description: |
-  ASDF schema for serializing a 2D Image PSF model.
+  ASDF schema for serializing an ImagePSF model, a 2D image PSF that is
+  evaluated at arbitrary positions by spline interpolation.
 
 examples:
   -
-    - An ImagePSF with a flux of 71.4, centered at (24.3, 25.2) pixels,
-      and an image of shape (11, 11).
-      psf.ImagePSF(data=np.ones((11, 11)), flux=71.4, x_0=24.3, y_0=25.2)
+    - |
+      An ImagePSF with a flux of 71.4, centered at (24.3, 25.2) pixels,
+      and an image of shape (11, 11):
+      ImagePSF(data=np.ones((11, 11)), flux=71.4, x_0=24.3, y_0=25.2)
     - |
       !<tag:astropy.org:photutils/psf/image_psf-1.0.0>
         data: !core/ndarray-1.1.0
@@ -43,17 +45,25 @@ allOf:
     properties:
       data:
         tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
+        description: |
+          A 2D array containing the PSF image.
       flux:
         type: number
-        description: Total integrated flux of the PSF.
+        description: |
+          The flux scaling factor, which corresponds to the total source
+          flux assuming that the input image is properly normalized.
       x_0:
         type: number
         description: |
-          Position of the peak along the x axis.
+          The x position of a feature in the image, typically the PSF
+          peak, in the output coordinate grid where the model is
+          evaluated.
       y_0:
         type: number
         description: |
-          Position of the peak along the y axis.
+          The y position of a feature in the image, typically the PSF
+          peak, in the output coordinate grid where the model is
+          evaluated.
       origin:
         anyOf:
         - type: array
@@ -79,7 +89,8 @@ allOf:
           maxItems: 2
         - tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
         description: |
-          The integer oversampling factor(s) of the input PSF image in (y, x) order.
+          The integer oversampling factor of the input PSF image along
+          each axis, in numpy ``(y, x)`` order.
       # The properties of the referenced transform schema are repeated
       # here because "additionalProperties" applies only to the
       # properties defined in the same subschema.

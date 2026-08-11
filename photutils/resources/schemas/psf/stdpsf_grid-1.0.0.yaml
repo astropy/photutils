@@ -4,14 +4,14 @@ $schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
 id: "asdf://astropy.org/photutils/schemas/psf/stdpsf_grid-1.0.0"
 title: STDPSFGrid
 description: |
-  Schema for serializing "STDPSF" format ePSF grids to ASDF.
-
-  By convention the model is saved under a key "stdpsf".
-
+  ASDF schema for serializing a STDPSFGrid, a grid of 2D ePSF models
+  read from a file in the STDPSF format.
 
 examples:
   -
-    - An STDPSF ASDF file.
+    - |
+      A STDPSFGrid with nine 101x101 ePSF images on a 3x3 grid, read
+      from a WFC3/IR F153M STDPSF file.
     - |
       !<tag:astropy.org:photutils/psf/stdpsf_grid-1.0.0>
         data: !core/ndarray-1.1.0
@@ -31,40 +31,50 @@ examples:
             shape: [9, 2]
           oversampling: [4, 4]
 
-
 type: object
 properties:
   data:
     tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
     description: |
-      A 3D array with PSFs.
+      A 3D array of shape (N, My, Mx) containing the N ePSF images of
+      shape (My, Mx).
   meta:
     type: object
     properties:
       STDPSF:
         type: string
-        title: The name of the file containing the PSFs.
+        description: |
+          The name of the STDPSF file that the ePSFs were read from.
       oversampling:
         type: array
         description: |
-          Oversampling factor(s), as a 2-element (y, x) array.
+          The integer oversampling factor of the ePSF images along each
+          axis, in numpy ``(y, x)`` order.
         items:
           type: integer
         minItems: 2
         maxItems: 2
       detector:
         type: string
-        title: The name of the detector
+        description: |
+          The name of the detector.
       filter:
         type: string
-        title: The name of the filter.
+        description: |
+          The name of the filter.
       grid_shape:
         type: array
-        description: The shape of the array of PSFS in numpy order.
+        description: |
+          The shape of the ePSF grid in numpy ``(ny, nx)`` order.
+        items:
+          type: integer
+        minItems: 2
+        maxItems: 2
       grid_xypos:
         tag: "tag:stsci.edu:asdf/core/ndarray-1.*"
         description: |
-          A list of the fiducial positions of the PSFs in the detector frame.
+          The ``(x, y)`` fiducial detector position of each ePSF, in the
+          same order as the first axis of ``data``.
     required: [oversampling, grid_shape, grid_xypos]
 
 required: [data, meta]

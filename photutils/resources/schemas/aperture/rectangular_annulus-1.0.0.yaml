@@ -2,14 +2,17 @@
 ---
 $schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
 id: "asdf://astropy.org/photutils/schemas/aperture/rectangular_annulus-1.0.0"
-title: Rectangular annulus apertures
+title: Rectangular annulus aperture
 description: |
-  ASDF schema for serializing a rectangular annulus aperture in pixel
-  or sky coordinates.
+  ASDF schema for serializing a rectangular annulus aperture with one or more
+  positions, in pixel or sky coordinates.
+
 examples:
   -
     - |
-      A RectangularAnnulus aperture with a single position,
+      A RectangularAnnulus aperture with a single position, inner full
+      width and height of 3 and 2 pixels, outer full width and height of
+      5 and 4 pixels, and a rotation angle of 80 degrees.
     - |
       !<tag:astropy.org:photutils/aperture/rectangular_annulus-1.0.0>
         h_in: 2.0
@@ -21,7 +24,9 @@ examples:
         w_out: 5.0
   -
     - |
-      A SkyRectangularAnnulus aperture with a single position
+      A SkyRectangularAnnulus aperture with two positions, inner full
+      width and height of 3 and 2 arcsec, outer full width and height of
+      5 and 4 arcsec, and a position angle of 80 degrees.
     - |
       !<tag:astropy.org:photutils/aperture/rectangular_annulus-1.0.0>
         h_in: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 2.0}
@@ -55,13 +60,15 @@ properties:
   positions:
     title: Aperture position(s).
     description: |
-      The coordinates of the aperture center(s) in one of the following formats.
+      The coordinates of the aperture center(s) in one of the following
+      formats.
+
       If a RectangularAnnulus in pixel coordinates:
 
         * single ``(x, y)`` pair as an array
         * `numpy.ndarray` of ``(x, y)`` pairs
 
-      If a SkyRectangularAnnulus
+      If a SkyRectangularAnnulus:
 
         * `astropy.coordinates.SkyCoord` object
     anyOf:
@@ -117,16 +124,15 @@ properties:
       - type: number
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
   theta:
-    title: Rotation angle
+    title: Rotation angle.
     description: |
-      RectangularAnnulus:
-        The rotation angle as an angular quantity
-        (`~astropy.units.Quantity` or `~astropy.coordinates.Angle`) or
-        value in radians (as a float) from the positive ``x`` axis. The
-        rotation angle increases counterclockwise.
-      SkyRectangularAnnulus:
-        For a right-handed world coordinate system, the position
-        angle increases counterclockwise from North (PA=0).
+      RectangularAnnulus: the rotation angle of the rectangle from the
+      positive ``x`` axis, as an angular quantity or as a number in
+      radians. The rotation angle increases counterclockwise.
+      SkyRectangularAnnulus: the position angle (in angular units) of
+      the rectangle "width" side. For a right-handed world coordinate
+      system, the position angle increases counterclockwise from North
+      (PA=0).
     anyOf:
       - type: number
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"

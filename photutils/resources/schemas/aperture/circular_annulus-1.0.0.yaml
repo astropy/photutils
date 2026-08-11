@@ -2,15 +2,16 @@
 ---
 $schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
 id: "asdf://astropy.org/photutils/schemas/aperture/circular_annulus-1.0.0"
-title: Circular annulus
+title: Circular annulus aperture
 description: |
-  ASDF schema for serializing a circular annulus aperture in pixel
-  or sky coordinates.
+  ASDF schema for serializing a circular annulus aperture with one or more
+  positions, in pixel or sky coordinates.
+
 examples:
   -
     - |
-      A CircularAnnulus aperture with a single position, inner radius of 3.0,
-      and outer radius of 5.1.
+      A CircularAnnulus aperture with a single position, an inner radius
+      of 3 pixels, and an outer radius of 5.1 pixels.
     - |
       !<tag:astropy.org:photutils/aperture/circular_annulus-1.0.0>
         positions: [10.0, 20.0]
@@ -18,8 +19,8 @@ examples:
         r_out: 5.1
   -
     - |
-        A SkyCircularAnnulus aperture with 2 positions, inner radius of
-        0.5 arcsec and outer radius of 1 arcsec.
+      A SkyCircularAnnulus aperture with two positions, an inner radius
+      of 0.5 arcsec, and an outer radius of 1 arcsec.
     - |
       !<tag:astropy.org:photutils/aperture/circular_annulus-1.0.0>
         positions: !<tag:astropy.org:astropy/coordinates/skycoord-1.0.0>
@@ -49,13 +50,15 @@ properties:
   positions:
     title: Aperture position(s).
     description: |
-      The coordinates of the aperture center(s) in one of the following formats.
+      The coordinates of the aperture center(s) in one of the following
+      formats.
+
       If a CircularAnnulus in pixel coordinates:
 
         * single ``(x, y)`` pair as an array
         * `numpy.ndarray` of ``(x, y)`` pairs
 
-      If a SkyCircularAnnulus
+      If a SkyCircularAnnulus:
 
         * `astropy.coordinates.SkyCoord` object
     anyOf:

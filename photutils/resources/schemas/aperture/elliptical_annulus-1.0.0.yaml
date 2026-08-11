@@ -2,17 +2,18 @@
 ---
 $schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
 id: "asdf://astropy.org/photutils/schemas/aperture/elliptical_annulus-1.0.0"
-title: EllipticalAnnulus
+title: Elliptical annulus aperture
 description: |
-  ASDF schema for serializing an elliptical annulus aperture in pixel
-  and sky coordinates.
+  ASDF schema for serializing an elliptical annulus aperture with one or more
+  positions, in pixel or sky coordinates.
+
 examples:
   -
     - |
-      An EllipticalAnnulus aperture with a single position, with inner
-      semimajor axis of 0.5 arcsec, outer semimajor axis of 2 arcsec,
-      inner semiminor axis of 0.25 arcsec, outer semiminor axis of 1 arcsec,
-      and rotation angle of 0.
+      An EllipticalAnnulus aperture with a single position, inner
+      semimajor and semiminor axes of 0.5 and 0.25 pixels, outer
+      semimajor and semiminor axes of 2 and 1 pixels, and a rotation
+      angle of 0 radians.
     - |
       !<tag:astropy.org:photutils/aperture/elliptical_annulus-1.0.0>
         a_in: 0.5
@@ -23,7 +24,10 @@ examples:
         theta: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 rad, value: 0.0}
   -
     - |
-      SkyEllipticalAnnulus aperture with a single position.
+      A SkyEllipticalAnnulus aperture with a single position, inner
+      semimajor and semiminor axes of 0.5 and 0.25 arcsec, outer
+      semimajor and semiminor axes of 2 and 1 arcsec, and a position
+      angle of 0 degrees.
     - |
       !<tag:astropy.org:photutils/aperture/elliptical_annulus-1.0.0>
         a_in: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 arcsec, value: 0.5}
@@ -43,19 +47,20 @@ examples:
           representation_type: spherical
         theta: !unit/quantity-1.3.0 {datatype: float64, unit: !unit/unit-1.0.0 deg, value: 0.0}
 
-
 type: object
 properties:
   positions:
     title: Aperture position(s).
     description: |
-      The coordinates of the aperture center(s) in one of the following formats.
-      If an EllipticalAnnulus in pixel coordinates:
+      The coordinates of the aperture center(s) in one of the following
+      formats.
+
+      If a EllipticalAnnulus in pixel coordinates:
 
         * single ``(x, y)`` pair as an array
         * `numpy.ndarray` of ``(x, y)`` pairs
 
-      If a SkyEllipticalAnnulus
+      If a SkyEllipticalAnnulus:
 
         * `astropy.coordinates.SkyCoord` object
     anyOf:
@@ -103,16 +108,15 @@ properties:
       - type: number
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"
   theta:
-    title: Rotation angle of the ellipse.
+    title: Rotation angle.
     description: |
-      EllipticalAnnulus:
-        The rotation angle as an angular quantity from the positive ``x`` axis.
-        The rotation angle increases counterclockwise. If a number, it's assumed
-        to be in radians.
-      SkyEllipticalAnnulus:
-        The position angle (in angular units) of the ellipse semimajor
-        axis. For a right-handed world coordinate system, the position
-        angle increases counterclockwise from North (PA=0).
+      EllipticalAnnulus: the rotation angle of the ellipse from the
+      positive ``x`` axis, as an angular quantity or as a number in
+      radians. The rotation angle increases counterclockwise.
+      SkyEllipticalAnnulus: the position angle (in angular units) of the
+      ellipse semimajor axis. For a right-handed world coordinate
+      system, the position angle increases counterclockwise from North
+      (PA=0).
     anyOf:
       - type: number
       - tag: "tag:stsci.edu:asdf/unit/quantity-1.*"

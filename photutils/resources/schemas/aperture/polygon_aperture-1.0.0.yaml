@@ -4,12 +4,14 @@ $schema: "http://stsci.edu/schemas/yaml-schema/draft-01"
 id: "asdf://astropy.org/photutils/schemas/aperture/polygon_aperture-1.0.0"
 title: Polygon aperture
 description: |
-  ASDF schema for serializing a polygon aperture with one or more positions
-  in pixel or sky coordinates.
+  ASDF schema for serializing a polygon aperture with one or more
+  positions, in pixel or sky coordinates.
+
 examples:
   -
     - |
-      A PolygonAperture in pixel space at position [10, 20].
+      A PolygonAperture with a single position and four vertex offsets
+      in pixels.
     - |
       !<tag:astropy.org:photutils/aperture/polygon_aperture-1.0.0>
         positions: [10.0, 20.0]
@@ -20,7 +22,8 @@ examples:
           shape: [4, 2]
   -
     - |
-      A SkyPolygonAperture with a single position and vertex offsets
+      A SkyPolygonAperture with a single position and five vertex
+      offsets in arcsec.
     - |
       !<tag:astropy.org:photutils/aperture/polygon_aperture-1.0.0>
         positions: !<tag:astropy.org:astropy/coordinates/skycoord-1.0.0>
@@ -47,13 +50,15 @@ properties:
   positions:
     title: Aperture position(s).
     description: |
-      The coordinates of the aperture center(s) in one of the following formats.
+      The coordinates of the aperture center(s) in one of the following
+      formats.
+
       If a PolygonAperture in pixel coordinates:
 
         * single ``(x, y)`` pair as an array
         * `numpy.ndarray` of ``(x, y)`` pairs
 
-      If a SkyPolygonAperture
+      If a SkyPolygonAperture:
 
         * `astropy.coordinates.SkyCoord` object
     anyOf:
