@@ -6,7 +6,6 @@ Examples for testing the photutils ASDF converters.
 Each example returns a tuple containing a photutils object and the list
 of parameter names to compare in round-trip tests.
 """
-import os.path as op
 from pathlib import Path
 
 import numpy as np
@@ -19,6 +18,10 @@ from photutils.psf import (AiryDiskPSF, CircularGaussianPRF,
                            CircularGaussianPSF, CircularGaussianSigmaPRF,
                            GaussianPRF, GaussianPSF, GriddedPSFModel, ImagePSF,
                            MoffatPSF, STDPSFGrid)
+
+# The directory holding the STDPSF test files. STDPSFGrid accepts only
+# a string filename, so the paths are converted where they are used.
+PSF_DATA_DIR = Path(__file__).resolve().parents[2] / 'psf' / 'tests' / 'data'
 
 parameters = {
     'AiryDiskPSF': ['flux', 'x_0', 'y_0', 'radius', 'bbox_factor'],
@@ -197,12 +200,11 @@ def gridded_psf():
     """
     Return a GriddedPSFModel without units.
     """
-    nd_data = NDData(data=np.arange(180).reshape((5, 6, 6)),
+    nd_data = NDData(data=np.arange(144).reshape((4, 6, 6)),
                      meta={'oversampling': 1,
                            'grid_xypos': [(2, 2),
+                                          (65, 2),
                                           (2, 65),
-                                          (65, 2),
-                                          (65, 2),
                                           (65, 65)],
                            },
                      )
@@ -216,11 +218,7 @@ def stdpsf_single_detector():
     """
     Return a STDPSFGrid object read from a FITS STDPSF file.
     """
-    filename = 'STDPSF_NRCA1_F150W_mock.fits'
-
-    filename = op.join(Path(__file__).resolve().parent.parent.parent,
-                       'psf', 'tests', 'data', filename)
-    psfgrid = STDPSFGrid(filename)
+    psfgrid = STDPSFGrid(str(PSF_DATA_DIR / 'STDPSF_NRCA1_F150W_mock.fits'))
     return psfgrid, parameters['STDPSFGrid']
 
 

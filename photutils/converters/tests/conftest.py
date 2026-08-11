@@ -36,12 +36,12 @@ def circular_gaussian_prf():
 
 @pytest.fixture
 def circular_gaussian_sigma_prf_units():
-    return examples.circular_gaussian_prf_units()
+    return examples.circular_gaussian_sigma_prf_units()
 
 
 @pytest.fixture
 def circular_gaussian_sigma_prf():
-    return examples.circular_gaussian_prf()
+    return examples.circular_gaussian_sigma_prf()
 
 
 @pytest.fixture
