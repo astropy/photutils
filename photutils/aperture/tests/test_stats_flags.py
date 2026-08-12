@@ -11,8 +11,7 @@ from astropy.stats import SigmaClip
 from numpy.testing import assert_array_equal
 
 from photutils.aperture import APERTURE_FLAGS, ApertureStats, CircularAperture
-
-SHAPE = (25, 25)
+from photutils.aperture.tests.conftest import UNIT_SHAPE
 
 
 def _stats_flags(data, aperture, **kwargs):
@@ -44,7 +43,7 @@ def _single_pixel_data():
     Return data with a single bright pixel, giving a source whose
     covariance matrix is singular (zero spatial extent).
     """
-    data = np.zeros(SHAPE)
+    data = np.zeros(UNIT_SHAPE)
     data[12, 12] = 100.0
     return data
 
@@ -129,18 +128,18 @@ class TestMaskedAndNonFiniteFlags:
         data = unit_data
         aper = CircularAperture((12, 12), r=3.0)
 
-        mask = np.zeros(SHAPE, dtype=bool)
+        mask = np.zeros(UNIT_SHAPE, dtype=bool)
         mask[12, 12] = True
         assert _stats_flags(data, aper,
                             mask=mask) == APERTURE_FLAGS.MASKED_PIXELS
 
         # Masked pixel inside the bounding box but outside the aperture
-        mask = np.zeros(SHAPE, dtype=bool)
+        mask = np.zeros(UNIT_SHAPE, dtype=bool)
         mask[9, 9] = True
         assert _stats_flags(data, aper, mask=mask) == 0
 
         # Fully masked aperture
-        mask = np.zeros(SHAPE, dtype=bool)
+        mask = np.zeros(UNIT_SHAPE, dtype=bool)
         mask[8:17, 8:17] = True
         assert _stats_flags(data, aper, mask=mask) == (
             APERTURE_FLAGS.MASKED_PIXELS | APERTURE_FLAGS.ALL_MASKED)
@@ -174,19 +173,19 @@ class TestMaskedAndNonFiniteFlags:
         so they contribute to all_masked (but not to masked_pixels, which
         reflects only the input mask).
         """
-        data = np.ones(SHAPE)
+        data = np.ones(UNIT_SHAPE)
         data[12, 12] = np.nan
         aper = CircularAperture((12, 12), r=3.0)
         assert _stats_flags(data, aper) == APERTURE_FLAGS.NON_FINITE_DATA
 
         # All-NaN aperture: auto-masked, so also all_masked
-        data = np.full(SHAPE, np.nan)
+        data = np.full(UNIT_SHAPE, np.nan)
         assert _stats_flags(data, aper) == (APERTURE_FLAGS.NON_FINITE_DATA
                                             | APERTURE_FLAGS.ALL_MASKED)
 
         # A pixel that is both input-masked and non-finite counts only as
         # masked
-        data = np.ones(SHAPE)
+        data = np.ones(UNIT_SHAPE)
         data[12, 12] = np.nan
         mask = unit_mask
         mask[12, 12] = True
@@ -199,7 +198,7 @@ class TestMaskedAndNonFiniteFlags:
         Test the non_finite_error flag (evaluated on the sum footprint).
         """
         data = unit_data
-        error = np.ones(SHAPE)
+        error = np.ones(UNIT_SHAPE)
         error[12, 12] = np.nan
         aper = CircularAperture((12, 12), r=3.0)
         stats = ApertureStats(data, aper, error=error)
@@ -221,7 +220,7 @@ class TestSigmaClipFlags:
         Test the sigma_clipped flag.
         """
         rng = np.random.default_rng(0)
-        data = rng.normal(1.0, 0.1, size=SHAPE)
+        data = rng.normal(1.0, 0.1, size=UNIT_SHAPE)
         data[12, 12] = 1000.0  # outlier
         aper = CircularAperture((12, 12), r=3.0)
         sigclip = SigmaClip(sigma=3.0, maxiters=10)
@@ -285,7 +284,7 @@ class TestSegmentationFlags:
         Test the neighbor_pixels flag for all segmentation mask methods.
         """
         data = unit_data
-        segm = np.zeros(SHAPE, dtype=int)
+        segm = np.zeros(UNIT_SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2  # neighbor pixel inside the aperture
         aper = CircularAperture((12, 12), r=3.0)
@@ -299,7 +298,7 @@ class TestSegmentationFlags:
         Test the uncorrected_pixels flag with mask_method='correct'.
         """
         data = unit_data
-        segm = np.zeros(SHAPE, dtype=int)
+        segm = np.zeros(UNIT_SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2
         segm[12, 10] = 2  # the mirror is also a neighbor: uncorrectable
@@ -322,10 +321,10 @@ class TestMaskPathParity:
         identical flags for a mix of conditions.
         """
         rng = np.random.default_rng(1)
-        data = rng.normal(1.0, 0.1, size=SHAPE)
+        data = rng.normal(1.0, 0.1, size=UNIT_SHAPE)
         data[13, 12] = np.nan
         data[5, 5] = 100.0  # sigma-clip outlier
-        error = np.ones(SHAPE)
+        error = np.ones(UNIT_SHAPE)
         error[10, 12] = np.inf
         mask = unit_mask
         mask[12, 12] = True

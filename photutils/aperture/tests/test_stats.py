@@ -24,16 +24,9 @@ from photutils.aperture.photometry import AperturePhotometry
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture)
 from photutils.aperture.stats import _MAD_STD_SCALE, ApertureStats
+from photutils.aperture.tests.conftest import NoBatchCircularAperture
 from photutils.datasets import make_100gaussians_image, make_wcs
 from photutils.utils._optional_deps import HAS_REGIONS
-
-
-class _NoBatchCircular(CircularAperture):
-    """
-    A `CircularAperture` subclass that is not decorated with
-    ``_enable_batch_photometry``, so the fast batch driver is not used
-    and the mask-based code path is exercised.
-    """
 
 
 @_enable_batch_photometry
@@ -48,31 +41,49 @@ class _NoneSpecCircular(CircularAperture):
         return None
 
 
+@pytest.fixture(scope='class')
+def stats_data(request):
+    """
+    Build the shared data and ApertureStats objects on the test class.
+    """
+    cls = request.cls
+    cls.data = make_100gaussians_image()
+    cls.error = np.sqrt(np.abs(cls.data))
+    cls.wcs = make_wcs(cls.data.shape)
+    cls.positions = ((145.1, 168.3), (84.7, 224.1), (48.3, 200.3))
+    cls.aperture = CircularAperture(cls.positions, r=5)
+
+    cls.sigclip = SigmaClip(sigma=3.0, maxiters=10)
+    cls.apstats1 = ApertureStats(cls.data, cls.aperture,
+                                 error=cls.error, wcs=cls.wcs,
+                                 sigma_clip=None)
+    cls.apstats2 = ApertureStats(cls.data, cls.aperture,
+                                 error=cls.error, wcs=cls.wcs,
+                                 sigma_clip=cls.sigclip)
+
+    cls.unit = u.Jy
+    cls.apstats1_units = ApertureStats(cls.data * cls.unit,
+                                       cls.aperture,
+                                       error=cls.error * cls.unit,
+                                       wcs=cls.wcs, sigma_clip=None)
+    cls.apstats2_units = ApertureStats(cls.data * cls.unit,
+                                       cls.aperture,
+                                       error=cls.error * cls.unit,
+                                       wcs=cls.wcs,
+                                       sigma_clip=cls.sigclip)
+
+
+@pytest.mark.usefixtures('stats_data')
 class BaseApertureStatsData:
     """
     Shared data, aperture, and ApertureStats objects used by the
     ApertureStats test classes below.
+
+    The ``stats_data`` fixture builds the objects once per test class
+    rather than at import time, so collection stays cheap and each test
+    class gets its own instances (no lazyproperty-cache state is shared
+    across classes).
     """
-
-    data = make_100gaussians_image()
-    error = np.sqrt(np.abs(data))
-    wcs = make_wcs(data.shape)
-    positions = ((145.1, 168.3), (84.7, 224.1), (48.3, 200.3))
-    aperture = CircularAperture(positions, r=5)
-
-    sigclip = SigmaClip(sigma=3.0, maxiters=10)
-    apstats1 = ApertureStats(data, aperture, error=error, wcs=wcs,
-                             sigma_clip=None)
-    apstats2 = ApertureStats(data, aperture, error=error, wcs=wcs,
-                             sigma_clip=sigclip)
-
-    unit = u.Jy
-    apstats1_units = ApertureStats(data * u.Jy, aperture,
-                                   error=error * u.Jy, wcs=wcs,
-                                   sigma_clip=None)
-    apstats2_units = ApertureStats(data * u.Jy, aperture,
-                                   error=error * u.Jy, wcs=wcs,
-                                   sigma_clip=sigclip)
 
 
 class TestProperties(BaseApertureStatsData):
@@ -789,7 +800,7 @@ class TestMaskPathParity(BaseApertureStatsData):
         path and give the same results as the fast path.
         """
         nohook = ApertureStats(self.data,
-                               _NoBatchCircular(self.positions, r=5))
+                               NoBatchCircularAperture(self.positions, r=5))
         nospec = ApertureStats(self.data,
                                _NoneSpecCircular(self.positions, r=5))
         assert nohook._fast_gather is None
@@ -826,7 +837,7 @@ class TestMaskPathParity(BaseApertureStatsData):
             error = error * self.unit
         fast = ApertureStats(data, CircularAperture(positions, r=5),
                              error=error, sum_method=sum_method)
-        slow = ApertureStats(data, _NoBatchCircular(positions, r=5),
+        slow = ApertureStats(data, NoBatchCircularAperture(positions, r=5),
                              error=error, sum_method=sum_method)
         assert fast._fast_gather is not None
         assert slow._fast_gather is None
@@ -847,7 +858,7 @@ class TestMaskPathParity(BaseApertureStatsData):
         helpers.
         """
         slow = ApertureStats(self.data,
-                             _NoBatchCircular(self.positions[0], r=5),
+                             NoBatchCircularAperture(self.positions[0], r=5),
                              error=self.error)
         fast = ApertureStats(self.data,
                              CircularAperture(self.positions[0], r=5),
@@ -876,7 +887,7 @@ class TestMaskPathParity(BaseApertureStatsData):
                   'mask_method': 'mask'}
         fast = ApertureStats(data, CircularAperture(positions, r=6),
                              **kwargs)
-        slow = ApertureStats(data, _NoBatchCircular(positions, r=6),
+        slow = ApertureStats(data, NoBatchCircularAperture(positions, r=6),
                              **kwargs)
         assert slow._fast_gather is None
         for prop in ('sum', 'mean', 'median', 'std', 'mean_err',
@@ -893,7 +904,8 @@ class TestMaskPathParity(BaseApertureStatsData):
         mask = rng.random(self.data.shape) > 0.7
         fast = ApertureStats(self.data, CircularAperture(self.positions, r=5),
                              error=self.error, mask=mask)
-        slow = ApertureStats(self.data, _NoBatchCircular(self.positions, r=5),
+        slow_aper = NoBatchCircularAperture(self.positions, r=5)
+        slow = ApertureStats(self.data, slow_aper,
                              error=self.error, mask=mask)
         assert slow._fast_gather is None
         for prop in ('sum', 'mean', 'median', 'std', 'mean_err',
@@ -915,7 +927,8 @@ class TestMaskPathParity(BaseApertureStatsData):
         fast = ApertureStats(data, CircularAperture(self.positions, r=5),
                              error=self.error, mask=mask)
         assert fast._batch_inputs is not None
-        slow = ApertureStats(data, _NoBatchCircular(self.positions, r=5),
+        slow_aper = NoBatchCircularAperture(self.positions, r=5)
+        slow = ApertureStats(data, slow_aper,
                              error=self.error, mask=mask)
         assert slow._fast_gather is None
         for prop in ('sum', 'mean', 'median', 'std', 'mean_err',
@@ -1005,8 +1018,8 @@ class TestDdof(BaseApertureStatsData):
         """
         fast = ApertureStats(self.data, CircularAperture(self.positions, r=5),
                              ddof=1)
-        slow = ApertureStats(self.data, _NoBatchCircular(self.positions, r=5),
-                             ddof=1)
+        slow_aper = NoBatchCircularAperture(self.positions, r=5)
+        slow = ApertureStats(self.data, slow_aper, ddof=1)
         assert slow._fast_gather is None
         assert_allclose(fast.var, slow.var, equal_nan=True)
         assert_allclose(fast.std, slow.std, equal_nan=True)

@@ -21,28 +21,10 @@ from photutils.aperture.photometry import (AperturePhotometry,
                                            aperture_photometry)
 from photutils.aperture.polygon import PolygonAperture
 from photutils.aperture.stats import ApertureStats
+from photutils.aperture.tests.conftest import make_scene
 from photutils.datasets import make_wcs
 from photutils.segmentation import SegmentationImage
 from photutils.utils._optional_deps import HAS_REGIONS
-
-
-def make_scene():
-    """
-    Build a deterministic scene with a target source (label 1) and a
-    bright neighbor source (label 2), on a nonzero background.
-    """
-    data = np.ones((50, 50))
-    segm = np.zeros((50, 50), dtype=int)
-
-    # Target source (label 1)
-    data[18:25, 18:25] = 10.0
-    segm[18:25, 18:25] = 1
-
-    # Bright neighbor source (label 2)
-    data[20:25, 26:32] = 100.0
-    segm[20:25, 26:32] = 2
-
-    return data, segm
 
 
 class TestAperturePhotometryParity:

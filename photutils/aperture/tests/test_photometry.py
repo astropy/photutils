@@ -58,148 +58,101 @@ def fixture_ones_data():
     return np.ones((40, 40), dtype=float)
 
 
-class BaseTestAperturePhotometry:
+def _shape_aperture_specs():
     """
-    Tests shared by the shape-specific aperture photometry classes.
+    Build the ``(aperture, area)`` pairs used by the shape-specific
+    photometry tests, where ``area`` is the analytic aperture area.
+    """
+    r = 10.0
+    r_in, r_out = 8.0, 10.0
+    a, b = 10.0, 5.0
+    a_in, a_out, b_out = 5.0, 8.0, 5.0
+    b_in = a_in * b_out / a_out
+    w, h = 8.0, 5.0
+    w_in, w_out, h_out = 8.0, 12.0, 8.0
+    h_in = w_in * h_out / w_out
+    polygon = PolygonAperture.from_regular_polygon(POSITION, 5, 6.0,
+                                                   theta=30 * u.deg)
+    return [
+        pytest.param(CircularAperture(POSITION, r),
+                     np.pi * r**2, id='circle'),
+        pytest.param(CircularAperture(POSITIONS, r),
+                     np.full(len(POSITIONS), np.pi * r**2),
+                     id='circle-array'),
+        pytest.param(CircularAnnulus(POSITION, r_in, r_out),
+                     np.pi * (r_out**2 - r_in**2), id='circular-annulus'),
+        pytest.param(CircularAnnulus(POSITIONS, r_in, r_out),
+                     np.full(len(POSITIONS), np.pi * (r_out**2 - r_in**2)),
+                     id='circular-annulus-array'),
+        pytest.param(EllipticalAperture(POSITION, a, b, theta=-np.pi / 4.0),
+                     np.pi * a * b, id='ellipse'),
+        pytest.param(EllipticalAnnulus(POSITION, a_in, a_out, b_out,
+                                       theta=-np.pi / 4.0),
+                     np.pi * (a_out * b_out - a_in * b_in),
+                     id='elliptical-annulus'),
+        pytest.param(RectangularAperture(POSITION, w, h, theta=np.pi / 4.0),
+                     w * h, id='rectangle'),
+        pytest.param(RectangularAnnulus(POSITION, w_in, w_out, h_out,
+                                        theta=np.pi / 8.0),
+                     w_out * h_out - w_in * h_in, id='rectangular-annulus'),
+        pytest.param(polygon, polygon.area, id='polygon'),
+    ]
 
-    Each subclass defines the ``aperture`` to measure, along with its
-    true ``area`` and ``true_flux`` in an image of ones. A subclass that
-    masks a data pixel also overrides the ``mask`` fixture.
+
+class TestShapePhotometry:
+    """
+    Shape-specific photometry tests on an image of ones, comparing the
+    center, subpixel, and exact methods against the analytic aperture
+    area.
     """
 
-    @pytest.fixture(name='mask')
-    def fixture_mask(self):
+    @staticmethod
+    def _check_photometry(data, aperture, area, *, mask=None, n_masked=0):
         """
-        The data mask, `None` unless a subclass overrides it.
+        Compare the center, subpixel, and exact photometry of ``data``
+        (an image of ones) against the analytic ``area``, of which
+        ``n_masked`` unit pixels are masked by ``mask``.
         """
-        return
+        error = np.ones(data.shape, dtype=float)
+        true_flux = area - n_masked
+        true_error = np.sqrt(area - n_masked)
 
-    def test_array_error(self, ones_data, mask):
-        # Array error
-        error = np.ones(ones_data.shape, dtype=float)
-        if mask is None:
-            true_error = np.sqrt(self.area)
-        else:
-            # 1 masked pixel
-            true_error = np.sqrt(self.area - 1)
-
-        table1 = aperture_photometry(ones_data,
-                                     self.aperture, method='center',
+        table1 = aperture_photometry(data, aperture, method='center',
                                      mask=mask, error=error)
-        table2 = aperture_photometry(ones_data,
-                                     self.aperture,
-                                     method='subpixel', subpixels=12,
-                                     mask=mask, error=error)
-        table3 = aperture_photometry(ones_data,
-                                     self.aperture, method='exact',
+        table2 = aperture_photometry(data, aperture, method='subpixel',
+                                     subpixels=12, mask=mask, error=error)
+        table3 = aperture_photometry(data, aperture, method='exact',
                                      mask=mask, error=error)
 
-        if not isinstance(self.aperture, (RectangularAperture,
-                                          RectangularAnnulus)):
-            assert_allclose(table3['aperture_sum'], self.true_flux)
+        if not isinstance(aperture, (RectangularAperture,
+                                     RectangularAnnulus)):
+            assert_allclose(table3['aperture_sum'], true_flux)
             assert_allclose(table2['aperture_sum'], table3['aperture_sum'],
                             atol=0.1)
         assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
 
-        if not isinstance(self.aperture, (RectangularAperture,
-                                          RectangularAnnulus)):
+        if not isinstance(aperture, (RectangularAperture,
+                                     RectangularAnnulus)):
             assert_allclose(table3['aperture_sum_err'], true_error)
             assert_allclose(table2['aperture_sum_err'],
                             table3['aperture_sum_err'], atol=0.1)
         assert np.all(table1['aperture_sum_err'] < table3['aperture_sum_err'])
 
+    @pytest.mark.parametrize(('aperture', 'area'), _shape_aperture_specs())
+    def test_array_error(self, ones_data, aperture, area):
+        self._check_photometry(ones_data, aperture, area)
 
-class TestCircular(BaseTestAperturePhotometry):
-    r = 10.0
-    aperture = CircularAperture(POSITION, r)
-    area = np.pi * r * r
-    true_flux = area
-
-
-class TestCircularArray(BaseTestAperturePhotometry):
-    r = 10.0
-    aperture = CircularAperture(POSITIONS, r)
-    area = np.full(len(POSITIONS), np.pi * r * r)
-    true_flux = area
-
-
-class TestCircularAnnulus(BaseTestAperturePhotometry):
-    r_in = 8.0
-    r_out = 10.0
-    aperture = CircularAnnulus(POSITION, r_in, r_out)
-    area = np.pi * (r_out * r_out - r_in * r_in)
-    true_flux = area
-
-
-class TestCircularAnnulusArray(BaseTestAperturePhotometry):
-    r_in = 8.0
-    r_out = 10.0
-    aperture = CircularAnnulus(POSITIONS, r_in, r_out)
-    area = np.full(len(POSITIONS), np.pi * (r_out * r_out - r_in * r_in))
-    true_flux = area
-
-
-class TestElliptical(BaseTestAperturePhotometry):
-    a = 10.0
-    b = 5.0
-    aperture = EllipticalAperture(POSITION, a, b, theta=-np.pi / 4.0)
-    area = np.pi * a * b
-    true_flux = area
-
-
-class TestEllipticalAnnulus(BaseTestAperturePhotometry):
-    a_in = 5.0
-    a_out = 8.0
-    b_out = 5.0
-    aperture = EllipticalAnnulus(POSITION, a_in, a_out, b_out,
-                                 theta=-np.pi / 4.0)
-    area = (np.pi * (a_out * b_out)
-            - np.pi * (a_in * b_out * a_in / a_out))
-    true_flux = area
-
-
-class TestRectangularAperture(BaseTestAperturePhotometry):
-    w = 8.0
-    h = 5.0
-    aperture = RectangularAperture(POSITION, w, h, theta=np.pi / 4.0)
-    area = h * w
-    true_flux = area
-
-
-class TestRectangularAnnulus(BaseTestAperturePhotometry):
-    w_in = 8.0
-    w_out = 12.0
-    h_out = 8.0
-    h_in = w_in * h_out / w_out
-    aperture = RectangularAnnulus(POSITION, w_in, w_out, h_out,
-                                  theta=np.pi / 8.0)
-    area = h_out * w_out - h_in * w_in
-    true_flux = area
-
-
-class TestPolygon(BaseTestAperturePhotometry):
-    n_vertices = 5
-    radius = 6.0
-    aperture = PolygonAperture.from_regular_polygon(POSITION, n_vertices,
-                                                    radius, theta=30 * u.deg)
-    area = aperture.area
-    true_flux = area
-
-
-class TestMaskedSkipCircular(BaseTestAperturePhotometry):
-    r = 10.0
-    aperture = CircularAperture(POSITION, r)
-    area = np.pi * r * r
-    true_flux = area - 1
-
-    @pytest.fixture(name='mask')
-    def fixture_mask(self, ones_data):
+    def test_masked_pixel(self, ones_data):
         """
-        A mask with the single pixel at the aperture center masked.
+        A masked pixel at the aperture center reduces the flux and the
+        error accordingly.
         """
+        r = 10.0
+        aperture = CircularAperture(POSITION, r)
         mask = np.zeros(ones_data.shape, dtype=bool)
         mask[20, 20] = True
-        return mask
+        self._check_photometry(ones_data, aperture, np.pi * r**2,
+                               mask=mask, n_masked=1)
 
 
 class TestInputNDData:
