@@ -280,6 +280,11 @@ API Changes
     be removed in version 4.0. Use the ``ApertureStats.id`` attribute
     instead. [#2331]
 
+  - The ``ApertureStats.n_apertures`` attribute is now deprecated
+    and will be removed in version 4.0. Use the new
+    ``ApertureStats.n_positions`` attribute instead, which matches
+    ``AperturePhotometry.n_positions``. [#2362]
+
   - ``AperturePhotometry`` and ``ApertureStats`` now validate the
     ``method``/``sum_method`` and ``subpixels`` keywords when the
     object is created instead of when a measured attribute is first

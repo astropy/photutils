@@ -485,6 +485,15 @@ been renamed to ``n_coords`` for naming consistency within photutils.
 The old ``ncoords`` name is deprecated and will be removed in version
 4.0.
 
+``ApertureStats.n_apertures`` Renamed
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The `~photutils.aperture.ApertureStats` ``n_apertures``
+attribute has been renamed to ``n_positions``, matching the
+`~photutils.aperture.AperturePhotometry` attribute of the same name
+(both count the aperture positions). The old ``n_apertures`` name is
+deprecated and will be removed in version 4.0.
+
 
 Removed Deprecations
 --------------------

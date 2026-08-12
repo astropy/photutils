@@ -92,7 +92,7 @@ class TestProperties(BaseApertureStatsData):
 
         idx = 1
 
-        scalar_props = ('isscalar', 'n_apertures')
+        scalar_props = ('isscalar', 'n_positions')
 
         # Evaluate (cache) properties before slice
         for prop in apstats1.properties:
@@ -192,7 +192,7 @@ class TestSumMethod(BaseApertureStatsData):
         apstats2 = ApertureStats(self.data, self.aperture, error=self.error,
                                  sum_method=sum_method, subpixels=4)
 
-        scalar_props = ('isscalar', 'n_apertures')
+        scalar_props = ('isscalar', 'n_positions')
 
         # Evaluate (cache) properties before slice
         for prop in apstats1.properties:
@@ -272,7 +272,7 @@ class TestMasking(BaseApertureStatsData):
         assert apstats[1].sum < self.apstats1[1].sum
         assert apstats[1].sum_err < self.apstats1[1].sum_err
 
-        exclude = ('isscalar', 'n_apertures', 'sky_centroid',
+        exclude = ('isscalar', 'n_positions', 'sky_centroid',
                    'sky_centroid_icrs', 'flags', 'sum_flags')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
@@ -330,7 +330,7 @@ class TestMasking(BaseApertureStatsData):
         apstats = ApertureStats(self.data, aperture)
         assert_equal(apstats._overlap, [True, True, False])
 
-        exclude = ('isscalar', 'n_apertures', 'sky_centroid',
+        exclude = ('isscalar', 'n_positions', 'sky_centroid',
                    'sky_centroid_icrs', 'flags', 'sum_flags')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
@@ -366,7 +366,7 @@ class TestTable(BaseApertureStatsData):
     @pytest.mark.parametrize('columns', ['invalid',
                                          'sum_method',
                                          'isscalar',
-                                         'n_apertures',
+                                         'n_positions',
                                          ['id', 'subpixels']])
     def test_invalid_column(self, columns):
         match = 'Invalid column name'
@@ -375,13 +375,13 @@ class TestTable(BaseApertureStatsData):
 
     def test_properties_excludes_scalar_attrs(self):
         """
-        Regression test to ensure that ``isscalar`` and ``n_apertures``
+        Regression test to ensure that ``isscalar`` and ``n_positions``
         (scalar values for the whole object, not per-source values) are
         not included in ``properties`` and so are not valid ``to_table``
         columns.
         """
         assert 'isscalar' not in self.apstats1.properties
-        assert 'n_apertures' not in self.apstats1.properties
+        assert 'n_positions' not in self.apstats1.properties
 
     def test_deprecated_column(self):
         """
@@ -404,10 +404,10 @@ class TestIndexing(BaseApertureStatsData):
         apstats = self.apstats1
         _ = apstats.to_table()
         apstat0 = apstats[1]
-        assert apstat0.n_apertures == 1
+        assert apstat0.n_positions == 1
         assert apstat0.id == np.array([2])
         apstat1 = apstats.select_id(2)
-        assert apstat1.n_apertures == 1
+        assert apstat1.n_positions == 1
         assert apstat0.sum_aper_area == apstat1.sum_aper_area
 
         apstat0 = apstats[0:1]
@@ -466,7 +466,7 @@ class TestIndexing(BaseApertureStatsData):
 
     def test_scalar_aperture_stats(self):
         apstats = self.apstats1[0]
-        assert apstats.n_apertures == 1
+        assert apstats.n_positions == 1
         assert apstats.id == np.array([1])
         tbl = apstats.to_table()
         assert len(tbl) == 1
@@ -508,7 +508,7 @@ class TestIndexing(BaseApertureStatsData):
         the parent, slices to a scalar, and checks that every property
         matches the same scalar computed from scratch.
         """
-        scalar_props = ('isscalar', 'n_apertures')
+        scalar_props = ('isscalar', 'n_positions')
 
         # Reference scalar instance that recomputes every property from
         # scratch (nothing cached on the parent before slicing).
@@ -577,6 +577,17 @@ class TestDeprecations(BaseApertureStatsData):
         scalar = apstats[0]
         with pytest.warns(AstropyDeprecationWarning, match=match):
             assert scalar.ids == scalar.id
+
+    def test_deprecated_n_apertures(self):
+        """
+        Test that the ``n_apertures`` attribute is deprecated and
+        returns the same value as the ``n_positions`` attribute.
+        """
+        apstats = ApertureStats(self.data, self.aperture)
+        match = 'deprecated in version 3.1'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            old_val = apstats.n_apertures
+        assert old_val == apstats.n_positions
 
 
 class TestInputValidation(BaseApertureStatsData):

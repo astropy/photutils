@@ -123,7 +123,7 @@ class _BatchGather(NamedTuple):
 # not a per-source value must be added here, otherwise a length-1 value
 # will be silently collapsed to its first element for a scalar instance.
 _SCALAR_EXCLUDE = frozenset({'default_columns', 'isscalar', 'labels',
-                             'n_apertures', 'properties',
+                             'n_positions', 'properties',
                              'segmentation_image'})
 
 
@@ -404,7 +404,7 @@ class ApertureStats:
             raise ValueError(msg)
         self.ddof = ddof
 
-        self._local_bkg = np.zeros(self.n_apertures)  # no local bkg
+        self._local_bkg = np.zeros(self.n_positions)  # no local bkg
         if local_bkg is not None:
             local_bkg = np.atleast_1d(local_bkg)
             if local_bkg.ndim != 1:
@@ -412,11 +412,11 @@ class ApertureStats:
                 raise ValueError(msg)
 
             n_local_bkg = len(local_bkg)
-            if n_local_bkg not in (1, self.n_apertures):
+            if n_local_bkg not in (1, self.n_positions):
                 msg = ('local_bkg must be scalar or have the same length '
                        'as the input aperture')
                 raise ValueError(msg)
-            local_bkg = np.broadcast_to(local_bkg, self.n_apertures)
+            local_bkg = np.broadcast_to(local_bkg, self.n_positions)
 
             if np.any(~np.isfinite(local_bkg)):
                 msg = ('local_bkg must not contain any non-finite '
@@ -424,7 +424,7 @@ class ApertureStats:
                 raise ValueError(msg)
             self._local_bkg = local_bkg  # always an iterable
 
-        self._ids = np.arange(self.n_apertures) + 1
+        self._ids = np.arange(self.n_positions) + 1
         self.default_columns = ['id', 'x_centroid', 'y_centroid',
                                 'sky_centroid', 'sum', 'sum_err',
                                 'sum_aper_area', 'sum_flags',
@@ -488,11 +488,11 @@ class ApertureStats:
         """
         lazyproperties = [name for name in self._lazyproperties if not
                           name.startswith('_')]
-        # isscalar and n_apertures are scalar values for the whole
+        # isscalar and n_positions are scalar values for the whole
         # object, not per-source values, so they are not valid table
         # columns
         lazyproperties.remove('isscalar')
-        lazyproperties.remove('n_apertures')
+        lazyproperties.remove('n_positions')
         lazyproperties.sort()
         return lazyproperties
 
@@ -544,7 +544,7 @@ class ApertureStats:
             value = self.__dict__[key]
 
             # Do not insert attributes that are always scalar (e.g.,
-            # isscalar, n_apertures), i.e., not an array/list for each
+            # isscalar, n_positions), i.e., not an array/list for each
             # source
             if np.isscalar(value):
                 continue
@@ -573,7 +573,7 @@ class ApertureStats:
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
-        return f'{cls_name}\nLength: {self.n_apertures}'
+        return f'{cls_name}\nLength: {self.n_positions}'
 
     def __repr__(self):
         return self.__str__()
@@ -582,7 +582,7 @@ class ApertureStats:
         if self.isscalar:
             msg = f'Scalar {self.__class__.__name__!r} object has no len()'
             raise TypeError(msg)
-        return self.n_apertures
+        return self.n_positions
 
     def __iter__(self):
         for item in range(len(self)):
@@ -664,14 +664,14 @@ class ApertureStats:
         """
         Return `None` values.
         """
-        return np.array([None] * self.n_apertures)
+        return np.array([None] * self.n_positions)
 
     @lazyproperty
     def _null_value(self):
         """
         Return np.nan values.
         """
-        values = np.empty(self.n_apertures)
+        values = np.empty(self.n_positions)
         values.fill(np.nan)
         return values
 
@@ -835,13 +835,25 @@ class ApertureStats:
         return tbl
 
     @lazyproperty
-    def n_apertures(self):
+    def n_positions(self):
         """
         The number of positions for the input aperture.
         """
         if self.isscalar:
             return 1
         return len(self._pixel_aperture)
+
+    @property
+    @deprecated('3.1', alternative="the 'n_positions' attribute",
+                until='4.0')
+    def n_apertures(self):
+        """
+        The number of positions for the input aperture.
+
+        .. deprecated:: 3.1
+            Use the `n_positions` attribute instead.
+        """
+        return self.n_positions
 
     @lazyproperty
     def _pixel_aperture(self):
@@ -1936,7 +1948,7 @@ class ApertureStats:
         gather = self._fast_gather
         if gather is not None:
             overlap = gather.overlap
-            zeros = np.zeros(self.n_apertures)
+            zeros = np.zeros(self.n_positions)
             mom = batch_moments(gather.values, gather.local_x,
                                 gather.local_y, gather.starts,
                                 gather.counts, zeros, zeros)
@@ -2155,7 +2167,7 @@ class ApertureStats:
             var = np.array([np.var(values)
                             for values in self._data_values_center])
         n_pixels = self._center_n_pixels
-        sem = np.full(self.n_apertures, np.nan)
+        sem = np.full(self.n_positions, np.nan)
         mask = n_pixels >= 2
         # var is the population (ddof=0) variance, so var / (N - 1)
         # equals the squared standard error of the mean.
@@ -2385,7 +2397,7 @@ class ApertureStats:
         if self.ddof == 0:
             return var
         n_pixels = self._center_n_pixels
-        result = np.full(self.n_apertures, np.nan)
+        result = np.full(self.n_positions, np.nan)
         mask = n_pixels > self.ddof
         result[mask] = (var[mask] * n_pixels[mask]
                         / (n_pixels[mask] - self.ddof))
@@ -2556,7 +2568,7 @@ class ApertureStats:
         The two eigenvalues of the `covariance` matrix in decreasing
         order.
         """
-        eigvals = np.full((self.n_apertures, 2), np.nan)
+        eigvals = np.full((self.n_positions, 2), np.nan)
         # np.linalg.eigvalsh requires that every element of a covariance
         # matrix be finite, so select only the wholly finite matrices
         idx = np.flatnonzero(np.isfinite(self._covariance).all(axis=(1, 2)))
