@@ -75,6 +75,112 @@ cdef inline Py_ssize_t _round_half_away(double x) noexcept nogil:
     return <Py_ssize_t>ceil(x - 0.5)
 
 
+cdef inline bint _resolve_seg_pixel(const Py_ssize_t *segmentation,
+                                    const unsigned char *mask,
+                                    Py_ssize_t nx_data, int seg_method,
+                                    Py_ssize_t label,
+                                    Py_ssize_t ix, Py_ssize_t iy,
+                                    Py_ssize_t ix0, Py_ssize_t ix1,
+                                    Py_ssize_t iy0, Py_ssize_t iy1,
+                                    Py_ssize_t ccx, Py_ssize_t ccy,
+                                    Py_ssize_t *six, Py_ssize_t *siy,
+                                    Py_ssize_t *n_seg_px,
+                                    Py_ssize_t *n_uncorr) noexcept nogil:
+    """
+    Apply the segmentation masking method to a single unmasked pixel.
+
+    This is the segmentation-masking step shared by the per-pixel
+    loops of ``_batch_photometry.batch_aperture_sums`` and
+    ``_batch_stats.batch_aperture_gather``. The caller must invoke it
+    only when a segmentation array is present and ``label`` is nonzero.
+
+    Parameters
+    ----------
+    segmentation : const Py_ssize_t *
+        The C-contiguous segmentation array data.
+
+    mask : const unsigned char *
+        The C-contiguous mask-plane data, or NULL if there is no mask.
+        Used only by the symmetric 'correct' method (``seg_method`` 3)
+        to reject mirror pixels that are masked or non-finite.
+
+    nx_data : Py_ssize_t
+        The row stride (number of columns) of the data arrays.
+
+    seg_method : int
+        The segmentation masking method code: 1 excludes neighbor-source
+        pixels, 2 excludes all pixels not assigned to the target source,
+        and 3 replaces neighbor-source pixels with the values mirrored
+        across the aperture center (see ``batch_aperture_sums``).
+
+    label : Py_ssize_t
+        The target source label (nonzero).
+
+    ix, iy : Py_ssize_t
+        The pixel coordinates.
+
+    ix0, ix1, iy0, iy1 : Py_ssize_t
+        The bounding-box limits, clipped to the image. For method 3, a
+        mirror pixel outside these limits cannot be used.
+
+    ccx, ccy : Py_ssize_t
+        The rounded aperture center used by the method-3 mirror.
+
+    six, siy : Py_ssize_t *
+        Output. The coordinates of the pixel whose value contributes.
+        Overwritten (with the mirror pixel) only by a successful
+        method-3 correction.
+
+    n_seg_px : Py_ssize_t *
+        In/out. Incremented when the pixel is excluded, restricted, or
+        corrected due to a neighboring source.
+
+    n_uncorr : Py_ssize_t *
+        In/out. Incremented when a method-3 neighbor pixel could not be
+        corrected (the mirror pixel was unavailable).
+
+    Returns
+    -------
+    contributes : bint
+        `True` if the pixel contributes to the aperture (reading its
+        value from ``(siy[0], six[0])``); `False` if it is excluded.
+    """
+    cdef Py_ssize_t seg_val = segmentation[iy * nx_data + ix]
+    cdef Py_ssize_t xm, ym, mseg
+
+    if seg_method == 1:
+        if seg_val != 0 and seg_val != label:
+            n_seg_px[0] += 1
+            return False
+    elif seg_method == 2:
+        if seg_val != label:
+            # Only neighbor-source pixels (not background pixels)
+            # count toward the neighbor-pixels flag.
+            if seg_val != 0:
+                n_seg_px[0] += 1
+            return False
+    elif seg_method == 3:
+        if seg_val != 0 and seg_val != label:
+            # Neighbor pixel: replace its value with the pixel
+            # mirrored across the center.
+            n_seg_px[0] += 1
+            xm = 2 * ccx - ix
+            ym = 2 * ccy - iy
+            if xm < ix0 or xm >= ix1 or ym < iy0 or ym >= iy1:
+                n_uncorr[0] += 1
+                return False
+            mseg = segmentation[ym * nx_data + xm]
+            if mseg != 0 and mseg != label:
+                n_uncorr[0] += 1
+                return False
+            if mask != NULL and mask[ym * nx_data + xm]:
+                n_uncorr[0] += 1
+                return False
+            six[0] = xm
+            siy[0] = ym
+    return True
+
+
 cdef inline bint _source_grid_setup(double cx, double cy,
                                     double ext_x, double ext_y,
                                     double off_x, double off_y,
