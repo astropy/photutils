@@ -176,6 +176,18 @@ class TestSetOperations:
 
         assert bbox1.intersection(BoundingBox(30, 40, 50, 60)) is None
 
+    def test_operators_invalid_type(self):
+        """
+        Test that the | and & operators raise the standard TypeError
+        for a non-BoundingBox operand.
+        """
+        bbox = BoundingBox(1, 10, 2, 20)
+        match = 'unsupported operand type'
+        with pytest.raises(TypeError, match=match):
+            bbox | (5, 21, 7, 32)
+        with pytest.raises(TypeError, match=match):
+            bbox & (5, 21, 7, 32)
+
 
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 class TestPlotting:

@@ -302,6 +302,9 @@ API Changes
     ``area_overlap`` method must now be a boolean array (or `None`).
     [#2362]
 
+  - The ``PixelAperture.plot`` method now returns a list of patches
+    for scalar apertures, as documented, instead of a tuple. [#2362]
+
 - ``photutils.detection``
 
   - The ``repr`` and ``str`` output of ``StarFinderCatalogBase`` now

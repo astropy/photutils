@@ -376,12 +376,6 @@ class Aperture(metaclass=abc.ABCMeta):
 
         return True
 
-    def __ne__(self, other):
-        """
-        Inequality operator for `Aperture`.
-        """
-        return not self == other
-
     @property
     def _lazyproperties(self):
         """
@@ -1344,7 +1338,7 @@ class PixelAperture(Aperture):
 
         patches = self._to_patch(origin=origin, **kwargs)
         if self.isscalar:
-            patches = (patches,)
+            patches = [patches]
 
         for patch in patches:
             ax.add_patch(patch)

@@ -110,6 +110,19 @@ class BaseTestPixelAperture(BaseTestAperture):
         ax.legend(patches, list(range(len(patches))))
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_plot_scalar_returns_list(self):
+        """
+        Test that plot returns a list containing a single patch for a
+        scalar aperture.
+        """
+        from matplotlib.patches import Patch
+
+        patches = self.aperture[0].plot()
+        assert isinstance(patches, list)
+        assert len(patches) == 1
+        assert isinstance(patches[0], Patch)
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_to_patch_nonscalar(self):
         """
         Test that _to_patch returns a list for non-scalar apertures.
