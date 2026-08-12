@@ -231,7 +231,10 @@ def _validate_mask(mask, shape):
     if mask is None:
         return None
 
-    mask = np.asanyarray(mask)
+    # asarray demotes ndarray subclasses (e.g., a boolean MaskedArray)
+    # to a plain array of the underlying data, which the batch and
+    # mask-based code paths handle identically.
+    mask = np.asarray(mask)
     if mask.dtype != bool:
         msg = 'mask must be a boolean array'
         raise TypeError(msg)
