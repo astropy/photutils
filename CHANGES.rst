@@ -88,7 +88,7 @@ New Features
     default ``to_table()`` output), and ``ApertureStats`` also
     provides a ``sum_flags`` attribute for the sum properties. A new
     ``decode_aperture_flags`` function decodes the flag values into
-    human-readable names. [#2327, #2328]
+    human-readable names. [#2327, #2328, #2362]
 
   - Added validation of the ``ApertureStats.to_table()`` ``columns``
     keyword. [#2329]

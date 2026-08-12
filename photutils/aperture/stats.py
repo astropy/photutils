@@ -1732,10 +1732,11 @@ class ApertureStats:
         The count-based value-statistics flag bits (1D int array).
 
         These are the flag bits that do not depend on any lazily
-        computed covariance property: the "center"-method
+        computed moment or covariance property: the "center"-method
         footprint bits plus the sigma-clip and ``ddof`` bits. The
-        ``singular_covariance`` bit is folded in by the `flags` property
-        only if a covariance-derived property has been computed.
+        ``undefined_shape`` and ``singular_covariance`` bits are
+        folded in by the `flags` property only if a moment-derived or
+        covariance-derived property, respectively, has been computed.
         """
         # The gather kernel and the center-method cutouts do not
         # evaluate error values, so the non-finite-error bit is defined
@@ -1757,6 +1758,25 @@ class ApertureStats:
                   & (n_kept <= self.ddof)] |= APERTURE_FLAGS.TOO_FEW_PIXELS
 
         return flags
+
+    @lazyproperty
+    def _undefined_shape_mask(self):
+        """
+        Boolean mask (1D) marking sources whose net flux is not
+        positive.
+
+        The net flux is the zeroth image moment of the unmasked
+        "center"-method pixels. When it is zero or negative, the
+        centroid and the covariance-derived shape properties are
+        undefined or unreliable. Sources with no valid pixels (no
+        overlap, fully masked, or fully sigma clipped) are not flagged
+        here. They are already reported by the overlap, masking, and
+        clipping bits.
+        """
+        m00 = self._array('moments')[:, 0, 0]
+        # NaN where a source has no valid pixels
+        n_pixels = self._center_n_pixels
+        return np.isfinite(m00) & (m00 <= 0) & np.isfinite(n_pixels)
 
     @lazyproperty
     def _singular_covariance_mask(self):
@@ -1814,19 +1834,18 @@ class ApertureStats:
         footprints, combine the two flag columns with a bitwise OR
         (e.g., ``flags | sum_flags``).
 
-        The ``'singular_covariance'`` bit is special. It reports whether
-        a source's covariance matrix is singular or nearly singular,
-        a condition that is only knowable once a covariance-derived
-        shape property (e.g., ``semimajor_axis``, ``orientation``,
-        ``eccentricity``) has been computed. To avoid forcing that
-        computation, the bit is included only if such a property has
-        already been evaluated on this object; otherwise it is omitted.
-        This means the value of ``flags`` reflects the measurements
-        requested so far, so accessing a shape property and then
-        re-reading ``flags`` may set additional bits. The default
-        `to_table` always evaluates the shape properties, so its
-        ``flags`` column always reflects the ``'singular_covariance'``
-        bit.
+        The ``'undefined_shape'`` and ``'singular_covariance'`` bits
+        are special. They report conditions that are only knowable
+        once a moment-derived property (e.g., ``centroid``) or a
+        covariance-derived shape property (e.g., ``semimajor_axis``,
+        ``orientation``, ``eccentricity``) has been computed. To avoid
+        forcing those computations, each bit is included only if such a
+        property has already been evaluated on this object. Otherwise
+        it is omitted. This means the value of ``flags`` reflects the
+        measurements requested so far, so accessing a shape property and
+        then re-reading ``flags`` may set additional bits. The default
+        `to_table` always evaluates the moment and shape properties, so
+        its ``flags`` column always reflects both bits.
 
         See `~photutils.aperture.decode_aperture_flags` for decoding
         flag values. The flags are:
@@ -1837,6 +1856,9 @@ class ApertureStats:
         # cached `_base_flags`), so concurrent readers and previously
         # returned arrays are never modified in place.
         flags = self._base_flags.copy()
+        if 'moments' in self.__dict__:
+            flags[self._undefined_shape_mask] |= (
+                APERTURE_FLAGS.UNDEFINED_SHAPE)
         if '_covariance' in self.__dict__:
             flags[self._singular_covariance_mask] |= (
                 APERTURE_FLAGS.SINGULAR_COVARIANCE)

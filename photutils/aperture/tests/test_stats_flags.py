@@ -598,3 +598,135 @@ class TestSingularCovariance:
 
         _ = stats.semimajor_axis
         assert (stats.flags[0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+
+
+class TestUndefinedShape:
+    """
+    Tests for the undefined_shape flag, which marks sources whose net
+    flux is not positive and is set only once a moment-derived property
+    has been computed.
+    """
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_requires_moments(self):
+        """
+        Test that the undefined_shape bit is not set until a
+        moment-derived property is accessed.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        aper = CircularAperture((12.0, 12.0), r=5.0)
+        stats = ApertureStats(data, aper)
+
+        # Not set before any moment-derived property is accessed
+        assert (stats.flags & APERTURE_FLAGS.UNDEFINED_SHAPE) == 0
+        assert 'undefined_shape' not in stats.decode_flags()[0]
+
+        # Accessing the centroid makes a reread include the bit
+        _ = stats.centroid
+        assert np.all(np.isnan(stats.centroid))
+        assert (stats.flags & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
+        assert 'undefined_shape' in stats.decode_flags()[0]
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    @pytest.mark.parametrize('value', [0.0, -1.0])
+    def test_non_positive_flux(self, value):
+        """
+        Test that both zero and negative net flux set the
+        undefined_shape bit.
+        """
+        data = np.full(UNIT_SHAPE, value)
+        aper = CircularAperture((12.0, 12.0), r=5.0)
+        stats = ApertureStats(data, aper)
+        _ = stats.centroid
+        assert (stats.flags & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_positive_flux_not_flagged(self):
+        """
+        Test that a source with positive net flux is not flagged.
+        """
+        data = np.ones(UNIT_SHAPE)
+        aper = CircularAperture((12.0, 12.0), r=5.0)
+        stats = ApertureStats(data, aper)
+        _ = stats.centroid
+        assert (stats.flags & APERTURE_FLAGS.UNDEFINED_SHAPE) == 0
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_array_and_guards(self):
+        """
+        Test the undefined_shape bit for an array of sources, and that
+        sources with no valid pixels (no overlap or fully masked) are
+        not flagged (they are reported by the overlap and masking
+        bits).
+        """
+        data = np.zeros(UNIT_SHAPE)
+        data[16:21, 16:21] = 50.0  # positive-flux source at (18, 18)
+        mask = np.zeros(UNIT_SHAPE, dtype=bool)
+        mask[0:12, 0:12] = True  # fully mask the third aperture
+        aper = CircularAperture([(6.0, 18.0), (18.0, 18.0), (6.0, 6.0),
+                                 (-50.0, 12.0)], r=4.0)
+        stats = ApertureStats(data, aper, mask=mask)
+        _ = stats.centroid
+        flags = stats.flags
+        shape_flag = APERTURE_FLAGS.UNDEFINED_SHAPE
+        assert (flags[0] & shape_flag) != 0  # zero-flux source
+        assert (flags[1] & shape_flag) == 0  # positive-flux source
+        assert (flags[2] & shape_flag) == 0  # fully masked: not flagged
+        assert (flags[2] & APERTURE_FLAGS.ALL_MASKED) != 0
+        assert (flags[3] & shape_flag) == 0  # no overlap: not flagged
+        assert (flags[3] & APERTURE_FLAGS.NO_OVERLAP) != 0
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_in_default_table(self):
+        """
+        Test that the undefined_shape bit is reflected in the default
+        to_table() output, which evaluates the moment-derived columns.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        aper = CircularAperture((12.0, 12.0), r=5.0)
+        stats = ApertureStats(data, aper)
+        tbl = stats.to_table()
+        assert (tbl['flags'][0] & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_to_table_flags_only_no_shape_bit(self):
+        """
+        Test that requesting only the 'flags' column does not trigger
+        the moments computation and so does not set the undefined_shape
+        bit.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        aper = CircularAperture((12.0, 12.0), r=5.0)
+        stats = ApertureStats(data, aper)
+        tbl = stats.to_table(columns=['flags'])
+        assert (tbl['flags'][0] & APERTURE_FLAGS.UNDEFINED_SHAPE) == 0
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_slicing(self):
+        """
+        Test that the undefined_shape bit is preserved when slicing an
+        ApertureStats object.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        data[18, 18] = 100.0
+        aper = CircularAperture([(6.0, 6.0), (18.0, 18.0)], r=4.0)
+        stats = ApertureStats(data, aper)
+        _ = stats.centroid
+        shape_flag = APERTURE_FLAGS.UNDEFINED_SHAPE
+        assert (stats[0].flags & shape_flag) != 0
+        assert (stats[1].flags & shape_flag) == 0
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_with_singular_covariance(self):
+        """
+        Test that a single negative pixel sets both the undefined_shape
+        and singular_covariance bits once the covariance is computed.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        data[12, 12] = -100.0
+        aper = CircularAperture((12.0, 12.0), r=5.0)
+        stats = ApertureStats(data, aper)
+        _ = stats.semimajor_axis
+        flags = stats.flags
+        assert (flags & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
+        assert (flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
