@@ -3,6 +3,7 @@
 Tools for estimating local background using a circular annulus aperture.
 """
 
+import astropy.units as u
 import numpy as np
 
 from photutils.aperture import CircularAnnulus
@@ -110,8 +111,11 @@ class LocalBackground:
         """
         x = np.atleast_1d(x)
         y = np.atleast_1d(y)
+        if x.shape != y.shape:
+            msg = 'x and y must have the same shape'
+            raise ValueError(msg)
 
-        positions = np.array(list(zip(x, y, strict=True)))
+        positions = np.column_stack((x, y))
         return CircularAnnulus(positions, self.inner_radius,
                                self.outer_radius)
 
@@ -122,7 +126,7 @@ class LocalBackground:
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray`
+        data : 2D `~numpy.ndarray` or `~astropy.units.Quantity`
             The 2D array on which to measure the local background.
 
         x, y : float or 1D float `~numpy.ndarray`
@@ -137,9 +141,11 @@ class LocalBackground:
         Returns
         -------
         value : float or 1D float `~numpy.ndarray`
-            The local background values. If all pixels in an annulus
-            are masked or outside the data bounds, the corresponding
-            value will be NaN.
+            The local background values. If ``data`` is
+            a `~astropy.units.Quantity`, the result is a
+            `~astropy.units.Quantity` with the same unit. If all pixels
+            in an annulus are masked or outside the data bounds, the
+            corresponding value will be NaN.
 
         Examples
         --------
@@ -161,6 +167,11 @@ class LocalBackground:
         >>> print(np.isnan(bkg))
         True
         """
+        unit = None
+        if isinstance(data, u.Quantity):
+            unit = data.unit
+            data = data.value
+
         apertures = self.to_aperture(x, y)
         apermasks = apertures.to_mask(method='center')
 
@@ -172,5 +183,7 @@ class LocalBackground:
 
         if bkg.size == 1:
             bkg = bkg[0]
+        if unit is not None:
+            bkg = bkg << unit
 
         return bkg

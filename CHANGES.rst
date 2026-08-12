@@ -93,6 +93,13 @@ New Features
   - Added validation of the ``ApertureStats.to_table()`` ``columns``
     keyword. [#2329]
 
+- ``photutils.background``
+
+  - Updated ``LocalBackground`` so that ``Quantity`` input data is
+    supported, consistent with the background estimator classes and
+    ``Background2D``. The result is a ``Quantity`` with the same unit as
+    the input data. [#2363]
+
 - ``photutils.detection``
 
   - Added validation of the ``StarFinderCatalogBase.to_table()``
