@@ -559,10 +559,14 @@ class PolygonAperture(PixelAperture):
         return cls(positions, offsets)
 
     @classmethod
-    def _from_star(cls, positions, n_spikes, outer_radius, inner_radius=None,
-                   *, theta=0.0, optimal_shape=False, collinear_edges=False):
+    def _from_star(cls, positions, n_spikes, outer_radius, *,
+                   inner_radius=None, theta=0.0, optimal_shape=False,
+                   collinear_edges=False):
         """
         Construct a star-shaped `PolygonAperture`.
+
+        This private constructor exists to generate non-convex simple
+        polygons for internal testing. It is not part of the public API.
 
         The star has ``n_spikes`` spikes, with vertices alternating
         between ``outer_radius`` and ``inner_radius``. The first (outer)
@@ -599,10 +603,10 @@ class PolygonAperture(PixelAperture):
             If `True`, compute ``inner_radius`` automatically to
             produce a star with naturally-proportioned geometry. The
             spike angle (the angular width at each point) is set to
-            180°/``n_spikes``, which is the exterior angle of a
-            regular ``n_spikes``-gon. This creates a balanced, visually
-            appealing star where the indentations between spikes are
-            symmetric and proportional to the spikes themselves.
+            180°/``n_spikes``, which is the exterior angle of a regular
+            ``n_spikes``-gon. This creates a balanced star where the
+            indentations between spikes are symmetric and proportional
+            to the spikes themselves.
 
             The formula is:
 
