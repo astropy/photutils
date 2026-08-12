@@ -288,14 +288,17 @@ class Aperture(metaclass=abc.ABCMeta):
                    'indexed')
             raise TypeError(msg)
 
-        kwargs = {}
+        # Transplant the already-validated shape parameters directly
+        # into the new instance instead of re-validating them through
+        # __init__ (e.g., the polygon simple-polygon check is O(n^2) in
+        # the number of vertices). Only the sliced positions are set
+        # through their descriptor.
+        newobj = self.__class__.__new__(self.__class__)
+        newobj.positions = self.positions[index]
         for param in self._params:
-            if param == 'positions':
-                # Slice the positions array
-                kwargs[param] = getattr(self, param)[index]
-            else:
-                kwargs[param] = getattr(self, param)
-        return self.__class__(**kwargs)
+            if param != 'positions':
+                newobj.__dict__[param] = getattr(self, param)
+        return newobj
 
     def __iter__(self):
         for i in range(len(self)):
@@ -383,12 +386,21 @@ class Aperture(metaclass=abc.ABCMeta):
     def _lazyproperties(self):
         """
         A list of all class lazyproperties (even in superclasses).
-        """
-        def islazyproperty(obj):
-            return isinstance(obj, lazyproperty)
 
-        return [i[0] for i in inspect.getmembers(self.__class__,
-                                                 predicate=islazyproperty)]
+        The result depends only on the class, so it is computed once
+        per class and cached (it is looked up on every aperture
+        parameter reassignment).
+        """
+        cls = self.__class__
+        cached = cls.__dict__.get('_lazyproperties_cache')
+        if cached is None:
+            def islazyproperty(obj):
+                return isinstance(obj, lazyproperty)
+
+            cached = [i[0] for i in inspect.getmembers(
+                cls, predicate=islazyproperty)]
+            cls._lazyproperties_cache = cached
+        return cached
 
     def copy(self):
         """
