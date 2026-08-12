@@ -412,6 +412,15 @@ class TestBackground2D:
             bkg = Background2D(data, (25, 25), filter_size=(1, 1))
         assert_allclose(bkg.background, test_data, rtol=1e-5)
 
+        # A warning is also issued when an input mask is given that
+        # does not cover the non-finite values
+        mask = np.zeros(test_data.shape, dtype=bool)
+        mask[60:70, 60:70] = True
+        with pytest.warns(AstropyUserWarning, match=match):
+            bkg = Background2D(data, (25, 25), filter_size=(1, 1),
+                               mask=mask)
+        assert_allclose(bkg.background, test_data, rtol=1e-5)
+
     def test_mask_with_already_masked_nans(self, test_data):
         """
         Test masked invalid values.
