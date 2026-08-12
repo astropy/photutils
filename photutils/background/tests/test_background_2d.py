@@ -388,16 +388,15 @@ class TestBackground2D:
         assert_equal(bkg1.background_rms[:50, :50], fill_value)
 
         # Test that combined mask and coverage_mask gives the same
-        # results
+        # results. The input masks cover all of the non-finite values,
+        # so no warning should be issued.
         mask = np.zeros(test_data.shape, dtype=bool)
         coverage_mask = np.zeros(test_data.shape, dtype=bool)
         mask[:50, :25] = True
         coverage_mask[:50, 25:50] = True
-        match = r'Input data contains non-finite \(NaN or infinity\) values'
-        with pytest.warns(AstropyUserWarning, match=match):
-            bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
-                                coverage_mask=mask, fill_value=0.0,
-                                bkg_estimator=MeanBackground())
+        bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
+                            coverage_mask=coverage_mask, fill_value=0.0,
+                            bkg_estimator=MeanBackground())
         assert_allclose(bkg1.background_mesh, bkg2.background_mesh)
         assert_allclose(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
 
@@ -761,10 +760,10 @@ class TestBackground2D:
         arr = np.arange(25.0).reshape(5, 5)
         arr_orig = arr.copy()
         mask = np.zeros(arr.shape, dtype=bool)
-        mask[0, 0] = np.nan
-        mask[-1, 0] = np.nan
-        mask[-1, -1] = np.nan
-        mask[0, -1] = np.nan
+        mask[0, 0] = True
+        mask[-1, 0] = True
+        mask[-1, -1] = True
+        mask[0, -1] = True
 
         box_size = (2, 2)
         exclude_percentile = 100

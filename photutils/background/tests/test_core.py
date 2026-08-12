@@ -459,7 +459,7 @@ class TestBackgroundRMSEstimators:
         mask[0, 0:10] = True
         data = np.ma.MaskedArray(test_data, mask=mask)
         rms = bkgrms.calc_background_rms(data)
-        assert not np.ma.isMaskedArray(bkgrms)
+        assert not np.ma.isMaskedArray(rms)
         assert_allclose(rms, std_value, atol=0.004)
         assert_allclose(bkgrms(data), bkgrms.calc_background_rms(data))
 
