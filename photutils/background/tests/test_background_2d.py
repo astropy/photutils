@@ -206,12 +206,7 @@ class TestBackground2D:
     def test_filter_threshold_rms_mesh_before_mesh(self):
         """
         Test that accessing background_rms_mesh before background_mesh
-        does not crash when filter_threshold is set.
-
-        Background2D._bkg_stats is used by _selective_filter, which
-        is called when filter_threshold is not None. It must still
-        be available when background_mesh is computed even if
-        background_rms_mesh was computed first.
+        gives sensible results when filter_threshold is set.
         """
         data = np.ones((100, 100))
         data[25:50, 50:75] = 10.0
@@ -230,11 +225,7 @@ class TestBackground2D:
     def test_rms_mesh_before_mesh_no_filter_threshold(self):
         """
         Test that accessing background_rms_mesh before background_mesh
-        does not crash when filter_threshold is None (the default).
-
-        _try_free_bkg_stats must not free _bkg_stats before
-        background_mesh has been computed, otherwise _interpolate_grid
-        receives None and raises a TypeError on np.isnan.
+        works when filter_threshold is None (the default).
         """
         data = np.ones((101, 101))
         coverage_mask = np.zeros(data.shape, dtype=bool)

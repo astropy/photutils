@@ -274,16 +274,15 @@ class Background2D:
 
         # Perform the initial calculations to avoid storing large data
         # arrays and to keep the memory usage minimal
-        (self._bkg_stats,
-         self._bkgrms_stats,
-         self._n_good) = self._calculate_stats(nonfinite_mask)
+        bkg_stats, bkgrms_stats, self._n_good = self._calculate_stats(
+            nonfinite_mask)
 
         # This is used to selectively filter the low-resolution maps
-        self._min_bkg_stats = nanmin(self._bkg_stats)
+        self._min_bkg_stats = nanmin(bkg_stats)
 
         # Store a mask of the excluded mesh values (NaNs) in the
         # low-resolution maps
-        self._mesh_nan_mask = np.isnan(self._bkg_stats)
+        self._mesh_nan_mask = np.isnan(bkg_stats)
 
         # Add keyword arguments needed for BkgZoomInterpolator.
         # BkgIDWInterpolator upscales the mesh based only on the good
@@ -291,6 +290,19 @@ class Background2D:
         if isinstance(self.interpolator, BkgIDWInterpolator):
             self._interp_kwargs['mesh_yxcen'] = self._calculate_mesh_yxcen()
             self._interp_kwargs['mesh_nan_mask'] = self._mesh_nan_mask
+
+        # Compute the low-resolution background and background RMS
+        # meshes. The mesh arrays are small, so this is inexpensive
+        # compared to the box statistics above, and computing them
+        # here keeps the instance immutable after construction. The
+        # unfiltered background mesh defines the pixels selected by
+        # filter_threshold for both meshes.
+        bkg_mesh = self._interpolate_grid(bkg_stats)
+        bkgrms_mesh = self._interpolate_grid(bkgrms_stats)
+        bkg_mesh_filt = self._filter_grid(bkg_mesh, bkg_mesh)
+        bkgrms_mesh_filt = self._filter_grid(bkgrms_mesh, bkg_mesh)
+        self._background_mesh = self._apply_units(bkg_mesh_filt)
+        self._background_rms_mesh = self._apply_units(bkgrms_mesh_filt)
 
     def _repr_str_params(self):
         params = ('data', 'box_size', 'mask', 'coverage_mask', 'fill_value',
@@ -678,7 +690,7 @@ class Background2D:
 
         return interp_data
 
-    def _selective_filter(self, data):
+    def _selective_filter(self, data, bkg_grid):
         """
         Filter only pixels above ``filter_threshold`` in a low-
         resolution 2D image.
@@ -693,13 +705,16 @@ class Background2D:
         data : 2D `~numpy.ndarray`
             A 2D array of mesh values.
 
+        bkg_grid : 2D `~numpy.ndarray`
+            The NaN-interpolated, unfiltered background mesh used to
+            select the pixels to filter.
+
         Returns
         -------
         result : 2D `~numpy.ndarray`
             The filtered 2D array of mesh values.
         """
-        bkg_stats_interp = self._interpolate_grid(self._bkg_stats)
-        above_threshold = bkg_stats_interp > self.filter_threshold
+        above_threshold = bkg_grid > self.filter_threshold
         if not np.any(above_threshold):
             return data
 
@@ -711,7 +726,7 @@ class Background2D:
                                   mode='constant', cval=np.nan)
         return np.where(above_threshold, filtered, data)
 
-    def _filter_grid(self, data):
+    def _filter_grid(self, data, bkg_grid):
         """
         Apply a 2D median filter to a low-resolution 2D image.
 
@@ -719,6 +734,11 @@ class Background2D:
         ----------
         data : 2D `~numpy.ndarray`
             A 2D array of mesh values.
+
+        bkg_grid : 2D `~numpy.ndarray`
+            The NaN-interpolated, unfiltered background mesh used to
+            select the pixels to filter when ``filter_threshold`` is
+            set.
 
         Returns
         -------
@@ -735,7 +755,7 @@ class Background2D:
                                       mode='constant', cval=np.nan)
         else:
             # Selectively filter the array
-            filtdata = self._selective_filter(data)
+            filtdata = self._selective_filter(data, bkg_grid)
 
         return filtdata
 
@@ -753,40 +773,7 @@ class Background2D:
         box_cen = (self.box_size - 1) / 2.0
         return (mesh_idx * self.box_size[:, None]) + box_cen[:, None]
 
-    def _try_free_bkg_stats(self, *, computed):
-        """
-        Free ``_bkg_stats`` when it is safe to do so.
-
-        ``_bkg_stats`` is always needed by ``background_mesh``
-        (via ``_interpolate_grid``). It is also needed by
-        ``_selective_filter`` (called from ``_filter_grid``) when
-        ``filter_threshold`` is not ``None``. It is therefore
-        safe to free it only after ``background_mesh`` has been
-        computed and either ``filter_threshold`` is ``None``
-        (so ``background_rms_mesh`` does not need it) or
-        ``background_rms_mesh`` has also been computed.
-
-        Because `~astropy.utils.lazyproperty` caches a value in the
-        instance ``__dict__`` only after its getter returns, the
-        property currently being computed must be identified via the
-        ``computed`` keyword.
-
-        Parameters
-        ----------
-        computed : {'background_mesh', 'background_rms_mesh'}
-            The name of the lazyproperty whose value has just been
-            computed by the caller.
-        """
-        have_mesh = ('background_mesh' in self.__dict__
-                     or computed == 'background_mesh')
-        if not have_mesh:
-            return
-        have_rms_mesh = ('background_rms_mesh' in self.__dict__
-                         or computed == 'background_rms_mesh')
-        if self.filter_threshold is None or have_rms_mesh:
-            self._bkg_stats = None  # delete to save memory
-
-    @lazyproperty
+    @property
     def background_mesh(self):
         """
         The low-resolution background image.
@@ -794,12 +781,9 @@ class Background2D:
         This image is equivalent to the low-resolution "MINIBACK"
         background map check image in SourceExtractor.
         """
-        data = self._interpolate_grid(self._bkg_stats)
-        result = self._apply_units(self._filter_grid(data))
-        self._try_free_bkg_stats(computed='background_mesh')
-        return result
+        return self._background_mesh
 
-    @lazyproperty
+    @property
     def background_rms_mesh(self):
         """
         The low-resolution background RMS image.
@@ -807,11 +791,7 @@ class Background2D:
         This image is equivalent to the low-resolution "MINIBACK_RMS"
         background rms map check image in SourceExtractor.
         """
-        data = self._interpolate_grid(self._bkgrms_stats)
-        result = self._apply_units(self._filter_grid(data))
-        self._bkgrms_stats = None  # delete to save memory
-        self._try_free_bkg_stats(computed='background_rms_mesh')
-        return result
+        return self._background_rms_mesh
 
     @property
     @deprecated(since='3.0', alternative='n_pixels_mesh', until='4.0')
@@ -886,7 +866,7 @@ class Background2D:
             median of the final interpolated mesh, not solely the median
             of directly measured mesh values.
         """
-        return self._apply_units(np.median(self.background_mesh))
+        return np.median(self.background_mesh)
 
     @lazyproperty
     def background_rms_median(self):
@@ -906,7 +886,7 @@ class Background2D:
             mesh, not solely the median of directly measured mesh
             values.
         """
-        return self._apply_units(np.median(self.background_rms_mesh))
+        return np.median(self.background_rms_mesh)
 
     def _calculate_image(self, data):
         """
