@@ -2,7 +2,7 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 """
 Shared per-pixel aperture overlap helpers for the batch Cython drivers
-for aperture photometry.
+for aperture photometry and statistics.
 
 Each helper returns the fraction of a single pixel that overlaps an
 aperture shape centered on the origin, using exactly the same arithmetic

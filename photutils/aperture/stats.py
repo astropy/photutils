@@ -120,7 +120,7 @@ class ApertureStats:
     ``data`` values within the aperture. It does not convert data
     in surface brightness units to flux or counts. Conversion from
     surface-brightness units should be performed before using this
-    function.
+    class.
 
     Parameters
     ----------
@@ -1417,9 +1417,9 @@ class ApertureStats:
         """
         Boolean mask cutouts representing the total mask.
 
-        The total mask is combination of the input ``mask``, non-finite
-        ``data`` values, the cutout aperture mask using the "center"
-        method, and the sigma-clip mask.
+        The total mask is a combination of the input ``mask``,
+        non-finite ``data`` values, the cutout aperture mask using the
+        "center" method, and the sigma-clip mask.
         """
         return list(zip(*self._aperture_cutouts_center, strict=True))[2]
 
@@ -1428,7 +1428,7 @@ class ApertureStats:
         """
         Boolean mask cutouts representing the total mask.
 
-        The total mask is combination of the input ``mask``,
+        The total mask is a combination of the input ``mask``,
         non-finite ``data`` values, the cutout aperture mask using the
         ``sum_method`` method, and the sigma-clip mask.
         """
@@ -1448,7 +1448,7 @@ class ApertureStats:
     def _make_masked_array(self, array):
         """
         Return a list of cutout masked arrays using the
-        ``_mask_sumcutout`` mask.
+        ``_mask_cutout`` mask.
 
         Units are not applied.
         """
