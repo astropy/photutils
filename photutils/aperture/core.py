@@ -210,6 +210,37 @@ def _update_method_subpixels_docstring(obj):
     return obj
 
 
+def _validate_mask(mask, shape):
+    """
+    Validate that ``mask`` is a boolean array with the given shape.
+
+    Parameters
+    ----------
+    mask : array_like (bool) or `None`
+        The input mask.
+
+    shape : tuple of int
+        The required mask shape (i.e., the data shape).
+
+    Returns
+    -------
+    mask : `~numpy.ndarray` (bool) or `None`
+        The validated mask as a boolean array, or `None` if ``mask`` is
+        `None`.
+    """
+    if mask is None:
+        return None
+
+    mask = np.asanyarray(mask)
+    if mask.dtype != bool:
+        msg = 'mask must be a boolean array'
+        raise TypeError(msg)
+    if mask.shape != shape:
+        msg = 'mask and data must have the same shape'
+        raise ValueError(msg)
+    return mask
+
+
 @dataclass(frozen=True)
 class _ApertureResults:
     """
@@ -606,11 +637,7 @@ class PixelAperture(Aperture):
         if self.isscalar:
             apermasks = (apermasks,)
 
-        if mask is not None:
-            mask = np.asarray(mask)
-            if mask.shape != data.shape:
-                msg = 'mask and data must have the same shape'
-                raise ValueError(msg)
+        mask = _validate_mask(mask, data.shape)
 
         areas = []
         for apermask in apermasks:
@@ -1029,6 +1056,8 @@ class PixelAperture(Aperture):
             if error.shape != data.shape:
                 msg = 'error and data must have the same shape'
                 raise ValueError(msg)
+
+        mask = _validate_mask(mask, data.shape)
 
         # Check Quantity inputs
         unit = {getattr(arr, 'unit', None) for arr in (data, error)

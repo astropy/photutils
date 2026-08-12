@@ -294,6 +294,10 @@ API Changes
     ``BoundingBox``, so that comparing a ``BoundingBox`` to another
     type returns `False` rather than raising. [#2348]
 
+  - The ``mask`` input to aperture photometry and the aperture
+    ``area_overlap`` method must now be a boolean array (or `None`).
+    [#2362]
+
 - ``photutils.detection``
 
   - The ``repr`` and ``str`` output of ``StarFinderCatalogBase`` now

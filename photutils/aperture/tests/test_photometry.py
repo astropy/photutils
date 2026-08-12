@@ -988,6 +988,30 @@ class TestInputValidation:
         with pytest.raises(ValueError, match=match):
             aperture_photometry(data, aper, method='subpixel', subpixels=-1)
 
+    def test_mask_validation(self):
+        """
+        Test that the mask must be a boolean array with the same shape
+        as the data.
+        """
+        data = np.ones((11, 11))
+        aper = CircularAperture((5, 5), r=3)
+
+        # A nested list of bools is converted to a boolean array
+        mask_list = [[False] * 11 for _ in range(11)]
+        tbl1 = aperture_photometry(data, aper, mask=np.array(mask_list))
+        tbl2 = aperture_photometry(data, aper, mask=mask_list)
+        assert_allclose(tbl2['aperture_sum'], tbl1['aperture_sum'])
+
+        match = 'mask must be a boolean array'
+        with pytest.raises(TypeError, match=match):
+            aperture_photometry(data, aper, mask=np.zeros(data.shape,
+                                                          dtype=int))
+
+        match = 'mask and data must have the same shape'
+        with pytest.raises(ValueError, match=match):
+            aperture_photometry(data, aper,
+                                mask=np.zeros((3, 3), dtype=bool))
+
     @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_unsupported_region_input(self):
         from regions import LinePixelRegion, PixCoord

@@ -200,6 +200,11 @@ class TestAreaOverlap:
         with pytest.raises(ValueError, match=match):
             aper.area_overlap(data, mask=mask)
 
+        mask = np.zeros(data.shape, dtype=int)
+        match = 'mask must be a boolean array'
+        with pytest.raises(TypeError, match=match):
+            aper.area_overlap(data, mask=mask)
+
 
 class TestToPolygon:
     """
