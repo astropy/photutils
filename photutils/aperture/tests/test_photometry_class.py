@@ -15,6 +15,7 @@ from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAperture)
+from photutils.aperture.flags import APERTURE_FLAGS
 from photutils.aperture.photometry import (AperturePhotometry,
                                            aperture_photometry)
 from photutils.aperture.polygon import PolygonAperture
@@ -266,12 +267,33 @@ class TestSegmentationMasking:
         ref = AperturePhotometry(data, aper)
         assert_allclose(phot.flux, ref.flux)
 
-    def test_correct_matches_neighbor(self):
+    def test_correct_matches_manual_mirror(self):
+        """
+        Test that mask_method='correct' reproduces plain photometry on
+        a manually mirror-corrected image.
+
+        The scene is constructed so that the mirror of every neighbor
+        pixel is an unmasked non-neighbor pixel, so every neighbor pixel
+        is corrected (none are excluded).
+        """
         data, segm = make_scene()
-        aper = CircularAperture([(21, 21)], r=10)
-        none_phot = AperturePhotometry(data, aper, mask_method='none')
+        xycen = (21, 21)
+        aper = CircularAperture([xycen], r=10)
         corr_phot = AperturePhotometry(data, aper, segmentation_image=segm,
                                        labels=[1], mask_method='correct')
+
+        # Replace every neighbor pixel with its value mirrored across
+        # the aperture center. Pixels outside the aperture have zero
+        # weight, so correcting them globally does not change the flux.
+        corrected = data.copy()
+        yidx, xidx = np.nonzero((segm > 0) & (segm != 1))
+        corrected[yidx, xidx] = data[2 * xycen[1] - yidx,
+                                     2 * xycen[0] - xidx]
+        ref_phot = AperturePhotometry(corrected, aper)
+        assert_allclose(corr_phot.flux, ref_phot.flux, rtol=1e-12)
+
+        # The correction changes the flux relative to no masking
+        none_phot = AperturePhotometry(data, aper, mask_method='none')
         assert corr_phot.flux[0] != none_phot.flux[0]
 
     def test_polygon_mask_path(self):
@@ -365,7 +387,7 @@ class TestFlagsAndArea:
         data = np.ones((25, 25), dtype=float)
         aper = CircularAperture((0, 12), r=5.0)
         phot = AperturePhotometry(data, aper)
-        assert phot.flags != 0
+        assert phot.flags == APERTURE_FLAGS.PARTIAL_OVERLAP
 
     def test_decode_flags(self):
         data = np.ones((25, 25))

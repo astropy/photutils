@@ -115,7 +115,7 @@ class TestProperties(BaseApertureStatsData):
         skyaper = self.aperture.to_sky(self.wcs)
         sky_apstats = ApertureStats(self.data, skyaper, wcs=self.wcs)
 
-        exclude_props = ('bbox', 'error_sum_cutout', 'sum_error',
+        exclude_props = ('bbox', 'error_sum_cutout', 'sum_err',
                          'sky_centroid', 'sky_centroid_icrs')
         for prop in pix_apstats.properties:
             if prop in exclude_props:

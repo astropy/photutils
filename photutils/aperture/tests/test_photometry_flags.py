@@ -11,7 +11,8 @@ from numpy.testing import assert_allclose, assert_array_equal
 from photutils.aperture import (APERTURE_FLAGS, AperturePhotometry,
                                 ApertureStats, CircularAnnulus,
                                 CircularAperture, EllipticalAperture,
-                                PolygonAperture, RectangularAperture)
+                                PolygonAperture, RectangularAperture,
+                                aperture_photometry)
 from photutils.aperture.flags import _counts_to_flag_bits
 
 SHAPE = (25, 25)
@@ -470,9 +471,10 @@ class TestFlagsAPI:
         assert flags == (APERTURE_FLAGS.PARTIAL_OVERLAP
                          | APERTURE_FLAGS.MASKED_PIXELS)
 
-    def test_legacy_function_has_no_flags(self, unit_data):
+    def test_flags_multiple_apertures(self, unit_data):
         """
-        Test the AperturePhotometry flags.
+        Test the AperturePhotometry flags for multiple positions and a
+        list of apertures (2D flags).
         """
         data = unit_data
         xy = [(12.0, 12.0), (-50.0, 12.0), (0.0, 12.0)]
@@ -487,6 +489,17 @@ class TestFlagsAPI:
         phot = AperturePhotometry(data, [aper, aper2])
         assert_array_equal(phot.flags[:, 0], expected)
         assert_array_equal(phot.flags[:, 1], expected)
+
+    def test_legacy_function_has_no_flags(self, unit_data):
+        """
+        Test that the legacy aperture_photometry function output table
+        contains no flags or area columns.
+        """
+        xy = [(12.0, 12.0), (0.0, 12.0)]
+        aper = CircularAperture(xy, r=3.0)
+        tbl = aperture_photometry(unit_data, aper)
+        assert tbl.colnames == ['id', 'x_center', 'y_center',
+                                'aperture_sum']
 
     def test_flags_with_units(self):
         """

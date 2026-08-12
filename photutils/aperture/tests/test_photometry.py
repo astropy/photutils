@@ -419,12 +419,18 @@ class TestArrayBounds:
                             atol=0.1)
 
     def test_pixel_positions(self):
+        """
+        A scalar position yields a (2,) positions array, while a list
+        containing one position yields a (1, 2) array.
+        """
         pos1 = (10, 20)
         pos2 = [(10, 20)]
         r = 3
         ap1 = CircularAperture(pos1, r)
         ap2 = CircularAperture(pos2, r)
-        assert not np.array_equal(ap1.positions, ap2.positions)
+        assert ap1.positions.shape == (2,)
+        assert ap2.positions.shape == (1, 2)
+        assert_allclose(ap1.positions, ap2.positions[0])
 
     def test_partial_overlap(self):
         data = np.ones((20, 20))
