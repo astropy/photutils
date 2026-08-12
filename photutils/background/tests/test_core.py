@@ -153,6 +153,8 @@ class TestBackgroundEstimators:
         bkg = bkg_class(sigma_clip=None)
         bkg_val1 = bkg.calc_background(test_data, axis=None)
         bkg_val2 = bkg.calc_background(test_data, axis=(0, 1))
+        assert np.ndim(bkg_val1) == 0
+        assert np.ndim(bkg_val2) == 0
         assert_allclose(bkg_val1, bkg_val2)
 
     @pytest.mark.parametrize('bkg_class', BACKGROUND_CLASSES)
@@ -330,6 +332,24 @@ class TestSpecificEstimators:
         data[70:] = 1.0e7
         bkg = SExtractorBackground(sigma_clip=None)
         assert_allclose(bkg.calc_background(data), np.median(data))
+
+    def test_sextractor_scalar_result_with_axis(self):
+        """
+        Test that SExtractorBackground returns a scalar when the
+        reduction consumes all axes, consistent with the other
+        estimator classes.
+        """
+        rng = np.random.default_rng(0)
+        bkg = SExtractorBackground(sigma_clip=None)
+
+        data = rng.normal(10.0, 1.0, (10, 10))
+        result = bkg.calc_background(data, axis=(0, 1))
+        assert np.ndim(result) == 0
+
+        data1d = rng.normal(10.0, 1.0, 100)
+        result = bkg.calc_background(data1d, axis=0)
+        assert np.ndim(result) == 0
+        assert_allclose(result, bkg.calc_background(data1d, axis=None))
 
     @pytest.mark.parametrize(('median_factor', 'mean_factor'), [
         (3.0, 2.0),  # default

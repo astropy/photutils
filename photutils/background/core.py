@@ -472,7 +472,10 @@ class SExtractorBackground(BackgroundBase):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
 
-            _median = np.atleast_1d(nanmedian(data, axis=axis))
+            _median = nanmedian(data, axis=axis)
+            # A scalar median means the reduction consumed all axes
+            is_scalar = np.ndim(_median) == 0
+            _median = np.atleast_1d(_median)
             _mean = np.atleast_1d(nanmean(data, axis=axis))
             _std = np.atleast_1d(nanstd(data, axis=axis))
             result = (2.5 * _median) - (1.5 * _mean)
@@ -488,8 +491,9 @@ class SExtractorBackground(BackgroundBase):
             mask = np.logical_and(med_mask, np.logical_not(mean_mask))
             result[mask] = _median[mask]
 
-            # If result is a scalar, return it as a float
-            if result.shape == (1,) and axis is None:
+            # If the reduction consumed all axes, return a scalar
+            # float, consistent with the other estimator classes
+            if is_scalar:
                 result = result[0]
 
         return _apply_masked(result, masked)
