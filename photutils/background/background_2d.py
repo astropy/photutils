@@ -102,8 +102,8 @@ class Background2D:
         include those from the input ``mask`` and ``coverage_mask``,
         non-finite ``data`` values, any padded area at the data
         edges, and those resulting from any sigma clipping. Setting
-        ``exclude_percentile=0`` will exclude boxes that have any that
-        have any masked pixels. Note that completely masked boxes are
+        ``exclude_percentile=0`` will exclude boxes that have any
+        masked pixels. Note that completely masked boxes are
         always excluded. In general, ``exclude_percentile`` should be
         kept as low as possible to ensure there are a sufficient number
         of unmasked pixels in each box for reasonable statistical
@@ -399,9 +399,10 @@ class Background2D:
         The minimum number of required unmasked pixels in a box used for
         it to be included in the low-resolution map.
 
-        For exclude_percentile=0, only boxes where nmasked=0 will be
-        included. For exclude_percentile=100, all boxes will be included
-        *unless* they are completely masked.
+        A box is excluded if it contains fewer unmasked pixels than this
+        threshold. For exclude_percentile=0, only boxes with zero masked
+        pixels will be included. For exclude_percentile=100, all boxes
+        will be included unless they are completely masked.
 
         Boxes that are completely masked are always excluded.
         """
@@ -469,9 +470,11 @@ class Background2D:
         bkg = self.bkg_estimator(data, axis=axis)
         bkgrms = self.bkg_rms_estimator(data, axis=axis)
 
-        # Mask boxes with too few unmasked pixels
+        # Mask boxes with too few unmasked pixels. Completely masked
+        # boxes are always excluded.
         n_good = np.count_nonzero(~np.isnan(data), axis=axis)
-        box_mask = n_good <= self._good_n_pixels_threshold
+        box_mask = ((n_good < self._good_n_pixels_threshold)
+                    | (n_good == 0))
 
         if np.ndim(bkg) == 0:
             if box_mask:  # single corner box
@@ -589,11 +592,13 @@ class Background2D:
                 n_good = np.hstack([n_good, col_n_good])
 
         if np.all(np.isnan(bkg)):
-            msg = (f'All boxes contain <= {self._good_n_pixels_threshold} '
-                   f'unmasked or finite pixels ({self.box_size=}, '
-                   f'{self.exclude_percentile=}). Please check your data '
-                   'or increase "exclude_percentile" to allow more boxes to '
-                   'be included.')
+            msg = ('All boxes contain fewer than '
+                   f'{self._good_n_pixels_threshold} unmasked or finite '
+                   'pixels or are completely masked '
+                   f'(box_size={tuple(self.box_size)}, '
+                   f'exclude_percentile={self.exclude_percentile}). Please '
+                   'check your data or increase "exclude_percentile" to '
+                   'allow more boxes to be included.')
             raise ValueError(msg)
 
         # We no longer need the temporary input arrays

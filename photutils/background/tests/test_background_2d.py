@@ -500,6 +500,57 @@ class TestBackground2D:
         with ctx1, ctx2:
             Background2D(data, (10, 10))
 
+    def test_exclude_percentile_zero(self, test_data):
+        """
+        Test that exclude_percentile=0 keeps fully unmasked boxes and
+        excludes boxes with any masked pixels.
+        """
+        bkg = Background2D(test_data, (25, 25), filter_size=(1, 1),
+                           sigma_clip=None, exclude_percentile=0)
+        assert_allclose(bkg.background_mesh, np.ones((4, 4)))
+
+        # A box with a single masked pixel is excluded. Its mesh value
+        # is then interpolated from the other (unit-valued) boxes.
+        data = np.copy(test_data)
+        data[0:25, 0:25] = 5.0
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0, 0] = True
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1),
+                           sigma_clip=None, mask=mask, exclude_percentile=0)
+        assert_allclose(bkg.background_mesh[0, 0], 1.0)
+
+        # The same box is included when exclude_percentile=100
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1),
+                           sigma_clip=None, mask=mask,
+                           exclude_percentile=100)
+        assert_allclose(bkg.background_mesh[0, 0], 5.0)
+
+    def test_exclude_percentile_boundary(self):
+        """
+        Test that a box with exactly exclude_percentile percent masked
+        pixels is included.
+
+        Only boxes with more than exclude_percentile percent masked
+        pixels are excluded.
+        """
+        data = np.ones((10, 10))
+        data[0, 0:10] = 5.0
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0, 0:10] = True  # Exactly 10% of the single box
+        bkg = Background2D(data, (10, 10), filter_size=(1, 1),
+                           sigma_clip=None, mask=mask,
+                           exclude_percentile=10.0)
+        assert_allclose(bkg.background_mesh, [[1.0]])
+        assert bkg.n_pixels_mesh[0, 0] == 90
+
+        # More than 10% masked excludes the only box
+        mask[1, 0] = True
+        match = 'All boxes contain fewer than'
+        with pytest.raises(ValueError, match=match):
+            Background2D(data, (10, 10), filter_size=(1, 1),
+                         sigma_clip=None, mask=mask,
+                         exclude_percentile=10.0)
+
     def test_filter_threshold(self, test_data, bkg_mesh):
         """
         Test that the filter_threshold parameter filters the correct

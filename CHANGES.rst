@@ -194,6 +194,15 @@ Bug Fixes
     shape parameter after construction validates the inner < outer
     invariant. [#2362]
 
+- ``photutils.background``
+
+  - Fixed the ``exclude_percentile`` box-exclusion criterion in
+    ``Background2D`` so that a box is excluded only if more than
+    ``exclude_percentile`` percent of its pixels are masked, as
+    documented. Previously, a box with exactly that percentage of masked
+    pixels was excluded, and ``exclude_percentile=0`` excluded all
+    boxes, even fully unmasked ones. [#2363]
+
 - ``photutils.detection``
 
   - Fixed ``DAOStarFinder`` and ``IRAFStarFinder`` ``orientation``
