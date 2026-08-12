@@ -3,6 +3,7 @@
 Tests for the AperturePhotometry class.
 """
 
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 import astropy.units as u
@@ -680,8 +681,19 @@ class TestInputValidation:
     def test_unit_mismatch(self):
         data = np.ones((11, 11)) * u.Jy
         aper = CircularAperture((5, 5), r=3)
-        with pytest.raises(ValueError, match='must all have the same units'):
+        match = 'must all have the same units'
+        with pytest.raises(ValueError, match=match):
             AperturePhotometry(data, aper, error=np.ones((11, 11)))
+
+        # The converse: unitless data with a unit error
+        with pytest.raises(ValueError, match=match):
+            AperturePhotometry(np.ones((11, 11)), aper,
+                               error=np.ones((11, 11)) * u.Jy)
+
+        # Same-dimension but different units are also rejected
+        with pytest.raises(ValueError, match=match):
+            AperturePhotometry(data, aper,
+                               error=np.ones((11, 11)) * u.mJy)
 
     @pytest.mark.parametrize('method', ['exact ', 'Exact', 'invalid'])
     def test_invalid_method_at_init(self, method):
@@ -749,6 +761,42 @@ class TestInputValidation:
         with pytest.raises(ValueError, match=match):
             ApertureStats(data, aper, segmentation_image=segm,
                           labels=np.array([[1, 2]]), mask_method='mask')
+
+
+class TestEmptyPositions:
+    """
+    Regression tests for apertures with zero positions, which must
+    flow through both classes (including the batch Cython drivers) and
+    the legacy function, returning empty outputs.
+    """
+
+    def test_aperture_photometry_class(self):
+        data = np.ones((11, 11))
+        aper = CircularAperture(np.empty((0, 2)), r=3)
+        phot = AperturePhotometry(data, aper, error=np.ones_like(data))
+        assert phot.n_positions == 0
+        assert phot.flux.shape == (0,)
+        assert phot.flux_err.shape == (0,)
+        assert phot.area.shape == (0,)
+        assert phot.flags.shape == (0,)
+        assert len(phot.to_table()) == 0
+
+    def test_aperture_stats(self):
+        data = np.ones((11, 11))
+        aper = CircularAperture(np.empty((0, 2)), r=3)
+        stats = ApertureStats(data, aper)
+        assert stats.n_positions == 0
+        assert stats.mean.shape == (0,)
+        assert stats.median.shape == (0,)
+        assert stats.sum.shape == (0,)
+        assert stats.flags.shape == (0,)
+        assert len(stats.to_table()) == 0
+
+    def test_legacy_function(self):
+        data = np.ones((11, 11))
+        aper = CircularAperture(np.empty((0, 2)), r=3)
+        tbl = aperture_photometry(data, aper)
+        assert len(tbl) == 0
 
 
 class TestSegmentationAttributes:
@@ -839,8 +887,6 @@ class TestReprAndImmutability:
         assert new_keys.issubset(lazy_names)
 
     def test_concurrent_access(self, data):
-        from concurrent.futures import ThreadPoolExecutor
-
         aper = CircularAperture(((150, 25), (90, 60)), 8)
         phot = AperturePhotometry(data, aper)
         with ThreadPoolExecutor(max_workers=4) as executor:

@@ -199,10 +199,15 @@ class TestSumMethod(BaseApertureStatsData):
             if prop in scalar_props:
                 continue
             if 'sum' in prop and prop != 'sum_flags':
-                # Test that these properties are not equal
-                with pytest.raises(AssertionError):
+                # The sum-footprint properties must differ between the
+                # two sum methods
+                equal = True
+                try:
                     assert_equal(getattr(apstats1, prop),
                                  getattr(apstats2, prop))
+                except AssertionError:
+                    equal = False
+                assert not equal, f'{prop} is unexpectedly equal'
             else:
                 assert_equal(getattr(apstats1, prop), getattr(apstats2, prop))
 
@@ -324,6 +329,29 @@ class TestMasking(BaseApertureStatsData):
         with pytest.raises(ValueError, match=match):
             _ = ApertureStats(data, self.aperture[0:2],
                               local_bkg=np.ones((3, 3)))
+
+    def test_local_bkg_units(self):
+        """
+        Test that local_bkg must carry the same units as a Quantity
+        ``data`` input and that the results match the unitless case.
+        """
+        unit = u.Jy
+        data = np.ones(self.data.shape) * 100.0
+        local_bkg = (10, 20, 30)
+        apstats1 = ApertureStats(data << unit, self.aperture,
+                                 local_bkg=local_bkg * unit)
+        apstats2 = ApertureStats(data, self.aperture, local_bkg=local_bkg)
+        assert apstats1.sum.unit == unit
+        assert_allclose(apstats1.sum.value, apstats2.sum)
+
+        match = 'must all have the same units'
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data << unit, self.aperture, local_bkg=local_bkg)
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data << unit, self.aperture,
+                          local_bkg=local_bkg * u.mJy)
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data, self.aperture, local_bkg=local_bkg * unit)
 
     def test_no_aperture_overlap(self):
         aperture = CircularAperture(((0, 0), (100, 100), (-100, -100)), r=5)

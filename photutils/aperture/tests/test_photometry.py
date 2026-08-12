@@ -507,10 +507,14 @@ class TestPlots:
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     @pytest.mark.parametrize(('aperture_class', 'params'), TEST_APERTURES)
     def test_plots(self, aperture_class, params):
-        # This test should run without any errors, and there is no return
-        # value.
+        import matplotlib.pyplot as plt
+
         aperture = aperture_class((20.0, 20.0), **params)
-        aperture.plot()
+        try:
+            patches = aperture.plot()
+            assert len(patches) == 1
+        finally:
+            plt.close('all')
 
 
 class TestWcsInput:
@@ -989,10 +993,10 @@ class TestInputValidation:
         data = np.ones((11, 11))
         aper = CircularAperture((5, 5), r=3)
         match = 'subpixels must be a strictly positive integer'
-        with pytest.raises(ValueError, match=match):
-            aperture_photometry(data, aper, method='subpixel', subpixels=0)
-        with pytest.raises(ValueError, match=match):
-            aperture_photometry(data, aper, method='subpixel', subpixels=-1)
+        for subpixels in (0, -1, 2.5, True):
+            with pytest.raises(ValueError, match=match):
+                aperture_photometry(data, aper, method='subpixel',
+                                    subpixels=subpixels)
 
     def test_mask_validation(self):
         """

@@ -2093,9 +2093,11 @@ class ApertureStats:
         The bounding box x and y minimum and maximum bounds.
         """
         bbox = self._array('bbox')
+        # The reshape preserves the (n_positions, 4) shape when there
+        # are zero positions
         return np.array([(bbox_.ixmin, bbox_.ixmax - 1,
                           bbox_.iymin, bbox_.iymax - 1)
-                         for bbox_ in bbox])
+                         for bbox_ in bbox], dtype=int).reshape(-1, 4)
 
     @lazyproperty
     def bbox_xmin(self):
