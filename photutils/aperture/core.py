@@ -244,6 +244,34 @@ def _validate_mask(mask, shape):
     return mask
 
 
+def _enable_batch_photometry(cls):
+    """
+    Class decorator that opts a `PixelAperture` subclass in to the
+    batch Cython photometry driver.
+
+    The decorator records the decorated class itself, and the batch
+    driver is used only when an instance's own class was decorated
+    (see ``PixelAperture._batch_photometry``). The opt-in therefore
+    does not propagate to subclasses. An undecorated subclass may
+    override behavior (e.g., ``to_mask``) that the batch driver would
+    not honor, so it uses the mask-based code path unless it is
+    explicitly decorated as well. A decorated class must provide the
+    ``_batch_shape_params`` hook (which may be inherited).
+
+    Parameters
+    ----------
+    cls : type
+        The aperture class to opt in.
+
+    Returns
+    -------
+    cls : type
+        The input class, with the opt-in recorded.
+    """
+    cls._batch_photometry_class = cls
+    return cls
+
+
 @dataclass(frozen=True)
 class _ApertureResults:
     """
@@ -458,6 +486,11 @@ class PixelAperture(Aperture):
     """
     Abstract base class for apertures defined in pixel coordinates.
     """
+
+    # The class (if any) that opted in to the batch photometry driver
+    # via the _enable_batch_photometry decorator; instances use the
+    # batch driver only when this is their own class
+    _batch_photometry_class = None
 
     @lazyproperty
     def _default_patch_properties(self):
@@ -725,9 +758,9 @@ class PixelAperture(Aperture):
         the segmentation masking methods for such apertures. All
         of the built-in apertures opt in to the batch driver, so
         this path is reached only for an unsupported input (see
-        `~photutils.aperture._common.batch_inputs_supported`)
-        or for an `Aperture` subclass that does not define the
-        ``_batch_shape_params`` hook in its own class.
+        `~photutils.aperture._common.batch_inputs_supported`) or
+        for an `Aperture` subclass that is not decorated with
+        ``_enable_batch_photometry``.
 
         Parameters
         ----------
@@ -891,10 +924,10 @@ class PixelAperture(Aperture):
 
         Notes
         -----
-        The batch driver is used only if this hook is defined in the
-        aperture instance's own class (see `_batch_photometry`),
-        so subclasses must define this method (e.g., by calling
-        ``super()``) to opt in to the batch code path.
+        The batch driver is used only for classes decorated with
+        ``_enable_batch_photometry`` (see `_batch_photometry`). The
+        opt-in does not propagate to subclasses, so a subclass must
+        itself be decorated to use the batch code path.
         """
         return
 
@@ -944,11 +977,12 @@ class PixelAperture(Aperture):
             that the caller must resolve to the precise outside-weight
             test (see `_resolve_outside_weights`).
         """
-        # Use the batch driver only if the aperture's own class defines
-        # the _batch_shape_params hook. Subclasses that do not define
-        # it may override other behavior (e.g., to_mask) that the batch
-        # driver would not honor, so they use the mask-based code path.
-        if '_batch_shape_params' not in type(self).__dict__:
+        # Use the batch driver only if the instance's own class opted
+        # in via the _enable_batch_photometry decorator. Undecorated
+        # subclasses may override other behavior (e.g., to_mask) that
+        # the batch driver would not honor, so they use the mask-based
+        # code path.
+        if type(self)._batch_photometry_class is not type(self):
             return None
 
         spec = self._batch_shape_params()

@@ -17,6 +17,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            PositiveScalarAngle,
                                            SkyCoordPositions)
 from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _enable_batch_photometry,
                                      _update_method_subpixels_docstring)
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
@@ -126,6 +127,7 @@ class CircularMaskMixin:  # pragma: no cover
         return masks
 
 
+@_enable_batch_photometry
 class CircularAperture(PixelAperture):
     """
     A circular aperture defined in pixel coordinates.
@@ -289,6 +291,7 @@ class CircularAperture(PixelAperture):
         return PolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
+@_enable_batch_photometry
 class CircularAnnulus(PixelAperture):
     """
     A circular annulus aperture defined in pixel coordinates.

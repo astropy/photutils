@@ -839,9 +839,10 @@ class ApertureStats:
 
         aper = self._pixel_aperture
 
-        # Use the batch driver only if the aperture's own class defines
-        # the _batch_shape_params hook (see _batch_photometry).
-        if '_batch_shape_params' not in type(aper).__dict__:
+        # Use the batch driver only if the aperture's own class
+        # opted in via the _enable_batch_photometry decorator (see
+        # PixelAperture._batch_photometry).
+        if type(aper)._batch_photometry_class is not type(aper):
             return None
         spec = aper._batch_shape_params()
         if spec is None:

@@ -18,6 +18,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            ScalarAngleOrValue,
                                            SkyCoordPositions)
 from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _enable_batch_photometry,
                                      _RotatableApertureMixin,
                                      _update_method_subpixels_docstring)
 from photutils.aperture.mask import ApertureMask
@@ -186,6 +187,7 @@ def _calc_lower_left_positions(positions, width, height, theta_rad):
     return np.atleast_2d(positions) + np.array([xshift, yshift])
 
 
+@_enable_batch_photometry
 class RectangularAperture(_RotatableApertureMixin, PixelAperture):
     """
     A rectangular aperture defined in pixel coordinates.
@@ -377,6 +379,7 @@ class RectangularAperture(_RotatableApertureMixin, PixelAperture):
         return PolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
+@_enable_batch_photometry
 class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
     r"""
     A rectangular annulus aperture defined in pixel coordinates.

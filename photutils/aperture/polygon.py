@@ -12,6 +12,7 @@ from photutils.aperture._batch_photometry import SHAPE_POLYGON
 from photutils.aperture.attributes import (ApertureAttribute, PixelPositions,
                                            SkyCoordPositions)
 from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _enable_batch_photometry,
                                      _update_method_subpixels_docstring)
 from photutils.geometry._polygon_overlap import polygon_overlap_grid
 
@@ -383,6 +384,7 @@ class _RegularPolygonGeometry:
         return (np.degrees(theta_rad) % 360.0) * u.deg
 
 
+@_enable_batch_photometry
 class PolygonAperture(PixelAperture):
     """
     A polygon aperture defined in pixel coordinates.

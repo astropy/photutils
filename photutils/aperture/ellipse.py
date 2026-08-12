@@ -18,6 +18,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            ScalarAngleOrValue,
                                            SkyCoordPositions)
 from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _enable_batch_photometry,
                                      _RotatableApertureMixin,
                                      _update_method_subpixels_docstring)
 from photutils.aperture.mask import ApertureMask
@@ -180,6 +181,7 @@ def _calc_ellipse_extents(semimajor_axis, semiminor_axis, theta_rad):
     return x_extent, y_extent
 
 
+@_enable_batch_photometry
 class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
     """
     An elliptical aperture defined in pixel coordinates.
@@ -372,6 +374,7 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
         return PolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
+@_enable_batch_photometry
 class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
     r"""
     An elliptical annulus aperture defined in pixel coordinates.

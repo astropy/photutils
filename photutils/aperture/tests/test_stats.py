@@ -16,6 +16,7 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture.circle import CircularAnnulus, CircularAperture
+from photutils.aperture.core import _enable_batch_photometry
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus)
 from photutils.aperture.flags import APERTURE_FLAGS
@@ -29,17 +30,18 @@ from photutils.utils._optional_deps import HAS_REGIONS
 
 class _NoBatchCircular(CircularAperture):
     """
-    A `CircularAperture` subclass that does not define the
-    ``_batch_shape_params`` hook in its own class, so the fast batch
-    driver is not used and the mask-based code path is exercised.
+    A `CircularAperture` subclass that is not decorated with
+    ``_enable_batch_photometry``, so the fast batch driver is not used
+    and the mask-based code path is exercised.
     """
 
 
+@_enable_batch_photometry
 class _NoneSpecCircular(CircularAperture):
     """
-    A `CircularAperture` subclass that defines the ``_batch_shape_params``
-    hook in its own class but returns `None`, so the fast batch driver is
-    not used and the mask-based code path is exercised.
+    A `CircularAperture` subclass that opts in to the fast batch driver
+    but whose ``_batch_shape_params`` hook returns `None`, so the batch
+    driver is not used and the mask-based code path is exercised.
     """
 
     def _batch_shape_params(self):
