@@ -240,3 +240,35 @@ class TestApertureStatsThreadSafety:
                 for name in _STATS_PROPERTIES:
                     assert_allclose(result[name], expected[name],
                                     rtol=0, atol=0, equal_nan=True)
+
+    def test_shared_instance(self):
+        """
+        Test that a single shared ApertureStats instance can be read
+        concurrently.
+
+        The instance is documented as immutable after construction, so
+        concurrent readers racing to fill the lazyproperty caches
+        (which are guarded by the astropy lazyproperty lock) must all
+        see identical values.
+        """
+        data = make_100gaussians_image()
+        error = np.sqrt(np.abs(data))
+        positions = ((145.1, 168.3), (84.7, 224.1), (48.3, 200.3),
+                     (200.0, 100.0))
+        aperture = CircularAperture(positions, r=6.0)
+        stats = ApertureStats(data, aperture, error=error)
+
+        def read():
+            return {name: np.asarray(getattr(stats, name))
+                    for name in (*_STATS_PROPERTIES, 'sum_flags')}
+
+        with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
+            futures = [ex.submit(read)
+                       for _ in range(N_THREADS * N_CALLS_PER_THREAD)]
+            results = [future.result() for future in futures]
+
+        expected = read()
+        for result in results:
+            for name, values in result.items():
+                assert_allclose(values, expected[name], rtol=0, atol=0,
+                                equal_nan=True)
