@@ -246,6 +246,29 @@ class TestBackground2D:
         mesh = bkg.background_mesh
         assert rms_mesh.shape == mesh.shape
 
+    @pytest.mark.parametrize('filter_threshold', [None, 9.0])
+    def test_mesh_access_order_independent(self, filter_threshold):
+        """
+        Test that the background_mesh and background_rms_mesh values do
+        not depend on the order in which they are first accessed, with
+        and without filter_threshold.
+        """
+        data = np.ones((100, 100))
+        data[25:50, 50:75] = 10.0
+
+        bkg1 = Background2D(data, (25, 25), filter_size=(3, 3),
+                            filter_threshold=filter_threshold)
+        mesh1 = bkg1.background_mesh
+        rms_mesh1 = bkg1.background_rms_mesh
+
+        bkg2 = Background2D(data, (25, 25), filter_size=(3, 3),
+                            filter_threshold=filter_threshold)
+        rms_mesh2 = bkg2.background_rms_mesh
+        mesh2 = bkg2.background_mesh
+
+        assert_allclose(mesh1, mesh2)
+        assert_allclose(rms_mesh1, rms_mesh2)
+
     def test_no_sigma_clipping(self, test_data):
         """
         Test bkg_estimator inputs without sigma clipping.

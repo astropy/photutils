@@ -741,7 +741,7 @@ class Background2D:
         box_cen = (self.box_size - 1) / 2.0
         return (mesh_idx * self.box_size[:, None]) + box_cen[:, None]
 
-    def _try_free_bkg_stats(self):
+    def _try_free_bkg_stats(self, *, computed):
         """
         Free ``_bkg_stats`` when it is safe to do so.
 
@@ -750,14 +750,28 @@ class Background2D:
         ``_selective_filter`` (called from ``_filter_grid``) when
         ``filter_threshold`` is not ``None``. It is therefore
         safe to free it only after ``background_mesh`` has been
-        cached and either ``filter_threshold`` is ``None``
+        computed and either ``filter_threshold`` is ``None``
         (so ``background_rms_mesh`` does not need it) or
-        ``background_rms_mesh`` has also been cached.
+        ``background_rms_mesh`` has also been computed.
+
+        Because `~astropy.utils.lazyproperty` caches a value in the
+        instance ``__dict__`` only after its getter returns, the
+        property currently being computed must be identified via the
+        ``computed`` keyword.
+
+        Parameters
+        ----------
+        computed : {'background_mesh', 'background_rms_mesh'}
+            The name of the lazyproperty whose value has just been
+            computed by the caller.
         """
-        if 'background_mesh' not in self.__dict__:
+        have_mesh = ('background_mesh' in self.__dict__
+                     or computed == 'background_mesh')
+        if not have_mesh:
             return
-        if (self.filter_threshold is None
-                or 'background_rms_mesh' in self.__dict__):
+        have_rms_mesh = ('background_rms_mesh' in self.__dict__
+                         or computed == 'background_rms_mesh')
+        if self.filter_threshold is None or have_rms_mesh:
             self._bkg_stats = None  # delete to save memory
 
     @lazyproperty
@@ -770,7 +784,7 @@ class Background2D:
         """
         data = self._interpolate_grid(self._bkg_stats)
         result = self._apply_units(self._filter_grid(data))
-        self._try_free_bkg_stats()
+        self._try_free_bkg_stats(computed='background_mesh')
         return result
 
     @lazyproperty
@@ -782,9 +796,9 @@ class Background2D:
         background rms map check image in SourceExtractor.
         """
         data = self._interpolate_grid(self._bkgrms_stats)
-        self._bkgrms_stats = None  # delete to save memory
         result = self._apply_units(self._filter_grid(data))
-        self._try_free_bkg_stats()
+        self._bkgrms_stats = None  # delete to save memory
+        self._try_free_bkg_stats(computed='background_rms_mesh')
         return result
 
     @property
