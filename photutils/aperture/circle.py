@@ -148,7 +148,7 @@ class CircularAperture(PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If the input radius, ``r``, is negative.
+        If the input radius, ``r``, is not positive.
 
     Examples
     --------
@@ -314,11 +314,11 @@ class CircularAnnulus(PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If inner radius (``r_in``) is greater than outer radius
+        If the inner radius (``r_in``) is not less than the outer radius
         (``r_out``).
 
     ValueError : `ValueError`
-        If inner radius (``r_in``) is negative.
+        If either radius (``r_in`` or ``r_out``) is not positive.
 
     Examples
     --------

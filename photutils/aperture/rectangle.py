@@ -219,7 +219,7 @@ class RectangularAperture(_RotatableApertureMixin, PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If either width (``w``) or height (``h``) is negative.
+        If either width (``w``) or height (``h``) is not positive.
 
     Examples
     --------
@@ -423,12 +423,13 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If inner width (``w_in``) is greater than outer width
-        (``w_out``).
+        If the inner width (``w_in``) is not less than the outer width
+        (``w_out``), or if the inner height (``h_in``), when given, is
+        not less than the outer height (``h_out``).
 
     ValueError : `ValueError`
-        If either the inner width (``w_in``) or the outer height
-        (``h_out``) is negative.
+        If any of the widths or heights (``w_in``, ``w_out``, ``h_in``,
+        or ``h_out``) is not positive.
 
     Examples
     --------

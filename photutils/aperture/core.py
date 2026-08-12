@@ -1038,11 +1038,13 @@ class PixelAperture(Aperture):
 
             - ``area`` : `~astropy.units.Quantity`
               The total unmasked overlap area of each aperture (in
-              ``pix**2``), taking into account the aperture mask
-              method, masked data pixels, segmentation masking, and
-              partial/no overlap of the aperture with the data. This
-              is equivalent to `area_overlap` computed with the same
-              inputs. The value is ``NaN`` where the aperture does not
+              ``pix**2``), taking into account the aperture mask method,
+              masked data pixels, segmentation masking, and partial/no
+              overlap of the aperture with the data. This is equivalent
+              to `area_overlap` computed with the same inputs when
+              no segmentation masking is applied and there are no
+              non-finite data values (`area_overlap` takes neither into
+              account). The value is ``NaN`` where the aperture does not
               overlap the data.
 
             - ``flags`` : `~numpy.ndarray`

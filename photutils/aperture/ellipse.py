@@ -211,7 +211,7 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If either axis (``a`` or ``b``) is negative.
+        If either axis (``a`` or ``b``) is not positive.
 
     Examples
     --------
@@ -414,12 +414,14 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If inner semimajor axis (``a_in``) is greater than outer semimajor
-        axis (``a_out``).
+        If the inner semimajor axis (``a_in``) is not less than the
+        outer semimajor axis (``a_out``), or if the inner semiminor axis
+        (``b_in``), when given, is not less than the outer semiminor
+        axis (``b_out``).
 
     ValueError : `ValueError`
-        If either the inner semimajor axis (``a_in``) or the outer semiminor
-        axis (``b_out``) is negative.
+        If any of the axes (``a_in``, ``a_out``, ``b_in``, or ``b_out``)
+        is not positive.
 
     Examples
     --------
