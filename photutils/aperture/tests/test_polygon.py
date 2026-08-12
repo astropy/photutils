@@ -884,26 +884,27 @@ class TestRegularPolygon:
 
         match = 'must be at least 2'
         with pytest.raises(ValueError, match=match):
-            PolygonAperture._from_star(xypos, 1, 5.0, 2.0)
+            PolygonAperture._from_star(xypos, 1, 5.0, inner_radius=2.0)
 
         match = 'must be a finite positive number'
         with pytest.raises(ValueError, match=match):
-            PolygonAperture._from_star(xypos, 5, -2.0, 2.0)
+            PolygonAperture._from_star(xypos, 5, -2.0, inner_radius=2.0)
         with pytest.raises(ValueError, match=match):
-            PolygonAperture._from_star(xypos, 5, 5.0, -2.0)
+            PolygonAperture._from_star(xypos, 5, 5.0, inner_radius=-2.0)
 
         match = 'inner_radius must be less than outer_radius'
         with pytest.raises(ValueError, match=match):
-            PolygonAperture._from_star(xypos, 5, 5.0, 6.0)
+            PolygonAperture._from_star(xypos, 5, 5.0, inner_radius=6.0)
 
         match = 'optimal_shape and collinear_edges cannot both be True'
         with pytest.raises(ValueError, match=match):
-            PolygonAperture._from_star(xypos, 5, 5.0, 2.0, optimal_shape=True,
+            PolygonAperture._from_star(xypos, 5, 5.0, inner_radius=2.0,
+                                       optimal_shape=True,
                                        collinear_edges=True)
 
         match = 'collinear_edges requires n_spikes'
         with pytest.raises(ValueError, match=match):
-            PolygonAperture._from_star(xypos, 4, 3.0, 2.0,
+            PolygonAperture._from_star(xypos, 4, 3.0, inner_radius=2.0,
                                        collinear_edges=True)
 
         match = 'inner_radius must be provided'
@@ -914,12 +915,13 @@ class TestRegularPolygon:
         outer_radius = 5.0
         inner_radius = 2.0
         aper = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
-                                          inner_radius)
+                                          inner_radius=inner_radius)
         phot = AperturePhotometry(data, aper, method='exact')
         assert_allclose(phot.flux, aper.area)
 
         aper1 = PolygonAperture._from_star(xypos, n_spikes, outer_radius,
-                                           inner_radius, theta=10 * u.deg)
+                                           inner_radius=inner_radius,
+                                           theta=10 * u.deg)
         phot = AperturePhotometry(data, aper1, method='exact')
         assert_allclose(phot.flux, aper1.area)
 
