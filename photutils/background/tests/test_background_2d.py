@@ -675,12 +675,12 @@ class TestBackground2D:
         match = 'data and mask must have the same shape'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (25, 25), filter_size=(1, 1),
-                         mask=np.zeros((2, 2)))
+                         mask=np.zeros((2, 2), dtype=bool))
 
         match = 'mask must be a 2D array'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (25, 25), filter_size=(1, 1),
-                         mask=np.zeros((2, 2, 2)))
+                         mask=np.zeros((2, 2, 2), dtype=bool))
 
     def test_invalid_coverage_mask(self, test_data):
         """
@@ -690,12 +690,24 @@ class TestBackground2D:
         match = 'data and coverage_mask must have the same shape'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (25, 25), filter_size=(1, 1),
-                         coverage_mask=np.zeros((2, 2)))
+                         coverage_mask=np.zeros((2, 2), dtype=bool))
 
         match = 'coverage_mask must be a 2D array'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (25, 25), filter_size=(1, 1),
-                         coverage_mask=np.zeros((2, 2, 2)))
+                         coverage_mask=np.zeros((2, 2, 2), dtype=bool))
+
+    @pytest.mark.parametrize('name', ['mask', 'coverage_mask'])
+    @pytest.mark.parametrize('dtype', [float, int])
+    def test_invalid_mask_dtype(self, name, dtype, test_data):
+        """
+        Test that an error is raised if the mask or coverage_mask is
+        not a boolean array.
+        """
+        mask = np.zeros(test_data.shape, dtype=dtype)
+        match = f'{name} must be a boolean array'
+        with pytest.raises(TypeError, match=match):
+            Background2D(test_data, (25, 25), **{name: mask})
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_meshes(self, test_data):

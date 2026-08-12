@@ -210,6 +210,12 @@ Bug Fixes
     pixels was excluded, and ``exclude_percentile=0`` excluded all
     boxes, even fully unmasked ones. [#2363]
 
+  - ``Background2D`` now raises a clear ``TypeError`` if the input
+    ``mask`` or ``coverage_mask`` is not a boolean array. Previously,
+    a non-boolean ``coverage_mask`` raised a cryptic ``IndexError``
+    (or could silently select the wrong pixels) when the background
+    map was computed. [#2363]
+
 - ``photutils.detection``
 
   - Fixed ``DAOStarFinder`` and ``IRAFStarFinder`` ``orientation``

@@ -192,7 +192,10 @@ class Background2D:
                  bkg_estimator=None, bkg_rms_estimator=None,
                  interpolator=None):
 
-        if isinstance(data, (u.Quantity, NDData)):  # includes CCDData
+        if isinstance(data, u.Quantity):
+            self._unit = data.unit
+            data = data.value
+        elif isinstance(data, NDData):  # includes CCDData
             self._unit = data.unit
             data = data.data
         else:
@@ -203,7 +206,8 @@ class Background2D:
         self._data = self._validate_array(data, 'data', shape=False)
         self._data_dtype = self._data.dtype
         self._data_shape = self._data.shape
-        if np.all(~np.isfinite(self._data)):
+        nonfinite_mask = ~np.isfinite(self._data)
+        if np.all(nonfinite_mask):
             msg = ('Input data contains all non-finite (NaN or infinity) '
                    'values. Cannot compute a background.')
             raise ValueError(msg)
@@ -272,7 +276,7 @@ class Background2D:
         # arrays and to keep the memory usage minimal
         (self._bkg_stats,
          self._bkgrms_stats,
-         self._n_good) = self._calculate_stats()
+         self._n_good) = self._calculate_stats(nonfinite_mask)
 
         # This is used to selectively filter the low-resolution maps
         self._min_bkg_stats = nanmin(self._bkg_stats)
@@ -298,10 +302,8 @@ class Background2D:
 
         mask_repr = None if not self._has_mask else data_repr
 
-        if 'coverage_mask' in self.__dict__ and self.coverage_mask is None:
-            coverage_mask_repr = None
-        else:
-            coverage_mask_repr = data_repr
+        coverage_mask_repr = (None if self.coverage_mask is None
+                              else data_repr)
 
         overrides = {'data': data_repr, 'mask': mask_repr,
                      'coverage_mask': coverage_mask_repr}
@@ -324,6 +326,10 @@ class Background2D:
             array = None
         if array is not None:
             array = np.asanyarray(array)
+            if (name in ('mask', 'coverage_mask')
+                    and array.dtype != bool):
+                msg = f'{name} must be a boolean array'
+                raise TypeError(msg)
             if array.ndim != 2:
                 msg = f'{name} must be a 2D array'
                 raise ValueError(msg)
@@ -489,10 +495,16 @@ class Background2D:
 
         return bkg, bkgrms, n_good
 
-    def _calculate_stats(self):
+    def _calculate_stats(self, nonfinite_mask):
         """
         Calculate the background and background RMS statistics in each
         box.
+
+        Parameters
+        ----------
+        nonfinite_mask : 2D bool `~numpy.ndarray`
+            A mask of the non-finite (NaN or infinity) values in the
+            input data.
 
         Returns
         -------
@@ -511,7 +523,7 @@ class Background2D:
 
         # Automatically mask non-finite values that aren't already
         # masked and combine all masks
-        mask = self._combine_all_masks(~np.isfinite(self._data))
+        mask = self._combine_all_masks(nonfinite_mask)
 
         self._box_n_pixels = np.prod(self.box_size)
         n_boxes = self._data.shape // self.box_size
