@@ -63,6 +63,10 @@ FLAG_COL_UNCORRECTED = 5
 FLAG_COL_VALID = 6
 FLAG_COL_BBOX_CLIPPED = 7
 
+# The total number of ``flag_counts`` columns. Every producer of a
+# per-source flag-count array must allocate this many columns
+N_FLAG_COLS = 8
+
 
 def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                         const unsigned char[:, ::1] mask,
@@ -256,7 +260,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     areas_arr = np.full(n_src, np.nan)
     overlap_arr = np.zeros(n_src, dtype=np.uint8)
     starts_arr = np.zeros(n_src, dtype=np.intp)
-    fcounts_arr = np.zeros((n_src, 8), dtype=np.intp)
+    fcounts_arr = np.zeros((n_src, N_FLAG_COLS), dtype=np.intp)
     cdef double[::1] sums = sums_arr
     cdef double[::1] sum_vars = vars_arr
     cdef double[::1] areas = areas_arr

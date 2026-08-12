@@ -23,7 +23,7 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_NONFINITE_ERROR,
                                                   FLAG_COL_SEG,
                                                   FLAG_COL_UNCORRECTED,
-                                                  FLAG_COL_VALID,
+                                                  FLAG_COL_VALID, N_FLAG_COLS,
                                                   batch_aperture_sums)
 from photutils.aperture._common import (batch_inputs_supported,
                                         batch_mask_plane,
@@ -775,7 +775,7 @@ class PixelAperture(Aperture):
         aperture_sums = []
         aperture_sum_errs = []
         areas = []
-        flag_counts = np.zeros((n_src, 8), dtype=np.intp)
+        flag_counts = np.zeros((n_src, N_FLAG_COLS), dtype=np.intp)
         overlap = np.zeros(n_src, dtype=bool)
         with warnings.catch_warnings():
             # Ignore multiplication with non-finite data values

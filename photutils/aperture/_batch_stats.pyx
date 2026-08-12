@@ -21,6 +21,8 @@ free-threaded Python builds.
 
 import numpy as np
 
+from photutils.aperture._batch_photometry import N_FLAG_COLS
+
 from photutils.aperture._batch_overlap cimport (
     _CIRCLE, _CIRCULAR_ANNULUS, _ELLIPSE, _ELLIPTICAL_ANNULUS, _POLYGON,
     _RECTANGLE, _RECTANGULAR_ANNULUS, _circle_pixel_frac,
@@ -330,7 +332,7 @@ def batch_aperture_gather(const double[:, ::1] data,
     starts_arr = np.zeros(n_src, dtype=np.intp)
     counts_arr = np.zeros(n_src, dtype=np.intp)
     overlap_arr = np.zeros(n_src, dtype=np.uint8)
-    fcounts_arr = np.zeros((n_src, 8), dtype=np.intp)
+    fcounts_arr = np.zeros((n_src, N_FLAG_COLS), dtype=np.intp)
     cdef Py_ssize_t[::1] starts = starts_arr
     cdef Py_ssize_t[::1] counts = counts_arr
     cdef unsigned char[::1] overlap = overlap_arr
