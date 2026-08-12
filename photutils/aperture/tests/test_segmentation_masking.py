@@ -97,6 +97,13 @@ class TestProcessSegmentationInputs:
             process_segmentation_inputs(segm, [1, 2], 'mask', [(21, 21)],
                                         data.shape)
 
+    def test_labels_not_1d(self):
+        data, segm = make_scene()
+        match = 'labels must be a 1D array'
+        with pytest.raises(ValueError, match=match):
+            process_segmentation_inputs(segm, [[1, 2]], 'mask', [(21, 21)],
+                                        data.shape)
+
     def test_labels_required(self):
         data, segm = make_scene()
         match = 'labels must be input when segmentation_image is input'

@@ -341,6 +341,17 @@ class TestToTable:
         assert 'aperture_photometry_args' in tbl.meta
         assert tbl.meta['aperture'] == 'CircularAperture'
 
+    def test_sky_center_requires_wcs(self, data):
+        """
+        Test that requesting the sky_center column without a WCS raises
+        a clear error.
+        """
+        aper = CircularAperture((150, 25), 8)
+        phot = AperturePhotometry(data, aper)
+        match = "the 'sky_center' column requires a WCS"
+        with pytest.raises(ValueError, match=match):
+            phot.to_table(columns=['id', 'sky_center'])
+
 
 class TestFlagsAndArea:
     def test_area_matches_area_overlap(self):
@@ -688,6 +699,34 @@ class TestInputValidation:
             AperturePhotometry(data, aper, mask_method='invalid')
         with pytest.raises(ValueError, match=match):
             ApertureStats(data, aper, mask_method='invalid')
+
+    @pytest.mark.parametrize('apertures', [[], (), np.array([])])
+    def test_empty_aperture_list(self, apertures):
+        """
+        Test that an empty aperture list is reported at construction.
+        """
+        data = np.ones((11, 11))
+        match = 'apertures must not be empty'
+        with pytest.raises(ValueError, match=match):
+            AperturePhotometry(data, apertures)
+
+    def test_labels_not_1d(self):
+        """
+        Test that a 2D labels array is reported at construction rather
+        than failing later in the batch driver.
+        """
+        data = np.ones((11, 11))
+        segm = np.zeros(data.shape, dtype=int)
+        segm[4:7, 4:7] = 1
+        aper = CircularAperture((5, 5), r=3)
+        match = 'labels must be a 1D array'
+        with pytest.raises(ValueError, match=match):
+            AperturePhotometry(data, aper, segmentation_image=segm,
+                               labels=np.array([[1, 2]]),
+                               mask_method='mask')
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data, aper, segmentation_image=segm,
+                          labels=np.array([[1, 2]]), mask_method='mask')
 
 
 class TestSegmentationAttributes:

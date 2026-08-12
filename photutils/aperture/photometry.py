@@ -213,6 +213,9 @@ class AperturePhotometry:
         if not isinstance(apertures, (list, tuple, np.ndarray)):
             single_aperture = True
             apertures = (apertures,)
+        elif len(apertures) == 0:
+            msg = 'apertures must not be empty'
+            raise ValueError(msg)
         self._single_aperture = single_aperture
 
         # Create table metadata using the input apertures, not the
@@ -472,7 +475,8 @@ class AperturePhotometry:
         Raises
         ------
         ValueError
-            If any name in ``columns`` is not a valid column name.
+            If any name in ``columns`` is not a valid column name, or if
+            ``'sky_center'`` is requested but no WCS was input.
         """
         allowed_columns = ('id', 'x_center', 'y_center', 'sky_center',
                            'flux', 'flux_err', 'area', 'flags')
@@ -480,6 +484,12 @@ class AperturePhotometry:
             table_columns = self.default_columns
         else:
             table_columns = validate_table_columns(columns, allowed_columns)
+
+        if ('sky_center' in table_columns
+                and self._array('sky_center') is None):
+            msg = ("the 'sky_center' column requires a WCS, which must "
+                   'be defined by the input data or the wcs keyword')
+            raise ValueError(msg)
 
         tbl = QTable()
         tbl.meta.update(self.meta)
