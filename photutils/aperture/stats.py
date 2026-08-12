@@ -83,7 +83,10 @@ _DEPRECATED_ATTRIBUTES: dict = {
 
 # Public attributes that are never collapsed to a scalar for a scalar
 # instance because they describe the whole object rather than a single
-# per-source value (see ``ApertureStats.__getattribute__``).
+# per-source value (see ``ApertureStats.__getattribute__``). Any new
+# public attribute that is a list, tuple, ndarray, or SkyCoord but is
+# not a per-source value must be added here, otherwise a length-1 value
+# will be silently collapsed to its first element for a scalar instance.
 _SCALAR_EXCLUDE = frozenset({'default_columns', 'isscalar', 'labels',
                              'n_apertures', 'properties',
                              'segmentation_image'})
@@ -320,7 +323,7 @@ class ApertureStats:
 
         self._data = validate_array(data, 'data')
         self._data_unit = unit
-        self._input_aperture = self._validate_aperture(aperture)
+        self._validate_aperture(aperture)
         aperture_meta = _aperture_metadata(aperture)  # use input aperture
 
         if isinstance(aperture, SkyAperture) and wcs is None:
@@ -533,9 +536,7 @@ class ApertureStats:
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
-        with np.printoptions(threshold=25, edgeitems=5):
-            fmt = [f'Length: {self.n_apertures}']
-        return f'{cls_name}\n' + '\n'.join(fmt)
+        return f'{cls_name}\nLength: {self.n_apertures}'
 
     def __repr__(self):
         return self.__str__()

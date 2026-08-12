@@ -38,7 +38,10 @@ _DEPRECATED_COLUMNS: dict = {
 # instance because they are not per-position output values (see
 # ``AperturePhotometry.__getattribute__``). ``segmentation_image`` and
 # ``labels`` are the inputs echoed back to the user, and the others
-# describe the whole object.
+# describe the whole object. Any new public attribute that is a list,
+# tuple, ndarray, or SkyCoord but is not a per-position value must be
+# added here, otherwise a length-1 value will be silently collapsed to
+# its first element for a scalar instance.
 _SCALAR_EXCLUDE = frozenset({'default_columns', 'isscalar', 'labels',
                              'n_positions', 'segmentation_image'})
 
