@@ -53,7 +53,7 @@ class Background2D:
 
     Parameters
     ----------
-    data : array_like or `~astropy.nddata.NDData`
+    data : 2D `~numpy.ndarray` or `~astropy.nddata.NDData`
         The 2D array from which to estimate the background and/or
         background RMS map.
 
@@ -218,7 +218,7 @@ class Background2D:
 
         # box_size cannot be larger than the data array size
         self.box_size = as_pair('box_size', box_size, lower_bound=(0, 0),
-                                upper_bound=data.shape)
+                                upper_bound=self._data_shape)
 
         self.fill_value = fill_value
         if exclude_percentile < 0 or exclude_percentile > 100:
