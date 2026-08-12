@@ -374,7 +374,7 @@ class RectangularAperture(_RotatableApertureMixin, PixelAperture):
         """
         offsets = _rectangular_polygon_offsets(
             0.5 * self.w, 0.5 * self.h, self.theta.to_value(u.radian))
-        return PolygonAperture._from_convex_offsets(self.positions, offsets)
+        return PolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
 class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
@@ -715,7 +715,7 @@ class SkyRectangularAperture(_RotatableApertureMixin, SkyAperture):
         offsets = _rectangular_polygon_offsets(
             0.5 * self.h.to_value(unit), 0.5 * self.w.to_value(unit),
             self.theta.to_value(u.radian)) * unit
-        return SkyPolygonAperture._from_convex_offsets(self.positions, offsets)
+        return SkyPolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
 class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):

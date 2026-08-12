@@ -442,7 +442,7 @@ class PolygonAperture(PixelAperture):
         self.vertex_offsets = vertex_offsets
 
     @classmethod
-    def _from_convex_offsets(cls, positions, offsets):
+    def _from_simple_offsets(cls, positions, offsets):
         """
         Construct a `PolygonAperture` from vertex offsets that are
         known to define a simple polygon, skipping the ``O(n^2)``
@@ -491,14 +491,17 @@ class PolygonAperture(PixelAperture):
                    f'got {verts.shape}')
             raise ValueError(msg)
 
-        # Validate before computing the centroid: the area-weighted
+        # Validate before computing the centroid. The area-weighted
         # centroid formula divides by the polygon area, which is zero
-        # for a degenerate (collinear or coincident) polygon.
+        # for a degenerate (collinear or coincident) polygon. The
+        # offsets are a pure translation of the validated vertices, so
+        # the O(n^2) self-intersection check does not need to be
+        # repeated on them.
         verts = _validate_simple_polygon(verts, name='vertices')
         center = _vertices_centroid(verts)
         offsets = verts - center
 
-        return cls(tuple(center), offsets)
+        return cls._from_simple_offsets(tuple(center), offsets)
 
     @classmethod
     def from_regular_polygon(cls, positions, n_vertices, radius, *, theta=0.0):
@@ -1043,7 +1046,7 @@ class SkyPolygonAperture(SkyAperture):
         self.vertex_offsets = vertex_offsets
 
     @classmethod
-    def _from_convex_offsets(cls, positions, offsets):
+    def _from_simple_offsets(cls, positions, offsets):
         """
         Construct a `SkyPolygonAperture` from angular vertex offsets
         that are known to define a simple polygon, skipping the

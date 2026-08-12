@@ -286,7 +286,7 @@ class CircularAperture(PixelAperture):
             A polygon aperture that approximates the circle.
         """
         offsets = _circular_polygon_offsets(self.r, n_vertices)
-        return PolygonAperture._from_convex_offsets(self.positions, offsets)
+        return PolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
 class CircularAnnulus(PixelAperture):
@@ -542,7 +542,7 @@ class SkyCircularAperture(SkyAperture):
             A sky polygon aperture that approximates the circle.
         """
         offsets = _circular_polygon_offsets(self.r, n_vertices)
-        return SkyPolygonAperture._from_convex_offsets(self.positions,
+        return SkyPolygonAperture._from_simple_offsets(self.positions,
                                                        offsets)
 
 

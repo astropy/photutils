@@ -369,7 +369,7 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
         """
         offsets = _elliptical_polygon_offsets(
             self.a, self.b, self.theta.to_value(u.radian), n_vertices)
-        return PolygonAperture._from_convex_offsets(self.positions, offsets)
+        return PolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
 class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
@@ -701,7 +701,7 @@ class SkyEllipticalAperture(_RotatableApertureMixin, SkyAperture):
         offsets = _elliptical_polygon_offsets(
             self.a.to_value(unit), self.b.to_value(unit),
             self.theta.to_value(u.radian), n_vertices, swap_axes=True) * unit
-        return SkyPolygonAperture._from_convex_offsets(self.positions, offsets)
+        return SkyPolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
 class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
