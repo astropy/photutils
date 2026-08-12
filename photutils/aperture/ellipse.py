@@ -439,6 +439,7 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
     """
 
     _params = ('positions', 'a_in', 'a_out', 'b_in', 'b_out', 'theta')
+    _ordered_pairs = (('a_in', 'a_out'), ('b_in', 'b_out'))
     positions = PixelPositions('The center pixel position(s).')
     a_in = PositiveScalar('The inner semimajor axis in pixels.')
     a_out = PositiveScalar('The outer semimajor axis in pixels.')
@@ -450,10 +451,6 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, a_in, a_out, b_out, b_in=None, theta=0.0):
-        if not a_out > a_in:
-            msg = "'a_out' must be greater than 'a_in'"
-            raise ValueError(msg)
-
         self.positions = positions
         self.a_in = a_in
         self.a_out = a_out
@@ -461,9 +458,6 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
 
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
-        elif not b_out > b_in:
-            msg = "'b_out' must be greater than 'b_in'"
-            raise ValueError(msg)
         self.b_in = b_in
 
         self.theta = theta
@@ -756,6 +750,7 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
     """
 
     _params = ('positions', 'a_in', 'a_out', 'b_in', 'b_out', 'theta')
+    _ordered_pairs = (('a_in', 'a_out'), ('b_in', 'b_out'))
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     a_in = PositiveScalarAngle('The inner semimajor axis in angular units.')
     a_out = PositiveScalarAngle('The outer semimajor axis in angular units.')
@@ -767,10 +762,6 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, a_in, a_out, b_out, b_in=None,
                  theta=0.0 * u.deg):
-        if not a_out > a_in:
-            msg = "'a_out' must be greater than 'a_in'"
-            raise ValueError(msg)
-
         self.positions = positions
         self.a_in = a_in
         self.a_out = a_out
@@ -778,9 +769,6 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
 
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
-        elif not b_out > b_in:
-            msg = "'b_out' must be greater than 'b_in'"
-            raise ValueError(msg)
         self.b_in = b_in
 
         self.theta = theta

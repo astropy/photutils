@@ -334,15 +334,12 @@ class CircularAnnulus(PixelAperture):
     """
 
     _params = ('positions', 'r_in', 'r_out')
+    _ordered_pairs = (('r_in', 'r_out'),)
     positions = PixelPositions('The center pixel position(s).')
     r_in = PositiveScalar('The inner radius in pixels.')
     r_out = PositiveScalar('The outer radius in pixels.')
 
     def __init__(self, positions, r_in, r_out):
-        if not r_out > r_in:
-            msg = "'r_out' must be greater than 'r_in'"
-            raise ValueError(msg)
-
         self.positions = positions
         self.r_in = r_in
         self.r_out = r_out
@@ -578,15 +575,12 @@ class SkyCircularAnnulus(SkyAperture):
     """
 
     _params = ('positions', 'r_in', 'r_out')
+    _ordered_pairs = (('r_in', 'r_out'),)
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     r_in = PositiveScalarAngle('The inner radius in angular units.')
     r_out = PositiveScalarAngle('The outer radius in angular units.')
 
     def __init__(self, positions, r_in, r_out):
-        if not r_out > r_in:
-            msg = "'r_out' must be greater than 'r_in'"
-            raise ValueError(msg)
-
         self.positions = positions
         self.r_in = r_in
         self.r_out = r_out

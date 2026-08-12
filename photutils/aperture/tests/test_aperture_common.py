@@ -130,3 +130,44 @@ class BaseTestRotatedPixelAperture(BaseTestPixelAperture):
         """
         assert isinstance(self.aperture.theta, u.Quantity)
         assert self.aperture.theta.unit == u.rad
+
+
+class BaseTestAnnulusMutation:
+    """
+    Tests for the inner/outer parameter ordering invariants of annulus
+    apertures, mixed into the annulus test classes.
+    """
+
+    def test_ordered_pairs_mutation(self):
+        """
+        Test that reassigning a parameter of an inner/outer pair to a
+        value violating the ordering invariant raises a ValueError and
+        leaves the aperture unchanged.
+        """
+        aper = self.aperture.copy()
+        for inner, outer in aper._ordered_pairs:
+            inner_value = getattr(aper, inner)
+            outer_value = getattr(aper, outer)
+            match = f'{outer!r} must be greater than {inner!r}'
+            with pytest.raises(ValueError, match=match):
+                setattr(aper, inner, outer_value)
+            with pytest.raises(ValueError, match=match):
+                setattr(aper, inner, outer_value * 2)
+            with pytest.raises(ValueError, match=match):
+                setattr(aper, outer, inner_value / 2)
+            assert getattr(aper, inner) == inner_value
+            assert getattr(aper, outer) == outer_value
+
+    def test_ordered_pairs_valid_mutation(self):
+        """
+        Test that reassigning inner/outer pair parameters to values
+        satisfying the ordering invariant works.
+        """
+        aper = self.aperture.copy()
+        for inner, outer in aper._ordered_pairs:
+            new_outer = getattr(aper, outer) * 2
+            new_inner = getattr(aper, inner) * 1.5
+            setattr(aper, outer, new_outer)
+            setattr(aper, inner, new_inner)
+            assert getattr(aper, inner) == new_inner
+            assert getattr(aper, outer) == new_outer

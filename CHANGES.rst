@@ -190,6 +190,10 @@ Bug Fixes
     the data of the aperture mask it creates when a ``mask`` is input.
     [#2348]
 
+  - Fixed the annulus apertures so that reassigning an inner or outer
+    shape parameter after construction validates the inner < outer
+    invariant. [#2362]
+
 - ``photutils.detection``
 
   - Fixed ``DAOStarFinder`` and ``IRAFStarFinder`` ``orientation``

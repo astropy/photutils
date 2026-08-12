@@ -448,6 +448,7 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
     """
 
     _params = ('positions', 'w_in', 'w_out', 'h_in', 'h_out', 'theta')
+    _ordered_pairs = (('w_in', 'w_out'), ('h_in', 'h_out'))
     positions = PixelPositions('The center pixel position(s).')
     w_in = PositiveScalar('The inner full width in pixels.')
     w_out = PositiveScalar('The outer full width in pixels.')
@@ -459,10 +460,6 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.0):
-        if not w_out > w_in:
-            msg = "'w_out' must be greater than 'w_in'"
-            raise ValueError(msg)
-
         self.positions = positions
         self.w_in = w_in
         self.w_out = w_out
@@ -470,9 +467,6 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
 
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
-        elif not h_out > h_in:
-            msg = "'h_out' must be greater than 'h_in'"
-            raise ValueError(msg)
         self.h_in = h_in
 
         self.theta = theta
@@ -777,6 +771,7 @@ class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
     """
 
     _params = ('positions', 'w_in', 'w_out', 'h_in', 'h_out', 'theta')
+    _ordered_pairs = (('w_in', 'w_out'), ('h_in', 'h_out'))
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     w_in = PositiveScalarAngle('The inner full width in angular units.')
     w_out = PositiveScalarAngle('The outer full width in angular units.')
@@ -788,10 +783,6 @@ class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w_in, w_out, h_out, h_in=None,
                  theta=0.0 * u.deg):
-        if not w_out > w_in:
-            msg = "'w_out' must be greater than 'w_in'"
-            raise ValueError(msg)
-
         self.positions = positions
         self.w_in = w_in
         self.w_out = w_out
@@ -799,9 +790,6 @@ class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
 
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
-        elif not h_out > h_in:
-            msg = "'h_out' must be greater than 'h_in'"
-            raise ValueError(msg)
         self.h_in = h_in
 
         self.theta = theta

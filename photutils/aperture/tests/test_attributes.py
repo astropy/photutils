@@ -366,6 +366,25 @@ class TestPositiveScalar:
         with pytest.raises(ValueError, match=match):
             obj.r = np.array([1.0, 2.0])
 
+    def test_non_numeric_error(self):
+        """
+        Test that a non-numeric scalar (e.g., a string) raises
+        TypeError with the intended message.
+        """
+        obj = MockPositiveScalar()
+        match = "'r' must be a positive scalar"
+        with pytest.raises(TypeError, match=match):
+            obj.r = 'abc'
+
+    def test_nan_error(self):
+        """
+        Test that NaN raises ValueError.
+        """
+        obj = MockPositiveScalar()
+        match = "'r' must be a positive scalar"
+        with pytest.raises(ValueError, match=match):
+            obj.r = np.nan
+
 
 class TestScalarAngle:
     """
@@ -447,6 +466,15 @@ class TestPositiveScalarAngle:
         with pytest.raises(ValueError, match=match):
             # Single-element array passes > 0 check but fails isscalar
             obj.angle = np.array([5.0]) * u.arcsec
+
+    def test_nan_error(self):
+        """
+        Test that a NaN angle raises ValueError.
+        """
+        obj = MockPositiveScalarAngle()
+        match = "'angle' must be greater than zero"
+        with pytest.raises(ValueError, match=match):
+            obj.angle = np.nan * u.arcsec
 
     def test_non_angle_units_error(self):
         """

@@ -17,7 +17,7 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
                                           SkyRectangularAnnulus,
                                           SkyRectangularAperture)
 from photutils.aperture.tests.test_aperture_common import (
-    BaseTestAperture, BaseTestRotatedPixelAperture)
+    BaseTestAnnulusMutation, BaseTestAperture, BaseTestRotatedPixelAperture)
 
 POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
 RA, DEC = np.transpose(POSITIONS)
@@ -43,7 +43,8 @@ class TestRectangularAperture(BaseTestRotatedPixelAperture):
             RectangularAperture(POSITIONS, w=10.0, h=radius, theta=np.pi / 2.0)
 
 
-class TestRectangularAnnulus(BaseTestRotatedPixelAperture):
+class TestRectangularAnnulus(BaseTestAnnulusMutation,
+                             BaseTestRotatedPixelAperture):
     aperture = RectangularAnnulus(POSITIONS, w_in=10.0, w_out=20.0, h_out=17,
                                   theta=np.pi / 3)
     copy_param = 'w_in'
@@ -57,7 +58,7 @@ class TestRectangularAnnulus(BaseTestRotatedPixelAperture):
             RectangularAnnulus(POSITIONS, w_in=radius, w_out=20.0, h_out=17,
                                theta=np.pi / 3)
 
-        match = "'w_out' must be greater than 'w_in'"
+        match = "'w_out' must be a positive scalar"
         with pytest.raises(ValueError, match=match):
             RectangularAnnulus(POSITIONS, w_in=10.0, w_out=radius, h_out=17,
                                theta=np.pi / 3)
@@ -81,6 +82,15 @@ class TestRectangularAnnulus(BaseTestRotatedPixelAperture):
             RectangularAnnulus(POSITIONS, w_in=10.0, w_out=20.0, h_out=5.0,
                                h_in=8.0, theta=np.pi / 3)
 
+    def test_w_in_greater_than_w_out(self):
+        """
+        Test that a ValueError is raised when w_in >= w_out.
+        """
+        match = "'w_out' must be greater than 'w_in'"
+        with pytest.raises(ValueError, match=match):
+            RectangularAnnulus(POSITIONS, w_in=10.0, w_out=8.0, h_out=5.0,
+                               theta=np.pi / 3)
+
 
 class TestSkyRectangularAperture(BaseTestAperture):
     aperture = SkyRectangularAperture(SKYCOORD, w=10.0 * UNIT, h=5.0 * UNIT,
@@ -102,7 +112,7 @@ class TestSkyRectangularAperture(BaseTestAperture):
                                    theta=30 * u.deg)
 
 
-class TestSkyRectangularAnnulus(BaseTestAperture):
+class TestSkyRectangularAnnulus(BaseTestAnnulusMutation, BaseTestAperture):
     aperture = SkyRectangularAnnulus(SKYCOORD, w_in=10.0 * UNIT,
                                      w_out=20.0 * UNIT, h_out=17.0 * UNIT,
                                      theta=60 * u.deg)
@@ -118,7 +128,7 @@ class TestSkyRectangularAnnulus(BaseTestAperture):
                                   w_out=20.0 * UNIT, h_out=17.0 * UNIT,
                                   theta=60 * u.deg)
 
-        match = "'w_out' must be greater than 'w_in'"
+        match = "'w_out' must be greater than zero"
         with pytest.raises(ValueError, match=match):
             SkyRectangularAnnulus(SKYCOORD, w_in=10.0 * UNIT,
                                   w_out=radius * UNIT, h_out=17.0 * UNIT,
@@ -145,6 +155,16 @@ class TestSkyRectangularAnnulus(BaseTestAperture):
             SkyRectangularAnnulus(SKYCOORD, w_in=10.0 * UNIT,
                                   w_out=20.0 * UNIT, h_out=5.0 * UNIT,
                                   h_in=8.0 * UNIT, theta=60 * u.deg)
+
+    def test_w_in_greater_than_w_out(self):
+        """
+        Test that a ValueError is raised when w_in >= w_out.
+        """
+        match = "'w_out' must be greater than 'w_in'"
+        with pytest.raises(ValueError, match=match):
+            SkyRectangularAnnulus(SKYCOORD, w_in=10.0 * UNIT,
+                                  w_out=8.0 * UNIT, h_out=5.0 * UNIT,
+                                  theta=60 * u.deg)
 
 
 class TestThetaQuantity:
