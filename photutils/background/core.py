@@ -429,14 +429,12 @@ class MMMBackground(ModeEstimatorBackground):
 @_insert_sigma_clip_doc
 class SExtractorBackground(BackgroundBase):
     """
-    Class to calculate the background in an array using the Source
-    Extractor algorithm.
+    Class to calculate the background in an array using the
+    SourceExtractor algorithm.
 
     The background is calculated using a mode estimator of the form
     ``(2.5 * median) - (1.5 * mean)``. If ``(mean - median) / std >
     0.3`` then the median is used instead.
-
-    .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
 
     Parameters
     ----------
@@ -615,10 +613,10 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
 
     .. math::
 
-        \sigma \approx \frac{{\textrm{{MAD}}}}{{\Phi^{{-1}}(3/4)}}
-            \approx 1.4826 \ \textrm{{MAD}}
+        \sigma \approx \frac{\textrm{MAD}}{\Phi^{-1}(3/4)}
+            \approx 1.4826 \ \textrm{MAD}
 
-    where :math:`\Phi^{{-1}}(P)` is the normal inverse cumulative
+    where :math:`\Phi^{-1}(P)` is the normal inverse cumulative
     distribution function evaluated at probability :math:`P = 3/4`.
 
     Parameters

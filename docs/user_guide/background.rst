@@ -205,6 +205,12 @@ keyword. The default is to perform sigma clipping with ``sigma=3``
 and ``maxiters=10``. Sigma clipping can be turned off by setting
 ``sigma_clip=None``.
 
+.. note::
+    `~astropy.stats.SigmaClip` instances store internal state while
+    clipping, so a single background or background RMS estimator
+    instance should not be called concurrently from multiple threads
+    when sigma clipping is enabled.
+
 After the background level has been determined in each of the boxes, the
 low-resolution background image can be median filtered, with a window
 of size of ``filter_size``, to suppress local under or over estimations
@@ -440,7 +446,6 @@ Finally, let's subtract the background from the image and plot it:
 
 .. doctest-skip::
 
-    >>> norm = ImageNormalize(stretch=SqrtStretch())
     >>> data_sub = data3 - bkg3.background
     >>> norm = simple_norm(data_sub, 'sqrt', percent=99.5)
     >>> fig, ax = plt.subplots()  # doctest: +SKIP

@@ -117,8 +117,8 @@ class Background2D:
         order. ``filter_size`` must be odd along both axes. A filter
         size of ``1`` (or ``(1, 1)``) means no filtering.
 
-    filter_threshold : int, optional
-        The threshold value for used for selective median filtering of
+    filter_threshold : float, optional
+        The threshold value used for selective median filtering of
         the low-resolution 2D background map. The median filter will
         be applied to only the background boxes with values larger
         than ``filter_threshold``. Set to `None` to filter all boxes
@@ -965,7 +965,7 @@ class Background2D:
 
         markersize : float, optional
             The box center marker size in ``points ** 2``
-            (typographical points are 1/72 inch) . The default is
+            (typographical points are 1/72 inch). The default is
             ``matplotlib.rcParams['lines.markersize'] ** 2``. If set to
             0, then the box center markers will not be plotted.
 

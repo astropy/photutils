@@ -153,7 +153,7 @@ class BkgZoomInterpolator(_BkgZoomInterpolator):
 
 
 @deprecated(since='3.0', message=('BkgIDWInterpolator is deprecated and will '
-                                  'be removed in a version 4.0.'))
+                                  'be removed in version 4.0.'))
 class BkgIDWInterpolator:
     """
     Class to generate a full-sized background and background RMS images
