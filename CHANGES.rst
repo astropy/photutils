@@ -107,6 +107,16 @@ New Features
     significantly speed up the background estimation for large
     images. [#2363]
 
+  - Significantly improved the performance of ``Background2D`` by
+    computing the sigma clipping and the box statistics in a single
+    pass in compiled code when the ``sigma_clip``, ``bkg_estimator``,
+    and ``bkg_rms_estimator`` inputs are among the standard supported
+    options. The combined kernel releases the GIL and composes with the
+    ``n_threads`` keyword. Unsupported inputs (e.g., custom estimator
+    callables or the biweight-based estimators) fall back to the
+    previous implementation and produce the same results as before.
+    [#2364]
+
 - ``photutils.detection``
 
   - Added validation of the ``StarFinderCatalogBase.to_table()``

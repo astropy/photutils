@@ -38,7 +38,7 @@ from photutils.geometry.rectangle_overlap cimport rect_vertices
 __all__ = ['batch_aperture_gather', 'batch_moments', 'batch_sort_values',
            'batch_order_stats', 'batch_mean_var', 'batch_mad',
            'batch_biweight', 'batch_gini', 'batch_sigma_clip_center',
-           'batch_sigma_clip_sum']
+           'batch_sigma_clip_stats', 'batch_sigma_clip_sum']
 
 
 cdef extern from "math.h" nogil:
@@ -1232,3 +1232,140 @@ def batch_sigma_clip_sum(const double[::1] sum_values,
                 var_aper[k] = s_var
 
     return (sum_arr, var_arr, area_arr)
+
+
+def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
+                           double sigma_upper, Py_ssize_t maxiters,
+                           int cenfunc_code, int stdfunc_code,
+                           bint do_clip, bint compute_mad):
+    """
+    Compute fused sigma-clipped statistics for each row of a 2D array.
+
+    For each row, the finite values are sigma-clipped following
+    `astropy.stats.SigmaClip` (no-axis, no-grow case; see
+    ``_sigma_clip_bounds``), and the mean, median, and population
+    standard deviation of the surviving values are computed directly,
+    without generating a clipped copy of the input. Optionally, the MAD
+    standard deviation (`astropy.stats.mad_std`) is also computed.
+
+    Each row must be ascending-sorted with any NaN values placed last,
+    as done by `numpy.sort`. Sorting is delegated to the caller because
+    ``numpy.sort`` is much faster than a comparator-based C ``qsort``
+    for the large rows this function is designed for. The input array is
+    not modified.
+
+    The rows are typically the flattened pixels of the boxes of a
+    regular grid (e.g., the `~photutils.background.Background2D`
+    low-resolution mesh), with NaN values marking masked pixels.
+
+    Parameters
+    ----------
+    sorted_data : 2D ndarray of float64
+        The row data, ascending-sorted along the last axis with NaN
+        values last. NaN values are ignored.
+
+    sigma_lower, sigma_upper : float
+        The lower and upper clipping limits in units of the scale.
+
+    maxiters : int
+        The maximum number of clipping iterations, or a negative value
+        to iterate until convergence.
+
+    cenfunc_code, stdfunc_code : int
+        The center and scale function codes (``0`` = median/std,
+        ``1`` = mean/mad_std).
+
+    do_clip : bool
+        Whether to apply sigma clipping. If False, the statistics are
+        computed from all finite values and the clipping parameters
+        are ignored.
+
+    compute_mad : bool
+        Whether to compute the MAD standard deviation. If False, the
+        returned ``madstd`` values are all NaN.
+
+    Returns
+    -------
+    mean, median, std, madstd : 1D ndarray of float64
+        The per-row statistics of the surviving values. NaN for rows
+        with no surviving values.
+
+    n_kept : 1D ndarray of intp
+        The per-row number of surviving values.
+    """
+    cdef Py_ssize_t n_rows = sorted_data.shape[0]
+    cdef Py_ssize_t n_cols = sorted_data.shape[1]
+
+    mean_arr = np.full(n_rows, np.nan, dtype=np.float64)
+    median_arr = np.full(n_rows, np.nan, dtype=np.float64)
+    std_arr = np.full(n_rows, np.nan, dtype=np.float64)
+    madstd_arr = np.full(n_rows, np.nan, dtype=np.float64)
+    n_kept_arr = np.zeros(n_rows, dtype=np.intp)
+    cdef double[::1] mean_out = mean_arr
+    cdef double[::1] median_out = median_arr
+    cdef double[::1] std_out = std_arr
+    cdef double[::1] madstd_out = madstd_arr
+    cdef Py_ssize_t[::1] n_kept_out = n_kept_arr
+
+    if n_rows == 0 or n_cols == 0:
+        return mean_arr, median_arr, std_arr, madstd_arr, n_kept_arr
+
+    # Scratch buffer for the MAD computations
+    work_arr = np.empty(n_cols, dtype=np.float64)
+    cdef double[::1] w = work_arr
+
+    cdef Py_ssize_t k, i, n, lo, hi, cnt
+    cdef double v, minv, maxv, mu, ss, med
+    cdef double *s
+
+    with nogil:
+        for k in range(n_rows):
+            # The finite values are s[0:n]; NaN values sort last
+            n = n_cols
+            while n > 0:
+                v = sorted_data[k, n - 1]
+                if v == v:  # not NaN
+                    break
+                n -= 1
+            if n == 0:
+                continue
+            s = &sorted_data[k, 0]
+
+            lo = 0
+            hi = n
+            if do_clip:
+                _sigma_clip_bounds(s, &w[0], n, sigma_lower,
+                                   sigma_upper, maxiters, cenfunc_code,
+                                   stdfunc_code, &minv, &maxv)
+                # A value survives if not (v < minv) and not
+                # (v > maxv), so NaN bounds keep every value, matching
+                # astropy's degenerate empty-set behavior
+                while lo < n and s[lo] < minv:
+                    lo += 1
+                while hi > lo and s[hi - 1] > maxv:
+                    hi -= 1
+            cnt = hi - lo
+            if cnt == 0:
+                continue
+
+            mu = 0.0
+            for i in range(lo, hi):
+                mu += s[i]
+            mu /= cnt
+            ss = 0.0
+            for i in range(lo, hi):
+                ss += (s[i] - mu) * (s[i] - mu)
+            med = _median_sorted(&s[lo], cnt)
+
+            mean_out[k] = mu
+            std_out[k] = sqrt(ss / cnt)
+            median_out[k] = med
+            n_kept_out[k] = cnt
+
+            if compute_mad:
+                for i in range(lo, hi):
+                    w[i - lo] = fabs(s[i] - med)
+                qsort(&w[0], <size_t>cnt, sizeof(double), &_cmp_double)
+                madstd_out[k] = _median_sorted(&w[0], cnt) * _MAD_STD_SCALE
+
+    return mean_arr, median_arr, std_arr, madstd_arr, n_kept_arr

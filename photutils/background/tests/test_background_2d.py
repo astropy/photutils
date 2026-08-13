@@ -12,9 +12,12 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
-from photutils.background import (Background2D, BkgZoomInterpolator,
+from photutils.background import (Background2D, BiweightLocationBackground,
+                                  BiweightScaleBackgroundRMS,
+                                  BkgZoomInterpolator, MADStdBackgroundRMS,
                                   MeanBackground, MedianBackground,
-                                  SExtractorBackground)
+                                  MMMBackground, ModeEstimatorBackground,
+                                  SExtractorBackground, StdBackgroundRMS)
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
 
 
@@ -1053,3 +1056,213 @@ def test_deprecations(test_data):
         assert bkg.npixels_mesh.shape == (4, 4)
     with pytest.warns(AstropyDeprecationWarning, match=match):
         assert bkg.npixels_map.shape == data.shape
+
+
+def _make_generic_background2d(monkeypatch, *args, **kwargs):
+    """
+    Create a Background2D instance that uses the generic (non-fused)
+    box-statistics path.
+    """
+    monkeypatch.setattr(Background2D, '_make_box_stats_spec',
+                        lambda _self: None)
+    bkg = Background2D(*args, **kwargs)
+    monkeypatch.undo()
+    assert bkg._box_stats_spec is None
+    return bkg
+
+
+class TestFastBoxStatistics:
+    """
+    Tests for the fused sigma-clipping and box-statistics fast path.
+
+    The fast path must produce the same results as the generic path
+    based on `astropy.stats.SigmaClip` and the estimator callables.
+    """
+
+    @classmethod
+    def setup_class(cls):
+        rng = np.random.default_rng(0)
+        # Shape that is not an integer multiple of the box size, so
+        # the extra row, column, and corner boxes are also exercised
+        data = rng.normal(1.0, 0.5, (121, 289))
+        data[10:40, 10:40] += 100.0  # outliers to clip
+        data[50:75, 50:75] = 7.0  # constant boxes (zero std)
+        data[0:25, 250:275] = rng.exponential(10.0, (25, 25))  # skewed
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[80:105, 80:105] = True  # fully masked box
+        mask[0:10, 25:50] = True  # partially masked boxes
+        cls.data = data
+        cls.mask = mask
+
+    def _compare_paths(self, monkeypatch, **kwargs):
+        """
+        Compare the fast and generic box-statistics paths.
+        """
+        kwargs = {'filter_size': (1, 1), 'exclude_percentile': 100.0,
+                  'mask': self.mask, **kwargs}
+        bkg_fast = Background2D(self.data, (25, 25), **kwargs)
+        assert bkg_fast._box_stats_spec is not None
+        bkg_generic = _make_generic_background2d(monkeypatch, self.data,
+                                                 (25, 25), **kwargs)
+        assert_allclose(bkg_fast.background_mesh,
+                        bkg_generic.background_mesh, rtol=1e-10)
+        assert_allclose(bkg_fast.background_rms_mesh,
+                        bkg_generic.background_rms_mesh, rtol=1e-10)
+        assert_equal(bkg_fast.n_pixels_mesh, bkg_generic.n_pixels_mesh)
+
+    @pytest.mark.parametrize('bkg_estimator', [
+        MeanBackground(), MedianBackground(),
+        ModeEstimatorBackground(median_factor=2.5, mean_factor=1.5),
+        MMMBackground(), SExtractorBackground()])
+    @pytest.mark.parametrize('rms_estimator', [StdBackgroundRMS(),
+                                               MADStdBackgroundRMS()])
+    def test_estimators_match_generic(self, bkg_estimator, rms_estimator,
+                                      monkeypatch):
+        """
+        Test that all supported estimator combinations match the
+        generic path.
+        """
+        self._compare_paths(monkeypatch, bkg_estimator=bkg_estimator,
+                            bkg_rms_estimator=rms_estimator)
+
+    @pytest.mark.parametrize('sigma_clip', [
+        None,
+        SigmaClip(sigma=2.0, maxiters=5),
+        SigmaClip(sigma_lower=2.0, sigma_upper=4.0, maxiters=None),
+        SigmaClip(sigma=3.0, maxiters=10, cenfunc='mean'),
+        SigmaClip(sigma=3.0, maxiters=10, stdfunc='mad_std'),
+        SigmaClip(sigma=2.5, maxiters=1)])
+    def test_sigma_clip_variants_match_generic(self, sigma_clip,
+                                               monkeypatch):
+        """
+        Test that all supported sigma_clip variants match the generic
+        path.
+        """
+        self._compare_paths(monkeypatch, sigma_clip=sigma_clip)
+
+    def test_fast_path_used_by_default(self, test_data):
+        """
+        Test that the fast path is used with the default inputs.
+        """
+        bkg = Background2D(test_data, (25, 25))
+        spec = bkg._box_stats_spec
+        assert spec is not None
+        assert spec.bkg_kind == 'sextractor'
+        assert spec.rms_kind == 'std'
+        assert spec.do_clip
+
+    def test_unsupported_inputs_fall_back(self, test_data):
+        """
+        Test that unsupported sigma_clip and estimator inputs fall
+        back to the generic path and still produce finite results.
+        """
+
+        class UnknownClip:
+            def __call__(self, data, **_kwargs):
+                return np.asarray(data)
+
+        class MySExtractorBackground(SExtractorBackground):
+            pass
+
+        def bkg_func(data, *, axis=None):
+            return np.nanmean(data, axis=axis)
+
+        unsupported = [
+            {'sigma_clip': UnknownClip()},
+            {'sigma_clip': SigmaClip(cenfunc=np.nanmedian)},
+            {'sigma_clip': SigmaClip(stdfunc=np.nanstd)},
+            {'sigma_clip': SigmaClip(grow=1.0)},
+            {'bkg_estimator': BiweightLocationBackground()},
+            {'bkg_estimator': MySExtractorBackground()},
+            {'bkg_estimator': bkg_func},
+            {'bkg_rms_estimator': BiweightScaleBackgroundRMS()},
+        ]
+        for kwargs in unsupported:
+            bkg = Background2D(test_data, (25, 25), **kwargs)
+            assert bkg._box_stats_spec is None
+            assert np.all(np.isfinite(bkg.background_mesh))
+
+    def test_degenerate_clip_keeps_all(self, monkeypatch):
+        """
+        Test the degenerate case where sigma clipping converges to an
+        empty set.
+
+        Astropy then keeps every value (NaN bounds), and the fast path
+        must match.
+        """
+        data = np.ones((2, 4))
+        data[0:2, 2:4] = [[0.0, 0.0], [100.0, 100.0]]
+        sigma_clip = SigmaClip(sigma=0.1, maxiters=10)
+        kwargs = {'box_size': (2, 2), 'filter_size': (1, 1),
+                  'exclude_percentile': 100.0, 'sigma_clip': sigma_clip}
+
+        bkg_fast = Background2D(data, **kwargs)
+        # The generic path (astropy's gufunc) emits a numpy
+        # RuntimeWarning for the NaN bound comparisons in this
+        # degenerate case. The fast path does not.
+        with np.errstate(invalid='ignore'):
+            bkg_generic = _make_generic_background2d(monkeypatch, data,
+                                                     **kwargs)
+        assert_equal(bkg_fast.n_pixels_mesh, bkg_generic.n_pixels_mesh)
+        assert bkg_fast.n_pixels_mesh[0, 1] == 4  # all values kept
+        assert_allclose(bkg_fast.background_mesh,
+                        bkg_generic.background_mesh, rtol=1e-10)
+
+    def test_float32_matches_generic(self, monkeypatch):
+        """
+        Test that float32 input uses the fast path, preserves the
+        dtype, and matches the generic path.
+        """
+        data = self.data.astype(np.float32)
+        bkg_fast = Background2D(data, (25, 25), filter_size=(1, 1),
+                                exclude_percentile=100.0)
+        assert bkg_fast._box_stats_spec is not None
+        assert bkg_fast.background_mesh.dtype == np.float32
+        bkg_generic = _make_generic_background2d(
+            monkeypatch, data, (25, 25), filter_size=(1, 1),
+            exclude_percentile=100.0)
+        assert bkg_generic.background_mesh.dtype == np.float32
+        assert_allclose(bkg_fast.background_mesh,
+                        bkg_generic.background_mesh, rtol=2e-6)
+        assert_allclose(bkg_fast.background_rms_mesh,
+                        bkg_generic.background_rms_mesh, rtol=1e-3,
+                        atol=1e-5)
+
+    def test_n_threads_fast_path(self):
+        """
+        Test that the multithreaded fast path gives identical results
+        to the single-threaded fast path.
+        """
+        bkg1 = Background2D(self.data, (25, 25), mask=self.mask,
+                            exclude_percentile=100.0)
+        bkg2 = Background2D(self.data, (25, 25), mask=self.mask,
+                            exclude_percentile=100.0, n_threads=4)
+        assert_equal(bkg1.background_mesh, bkg2.background_mesh)
+        assert_equal(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
+        assert_equal(bkg1.n_pixels_mesh, bkg2.n_pixels_mesh)
+
+    def test_masked_array_data_mask(self):
+        """
+        Test that the mask of masked-array input data is respected
+        and combined with the input mask.
+        """
+        data_values = np.ones((100, 100))
+        data_values[0:25, 0:25] = 1e6
+        data_values[25:50, 25:50] = 1e6
+        data_mask = np.zeros(data_values.shape, dtype=bool)
+        data_mask[0:25, 0:25] = True
+        data_ma = np.ma.MaskedArray(data_values, mask=data_mask)
+
+        # Without an input mask, the data mask alone is used
+        mask = np.zeros(data_values.shape, dtype=bool)
+        mask[25:50, 25:50] = True
+        bkg = Background2D(data_ma, (25, 25), filter_size=(1, 1),
+                           mask=mask)
+        assert_allclose(bkg.background_mesh, 1.0)
+        assert bkg.n_pixels_mesh[0, 0] == 0
+        assert bkg.n_pixels_mesh[1, 1] == 0
+
+        # A masked array with no masked values (nomask)
+        data_nomask = np.ma.MaskedArray(np.ones((100, 100)))
+        bkg = Background2D(data_nomask, (25, 25), filter_size=(1, 1))
+        assert_allclose(bkg.background_mesh, 1.0)
