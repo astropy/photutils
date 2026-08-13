@@ -345,19 +345,81 @@ class TestMakeKernelWiener:
 
     def test_penalty_invalid_type(self, psf1, psf2):
         """
-        Test that an invalid penalty type raises ValueError.
+        Test that a penalty that cannot be converted to a numeric
+        array raises ValueError.
         """
         match = 'penalty must be None'
         with pytest.raises(ValueError, match=match):
-            make_wiener_kernel(psf1, psf2, penalty=42)
+            make_wiener_kernel(psf1, psf2, penalty={'bad': 1})
 
-    def test_penalty_non_2d_array(self, psf1, psf2):
+    @pytest.mark.parametrize('penalty', [42, np.ones(5), [1.0, 2.0, 3.0]])
+    def test_penalty_non_2d_array(self, psf1, psf2, penalty):
         """
         Test that a non-2D penalty array raises ValueError.
         """
         match = 'penalty array must be 2D'
         with pytest.raises(ValueError, match=match):
-            make_wiener_kernel(psf1, psf2, penalty=np.ones(5))
+            make_wiener_kernel(psf1, psf2, penalty=penalty)
+
+    def test_penalty_even_dimensions(self, psf1, psf2):
+        """
+        Test that a penalty array with even dimensions raises
+        ValueError.
+        """
+        match = 'penalty array must have odd dimensions'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty=np.ones((2, 2)))
+
+    def test_penalty_non_finite(self, psf1, psf2):
+        """
+        Test that a penalty array with NaN or Inf values raises
+        ValueError.
+        """
+        penalty = np.zeros((3, 3))
+        penalty[1, 1] = np.nan
+        match = 'penalty array contains NaN or Inf values'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty=penalty)
+
+        penalty[1, 1] = np.inf
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty=penalty)
+
+    def test_penalty_all_zeros(self, psf1, psf2):
+        """
+        Test that an all-zero penalty array raises ValueError because
+        it would apply no regularization.
+        """
+        match = 'penalty array must not be all zeros'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(psf1, psf2, penalty=np.zeros((3, 3)))
+
+    def test_penalty_array_like(self, psf1, psf2):
+        """
+        Test that an array-like penalty gives the same result as the
+        equivalent ndarray penalty.
+        """
+        laplacian = [[0, -1, 0], [-1, 4, -1], [0, -1, 0]]
+        kernel_list = make_wiener_kernel(psf1, psf2, penalty=laplacian)
+        kernel_arr = make_wiener_kernel(psf1, psf2,
+                                        penalty=np.array(laplacian))
+        assert_allclose(kernel_list, kernel_arr)
+
+    def test_non_finite_kernel_raises(self):
+        """
+        Test that a degenerate Fourier-space denominator raises
+        ValueError instead of silently returning a non-finite kernel.
+
+        A uniform source PSF and a uniform penalty operator both have
+        OTFs that are zero away from the DC frequency, so the Wiener
+        denominator is zero where the numerator is also zero (0/0).
+        """
+        source_psf = np.ones((3, 3)) / 9.0
+        target_psf = _make_gaussian_psf(3, 1.0)
+        penalty = np.ones((3, 3))
+        match = 'The computed kernel contains non-finite values'
+        with pytest.raises(ValueError, match=match):
+            make_wiener_kernel(source_psf, target_psf, penalty=penalty)
 
     def test_penalty_psf_too_small_for_laplacian(self):
         """

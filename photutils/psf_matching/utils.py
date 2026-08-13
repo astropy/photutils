@@ -138,6 +138,47 @@ def _validate_window_array(window_array, expected_shape):
         raise ValueError(msg)
 
 
+def _normalize_kernel(kernel):
+    """
+    Normalize a matching kernel so that it sums to 1.
+
+    Parameters
+    ----------
+    kernel : 2D `~numpy.ndarray`
+        The matching kernel.
+
+    Returns
+    -------
+    kernel : 2D `~numpy.ndarray`
+        The normalized matching kernel.
+
+    Raises
+    ------
+    ValueError
+        If the kernel contains non-finite values or its sum is zero or
+        nearly zero.
+    """
+    kernel_sum = np.sum(kernel)
+
+    if not np.isfinite(kernel_sum):
+        msg = ('The computed kernel contains non-finite values. This '
+               'can occur when the Fourier-space denominator is zero '
+               'at frequencies where the numerator is also zero (e.g., '
+               'the source OTF and the penalty OTF are both zero at '
+               'the same frequency).')
+        raise ValueError(msg)
+
+    if np.isclose(kernel_sum, 0.0):
+        msg = ('The computed kernel sums to zero, which likely indicates '
+               'that the regularization is too aggressive or that the '
+               'window function suppressed all frequencies. Try reducing '
+               'the regularization parameter or using a different window '
+               'function.')
+        raise ValueError(msg)
+
+    return kernel / kernel_sum
+
+
 def _convert_psf_to_otf(psf, shape):
     """
     Convert a point-spread function to an optical transfer function.

@@ -9,9 +9,78 @@ from scipy.fft import fft2, fftshift, ifft2
 
 from photutils.psf_matching.utils import (_apply_window_to_fourier,
                                           _convert_psf_to_otf,
+                                          _normalize_kernel,
                                           _validate_kernel_inputs)
 
 __all__ = ['create_matching_kernel', 'make_kernel', 'make_wiener_kernel']
+
+
+def _build_penalty_array(penalty):
+    """
+    Validate the penalty input and convert it to a 2D float array.
+
+    Parameters
+    ----------
+    penalty : `None`, ``'laplacian'``, ``'biharmonic'``, or 2D array-like
+        The regularization penalty operator.
+
+    Returns
+    -------
+    penalty_array : 2D `~numpy.ndarray` or `None`
+        The penalty operator as a float array, or `None` if ``penalty``
+        is `None`.
+
+    Raises
+    ------
+    ValueError
+        If ``penalty`` is an invalid string, cannot be converted to a
+        numeric array, is not 2D, has even dimensions, contains NaN or
+        Inf values, or is all zeros.
+    """
+    if penalty is None:
+        return None
+
+    if isinstance(penalty, str):
+        if penalty == 'laplacian':
+            return np.array([[+0, -1, +0],
+                             [-1, +4, -1],
+                             [+0, -1, +0]], dtype=float)
+        if penalty == 'biharmonic':
+            return np.array([[+0, +0, +1, +0, +0],
+                             [+0, +2, -8, +2, +0],
+                             [+1, -8, 20, -8, +1],
+                             [+0, +2, -8, +2, +0],
+                             [+0, +0, +1, +0, +0]], dtype=float)
+        msg = (f'Invalid penalty string {penalty!r}. '
+               'Must be "laplacian" or "biharmonic".')
+        raise ValueError(msg)
+
+    try:
+        penalty_array = np.asarray(penalty, dtype=float)
+    except (TypeError, ValueError) as exc:
+        msg = ("penalty must be None, 'laplacian', 'biharmonic', or a "
+               '2D array.')
+        raise ValueError(msg) from exc
+
+    if penalty_array.ndim != 2:
+        msg = 'penalty array must be 2D.'
+        raise ValueError(msg)
+
+    if (penalty_array.shape[0] % 2 == 0 or penalty_array.shape[1] % 2 == 0):
+        msg = (f'penalty array must have odd dimensions, got shape '
+               f'{penalty_array.shape}.')
+        raise ValueError(msg)
+
+    if not np.all(np.isfinite(penalty_array)):
+        msg = 'penalty array contains NaN or Inf values.'
+        raise ValueError(msg)
+
+    if np.all(penalty_array == 0):
+        msg = ('penalty array must not be all zeros because it would '
+               'apply no regularization.')
+        raise ValueError(msg)
+
+    return penalty_array
 
 
 def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
@@ -157,14 +226,7 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
         ratio = _apply_window_to_fourier(ratio, window, target_psf.shape)
 
     kernel = np.real(fftshift(ifft2(ratio)))
-    if np.sum(kernel) < 1e-30:
-        msg = ('The computed kernel sums to zero, which likely indicates '
-               'that the regularization threshold is too high. Try reducing '
-               'the regularization parameter or using a different window '
-               'function.')
-        raise ValueError(msg)
-
-    return kernel / kernel.sum()
+    return _normalize_kernel(kernel)
 
 
 def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
@@ -256,7 +318,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         detail but may amplify noise. Must be a positive number.
 
     penalty : `None`, ``'laplacian'``, ``'biharmonic'``, or 2D \
-`~numpy.ndarray`, optional
+array-like, optional
         The regularization penalty operator. This controls the
         structure of the regularization term in the denominator:
 
@@ -287,10 +349,12 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
           of reduced accuracy in matching. Requires PSFs to be at least
           5x5.
 
-        * 2D `~numpy.ndarray`: A custom penalty operator array.
+        * 2D array-like: A custom penalty operator array.
           Its OTF will be computed and used in the denominator as
-          :math:`|S|^2 + \\lambda \\cdot |P|^2`. The PSFs must be at
-          least as large as the penalty array in both dimensions.
+          :math:`|S|^2 + \\lambda \\cdot |P|^2`. The array must have
+          odd dimensions in both axes, contain only finite values, and
+          not be all zeros. The PSFs must be at least as large as the
+          penalty array in both dimensions.
 
     window : callable, optional
         The window (taper) function or callable class instance used
@@ -327,9 +391,12 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
     ------
     ValueError
         If the PSFs are not 2D arrays, have even dimensions, do not have
-        the same shape, are too small for the specified penalty, if
-        ``regularization`` is not positive, or if ``penalty`` is not a
-        valid value.
+        the same shape, contain NaN or Inf values, have a zero sum, or
+        are too small for the specified penalty, if ``regularization``
+        is not positive, if ``penalty`` is not a valid value (see
+        above), if the window function output is invalid (not a 2D
+        array, wrong shape, or values outside [0, 1]), or if the
+        computed kernel is degenerate (non-finite or sums to zero).
 
     TypeError
         If the input ``window`` is not callable.
@@ -374,33 +441,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         msg = 'regularization must be a positive number.'
         raise ValueError(msg)
 
-    # Validate and build the penalty term
-    if penalty is None:
-        penalty_array = None
-    elif isinstance(penalty, str):
-        if penalty == 'laplacian':
-            penalty_array = np.array([[+0, -1, +0],
-                                      [-1, +4, -1],
-                                      [+0, -1, +0]], dtype=float)
-        elif penalty == 'biharmonic':
-            penalty_array = np.array([[+0, +0, +1, +0, +0],
-                                      [+0, +2, -8, +2, +0],
-                                      [+1, -8, 20, -8, +1],
-                                      [+0, +2, -8, +2, +0],
-                                      [+0, +0, +1, +0, +0]], dtype=float)
-        else:
-            msg = (f'Invalid penalty string {penalty!r}. '
-                   'Must be "laplacian" or "biharmonic".')
-            raise ValueError(msg)
-    elif isinstance(penalty, np.ndarray):
-        if penalty.ndim != 2:
-            msg = 'penalty array must be 2D.'
-            raise ValueError(msg)
-        penalty_array = np.asarray(penalty, dtype=float)
-    else:
-        msg = ("penalty must be None, 'laplacian', 'biharmonic', or a 2D "
-               'numpy array.')
-        raise ValueError(msg)
+    penalty_array = _build_penalty_array(penalty)
 
     # Validate that PSF is large enough for the penalty
     if penalty_array is not None:
@@ -428,9 +469,13 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         # the peak power in the source OTF
         reg_term = regularization * np.max(source_power)
 
-    # Compute the Wiener-regularized kernel in Fourier space
-    kernel_otf = (target_otf * np.conj(source_otf)
-                  / (source_power + reg_term))
+    # Compute the Wiener-regularized kernel in Fourier space. The
+    # denominator can be zero at frequencies where both the source OTF
+    # and the penalty OTF are zero. Any resulting non-finite values are
+    # caught by the kernel normalization below.
+    with np.errstate(invalid='ignore', divide='ignore'):
+        kernel_otf = (target_otf * np.conj(source_otf)
+                      / (source_power + reg_term))
 
     # Apply a window function in frequency space
     if window is not None:
@@ -438,14 +483,7 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
             kernel_otf, window, target_psf.shape)
 
     kernel = np.real(fftshift(ifft2(kernel_otf)))
-    if np.sum(kernel) < 1e-30:
-        msg = ('The computed kernel sums to zero, which likely indicates '
-               'that the regularization threshold is too high. Try reducing '
-               'the regularization parameter or using a different window '
-               'function.')
-        raise ValueError(msg)
-
-    return kernel / kernel.sum()
+    return _normalize_kernel(kernel)
 
 
 @deprecated('3.0', alternative='make_kernel')
