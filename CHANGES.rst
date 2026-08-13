@@ -187,6 +187,10 @@ New Features
     one area calculation per radius. Profile construction is now ~3x
     faster. [#2371]
 
+  - The profile classes are now thread-safe. All lazily-computed
+    attributes cache raw (unnormalized) values that are immutable
+    once computed. [#2371]
+
 - ``photutils.psf``
 
   - Improved ``GriddedPSFModel`` evaluation performance by ~20-25%

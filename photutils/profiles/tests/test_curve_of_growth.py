@@ -124,7 +124,7 @@ class TestCurveOfGrowth:
         with pytest.raises(ValueError, match=match):
             cg1.normalize(method='invalid')
 
-        cg1.__dict__['profile'] -= np.nanmax(cg1.__dict__['profile'])
+        cg1.__dict__['_raw_profile'] = cg1.profile - np.nanmax(cg1.profile)
         match = 'The profile cannot be normalized'
         with pytest.warns(AstropyUserWarning, match=match):
             cg1.normalize(method='max')
@@ -170,7 +170,7 @@ class TestCurveOfGrowth:
         # elements
         profile = cg1.profile.copy()
         profile[0] = profile[1]
-        cg1.__dict__['profile'] = profile
+        cg1.__dict__['_raw_profile'] = profile
 
         match = 'The curve-of-growth profile is not monotonically increasing'
         with pytest.raises(ValueError, match=match):
@@ -435,7 +435,7 @@ class TestEnsquaredCurveOfGrowth:
         with pytest.raises(ValueError, match=match):
             ecg1.normalize(method='invalid')
 
-        ecg1.__dict__['profile'] -= np.nanmax(ecg1.__dict__['profile'])
+        ecg1.__dict__['_raw_profile'] = ecg1.profile - np.nanmax(ecg1.profile)
         match = 'The profile cannot be normalized'
         with pytest.warns(AstropyUserWarning, match=match):
             ecg1.normalize(method='max')
@@ -477,7 +477,7 @@ class TestEnsquaredCurveOfGrowth:
         # Force non-monotonicity at the first point
         profile = ecg1.profile.copy()
         profile[0] = profile[1]
-        ecg1.__dict__['profile'] = profile
+        ecg1.__dict__['_raw_profile'] = profile
 
         match = 'The ensquared curve-of-growth profile is not monotonically'
         with pytest.raises(ValueError, match=match):
@@ -722,7 +722,7 @@ class TestEllipticalCurveOfGrowth:
         with pytest.raises(ValueError, match=match):
             ecg1.normalize(method='invalid')
 
-        ecg1.__dict__['profile'] -= np.nanmax(ecg1.__dict__['profile'])
+        ecg1.__dict__['_raw_profile'] = ecg1.profile - np.nanmax(ecg1.profile)
         match = 'The profile cannot be normalized'
         with pytest.warns(AstropyUserWarning, match=match):
             ecg1.normalize(method='max')
@@ -765,7 +765,7 @@ class TestEllipticalCurveOfGrowth:
         # Force non-monotonicity at the first point
         profile = ecg1.profile.copy()
         profile[0] = profile[1]
-        ecg1.__dict__['profile'] = profile
+        ecg1.__dict__['_raw_profile'] = profile
 
         match = 'The elliptical curve-of-growth profile is not monotonically'
         with pytest.raises(ValueError, match=match):

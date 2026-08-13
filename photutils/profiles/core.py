@@ -83,6 +83,14 @@ class ProfileBase(metaclass=abc.ABCMeta):
         self.mask = self._compute_mask(data, error, mask)
         self.method = method
         self.subpixels = subpixels
+
+        # The total normalization applied to the profile. This is the
+        # only mutable state of the class. All normalization-dependent
+        # attributes (e.g., ``profile``) are derived from immutable
+        # cached values divided by this value, and `normalize` and
+        # `unnormalize` update it with a single atomic attribute
+        # store, making the class safe for concurrent reads during
+        # normalization changes.
         self.normalization_value = 1.0
 
     def _validate_radii(self, radii):
@@ -143,20 +151,41 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def profile(self):
+    def _raw_profile(self):
         """
-        The radial profile as a 1D `~numpy.ndarray`.
+        The raw (unnormalized) profile as a 1D `~numpy.ndarray`.
         """
 
     @property
     @abc.abstractmethod
-    def profile_error(self):
+    def _raw_profile_error(self):
         """
-        The profile errors as a 1D `~numpy.ndarray`.
+        The raw (unnormalized) profile errors as a 1D `~numpy.ndarray`.
 
         If no ``error`` array was provided, an empty array with shape
         ``(0,)`` is returned.
         """
+
+    @property
+    def profile(self):
+        """
+        The profile as a 1D `~numpy.ndarray`.
+
+        The returned values reflect the current profile normalization
+        (see `normalize`).
+        """
+        return self._raw_profile / self.normalization_value
+
+    @property
+    def profile_error(self):
+        """
+        The profile errors as a 1D `~numpy.ndarray`.
+
+        The returned values reflect the current profile normalization
+        (see `normalize`). If no ``error`` array was provided, an empty
+        array with shape ``(0,)`` is returned.
+        """
+        return self._raw_profile_error / self.normalization_value
 
     @cached_property
     def _circular_apertures(self):
@@ -235,6 +264,12 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         Normalize the profile.
 
+        The normalization is computed from the raw (unnormalized)
+        profile values, so repeated calls do not accumulate. The
+        most recent call determines the normalization. Because both
+        normalization methods scale linearly with the profile values,
+        this is equivalent to normalizing an already-normalized profile.
+
         Parameters
         ----------
         method : {'max', 'sum'}, optional
@@ -249,69 +284,33 @@ class ProfileBase(metaclass=abc.ABCMeta):
               is 1.
         """
         if method == 'max':
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                normalization = nanmax(self.profile)
+            func = nanmax
         elif method == 'sum':
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                normalization = nansum(self.profile)
+            func = nansum
         else:
             msg = "invalid method, must be 'max' or 'sum'"
             raise ValueError(msg)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            normalization = func(self._raw_profile)
 
         if normalization == 0 or not np.isfinite(normalization):
             msg = ('The profile cannot be normalized because the max or '
                    'sum is zero or non-finite.')
             warnings.warn(msg, AstropyUserWarning)
         else:
-            # normalization_values accumulate if normalize is run
-            # multiple times (e.g., different methods)
-            self.normalization_value *= normalization
-
-            # Need to use __dict__ as these are cached properties
-            self.__dict__['profile'] = self.profile / normalization
-            self.__dict__['profile_error'] = self.profile_error / normalization
-            self._normalize_hook(normalization)
-
-    def _normalize_hook(self, normalization):  # noqa: B027
-        """
-        Hook called by `normalize` after normalizing ``profile`` and
-        ``profile_error``.
-
-        This hook is only called when normalization succeeds (i.e., when
-        the normalization value is non-zero and finite).
-
-        Subclasses can override this to invalidate or rescale additional
-        cached properties that depend on the profile normalization
-        (e.g., ``data_profile``).
-
-        Parameters
-        ----------
-        normalization : float
-            The normalization value applied to the profile.
-        """
+            # A single atomic attribute store. Concurrent readers see
+            # either the old or the new normalization, never a mixed
+            # state.
+            self.normalization_value = normalization
 
     def unnormalize(self):
         """
         Unnormalize the profile back to the original state before any
         calls to `normalize`.
         """
-        self.__dict__['profile'] = self.profile * self.normalization_value
-        self.__dict__['profile_error'] = (self.profile_error
-                                          * self.normalization_value)
-        self._unnormalize_hook()
         self.normalization_value = 1.0
-
-    def _unnormalize_hook(self):  # noqa: B027
-        """
-        Hook called by `unnormalize` after unnormalizing ``profile`` and
-        ``profile_error``, but before resetting ``normalization_value``.
-
-        Subclasses can override this to invalidate or rescale additional
-        cached properties that depend on the profile normalization
-        (e.g., ``data_profile``).
-        """
 
     @staticmethod
     def _trim_to_monotonic(xarr, profile, name):

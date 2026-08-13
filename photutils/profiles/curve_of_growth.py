@@ -40,16 +40,18 @@ class _CurveOfGrowthBase(ProfileBase):
         return self._compute_photometry(self.apertures)
 
     @cached_property
-    def profile(self):
+    def _raw_profile(self):
         """
-        The curve-of-growth profile as a 1D `~numpy.ndarray`.
+        The raw (unnormalized) curve-of-growth profile as a 1D
+        `~numpy.ndarray`.
         """
         return self._photometry[0]
 
     @cached_property
-    def profile_error(self):
+    def _raw_profile_error(self):
         """
-        The curve-of-growth profile errors as a 1D `~numpy.ndarray`.
+        The raw (unnormalized) curve-of-growth profile errors as a 1D
+        `~numpy.ndarray`.
 
         If no ``error`` array was provided, an empty array with shape
         ``(0,)`` is returned.

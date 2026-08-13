@@ -276,13 +276,6 @@ class RadialProfile(ProfileBase):
     # Define y-axis label used by `~photutils.profiles.ProfileBase.plot`
     _ylabel = 'Radial Profile'
 
-    # Define the fit properties that should be invalidated when the
-    # profile normalization is changed, so they are always consistent
-    # with the current profile.
-    _fit_properties = ('_profile_nanmask', 'gaussian_fit',
-                       'gaussian_profile', 'gaussian_fwhm', 'moffat_fit',
-                       'moffat_profile', 'moffat_fwhm')
-
     @cached_property
     def radius(self):
         """
@@ -348,9 +341,9 @@ class RadialProfile(ProfileBase):
         return np.diff(self._photometry[2])
 
     @cached_property
-    def profile(self):
+    def _raw_profile(self):
         """
-        The radial profile as a 1D `~numpy.ndarray`.
+        The raw (unnormalized) radial profile as a 1D `~numpy.ndarray`.
         """
         # Ignore divide-by-zero RuntimeWarning
         with warnings.catch_warnings():
@@ -358,9 +351,10 @@ class RadialProfile(ProfileBase):
             return self._flux / self.area
 
     @cached_property
-    def profile_error(self):
+    def _raw_profile_error(self):
         """
-        The radial profile errors as a 1D `~numpy.ndarray`.
+        The raw (unnormalized) radial profile errors as a 1D
+        `~numpy.ndarray`.
 
         If no ``error`` array was provided, an empty array with shape
         ``(0,)`` is returned.
@@ -375,19 +369,15 @@ class RadialProfile(ProfileBase):
 
     @cached_property
     def _profile_nanmask(self):
-        return np.isfinite(self.profile)
+        return np.isfinite(self._raw_profile)
 
     @cached_property
-    def gaussian_fit(self):
+    def _raw_gaussian_fit(self):
         """
-        The fitted 1D Gaussian to the radial profile as a
-        `~astropy.modeling.functional_models.Gaussian1D` model.
-
-        The cached fit is automatically invalidated when the profile
-        normalization is changed, so the fit is always consistent with
-        the current profile.
+        The 1D Gaussian fitted to the raw (unnormalized) radial profile,
+        or `None` if the profile is entirely non-finite or masked.
         """
-        profile = self.profile[self._profile_nanmask]
+        profile = self._raw_profile[self._profile_nanmask]
         radius = self.radius[self._profile_nanmask]
 
         if len(profile) == 0:
@@ -418,49 +408,74 @@ class RadialProfile(ProfileBase):
 
         return gaussian_fit
 
-    @cached_property
+    @property
+    def gaussian_fit(self):
+        """
+        The fitted 1D Gaussian to the radial profile as a
+        `~astropy.modeling.functional_models.Gaussian1D` model.
+
+        The model amplitude reflects the current profile normalization
+        (the Gaussian amplitude scales linearly with the profile
+        values). The mean and standard deviation are independent of the
+        normalization.
+
+        Returns `None` if the fit failed (e.g., the profile is entirely
+        non-finite or masked).
+        """
+        raw_fit = self._raw_gaussian_fit
+        if raw_fit is None:
+            return None
+        fit = raw_fit.copy()
+        fit.amplitude = raw_fit.amplitude.value / self.normalization_value
+        return fit
+
+    @property
     def gaussian_profile(self):
         """
         The fitted 1D Gaussian profile to the radial profile as a 1D
         `~numpy.ndarray`.
 
-        The cached profile is automatically invalidated when the profile
-        normalization is changed.
+        The values reflect the current profile normalization.
 
         Returns `None` if the fit failed (e.g., the profile is entirely
         non-finite or masked).
         """
-        if self.gaussian_fit is None:
+        if self._raw_gaussian_profile is None:
             return None
-        return self.gaussian_fit(self.radius)
+        return self._raw_gaussian_profile / self.normalization_value
 
     @cached_property
+    def _raw_gaussian_profile(self):
+        """
+        The raw-fit 1D Gaussian evaluated at the profile radii, or
+        `None` if the fit failed.
+        """
+        if self._raw_gaussian_fit is None:
+            return None
+        return self._raw_gaussian_fit(self.radius)
+
+    @property
     def gaussian_fwhm(self):
         """
         The full-width at half-maximum (FWHM) in pixels of the 1D
         Gaussian fitted to the radial profile.
 
-        The cached value is automatically invalidated when the profile
-        normalization is changed.
+        The FWHM is independent of the profile normalization.
 
         Returns `None` if the fit failed (e.g., the profile is entirely
         non-finite or masked).
         """
-        if self.gaussian_fit is None:
+        if self._raw_gaussian_fit is None:
             return None
-        return self.gaussian_fit.stddev.value * gaussian_sigma_to_fwhm
+        return self._raw_gaussian_fit.stddev.value * gaussian_sigma_to_fwhm
 
     @cached_property
-    def moffat_fit(self):
+    def _raw_moffat_fit(self):
         """
-        The fitted 1D Moffat to the radial profile as a
-        `~astropy.modeling.functional_models.Moffat1D` model.
-
-        The cached fit is automatically invalidated when the profile
-        normalization is changed, so the fit is always consistent with
-        the current profile.
+        The 1D Moffat fitted to the raw (unnormalized) radial profile,
+        or `None` if the profile is entirely non-finite or masked.
         """
-        profile = self.profile[self._profile_nanmask]
+        profile = self._raw_profile[self._profile_nanmask]
         radius = self.radius[self._profile_nanmask]
 
         if len(profile) == 0:
@@ -491,37 +506,66 @@ class RadialProfile(ProfileBase):
         fitter = TRFLSQFitter()
         return fitter(m_init, radius, profile)
 
-    @cached_property
+    @property
+    def moffat_fit(self):
+        """
+        The fitted 1D Moffat to the radial profile as a
+        `~astropy.modeling.functional_models.Moffat1D` model.
+
+        The model amplitude reflects the current profile normalization
+        (the Moffat amplitude scales linearly with the profile
+        values). The core width and power index are independent of the
+        normalization.
+
+        Returns `None` if the fit failed (e.g., the profile is entirely
+        non-finite or masked).
+        """
+        raw_fit = self._raw_moffat_fit
+        if raw_fit is None:
+            return None
+        fit = raw_fit.copy()
+        fit.amplitude = raw_fit.amplitude.value / self.normalization_value
+        return fit
+
+    @property
     def moffat_profile(self):
         """
         The fitted 1D Moffat profile to the radial profile as a 1D
         `~numpy.ndarray`.
 
-        The cached profile is automatically invalidated when the profile
-        normalization is changed.
+        The values reflect the current profile normalization.
 
         Returns `None` if the fit failed (e.g., the profile is entirely
         non-finite or masked).
         """
-        if self.moffat_fit is None:
+        if self._raw_moffat_profile is None:
             return None
-        return self.moffat_fit(self.radius)
+        return self._raw_moffat_profile / self.normalization_value
 
     @cached_property
+    def _raw_moffat_profile(self):
+        """
+        The raw-fit 1D Moffat evaluated at the profile radii, or
+        `None` if the fit failed.
+        """
+        if self._raw_moffat_fit is None:
+            return None
+        return self._raw_moffat_fit(self.radius)
+
+    @property
     def moffat_fwhm(self):
         """
         The full-width at half-maximum (FWHM) in pixels of the 1D Moffat
         fitted to the radial profile.
 
-        The cached value is automatically invalidated when the profile
-        normalization is changed.
+        The FWHM is independent of the profile normalization.
 
         Returns `None` if the fit failed (e.g., the profile is entirely
         non-finite or masked).
         """
-        if self.moffat_fit is None:
+        if self._raw_moffat_fit is None:
             return None
-        return self.moffat_fit.fwhm
+        return self._raw_moffat_fit.fwhm
 
     @cached_property
     def _data_profile(self):
@@ -572,7 +616,7 @@ class RadialProfile(ProfileBase):
         """
         return self._data_profile[0]
 
-    @cached_property
+    @property
     def data_profile(self):
         """
         The raw data profile as a 1D `~numpy.ndarray`.
@@ -583,29 +627,3 @@ class RadialProfile(ProfileBase):
         ``profile``.
         """
         return self._data_profile[1] / self.normalization_value
-
-    def _invalidate_fit_cache(self):
-        """
-        Remove the cached Gaussian and Moffat fit properties so they
-        are recomputed on next access using the current profile.
-        """
-        for key in self._fit_properties:
-            self.__dict__.pop(key, None)
-
-    def _normalize_hook(self, normalization):  # noqa: ARG002
-        """
-        Invalidate the cached ``data_profile`` and fit properties
-        so they are recomputed on next access using the current
-        normalization.
-        """
-        self.__dict__.pop('data_profile', None)
-        self._invalidate_fit_cache()
-
-    def _unnormalize_hook(self):
-        """
-        Invalidate the cached ``data_profile`` and fit properties
-        so they are recomputed on next access using the current
-        normalization.
-        """
-        self.__dict__.pop('data_profile', None)
-        self._invalidate_fit_cache()
