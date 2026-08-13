@@ -506,10 +506,10 @@ class Background2D:
         and `None` otherwise (in which case the generic path based
         on `astropy.stats.SigmaClip` and the estimator callables is
         used). The fast path supports the string ``cenfunc`` values
-        'median'/'mean', the string ``stdfunc`` values 'std'/'mad_std',
-        no spatial growing, and the standard photutils estimator
-        classes. For the biweight-based estimators, the ``M`` location
-        anchor must be `None` or a finite scalar.
+        'median'/'mean'/'biweight', the string ``stdfunc`` values
+        'std'/'mad_std'/'biweight', no spatial growing, and the standard
+        photutils estimator classes. For the biweight-based estimators,
+        the ``M`` location anchor must be `None` or a finite scalar.
         """
         sigma_clip = self.sigma_clip
         if sigma_clip is None:
@@ -521,9 +521,11 @@ class Background2D:
             # Spatial growing (``grow``) is not supported
             if (not isinstance(sigma_clip, SigmaClip)
                     or not (isinstance(sigma_clip.cenfunc, str)
-                            and sigma_clip.cenfunc in ('median', 'mean'))
+                            and sigma_clip.cenfunc in ('median', 'mean',
+                                                       'biweight'))
                     or not (isinstance(sigma_clip.stdfunc, str)
-                            and sigma_clip.stdfunc in ('std', 'mad_std'))
+                            and sigma_clip.stdfunc in ('std', 'mad_std',
+                                                       'biweight'))
                     or sigma_clip.grow):
                 return None
             do_clip = True
@@ -534,8 +536,10 @@ class Background2D:
                 maxiters = -1
             else:
                 maxiters = int(maxiters)
-            cenfunc_code = 0 if sigma_clip.cenfunc == 'median' else 1
-            stdfunc_code = 0 if sigma_clip.stdfunc == 'std' else 1
+            cenfunc_code = {'median': 0, 'mean': 1,
+                            'biweight': 2}[sigma_clip.cenfunc]
+            stdfunc_code = {'std': 0, 'mad_std': 1,
+                            'biweight': 2}[sigma_clip.stdfunc]
 
         bkg_estimator = self.bkg_estimator
         median_factor = mean_factor = 0.0

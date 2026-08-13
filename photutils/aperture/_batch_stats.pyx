@@ -94,12 +94,14 @@ cdef inline double _median_sorted(double *s, Py_ssize_t n) noexcept nogil:
 
 
 # Sigma-clip center/scale function codes (must match the ``cenfunc`` and
-# ``stdfunc`` mapping in ``ApertureStats``).
+# ``stdfunc`` mappings in ``ApertureStats`` and ``Background2D``).
 cdef enum:
     _CEN_MEDIAN = 0
     _CEN_MEAN = 1
+    _CEN_BIWEIGHT = 2
     _STD_STD = 0
     _STD_MADSTD = 1
+    _STD_BIWEIGHT = 2
 
 
 cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
@@ -116,6 +118,15 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
     value ``v`` satisfies ``not (v < out_min) and not (v > out_max)``,
     so NaN bounds keep every value, matching astropy's degenerate
     empty-set behavior.
+
+    For the biweight center/scale codes (astropy's 'biweight' string
+    options, which use astropy's Python clipping code paths), the
+    returned bounds are the extrema of the final kept window rather
+    than the last computed clipping limits. The Python code paths clip
+    accumulatively (a value clipped in any iteration stays clipped), so
+    reapplying the last limits could otherwise re-include values that
+    were clipped in an earlier iteration. Equal values always share the
+    same fate, so the window extrema reproduce the kept set exactly.
 
     Parameters
     ----------
@@ -146,10 +157,13 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
     """
     cdef Py_ssize_t lo = 0, hi = n, new_lo, new_hi, cnt, i, iteration = 0
     cdef Py_ssize_t nchanged = 1
-    cdef double cen, std, mu, ss, med2, minv, maxv
+    cdef double cen, std, mu, ss, med2, mad2, minv, maxv
+    cdef bint biweight = (cenfunc_code == _CEN_BIWEIGHT
+                          or stdfunc_code == _STD_BIWEIGHT)
 
     minv = NAN
     maxv = NAN
+    mad2 = NAN
     while nchanged != 0 and (maxiters < 0 or iteration < maxiters):
         iteration += 1
         cnt = hi - lo
@@ -158,9 +172,27 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
             maxv = NAN
             break
 
+        # The biweight center and scale need the median and the
+        # unscaled MAD of the current values
+        if biweight:
+            med2 = _median_sorted(&s[lo], cnt)
+            for i in range(lo, hi):
+                work[i] = fabs(s[i] - med2)
+            qsort(&work[lo], <size_t>cnt, sizeof(double), &_cmp_double)
+            mad2 = _median_sorted(&work[lo], cnt)
+
         # Center.
         if cenfunc_code == _CEN_MEDIAN:
             cen = _median_sorted(&s[lo], cnt)
+        elif cenfunc_code == _CEN_BIWEIGHT:
+            # astropy biweight_location with the default tuning
+            # constant (c=6) and the median anchor. The median is
+            # returned for zero MAD.
+            if mad2 == 0.0:
+                cen = med2
+            else:
+                cen = _biweight_location_range(s, lo, hi, med2, 6.0,
+                                               mad2)
         else:
             mu = 0.0
             for i in range(lo, hi):
@@ -177,6 +209,15 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
             for i in range(lo, hi):
                 ss += (s[i] - mu) * (s[i] - mu)
             std = sqrt(ss / cnt)
+        elif stdfunc_code == _STD_BIWEIGHT:
+            # astropy biweight_scale with the default tuning constant
+            # (c=9) and the median anchor. Zero is returned for zero
+            # MAD.
+            if mad2 == 0.0:
+                std = 0.0
+            else:
+                std = sqrt(_biweight_midvar_range(s, lo, hi, med2, 9.0,
+                                                  mad2))
         else:
             med2 = _median_sorted(&s[lo], cnt)
             for i in range(lo, hi):
@@ -196,6 +237,13 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
         nchanged = (hi - lo) - (new_hi - new_lo)
         lo = new_lo
         hi = new_hi
+
+    if biweight and hi > lo:
+        # Match the accumulative clipping of astropy's Python code
+        # paths (see the docstring). The effective bounds are the
+        # extrema of the final kept window.
+        minv = s[lo]
+        maxv = s[hi - 1]
 
     out_min[0] = minv
     out_max[0] = maxv

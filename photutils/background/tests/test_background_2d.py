@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.nddata import CCDData, NDData
-from astropy.stats import SigmaClip
+from astropy.stats import SigmaClip, biweight_location, biweight_scale
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
@@ -1058,6 +1058,36 @@ def test_deprecations(test_data):
         assert bkg.npixels_map.shape == data.shape
 
 
+def _make_sigma_clip_biweight(cenfunc='biweight', stdfunc='biweight',
+                              **kwargs):
+    """
+    Create a SigmaClip instance using the 'biweight' cenfunc/stdfunc
+    string options, emulating them on astropy versions that do not
+    support these options.
+    """
+
+    def nanbiloc(data, axis=None):
+        return biweight_location(data, axis=axis, ignore_nan=True)
+
+    def nanbiscale(data, axis=None):
+        return biweight_scale(data, axis=axis, ignore_nan=True)
+
+    try:
+        return SigmaClip(cenfunc=cenfunc, stdfunc=stdfunc, **kwargs)
+    except ValueError:
+        init_cenfunc = 'median' if cenfunc == 'biweight' else cenfunc
+        init_stdfunc = 'std' if stdfunc == 'biweight' else stdfunc
+        sigma_clip = SigmaClip(cenfunc=init_cenfunc, stdfunc=init_stdfunc,
+                               **kwargs)
+        sigma_clip.cenfunc = cenfunc
+        sigma_clip.stdfunc = stdfunc
+        if cenfunc == 'biweight':
+            sigma_clip._cenfunc_parsed = nanbiloc
+        if stdfunc == 'biweight':
+            sigma_clip._stdfunc_parsed = nanbiscale
+        return sigma_clip
+
+
 def _make_generic_background2d(monkeypatch, *args, **kwargs):
     """
     Create a Background2D instance that uses the generic (non-fused)
@@ -1154,11 +1184,27 @@ class TestFastBoxStatistics:
                             bkg_estimator=bkg_estimator,
                             bkg_rms_estimator=rms_estimator)
 
+    @pytest.mark.parametrize(('cenfunc', 'stdfunc'), [
+        ('biweight', 'biweight'),
+        ('biweight', 'std'),
+        ('median', 'biweight')])
+    def test_biweight_sigma_clip_matches_generic(self, cenfunc, stdfunc,
+                                                 monkeypatch):
+        """
+        Test that the SigmaClip 'biweight' cenfunc/stdfunc string
+        options are supported by the fused kernel and match the generic
+        path (astropy's Python clipping code paths).
+        """
+        sigma_clip = _make_sigma_clip_biweight(cenfunc=cenfunc,
+                                               stdfunc=stdfunc,
+                                               sigma=2.0, maxiters=5)
+        self._compare_paths(monkeypatch, sigma_clip=sigma_clip)
+
     def test_biweight_nonfinite_m_falls_back(self, test_data):
         """
-        Test that a non-finite biweight location anchor (M) falls
-        back to the generic path, where the all-NaN result raises an
-        error, rather than silently computing median-anchored values.
+        Test that a non-finite biweight location anchor (M) falls back
+        to the generic path, where the all-NaN result raises an error,
+        rather than silently computing median-anchored values.
         """
         bkg_estimator = BiweightLocationBackground(M=np.nan)
         match = 'All boxes contain fewer than'
@@ -1193,8 +1239,8 @@ class TestFastBoxStatistics:
 
     def test_unsupported_inputs_fall_back(self, test_data):
         """
-        Test that unsupported sigma_clip and estimator inputs fall
-        back to the generic path and still produce finite results.
+        Test that unsupported sigma_clip and estimator inputs fall back
+        to the generic path and still produce finite results.
         """
 
         class UnknownClip:

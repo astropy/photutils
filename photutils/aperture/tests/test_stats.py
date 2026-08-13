@@ -10,7 +10,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.nddata import NDData, StdDevUncertainty
-from astropy.stats import SigmaClip, mad_std
+from astropy.stats import SigmaClip, biweight_location, biweight_scale, mad_std
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
@@ -1218,3 +1218,66 @@ class TestSigmaClipSharedInstance:
                 total = sum_future.result()
             assert_allclose(mean, ref_mean)
             assert_allclose(total, ref_sum)
+
+
+class TestSigmaClipBiweightStrings:
+    """
+    Tests for the SigmaClip 'biweight' cenfunc/stdfunc string options in
+    the fast clipping kernels.
+    """
+
+    @staticmethod
+    def _make_sigma_clip_biweight(**kwargs):
+        """
+        Create a SigmaClip instance using the 'biweight' cenfunc and
+        stdfunc string options, emulating them on astropy versions that
+        do not support these options.
+        """
+
+        def nanbiloc(data, axis=None):
+            return biweight_location(data, axis=axis, ignore_nan=True)
+
+        def nanbiscale(data, axis=None):
+            return biweight_scale(data, axis=axis, ignore_nan=True)
+
+        try:
+            return SigmaClip(cenfunc='biweight', stdfunc='biweight',
+                             **kwargs)
+        except ValueError:
+            sigma_clip = SigmaClip(**kwargs)
+            sigma_clip.cenfunc = 'biweight'
+            sigma_clip.stdfunc = 'biweight'
+            sigma_clip._cenfunc_parsed = nanbiloc
+            sigma_clip._stdfunc_parsed = nanbiscale
+            return sigma_clip
+
+    def test_biweight_matches_fallback(self, monkeypatch):
+        """
+        Test that the 'biweight' string options are accepted by the fast
+        clipping kernels and match the mask-based fallback path, which
+        clips using the astropy SigmaClip instance.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(10.0, 2.0, (101, 101))
+        data[::7, ::7] = 200.0  # outliers
+        positions = [(20.0, 20.0), (50.0, 50.0), (80.5, 80.5)]
+        aper = CircularAperture(positions, r=12)
+        sigclip = self._make_sigma_clip_biweight(sigma=2.0, maxiters=5)
+
+        apstats1 = ApertureStats(data, aper, sigma_clip=sigclip,
+                                 sum_method='exact')
+        assert apstats1._fast_clip_spec() is not None
+        mean1 = apstats1.mean
+        std1 = apstats1.std
+        sum1 = apstats1.sum
+
+        # Force the mask-based fallback path
+        monkeypatch.setattr(ApertureStats, '_fast_clip_spec',
+                            lambda _self: None)
+        apstats2 = ApertureStats(data, aper, sigma_clip=sigclip,
+                                 sum_method='exact')
+        assert apstats2._fast_clip_spec() is None
+
+        assert_allclose(mean1, apstats2.mean, rtol=1e-10)
+        assert_allclose(std1, apstats2.std, rtol=1e-10)
+        assert_allclose(sum1, apstats2.sum, rtol=1e-10)

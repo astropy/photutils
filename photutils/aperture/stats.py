@@ -1028,17 +1028,18 @@ class ApertureStats:
         stdfunc_code)`` when ``sigma_clip`` is a `SigmaClip` instance
         supported by the fast clipping kernel, and `None` otherwise (in
         which case the mask-based path is used). The fast path supports
-        the string ``cenfunc`` values 'median'/'mean', the string
-        ``stdfunc`` values 'std'/'mad_std', and no spatial growing.
+        the string ``cenfunc`` values 'median'/'mean'/'biweight', the
+        string ``stdfunc`` values 'std'/'mad_std'/'biweight', and no
+        spatial growing.
         """
         sc = self.sigma_clip
         if sc is None or not isinstance(sc, SigmaClip):
             return None
-        if not (isinstance(sc.cenfunc, str) and sc.cenfunc in ('median',
-                                                               'mean')):
+        if not (isinstance(sc.cenfunc, str)
+                and sc.cenfunc in ('median', 'mean', 'biweight')):
             return None
-        if not (isinstance(sc.stdfunc, str) and sc.stdfunc in ('std',
-                                                               'mad_std')):
+        if not (isinstance(sc.stdfunc, str)
+                and sc.stdfunc in ('std', 'mad_std', 'biweight')):
             return None
         if sc.grow:  # False or 0 is supported; spatial growing is not
             return None
@@ -1047,8 +1048,8 @@ class ApertureStats:
             maxiters = -1
         else:
             maxiters = int(maxiters)
-        cenfunc_code = 0 if sc.cenfunc == 'median' else 1
-        stdfunc_code = 0 if sc.stdfunc == 'std' else 1
+        cenfunc_code = {'median': 0, 'mean': 1, 'biweight': 2}[sc.cenfunc]
+        stdfunc_code = {'std': 0, 'mad_std': 1, 'biweight': 2}[sc.stdfunc]
         return (float(sc.sigma_lower), float(sc.sigma_upper), maxiters,
                 cenfunc_code, stdfunc_code)
 
