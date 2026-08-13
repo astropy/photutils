@@ -123,6 +123,12 @@ New Features
     and a supported ``sigma_clip``, by routing the sigma clipping
     through astropy's fast C implementation. [#2364]
 
+  - Significantly improved the performance of ``LocalBackground``
+    when the ``bkg_estimator`` is a standard photutils estimator class,
+    by computing the local backgrounds for all positions with the
+    batched ``ApertureStats`` kernels instead of a Python loop over the
+    apertures. [#2364]
+
 - ``photutils.detection``
 
   - Added validation of the ``StarFinderCatalogBase.to_table()``
