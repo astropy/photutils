@@ -321,6 +321,14 @@ Bug Fixes
     if any input ``xycoords`` position is outside the bounds of the
     input data. [#2377]
 
+  - Fixed ``find_peaks`` (and the star finder classes, which use it)
+    so that masked pixels can no longer suppress nearby peaks within
+    the local region. Masked pixels are now replaced by the minimum
+    finite data value before peak detection, the same treatment already
+    applied to NaN pixels. Previously, a masked pixel (e.g., a flagged
+    cosmic ray or hot pixel) with a value larger than a nearby true peak
+    prevented that peak from being detected. [#2377]
+
 - ``photutils.morphology``
 
   - Fixed ``data_properties`` so that a ``background`` input with

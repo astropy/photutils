@@ -111,8 +111,11 @@ class TestStarFinder:
         tbl1 = starfinder(data)
         tbl2 = starfinder(data, mask=mask)
         assert len(tbl1) == 25
-        assert len(tbl2) == 13
-        assert min(tbl2['y_centroid']) > 50
+        # The 14 sources include one whose unmasked peak pixel lies at
+        # the mask boundary (its centroid falls just below it). Masked
+        # pixels do not suppress nearby peaks.
+        assert len(tbl2) == 14
+        assert min(tbl2['y_centroid']) > 49.5
 
     def test_mask_int(self, data, kernel):
         """

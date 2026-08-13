@@ -73,6 +73,57 @@ class TestFindPeaks:
         tbl_int = find_peaks(data, 0.1, box_size=3, mask=int_mask)
         assert_array_equal(tbl_bool, tbl_int)
 
+    def test_masked_pixels_do_not_suppress_peaks(self):
+        """
+        Test that a masked pixel brighter than a nearby true peak does
+        not suppress that peak.
+        """
+        data = np.zeros((20, 20))
+        data[10, 10] = 100.0  # bad pixel (masked)
+        data[10, 12] = 50.0  # real peak, 2 pixels away
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[10, 10] = True
+
+        tbl = find_peaks(data, 1.0, box_size=5, mask=mask)
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 12
+        assert tbl['y_peak'][0] == 10
+
+    def test_masked_pixels_min_separation(self):
+        """
+        Test that masked pixels do not suppress nearby peaks with the
+        fast circular (min_separation) peak detection.
+        """
+        data = np.zeros((40, 40))
+        data[20, 20] = 100.0  # bad pixel (masked)
+        data[20, 24] = 50.0  # real peak, 4 pixels away
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[20, 20] = True
+
+        tbl = find_peaks(data, 1.0, min_separation=6, mask=mask)
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 24
+        assert tbl['y_peak'][0] == 20
+
+    def test_mask_equivalent_to_nan(self):
+        """
+        Test that masking a pixel gives the same result as setting it
+        to NaN.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(0.0, 1.0, (50, 50))
+        data[25, 25] = 100.0
+        data[25, 27] = 50.0
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[25, 25] = True
+
+        data_nan = data.copy()
+        data_nan[25, 25] = np.nan
+
+        tbl_mask = find_peaks(data, 10.0, box_size=5, mask=mask)
+        tbl_nan = find_peaks(data_nan, 10.0, box_size=5)
+        assert_array_equal(tbl_mask, tbl_nan)
+
     def test_maskshape(self, data):
         """
         Test if mask shape doesn't match data shape.

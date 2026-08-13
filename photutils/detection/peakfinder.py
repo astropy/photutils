@@ -231,6 +231,15 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     mask : array_like, bool, optional
         A boolean mask with the same shape as ``data``, where a `True`
         value indicates the corresponding element of ``data`` is masked.
+        Masked pixels can neither be detected as peaks nor suppress
+        nearby peaks within the local region (they are treated the same
+        as NaN pixels).
+
+        .. versionchanged:: 3.1
+            Masked pixels no longer suppress nearby peaks within the
+            local region. Previously, a masked pixel with a value larger
+            than a nearby true peak prevented that peak from being
+            detected.
 
     border_width : int, array_like of int, or None, optional
         The width in pixels to exclude around the border of the
@@ -314,9 +323,10 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     image boundary are treated as zero. For images with all-negative
     values, this may suppress legitimate peaks near the borders.
 
-    Any NaN values in the input ``data`` are replaced with the minimum
-    finite value before peak detection, and the corresponding pixels are
-    automatically excluded from the results.
+    Masked pixels and any NaN values in the input ``data`` are replaced
+    with the minimum finite data value before peak detection, so they
+    can neither be detected as peaks nor suppress nearby peaks. NaN
+    pixels are automatically excluded from the results.
 
     The output column names (``x_peak``, ``y_peak``, ``peak_value``)
     differ from the star finder classes (e.g.,
@@ -352,14 +362,23 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         border_width = as_pair('border_width', border_width,
                                lower_bound=(0, 1), upper_bound=data.shape)
 
-    # Remove NaN values to avoid runtime warnings and exclude NaN pixels
-    # from peak detection
+    # Combine the input mask with a mask of NaN pixels. Masked and
+    # NaN pixels are replaced by the minimum finite data value before
+    # peak detection so that they can neither be detected as peaks nor
+    # suppress nearby peaks within the local region.
     nan_mask = np.isnan(data)
-    if np.any(nan_mask):
-        data = np.copy(data)  # ndarray
-        data[nan_mask] = nanmin(data)
-        mask = (nan_mask if mask is None
-                else np.asanyarray(mask) | nan_mask)
+    if mask is not None:
+        mask = np.asanyarray(mask, dtype=bool)
+        if data.shape != mask.shape:
+            msg = 'data and mask must have the same shape'
+            raise ValueError(msg)
+        mask = mask | nan_mask
+    elif np.any(nan_mask):
+        mask = nan_mask
+
+    if mask is not None and np.any(mask):
+        data = np.copy(data)  # do not mutate the input data
+        data[mask] = nanmin(data)
 
     # peak_goodmask: good pixels are True
     if min_separation is not None and min_separation > 0:
@@ -375,10 +394,6 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
 
     # Exclude peaks that are masked
     if mask is not None:
-        mask = np.asanyarray(mask, dtype=bool)
-        if data.shape != mask.shape:
-            msg = 'data and mask must have the same shape'
-            raise ValueError(msg)
         peak_goodmask = np.logical_and(peak_goodmask, ~mask)
 
     # Exclude peaks that are too close to the border
