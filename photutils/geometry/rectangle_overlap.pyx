@@ -136,48 +136,51 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
     dx = (xmax - xmin) / nx
     dy = (ymax - ymin) / ny
 
+    # Axis-aligned bounding box of the rotated rectangle, used to
+    # restrict the pixel loops to the bounding-box index range (pixels
+    # outside it have zero overlap). The clamping to [0, nx] and [0, ny]
+    # is done in floating point to avoid integer overflow for rectangles
+    # far outside the grid.
+    bbox_dx = (half_width * fabs(cos_theta)
+               + half_height * fabs(sin_theta))
+    bbox_dy = (half_width * fabs(sin_theta)
+               + half_height * fabs(cos_theta))
+
+    # Interior/exterior fast-path thresholds. Rotation into the
+    # rectangle frame is an isometry, so every point of a pixel lies
+    # within ``margin`` (half the pixel diagonal) of the rotated pixel
+    # center. A pixel is therefore wholly inside the rectangle if its
+    # rotated center is at least ``margin`` inside both half-extents,
+    # and wholly outside if it is at least ``margin`` beyond either
+    # half-extent. Only the boundary band needs the exact polygon clip
+    # or the subpixel sampling. A wholly inside pixel has every subpixel
+    # center inside the rectangle (fraction 1) and a wholly outside
+    # pixel has none (fraction 0), so both modes share the fast path.
+    # A half-extent smaller than ``margin`` gives a negative inner
+    # threshold, which never matches (the rotated center distances are
+    # >= 0), so no pixel is classified as wholly inside a rectangle
+    # smaller than the pixel diagonal.
+    margin = 0.5 * sqrt(dx * dx + dy * dy)
+    w_in = half_width - margin
+    w_out = half_width + margin
+    h_in = half_height - margin
+    h_out = half_height + margin
+
+    i_min = <int>fmax(0.0, fmin(<double>nx,
+                                floor((-bbox_dx - xmin) / dx)))
+    i_max = <int>fmax(0.0, fmin(<double>nx,
+                                ceil((bbox_dx - xmin) / dx)))
+    j_min = <int>fmax(0.0, fmin(<double>ny,
+                                floor((-bbox_dy - ymin) / dy)))
+    j_max = <int>fmax(0.0, fmin(<double>ny,
+                                ceil((bbox_dy - ymin) / dy)))
+
     if use_exact == 1:
         # Build the four CCW vertices of the rotated rectangle (centered
         # on the origin) via ``rect_vertices``.
         rect_vertices(half_width, half_height, cos_theta, sin_theta,
                       poly_x, poly_y)
-
-        # Axis-aligned bounding box of the rotated rectangle, used to
-        # restrict the pixel loops to the bounding-box index range
-        # (pixels outside it have zero overlap). The clamping to
-        # [0, nx] and [0, ny] is done in floating point to avoid
-        # integer overflow for rectangles far outside the grid.
-        bbox_dx = (half_width * fabs(cos_theta)
-                   + half_height * fabs(sin_theta))
-        bbox_dy = (half_width * fabs(sin_theta)
-                   + half_height * fabs(cos_theta))
         pixel_area = dx * dy
-
-        # Interior/exterior fast-path thresholds. Rotation into the
-        # rectangle frame is an isometry, so every point of a pixel lies
-        # within ``margin`` (half the pixel diagonal) of the rotated
-        # pixel center. A pixel is therefore wholly inside the rectangle
-        # if its rotated center is at least ``margin`` inside both
-        # half-extents, and wholly outside if it is at least ``margin``
-        # beyond either half-extent. Only the boundary band needs the
-        # exact polygon clip. A half-extent smaller than ``margin``
-        # gives a negative inner threshold, which never matches (the
-        # rotated center distances are >= 0), so no pixel is classified
-        # as wholly inside a rectangle smaller than the pixel diagonal.
-        margin = 0.5 * sqrt(dx * dx + dy * dy)
-        w_in = half_width - margin
-        w_out = half_width + margin
-        h_in = half_height - margin
-        h_out = half_height + margin
-
-        i_min = <int>fmax(0.0, fmin(<double>nx,
-                                    floor((-bbox_dx - xmin) / dx)))
-        i_max = <int>fmax(0.0, fmin(<double>nx,
-                                    ceil((bbox_dx - xmin) / dx)))
-        j_min = <int>fmax(0.0, fmin(<double>ny,
-                                    floor((-bbox_dy - ymin) / dy)))
-        j_max = <int>fmax(0.0, fmin(<double>ny,
-                                    ceil((bbox_dy - ymin) / dy)))
 
         with nogil:
             for i in range(i_min, i_max):
@@ -209,14 +212,31 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
                         / pixel_area)
         return frac
 
-    # Subpixel-sampling fallback
+    # Subpixel-sampling fallback, restricted to the same bounding-box
+    # index range and sharing the interior/exterior fast path, so only
+    # the boundary band is sampled.
     with nogil:
-        for i in range(nx):
+        for i in range(i_min, i_max):
             pxmin = xmin + i * dx
             pxmax = pxmin + dx
-            for j in range(ny):
+            pxcen = pxmin + 0.5 * dx
+            for j in range(j_min, j_max):
                 pymin = ymin + j * dy
                 pymax = pymin + dy
+                pycen = pymin + 0.5 * dy
+
+                # Rotate the pixel center into the rectangle frame.
+                xrot = pxcen * cos_theta + pycen * sin_theta
+                yrot = -pxcen * sin_theta + pycen * cos_theta
+                axrot = fabs(xrot)
+                ayrot = fabs(yrot)
+
+                if axrot >= w_out or ayrot >= h_out:
+                    continue  # wholly outside, frac stays 0
+                if axrot <= w_in and ayrot <= h_in:
+                    frac_view[j, i] = 1.0  # wholly inside
+                    continue
+
                 frac_view[j, i] = rectangle_overlap_single_subpixel(
                     pxmin, pymin, pxmax, pymax, half_width, half_height,
                     cos_theta, sin_theta, subpixels)

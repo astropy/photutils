@@ -77,12 +77,13 @@ def test_rectangle_exact_matches_high_subpixel():
     assert np.abs(exact - sub).max() < 0.02
 
 
-def test_rectangle_exact_full_pixel_is_one():
+@pytest.mark.parametrize('use_exact', [0, 1])
+def test_rectangle_full_pixel_is_one(use_exact):
     """
     A pixel completely inside the rectangle must have overlap = 1.
     """
     grid = rectangular_overlap_grid(-2.0, 2.0, -2.0, 2.0, 4, 4,
-                                    10.0, 10.0, 0.3, 1, 1)
+                                    10.0, 10.0, 0.3, use_exact, 4)
     assert_allclose(grid, 1.0)
 
 
@@ -98,12 +99,13 @@ def test_rectangle_exact_smaller_than_pixel(theta):
     assert_allclose(grid.sum(), 0.48, rtol=1e-12)
 
 
-def test_rectangle_exact_no_overlap():
+@pytest.mark.parametrize('use_exact', [0, 1])
+def test_rectangle_no_overlap(use_exact):
     """
     A rectangle entirely outside the grid yields all zeros.
     """
     grid = rectangular_overlap_grid(10.0, 12.0, 10.0, 12.0, 4, 4,
-                                    1.0, 1.0, 0.0, 1, 1)
+                                    1.0, 1.0, 0.0, use_exact, 4)
     assert_allclose(grid, 0.0)
 
 
