@@ -4,6 +4,7 @@ Tools for calculating limiting fluxes.
 """
 
 import warnings
+from copy import copy
 
 import astropy.units as u
 import numpy as np
@@ -327,6 +328,12 @@ class ImageDepth:
                                           desc=desc)
 
         flux_limits = []
+        # Use a local copy of the SigmaClip instance because SigmaClip
+        # stores internal state on the instance during calls, so a
+        # shared instance is not safe to call concurrently from multiple
+        # threads.
+        sigma_clip = copy(self.sigma_clip)
+
         apertures = []
         for _ in iter_range:
             if self.overlap:
@@ -342,8 +349,8 @@ class ImageDepth:
             apers = CircularAperture(xycoords, r=self.aper_radius)
             apertures.append(apers)
             fluxes = AperturePhotometry(data, apers).flux
-            if self.sigma_clip is not None:
-                fluxes = self.sigma_clip(fluxes, masked=False)  # ndarray
+            if sigma_clip is not None:
+                fluxes = sigma_clip(fluxes, masked=False)  # ndarray
             self.fluxes.append(fluxes)
             flux_limits.append(self.n_sigma * np.std(fluxes))
 

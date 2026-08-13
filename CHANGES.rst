@@ -208,6 +208,9 @@ Bug Fixes
     shape parameter after construction validates the inner < outer
     invariant. [#2362]
 
+  - Fixed a thread-safety issue in ``ApertureStats`` by using a copy of
+    the user's SigmaClip instance. [#2364]
+
 - ``photutils.background``
 
   - Fixed the ``exclude_percentile`` box-exclusion criterion in
@@ -292,6 +295,11 @@ Bug Fixes
 
   - Fixed ``EllipseSample`` not resetting ``EllipseGeometry`` cached
     attributes when overriding ``sma``. [#2280]
+
+- ``photutils.utils``
+
+  - Fixed a thread-safety issue in ``ImageDepth`` by using a copy of the
+    user's SigmaClip instance. [#2364]
 
 API Changes
 ^^^^^^^^^^^

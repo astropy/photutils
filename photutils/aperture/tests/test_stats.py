@@ -1135,3 +1135,86 @@ class TestApertureMetadata:
         assert tbl.meta['aperture_a_out'] == saper.a_out
         assert tbl.meta['aperture_b_out'] == saper.b_out
         assert tbl.meta['aperture_theta'] == saper.theta
+
+
+class TestSigmaClipSharedInstance:
+    """
+    Tests for calling a shared SigmaClip instance from the astropy
+    fallback clipping path.
+
+    astropy SigmaClip stores internal state on the instance during
+    calls, and the fallback path is reachable from two different
+    lazyproperties (the center- and sum-footprint cutouts) that do not
+    share a lock. ApertureStats must therefore never call the user's
+    SigmaClip instance directly.
+    """
+
+    def test_user_sigma_clip_instance_not_called(self, monkeypatch):
+        """
+        Test that the user's SigmaClip instance is never called directly
+        (an internal copy must be used).
+        """
+        data = np.ones((51, 51))
+        data[20:30, 20:30] = 100.0
+        aper = CircularAperture([(25, 25), (10, 10)], r=8)
+        # A callable cenfunc is unsupported by the batch clipping
+        # kernels and forces the astropy SigmaClip fallback path.
+        sigclip = SigmaClip(sigma=3.0, maxiters=5, cenfunc=np.nanmedian)
+
+        called_ids = []
+        orig_call = SigmaClip.__call__
+
+        def spy(self, *args, **kwargs):
+            called_ids.append(id(self))
+            return orig_call(self, *args, **kwargs)
+
+        monkeypatch.setattr(SigmaClip, '__call__', spy)
+        apstats = ApertureStats(data, aper, sigma_clip=sigclip,
+                                sum_method='exact')
+        _ = apstats.mean
+        _ = apstats.sum
+
+        assert len(called_ids) > 0  # the fallback path was exercised
+        assert id(sigclip) not in called_ids
+
+    def test_fallback_thread_safety(self):
+        """
+        Test that computing a center-footprint and a sum-footprint
+        property concurrently on the same instance gives the same
+        results as the serial computation.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        rng = np.random.default_rng(0)
+        n_src = 200
+        ny = 51
+        yc = ny // 2
+        xs = np.arange(25, 25 + 50 * n_src, 50)
+        data = rng.normal(0.0, 1.0, (ny, 50 * n_src + 50))
+        for i, x in enumerate(xs):
+            # Strong per-source scale differences make any clipping
+            # bound contamination between sources visible
+            scale = 10.0 ** (i % 6)
+            data[:, x - 20:x + 20] = rng.normal(scale, scale / 10.0,
+                                                (ny, 40))
+            data[yc - 2:yc + 2, x - 2:x + 2] = scale * 50.0  # outliers
+
+        positions = np.column_stack([xs, np.full(n_src, yc)])
+        aper = CircularAperture(positions, r=15)
+        sigclip = SigmaClip(sigma=2.0, maxiters=10, cenfunc=np.nanmedian)
+
+        ref = ApertureStats(data, aper, sigma_clip=sigclip,
+                            sum_method='exact')
+        ref_mean = ref.mean
+        ref_sum = ref.sum
+
+        for _ in range(3):
+            apstats = ApertureStats(data, aper, sigma_clip=sigclip,
+                                    sum_method='exact')
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                mean_future = executor.submit(getattr, apstats, 'mean')
+                sum_future = executor.submit(getattr, apstats, 'sum')
+                mean = mean_future.result()
+                total = sum_future.result()
+            assert_allclose(mean, ref_mean)
+            assert_allclose(total, ref_sum)

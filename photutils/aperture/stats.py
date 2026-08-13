@@ -5,7 +5,7 @@ Tools for calculating properties of sources defined by an Aperture.
 
 import inspect
 import warnings
-from copy import deepcopy
+from copy import copy, deepcopy
 from typing import NamedTuple
 
 import astropy.units as u
@@ -1297,6 +1297,14 @@ class ApertureStats:
             sigma-clipped pixels (always 0 when ``count_clipped`` is
             `False`).
         """
+        # Use a local copy of the SigmaClip instance because SigmaClip
+        # stores internal state on the instance # during calls. This
+        # method is reachable from two different # lazyproperties (the
+        # center- and sum-footprint cutouts), # which do not share a lock,
+        # so calling a shared instance from # multiple threads could
+        # silently corrupt the results.
+        sigma_clip = copy(self.sigma_clip)
+
         data_cutouts = []
         variance_cutouts = []
         mask_cutouts = []
@@ -1393,14 +1401,14 @@ class ApertureStats:
                 mask_cutout = (aperweight_cutout == 0) | data_mask
 
                 data_cutout = data_cutout.copy()
-                if self.sigma_clip is None:
+                if sigma_clip is None:
                     # data_cutout will have zeros where mask_cutout is True
                     data_cutout *= ~mask_cutout
                 else:
                     # To input a mask, SigmaClip needs a MaskedArray
                     data_cutout_ma = np.ma.masked_array(data_cutout,
                                                         mask=mask_cutout)
-                    data_sigclip = self.sigma_clip(data_cutout_ma)
+                    data_sigclip = sigma_clip(data_cutout_ma)
 
                     # Define a mask of only the sigma-clipped pixels
                     sigclip_mask = data_sigclip.mask & ~mask_cutout
