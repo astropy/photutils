@@ -41,6 +41,17 @@ class LocalBackground:
         `~photutils.background.MedianBackground` with sigma clipping
         (i.e., sigma-clipped median).
 
+    n_threads : int, optional
+        The number of threads to use to measure the local backgrounds.
+        The default is 1 (no multithreading). The value is passed
+        through to the internal `~photutils.aperture.ApertureStats`
+        computation, which divides the annulus positions into chunks
+        that are processed concurrently, producing results identical
+        to the single-threaded computation. Multithreading is used
+        only for the standard photutils estimator classes (see
+        ``bkg_estimator``). A custom estimator callable uses the serial
+        per-aperture loop.
+
     Examples
     --------
     >>> import numpy as np
@@ -60,7 +71,8 @@ class LocalBackground:
     """
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
-    def __init__(self, inner_radius, outer_radius, bkg_estimator=None):
+    def __init__(self, inner_radius, outer_radius, bkg_estimator=None, *,
+                 n_threads=1):
         if inner_radius <= 0:
             msg = 'inner_radius must be positive.'
             raise ValueError(msg)
@@ -77,8 +89,14 @@ class LocalBackground:
             bkg_estimator = MedianBackground()
         self.bkg_estimator = bkg_estimator
 
+        if not isinstance(n_threads, (int, np.integer)) or n_threads < 1:
+            msg = 'n_threads must be a positive integer'
+            raise ValueError(msg)
+        self.n_threads = int(n_threads)
+
     def __repr__(self):
-        params = ('inner_radius', 'outer_radius', 'bkg_estimator')
+        params = ('inner_radius', 'outer_radius', 'bkg_estimator',
+                  'n_threads')
         return make_repr(self, params)
 
     def _fast_estimator_spec(self):
@@ -155,7 +173,8 @@ class LocalBackground:
         kind, median_factor, mean_factor = spec
         apstats = ApertureStats(data, apertures, mask=mask,
                                 sigma_clip=self.bkg_estimator.sigma_clip,
-                                sum_method='center')
+                                sum_method='center',
+                                n_threads=self.n_threads)
 
         if kind == 'mean':
             result = apstats.mean

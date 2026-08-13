@@ -17,7 +17,8 @@ from functools import partial
 
 import numpy as np
 from astropy.stats import SigmaClip
-from bench_utils import make_image, print_environment, time_best
+from bench_utils import (format_sweep_cells, make_image, print_environment,
+                         time_best)
 
 from photutils.background import (Background2D, BiweightLocationBackground,
                                   BiweightScaleBackgroundRMS, LocalBackground,
@@ -163,13 +164,19 @@ def bench_estimators(*, size=2048, repeats=3, seed=0):
               f'{f"{t_clip:.3f}s":>17}')
 
 
-def bench_local_background(*, size=2048, n_positions=1000, repeats=3,
-                           seed=0):
+def bench_local_background(n_threads_list, *, size=2048, n_positions=1000,
+                           repeats=3, seed=0):
     """
-    Benchmark LocalBackground at many positions.
+    Benchmark LocalBackground at many positions for each thread
+    count.
+
+    Speedups are relative to the first thread count.
 
     Parameters
     ----------
+    n_threads_list : list of int
+        The thread counts to sweep.
+
     size : int, optional
         The image size; the image is ``(size, size)``.
 
@@ -184,13 +191,20 @@ def bench_local_background(*, size=2048, n_positions=1000, repeats=3,
     """
     print(f'\n== LocalBackground ({n_positions} positions, '
           f'{size}x{size} image) ==')
+    header = ''.join(f'{f"n={n}":>18}' for n in n_threads_list)
+    print(header)
     data = make_image((size, size), seed=seed)
     rng = np.random.default_rng(seed)
     x = rng.uniform(50, size - 50, n_positions)
     y = rng.uniform(50, size - 50, n_positions)
-    local_bkg = LocalBackground(5, 10)
-    t_local = time_best(partial(local_bkg, data, x, y), repeats=repeats)
-    print(f'{t_local:.3f}s')
+
+    times = []
+    for n_threads in n_threads_list:
+        local_bkg = LocalBackground(5, 10, n_threads=n_threads)
+        times.append(time_best(partial(local_bkg, data, x, y),
+                               repeats=repeats))
+    row = ''.join(f'{cell:>18}' for cell in format_sweep_cells(times))
+    print(row)
 
 
 def main():
@@ -236,7 +250,8 @@ def main():
     if args.which in ('all', 'estimators'):
         bench_estimators(repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'local'):
-        bench_local_background(repeats=args.repeats, seed=args.seed)
+        bench_local_background(n_threads_list, repeats=args.repeats,
+                               seed=args.seed)
 
 
 if __name__ == '__main__':

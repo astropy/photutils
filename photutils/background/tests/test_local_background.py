@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture import CircularAnnulus
 from photutils.background import (BiweightLocationBackground,
@@ -285,3 +285,32 @@ class TestFastLocalBackground:
             local_bkg = LocalBackground(5, 10, bkg_estimator=estimator)
             assert local_bkg._fast_estimator_spec() is None
             assert np.isfinite(local_bkg(data, 25, 25))
+
+    def test_n_threads_identical(self):
+        """
+        Test that n_threads (passed through to ApertureStats) gives
+        results identical to the single-threaded computation.
+        """
+        local_bkg1 = LocalBackground(5, 10)
+        local_bkg4 = LocalBackground(5, 10, n_threads=4)
+        assert local_bkg4.n_threads == 4
+        bkg1 = local_bkg1(self.data, self.x, self.y, mask=self.mask)
+        bkg4 = local_bkg4(self.data, self.x, self.y, mask=self.mask)
+        assert_equal(bkg1, bkg4)
+
+    def test_n_threads_repr(self):
+        """
+        Test that n_threads appears in the repr.
+        """
+        local_bkg = LocalBackground(5, 10, n_threads=4)
+        assert 'n_threads=4' in repr(local_bkg)
+
+    def test_invalid_n_threads(self):
+        """
+        Test that an error is raised if n_threads is not a positive
+        integer.
+        """
+        match = 'n_threads must be a positive integer'
+        for n_threads in (0, -1, 2.5):
+            with pytest.raises(ValueError, match=match):
+                LocalBackground(5, 10, n_threads=n_threads)
