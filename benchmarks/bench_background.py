@@ -13,14 +13,11 @@ available options.
 """
 
 import argparse
-import os
-import platform
-import sys
-import time
 from functools import partial
 
 import numpy as np
 from astropy.stats import SigmaClip
+from bench_utils import make_image, print_environment, time_best
 
 from photutils.background import (Background2D, BiweightLocationBackground,
                                   BiweightScaleBackgroundRMS, LocalBackground,
@@ -34,70 +31,6 @@ ESTIMATOR_CLASSES = [MeanBackground, MedianBackground,
                      SExtractorBackground, BiweightLocationBackground,
                      StdBackgroundRMS, MADStdBackgroundRMS,
                      BiweightScaleBackgroundRMS]
-
-
-def time_best(func, *, repeats=3):
-    """
-    Return the best wall-clock time of ``repeats`` calls to ``func``.
-
-    Parameters
-    ----------
-    func : callable
-        The zero-argument callable to time.
-
-    repeats : int, optional
-        The number of times to call ``func``.
-
-    Returns
-    -------
-    result : float
-        The best (minimum) wall-clock time in seconds.
-    """
-    best = np.inf
-    for _ in range(repeats):
-        t0 = time.perf_counter()
-        func()
-        best = min(best, time.perf_counter() - t0)
-    return best
-
-
-def make_image(shape, *, seed=0):
-    """
-    Return a Gaussian-noise image of the given shape.
-
-    Parameters
-    ----------
-    shape : tuple of int
-        The shape of the output image.
-
-    seed : int, optional
-        The random number generator seed.
-
-    Returns
-    -------
-    result : 2D `~numpy.ndarray`
-        The noise image.
-    """
-    rng = np.random.default_rng(seed)
-    return rng.normal(100.0, 5.0, shape)
-
-
-def print_environment():
-    """
-    Print information about the runtime environment.
-    """
-    import astropy
-    import scipy
-
-    import photutils
-    from photutils.utils._optional_deps import HAS_BOTTLENECK
-
-    gil = getattr(sys, '_is_gil_enabled', lambda: True)()
-    print(f'python {platform.python_version()} (GIL enabled: {gil}), '
-          f'{os.cpu_count()} CPUs')
-    print(f'photutils {photutils.__version__}, numpy {np.__version__}, '
-          f'scipy {scipy.__version__}, astropy {astropy.__version__}, '
-          f'bottleneck: {HAS_BOTTLENECK}')
 
 
 def bench_background2d(sizes, box_sizes, n_threads_list, *, repeats=3,
