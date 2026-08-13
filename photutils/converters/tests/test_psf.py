@@ -58,8 +58,11 @@ def test_psf_converters(tmp_path, example):
 
     with asdf.open(filename) as af:
         psf2 = af['psf']
-        for param in params:
-            assert_array_equal(getattr(psf, param), getattr(psf2, param))
+
+    # The comparisons are made after the file is closed so that they
+    # also check that no lazily-loaded arrays leak into the object
+    for param in params:
+        assert_array_equal(getattr(psf, param), getattr(psf2, param))
 
 
 # Examples of every PSF model (STDPSFGrid is not a model, so it has
@@ -144,8 +147,9 @@ def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path):
 
     with asdf.open(filename) as af:
         psf2 = af['psf']
-        assert_array_equal(psf2.oversampling, (2, 3))
-        assert psf2.meta['oversampling'] == (2, 3)
+
+    assert_array_equal(psf2.oversampling, (2, 3))
+    assert psf2.meta['oversampling'] == (2, 3)
 
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
@@ -203,12 +207,13 @@ def test_stdpsf_grid_converter_preserves_oversampling(tmp_path):
 
     with asdf.open(filename) as af:
         psfgrid2 = af['psf']
-        assert_array_equal(psfgrid2.oversampling, (8, 8))
-        assert psfgrid2.meta['instrument'] == 'test-instrument'
-        assert psfgrid2.meta['custom'] == {'value': 42}
-        assert 'grid_xypos' not in psfgrid2.meta
-        assert 'oversampling' not in psfgrid2.meta
-        assert 'grid_shape' not in psfgrid2.meta
+
+    assert_array_equal(psfgrid2.oversampling, (8, 8))
+    assert psfgrid2.meta['instrument'] == 'test-instrument'
+    assert psfgrid2.meta['custom'] == {'value': 42}
+    assert 'grid_xypos' not in psfgrid2.meta
+    assert 'oversampling' not in psfgrid2.meta
+    assert 'grid_shape' not in psfgrid2.meta
 
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
@@ -229,9 +234,10 @@ def test_stdpsf_grid_converter_repeated_grid_coordinate(tmp_path):
 
     with asdf.open(asdf_filename) as af:
         psfgrid2 = af['psf']
-        assert psfgrid2._grid_shape == psfgrid._grid_shape
-        assert_array_equal(psfgrid2.grid_xypos, psfgrid.grid_xypos)
-        assert_array_equal(psfgrid2._xgrid, psfgrid._xgrid)
-        assert_array_equal(psfgrid2._ygrid, psfgrid._ygrid)
-        assert_array_equal(psfgrid2.data, psfgrid.data)
-        assert repr(psfgrid2) == repr(psfgrid)
+
+    assert psfgrid2._grid_shape == psfgrid._grid_shape
+    assert_array_equal(psfgrid2.grid_xypos, psfgrid.grid_xypos)
+    assert_array_equal(psfgrid2._xgrid, psfgrid._xgrid)
+    assert_array_equal(psfgrid2._ygrid, psfgrid._ygrid)
+    assert_array_equal(psfgrid2.data, psfgrid.data)
+    assert repr(psfgrid2) == repr(psfgrid)

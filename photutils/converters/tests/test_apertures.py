@@ -61,9 +61,12 @@ def _check_roundtrip(tmp_path, aperture, params):
 
     with asdf.open(filename) as af:
         aperture2 = af['aper']
-        for param in params:
-            assert_array_equal(getattr(aperture, param),
-                               getattr(aperture2, param))
+
+    # The comparisons are made after the file is closed so that they
+    # also check that no lazily-loaded arrays leak into the object
+    for param in params:
+        assert_array_equal(getattr(aperture, param),
+                           getattr(aperture2, param))
 
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
