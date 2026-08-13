@@ -369,7 +369,8 @@ class ApertureStats:
     # index the packed buffer per source and fail or corrupt it.
     _NON_SLICEABLE_CACHES = frozenset({
         '_batch_inputs', '_fast_gather', '_fast_sum', '_sorted_values',
-        '_order_stats', '_mean_var', '_mad', '_biweight', '_gini'})
+        '_order_stats', '_mean_var', '_mad', '_biweight', '_gini',
+        '_fast_cutouts_center'})
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
                  sigma_clip=None, sum_method='exact', subpixels=5, ddof=0,
@@ -1691,6 +1692,9 @@ class ApertureStats:
         non-finite ``data`` values, the cutout aperture mask using the
         "center" method, and the sigma-clip mask.
         """
+        fast = self._fast_cutouts_center
+        if fast is not None:
+            return fast[2]
         return list(zip(*self._aperture_cutouts_center, strict=True))[2]
 
     @cached_property
@@ -1703,6 +1707,102 @@ class ApertureStats:
         ``sum_method`` method, and the sigma-clip mask.
         """
         return list(zip(*self._aperture_cutouts, strict=True))[2]
+
+    @cached_property
+    def _fast_cutouts_center(self):
+        """
+        The center-method cutout arrays reconstructed from the packed
+        gather buffers, or `None`.
+
+        Returns a ``(data, variance, mask, weight)`` tuple of
+        per-source cutout lists identical to the mask-based
+        `_aperture_cutouts_center` values. The packed buffer holds
+        exactly the surviving pixels (unmasked, finite, inside the
+        center-method aperture, segmentation-kept, and sigma-clip
+        surviving) together with their cutout coordinates, so the total
+        mask is `True` for every pixel absent from the buffer, and the
+        data, variance, and weight cutouts are zero there (matching
+        the mask-based arrays). Sources whose bounding box does not
+        overlap the data get the same single-NaN sentinel arrays as the
+        mask-based path.
+
+        `None` is returned (and the mask-based path is used) when
+        the fast gather is unavailable or when segmentation neighbor
+        correction is applied: ``mask_method='correct'`` replaces
+        neighbor-pixel data *and error* values with their mirrored
+        values, and the mirrored error values are not recoverable from
+        the packed buffers.
+        """
+        gather = self._fast_gather
+        if gather is None or (self._segmentation is not None
+                              and self.mask_method == 'correct'):
+            return None
+
+        # The kernel's per-source cutout origin is the bounding box
+        # clipped to the data, using the same integer bounds as
+        # ``PixelAperture._bbox_bounds`` (upper bounds exclusive).
+        bounds = self._pixel_aperture._bbox_bounds
+        ny, nx = self._data.shape
+        x0 = np.maximum(bounds[:, 0], 0)
+        x1 = np.minimum(bounds[:, 1], nx)
+        y0 = np.maximum(bounds[:, 2], 0)
+        y1 = np.minimum(bounds[:, 3], ny)
+        overlaps = ((bounds[:, 0] < nx) & (bounds[:, 1] > 0)
+                    & (bounds[:, 2] < ny) & (bounds[:, 3] > 0))
+
+        error = self._error
+        starts, counts = gather.starts, gather.counts
+        values = gather.values
+        local_x, local_y = gather.local_x, gather.local_y
+
+        data_cutouts = []
+        variance_cutouts = []
+        mask_cutouts = []
+        weight_cutouts = []
+        for idx, overlap in enumerate(overlaps):
+            if not overlap:
+                # Match the mask-based no-overlap sentinels
+                data_cutouts.append(np.array([np.nan]))
+                variance_cutouts.append(np.array([np.nan]))
+                mask_cutouts.append(np.array([False]))
+                weight_cutouts.append(np.array([np.nan]))
+                continue
+
+            shape = (y1[idx] - y0[idx], x1[idx] - x0[idx])
+            slc = (slice(y0[idx], y1[idx]), slice(x0[idx], x1[idx]))
+            i0 = starts[idx]
+            i1 = i0 + counts[idx]
+            lx = local_x[i0:i1]
+            ly = local_y[i0:i1]
+
+            data_cutout = np.zeros(shape)
+            data_cutout[ly, lx] = values[i0:i1]
+            if self.sigma_clip is None:
+                # The mask-based path multiplies the data by the
+                # boolean masks, so non-finite pixels are NaN in the
+                # cutout data instead of zero. (With sigma clipping
+                # it instead fills every masked pixel with zero.)
+                data_cutout[~np.isfinite(self._data[slc])] = np.nan
+
+            mask_cutout = np.ones(shape, dtype=bool)
+            mask_cutout[ly, lx] = False
+            weight_cutout = np.zeros(shape)
+            weight_cutout[ly, lx] = 1.0
+            if error is None:
+                variance_cutout = None
+            else:
+                # Multiplying the full variance cutout by the weights
+                # replicates the mask-based arithmetic exactly,
+                # including NaN for masked non-finite error values.
+                variance_cutout = error[slc] ** 2 * weight_cutout
+
+            data_cutouts.append(data_cutout)
+            variance_cutouts.append(variance_cutout)
+            mask_cutouts.append(mask_cutout)
+            weight_cutouts.append(weight_cutout)
+
+        return (data_cutouts, variance_cutouts, mask_cutouts,
+                weight_cutouts)
 
     def _make_masked_array_center(self, array):
         """
@@ -1739,6 +1839,9 @@ class ApertureStats:
         within the aperture, and pixels where the aperture mask has zero
         weight.
         """
+        fast = self._fast_cutouts_center
+        if fast is not None:
+            return self._make_masked_array_center(fast[0])
         return self._make_masked_array_center(
             list(zip(*self._aperture_cutouts_center, strict=True))[0])
 
@@ -1776,6 +1879,9 @@ class ApertureStats:
         """
         if self._error is None:
             return self._null_object
+        fast = self._fast_cutouts_center
+        if fast is not None:
+            return self._make_masked_array_center(fast[1])
         return self._make_masked_array_center(
             list(zip(*self._aperture_cutouts_center, strict=True))[1])
 
@@ -1829,6 +1935,9 @@ class ApertureStats:
         from the input ``mask``, non-finite ``data`` values (NaN and
         inf), and sigma-clipped pixels.
         """
+        fast = self._fast_cutouts_center
+        if fast is not None:
+            return self._make_masked_array_center(fast[3])
         return self._make_masked_array_center(
             list(zip(*self._aperture_cutouts_center, strict=True))[3])
 

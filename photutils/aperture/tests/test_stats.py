@@ -1538,3 +1538,138 @@ def test_overridden_bbox_fallback():
     assert_equal(stats2.bbox_xmax, stats1.bbox_xmax + 1)
     assert_equal(stats2.bbox_ymin, stats1.bbox_ymin - 1)
     assert_equal(stats2.bbox_ymax, stats1.bbox_ymax + 1)
+
+
+class TestCenterCutoutParity:
+    """
+    The center-method cutouts reconstructed from the packed gather
+    buffers must match the mask-based cutouts exactly, including the
+    masked-pixel data values.
+    """
+
+    @staticmethod
+    def make_inputs():
+        """
+        Build a deterministic image (with non-finite data and error
+        values), error, mask, and positions (including partial-overlap
+        and no-overlap positions).
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(100.0, 5.0, (80, 90))
+        data[10, 10] = np.nan
+        data[40, 41] = np.inf
+        error = np.abs(rng.normal(5.0, 0.5, data.shape)) + 0.1
+        error[12, 12] = np.inf
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[30:35, 30:35] = True
+        positions = [(5.0, 5.0), (-20.0, -20.0), (33.0, 32.0),
+                     (45.5, 41.2), (88.0, 3.0), (12.3, 11.1)]
+        return data, error, mask, positions
+
+    @staticmethod
+    def assert_cutout_lists_equal(fast_list, slow_list):
+        """
+        Assert two per-source cutout lists are exactly equal,
+        including the data values under the mask.
+        """
+        for fast, slow in zip(fast_list, slow_list, strict=True):
+            assert_equal(np.ma.getdata(fast), np.ma.getdata(slow))
+            assert_equal(np.ma.getmaskarray(fast),
+                         np.ma.getmaskarray(slow))
+
+    @staticmethod
+    def get_cutouts(stats):
+        """
+        Return the center-method cutout lists of an instance.
+        """
+        return {'data': stats.data_cutout,
+                'variance': stats._variance_cutout_center,
+                'mask': stats._mask_cutout_center,
+                'weight': stats._weight_cutout_center}
+
+    @pytest.mark.parametrize('use_sigma_clip', [False, True])
+    @pytest.mark.parametrize('use_error', [False, True])
+    def test_matches_mask_path(self, use_sigma_clip, use_error):
+        """
+        Test that the buffer-reconstructed cutouts equal the
+        mask-based cutouts, including non-finite pixels, partial
+        overlaps, and the no-overlap sentinel arrays.
+        """
+        data, error, mask, positions = self.make_inputs()
+        sigma_clip = (SigmaClip(sigma=2.0, maxiters=10) if use_sigma_clip
+                      else None)
+        kwargs = {'error': error if use_error else None, 'mask': mask,
+                  'sigma_clip': sigma_clip,
+                  'local_bkg': np.linspace(-1.0, 1.0, len(positions))}
+        aperture = CircularAperture(positions, r=6.0)
+
+        fast = ApertureStats(data, aperture, **kwargs)
+        assert fast._fast_cutouts_center is not None
+        fast_cutouts = self.get_cutouts(fast)
+
+        with patch.object(ApertureStats, '_batch_inputs',
+                          property(lambda _: None)):
+            slow = ApertureStats(data, aperture, **kwargs)
+            assert slow._fast_cutouts_center is None
+            # The mask-based path multiplies non-finite data values by
+            # the boolean masks (NaN * 0), which emits a numpy
+            # RuntimeWarning
+            with np.errstate(invalid='ignore'):
+                slow_cutouts = self.get_cutouts(slow)
+
+        for key in fast_cutouts:
+            if not use_error and key == 'variance':
+                assert all(value is None for value in fast_cutouts[key])
+                assert all(value is None for value in slow_cutouts[key])
+                continue
+            self.assert_cutout_lists_equal(fast_cutouts[key],
+                                           slow_cutouts[key])
+
+    @pytest.mark.parametrize('mask_method', ['mask', 'source_only'])
+    def test_segmentation_masking(self, mask_method):
+        """
+        Test that segmentation-excluded pixels land in the cutout mask
+        identically to the mask-based path.
+        """
+        data = np.ones((50, 50))
+        segm = np.zeros((50, 50), dtype=int)
+        data[18:25, 18:25] = 10.0
+        segm[18:25, 18:25] = 1
+        data[20:25, 26:32] = 100.0
+        segm[20:25, 26:32] = 2
+        aperture = CircularAperture([(21.0, 21.0), (28.0, 22.0)], r=8.0)
+        kwargs = {'segmentation_image': segm, 'labels': [1, 2],
+                  'mask_method': mask_method}
+
+        fast = ApertureStats(data, aperture, **kwargs)
+        assert fast._fast_cutouts_center is not None
+        fast_data = fast.data_cutout
+
+        with patch.object(ApertureStats, '_batch_inputs',
+                          property(lambda _: None)):
+            slow = ApertureStats(data, aperture, **kwargs)
+            slow_data = slow.data_cutout
+
+        self.assert_cutout_lists_equal(fast_data, slow_data)
+
+    def test_correct_mode_fallback(self):
+        """
+        Test that mask_method='correct' uses the mask-based cutout
+        path (the mirrored error values are not recoverable from the
+        packed buffers) and still produces the corrected cutouts.
+        """
+        data = np.ones((50, 50))
+        segm = np.zeros((50, 50), dtype=int)
+        data[18:25, 18:25] = 10.0
+        segm[18:25, 18:25] = 1
+        data[20:25, 26:32] = 100.0
+        segm[20:25, 26:32] = 2
+        aperture = CircularAperture([(21.0, 21.0)], r=8.0)
+        stats = ApertureStats(data, aperture, segmentation_image=segm,
+                              labels=[1], mask_method='correct')
+        assert stats._fast_gather is not None
+        assert stats._fast_cutouts_center is None
+        # The bright neighbor pixel values must not leak into the
+        # cutout (they are replaced by their mirrored values)
+        cutout = stats.data_cutout[0]
+        assert np.ma.getdata(cutout).max() <= 10.0
