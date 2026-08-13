@@ -1094,15 +1094,18 @@ class TestFastBoxStatistics:
         cls.data = data
         cls.mask = mask
 
-    def _compare_paths(self, monkeypatch, **kwargs):
+    def _compare_paths(self, monkeypatch, *, data=None, **kwargs):
         """
         Compare the fast and generic box-statistics paths.
         """
+        if data is None:
+            data = self.data
         kwargs = {'filter_size': (1, 1), 'exclude_percentile': 100.0,
-                  'mask': self.mask, **kwargs}
-        bkg_fast = Background2D(self.data, (25, 25), **kwargs)
+                  'mask': self.mask[:data.shape[0], :data.shape[1]],
+                  **kwargs}
+        bkg_fast = Background2D(data, (25, 25), **kwargs)
         assert bkg_fast._box_stats_spec is not None
-        bkg_generic = _make_generic_background2d(monkeypatch, self.data,
+        bkg_generic = _make_generic_background2d(monkeypatch, data,
                                                  (25, 25), **kwargs)
         assert_allclose(bkg_fast.background_mesh,
                         bkg_generic.background_mesh, rtol=1e-10)
@@ -1113,9 +1116,11 @@ class TestFastBoxStatistics:
     @pytest.mark.parametrize('bkg_estimator', [
         MeanBackground(), MedianBackground(),
         ModeEstimatorBackground(median_factor=2.5, mean_factor=1.5),
-        MMMBackground(), SExtractorBackground()])
+        MMMBackground(), SExtractorBackground(),
+        BiweightLocationBackground()])
     @pytest.mark.parametrize('rms_estimator', [StdBackgroundRMS(),
-                                               MADStdBackgroundRMS()])
+                                               MADStdBackgroundRMS(),
+                                               BiweightScaleBackgroundRMS()])
     def test_estimators_match_generic(self, bkg_estimator, rms_estimator,
                                       monkeypatch):
         """
@@ -1124,6 +1129,41 @@ class TestFastBoxStatistics:
         """
         self._compare_paths(monkeypatch, bkg_estimator=bkg_estimator,
                             bkg_rms_estimator=rms_estimator)
+
+    @pytest.mark.parametrize('bkg_estimator', [
+        BiweightLocationBackground(c=5.0),
+        BiweightLocationBackground(M=2.0)])
+    @pytest.mark.parametrize('rms_estimator', [
+        BiweightScaleBackgroundRMS(c=8.0),
+        BiweightScaleBackgroundRMS(M=2.0)])
+    def test_biweight_variants_match_generic(self, bkg_estimator,
+                                             rms_estimator, monkeypatch):
+        """
+        Test that the biweight estimators with non-default tuning
+        constants and scalar location anchors match the generic path.
+
+        The test data include constant boxes, for which the biweight
+        statistics are defined by the location anchor (zero MAD).
+        The data are trimmed to an integer number of boxes because
+        the generic path raises an ``AttributeError`` for a float
+        ``M`` anchor when a corner box is computed (an astropy
+        ``biweight_location`` bug for scalar ``M`` with ``axis=None``).
+        The fast path handles it.
+        """
+        self._compare_paths(monkeypatch, data=self.data[:100, :275],
+                            bkg_estimator=bkg_estimator,
+                            bkg_rms_estimator=rms_estimator)
+
+    def test_biweight_nonfinite_m_falls_back(self, test_data):
+        """
+        Test that a non-finite biweight location anchor (M) falls
+        back to the generic path, where the all-NaN result raises an
+        error, rather than silently computing median-anchored values.
+        """
+        bkg_estimator = BiweightLocationBackground(M=np.nan)
+        match = 'All boxes contain fewer than'
+        with pytest.raises(ValueError, match=match):
+            Background2D(test_data, (25, 25), bkg_estimator=bkg_estimator)
 
     @pytest.mark.parametrize('sigma_clip', [
         None,
@@ -1167,15 +1207,21 @@ class TestFastBoxStatistics:
         def bkg_func(data, *, axis=None):
             return np.nanmean(data, axis=axis)
 
+        def rms_func(data, *, axis=None):
+            return np.nanstd(data, axis=axis)
+
         unsupported = [
             {'sigma_clip': UnknownClip()},
             {'sigma_clip': SigmaClip(cenfunc=np.nanmedian)},
             {'sigma_clip': SigmaClip(stdfunc=np.nanstd)},
             {'sigma_clip': SigmaClip(grow=1.0)},
-            {'bkg_estimator': BiweightLocationBackground()},
             {'bkg_estimator': MySExtractorBackground()},
             {'bkg_estimator': bkg_func},
-            {'bkg_rms_estimator': BiweightScaleBackgroundRMS()},
+            {'bkg_estimator':
+                BiweightLocationBackground(M=np.array([1.0]))},
+            {'bkg_rms_estimator': rms_func},
+            {'bkg_rms_estimator':
+                BiweightScaleBackgroundRMS(M=np.array([1.0]))},
         ]
         for kwargs in unsupported:
             bkg = Background2D(test_data, (25, 25), **kwargs)

@@ -1234,10 +1234,115 @@ def batch_sigma_clip_sum(const double[::1] sum_values,
     return (sum_arr, var_arr, area_arr)
 
 
+cdef inline double _biweight_location_range(double *s, Py_ssize_t lo,
+                                            Py_ssize_t hi, double anchor,
+                                            double c,
+                                            double mad) noexcept nogil:
+    """
+    Biweight location of the ascending-sorted values ``s[lo:hi]``.
+
+    The convention matches `astropy.stats.biweight_location` with
+    a scalar location anchor (``M``) and a nonzero unscaled median
+    absolute deviation (``mad``). The caller must handle the ``mad ==
+    0`` case (astropy returns the anchor). If every value is rejected
+    (``|u| >= 1``), NaN is returned via the IEEE 0/0 division, matching
+    astropy.
+
+    Parameters
+    ----------
+    s : double *
+        The ascending-sorted values.
+
+    lo, hi : Py_ssize_t
+        The half-open index range of the values to use.
+
+    anchor : double
+        The location anchor (``M``; the median if not input).
+
+    c : double
+        The tuning constant.
+
+    mad : double
+        The unscaled median absolute deviation about the median.
+
+    Returns
+    -------
+    result : double
+        The biweight location.
+    """
+    cdef Py_ssize_t i
+    cdef double d, u, weight
+    cdef double num = 0.0, den = 0.0
+
+    for i in range(lo, hi):
+        d = s[i] - anchor
+        u = d / (c * mad)
+        if fabs(u) < 1.0:
+            weight = 1.0 - u * u
+            weight *= weight
+            num += d * weight
+            den += weight
+    return anchor + num / den
+
+
+cdef inline double _biweight_midvar_range(double *s, Py_ssize_t lo,
+                                          Py_ssize_t hi, double anchor,
+                                          double c,
+                                          double mad) noexcept nogil:
+    """
+    Biweight midvariance of the ascending-sorted values ``s[lo:hi]``.
+
+    The convention matches `astropy.stats.biweight_midvariance` with
+    ``modify_sample_size=False``, a scalar location anchor (``M``), and
+    a nonzero unscaled median absolute deviation (``mad``). The caller
+    must handle the ``mad == 0`` case (astropy returns 0). If every
+    value is rejected (``u**2 >= 1``), NaN is returned via the IEEE 0/0
+    division, matching astropy.
+
+    Parameters
+    ----------
+    s : double *
+        The ascending-sorted values.
+
+    lo, hi : Py_ssize_t
+        The half-open index range of the values to use.
+
+    anchor : double
+        The location anchor (``M``; the median if not input).
+
+    c : double
+        The tuning constant.
+
+    mad : double
+        The unscaled median absolute deviation about the median.
+
+    Returns
+    -------
+    result : double
+        The biweight midvariance.
+    """
+    cdef Py_ssize_t i, cnt = hi - lo
+    cdef double d, u2, omu
+    cdef double f1 = 0.0, f2 = 0.0
+
+    for i in range(lo, hi):
+        d = s[i] - anchor
+        u2 = d / (c * mad)
+        u2 = u2 * u2
+        if u2 < 1.0:
+            omu = 1.0 - u2
+            f1 += d * d * omu * omu * omu * omu
+            f2 += omu * (1.0 - 5.0 * u2)
+    return cnt * f1 / (f2 * f2)
+
+
 def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
                            double sigma_upper, Py_ssize_t maxiters,
                            int cenfunc_code, int stdfunc_code,
-                           bint do_clip, bint compute_mad):
+                           bint do_clip, bint compute_mad,
+                           bint compute_biloc, double biloc_c,
+                           double biloc_m, bint compute_biscale,
+                           double biscale_c, double biscale_m):
     """
     Compute fused sigma-clipped statistics for each row of a 2D array.
 
@@ -1245,8 +1350,10 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
     `astropy.stats.SigmaClip` (no-axis, no-grow case; see
     ``_sigma_clip_bounds``), and the mean, median, and population
     standard deviation of the surviving values are computed directly,
-    without generating a clipped copy of the input. Optionally, the MAD
-    standard deviation (`astropy.stats.mad_std`) is also computed.
+    without generating a clipped copy of the input. Optionally, the
+    MAD standard deviation (`astropy.stats.mad_std`), the biweight
+    location (`astropy.stats.biweight_location`), and the biweight scale
+    (`astropy.stats.biweight_scale`) are also computed.
 
     Each row must be ascending-sorted with any NaN values placed last,
     as done by `numpy.sort`. Sorting is delegated to the caller because
@@ -1284,9 +1391,29 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
         Whether to compute the MAD standard deviation. If False, the
         returned ``madstd`` values are all NaN.
 
+    compute_biloc : bool
+        Whether to compute the biweight location
+        (`astropy.stats.biweight_location`). If False, the returned
+        ``biloc`` values are all NaN.
+
+    biloc_c, biloc_m : float
+        The biweight location tuning constant and scalar location
+        anchor (``M``). A NaN ``biloc_m`` means no anchor was input
+        (the median is used). Ignored if ``compute_biloc`` is False.
+
+    compute_biscale : bool
+        Whether to compute the biweight scale
+        (`astropy.stats.biweight_scale`). If False, the returned
+        ``biscale`` values are all NaN.
+
+    biscale_c, biscale_m : float
+        The biweight scale tuning constant and scalar location anchor
+        (``M``). A NaN ``biscale_m`` means no anchor was input (the
+        median is used). Ignored if ``compute_biscale`` is False.
+
     Returns
     -------
-    mean, median, std, madstd : 1D ndarray of float64
+    mean, median, std, madstd, biloc, biscale : 1D ndarray of float64
         The per-row statistics of the surviving values. NaN for rows
         with no surviving values.
 
@@ -1300,22 +1427,28 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
     median_arr = np.full(n_rows, np.nan, dtype=np.float64)
     std_arr = np.full(n_rows, np.nan, dtype=np.float64)
     madstd_arr = np.full(n_rows, np.nan, dtype=np.float64)
+    biloc_arr = np.full(n_rows, np.nan, dtype=np.float64)
+    biscale_arr = np.full(n_rows, np.nan, dtype=np.float64)
     n_kept_arr = np.zeros(n_rows, dtype=np.intp)
     cdef double[::1] mean_out = mean_arr
     cdef double[::1] median_out = median_arr
     cdef double[::1] std_out = std_arr
     cdef double[::1] madstd_out = madstd_arr
+    cdef double[::1] biloc_out = biloc_arr
+    cdef double[::1] biscale_out = biscale_arr
     cdef Py_ssize_t[::1] n_kept_out = n_kept_arr
 
     if n_rows == 0 or n_cols == 0:
-        return mean_arr, median_arr, std_arr, madstd_arr, n_kept_arr
+        return (mean_arr, median_arr, std_arr, madstd_arr, biloc_arr,
+                biscale_arr, n_kept_arr)
 
     # Scratch buffer for the MAD computations
     work_arr = np.empty(n_cols, dtype=np.float64)
     cdef double[::1] w = work_arr
 
+    cdef bint need_mad = compute_mad or compute_biloc or compute_biscale
     cdef Py_ssize_t k, i, n, lo, hi, cnt
-    cdef double v, minv, maxv, mu, ss, med
+    cdef double v, minv, maxv, mu, ss, med, madk, anchor
     cdef double *s
 
     with nogil:
@@ -1362,10 +1495,33 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
             median_out[k] = med
             n_kept_out[k] = cnt
 
-            if compute_mad:
+            if need_mad:
+                # Unscaled MAD about the median of the survivors
                 for i in range(lo, hi):
                     w[i - lo] = fabs(s[i] - med)
                 qsort(&w[0], <size_t>cnt, sizeof(double), &_cmp_double)
-                madstd_out[k] = _median_sorted(&w[0], cnt) * _MAD_STD_SCALE
+                madk = _median_sorted(&w[0], cnt)
 
-    return mean_arr, median_arr, std_arr, madstd_arr, n_kept_arr
+                if compute_mad:
+                    madstd_out[k] = madk * _MAD_STD_SCALE
+
+                if compute_biloc:
+                    anchor = biloc_m if biloc_m == biloc_m else med
+                    if madk == 0.0:
+                        # astropy returns the anchor for zero MAD
+                        biloc_out[k] = anchor
+                    else:
+                        biloc_out[k] = _biweight_location_range(
+                            s, lo, hi, anchor, biloc_c, madk)
+
+                if compute_biscale:
+                    anchor = biscale_m if biscale_m == biscale_m else med
+                    if madk == 0.0:
+                        # astropy returns zero variance for zero MAD
+                        biscale_out[k] = 0.0
+                    else:
+                        biscale_out[k] = sqrt(_biweight_midvar_range(
+                            s, lo, hi, anchor, biscale_c, madk))
+
+    return (mean_arr, median_arr, std_arr, madstd_arr, biloc_arr,
+            biscale_arr, n_kept_arr)

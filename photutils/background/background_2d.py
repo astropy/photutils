@@ -18,9 +18,11 @@ from scipy.ndimage import generic_filter
 
 from photutils.aperture import RectangularAperture
 from photutils.aperture._batch_stats import batch_sigma_clip_stats
-from photutils.background.core import (SIGMA_CLIP, MADStdBackgroundRMS,
-                                       MeanBackground, MedianBackground,
-                                       MMMBackground, ModeEstimatorBackground,
+from photutils.background.core import (SIGMA_CLIP, BiweightLocationBackground,
+                                       BiweightScaleBackgroundRMS,
+                                       MADStdBackgroundRMS, MeanBackground,
+                                       MedianBackground, MMMBackground,
+                                       ModeEstimatorBackground,
                                        SExtractorBackground, StdBackgroundRMS)
 from photutils.background.interpolators import (BkgIDWInterpolator,
                                                 _BkgZoomInterpolator)
@@ -52,7 +54,11 @@ class _BoxStatsSpec(NamedTuple):
     bkg_kind: str
     median_factor: float
     mean_factor: float
+    biloc_c: float
+    biloc_m: float
     rms_kind: str
+    biscale_c: float
+    biscale_m: float
 
 
 class Background2D:
@@ -217,10 +223,10 @@ class Background2D:
     When the ``sigma_clip`` input is `None` or uses the string
     ``cenfunc`` and ``stdfunc`` options, and the ``bkg_estimator``
     and ``bkg_rms_estimator`` inputs are standard photutils estimator
-    classes (except the biweight-based ones), the sigma clipping and
-    box statistics are computed together using a fast fused kernel in
-    compiled code. Otherwise, a generic path that calls ``sigma_clip``
-    and the estimators is used. Both paths produce the same results.
+    classes, the sigma clipping and box statistics are computed
+    together in compiled code. Otherwise, a generic path that calls
+    ``sigma_clip`` and the estimators is used. Both paths produce the
+    same results.
 
     If there is only one background box element (i.e., ``box_size`` is
     the same size as (or larger than) the ``data``), then the background
@@ -501,8 +507,9 @@ class Background2D:
         on `astropy.stats.SigmaClip` and the estimator callables is
         used). The fast path supports the string ``cenfunc`` values
         'median'/'mean', the string ``stdfunc`` values 'std'/'mad_std',
-        no spatial growing, and the standard photutils estimator classes
-        (except the biweight-based ones).
+        no spatial growing, and the standard photutils estimator
+        classes. For the biweight-based estimators, the ``M`` location
+        anchor must be `None` or a finite scalar.
         """
         sigma_clip = self.sigma_clip
         if sigma_clip is None:
@@ -532,6 +539,7 @@ class Background2D:
 
         bkg_estimator = self.bkg_estimator
         median_factor = mean_factor = 0.0
+        biloc_c = biloc_m = np.nan
         if type(bkg_estimator) is MeanBackground:
             bkg_kind = 'mean'
         elif type(bkg_estimator) is MedianBackground:
@@ -543,14 +551,31 @@ class Background2D:
             mean_factor = float(bkg_estimator.mean_factor)
         elif type(bkg_estimator) is SExtractorBackground:
             bkg_kind = 'sextractor'
+        elif type(bkg_estimator) is BiweightLocationBackground:
+            m_value = bkg_estimator.M
+            if m_value is not None and (np.ndim(m_value) != 0
+                                        or not np.isfinite(m_value)):
+                return None
+            bkg_kind = 'biweight_location'
+            biloc_c = float(bkg_estimator.c)
+            biloc_m = np.nan if m_value is None else float(m_value)
         else:
             return None
 
         rms_estimator = self.bkg_rms_estimator
+        biscale_c = biscale_m = np.nan
         if type(rms_estimator) is StdBackgroundRMS:
             rms_kind = 'std'
         elif type(rms_estimator) is MADStdBackgroundRMS:
             rms_kind = 'mad_std'
+        elif type(rms_estimator) is BiweightScaleBackgroundRMS:
+            m_value = rms_estimator.M
+            if m_value is not None and (np.ndim(m_value) != 0
+                                        or not np.isfinite(m_value)):
+                return None
+            rms_kind = 'biweight_scale'
+            biscale_c = float(rms_estimator.c)
+            biscale_m = np.nan if m_value is None else float(m_value)
         else:
             return None
 
@@ -560,7 +585,9 @@ class Background2D:
                              stdfunc_code=stdfunc_code, do_clip=do_clip,
                              bkg_kind=bkg_kind,
                              median_factor=median_factor,
-                             mean_factor=mean_factor, rms_kind=rms_kind)
+                             mean_factor=mean_factor, biloc_c=biloc_c,
+                             biloc_m=biloc_m, rms_kind=rms_kind,
+                             biscale_c=biscale_c, biscale_m=biscale_m)
 
     def _fast_box_statistics(self, data, *, axis=None):
         """
@@ -607,12 +634,14 @@ class Background2D:
         # requires ascending-sorted rows.
         data2d = np.sort(data2d.astype(np.float64, copy=False), axis=-1)
 
-        (mean, median, std, madstd,
-         n_good) = batch_sigma_clip_stats(data2d, spec.sigma_lower,
-                                          spec.sigma_upper, spec.maxiters,
-                                          spec.cenfunc_code,
-                                          spec.stdfunc_code, spec.do_clip,
-                                          spec.rms_kind == 'mad_std')
+        (mean, median, std, madstd, biloc,
+         biscale, n_good) = batch_sigma_clip_stats(
+            data2d, spec.sigma_lower, spec.sigma_upper, spec.maxiters,
+            spec.cenfunc_code, spec.stdfunc_code, spec.do_clip,
+            spec.rms_kind == 'mad_std',
+            spec.bkg_kind == 'biweight_location', spec.biloc_c,
+            spec.biloc_m, spec.rms_kind == 'biweight_scale',
+            spec.biscale_c, spec.biscale_m)
 
         if spec.bkg_kind == 'mean':
             bkg = mean
@@ -621,6 +650,8 @@ class Background2D:
         elif spec.bkg_kind == 'mode':
             bkg = ((spec.median_factor * median)
                    - (spec.mean_factor * mean))
+        elif spec.bkg_kind == 'biweight_location':
+            bkg = biloc
         else:  # 'sextractor'
             bkg = (2.5 * median) - (1.5 * mean)
 
@@ -636,7 +667,12 @@ class Background2D:
             mask = np.logical_and(med_mask, np.logical_not(mean_mask))
             bkg[mask] = median[mask]
 
-        bkgrms = madstd if spec.rms_kind == 'mad_std' else std
+        if spec.rms_kind == 'std':
+            bkgrms = std
+        elif spec.rms_kind == 'mad_std':
+            bkgrms = madstd
+        else:  # 'biweight_scale'
+            bkgrms = biscale
 
         # Preserve the (float) dtype of the input box data
         if data.dtype != np.float64:
