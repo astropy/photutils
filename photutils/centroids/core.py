@@ -5,6 +5,7 @@ Tools for centroiding sources.
 
 import inspect
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 from astropy.nddata import overlap_slices
@@ -499,7 +500,8 @@ class CentroidQuadratic:
 
 @deprecated_positional_kwargs(since='3.0', until='4.0')
 def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
-                     mask=None, centroid_func=centroid_com, **kwargs):
+                     mask=None, centroid_func=centroid_com, n_threads=1,
+                     **kwargs):
     """
     Calculate the centroid of sources at the defined positions in a 2D
     array using a specified centroid function.
@@ -565,6 +567,13 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         handle a ``mask`` keyword. The callable object must return two
         scalar values representing the (x, y) centroid. The default is
         `~photutils.centroids.centroid_com`.
+
+    n_threads : int, optional
+        The number of threads to use to compute the centroids. The
+        default is 1 (no multithreading). When ``n_threads`` > 1,
+        the sources are divided among the threads and processed
+        concurrently, producing results identical to the single-threaded
+        computation.
 
     **kwargs : dict, optional
         Any additional keyword arguments accepted by the
@@ -662,6 +671,10 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         msg = 'mask and data must have the same shape'
         raise ValueError(msg)
 
+    if not isinstance(n_threads, (int, np.integer)) or n_threads < 1:
+        msg = 'n_threads must be a positive integer'
+        raise ValueError(msg)
+
     # error=None is equivalent to no error array, so allow it even for
     # centroid functions that do not accept an error keyword
     if kwargs.get('error') is None:
@@ -683,26 +696,28 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
             raise TypeError(msg)
     centroid_kwargs = dict(kwargs)
 
-    # Save the original error array before the loop so that each
-    # iteration independently slices the full-image array
-    error_array = centroid_kwargs.get('error')
+    # Save the original error array so that each source independently
+    # slices the full-image array
+    error_array = centroid_kwargs.pop('error', None)
     if error_array is not None and np.shape(error_array) != data.shape:
         msg = 'error and data must have the same shape'
         raise ValueError(msg)
 
-    # Extract xpeak/ypeak before the loop so the original absolute
-    # coordinates are available for every source. The per-iteration
-    # block below re-adds them with the correct cutout offset each time.
+    # Extract xpeak/ypeak so the original absolute coordinates are
+    # available for every source. The per-source function below re-adds
+    # them with the correct cutout offset.
     # Remove this block once xpeak and ypeak are fully deprecated.
     xpeak_orig = centroid_kwargs.pop('xpeak', None)
     ypeak_orig = centroid_kwargs.pop('ypeak', None)
 
-    n_sources = len(xpos)
-    xcentroids = np.zeros(n_sources, dtype=float)
-    ycentroids = np.zeros(n_sources, dtype=float)
-
     inverted_footprint = np.logical_not(footprint)
-    for i, (xp, yp) in enumerate(zip(xpos, ypos, strict=True)):
+
+    def _centroid_source(xypos):
+        """
+        Compute the centroid of the source at the given (x, y)
+        position.
+        """
+        xp, yp = xypos
         slices_large, slices_small = overlap_slices(data.shape,
                                                     footprint.shape, (yp, xp))
         data_cutout = data[slices_large]
@@ -723,28 +738,37 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
                    'footprint.')
             raise ValueError(msg)
 
-        centroid_kwargs.update({'mask': mask_cutout})
+        # Build the per-source keyword arguments from a local copy so
+        # that concurrent tasks do not mutate shared state
+        src_kwargs = dict(centroid_kwargs)
+        src_kwargs['mask'] = mask_cutout
 
         if error_array is not None:
-            centroid_kwargs['error'] = error_array[slices_large]
+            src_kwargs['error'] = error_array[slices_large]
 
+        # Add xpeak/ypeak with the offset relative to this source's
+        # cutout.
         # Remove this block once xpeak and ypeak are fully deprecated.
-        # Clear any xpeak/ypeak left by the previous iteration, then
-        # re-add with the offset relative to this source's cutout.
-        centroid_kwargs.pop('xpeak', None)
-        centroid_kwargs.pop('ypeak', None)
         if xpeak_orig is not None and ypeak_orig is not None:
-            centroid_kwargs['xpeak'] = xpeak_orig - slices_large[1].start
-            centroid_kwargs['ypeak'] = ypeak_orig - slices_large[0].start
+            src_kwargs['xpeak'] = xpeak_orig - slices_large[1].start
+            src_kwargs['ypeak'] = ypeak_orig - slices_large[0].start
 
         try:
-            xcen, ycen = centroid_func(data_cutout, **centroid_kwargs)
+            xcen, ycen = centroid_func(data_cutout, **src_kwargs)
         except (ValueError, TypeError) as exc:
             msg = f'Centroid failed for source at ({xp}, {yp}): {exc}'
-            warnings.warn(msg, AstropyUserWarning, stacklevel=2)
+            warnings.warn(msg, AstropyUserWarning)
             xcen, ycen = np.nan, np.nan
 
-        xcentroids[i] = xcen + slices_large[1].start
-        ycentroids[i] = ycen + slices_large[0].start
+        return (xcen + slices_large[1].start,
+                ycen + slices_large[0].start)
 
-    return xcentroids, ycentroids
+    xypos_pairs = list(zip(xpos, ypos, strict=True))
+    if n_threads == 1:
+        results = [_centroid_source(xypos) for xypos in xypos_pairs]
+    else:
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            results = list(executor.map(_centroid_source, xypos_pairs))
+
+    results = np.array(results, dtype=float)
+    return results[:, 0], results[:, 1]

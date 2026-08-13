@@ -822,6 +822,53 @@ class TestCentroidSources:
         with pytest.raises(ValueError, match=match):
             centroid_sources(data, 25, np.inf, box_size=11)
 
+    def test_n_threads(self, test_data):
+        """
+        Test that multithreaded centroid_sources results are identical
+        to the single-threaded computation.
+        """
+        data, xpos, ypos = test_data
+        xcen1, ycen1 = centroid_sources(data, xpos, ypos, box_size=5)
+        xcen2, ycen2 = centroid_sources(data, xpos, ypos, box_size=5,
+                                        n_threads=4)
+        assert_array_equal(xcen1, xcen2)
+        assert_array_equal(ycen1, ycen2)
+
+    def test_n_threads_gaussian(self):
+        """
+        Test multithreaded centroid_sources with the fitting-based
+        centroid_2dg function, which must be thread-safe.
+        """
+        xpos = [25.0, 75.0]
+        ypos = [30.0, 70.0]
+        data1 = _make_gaussian_source((100, 100), 10.0, xpos[0], ypos[0],
+                                      4.0, 4.0, 0)
+
+        data2 = _make_gaussian_source((100, 100), 10.0, xpos[1], ypos[1],
+                                      4.0, 4.0, 0)
+        data = data1 + data2
+        error = np.ones(data.shape)
+
+        xcen1, ycen1 = centroid_sources(data, xpos, ypos, box_size=21,
+                                        centroid_func=centroid_2dg,
+                                        error=error)
+        xcen2, ycen2 = centroid_sources(data, xpos, ypos, box_size=21,
+                                        centroid_func=centroid_2dg,
+                                        error=error, n_threads=2)
+        assert_array_equal(xcen1, xcen2)
+        assert_array_equal(ycen1, ycen2)
+
+    @pytest.mark.parametrize('n_threads', [0, -1, 1.5, '2'])
+    def test_n_threads_invalid(self, n_threads):
+        """
+        Test that centroid_sources raises a ValueError for invalid
+        n_threads inputs.
+        """
+        data = np.ones((50, 50))
+        match = 'n_threads must be a positive integer'
+        with pytest.raises(ValueError, match=match):
+            centroid_sources(data, 25, 25, box_size=11, n_threads=n_threads)
+
     def test_mask_wrong_shape(self):
         """
         Test centroid_sources raises ValueError when the mask shape

@@ -157,6 +157,13 @@ New Features
     the local backgrounds using multiple threads. The results are
     identical to the single-threaded computation. [#2367]
 
+- ``photutils.centroids``
+
+  - Added an ``n_threads`` keyword to ``centroid_sources`` to compute
+    the source centroids using multiple threads. The sources are
+    divided among the threads and processed concurrently, producing
+    results identical to the single-threaded computation. [#2368]
+
 - ``photutils.detection``
 
   - Added validation of the ``StarFinderCatalogBase.to_table()``
