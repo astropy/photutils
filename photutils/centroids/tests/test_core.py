@@ -429,6 +429,20 @@ def test_centroid_quadratic_invalid_inputs():
         centroid_quadratic(data, mask=mask)
 
 
+def test_centroid_quadratic_boxsize_clamp():
+    """
+    Test centroid_quadratic with a fit_boxsize larger than the data.
+
+    The fit box is clamped to the data shape and reduced to odd values
+    with a warning.
+    """
+    data = _make_gaussian_source((4, 4), 10.0, 2.0, 2.0, 1.0, 1.0, 0)
+    match = "'fit_boxsize' was clamped to the upper bound and reduced to"
+    with pytest.warns(AstropyUserWarning, match=match):
+        xc, yc = centroid_quadratic(data, fit_boxsize=5)
+    assert_allclose((xc, yc), (2.0, 2.0), atol=0.1)
+
+
 def test_centroid_quadratic_edge():
     """
     Test centroid_quadratic when the maximum is at the edge.
@@ -659,8 +673,13 @@ class TestCentroidSources:
         assert_allclose(xcen, xpos)
         assert_allclose(ycen, ypos)
 
+        # The last source is at the data edge, so its 2x2 cutout
+        # clamps the fit_boxsize (with a warning) to a size that is
+        # too small for the quadratic fit
         match = 'Centroid failed for source'
-        with pytest.warns(AstropyUserWarning, match=match):
+        clamp_match = "'fit_boxsize' was clamped"
+        with (pytest.warns(AstropyUserWarning, match=match),
+              pytest.warns(AstropyUserWarning, match=clamp_match)):
             xcen, ycen = centroid_sources(data, xpos, ypos, box_size=3,
                                           centroid_func=centroid_quadratic)
         assert_allclose(xcen, xres)
