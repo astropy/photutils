@@ -1281,3 +1281,29 @@ class TestSigmaClipBiweightStrings:
         assert_allclose(mean1, apstats2.mean, rtol=1e-10)
         assert_allclose(std1, apstats2.std, rtol=1e-10)
         assert_allclose(sum1, apstats2.sum, rtol=1e-10)
+
+
+def test_sigma_clip_sorted_values_reuse(monkeypatch):
+    """
+    Test that the order statistics computed from the sigma-clip kernel's
+    sorted output (reused by _sorted_values instead of re-sorting the
+    clipped values) match the mask-based fallback path.
+    """
+    rng = np.random.default_rng(0)
+    data = rng.normal(10.0, 2.0, (101, 101))
+    data[::5, ::5] = 200.0  # outliers
+    positions = [(20.0, 20.0), (50.0, 50.0), (80.5, 80.5), (3.0, 3.0)]
+    aper = CircularAperture(positions, r=12)
+    sigclip = SigmaClip(sigma=2.0, maxiters=10)
+
+    apstats1 = ApertureStats(data, aper, sigma_clip=sigclip)
+    props = ('min', 'max', 'median', 'mad_std', 'biweight_location',
+             'std', 'mean')
+    results1 = [getattr(apstats1, prop) for prop in props]
+
+    # Force the mask-based fallback path
+    monkeypatch.setattr(ApertureStats, '_fast_clip_spec',
+                        lambda _self: None)
+    apstats2 = ApertureStats(data, aper, sigma_clip=sigclip)
+    for prop, result1 in zip(props, results1, strict=True):
+        assert_allclose(result1, getattr(apstats2, prop), rtol=1e-10)

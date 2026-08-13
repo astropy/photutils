@@ -93,6 +93,10 @@ New Features
   - Added validation of the ``ApertureStats.to_table()`` ``columns``
     keyword. [#2329]
 
+  - Improved the performance of the sigma-clipped ``ApertureStats``
+    order statistics (``min``, ``max``, ``median``), ``mad_std``,
+    and biweight properties. [#2364]
+
 - ``photutils.background``
 
   - Updated ``LocalBackground`` so that ``Quantity`` input data is

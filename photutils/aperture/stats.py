@@ -92,7 +92,9 @@ class _BatchGather(NamedTuple):
 
     * center-value gather (``_fast_gather``): ``values``, ``local_x``,
       ``local_y``, ``starts``, ``counts``, ``overlap``, and
-      ``flag_counts``
+      ``flag_counts``, plus ``sorted_values`` (the packed
+      ascending-sorted surviving values) when sigma clipping is
+      applied
 
     * ``sum_method`` gather (``_fast_sum``): ``sum_aper``, ``var_aper``,
       ``sum_area``, ``starts``, ``overlap``, and ``flag_counts``,
@@ -114,6 +116,7 @@ class _BatchGather(NamedTuple):
     sum_errsq: np.ndarray = None
     sum_counts: np.ndarray = None
     flag_counts: np.ndarray = None
+    sorted_values: np.ndarray = None
 
 
 # Public attributes that are never collapsed to a scalar for a scalar
@@ -1060,13 +1063,15 @@ class ApertureStats:
         """
         sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc = clip_spec
 
-        (cvalues, clx, cly, cstarts, ccounts) = batch_sigma_clip_center(
+        (cvalues, clx, cly, cstarts, ccounts,
+         csorted) = batch_sigma_clip_center(
             gather.values, gather.local_x, gather.local_y, gather.starts,
             gather.counts, sigma_lower, sigma_upper, maxiters, cenfunc,
             stdfunc)
 
         return gather._replace(values=cvalues, local_x=clx, local_y=cly,
-                               starts=cstarts, counts=ccounts)
+                               starts=cstarts, counts=ccounts,
+                               sorted_values=csorted)
 
     def _apply_sum_clip(self, gather, clip_spec):
         """
@@ -1097,13 +1102,18 @@ class ApertureStats:
         source's packed pixel values are sorted once. The sorted buffer
         is cached and shared by the order statistics (``min``, ``max``,
         ``median``), ``mad_std``, and the biweight estimators, so the
-        per-source sort is performed only once. `None` is returned when
-        the fast path is unavailable.
+        per-source sort is performed only once. When sigma clipping is
+        applied, the sorted surviving values produced by the clipping
+        kernel are reused directly (the clipping already sorts each
+        source's values to compute the clip bounds). `None` is returned
+        when the fast path is unavailable.
         """
         gather = self._fast_gather
         if gather is None:
             return None
         values, starts, counts = gather.values, gather.starts, gather.counts
+        if gather.sorted_values is not None:
+            return (gather.sorted_values, starts, counts)
         return (batch_sort_values(values, starts, counts), starts, counts)
 
     @lazyproperty

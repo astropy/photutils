@@ -1099,7 +1099,13 @@ def batch_sigma_clip_center(const double[::1] values,
     (no-axis, no-grow case), and the surviving pixels are written to a
     new packed buffer that reuses the input ``starts`` offsets. The
     output can be fed directly to the packed-buffer reductions (e.g.,
-    ``batch_mean_var``, ``batch_sort_values``, and ``batch_moments``).
+    ``batch_mean_var`` and ``batch_moments``).
+
+    Because computing the clip bounds requires sorting each source's
+    values, the ascending-sorted surviving values are also returned
+    (the survivors form a contiguous window of the sorted buffer), so
+    callers do not need to sort the clipped values again for the
+    order statistics.
 
     Parameters
     ----------
@@ -1128,15 +1134,21 @@ def batch_sigma_clip_center(const double[::1] values,
     values, local_x, local_y, starts, counts : 1D ndarray
         The clipped packed buffer (``starts`` is the input array,
         unchanged) and the per-source surviving pixel counts.
+
+    sorted_values : 1D ndarray of float64
+        The packed buffer of ascending-sorted surviving values, using
+        the same ``starts`` offsets and ``counts`` lengths.
     """
     cdef Py_ssize_t n_src = starts.shape[0]
     out_values_arr = np.empty(values.shape[0], dtype=np.float64)
     out_lx_arr = np.empty(values.shape[0], dtype=np.int32)
     out_ly_arr = np.empty(values.shape[0], dtype=np.int32)
+    out_sorted_arr = np.empty(values.shape[0], dtype=np.float64)
     counts2_arr = np.zeros(n_src, dtype=np.intp)
     cdef double[::1] out_values = out_values_arr
     cdef int[::1] out_lx = out_lx_arr
     cdef int[::1] out_ly = out_ly_arr
+    cdef double[::1] out_sorted = out_sorted_arr
     cdef Py_ssize_t[::1] counts2 = counts2_arr
 
     cdef Py_ssize_t maxn = 0, k
@@ -1145,14 +1157,14 @@ def batch_sigma_clip_center(const double[::1] values,
             maxn = counts[k]
     if maxn == 0:
         return (out_values_arr, out_lx_arr, out_ly_arr, np.asarray(starts),
-                counts2_arr)
+                counts2_arr, out_sorted_arr)
 
     sort_arr = np.empty(maxn, dtype=np.float64)
     work_arr = np.empty(maxn, dtype=np.float64)
     cdef double[::1] s = sort_arr
     cdef double[::1] w = work_arr
 
-    cdef Py_ssize_t start, count, i, j
+    cdef Py_ssize_t start, count, i, j, lo, hi
     cdef double minv, maxv, v
 
     with nogil:
@@ -1177,8 +1189,21 @@ def batch_sigma_clip_center(const double[::1] values,
                     j += 1
             counts2[k] = j
 
+            # The survivors form a contiguous window of the sorted
+            # buffer (equal values always share the same fate). Emit
+            # them sorted so that callers do not need to sort the
+            # clipped values again.
+            lo = 0
+            hi = count
+            while lo < count and s[lo] < minv:
+                lo += 1
+            while hi > lo and s[hi - 1] > maxv:
+                hi -= 1
+            for i in range(lo, hi):
+                out_sorted[start + (i - lo)] = s[i]
+
     return (out_values_arr, out_lx_arr, out_ly_arr, np.asarray(starts),
-            counts2_arr)
+            counts2_arr, out_sorted_arr)
 
 
 def batch_sigma_clip_sum(const double[::1] sum_values,
