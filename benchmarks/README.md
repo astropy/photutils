@@ -130,6 +130,32 @@ python benchmarks/bench_datasets.py
 python benchmarks/bench_datasets.py --which model-image --n-sources-list 500,2000
 ```
 
+## Detection (`bench_detection.py`)
+
+Benchmarks for the `photutils.detection` subpackage:
+
+- the star finder classes (`DAOStarFinder`, `IRAFStarFinder`, and
+  `StarFinder`) for full detection runs and, for the DAOFIND-style
+  finders, catalog-only runs with the source positions given via
+  `xycoords`
+- the `find_peaks` detection modes (`box_size`, `footprint`,
+  `min_separation`, and centroiding)
+- the fast circular (`min_separation`) peak detection versus the
+  equivalent circular-footprint maximum filter (with speedups)
+- concurrent `find_stars` calls on a shared `DAOStarFinder` instance
+  across thread counts (with speedups relative to the first thread
+  count)
+
+Examples:
+
+```bash
+# Run everything with the default settings
+python benchmarks/bench_detection.py
+
+# Only the min-separation speedup benchmark
+python benchmarks/bench_detection.py --which min-separation --radii 10,50
+```
+
 ## Background (`bench_background.py`)
 
 Benchmarks for the `photutils.background` subpackage:
