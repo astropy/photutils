@@ -76,6 +76,24 @@ python benchmarks/bench_morphology.py
 python benchmarks/bench_morphology.py --which gini --sizes 256,1024,4096
 ```
 
+## Profiles (`bench_profiles.py`)
+
+Benchmarks for the `photutils.profiles` subpackage:
+
+- the per-call cost of constructing each profile class
+  (`RadialProfile`, `CurveOfGrowth`, `EnsquaredCurveOfGrowth`, and
+  `EllipticalCurveOfGrowth`) and computing its profile, errors, and
+  areas, for each overlap method (exact, center, and subpixel)
+- the scaling of the profile computation with the number of radial
+  bins
+- the cost of the extra lazily-computed `RadialProfile` attributes
+  (`data_profile`, `gaussian_fit`, and `moffat_fit`)
+
+```bash
+python benchmarks/bench_profiles.py
+python benchmarks/bench_profiles.py --which radii-scaling --n-radii-list 100,400,1600
+```
+
 ## Background (`bench_background.py`)
 
 Benchmarks for the `photutils.background` subpackage:
