@@ -1449,8 +1449,13 @@ class SourceCatalog:
         An array with a single NaN is returned for completely-masked
         sources.
         """
-        return [arr.compressed() if len(arr.compressed()) > 0
-                else np.array([np.nan]) for arr in array]
+        values = []
+        for arr in array:
+            compressed = arr.compressed()
+            if len(compressed) == 0:
+                compressed = np.array([np.nan])
+            values.append(compressed)
+        return values
 
     @staticmethod
     def _reduceat(values, ufunc, *, transform=None):
@@ -4115,6 +4120,10 @@ class SourceCatalog:
     @cached_property
     @use_detcat
     def _flux_radius_optimizer_args(self):
+        # NOTE: this cached property snapshots the current
+        # _aperture_mask_kwargs['flux_radius'] settings. Changing them
+        # (e.g., via _set_semode) after the first flux_radius call has
+        # no effect.
         kron_flux = self._kron_photometry[:, 0]  # unitless
         max_radius = self._max_circular_kron_radius
         kwargs = self._aperture_mask_kwargs['flux_radius']
@@ -4277,7 +4286,7 @@ class SourceCatalog:
 
             clean_data, grid_params, kronflux, max_radius = flux_radius_args
             normflux = kronflux * fraction
-            args = (clean_data, grid_params, normflux)
+            fcn_args = (clean_data, grid_params, normflux)
 
             # Try to find the root of self._flux_radius_func, which
             # is bracketed by a min and max radius. A ValueError is
@@ -4297,8 +4306,9 @@ class SourceCatalog:
             while max_radius > min_radius and found is False:
                 try:
                     bracket = [min_radius, max_radius]
-                    result = root_scalar(self._flux_radius_fcn, args=args,
-                                         bracket=bracket, method='brentq')
+                    result = root_scalar(self._flux_radius_fcn,
+                                         args=fcn_args, bracket=bracket,
+                                         method='brentq')
                     result = result.root
                     found = True
                 except ValueError:

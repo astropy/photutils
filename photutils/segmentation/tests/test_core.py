@@ -159,8 +159,10 @@ class TestSegmentationImage:
     def test_invalid_label_array(self):
         """
         Test invalid label array.
+
+        The message must show plain integers, not numpy scalar reprs.
         """
-        match = 'are invalid'
+        match = r'labels \[-1, 0, 2\] are invalid'
         with pytest.raises(ValueError, match=match):
             self.segm.check_labels([0, -1, 2])
 

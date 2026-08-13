@@ -740,7 +740,8 @@ class SegmentationImage:
         bad_labels.update(labels[~valid_mask])
 
         if bad_labels:
-            bad_labels = sorted(bad_labels)
+            # Convert numpy scalars to Python ints for a clean message
+            bad_labels = sorted(int(label) for label in bad_labels)
             label_str = 'label'
             conj_str = 'is'
             if len(bad_labels) > 1:
