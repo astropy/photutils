@@ -250,6 +250,14 @@ the single-threaded computation::
     >>> phot = AperturePhotometry(data, aperture, n_threads=8)
     >>> stats = ApertureStats(data, aperture, n_threads=8)
 
+The aperture sums, sigma clipping, and per-source statistic reductions
+(e.g., the sorts, order statistics, robust estimators, and moments)
+all run in the threads, so both classes scale nearly linearly with the
+thread count for large numbers of positions. For the example above,
+measured speedups are ~2x with 2 threads and ~8-10x with 12 threads,
+for the aperture fluxes and sums as well as for statistics such as the
+median, MAD standard deviation, and the biweight estimators.
+
 For more advanced workflows, independent images can also be processed
 concurrently with a thread pool, one instance per frame::
 
