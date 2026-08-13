@@ -276,6 +276,13 @@ Bug Fixes
     (or could silently select the wrong pixels) when the background
     map was computed. [#2363]
 
+- ``photutils.centroids``
+
+  - Fixed ``centroid_quadratic`` to fit the quadratic in coordinates
+    centered on the peak pixel, avoiding ill-conditioning at large pixel
+    coordinates that could cause failures and spurious NaN results.
+    [#2368]
+
 - ``photutils.detection``
 
   - Fixed ``DAOStarFinder`` and ``IRAFStarFinder`` ``orientation``

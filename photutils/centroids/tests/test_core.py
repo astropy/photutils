@@ -265,6 +265,25 @@ def test_centroid_quadratic_xypeak():
         centroid_quadratic(data, xpeak=5, ypeak=15)
 
 
+def test_centroid_quadratic_large_coordinates():
+    """
+    Test for centroid_quadratic with a source at large pixel
+    coordinates.
+
+    The quadratic fit is performed in coordinates centered on the
+    peak pixel. A design matrix built from absolute pixel coordinates
+    becomes ill-conditioned at large coordinates (condition number
+    ~coordinate**4) and previously returned NaN with a spurious "fit
+    does not have a maximum" warning.
+    """
+    xc_ref = 15.7
+    yc_ref = 15980.2
+    data = _make_gaussian_source((16000, 31), 2.4, xc_ref, yc_ref, 2.5,
+                                 2.5, 0)
+    xc, yc = centroid_quadratic(data)
+    assert_allclose((xc, yc), (xc_ref, yc_ref), rtol=0, atol=0.03)
+
+
 def test_centroid_quadratic_nan():
     """
     Test centroid_quadratic with NaN values.

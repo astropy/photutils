@@ -332,9 +332,13 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
         warnings.warn(msg, AstropyUserWarning)
         return np.array((np.nan, np.nan))
 
-    # Fit a 2D quadratic polynomial to the fitting region
-    xi = np.arange(xidx0, xidx1)
-    yi = np.arange(yidx0, yidx1)
+    # Fit a 2D quadratic polynomial to the fitting region. The fit
+    # coordinates are centered on the peak pixel to keep the design
+    # matrix well conditioned. With absolute coordinates the condition
+    # number grows as ~coordinate**4 and the fit fails for sources at
+    # large pixel coordinates (e.g., in large mosaic images).
+    xi = np.arange(xidx0, xidx1) - xidx
+    yi = np.arange(yidx0, yidx1) - yidx
     x, y = np.meshgrid(xi, yi)
     x = x.ravel()
     y = y.ravel()
@@ -376,8 +380,10 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
         warnings.warn(msg, AstropyUserWarning)
         return np.array((np.nan, np.nan))
 
-    xm = (c01 * c11 - 2.0 * c02 * c10) / det
-    ym = (c10 * c11 - 2.0 * c20 * c01) / det
+    # Add back the peak-pixel offset to convert the analytic maximum
+    # from fit coordinates to data coordinates
+    xm = (c01 * c11 - 2.0 * c02 * c10) / det + xidx
+    ym = (c10 * c11 - 2.0 * c20 * c01) / det + yidx
     if 0.0 < xm < (nx - 1.0) and 0.0 < ym < (ny - 1.0):
         xycen = np.array((xm, ym), dtype=float)
     else:
