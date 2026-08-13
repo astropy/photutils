@@ -214,6 +214,11 @@ New Features
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``
     keyword. [#2329]
 
+  - ``SegmentationImage`` objects now always have an ``info``
+    attribute, a dictionary containing auxiliary information.
+    Segmentation images returned by ``deblend_sources`` store any
+    deblending warnings under a ``'warnings'`` key. [#2378]
+
 Bug Fixes
 ^^^^^^^^^
 
@@ -377,6 +382,29 @@ Bug Fixes
     degrees (which only ever produced values in the disjoint ranges
     [0, 90] and (270, 360)). This also makes it consistent with
     ``ApertureStats.orientation``. [#2317]
+
+  - ``SegmentationImage.remove_border_labels`` now raises a
+    ``ValueError`` for non-positive ``border_width`` values. Previously,
+    ``border_width=0`` (and negative widths) silently removed every
+    label because the entire array was treated as the border region.
+    [#2378]
+
+  - Fixed ``SourceCatalog`` slicing so that the sliced catalog no
+    longer shares its custom-properties list (and other mutable
+    containers, such as ``meta``) with the parent catalog. [#2378]
+
+  - Fixed ``SourceCatalog.segment_flux`` so that the local-background
+    subtraction uses the number of unmasked pixels actually summed.
+    Previously, with a ``detection_catalog`` input and a different mask,
+    the local background was multiplied by the detection catalog's
+    ``area``, oversubtracting the background. [#2378]
+
+  - ``deblend_sources`` with ``contrast=1`` (no deblending) now
+    honors ``relabel=True``, relabeling non-consecutive input labels
+    like every other code path. [#2378]
+
+  - ``SourceCatalog.add_property`` now raises a ``ValueError`` for
+    names of built-in methods (e.g., ``to_table``). [#2378]
 
 - ``photutils.psf``
 
