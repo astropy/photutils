@@ -160,9 +160,11 @@ New Features
 - ``photutils.centroids``
 
   - Added an ``n_threads`` keyword to ``centroid_sources`` to compute
-    the source centroids using multiple threads. The sources are
-    divided among the threads and processed concurrently, producing
-    results identical to the single-threaded computation. [#2368]
+    the source centroids using multiple threads. The sources are divided
+    among the threads and processed concurrently, producing results
+    identical to the single-threaded computation. The per-source
+    computations are Python-level and hold the GIL, so speedups are
+    expected primarily on free-threaded Python builds. [#2368]
 
 - ``photutils.detection``
 

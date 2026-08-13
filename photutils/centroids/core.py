@@ -574,7 +574,9 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         default is 1 (no multithreading). When ``n_threads`` > 1,
         the sources are divided among the threads and processed
         concurrently, producing results identical to the single-threaded
-        computation.
+        computation. The per-source computations are Python-level and
+        hold the global interpreter lock (GIL), so speedups are expected
+        primarily on free-threaded Python builds.
 
     **kwargs : dict, optional
         Any additional keyword arguments accepted by the

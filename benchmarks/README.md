@@ -30,6 +30,25 @@ python benchmarks/bench_aperture_photometry.py
 python benchmarks/bench_aperture_photometry.py --n-sources 100000
 ```
 
+## Centroids (`bench_centroids.py`)
+
+Benchmarks for the `photutils.centroids` subpackage:
+
+- the per-call cost of the single-source centroid functions
+  (`centroid_com`, `centroid_quadratic`, `centroid_1dg`, and
+  `centroid_2dg`), with and without an error array
+- `centroid_sources` at many positions for each centroid function
+  and `n_threads` value (with speedups relative to the first
+  `n_threads` value). The per-source computations are Python-level
+  and hold the GIL, so `n_threads` speedups are expected primarily
+  on free-threaded Python builds.
+
+```bash
+python benchmarks/bench_centroids.py
+python benchmarks/bench_centroids.py --which sources \
+    --n-sources 5000 --n-threads 1,4,8
+```
+
 ## Background (`bench_background.py`)
 
 Benchmarks for the `photutils.background` subpackage:
