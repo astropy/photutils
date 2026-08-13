@@ -169,6 +169,37 @@ def test_centroid_2dg_constant_data(value):
         centroid_2dg(data)
 
 
+@pytest.mark.parametrize('value', [0.0, 1.0, -3.7])
+def test_centroid_1dg_constant_data(value):
+    """
+    Test that centroid_1dg raises a ValueError for constant (flat)
+    input data.
+
+    A constant marginal distribution has undefined Gaussian moment
+    estimates. This previously raised a cryptic error from inside the
+    fitter.
+    """
+    data = np.full((10, 10), value)
+    match = 'Input data must have a nonzero sum and non-constant values'
+    with pytest.raises(ValueError, match=match):
+        centroid_1dg(data)
+
+
+def test_centroid_1dg_zero_sum_data():
+    """
+    Test that centroid_1dg raises a ValueError for non-constant data
+    whose sum is zero.
+
+    A zero-sum marginal distribution makes the moment estimates 0/0.
+    """
+    data = np.zeros((10, 10))
+    data[3, 3] = 5.0
+    data[7, 7] = -5.0
+    match = 'Input data must have a nonzero sum and non-constant values'
+    with pytest.raises(ValueError, match=match):
+        centroid_1dg(data)
+
+
 def test_gaussian1d_moments():
     """
     Test the _gaussian1d_moments function on a simple 1D Gaussian model.

@@ -99,6 +99,14 @@ def centroid_1dg(data, error=None, mask=None):
 
     xy_data = [np.sum(data, axis=i) for i in (0, 1)]
 
+    # A zero-sum or constant marginal distribution has undefined
+    # moment estimates (0/0) and cannot be fit with a 1D Gaussian.
+    for data_i in xy_data:
+        if np.sum(data_i) == 0 or np.ptp(data_i) == 0:
+            msg = ('Input data must have a nonzero sum and non-constant '
+                   'values to fit 1D Gaussians.')
+            raise ValueError(msg)
+
     # Gaussian1D stddev is bounded to be strictly positive
     fitter = TRFLSQFitter()
 
