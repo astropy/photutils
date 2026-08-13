@@ -292,6 +292,13 @@ Bug Fixes
     also makes it consistent with ``ApertureStats.orientation`` and
     ``SourceCatalog.orientation``. [#2317]
 
+- ``photutils.morphology``
+
+  - Fixed ``data_properties`` so that a ``background`` input with
+    units is preserved. Previously, the units were stripped, and a
+    confusing units-mismatch error was raised when ``data`` was a
+    ``Quantity``. [#2370]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range

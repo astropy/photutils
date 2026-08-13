@@ -77,6 +77,32 @@ def test_data_properties_bkg():
     assert props2.background_sum == 18.0
 
 
+def test_data_properties_quantity_bkg():
+    """
+    Test that a ``~astropy.units.Quantity`` background preserves its
+    units.
+    """
+    data = np.ones((3, 3)) * u.Jy
+    props = data_properties(data, background=1.0 * u.Jy)
+    assert props.background_sum == 9.0 * u.Jy
+
+    bkg_2d = np.full((3, 3), 2.0) * u.Jy
+    props2 = data_properties(data, background=bkg_2d)
+    assert props2.background_sum == 18.0 * u.Jy
+
+
+def test_data_properties_empty_data():
+    """
+    Test that empty data raises ``ValueError``.
+    """
+    match = 'data must not be empty'
+    with pytest.raises(ValueError, match=match):
+        data_properties(np.ones((0, 5)))
+
+    with pytest.raises(ValueError, match=match):
+        data_properties(np.ones((3, 0)))
+
+
 def test_data_properties_bkg_invalid():
     """
     Test that invalid background inputs raise ``ValueError``.
