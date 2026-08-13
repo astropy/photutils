@@ -199,10 +199,10 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                 pxmin = xmin + i * dx
                 for j in range(j_min, j_max):
                     pymin = ymin + j * dy
-                    frac_view[j, i] = polygon_overlap_single_subpixel(
-                        pxmin, pymin, pxmin + dx, pymin + dy,
-                        poly_x, poly_y, n_poly, subpixels,
-                        buf_a_x, buf_a_y, buf_b_x)
+                    frac_view[j, i] = convex_polygon_pixel_subpixel(
+                        pxmin, pymin, pxmin + dx, pymin + dy, poly_x, poly_y,
+                        n_poly, edge_nx, edge_ny, edge_c, is_convex, margin,
+                        subpixels, buf_a_x, buf_a_y, buf_b_x)
 
     return frac
 
@@ -369,6 +369,57 @@ cdef int convex_edge_normals(double *poly_x, double *poly_y, int n_poly,
     return 1
 
 
+cdef int convex_pixel_position(double pxmin, double pymin, double pxmax,
+                               double pymax, double *edge_nx,
+                               double *edge_ny, double *edge_c,
+                               int n_poly, double margin) noexcept nogil:
+    """
+    Classify a pixel against a convex polygon using the precomputed
+    per-edge normals from ``convex_edge_normals``.
+
+    Every point of the pixel lies within ``margin`` (half the pixel
+    diagonal) of the pixel center, so the pixel is wholly inside the
+    polygon when the pixel center's smallest signed edge distance
+    exceeds ``margin``, and wholly outside when it is below ``-margin``.
+
+    Parameters
+    ----------
+    pxmin, pymin, pxmax, pymax : double
+        The pixel edges.
+
+    edge_nx, edge_ny, edge_c : double *
+        The per-edge unit inward normals and offsets from
+        ``convex_edge_normals``.
+
+    n_poly : int
+        The number of polygon vertices.
+
+    margin : double
+        Half the pixel diagonal.
+
+    Returns
+    -------
+    result : int
+        1 if the pixel is wholly inside the polygon, -1 if it is
+        wholly outside, and 0 if it is in the boundary band.
+    """
+    cdef double pxcen, pycen, min_dist, d
+    cdef int k
+
+    pxcen = 0.5 * (pxmin + pxmax)
+    pycen = 0.5 * (pymin + pymax)
+    min_dist = edge_nx[0] * pxcen + edge_ny[0] * pycen - edge_c[0]
+    for k in range(1, n_poly):
+        d = edge_nx[k] * pxcen + edge_ny[k] * pycen - edge_c[k]
+        if d < min_dist:
+            min_dist = d
+    if min_dist > margin:
+        return 1
+    if min_dist < -margin:
+        return -1
+    return 0
+
+
 cdef double convex_polygon_pixel_overlap(double pxmin, double pymin,
                                          double pxmax, double pymax,
                                          double *poly_x, double *poly_y,
@@ -425,26 +476,99 @@ cdef double convex_polygon_pixel_overlap(double pxmin, double pymin,
     area : double
         The area of overlap between the pixel and the polygon.
     """
-    cdef double pxcen, pycen, min_dist, d
-    cdef int k
+    cdef int position
 
     if is_convex:
-        pxcen = 0.5 * (pxmin + pxmax)
-        pycen = 0.5 * (pymin + pymax)
-        min_dist = edge_nx[0] * pxcen + edge_ny[0] * pycen - edge_c[0]
-        for k in range(1, n_poly):
-            d = edge_nx[k] * pxcen + edge_ny[k] * pycen - edge_c[k]
-            if d < min_dist:
-                min_dist = d
-        if min_dist > margin:
+        position = convex_pixel_position(pxmin, pymin, pxmax, pymax,
+                                         edge_nx, edge_ny, edge_c,
+                                         n_poly, margin)
+        if position > 0:
             return (pxmax - pxmin) * (pymax - pymin)
-        if min_dist < -margin:
+        if position < 0:
             return 0.0
 
     return polygon_pixel_overlap(pxmin, pymin, pxmax, pymax,
                                  poly_x, poly_y, n_poly,
                                  buf_a_x, buf_a_y, buf_b_x, buf_b_y,
                                  buf_size)
+
+
+cdef double convex_polygon_pixel_subpixel(double pxmin, double pymin,
+                                          double pxmax, double pymax,
+                                          double *poly_x, double *poly_y,
+                                          int n_poly,
+                                          double *edge_nx, double *edge_ny,
+                                          double *edge_c, int is_convex,
+                                          double margin, int subpixels,
+                                          double *xint_buf,
+                                          double *hxmin_buf,
+                                          double *hxmax_buf) noexcept nogil:
+    """
+    Fraction of overlap between a simple polygon and a single pixel
+    using subpixel sampling, with an interior/exterior fast path for
+    convex polygons.
+
+    The fast path is exact for the sampled fraction, not an
+    approximation. Every subpixel center lies strictly within ``margin``
+    of the pixel center, so a pixel that is wholly inside the polygon
+    (see ``convex_pixel_position``) has every subpixel center strictly
+    inside (sampled fraction exactly 1), and a wholly outside pixel has
+    none (sampled fraction exactly 0). Pixels in the boundary band,
+    and all pixels of non-convex polygons, fall back to the scanline
+    sampling (``polygon_overlap_single_subpixel``), so the result is
+    identical to sampling every pixel.
+
+    Parameters
+    ----------
+    pxmin, pymin, pxmax, pymax : double
+        The pixel edges.
+
+    poly_x, poly_y : double *
+        The x and y coordinates of the polygon vertices, in
+        counter-clockwise order.
+
+    n_poly : int
+        The number of polygon vertices.
+
+    edge_nx, edge_ny, edge_c : double *
+        The per-edge unit inward normals and offsets from
+        ``convex_edge_normals``. Used only when ``is_convex`` is 1.
+
+    is_convex : int
+        Whether the polygon is convex (see ``convex_edge_normals``).
+
+    margin : double
+        Half the pixel diagonal.
+
+    subpixels : int
+        The number of subpixels to sample in each dimension.
+
+    xint_buf, hxmin_buf, hxmax_buf : double *
+        Caller-supplied scratch buffers passed through to
+        ``polygon_overlap_single_subpixel`` (see that function for
+        sizing).
+
+    Returns
+    -------
+    frac : double
+        The fraction (0 to 1) of the pixel's area that overlaps the
+        polygon.
+    """
+    cdef int position
+
+    if is_convex:
+        position = convex_pixel_position(pxmin, pymin, pxmax, pymax,
+                                         edge_nx, edge_ny, edge_c,
+                                         n_poly, margin)
+        if position > 0:
+            return 1.0
+        if position < 0:
+            return 0.0
+
+    return polygon_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
+                                           poly_x, poly_y, n_poly,
+                                           subpixels, xint_buf,
+                                           hxmin_buf, hxmax_buf)
 
 
 cdef int point_in_polygon(double x, double y, double *poly_x,

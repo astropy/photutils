@@ -5,7 +5,7 @@ Tests for the _polygon_overlap module.
 
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.geometry._polygon_overlap import polygon_overlap_grid
 
@@ -102,6 +102,31 @@ def test_polygon_overlap_subpixel_mode(half_side, subpix, atol):
     assert grid.min() >= 0.0
     assert grid.max() <= 1.0
     assert_allclose(grid.sum() * pixel_area, (2.0 * s) ** 2, atol=atol)
+
+
+@pytest.mark.parametrize('subpix', [1, 3, 5])
+def test_polygon_overlap_subpixel_convex_fast_path(subpix):
+    """
+    Test that the convex interior/exterior fast path of the subpixel
+    mode returns results identical to sampling every pixel.
+
+    The same hexagon with a duplicated vertex is geometrically
+    identical but is reported as non-convex (the zero-length edge fails
+    ``convex_edge_normals``), which disables the fast path and forces
+    the full scanline sampling for every pixel.
+    """
+    angles = np.pi / 6.0 + np.arange(6) * np.pi / 3.0
+    vx = np.ascontiguousarray(4.0 * np.cos(angles))
+    vy = np.ascontiguousarray(4.0 * np.sin(angles))
+    vx_dup = np.append(vx, vx[0])
+    vy_dup = np.append(vy, vy[0])
+    fast = polygon_overlap_grid(-5.0, 5.0, -5.0, 5.0, 40, 40,
+                                vx, vy, 0, subpix)
+    slow = polygon_overlap_grid(-5.0, 5.0, -5.0, 5.0, 40, 40,
+                                vx_dup, vy_dup, 0, subpix)
+    assert_array_equal(fast, slow)
+    # Sanity check that interior pixels exist and are exactly 1
+    assert fast.max() == 1.0
 
 
 def test_polygon_overlap_no_intersection():
