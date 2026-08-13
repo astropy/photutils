@@ -214,11 +214,15 @@ def centroid_2dg(data, error=None, mask=None):
 
     y, x = np.indices(data.shape)
 
-    with warnings.catch_warnings(record=True) as fit_warnings:
-        warnings.simplefilter('always', AstropyUserWarning)
-        gfit = fitter(g_init, x, y, data, weights=weights)
+    gfit = fitter(g_init, x, y, data, weights=weights)
 
-    if any(issubclass(w.category, AstropyUserWarning) for w in fit_warnings):
+    # TRFLSQFitter stores the scipy least_squares result object in
+    # fit_info. Success is False when the optimizer terminated without
+    # satisfying a convergence criterion (e.g., the maximum number of
+    # function evaluations was exceeded). Inspecting fit_info instead
+    # of capturing warnings avoids mutating the process-global warnings
+    # state, which is not thread-safe.
+    if not fitter.fit_info.success:
         msg = 'The fit may not have converged. Please check your results.'
         warnings.warn(msg, AstropyUserWarning)
 
