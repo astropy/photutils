@@ -256,11 +256,13 @@ class ApertureStats:
 
     n_threads : int, optional
         The number of threads to use to gather the aperture pixel
-        values and compute the aperture sums. The default is 1 (no
-        multithreading). When ``n_threads`` > 1, the aperture positions
-        are divided into chunks and processed concurrently. The
-        per-source results are independent, so they are identical to
-        the single-threaded computation. The underlying kernels release
+        values, compute the aperture sums, and reduce the per-source
+        statistics (e.g., the sorts, order statistics, robust
+        estimators, and moments). The default is 1 (no multithreading).
+        When ``n_threads`` > 1, the aperture positions are divided
+        into chunks and processed concurrently. The per-source
+        results are independent, so they are identical to the
+        single-threaded computation. The underlying kernels release
         the Python global interpreter lock (GIL), so multithreading
         can significantly speed up the statistics for many aperture
         positions. Multithreading is used only on the fast batch code
@@ -1148,6 +1150,70 @@ class ApertureStats:
             overlap=np.concatenate([g.overlap for g in gathers]),
             flag_counts=np.concatenate([g.flag_counts for g in gathers]))
 
+    def _threaded_reduction(self, func, buffers, starts, counts,
+                            per_source=()):
+        """
+        Run a per-source packed-buffer reduction, dividing the sources
+        into chunks that are processed concurrently.
+
+        The kernel is called as ``func(*buffers, starts, counts,
+        *per_source)``. When ``n_threads`` > 1, the sources are
+        divided into contiguous ranges; each worker receives the
+        corresponding packed-buffer regions (with the ``starts``
+        rebased to the region) and per-source array slices, so the
+        kernels run concurrently on disjoint data. The per-chunk
+        outputs are concatenated, making the result identical to the
+        single-chunk call. A kernel returning a packed buffer (e.g.,
+        ``batch_sort_values``) also concatenates correctly because the
+        chunk regions partition the buffer in order.
+
+        Parameters
+        ----------
+        func : callable
+            The reduction kernel.
+
+        buffers : tuple of `~numpy.ndarray`
+            The packed per-pixel buffers (equal lengths), passed as
+            the leading kernel arguments.
+
+        starts, counts : `~numpy.ndarray`
+            The per-source start offsets into the buffers and the
+            per-source pixel counts.
+
+        per_source : tuple of `~numpy.ndarray`, optional
+            Additional per-source arrays, passed as the trailing
+            kernel arguments.
+
+        Returns
+        -------
+        result : `~numpy.ndarray` or tuple of `~numpy.ndarray`
+            The kernel output(s), concatenated over the chunks.
+        """
+        n_src = len(counts)
+        n_chunks = min(self.n_threads, n_src)
+        if n_chunks <= 1:  # 0 for empty positions
+            return func(*buffers, starts, counts, *per_source)
+
+        buffer_len = len(buffers[0])
+        src_edges = np.arange(n_chunks + 1) * n_src // n_chunks
+
+        def reduce_chunk(i0, i1):
+            buf0 = starts[i0]
+            buf1 = starts[i1] if i1 < n_src else buffer_len
+            chunk_buffers = [buffer[buf0:buf1] for buffer in buffers]
+            return func(*chunk_buffers, starts[i0:i1] - buf0,
+                        counts[i0:i1],
+                        *[arr[i0:i1] for arr in per_source])
+
+        with ThreadPoolExecutor(max_workers=n_chunks) as executor:
+            results = list(executor.map(reduce_chunk, src_edges[:-1],
+                                        src_edges[1:]))
+
+        if isinstance(results[0], tuple):
+            return tuple(np.concatenate(parts)
+                         for parts in zip(*results, strict=True))
+        return np.concatenate(results)
+
     def _fast_clip_spec(self):
         """
         The fast sigma-clip parameters, or `None`.
@@ -1232,6 +1298,9 @@ class ApertureStats:
         kernel are reused directly (the clipping already sorts each
         source's values to compute the clip bounds). `None` is returned
         when the fast path is unavailable.
+
+        When ``n_threads`` > 1, the per-source sorts run concurrently
+        (see `_threaded_reduction`).
         """
         gather = self._fast_gather
         if gather is None:
@@ -1239,7 +1308,9 @@ class ApertureStats:
         values, starts, counts = gather.values, gather.starts, gather.counts
         if gather.sorted_values is not None:
             return (gather.sorted_values, starts, counts)
-        return (batch_sort_values(values, starts, counts), starts, counts)
+        sorted_values = self._threaded_reduction(
+            batch_sort_values, (values,), starts, counts)
+        return (sorted_values, starts, counts)
 
     @cached_property
     def _order_stats(self):
@@ -1252,7 +1323,9 @@ class ApertureStats:
         sorted_values = self._sorted_values
         if sorted_values is None:
             return None
-        return batch_order_stats(*sorted_values)
+        values, starts, counts = sorted_values
+        return self._threaded_reduction(batch_order_stats, (values,),
+                                        starts, counts)
 
     @cached_property
     def _mean_var(self):
@@ -1266,7 +1339,8 @@ class ApertureStats:
         gather = self._fast_gather
         if gather is None:
             return None
-        return batch_mean_var(gather.values, gather.starts, gather.counts)
+        return self._threaded_reduction(batch_mean_var, (gather.values,),
+                                        gather.starts, gather.counts)
 
     @cached_property
     def _mad(self):
@@ -1279,7 +1353,8 @@ class ApertureStats:
         sorted_values = self._sorted_values
         if sorted_values is None:
             return None
-        return batch_mad(*sorted_values)
+        values, starts, counts = sorted_values
+        return self._threaded_reduction(batch_mad, (values,), starts, counts)
 
     @cached_property
     def _biweight(self):
@@ -1295,7 +1370,10 @@ class ApertureStats:
         if sorted_values is None:
             return None
         _, _, median = self._order_stats
-        return batch_biweight(*sorted_values, median, self._mad)
+        values, starts, counts = sorted_values
+        return self._threaded_reduction(batch_biweight, (values,),
+                                        starts, counts,
+                                        per_source=(median, self._mad))
 
     @cached_property
     def _gini(self):
@@ -1308,7 +1386,8 @@ class ApertureStats:
         gather = self._fast_gather
         if gather is None:
             return None
-        return batch_gini(gather.values, gather.starts, gather.counts)
+        return self._threaded_reduction(batch_gini, (gather.values,),
+                                        gather.starts, gather.counts)
 
     def _finalize_value_stat(self, fast_result, stat_func, *,
                              square_unit=False, apply_unit=True):
@@ -2115,9 +2194,10 @@ class ApertureStats:
         if gather is not None:
             overlap = gather.overlap
             zeros = np.zeros(self.n_positions)
-            mom = batch_moments(gather.values, gather.local_x,
-                                gather.local_y, gather.starts,
-                                gather.counts, zeros, zeros)
+            mom = self._threaded_reduction(
+                batch_moments,
+                (gather.values, gather.local_x, gather.local_y),
+                gather.starts, gather.counts, per_source=(zeros, zeros))
             # No-overlap sources have NaN moments (the mask-based path
             # uses an all-NaN cutout); all-masked overlapping sources
             # have zero moments (an all-zero cutout).
@@ -2139,9 +2219,10 @@ class ApertureStats:
         if gather is not None:
             cen_x = np.ascontiguousarray(cutout_centroid[:, 0])
             cen_y = np.ascontiguousarray(cutout_centroid[:, 1])
-            mom = batch_moments(gather.values, gather.local_x,
-                                gather.local_y, gather.starts,
-                                gather.counts, cen_x, cen_y)
+            mom = self._threaded_reduction(
+                batch_moments,
+                (gather.values, gather.local_x, gather.local_y),
+                gather.starts, gather.counts, per_source=(cen_x, cen_y))
             # Empty sources (no overlap or fully masked) have a NaN
             # centroid, so their central moments are NaN (matching the
             # mask-based path).
