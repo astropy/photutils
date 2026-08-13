@@ -16,6 +16,7 @@ cdef extern from "math.h" nogil:
     double sin(double x)
     double sqrt(double x)
     double fabs(double x)
+    double fmin(double x, double y)
     double M_PI
     double NAN
 
@@ -104,7 +105,10 @@ cdef double area_arc(double x1, double y1, double x2, double y2,
     cdef double a, theta
 
     a = distance(x1, y1, x2, y2)
-    theta = 2.0 * asin(0.5 * a / r)
+    # Clamp the half-chord ratio to 1 to guard against floating-point
+    # round-off pushing a near-diameter chord past the domain of asin,
+    # which would return NaN.
+    theta = 2.0 * asin(fmin(1.0, 0.5 * a / r))
     return 0.5 * r * r * (theta - sin(theta))
 
 
@@ -153,7 +157,10 @@ cdef double area_arc_unit(double x1, double y1, double x2,
     cdef double a, theta
 
     a = distance(x1, y1, x2, y2)
-    theta = 2.0 * asin(0.5 * a)
+    # Clamp the half-chord length to 1 to guard against floating-point
+    # round-off pushing a near-diameter chord past the domain of asin,
+    # which would return NaN.
+    theta = 2.0 * asin(fmin(1.0, 0.5 * a))
     return 0.5 * (theta - sin(theta))
 
 
