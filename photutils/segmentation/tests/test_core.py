@@ -4,7 +4,9 @@ Tests for the core module.
 """
 
 import sys
+import threading
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from functools import cached_property
 from unittest.mock import PropertyMock, patch
 
@@ -1732,6 +1734,72 @@ class TestGetRegion:
         regions = self.segm.to_regions()
         for region in regions:
             assert not region.visual
+
+
+class TestThreadSafety:
+    """
+    Thread-safety tests for the SegmentationImage class.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self, segm_data):
+        self.data = segm_data
+
+    def test_concurrent_cached_property_access(self):
+        """
+        Test concurrent first access of cached properties on a shared
+        segmentation image.
+
+        cached_property does not lock, so concurrent first accesses may
+        run a getter more than once, but every thread must see values
+        identical to the serial computation.
+        """
+        expected = SegmentationImage(self.data.copy())
+        segm = SegmentationImage(self.data.copy())
+
+        n_threads = 8
+        barrier = threading.Barrier(n_threads)
+
+        def worker(_):
+            barrier.wait()
+            return (segm.labels, segm.areas, segm.slices,
+                    segm.missing_labels)
+
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            results = list(executor.map(worker, range(n_threads)))
+
+        for labels, areas, slices, missing_labels in results:
+            assert_equal(labels, expected.labels)
+            assert_equal(areas, expected.areas)
+            assert slices == expected.slices
+            assert_equal(missing_labels, expected.missing_labels)
+
+    def test_concurrent_cached_properties_introspection(self):
+        """
+        Test concurrent first access of the class-level
+        _cached_properties introspection cache on a fresh subclass.
+
+        The lazy class-level cache is written without a lock; the race
+        is benign because the computed list is identical for every
+        thread.
+        """
+        class FreshSegm(SegmentationImage):
+            pass
+
+        segms = [FreshSegm(self.data.copy()) for _ in range(8)]
+
+        n_threads = len(segms)
+        barrier = threading.Barrier(n_threads)
+
+        def worker(segm):
+            barrier.wait()
+            return segm._cached_properties
+
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            results = list(executor.map(worker, segms))
+
+        assert all(result == results[0] for result in results)
+        assert 'areas' in results[0]
 
 
 def test_segment_deprecations(segm_data):

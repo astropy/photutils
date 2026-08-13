@@ -3,6 +3,8 @@
 Tests for the catalog module.
 """
 
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from io import StringIO
 from unittest.mock import patch
 
@@ -1408,6 +1410,97 @@ class TestSourceCatalog:
         assert_allclose(cat[1].covariance,
                         [(np.nan, np.nan), (np.nan, np.nan)] * u.pix**2)
         assert_allclose(cat.fwhm, [0.67977799, np.nan] * u.pix)
+
+
+class TestThreadSafety:
+    """
+    Thread-safety tests for the SourceCatalog class.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        yy, xx = np.mgrid[0:101, 0:101]
+        g1 = Gaussian2D(100, 50, 50, 5, 5)
+        g2 = Gaussian2D(80, 30, 30, 4, 4)
+        g3 = Gaussian2D(60, 70, 30, 3, 3)
+        self.data = g1(xx, yy) + g2(xx, yy) + g3(xx, yy)
+        self.segm = detect_sources(self.data, 10.0, n_pixels=5)
+
+    def test_concurrent_cached_property_access(self):
+        """
+        Test concurrent first access of cached properties on a shared
+        catalog.
+
+        cached_property does not lock, so concurrent first accesses may
+        run a getter more than once, but every thread must see values
+        identical to the serial computation.
+        """
+        expected = SourceCatalog(self.data, self.segm)
+        cat = SourceCatalog(self.data, self.segm)
+
+        n_threads = 8
+        barrier = threading.Barrier(n_threads)
+
+        def worker(_):
+            barrier.wait()
+            return (cat.segment_flux, cat.centroid, cat.kron_flux)
+
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            results = list(executor.map(worker, range(n_threads)))
+
+        for segment_flux, centroid, kron_flux in results:
+            assert_equal(segment_flux, expected.segment_flux)
+            assert_equal(centroid, expected.centroid)
+            assert_equal(kron_flux, expected.kron_flux)
+
+    def test_concurrent_flux_radius(self):
+        """
+        Test concurrent first flux_radius calls on a shared catalog.
+
+        The _flux_radius_cache dict uses an unlocked check-then-set, so
+        concurrent first calls may compute more than once, but every
+        thread must see values identical to the serial computation.
+        """
+        expected = SourceCatalog(self.data, self.segm).flux_radius(0.5)
+        cat = SourceCatalog(self.data, self.segm)
+
+        n_threads = 8
+        barrier = threading.Barrier(n_threads)
+
+        def worker(_):
+            barrier.wait()
+            return cat.flux_radius(0.5)
+
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            results = list(executor.map(worker, range(n_threads)))
+
+        for radius in results:
+            assert_allclose(radius.value, expected.value)
+
+    def test_concurrent_slice_add_property(self):
+        """
+        Test that threads slicing a shared catalog and adding custom
+        properties to their own slices do not interfere with each other
+        or with the parent catalog.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+
+        n_threads = 8
+        barrier = threading.Barrier(n_threads)
+
+        def worker(index):
+            barrier.wait()
+            obj = cat[index % cat.n_labels]
+            obj.add_property(f'prop{index}', float(index))
+            return obj
+
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            results = list(executor.map(worker, range(n_threads)))
+
+        assert cat.custom_properties == []
+        for index, obj in enumerate(results):
+            assert obj.custom_properties == [f'prop{index}']
+            assert getattr(obj, f'prop{index}') == float(index)
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
