@@ -530,6 +530,48 @@ def test_optional_stdpsf_grid_params_use_defaults():
     assert_array_equal(grid.oversampling, (4, 4))
 
 
+# The oversampling form not otherwise exercised by each model's
+# round-trip tests. The converters write an ndarray for ImagePSF and
+# GriddedPSFModel and a plain integer array for STDPSFGrid.
+OTHER_OVERSAMPLING_FORMS = {
+    'image_psf': '[2, 2]',
+    'gridded_psf_model': '[1, 1]',
+    'stdpsf_grid': '!core/ndarray-1.1.0 [4, 4]',
+}
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('stem', list(OTHER_OVERSAMPLING_FORMS))
+def test_oversampling_forms_accepted(stem):
+    """
+    Test that ``oversampling`` may be a plain integer array or an
+    ndarray in every image-based PSF schema.
+    """
+    params = {**REQUIRED_PSF_PARAMS[stem],
+              'oversampling': OTHER_OVERSAMPLING_FORMS[stem]}
+    model = _read_psf(stem, params)
+    expected = yaml.safe_load(
+        OTHER_OVERSAMPLING_FORMS[stem].removeprefix('!core/ndarray-1.1.0'))
+    assert_array_equal(model.oversampling, expected)
+
+
+@pytest.mark.parametrize('stem', list(OTHER_OVERSAMPLING_FORMS))
+def test_float_oversampling_rejected(stem):
+    """
+    Test that a non-integer ``oversampling`` array fails schema
+    validation when read.
+
+    The oversampling factors must be integers, so rejecting floats in
+    the schema reports the problem as a validation error instead of a
+    model initialization error.
+    """
+    params = {**REQUIRED_PSF_PARAMS[stem], 'oversampling': '[2.5, 2.5]'}
+    with pytest.raises(ValidationError), \
+            asdf.open(yaml_to_asdf(f'psf: {_psf_yaml(stem, params)}')):
+        pass
+
+
 @pytest.mark.parametrize('stem', list(REQUIRED_PSF_PARAMS))
 def test_unknown_psf_property_rejected(stem):
     """

@@ -70,7 +70,13 @@ allOf:
           Assign value to pixels outside the input pixel grid
           to avoid extrapolation.
       oversampling:
-        tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
+        anyOf:
+          - type: array
+            items:
+              type: integer
+            minItems: 2
+            maxItems: 2
+          - tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'
         description: |
           The integer oversampling factor of the input ePSF images
           along each axis, in numpy ``(y, x)`` order.
