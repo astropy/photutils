@@ -100,6 +100,13 @@ New Features
     ``Background2D``. The result is a ``Quantity`` with the same unit as
     the input data. [#2363]
 
+  - Added an ``n_threads`` keyword to ``Background2D`` to compute the
+    box statistics using multiple threads. The results are identical
+    to the single-threaded computation. The underlying sigma-clipping
+    and statistics kernels release the GIL, so multithreading can
+    significantly speed up the background estimation for large
+    images. [#2363]
+
 - ``photutils.detection``
 
   - Added validation of the ``StarFinderCatalogBase.to_table()``

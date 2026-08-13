@@ -261,6 +261,28 @@ input order, the stacked table rows are in the same order as the input
 ``positions``.
 
 
+Multithreaded 2D Background Estimation
+======================================
+
+`~photutils.background.Background2D` now accepts an ``n_threads``
+keyword to compute the box statistics using multiple threads. The
+boxes are divided into chunks and processed concurrently, producing
+results identical to the single-threaded computation. The underlying
+sigma-clipping and statistics kernels release the Python global
+interpreter lock (GIL), so the threads run in parallel::
+
+    >>> import numpy as np
+    >>> from photutils.background import Background2D
+    >>> rng = np.random.default_rng(seed=0)
+    >>> data = rng.normal(100.0, 5.0, (4096, 4096))
+    >>> bkg = Background2D(data, (64, 64), n_threads=8)
+
+In addition, `~photutils.background.Background2D` instances are now
+immutable after construction (aside from internal lazy-attribute
+caches), so a single instance is safe to share across threads and
+independent images can be processed concurrently.
+
+
 Polygon Apertures
 =================
 

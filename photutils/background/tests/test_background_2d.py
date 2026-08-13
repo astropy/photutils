@@ -260,6 +260,60 @@ class TestBackground2D:
         assert_allclose(mesh1, mesh2)
         assert_allclose(rms_mesh1, rms_mesh2)
 
+    @pytest.mark.parametrize('n_threads', [2, 8])
+    def test_n_threads(self, n_threads):
+        """
+        Test that multithreaded box statistics give identical results
+        to the single-threaded computation.
+
+        The data shape is not an integer multiple of the box size, so
+        the extra row, column, and corner boxes are also exercised.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(1.0, 0.5, (121, 289))
+        data[50:60, 50:60] = 1000.0
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[50:60, 50:60] = True
+
+        bkg1 = Background2D(data, (25, 25), mask=mask)
+        bkg2 = Background2D(data, (25, 25), mask=mask, n_threads=n_threads)
+        assert bkg2.n_threads == n_threads
+        assert_equal(bkg1.background_mesh, bkg2.background_mesh)
+        assert_equal(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
+        assert_equal(bkg1.n_pixels_mesh, bkg2.n_pixels_mesh)
+        assert_equal(bkg1.background, bkg2.background)
+
+    def test_n_threads_no_sigma_clip(self):
+        """
+        Test multithreading with sigma clipping disabled.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(1.0, 0.5, (100, 100))
+        bkg1 = Background2D(data, (25, 25), sigma_clip=None)
+        bkg2 = Background2D(data, (25, 25), sigma_clip=None, n_threads=4)
+        assert_equal(bkg1.background_mesh, bkg2.background_mesh)
+        assert_equal(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
+
+    def test_n_threads_single_box_row(self):
+        """
+        Test that n_threads larger than the number of box rows falls
+        back to a single-chunk (serial) computation.
+        """
+        data = np.ones((25, 100))
+        bkg = Background2D(data, (25, 25), n_threads=8)
+        assert bkg.background_mesh.shape == (1, 4)
+        assert_allclose(bkg.background, data)
+
+    def test_invalid_n_threads(self, test_data):
+        """
+        Test that an error is raised if n_threads is not a positive
+        integer.
+        """
+        match = 'n_threads must be a positive integer'
+        for n_threads in (0, -1, 2.5):
+            with pytest.raises(ValueError, match=match):
+                Background2D(test_data, (25, 25), n_threads=n_threads)
+
     def test_no_sigma_clipping(self, test_data):
         """
         Test bkg_estimator inputs without sigma clipping.
