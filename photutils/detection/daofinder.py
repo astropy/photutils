@@ -455,7 +455,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         The ``(lower, upper)`` inclusive bounds on roundness for object
         detection. Objects with roundness outside this range will be
         rejected. Both ``roundness1`` and ``roundness2`` are tested
-        against this range.
+        against this range. The default is ``(-1.0, 1.0)``.
 
     n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
@@ -470,6 +470,12 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         `~astropy.units.Quantity` array, then ``peak_max`` must have the
         same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
+
+    scale_threshold : bool, optional
+        If `True` (default), the input ``threshold`` is multiplied by
+        the kernel relative error to compute the effective threshold
+        used by ``daofind_mag``. If `False`, the input ``threshold`` is
+        used directly.
     """
 
     def __init__(self, data, convolved_data, xypos, threshold, kernel, *,

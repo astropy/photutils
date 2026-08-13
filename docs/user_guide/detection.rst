@@ -57,12 +57,12 @@ as :class:`~photutils.detection.DAOStarFinder` shown below. Replace
 the class name and adjust the parameters (e.g., ``fwhm`` and
 ``kernel``) as needed. Note that the ``scale_threshold`` parameter
 is specific to :class:`~photutils.detection.DAOStarFinder`.
-Note also that each class returns different output columns.
-For example, :class:`~photutils.detection.DAOStarFinder`
-includes ``daofind_mag`` and ``sharpness`` columns, while
+Note also that each class returns different output columns. For
+example, :class:`~photutils.detection.DAOStarFinder` includes
+``roundness1``, ``roundness2``, and ``daofind_mag`` columns, while
 :class:`~photutils.detection.IRAFStarFinder` includes ``fwhm`` and
-``pa`` (position angle) columns. See each class's API documentation for
-the full list of output columns.
+``orientation`` columns. See each class's API documentation for the full
+list of output columns.
 
 As an example, let's load a simulated HST star image and add Gaussian
 noise. We will then estimate the background and background noise using

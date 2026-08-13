@@ -408,12 +408,12 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
     sharpness_range : tuple of 2 floats, optional
         The ``(lower, upper)`` inclusive bounds on sharpness for object
         detection. Objects with sharpness outside this range will be
-        rejected.
+        rejected. The default is ``(0.5, 2.0)``.
 
     roundness_range : tuple of 2 floats, optional
         The ``(lower, upper)`` inclusive bounds on roundness for object
         detection. Objects with roundness outside this range will be
-        rejected.
+        rejected. The default is ``(0.0, 0.2)``.
 
     n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
@@ -431,7 +431,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
     """
 
     def __init__(self, data, convolved_data, xypos, kernel, *,
-                 sharpness_range=(0.2, 1.0), roundness_range=(-1.0, 1.0),
+                 sharpness_range=(0.5, 2.0), roundness_range=(0.0, 0.2),
                  n_brightest=None, peak_max=None):
 
         # Validate the units, but do not strip them
