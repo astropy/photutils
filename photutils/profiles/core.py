@@ -250,8 +250,8 @@ class ProfileBase(metaclass=abc.ABCMeta):
               1.
 
             * ``'sum'``:
-              The profile is normalized such that its sum (integral) is
-              1.
+              The profile is normalized such that the sum of its values
+              is 1.
         """
         if method == 'max':
             with warnings.catch_warnings():
