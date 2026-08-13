@@ -83,7 +83,7 @@ def _build_penalty_array(penalty):
     return penalty_array
 
 
-def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
+def make_kernel(source_psf, target_psf, *, regularization=1e-4, window=None):
     """
     Make a convolution kernel that matches an input PSF to a target PSF
     using the ratio of Fourier transforms.
@@ -129,6 +129,17 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
         ``target_psf`` must have the same shape and pixel scale. It is
         assumed to be centered on the central pixel.
 
+    regularization : float, optional
+        The regularization parameter that controls the OTF amplitude
+        threshold for the source OTF (Optical Transfer Function, the
+        Fourier transform of the PSF). At frequencies where the source
+        OTF amplitude is below ``regularization`` times the peak
+        amplitude, the Fourier ratio is set to zero to avoid division by
+        near-zero values. Must be in the range [0, 1), where 0 provides
+        no thresholding (only exact zeros are excluded) and values
+        closer to 1 apply more aggressive thresholding. A value of 1
+        would zero out all frequencies and produce a degenerate kernel.
+
     window : callable, optional
         The window (taper) function or callable class instance used
         to remove high frequency noise from the PSF matching kernel.
@@ -149,17 +160,6 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
         For more information on window functions, custom windows, and
         example usage, see :ref:`PSF Matching <psf_matching>`.
 
-    regularization : float, optional
-        The regularization parameter that controls the OTF amplitude
-        threshold for the source OTF (Optical Transfer Function, the
-        Fourier transform of the PSF). At frequencies where the source
-        OTF amplitude is below ``regularization`` times the peak
-        amplitude, the Fourier ratio is set to zero to avoid division by
-        near-zero values. Must be in the range [0, 1), where 0 provides
-        no thresholding (only exact zeros are excluded) and values
-        closer to 1 apply more aggressive thresholding. A value of 1
-        would zero out all frequencies and produce a degenerate kernel.
-
     Returns
     -------
     kernel : 2D `~numpy.ndarray`
@@ -169,10 +169,12 @@ def make_kernel(source_psf, target_psf, *, window=None, regularization=1e-4):
     Raises
     ------
     ValueError
-        If the PSFs are not 2D arrays, have even dimensions, or do not
-        have the same shape, if ``regularization`` is not in the range
-        [0, 1), or if the window function output is invalid (not a 2D
-        array, wrong shape, or values outside [0, 1]).
+        If the PSFs are not 2D arrays, have even dimensions, do not have
+        the same shape, contain NaN or Inf values, or have a zero sum,
+        if ``regularization`` is not in the range [0, 1), if the window
+        function output is invalid (not a 2D array, wrong shape, or
+        values outside [0, 1]), or if the computed kernel is degenerate
+        (non-finite or sums to zero).
 
     TypeError
         If the input ``window`` is not callable.
@@ -487,8 +489,8 @@ array-like, optional
 
 
 @deprecated('3.0', alternative='make_kernel')
-def create_matching_kernel(source_psf, target_psf, *, window=None,
-                           regularization=1e-4):
+def create_matching_kernel(source_psf, target_psf, *,
+                           regularization=1e-4, window=None):
     """
     Create a kernel to match 2D point spread functions (PSF).
 
