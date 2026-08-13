@@ -257,6 +257,41 @@ class TestDeblendSources:
             deblend_sources(self.data, segm_wrong, self.n_pixels,
                             progress_bar=False)
 
+    @pytest.mark.parametrize('relabel', [False, True])
+    def test_contrast_one_relabel(self, relabel):
+        """
+        Test that contrast=1 (no deblending) honors the relabel keyword
+        for non-consecutive input labels.
+        """
+        segm = self.segm.copy()
+        segm.reassign_label(1, 1000)
+        result = deblend_sources(self.data, segm, self.n_pixels,
+                                 contrast=1, relabel=relabel,
+                                 progress_bar=False)
+        expected = [1] if relabel else [1000]
+        assert_equal(result.labels, expected)
+
+    def test_empty_segmentation_image(self):
+        """
+        Test that a segmentation image with no non-zero labels raises a
+        ValueError.
+        """
+        segm = SegmentationImage(np.zeros(self.data.shape, dtype=int))
+        match = 'segmentation_image must have at least one non-zero label'
+        with pytest.raises(ValueError, match=match):
+            deblend_sources(self.data, segm, self.n_pixels,
+                            progress_bar=False)
+
+    @pytest.mark.parametrize('n_pixels', [0, -5, 2.5])
+    def test_invalid_n_pixels(self, n_pixels):
+        """
+        Test that invalid n_pixels values raise a ValueError.
+        """
+        match = 'n_pixels must be a positive integer'
+        with pytest.raises(ValueError, match=match):
+            deblend_sources(self.data, self.segm, n_pixels,
+                            progress_bar=False)
+
     def test_invalid_n_levels(self):
         """
         Test invalid n_levels.

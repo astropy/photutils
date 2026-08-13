@@ -159,6 +159,14 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         msg = 'segmentation_image must have the same shape as data'
         raise ValueError(msg)
 
+    if segmentation_image.n_labels == 0:
+        msg = 'segmentation_image must have at least one non-zero label'
+        raise ValueError(msg)
+
+    if (n_pixels <= 0) or (int(n_pixels) != n_pixels):
+        msg = f'n_pixels must be a positive integer, got {n_pixels!r}'
+        raise ValueError(msg)
+
     if n_levels < 1:
         msg = 'n_levels must be >= 1'
         raise ValueError(msg)
@@ -166,12 +174,15 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         msg = 'contrast must be >= 0 and <= 1'
         raise ValueError(msg)
 
-    if contrast == 1:  # no deblending
-        return segmentation_image.copy()
-
     if mode not in ('exponential', 'linear', 'sinh'):
         msg = "mode must be 'exponential', 'linear', or 'sinh'"
         raise ValueError(msg)
+
+    if contrast == 1:  # no deblending
+        segm_img = segmentation_image.copy()
+        if relabel:
+            segm_img.relabel_consecutive()
+        return segm_img
 
     if labels is None:
         labels = segmentation_image.labels
