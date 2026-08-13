@@ -8,6 +8,7 @@ import inspect
 import re
 import textwrap
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import cached_property
@@ -933,7 +934,8 @@ class PixelAperture(Aperture):
 
     def _batch_photometry(self, data, *, error, mask, method, subpixels,
                           segmentation=None, labels=None,
-                          mask_method='none', mask_nonfinite=False):
+                          mask_method='none', mask_nonfinite=False,
+                          n_threads=1):
         """
         Perform aperture photometry using the batch Cython driver.
 
@@ -962,6 +964,15 @@ class PixelAperture(Aperture):
             where they corrupt the sum (the 3.0.0 behavior, used by the
             legacy `aperture_photometry` function). In both cases, the
             non-finite pixels are flagged as ``non_finite_data``.
+
+        n_threads : int, optional
+            The number of threads to use to compute the aperture sums.
+            When ``n_threads`` > 1, the aperture positions are divided
+            into chunks that are processed concurrently. The per-source
+            results are independent, so they are identical to the
+            single-threaded computation. The per-image preprocessing
+            (e.g., the non-finite mask plane) is computed once and
+            shared read-only across the workers.
 
         Returns
         -------
@@ -1004,12 +1015,37 @@ class PixelAperture(Aperture):
         ext_x, ext_y = self._xy_extents
         off_x, off_y = self._xy_bbox_offset
 
-        sums, sum_var, area, overlap, *_, fcounts = batch_aperture_sums(
-            np.ascontiguousarray(data, dtype=np.float64), error, mask,
-            np.ascontiguousarray(self._positions, dtype=np.float64),
-            shape_code, np.array(params, dtype=np.float64),
-            float(ext_x), float(ext_y), float(off_x), float(off_y),
-            use_exact, subpixels, seg_arr, labels_arr, seg_code)
+        data = np.ascontiguousarray(data, dtype=np.float64)
+        positions = np.ascontiguousarray(self._positions, dtype=np.float64)
+        params = np.array(params, dtype=np.float64)
+
+        def run_sums(pos, src_labels):
+            return batch_aperture_sums(
+                data, error, mask, pos, shape_code, params,
+                float(ext_x), float(ext_y), float(off_x), float(off_y),
+                use_exact, subpixels, seg_arr, src_labels, seg_code)
+
+        n_chunks = min(n_threads, positions.shape[0])
+        if n_chunks > 1:
+            # Row slices of the C-contiguous positions and labels
+            # arrays are themselves C-contiguous, so the chunks can be
+            # passed directly to the Cython driver.
+            pos_chunks = np.array_split(positions, n_chunks)
+            if labels_arr is None:
+                labels_chunks = [None] * n_chunks
+            else:
+                labels_chunks = np.array_split(labels_arr, n_chunks)
+            with ThreadPoolExecutor(max_workers=n_chunks) as executor:
+                results = list(executor.map(run_sums, pos_chunks,
+                                            labels_chunks))
+            sums = np.concatenate([result[0] for result in results])
+            sum_var = np.concatenate([result[1] for result in results])
+            area = np.concatenate([result[2] for result in results])
+            overlap = np.concatenate([result[3] for result in results])
+            fcounts = np.concatenate([result[-1] for result in results])
+        else:
+            sums, sum_var, area, overlap, *_, fcounts = run_sums(
+                positions, labels_arr)
 
         if error is None:
             # Match the mask-based path, which returns an all-NaN error
@@ -1024,7 +1060,7 @@ class PixelAperture(Aperture):
     @_update_method_subpixels_docstring
     def _photometry(self, data, *, error=None, mask=None, method='exact',
                     subpixels=5, segmentation_image=None, labels=None,
-                    mask_method='none', mask_nonfinite=False):
+                    mask_method='none', mask_nonfinite=False, n_threads=1):
         # numpydoc ignore: PR01,PR02,PR04,PR07
         """
         Perform aperture photometry on the input data.
@@ -1057,6 +1093,11 @@ class PixelAperture(Aperture):
             where they corrupt the sum (the 3.0.0 behavior, used by the
             legacy `aperture_photometry` function). In both cases, the
             non-finite pixels are flagged as ``non_finite_data``.
+
+        n_threads : int, optional
+            The number of threads to use to compute the aperture sums
+            on the batch code path (see `_batch_photometry`). The
+            mask-based code path is always serial.
 
         Returns
         -------
@@ -1128,7 +1169,8 @@ class PixelAperture(Aperture):
         result = self._batch_photometry(
             data, error=error, mask=mask, method=method, subpixels=subpixels,
             segmentation=segmentation, labels=labels,
-            mask_method=mask_method, mask_nonfinite=mask_nonfinite)
+            mask_method=mask_method, mask_nonfinite=mask_nonfinite,
+            n_threads=n_threads)
 
         if result is not None:
             flux, flux_err, area, fcounts, overlap = result

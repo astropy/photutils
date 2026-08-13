@@ -44,6 +44,12 @@ New Features
     construction, so instances are thread-safe and independent frames
     can be processed concurrently. [#2328, #2331]
 
+  - Added an ``n_threads`` keyword to ``AperturePhotometry`` to
+    compute the aperture sums using multiple threads. The aperture
+    positions are divided into chunks and processed concurrently,
+    producing results identical to the single-threaded computation.
+    [#2367]
+
   - Rectangular apertures now support the ``method='exact'`` mask mode.
     Previously this fell back to a 32x subpixel approximation. [#2291]
 

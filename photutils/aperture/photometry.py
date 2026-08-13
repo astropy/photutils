@@ -115,6 +115,18 @@ class AperturePhotometry:
 
     <segmentation_descriptions>
 
+    n_threads : int, optional
+        The number of threads to use to compute the aperture sums.
+        The default is 1 (no multithreading). When ``n_threads`` > 1,
+        the aperture positions are divided into chunks and processed
+        concurrently. The per-position results are independent, so
+        they are identical to the single-threaded computation. The
+        underlying kernels release the Python global interpreter
+        lock (GIL), so multithreading can significantly speed up the
+        photometry for many aperture positions. Multithreading is
+        used only for apertures supported by the fast batch code
+        path. Otherwise, the computation is serial.
+
     See Also
     --------
     photutils.aperture.ApertureStats : Per-source statistics (e.g.,
@@ -187,11 +199,11 @@ class AperturePhotometry:
         3  9286.709206410273 1.417963080724414
     """
 
-    _repr_params = ('method', 'subpixels', 'mask_method')
+    _repr_params = ('method', 'subpixels', 'mask_method', 'n_threads')
 
     def __init__(self, data, apertures, *, error=None, mask=None, wcs=None,
                  method='exact', subpixels=5, segmentation_image=None,
-                 labels=None, mask_method='none'):
+                 labels=None, mask_method='none', n_threads=1):
 
         if isinstance(data, NDData):
             data, error, mask, wcs = unpack_nddata(data, error, mask, wcs)
@@ -212,6 +224,11 @@ class AperturePhotometry:
         self.method = method
         self.subpixels = subpixels
         self.mask_method = mask_method
+
+        if not isinstance(n_threads, (int, np.integer)) or n_threads < 1:
+            msg = 'n_threads must be a positive integer'
+            raise ValueError(msg)
+        self.n_threads = int(n_threads)
 
         single_aperture = False
         if not isinstance(apertures, (list, tuple, np.ndarray)):
@@ -267,7 +284,8 @@ class AperturePhotometry:
         # Define output table metadata
         self.meta = _get_meta()
         calling_args = (f"method='{method}', subpixels={subpixels}, "
-                        f"mask_method='{mask_method}'")
+                        f"mask_method='{mask_method}', "
+                        f'n_threads={self.n_threads}')
         self.meta['aperture_photometry_args'] = calling_args
         self.meta.update(aper_meta)
 
@@ -330,7 +348,7 @@ class AperturePhotometry:
             method=self.method, subpixels=self.subpixels,
             segmentation_image=self._segmentation,
             labels=self._seg_labels, mask_method=self.mask_method,
-            mask_nonfinite=True)
+            mask_nonfinite=True, n_threads=self.n_threads)
             for aper in self._pixel_apertures]
 
     @cached_property
