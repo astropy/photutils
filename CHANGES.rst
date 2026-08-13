@@ -4,6 +4,8 @@
 General
 ^^^^^^^
 
+- The minimum required Python is now 3.12. [#2366]
+
 - The minimum required astropy is now 6.1.7. [#2211]
 
 - The minimum required SciPy is now 1.15.0. [#2365]
