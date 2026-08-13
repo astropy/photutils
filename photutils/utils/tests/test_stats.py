@@ -85,11 +85,16 @@ def test_nan_funcs_no_bottleneck():
     Test that the functions work when bottleneck is not available by
     reloading the module with HAS_BOTTLENECK mocked to False.
     """
-    with patch('photutils.utils._optional_deps.HAS_BOTTLENECK',
-               new=False):
-        import photutils.utils._stats as stats_mod
-        importlib.reload(stats_mod)
+    import photutils.utils._stats as stats_mod
 
-        arr = np.ones((5, 3))
-        result = stats_mod.nansum(arr)
-        assert_equal(result, np.nansum(arr))
+    try:
+        with patch('photutils.utils._optional_deps.HAS_BOTTLENECK',
+                   new=False):
+            importlib.reload(stats_mod)
+
+            arr = np.ones((5, 3))
+            result = stats_mod.nansum(arr)
+            assert_equal(result, np.nansum(arr))
+    finally:
+        # Reload again to restore the original state
+        importlib.reload(stats_mod)

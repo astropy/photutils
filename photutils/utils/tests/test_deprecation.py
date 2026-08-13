@@ -4,6 +4,7 @@ Tests for the _deprecation module.
 """
 
 import warnings
+from copy import deepcopy
 
 import numpy as np
 import pytest
@@ -223,6 +224,33 @@ class TestDeprecatedColumn:
 
         # Missing column: no warning
         assert 'missing' not in table
+
+    def test_deepcopy_preserves_deprecation(self, raw_data):
+        """
+        Test that deepcopy() preserves deprecation behavior and copies
+        the data and metadata.
+        """
+        table = create_deprecated_table_from_data(
+            raw_data, DEPRECATION_MAP, since='3.0', until='4.0')
+        table.meta['key'] = [1, 2]
+        copied = deepcopy(table)
+
+        assert isinstance(copied, DeprecatedColumnTable)
+        match = "'old' was deprecated"
+        with pytest.warns(AstropyDeprecationWarning, match=match) as record:
+            col = copied['old']
+        assert np.all(col == [3, 2, 1])
+        msg = str(record[0].message)
+        assert 'in version 3.0' in msg
+        assert 'version 4.0' in msg
+
+        # Ensure the column data are deep-copied
+        table['new'][0] = 999
+        assert copied['new'][0] == 3
+
+        # Ensure the metadata are deep-copied
+        table.meta['key'].append(3)
+        assert copied.meta['key'] == [1, 2]
 
     def test_copy_preserves_deprecation(self, raw_data):
         """
