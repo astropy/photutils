@@ -1307,3 +1307,183 @@ def test_sigma_clip_sorted_values_reuse(monkeypatch):
     apstats2 = ApertureStats(data, aper, sigma_clip=sigclip)
     for prop, result1 in zip(props, results1, strict=True):
         assert_allclose(result1, getattr(apstats2, prop), rtol=1e-10)
+
+
+class TestNThreads:
+    """
+    Tests for the n_threads keyword.
+    """
+
+    @staticmethod
+    def make_inputs():
+        """
+        Build a deterministic image (with non-finite values), error,
+        mask, and positions (including off-edge positions).
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(100.0, 5.0, (120, 130))
+        data[3, 3] = np.nan
+        data[50, 50] = np.inf
+        error = np.abs(rng.normal(5.0, 0.5, data.shape)) + 0.1
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[60:65, 85:90] = True
+        positions = np.column_stack(
+            [rng.uniform(-5, data.shape[1] + 5, 57),
+             rng.uniform(-5, data.shape[0] + 5, 57)])
+        return data, error, mask, positions
+
+    @staticmethod
+    def assert_stats_equal(stats1, stats2):
+        """
+        Assert that all (non-cutout) properties of two ApertureStats
+        instances are exactly equal.
+        """
+        for prop in stats1.properties:
+            value1 = getattr(stats1, prop)
+            value2 = getattr(stats2, prop)
+            if prop.endswith('cutout'):
+                for arr1, arr2 in zip(value1, value2, strict=True):
+                    arr1 = np.ma.filled(arr1, np.nan)
+                    arr2 = np.ma.filled(arr2, np.nan)
+                    assert_equal(arr1, arr2)
+            elif prop.startswith('sky_'):
+                # SkyCoord without a wcs is None or an array of None
+                if hasattr(value1, 'ra'):
+                    assert_equal(value1.ra.deg, value2.ra.deg)
+                    assert_equal(value1.dec.deg, value2.dec.deg)
+                else:
+                    assert_equal(value1, value2)
+            else:
+                assert_equal(value1, value2)
+
+    @pytest.mark.parametrize('n_threads', [2, 8])
+    @pytest.mark.parametrize('use_sigma_clip', [False, True])
+    def test_identical_results(self, n_threads, use_sigma_clip):
+        """
+        Test that multithreaded statistics are identical to the
+        single-threaded computation for every property, including for
+        off-edge positions, masked pixels, and non-finite data values.
+        """
+        data, error, mask, positions = self.make_inputs()
+        wcs = make_wcs(data.shape)
+        sigma_clip = (SigmaClip(sigma=3.0, maxiters=10) if use_sigma_clip
+                      else None)
+        aper = CircularAperture(positions, r=7.0)
+        stats1 = ApertureStats(data, aper, error=error, mask=mask,
+                               wcs=wcs, sigma_clip=sigma_clip)
+        stats2 = ApertureStats(data, aper, error=error, mask=mask,
+                               wcs=wcs, sigma_clip=sigma_clip,
+                               n_threads=n_threads)
+        assert stats2.n_threads == n_threads
+        self.assert_stats_equal(stats1, stats2)
+
+    def test_local_bkg_ddof_sum_method(self):
+        """
+        Test that the per-source local background values are chunked
+        together with the positions.
+        """
+        data, error, _, positions = self.make_inputs()
+        local_bkg = np.linspace(-1.0, 1.0, positions.shape[0])
+        aper = CircularAperture(positions, r=6.0)
+        kwargs = {'error': error, 'local_bkg': local_bkg, 'ddof': 1,
+                  'sum_method': 'center'}
+        stats1 = ApertureStats(data, aper, **kwargs)
+        stats2 = ApertureStats(data, aper, n_threads=4, **kwargs)
+        for prop in ('sum', 'sum_err', 'std', 'median', 'mean'):
+            assert_equal(getattr(stats1, prop), getattr(stats2, prop))
+
+    def test_segmentation_masking(self):
+        """
+        Test that the per-source segmentation labels are chunked
+        together with the positions.
+        """
+        data = np.ones((50, 50))
+        segm = np.zeros((50, 50), dtype=int)
+        data[18:25, 18:25] = 10.0
+        segm[18:25, 18:25] = 1
+        data[20:25, 26:32] = 100.0
+        segm[20:25, 26:32] = 2
+        positions = [(21.0, 21.0), (28.0, 22.0), (21.0, 21.5),
+                     (28.5, 22.0), (20.5, 21.0)]
+        labels = [1, 2, 1, 2, 1]
+        aper = CircularAperture(positions, r=8.0)
+        kwargs = {'segmentation_image': segm, 'labels': labels,
+                  'mask_method': 'mask'}
+        stats1 = ApertureStats(data, aper, **kwargs)
+        stats2 = ApertureStats(data, aper, n_threads=3, **kwargs)
+        for prop in ('sum', 'mean', 'median', 'flags', 'sum_flags'):
+            assert_equal(getattr(stats1, prop), getattr(stats2, prop))
+
+    def test_more_threads_than_positions(self):
+        """
+        Test that n_threads larger than the number of positions gives
+        identical results.
+        """
+        data = np.ones((40, 40))
+        aper = CircularAperture([(20, 20), (10, 10), (30, 25)], r=5.0)
+        stats1 = ApertureStats(data, aper)
+        stats2 = ApertureStats(data, aper, n_threads=8)
+        self.assert_stats_equal(stats1, stats2)
+
+    def test_scalar_aperture(self):
+        """
+        Test that a scalar aperture position with n_threads > 1 falls
+        back to a single-chunk (serial) computation.
+        """
+        data = np.ones((40, 40))
+        aper = CircularAperture((20, 20), r=5.0)
+        stats1 = ApertureStats(data, aper)
+        stats2 = ApertureStats(data, aper, n_threads=4)
+        assert_equal(stats1.sum, stats2.sum)
+        assert_equal(stats1.median, stats2.median)
+
+    def test_mask_based_fallback(self):
+        """
+        Test that apertures that do not support the batch code path
+        give correct results with n_threads > 1 (the mask-based code
+        path stays serial).
+        """
+        data, error, _, positions = self.make_inputs()
+        aper = NoBatchCircularAperture(positions, r=7.0)
+        stats = ApertureStats(data, aper, error=error, n_threads=4)
+        assert stats._batch_inputs is None
+        ref = ApertureStats(data, CircularAperture(positions, r=7.0),
+                            error=error)
+        assert_allclose(stats.sum, ref.sum, equal_nan=True)
+        assert_allclose(stats.median, ref.median, equal_nan=True)
+
+    def test_empty_positions(self):
+        """
+        Test that an aperture with zero positions works with
+        n_threads > 1 (regression test for the chunking helper, which
+        must fall back to the serial path for zero chunks).
+        """
+        data = np.ones((11, 11))
+        aper = CircularAperture(np.empty((0, 2)), r=3.0)
+        stats = ApertureStats(data, aper, n_threads=4)
+        assert stats.n_positions == 0
+        assert stats.sum.shape == (0,)
+        assert stats.median.shape == (0,)
+
+    def test_indexing_preserves_n_threads(self):
+        """
+        Test that slicing an ApertureStats instance preserves the
+        n_threads value.
+        """
+        data = np.ones((40, 40))
+        aper = CircularAperture([(20, 20), (10, 10), (30, 25)], r=5.0)
+        stats = ApertureStats(data, aper, n_threads=4)
+        assert stats[1:].n_threads == 4
+        assert stats[0].n_threads == 4
+
+    def test_invalid_n_threads(self):
+        """
+        Test that an error is raised if n_threads is not a positive
+        integer.
+        """
+        data = np.ones((40, 40))
+        aper = CircularAperture((20, 20), r=5.0)
+        match = 'n_threads must be a positive integer'
+        for n_threads in (0, -1, 2.5):
+            with pytest.raises(ValueError, match=match):
+                ApertureStats(data, aper, n_threads=n_threads)

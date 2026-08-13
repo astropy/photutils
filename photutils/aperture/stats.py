@@ -5,6 +5,7 @@ Tools for calculating properties of sources defined by an Aperture.
 
 import inspect
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 from copy import copy, deepcopy
 from functools import cached_property
 from typing import NamedTuple
@@ -253,6 +254,18 @@ class ApertureStats:
 
     <segmentation_descriptions>
 
+    n_threads : int, optional
+        The number of threads to use to gather the aperture pixel
+        values and compute the aperture sums. The default is 1 (no
+        multithreading). When ``n_threads`` > 1, the aperture positions
+        are divided into chunks and processed concurrently. The
+        per-source results are independent, so they are identical to
+        the single-threaded computation. The underlying kernels release
+        the Python global interpreter lock (GIL), so multithreading
+        can significantly speed up the statistics for many aperture
+        positions. Multithreading is used only on the fast batch code
+        path. Otherwise, the computation is serial.
+
     Notes
     -----
     ``data`` should be background-subtracted for accurate source
@@ -359,7 +372,7 @@ class ApertureStats:
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
                  sigma_clip=None, sum_method='exact', subpixels=5, ddof=0,
                  local_bkg=None, segmentation_image=None, labels=None,
-                 mask_method='none'):
+                 mask_method='none', n_threads=1):
 
         if isinstance(data, NDData):
             data, error, mask, wcs = unpack_nddata(data, error, mask, wcs)
@@ -406,6 +419,11 @@ class ApertureStats:
             msg = 'ddof must be a non-negative integer'
             raise ValueError(msg)
         self.ddof = ddof
+
+        if not isinstance(n_threads, (int, np.integer)) or n_threads < 1:
+            msg = 'n_threads must be a positive integer'
+            raise ValueError(msg)
+        self.n_threads = int(n_threads)
 
         self._local_bkg = np.zeros(self.n_positions)  # no local bkg
         if local_bkg is not None:
@@ -511,8 +529,8 @@ class ApertureStats:
         # new class
         init_attr = ('_data', '_data_unit', '_error', '_mask', '_wcs',
                      'sigma_clip', 'sum_method', 'subpixels', 'ddof',
-                     'default_columns', 'meta', '_segmentation',
-                     'segmentation_image', 'mask_method')
+                     'n_threads', 'default_columns', 'meta',
+                     '_segmentation', 'segmentation_image', 'mask_method')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -956,6 +974,10 @@ class ApertureStats:
         (``values``, ``local_x``, ``local_y``, ``starts``, ``counts``),
         ``overlap``, and ``flag_counts`` populated. The ``sum_method``
         fields are `None`.
+
+        When ``n_threads`` > 1, the positions are divided into chunks
+        that are gathered (and sigma clipped) concurrently and then
+        merged (see `_merge_center_gathers`).
         """
         inputs = self._batch_inputs
         if inputs is None:
@@ -964,17 +986,26 @@ class ApertureStats:
          off_x, off_y, _sum_use_exact, _sum_subpixels, local_bkg, seg_arr,
          labels_arr, seg_code, clip_spec) = inputs
 
-        (values, lx, ly, starts, counts, overlap,
-         flag_counts) = batch_aperture_gather(
-            data, mask, positions, shape_code, params, ext_x, ext_y,
-            off_x, off_y, local_bkg, seg_arr, labels_arr, seg_code)
-        gather = _BatchGather(values=values, local_x=lx, local_y=ly,
-                              starts=starts, counts=counts, overlap=overlap,
-                              flag_counts=flag_counts)
+        def gather_chunk(pos, bkg, labels):
+            (values, lx, ly, starts, counts, overlap,
+             flag_counts) = batch_aperture_gather(
+                data, mask, pos, shape_code, params, ext_x, ext_y,
+                off_x, off_y, bkg, seg_arr, labels, seg_code)
+            gather = _BatchGather(values=values, local_x=lx, local_y=ly,
+                                  starts=starts, counts=counts,
+                                  overlap=overlap, flag_counts=flag_counts)
 
-        if clip_spec is not None:
-            gather = self._apply_center_clip(gather, clip_spec)
-        return gather
+            if clip_spec is not None:
+                gather = self._apply_center_clip(gather, clip_spec)
+            return gather
+
+        chunks = self._batch_chunks(positions, local_bkg, labels_arr)
+        if chunks is None:
+            return gather_chunk(positions, local_bkg, labels_arr)
+
+        with ThreadPoolExecutor(max_workers=len(chunks[0])) as executor:
+            gathers = list(executor.map(gather_chunk, *chunks))
+        return self._merge_center_gathers(gathers)
 
     @cached_property
     def _fast_sum(self):
@@ -999,6 +1030,11 @@ class ApertureStats:
         ``var_aper``, ``sum_area``, ``starts``, ``overlap``, and
         ``flag_counts`` fields populated. The center-value fields are
         `None`.
+
+        When ``n_threads`` > 1, the positions are divided into chunks
+        that are computed (and sigma clipped) concurrently and then
+        merged. The merged result keeps only the flat per-source outputs
+        (see `_merge_sum_gathers`).
         """
         inputs = self._batch_inputs
         if inputs is None:
@@ -1008,20 +1044,109 @@ class ApertureStats:
          labels_arr, seg_code, clip_spec) = inputs
 
         emit_sum = 1 if clip_spec is not None else 0
-        (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
-         sum_errsq, scounts, flag_counts) = batch_aperture_sums(
-            data, error, mask, positions, shape_code, params, ext_x, ext_y,
-            off_x, off_y, sum_use_exact, sum_subpixels, seg_arr, labels_arr,
-            seg_code, local_bkg, emit_sum)
-        gather = _BatchGather(starts=starts, sum_aper=sums, var_aper=sum_var,
-                              sum_area=area, overlap=overlap,
-                              sum_values=sum_values, sum_fracs=sum_fracs,
-                              sum_errsq=sum_errsq, sum_counts=scounts,
-                              flag_counts=flag_counts)
 
-        if clip_spec is not None:
-            gather = self._apply_sum_clip(gather, clip_spec)
-        return gather
+        def sum_chunk(pos, bkg, labels):
+            (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
+             sum_errsq, scounts, flag_counts) = batch_aperture_sums(
+                data, error, mask, pos, shape_code, params, ext_x, ext_y,
+                off_x, off_y, sum_use_exact, sum_subpixels, seg_arr,
+                labels, seg_code, bkg, emit_sum)
+            gather = _BatchGather(starts=starts, sum_aper=sums,
+                                  var_aper=sum_var, sum_area=area,
+                                  overlap=overlap, sum_values=sum_values,
+                                  sum_fracs=sum_fracs, sum_errsq=sum_errsq,
+                                  sum_counts=scounts,
+                                  flag_counts=flag_counts)
+
+            if clip_spec is not None:
+                gather = self._apply_sum_clip(gather, clip_spec)
+            return gather
+
+        chunks = self._batch_chunks(positions, local_bkg, labels_arr)
+        if chunks is None:
+            return sum_chunk(positions, local_bkg, labels_arr)
+
+        with ThreadPoolExecutor(max_workers=len(chunks[0])) as executor:
+            gathers = list(executor.map(sum_chunk, *chunks))
+        return self._merge_sum_gathers(gathers)
+
+    def _batch_chunks(self, positions, local_bkg, labels_arr):
+        """
+        Split the per-source batch-driver inputs into per-thread chunks,
+        or return `None` for a single-chunk (serial) computation.
+
+        The number of chunks is ``min(n_threads, n_sources)``. Row
+        slices of the C-contiguous input arrays are themselves
+        C-contiguous, so the chunks can be passed directly to the Cython
+        drivers.
+
+        Returns
+        -------
+        chunks : tuple of list or `None`
+            A ``(positions, local_bkg, labels)`` tuple of per-chunk
+            lists, or `None` when only one chunk would be used.
+        """
+        n_chunks = min(self.n_threads, positions.shape[0])
+        if n_chunks <= 1:  # 0 for empty positions
+            return None
+        pos_chunks = np.array_split(positions, n_chunks)
+        bkg_chunks = np.array_split(local_bkg, n_chunks)
+        if labels_arr is None:
+            labels_chunks = [None] * n_chunks
+        else:
+            labels_chunks = np.array_split(labels_arr, n_chunks)
+        return pos_chunks, bkg_chunks, labels_chunks
+
+    @staticmethod
+    def _merge_center_gathers(gathers):
+        """
+        Merge per-chunk center-value gathers into a single
+        `_BatchGather` equivalent to a single-chunk gather.
+
+        The packed buffers (``values``, ``local_x``, ``local_y``, and
+        ``sorted_values`` when sigma clipping is applied) and the
+        per-source arrays are concatenated. The per-source ``starts``
+        are offset by the cumulative packed-buffer length of the
+        preceding chunks.
+        """
+        starts = []
+        offset = 0
+        for gather in gathers:
+            starts.append(gather.starts + offset)
+            offset += gather.values.shape[0]
+
+        sorted_values = None
+        if gathers[0].sorted_values is not None:
+            sorted_values = np.concatenate(
+                [gather.sorted_values for gather in gathers])
+
+        return _BatchGather(
+            values=np.concatenate([g.values for g in gathers]),
+            local_x=np.concatenate([g.local_x for g in gathers]),
+            local_y=np.concatenate([g.local_y for g in gathers]),
+            starts=np.concatenate(starts),
+            counts=np.concatenate([g.counts for g in gathers]),
+            overlap=np.concatenate([g.overlap for g in gathers]),
+            flag_counts=np.concatenate([g.flag_counts for g in gathers]),
+            sorted_values=sorted_values)
+
+    @staticmethod
+    def _merge_sum_gathers(gathers):
+        """
+        Merge per-chunk ``sum_method`` gathers into a single
+        `_BatchGather`.
+
+        Only the flat per-source outputs are kept. The packed member
+        buffers and their ``starts`` are dropped (`None`). They are
+        consumed within each chunk (by the sigma clipping) and no
+        downstream consumer reads them from the merged result.
+        """
+        return _BatchGather(
+            sum_aper=np.concatenate([g.sum_aper for g in gathers]),
+            var_aper=np.concatenate([g.var_aper for g in gathers]),
+            sum_area=np.concatenate([g.sum_area for g in gathers]),
+            overlap=np.concatenate([g.overlap for g in gathers]),
+            flag_counts=np.concatenate([g.flag_counts for g in gathers]))
 
     def _fast_clip_spec(self):
         """

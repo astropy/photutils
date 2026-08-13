@@ -1111,6 +1111,17 @@ class TestNThreads:
         phot = AperturePhotometry(data, aper, n_threads=4)
         assert_allclose(phot.flux, ref.flux, equal_nan=True)
 
+    def test_empty_positions(self):
+        """
+        Test that an aperture with zero positions works with n_threads >
+        1 (zero chunks must fall back to the serial path).
+        """
+        data = np.ones((11, 11))
+        aper = CircularAperture(np.empty((0, 2)), r=3.0)
+        phot = AperturePhotometry(data, aper, n_threads=4)
+        assert phot.n_positions == 0
+        assert phot.flux.shape == (0,)
+
     def test_invalid_n_threads(self):
         """
         Test that an error is raised if n_threads is not a positive
