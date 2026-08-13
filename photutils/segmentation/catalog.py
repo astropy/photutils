@@ -2430,11 +2430,13 @@ class SourceCatalog:
         Non-finite pixel values (NaN and inf) are excluded
         (automatically masked).
         """
-        localbkg = self._local_background
-        if self.isscalar:
-            localbkg = localbkg[0]
-        source_sum, _ = self._reduceat(self._data_values, np.add)
-        source_sum -= self.area.value * localbkg
+        source_sum, sizes = self._reduceat(self._data_values, np.add)
+        # Subtract the local background over the number of unmasked
+        # pixels actually included in the sum. The "area" property is
+        # not used here because it is taken from the detection catalog
+        # (if input), whose pixel count can differ when the data masks
+        # differ.
+        source_sum -= sizes * self._local_background
         if self._data_unit is not None:
             source_sum <<= self._data_unit
         return source_sum

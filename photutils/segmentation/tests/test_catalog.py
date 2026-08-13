@@ -689,6 +689,37 @@ class TestSourceCatalog:
         with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, detection_catalog=cat)
 
+    def test_detection_catalog_segment_flux_localbkg(self):
+        """
+        Test that the segment_flux local-background subtraction uses
+        the measurement catalog's unmasked pixel count when a detection
+        catalog with a different mask is input.
+
+        Regression test for a bug where the local background was
+        multiplied by the detection catalog's "area" property, which
+        counts pixels that are masked (and thus not summed) in the
+        measurement catalog.
+        """
+        yy, xx = np.mgrid[0:101, 0:101]
+        g1 = Gaussian2D(100, 50, 50, 5, 5)
+        data = g1(xx, yy)
+        segm = detect_sources(data, 10.0, n_pixels=5)
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[48:52, 48:52] = True
+
+        det_cat = SourceCatalog(data, segm, local_bkg_width=4)
+        meas_cat = SourceCatalog(data + 3.0, segm, mask=mask,
+                                 local_bkg_width=4,
+                                 detection_catalog=det_cat)
+
+        # The detection-catalog area includes the masked pixels
+        n_pixels = len(meas_cat._data_values[0])
+        assert meas_cat.area.value[0] > n_pixels
+
+        localbkg = meas_cat._local_background[0]
+        expected = np.sum(meas_cat._data_values[0]) - n_pixels * localbkg
+        assert_allclose(meas_cat.segment_flux[0], expected)
+
     def test_kron_minradius(self):
         """
         Test kron minradius.
