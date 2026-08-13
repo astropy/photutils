@@ -329,6 +329,10 @@ Bug Fixes
     cosmic ray or hot pixel) with a value larger than a nearby true peak
     prevented that peak from being detected. [#2377]
 
+  - ``StarFinder`` now validates the input ``kernel`` values. The
+    kernel must contain only finite values and have a positive
+    maximum. [#2377]
+
 - ``photutils.morphology``
 
   - Fixed ``data_properties`` so that a ``background`` input with

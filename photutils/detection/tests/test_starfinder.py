@@ -69,6 +69,26 @@ class TestStarFinder:
         with pytest.raises(ValueError, match=match):
             StarFinder(1, bad_kernel)
 
+    def test_kernel_nonpositive(self):
+        """
+        Test that kernels without a positive maximum raise ValueError.
+        """
+        match = 'kernel must have a positive maximum value'
+        for bad_kernel in (np.zeros((3, 3)), -np.ones((3, 3))):
+            with pytest.raises(ValueError, match=match):
+                StarFinder(1, bad_kernel)
+
+    def test_kernel_nonfinite(self):
+        """
+        Test that kernels with non-finite values raise ValueError.
+        """
+        match = 'kernel must contain only finite values'
+        for bad_value in (np.nan, np.inf):
+            kernel = np.ones((3, 3))
+            kernel[1, 1] = bad_value
+            with pytest.raises(ValueError, match=match):
+                StarFinder(1, kernel)
+
     def test_nosources(self, data, kernel):
         """
         Test that no sources returns None with a warning.

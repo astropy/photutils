@@ -34,7 +34,8 @@ class StarFinder(StarFinderBase):
         the same units.
 
     kernel : `~numpy.ndarray`
-        A 2D array of the PSF kernel.
+        A 2D array of the PSF kernel. The kernel values must be finite
+        and its maximum value must be positive.
 
     min_separation : `None` or float, optional
         The minimum separation (in pixels) for detected objects. If
@@ -96,6 +97,12 @@ class StarFinder(StarFinderBase):
         kernel = np.asarray(kernel)
         if kernel.ndim != 2:
             msg = 'kernel must be a 2D array'
+            raise ValueError(msg)
+        if not np.all(np.isfinite(kernel)):
+            msg = 'kernel must contain only finite values'
+            raise ValueError(msg)
+        if np.max(kernel) <= 0:
+            msg = 'kernel must have a positive maximum value'
             raise ValueError(msg)
         self.kernel = kernel
 
