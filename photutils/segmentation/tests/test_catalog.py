@@ -1082,6 +1082,40 @@ class TestSourceCatalog:
         cat.add_property('segment_snr4', segment_snr, overwrite=True)
         cat.add_property('segment_snr4', segment_snr, overwrite=True)
 
+    def test_sliced_catalog_state_isolation(self):
+        """
+        Test that a sliced catalog does not share mutable state with its
+        parent catalog.
+
+        Regression test for a bug where ``__getitem__`` copied the
+        ``_custom_properties`` list (and other mutable containers) by
+        reference, so adding a custom property to a slice polluted the
+        parent's ``custom_properties`` list, breaking ``add_property``
+        and ``to_table`` on the parent for that name.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        obj = cat[0]
+        obj.add_property('foo', 1.0)
+        assert 'foo' in obj.custom_properties
+        assert 'foo' not in cat.custom_properties
+
+        # The parent must still be able to add and use the same name
+        cat.add_property('foo', np.arange(cat.n_labels))
+        tbl = cat.to_table(columns='foo')
+        assert_equal(tbl['foo'], np.arange(cat.n_labels))
+
+        # Parent additions must not leak into existing slices
+        cat.add_property('bar', np.arange(cat.n_labels))
+        assert 'bar' not in obj.custom_properties
+
+        # Other mutable containers must also be isolated
+        obj.meta['extra'] = 1
+        assert 'extra' not in cat.meta
+        obj.default_columns.append('foo')
+        assert 'foo' not in cat.default_columns
+        obj._aperture_mask_kwargs['circ']['method'] = 'center'
+        assert cat._aperture_mask_kwargs['circ']['method'] == 'exact'
+
     def test_custom_properties_invalid(self):
         """
         Test custom properties invalid.

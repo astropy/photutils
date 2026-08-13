@@ -614,10 +614,19 @@ class SourceCatalog:
         init_attr = ('_data', '_segmentation_image', '_error', '_mask',
                      '_background', 'wcs', '_data_unit', '_convolved_data',
                      'local_bkg_width', 'aperture_mask_method',
-                     'kron_params', 'default_columns', '_custom_properties',
-                     'meta', '_aperture_mask_kwargs', 'progress_bar')
+                     'kron_params', 'progress_bar')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
+
+        # Copy mutable containers so that mutating the sliced catalog
+        # (e.g., via add_property) does not also mutate the parent
+        # catalog (and vice versa).
+        newcls.default_columns = self.default_columns.copy()
+        newcls._custom_properties = self._custom_properties.copy()
+        newcls.meta = self.meta.copy()
+        newcls._aperture_mask_kwargs = {
+            key: value.copy()
+            for key, value in self._aperture_mask_kwargs.items()}
 
         # _labels determines ordering and isscalar
         attr = '_labels'
