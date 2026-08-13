@@ -360,21 +360,27 @@ class TestPolygonValidation:
         assert _signed_polygon_area(out) > 0
 
     def test_rejects_wrong_shape(self):
-        with pytest.raises(ValueError, match='must have shape'):
+        match = r"'vertex_offsets' must have shape \(n_vertices, 2\)"
+        with pytest.raises(ValueError, match=match):
             _validate_simple_polygon(np.array([1.0, 2.0, 3.0]))
 
     def test_rejects_too_few(self):
-        with pytest.raises(ValueError, match='at least 3 vertices'):
+        match = ("'vertex_offsets' must define a polygon with at "
+                 'least 3 vertices')
+        with pytest.raises(ValueError, match=match):
             _validate_simple_polygon(np.array([[0.0, 0.0], [1.0, 0.0]]))
 
     def test_rejects_nonfinite(self):
         bad = np.array([[0.0, 0.0], [np.nan, 0.0], [1.0, 1.0]])
-        with pytest.raises(ValueError, match='non-finite'):
+        match = "'vertex_offsets' must not contain any non-finite values"
+        with pytest.raises(ValueError, match=match):
             _validate_simple_polygon(bad)
 
     def test_rejects_collinear(self):
         bad = np.array([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]])
-        with pytest.raises(ValueError, match='degenerate'):
+        match = ("'vertex_offsets' defines a degenerate polygon with "
+                 r'zero area \(vertices are collinear or coincident\)')
+        with pytest.raises(ValueError, match=match):
             _validate_simple_polygon(bad)
 
     def test_accepts_nonconvex(self):
@@ -387,16 +393,22 @@ class TestPolygonValidation:
         assert out.shape == arrow.shape
 
     def test_rejects_self_intersecting(self):
-        with pytest.raises(ValueError, match='self-intersect'):
+        match = ("'vertex_offsets' must define a simple polygon, but "
+                 'its edges self-intersect')
+        with pytest.raises(ValueError, match=match):
             _validate_simple_polygon(_pentagram())
 
     def test_pixel_aperture_rejects_self_intersecting(self):
-        with pytest.raises(ValueError, match='self-intersect'):
+        match = ("'vertex_offsets' must define a simple polygon, but "
+                 'its edges self-intersect')
+        with pytest.raises(ValueError, match=match):
             PolygonAperture((0.0, 0.0), _pentagram())
 
     def test_sky_aperture_rejects_self_intersecting(self):
         pos = SkyCoord(ra=180.0, dec=0.0, unit='deg')
-        with pytest.raises(ValueError, match='self-intersect'):
+        match = ("'vertex_offsets' must define a simple polygon, but "
+                 'its edges self-intersect')
+        with pytest.raises(ValueError, match=match):
             SkyPolygonAperture(pos, _pentagram() * u.arcsec)
 
     def test_pixel_aperture_accepts_concave_star(self):
@@ -438,13 +450,14 @@ class TestPolygonConstruction:
         assert _signed_polygon_area(aper.vertex_offsets) > 0
 
     def test_invalid_vertex_offsets_quantity_raises(self):
-        match = 'must not be a Quantity'
+        match = "'vertex_offsets' must not be a Quantity"
         with pytest.raises(TypeError, match=match):
             PolygonAperture((0, 0), SQUARE_OFFSETS * u.pix)
 
     def test_invalid_vertex_offsets_nonfinite_raises(self):
         bad = np.array([[0.0, 0.0], [np.nan, 1.0], [1.0, 0.0]])
-        with pytest.raises(ValueError, match='non-finite'):
+        match = "'vertex_offsets' must not contain any non-finite values"
+        with pytest.raises(ValueError, match=match):
             PolygonAperture((0, 0), bad)
 
     def test_accepts_nonconvex(self):
@@ -460,12 +473,14 @@ class TestPolygonConstruction:
         assert_allclose(mask.data.sum(), 12.0, atol=1e-12)
 
     def test_invalid_vertex_offsets_too_few_raises(self):
-        match = 'at least 3 vertices'
+        match = ("'vertex_offsets' must define a polygon with at "
+                 'least 3 vertices')
         with pytest.raises(ValueError, match=match):
             PolygonAperture((0, 0), [[0.0, 0.0], [1.0, 1.0]])
 
     def test_invalid_vertex_offsets_unparseable(self):
-        match = 'must be convertible to a numeric'
+        match = ("'vertex_offsets' must be convertible to a numeric "
+                 r'\(n_vertices, 2\) array')
         with pytest.raises(TypeError, match=match):
             PolygonAperture((0, 0), [['a', 'b'], ['c', 'd'], ['e', 'f']])
 
@@ -475,7 +490,7 @@ class TestPolygonConstruction:
         assert_allclose(aper.vertices, verts)
 
     def test_from_vertices_invalid_shape(self):
-        match = 'vertices must have shape'
+        match = r'vertices must have shape \(n_vertices, 2\)'
         with pytest.raises(ValueError, match=match):
             PolygonAperture.from_vertices(np.array([1.0, 2.0]))
 
@@ -487,7 +502,8 @@ class TestPolygonConstruction:
         rather than a ZeroDivisionError from the area-weighted centroid
         computation.
         """
-        match = 'degenerate'
+        match = ("'vertices' defines a degenerate polygon with zero "
+                 r'area \(vertices are collinear or coincident\)')
         with pytest.raises(ValueError, match=match):
             PolygonAperture.from_vertices([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]])
 
@@ -617,7 +633,7 @@ class TestPolygonMasks:
 
     def test_invalid_mask_method(self):
         aper = PolygonAperture((0.0, 0.0), SQUARE_OFFSETS)
-        match = 'Invalid mask method'
+        match = "Invalid mask method: 'nonsense'"
         with pytest.raises(ValueError, match=match):
             aper.to_mask(method='nonsense')
 
@@ -763,10 +779,10 @@ class TestPolygonIndexing:
 
     def test_indexing_scalar_raises(self):
         aper = PolygonAperture((0.0, 0.0), SQUARE_OFFSETS)
-        match = 'cannot be indexed'
+        match = "A scalar 'PolygonAperture' object cannot be indexed"
         with pytest.raises(TypeError, match=match):
             aper[0]
-        match = 'no len'
+        match = r"A scalar 'PolygonAperture' object has no len\(\)"
         with pytest.raises(TypeError, match=match):
             len(aper)
 
@@ -819,15 +835,17 @@ class TestRegularPolygon:
                         (-np.sqrt(2) / 2, np.sqrt(2) / 2), atol=1e-12)
 
     def test_invalid_n_vertices(self):
-        with pytest.raises(ValueError, match='at least 3'):
+        match = 'n_vertices must be at least 3, got 2'
+        with pytest.raises(ValueError, match=match):
             PolygonAperture.from_regular_polygon((0.0, 0.0), 2, 1.0)
 
     def test_invalid_radius(self):
-        with pytest.raises(ValueError, match='positive'):
+        match = 'radius must be a finite positive number'
+        with pytest.raises(ValueError, match=match):
             PolygonAperture.from_regular_polygon((0.0, 0.0), 4, 0.0)
-        with pytest.raises(ValueError, match='positive'):
+        with pytest.raises(ValueError, match=match):
             PolygonAperture.from_regular_polygon((0.0, 0.0), 4, -1.0)
-        with pytest.raises(ValueError, match='positive'):
+        with pytest.raises(ValueError, match=match):
             PolygonAperture.from_regular_polygon((0.0, 0.0), 4, np.nan)
 
     def test_is_regular_false_cases(self):
@@ -851,7 +869,9 @@ class TestRegularPolygon:
             np.array([[0.0, 0.0], [4.0, 0.0], [4.0, 3.0]]))
         for attr in ('outer_radius', 'inner_radius', 'side_length',
                      'interior_angle', 'exterior_angle'):
-            with pytest.raises(ValueError, match='regular polygon'):
+            match = (f'{attr!r} is only defined for a regular polygon '
+                     'aperture')
+            with pytest.raises(ValueError, match=match):
                 getattr(aper, attr)
 
     def test_n_vertices(self):
@@ -882,17 +902,19 @@ class TestRegularPolygon:
         """
         xypos = (5, 5)
 
-        match = 'must be at least 2'
+        match = 'n_spikes must be at least 2, got 1'
         with pytest.raises(ValueError, match=match):
             PolygonAperture._from_star(xypos, 1, 5.0, inner_radius=2.0)
 
-        match = 'must be a finite positive number'
+        match = 'outer_radius must be a finite positive number, got -2.0'
         with pytest.raises(ValueError, match=match):
             PolygonAperture._from_star(xypos, 5, -2.0, inner_radius=2.0)
+        match = 'inner_radius must be a finite positive number, got -2.0'
         with pytest.raises(ValueError, match=match):
             PolygonAperture._from_star(xypos, 5, 5.0, inner_radius=-2.0)
 
-        match = 'inner_radius must be less than outer_radius'
+        match = (r'inner_radius must be less than outer_radius '
+                 r'\(6.0 >= 5.0\)')
         with pytest.raises(ValueError, match=match):
             PolygonAperture._from_star(xypos, 5, 5.0, inner_radius=6.0)
 
@@ -902,12 +924,13 @@ class TestRegularPolygon:
                                        optimal_shape=True,
                                        collinear_edges=True)
 
-        match = 'collinear_edges requires n_spikes'
+        match = 'collinear_edges requires n_spikes >= 5, got 4'
         with pytest.raises(ValueError, match=match):
             PolygonAperture._from_star(xypos, 4, 3.0, inner_radius=2.0,
                                        collinear_edges=True)
 
-        match = 'inner_radius must be provided'
+        match = ('inner_radius must be provided if both optimal_shape '
+                 'and collinear_edges are False')
         with pytest.raises(ValueError, match=match):
             PolygonAperture._from_star(xypos, 5, 3.0)
 
@@ -951,24 +974,26 @@ class TestSkyPolygonConstruction:
 
     def test_offsets_not_quantity(self):
         pos = SkyCoord(ra=180.0, dec=0.0, unit='deg')
-        match = 'angular Quantity'
+        match = ("'vertex_offsets' must be an angular Quantity with "
+                 r'shape \(n_vertices, 2\)')
         with pytest.raises(TypeError, match=match):
             SkyPolygonAperture(pos, TRIANGLE_OFFSETS)
 
     def test_offsets_wrong_unit(self):
         pos = SkyCoord(ra=180.0, dec=0.0, unit='deg')
-        match = 'angular units'
+        match = "'vertex_offsets' must have angular units"
         with pytest.raises(u.UnitsError, match=match):
             SkyPolygonAperture(pos, TRIANGLE_OFFSETS * u.m)
 
     def test_offsets_wrong_shape(self):
         pos = SkyCoord(ra=180.0, dec=0.0, unit='deg')
-        match = 'shape'
+        match = r"'vertex_offsets' must have shape \(n_vertices, 2\)"
         with pytest.raises(ValueError, match=match):
             SkyPolygonAperture(pos, TRIANGLE_OFFSETS.flatten() * u.arcsec)
 
     def test_invalid_positions(self):
-        with pytest.raises(TypeError, match='SkyCoord'):
+        match = "'positions' must be a SkyCoord instance"
+        with pytest.raises(TypeError, match=match):
             SkyPolygonAperture((1.0, 2.0), TRIANGLE_OFFSETS * u.arcsec)
 
     def test_vertices_scalar(self):
@@ -992,7 +1017,8 @@ class TestSkyPolygonConstruction:
                                  atol=1e-9 * u.deg)
 
     def test_from_vertices_requires_skycoord(self):
-        with pytest.raises(TypeError, match='SkyCoord'):
+        match = 'vertices must be a 1-D SkyCoord with at least 3 vertices'
+        with pytest.raises(TypeError, match=match):
             SkyPolygonAperture.from_vertices(np.array([[0.0, 0.0], [1.0, 0.0],
                                                        [1.0, 1.0]]))
 
@@ -1051,27 +1077,31 @@ class TestSkyRegularPolygon:
 
     def test_invalid_n_vertices(self):
         pos = SkyCoord(ra=10.0 * u.deg, dec=30.0 * u.deg)
-        with pytest.raises(ValueError, match='at least 3'):
+        match = 'n_vertices must be at least 3, got 2'
+        with pytest.raises(ValueError, match=match):
             SkyPolygonAperture.from_regular_polygon(pos, 2, 1.0 * u.arcsec)
 
     def test_invalid_radius(self):
         pos = SkyCoord(ra=10.0 * u.deg, dec=30.0 * u.deg)
-        with pytest.raises(TypeError, match='angular Quantity'):
+        match = 'radius must be an angular Quantity'
+        with pytest.raises(TypeError, match=match):
             SkyPolygonAperture.from_regular_polygon(pos, 4, 1.0)
-        with pytest.raises(TypeError, match='angular Quantity'):
+        with pytest.raises(TypeError, match=match):
             SkyPolygonAperture.from_regular_polygon(pos, 4, 1.0 * u.kg)
-        with pytest.raises(ValueError, match='positive'):
+        match = 'radius must be a finite positive Quantity'
+        with pytest.raises(ValueError, match=match):
             SkyPolygonAperture.from_regular_polygon(pos, 4, 0.0 * u.arcsec)
-        with pytest.raises(ValueError, match='positive'):
+        with pytest.raises(ValueError, match=match):
             SkyPolygonAperture.from_regular_polygon(pos, 4, -1.0 * u.arcsec)
 
     def test_invalid_angle(self):
         pos = SkyCoord(ra=10.0 * u.deg, dec=30.0 * u.deg)
-        with pytest.raises(TypeError, match='angular Quantity'):
+        match = 'theta must be an angular Quantity'
+        with pytest.raises(TypeError, match=match):
             SkyPolygonAperture.from_regular_polygon(pos, 4,
                                                     1.0 * u.arcsec,
                                                     theta=0.5)
-        with pytest.raises(TypeError, match='angular Quantity'):
+        with pytest.raises(TypeError, match=match):
             SkyPolygonAperture.from_regular_polygon(pos, 4,
                                                     1.0 * u.arcsec,
                                                     theta=1.0 * u.kg)
@@ -1084,7 +1114,9 @@ class TestSkyRegularPolygon:
         assert not aper.is_regular
         for attr in ('outer_radius', 'inner_radius', 'side_length',
                      'interior_angle', 'exterior_angle'):
-            with pytest.raises(ValueError, match='regular polygon'):
+            match = (f'{attr!r} is only defined for a regular polygon '
+                     'aperture')
+            with pytest.raises(ValueError, match=match):
                 getattr(aper, attr)
 
     def test_n_vertices(self):
