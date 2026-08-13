@@ -101,6 +101,13 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         * dx, ymin + (j + 1) * dy), where dx and dy are the width of
         each pixel in the x and y direction, respectively.
     """
+    if use_exact != 0 and use_exact != 1:
+        msg = 'use_exact must be 0 or 1'
+        raise ValueError(msg)
+    if use_exact == 0 and subpixels < 1:
+        msg = 'subpixels must be a strictly positive integer'
+        raise ValueError(msg)
+
     cdef unsigned int i, j
     cdef double dx, dy
     cdef double bx, by

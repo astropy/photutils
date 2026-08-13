@@ -115,7 +115,10 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     if n_poly < 3:
         msg = 'polygon must have at least 3 vertices'
         raise ValueError(msg)
-    if use_exact != 1 and subpixels < 1:
+    if use_exact != 0 and use_exact != 1:
+        msg = 'use_exact must be 0 or 1'
+        raise ValueError(msg)
+    if use_exact == 0 and subpixels < 1:
         msg = 'subpixels must be a strictly positive integer'
         raise ValueError(msg)
 

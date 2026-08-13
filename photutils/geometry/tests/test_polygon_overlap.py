@@ -211,6 +211,18 @@ def test_polygon_overlap_validation():
     with pytest.raises(ValueError, match=match):
         polygon_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, vx, vy, 1, 1)
 
+    vx = np.array([0.0, 1.0, 0.0])
+    vy = np.array([0.0, 0.0, 1.0])
+    match = 'use_exact must be 0 or 1'
+    with pytest.raises(ValueError, match=match):
+        polygon_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, vx, vy, 2, 1)
+
+    match = 'subpixels must be a strictly positive integer'
+    for subpixels in (0, -1):
+        with pytest.raises(ValueError, match=match):
+            polygon_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, vx, vy, 0,
+                                 subpixels)
+
 
 def test_polygon_overlap_many_vertices():
     """

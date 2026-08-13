@@ -3,6 +3,7 @@
 Tests for the circular_overlap_grid module.
 """
 
+import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
@@ -26,6 +27,25 @@ def test_circular_overlap_grid(grid_size, circ_size, use_exact, subsample):
     g = circular_overlap_grid(-1.0, 1.0, -1.0, 1.0, grid_size, grid_size,
                               circ_size, use_exact, subsample)
     assert_allclose(g.max(), 1.0)
+
+
+def test_circular_overlap_grid_validation():
+    """
+    Test that invalid use_exact and subpixels inputs raise errors.
+    """
+    match = 'use_exact must be 0 or 1'
+    with pytest.raises(ValueError, match=match):
+        circular_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, 0.5, 2, 5)
+
+    match = 'subpixels must be a strictly positive integer'
+    for subpixels in (0, -1):
+        with pytest.raises(ValueError, match=match):
+            circular_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, 0.5, 0,
+                                  subpixels)
+
+    # subpixels is ignored (not validated) for the exact method
+    g = circular_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, 0.5, 1, 0)
+    assert np.isfinite(g).all()
 
 
 @pytest.mark.parametrize('use_exact', use_exacts)

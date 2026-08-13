@@ -104,6 +104,13 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
         * dx, ymin + (j + 1) * dy), where dx and dy are the width of
         each pixel in the x and y direction, respectively.
     """
+    if use_exact != 0 and use_exact != 1:
+        msg = 'use_exact must be 0 or 1'
+        raise ValueError(msg)
+    if use_exact == 0 and subpixels < 1:
+        msg = 'subpixels must be a strictly positive integer'
+        raise ValueError(msg)
+
     cdef unsigned int i, j
     cdef int i_min, i_max, j_min, j_max
     cdef double pxmin, pxmax, pymin, pymax

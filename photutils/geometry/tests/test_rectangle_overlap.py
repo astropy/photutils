@@ -95,6 +95,27 @@ def test_rectangle_exact_no_overlap():
     assert_allclose(grid, 0.0)
 
 
+def test_rectangular_overlap_grid_validation():
+    """
+    Test that invalid use_exact and subpixels inputs raise errors.
+    """
+    match = 'use_exact must be 0 or 1'
+    with pytest.raises(ValueError, match=match):
+        rectangular_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, 1.0, 0.5,
+                                 0.1, 2, 5)
+
+    match = 'subpixels must be a strictly positive integer'
+    for subpixels in (0, -1):
+        with pytest.raises(ValueError, match=match):
+            rectangular_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, 1.0, 0.5,
+                                     0.1, 0, subpixels)
+
+    # subpixels is ignored (not validated) for the exact method
+    g = rectangular_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, 1.0, 0.5,
+                                 0.1, 1, 0)
+    assert np.isfinite(g).all()
+
+
 @pytest.mark.parametrize('use_exact', [0, 1])
 def test_rectangular_overlap_grid_no_readonly_inputs(use_exact):
     """
