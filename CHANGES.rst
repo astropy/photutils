@@ -179,6 +179,14 @@ New Features
     keyword. Also restored the ``npix_e`` and ``npix_c`` properties to
     the ``columns='all'`` output. [#2329]
 
+- ``photutils.profiles``
+
+  - Improved the performance of the profile classes by computing the
+    aperture photometry and unmasked areas for all radii in a single
+    batched ``AperturePhotometry`` call instead of one photometry and
+    one area calculation per radius. Profile construction is now ~3x
+    faster. [#2371]
+
 - ``photutils.psf``
 
   - Improved ``GriddedPSFModel`` evaluation performance by ~20-25%

@@ -178,14 +178,15 @@ class ProfileBase(metaclass=abc.ABCMeta):
     def _compute_photometry(self, apertures):
         """
         Compute aperture fluxes, flux errors, and areas for the given
-        apertures.
+        apertures using a single batched photometry call.
 
         Parameters
         ----------
         apertures : list
-            A list of aperture objects. Elements may be `None`, in which
-            case the corresponding flux, error, and area are set to
-            zero.
+            A list of aperture objects sharing the same position.
+            Leading elements may be `None` (e.g., for a zero radius), in
+            which case the corresponding flux, error, and area are set
+            to zero.
 
         Returns
         -------
@@ -198,32 +199,26 @@ class ProfileBase(metaclass=abc.ABCMeta):
         areas : `~numpy.ndarray`
             The aperture areas.
         """
-        fluxes = []
-        flux_errs = []
-        areas = []
-        for aperture in apertures:
-            if aperture is None:
-                flux, flux_err = 0.0, 0.0
-                area = 0.0
-            else:
-                result = AperturePhotometry(
-                    self.data, aperture, error=self.error, mask=self.mask,
-                    method=self.method, subpixels=self.subpixels)
-                flux, flux_err = result.flux, result.flux_err
-                area = aperture.area_overlap(self.data, mask=self.mask,
-                                             method=self.method,
-                                             subpixels=self.subpixels)
-            fluxes.append(flux)
-            if self.error is not None:
-                flux_errs.append(flux_err)
-            areas.append(area)
+        n_none = sum(aperture is None for aperture in apertures)
+        result = AperturePhotometry(
+            self.data, apertures[n_none:], error=self.error,
+            mask=self.mask, method=self.method, subpixels=self.subpixels)
 
-        fluxes = np.array(fluxes)
-        flux_errs = np.array(flux_errs)
-        areas = np.array(areas)
+        fluxes = result.flux
+        areas = result.area.to_value(u.pix ** 2)
+        flux_errs = (result.flux_err if self.error is not None
+                     else np.array([]))
+
+        if n_none > 0:
+            zeros = np.zeros(n_none)
+            fluxes = np.concatenate((zeros, fluxes))
+            areas = np.concatenate((zeros, areas))
+            if self.error is not None:
+                flux_errs = np.concatenate((zeros, flux_errs))
+
         if self.unit is not None:
-            fluxes <<= self.unit
-            flux_errs <<= self.unit
+            fluxes = fluxes << self.unit
+            flux_errs = flux_errs << self.unit
 
         return fluxes, flux_errs, areas
 
