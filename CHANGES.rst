@@ -312,6 +312,12 @@ Bug Fixes
     when the input data is a ``Quantity``, consistent with the
     ``profile`` attribute. [#2371]
 
+  - Fixed the ``RadialProfile`` ``data_radius`` and ``data_profile``
+    attributes so that pixels whose centers lie exactly at the maximum
+    input radius are included on all sides of the center. Previously,
+    such pixels were excluded on the upper-x and upper-y sides of the
+    center. [#2371]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range

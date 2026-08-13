@@ -536,10 +536,13 @@ class RadialProfile(ProfileBase):
         """
         shape = self.data.shape
         max_radius = np.max(self.radii)
+        # The bounding box must include the pixels whose centers lie
+        # exactly at max_radius, so the (exclusive) upper slice bounds
+        # are floor(center + max_radius) + 1
         x_min = int(max(np.floor(self.xycen[0] - max_radius), 0))
-        x_max = int(min(np.ceil(self.xycen[0] + max_radius), shape[1]))
+        x_max = int(min(np.floor(self.xycen[0] + max_radius) + 1, shape[1]))
         y_min = int(max(np.floor(self.xycen[1] - max_radius), 0))
-        y_max = int(min(np.ceil(self.xycen[1] + max_radius), shape[0]))
+        y_max = int(min(np.floor(self.xycen[1] + max_radius) + 1, shape[0]))
         yidx, xidx = np.indices((y_max - y_min, x_max - x_min))
         xidx += x_min
         yidx += y_min
