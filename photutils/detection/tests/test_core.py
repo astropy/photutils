@@ -214,186 +214,156 @@ def fixture_minimal_catalog_cls():
     return _make_minimal_catalog_class()
 
 
+@pytest.fixture(name='make_catalog')
+def fixture_make_catalog(minimal_catalog_cls):
+    """
+    Factory fixture for minimal catalogs with common single-source
+    (11x11 image) and three-source (21x21 image) layouts.
+    """
+    def _make(n_sources=1, **kwargs):
+        kernel = np.ones((3, 3))
+        if n_sources == 1:
+            data = np.zeros((11, 11))
+            data[5, 5] = 10.0
+            xypos = np.array([[5, 5]])
+        else:
+            data = np.zeros((21, 21))
+            data[5, 5] = 10.0
+            data[10, 10] = 50.0
+            data[15, 15] = 30.0
+            xypos = np.array([[5, 5], [10, 10], [15, 15]])
+        return minimal_catalog_cls(data, xypos, kernel, **kwargs)
+
+    return _make
+
+
 class TestStarFinderCatalogBase:
     """
     Tests for the StarFinderCatalogBase base-class methods.
     """
 
-    def test_get_init_attributes(self, minimal_catalog_cls):
+    def test_get_init_attributes(self, make_catalog):
         """
         Test base _get_init_attributes returns expected tuple.
         """
-        data = np.zeros((11, 11))
-        data[5, 5] = 10.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog()
         expected = ('data', 'unit', 'kernel', 'n_brightest', 'peak_max',
                     'cutout_shape', 'default_columns')
         assert cat._get_init_attributes() == expected
 
-    def test_cached_properties_class_cache(self, minimal_catalog_cls):
+    def test_cached_properties_class_cache(self, make_catalog):
         """
         Test that _cached_properties is cached on the class and shared
         across instances.
         """
-        data = np.zeros((11, 11))
-        data[5, 5] = 10.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5]])
-        cat1 = minimal_catalog_cls(data, xypos, kernel)
-        cat2 = minimal_catalog_cls(data, xypos, kernel)
+        cat1 = make_catalog()
+        cat2 = make_catalog()
         result1 = cat1._cached_properties
         result2 = cat2._cached_properties
         assert result1 is result2
 
-    def test_to_table_missing_default_columns(self, minimal_catalog_cls):
+    def test_to_table_missing_default_columns(self, make_catalog):
         """
         Test that to_table raises when default_columns is not set.
         """
-        data = np.zeros((11, 11))
-        data[5, 5] = 10.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog()
         match = 'default_columns attribute is not set'
         with pytest.raises(AttributeError, match=match):
             cat.to_table()
 
-    def test_to_table_explicit_columns(self, minimal_catalog_cls):
+    def test_to_table_explicit_columns(self, make_catalog):
         """
         Test that to_table works with explicit column names.
         """
-        data = np.zeros((11, 11))
-        data[5, 5] = 10.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog()
         columns = ('id', 'x_centroid', 'y_centroid')
         tbl = cat.to_table(columns=columns)
         assert len(tbl) == 1
         assert tbl.colnames == list(columns)
 
-    def test_to_table_invalid_column(self, minimal_catalog_cls):
+    def test_to_table_invalid_column(self, make_catalog):
         """
         Regression test for invalid column names not being validated
         in to_table (e.g., ``data`` is an attribute, but not a valid
         column name).
         """
-        data = np.zeros((11, 11))
-        data[5, 5] = 10.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog()
         match = 'Invalid column name'
         with pytest.raises(ValueError, match=match):
             cat.to_table(columns=('id', 'data'))
 
-    def test_to_table_scalar_column(self, minimal_catalog_cls):
+    def test_to_table_scalar_column(self, make_catalog):
         """
         Regression test to ensure that ``isscalar`` (a scalar value
         for the whole object, not a per-source value) is not a valid
         ``to_table`` column.
         """
-        data = np.zeros((11, 11))
-        data[5, 5] = 10.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog()
         match = 'Invalid column name'
         with pytest.raises(ValueError, match=match):
             cat.to_table(columns='isscalar')
 
-    def test_to_table_deprecated_column(self, minimal_catalog_cls):
+    def test_to_table_deprecated_column(self, make_catalog):
         """
         Regression test to ensure that deprecated column names are still
         accepted by ``to_table``, not rejected by the new column-name
         validation.
         """
-        data = np.zeros((11, 11))
-        data[5, 5] = 10.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog()
         match = "'xcentroid' attribute was deprecated"
         with pytest.warns(AstropyDeprecationWarning, match=match):
             tbl = cat.to_table(columns='xcentroid')
         assert tbl.colnames == ['x_centroid']
 
-    def test_to_table_str_column(self, minimal_catalog_cls):
+    def test_to_table_str_column(self, make_catalog):
         """
         Regression test to ensure that a single string column name (not
         wrapped in a list) is accepted by ``to_table``.
         """
-        data = np.zeros((11, 11))
-        data[5, 5] = 10.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog()
         tbl = cat.to_table(columns='id')
         assert tbl.colnames == ['id']
 
-    def test_properties(self, minimal_catalog_cls):
+    def test_properties(self, make_catalog):
         """
         Test that the _properties attribute returns a sorted list of
         cached-property names.
         """
-        data = np.zeros((11, 11))
-        data[5, 5] = 10.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog()
         assert cat._properties == sorted(cat._properties)
         assert 'x_centroid' in cat._properties
         assert 'y_centroid' in cat._properties
         assert 'data' not in cat._properties
         assert 'isscalar' not in cat._properties
 
-    def test_getitem_integer_index(self, minimal_catalog_cls):
+    def test_getitem_integer_index(self, make_catalog):
         """
         Test indexing the catalog with an integer index.
         """
-        data = np.zeros((11, 11))
-        data[3, 3] = 10.0
-        data[7, 7] = 20.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[3, 3], [7, 7]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
-        assert len(cat) == 2
+        cat = make_catalog(n_sources=3)
+        assert len(cat) == 3
 
         sub = cat[0]
         assert len(sub) == 1
-        assert sub.xypos[0, 0] == 3
+        assert sub.xypos[0, 0] == 5
 
-    def test_getitem_slice(self, minimal_catalog_cls):
+    def test_getitem_slice(self, make_catalog):
         """
         Test slicing the catalog.
         """
-        data = np.zeros((11, 11))
-        data[3, 3] = 10.0
-        data[5, 5] = 15.0
-        data[7, 7] = 20.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[3, 3], [5, 5], [7, 7]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog(n_sources=3)
         assert len(cat) == 3
 
         sub = cat[1:]
         assert len(sub) == 2
-        assert sub.xypos[0, 0] == 5
-        assert sub.xypos[1, 0] == 7
+        assert sub.xypos[0, 0] == 10
+        assert sub.xypos[1, 0] == 15
 
-    def test_getitem_fancy_index(self, minimal_catalog_cls):
+    def test_getitem_fancy_index(self, make_catalog):
         """
         Test indexing with a boolean mask (fancy indexing).
         """
-        data = np.zeros((11, 11))
-        data[3, 3] = 10.0
-        data[5, 5] = 15.0
-        data[7, 7] = 20.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[3, 3], [5, 5], [7, 7]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog(n_sources=3)
 
         # Force evaluation of a cached property before slicing
         _ = cat.flux
@@ -401,8 +371,8 @@ class TestStarFinderCatalogBase:
         mask = np.array([True, False, True])
         sub = cat[mask]
         assert len(sub) == 2
-        assert sub.xypos[0, 0] == 3
-        assert sub.xypos[1, 0] == 7
+        assert sub.xypos[0, 0] == 5
+        assert sub.xypos[1, 0] == 15
 
     def test_roundness(self, minimal_catalog_cls):
         """
@@ -420,28 +390,20 @@ class TestStarFinderCatalogBase:
         # roundness should be finite for a well-defined source
         assert np.isfinite(cat.roundness[0])
 
-    def test_repr(self, minimal_catalog_cls):
+    def test_repr(self, make_catalog):
         """
         Test the __repr__ of StarFinderCatalogBase subclass.
         """
-        data = np.zeros((11, 11))
-        data[5, 5] = 10.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5], [3, 3]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog(n_sources=3)
         r = repr(cat)
         assert '_MinimalCatalog(' in r
-        assert 'n_sources=2' in r
+        assert 'n_sources=3' in r
 
-    def test_str(self, minimal_catalog_cls):
+    def test_str(self, make_catalog):
         """
         Test the __str__ of StarFinderCatalogBase subclass.
         """
-        data = np.zeros((11, 11))
-        data[5, 5] = 10.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog()
         s = str(cat)
         assert '_MinimalCatalog' in s
         assert 'n_sources: 1' in s
@@ -487,158 +449,100 @@ class TestStarFinderCatalogBase:
         expected = data[4:7, 4:7]
         np.testing.assert_array_equal(cutouts[0], expected)
 
-    def test_select_brightest(self, minimal_catalog_cls):
+    def test_select_brightest(self, make_catalog):
         """
         Test select_brightest selects the top sources by flux.
         """
-        data = np.zeros((21, 21))
-        data[5, 5] = 10.0
-        data[10, 10] = 50.0
-        data[15, 15] = 30.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5], [10, 10], [15, 15]])
-        cat = minimal_catalog_cls(data, xypos, kernel, n_brightest=2)
+        cat = make_catalog(n_sources=3, n_brightest=2)
         newcat = cat.select_brightest()
         assert len(newcat) == 2
         # Brightest first
         assert newcat.flux[0] >= newcat.flux[1]
 
-    def test_select_brightest_none(self, minimal_catalog_cls):
+    def test_select_brightest_none(self, make_catalog):
         """
         Test that select_brightest with n_brightest=None keeps all sources.
         """
-        data = np.zeros((21, 21))
-        data[5, 5] = 10.0
-        data[10, 10] = 50.0
-        data[15, 15] = 30.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5], [10, 10], [15, 15]])
-        cat = minimal_catalog_cls(data, xypos, kernel, n_brightest=None)
+        cat = make_catalog(n_sources=3, n_brightest=None)
         newcat = cat.select_brightest()
         assert len(newcat) == 3
 
-    def test_reset_ids(self, minimal_catalog_cls):
+    def test_reset_ids(self, make_catalog):
         """
         Test that reset_ids renumbers the catalog consecutively.
         """
-        data = np.zeros((21, 21))
-        data[5, 5] = 10.0
-        data[10, 10] = 50.0
-        data[15, 15] = 30.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5], [10, 10], [15, 15]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog(n_sources=3)
         # Slice to drop the first source
         sub = cat[1:]
         assert sub.id[0] == 2
         sub.reset_ids()
         np.testing.assert_array_equal(sub.id, [1, 2])
 
-    def test_apply_all_filters(self, minimal_catalog_cls):
+    def test_apply_all_filters(self, make_catalog):
         """
         Test apply_all_filters chains apply_filters, select_brightest,
         and reset_ids.
         """
-        data = np.zeros((21, 21))
-        data[5, 5] = 10.0
-        data[10, 10] = 50.0
-        data[15, 15] = 30.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5], [10, 10], [15, 15]])
-        cat = minimal_catalog_cls(data, xypos, kernel, n_brightest=2)
+        cat = make_catalog(n_sources=3, n_brightest=2)
         result = cat.apply_all_filters()
         assert result is not None
         assert len(result) == 2
         # IDs should be reset to [1, 2]
         np.testing.assert_array_equal(result.id, [1, 2])
 
-    def test_getitem_negative_index(self, minimal_catalog_cls):
+    def test_getitem_negative_index(self, make_catalog):
         """
         Test indexing with a negative integer index.
         """
-        data = np.zeros((21, 21))
-        data[5, 5] = 10.0
-        data[10, 10] = 50.0
-        data[15, 15] = 30.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5], [10, 10], [15, 15]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog(n_sources=3)
         sub = cat[-1]
         assert len(sub) == 1
         assert sub.xypos[0, 0] == 15
 
-    def test_getitem_empty_boolean_mask(self, minimal_catalog_cls):
+    def test_getitem_empty_boolean_mask(self, make_catalog):
         """
         Test indexing with an all-False boolean mask.
         """
-        data = np.zeros((21, 21))
-        data[5, 5] = 10.0
-        data[10, 10] = 50.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5], [10, 10]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
-        mask = np.array([False, False])
+        cat = make_catalog(n_sources=3)
+        mask = np.array([False, False, False])
         sub = cat[mask]
         assert len(sub) == 0
 
-    def test_getitem_integer_array(self, minimal_catalog_cls):
+    def test_getitem_integer_array(self, make_catalog):
         """
         Test indexing with an integer array (fancy indexing).
         """
-        data = np.zeros((21, 21))
-        data[5, 5] = 10.0
-        data[10, 10] = 50.0
-        data[15, 15] = 30.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5], [10, 10], [15, 15]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog(n_sources=3)
         idx = np.array([2, 0])
         sub = cat[idx]
         assert len(sub) == 2
         assert sub.xypos[0, 0] == 15
         assert sub.xypos[1, 0] == 5
 
-    def test_filter_bounds_none_range(self, minimal_catalog_cls):
+    def test_filter_bounds_none_range(self, make_catalog):
         """
         Test that _filter_bounds skips filtering when a range is None.
         """
-        data = np.zeros((21, 21))
-        data[5, 5] = 10.0
-        data[10, 10] = 50.0
-        data[15, 15] = 30.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5], [10, 10], [15, 15]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog(n_sources=3)
         bounds = [('flux', None)]
         result = cat._filter_bounds(bounds)
         assert len(result) == 3
 
-    def test_filter_bounds_initial_mask(self, minimal_catalog_cls):
+    def test_filter_bounds_initial_mask(self, make_catalog):
         """
         Test _filter_bounds with an initial_mask.
         """
-        data = np.zeros((21, 21))
-        data[5, 5] = 10.0
-        data[10, 10] = 50.0
-        data[15, 15] = 30.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5], [10, 10], [15, 15]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog(n_sources=3)
         # Pre-exclude the first source
         initial_mask = np.array([False, True, True])
         result = cat._filter_bounds([], initial_mask=initial_mask)
         assert len(result) == 2
 
-    def test_default_columns_preserved_on_slice(self, minimal_catalog_cls):
+    def test_default_columns_preserved_on_slice(self, make_catalog):
         """
         Test that default_columns is preserved when slicing.
         """
-        data = np.zeros((21, 21))
-        data[5, 5] = 10.0
-        data[10, 10] = 50.0
-        kernel = np.ones((3, 3))
-        xypos = np.array([[5, 5], [10, 10]])
-        cat = minimal_catalog_cls(data, xypos, kernel)
+        cat = make_catalog(n_sources=3)
         cat.default_columns = ('id', 'x_centroid', 'y_centroid')
         sub = cat[0]
         assert sub.default_columns == ('id', 'x_centroid', 'y_centroid')
