@@ -224,7 +224,7 @@ def test_stdpsf_grid_converter_repeated_grid_coordinate(tmp_path):
     repeated where the two detectors abut.
     """
     filename = examples.PSF_DATA_DIR / 'STDPSF_ACSWFC_F814W_mock.fits'
-    psfgrid = STDPSFGrid(str(filename))
+    psfgrid = STDPSFGrid(filename)
     assert psfgrid._grid_shape == (10, 9)
 
     asdf_filename = tmp_path / 'psf.asdf'

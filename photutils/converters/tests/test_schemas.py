@@ -167,6 +167,17 @@ def test_manifest_schemas_are_registered():
         assert schema['id'] == schema_uri, tag_uri
 
 
+def _check_example_tag(schema_uri, index, tag):
+    """
+    Check that a schema example carries the manifest tag of the schema
+    that contains it.
+    """
+    assert tag is not None, f'{schema_uri} example {index} is untagged'
+    assert tag in MANIFEST_TAGS, f'{tag} is not defined in the manifest'
+    assert MANIFEST_TAGS[tag] == schema_uri, (
+        f'{tag} is defined by a different schema')
+
+
 @pytest.mark.parametrize(('schema_uri', 'index', 'tag'), EXAMPLE_TAGS,
                          ids=EXAMPLE_IDS)
 def test_example_tag_in_manifest(schema_uri, index, tag):
@@ -179,10 +190,7 @@ def test_example_tag_in_manifest(schema_uri, index, tag):
     tag selects no schema at all, which makes the example self-test pass
     without validating anything.
     """
-    assert tag is not None, f'{schema_uri} example {index} is untagged'
-    assert tag in MANIFEST_TAGS, f'{tag} is not defined in the manifest'
-    assert MANIFEST_TAGS[tag] == schema_uri, (
-        f'{tag} is defined by a different schema')
+    _check_example_tag(schema_uri, index, tag)
 
 
 @pytest.mark.parametrize(('example_tag', 'match'), [
@@ -203,7 +211,7 @@ def test_invalid_example_tag_is_detected(example_tag, match):
     assert tag == example_tag
 
     with pytest.raises(AssertionError, match=match):
-        test_example_tag_in_manifest(schema['id'], index, tag)
+        _check_example_tag(schema['id'], index, tag)
 
 
 def _quantity(value):
