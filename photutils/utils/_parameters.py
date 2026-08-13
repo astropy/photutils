@@ -116,7 +116,7 @@ def as_pair(name, value, *, lower_bound=None, upper_bound=None,
     if len(value) == 1:
         value = np.array((value[0], value[0]))
 
-    if value.dtype.kind != 'i':
+    if value.dtype.kind not in 'iu':
         msg = f'{name} must have integer values'
         raise ValueError(msg)
     if check_odd and np.any(value % 2 != 1):
