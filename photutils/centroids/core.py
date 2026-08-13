@@ -58,9 +58,10 @@ def centroid_com(data, mask=None):
     Returns
     -------
     centroid : `~numpy.ndarray`
-        The coordinates of the centroid in pixel order (e.g., ``(x,
-        y)`` or ``(x, y, z)``), not numpy axis order. If the sum of the
-        (unmasked) data is zero, then a `~numpy.ndarray` of NaN values
+        The coordinates of the centroid in pixel order (e.g., ``(x, y)``
+        or ``(x, y, z)``), not numpy axis order. If the absolute value
+        of the sum of the (unmasked) data is smaller than 1e-30 (i.e.,
+        consistent with zero), then a `~numpy.ndarray` of NaN values
         will be returned. If the sum is close to zero, the centroid may
         be poorly defined and fall outside the array bounds.
 
@@ -585,7 +586,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
     xcentroid, ycentroid : `~numpy.ndarray`
         The ``x`` and ``y`` pixel position(s) of the centroids. NaNs
         will be returned where the centroid failed. This is usually due
-        a ``box_size`` that is too small when using a fitting-based
+        to a ``box_size`` that is too small when using a fitting-based
         centroid function (e.g., `centroid_1dg`, `centroid_2dg`, or
         `centroid_quadratic`).
 

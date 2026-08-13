@@ -29,8 +29,16 @@ def centroid_1dg(data, error=None, mask=None):
     arrays are automatically masked. The final mask is a logical OR
     combination of the input ``mask``, the automatically generated mask
     for non-finite values, and the mask of the input ``data`` if it is a
-    `~numpy.ma.MaskedArray`. The centroid is calculated using only the
-    unmasked data values.
+    `~numpy.ma.MaskedArray`.
+
+    Masked pixels are excluded by substituting zero into the
+    marginal sums, and the fit weights are zeroed only for
+    fully-masked rows or columns. A partially-masked row or column
+    near the source peak therefore distorts the corresponding
+    marginal distribution and can bias the centroid. Consider using
+    `~photutils.centroids.centroid_2dg`, which excludes individual
+    masked pixels from the fit, when isolated masked or non-finite
+    pixels fall near the source peak.
 
     Parameters
     ----------
@@ -187,7 +195,7 @@ def centroid_2dg(data, error=None, mask=None):
     data, mask, error = _validate_gaussian_inputs(data, mask, error)
 
     if np.count_nonzero(~mask) < 6:
-        msg = ('Input data must have a least 6 unmasked values to fit a '
+        msg = ('Input data must have at least 6 unmasked values to fit a '
                '2D Gaussian.')
         raise ValueError(msg)
 

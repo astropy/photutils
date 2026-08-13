@@ -8,21 +8,13 @@ from contextlib import nullcontext
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.modeling.models import Gaussian1D, Gaussian2D
+from astropy.modeling.models import Gaussian1D
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.centroids._utils import _gaussian1d_moments
 from photutils.centroids.gaussian import centroid_1dg, centroid_2dg
-
-
-def _make_gaussian_source(shape, amplitude, xc, yc, xstd, ystd, theta):
-    """
-    Make a 2D Gaussian source.
-    """
-    yy, xx = np.mgrid[0:shape[0], 0:shape[1]]
-    model = Gaussian2D(amplitude, xc, yc, xstd, ystd, theta)
-    return model(xx, yy)
+from photutils.centroids.tests.helpers import make_gaussian_source
 
 
 @pytest.mark.parametrize('x_std', [3.2, 4.0])
@@ -36,8 +28,8 @@ def test_centroids(x_std, y_std, theta, units):
     """
     xc_ref = 25.7
     yc_ref = 26.2
-    data = _make_gaussian_source((50, 47), 2.4, xc_ref, yc_ref, x_std, y_std,
-                                 theta)
+    data = make_gaussian_source((50, 47), 2.4, xc_ref, yc_ref, x_std, y_std,
+                                theta)
     error = np.sqrt(np.abs(data))
 
     value = 1.0e5
@@ -76,7 +68,7 @@ def test_centroids_nan_withmask(use_mask):
     """
     xc_ref = 24.7
     yc_ref = 25.2
-    data = _make_gaussian_source((50, 50), 2.4, xc_ref, yc_ref, 5.0, 5.0, 0.0)
+    data = make_gaussian_source((50, 50), 2.4, xc_ref, yc_ref, 5.0, 5.0, 0.0)
     data[20, :] = np.nan
 
     if use_mask:
@@ -147,7 +139,7 @@ def test_centroid_2dg_dof():
     are not enough unmasked values to fit the model.
     """
     data = np.ones((2, 2))
-    match = 'Input data must have a least 6 unmasked values to fit'
+    match = 'Input data must have at least 6 unmasked values to fit'
     with pytest.raises(ValueError, match=match):
         centroid_2dg(data)
 
@@ -212,21 +204,21 @@ def test_gaussian1d_moments():
     assert_allclose(result, desired, rtol=0, atol=1.0e-6)
 
     data[0] = 1.0e5
-    mask = np.zeros(data.shape).astype(bool)
+    mask = np.zeros(data.shape, dtype=bool)
     mask[0] = True
     result = _gaussian1d_moments(data, mask=mask)
     assert_allclose(result, desired, rtol=0, atol=1.0e-6)
 
     # Test that masked NaNs do not raise a warning
     data[0] = np.nan
-    mask = np.zeros(data.shape).astype(bool)
+    mask = np.zeros(data.shape, dtype=bool)
     mask[0] = True
     result = _gaussian1d_moments(data, mask=mask)
     assert_allclose(result, desired, rtol=0, atol=1.0e-6)
 
     # Test that unmasked NaNs raise a warning
     data[0] = np.nan
-    mask = np.zeros(data.shape).astype(bool)
+    mask = np.zeros(data.shape, dtype=bool)
     mask[0] = False
     match = 'Input data contains non-finite values'
     with pytest.warns(AstropyUserWarning, match=match):
@@ -242,7 +234,7 @@ def test_gaussian2d_warning():
     The fitter's own warning is no longer suppressed, so it propagates
     to the caller along with the photutils convergence warning.
     """
-    data = _make_gaussian_source((51, 51), 1.0, 24.17, 25.87, 1.7, 4.7, 0.0)
+    data = make_gaussian_source((51, 51), 1.0, 24.17, 25.87, 1.7, 4.7, 0.0)
 
     match = 'The fit may not have converged'
     fitter_match = 'The fit may be unsuccessful'
@@ -256,7 +248,7 @@ def test_no_input_mutation():
     Test that input mask and error arrays are not mutated by
     centroid_1dg or centroid_2dg.
     """
-    data = _make_gaussian_source((50, 50), 2.4, 25.0, 25.0, 5.0, 5.0, 0.0)
+    data = make_gaussian_source((50, 50), 2.4, 25.0, 25.0, 5.0, 5.0, 0.0)
 
     # Add a masked position and a NaN in error to exercise all
     # copy-on-write paths without triggering data-NaN warnings
@@ -282,7 +274,7 @@ def test_masked_array_input():
     Test that MaskedArray inputs to centroid_1dg and centroid_2dg give
     the same results as equivalent plain array and mask inputs.
     """
-    data = _make_gaussian_source((50, 50), 2.4, 25.0, 25.0, 5.0, 5.0, 0.0)
+    data = make_gaussian_source((50, 50), 2.4, 25.0, 25.0, 5.0, 5.0, 0.0)
 
     mask = np.zeros(data.shape, dtype=bool)
     mask[10, 10] = True
