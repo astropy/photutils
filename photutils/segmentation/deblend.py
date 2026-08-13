@@ -138,7 +138,10 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     segment_image : `~photutils.segmentation.SegmentationImage`
         A segmentation image, with the same shape as ``data``, where
         sources are marked by different positive integer values. A value
-        of zero is reserved for the background.
+        of zero is reserved for the background. The ``info`` attribute
+        of the returned segmentation image is a dictionary that contains
+        a ``'warnings'`` key if any deblending warnings occurred. It is
+        empty otherwise.
 
     See Also
     --------
@@ -326,13 +329,12 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
             deblend_label_map = _update_deblend_label_map(deblend_label_map,
                                                           relabel_map)
 
-    segm_img = object.__new__(SegmentationImage)
-    segm_img._data = segm_deblended
-    segm_img._deblend_label_map = deblend_label_map
+    segm_img = SegmentationImage._from_data(
+        segm_deblended, deblend_label_map=deblend_label_map)
 
-    # Store the warnings in the output SegmentationImage info attribute
+    # Store any warnings in the info attribute
     if warning_info:
-        segm_img.info = {'warnings': warning_info}
+        segm_img.info['warnings'] = warning_info
 
     return segm_img
 

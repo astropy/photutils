@@ -111,6 +111,18 @@ class TestSegmentationImage:
         segm.data = self.data[0:3, :].copy()
         assert_equal(segm.labels, [1, 3, 4])
 
+    def test_info(self):
+        """
+        Test that the info attribute always exists and is reset when the
+        data attribute is reassigned.
+        """
+        segm = SegmentationImage(self.data.copy())
+        assert segm.info == {}
+
+        segm.info['key'] = 'value'
+        segm.data = self.data[0:3, :].copy()
+        assert segm.info == {}
+
     def test_invalid_data(self):
         """
         Test invalid data.
@@ -1020,7 +1032,8 @@ def test_subclass(segm_data):
                       [70, 70, 0, 0],
                       [70, 70, 0, 1]])
     segm.data = data2
-    assert len(segm.__dict__) == 3
+    # Only _data, labels, _deblend_label_map, and info should remain
+    assert len(segm.__dict__) == 4
     assert_equal(segm.areas, [1, 2, 2, 4])
 
 

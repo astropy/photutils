@@ -421,6 +421,19 @@ class TestDeblendSources:
         markers = single_debl.make_markers(return_all=True)
         assert len(markers) == 19
 
+    def test_info_empty_without_warnings(self):
+        """
+        Test that the returned segmentation image always has an info
+        attribute, which is an empty dict when no deblending warnings
+        occurred.
+        """
+        result = deblend_sources(self.data, self.segm, self.n_pixels,
+                                 progress_bar=False)
+        assert result.info == {}
+
+        # detect_sources output must also have an info attribute
+        assert self.segm.info == {}
+
     def test_deblend_progress_bar(self):
         """
         Test deblend_sources with progress_bar=True (serial).

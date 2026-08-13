@@ -252,12 +252,8 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
         labels = segm_labels
 
     if return_segmimg:
-        segm = object.__new__(SegmentationImage)
-        segm._data = segment_img
-        segm.__dict__['labels'] = labels
-        segm.__dict__['slices'] = segm_slices
-        segm.__dict__['_deblend_label_map'] = {}
-        return segm
+        return SegmentationImage._from_data(segment_img, labels=labels,
+                                            slices=segm_slices)
 
     # This is used by deblend_sources
     if len(labels) == 1:
