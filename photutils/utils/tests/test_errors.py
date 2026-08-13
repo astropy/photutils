@@ -55,6 +55,20 @@ def test_gain_scalar():
     assert_allclose(error_tot, np.sqrt(2.0) * BKG_ERROR)
 
 
+def test_integer_data():
+    """
+    Test calc_total_error with integer data and bkg_error inputs.
+    """
+    data_int = (DATA * 5).astype(int)
+    error_tot = calc_total_error(data_int, BKG_ERROR, 2.0)
+    assert error_tot.dtype == float
+    expected = calc_total_error(data_int.astype(float), BKG_ERROR, 2.0)
+    assert_allclose(error_tot, expected)
+
+    error_tot = calc_total_error(data_int, BKG_ERROR.astype(int), 2.0)
+    assert_allclose(error_tot, expected)
+
+
 def test_gain_array():
     """
     Test calc_total_error with an array effective_gain.

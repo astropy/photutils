@@ -429,6 +429,9 @@ Bug Fixes
     result attributes now always reflect only the most recent call.
     [#2375]
 
+  - Fixed a crash in ``calc_total_error`` when the input ``data`` array
+    has an integer data type. [#2375]
+
 API Changes
 ^^^^^^^^^^^
 
