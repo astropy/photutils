@@ -17,7 +17,7 @@ from functools import partial
 import numpy as np
 from astropy.modeling.models import Gaussian2D
 from astropy.stats import gaussian_fwhm_to_sigma
-from bench_utils import print_environment, time_best
+from bench_helpers import print_environment, time_best
 
 from photutils.centroids import (centroid_1dg, centroid_2dg, centroid_com,
                                  centroid_quadratic, centroid_sources)

@@ -18,7 +18,7 @@ from functools import partial
 
 import numpy as np
 from astropy.modeling.models import Gaussian2D
-from bench_utils import print_environment, time_best
+from bench_helpers import print_environment, time_best
 
 from photutils.psf_matching import (CosineBellWindow, HanningWindow,
                                     SplitCosineBellWindow, TopHatWindow,

@@ -2,7 +2,7 @@
 
 This directory contains standalone benchmark scripts for photutils.
 They are not part of the installed package or the test suite. Helper
-functions shared by the scripts live in `bench_utils.py`.
+functions shared by the scripts live in `bench_helpers.py`.
 
 ## Aperture statistics (`bench_aperture_stats.py`)
 
@@ -151,4 +151,31 @@ python benchmarks/bench_background.py
 # Only the Background2D n_threads scaling benchmark
 python benchmarks/bench_background.py --which background2d \
     --sizes 2048,4096 --box-sizes 64 --n-threads 1,2,4,8
+```
+
+## Utils (`bench_utils.py`)
+
+Benchmarks for the `photutils.utils` subpackage:
+
+- `ImageDepth` versus the number of apertures, in the overlapping
+  and non-overlapping modes
+- concurrent `ImageDepth` calls on a shared instance across thread
+  counts (with speedups relative to the first thread count)
+- `ShepardIDWInterpolator` construction and evaluation versus the
+  numbers of data points, query positions, and neighbors
+- cutout generation with `_make_cutouts` and `CutoutImage`
+- `calc_total_error` versus image size, with scalar and 2D gains
+- the NaN-ignoring statistics functions on float64 (bottleneck) and
+  float32 (NumPy) arrays
+- `make_random_xycoords` with and without a minimum separation
+- the per-call cost of the local WCS helper functions
+
+Examples:
+
+```bash
+# Run everything with the default settings
+python benchmarks/bench_utils.py
+
+# Only the ImageDepth thread-scaling benchmark
+python benchmarks/bench_utils.py --which depth-threads --threads 1,4,8
 ```

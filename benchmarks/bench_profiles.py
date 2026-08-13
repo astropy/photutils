@@ -19,7 +19,7 @@ from functools import partial
 import numpy as np
 from astropy.modeling.models import Gaussian2D
 from astropy.stats import gaussian_fwhm_to_sigma
-from bench_utils import print_environment, time_best
+from bench_helpers import print_environment, time_best
 
 from photutils.profiles import (CurveOfGrowth, EllipticalCurveOfGrowth,
                                 EnsquaredCurveOfGrowth, RadialProfile)
