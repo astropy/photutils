@@ -39,9 +39,7 @@ ctypedef np.float64_t DTYPE_t
 
 
 def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
-                         int nx, int ny,
-                         np.ndarray[DTYPE_t, ndim=1] vertices_x,
-                         np.ndarray[DTYPE_t, ndim=1] vertices_y,
+                         int nx, int ny, vertices_x, vertices_y,
                          int use_exact, int subpixels):
     """
     polygon_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, vertices_x,
@@ -68,10 +66,11 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         ymax) and is divided into nx and ny pixels in the x and y
         direction, respectively.
 
-    vertices_x, vertices_y : 1D `~numpy.ndarray`
+    vertices_x, vertices_y : 1D array_like
         The x and y coordinates of the polygon vertices (in the same
-        coordinate frame as the grid extents). The polygon must have at
-        least 3 vertices.
+        coordinate frame as the grid extents). The inputs are converted
+        to contiguous float64 arrays. The polygon must have at least 3
+        vertices.
 
     use_exact : 0 or 1
         Set to ``1`` to use an exact method to calculate the overlap
@@ -108,6 +107,11 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         * dx, ymin + (j + 1) * dy), where dx and dy are the width of
         each pixel in the x and y direction, respectively.
     """
+    vertices_x = np.ascontiguousarray(vertices_x, dtype=DTYPE)
+    vertices_y = np.ascontiguousarray(vertices_y, dtype=DTYPE)
+    if vertices_x.ndim != 1 or vertices_y.ndim != 1:
+        msg = 'vertices_x and vertices_y must be 1D arrays'
+        raise ValueError(msg)
     cdef int n_poly = vertices_x.shape[0]
     if vertices_y.shape[0] != n_poly:
         msg = 'vertices_x and vertices_y must have the same length'
@@ -140,8 +144,8 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     polygon_work_partition(&work[0], n_poly, buf_size, &poly_x, &poly_y,
                            &buf_a_x, &buf_a_y, &buf_b_x, &buf_b_y,
                            &edge_nx, &edge_ny, &edge_c)
-    cdef const double[::1] vx_view = np.ascontiguousarray(vertices_x)
-    cdef const double[::1] vy_view = np.ascontiguousarray(vertices_y)
+    cdef const double[::1] vx_view = vertices_x
+    cdef const double[::1] vy_view = vertices_y
     _ensure_ccw(vx_view, vy_view, n_poly, poly_x, poly_y)
     cdef int is_convex = convex_edge_normals(poly_x, poly_y, n_poly,
                                              edge_nx, edge_ny, edge_c)

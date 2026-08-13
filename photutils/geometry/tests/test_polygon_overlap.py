@@ -224,6 +224,32 @@ def test_polygon_overlap_validation():
                                  subpixels)
 
 
+def test_polygon_overlap_vertices_input_types():
+    """
+    Test that integer arrays and Python lists are accepted for the
+    vertex coordinates and give the same result as float64 arrays,
+    and that non-1D vertex arrays raise an error.
+    """
+    vx = np.array([0.0, 4.0, 0.0])
+    vy = np.array([0.0, 0.0, 4.0])
+    expected = polygon_overlap_grid(-1.0, 5.0, -1.0, 5.0, 12, 12,
+                                    vx, vy, 1, 1)
+
+    result = polygon_overlap_grid(-1.0, 5.0, -1.0, 5.0, 12, 12,
+                                  np.array([0, 4, 0]),
+                                  np.array([0, 0, 4]), 1, 1)
+    assert_allclose(result, expected)
+
+    result = polygon_overlap_grid(-1.0, 5.0, -1.0, 5.0, 12, 12,
+                                  [0.0, 4.0, 0.0], [0.0, 0.0, 4.0], 1, 1)
+    assert_allclose(result, expected)
+
+    match = 'must be 1D arrays'
+    with pytest.raises(ValueError, match=match):
+        polygon_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4,
+                             np.zeros((3, 2)), np.zeros((3, 2)), 1, 1)
+
+
 def test_polygon_overlap_many_vertices():
     """
     There is no limit on the number of polygon vertices.
