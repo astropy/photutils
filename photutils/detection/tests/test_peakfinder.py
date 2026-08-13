@@ -147,6 +147,40 @@ class TestFindPeaks:
         tbl = find_peaks(data, 0.1, box_size=3, n_peaks=1)
         assert len(tbl) == 1
 
+    def test_n_peaks_integral_float(self, data):
+        """
+        Test that an integral float n_peaks works like the integer.
+        """
+        tbl1 = find_peaks(data, 0.1, box_size=3, n_peaks=5)
+        tbl2 = find_peaks(data, 0.1, box_size=3, n_peaks=5.0)
+        assert_array_equal(tbl1, tbl2)
+
+    @pytest.mark.parametrize('n_peaks', [0, -1, 5.5])
+    def test_n_peaks_invalid(self, data, n_peaks):
+        """
+        Test that non-positive or non-integral n_peaks values raise a
+        ValueError.
+        """
+        match = 'n_peaks must be'
+        with pytest.raises(ValueError, match=match):
+            find_peaks(data, 0.1, box_size=3, n_peaks=n_peaks)
+
+    def test_n_peaks_bool(self, data):
+        """
+        Test that a boolean n_peaks raises a TypeError.
+        """
+        match = 'n_peaks must be an integer'
+        with pytest.raises(TypeError, match=match):
+            find_peaks(data, 0.1, box_size=3, n_peaks=True)
+
+    def test_empty_data(self):
+        """
+        Test that empty input data raises a ValueError.
+        """
+        match = 'data must not be empty'
+        with pytest.raises(ValueError, match=match):
+            find_peaks(np.empty((0, 0)), 0.0)
+
     def test_border_width(self, data):
         """
         Test border exclusion.

@@ -250,9 +250,11 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
         integers.
 
     n_peaks : int, optional
-        The maximum number of peaks to return. When the number of
-        detected peaks exceeds ``n_peaks``, the peaks with the highest
-        peak intensities will be returned.
+        The maximum number of peaks to return. It must be a positive
+        integer or `numpy.inf` (the default, meaning all peaks
+        are returned). When the number of detected peaks exceeds
+        ``n_peaks``, the peaks with the highest peak intensities will be
+        returned.
 
     min_separation : float or None, optional
         The minimum allowed separation (in pixels) between detected
@@ -338,6 +340,10 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     data, threshold, error = arrays
     data = np.asanyarray(data)
 
+    if data.size == 0:
+        msg = 'data must not be empty'
+        raise ValueError(msg)
+
     if centroid_func is not None and not callable(centroid_func):
         msg = 'centroid_func must be a callable object'
         raise TypeError(msg)
@@ -345,6 +351,19 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     if min_separation is not None and min_separation < 0:
         msg = 'min_separation must be >= 0'
         raise ValueError(msg)
+
+    if n_peaks != np.inf:
+        if isinstance(n_peaks, bool):
+            msg = 'n_peaks must be an integer'
+            raise TypeError(msg)
+        if n_peaks <= 0:
+            msg = 'n_peaks must be > 0'
+            raise ValueError(msg)
+        n_peaks_int = int(n_peaks)
+        if n_peaks_int != n_peaks:
+            msg = 'n_peaks must be an integer'
+            raise ValueError(msg)
+        n_peaks = n_peaks_int
 
     if np.all(data == data.flat[0]):
         msg = 'Input data is constant. No local peaks can be found.'
