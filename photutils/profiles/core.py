@@ -7,6 +7,7 @@ import abc
 import warnings
 from functools import cached_property
 
+import astropy.units as u
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -393,11 +394,19 @@ class ProfileBase(metaclass=abc.ABCMeta):
         if ax is None:
             ax = plt.gca()
 
-        lines = ax.plot(self.radius, self.profile, **kwargs)
+        profile = self.profile
+        unit = None
+        if isinstance(profile, u.Quantity):
+            unit = profile.unit
+            profile = profile.value
+
+        lines = ax.plot(self.radius, profile, **kwargs)
         ax.set_xlabel(self._xlabel)
         ylabel = self._ylabel
-        if self.unit is not None:
-            ylabel = f'{ylabel} ({self.unit})'
+        # A normalized profile is dimensionless, so the unit is
+        # included only when the profile has a physical unit
+        if unit is not None and unit != u.dimensionless_unscaled:
+            ylabel = f'{ylabel} ({unit})'
         ax.set_ylabel(ylabel)
 
         return lines
@@ -444,8 +453,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         profile = self.profile
         profile_error = self.profile_error
-        if self.unit is not None:
+        if isinstance(profile, u.Quantity):
             profile = profile.value
+        if isinstance(profile_error, u.Quantity):
             profile_error = profile_error.value
         ymin = profile - profile_error
         ymax = profile + profile_error

@@ -394,6 +394,32 @@ class TestRadialProfile:
         rp3.plot_error()
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_plot_ylabel_units(self, profile_data):
+        """
+        Test that the plot y-axis label includes the data unit only
+        when the profile has a physical unit.
+
+        A normalized profile is dimensionless.
+        """
+        xycen, data, error, _ = profile_data
+        edge_radii = np.arange(36)
+
+        rp1 = RadialProfile(data, xycen, edge_radii)
+        lines = rp1.plot()
+        assert lines[0].axes.get_ylabel() == 'Radial Profile'
+
+        unit = u.Jy
+        rp2 = RadialProfile(data << unit, xycen, edge_radii,
+                            error=error << unit)
+        lines = rp2.plot()
+        assert lines[0].axes.get_ylabel() == 'Radial Profile (Jy)'
+
+        rp2.normalize()
+        lines = rp2.plot()
+        assert lines[0].axes.get_ylabel() == 'Radial Profile'
+        rp2.plot_error()
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_error_none(self, profile_data):
         """
         Test that ``plot_error()`` returns ``None`` when no errors were

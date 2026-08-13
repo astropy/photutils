@@ -318,6 +318,10 @@ Bug Fixes
     such pixels were excluded on the upper-x and upper-y sides of the
     center. [#2371]
 
+  - Fixed the profile ``plot`` method so that the y-axis label no
+    longer includes the data unit after the profile has been normalized
+    (a normalized profile is dimensionless). [#2371]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range
