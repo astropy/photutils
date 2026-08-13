@@ -62,6 +62,54 @@ def test_psf_converters(tmp_path, example):
             assert_array_equal(getattr(psf, param), getattr(psf2, param))
 
 
+# Examples of every PSF model (STDPSFGrid is not a model, so it has
+# no fitting state)
+MODEL_EXAMPLES = [
+    examples.airy_disk,
+    examples.circular_gaussian_prf,
+    examples.circular_gaussian_psf,
+    examples.circular_gaussian_sigma_prf,
+    examples.gaussian_prf,
+    examples.gaussian_psf,
+    examples.moffat_psf,
+    examples.image_psf,
+    examples.gridded_psf,
+]
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('example', MODEL_EXAMPLES, ids=_example_id)
+def test_psf_converters_preserve_fitting_state(tmp_path, example):
+    """
+    Test that non-default fixed, bounds, and name states survive a
+    round trip.
+
+    The file stores only the fixed=True entries and the non-empty
+    bounds, so parameters whose class defaults differ from that
+    baseline (e.g., the shape parameters, which default to fixed=True
+    with a lower bound) must be reset when reading.
+    """
+    psf, _ = example()
+    for name in psf.param_names:
+        psf.fixed[name] = not psf.fixed[name]
+        psf.bounds[name] = (None, None)
+    psf.bounds[psf.param_names[0]] = (0.5, 100.0)
+    psf.name = 'my-psf'
+
+    filename = tmp_path / 'psf.asdf'
+    with asdf.AsdfFile() as af:
+        af['psf'] = psf
+        af.write_to(filename)
+
+    with asdf.open(filename) as af:
+        psf2 = af['psf']
+
+    assert psf2.name == psf.name
+    assert psf2.fixed == psf.fixed
+    assert psf2.bounds == psf.bounds
+
+
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
                     reason='asdf-astropy is not installed')
 def test_psf_examples_cover_all_converters():
