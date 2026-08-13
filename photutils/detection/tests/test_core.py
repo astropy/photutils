@@ -550,6 +550,19 @@ class TestStarFinderCatalogBase:
         assert sub.cutout_x_centroid[0] == cat.cutout_x_centroid[i]
         assert sub.peak[0] == cat.peak[i]
 
+    def test_filter_finite_skip_attrs(self, make_catalog):
+        """
+        Test that _filter_finite skips attributes listed in
+        skip_attrs.
+        """
+        cat = make_catalog(n_sources=3)
+        # Inject a cached flux with a non-finite value
+        cat.__dict__['flux'] = np.array([1.0, np.nan, 2.0])
+        result = cat._filter_finite(('flux',), skip_attrs=('flux',))
+        assert len(result) == 3
+        result = cat._filter_finite(('flux',))
+        assert len(result) == 2
+
     def test_filter_bounds_none_range(self, make_catalog):
         """
         Test that _filter_bounds skips filtering when a range is None.

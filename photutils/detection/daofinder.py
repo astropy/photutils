@@ -1025,10 +1025,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         attrs = ('x_centroid', 'y_centroid', 'hx', 'hy', 'sharpness',
                  'roundness1', 'roundness2', 'peak', 'flux')
-        skip = ()
-        if np.all(self._threshold_eff_per_source == 0):
-            skip = ('flux',)
-        newcat = self._filter_finite(attrs, skip_attrs=skip)
+        newcat = self._filter_finite(attrs)
         if newcat is None:
             return None
 
