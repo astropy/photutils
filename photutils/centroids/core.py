@@ -560,13 +560,16 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         A callable object (e.g., function or class) that is used to
         calculate the centroid of a 2D array. The ``centroid_func``
         must accept a 2D `~numpy.ndarray`, have a ``mask`` keyword and
-        optionally an ``error`` keyword. The callable object must return
-        two scalar values representing the (x, y) centroid. The default
-        is `~photutils.centroids.centroid_com`.
+        optionally an ``error`` keyword. A callable whose signature
+        accepts arbitrary keyword arguments (``**kwargs``) is assumed to
+        handle a ``mask`` keyword. The callable object must return two
+        scalar values representing the (x, y) centroid. The default is
+        `~photutils.centroids.centroid_com`.
 
     **kwargs : dict, optional
         Any additional keyword arguments accepted by the
-        ``centroid_func``.
+        ``centroid_func``. A `TypeError` is raised for keyword arguments
+        not accepted by the ``centroid_func``.
 
     Returns
     -------
@@ -629,6 +632,10 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         msg = 'xpos and ypos must have the same length'
         raise ValueError(msg)
 
+    if not (np.all(np.isfinite(xpos)) and np.all(np.isfinite(ypos))):
+        msg = 'xpos and ypos must contain only finite values'
+        raise ValueError(msg)
+
     if (xpos.min() < 0 or ypos.min() < 0
             or xpos.max() > data.shape[1] - 1
             or ypos.max() > data.shape[0] - 1):
@@ -647,23 +654,41 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         if footprint.ndim != 2:
             msg = 'footprint must be a 2D array'
             raise ValueError(msg)
+        if not np.any(footprint):
+            msg = 'footprint must contain at least one True value'
+            raise ValueError(msg)
 
     if mask is not None and mask.shape != data.shape:
         msg = 'mask and data must have the same shape'
         raise ValueError(msg)
 
+    # error=None is equivalent to no error array, so allow it even for
+    # centroid functions that do not accept an error keyword
+    if kwargs.get('error') is None:
+        kwargs.pop('error', None)
+
+    # Allow arbitrary keyword arguments (**kwargs)
     spec = inspect.signature(centroid_func)
-    if 'mask' not in spec.parameters:
+    accepts_var_keyword = any(param.kind == inspect.Parameter.VAR_KEYWORD
+                              for param in spec.parameters.values())
+    if 'mask' not in spec.parameters and not accepts_var_keyword:
         msg = "The input 'centroid_func' must have a 'mask' keyword."
         raise ValueError(msg)
 
-    # Drop any **kwargs not supported by the centroid_func
-    centroid_kwargs = {key: val for key, val in kwargs.items()
-                       if key in spec.parameters}
+    if not accepts_var_keyword:
+        unknown_keys = set(kwargs) - set(spec.parameters)
+        if unknown_keys:
+            msg = ('Unrecognized keyword argument(s) for the input '
+                   f"'centroid_func': {sorted(unknown_keys)}")
+            raise TypeError(msg)
+    centroid_kwargs = dict(kwargs)
 
     # Save the original error array before the loop so that each
     # iteration independently slices the full-image array
     error_array = centroid_kwargs.get('error')
+    if error_array is not None and np.shape(error_array) != data.shape:
+        msg = 'error and data must have the same shape'
+        raise ValueError(msg)
 
     # Extract xpeak/ypeak before the loop so the original absolute
     # coordinates are available for every source. The per-iteration

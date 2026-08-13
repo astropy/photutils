@@ -745,6 +745,64 @@ class TestCentroidSources:
                                       xpeak=7, ypeak=7, fit_boxsize=3)
         assert_allclose(xycen3, ([7], [7]))
 
+    def test_unknown_kwargs(self):
+        """
+        Test that centroid_sources raises a TypeError for keyword
+        arguments not accepted by the centroid function.
+        """
+        data = np.ones((50, 50))
+        match = 'Unrecognized keyword argument\\(s\\) for the input'
+        with pytest.raises(TypeError, match=match):
+            centroid_sources(data, 25, 25, box_size=11,
+                             centroid_func=centroid_quadratic,
+                             fit_boxsizes=3)
+
+        # The error keyword is not accepted by centroid_com
+        with pytest.raises(TypeError, match=match):
+            centroid_sources(data, 25, 25, box_size=11,
+                             error=np.ones(data.shape))
+
+    def test_error_wrong_shape(self):
+        """
+        Test that centroid_sources raises a ValueError when the error
+        shape does not match the data shape.
+        """
+        data = np.ones((50, 50))
+        match = 'error and data must have the same shape'
+        with pytest.raises(ValueError, match=match):
+            centroid_sources(data, 25, 25, box_size=11,
+                             centroid_func=centroid_1dg, error=np.ones((5, 5)))
+
+    def test_var_keyword_centroid_func(self, test_data):
+        """
+        Test centroid_sources with a centroid function that accepts
+        the mask keyword via **kwargs.
+        """
+        def my_centroid(data, **kwargs):
+            return centroid_com(data, mask=kwargs.get('mask'))
+
+        data, xpos, ypos = test_data
+        xcen1, ycen1 = centroid_sources(data, xpos[1], ypos[1],
+                                        box_size=11,
+                                        centroid_func=my_centroid)
+        xcen2, ycen2 = centroid_sources(data, xpos[1], ypos[1],
+                                        box_size=11,
+                                        centroid_func=centroid_com)
+        assert_allclose(xcen1, xcen2)
+        assert_allclose(ycen1, ycen2)
+
+    def test_nonfinite_positions(self, test_data):
+        """
+        Test that centroid_sources raises a ValueError for non-finite
+        xpos or ypos values.
+        """
+        data = test_data[0]
+        match = 'xpos and ypos must contain only finite values'
+        with pytest.raises(ValueError, match=match):
+            centroid_sources(data, np.nan, 25, box_size=11)
+        with pytest.raises(ValueError, match=match):
+            centroid_sources(data, 25, np.inf, box_size=11)
+
     def test_mask_wrong_shape(self):
         """
         Test centroid_sources raises ValueError when the mask shape
@@ -844,7 +902,7 @@ def test_cutout_mask():
     x_init = (25, 91, 151, 160)
     y_init = (40, 61, 24, 71)
     footprint = np.zeros((3, 3))
-    match = 'is completely masked'
+    match = 'footprint must contain at least one True value'
     with pytest.raises(ValueError, match=match):
         _ = centroid_sources(data, x_init, y_init, footprint=footprint,
                              centroid_func=centroid_com)
@@ -855,6 +913,7 @@ def test_cutout_mask():
                              centroid_func=centroid_com)
 
     mask = np.ones(data.shape, dtype=bool)
+    match = 'is completely masked'
     with pytest.raises(ValueError, match=match):
         _ = centroid_sources(data, x_init, y_init, box_size=11, mask=mask)
 

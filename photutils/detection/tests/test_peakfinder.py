@@ -152,6 +152,9 @@ class TestFindPeaks:
     def test_centroid_func_with_error(self, data):
         """
         Test find_peaks with a centroid_func and an error array.
+
+        The error array is ignored because centroid_com does not accept
+        an error keyword.
         """
         error = np.ones_like(data) * 0.1
         tbl = find_peaks(data, 0.1, box_size=3, centroid_func=centroid_com,
@@ -159,6 +162,24 @@ class TestFindPeaks:
         assert 'x_centroid' in tbl.colnames
         assert 'y_centroid' in tbl.colnames
         assert len(tbl) > 0
+
+    def test_centroid_func_with_error_keyword(self, data):
+        """
+        Test that find_peaks passes the error array to a centroid
+        function that accepts an error keyword.
+        """
+        received_errors = []
+
+        def my_centroid(data, mask=None, error=None):
+            received_errors.append(error)
+            return centroid_com(data, mask=mask)
+
+        error = np.ones_like(data) * 0.1
+        tbl = find_peaks(data, 0.1, box_size=3, centroid_func=my_centroid,
+                         error=error)
+        assert 'x_centroid' in tbl.colnames
+        assert len(received_errors) == len(tbl)
+        assert all(err is not None for err in received_errors)
 
     def test_centroid_func_with_footprint(self, data):
         """

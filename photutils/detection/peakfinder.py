@@ -3,6 +3,7 @@
 Tools for finding local peaks in an astronomical image.
 """
 
+import inspect
 import warnings
 
 import numpy as np
@@ -266,9 +267,11 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
     error : array_like, optional
         The 2D array of the 1-sigma errors of the input ``data``.
         ``error`` is used only if ``centroid_func`` is input (the
-        ``error`` array is passed directly to the ``centroid_func``). If
-        ``data`` is a `~astropy.units.Quantity` array, then ``error``
-        must have the same units as ``data``.
+        ``error`` array is passed directly to the ``centroid_func``).
+        If the ``centroid_func`` does not accept an ``error``
+        keyword, the ``error`` array is ignored. If ``data`` is a
+        `~astropy.units.Quantity` array, then ``error`` must have the
+        same units as ``data``.
 
     wcs : `None` or WCS object, optional
         A world coordinate system (WCS) transformation that
@@ -434,10 +437,20 @@ def find_peaks(data, threshold, *, box_size=3, footprint=None, mask=None,
                 s if s % 2 else s + 1 for s in footprint.shape)
         else:
             centroid_box_size = box_size
+        # Pass the error array only to centroid functions that accept
+        # an error keyword. Otherwise, it is ignored.
+        centroid_kwargs = {}
+        if error is not None:
+            spec = inspect.signature(centroid_func)
+            if ('error' in spec.parameters
+                    or any(param.kind == inspect.Parameter.VAR_KEYWORD
+                           for param in spec.parameters.values())):
+                centroid_kwargs['error'] = error
+
         x_centroids, y_centroids = centroid_sources(
             data, x_peaks, y_peaks, box_size=centroid_box_size,
-            footprint=footprint, error=error, mask=mask,
-            centroid_func=centroid_func)
+            footprint=footprint, mask=mask,
+            centroid_func=centroid_func, **centroid_kwargs)
 
         table['x_centroid'] = x_centroids
         table['y_centroid'] = y_centroids
