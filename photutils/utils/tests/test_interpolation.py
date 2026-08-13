@@ -134,6 +134,17 @@ class TestShepardIDWInterpolator:
         assert np.isscalar(result)
         assert_allclose(result, 0.479334, rtol=3e-7)
 
+    def test_scalar_return_type(self):
+        """
+        Test that single-position calls return the same scalar type for
+        n_neighbors=1 and n_neighbors>1.
+        """
+        result1 = self.f(0.5, n_neighbors=1)
+        result8 = self.f(0.5, n_neighbors=8)
+        assert np.isscalar(result1)
+        assert np.isscalar(result8)
+        assert type(result1) is type(result8)
+
     def test_n_neighbors_negative(self):
         """
         Test that negative n_neighbors raises ValueError.

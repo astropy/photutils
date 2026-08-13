@@ -302,7 +302,7 @@ class ShepardIDWInterpolator:
 
         if n_neighbors == 1:
             result = self.values[idx]
-            return result.item() if n_positions == 1 else result
+            return result[0] if n_positions == 1 else result
 
         if dtype is None:
             dtype = self.values.dtype

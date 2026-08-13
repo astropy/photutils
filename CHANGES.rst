@@ -580,6 +580,11 @@ API Changes
     across calls. With a fixed seed, every call on the same instance now
     produces identical results. [#2375]
 
+  - ``ShepardIDWInterpolator`` now returns a NumPy scalar for a
+    single input position when ``n_neighbors=1``, consistent with the
+    ``n_neighbors > 1`` case. Previously it returned a Python float.
+    [#2375]
+
 
 3.0.0 (2026-04-17)
 ------------------
