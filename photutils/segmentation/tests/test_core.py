@@ -1225,6 +1225,34 @@ def test_imshow_map_cbar_labelsize(segm_data):
     _im, cbar_info = segm.imshow_map(cbar_labelsize=8)
     assert cbar_info is not None
 
+    _cbar, ticks, labels = cbar_info
+    assert_equal(labels, [0, 1, 3, 4, 5, 7])
+    assert_equal(ticks, np.arange(len(labels)))
+
+
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+def test_imshow_map_no_background():
+    """
+    Test imshow_map colorbar labels for a segmentation image with no
+    background (zero) pixels.
+
+    Regression test for a bug where 0 was unconditionally prepended to
+    the colorbar tick labels, shifting every label by one position when
+    the segmentation image contained no background pixels.
+    """
+    data = np.array([[1, 1, 2, 2],
+                     [1, 1, 2, 2],
+                     [5, 5, 9, 9],
+                     [5, 5, 9, 9]])
+    segm = SegmentationImage(data)
+    im, cbar_info = segm.imshow_map()
+    assert cbar_info is not None
+
+    _cbar, ticks, labels = cbar_info
+    assert_equal(labels, [1, 2, 5, 9])
+    assert_equal(ticks, np.arange(len(labels)))
+    assert np.max(np.asarray(im.get_array())) == len(labels) - 1
+
 
 class TestGetSegment:
     """

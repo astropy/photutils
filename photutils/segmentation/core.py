@@ -2359,7 +2359,9 @@ class SegmentationImage:
                        alpha=alpha, vmin=vmin, vmax=vmax)
 
         cbar_info = None
-        cbar_labels = np.hstack((0, self.labels))
+        # The unique data values are the colorbar tick labels. 0 is
+        # included only if background pixels are present.
+        cbar_labels = data
         if len(cbar_labels) <= max_labels:
             cbar_ticks = np.arange(len(cbar_labels))
             cbar = ax.figure.colorbar(im, ax=ax, ticks=cbar_ticks)
