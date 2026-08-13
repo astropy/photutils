@@ -551,10 +551,15 @@ class TestFindPeaks:
                     dist = np.sqrt((x[i] - x[j])**2 + (y[i] - y[j])**2)
                     assert dist > 10
 
-    def test_min_separation_matches_circular_footprint(self):
+    @pytest.mark.parametrize('radius', [2.5, 5, 7.3, 10, 12.5, 25, 50])
+    def test_min_separation_matches_circular_footprint(self, radius):
         """
         Test that min_separation produces the same peaks as an
         equivalent circular footprint passed to maximum_filter.
+
+        The fractional radii exercise the even-sized-footprint branch
+        of the fast algorithm, which is the default star finder path
+        (min_separation = 2.5 * fwhm).
         """
         rng = np.random.default_rng(42)
         data = rng.standard_normal((200, 200))
@@ -563,25 +568,21 @@ class TestFindPeaks:
         data[30, 170] = 15.0
         threshold = 3.0
 
-        for radius in (5, 10, 25, 50):
-            # Reference: actual circular footprint (slow but correct)
-            idx = np.arange(-radius, radius + 1)
-            xx, yy = np.meshgrid(idx, idx)
-            fp = np.array((xx**2 + yy**2) <= radius**2, dtype=int)
-            tbl_ref = find_peaks(data, threshold, footprint=fp)
+        # Reference uses the actual circular footprint (slow but correct)
+        idx = np.arange(-radius, radius + 1)
+        xx, yy = np.meshgrid(idx, idx)
+        fp = np.array((xx**2 + yy**2) <= radius**2, dtype=int)
+        tbl_ref = find_peaks(data, threshold, footprint=fp)
 
-            tbl_fast = find_peaks(data, threshold, min_separation=radius)
+        tbl_fast = find_peaks(data, threshold, min_separation=radius)
 
-            if tbl_ref is None:
-                assert tbl_fast is None
-            else:
-                ref_xy = set(zip(tbl_ref['x_peak'].tolist(),
-                                 tbl_ref['y_peak'].tolist(),
-                                 strict=True))
-                fast_xy = set(zip(tbl_fast['x_peak'].tolist(),
-                                  tbl_fast['y_peak'].tolist(),
-                                  strict=True))
-                assert ref_xy == fast_xy
+        ref_xy = set(zip(tbl_ref['x_peak'].tolist(),
+                         tbl_ref['y_peak'].tolist(),
+                         strict=True))
+        fast_xy = set(zip(tbl_fast['x_peak'].tolist(),
+                          tbl_fast['y_peak'].tolist(),
+                          strict=True))
+        assert ref_xy == fast_xy
 
     def test_min_separation_rejects_non_maxima(self):
         """

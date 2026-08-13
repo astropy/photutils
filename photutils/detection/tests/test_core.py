@@ -3,11 +3,14 @@
 Tests for the photutils.detection.core module.
 """
 
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from functools import cached_property
 
 import numpy as np
 import pytest
 from astropy.utils.exceptions import AstropyDeprecationWarning
+from numpy.testing import assert_array_equal
 
 from photutils.detection import DAOStarFinder
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderCatalogBase,
@@ -447,7 +450,7 @@ class TestStarFinderCatalogBase:
 
         assert cutouts.shape == (1, 3, 3)
         expected = data[4:7, 4:7]
-        np.testing.assert_array_equal(cutouts[0], expected)
+        assert_array_equal(cutouts[0], expected)
 
     def test_select_brightest(self, make_catalog):
         """
@@ -476,7 +479,7 @@ class TestStarFinderCatalogBase:
         sub = cat[1:]
         assert sub.id[0] == 2
         sub.reset_ids()
-        np.testing.assert_array_equal(sub.id, [1, 2])
+        assert_array_equal(sub.id, [1, 2])
 
     def test_apply_all_filters(self, make_catalog):
         """
@@ -488,7 +491,7 @@ class TestStarFinderCatalogBase:
         assert result is not None
         assert len(result) == 2
         # IDs should be reset to [1, 2]
-        np.testing.assert_array_equal(result.id, [1, 2])
+        assert_array_equal(result.id, [1, 2])
 
     def test_getitem_negative_index(self, make_catalog):
         """
@@ -541,9 +544,8 @@ class TestStarFinderCatalogBase:
         assert sub.moments.shape == (1, 2, 2)
         assert sub.cutout_data.shape == (1, 3, 3)
         assert sub.cutout_centroid.shape == (1, 2)
-        np.testing.assert_array_equal(sub.moments[0], cat.moments[i])
-        np.testing.assert_array_equal(sub.cutout_data[0],
-                                      cat.cutout_data[i])
+        assert_array_equal(sub.moments[0], cat.moments[i])
+        assert_array_equal(sub.cutout_data[0], cat.cutout_data[i])
 
         # Dependent properties must be computable from the sliced
         # cached values
@@ -592,6 +594,94 @@ class TestStarFinderCatalogBase:
         assert sub.default_columns == ('id', 'x_centroid', 'y_centroid')
 
 
+class TestThreadSafety:
+    """
+    Thread-safety tests for the star finder and catalog classes.
+    """
+
+    def test_concurrent_find_stars_shared_finder(self, data):
+        """
+        Test that concurrent find_stars calls on a shared finder
+        instance give results identical to a serial call.
+
+        Finder instances are immutable after construction and create a
+        fresh catalog per call, so concurrent calls must not interfere.
+        """
+        finder = DAOStarFinder(threshold=5.0, fwhm=2.0)
+        expected = finder(data)
+
+        n_threads = 8
+        barrier = threading.Barrier(n_threads)
+
+        def worker(_):
+            barrier.wait()
+            return finder(data)
+
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            results = list(executor.map(worker, range(n_threads)))
+
+        for tbl in results:
+            assert len(tbl) == len(expected)
+            for col in expected.colnames:
+                assert_array_equal(tbl[col], expected[col])
+
+    def test_concurrent_cached_property_access(self, make_catalog):
+        """
+        Test concurrent first access of cached properties on a shared
+        catalog.
+
+        cached_property does not lock, so concurrent first accesses
+        may run a getter more than once, but every thread must see
+        values identical to the serial computation.
+        """
+        expected = make_catalog(n_sources=3)
+        cat = make_catalog(n_sources=3)
+
+        n_threads = 8
+        barrier = threading.Barrier(n_threads)
+
+        def worker(_):
+            barrier.wait()
+            return (cat.flux, cat.moments, cat.cutout_centroid)
+
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            results = list(executor.map(worker, range(n_threads)))
+
+        for flux, moments, cutout_centroid in results:
+            assert_array_equal(flux, expected.flux)
+            assert_array_equal(moments, expected.moments)
+            assert_array_equal(cutout_centroid, expected.cutout_centroid)
+
+    def test_concurrent_cached_properties_introspection(self):
+        """
+        Test concurrent first access of the class-level
+        _cached_properties introspection cache on a fresh class.
+
+        The lazy class-level cache is written without a lock. The race
+        is benign because the computed list is identical for every
+        thread.
+        """
+        cls = _make_minimal_catalog_class()
+        data = np.zeros((11, 11))
+        data[5, 5] = 10.0
+        kernel = np.ones((3, 3))
+        xypos = np.array([[5, 5]])
+        cats = [cls(data, xypos, kernel) for _ in range(8)]
+
+        n_threads = len(cats)
+        barrier = threading.Barrier(n_threads)
+
+        def worker(cat):
+            barrier.wait()
+            return cat._cached_properties
+
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            results = list(executor.map(worker, cats))
+
+        assert all(result == results[0] for result in results)
+        assert 'flux' in results[0]
+
+
 class TestStarFinderBaseCall:
     """
     Test that StarFinderBase.__call__ delegates to find_stars.
@@ -606,7 +696,7 @@ class TestStarFinderBaseCall:
         tbl_find = finder.find_stars(data)
         assert len(tbl_call) == len(tbl_find)
         for col in tbl_call.colnames:
-            np.testing.assert_array_equal(tbl_call[col], tbl_find[col])
+            assert_array_equal(tbl_call[col], tbl_find[col])
 
 
 def test_deprecated_attr(data):

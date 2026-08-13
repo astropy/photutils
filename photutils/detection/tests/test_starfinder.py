@@ -106,7 +106,7 @@ class TestStarFinder:
             tbl = finder(-data)
         assert tbl is None
 
-    def test_exclude_border(self, data, kernel):
+    def test_exclude_border(self):
         """
         Test that border sources are excluded.
         """
