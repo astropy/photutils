@@ -570,10 +570,17 @@ class PixelAperture(Aperture):
         return np.atleast_2d(self.positions)
 
     @cached_property
-    def _bbox(self):
+    def _bbox_bounds(self):
         """
-        The minimal bounding box for the aperture, always as a list of
-        `~photutils.aperture.BoundingBox` instances.
+        The integer bounding-box bounds, as an ``(n_positions, 4)``
+        array of ``(ixmin, ixmax, iymin, iymax)`` values.
+
+        The bounds follow the same pixel-index arithmetic as
+        `BoundingBox.from_float` (upper bounds exclusive), computed
+        vectorized over the positions. Performance-sensitive consumers
+        (e.g., `~photutils.aperture.ApertureStats`) use this array
+        directly so that no per-position `BoundingBox` objects need to
+        be created.
         """
         x_delta, y_delta = self._xy_extents
         off_x, off_y = self._xy_bbox_offset
@@ -582,8 +589,22 @@ class PixelAperture(Aperture):
         ymin = self._positions[:, 1] + off_y - y_delta
         ymax = self._positions[:, 1] + off_y + y_delta
 
-        return [BoundingBox.from_float(x0, x1, y0, y1)
-                for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax, strict=True)]
+        bounds = np.empty((self._positions.shape[0], 4), dtype=int)
+        bounds[:, 0] = np.floor(xmin + 0.5)
+        bounds[:, 1] = np.ceil(xmax + 0.5)
+        bounds[:, 2] = np.floor(ymin + 0.5)
+        bounds[:, 3] = np.ceil(ymax + 0.5)
+        return bounds
+
+    @cached_property
+    def _bbox(self):
+        """
+        The minimal bounding box for the aperture, always as a list of
+        `~photutils.aperture.BoundingBox` instances.
+        """
+        return [BoundingBox(ixmin=ixmin, ixmax=ixmax, iymin=iymin,
+                            iymax=iymax)
+                for ixmin, ixmax, iymin, iymax in self._bbox_bounds]
 
     @cached_property
     def bbox(self):

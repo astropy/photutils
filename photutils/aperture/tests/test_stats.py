@@ -4,6 +4,7 @@ Tests for the stats module.
 """
 
 import sys
+from functools import cached_property
 from unittest.mock import patch
 
 import astropy.units as u
@@ -15,6 +16,7 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
+from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.circle import CircularAnnulus, CircularAperture
 from photutils.aperture.core import _enable_batch_photometry
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
@@ -71,6 +73,25 @@ def stats_data(request):
                                        error=cls.error * cls.unit,
                                        wcs=cls.wcs,
                                        sigma_clip=cls.sigclip)
+
+
+class _ExpandedBboxCircular(CircularAperture):
+    """
+    A `CircularAperture` subclass whose ``bbox`` is expanded by one
+    pixel on each side, overriding the default implementation.
+
+    Used to test that the ``ApertureStats`` bounding-box bounds honor a
+    ``bbox`` override instead of using the vectorized fast path.
+    """
+
+    @cached_property
+    def bbox(self):
+        boxes = [BoundingBox(ixmin=box.ixmin - 1, ixmax=box.ixmax + 1,
+                             iymin=box.iymin - 1, iymax=box.iymax + 1)
+                 for box in self._bbox]
+        if self.isscalar:
+            return boxes[0]
+        return boxes
 
 
 @pytest.mark.usefixtures('stats_data')
@@ -502,6 +523,17 @@ class TestIndexing(BaseApertureStatsData):
         match = '-1 is not a valid source ID number'
         with pytest.raises(ValueError, match=match):
             apstat0 = apstats.select_ids([-1, 0])
+
+    def test_fancy_slicing_list_cache(self):
+        """
+        Test fancy-index slicing of an evaluated list-valued cached
+        property (e.g., the ``bbox`` BoundingBox list), which cannot
+        be indexed directly with an array index.
+        """
+        apstats = self.apstats1.copy()
+        bbox = apstats.bbox  # cache the per-source BoundingBox list
+        sliced = apstats[[2, 1, 0]]
+        assert sliced.bbox == [bbox[2], bbox[1], bbox[0]]
 
     def test_scalar_aperture_stats(self):
         apstats = self.apstats1[0]
@@ -1487,3 +1519,22 @@ class TestNThreads:
         for n_threads in (0, -1, 2.5):
             with pytest.raises(ValueError, match=match):
                 ApertureStats(data, aper, n_threads=n_threads)
+
+
+def test_overridden_bbox_fallback():
+    """
+    Test that the bounding-box bounds honor an aperture subclass that
+    overrides ``bbox``.
+
+    The bounds are normally computed from the aperture's vectorized
+    integer bounds without creating per-position BoundingBox objects;
+    an overridden ``bbox`` must fall back to reading the objects.
+    """
+    data = np.ones((60, 60))
+    positions = [(20.0, 20.0), (35.5, 24.2), (10.1, 40.7)]
+    stats1 = ApertureStats(data, CircularAperture(positions, r=5.0))
+    stats2 = ApertureStats(data, _ExpandedBboxCircular(positions, r=5.0))
+    assert_equal(stats2.bbox_xmin, stats1.bbox_xmin - 1)
+    assert_equal(stats2.bbox_xmax, stats1.bbox_xmax + 1)
+    assert_equal(stats2.bbox_ymin, stats1.bbox_ymin - 1)
+    assert_equal(stats2.bbox_ymax, stats1.bbox_ymax + 1)

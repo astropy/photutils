@@ -41,7 +41,7 @@ from photutils.aperture._common import (SCALAR_COLLAPSE_TYPES,
                                         validate_array, validate_mask_method)
 from photutils.aperture._segmentation import (make_segmentation_exclusion,
                                               process_segmentation_inputs)
-from photutils.aperture.core import (_aperture_metadata,
+from photutils.aperture.core import (PixelAperture, _aperture_metadata,
                                      _update_method_subpixels_docstring)
 from photutils.aperture.flags import (APERTURE_FLAGS, _counts_to_flag_bits,
                                       decode_aperture_flags)
@@ -2337,8 +2337,20 @@ class ApertureStats:
     @cached_property
     def _bbox_bounds(self):
         """
-        The bounding box x and y minimum and maximum bounds.
+        The bounding box x and y minimum and maximum (inclusive)
+        bounds, as an ``(n_positions, 4)`` array.
+
+        When the aperture uses the default ``bbox`` implementation,
+        the bounds are taken from the aperture's vectorized integer
+        bounds, so no per-position `~photutils.aperture.BoundingBox`
+        objects are created. An aperture subclass that overrides
+        ``bbox`` falls back to reading the per-position objects.
         """
+        aper = self._pixel_aperture
+        if type(aper).bbox is PixelAperture.bbox:
+            # Convert the exclusive upper bounds to inclusive
+            return aper._bbox_bounds - [0, 1, 0, 1]
+
         bbox = self._array('bbox')
         # The reshape preserves the (n_positions, 4) shape when there
         # are zero positions
