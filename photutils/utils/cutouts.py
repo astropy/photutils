@@ -9,6 +9,7 @@ import numpy as np
 from astropy.nddata import extract_array, overlap_slices
 
 from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils._round import round_half_away
 
 __all__ = ['CutoutImage']
 
@@ -251,8 +252,9 @@ def _make_cutouts(data, xpos, ypos, cutout_shape, *, fill_value=0.0):
     """
     Make 2D cutouts from a data array at the given positions.
 
-    Positions are rounded to the nearest integer pixel. Pixels that fall
-    outside the image boundary are filled with ``fill_value``.
+    Positions are rounded to the nearest integer pixel, with ties
+    rounding half away from zero. Pixels that fall outside the image
+    boundary are filled with ``fill_value``.
 
     Parameters
     ----------
@@ -314,8 +316,8 @@ def _make_cutouts(data, xpos, ypos, cutout_shape, *, fill_value=0.0):
     ky, kx = cutout_shape
     hy, hx = ky // 2, kx // 2
 
-    yc = np.round(ypos).astype(int)
-    xc = np.round(xpos).astype(int)
+    yc = round_half_away(ypos)
+    xc = round_half_away(xpos)
 
     # Build index grids: shape (n_sources, ky, kx)
     dy = np.arange(ky) - hy

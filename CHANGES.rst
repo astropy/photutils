@@ -511,6 +511,11 @@ API Changes
     labels the number of sources as ``n_sources`` instead of
     ``nsources`` for naming consistency. [#2338]
 
+  - The star-finder cutout centers used for the shape and flux
+    measurements now round half-integer pixel positions half away
+    from zero instead of half to even, consistent with the rounding
+    convention used elsewhere in photutils. [#2375]
+
 - ``photutils.geometry``
 
   - The ``circular_overlap_grid``, ``elliptical_overlap_grid``, and
