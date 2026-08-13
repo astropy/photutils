@@ -424,6 +424,11 @@ Bug Fixes
   - Fixed a thread-safety issue in ``ImageDepth`` by using a copy of the
     user's SigmaClip instance. [#2364]
 
+  - Fixed ``ImageDepth`` so that repeated calls on the same instance
+    no longer accumulate the ``fluxes`` attribute across calls. The
+    result attributes now always reflect only the most recent call.
+    [#2375]
+
 API Changes
 ^^^^^^^^^^^
 
@@ -563,6 +568,11 @@ API Changes
     renamed to ``n_coords``, consistent with the ``n_*`` naming used
     elsewhere in photutils. The old ``ncoords`` name is deprecated and
     will be removed in version 4.0. [#2346]
+
+  - ``ImageDepth`` now creates a fresh random generator initialized
+    with ``seed`` on every call instead of consuming a generator shared
+    across calls. With a fixed seed, every call on the same instance now
+    produces identical results. [#2375]
 
 
 3.0.0 (2026-04-17)

@@ -180,10 +180,49 @@ class TestImageDepth:
                        mask_pad=-7.1, overlap=True, seed=123, zeropoint=23.9,
                        progress_bar=False)
 
+        match = 'n_apertures must be >= 1'
+        with pytest.raises(ValueError, match=match):
+            ImageDepth(4.0, n_sigma=5.0, n_apertures=0, n_iters=2,
+                       progress_bar=False)
+
+        match = 'n_iters must be >= 1'
+        with pytest.raises(ValueError, match=match):
+            ImageDepth(4.0, n_sigma=5.0, n_apertures=500, n_iters=0,
+                       progress_bar=False)
+
         match = 'sigma_clip must be a callable'
         with pytest.raises(TypeError, match=match):
             ImageDepth(4.0, n_sigma=5.0, n_apertures=500, n_iters=2,
                        sigma_clip='not_callable', progress_bar=False)
+
+    def test_repeated_calls(self):
+        """
+        Test that repeated calls with a fixed seed produce identical
+        results and do not accumulate state from previous calls.
+        """
+        depth = ImageDepth(4, n_sigma=5.0, n_apertures=100, n_iters=2,
+                           mask_pad=5, overlap=True, seed=123,
+                           zeropoint=23.9, progress_bar=False)
+        limits1 = depth(self.data, self.mask)
+        fluxes1 = depth.fluxes
+        apertures1 = depth.apertures
+
+        limits2 = depth(self.data, self.mask)
+        assert_allclose(limits2, limits1)
+
+        # The result attributes reflect only the most recent call
+        assert len(depth.fluxes) == 2
+        assert len(depth.apertures) == 2
+        assert len(depth.flux_limits) == 2
+        assert len(depth.mag_limits) == 2
+        assert len(depth.n_apertures_used) == 2
+
+        # A fresh per-call generator makes calls idempotent
+        for fluxes_a, fluxes_b in zip(fluxes1, depth.fluxes, strict=True):
+            assert_allclose(fluxes_a, fluxes_b)
+        for apers_a, apers_b in zip(apertures1, depth.apertures,
+                                    strict=True):
+            assert_allclose(apers_a.positions, apers_b.positions)
 
     def test_repr(self):
         """
