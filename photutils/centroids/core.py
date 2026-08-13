@@ -218,6 +218,9 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
     * quadratic fit maximum falls outside image
     * not enough unmasked data points (6 are required)
 
+    A `ValueError` is raised if all data values are masked or
+    non-finite.
+
     Also note that a fit is not performed if the maximum data value is
     at the edge of the data. In this case, the position of the maximum
     pixel will be returned.
@@ -265,6 +268,10 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
 
     data = _process_data_mask(data, mask)
     ny, nx = data.shape
+
+    if not np.any(np.isfinite(data)):
+        msg = 'All data values are masked or non-finite'
+        raise ValueError(msg)
 
     fit_boxsize = as_pair('fit_boxsize', fit_boxsize, lower_bound=(0, 0),
                           upper_bound=data.shape, check_odd=True)

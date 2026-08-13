@@ -343,6 +343,44 @@ def test_centroid_quadratic_nan_in_fitbox():
     assert_allclose(xycen, (5.0, 5.0), atol=0.01)
 
 
+def test_centroid_quadratic_all_masked():
+    """
+    Test that centroid_quadratic raises a clear ValueError when all data
+    values are masked or non-finite.
+
+    Previously, this raised a cryptic "All-NaN slice encountered"
+    ValueError from numpy.
+    """
+    data = np.ones((11, 11))
+    mask = np.ones(data.shape, dtype=bool)
+    match = 'All data values are masked or non-finite'
+    with pytest.raises(ValueError, match=match):
+        centroid_quadratic(data, mask=mask)
+
+    data = np.full((11, 11), np.nan)
+    warn_match = 'Input data contains non-finite values'
+    with (pytest.warns(AstropyUserWarning, match=warn_match),
+          pytest.raises(ValueError, match=match)):
+        centroid_quadratic(data)
+
+
+def test_centroid_quadratic_masked_array():
+    """
+    Test that a MaskedArray input to centroid_quadratic gives the same
+    result as equivalent plain array and mask inputs.
+    """
+    xc_ref = 24.7
+    yc_ref = 25.2
+    data = _make_gaussian_source((51, 51), 2.4, xc_ref, yc_ref, 5.0, 5.0, 0)
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[25, 25] = True
+
+    xc1, yc1 = centroid_quadratic(data, mask=mask)
+    xc2, yc2 = centroid_quadratic(np.ma.array(data, mask=mask))
+    assert_allclose((xc1, yc1), (xc2, yc2))
+    assert_allclose((xc1, yc1), (xc_ref, yc_ref), atol=0.03)
+
+
 def test_centroid_quadratic_npts():
     """
     Test centroid_quadratic with insufficient unmasked data points.
