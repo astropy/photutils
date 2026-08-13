@@ -515,27 +515,6 @@ class SourceCatalog:
         }
 
     @property
-    def _properties(self):
-        """
-        A list of all class properties, including cached properties
-        (even in superclasses).
-
-        The result is cached on the class to avoid repeated
-        introspection via `inspect.getmembers`.
-        """
-        cls = self.__class__
-        attr = '_properties_cache'
-        # Subclasses get their own property list
-        if attr not in cls.__dict__:
-            def isproperty(obj):
-                return isinstance(obj, (property, cached_property))
-
-            setattr(cls, attr,
-                    [i[0] for i in inspect.getmembers(
-                        cls, predicate=isproperty)])
-        return getattr(cls, attr)
-
-    @property
     def properties(self):
         """
         A list of built-in source properties.
@@ -830,8 +809,11 @@ class SourceCatalog:
         overwrite : bool, option
             If `True`, will overwrite the existing property ``name``.
         """
+        # dir() includes all class-level attributes (properties, cached
+        # properties, and methods), so built-in methods (e.g., to_table)
+        # cannot be clobbered even with overwrite=True
         internal_attributes = ((set(self.__dict__.keys())
-                               | set(self._properties))
+                                | set(dir(self.__class__)))
                                - set(self.custom_properties))
         if name in internal_attributes:
             msg = f'{name} cannot be set because it is a built-in attribute'

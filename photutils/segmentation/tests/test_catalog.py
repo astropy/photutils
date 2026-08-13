@@ -1071,6 +1071,9 @@ class TestSourceCatalog:
         with pytest.raises(ValueError, match=match):
             # Built-in cached property
             cat.add_property('area', segment_snr)
+        with pytest.raises(ValueError, match=match):
+            # Built-in method; must raise even with overwrite=True
+            cat.add_property('to_table', segment_snr, overwrite=True)
 
         cat.add_property('segment_snr', segment_snr)
 
@@ -1191,16 +1194,6 @@ class TestSourceCatalog:
         cat2 = SourceCatalog(self.data, self.segm)
         result1 = self.cat._cached_properties
         result2 = cat2._cached_properties
-        assert result1 is result2
-
-    def test_properties_class_cache(self):
-        """
-        Test that _properties is cached on the class and shared across
-        instances.
-        """
-        cat2 = SourceCatalog(self.data, self.segm)
-        result1 = self.cat._properties
-        result2 = cat2._properties
         assert result1 is result2
 
     def test_copy(self):
