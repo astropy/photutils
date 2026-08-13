@@ -118,6 +118,11 @@ New Features
     back to the previous implementation and produce the same results as
     before. [#2364]
 
+  - Improved the performance of the background and background RMS
+    estimator classes when called with ``axis=None`` (the default)
+    and a supported ``sigma_clip``, by routing the sigma clipping
+    through astropy's fast C implementation. [#2364]
+
 - ``photutils.detection``
 
   - Added validation of the ``StarFinderCatalogBase.to_table()``

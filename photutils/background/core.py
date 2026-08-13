@@ -83,6 +83,34 @@ def _validate_sigma_clip(sigma_clip):
     return sigma_clip
 
 
+def _use_fast_flat_clip(sigma_clip):
+    """
+    Whether an ``axis=None`` sigma clip can be routed through astropy's
+    fast C implementation.
+
+    astropy dispatches ``axis=None`` clipping to its slower Python code
+    path even when the ``cenfunc`` and ``stdfunc`` options are supported
+    by its fast C implementation, which requires an axis. When this
+    function returns `True`, `_prepare_data` instead clips the raveled
+    data along ``axis=0`` to use the fast C path.
+
+    Parameters
+    ----------
+    sigma_clip : `~astropy.stats.SigmaClip`
+        The sigma-clipping instance.
+
+    Returns
+    -------
+    result : bool
+        Whether the fast C clipping path can be used.
+    """
+    return (isinstance(sigma_clip.cenfunc, str)
+            and sigma_clip.cenfunc in ('median', 'mean')
+            and isinstance(sigma_clip.stdfunc, str)
+            and sigma_clip.stdfunc in ('std', 'mad_std')
+            and not sigma_clip.grow)
+
+
 def _prepare_data(sigma_clip, data, axis):
     """
     Prepare input data for a background estimation step.
@@ -106,10 +134,16 @@ def _prepare_data(sigma_clip, data, axis):
     Returns
     -------
     data : `~numpy.ndarray`
-        The prepared data array, with masked or clipped values replaced
-        by NaN.
+        The prepared data array, with masked or clipped values removed
+        or replaced by NaN.
     """
     if sigma_clip is not None:
+        if axis is None and _use_fast_flat_clip(sigma_clip):
+            # Clip the raveled data along axis=0 to use astropy's
+            # fast C implementation. Clipped values are replaced by
+            # NaN (rather than removed), which is equivalent for the
+            # NaN-aware statistics used by the estimator classes.
+            return sigma_clip(np.ravel(data), axis=0, masked=False)
         return sigma_clip(data, axis=axis, masked=False)
 
     if isinstance(data, np.ma.MaskedArray):
