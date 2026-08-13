@@ -1270,7 +1270,9 @@ class SegmentationImage:
         Parameters
         ----------
         border_width : int
-            The width of the border region in pixels.
+            The width of the border region in pixels. It must be
+            positive and smaller than half the array size in any
+            dimension.
 
         partial_overlap : bool, optional
             If this is set to `True` (the default), a segment that
@@ -1319,6 +1321,9 @@ class SegmentationImage:
                [7, 7, 0, 5, 5, 5],
                [7, 7, 0, 0, 5, 5]])
         """
+        if border_width <= 0:
+            msg = 'border_width must be a positive integer'
+            raise ValueError(msg)
         if border_width >= min(self.shape) / 2:
             msg = ('border_width must be smaller than half the array size '
                    'in any dimension')

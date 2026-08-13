@@ -611,6 +611,18 @@ class TestSegmentationImage:
         with pytest.raises(ValueError, match=match):
             segm.remove_border_labels(border_width=3)
 
+    @pytest.mark.parametrize('border_width', [0, -1])
+    def test_remove_border_labels_nonpositive_border_width(self,
+                                                           border_width):
+        """
+        Test that remove_border_labels raises for non-positive border
+        widths instead of removing every label.
+        """
+        segm = SegmentationImage(self.data.copy())
+        match = 'border_width must be a positive integer'
+        with pytest.raises(ValueError, match=match):
+            segm.remove_border_labels(border_width=border_width)
+
     def test_remove_border_labels_no_remaining_segments(self):
         """
         Test remove border labels no remaining segments.
