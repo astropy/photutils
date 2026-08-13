@@ -35,6 +35,19 @@ def test_elliptical_overlap_grid(grid_size, maj_size, min_size, angle,
     assert_allclose(g.max(), 1.0)
 
 
+@pytest.mark.parametrize('theta', [0.0, 0.3])
+def test_elliptical_overlap_smaller_than_pixel(theta):
+    """
+    An ellipse smaller than a pixel, centered exactly on a pixel
+    center, must return the ellipse area, not 1.0.
+    """
+    area = np.pi * 0.4 * 0.3
+    grid = elliptical_overlap_grid(-1.5, 1.5, -1.5, 1.5, 3, 3,
+                                   0.4, 0.3, theta, 1, 1)
+    assert_allclose(grid[1, 1], area, rtol=1e-10)
+    assert_allclose(grid.sum(), area, rtol=1e-10)
+
+
 def test_elliptical_overlap_grid_validation():
     """
     Test that invalid use_exact and subpixels inputs raise errors.

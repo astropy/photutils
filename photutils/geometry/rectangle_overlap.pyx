@@ -160,11 +160,14 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
         # if its rotated center is at least ``margin`` inside both
         # half-extents, and wholly outside if it is at least ``margin``
         # beyond either half-extent. Only the boundary band needs the
-        # exact polygon clip.
+        # exact polygon clip. A half-extent smaller than ``margin``
+        # gives a negative inner threshold, which never matches (the
+        # rotated center distances are >= 0), so no pixel is classified
+        # as wholly inside a rectangle smaller than the pixel diagonal.
         margin = 0.5 * sqrt(dx * dx + dy * dy)
-        w_in = fmax(0.0, half_width - margin)
+        w_in = half_width - margin
         w_out = half_width + margin
-        h_in = fmax(0.0, half_height - margin)
+        h_in = half_height - margin
         h_out = half_height + margin
 
         i_min = <int>fmax(0.0, fmin(<double>nx,

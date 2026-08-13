@@ -86,6 +86,18 @@ def test_rectangle_exact_full_pixel_is_one():
     assert_allclose(grid, 1.0)
 
 
+@pytest.mark.parametrize('theta', [0.0, 0.3])
+def test_rectangle_exact_smaller_than_pixel(theta):
+    """
+    A rectangle smaller than a pixel, centered exactly on a pixel
+    center, must return the rectangle area, not 1.0.
+    """
+    grid = rectangular_overlap_grid(-1.5, 1.5, -1.5, 1.5, 3, 3,
+                                    0.6, 0.8, theta, 1, 1)
+    assert_allclose(grid[1, 1], 0.48, rtol=1e-12)
+    assert_allclose(grid.sum(), 0.48, rtol=1e-12)
+
+
 def test_rectangle_exact_no_overlap():
     """
     A rectangle entirely outside the grid yields all zeros.

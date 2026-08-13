@@ -548,7 +548,10 @@ cdef inline double _ellipse_frac_core(double pxmin, double pymin,
     cxy = 2.0 * cos_theta * sin_theta * (inv_rx2 - inv_ry2)
     margin = 0.5 * sqrt(dx * dx + dy * dy) / fmin(rx, ry)
     f_in = 1.0 - margin
-    f_in = f_in * f_in if f_in > 0.0 else 0.0
+    # Use a negative sentinel when no pixel can be wholly inside.
+    # Clamping to 0 would misclassify a pixel whose center lies exactly
+    # on the ellipse center (value 0) as wholly inside.
+    f_in = f_in * f_in if f_in > 0.0 else -1.0
     f_out = (1.0 + margin) * (1.0 + margin)
 
     rpix2 = cxx * pxcen * pxcen + cyy * pycen * pycen + cxy * pxcen * pycen
