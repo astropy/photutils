@@ -526,8 +526,8 @@ class RadialProfile(ProfileBase):
     @cached_property
     def _data_profile(self):
         """
-        The raw data profile returned as 1D arrays (`~numpy.ndarray`) of
-        radii and data values.
+        The raw (unnormalized) data profile returned as 1D arrays
+        (`~numpy.ndarray`) of radii and data values.
 
         Returns the radii and values of the unmasked data points within
         the maximum radius defined by the input radii. Pixels flagged
@@ -557,6 +557,8 @@ class RadialProfile(ProfileBase):
         valid = ~self.mask[yidx_sub, xidx_sub]
         radii = radii[valid]
         data_values = self.data[yidx_sub[valid], xidx_sub[valid]]
+        if self.unit is not None:
+            data_values = data_values << self.unit
 
         return radii, data_values
 
@@ -571,8 +573,13 @@ class RadialProfile(ProfileBase):
     def data_profile(self):
         """
         The raw data profile as a 1D `~numpy.ndarray`.
+
+        The values reflect the current profile normalization. If
+        `~photutils.profiles.ProfileBase.normalize` has been called, the
+        raw data values are divided by the same normalization applied to
+        ``profile``.
         """
-        return self._data_profile[1]
+        return self._data_profile[1] / self.normalization_value
 
     def _invalidate_fit_cache(self):
         """
@@ -582,21 +589,20 @@ class RadialProfile(ProfileBase):
         for key in self._fit_properties:
             self.__dict__.pop(key, None)
 
-    def _normalize_hook(self, normalization):
+    def _normalize_hook(self, normalization):  # noqa: ARG002
         """
-        Also normalize ``data_profile`` if it has been computed, and
-        invalidate fit caches so they are recomputed on next access.
+        Invalidate the cached ``data_profile`` and fit properties
+        so they are recomputed on next access using the current
+        normalization.
         """
-        if 'data_profile' in self.__dict__:
-            self.__dict__['data_profile'] = self.data_profile / normalization
+        self.__dict__.pop('data_profile', None)
         self._invalidate_fit_cache()
 
     def _unnormalize_hook(self):
         """
-        Also unnormalize ``data_profile`` if it has been computed, and
-        invalidate fit caches so they are recomputed on next access.
+        Invalidate the cached ``data_profile`` and fit properties
+        so they are recomputed on next access using the current
+        normalization.
         """
-        if 'data_profile' in self.__dict__:
-            self.__dict__['data_profile'] = (self.data_profile
-                                             * self.normalization_value)
+        self.__dict__.pop('data_profile', None)
         self._invalidate_fit_cache()

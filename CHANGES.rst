@@ -299,6 +299,19 @@ Bug Fixes
     confusing units-mismatch error was raised when ``data`` was a
     ``Quantity``. [#2370]
 
+- ``photutils.profiles``
+
+  - Fixed ``RadialProfile.data_profile`` so that its values are always
+    consistent with the current profile normalization. Previously, if
+    ``normalize`` was called before ``data_profile`` was first accessed,
+    the raw (unnormalized) values were returned, and a subsequent
+    ``unnormalize`` call then incorrectly multiplied those raw values by
+    the normalization. [#2371]
+
+  - Fixed ``RadialProfile.data_profile`` to return a ``Quantity``
+    when the input data is a ``Quantity``, consistent with the
+    ``profile`` attribute. [#2371]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range

@@ -104,6 +104,56 @@ class TestRadialProfile:
         assert np.all(np.isfinite(rp3.data_profile))
         assert len(rp3.data_profile) < len(rp1.data_profile)
 
+    def test_data_profile_access_after_normalize(self, profile_data):
+        """
+        Test that data_profile is consistent with the profile
+        normalization when it is first accessed after normalize, and
+        that unnormalize restores the raw values.
+        """
+        xycen, data, _, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp1 = RadialProfile(data, xycen, edge_radii)
+        raw = rp1.data_profile.copy()
+        normalization = np.max(rp1.profile)
+
+        # Access data_profile for the first time after normalizing
+        rp2 = RadialProfile(data, xycen, edge_radii)
+        rp2.normalize()
+        assert_allclose(rp2.data_profile, raw / normalization)
+
+        # Unnormalizing must restore the raw values
+        rp2.unnormalize()
+        assert_allclose(rp2.data_profile, raw)
+
+        # Repeated normalize calls must compound consistently
+        rp2.normalize(method='max')
+        rp2.normalize(method='sum')
+        assert_allclose(rp2.data_profile, raw / rp2.normalization_value)
+        rp2.unnormalize()
+        assert_allclose(rp2.data_profile, raw)
+
+    def test_data_profile_units(self, profile_data):
+        """
+        Test that data_profile is a Quantity when the input data is a
+        Quantity, and is dimensionless after normalization.
+        """
+        xycen, data, error, _ = profile_data
+
+        unit = u.Jy
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data << unit, xycen, edge_radii,
+                           error=error << unit)
+        assert rp.data_profile.unit == unit
+        assert not isinstance(rp.data_radius, u.Quantity)
+
+        rp.normalize()
+        assert rp.profile.unit == u.dimensionless_unscaled
+        assert rp.data_profile.unit == u.dimensionless_unscaled
+
+        rp.unnormalize()
+        assert rp.data_profile.unit == unit
+
     def test_inputs(self, profile_data):
         """
         Test RadialProfile input validation.

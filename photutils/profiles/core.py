@@ -275,8 +275,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
         This hook is only called when normalization succeeds (i.e., when
         the normalization value is non-zero and finite).
 
-        Subclasses can override this to normalize additional lazy
-        properties (e.g., ``data_profile``).
+        Subclasses can override this to invalidate or rescale additional
+        cached properties that depend on the profile normalization
+        (e.g., ``data_profile``).
 
         Parameters
         ----------
@@ -300,8 +301,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
         Hook called by `unnormalize` after unnormalizing ``profile`` and
         ``profile_error``, but before resetting ``normalization_value``.
 
-        Subclasses can override this to unnormalize additional lazy
-        properties (e.g., ``data_profile``).
+        Subclasses can override this to invalidate or rescale additional
+        cached properties that depend on the profile normalization
+        (e.g., ``data_profile``).
         """
 
     @staticmethod
