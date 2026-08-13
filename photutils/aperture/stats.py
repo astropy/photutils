@@ -6,6 +6,7 @@ Tools for calculating properties of sources defined by an Aperture.
 import inspect
 import warnings
 from copy import copy, deepcopy
+from functools import cached_property
 from typing import NamedTuple
 
 import astropy.units as u
@@ -13,7 +14,6 @@ import numpy as np
 from astropy.nddata import NDData
 from astropy.stats import (SigmaClip, biweight_location, biweight_midvariance,
                            mad_std)
-from astropy.utils import lazyproperty
 
 from photutils.aperture import Aperture, SkyAperture, region_to_aperture
 from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
@@ -130,24 +130,24 @@ _SCALAR_EXCLUDE = frozenset({'default_columns', 'isscalar', 'labels',
                              'segmentation_image'})
 
 
-class _UncachedLazyProperty(lazyproperty):
+class _UncachedProperty(cached_property):
     """
     A property that is discovered as a source property (like
-    `~astropy.utils.lazyproperty`) but is recomputed on every access
+    `functools.cached_property`) but is recomputed on every access
     instead of being cached.
 
     This is used for `ApertureStats.flags`, whose value can change
     over the object's lifetime. It reflects whether covariance-derived
     properties have been computed (see `ApertureStats.flags`). Caching
     would freeze the first-computed value, so the getter runs on every
-    access. Subclassing `~astropy.utils.lazyproperty` keeps it in the
+    access. Subclassing `functools.cached_property` keeps it in the
     `ApertureStats.properties` list and the ``to_table`` machinery.
     """
 
     def __get__(self, obj, owner=None):
         if obj is None:
             return self
-        return self.fget(obj)
+        return self.func(obj)
 
 
 @_update_method_subpixels_docstring
@@ -346,10 +346,10 @@ class ApertureStats:
                                 'data_sum_cutout', 'error_sum_cutout',
                                 'sum_flags')
 
-    # Cached lazyproperties that are not per-source sliceable: the
-    # packed gather buffers and their reductions. ``__getitem__`` drops
-    # these from the sliced object, which recomputes them lazily from
-    # its sliced inputs. Any new lazyproperty backed by the packed batch
+    # Cached properties that are not per-source sliceable: the packed
+    # gather buffers and their reductions. ``__getitem__`` drops these
+    # from the sliced object, which recomputes them lazily from its
+    # sliced inputs. Any new cached property backed by the packed batch
     # buffers must be added here, otherwise slicing will attempt to
     # index the packed buffer per source and fail or corrupt it.
     _NON_SLICEABLE_CACHES = frozenset({
@@ -465,23 +465,23 @@ class ApertureStats:
         return aperture
 
     @property
-    def _lazyproperties(self):
+    def _cached_properties(self):
         """
-        A list of all class lazyproperties (even in superclasses).
+        A list of all class cached properties (even in superclasses).
 
         The result is cached on the class to avoid repeated
         introspection via `inspect.getmembers`.
         """
         cls = self.__class__
-        attr = '_cached_lazyproperties'
-        # Subclasses get their own lazyproperty list
+        attr = '_cached_properties_cache'
+        # Subclasses get their own cached-property list
         if attr not in cls.__dict__:
-            def islazyproperty(obj):
-                return isinstance(obj, lazyproperty)
+            def is_cached_property(obj):
+                return isinstance(obj, cached_property)
 
             setattr(cls, attr,
                     [i[0] for i in inspect.getmembers(
-                        cls, predicate=islazyproperty)])
+                        cls, predicate=is_cached_property)])
         return getattr(cls, attr)
 
     @property
@@ -489,15 +489,15 @@ class ApertureStats:
         """
         A sorted list of the built-in source properties.
         """
-        lazyproperties = [name for name in self._lazyproperties if not
-                          name.startswith('_')]
+        cached_properties = [name for name in self._cached_properties
+                             if not name.startswith('_')]
         # isscalar and n_positions are scalar values for the whole
         # object, not per-source values, so they are not valid table
         # columns
-        lazyproperties.remove('isscalar')
-        lazyproperties.remove('n_positions')
-        lazyproperties.sort()
-        return lazyproperties
+        cached_properties.remove('isscalar')
+        cached_properties.remove('n_positions')
+        cached_properties.sort()
+        return cached_properties
 
     def __getitem__(self, index):
         if self.isscalar:
@@ -536,8 +536,8 @@ class ApertureStats:
         else:
             newcls._seg_labels = np.atleast_1d(self._seg_labels[index])
 
-        # Slice evaluated lazyproperty objects
-        keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        # Slice evaluated cached-property objects
+        keys = set(self.__dict__.keys()) & set(self._cached_properties)
         keys.add('_local_bkg')  # iterable defined in __init__
         # The packed gather buffers and their reductions are not
         # per-source sliceable; the sliced object recomputes them
@@ -643,7 +643,7 @@ class ApertureStats:
             return value[np.newaxis, ...]
         return [value]
 
-    @lazyproperty
+    @cached_property
     def isscalar(self):
         """
         Whether the instance is scalar (e.g., a single aperture
@@ -662,14 +662,14 @@ class ApertureStats:
         """
         return deepcopy(self)
 
-    @lazyproperty
+    @cached_property
     def _null_object(self):
         """
         Return `None` values.
         """
         return np.array([None] * self.n_positions)
 
-    @lazyproperty
+    @cached_property
     def _null_value(self):
         """
         Return np.nan values.
@@ -782,7 +782,7 @@ class ApertureStats:
             table_columns = self.default_columns
         else:
             # id is not included in self.properties because it is not
-            # a lazyproperty
+            # a cached property
             allowed_columns = set(self.properties) | set(self.default_columns)
             # Remove 2D cutout images from the allowed columns
             allowed_columns = {col for col in allowed_columns
@@ -837,7 +837,7 @@ class ApertureStats:
             tbl[canonical_column] = values_map[column]
         return tbl
 
-    @lazyproperty
+    @cached_property
     def n_positions(self):
         """
         The number of positions for the input aperture.
@@ -858,7 +858,7 @@ class ApertureStats:
         """
         return self.n_positions
 
-    @lazyproperty
+    @cached_property
     def _pixel_aperture(self):
         """
         The input aperture as a PixelAperture.
@@ -867,7 +867,7 @@ class ApertureStats:
             return self.aperture.to_pixel(self._wcs)
         return self.aperture
 
-    @lazyproperty
+    @cached_property
     def _batch_inputs(self):
         """
         The validated inputs for the fast Cython batch driver, or `None`.
@@ -932,7 +932,7 @@ class ApertureStats:
                 np.ascontiguousarray(self._local_bkg, dtype=np.float64),
                 seg_arr, labels_arr, seg_code, clip_spec)
 
-    @lazyproperty
+    @cached_property
     def _fast_gather(self):
         """
         The fast Cython "center"-method value gather, or `None`.
@@ -976,7 +976,7 @@ class ApertureStats:
             gather = self._apply_center_clip(gather, clip_spec)
         return gather
 
-    @lazyproperty
+    @cached_property
     def _fast_sum(self):
         """
         The fast Cython ``sum_method`` aperture gather, or `None`.
@@ -1092,7 +1092,7 @@ class ApertureStats:
                                sum_values=None, sum_fracs=None,
                                sum_errsq=None, sum_counts=None)
 
-    @lazyproperty
+    @cached_property
     def _sorted_values(self):
         """
         The packed per-source ascending-sorted center pixel values, or
@@ -1116,7 +1116,7 @@ class ApertureStats:
             return (gather.sorted_values, starts, counts)
         return (batch_sort_values(values, starts, counts), starts, counts)
 
-    @lazyproperty
+    @cached_property
     def _order_stats(self):
         """
         The per-source ``(min, max, median)`` arrays, or `None`.
@@ -1129,7 +1129,7 @@ class ApertureStats:
             return None
         return batch_order_stats(*sorted_values)
 
-    @lazyproperty
+    @cached_property
     def _mean_var(self):
         """
         The per-source ``(mean, var)`` arrays, or `None`.
@@ -1143,7 +1143,7 @@ class ApertureStats:
             return None
         return batch_mean_var(gather.values, gather.starts, gather.counts)
 
-    @lazyproperty
+    @cached_property
     def _mad(self):
         """
         The per-source unscaled median absolute deviation, or `None`.
@@ -1156,7 +1156,7 @@ class ApertureStats:
             return None
         return batch_mad(*sorted_values)
 
-    @lazyproperty
+    @cached_property
     def _biweight(self):
         """
         The per-source ``(biweight_location, biweight_midvariance)``
@@ -1172,7 +1172,7 @@ class ApertureStats:
         _, _, median = self._order_stats
         return batch_biweight(*sorted_values, median, self._mad)
 
-    @lazyproperty
+    @cached_property
     def _gini(self):
         """
         The per-source Gini coefficient, or `None`.
@@ -1222,7 +1222,7 @@ class ApertureStats:
                 result <<= unit
         return result
 
-    @lazyproperty
+    @cached_property
     def _aperture_masks_center(self):
         """
         The aperture masks (`ApertureMask`) generated with the 'center'
@@ -1233,7 +1233,7 @@ class ApertureStats:
             aperture_masks = (aperture_masks,)
         return aperture_masks
 
-    @lazyproperty
+    @cached_property
     def _aperture_masks(self):
         """
         The aperture masks (`ApertureMask`) generated with the
@@ -1245,7 +1245,7 @@ class ApertureStats:
             aperture_masks = (aperture_masks,)
         return aperture_masks
 
-    @lazyproperty
+    @cached_property
     def _overlap_slices(self):
         """
         The aperture mask overlap slices with the data, always as an
@@ -1260,7 +1260,7 @@ class ApertureStats:
             overlap_slices.append((slc_large, slc_small))
         return overlap_slices
 
-    @lazyproperty
+    @cached_property
     def _data_cutouts(self):
         """
         The local-background-subtracted unmasked data cutouts using the
@@ -1309,10 +1309,10 @@ class ApertureStats:
             `False`).
         """
         # Use a local copy of the SigmaClip instance because SigmaClip
-        # stores internal state on the instance # during calls. This
-        # method is reachable from two different # lazyproperties (the
-        # center- and sum-footprint cutouts), # which do not share a lock,
-        # so calling a shared instance from # multiple threads could
+        # stores internal state on the instance during calls. This
+        # method is reachable from two different cached properties (the
+        # center- and sum-footprint cutouts), which do not share a lock,
+        # so calling a shared instance from multiple threads could
         # silently corrupt the results.
         sigma_clip = copy(self.sigma_clip)
 
@@ -1456,7 +1456,7 @@ class ApertureStats:
                         weight_cutouts, overlaps, flag_counts, n_clipped,
                         strict=True))
 
-    @lazyproperty
+    @cached_property
     def _aperture_cutouts_center(self):
         """
         Aperture-weighted cutouts for the data, variance, total mask,
@@ -1464,7 +1464,7 @@ class ApertureStats:
         """
         return self._make_aperture_cutouts(self._aperture_masks_center)
 
-    @lazyproperty
+    @cached_property
     def _aperture_cutouts(self):
         """
         Aperture-weighted cutouts for the data, variance, total mask,
@@ -1478,7 +1478,7 @@ class ApertureStats:
         return self._make_aperture_cutouts(self._aperture_masks,
                                            count_clipped=False)
 
-    @lazyproperty
+    @cached_property
     def _mask_cutout_center(self):
         """
         Boolean mask cutouts representing the total mask.
@@ -1489,7 +1489,7 @@ class ApertureStats:
         """
         return list(zip(*self._aperture_cutouts_center, strict=True))[2]
 
-    @lazyproperty
+    @cached_property
     def _mask_cutout(self):
         """
         Boolean mask cutouts representing the total mask.
@@ -1521,7 +1521,7 @@ class ApertureStats:
         return [np.ma.masked_array(arr, mask=mask)
                 for arr, mask in zip(array, self._mask_cutout, strict=True)]
 
-    @lazyproperty
+    @cached_property
     def data_cutout(self):
         """
         A 2D aperture-weighted cutout from the data using the aperture
@@ -1538,7 +1538,7 @@ class ApertureStats:
         return self._make_masked_array_center(
             list(zip(*self._aperture_cutouts_center, strict=True))[0])
 
-    @lazyproperty
+    @cached_property
     def data_sum_cutout(self):
         """
         A 2D aperture-weighted cutout from the data using the aperture
@@ -1556,7 +1556,7 @@ class ApertureStats:
         return self._make_masked_array(list(zip(*self._aperture_cutouts,
                                                 strict=True))[0])
 
-    @lazyproperty
+    @cached_property
     def _variance_cutout_center(self):
         """
         A 2D aperture-weighted variance cutout using the aperture mask
@@ -1575,7 +1575,7 @@ class ApertureStats:
         return self._make_masked_array_center(
             list(zip(*self._aperture_cutouts_center, strict=True))[1])
 
-    @lazyproperty
+    @cached_property
     def _variance_cutout(self):
         """
         A 2D aperture-weighted variance cutout using the aperture mask
@@ -1595,7 +1595,7 @@ class ApertureStats:
         return self._make_masked_array(list(zip(*self._aperture_cutouts,
                                                 strict=True))[1])
 
-    @lazyproperty
+    @cached_property
     def error_sum_cutout(self):
         """
         A 2D aperture-weighted error cutout using the aperture mask with
@@ -1613,7 +1613,7 @@ class ApertureStats:
             return self._null_object
         return [np.sqrt(var) for var in self._variance_cutout]
 
-    @lazyproperty
+    @cached_property
     def _weight_cutout_center(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the aperture mask
@@ -1628,7 +1628,7 @@ class ApertureStats:
         return self._make_masked_array_center(
             list(zip(*self._aperture_cutouts_center, strict=True))[3])
 
-    @lazyproperty
+    @cached_property
     def _weight_cutout(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the aperture mask
@@ -1643,7 +1643,7 @@ class ApertureStats:
         return self._make_masked_array(list(zip(*self._aperture_cutouts,
                                                 strict=True))[3])
 
-    @lazyproperty
+    @cached_property
     def _moment_data_cutout(self):
         """
         A list of 2D `~numpy.ndarray` cutouts from the data.
@@ -1668,14 +1668,14 @@ class ApertureStats:
 
         return cutouts
 
-    @lazyproperty
+    @cached_property
     def _all_masked(self):
         """
         True if all pixels within the aperture are masked.
         """
         return np.array([np.all(mask) for mask in self._mask_cutout_center])
 
-    @lazyproperty
+    @cached_property
     def _overlap(self):
         """
         True if there is no overlap of the aperture with the data.
@@ -1745,7 +1745,7 @@ class ApertureStats:
             candidates=candidates)
         return _counts_to_flag_bits(flag_counts, overlap, w_out)
 
-    @lazyproperty
+    @cached_property
     def _base_flags(self):
         """
         The count-based value-statistics flag bits (1D int array).
@@ -1778,7 +1778,7 @@ class ApertureStats:
 
         return flags
 
-    @lazyproperty
+    @cached_property
     def _undefined_shape_mask(self):
         """
         Boolean mask (1D) marking sources whose net flux is not
@@ -1797,7 +1797,7 @@ class ApertureStats:
         n_pixels = self._center_n_pixels
         return np.isfinite(m00) & (m00 <= 0) & np.isfinite(n_pixels)
 
-    @lazyproperty
+    @cached_property
     def _singular_covariance_mask(self):
         """
         Boolean mask (1D) marking sources with a singular or nearly
@@ -1837,7 +1837,7 @@ class ApertureStats:
         finite = np.isfinite(covar_det) & np.isfinite(min_eigval)
         return finite & ((covar_det < delta**2) | (min_eigval < delta))
 
-    @_UncachedLazyProperty
+    @_UncachedProperty
     @_update_method_subpixels_docstring
     def flags(self):
         # numpydoc ignore: RT01
@@ -1883,7 +1883,7 @@ class ApertureStats:
                 APERTURE_FLAGS.SINGULAR_COVARIANCE)
         return flags
 
-    @lazyproperty
+    @cached_property
     @_update_method_subpixels_docstring
     def sum_flags(self):
         # numpydoc ignore: RT01
@@ -1970,7 +1970,7 @@ class ApertureStats:
         return [arr.compressed() if len(arr.compressed()) > 0
                 else np.array([np.nan]) for arr in array]
 
-    @lazyproperty
+    @cached_property
     def _data_values_center(self):
         """
         A 1D array of unmasked aperture-weighted data values using the
@@ -1981,7 +1981,7 @@ class ApertureStats:
         """
         return self._get_values(self.data_cutout)
 
-    @lazyproperty
+    @cached_property
     def moments(self):
         """
         Spatial moments up to 3rd order of the source.
@@ -2002,7 +2002,7 @@ class ApertureStats:
         return np.array([_image_moments(arr, order=3)
                          for arr in self._moment_data_cutout])
 
-    @lazyproperty
+    @cached_property
     def moments_central(self):
         """
         Central moments (translation invariant) of the source up to 3rd
@@ -2028,7 +2028,7 @@ class ApertureStats:
                          zip(self._moment_data_cutout, cutout_centroid[:, 0],
                              cutout_centroid[:, 1], strict=True)])
 
-    @lazyproperty
+    @cached_property
     def cutout_centroid(self):
         """
         The ``(x, y)`` coordinate, relative to the cutout data, of the
@@ -2046,7 +2046,7 @@ class ApertureStats:
             x_centroid = moments[:, 0, 1] / moments[:, 0, 0]
         return np.transpose((x_centroid, y_centroid))
 
-    @lazyproperty
+    @cached_property
     def centroid(self):
         """
         The ``(x, y)`` coordinate of the centroid.
@@ -2057,7 +2057,7 @@ class ApertureStats:
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.cutout_centroid + origin
 
-    @lazyproperty
+    @cached_property
     def x_centroid(self):
         """
         The ``x`` coordinate of the centroid.
@@ -2067,7 +2067,7 @@ class ApertureStats:
         """
         return np.transpose(self._array('centroid'))[0]
 
-    @lazyproperty
+    @cached_property
     def y_centroid(self):
         """
         The ``y`` coordinate of the centroid.
@@ -2077,7 +2077,7 @@ class ApertureStats:
         """
         return np.transpose(self._array('centroid'))[1]
 
-    @lazyproperty
+    @cached_property
     def sky_centroid(self):
         """
         The sky coordinate of the centroid of the unmasked pixels within
@@ -2092,7 +2092,7 @@ class ApertureStats:
             return self._null_object
         return self._wcs.pixel_to_world(self.x_centroid, self.y_centroid)
 
-    @lazyproperty
+    @cached_property
     def sky_centroid_icrs(self):
         """
         The sky coordinate in the International Celestial Reference
@@ -2106,7 +2106,7 @@ class ApertureStats:
             return self._null_object
         return self.sky_centroid.icrs
 
-    @lazyproperty
+    @cached_property
     def _bbox(self):
         """
         The `~photutils.aperture.BoundingBox` of the aperture, always as
@@ -2117,7 +2117,7 @@ class ApertureStats:
             apertures = (apertures,)
         return [aperture.bbox for aperture in apertures]
 
-    @lazyproperty
+    @cached_property
     def bbox(self):
         """
         The `~photutils.aperture.BoundingBox` of the aperture.
@@ -2128,7 +2128,7 @@ class ApertureStats:
         """
         return self._bbox
 
-    @lazyproperty
+    @cached_property
     def _bbox_bounds(self):
         """
         The bounding box x and y minimum and maximum bounds.
@@ -2140,14 +2140,14 @@ class ApertureStats:
                           bbox_.iymin, bbox_.iymax - 1)
                          for bbox_ in bbox], dtype=int).reshape(-1, 4)
 
-    @lazyproperty
+    @cached_property
     def bbox_xmin(self):
         """
         The minimum ``x``-pixel index of the bounding box.
         """
         return np.transpose(self._bbox_bounds)[0]
 
-    @lazyproperty
+    @cached_property
     def bbox_xmax(self):
         """
         The maximum ``x``-pixel index of the bounding box.
@@ -2156,14 +2156,14 @@ class ApertureStats:
         """
         return np.transpose(self._bbox_bounds)[1]
 
-    @lazyproperty
+    @cached_property
     def bbox_ymin(self):
         """
         The minimum ``y``-pixel index of the bounding box.
         """
         return np.transpose(self._bbox_bounds)[2]
 
-    @lazyproperty
+    @cached_property
     def bbox_ymax(self):
         """
         The maximum ``y``-pixel index of the bounding box.
@@ -2172,7 +2172,7 @@ class ApertureStats:
         """
         return np.transpose(self._bbox_bounds)[3]
 
-    @lazyproperty
+    @cached_property
     def _center_n_pixels(self):
         """
         The number of unmasked pixels within each aperture using the
@@ -2192,7 +2192,7 @@ class ApertureStats:
         n_pixels[self._all_masked] = np.nan
         return n_pixels
 
-    @lazyproperty
+    @cached_property
     def _sem(self):
         """
         The standard error of the mean for each aperture.
@@ -2217,7 +2217,7 @@ class ApertureStats:
         sem[mask] = np.sqrt(var[mask] / (n_pixels[mask] - 1.0))
         return sem
 
-    @lazyproperty
+    @cached_property
     def center_aper_area(self):
         """
         The total area of the unmasked pixels within the aperture using
@@ -2225,7 +2225,7 @@ class ApertureStats:
         """
         return self._center_n_pixels * (u.pix**2)
 
-    @lazyproperty
+    @cached_property
     def sum_aper_area(self):
         """
         The total area of the unmasked pixels within the aperture using
@@ -2246,7 +2246,7 @@ class ApertureStats:
         areas[areas == 0] = np.nan
         return areas << (u.pix**2)
 
-    @lazyproperty
+    @cached_property
     def sum(self):
         r"""
         The sum of the unmasked ``data`` values within the aperture.
@@ -2283,7 +2283,7 @@ class ApertureStats:
             result <<= self._data_unit
         return result
 
-    @lazyproperty
+    @cached_property
     def sum_err(self):
         r"""
         The uncertainty of `sum`, propagated from the input ``error``
@@ -2330,7 +2330,7 @@ class ApertureStats:
             err <<= self._data_unit
         return err
 
-    @lazyproperty
+    @cached_property
     def min(self):
         """
         The minimum of the unmasked pixel values within the aperture.
@@ -2338,7 +2338,7 @@ class ApertureStats:
         fast = None if self._order_stats is None else self._order_stats[0]
         return self._finalize_value_stat(fast, np.min)
 
-    @lazyproperty
+    @cached_property
     def max(self):
         """
         The maximum of the unmasked pixel values within the aperture.
@@ -2346,7 +2346,7 @@ class ApertureStats:
         fast = None if self._order_stats is None else self._order_stats[1]
         return self._finalize_value_stat(fast, np.max)
 
-    @lazyproperty
+    @cached_property
     def mean(self):
         """
         The mean of the unmasked pixel values within the aperture.
@@ -2354,7 +2354,7 @@ class ApertureStats:
         fast = None if self._mean_var is None else self._mean_var[0]
         return self._finalize_value_stat(fast, np.mean)
 
-    @lazyproperty
+    @cached_property
     def mean_err(self):
         r"""
         The standard error of the `mean`.
@@ -2378,7 +2378,7 @@ class ApertureStats:
             result <<= self._data_unit
         return result
 
-    @lazyproperty
+    @cached_property
     def median(self):
         """
         The median of the unmasked pixel values within the aperture.
@@ -2386,7 +2386,7 @@ class ApertureStats:
         fast = None if self._order_stats is None else self._order_stats[2]
         return self._finalize_value_stat(fast, np.median)
 
-    @lazyproperty
+    @cached_property
     def median_err(self):
         r"""
         The standard error of the `median`.
@@ -2413,7 +2413,7 @@ class ApertureStats:
             result <<= self._data_unit
         return result
 
-    @lazyproperty
+    @cached_property
     def mode(self):
         """
         The mode of the unmasked pixel values within the aperture.
@@ -2422,7 +2422,7 @@ class ApertureStats:
         """
         return 3.0 * self.median - 2.0 * self.mean
 
-    @lazyproperty
+    @cached_property
     def _variance(self):
         """
         The variance of the unmasked pixel values within each aperture
@@ -2446,7 +2446,7 @@ class ApertureStats:
                         / (n_pixels[mask] - self.ddof))
         return result
 
-    @lazyproperty
+    @cached_property
     def std(self):
         """
         The standard deviation of the unmasked pixel values within the
@@ -2461,7 +2461,7 @@ class ApertureStats:
             result <<= self._data_unit
         return result
 
-    @lazyproperty
+    @cached_property
     def mad_std(self):
         r"""
         The standard deviation calculated using
@@ -2481,7 +2481,7 @@ class ApertureStats:
         fast = None if self._mad is None else self._mad * _MAD_STD_SCALE
         return self._finalize_value_stat(fast, mad_std)
 
-    @lazyproperty
+    @cached_property
     def var(self):
         """
         The variance of the unmasked pixel values within the aperture.
@@ -2495,7 +2495,7 @@ class ApertureStats:
             result <<= self._data_unit**2
         return result
 
-    @lazyproperty
+    @cached_property
     def biweight_location(self):
         """
         The biweight location of the unmasked pixel values within the
@@ -2507,7 +2507,7 @@ class ApertureStats:
         fast = None if self._biweight is None else self._biweight[0]
         return self._finalize_value_stat(fast, biweight_location)
 
-    @lazyproperty
+    @cached_property
     def biweight_midvariance(self):
         """
         The biweight midvariance of the unmasked pixel values within the
@@ -2520,7 +2520,7 @@ class ApertureStats:
         return self._finalize_value_stat(fast, biweight_midvariance,
                                          square_unit=True)
 
-    @lazyproperty
+    @cached_property
     def inertia_tensor(self):
         """
         The inertia tensor of the source for the rotation around its
@@ -2533,7 +2533,7 @@ class ApertureStats:
         tensor = np.array([mu_02, mu_11, mu_11, mu_20]).swapaxes(0, 1)
         return tensor.reshape((tensor.shape[0], 2, 2)) * u.pix**2
 
-    @lazyproperty
+    @cached_property
     def _raw_covariance(self):
         """
         The raw ``(N, 2, 2)`` covariance matrix of the 2D Gaussian
@@ -2554,7 +2554,7 @@ class ApertureStats:
                           mu_norm[:, 1, 1], mu_norm[:, 2, 0]]).swapaxes(0, 1)
         return covar.reshape((covar.shape[0], 2, 2))
 
-    @lazyproperty
+    @cached_property
     def _covariance(self):
         """
         The covariance matrix of the 2D Gaussian function that has the
@@ -2597,7 +2597,7 @@ class ApertureStats:
             covar[idx, 1, 1] += delta
         return covar
 
-    @lazyproperty
+    @cached_property
     def covariance(self):
         """
         The covariance matrix of the 2D Gaussian function that has the
@@ -2605,7 +2605,7 @@ class ApertureStats:
         """
         return self._covariance * (u.pix**2)
 
-    @lazyproperty
+    @cached_property
     def covariance_eigvals(self):
         """
         The two eigenvalues of the `covariance` matrix in decreasing
@@ -2628,7 +2628,7 @@ class ApertureStats:
 
         return eigvals * u.pix**2
 
-    @lazyproperty
+    @cached_property
     def semimajor_axis(self):
         """
         The 1-sigma standard deviation along the semimajor axis of the
@@ -2638,7 +2638,7 @@ class ApertureStats:
         eigvals = self._array('covariance_eigvals')
         return np.sqrt(eigvals[:, 0])
 
-    @lazyproperty
+    @cached_property
     def semiminor_axis(self):
         """
         The 1-sigma standard deviation along the semiminor axis of the
@@ -2648,7 +2648,7 @@ class ApertureStats:
         eigvals = self._array('covariance_eigvals')
         return np.sqrt(eigvals[:, 1])
 
-    @lazyproperty
+    @cached_property
     def fwhm(self):
         r"""
         The circularized full width at half maximum (FWHM) of the 2D
@@ -2668,7 +2668,7 @@ class ApertureStats:
         return 2.0 * np.sqrt(np.log(2.0) * (self.semimajor_axis**2
                                             + self.semiminor_axis**2))
 
-    @lazyproperty
+    @cached_property
     def orientation(self):
         """
         The angle between the ``x`` axis and the major axis of the 2D
@@ -2683,7 +2683,7 @@ class ApertureStats:
                                           (covar[:, 0, 0] - covar[:, 1, 1]))
         return np.rad2deg(orient_radians) * u.deg
 
-    @lazyproperty
+    @cached_property
     def eccentricity(self):
         r"""
         The eccentricity of the 2D Gaussian function that has the same
@@ -2702,7 +2702,7 @@ class ApertureStats:
         semimajor_var, semiminor_var = np.transpose(self.covariance_eigvals)
         return np.sqrt(1.0 - (semiminor_var / semimajor_var))
 
-    @lazyproperty
+    @cached_property
     def elongation(self):
         r"""
         The ratio of the lengths of the semimajor and semiminor axes.
@@ -2716,7 +2716,7 @@ class ApertureStats:
         """
         return self.semimajor_axis / self.semiminor_axis
 
-    @lazyproperty
+    @cached_property
     def ellipticity(self):
         r"""
         1.0 minus the ratio of the lengths of the semiminor and
@@ -2733,7 +2733,7 @@ class ApertureStats:
         """
         return 1.0 - (self.semiminor_axis / self.semimajor_axis)
 
-    @lazyproperty
+    @cached_property
     def covariance_xx(self):
         r"""
         The ``(0, 0)`` element of the `covariance` matrix, representing
@@ -2741,7 +2741,7 @@ class ApertureStats:
         """
         return self._covariance[:, 0, 0] * u.pix**2
 
-    @lazyproperty
+    @cached_property
     def covariance_yy(self):
         r"""
         The ``(1, 1)`` element of the `covariance` matrix, representing
@@ -2749,7 +2749,7 @@ class ApertureStats:
         """
         return self._covariance[:, 1, 1] * u.pix**2
 
-    @lazyproperty
+    @cached_property
     def covariance_xy(self):
         r"""
         The ``(0, 1)`` and ``(1, 0)`` elements of the `covariance`
@@ -2758,7 +2758,7 @@ class ApertureStats:
         """
         return self._covariance[:, 0, 1] * u.pix**2
 
-    @lazyproperty
+    @cached_property
     def ellipse_cxx(self):
         r"""
         Coefficient for ``x**2`` in the generalized ellipse equation in
@@ -2780,7 +2780,7 @@ class ApertureStats:
         return ((np.cos(self.orientation) / self.semimajor_axis)**2
                 + (np.sin(self.orientation) / self.semiminor_axis)**2)
 
-    @lazyproperty
+    @cached_property
     def ellipse_cyy(self):
         r"""
         Coefficient for ``y**2`` in the generalized ellipse equation in
@@ -2802,7 +2802,7 @@ class ApertureStats:
         return ((np.sin(self.orientation) / self.semimajor_axis)**2
                 + (np.cos(self.orientation) / self.semiminor_axis)**2)
 
-    @lazyproperty
+    @cached_property
     def ellipse_cxy(self):
         r"""
         Coefficient for ``x * y`` in the generalized ellipse equation in
@@ -2825,7 +2825,7 @@ class ApertureStats:
                 * ((1.0 / self.semimajor_axis**2)
                    - (1.0 / self.semiminor_axis**2)))
 
-    @lazyproperty
+    @cached_property
     def gini(self):
         r"""
         The `Gini coefficient

@@ -6,13 +6,13 @@ Tools for estimating the 2D background and background RMS in an image.
 import copy
 import warnings
 from concurrent.futures import ThreadPoolExecutor
+from functools import cached_property
 from typing import NamedTuple
 
 import astropy.units as u
 import numpy as np
 from astropy.nddata import NDData, block_replicate, reshape_as_blocks
 from astropy.stats import SigmaClip
-from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import generic_filter
 
@@ -485,7 +485,7 @@ class Background2D:
 
         return total_mask
 
-    @lazyproperty
+    @cached_property
     def _good_n_pixels_threshold(self):
         """
         The minimum number of required unmasked pixels in a box used for
@@ -1195,7 +1195,7 @@ class Background2D:
         return n_pixels_map[:self._interp_kwargs['shape'][0],
                             :self._interp_kwargs['shape'][1]]
 
-    @lazyproperty
+    @cached_property
     def background_median(self):
         """
         The median value of the 2D low-resolution background map.
@@ -1214,7 +1214,7 @@ class Background2D:
         """
         return np.median(self.background_mesh)
 
-    @lazyproperty
+    @cached_property
     def background_rms_median(self):
         """
         The median value of the low-resolution background RMS map.

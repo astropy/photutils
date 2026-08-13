@@ -8,9 +8,9 @@ import inspect
 import warnings
 from collections import defaultdict
 from copy import copy, deepcopy
+from functools import cached_property
 
 import numpy as np
-from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import find_objects, grey_dilation
 from scipy.signal import fftconvolve
@@ -137,7 +137,7 @@ class SegmentationImage:
         # np.unique preserves dtype and also sorts elements
         return np.unique(data[data != 0])
 
-    @lazyproperty
+    @cached_property
     def segments(self):
         """
         A list of `Segment` objects.
@@ -165,7 +165,7 @@ class SegmentationImage:
 
         return segments
 
-    @lazyproperty
+    @cached_property
     def deblended_labels(self):
         """
         A sorted 1D array of deblended label numbers.
@@ -177,7 +177,7 @@ class SegmentationImage:
             return np.array([], dtype=self._data.dtype)
         return np.sort(np.concatenate(list(self._deblend_label_map.values())))
 
-    @lazyproperty
+    @cached_property
     def deblended_label_to_parent(self):
         """
         A dictionary mapping deblended label numbers to the original
@@ -196,7 +196,7 @@ class SegmentationImage:
                 inverse_map[value] = key
         return inverse_map
 
-    @lazyproperty
+    @cached_property
     def parent_to_deblended_labels(self):
         """
         A dictionary mapping the original parent label numbers to the
@@ -219,27 +219,27 @@ class SegmentationImage:
         return self._data
 
     @property
-    def _lazyproperties(self):
+    def _cached_properties(self):
         """
-        A list of all class lazyproperties (even in superclasses).
+        A list of all class cached properties (even in superclasses).
 
         The result is cached on the class to avoid repeated
         introspection via `inspect.getmembers`.
         """
         cls = self.__class__
-        attr = '_cached_lazyproperties'
-        # Subclasses get their own lazyproperty list
+        attr = '_cached_properties_cache'
+        # Subclasses get their own cached-property list
         if attr not in cls.__dict__:
-            def islazyproperty(obj):
-                return isinstance(obj, lazyproperty)
+            def is_cached_property(obj):
+                return isinstance(obj, cached_property)
 
             setattr(cls, attr,
                     [i[0] for i in inspect.getmembers(
-                        cls, predicate=islazyproperty)])
+                        cls, predicate=is_cached_property)])
         return getattr(cls, attr)
 
-    def _reset_lazyproperties(self):
-        for key in self._lazyproperties:
+    def _reset_cached_properties(self):
+        for key in self._cached_properties:
             self.__dict__.pop(key, None)
 
     @data.setter
@@ -255,17 +255,17 @@ class SegmentationImage:
 
         if '_data' in self.__dict__:
             # Reset cached properties when data is reassigned, but not on init
-            self._reset_lazyproperties()
+            self._reset_cached_properties()
 
         self._data = value  # pylint: disable=attribute-defined-outside-init
         self.__dict__['labels'] = labels
 
         # Reset deblended labels explicitly since _deblend_label_map
-        # is a regular attribute, not a lazyproperty cleared by
-        # _reset_lazyproperties above.
+        # is a regular attribute, not a cached property cleared by
+        # _reset_cached_properties above.
         self.__dict__['_deblend_label_map'] = {}
 
-    @lazyproperty
+    @cached_property
     def data_masked(self):
         """
         A `~numpy.ma.MaskedArray` version of the segmentation array
@@ -273,21 +273,21 @@ class SegmentationImage:
         """
         return np.ma.masked_where(self.data == 0, self.data)
 
-    @lazyproperty
+    @cached_property
     def shape(self):
         """
         The shape of the segmentation array.
         """
         return self._data.shape
 
-    @lazyproperty
+    @cached_property
     def _ndim(self):
         """
         The number of array dimensions of the segmentation array.
         """
         return self._data.ndim
 
-    @lazyproperty
+    @cached_property
     def labels(self):
         """
         The sorted non-zero labels in the segmentation array.
@@ -303,14 +303,14 @@ class SegmentationImage:
 
         return self._get_labels(self.data)
 
-    @lazyproperty
+    @cached_property
     def n_labels(self):
         """
         The number of non-zero labels in the segmentation array.
         """
         return len(self.labels)
 
-    @lazyproperty
+    @cached_property
     def max_label(self):
         """
         The maximum label in the segmentation array.
@@ -367,7 +367,7 @@ class SegmentationImage:
         # self.labels is always sorted
         return np.searchsorted(self.labels, labels)
 
-    @lazyproperty
+    @cached_property
     def _raw_slices(self):
         """
         A list of tuples, where each tuple contains two slices representing
@@ -380,7 +380,7 @@ class SegmentationImage:
         """
         return find_objects(self.data)
 
-    @lazyproperty
+    @cached_property
     def slices(self):
         """
         A list of tuples, where each tuple contains two slices
@@ -392,7 +392,7 @@ class SegmentationImage:
         """
         return [slc for slc in self._raw_slices if slc is not None]
 
-    @lazyproperty
+    @cached_property
     def bbox(self):
         """
         A list of `~photutils.aperture.BoundingBox` of the minimal
@@ -406,14 +406,14 @@ class SegmentationImage:
                             iymin=slc[0].start, iymax=slc[0].stop)
                 for slc in self.slices]
 
-    @lazyproperty
+    @cached_property
     def background_area(self):
         """
         The area (in pixel**2) of the background (label=0) region.
         """
         return self._data.size - np.count_nonzero(self._data)
 
-    @lazyproperty
+    @cached_property
     def areas(self):
         """
         A 1D array of areas (in pixel**2) of the non-zero labeled
@@ -607,7 +607,7 @@ class SegmentationImage:
         self.check_labels(labels)
         return [self._make_segment(label) for label in labels]
 
-    @lazyproperty
+    @cached_property
     def is_consecutive(self):
         """
         Boolean value indicating whether the non-zero labels in the
@@ -618,7 +618,7 @@ class SegmentationImage:
         return ((self.labels[-1] - self.labels[0] + 1) == self.n_labels
                 and self.labels[0] == 1)
 
-    @lazyproperty
+    @cached_property
     def missing_labels(self):
         """
         A 1D `~numpy.ndarray` of the sorted non-zero labels that are
@@ -786,7 +786,7 @@ class SegmentationImage:
         """
         self.cmap = self.make_cmap(background_color='#000000ff', seed=seed)
 
-    @lazyproperty
+    @cached_property
     def cmap(self):
         """
         A matplotlib colormap consisting of (random) muted colors.
@@ -980,7 +980,7 @@ class SegmentationImage:
                 relabel_map = map2[relabel_map]
 
         data_new = relabel_map[self.data]
-        self._reset_lazyproperties()  # reset all cached properties
+        self._reset_cached_properties()  # reset all cached properties
         self._data = data_new  # use _data to avoid validation
         self._update_deblend_label_map(relabel_map)
 
@@ -1035,7 +1035,7 @@ class SegmentationImage:
         new_label_map[self.labels] = new_labels
 
         data_new = new_label_map[self.data]
-        self._reset_lazyproperties()  # reset all cached properties
+        self._reset_cached_properties()  # reset all cached properties
         self._data = data_new  # use _data to avoid validation
         self.__dict__['labels'] = new_labels
         if old_slices is not None:
@@ -1517,7 +1517,7 @@ class SegmentationImage:
         # https://www.researchgate.net/publication/238778666_DILATION_AND_EROSION_OF_GRAY_IMAGES_WITH_SPHERICAL_MASKS
         return fftconvolve(mask, footprint, 'same') > 0.5
 
-    @lazyproperty
+    @cached_property
     def _geojson_polygons(self):
         """
         A dictionary of GeoJSON-like polygons representing each source
@@ -1598,7 +1598,7 @@ class SegmentationImage:
 
         return polygon_dict
 
-    @lazyproperty
+    @cached_property
     def polygons(self):
         """
         A list of `Shapely <https://shapely.readthedocs.io/en/stable/>`_
@@ -2390,7 +2390,7 @@ class Segment:
         """
         return self.data
 
-    @lazyproperty
+    @cached_property
     def data(self):
         """
         A cutout array of the segment using the minimal bounding box,
@@ -2403,7 +2403,7 @@ class Segment:
 
         return cutout
 
-    @lazyproperty
+    @cached_property
     def data_masked(self):
         """
         A `~numpy.ma.MaskedArray` cutout array of the segment using the

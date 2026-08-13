@@ -11,11 +11,11 @@ import abc
 import inspect
 import math
 import warnings
+from functools import cached_property
 
 import astropy.units as u
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
-from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.peakfinder import find_peaks
@@ -295,7 +295,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         setattr(newcls, attr, np.atleast_2d(value))
 
         # Index/slice the remaining attributes
-        keys = set(self.__dict__.keys()) & set(self._lazyproperties)
+        keys = set(self.__dict__.keys()) & set(self._cached_properties)
         keys.add('id')
         for key in keys:
             value = self.__dict__[key]
@@ -323,23 +323,23 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
                 'cutout_shape', 'default_columns')
 
     @property
-    def _lazyproperties(self):
+    def _cached_properties(self):
         """
-        Return all lazyproperties (even in superclasses).
+        Return all cached properties (even in superclasses).
 
         The result is cached on the class to avoid repeated
         introspection via `inspect.getmembers`.
         """
         cls = self.__class__
-        attr = '_cached_lazyproperties'
-        # Subclasses get their own lazyproperty list
+        attr = '_cached_properties_cache'
+        # Subclasses get their own cached-property list
         if attr not in cls.__dict__:
-            def islazyproperty(obj):
-                return isinstance(obj, lazyproperty)
+            def is_cached_property(obj):
+                return isinstance(obj, cached_property)
 
             setattr(cls, attr,
                     [i[0] for i in inspect.getmembers(
-                        cls, predicate=islazyproperty)])
+                        cls, predicate=is_cached_property)])
         return getattr(cls, attr)
 
     @property
@@ -347,15 +347,15 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         """
         A sorted list of the built-in source properties.
         """
-        lazyproperties = [name for name in self._lazyproperties if not
-                          name.startswith('_')]
+        cached_properties = [name for name in self._cached_properties
+                             if not name.startswith('_')]
         # isscalar is a scalar value for the whole object, not a
         # per-source value, so it is not a valid table column
-        lazyproperties.remove('isscalar')
-        lazyproperties.sort()
-        return lazyproperties
+        cached_properties.remove('isscalar')
+        cached_properties.sort()
+        return cached_properties
 
-    @lazyproperty
+    @cached_property
     def isscalar(self):
         """
         Whether the instance is scalar (e.g., a single source).
@@ -392,7 +392,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
         return cutouts
 
-    @lazyproperty
+    @cached_property
     def cutout_data(self):
         """
         The cutout data arrays.
@@ -403,7 +403,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         """
         return self.make_cutouts(self.data)
 
-    @lazyproperty
+    @cached_property
     def moments(self):
         """
         The raw image moments.
@@ -419,7 +419,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         # M[n, p, q] = sum_jk data[n,j,k] * y[j]^p * x[k]^q
         return ypowers.T @ data @ xpowers
 
-    @lazyproperty
+    @cached_property
     def moments_central(self):
         """
         The central image moments.
@@ -442,7 +442,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             warnings.simplefilter('ignore', RuntimeWarning)
             return moments / self.moments[:, 0, 0][:, np.newaxis, np.newaxis]
 
-    @lazyproperty
+    @cached_property
     def cutout_centroid(self):
         """
         The cutout centroids.
@@ -456,14 +456,14 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             x_centroid = moments[:, 0, 1] / moments[:, 0, 0]
         return np.transpose((y_centroid, x_centroid))
 
-    @lazyproperty
+    @cached_property
     def cutout_x_centroid(self):
         """
         The cutout x centroids.
         """
         return np.transpose(self.cutout_centroid)[1]
 
-    @lazyproperty
+    @cached_property
     def cutout_y_centroid(self):
         """
         The cutout y centroids.
@@ -493,7 +493,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         return deprecated_getattr(self, name, _DEPRECATED_ATTRIBUTES,
                                   since='3.0', until='4.0')
 
-    @lazyproperty
+    @cached_property
     def mu_sum(self):
         """
         The sum of the central moments.
@@ -501,7 +501,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         return (self.moments_central[:, 0, 2]
                 + self.moments_central[:, 2, 0])
 
-    @lazyproperty
+    @cached_property
     def mu_diff(self):
         """
         The difference of the central moments.
@@ -509,14 +509,14 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         return (self.moments_central[:, 0, 2]
                 - self.moments_central[:, 2, 0])
 
-    @lazyproperty
+    @cached_property
     def fwhm(self):
         """
         The FWHM of the sources.
         """
         return 2.0 * np.sqrt(np.log(2.0) * self.mu_sum)
 
-    @lazyproperty
+    @cached_property
     def orientation(self):
         """
         The angle between the ``x`` axis and the major axis of the 2D
@@ -530,7 +530,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
                                  self.mu_diff)
         return np.rad2deg(angle) * u.deg
 
-    @lazyproperty
+    @cached_property
     def roundness(self):
         """
         The roundness of the sources.
@@ -541,21 +541,21 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
                             + 4.0 * self.moments_central[:, 1, 1]**2)
                     / self.mu_sum)
 
-    @lazyproperty
+    @cached_property
     def peak(self):
         """
         The peak pixel values.
         """
         return np.max(self.cutout_data, axis=(1, 2))
 
-    @lazyproperty
+    @cached_property
     def flux(self):
         """
         The instrumental fluxes.
         """
         return np.sum(self.cutout_data, axis=(1, 2))
 
-    @lazyproperty
+    @cached_property
     def mag(self):
         """
         The instrumental magnitudes.
@@ -728,7 +728,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             table_columns = list(self.default_columns)
         else:
             # id is not included in self._properties because it is
-            # not a lazyproperty
+            # not a cached property
             allowed_columns = (set(self._properties) | {'id'}
                                | set(self.default_columns))
             table_columns = validate_table_columns(

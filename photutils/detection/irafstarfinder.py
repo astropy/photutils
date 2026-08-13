@@ -4,9 +4,9 @@ IRAFStarFinder class.
 """
 
 import warnings
+from functools import cached_property
 
 import numpy as np
-from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
@@ -456,7 +456,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
                 'sharpness_range', 'roundness_range', 'n_brightest',
                 'peak_max', 'cutout_shape', 'default_columns')
 
-    @lazyproperty
+    @cached_property
     def sky(self):
         """
         Calculate the sky background level.
@@ -478,14 +478,14 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
 
         return sky
 
-    @lazyproperty
+    @cached_property
     def cutout_data_nosub(self):
         """
         The cutout data without sky subtraction or masking.
         """
         return self.make_cutouts(self.data)
 
-    @lazyproperty
+    @cached_property
     def cutout_data(self):
         """
         The cutout data with sky subtraction and masking applied.
@@ -498,7 +498,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         data[data < 0] = 0.0
         return data
 
-    @lazyproperty
+    @cached_property
     def n_pixels(self):
         """
         The total number of (positive) unmasked pixels in the cutout
@@ -506,35 +506,35 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
         """
         return np.count_nonzero(self.cutout_data, axis=(1, 2))
 
-    @lazyproperty
+    @cached_property
     def cutout_xorigin(self):
         """
         The x pixel coordinate of the cutout origin.
         """
         return np.transpose(self.xypos)[0] - self.kernel.x_radius
 
-    @lazyproperty
+    @cached_property
     def cutout_yorigin(self):
         """
         The y pixel coordinate of the cutout origin.
         """
         return np.transpose(self.xypos)[1] - self.kernel.y_radius
 
-    @lazyproperty
+    @cached_property
     def x_centroid(self):
         """
         The x pixel coordinate of the object centroid.
         """
         return self.cutout_x_centroid + self.cutout_xorigin
 
-    @lazyproperty
+    @cached_property
     def y_centroid(self):
         """
         The y pixel coordinate of the object centroid.
         """
         return self.cutout_y_centroid + self.cutout_yorigin
 
-    @lazyproperty
+    @cached_property
     def sharpness(self):
         """
         The sharpness of the object.

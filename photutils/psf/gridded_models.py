@@ -6,12 +6,12 @@ Gridded PSF models.
 import bisect
 import copy
 import itertools
+from functools import cached_property
 
 import numpy as np
 from astropy.io import registry
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.nddata import NDData
-from astropy.utils.decorators import lazyproperty
 from scipy.interpolate import RectBivariateSpline
 
 from photutils.psf.model_io import (GriddedPSFModelRead, _get_metadata,
@@ -465,7 +465,7 @@ class GriddedPSFModel(Fittable2DModel):
         """
         return self._calc_bounding_box()
 
-    @lazyproperty
+    @cached_property
     def origin(self):
         """
         A 1D `~numpy.ndarray` (x, y) pixel coordinates within the
@@ -476,7 +476,7 @@ class GriddedPSFModel(Fittable2DModel):
         xyorigin = (np.array(self.data.shape[1:]) - 1) / 2
         return xyorigin[::-1]
 
-    @lazyproperty
+    @cached_property
     def _interp_xyidx(self):
         """
         The x and y indices for the interpolator.
@@ -518,7 +518,7 @@ class GriddedPSFModel(Fittable2DModel):
 
         return interp
 
-    @lazyproperty
+    @cached_property
     def _xgrid_list(self):
         """
         A plain Python list of the sorted unique x grid positions.
@@ -528,7 +528,7 @@ class GriddedPSFModel(Fittable2DModel):
         """
         return [float(v) for v in self._xgrid]
 
-    @lazyproperty
+    @cached_property
     def _ygrid_list(self):
         """
         A plain Python list of the sorted unique y grid positions.
@@ -538,7 +538,7 @@ class GriddedPSFModel(Fittable2DModel):
         """
         return [float(v) for v in self._ygrid]
 
-    @lazyproperty
+    @cached_property
     def _bounding_lookup(self):
         """
         A precomputed lookup table mapping grid-cell indices to the

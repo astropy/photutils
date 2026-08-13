@@ -3,9 +3,10 @@
 Tools for generating 2D image cutouts.
 """
 
+from functools import cached_property
+
 import numpy as np
 from astropy.nddata import extract_array, overlap_slices
-from astropy.utils import lazyproperty
 
 from photutils.utils._deprecation import deprecated_positional_kwargs
 
@@ -149,7 +150,7 @@ class CutoutImage:
         return (f'{self.__class__.__name__}(position={self.position}, '
                 f'shape={self.shape})')
 
-    @lazyproperty
+    @cached_property
     def slices_original(self):
         """
         A tuple of slice objects in axis order for the minimal bounding
@@ -160,7 +161,7 @@ class CutoutImage:
         """
         return self._overlap_slices[0]
 
-    @lazyproperty
+    @cached_property
     def slices_cutout(self):
         """
         A tuple of slice objects in axis order for the minimal bounding
@@ -187,7 +188,7 @@ class CutoutImage:
         return BoundingBox(ixmin=slices[1].start, ixmax=slices[1].stop,
                            iymin=slices[0].start, iymax=slices[0].stop)
 
-    @lazyproperty
+    @cached_property
     def bbox_original(self):
         """
         The `~photutils.aperture.BoundingBox` of the minimal rectangular
@@ -198,7 +199,7 @@ class CutoutImage:
         """
         return self._calc_bbox(self.slices_original)
 
-    @lazyproperty
+    @cached_property
     def bbox_cutout(self):
         """
         The `~photutils.aperture.BoundingBox` of the minimal rectangular
@@ -233,7 +234,7 @@ class CutoutImage:
 
         return np.array((xorigin, yorigin))
 
-    @lazyproperty
+    @cached_property
     def xyorigin(self):
         """
         A `~numpy.ndarray` containing the ``(x, y)`` integer index of

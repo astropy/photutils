@@ -3,9 +3,10 @@
 Tests for the photutils.detection.core module.
 """
 
+from functools import cached_property
+
 import numpy as np
 import pytest
-from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection import DAOStarFinder
@@ -190,11 +191,11 @@ def _make_minimal_catalog_class():
 
     class _MinimalCatalog(StarFinderCatalogBase):
 
-        @lazyproperty
+        @cached_property
         def x_centroid(self):
             return self.cutout_x_centroid
 
-        @lazyproperty
+        @cached_property
         def y_centroid(self):
             return self.cutout_y_centroid
 
@@ -231,9 +232,9 @@ class TestStarFinderCatalogBase:
                     'cutout_shape', 'default_columns')
         assert cat._get_init_attributes() == expected
 
-    def test_lazyproperties_class_cache(self, minimal_catalog_cls):
+    def test_cached_properties_class_cache(self, minimal_catalog_cls):
         """
-        Test that _lazyproperties is cached on the class and shared
+        Test that _cached_properties is cached on the class and shared
         across instances.
         """
         data = np.zeros((11, 11))
@@ -242,8 +243,8 @@ class TestStarFinderCatalogBase:
         xypos = np.array([[5, 5]])
         cat1 = minimal_catalog_cls(data, xypos, kernel)
         cat2 = minimal_catalog_cls(data, xypos, kernel)
-        result1 = cat1._lazyproperties
-        result2 = cat2._lazyproperties
+        result1 = cat1._cached_properties
+        result2 = cat2._cached_properties
         assert result1 is result2
 
     def test_to_table_missing_default_columns(self, minimal_catalog_cls):
@@ -335,7 +336,7 @@ class TestStarFinderCatalogBase:
     def test_properties(self, minimal_catalog_cls):
         """
         Test that the _properties attribute returns a sorted list of
-        lazyproperty names.
+        cached-property names.
         """
         data = np.zeros((11, 11))
         data[5, 5] = 10.0
@@ -394,7 +395,7 @@ class TestStarFinderCatalogBase:
         xypos = np.array([[3, 3], [5, 5], [7, 7]])
         cat = minimal_catalog_cls(data, xypos, kernel)
 
-        # Force evaluation of a lazyproperty before slicing
+        # Force evaluation of a cached property before slicing
         _ = cat.flux
 
         mask = np.array([True, False, True])

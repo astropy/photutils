@@ -4,9 +4,9 @@ StarFinder class.
 """
 
 import warnings
+from functools import cached_property
 
 import numpy as np
-from astropy.utils import lazyproperty
 
 from photutils.detection.core import (StarFinderBase, StarFinderCatalogBase,
                                       _validate_n_brightest)
@@ -272,7 +272,7 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         return ('data', 'unit', 'kernel', 'n_brightest', 'peak_max',
                 'cutout_shape', 'default_columns')
 
-    @lazyproperty
+    @cached_property
     def cutout_data(self):
         """
         The cutout data arrays with negative values set to zero.
@@ -281,14 +281,14 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         cutouts[cutouts < 0] = 0.0  # exclude negative pixels
         return cutouts
 
-    @lazyproperty
+    @cached_property
     def max_value(self):
         """
         The maximum pixel value in the cutout data.
         """
         return self.peak
 
-    @lazyproperty
+    @cached_property
     def x_centroid(self):
         """
         The x centroid of the source.
@@ -296,7 +296,7 @@ class _StarFinderCatalog(StarFinderCatalogBase):
         xoff = self.cutout_shape[1] // 2
         return self.cutout_x_centroid + self.xypos[:, 0] - xoff
 
-    @lazyproperty
+    @cached_property
     def y_centroid(self):
         """
         The y centroid of the source.

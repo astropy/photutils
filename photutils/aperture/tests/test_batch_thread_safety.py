@@ -14,6 +14,7 @@ modules.
 import importlib
 import sys
 import sysconfig
+import threading
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
@@ -246,10 +247,10 @@ class TestApertureStatsThreadSafety:
         Test that a single shared ApertureStats instance can be read
         concurrently.
 
-        The instance is documented as immutable after construction, so
-        concurrent readers racing to fill the lazyproperty caches
-        (which are guarded by the astropy lazyproperty lock) must all
-        see identical values.
+        The instance is documented as immutable after construction,
+        so concurrent readers racing to fill the cached-property
+        caches (which fill without any locking) must all see
+        identical values.
         """
         data = make_100gaussians_image()
         error = np.sqrt(np.abs(data))
@@ -272,3 +273,52 @@ class TestApertureStatsThreadSafety:
             for name, values in result.items():
                 assert_allclose(values, expected[name], rtol=0, atol=0,
                                 equal_nan=True)
+
+    def test_no_cross_instance_serialization(self, monkeypatch):
+        """
+        Test that computing a cached property on one instance does not
+        block the same property on a different instance in another
+        thread.
+
+        The astropy lazyproperty descriptor holds one lock per
+        class attribute shared by all instances, which serialized
+        the entire computation across instances and threads. The
+        `functools.cached_property` descriptors used now have no lock,
+        so instance B must complete while instance A is still blocked
+        inside its getter. This test deadlocks instance B (until the
+        timeout) if a class-level lock is ever reintroduced.
+        """
+        import photutils.aperture.stats as stats_mod
+
+        data = np.ones((50, 50))
+        stats_a = ApertureStats(data, CircularAperture((25, 25), r=5.0))
+        stats_b = ApertureStats(data, CircularAperture((30, 30), r=5.0))
+
+        entered_a = threading.Event()
+        release_a = threading.Event()
+        real_gather = stats_mod.batch_aperture_gather
+
+        def blocking_gather(data_arr, mask, positions, *args):
+            # Block only instance A's gather; B's must run freely
+            if positions[0, 0] == 25.0:
+                entered_a.set()
+                assert release_a.wait(timeout=30)
+            return real_gather(data_arr, mask, positions, *args)
+
+        monkeypatch.setattr(stats_mod, 'batch_aperture_gather',
+                            blocking_gather)
+
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            future_a = ex.submit(lambda: stats_a.median)
+            assert entered_a.wait(timeout=30)
+
+            # Instance A is now parked inside the median getter chain.
+            # Instance B's median must complete while A is blocked.
+            future_b = ex.submit(lambda: stats_b.median)
+            result_b = future_b.result(timeout=30)
+            assert not future_a.done()
+
+            release_a.set()
+            result_a = future_a.result(timeout=30)
+
+        assert_allclose(result_a, result_b)

@@ -10,11 +10,11 @@ import textwrap
 import warnings
 from copy import deepcopy
 from dataclasses import dataclass
+from functools import cached_property
 
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
-from astropy.utils import lazyproperty
 
 from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_MASKED,
@@ -408,23 +408,23 @@ class Aperture(metaclass=abc.ABCMeta):
         return True
 
     @property
-    def _lazyproperties(self):
+    def _cached_properties(self):
         """
-        A list of all class lazyproperties (even in superclasses).
+        A list of all class cached properties (even in superclasses).
 
         The result depends only on the class, so it is computed once
         per class and cached (it is looked up on every aperture
         parameter reassignment).
         """
         cls = self.__class__
-        cached = cls.__dict__.get('_lazyproperties_cache')
+        cached = cls.__dict__.get('_cached_properties_cache')
         if cached is None:
-            def islazyproperty(obj):
-                return isinstance(obj, lazyproperty)
+            def is_cached_property(obj):
+                return isinstance(obj, cached_property)
 
             cached = [i[0] for i in inspect.getmembers(
-                cls, predicate=islazyproperty)]
-            cls._lazyproperties_cache = cached
+                cls, predicate=is_cached_property)]
+            cls._cached_properties_cache = cached
         return cached
 
     def copy(self):
@@ -448,7 +448,7 @@ class Aperture(metaclass=abc.ABCMeta):
         `~astropy.coordinates.SkyCoord`.
         """
 
-    @lazyproperty
+    @cached_property
     def shape(self):
         """
         The shape of the instance.
@@ -458,7 +458,7 @@ class Aperture(metaclass=abc.ABCMeta):
 
         return self.positions.shape[:-1]
 
-    @lazyproperty
+    @cached_property
     def isscalar(self):
         """
         Whether the instance is scalar (i.e., a single position).
@@ -471,13 +471,13 @@ class _RotatableApertureMixin:
     Mixin class for apertures that have a rotation angle ``theta``.
     """
 
-    @lazyproperty
+    @cached_property
     def _theta_rad(self):
         """
         The rotation angle in radians.
 
-        This is a lazyproperty so that it is invalidated together with
-        the other lazyproperties when ``theta`` is reassigned.
+        This is a cached property so that it is invalidated together
+        with the other cached properties when ``theta`` is reassigned.
         """
         return self.theta.to_value(u.radian)
 
@@ -492,7 +492,7 @@ class PixelAperture(Aperture):
     # batch driver only when this is their own class
     _batch_photometry_class = None
 
-    @lazyproperty
+    @cached_property
     def _default_patch_properties(self):
         """
         A dictionary of default matplotlib.patches.Patch properties.
@@ -561,14 +561,14 @@ class PixelAperture(Aperture):
         """
         return 0.0, 0.0
 
-    @lazyproperty
+    @cached_property
     def _positions(self):
         """
         The aperture positions, always as a 2D ndarray.
         """
         return np.atleast_2d(self.positions)
 
-    @lazyproperty
+    @cached_property
     def _bbox(self):
         """
         The minimal bounding box for the aperture, always as a list of
@@ -584,7 +584,7 @@ class PixelAperture(Aperture):
         return [BoundingBox.from_float(x0, x1, y0, y1)
                 for x0, x1, y0, y1 in zip(xmin, xmax, ymin, ymax, strict=True)]
 
-    @lazyproperty
+    @cached_property
     def bbox(self):
         """
         The minimal bounding box for the aperture.
@@ -598,7 +598,7 @@ class PixelAperture(Aperture):
 
         return self._bbox
 
-    @lazyproperty
+    @cached_property
     def _centered_edges(self):
         """
         A list of ``(xmin, xmax, ymin, ymax)`` tuples, one for each

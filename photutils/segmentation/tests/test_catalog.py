@@ -1034,7 +1034,7 @@ class TestSourceCatalog:
             # Built-in property
             cat.add_property('label', segment_snr)
         with pytest.raises(ValueError, match=match):
-            # Built-in lazyproperty
+            # Built-in cached property
             cat.add_property('area', segment_snr)
 
         cat.add_property('segment_snr', segment_snr)
@@ -1114,14 +1114,14 @@ class TestSourceCatalog:
         for attr in attrs:
             assert attr in self.cat.properties
 
-    def test_lazyproperties_class_cache(self):
+    def test_cached_properties_class_cache(self):
         """
-        Test that _lazyproperties is cached on the class and shared
+        Test that _cached_properties is cached on the class and shared
         across instances.
         """
         cat2 = SourceCatalog(self.data, self.segm)
-        result1 = self.cat._lazyproperties
-        result2 = cat2._lazyproperties
+        result1 = self.cat._cached_properties
+        result2 = cat2._cached_properties
         assert result1 is result2
 
     def test_properties_class_cache(self):

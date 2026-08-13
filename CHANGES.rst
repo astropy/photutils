@@ -26,6 +26,10 @@ General
 
 - Added serialization to ASDF for all apertures. [#2341]
 
+- All lazily-computed class attributes now use
+  ``functools.cached_property`` instead of the astropy ``lazyproperty``
+  decorator. [#2366]
+
 New Features
 ^^^^^^^^^^^^
 

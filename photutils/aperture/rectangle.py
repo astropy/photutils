@@ -5,11 +5,11 @@ coordinates.
 """
 
 import math
+from functools import cached_property
 
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import Angle
-from astropy.utils import lazyproperty
 
 from photutils.aperture._batch_photometry import (SHAPE_RECTANGLE,
                                                   SHAPE_RECTANGULAR_ANNULUS)
@@ -254,7 +254,7 @@ class RectangularAperture(_RotatableApertureMixin, PixelAperture):
         self.h = h
         self.theta = theta
 
-    @lazyproperty
+    @cached_property
     def _xy_extents(self):
         """
         The half-width and half-height of the bounding box of the
@@ -265,7 +265,7 @@ class RectangularAperture(_RotatableApertureMixin, PixelAperture):
     def _batch_shape_params(self):
         return SHAPE_RECTANGLE, (self.w, self.h, self._theta_rad)
 
-    @lazyproperty
+    @cached_property
     def area(self):
         """
         The exact geometric area of the aperture shape.
@@ -475,7 +475,7 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
 
         self.theta = theta
 
-    @lazyproperty
+    @cached_property
     def _xy_extents(self):
         """
         The half-width and half-height of the bounding box of the
@@ -487,7 +487,7 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
         return SHAPE_RECTANGULAR_ANNULUS, (self.w_in, self.h_in, self.w_out,
                                            self.h_out, self._theta_rad)
 
-    @lazyproperty
+    @cached_property
     def area(self):
         """
         The exact geometric area of the aperture shape.

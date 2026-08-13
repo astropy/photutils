@@ -5,9 +5,9 @@ Base class for profiles.
 
 import abc
 import warnings
+from functools import cached_property
 
 import numpy as np
-from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture.core import _update_method_subpixels_docstring
@@ -146,7 +146,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
         ``(0,)`` is returned.
         """
 
-    @lazyproperty
+    @cached_property
     def _circular_apertures(self):
         """
         A list of `~photutils.aperture.CircularAperture` objects.
@@ -215,7 +215,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         return fluxes, flux_errs, areas
 
-    @lazyproperty
+    @cached_property
     def _photometry(self):
         """
         The aperture fluxes, flux errors, and areas as a function of
@@ -262,7 +262,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
             # multiple times (e.g., different methods)
             self.normalization_value *= normalization
 
-            # Need to use __dict__ as these are lazy properties
+            # Need to use __dict__ as these are cached properties
             self.__dict__['profile'] = self.profile / normalization
             self.__dict__['profile_error'] = self.profile_error / normalization
             self._normalize_hook(normalization)

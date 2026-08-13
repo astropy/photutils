@@ -4,9 +4,9 @@ Tools for performing grouping of stars.
 """
 
 from collections import defaultdict
+from functools import cached_property
 
 import numpy as np
-from astropy.utils import lazyproperty
 from scipy.cluster.hierarchy import fclusterdata
 
 from photutils.aperture import CircularAperture
@@ -108,7 +108,7 @@ class SourceGroups:
         """
         return self.n_sources
 
-    @lazyproperty
+    @cached_property
     def size_map(self):
         """
         Mapping of group ID to group size.
@@ -122,7 +122,7 @@ class SourceGroups:
         return dict(zip(self._unique_groups.tolist(),
                         self._group_counts.tolist(), strict=True))
 
-    @lazyproperty
+    @cached_property
     def sizes(self):
         """
         Size of each group for each source.
@@ -136,7 +136,7 @@ class SourceGroups:
         """
         return np.array([self.size_map[group] for group in self.groups])
 
-    @lazyproperty
+    @cached_property
     def group_centers(self):
         """
         Centroid coordinates of each group.
