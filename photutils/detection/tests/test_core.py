@@ -519,6 +519,37 @@ class TestStarFinderCatalogBase:
         assert sub.xypos[0, 0] == 15
         assert sub.xypos[1, 0] == 5
 
+    @pytest.mark.parametrize('index', [0, 1, -1, np.int64(2)])
+    def test_getitem_int_index_cached_multidim(self, make_catalog, index):
+        """
+        Regression test for integer indexing with cached
+        multidimensional per-source arrays.
+
+        Previously, an integer index dropped the leading source axis
+        of cached >=2D per-source arrays (e.g., moments and cutouts),
+        and accessing dependent properties on the indexed catalog
+        raised an IndexError.
+        """
+        cat = make_catalog(n_sources=3)
+        # Cache multidimensional per-source arrays before indexing
+        _ = cat.moments
+        _ = cat.cutout_data
+        _ = cat.cutout_centroid
+
+        sub = cat[index]
+        i = int(index) % len(cat)
+        assert sub.moments.shape == (1, 2, 2)
+        assert sub.cutout_data.shape == (1, 3, 3)
+        assert sub.cutout_centroid.shape == (1, 2)
+        np.testing.assert_array_equal(sub.moments[0], cat.moments[i])
+        np.testing.assert_array_equal(sub.cutout_data[0],
+                                      cat.cutout_data[i])
+
+        # Dependent properties must be computable from the sliced
+        # cached values
+        assert sub.cutout_x_centroid[0] == cat.cutout_x_centroid[i]
+        assert sub.peak[0] == cat.peak[i]
+
     def test_filter_bounds_none_range(self, make_catalog):
         """
         Test that _filter_bounds skips filtering when a range is None.

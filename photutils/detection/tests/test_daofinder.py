@@ -326,6 +326,27 @@ class TestDAOStarFinder:
         flux = cat.flux[0]  # evaluate the flux so it can be sliced
         assert cat[0].flux == flux
 
+    def test_getitem_int_index_cached_multidim(self, data):
+        """
+        Regression test for integer indexing of the catalog after
+        multidimensional per-source arrays (e.g., the cutouts and
+        marginal-fit results) have been computed.
+
+        Previously, the integer index dropped the leading source axis
+        of those cached arrays, and accessing dependent properties
+        (e.g., ``peak``) on the indexed catalog raised an IndexError.
+        """
+        finder = DAOStarFinder(threshold=5.0, fwhm=2.0)
+        cat = finder._get_raw_catalog(data)
+        _ = cat.cutout_data
+        _ = cat.dx_hx
+
+        sub = cat[0]
+        assert sub.cutout_data.shape == (1, *cat.cutout_shape)
+        assert sub.dx_hx.shape == (1, 2)
+        assert sub.peak[0] == cat.peak[0]
+        assert sub.x_centroid[0] == cat.x_centroid[0]
+
     def test_interval_ends_included(self):
         """
         Test that filter interval endpoints are inclusive.

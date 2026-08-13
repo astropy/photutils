@@ -310,6 +310,13 @@ Bug Fixes
     also makes it consistent with ``ApertureStats.orientation`` and
     ``SourceCatalog.orientation``. [#2317]
 
+  - Fixed integer indexing of the star finder catalog classes when
+    multidimensional per-source attributes (e.g., image moments or
+    cutouts) had already been computed. Previously, the integer index
+    dropped the leading source axis of those cached arrays, and
+    accessing dependent properties on the indexed catalog raised an
+    ``IndexError``. [#2377]
+
 - ``photutils.morphology``
 
   - Fixed ``data_properties`` so that a ``background`` input with
