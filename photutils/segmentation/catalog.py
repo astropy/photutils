@@ -180,12 +180,11 @@ class SourceCatalog:
         values (NaN and inf) in the input ``data`` are automatically
         masked.
 
-    background : float, 2D `~numpy.ndarray`, or `~astropy.units.Quantity`, \
-            optional
-        The background level that was *previously* present in the input
-        ``data``. ``background`` may either be a scalar value or a 2D
-        image with the same shape as the input ``data``. If ``data``
-        is a `~astropy.units.Quantity` array then ``background`` must
+    background : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+        The background level that was *previously* present in the
+        input ``data``. ``background`` must be a 2D image with
+        the same shape as the input ``data``. If ``data`` is a
+        `~astropy.units.Quantity` array then ``background`` must
         be a `~astropy.units.Quantity` array (and vice versa) with
         identical units. Inputing the ``background`` merely allows
         for its properties to be measured within each source segment.

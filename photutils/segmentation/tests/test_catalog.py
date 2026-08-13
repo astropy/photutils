@@ -481,6 +481,10 @@ class TestSourceCatalog:
         with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, background=wrong_shape)
 
+        match = 'background must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            SourceCatalog(self.data, self.segm, background=5.1)
+
         match = 'data and mask must have the same shape'
         with pytest.raises(ValueError, match=match):
             SourceCatalog(self.data, self.segm, mask=wrong_shape)
