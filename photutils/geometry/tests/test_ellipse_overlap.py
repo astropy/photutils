@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for the elliptical_overlap_grid module.
+Tests for the ellipse_overlap module.
 """
 
 import numpy as np
@@ -46,6 +46,35 @@ def test_elliptical_overlap_smaller_than_pixel(theta):
                                    0.4, 0.3, theta, 1, 1)
     assert_allclose(grid[1, 1], area, rtol=1e-10)
     assert_allclose(grid.sum(), area, rtol=1e-10)
+
+
+@pytest.mark.parametrize(('rx', 'ry', 'theta'), [
+    (3.0, 1.5, 0.7),
+    (2.2, 0.4, -1.2),
+    (4.0, 4.0, 0.0),
+    (0.4, 0.3, 0.5),
+])
+def test_elliptical_overlap_exact_total_area(rx, ry, theta):
+    """
+    The exact-mode total overlap times the pixel area equals the
+    analytic ellipse area when the ellipse fits inside the grid, for
+    various axis ratios and rotation angles.
+    """
+    grid = elliptical_overlap_grid(-5.0, 5.0, -5.0, 5.0, 100, 100,
+                                   rx, ry, theta, 1, 1)
+    pixel_area = (10.0 / 100) ** 2
+    assert_allclose(grid.sum() * pixel_area, np.pi * rx * ry, rtol=1e-10)
+
+
+def test_elliptical_overlap_exact_matches_high_subpixel():
+    """
+    The exact result should agree with a high subpixel approximation to
+    within the subpixel-sampling error.
+    """
+    args = (-2.0, 2.0, -2.0, 2.0, 20, 20, 1.5, 0.8, 0.4)
+    exact = elliptical_overlap_grid(*args, 1, 1)
+    sub = elliptical_overlap_grid(*args, 0, 64)
+    assert np.abs(exact - sub).max() < 0.02
 
 
 def test_elliptical_overlap_grid_validation():

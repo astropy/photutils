@@ -45,9 +45,6 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
                              double height, double theta, int use_exact,
                              int subpixels):
     """
-    rectangle_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, width, height,
-                           theta, use_exact, subpixels)
-
     Calculate the fractional overlap between a rectangle and a pixel
     grid.
 

@@ -15,7 +15,7 @@ The cdef functions are not intended to be called from Python code.
 They are pure C math functions declared ``noexcept nogil`` so they can
 be called without the GIL, including from multiple threads on
 free-threaded Python builds. Their signatures are exported via
-polygon_overlap.pxd for reuse elsewhere.
+_polygon_overlap.pxd for reuse elsewhere.
 """
 
 import numpy as np
@@ -42,9 +42,6 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                          int nx, int ny, vertices_x, vertices_y,
                          int use_exact, int subpixels):
     """
-    polygon_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, vertices_x,
-                         vertices_y, use_exact, subpixels)
-
     Calculate the fractional overlap between a simple polygon and a
     pixel grid.
 
@@ -754,9 +751,11 @@ cdef inline int _clip_against_axis(double *xs_in, double *ys_in, int n_in,
         with coordinate <= bound.
 
     xs_out, ys_out : double *
-        Output. The x and y coordinates of the clipped polygon
-        vertices. Each must point to a buffer large enough to hold the
-        result (at most ``n_in + 1`` vertices).
+        Output. The x and y coordinates of the clipped polygon vertices.
+        Each must point to a buffer large enough to hold the result.
+        There are at most ``n_in + 1`` vertices for a convex input
+        polygon, but up to ``2 * n_in`` for a non-convex one (each
+        entering transition emits two vertices).
 
     Returns
     -------

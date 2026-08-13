@@ -335,6 +335,11 @@ cdef intersections circle_segment(double x1, double y1, double x2,
             or (pt2.y < y1 and pt2.y < y2)):
         pt2.x, pt2.y = 2., 2.
 
+    # Order the output so that p1 is invalid (coordinates > 1) whenever
+    # fewer than two intersections lie on the segment. Callers test
+    # p1 alone to decide whether a full chord exists, so a single
+    # on-segment intersection (a degenerate grazing case) is treated as
+    # no intersection.
     if pt1.x > 1. and pt2.x < 2.:
         inter_new.p1 = pt1
         inter_new.p2 = pt2

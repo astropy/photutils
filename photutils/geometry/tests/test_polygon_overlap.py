@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for the polygon_overlap_grid module.
+Tests for the _polygon_overlap module.
 """
 
 import numpy as np
