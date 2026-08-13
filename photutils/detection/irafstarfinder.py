@@ -12,7 +12,8 @@ from astropy.utils.exceptions import AstropyDeprecationWarning
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
                                       StarFinderCatalogBase,
                                       _handle_deprecated_range,
-                                      _StarFinderKernel, _validate_n_brightest)
+                                      _StarFinderKernel, _validate_n_brightest,
+                                      _validate_xycoords_bounds)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
@@ -106,7 +107,8 @@ class IRAFStarFinder(StarFinderBase):
     xycoords : `None` or Nx2 `~numpy.ndarray`, optional
         The (x, y) pixel coordinates of the approximate centroid
         positions of identified sources. If ``xycoords`` are input, the
-        algorithm will skip the source-finding step.
+        algorithm will skip the source-finding step. The positions must
+        be within the bounds of the input ``data``.
 
     min_separation : `None` or float, optional
         The minimum separation (in pixels) for detected objects. If
@@ -306,6 +308,7 @@ class IRAFStarFinder(StarFinderBase):
                                      mask=mask,
                                      exclude_border=self.exclude_border)
         else:
+            _validate_xycoords_bounds(self.xycoords, data.shape)
             xypos = self.xycoords
 
         if xypos is None:

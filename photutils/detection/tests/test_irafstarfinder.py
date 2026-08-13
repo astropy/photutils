@@ -122,6 +122,18 @@ class TestIRAFStarFinder:
         tbl1 = finder1(data)
         assert_array_equal(tbl0, tbl1)
 
+    @pytest.mark.parametrize('xycoords', [[[500, 50]], [[50, 500]],
+                                          [[-50, 50]], [[50, -50]]])
+    def test_xycoords_out_of_bounds(self, data, xycoords):
+        """
+        Test that out-of-bounds xycoords raise a ValueError.
+        """
+        match = 'xycoords must be within the bounds'
+        finder = IRAFStarFinder(threshold=5.0, fwhm=2.0,
+                                xycoords=np.array(xycoords))
+        with pytest.raises(ValueError, match=match):
+            finder(data)
+
     def test_min_separation(self, data):
         """
         Test the min_separation parameter.

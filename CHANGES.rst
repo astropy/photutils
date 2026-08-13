@@ -317,6 +317,10 @@ Bug Fixes
     accessing dependent properties on the indexed catalog raised an
     ``IndexError``. [#2377]
 
+  - ``DAOStarFinder`` and ``IRAFStarFinder`` now raise a ``ValueError``
+    if any input ``xycoords`` position is outside the bounds of the
+    input data. [#2377]
+
 - ``photutils.morphology``
 
   - Fixed ``data_properties`` so that a ``background`` input with

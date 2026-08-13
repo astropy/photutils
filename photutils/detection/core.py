@@ -954,6 +954,37 @@ def _validate_n_brightest(n_brightest):
     return n_brightest
 
 
+def _validate_xycoords_bounds(xycoords, shape):
+    """
+    Validate that ``xycoords`` positions are within the data shape.
+
+    Positions are interpreted as pixel coordinates, where pixel centers
+    are at integer values and the image footprint spans ``(-0.5, nx -
+    0.5)`` in x and ``(-0.5, ny - 0.5)`` in y.
+
+    Parameters
+    ----------
+    xycoords : Nx2 `~numpy.ndarray`
+        The (x, y) pixel coordinates of sources.
+
+    shape : tuple of 2 int
+        The ``(ny, nx)`` shape of the data array.
+
+    Raises
+    ------
+    ValueError
+        If any position is outside the bounds of the data.
+    """
+    ny, nx = shape
+    xpos = xycoords[:, 0]
+    ypos = xycoords[:, 1]
+    if np.any((xpos <= -0.5) | (xpos >= nx - 0.5)
+              | (ypos <= -0.5) | (ypos >= ny - 0.5)):
+        msg = ('xycoords must be within the bounds of the input data '
+               f'with shape {tuple(shape)}')
+        raise ValueError(msg)
+
+
 def _handle_deprecated_range(old_lower, old_upper, new_range,
                              old_name, new_name, default_range):
     """
