@@ -295,6 +295,12 @@ Bug Fixes
     coordinates that could cause failures and spurious NaN results.
     [#2368]
 
+- ``photutils.datasets``
+
+  - Fixed ``make_wcs`` so that the WCS ``pixel_shape`` attribute is
+    set in (nx, ny) order. The WCS transformation itself was unaffected.
+    [#2374]
+
 - ``photutils.detection``
 
   - Fixed ``DAOStarFinder`` and ``IRAFStarFinder`` ``orientation``

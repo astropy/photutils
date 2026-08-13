@@ -11,10 +11,14 @@ from photutils.utils._optional_deps import HAS_GWCS
 
 
 def test_make_wcs():
+    """
+    Test the basic functionality of make_wcs.
+    """
     shape = (100, 200)
     wcs = make_wcs(shape)
 
-    assert wcs.pixel_shape == shape
+    assert wcs.pixel_shape == (200, 100)  # (nx, ny)
+    assert wcs.array_shape == shape
     assert wcs.wcs.radesys == 'ICRS'
 
     wcs = make_wcs(shape, galactic=True)
@@ -24,6 +28,9 @@ def test_make_wcs():
 
 @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
 def test_make_gwcs():
+    """
+    Test the basic functionality of make_gwcs.
+    """
     shape = (100, 200)
 
     wcs = make_gwcs(shape)
@@ -41,6 +48,10 @@ def test_make_gwcs():
 
 @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
 def test_make_wcs_compare():
+    """
+    Test that make_wcs and make_gwcs return equivalent WCS
+    transformations.
+    """
     shape = (200, 300)
     wcs = make_wcs(shape)
     gwcs_obj = make_gwcs(shape)

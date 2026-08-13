@@ -65,7 +65,7 @@ def make_wcs(shape, galactic=False):
     rho = np.pi / 3.0
     scale = 0.1 / 3600.0  # 0.1 arcsec/pixel in deg/pix
 
-    wcs.pixel_shape = shape
+    wcs.pixel_shape = shape[::-1]  # (nx, ny)
     wcs.wcs.crpix = [shape[1] / 2, shape[0] / 2]  # 1-indexed (x, y)
     wcs.wcs.crval = [197.8925, -1.36555556]
     wcs.wcs.cunit = ['deg', 'deg']
