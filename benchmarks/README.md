@@ -45,6 +45,23 @@ python benchmarks/bench_centroids.py --which sources \
     --n-sources 5000 --n-threads 1,4,8
 ```
 
+## Geometry (`bench_geometry.py`)
+
+Benchmarks for the `photutils.geometry` subpackage:
+
+- the per-call cost of the overlap grid functions
+  (`circular_overlap_grid`, `elliptical_overlap_grid`,
+  `rectangular_overlap_grid`, and `polygon_overlap_grid`) for each
+  overlap method (exact, center, and subpixel)
+- the scaling of the exact mode with grid size
+- the scaling of `polygon_overlap_grid` with the number of vertices,
+  for convex and non-convex (star-shaped) polygons
+
+```bash
+python benchmarks/bench_geometry.py
+python benchmarks/bench_geometry.py --which polygon --n-vertices 8,64,512
+```
+
 ## Background (`bench_background.py`)
 
 Benchmarks for the `photutils.background` subpackage:
