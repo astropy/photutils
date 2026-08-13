@@ -493,6 +493,10 @@ API Changes
     single integer, which is used for both dimensions, consistent
     with ``make_model_params``. [#2374]
 
+  - The ``make_model_params`` output table now includes the creation
+    date and photutils version metadata, consistent with
+    ``make_random_models_table``. [#2384x]
+
 - ``photutils.detection``
 
   - The ``repr`` and ``str`` output of ``StarFinderCatalogBase`` now

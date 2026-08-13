@@ -5,6 +5,7 @@ table of model parameters.
 """
 
 import numpy as np
+from astropy.modeling import Model
 from astropy.table import QTable
 
 from photutils.utils._coords import make_random_xycoords
@@ -25,8 +26,8 @@ def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
     By default, this function computes only a table of x_0 and y_0
     values. Additional parameters can be specified as keyword arguments
     with their lower and upper bounds as 2-tuples. The parameter values
-    will be uniformly distributed between the lower and upper bounds,
-    inclusively.
+    will be uniformly sampled from the half-open interval ``[lower,
+    upper)``.
 
     Parameters
     ----------
@@ -68,7 +69,7 @@ def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
         Keyword arguments are accepted for additional model parameters.
         The values should be 2-tuples of the lower and upper bounds for
         the parameter range. The parameter values will be uniformly
-        distributed between the lower and upper bounds, inclusively.
+        sampled from the half-open interval ``[lower, upper)``.
 
     Returns
     -------
@@ -124,6 +125,10 @@ def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
     shape = as_pair('shape', shape, lower_bound=(0, 0))
     border_size = as_pair('border_size', border_size, lower_bound=(0, 1))
 
+    if n_sources < 0:
+        msg = 'n_sources must be >= 0'
+        raise ValueError(msg)
+
     xrange = (border_size[1], shape[1] - border_size[1])
     yrange = (border_size[0], shape[0] - border_size[0])
 
@@ -138,12 +143,13 @@ def make_model_params(shape, n_sources, *, x_name='x_0', y_name='y_0',
     x, y = np.transpose(xycoords)
 
     model_params = QTable()
+    model_params.meta.update(_get_meta())  # keep model_params.meta type
     model_params['id'] = np.arange(len(x)) + 1
     model_params[x_name] = x
     model_params[y_name] = y
 
     for param, prange in kwargs.items():
-        if len(prange) != 2:
+        if np.shape(prange) != (2,):
             msg = f'{param} must be a 2-tuple'
             raise ValueError(msg)
         vals = rng.uniform(*prange, len(model_params))
@@ -158,9 +164,10 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     Make a `~astropy.table.QTable` containing randomly generated
     parameters for an Astropy model to simulate a set of sources.
 
-    Each row of the table corresponds to a source whose parameters are
-    defined by the column names. The parameters are drawn from a uniform
-    distribution over the specified input ranges, inclusively.
+    Each row of the table corresponds to a source whose parameters
+    are defined by the column names. The parameters are uniformly
+    sampled from the half-open intervals ``[lower, upper)`` given by the
+    specified input ranges.
 
     The output table can be input into :func:`make_model_image` to
     create an image containing the model sources.
@@ -173,8 +180,8 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
     param_ranges : dict
         The lower and upper boundaries for each of the model parameters
         as a dictionary mapping the parameter name to its ``(lower,
-        upper)`` bounds. The parameter values will be uniformly
-        distributed between these bounds, inclusively.
+        upper)`` bounds. The parameter values will be uniformly sampled
+        from the half-open interval ``[lower, upper)``.
 
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
@@ -217,15 +224,22 @@ def make_random_models_table(n_sources, param_ranges, seed=None):
       4 508.26382  271.8125  10.075673 2.1988476  3.588758 2.1536937
       5 906.63512 467.53621  218.89663 2.6907489 3.4615404 2.0434781
     """
+    if n_sources < 0:
+        msg = 'n_sources must be >= 0'
+        raise ValueError(msg)
+
     rng = np.random.default_rng(seed)
 
     sources = QTable()
     sources.meta.update(_get_meta())  # keep sources.meta type
     sources['id'] = np.arange(n_sources) + 1
-    for param_name, (lower, upper) in param_ranges.items():
+    for param_name, prange in param_ranges.items():
+        if np.shape(prange) != (2,):
+            msg = f'{param_name} must be a 2-tuple'
+            raise ValueError(msg)
         # Generate a column for every item in param_ranges, even if it
         # is not in the model (e.g., flux).
-        sources[param_name] = rng.uniform(lower, upper, n_sources)
+        sources[param_name] = rng.uniform(prange[0], prange[1], n_sources)
 
     return sources
 
@@ -270,13 +284,17 @@ def params_table_to_models(params_table, model):
      <CircularGaussianPSF(flux=200., x_0=2., y_0=5., fwhm=1.)>,
      <CircularGaussianPSF(flux=300., x_0=3., y_0=6., fwhm=1.)>]
     """
+    if not isinstance(model, Model):
+        msg = 'model must be a Model instance'
+        raise TypeError(msg)
+
     param_names = set(model.param_names)
     colnames = set(params_table.colnames)
     if param_names.isdisjoint(colnames):
         msg = 'No matching model parameter names found in params_table'
         raise ValueError(msg)
 
-    param_names = [*list(param_names), 'name']
+    param_names = [*sorted(param_names), 'name']
     models = []
     for row in params_table:
         new_model = model.copy()

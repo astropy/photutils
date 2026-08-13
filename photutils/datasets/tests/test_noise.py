@@ -52,6 +52,17 @@ def test_apply_poisson_noise_negative():
         apply_poisson_noise(data)
 
 
+def test_apply_poisson_noise_nonfinite():
+    """
+    Test if non-finite image values raise ValueError.
+    """
+    match = 'data must not contain any non-finite values'
+    for value in (np.nan, np.inf, -np.inf):
+        data = np.array([[1.0, value], [2.0, 3.0]])
+        with pytest.raises(ValueError, match=match):
+            apply_poisson_noise(data)
+
+
 def test_make_noise_image():
     """
     Test if noise image is generated correctly.

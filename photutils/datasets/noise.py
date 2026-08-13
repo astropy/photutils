@@ -24,7 +24,7 @@ def apply_poisson_noise(data, seed=None):
     ----------
     data : array_like
         The array on which to apply Poisson noise. Every pixel in the
-        array must have a positive value (i.e., counts).
+        array must have a finite, non-negative value (i.e., counts).
 
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
@@ -60,6 +60,9 @@ def apply_poisson_noise(data, seed=None):
         ax2.set_title('Original image with Poisson noise applied')
     """
     data = np.asanyarray(data)
+    if not np.all(np.isfinite(data)):
+        msg = 'data must not contain any non-finite values'
+        raise ValueError(msg)
     if np.any(data < 0):
         msg = 'data must not contain any negative values'
         raise ValueError(msg)
@@ -85,7 +88,7 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
     shape : 2-tuple of int
         The shape of the output 2D image.
 
-    distribution : {'gaussian', 'poisson'}
+    distribution : {'gaussian', 'poisson'}, optional
         The distribution used to generate the random noise:
 
         * ``'gaussian'``: Gaussian distributed noise.
@@ -93,7 +96,7 @@ def make_noise_image(shape, distribution='gaussian', mean=None, stddev=None,
 
     mean : float
         The mean of the random distribution. Required for both Gaussian
-        and Poisson noise. The default is 0.
+        and Poisson noise.
 
     stddev : float, optional
         The standard deviation of the Gaussian noise to add to the
