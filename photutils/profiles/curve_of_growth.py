@@ -850,6 +850,14 @@ class EllipticalCurveOfGrowth(ProfileBase):
         super().__init__(data, xycen, radii, error=error, mask=mask,
                          method=method, subpixels=subpixels)
 
+    def __repr__(self):
+        cls_name = self.__class__.__name__
+        n_radii = len(self.radii)
+        normalized = self.normalization_value != 1.0
+        return (f'{cls_name}(xycen={self.xycen}, n_radii={n_radii}, '
+                f'axis_ratio={self.axis_ratio}, theta={self.theta}, '
+                f'normalized={normalized})')
+
     @cached_property
     def radius(self):
         """

@@ -879,9 +879,12 @@ class TestEllipticalCurveOfGrowth:
         xycen, data, _, _ = profile_data
 
         radii = np.arange(1, 36)
-        ecg = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5)
+        ecg = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
+                                      theta=0.7)
         r = repr(ecg)
         assert 'EllipticalCurveOfGrowth' in r
         assert f'xycen={xycen}' in r
         assert f'n_radii={len(radii)}' in r
+        assert 'axis_ratio=0.5' in r
+        assert 'theta=0.7' in r
         assert 'normalized=False' in r
