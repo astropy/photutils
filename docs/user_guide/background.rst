@@ -481,6 +481,36 @@ the background subtraction can be improved by masking the sources
 and/or through further iterations.
 
 
+Multithreading
+^^^^^^^^^^^^^^
+
+`~photutils.background.Background2D` instances are immutable
+after construction (aside from internal lazy-attribute caches),
+so a single instance is safe to share across threads and
+independent images can be processed concurrently, e.g., with a
+`~concurrent.futures.ThreadPoolExecutor`. The underlying sigma-clipping,
+statistics, and interpolation kernels release the Python global
+interpreter lock (GIL), so threads can effectively run in parallel:
+
+.. doctest-skip::
+
+    >>> from concurrent.futures import ThreadPoolExecutor
+    >>> from photutils.background import Background2D
+    >>> def estimate_background(data):
+    ...     return Background2D(data, (25, 25)).background
+    >>> with ThreadPoolExecutor() as executor:
+    ...     backgrounds = list(executor.map(estimate_background, images))
+
+In addition, the box statistics computed by
+`~photutils.background.Background2D` itself can be multithreaded by
+setting the ``n_threads`` keyword. The results are identical to the
+single-threaded computation. This is most beneficial for large images:
+
+.. doctest-skip::
+
+    >>> bkg = Background2D(data2, (15, 15), n_threads=4)
+
+
 Plotting Meshes
 ^^^^^^^^^^^^^^^
 
