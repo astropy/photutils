@@ -94,6 +94,22 @@ python benchmarks/bench_profiles.py
 python benchmarks/bench_profiles.py --which radii-scaling --n-radii-list 100,400,1600
 ```
 
+## PSF matching (`bench_psf_matching.py`)
+
+Benchmarks for the `photutils.psf_matching` subpackage:
+
+- the per-call cost of the kernel-making functions (`make_kernel`
+  with and without a window, and `make_wiener_kernel` for the
+  scalar, Laplacian, and biharmonic penalties)
+- the scaling of the kernel computation with the PSF size
+- the per-call cost of the window classes
+- `resize_psf` for down- and upsampling with each spline order
+
+```bash
+python benchmarks/bench_psf_matching.py
+python benchmarks/bench_psf_matching.py --which size-scaling --sizes 101,201,401
+```
+
 ## Background (`bench_background.py`)
 
 Benchmarks for the `photutils.background` subpackage:
