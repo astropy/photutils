@@ -558,6 +558,9 @@ API Changes
     ``STDPSFGrid`` output now labels the grid shape as ``Grid shape``
     instead of ``Grid_shape``. [#2344]
 
+  - ``decode_psf_flags`` now raises a ``TypeError`` for boolean flag
+    values instead of treating `True` as bit value 1. [#2375]
+
 - ``photutils.segmentation``
 
   - The ``deblend_sources`` "too many markers" warning key stored in
