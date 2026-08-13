@@ -494,6 +494,10 @@ class EnsquaredCurveOfGrowth(ProfileBase):
     _xlabel = 'Half-Size (pixels)'
     _ylabel = 'Ensquared Curve of Growth'
 
+    # The user-facing name of the sizes parameter, used in validation
+    # error messages
+    _radii_name = 'half_sizes'
+
     def __init__(self, data, xycen, half_sizes, *, error=None, mask=None,
                  method='exact', subpixels=5):
 

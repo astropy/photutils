@@ -322,6 +322,13 @@ Bug Fixes
     longer includes the data unit after the profile has been normalized
     (a normalized profile is dimensionless). [#2371]
 
+  - A ``Quantity`` ``radii`` (or ``half_sizes``) input to the profile
+    classes now raises a ``TypeError``. Previously, the units were
+    silently dropped. [#2371]
+
+  - The ``EnsquaredCurveOfGrowth`` input validation error messages now
+    refer to the ``half_sizes`` parameter instead of ``radii``. [#xxxx]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range

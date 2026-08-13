@@ -495,7 +495,7 @@ class TestEnsquaredCurveOfGrowth:
             EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=None,
                                    mask=None)
 
-        match = 'radii must be a 1D array and have at least two values'
+        match = 'half_sizes must be a 1D array and have at least two values'
         with pytest.raises(ValueError, match=match):
             EnsquaredCurveOfGrowth(data, xycen, [1], error=None, mask=None)
         with pytest.raises(ValueError, match=match):
@@ -503,9 +503,15 @@ class TestEnsquaredCurveOfGrowth:
                                    np.arange(1, 7).reshape(2, 3),
                                    error=None, mask=None)
 
-        match = 'radii must be strictly increasing'
+        match = 'half_sizes must be strictly increasing'
         half_sizes = np.arange(1, 10)[::-1]
         with pytest.raises(ValueError, match=match):
+            EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=None,
+                                   mask=None)
+
+        match = 'half_sizes must be a plain array of pixel values'
+        half_sizes = np.arange(1, 10) << u.pix
+        with pytest.raises(TypeError, match=match):
             EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=None,
                                    mask=None)
 

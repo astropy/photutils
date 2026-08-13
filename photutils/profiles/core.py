@@ -60,6 +60,11 @@ class ProfileBase(metaclass=abc.ABCMeta):
     _xlabel = 'Radius (pixels)'
     _ylabel = 'Profile'
 
+    # The user-facing name of the ``radii`` parameter, used in
+    # validation error messages. Subclasses that rename the parameter
+    # (e.g., ``half_sizes``) may override this.
+    _radii_name = 'radii'
+
     def __init__(self, data, xycen, radii, *, error=None, mask=None,
                  method='exact', subpixels=5):
 
@@ -84,16 +89,22 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         Validate and return the radii array.
         """
+        name = self._radii_name
+        if isinstance(radii, u.Quantity):
+            msg = (f'{name} must be a plain array of pixel values, '
+                   'not a Quantity')
+            raise TypeError(msg)
+
         radii = np.array(radii)
         if radii.ndim != 1 or radii.size < 2:
-            msg = 'radii must be a 1D array and have at least two values'
+            msg = f'{name} must be a 1D array and have at least two values'
             raise ValueError(msg)
         if radii.min() < 0:
-            msg = 'minimum radii must be >= 0'
+            msg = f'minimum {name} must be >= 0'
             raise ValueError(msg)
 
         if not np.all(radii[1:] > radii[:-1]):
-            msg = 'radii must be strictly increasing'
+            msg = f'{name} must be strictly increasing'
             raise ValueError(msg)
 
         return radii

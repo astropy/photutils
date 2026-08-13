@@ -196,6 +196,11 @@ class TestRadialProfile:
         with pytest.raises(ValueError, match=match):
             RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
+        match = 'radii must be a plain array of pixel values'
+        edge_radii = np.arange(10) << u.pix
+        with pytest.raises(TypeError, match=match):
+            RadialProfile(data, xycen, edge_radii, error=None, mask=None)
+
         match = 'error must have the same shape as data'
         edge_radii = np.arange(10)
         with pytest.raises(ValueError, match=match):
