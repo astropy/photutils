@@ -284,7 +284,11 @@ class TestBackground2D:
         assert_equal(bkg1.background_mesh, bkg2.background_mesh)
         assert_equal(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
         assert_equal(bkg1.n_pixels_mesh, bkg2.n_pixels_mesh)
-        assert_equal(bkg1.background, bkg2.background)
+        # The multithreaded full-size interpolation is identical up to
+        # floating-point rounding
+        assert_allclose(bkg1.background, bkg2.background, rtol=1e-10)
+        assert_allclose(bkg1.background_rms, bkg2.background_rms,
+                        rtol=1e-10)
 
     def test_n_threads_no_sigma_clip(self):
         """
