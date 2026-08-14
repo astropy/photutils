@@ -48,8 +48,14 @@ def test_model():
     assert np.abs(np.mean(residual)) <= 5.0
 
 
-@pytest.mark.parametrize('sma_interval', [0.05, 0.1])
-def test_model_simulated_data(sma_interval):
+@pytest.fixture(name='simulated_isolist', scope='module')
+def fixture_simulated_isolist():
+    """
+    Fit isophotes to a simulated galaxy image.
+
+    The fit does not depend on the model-building parameters, so it is
+    performed only once and shared across tests.
+    """
     data = make_test_image(nx=200, ny=200, i0=10.0, sma=5.0, eps=0.5,
                            pa=np.pi / 3.0, noise=0.05, seed=0)
 
@@ -62,6 +68,12 @@ def test_model_simulated_data(sma_interval):
         warnings.simplefilter('ignore', RuntimeWarning)
         isophote_list = ellipse.fit_image()
 
+    return data, isophote_list
+
+
+@pytest.mark.parametrize('sma_interval', [0.05, 0.1])
+def test_model_simulated_data(simulated_isolist, sma_interval):
+    data, isophote_list = simulated_isolist
     model = build_ellipse_model(data.shape, isophote_list,
                                 fill=np.mean(data[0:50, 0:50]),
                                 sma_interval=sma_interval)
