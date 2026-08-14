@@ -24,7 +24,7 @@ dependencies to provide users with access to the latest features and
 performance improvements. The minimum required versions are now:
 
 - Astropy: 6.1.7
-- SciPy: 1.14
+- SciPy: 1.15
 - Regions: 0.10
 - scikit-image: 0.24
 - gwcs: 0.22
