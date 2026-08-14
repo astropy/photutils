@@ -18,6 +18,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            ScalarAngleOrValue,
                                            SkyCoordPositions)
 from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _enable_batch_photometry,
                                      _RotatableApertureMixin,
                                      _update_method_subpixels_docstring)
 from photutils.aperture.mask import ApertureMask
@@ -72,7 +73,7 @@ def _rectangular_polygon_offsets(half_x, half_y, theta):
     return corners @ rot_mat.T
 
 
-@deprecated('3.0', until='4.0')
+@deprecated('3.0', until='3.2')
 class RectangularMaskMixin:  # pragma: no cover
     """
     Mixin class to create masks for rectangular or rectangular-annulus
@@ -186,6 +187,7 @@ def _calc_lower_left_positions(positions, width, height, theta_rad):
     return np.atleast_2d(positions) + np.array([xshift, yshift])
 
 
+@_enable_batch_photometry
 class RectangularAperture(_RotatableApertureMixin, PixelAperture):
     """
     A rectangular aperture defined in pixel coordinates.
@@ -219,7 +221,7 @@ class RectangularAperture(_RotatableApertureMixin, PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If either width (``w``) or height (``h``) is negative.
+        If either width (``w``) or height (``h``) is not positive.
 
     Examples
     --------
@@ -374,9 +376,10 @@ class RectangularAperture(_RotatableApertureMixin, PixelAperture):
         """
         offsets = _rectangular_polygon_offsets(
             0.5 * self.w, 0.5 * self.h, self.theta.to_value(u.radian))
-        return PolygonAperture._from_convex_offsets(self.positions, offsets)
+        return PolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
+@_enable_batch_photometry
 class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
     r"""
     A rectangular annulus aperture defined in pixel coordinates.
@@ -423,12 +426,13 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If inner width (``w_in``) is greater than outer width
-        (``w_out``).
+        If the inner width (``w_in``) is not less than the outer width
+        (``w_out``), or if the inner height (``h_in``), when given, is
+        not less than the outer height (``h_out``).
 
     ValueError : `ValueError`
-        If either the inner width (``w_in``) or the outer height
-        (``h_out``) is negative.
+        If any of the widths or heights (``w_in``, ``w_out``, ``h_in``,
+        or ``h_out``) is not positive.
 
     Examples
     --------
@@ -448,6 +452,7 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
     """
 
     _params = ('positions', 'w_in', 'w_out', 'h_in', 'h_out', 'theta')
+    _ordered_pairs = (('w_in', 'w_out'), ('h_in', 'h_out'))
     positions = PixelPositions('The center pixel position(s).')
     w_in = PositiveScalar('The inner full width in pixels.')
     w_out = PositiveScalar('The outer full width in pixels.')
@@ -459,10 +464,6 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w_in, w_out, h_out, h_in=None, theta=0.0):
-        if not w_out > w_in:
-            msg = "'w_out' must be greater than 'w_in'"
-            raise ValueError(msg)
-
         self.positions = positions
         self.w_in = w_in
         self.w_out = w_out
@@ -470,9 +471,6 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
 
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
-        elif not h_out > h_in:
-            msg = "'h_out' must be greater than 'h_in'"
-            raise ValueError(msg)
         self.h_in = h_in
 
         self.theta = theta
@@ -721,7 +719,7 @@ class SkyRectangularAperture(_RotatableApertureMixin, SkyAperture):
         offsets = _rectangular_polygon_offsets(
             0.5 * self.h.to_value(unit), 0.5 * self.w.to_value(unit),
             self.theta.to_value(u.radian)) * unit
-        return SkyPolygonAperture._from_convex_offsets(self.positions, offsets)
+        return SkyPolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
 class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
@@ -777,6 +775,7 @@ class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
     """
 
     _params = ('positions', 'w_in', 'w_out', 'h_in', 'h_out', 'theta')
+    _ordered_pairs = (('w_in', 'w_out'), ('h_in', 'h_out'))
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     w_in = PositiveScalarAngle('The inner full width in angular units.')
     w_out = PositiveScalarAngle('The outer full width in angular units.')
@@ -788,10 +787,6 @@ class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, w_in, w_out, h_out, h_in=None,
                  theta=0.0 * u.deg):
-        if not w_out > w_in:
-            msg = "'w_out' must be greater than 'w_in'"
-            raise ValueError(msg)
-
         self.positions = positions
         self.w_in = w_in
         self.w_out = w_out
@@ -799,9 +794,6 @@ class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
 
         if h_in is None:
             h_in = self.w_in * self.h_out / self.w_out
-        elif not h_out > h_in:
-            msg = "'h_out' must be greater than 'h_in'"
-            raise ValueError(msg)
         self.h_in = h_in
 
         self.theta = theta

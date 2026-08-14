@@ -334,9 +334,10 @@ one of three methods:
   aperture, and 0 otherwise.
 
 * ``'subpixel'``:
-  Pixels are divided into a sub-grid of :math:`N×N` subpixels (where
-  :math:`N` is set by the ``'subpixels'`` keyword). The pixel weight is
-  the fraction of subpixel centers that fall within the aperture.
+  Pixels are divided into a sub-grid of :math:`N \times N` subpixels
+  (where :math:`N` is set by the ``'subpixels'`` keyword). The pixel
+  weight is the fraction of subpixel centers that fall within the
+  aperture.
 
 .. note::
 
@@ -543,13 +544,13 @@ Aperture Photometry on a 3D Data Cube
 image. To measure a source in a 3D data cube --- for example, a time
 series of images of the same field or a spectroscopic integral field
 unit (IFU) data cube --- apply the same aperture to each 2D image in the
-stack and collect the measurements into into an output array or table.
-For a time series of images, these measurements form a light curve.
+stack and collect the measurements into an output array or table. For a
+time series of images, these measurements form a light curve.
 
 Here we create a small stack of five images in which a single source
 varies in brightness from frame to frame, and measure its flux and
 uncertainty in each frame using the same circular aperture. Build the
-list of results objects first (a single photometry pass per frame), then
+list of result objects first (a single photometry pass per frame), then
 read as many attributes as needed::
 
     >>> import numpy as np

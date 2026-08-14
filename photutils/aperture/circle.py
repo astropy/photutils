@@ -17,6 +17,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            PositiveScalarAngle,
                                            SkyCoordPositions)
 from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _enable_batch_photometry,
                                      _update_method_subpixels_docstring)
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
@@ -68,7 +69,7 @@ def _circular_polygon_offsets(r, n_vertices):
     return np.column_stack([np.cos(theta), np.sin(theta)]) * r
 
 
-@deprecated('3.0')
+@deprecated('3.0', until='3.2')
 class CircularMaskMixin:  # pragma: no cover
     """
     Mixin class to create masks for circular and circular-annulus
@@ -126,6 +127,7 @@ class CircularMaskMixin:  # pragma: no cover
         return masks
 
 
+@_enable_batch_photometry
 class CircularAperture(PixelAperture):
     """
     A circular aperture defined in pixel coordinates.
@@ -148,7 +150,7 @@ class CircularAperture(PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If the input radius, ``r``, is negative.
+        If the input radius, ``r``, is not positive.
 
     Examples
     --------
@@ -286,9 +288,10 @@ class CircularAperture(PixelAperture):
             A polygon aperture that approximates the circle.
         """
         offsets = _circular_polygon_offsets(self.r, n_vertices)
-        return PolygonAperture._from_convex_offsets(self.positions, offsets)
+        return PolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
+@_enable_batch_photometry
 class CircularAnnulus(PixelAperture):
     """
     A circular annulus aperture defined in pixel coordinates.
@@ -314,11 +317,11 @@ class CircularAnnulus(PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If inner radius (``r_in``) is greater than outer radius
+        If the inner radius (``r_in``) is not less than the outer radius
         (``r_out``).
 
     ValueError : `ValueError`
-        If inner radius (``r_in``) is negative.
+        If either radius (``r_in`` or ``r_out``) is not positive.
 
     Examples
     --------
@@ -334,15 +337,12 @@ class CircularAnnulus(PixelAperture):
     """
 
     _params = ('positions', 'r_in', 'r_out')
+    _ordered_pairs = (('r_in', 'r_out'),)
     positions = PixelPositions('The center pixel position(s).')
     r_in = PositiveScalar('The inner radius in pixels.')
     r_out = PositiveScalar('The outer radius in pixels.')
 
     def __init__(self, positions, r_in, r_out):
-        if not r_out > r_in:
-            msg = "'r_out' must be greater than 'r_in'"
-            raise ValueError(msg)
-
         self.positions = positions
         self.r_in = r_in
         self.r_out = r_out
@@ -545,7 +545,7 @@ class SkyCircularAperture(SkyAperture):
             A sky polygon aperture that approximates the circle.
         """
         offsets = _circular_polygon_offsets(self.r, n_vertices)
-        return SkyPolygonAperture._from_convex_offsets(self.positions,
+        return SkyPolygonAperture._from_simple_offsets(self.positions,
                                                        offsets)
 
 
@@ -578,15 +578,12 @@ class SkyCircularAnnulus(SkyAperture):
     """
 
     _params = ('positions', 'r_in', 'r_out')
+    _ordered_pairs = (('r_in', 'r_out'),)
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     r_in = PositiveScalarAngle('The inner radius in angular units.')
     r_out = PositiveScalarAngle('The outer radius in angular units.')
 
     def __init__(self, positions, r_in, r_out):
-        if not r_out > r_in:
-            msg = "'r_out' must be greater than 'r_in'"
-            raise ValueError(msg)
-
         self.positions = positions
         self.r_in = r_in
         self.r_out = r_out

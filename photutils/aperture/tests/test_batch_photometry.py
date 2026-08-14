@@ -12,7 +12,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from photutils.aperture.circle import CircularAnnulus, CircularAperture
-from photutils.aperture.core import PixelAperture
+from photutils.aperture.core import PixelAperture, _enable_batch_photometry
 from photutils.aperture.ellipse import EllipticalAnnulus, EllipticalAperture
 from photutils.aperture.polygon import PolygonAperture
 from photutils.aperture.rectangle import (RectangularAnnulus,
@@ -303,17 +303,17 @@ class TestFallback:
         assert_allclose(result.flux_err, expected.flux_err, rtol=1e-12,
                         equal_nan=True)
 
-    def test_subclass_without_hook(self):
+    def test_undecorated_subclass(self):
         """
-        Test that aperture subclasses that do not themselves define
-        _batch_shape_params fall back to the mask-based code path in
-        photometry, so that any overridden behavior (e.g., to_mask) is
-        honored.
+        Test that aperture subclasses that are not decorated with
+        _enable_batch_photometry fall back to the mask-based code path
+        in photometry, so that any overridden behavior (e.g., to_mask)
+        is honored.
         """
 
         class MyAperture(CircularAperture):
-            # Inherits _batch_shape_params, but does not define it in its
-            # own class, so the batch driver must not be used.
+            # Inherits _batch_photometry_class pointing at
+            # CircularAperture, so the batch driver must not be used.
             pass
 
         aperture = MyAperture(POSITIONS, r=5.5)
@@ -323,15 +323,15 @@ class TestFallback:
         result2 = CircularAperture(POSITIONS, r=5.5)._photometry(DATA)
         assert_allclose(result.flux, result2.flux, rtol=1e-12, equal_nan=True)
 
-    def test_subclass_with_hook(self):
+    def test_decorated_subclass(self):
         """
-        Test that aperture subclasses that define the _batch_shape_params
-        hook in their own class opt in to the batch code path.
+        Test that aperture subclasses decorated with
+        _enable_batch_photometry opt in to the batch code path.
         """
 
+        @_enable_batch_photometry
         class MyAperture(CircularAperture):
-            def _batch_shape_params(self):
-                return super()._batch_shape_params()
+            pass
 
         aperture = MyAperture(POSITIONS, r=5.5)
         result = aperture._batch_photometry(DATA, error=None, mask=None,
@@ -341,9 +341,8 @@ class TestFallback:
 
     def test_base_hook_none(self):
         """
-        Test that when a subclass defines _batch_shape_params (opting in)
-        but the method returns None, _batch_photometry falls back to
-        None.
+        Test that when a decorated subclass's _batch_shape_params hook
+        returns None, _batch_photometry falls back to None.
 
         This covers:
         - PixelAperture._batch_shape_params (the base ``return`` on its own
@@ -351,11 +350,12 @@ class TestFallback:
         - the ``if spec is None: return None`` branch in _batch_photometry.
         """
 
+        @_enable_batch_photometry
         class MyAperture(CircularAperture):
             def _batch_shape_params(self):
-                # Explicitly delegate to the base PixelAperture hook, which
-                # returns None, signalling that the batch driver is not
-                # supported for this subclass.
+                # Explicitly delegate to the base PixelAperture hook,
+                # which returns None, signalling that the batch driver
+                # is not supported for this subclass.
                 return PixelAperture._batch_shape_params(self)
 
         aperture = MyAperture(POSITIONS, r=5.5)

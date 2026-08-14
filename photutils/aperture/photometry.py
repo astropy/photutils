@@ -38,7 +38,10 @@ _DEPRECATED_COLUMNS: dict = {
 # instance because they are not per-position output values (see
 # ``AperturePhotometry.__getattribute__``). ``segmentation_image`` and
 # ``labels`` are the inputs echoed back to the user, and the others
-# describe the whole object.
+# describe the whole object. Any new public attribute that is a list,
+# tuple, ndarray, or SkyCoord but is not a per-position value must be
+# added here, otherwise a length-1 value will be silently collapsed to
+# its first element for a scalar instance.
 _SCALAR_EXCLUDE = frozenset({'default_columns', 'isscalar', 'labels',
                              'n_positions', 'segmentation_image'})
 
@@ -213,6 +216,9 @@ class AperturePhotometry:
         if not isinstance(apertures, (list, tuple, np.ndarray)):
             single_aperture = True
             apertures = (apertures,)
+        elif len(apertures) == 0:
+            msg = 'apertures must not be empty'
+            raise ValueError(msg)
         self._single_aperture = single_aperture
 
         # Create table metadata using the input apertures, not the
@@ -472,7 +478,8 @@ class AperturePhotometry:
         Raises
         ------
         ValueError
-            If any name in ``columns`` is not a valid column name.
+            If any name in ``columns`` is not a valid column name, or if
+            ``'sky_center'`` is requested but no WCS was input.
         """
         allowed_columns = ('id', 'x_center', 'y_center', 'sky_center',
                            'flux', 'flux_err', 'area', 'flags')
@@ -480,6 +487,12 @@ class AperturePhotometry:
             table_columns = self.default_columns
         else:
             table_columns = validate_table_columns(columns, allowed_columns)
+
+        if ('sky_center' in table_columns
+                and self._array('sky_center') is None):
+            msg = ("the 'sky_center' column requires a WCS, which must "
+                   'be defined by the input data or the wcs keyword')
+            raise ValueError(msg)
 
         tbl = QTable()
         tbl.meta.update(self.meta)

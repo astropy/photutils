@@ -6,7 +6,7 @@ Tests for segmentation-based masking of aperture photometry, shared by
 
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.aperture._batch_photometry import (SHAPE_CIRCLE,
                                                   batch_aperture_sums)
@@ -15,26 +15,8 @@ from photutils.aperture._segmentation import (make_segmentation_exclusion,
 from photutils.aperture.circle import CircularAperture
 from photutils.aperture.photometry import AperturePhotometry
 from photutils.aperture.stats import ApertureStats
+from photutils.aperture.tests.conftest import make_scene
 from photutils.segmentation import SegmentationImage
-
-
-def make_scene():
-    """
-    Build a deterministic scene with a target source (label 1) and a
-    bright neighbor source (label 2), on a nonzero background.
-    """
-    data = np.ones((50, 50))
-    segm = np.zeros((50, 50), dtype=int)
-
-    # Target source (label 1)
-    data[18:25, 18:25] = 10.0
-    segm[18:25, 18:25] = 1
-
-    # Bright neighbor source (label 2)
-    data[20:25, 26:32] = 100.0
-    segm[20:25, 26:32] = 2
-
-    return data, segm
 
 
 class TestProcessSegmentationInputs:
@@ -95,6 +77,13 @@ class TestProcessSegmentationInputs:
         match = 'labels must have the same length'
         with pytest.raises(ValueError, match=match):
             process_segmentation_inputs(segm, [1, 2], 'mask', [(21, 21)],
+                                        data.shape)
+
+    def test_labels_not_1d(self):
+        data, segm = make_scene()
+        match = 'labels must be a 1D array'
+        with pytest.raises(ValueError, match=match):
+            process_segmentation_inputs(segm, [[1, 2]], 'mask', [(21, 21)],
                                         data.shape)
 
     def test_labels_required(self):
@@ -179,18 +168,18 @@ class TestMakeSegmentationExclusion:
         segm = np.array([[0, 1], [2, 1]])
         _, _, exclude, affected = make_segmentation_exclusion('mask', segm, 1)
         expected = np.array([[False, False], [True, False]])
-        assert_allclose(exclude, expected)
-        assert_allclose(affected, expected)
+        assert_array_equal(exclude, expected)
+        assert_array_equal(affected, expected)
 
     def test_source_only_method(self):
         segm = np.array([[0, 1], [2, 1]])
         _, _, exclude, affected = make_segmentation_exclusion(
             'source_only', segm, 1)
         expected = np.array([[True, False], [True, False]])
-        assert_allclose(exclude, expected)
+        assert_array_equal(exclude, expected)
         # Background exclusions are not marked as affected
         expected_affected = np.array([[False, False], [True, False]])
-        assert_allclose(affected, expected_affected)
+        assert_array_equal(affected, expected_affected)
 
     def test_correct_replaces_neighbor(self):
         # 5x5 cutout, center (2, 2). A neighbor pixel at (1, 2) [x=1, y=2]

@@ -415,6 +415,11 @@ conditions such as:
 * sigma-clipped pixels within the aperture (``'sigma_clipped'``,
   ``'all_clipped'``) and too few pixels to compute a statistic
   (``'too_few_pixels'``) in `~photutils.aperture.ApertureStats`
+* sources whose net flux is not positive (``'undefined_shape'``)
+  or whose covariance matrix is singular or nearly singular
+  (``'singular_covariance'``), so that the centroid and shape
+  properties are undefined or unreliable, in
+  `~photutils.aperture.ApertureStats`
 
 The overlap flags are precise. They are based on the pixels with
 nonzero aperture weight, not simply the aperture bounding box. The
@@ -484,6 +489,15 @@ The `~photutils.utils.ShepardIDWInterpolator` ``ncoords`` attribute has
 been renamed to ``n_coords`` for naming consistency within photutils.
 The old ``ncoords`` name is deprecated and will be removed in version
 4.0.
+
+``ApertureStats.n_apertures`` Renamed
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The `~photutils.aperture.ApertureStats` ``n_apertures``
+attribute has been renamed to ``n_positions``, matching the
+`~photutils.aperture.AperturePhotometry` attribute of the same name
+(both count the aperture positions). The old ``n_apertures`` name is
+deprecated and will be removed in version 4.0.
 
 
 Removed Deprecations

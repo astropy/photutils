@@ -21,13 +21,15 @@ free-threaded Python builds.
 
 import numpy as np
 
+from photutils.aperture._batch_photometry import N_FLAG_COLS
+
 from photutils.aperture._batch_overlap cimport (
     _CIRCLE, _CIRCULAR_ANNULUS, _ELLIPSE, _ELLIPTICAL_ANNULUS, _POLYGON,
     _RECTANGLE, _RECTANGULAR_ANNULUS, _circle_pixel_frac,
     _circular_annulus_pixel_frac, _ellipse_pixel_frac,
     _elliptical_annulus_pixel_frac, _polygon_pixel_frac,
     _presize_packed_offsets, _rect_pixel_frac, _rectangular_annulus_pixel_frac,
-    _round_half_away, _source_grid_setup)
+    _resolve_seg_pixel, _round_half_away, _source_grid_setup)
 from photutils.geometry._polygon_overlap cimport (convex_edge_normals,
                                                   polygon_work_partition,
                                                   polygon_work_size)
@@ -325,12 +327,21 @@ def batch_aperture_gather(const double[:, ::1] data,
     cdef bint has_mask = mask is not None
     cdef bint has_bkg = local_bkg is not None
     cdef bint has_seg = segmentation is not None
-    cdef Py_ssize_t lbl = 0, seg_val
+    cdef Py_ssize_t lbl = 0
+
+    # Base pointers for the C-contiguous segmentation and mask planes,
+    # used by the shared per-pixel segmentation helper
+    cdef const Py_ssize_t *seg_ptr = NULL
+    cdef const unsigned char *mask_ptr = NULL
+    if has_seg:
+        seg_ptr = &segmentation[0, 0]
+    if has_mask:
+        mask_ptr = &mask[0, 0]
 
     starts_arr = np.zeros(n_src, dtype=np.intp)
     counts_arr = np.zeros(n_src, dtype=np.intp)
     overlap_arr = np.zeros(n_src, dtype=np.uint8)
-    fcounts_arr = np.zeros((n_src, 8), dtype=np.intp)
+    fcounts_arr = np.zeros((n_src, N_FLAG_COLS), dtype=np.intp)
     cdef Py_ssize_t[::1] starts = starts_arr
     cdef Py_ssize_t[::1] counts = counts_arr
     cdef unsigned char[::1] overlap = overlap_arr
@@ -437,7 +448,7 @@ def batch_aperture_gather(const double[:, ::1] data,
 
     cdef Py_ssize_t k, ix, iy, ix0, ix1, iy0, iy1
     cdef Py_ssize_t ixmin, iymin
-    cdef Py_ssize_t six, siy, xm, ym, ccx = 0, ccy = 0, mseg
+    cdef Py_ssize_t six, siy, ccx = 0, ccy = 0
     cdef double cx, cy, lbk
     cdef double gxmin, gymin
     cdef double dx, dy, pixel_radius, norm
@@ -551,38 +562,12 @@ def batch_aperture_gather(const double[:, ::1] data,
                             continue
                     six = ix
                     siy = iy
-                    if has_seg and lbl != 0:
-                        seg_val = segmentation[iy, ix]
-                        if seg_method == 1:
-                            if seg_val != 0 and seg_val != lbl:
-                                n_seg_px += 1
-                                continue
-                        elif seg_method == 2:
-                            if seg_val != lbl:
-                                # Only neighbor-source pixels (not
-                                # background pixels) count toward the
-                                # neighbor-pixels flag.
-                                if seg_val != 0:
-                                    n_seg_px += 1
-                                continue
-                        elif seg_method == 3:
-                            if seg_val != 0 and seg_val != lbl:
-                                n_seg_px += 1
-                                xm = 2 * ccx - ix
-                                ym = 2 * ccy - iy
-                                if (xm < ix0 or xm >= ix1
-                                        or ym < iy0 or ym >= iy1):
-                                    n_uncorr += 1
-                                    continue
-                                mseg = segmentation[ym, xm]
-                                if mseg != 0 and mseg != lbl:
-                                    n_uncorr += 1
-                                    continue
-                                if has_mask and mask[ym, xm]:
-                                    n_uncorr += 1
-                                    continue
-                                six = xm
-                                siy = ym
+                    if (has_seg and lbl != 0
+                            and not _resolve_seg_pixel(
+                                seg_ptr, mask_ptr, nx_data, seg_method,
+                                lbl, ix, iy, ix0, ix1, iy0, iy1, ccx,
+                                ccy, &six, &siy, &n_seg_px, &n_uncorr)):
+                        continue
 
                     values[pos] = data[siy, six] - lbk
                     local_x[pos] = <int>(ix - ix0)

@@ -18,8 +18,7 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_VALID, SHAPE_CIRCLE,
                                                   batch_aperture_sums)
 from photutils.aperture._batch_stats import batch_aperture_gather
-
-SHAPE = (25, 25)
+from photutils.aperture.tests.conftest import UNIT_SHAPE
 
 
 def _sums_fcounts(data, positions, radius, *, error=None, mask=None,
@@ -93,7 +92,7 @@ class TestPixelCounts:
         data = unit_data
 
         # Pixel inside the aperture
-        mask = np.zeros(SHAPE, dtype=np.uint8)
+        mask = np.zeros(UNIT_SHAPE, dtype=np.uint8)
         mask[12, 12] = 1
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, mask=mask,
                            use_exact=use_exact)[0]
@@ -102,7 +101,7 @@ class TestPixelCounts:
 
         # Pixel inside the bounding box but outside the aperture (bbox
         # corner)
-        mask = np.zeros(SHAPE, dtype=np.uint8)
+        mask = np.zeros(UNIT_SHAPE, dtype=np.uint8)
         mask[9, 9] = 1
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, mask=mask,
                            use_exact=use_exact)[0]
@@ -115,7 +114,7 @@ class TestPixelCounts:
         data, with bit 1 taking precedence.
         """
         data = unit_data
-        mask = np.zeros(SHAPE, dtype=np.uint8)
+        mask = np.zeros(UNIT_SHAPE, dtype=np.uint8)
         mask[12, 12] = 1  # input-masked
         mask[12, 13] = 2  # non-finite data
         mask[13, 12] = 3  # both; masked wins
@@ -131,9 +130,9 @@ class TestPixelCounts:
         with the "center" method.
         """
         rng = np.random.default_rng(1)
-        data = rng.normal(size=SHAPE)
+        data = rng.normal(size=UNIT_SHAPE)
         data[11, 12] = np.nan
-        user_mask = np.zeros(SHAPE, dtype=bool)
+        user_mask = np.zeros(UNIT_SHAPE, dtype=bool)
         user_mask[12, 13] = True
 
         xy = np.array([(12.0, 12.0), (0.5, 3.0), (24.0, 24.0)])
@@ -178,13 +177,13 @@ class TestNonFiniteCounts:
         counted.
         """
         data = unit_data
-        error = np.ones(SHAPE)
+        error = np.ones(UNIT_SHAPE)
         error[12, 12] = np.nan
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, error=error)[0]
         assert fc[FLAG_COL_NONFINITE_ERROR] == 1
 
         # A masked pixel with non-finite error is not counted
-        mask = np.zeros(SHAPE, dtype=np.uint8)
+        mask = np.zeros(UNIT_SHAPE, dtype=np.uint8)
         mask[12, 12] = 1
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, error=error, mask=mask)[0]
         assert fc[FLAG_COL_NONFINITE_ERROR] == 0
@@ -239,7 +238,7 @@ class TestBboxClipped:
             apertures = CircularAperture(xy, r=radius)
             masks = apertures.to_mask(method=method)
             for fc, apermask in zip(fcs, masks, strict=True):
-                slc_large, slc_small = apermask.get_overlap_slices(SHAPE)
+                slc_large, slc_small = apermask.get_overlap_slices(UNIT_SHAPE)
                 if slc_large is None:
                     assert_array_equal(fc, 0)
                     continue
@@ -261,7 +260,7 @@ class TestSegmentationCounts:
         source_only, and correct methods.
         """
         data = unit_data
-        segm = np.zeros(SHAPE, dtype=np.intp)
+        segm = np.zeros(UNIT_SHAPE, dtype=np.intp)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2  # neighbor pixel inside the aperture
         labels = np.array([1], dtype=np.intp)
@@ -296,7 +295,7 @@ class TestSegmentationCounts:
         assert fc[FLAG_COL_UNCORRECTED] == 2
 
         # Method 3 with a masked mirror pixel: uncorrectable
-        mask = np.zeros(SHAPE, dtype=np.uint8)
+        mask = np.zeros(UNIT_SHAPE, dtype=np.uint8)
         mask[12, 10] = 1
         fc = _sums_fcounts(data, (12.0, 12.0), 3.0, mask=mask,
                            segmentation=segm, labels=labels, seg_method=3)[0]

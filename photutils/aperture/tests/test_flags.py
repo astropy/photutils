@@ -23,7 +23,8 @@ EXPECTED_FLAGS = {
     'sigma_clipped': 512,
     'all_clipped': 1024,
     'too_few_pixels': 2048,
-    'singular_covariance': 4096,
+    'undefined_shape': 4096,
+    'singular_covariance': 8192,
 }
 
 

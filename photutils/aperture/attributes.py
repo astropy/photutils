@@ -44,10 +44,37 @@ class ApertureAttribute:
         self._validate(value)
         if not isinstance(value, (u.Quantity, SkyCoord)):
             value = float(value)
+        self._validate_ordered_pairs(instance, value)
         # No need to reset if not already in the instance dict
         if self.name in instance.__dict__:
             self._reset_lazyproperties(instance)
         instance.__dict__[self.name] = value
+
+    def _validate_ordered_pairs(self, instance, value):
+        """
+        Validate the ordering invariants between related parameters
+        declared by the owner class in ``_ordered_pairs``.
+
+        ``_ordered_pairs`` is a tuple of ``(inner, outer)`` parameter
+        name pairs, where the inner value must be strictly less than the
+        outer value (e.g., an annulus inner and outer radius). The check
+        runs whenever either parameter of a pair is assigned, comparing
+        the new value against the other parameter's current value. It is
+        skipped while the other parameter is not yet set (e.g., partway
+        through ``__init__``). The check runs before the new value is
+        stored, so a failed assignment leaves the instance unchanged.
+        """
+        for inner, outer in getattr(instance, '_ordered_pairs', ()):
+            if self.name == inner:
+                other = instance.__dict__.get(outer)
+                if other is not None and not other > value:
+                    msg = f'{outer!r} must be greater than {inner!r}'
+                    raise ValueError(msg)
+            elif self.name == outer:
+                other = instance.__dict__.get(inner)
+                if other is not None and not value > other:
+                    msg = f'{outer!r} must be greater than {inner!r}'
+                    raise ValueError(msg)
 
     def _reset_lazyproperties(self, instance):
         # Reset lazyproperties (if they exist) for aperture parameter
@@ -131,8 +158,17 @@ class PositiveScalar(ApertureAttribute):
     """
 
     def _validate(self, value):
-        if not np.isscalar(value) or value <= 0:
-            msg = f'{self.name!r} must be a positive scalar'
+        msg = f'{self.name!r} must be a positive scalar'
+        if not np.isscalar(value):
+            raise ValueError(msg)
+        try:
+            # NaN compares False, so it is also rejected here
+            positive = value > 0
+        except TypeError:
+            # Non-numeric scalars (e.g., strings) do not support
+            # comparison with 0
+            raise TypeError(msg) from None
+        if not positive:
             raise ValueError(msg)
 
 
@@ -167,7 +203,8 @@ class PositiveScalarAngle(ScalarAngle):
     def _validate(self, value):
         super()._validate(value)
 
-        if value <= 0:
+        # NaN compares False, so it is also rejected here
+        if not value > 0:
             msg = f'{self.name!r} must be greater than zero'
             raise ValueError(msg)
 

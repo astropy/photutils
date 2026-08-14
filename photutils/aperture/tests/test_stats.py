@@ -16,6 +16,7 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture.circle import CircularAnnulus, CircularAperture
+from photutils.aperture.core import _enable_batch_photometry
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus)
 from photutils.aperture.flags import APERTURE_FLAGS
@@ -23,54 +24,66 @@ from photutils.aperture.photometry import AperturePhotometry
 from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture)
 from photutils.aperture.stats import _MAD_STD_SCALE, ApertureStats
+from photutils.aperture.tests.conftest import NoBatchCircularAperture
 from photutils.datasets import make_100gaussians_image, make_wcs
 from photutils.utils._optional_deps import HAS_REGIONS
 
 
-class _NoBatchCircular(CircularAperture):
-    """
-    A `CircularAperture` subclass that does not define the
-    ``_batch_shape_params`` hook in its own class, so the fast batch
-    driver is not used and the mask-based code path is exercised.
-    """
-
-
+@_enable_batch_photometry
 class _NoneSpecCircular(CircularAperture):
     """
-    A `CircularAperture` subclass that defines the ``_batch_shape_params``
-    hook in its own class but returns `None`, so the fast batch driver is
-    not used and the mask-based code path is exercised.
+    A `CircularAperture` subclass that opts in to the fast batch driver
+    but whose ``_batch_shape_params`` hook returns `None`, so the batch
+    driver is not used and the mask-based code path is exercised.
     """
 
     def _batch_shape_params(self):
         return None
 
 
+@pytest.fixture(scope='class')
+def stats_data(request):
+    """
+    Build the shared data and ApertureStats objects on the test class.
+    """
+    cls = request.cls
+    cls.data = make_100gaussians_image()
+    cls.error = np.sqrt(np.abs(cls.data))
+    cls.wcs = make_wcs(cls.data.shape)
+    cls.positions = ((145.1, 168.3), (84.7, 224.1), (48.3, 200.3))
+    cls.aperture = CircularAperture(cls.positions, r=5)
+
+    cls.sigclip = SigmaClip(sigma=3.0, maxiters=10)
+    cls.apstats1 = ApertureStats(cls.data, cls.aperture,
+                                 error=cls.error, wcs=cls.wcs,
+                                 sigma_clip=None)
+    cls.apstats2 = ApertureStats(cls.data, cls.aperture,
+                                 error=cls.error, wcs=cls.wcs,
+                                 sigma_clip=cls.sigclip)
+
+    cls.unit = u.Jy
+    cls.apstats1_units = ApertureStats(cls.data * cls.unit,
+                                       cls.aperture,
+                                       error=cls.error * cls.unit,
+                                       wcs=cls.wcs, sigma_clip=None)
+    cls.apstats2_units = ApertureStats(cls.data * cls.unit,
+                                       cls.aperture,
+                                       error=cls.error * cls.unit,
+                                       wcs=cls.wcs,
+                                       sigma_clip=cls.sigclip)
+
+
+@pytest.mark.usefixtures('stats_data')
 class BaseApertureStatsData:
     """
     Shared data, aperture, and ApertureStats objects used by the
     ApertureStats test classes below.
+
+    The ``stats_data`` fixture builds the objects once per test class
+    rather than at import time, so collection stays cheap and each test
+    class gets its own instances (no lazyproperty-cache state is shared
+    across classes).
     """
-
-    data = make_100gaussians_image()
-    error = np.sqrt(np.abs(data))
-    wcs = make_wcs(data.shape)
-    positions = ((145.1, 168.3), (84.7, 224.1), (48.3, 200.3))
-    aperture = CircularAperture(positions, r=5)
-
-    sigclip = SigmaClip(sigma=3.0, maxiters=10)
-    apstats1 = ApertureStats(data, aperture, error=error, wcs=wcs,
-                             sigma_clip=None)
-    apstats2 = ApertureStats(data, aperture, error=error, wcs=wcs,
-                             sigma_clip=sigclip)
-
-    unit = u.Jy
-    apstats1_units = ApertureStats(data * u.Jy, aperture,
-                                   error=error * u.Jy, wcs=wcs,
-                                   sigma_clip=None)
-    apstats2_units = ApertureStats(data * u.Jy, aperture,
-                                   error=error * u.Jy, wcs=wcs,
-                                   sigma_clip=sigclip)
 
 
 class TestProperties(BaseApertureStatsData):
@@ -90,7 +103,7 @@ class TestProperties(BaseApertureStatsData):
 
         idx = 1
 
-        scalar_props = ('isscalar', 'n_apertures')
+        scalar_props = ('isscalar', 'n_positions')
 
         # Evaluate (cache) properties before slice
         for prop in apstats1.properties:
@@ -113,7 +126,7 @@ class TestProperties(BaseApertureStatsData):
         skyaper = self.aperture.to_sky(self.wcs)
         sky_apstats = ApertureStats(self.data, skyaper, wcs=self.wcs)
 
-        exclude_props = ('bbox', 'error_sum_cutout', 'sum_error',
+        exclude_props = ('bbox', 'error_sum_cutout', 'sum_err',
                          'sky_centroid', 'sky_centroid_icrs')
         for prop in pix_apstats.properties:
             if prop in exclude_props:
@@ -190,17 +203,22 @@ class TestSumMethod(BaseApertureStatsData):
         apstats2 = ApertureStats(self.data, self.aperture, error=self.error,
                                  sum_method=sum_method, subpixels=4)
 
-        scalar_props = ('isscalar', 'n_apertures')
+        scalar_props = ('isscalar', 'n_positions')
 
         # Evaluate (cache) properties before slice
         for prop in apstats1.properties:
             if prop in scalar_props:
                 continue
             if 'sum' in prop and prop != 'sum_flags':
-                # Test that these properties are not equal
-                with pytest.raises(AssertionError):
+                # The sum-footprint properties must differ between the
+                # two sum methods
+                equal = True
+                try:
                     assert_equal(getattr(apstats1, prop),
                                  getattr(apstats2, prop))
+                except AssertionError:
+                    equal = False
+                assert not equal, f'{prop} is unexpectedly equal'
             else:
                 assert_equal(getattr(apstats1, prop), getattr(apstats2, prop))
 
@@ -270,7 +288,7 @@ class TestMasking(BaseApertureStatsData):
         assert apstats[1].sum < self.apstats1[1].sum
         assert apstats[1].sum_err < self.apstats1[1].sum_err
 
-        exclude = ('isscalar', 'n_apertures', 'sky_centroid',
+        exclude = ('isscalar', 'n_positions', 'sky_centroid',
                    'sky_centroid_icrs', 'flags', 'sum_flags')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
@@ -323,12 +341,35 @@ class TestMasking(BaseApertureStatsData):
             _ = ApertureStats(data, self.aperture[0:2],
                               local_bkg=np.ones((3, 3)))
 
+    def test_local_bkg_units(self):
+        """
+        Test that local_bkg must carry the same units as a Quantity
+        ``data`` input and that the results match the unitless case.
+        """
+        unit = u.Jy
+        data = np.ones(self.data.shape) * 100.0
+        local_bkg = (10, 20, 30)
+        apstats1 = ApertureStats(data << unit, self.aperture,
+                                 local_bkg=local_bkg * unit)
+        apstats2 = ApertureStats(data, self.aperture, local_bkg=local_bkg)
+        assert apstats1.sum.unit == unit
+        assert_allclose(apstats1.sum.value, apstats2.sum)
+
+        match = 'must all have the same units'
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data << unit, self.aperture, local_bkg=local_bkg)
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data << unit, self.aperture,
+                          local_bkg=local_bkg * u.mJy)
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data, self.aperture, local_bkg=local_bkg * unit)
+
     def test_no_aperture_overlap(self):
         aperture = CircularAperture(((0, 0), (100, 100), (-100, -100)), r=5)
         apstats = ApertureStats(self.data, aperture)
         assert_equal(apstats._overlap, [True, True, False])
 
-        exclude = ('isscalar', 'n_apertures', 'sky_centroid',
+        exclude = ('isscalar', 'n_positions', 'sky_centroid',
                    'sky_centroid_icrs', 'flags', 'sum_flags')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
@@ -364,7 +405,7 @@ class TestTable(BaseApertureStatsData):
     @pytest.mark.parametrize('columns', ['invalid',
                                          'sum_method',
                                          'isscalar',
-                                         'n_apertures',
+                                         'n_positions',
                                          ['id', 'subpixels']])
     def test_invalid_column(self, columns):
         match = 'Invalid column name'
@@ -373,13 +414,13 @@ class TestTable(BaseApertureStatsData):
 
     def test_properties_excludes_scalar_attrs(self):
         """
-        Regression test to ensure that ``isscalar`` and ``n_apertures``
+        Regression test to ensure that ``isscalar`` and ``n_positions``
         (scalar values for the whole object, not per-source values) are
         not included in ``properties`` and so are not valid ``to_table``
         columns.
         """
         assert 'isscalar' not in self.apstats1.properties
-        assert 'n_apertures' not in self.apstats1.properties
+        assert 'n_positions' not in self.apstats1.properties
 
     def test_deprecated_column(self):
         """
@@ -402,10 +443,10 @@ class TestIndexing(BaseApertureStatsData):
         apstats = self.apstats1
         _ = apstats.to_table()
         apstat0 = apstats[1]
-        assert apstat0.n_apertures == 1
+        assert apstat0.n_positions == 1
         assert apstat0.id == np.array([2])
         apstat1 = apstats.select_id(2)
-        assert apstat1.n_apertures == 1
+        assert apstat1.n_positions == 1
         assert apstat0.sum_aper_area == apstat1.sum_aper_area
 
         apstat0 = apstats[0:1]
@@ -464,7 +505,7 @@ class TestIndexing(BaseApertureStatsData):
 
     def test_scalar_aperture_stats(self):
         apstats = self.apstats1[0]
-        assert apstats.n_apertures == 1
+        assert apstats.n_positions == 1
         assert apstats.id == np.array([1])
         tbl = apstats.to_table()
         assert len(tbl) == 1
@@ -506,7 +547,7 @@ class TestIndexing(BaseApertureStatsData):
         the parent, slices to a scalar, and checks that every property
         matches the same scalar computed from scratch.
         """
-        scalar_props = ('isscalar', 'n_apertures')
+        scalar_props = ('isscalar', 'n_positions')
 
         # Reference scalar instance that recomputes every property from
         # scratch (nothing cached on the parent before slicing).
@@ -575,6 +616,17 @@ class TestDeprecations(BaseApertureStatsData):
         scalar = apstats[0]
         with pytest.warns(AstropyDeprecationWarning, match=match):
             assert scalar.ids == scalar.id
+
+    def test_deprecated_n_apertures(self):
+        """
+        Test that the ``n_apertures`` attribute is deprecated and
+        returns the same value as the ``n_positions`` attribute.
+        """
+        apstats = ApertureStats(self.data, self.aperture)
+        match = 'deprecated in version 3.1'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            old_val = apstats.n_apertures
+        assert old_val == apstats.n_positions
 
 
 class TestInputValidation(BaseApertureStatsData):
@@ -748,7 +800,7 @@ class TestMaskPathParity(BaseApertureStatsData):
         path and give the same results as the fast path.
         """
         nohook = ApertureStats(self.data,
-                               _NoBatchCircular(self.positions, r=5))
+                               NoBatchCircularAperture(self.positions, r=5))
         nospec = ApertureStats(self.data,
                                _NoneSpecCircular(self.positions, r=5))
         assert nohook._fast_gather is None
@@ -785,7 +837,7 @@ class TestMaskPathParity(BaseApertureStatsData):
             error = error * self.unit
         fast = ApertureStats(data, CircularAperture(positions, r=5),
                              error=error, sum_method=sum_method)
-        slow = ApertureStats(data, _NoBatchCircular(positions, r=5),
+        slow = ApertureStats(data, NoBatchCircularAperture(positions, r=5),
                              error=error, sum_method=sum_method)
         assert fast._fast_gather is not None
         assert slow._fast_gather is None
@@ -806,7 +858,7 @@ class TestMaskPathParity(BaseApertureStatsData):
         helpers.
         """
         slow = ApertureStats(self.data,
-                             _NoBatchCircular(self.positions[0], r=5),
+                             NoBatchCircularAperture(self.positions[0], r=5),
                              error=self.error)
         fast = ApertureStats(self.data,
                              CircularAperture(self.positions[0], r=5),
@@ -835,7 +887,7 @@ class TestMaskPathParity(BaseApertureStatsData):
                   'mask_method': 'mask'}
         fast = ApertureStats(data, CircularAperture(positions, r=6),
                              **kwargs)
-        slow = ApertureStats(data, _NoBatchCircular(positions, r=6),
+        slow = ApertureStats(data, NoBatchCircularAperture(positions, r=6),
                              **kwargs)
         assert slow._fast_gather is None
         for prop in ('sum', 'mean', 'median', 'std', 'mean_err',
@@ -852,7 +904,8 @@ class TestMaskPathParity(BaseApertureStatsData):
         mask = rng.random(self.data.shape) > 0.7
         fast = ApertureStats(self.data, CircularAperture(self.positions, r=5),
                              error=self.error, mask=mask)
-        slow = ApertureStats(self.data, _NoBatchCircular(self.positions, r=5),
+        slow_aper = NoBatchCircularAperture(self.positions, r=5)
+        slow = ApertureStats(self.data, slow_aper,
                              error=self.error, mask=mask)
         assert slow._fast_gather is None
         for prop in ('sum', 'mean', 'median', 'std', 'mean_err',
@@ -874,7 +927,8 @@ class TestMaskPathParity(BaseApertureStatsData):
         fast = ApertureStats(data, CircularAperture(self.positions, r=5),
                              error=self.error, mask=mask)
         assert fast._batch_inputs is not None
-        slow = ApertureStats(data, _NoBatchCircular(self.positions, r=5),
+        slow_aper = NoBatchCircularAperture(self.positions, r=5)
+        slow = ApertureStats(data, slow_aper,
                              error=self.error, mask=mask)
         assert slow._fast_gather is None
         for prop in ('sum', 'mean', 'median', 'std', 'mean_err',
@@ -964,8 +1018,8 @@ class TestDdof(BaseApertureStatsData):
         """
         fast = ApertureStats(self.data, CircularAperture(self.positions, r=5),
                              ddof=1)
-        slow = ApertureStats(self.data, _NoBatchCircular(self.positions, r=5),
-                             ddof=1)
+        slow_aper = NoBatchCircularAperture(self.positions, r=5)
+        slow = ApertureStats(self.data, slow_aper, ddof=1)
         assert slow._fast_gather is None
         assert_allclose(fast.var, slow.var, equal_nan=True)
         assert_allclose(fast.std, slow.std, equal_nan=True)

@@ -3,6 +3,7 @@
 Tests for the AperturePhotometry class.
 """
 
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 import astropy.units as u
@@ -10,37 +11,22 @@ import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
 from astropy.nddata import NDData, StdDevUncertainty
+from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAperture)
+from photutils.aperture.flags import APERTURE_FLAGS
 from photutils.aperture.photometry import (AperturePhotometry,
                                            aperture_photometry)
 from photutils.aperture.polygon import PolygonAperture
 from photutils.aperture.stats import ApertureStats
+from photutils.aperture.tests.conftest import (NoBatchCircularAperture,
+                                               make_scene)
 from photutils.datasets import make_wcs
 from photutils.segmentation import SegmentationImage
 from photutils.utils._optional_deps import HAS_REGIONS
-
-
-def make_scene():
-    """
-    Build a deterministic scene with a target source (label 1) and a
-    bright neighbor source (label 2), on a nonzero background.
-    """
-    data = np.ones((50, 50))
-    segm = np.zeros((50, 50), dtype=int)
-
-    # Target source (label 1)
-    data[18:25, 18:25] = 10.0
-    segm[18:25, 18:25] = 1
-
-    # Bright neighbor source (label 2)
-    data[20:25, 26:32] = 100.0
-    segm[20:25, 26:32] = 2
-
-    return data, segm
 
 
 class TestAperturePhotometryParity:
@@ -266,12 +252,33 @@ class TestSegmentationMasking:
         ref = AperturePhotometry(data, aper)
         assert_allclose(phot.flux, ref.flux)
 
-    def test_correct_matches_neighbor(self):
+    def test_correct_matches_manual_mirror(self):
+        """
+        Test that mask_method='correct' reproduces plain photometry on
+        a manually mirror-corrected image.
+
+        The scene is constructed so that the mirror of every neighbor
+        pixel is an unmasked non-neighbor pixel, so every neighbor pixel
+        is corrected (none are excluded).
+        """
         data, segm = make_scene()
-        aper = CircularAperture([(21, 21)], r=10)
-        none_phot = AperturePhotometry(data, aper, mask_method='none')
+        xycen = (21, 21)
+        aper = CircularAperture([xycen], r=10)
         corr_phot = AperturePhotometry(data, aper, segmentation_image=segm,
                                        labels=[1], mask_method='correct')
+
+        # Replace every neighbor pixel with its value mirrored across
+        # the aperture center. Pixels outside the aperture have zero
+        # weight, so correcting them globally does not change the flux.
+        corrected = data.copy()
+        yidx, xidx = np.nonzero((segm > 0) & (segm != 1))
+        corrected[yidx, xidx] = data[2 * xycen[1] - yidx,
+                                     2 * xycen[0] - xidx]
+        ref_phot = AperturePhotometry(corrected, aper)
+        assert_allclose(corr_phot.flux, ref_phot.flux, rtol=1e-12)
+
+        # The correction changes the flux relative to no masking
+        none_phot = AperturePhotometry(data, aper, mask_method='none')
         assert corr_phot.flux[0] != none_phot.flux[0]
 
     def test_polygon_mask_path(self):
@@ -341,6 +348,17 @@ class TestToTable:
         assert 'aperture_photometry_args' in tbl.meta
         assert tbl.meta['aperture'] == 'CircularAperture'
 
+    def test_sky_center_requires_wcs(self, data):
+        """
+        Test that requesting the sky_center column without a WCS raises
+        a clear error.
+        """
+        aper = CircularAperture((150, 25), 8)
+        phot = AperturePhotometry(data, aper)
+        match = "the 'sky_center' column requires a WCS"
+        with pytest.raises(ValueError, match=match):
+            phot.to_table(columns=['id', 'sky_center'])
+
 
 class TestFlagsAndArea:
     def test_area_matches_area_overlap(self):
@@ -354,7 +372,7 @@ class TestFlagsAndArea:
         data = np.ones((25, 25), dtype=float)
         aper = CircularAperture((0, 12), r=5.0)
         phot = AperturePhotometry(data, aper)
-        assert phot.flags != 0
+        assert phot.flags == APERTURE_FLAGS.PARTIAL_OVERLAP
 
     def test_decode_flags(self):
         data = np.ones((25, 25))
@@ -647,8 +665,19 @@ class TestInputValidation:
     def test_unit_mismatch(self):
         data = np.ones((11, 11)) * u.Jy
         aper = CircularAperture((5, 5), r=3)
-        with pytest.raises(ValueError, match='must all have the same units'):
+        match = 'must all have the same units'
+        with pytest.raises(ValueError, match=match):
             AperturePhotometry(data, aper, error=np.ones((11, 11)))
+
+        # The converse: unitless data with a unit error
+        with pytest.raises(ValueError, match=match):
+            AperturePhotometry(np.ones((11, 11)), aper,
+                               error=np.ones((11, 11)) * u.Jy)
+
+        # Same-dimension but different units are also rejected
+        with pytest.raises(ValueError, match=match):
+            AperturePhotometry(data, aper,
+                               error=np.ones((11, 11)) * u.mJy)
 
     @pytest.mark.parametrize('method', ['exact ', 'Exact', 'invalid'])
     def test_invalid_method_at_init(self, method):
@@ -688,6 +717,152 @@ class TestInputValidation:
             AperturePhotometry(data, aper, mask_method='invalid')
         with pytest.raises(ValueError, match=match):
             ApertureStats(data, aper, mask_method='invalid')
+
+    @pytest.mark.parametrize('apertures', [[], (), np.array([])])
+    def test_empty_aperture_list(self, apertures):
+        """
+        Test that an empty aperture list is reported at construction.
+        """
+        data = np.ones((11, 11))
+        match = 'apertures must not be empty'
+        with pytest.raises(ValueError, match=match):
+            AperturePhotometry(data, apertures)
+
+    def test_labels_not_1d(self):
+        """
+        Test that a 2D labels array is reported at construction rather
+        than failing later in the batch driver.
+        """
+        data = np.ones((11, 11))
+        segm = np.zeros(data.shape, dtype=int)
+        segm[4:7, 4:7] = 1
+        aper = CircularAperture((5, 5), r=3)
+        match = 'labels must be a 1D array'
+        with pytest.raises(ValueError, match=match):
+            AperturePhotometry(data, aper, segmentation_image=segm,
+                               labels=np.array([[1, 2]]),
+                               mask_method='mask')
+        with pytest.raises(ValueError, match=match):
+            ApertureStats(data, aper, segmentation_image=segm,
+                          labels=np.array([[1, 2]]), mask_method='mask')
+
+
+class TestReadOnlyInputs:
+    """
+    End-to-end tests that both classes accept read-only (non-writeable)
+    input arrays on both the batch and mask-based code paths, and that
+    the inputs are never modified.
+    """
+
+    @staticmethod
+    def _make_readonly_inputs():
+        """
+        Build a full set of read-only input arrays, including a masked
+        pixel and a non-finite data value.
+        """
+        data, segm = make_scene()
+        rng = np.random.default_rng(7)
+        data = data + rng.normal(0.0, 0.1, data.shape)
+        data[30, 5] = np.nan
+        error = np.full(data.shape, 0.1)
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[20, 20] = True
+        arrays = {'data': data, 'error': error, 'mask': mask,
+                  'segmentation_image': segm.astype(np.intp),
+                  'labels': np.array([1]),
+                  'local_bkg': np.array([1.0]),
+                  'positions': np.array([(21.0, 21.0)])}
+        for arr in arrays.values():
+            arr.setflags(write=False)
+        return arrays
+
+    @pytest.mark.parametrize('aper_cls', [CircularAperture,
+                                          NoBatchCircularAperture])
+    @pytest.mark.parametrize('mask_method', ['none', 'mask', 'source_only',
+                                             'correct'])
+    def test_aperture_photometry(self, aper_cls, mask_method):
+        arrays = self._make_readonly_inputs()
+        originals = {key: arr.copy() for key, arr in arrays.items()}
+
+        kwargs = {}
+        if mask_method != 'none':
+            kwargs = {'segmentation_image': arrays['segmentation_image'],
+                      'labels': arrays['labels'],
+                      'mask_method': mask_method}
+        aper = aper_cls(arrays['positions'], r=10)
+        phot = AperturePhotometry(arrays['data'], aper,
+                                  error=arrays['error'],
+                                  mask=arrays['mask'], **kwargs)
+        assert np.isfinite(phot.flux[0])
+        for attr in ('flux_err', 'area', 'flags'):
+            _ = getattr(phot, attr)
+        _ = phot.to_table()
+
+        for key, arr in arrays.items():
+            assert_equal(arr, originals[key])
+
+    @pytest.mark.parametrize('aper_cls', [CircularAperture,
+                                          NoBatchCircularAperture])
+    @pytest.mark.parametrize('with_sigma_clip', [False, True])
+    def test_aperture_stats(self, aper_cls, with_sigma_clip):
+        arrays = self._make_readonly_inputs()
+        originals = {key: arr.copy() for key, arr in arrays.items()}
+
+        sigma_clip = (SigmaClip(sigma=3.0, maxiters=5) if with_sigma_clip
+                      else None)
+        aper = aper_cls(arrays['positions'], r=10)
+        stats = ApertureStats(arrays['data'], aper, error=arrays['error'],
+                              mask=arrays['mask'], sigma_clip=sigma_clip,
+                              local_bkg=arrays['local_bkg'],
+                              segmentation_image=(
+                                  arrays['segmentation_image']),
+                              labels=arrays['labels'],
+                              mask_method='correct')
+        for attr in ('sum', 'sum_err', 'mean', 'median', 'std', 'mad_std',
+                     'biweight_location', 'gini', 'centroid',
+                     'semimajor_axis', 'fwhm', 'flags', 'sum_flags'):
+            _ = getattr(stats, attr)
+        assert np.isfinite(stats.mean)
+        _ = stats.to_table()
+
+        for key, arr in arrays.items():
+            assert_equal(arr, originals[key])
+
+
+class TestEmptyPositions:
+    """
+    Regression tests for apertures with zero positions, which must
+    flow through both classes (including the batch Cython drivers) and
+    the legacy function, returning empty outputs.
+    """
+
+    def test_aperture_photometry_class(self):
+        data = np.ones((11, 11))
+        aper = CircularAperture(np.empty((0, 2)), r=3)
+        phot = AperturePhotometry(data, aper, error=np.ones_like(data))
+        assert phot.n_positions == 0
+        assert phot.flux.shape == (0,)
+        assert phot.flux_err.shape == (0,)
+        assert phot.area.shape == (0,)
+        assert phot.flags.shape == (0,)
+        assert len(phot.to_table()) == 0
+
+    def test_aperture_stats(self):
+        data = np.ones((11, 11))
+        aper = CircularAperture(np.empty((0, 2)), r=3)
+        stats = ApertureStats(data, aper)
+        assert stats.n_positions == 0
+        assert stats.mean.shape == (0,)
+        assert stats.median.shape == (0,)
+        assert stats.sum.shape == (0,)
+        assert stats.flags.shape == (0,)
+        assert len(stats.to_table()) == 0
+
+    def test_legacy_function(self):
+        data = np.ones((11, 11))
+        aper = CircularAperture(np.empty((0, 2)), r=3)
+        tbl = aperture_photometry(data, aper)
+        assert len(tbl) == 0
 
 
 class TestSegmentationAttributes:
@@ -778,14 +953,23 @@ class TestReprAndImmutability:
         assert new_keys.issubset(lazy_names)
 
     def test_concurrent_access(self, data):
-        from concurrent.futures import ThreadPoolExecutor
-
+        """
+        Test that a single shared AperturePhotometry instance can be
+        read concurrently. The lazyproperty caches fill under contention
+        and every thread sees identical values.
+        """
         aper = CircularAperture(((150, 25), (90, 60)), 8)
-        phot = AperturePhotometry(data, aper)
+        phot = AperturePhotometry(data, aper, error=np.ones_like(data))
+
+        def read(_):
+            return {attr: np.asarray(getattr(phot, attr))
+                    for attr in ('flux', 'flux_err', 'flags', 'id')}
+
         with ThreadPoolExecutor(max_workers=4) as executor:
-            results = list(executor.map(lambda _: phot.flux, range(8)))
+            results = list(executor.map(read, range(16)))
         for result in results:
-            assert_allclose(result, results[0])
+            for attr, values in result.items():
+                assert_allclose(values, results[0][attr])
 
 
 @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')

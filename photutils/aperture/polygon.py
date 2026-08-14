@@ -12,6 +12,7 @@ from photutils.aperture._batch_photometry import SHAPE_POLYGON
 from photutils.aperture.attributes import (ApertureAttribute, PixelPositions,
                                            SkyCoordPositions)
 from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _enable_batch_photometry,
                                      _update_method_subpixels_docstring)
 from photutils.geometry._polygon_overlap import polygon_overlap_grid
 
@@ -383,6 +384,7 @@ class _RegularPolygonGeometry:
         return (np.degrees(theta_rad) % 360.0) * u.deg
 
 
+@_enable_batch_photometry
 class PolygonAperture(PixelAperture):
     """
     A polygon aperture defined in pixel coordinates.
@@ -442,7 +444,7 @@ class PolygonAperture(PixelAperture):
         self.vertex_offsets = vertex_offsets
 
     @classmethod
-    def _from_convex_offsets(cls, positions, offsets):
+    def _from_simple_offsets(cls, positions, offsets):
         """
         Construct a `PolygonAperture` from vertex offsets that are
         known to define a simple polygon, skipping the ``O(n^2)``
@@ -491,14 +493,17 @@ class PolygonAperture(PixelAperture):
                    f'got {verts.shape}')
             raise ValueError(msg)
 
-        # Validate before computing the centroid: the area-weighted
+        # Validate before computing the centroid. The area-weighted
         # centroid formula divides by the polygon area, which is zero
-        # for a degenerate (collinear or coincident) polygon.
+        # for a degenerate (collinear or coincident) polygon. The
+        # offsets are a pure translation of the validated vertices, so
+        # the O(n^2) self-intersection check does not need to be
+        # repeated on them.
         verts = _validate_simple_polygon(verts, name='vertices')
         center = _vertices_centroid(verts)
         offsets = verts - center
 
-        return cls(tuple(center), offsets)
+        return cls._from_simple_offsets(tuple(center), offsets)
 
     @classmethod
     def from_regular_polygon(cls, positions, n_vertices, radius, *, theta=0.0):
@@ -554,10 +559,14 @@ class PolygonAperture(PixelAperture):
         return cls(positions, offsets)
 
     @classmethod
-    def _from_star(cls, positions, n_spikes, outer_radius, inner_radius=None,
-                   *, theta=0.0, optimal_shape=False, collinear_edges=False):
+    def _from_star(cls, positions, n_spikes, outer_radius, *,
+                   inner_radius=None, theta=0.0, optimal_shape=False,
+                   collinear_edges=False):
         """
         Construct a star-shaped `PolygonAperture`.
+
+        This private constructor exists to generate non-convex simple
+        polygons for internal testing. It is not part of the public API.
 
         The star has ``n_spikes`` spikes, with vertices alternating
         between ``outer_radius`` and ``inner_radius``. The first (outer)
@@ -594,10 +603,10 @@ class PolygonAperture(PixelAperture):
             If `True`, compute ``inner_radius`` automatically to
             produce a star with naturally-proportioned geometry. The
             spike angle (the angular width at each point) is set to
-            180°/``n_spikes``, which is the exterior angle of a
-            regular ``n_spikes``-gon. This creates a balanced, visually
-            appealing star where the indentations between spikes are
-            symmetric and proportional to the spikes themselves.
+            180°/``n_spikes``, which is the exterior angle of a regular
+            ``n_spikes``-gon. This creates a balanced star where the
+            indentations between spikes are symmetric and proportional
+            to the spikes themselves.
 
             The formula is:
 
@@ -1043,7 +1052,7 @@ class SkyPolygonAperture(SkyAperture):
         self.vertex_offsets = vertex_offsets
 
     @classmethod
-    def _from_convex_offsets(cls, positions, offsets):
+    def _from_simple_offsets(cls, positions, offsets):
         """
         Construct a `SkyPolygonAperture` from angular vertex offsets
         that are known to define a simple polygon, skipping the

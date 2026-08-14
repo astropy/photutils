@@ -1,16 +1,49 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Shared pytest fixtures for the aperture tests.
+Shared pytest fixtures and helpers for the aperture tests.
 """
 
 import numpy as np
 import pytest
 from astropy.wcs import WCS
 
+from photutils.aperture import CircularAperture
 from photutils.datasets import make_4gaussians_image
 
 # The shape of the small uniform image used by the quality-flag tests
 UNIT_SHAPE = (25, 25)
+
+
+class NoBatchCircularAperture(CircularAperture):
+    """
+    A `CircularAperture` subclass that does not opt in to the batch
+    Cython driver (it is not decorated with
+    ``_enable_batch_photometry``), forcing the mask-based code path.
+    """
+
+
+def make_scene():
+    """
+    Build a deterministic scene with a target source (label 1) and a
+    bright neighbor source (label 2), on a nonzero background.
+
+    Returns
+    -------
+    data, segm : 2D `~numpy.ndarray`
+        The image and the matching segmentation image.
+    """
+    data = np.ones((50, 50))
+    segm = np.zeros((50, 50), dtype=int)
+
+    # Target source (label 1)
+    data[18:25, 18:25] = 10.0
+    segm[18:25, 18:25] = 1
+
+    # Bright neighbor source (label 2)
+    data[20:25, 26:32] = 100.0
+    segm[20:25, 26:32] = 2
+
+    return data, segm
 
 
 @pytest.fixture(name='data')

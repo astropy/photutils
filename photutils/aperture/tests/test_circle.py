@@ -13,7 +13,7 @@ from photutils.aperture import PolygonAperture, SkyPolygonAperture
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAnnulus, SkyCircularAperture)
 from photutils.aperture.tests.test_aperture_common import (
-    BaseTestAperture, BaseTestPixelAperture)
+    BaseTestAnnulusMutation, BaseTestAperture, BaseTestPixelAperture)
 
 POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
 RA, DEC = np.transpose(POSITIONS)
@@ -35,7 +35,7 @@ class TestCircularAperture(BaseTestPixelAperture):
             CircularAperture(POSITIONS, radius)
 
 
-class TestCircularAnnulus(BaseTestPixelAperture):
+class TestCircularAnnulus(BaseTestAnnulusMutation, BaseTestPixelAperture):
     aperture = CircularAnnulus(POSITIONS, r_in=3.0, r_out=7.0)
     copy_param = 'r_in'
     copy_value = 2.0
@@ -47,9 +47,20 @@ class TestCircularAnnulus(BaseTestPixelAperture):
         with pytest.raises(ValueError, match=match):
             CircularAnnulus(POSITIONS, r_in=radius, r_out=7.0)
 
-        match = "'r_out' must be greater than 'r_in'"
+        match = "'r_out' must be a positive scalar"
         with pytest.raises(ValueError, match=match):
             CircularAnnulus(POSITIONS, r_in=3.0, r_out=radius)
+
+    @staticmethod
+    def test_r_out_not_greater_than_r_in():
+        """
+        Test that a ValueError is raised when r_out <= r_in.
+        """
+        match = "'r_out' must be greater than 'r_in'"
+        with pytest.raises(ValueError, match=match):
+            CircularAnnulus(POSITIONS, r_in=7.0, r_out=3.0)
+        with pytest.raises(ValueError, match=match):
+            CircularAnnulus(POSITIONS, r_in=3.0, r_out=3.0)
 
 
 class TestSkyCircularAperture(BaseTestAperture):
@@ -65,7 +76,7 @@ class TestSkyCircularAperture(BaseTestAperture):
             SkyCircularAperture(SKYCOORD, r=radius * UNIT)
 
 
-class TestSkyCircularAnnulus(BaseTestAperture):
+class TestSkyCircularAnnulus(BaseTestAnnulusMutation, BaseTestAperture):
     aperture = SkyCircularAnnulus(SKYCOORD, r_in=3.0 * UNIT, r_out=7.0 * UNIT)
     copy_param = 'r_in'
     copy_value = 2.0 * UNIT
@@ -77,7 +88,7 @@ class TestSkyCircularAnnulus(BaseTestAperture):
         with pytest.raises(ValueError, match=match):
             SkyCircularAnnulus(SKYCOORD, r_in=radius * UNIT, r_out=7.0 * UNIT)
 
-        match = "'r_out' must be greater than 'r_in'"
+        match = "'r_out' must be greater than zero"
         with pytest.raises(ValueError, match=match):
             SkyCircularAnnulus(SKYCOORD, r_in=3.0 * UNIT, r_out=radius * UNIT)
 
@@ -198,6 +209,11 @@ class TestAreaOverlap:
         mask = np.zeros((3, 3), dtype=bool)
         match = 'mask and data must have the same shape'
         with pytest.raises(ValueError, match=match):
+            aper.area_overlap(data, mask=mask)
+
+        mask = np.zeros(data.shape, dtype=int)
+        match = 'mask must be a boolean array'
+        with pytest.raises(TypeError, match=match):
             aper.area_overlap(data, mask=mask)
 
 

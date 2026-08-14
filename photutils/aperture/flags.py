@@ -151,6 +151,23 @@ class _ApertureFlags(FlagRegistry):
         ),
         FlagDefinition(
             bit_value=4096,
+            name='undefined_shape',
+            description='non-positive net flux; shape properties undefined',
+            detailed_description=('The net flux within the aperture '
+                                  '(the zeroth image moment of the '
+                                  'unmasked "center"-method pixels) is '
+                                  'not positive, so the centroid and '
+                                  'the covariance-derived shape '
+                                  'properties (e.g., ``centroid``, '
+                                  '``semimajor_axis``, '
+                                  '``orientation``) are undefined or '
+                                  'unreliable. This is a stats-only '
+                                  'flag that is set only when a '
+                                  'moment-derived property has been '
+                                  'computed.'),
+        ),
+        FlagDefinition(
+            bit_value=8192,
             name='singular_covariance',
             description='singular or nearly singular source covariance',
             detailed_description=('The source covariance matrix is '

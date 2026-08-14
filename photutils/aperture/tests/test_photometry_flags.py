@@ -11,10 +11,11 @@ from numpy.testing import assert_allclose, assert_array_equal
 from photutils.aperture import (APERTURE_FLAGS, AperturePhotometry,
                                 ApertureStats, CircularAnnulus,
                                 CircularAperture, EllipticalAperture,
-                                PolygonAperture, RectangularAperture)
+                                PolygonAperture, RectangularAperture,
+                                aperture_photometry)
 from photutils.aperture.flags import _counts_to_flag_bits
-
-SHAPE = (25, 25)
+from photutils.aperture.tests.conftest import (UNIT_SHAPE,
+                                               NoBatchCircularAperture)
 
 APERTURE_FACTORIES = [
     lambda xy: CircularAperture(xy, r=3.0),
@@ -24,13 +25,6 @@ APERTURE_FACTORIES = [
 ]
 
 METHODS = [('exact', 5), ('center', 1), ('subpixel', 4)]
-
-
-class _NoBatchCircularAperture(CircularAperture):
-    """
-    A CircularAperture subclass that does not opt in to the batch
-    Cython driver, forcing the mask-based code path.
-    """
 
 
 def _flags(aperture, data, **kwargs):
@@ -240,7 +234,7 @@ class TestMaskedAndNonFiniteFlags:
         data = unit_data
 
         # One masked pixel inside the aperture
-        mask = np.zeros(SHAPE, dtype=bool)
+        mask = np.zeros(UNIT_SHAPE, dtype=bool)
         mask[12, 12] = True
         aper = CircularAperture((12, 12), r=3.0)
         flags = _flags(aper, data, mask=mask, method=method,
@@ -248,14 +242,14 @@ class TestMaskedAndNonFiniteFlags:
         assert flags == APERTURE_FLAGS.MASKED_PIXELS
 
         # Masked pixel inside the bounding box but outside the aperture
-        mask = np.zeros(SHAPE, dtype=bool)
+        mask = np.zeros(UNIT_SHAPE, dtype=bool)
         mask[9, 9] = True
         flags = _flags(aper, data, mask=mask, method=method,
                        subpixels=subpixels)
         assert flags == 0
 
         # Fully masked aperture
-        mask = np.zeros(SHAPE, dtype=bool)
+        mask = np.zeros(UNIT_SHAPE, dtype=bool)
         mask[8:17, 8:17] = True
         flags = _flags(aper, data, mask=mask, method=method,
                        subpixels=subpixels)
@@ -274,7 +268,7 @@ class TestMaskedAndNonFiniteFlags:
         with the non-finite value instead of masking it out, unlike
         `AperturePhotometry`.
         """
-        data = np.ones(SHAPE)
+        data = np.ones(UNIT_SHAPE)
         data[12, 12] = np.nan
         aper = CircularAperture((12, 12), r=3.0)
         result = aper._photometry(data)
@@ -283,12 +277,12 @@ class TestMaskedAndNonFiniteFlags:
 
         # An all-NaN aperture is still non_finite_data only (the pixels
         # contribute, so all_masked is not set)
-        data = np.full(SHAPE, np.nan)
+        data = np.full(UNIT_SHAPE, np.nan)
         result = aper._photometry(data)
         assert result.flags[0] == APERTURE_FLAGS.NON_FINITE_DATA
 
         # A masked non-finite pixel counts only as masked
-        data = np.ones(SHAPE)
+        data = np.ones(UNIT_SHAPE)
         data[12, 12] = np.nan
         mask = unit_mask
         mask[12, 12] = True
@@ -300,7 +294,7 @@ class TestMaskedAndNonFiniteFlags:
         Test the non_finite_error flag.
         """
         data = unit_data
-        error = np.ones(SHAPE)
+        error = np.ones(UNIT_SHAPE)
         error[12, 12] = np.inf
         aper = CircularAperture((12, 12), r=3.0)
         flags = _flags(aper, data, error=error)
@@ -321,7 +315,7 @@ class TestSegmentationFlags:
         Test the neighbor_pixels flag for all segmentation mask methods.
         """
         data = unit_data
-        segm = np.zeros(SHAPE, dtype=int)
+        segm = np.zeros(UNIT_SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2  # neighbor pixel inside the aperture
         aper = CircularAperture((12, 12), r=3.0)
@@ -330,7 +324,7 @@ class TestSegmentationFlags:
         assert flags == APERTURE_FLAGS.NEIGHBOR_PIXELS
 
         # Without any neighbor pixels inside the aperture, no flag is set
-        segm2 = np.zeros(SHAPE, dtype=int)
+        segm2 = np.zeros(UNIT_SHAPE, dtype=int)
         segm2[10:15, 10:15] = 1
         flags = _flags(aper, data, segmentation_image=segm2, labels=1,
                        mask_method=mask_method)
@@ -341,7 +335,7 @@ class TestSegmentationFlags:
         Test the uncorrected_pixels flag with mask_method='correct'.
         """
         data = unit_data
-        segm = np.zeros(SHAPE, dtype=int)
+        segm = np.zeros(UNIT_SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2  # neighbor; its mirror (12, 10) is source pixel
         segm[12, 10] = 2  # make the mirror a neighbor too: uncorrectable
@@ -371,9 +365,9 @@ class TestMaskPathParity:
         batch Cython driver.
         """
         rng = np.random.default_rng(0)
-        data = rng.normal(1.0, 0.1, size=SHAPE)
+        data = rng.normal(1.0, 0.1, size=UNIT_SHAPE)
         data[13, 12] = np.nan
-        error = np.ones(SHAPE)
+        error = np.ones(UNIT_SHAPE)
         error[10, 12] = np.inf
         mask = unit_mask
         mask[12, 12] = True
@@ -381,7 +375,7 @@ class TestMaskPathParity:
         xy = [(12.0, 12.0), (0.0, 12.0), (-50.0, 12.0), (24.5, 24.5),
               (0.2, 12.0), (-1.2, 12.0)]
         batch_aper = CircularAperture(xy, r=3.0)
-        nobatch_aper = _NoBatchCircularAperture(xy, r=3.0)
+        nobatch_aper = NoBatchCircularAperture(xy, r=3.0)
 
         kwargs = {'error': error, 'mask': mask, 'method': method,
                   'subpixels': subpixels}
@@ -397,7 +391,7 @@ class TestMaskPathParity:
         Test batch/mask-path flag parity with segmentation masking.
         """
         data = unit_data
-        segm = np.zeros(SHAPE, dtype=int)
+        segm = np.zeros(UNIT_SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2
         segm[12, 10] = 2
@@ -409,7 +403,7 @@ class TestMaskPathParity:
             flags_batch = CircularAperture(xy, r=3.0)._photometry(
                 data, segmentation_image=segm, labels=labels,
                 mask_method=mask_method).flags
-            flags_nobatch = _NoBatchCircularAperture(xy, r=3.0)._photometry(
+            flags_nobatch = NoBatchCircularAperture(xy, r=3.0)._photometry(
                 data, segmentation_image=segm, labels=labels,
                 mask_method=mask_method).flags
             assert_array_equal(flags_batch, flags_nobatch)
@@ -430,14 +424,14 @@ class TestMaskPathParity:
         """
         data = unit_data
         data[nan_pixel] = np.nan
-        segm = np.zeros(SHAPE, dtype=int)
+        segm = np.zeros(UNIT_SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
         segm[12, 14] = 2  # neighbor pixel; its mirror is (12, 10)
 
         kwargs = {'segmentation_image': segm, 'labels': [1],
                   'mask_method': mask_method}
         batch_aper = CircularAperture((12.0, 12.0), r=3.0)
-        nobatch_aper = _NoBatchCircularAperture((12.0, 12.0), r=3.0)
+        nobatch_aper = NoBatchCircularAperture((12.0, 12.0), r=3.0)
         result_batch = AperturePhotometry(data, batch_aper, **kwargs)
         result_nobatch = AperturePhotometry(data, nobatch_aper, **kwargs)
         assert_array_equal(result_batch.flags, result_nobatch.flags)
@@ -470,9 +464,10 @@ class TestFlagsAPI:
         assert flags == (APERTURE_FLAGS.PARTIAL_OVERLAP
                          | APERTURE_FLAGS.MASKED_PIXELS)
 
-    def test_legacy_function_has_no_flags(self, unit_data):
+    def test_flags_multiple_apertures(self, unit_data):
         """
-        Test the AperturePhotometry flags.
+        Test the AperturePhotometry flags for multiple positions and a
+        list of apertures (2D flags).
         """
         data = unit_data
         xy = [(12.0, 12.0), (-50.0, 12.0), (0.0, 12.0)]
@@ -488,11 +483,22 @@ class TestFlagsAPI:
         assert_array_equal(phot.flags[:, 0], expected)
         assert_array_equal(phot.flags[:, 1], expected)
 
+    def test_legacy_function_has_no_flags(self, unit_data):
+        """
+        Test that the legacy aperture_photometry function output table
+        contains no flags or area columns.
+        """
+        xy = [(12.0, 12.0), (0.0, 12.0)]
+        aper = CircularAperture(xy, r=3.0)
+        tbl = aperture_photometry(unit_data, aper)
+        assert tbl.colnames == ['id', 'x_center', 'y_center',
+                                'aperture_sum']
+
     def test_flags_with_units(self):
         """
         Test that flags are also set for Quantity inputs.
         """
-        data = np.ones(SHAPE) * u.Jy
+        data = np.ones(UNIT_SHAPE) * u.Jy
         data[12, 12] = np.nan * u.Jy
         aper = CircularAperture((12, 12), r=3.0)
         phot = AperturePhotometry(data, aper)
@@ -551,7 +557,7 @@ class TestResolveOutsideWeights:
         mask-based outside-weight test for a mix of interior, edge, corner,
         and fully off-image positions.
         """
-        ny, nx = SHAPE
+        ny, nx = UNIT_SHAPE
         xy = [(12.0, 12.0),  # interior (not a candidate)
               (0.0, 12.0), (nx - 1.0, 12.0),  # left/right edges
               (12.0, 0.0), (12.0, ny - 1.0),  # bottom/top edges
@@ -561,11 +567,11 @@ class TestResolveOutsideWeights:
               (-50.0, 12.0)]  # fully off-image (not a candidate)
         aper = factory(xy)
 
-        candidates = _bbox_clipped_candidates(aper, SHAPE)
-        gated = aper._resolve_outside_weights(SHAPE, method='exact',
+        candidates = _bbox_clipped_candidates(aper, UNIT_SHAPE)
+        gated = aper._resolve_outside_weights(UNIT_SHAPE, method='exact',
                                               subpixels=5,
                                               candidates=candidates)
-        brute = _bruteforce_outside_weights(aper, SHAPE, method='exact',
+        brute = _bruteforce_outside_weights(aper, UNIT_SHAPE, method='exact',
                                             subpixels=5, candidates=candidates)
 
         # The gated path returns the candidates unchanged.
@@ -579,8 +585,8 @@ class TestResolveOutsideWeights:
         candidates array.
         """
         aper = CircularAperture([(0.0, 12.0), (12.0, 12.0)], r=3.0)
-        candidates = _bbox_clipped_candidates(aper, SHAPE)
-        w_out = aper._resolve_outside_weights(SHAPE, method='exact',
+        candidates = _bbox_clipped_candidates(aper, UNIT_SHAPE)
+        w_out = aper._resolve_outside_weights(UNIT_SHAPE, method='exact',
                                               subpixels=5,
                                               candidates=candidates)
         assert w_out is not candidates

@@ -15,7 +15,7 @@ from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
                                         SkyEllipticalAnnulus,
                                         SkyEllipticalAperture)
 from photutils.aperture.tests.test_aperture_common import (
-    BaseTestAperture, BaseTestRotatedPixelAperture)
+    BaseTestAnnulusMutation, BaseTestAperture, BaseTestRotatedPixelAperture)
 
 POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
 RA, DEC = np.transpose(POSITIONS)
@@ -41,7 +41,8 @@ class TestEllipticalAperture(BaseTestRotatedPixelAperture):
             EllipticalAperture(POSITIONS, a=10.0, b=radius, theta=np.pi / 2.0)
 
 
-class TestEllipticalAnnulus(BaseTestRotatedPixelAperture):
+class TestEllipticalAnnulus(BaseTestAnnulusMutation,
+                            BaseTestRotatedPixelAperture):
     aperture = EllipticalAnnulus(POSITIONS, a_in=10.0, a_out=20.0, b_out=17.0,
                                  theta=np.pi / 3)
     copy_param = 'a_in'
@@ -55,7 +56,7 @@ class TestEllipticalAnnulus(BaseTestRotatedPixelAperture):
             EllipticalAnnulus(POSITIONS, a_in=radius, a_out=20.0, b_out=17.0,
                               theta=np.pi / 3)
 
-        match = "'a_out' must be greater than 'a_in'"
+        match = "'a_out' must be a positive scalar"
         with pytest.raises(ValueError, match=match):
             EllipticalAnnulus(POSITIONS, a_in=10.0, a_out=radius, b_out=17.0,
                               theta=np.pi / 3)
@@ -79,6 +80,15 @@ class TestEllipticalAnnulus(BaseTestRotatedPixelAperture):
             EllipticalAnnulus(POSITIONS, a_in=10.0, a_out=20.0, b_out=5.0,
                               b_in=8.0, theta=np.pi / 3)
 
+    def test_a_in_greater_than_a_out(self):
+        """
+        Test that a ValueError is raised when a_in >= a_out.
+        """
+        match = "'a_out' must be greater than 'a_in'"
+        with pytest.raises(ValueError, match=match):
+            EllipticalAnnulus(POSITIONS, a_in=10.0, a_out=8.0, b_out=5.0,
+                              theta=np.pi / 3)
+
 
 class TestSkyEllipticalAperture(BaseTestAperture):
     aperture = SkyEllipticalAperture(SKYCOORD, a=10.0 * UNIT, b=5.0 * UNIT,
@@ -100,7 +110,7 @@ class TestSkyEllipticalAperture(BaseTestAperture):
                                   theta=30 * u.deg)
 
 
-class TestSkyEllipticalAnnulus(BaseTestAperture):
+class TestSkyEllipticalAnnulus(BaseTestAnnulusMutation, BaseTestAperture):
     aperture = SkyEllipticalAnnulus(SKYCOORD, a_in=10.0 * UNIT,
                                     a_out=20.0 * UNIT, b_out=17.0 * UNIT,
                                     theta=60 * u.deg)
@@ -116,7 +126,7 @@ class TestSkyEllipticalAnnulus(BaseTestAperture):
                                  a_out=20.0 * UNIT, b_out=17.0 * UNIT,
                                  theta=60 * u.deg)
 
-        match = "'a_out' must be greater than 'a_in'"
+        match = "'a_out' must be greater than zero"
         with pytest.raises(ValueError, match=match):
             SkyEllipticalAnnulus(SKYCOORD, a_in=10.0 * UNIT,
                                  a_out=radius * UNIT, b_out=17.0 * UNIT,
@@ -142,6 +152,15 @@ class TestSkyEllipticalAnnulus(BaseTestAperture):
             SkyEllipticalAnnulus(SKYCOORD, a_in=10.0 * UNIT, a_out=20.0 * UNIT,
                                  b_out=5.0 * UNIT, b_in=8.0 * UNIT,
                                  theta=60 * u.deg)
+
+    def test_a_in_greater_than_a_out(self):
+        """
+        Test that a ValueError is raised when a_in >= a_out.
+        """
+        match = "'a_out' must be greater than 'a_in'"
+        with pytest.raises(ValueError, match=match):
+            SkyEllipticalAnnulus(SKYCOORD, a_in=10.0 * UNIT, a_out=8.0 * UNIT,
+                                 b_out=5.0 * UNIT, theta=60 * u.deg)
 
 
 class TestThetaQuantity:

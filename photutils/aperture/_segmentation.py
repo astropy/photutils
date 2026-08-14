@@ -103,6 +103,9 @@ def process_segmentation_inputs(segmentation_image, labels,
         raise ValueError(msg)
 
     labels = np.atleast_1d(labels)
+    if labels.ndim != 1:
+        msg = 'labels must be a 1D array'
+        raise ValueError(msg)
     if labels.shape[0] != n_positions:
         msg = ('labels must have the same length as the number of '
                'aperture positions')

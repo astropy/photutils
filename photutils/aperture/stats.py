@@ -6,6 +6,7 @@ Tools for calculating properties of sources defined by an Aperture.
 import inspect
 import warnings
 from copy import deepcopy
+from typing import NamedTuple
 
 import astropy.units as u
 import numpy as np
@@ -81,11 +82,48 @@ _DEPRECATED_ATTRIBUTES: dict = {
 }
 
 
+class _BatchGather(NamedTuple):
+    """
+    Container for the fast Cython batch-driver results shared by
+    `ApertureStats._fast_gather` and `ApertureStats._fast_sum`.
+
+    Each instance populates only the fields relevant to its footprint;
+    the remaining fields are `None`:
+
+    * center-value gather (``_fast_gather``): ``values``, ``local_x``,
+      ``local_y``, ``starts``, ``counts``, ``overlap``, and
+      ``flag_counts``
+
+    * ``sum_method`` gather (``_fast_sum``): ``sum_aper``, ``var_aper``,
+      ``sum_area``, ``starts``, ``overlap``, and ``flag_counts``,
+      plus the packed member buffers (``sum_values``, ``sum_fracs``,
+      ``sum_errsq``, and ``sum_counts``) while sigma clipping is applied
+    """
+
+    values: np.ndarray = None
+    local_x: np.ndarray = None
+    local_y: np.ndarray = None
+    starts: np.ndarray = None
+    counts: np.ndarray = None
+    sum_aper: np.ndarray = None
+    var_aper: np.ndarray = None
+    sum_area: np.ndarray = None
+    overlap: np.ndarray = None
+    sum_values: np.ndarray = None
+    sum_fracs: np.ndarray = None
+    sum_errsq: np.ndarray = None
+    sum_counts: np.ndarray = None
+    flag_counts: np.ndarray = None
+
+
 # Public attributes that are never collapsed to a scalar for a scalar
 # instance because they describe the whole object rather than a single
-# per-source value (see ``ApertureStats.__getattribute__``).
+# per-source value (see ``ApertureStats.__getattribute__``). Any new
+# public attribute that is a list, tuple, ndarray, or SkyCoord but is
+# not a per-source value must be added here, otherwise a length-1 value
+# will be silently collapsed to its first element for a scalar instance.
 _SCALAR_EXCLUDE = frozenset({'default_columns', 'isscalar', 'labels',
-                             'n_apertures', 'properties',
+                             'n_positions', 'properties',
                              'segmentation_image'})
 
 
@@ -120,7 +158,7 @@ class ApertureStats:
     ``data`` values within the aperture. It does not convert data
     in surface brightness units to flux or counts. Conversion from
     surface-brightness units should be performed before using this
-    function.
+    class.
 
     Parameters
     ----------
@@ -305,6 +343,16 @@ class ApertureStats:
                                 'data_sum_cutout', 'error_sum_cutout',
                                 'sum_flags')
 
+    # Cached lazyproperties that are not per-source sliceable: the
+    # packed gather buffers and their reductions. ``__getitem__`` drops
+    # these from the sliced object, which recomputes them lazily from
+    # its sliced inputs. Any new lazyproperty backed by the packed batch
+    # buffers must be added here, otherwise slicing will attempt to
+    # index the packed buffer per source and fail or corrupt it.
+    _NON_SLICEABLE_CACHES = frozenset({
+        '_batch_inputs', '_fast_gather', '_fast_sum', '_sorted_values',
+        '_order_stats', '_mean_var', '_mad', '_biweight', '_gini'})
+
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
                  sigma_clip=None, sum_method='exact', subpixels=5, ddof=0,
                  local_bkg=None, segmentation_image=None, labels=None,
@@ -320,7 +368,7 @@ class ApertureStats:
 
         self._data = validate_array(data, 'data')
         self._data_unit = unit
-        self._input_aperture = self._validate_aperture(aperture)
+        self._validate_aperture(aperture)
         aperture_meta = _aperture_metadata(aperture)  # use input aperture
 
         if isinstance(aperture, SkyAperture) and wcs is None:
@@ -356,7 +404,7 @@ class ApertureStats:
             raise ValueError(msg)
         self.ddof = ddof
 
-        self._local_bkg = np.zeros(self.n_apertures)  # no local bkg
+        self._local_bkg = np.zeros(self.n_positions)  # no local bkg
         if local_bkg is not None:
             local_bkg = np.atleast_1d(local_bkg)
             if local_bkg.ndim != 1:
@@ -364,11 +412,11 @@ class ApertureStats:
                 raise ValueError(msg)
 
             n_local_bkg = len(local_bkg)
-            if n_local_bkg not in (1, self.n_apertures):
+            if n_local_bkg not in (1, self.n_positions):
                 msg = ('local_bkg must be scalar or have the same length '
                        'as the input aperture')
                 raise ValueError(msg)
-            local_bkg = np.broadcast_to(local_bkg, self.n_apertures)
+            local_bkg = np.broadcast_to(local_bkg, self.n_positions)
 
             if np.any(~np.isfinite(local_bkg)):
                 msg = ('local_bkg must not contain any non-finite '
@@ -376,7 +424,7 @@ class ApertureStats:
                 raise ValueError(msg)
             self._local_bkg = local_bkg  # always an iterable
 
-        self._ids = np.arange(self.n_apertures) + 1
+        self._ids = np.arange(self.n_positions) + 1
         self.default_columns = ['id', 'x_centroid', 'y_centroid',
                                 'sky_centroid', 'sum', 'sum_err',
                                 'sum_aper_area', 'sum_flags',
@@ -440,11 +488,11 @@ class ApertureStats:
         """
         lazyproperties = [name for name in self._lazyproperties if not
                           name.startswith('_')]
-        # isscalar and n_apertures are scalar values for the whole
+        # isscalar and n_positions are scalar values for the whole
         # object, not per-source values, so they are not valid table
         # columns
         lazyproperties.remove('isscalar')
-        lazyproperties.remove('n_apertures')
+        lazyproperties.remove('n_positions')
         lazyproperties.sort()
         return lazyproperties
 
@@ -491,20 +539,12 @@ class ApertureStats:
         # The packed gather buffers and their reductions are not
         # per-source sliceable; the sliced object recomputes them
         # lazily from its sliced inputs.
-        keys.discard('_batch_inputs')
-        keys.discard('_fast_gather')
-        keys.discard('_fast_sum')
-        keys.discard('_sorted_values')
-        keys.discard('_order_stats')
-        keys.discard('_mean_var')
-        keys.discard('_mad')
-        keys.discard('_biweight')
-        keys.discard('_gini')
+        keys -= self._NON_SLICEABLE_CACHES
         for key in keys:
             value = self.__dict__[key]
 
             # Do not insert attributes that are always scalar (e.g.,
-            # isscalar, n_apertures), i.e., not an array/list for each
+            # isscalar, n_positions), i.e., not an array/list for each
             # source
             if np.isscalar(value):
                 continue
@@ -533,9 +573,7 @@ class ApertureStats:
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
-        with np.printoptions(threshold=25, edgeitems=5):
-            fmt = [f'Length: {self.n_apertures}']
-        return f'{cls_name}\n' + '\n'.join(fmt)
+        return f'{cls_name}\nLength: {self.n_positions}'
 
     def __repr__(self):
         return self.__str__()
@@ -544,7 +582,7 @@ class ApertureStats:
         if self.isscalar:
             msg = f'Scalar {self.__class__.__name__!r} object has no len()'
             raise TypeError(msg)
-        return self.n_apertures
+        return self.n_positions
 
     def __iter__(self):
         for item in range(len(self)):
@@ -626,14 +664,14 @@ class ApertureStats:
         """
         Return `None` values.
         """
-        return np.array([None] * self.n_apertures)
+        return np.array([None] * self.n_positions)
 
     @lazyproperty
     def _null_value(self):
         """
         Return np.nan values.
         """
-        values = np.empty(self.n_apertures)
+        values = np.empty(self.n_positions)
         values.fill(np.nan)
         return values
 
@@ -797,13 +835,25 @@ class ApertureStats:
         return tbl
 
     @lazyproperty
-    def n_apertures(self):
+    def n_positions(self):
         """
         The number of positions for the input aperture.
         """
         if self.isscalar:
             return 1
         return len(self._pixel_aperture)
+
+    @property
+    @deprecated('3.1', alternative="the 'n_positions' attribute",
+                until='4.0')
+    def n_apertures(self):
+        """
+        The number of positions for the input aperture.
+
+        .. deprecated:: 3.1
+            Use the `n_positions` attribute instead.
+        """
+        return self.n_positions
 
     @lazyproperty
     def _pixel_aperture(self):
@@ -839,9 +889,10 @@ class ApertureStats:
 
         aper = self._pixel_aperture
 
-        # Use the batch driver only if the aperture's own class defines
-        # the _batch_shape_params hook (see _batch_photometry).
-        if '_batch_shape_params' not in type(aper).__dict__:
+        # Use the batch driver only if the aperture's own class
+        # opted in via the _enable_batch_photometry decorator (see
+        # PixelAperture._batch_photometry).
+        if type(aper)._batch_photometry_class is not type(aper):
             return None
         spec = aper._batch_shape_params()
         if spec is None:
@@ -898,12 +949,10 @@ class ApertureStats:
         `None` is returned (and the mask-based code path is used) when
         the fast batch driver is unavailable (see `_batch_inputs`).
 
-        The result is a tuple ``(values, local_x, local_y, starts,
-        counts, sum_aper, var_aper, sum_area, overlap, ...)`` (a
-        14-tuple shared with `_fast_sum`, whose last entry is the
-        per-source flag-count array). Only the center-value entries
-        (indices 0-4), ``overlap`` (index 8), and the flag counts (index
-        13) are populated here. The ``sum_method`` entries are `None`.
+        The result is a `_BatchGather` with the center-value fields
+        (``values``, ``local_x``, ``local_y``, ``starts``, ``counts``),
+        ``overlap``, and ``flag_counts`` populated. The ``sum_method``
+        fields are `None`.
         """
         inputs = self._batch_inputs
         if inputs is None:
@@ -916,8 +965,9 @@ class ApertureStats:
          flag_counts) = batch_aperture_gather(
             data, mask, positions, shape_code, params, ext_x, ext_y,
             off_x, off_y, local_bkg, seg_arr, labels_arr, seg_code)
-        gather = (values, lx, ly, starts, counts, None, None, None, overlap,
-                  None, None, None, None, flag_counts)
+        gather = _BatchGather(values=values, local_x=lx, local_y=ly,
+                              starts=starts, counts=counts, overlap=overlap,
+                              flag_counts=flag_counts)
 
         if clip_spec is not None:
             gather = self._apply_center_clip(gather, clip_spec)
@@ -942,10 +992,10 @@ class ApertureStats:
         `None` is returned (and the mask-based code path is used) when
         the fast batch driver is unavailable (see `_batch_inputs`).
 
-        The result is a tuple with the same layout as `_fast_gather`;
-        only the ``sum_aper`` (index 5), ``var_aper`` (index 6),
-        ``sum_area`` (index 7), and ``overlap`` (index 8) entries are
-        populated.
+        The result is a `_BatchGather` with the ``sum_aper``,
+        ``var_aper``, ``sum_area``, ``starts``, ``overlap``, and
+        ``flag_counts`` fields populated. The center-value fields are
+        `None`.
         """
         inputs = self._batch_inputs
         if inputs is None:
@@ -960,9 +1010,11 @@ class ApertureStats:
             data, error, mask, positions, shape_code, params, ext_x, ext_y,
             off_x, off_y, sum_use_exact, sum_subpixels, seg_arr, labels_arr,
             seg_code, local_bkg, emit_sum)
-        gather = (None, None, None, starts, None, sums, sum_var, area,
-                  overlap, sum_values, sum_fracs, sum_errsq, scounts,
-                  flag_counts)
+        gather = _BatchGather(starts=starts, sum_aper=sums, var_aper=sum_var,
+                              sum_area=area, overlap=overlap,
+                              sum_values=sum_values, sum_fracs=sum_fracs,
+                              sum_errsq=sum_errsq, sum_counts=scounts,
+                              flag_counts=flag_counts)
 
         if clip_spec is not None:
             gather = self._apply_sum_clip(gather, clip_spec)
@@ -1002,39 +1054,37 @@ class ApertureStats:
 
     def _apply_center_clip(self, gather, clip_spec):
         """
-        Sigma-clip the packed center buffer and return a gather tuple
-        with the same layout whose center buffer reflects the per-source
-        clipped data.
+        Sigma-clip the packed center buffer and return a `_BatchGather`
+        whose center buffer reflects the per-source clipped data.
         """
         sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc = clip_spec
-        (values, local_x, local_y, starts, counts, _sum, _var, _area,
-         overlap, _sv, _sf, _se, _sc, flag_counts) = gather
 
         (cvalues, clx, cly, cstarts, ccounts) = batch_sigma_clip_center(
-            values, local_x, local_y, starts, counts, sigma_lower,
-            sigma_upper, maxiters, cenfunc, stdfunc)
+            gather.values, gather.local_x, gather.local_y, gather.starts,
+            gather.counts, sigma_lower, sigma_upper, maxiters, cenfunc,
+            stdfunc)
 
-        return (cvalues, clx, cly, cstarts, ccounts, _sum, _var, _area,
-                overlap, None, None, None, None, flag_counts)
+        return gather._replace(values=cvalues, local_x=clx, local_y=cly,
+                               starts=cstarts, counts=ccounts)
 
     def _apply_sum_clip(self, gather, clip_spec):
         """
-        Sigma-clip the packed ``sum_method`` member buffers and return a
-        gather tuple with the same layout whose aperture sum, variance,
-        and area reflect the per-source clipped data.
+        Sigma-clip the packed ``sum_method`` member buffers and return
+        a `_BatchGather` whose aperture sum, variance, and area reflect
+        the per-source clipped data. The packed member buffers are
+        dropped (set to `None`) so their memory can be reclaimed.
         """
         sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc = clip_spec
-        (values, local_x, local_y, starts, counts, _sum, _var, _area,
-         overlap, sum_values, sum_fracs, sum_errsq, sum_counts,
-         flag_counts) = gather
 
         has_error = 1 if self._error is not None else 0
         (csum, cvar, carea) = batch_sigma_clip_sum(
-            sum_values, sum_fracs, sum_errsq, starts, sum_counts,
-            sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc, has_error)
+            gather.sum_values, gather.sum_fracs, gather.sum_errsq,
+            gather.starts, gather.sum_counts, sigma_lower, sigma_upper,
+            maxiters, cenfunc, stdfunc, has_error)
 
-        return (values, local_x, local_y, starts, counts, csum, cvar, carea,
-                overlap, None, None, None, None, flag_counts)
+        return gather._replace(sum_aper=csum, var_aper=cvar, sum_area=carea,
+                               sum_values=None, sum_fracs=None,
+                               sum_errsq=None, sum_counts=None)
 
     @lazyproperty
     def _sorted_values(self):
@@ -1052,7 +1102,7 @@ class ApertureStats:
         gather = self._fast_gather
         if gather is None:
             return None
-        values, starts, counts = gather[0], gather[3], gather[4]
+        values, starts, counts = gather.values, gather.starts, gather.counts
         return (batch_sort_values(values, starts, counts), starts, counts)
 
     @lazyproperty
@@ -1080,8 +1130,7 @@ class ApertureStats:
         gather = self._fast_gather
         if gather is None:
             return None
-        values, starts, counts = gather[0], gather[3], gather[4]
-        return batch_mean_var(values, starts, counts)
+        return batch_mean_var(gather.values, gather.starts, gather.counts)
 
     @lazyproperty
     def _mad(self):
@@ -1123,8 +1172,7 @@ class ApertureStats:
         gather = self._fast_gather
         if gather is None:
             return None
-        values, starts, counts = gather[0], gather[3], gather[4]
-        return batch_gini(values, starts, counts)
+        return batch_gini(gather.values, gather.starts, gather.counts)
 
     def _finalize_value_stat(self, fast_result, stat_func, *,
                              square_unit=False, apply_unit=True):
@@ -1416,9 +1464,9 @@ class ApertureStats:
         """
         Boolean mask cutouts representing the total mask.
 
-        The total mask is combination of the input ``mask``, non-finite
-        ``data`` values, the cutout aperture mask using the "center"
-        method, and the sigma-clip mask.
+        The total mask is a combination of the input ``mask``,
+        non-finite ``data`` values, the cutout aperture mask using the
+        "center" method, and the sigma-clip mask.
         """
         return list(zip(*self._aperture_cutouts_center, strict=True))[2]
 
@@ -1427,7 +1475,7 @@ class ApertureStats:
         """
         Boolean mask cutouts representing the total mask.
 
-        The total mask is combination of the input ``mask``,
+        The total mask is a combination of the input ``mask``,
         non-finite ``data`` values, the cutout aperture mask using the
         ``sum_method`` method, and the sigma-clip mask.
         """
@@ -1447,7 +1495,7 @@ class ApertureStats:
     def _make_masked_array(self, array):
         """
         Return a list of cutout masked arrays using the
-        ``_mask_sumcutout`` mask.
+        ``_mask_cutout`` mask.
 
         Units are not applied.
         """
@@ -1643,13 +1691,13 @@ class ApertureStats:
         if footprint == 'center':
             gather = self._fast_gather
             if gather is not None:
-                return (gather[13], np.asarray(gather[8]),
-                        np.asarray(gather[4]))
+                return (gather.flag_counts, np.asarray(gather.overlap),
+                        np.asarray(gather.counts))
             cutouts = self._aperture_cutouts_center
         else:
             gather = self._fast_sum
             if gather is not None:
-                return gather[13], np.asarray(gather[8]), None
+                return gather.flag_counts, np.asarray(gather.overlap), None
             cutouts = self._aperture_cutouts
 
         flag_counts = np.array([cut[5] for cut in cutouts])
@@ -1684,10 +1732,11 @@ class ApertureStats:
         The count-based value-statistics flag bits (1D int array).
 
         These are the flag bits that do not depend on any lazily
-        computed covariance property: the "center"-method
+        computed moment or covariance property: the "center"-method
         footprint bits plus the sigma-clip and ``ddof`` bits. The
-        ``singular_covariance`` bit is folded in by the `flags` property
-        only if a covariance-derived property has been computed.
+        ``undefined_shape`` and ``singular_covariance`` bits are
+        folded in by the `flags` property only if a moment-derived or
+        covariance-derived property, respectively, has been computed.
         """
         # The gather kernel and the center-method cutouts do not
         # evaluate error values, so the non-finite-error bit is defined
@@ -1709,6 +1758,25 @@ class ApertureStats:
                   & (n_kept <= self.ddof)] |= APERTURE_FLAGS.TOO_FEW_PIXELS
 
         return flags
+
+    @lazyproperty
+    def _undefined_shape_mask(self):
+        """
+        Boolean mask (1D) marking sources whose net flux is not
+        positive.
+
+        The net flux is the zeroth image moment of the unmasked
+        "center"-method pixels. When it is zero or negative, the
+        centroid and the covariance-derived shape properties are
+        undefined or unreliable. Sources with no valid pixels (no
+        overlap, fully masked, or fully sigma clipped) are not flagged
+        here. They are already reported by the overlap, masking, and
+        clipping bits.
+        """
+        m00 = self._array('moments')[:, 0, 0]
+        # NaN where a source has no valid pixels
+        n_pixels = self._center_n_pixels
+        return np.isfinite(m00) & (m00 <= 0) & np.isfinite(n_pixels)
 
     @lazyproperty
     def _singular_covariance_mask(self):
@@ -1766,19 +1834,18 @@ class ApertureStats:
         footprints, combine the two flag columns with a bitwise OR
         (e.g., ``flags | sum_flags``).
 
-        The ``'singular_covariance'`` bit is special. It reports whether
-        a source's covariance matrix is singular or nearly singular,
-        a condition that is only knowable once a covariance-derived
-        shape property (e.g., ``semimajor_axis``, ``orientation``,
-        ``eccentricity``) has been computed. To avoid forcing that
-        computation, the bit is included only if such a property has
-        already been evaluated on this object; otherwise it is omitted.
-        This means the value of ``flags`` reflects the measurements
-        requested so far, so accessing a shape property and then
-        re-reading ``flags`` may set additional bits. The default
-        `to_table` always evaluates the shape properties, so its
-        ``flags`` column always reflects the ``'singular_covariance'``
-        bit.
+        The ``'undefined_shape'`` and ``'singular_covariance'`` bits
+        are special. They report conditions that are only knowable
+        once a moment-derived property (e.g., ``centroid``) or a
+        covariance-derived shape property (e.g., ``semimajor_axis``,
+        ``orientation``, ``eccentricity``) has been computed. To avoid
+        forcing those computations, each bit is included only if such a
+        property has already been evaluated on this object. Otherwise
+        it is omitted. This means the value of ``flags`` reflects the
+        measurements requested so far, so accessing a shape property and
+        then re-reading ``flags`` may set additional bits. The default
+        `to_table` always evaluates the moment and shape properties, so
+        its ``flags`` column always reflects both bits.
 
         See `~photutils.aperture.decode_aperture_flags` for decoding
         flag values. The flags are:
@@ -1789,6 +1856,9 @@ class ApertureStats:
         # cached `_base_flags`), so concurrent readers and previously
         # returned arrays are never modified in place.
         flags = self._base_flags.copy()
+        if 'moments' in self.__dict__:
+            flags[self._undefined_shape_mask] |= (
+                APERTURE_FLAGS.UNDEFINED_SHAPE)
         if '_covariance' in self.__dict__:
             flags[self._singular_covariance_mask] |= (
                 APERTURE_FLAGS.SINGULAR_COVARIANCE)
@@ -1899,10 +1969,11 @@ class ApertureStats:
         """
         gather = self._fast_gather
         if gather is not None:
-            values, lx, ly, starts, counts = gather[:5]
-            overlap = gather[8]
-            zeros = np.zeros(self.n_apertures)
-            mom = batch_moments(values, lx, ly, starts, counts, zeros, zeros)
+            overlap = gather.overlap
+            zeros = np.zeros(self.n_positions)
+            mom = batch_moments(gather.values, gather.local_x,
+                                gather.local_y, gather.starts,
+                                gather.counts, zeros, zeros)
             # No-overlap sources have NaN moments (the mask-based path
             # uses an all-NaN cutout); all-masked overlapping sources
             # have zero moments (an all-zero cutout).
@@ -1922,14 +1993,15 @@ class ApertureStats:
 
         gather = self._fast_gather
         if gather is not None:
-            values, lx, ly, starts, counts = gather[:5]
             cen_x = np.ascontiguousarray(cutout_centroid[:, 0])
             cen_y = np.ascontiguousarray(cutout_centroid[:, 1])
-            mom = batch_moments(values, lx, ly, starts, counts, cen_x, cen_y)
+            mom = batch_moments(gather.values, gather.local_x,
+                                gather.local_y, gather.starts,
+                                gather.counts, cen_x, cen_y)
             # Empty sources (no overlap or fully masked) have a NaN
             # centroid, so their central moments are NaN (matching the
             # mask-based path).
-            mom[counts == 0] = np.nan
+            mom[gather.counts == 0] = np.nan
             return mom
 
         return np.array([_image_moments(arr, center=(xcen_, ycen_), order=3)
@@ -2043,9 +2115,11 @@ class ApertureStats:
         The bounding box x and y minimum and maximum bounds.
         """
         bbox = self._array('bbox')
+        # The reshape preserves the (n_positions, 4) shape when there
+        # are zero positions
         return np.array([(bbox_.ixmin, bbox_.ixmax - 1,
                           bbox_.iymin, bbox_.iymax - 1)
-                         for bbox_ in bbox])
+                         for bbox_ in bbox], dtype=int).reshape(-1, 4)
 
     @lazyproperty
     def bbox_xmin(self):
@@ -2090,7 +2164,7 @@ class ApertureStats:
         """
         gather = self._fast_gather
         if gather is not None:
-            counts = gather[4]
+            counts = gather.counts
             n_pixels = counts.astype(float)
             n_pixels[counts == 0] = np.nan
             return n_pixels
@@ -2117,7 +2191,7 @@ class ApertureStats:
             var = np.array([np.var(values)
                             for values in self._data_values_center])
         n_pixels = self._center_n_pixels
-        sem = np.full(self.n_apertures, np.nan)
+        sem = np.full(self.n_positions, np.nan)
         mask = n_pixels >= 2
         # var is the population (ddof=0) variance, so var / (N - 1)
         # equals the squared standard error of the mean.
@@ -2140,7 +2214,7 @@ class ApertureStats:
         """
         gather = self._fast_sum
         if gather is not None:
-            area, overlap = gather[7].copy(), gather[8]
+            area, overlap = gather.sum_area.copy(), gather.overlap
             area[overlap & (area == 0)] = np.nan
             return area << (u.pix**2)
         areas = np.array([np.sum(weight.filled(0.0))
@@ -2171,7 +2245,9 @@ class ApertureStats:
         """
         gather = self._fast_sum
         if gather is not None:
-            result, area, overlap = gather[5].copy(), gather[7], gather[8]
+            result = gather.sum_aper.copy()
+            area = gather.sum_area
+            overlap = gather.overlap
             # No sum-method survivors -> NaN (matches the mask-based
             # path, which returns NaN for an all-masked aperture).
             result[overlap & (area == 0)] = np.nan
@@ -2216,9 +2292,9 @@ class ApertureStats:
         else:
             gather = self._fast_sum
             if gather is not None:
-                variance = gather[6].copy()
-                area = gather[7]
-                overlap = gather[8]
+                variance = gather.var_aper.copy()
+                area = gather.sum_area
+                overlap = gather.overlap
                 variance[overlap & (area == 0)] = np.nan
                 err = np.sqrt(variance)
             else:
@@ -2345,7 +2421,7 @@ class ApertureStats:
         if self.ddof == 0:
             return var
         n_pixels = self._center_n_pixels
-        result = np.full(self.n_apertures, np.nan)
+        result = np.full(self.n_positions, np.nan)
         mask = n_pixels > self.ddof
         result[mask] = (var[mask] * n_pixels[mask]
                         / (n_pixels[mask] - self.ddof))
@@ -2516,7 +2592,7 @@ class ApertureStats:
         The two eigenvalues of the `covariance` matrix in decreasing
         order.
         """
-        eigvals = np.full((self.n_apertures, 2), np.nan)
+        eigvals = np.full((self.n_positions, 2), np.nan)
         # np.linalg.eigvalsh requires that every element of a covariance
         # matrix be finite, so select only the wholly finite matrices
         idx = np.flatnonzero(np.isfinite(self._covariance).all(axis=(1, 2)))

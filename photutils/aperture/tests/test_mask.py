@@ -247,6 +247,22 @@ class TestGetValues:
         values = aper.to_mask().get_values(data)
         assert values.shape == (0,)
 
+    def test_get_values_units(self):
+        """
+        Test that the result is a Quantity with the data units for both
+        the overlap and no-overlap cases.
+        """
+        data = np.ones((51, 51)) * u.Jy
+        values = CircularAperture((25, 25), r=3).to_mask().get_values(data)
+        assert isinstance(values, u.Quantity)
+        assert values.unit == u.Jy
+
+        values = CircularAperture((-100, -100), r=3).to_mask().get_values(
+            data)
+        assert isinstance(values, u.Quantity)
+        assert values.unit == u.Jy
+        assert values.shape == (0,)
+
     def test_get_values_mask(self):
         aper = CircularAperture((24.5, 24.5), r=10.0)
         data = np.ones((51, 51))

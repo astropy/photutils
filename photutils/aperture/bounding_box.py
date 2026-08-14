@@ -142,9 +142,19 @@ class BoundingBox:
         return hash((self.ixmin, self.ixmax, self.iymin, self.iymax))
 
     def __or__(self, other):
+        # NotImplemented (instead of the TypeError raised by ``union``)
+        # lets Python try the reflected operation and raise its standard
+        # unsupported-operand TypeError.
+        if not isinstance(other, BoundingBox):
+            return NotImplemented
         return self.union(other)
 
     def __and__(self, other):
+        # NotImplemented (instead of the TypeError raised by
+        # ``intersection``) lets Python try the reflected operation and
+        # raise its standard unsupported-operand TypeError.
+        if not isinstance(other, BoundingBox):
+            return NotImplemented
         return self.intersection(other)
 
     def __repr__(self):

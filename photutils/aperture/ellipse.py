@@ -18,6 +18,7 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
                                            ScalarAngleOrValue,
                                            SkyCoordPositions)
 from photutils.aperture.core import (PixelAperture, SkyAperture,
+                                     _enable_batch_photometry,
                                      _RotatableApertureMixin,
                                      _update_method_subpixels_docstring)
 from photutils.aperture.mask import ApertureMask
@@ -95,7 +96,7 @@ def _elliptical_polygon_offsets(a, b, theta, n_vertices, *, swap_axes=False):
                             x * sin_t + y * cos_t])
 
 
-@deprecated('3.0', until='4.0')
+@deprecated('3.0', until='3.2')
 class EllipticalMaskMixin:  # pragma: no cover
     """
     Mixin class to create masks for elliptical and elliptical-annulus
@@ -180,6 +181,7 @@ def _calc_ellipse_extents(semimajor_axis, semiminor_axis, theta_rad):
     return x_extent, y_extent
 
 
+@_enable_batch_photometry
 class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
     """
     An elliptical aperture defined in pixel coordinates.
@@ -211,7 +213,7 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If either axis (``a`` or ``b``) is negative.
+        If either axis (``a`` or ``b``) is not positive.
 
     Examples
     --------
@@ -369,9 +371,10 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
         """
         offsets = _elliptical_polygon_offsets(
             self.a, self.b, self.theta.to_value(u.radian), n_vertices)
-        return PolygonAperture._from_convex_offsets(self.positions, offsets)
+        return PolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
+@_enable_batch_photometry
 class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
     r"""
     An elliptical annulus aperture defined in pixel coordinates.
@@ -414,12 +417,14 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
     Raises
     ------
     ValueError : `ValueError`
-        If inner semimajor axis (``a_in``) is greater than outer semimajor
-        axis (``a_out``).
+        If the inner semimajor axis (``a_in``) is not less than the
+        outer semimajor axis (``a_out``), or if the inner semiminor axis
+        (``b_in``), when given, is not less than the outer semiminor
+        axis (``b_out``).
 
     ValueError : `ValueError`
-        If either the inner semimajor axis (``a_in``) or the outer semiminor
-        axis (``b_out``) is negative.
+        If any of the axes (``a_in``, ``a_out``, ``b_in``, or ``b_out``)
+        is not positive.
 
     Examples
     --------
@@ -439,6 +444,7 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
     """
 
     _params = ('positions', 'a_in', 'a_out', 'b_in', 'b_out', 'theta')
+    _ordered_pairs = (('a_in', 'a_out'), ('b_in', 'b_out'))
     positions = PixelPositions('The center pixel position(s).')
     a_in = PositiveScalar('The inner semimajor axis in pixels.')
     a_out = PositiveScalar('The outer semimajor axis in pixels.')
@@ -450,10 +456,6 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, a_in, a_out, b_out, b_in=None, theta=0.0):
-        if not a_out > a_in:
-            msg = "'a_out' must be greater than 'a_in'"
-            raise ValueError(msg)
-
         self.positions = positions
         self.a_in = a_in
         self.a_out = a_out
@@ -461,9 +463,6 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
 
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
-        elif not b_out > b_in:
-            msg = "'b_out' must be greater than 'b_in'"
-            raise ValueError(msg)
         self.b_in = b_in
 
         self.theta = theta
@@ -707,7 +706,7 @@ class SkyEllipticalAperture(_RotatableApertureMixin, SkyAperture):
         offsets = _elliptical_polygon_offsets(
             self.a.to_value(unit), self.b.to_value(unit),
             self.theta.to_value(u.radian), n_vertices, swap_axes=True) * unit
-        return SkyPolygonAperture._from_convex_offsets(self.positions, offsets)
+        return SkyPolygonAperture._from_simple_offsets(self.positions, offsets)
 
 
 class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
@@ -756,6 +755,7 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
     """
 
     _params = ('positions', 'a_in', 'a_out', 'b_in', 'b_out', 'theta')
+    _ordered_pairs = (('a_in', 'a_out'), ('b_in', 'b_out'))
     positions = SkyCoordPositions('The center position(s) in sky coordinates.')
     a_in = PositiveScalarAngle('The inner semimajor axis in angular units.')
     a_out = PositiveScalarAngle('The outer semimajor axis in angular units.')
@@ -767,10 +767,6 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def __init__(self, positions, a_in, a_out, b_out, b_in=None,
                  theta=0.0 * u.deg):
-        if not a_out > a_in:
-            msg = "'a_out' must be greater than 'a_in'"
-            raise ValueError(msg)
-
         self.positions = positions
         self.a_in = a_in
         self.a_out = a_out
@@ -778,9 +774,6 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
 
         if b_in is None:
             b_in = self.b_out * self.a_in / self.a_out
-        elif not b_out > b_in:
-            msg = "'b_out' must be greater than 'b_in'"
-            raise ValueError(msg)
         self.b_in = b_in
 
         self.theta = theta

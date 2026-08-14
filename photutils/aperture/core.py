@@ -23,7 +23,7 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_NONFINITE_ERROR,
                                                   FLAG_COL_SEG,
                                                   FLAG_COL_UNCORRECTED,
-                                                  FLAG_COL_VALID,
+                                                  FLAG_COL_VALID, N_FLAG_COLS,
                                                   batch_aperture_sums)
 from photutils.aperture._common import (batch_inputs_supported,
                                         batch_mask_plane,
@@ -210,6 +210,68 @@ def _update_method_subpixels_docstring(obj):
     return obj
 
 
+def _validate_mask(mask, shape):
+    """
+    Validate that ``mask`` is a boolean array with the given shape.
+
+    Parameters
+    ----------
+    mask : array_like (bool) or `None`
+        The input mask.
+
+    shape : tuple of int
+        The required mask shape (i.e., the data shape).
+
+    Returns
+    -------
+    mask : `~numpy.ndarray` (bool) or `None`
+        The validated mask as a boolean array, or `None` if ``mask`` is
+        `None`.
+    """
+    if mask is None:
+        return None
+
+    # asarray demotes ndarray subclasses (e.g., a boolean MaskedArray)
+    # to a plain array of the underlying data, which the batch and
+    # mask-based code paths handle identically.
+    mask = np.asarray(mask)
+    if mask.dtype != bool:
+        msg = 'mask must be a boolean array'
+        raise TypeError(msg)
+    if mask.shape != shape:
+        msg = 'mask and data must have the same shape'
+        raise ValueError(msg)
+    return mask
+
+
+def _enable_batch_photometry(cls):
+    """
+    Class decorator that opts a `PixelAperture` subclass in to the
+    batch Cython photometry driver.
+
+    The decorator records the decorated class itself, and the batch
+    driver is used only when an instance's own class was decorated
+    (see ``PixelAperture._batch_photometry``). The opt-in therefore
+    does not propagate to subclasses. An undecorated subclass may
+    override behavior (e.g., ``to_mask``) that the batch driver would
+    not honor, so it uses the mask-based code path unless it is
+    explicitly decorated as well. A decorated class must provide the
+    ``_batch_shape_params`` hook (which may be inherited).
+
+    Parameters
+    ----------
+    cls : type
+        The aperture class to opt in.
+
+    Returns
+    -------
+    cls : type
+        The input class, with the opt-in recorded.
+    """
+    cls._batch_photometry_class = cls
+    return cls
+
+
 @dataclass(frozen=True)
 class _ApertureResults:
     """
@@ -257,14 +319,17 @@ class Aperture(metaclass=abc.ABCMeta):
                    'indexed')
             raise TypeError(msg)
 
-        kwargs = {}
+        # Transplant the already-validated shape parameters directly
+        # into the new instance instead of re-validating them through
+        # __init__ (e.g., the polygon simple-polygon check is O(n^2) in
+        # the number of vertices). Only the sliced positions are set
+        # through their descriptor.
+        newobj = self.__class__.__new__(self.__class__)
+        newobj.positions = self.positions[index]
         for param in self._params:
-            if param == 'positions':
-                # Slice the positions array
-                kwargs[param] = getattr(self, param)[index]
-            else:
-                kwargs[param] = getattr(self, param)
-        return self.__class__(**kwargs)
+            if param != 'positions':
+                newobj.__dict__[param] = getattr(self, param)
+        return newobj
 
     def __iter__(self):
         for i in range(len(self)):
@@ -342,22 +407,25 @@ class Aperture(metaclass=abc.ABCMeta):
 
         return True
 
-    def __ne__(self, other):
-        """
-        Inequality operator for `Aperture`.
-        """
-        return not self == other
-
     @property
     def _lazyproperties(self):
         """
         A list of all class lazyproperties (even in superclasses).
-        """
-        def islazyproperty(obj):
-            return isinstance(obj, lazyproperty)
 
-        return [i[0] for i in inspect.getmembers(self.__class__,
-                                                 predicate=islazyproperty)]
+        The result depends only on the class, so it is computed once
+        per class and cached (it is looked up on every aperture
+        parameter reassignment).
+        """
+        cls = self.__class__
+        cached = cls.__dict__.get('_lazyproperties_cache')
+        if cached is None:
+            def islazyproperty(obj):
+                return isinstance(obj, lazyproperty)
+
+            cached = [i[0] for i in inspect.getmembers(
+                cls, predicate=islazyproperty)]
+            cls._lazyproperties_cache = cached
+        return cached
 
     def copy(self):
         """
@@ -418,6 +486,11 @@ class PixelAperture(Aperture):
     """
     Abstract base class for apertures defined in pixel coordinates.
     """
+
+    # The class (if any) that opted in to the batch photometry driver
+    # via the _enable_batch_photometry decorator; instances use the
+    # batch driver only when this is their own class
+    _batch_photometry_class = None
 
     @lazyproperty
     def _default_patch_properties(self):
@@ -606,11 +679,7 @@ class PixelAperture(Aperture):
         if self.isscalar:
             apermasks = (apermasks,)
 
-        if mask is not None:
-            mask = np.asarray(mask)
-            if mask.shape != data.shape:
-                msg = 'mask and data must have the same shape'
-                raise ValueError(msg)
+        mask = _validate_mask(mask, data.shape)
 
         areas = []
         for apermask in apermasks:
@@ -689,9 +758,9 @@ class PixelAperture(Aperture):
         the segmentation masking methods for such apertures. All
         of the built-in apertures opt in to the batch driver, so
         this path is reached only for an unsupported input (see
-        `~photutils.aperture._common.batch_inputs_supported`)
-        or for an `Aperture` subclass that does not define the
-        ``_batch_shape_params`` hook in its own class.
+        `~photutils.aperture._common.batch_inputs_supported`) or
+        for an `Aperture` subclass that is not decorated with
+        ``_enable_batch_photometry``.
 
         Parameters
         ----------
@@ -742,7 +811,7 @@ class PixelAperture(Aperture):
         aperture_sums = []
         aperture_sum_errs = []
         areas = []
-        flag_counts = np.zeros((n_src, 8), dtype=np.intp)
+        flag_counts = np.zeros((n_src, N_FLAG_COLS), dtype=np.intp)
         overlap = np.zeros(n_src, dtype=bool)
         with warnings.catch_warnings():
             # Ignore multiplication with non-finite data values
@@ -855,10 +924,10 @@ class PixelAperture(Aperture):
 
         Notes
         -----
-        The batch driver is used only if this hook is defined in the
-        aperture instance's own class (see `_batch_photometry`),
-        so subclasses must define this method (e.g., by calling
-        ``super()``) to opt in to the batch code path.
+        The batch driver is used only for classes decorated with
+        ``_enable_batch_photometry`` (see `_batch_photometry`). The
+        opt-in does not propagate to subclasses, so a subclass must
+        itself be decorated to use the batch code path.
         """
         return
 
@@ -908,11 +977,12 @@ class PixelAperture(Aperture):
             that the caller must resolve to the precise outside-weight
             test (see `_resolve_outside_weights`).
         """
-        # Use the batch driver only if the aperture's own class defines
-        # the _batch_shape_params hook. Subclasses that do not define
-        # it may override other behavior (e.g., to_mask) that the batch
-        # driver would not honor, so they use the mask-based code path.
-        if '_batch_shape_params' not in type(self).__dict__:
+        # Use the batch driver only if the instance's own class opted
+        # in via the _enable_batch_photometry decorator. Undecorated
+        # subclasses may override other behavior (e.g., to_mask) that
+        # the batch driver would not honor, so they use the mask-based
+        # code path.
+        if type(self)._batch_photometry_class is not type(self):
             return None
 
         spec = self._batch_shape_params()
@@ -1005,11 +1075,13 @@ class PixelAperture(Aperture):
 
             - ``area`` : `~astropy.units.Quantity`
               The total unmasked overlap area of each aperture (in
-              ``pix**2``), taking into account the aperture mask
-              method, masked data pixels, segmentation masking, and
-              partial/no overlap of the aperture with the data. This
-              is equivalent to `area_overlap` computed with the same
-              inputs. The value is ``NaN`` where the aperture does not
+              ``pix**2``), taking into account the aperture mask method,
+              masked data pixels, segmentation masking, and partial/no
+              overlap of the aperture with the data. This is equivalent
+              to `area_overlap` computed with the same inputs when
+              no segmentation masking is applied and there are no
+              non-finite data values (`area_overlap` takes neither into
+              account). The value is ``NaN`` where the aperture does not
               overlap the data.
 
             - ``flags`` : `~numpy.ndarray`
@@ -1029,6 +1101,8 @@ class PixelAperture(Aperture):
             if error.shape != data.shape:
                 msg = 'error and data must have the same shape'
                 raise ValueError(msg)
+
+        mask = _validate_mask(mask, data.shape)
 
         # Check Quantity inputs
         unit = {getattr(arr, 'unit', None) for arr in (data, error)
@@ -1303,7 +1377,7 @@ class PixelAperture(Aperture):
 
         patches = self._to_patch(origin=origin, **kwargs)
         if self.isscalar:
-            patches = (patches,)
+            patches = [patches]
 
         for patch in patches:
             ax.add_patch(patch)

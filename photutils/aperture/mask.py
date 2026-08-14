@@ -7,6 +7,7 @@ import warnings
 
 import astropy.units as u
 import numpy as np
+from astropy.utils import lazyproperty
 
 from photutils.utils._deprecation import deprecated_positional_kwargs
 
@@ -36,7 +37,14 @@ class ApertureMask:
             msg = 'mask data and bounding box must have the same shape'
             raise ValueError(msg)
         self.bbox = bbox
-        self._mask = (self.data == 0)
+
+    @lazyproperty
+    def _mask(self):
+        """
+        A boolean array that is `True` where the aperture mask weight
+        is zero.
+        """
+        return self.data == 0
 
     # NumPy calls `obj.__array__(dtype)` positionally with
     # `np.asarray(obj, dtype=int)`, so dtype must remain a positional
@@ -139,11 +147,11 @@ class ApertureMask:
             not overlap with the input ``data``. The default is 0.
 
         copy : bool, optional
-            If `True` then the returned cutout array will always be hold
-            a copy of the input ``data``. If `False` and the mask is
-            fully within the input ``data``, then the returned cutout
-            array will be a view into the input ``data``. In cases where
-            the mask partially overlaps or has no overlap with the input
+            If `True` then the returned cutout array will always hold a
+            copy of the input ``data``. If `False` and the mask is fully
+            within the input ``data``, then the returned cutout array
+            will be a view into the input ``data``. In cases where the
+            mask partially overlaps or has no overlap with the input
             ``data``, the returned cutout array will always hold a copy
             of the input ``data`` (i.e., this keyword has no effect).
 
@@ -178,7 +186,7 @@ class ApertureMask:
             return cutout
 
         # Cutout is always a copy for partial overlap
-        dtype = float if ~np.isfinite(fill_value) else data.dtype
+        dtype = float if not np.isfinite(fill_value) else data.dtype
         cutout = np.zeros(self.shape, dtype=dtype)
         cutout[:] = fill_value
         cutout[slices_small] = data[slices_large]
@@ -304,17 +312,21 @@ class ApertureMask:
 
         Returns
         -------
-        result : `~numpy.ndarray`
+        result : `~numpy.ndarray` or `~astropy.units.Quantity`
             A 1D array of mask-weighted pixel values from the input
             ``data``. If there is no overlap of the aperture with the
             input ``data``, the result will be an empty array with shape
-            (0,).
+            (0,). If ``data`` is a `~astropy.units.Quantity`, the result
+            is a `~astropy.units.Quantity` with the same units.
         """
         slc_large, aper_weights, pixel_mask = self._get_overlap_cutouts(
             data.shape, mask=mask)
 
         if slc_large is None:
-            return np.array([])
+            values = np.array([])
+            if isinstance(data, u.Quantity):
+                values <<= data.unit
+            return values
 
         # Ignore multiplication with non-finite data values
         with warnings.catch_warnings():

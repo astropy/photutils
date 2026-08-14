@@ -88,7 +88,7 @@ New Features
     default ``to_table()`` output), and ``ApertureStats`` also
     provides a ``sum_flags`` attribute for the sum properties. A new
     ``decode_aperture_flags`` function decodes the flag values into
-    human-readable names. [#2327, #2328]
+    human-readable names. [#2327, #2328, #2362]
 
   - Added validation of the ``ApertureStats.to_table()`` ``columns``
     keyword. [#2329]
@@ -190,6 +190,10 @@ Bug Fixes
     the data of the aperture mask it creates when a ``mask`` is input.
     [#2348]
 
+  - Fixed the annulus apertures so that reassigning an inner or outer
+    shape parameter after construction validates the inner < outer
+    invariant. [#2362]
+
 - ``photutils.detection``
 
   - Fixed ``DAOStarFinder`` and ``IRAFStarFinder`` ``orientation``
@@ -276,6 +280,11 @@ API Changes
     be removed in version 4.0. Use the ``ApertureStats.id`` attribute
     instead. [#2331]
 
+  - The ``ApertureStats.n_apertures`` attribute is now deprecated
+    and will be removed in version 4.0. Use the new
+    ``ApertureStats.n_positions`` attribute instead, which matches
+    ``AperturePhotometry.n_positions``. [#2362]
+
   - ``AperturePhotometry`` and ``ApertureStats`` now validate the
     ``method``/``sum_method`` and ``subpixels`` keywords when the
     object is created instead of when a measured attribute is first
@@ -293,6 +302,13 @@ API Changes
     raising a ``TypeError`` when the other object is not a
     ``BoundingBox``, so that comparing a ``BoundingBox`` to another
     type returns `False` rather than raising. [#2348]
+
+  - The ``mask`` input to aperture photometry and the aperture
+    ``area_overlap`` method must now be a boolean array (or `None`).
+    [#2362]
+
+  - The ``PixelAperture.plot`` method now returns a list of patches
+    for scalar apertures, as documented, instead of a tuple. [#2362]
 
 - ``photutils.detection``
 
