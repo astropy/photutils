@@ -6,17 +6,24 @@ Tools for estimating the 2D background and background RMS in an image.
 import copy
 import warnings
 from concurrent.futures import ThreadPoolExecutor
+from typing import NamedTuple
 
 import astropy.units as u
 import numpy as np
 from astropy.nddata import NDData, block_replicate, reshape_as_blocks
+from astropy.stats import SigmaClip
 from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import generic_filter
 
 from photutils.aperture import RectangularAperture
-from photutils.background.core import (SIGMA_CLIP, SExtractorBackground,
-                                       StdBackgroundRMS)
+from photutils.aperture._batch_stats import batch_sigma_clip_stats
+from photutils.background.core import (SIGMA_CLIP, BiweightLocationBackground,
+                                       BiweightScaleBackgroundRMS,
+                                       MADStdBackgroundRMS, MeanBackground,
+                                       MedianBackground, MMMBackground,
+                                       ModeEstimatorBackground,
+                                       SExtractorBackground, StdBackgroundRMS)
 from photutils.background.interpolators import (BkgIDWInterpolator,
                                                 _BkgZoomInterpolator)
 from photutils.utils import ShepardIDWInterpolator
@@ -29,6 +36,29 @@ from photutils.utils._stats import nanmedian, nanmin
 __all__ = ['Background2D']
 
 __doctest_skip__ = ['Background2D']
+
+
+class _BoxStatsSpec(NamedTuple):
+    """
+    Parameters for the fused sigma-clipped box-statistics kernel.
+
+    See ``Background2D._make_box_stats_spec``.
+    """
+
+    sigma_lower: float
+    sigma_upper: float
+    maxiters: int
+    cenfunc_code: int
+    stdfunc_code: int
+    do_clip: bool
+    bkg_kind: str
+    median_factor: float
+    mean_factor: float
+    biloc_c: float
+    biloc_m: float
+    rms_kind: str
+    biscale_c: float
+    biscale_m: float
 
 
 class Background2D:
@@ -190,6 +220,14 @@ class Background2D:
     while minimizing memory usage. Float input data produce background
     and background RMS outputs with the same dtype as the input data.
 
+    When the ``sigma_clip`` input is `None` or uses the string
+    ``cenfunc`` and ``stdfunc`` options, and the ``bkg_estimator``
+    and ``bkg_rms_estimator`` inputs are standard photutils estimator
+    classes, the sigma clipping and box statistics are computed
+    together in compiled code. Otherwise, a generic path that calls
+    ``sigma_clip`` and the estimators is used. Both paths produce the
+    same results.
+
     If there is only one background box element (i.e., ``box_size`` is
     the same size as (or larger than) the ``data``), then the background
     map will simply be a constant image.
@@ -213,6 +251,14 @@ class Background2D:
         else:
             self._unit = None
 
+        # For masked-array input, extract the data values. The data mask
+        # is combined with the input mask below.
+        data_mask = None
+        if isinstance(data, np.ma.MaskedArray):
+            if data.mask is not np.ma.nomask:
+                data_mask = np.asarray(data.mask, dtype=bool)
+            data = data.data
+
         # self._data is a temporary instance variable to store the input
         # data (the variable is deleted in self._calculate_stats)
         self._data = self._validate_array(data, 'data', shape=False)
@@ -228,6 +274,11 @@ class Background2D:
         # mask array (deleted in self._calculate_stats); self._has_mask
         # records whether a mask was provided for use after deletion.
         self._mask = self._validate_array(mask, 'mask')
+        if data_mask is not None:
+            if self._mask is None:
+                self._mask = data_mask
+            else:
+                self._mask = np.logical_or(self._mask, data_mask)
         self._has_mask = self._mask is not None
         self.coverage_mask = self._validate_array(coverage_mask,
                                                   'coverage_mask')
@@ -277,6 +328,8 @@ class Background2D:
             bkg_rms_estimator.sigma_clip = None
         self.bkg_estimator = bkg_estimator
         self.bkg_rms_estimator = bkg_rms_estimator
+
+        self._box_stats_spec = self._make_box_stats_spec()
 
         self._box_n_pixels = None
 
@@ -443,6 +496,200 @@ class Background2D:
         """
         return (1 - (self.exclude_percentile / 100.0)) * self._box_n_pixels
 
+    def _make_box_stats_spec(self):
+        """
+        The fused box-statistics kernel parameters, or `None`.
+
+        Returns a `_BoxStatsSpec` when the ``sigma_clip``,
+        ``bkg_estimator``, and ``bkg_rms_estimator`` inputs are all
+        supported by the fused sigma-clipping and statistics kernel,
+        and `None` otherwise (in which case the generic path based
+        on `astropy.stats.SigmaClip` and the estimator callables is
+        used). The fast path supports the string ``cenfunc`` values
+        'median'/'mean'/'biweight', the string ``stdfunc`` values
+        'std'/'mad_std'/'biweight', no spatial growing, and the standard
+        photutils estimator classes. For the biweight-based estimators,
+        the ``M`` location anchor must be `None` or a finite scalar.
+        """
+        sigma_clip = self.sigma_clip
+        if sigma_clip is None:
+            do_clip = False
+            sigma_lower = sigma_upper = 0.0
+            maxiters = 0
+            cenfunc_code = stdfunc_code = 0
+        else:
+            # Spatial growing (``grow``) is not supported
+            if (not isinstance(sigma_clip, SigmaClip)
+                    or not (isinstance(sigma_clip.cenfunc, str)
+                            and sigma_clip.cenfunc in ('median', 'mean',
+                                                       'biweight'))
+                    or not (isinstance(sigma_clip.stdfunc, str)
+                            and sigma_clip.stdfunc in ('std', 'mad_std',
+                                                       'biweight'))
+                    or sigma_clip.grow):
+                return None
+            do_clip = True
+            sigma_lower = float(sigma_clip.sigma_lower)
+            sigma_upper = float(sigma_clip.sigma_upper)
+            maxiters = sigma_clip.maxiters
+            if maxiters is None or np.isinf(maxiters):
+                maxiters = -1
+            else:
+                maxiters = int(maxiters)
+            cenfunc_code = {'median': 0, 'mean': 1,
+                            'biweight': 2}[sigma_clip.cenfunc]
+            stdfunc_code = {'std': 0, 'mad_std': 1,
+                            'biweight': 2}[sigma_clip.stdfunc]
+
+        bkg_estimator = self.bkg_estimator
+        median_factor = mean_factor = 0.0
+        biloc_c = biloc_m = np.nan
+        if type(bkg_estimator) is MeanBackground:
+            bkg_kind = 'mean'
+        elif type(bkg_estimator) is MedianBackground:
+            bkg_kind = 'median'
+        elif type(bkg_estimator) in (ModeEstimatorBackground,
+                                     MMMBackground):
+            bkg_kind = 'mode'
+            median_factor = float(bkg_estimator.median_factor)
+            mean_factor = float(bkg_estimator.mean_factor)
+        elif type(bkg_estimator) is SExtractorBackground:
+            bkg_kind = 'sextractor'
+        elif type(bkg_estimator) is BiweightLocationBackground:
+            m_value = bkg_estimator.M
+            if m_value is not None and (np.ndim(m_value) != 0
+                                        or not np.isfinite(m_value)):
+                return None
+            bkg_kind = 'biweight_location'
+            biloc_c = float(bkg_estimator.c)
+            biloc_m = np.nan if m_value is None else float(m_value)
+        else:
+            return None
+
+        rms_estimator = self.bkg_rms_estimator
+        biscale_c = biscale_m = np.nan
+        if type(rms_estimator) is StdBackgroundRMS:
+            rms_kind = 'std'
+        elif type(rms_estimator) is MADStdBackgroundRMS:
+            rms_kind = 'mad_std'
+        elif type(rms_estimator) is BiweightScaleBackgroundRMS:
+            m_value = rms_estimator.M
+            if m_value is not None and (np.ndim(m_value) != 0
+                                        or not np.isfinite(m_value)):
+                return None
+            rms_kind = 'biweight_scale'
+            biscale_c = float(rms_estimator.c)
+            biscale_m = np.nan if m_value is None else float(m_value)
+        else:
+            return None
+
+        return _BoxStatsSpec(sigma_lower=sigma_lower,
+                             sigma_upper=sigma_upper, maxiters=maxiters,
+                             cenfunc_code=cenfunc_code,
+                             stdfunc_code=stdfunc_code, do_clip=do_clip,
+                             bkg_kind=bkg_kind,
+                             median_factor=median_factor,
+                             mean_factor=mean_factor, biloc_c=biloc_c,
+                             biloc_m=biloc_m, rms_kind=rms_kind,
+                             biscale_c=biscale_c, biscale_m=biscale_m)
+
+    def _fast_box_statistics(self, data, *, axis=None):
+        """
+        Compute the background, background RMS, and surviving pixel
+        count in each box using the fused sigma-clipping and statistics
+        kernel.
+
+        The kernel operates on the finite values of each box in a
+        single pass, without generating a sigma-clipped copy of the box
+        data, and produces the same results as sequentially applying
+        `astropy.stats.SigmaClip` and the estimator classes. The kernel
+        releases the GIL, so this method can run in parallel threads.
+
+        Parameters
+        ----------
+        data : `~numpy.ndarray`
+            The array of box data, where NaN values mark masked pixels.
+
+        axis : int or `None`, optional
+            The axis along which to compute the statistics. Must be the
+            last axis (``-1``). If `None`, the entire array is treated
+            as a single box and scalar values are returned.
+
+        Returns
+        -------
+        bkg : `~numpy.ndarray` or float
+            The background statistics in each box.
+
+        bkgrms : `~numpy.ndarray` or float
+            The background RMS statistics in each box.
+
+        n_good : `~numpy.ndarray` or int
+            The number of surviving (unmasked and unclipped) pixels in
+            each box.
+        """
+        spec = self._box_stats_spec
+
+        if axis is None:
+            data2d = data.reshape(1, -1)
+        else:
+            data2d = data.reshape(-1, data.shape[-1])
+
+        # Sort each box (NaN values are placed last). The kernel
+        # requires ascending-sorted rows.
+        data2d = np.sort(data2d.astype(np.float64, copy=False), axis=-1)
+
+        (mean, median, std, madstd, biloc,
+         biscale, n_good) = batch_sigma_clip_stats(
+            data2d, spec.sigma_lower, spec.sigma_upper, spec.maxiters,
+            spec.cenfunc_code, spec.stdfunc_code, spec.do_clip,
+            spec.rms_kind == 'mad_std',
+            spec.bkg_kind == 'biweight_location', spec.biloc_c,
+            spec.biloc_m, spec.rms_kind == 'biweight_scale',
+            spec.biscale_c, spec.biscale_m)
+
+        if spec.bkg_kind == 'mean':
+            bkg = mean
+        elif spec.bkg_kind == 'median':
+            bkg = median
+        elif spec.bkg_kind == 'mode':
+            bkg = ((spec.median_factor * median)
+                   - (spec.mean_factor * mean))
+        elif spec.bkg_kind == 'biweight_location':
+            bkg = biloc
+        else:  # 'sextractor'
+            bkg = (2.5 * median) - (1.5 * mean)
+
+            # Set the background to the mean where the std is zero
+            mean_mask = std == 0
+            bkg[mean_mask] = mean[mean_mask]
+
+            # Set the background to the median when the absolute
+            # difference between the mean and median divided by the
+            # standard deviation is greater than or equal to 0.3.
+            with np.errstate(divide='ignore', invalid='ignore'):
+                med_mask = (np.abs(mean - median) / std) >= 0.3
+            mask = np.logical_and(med_mask, np.logical_not(mean_mask))
+            bkg[mask] = median[mask]
+
+        if spec.rms_kind == 'std':
+            bkgrms = std
+        elif spec.rms_kind == 'mad_std':
+            bkgrms = madstd
+        else:  # 'biweight_scale'
+            bkgrms = biscale
+
+        # Preserve the (float) dtype of the input box data
+        if data.dtype != np.float64:
+            bkg = bkg.astype(data.dtype)
+            bkgrms = bkgrms.astype(data.dtype)
+
+        if axis is None:
+            return bkg[0], bkgrms[0], n_good[0]
+
+        out_shape = data.shape[:-1]
+        return (bkg.reshape(out_shape), bkgrms.reshape(out_shape),
+                n_good.reshape(out_shape))
+
     def _sigmaclip_boxes(self, data, *, axis, sigma_clip=None):
         """
         Sigma clip the boxes along the specified axis.
@@ -505,15 +752,20 @@ class Background2D:
         bkgrms : 2D `~numpy.ndarray` or float
             The background RMS statistics in each box.
         """
-        data = self._sigmaclip_boxes(data, axis=axis, sigma_clip=sigma_clip)
+        if self._box_stats_spec is not None:
+            bkg, bkgrms, n_good = self._fast_box_statistics(data,
+                                                            axis=axis)
+        else:
+            data = self._sigmaclip_boxes(data, axis=axis,
+                                         sigma_clip=sigma_clip)
 
-        # Make 2D arrays of the box statistics
-        bkg = self.bkg_estimator(data, axis=axis)
-        bkgrms = self.bkg_rms_estimator(data, axis=axis)
+            # Make 2D arrays of the box statistics
+            bkg = self.bkg_estimator(data, axis=axis)
+            bkgrms = self.bkg_rms_estimator(data, axis=axis)
+            n_good = np.count_nonzero(~np.isnan(data), axis=axis)
 
         # Mask boxes with too few unmasked pixels. Completely masked
         # boxes are always excluded.
-        n_good = np.count_nonzero(~np.isnan(data), axis=axis)
         box_mask = ((n_good < self._good_n_pixels_threshold)
                     | (n_good == 0))
 

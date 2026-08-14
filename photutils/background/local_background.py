@@ -6,8 +6,13 @@ Tools for estimating local background using a circular annulus aperture.
 import astropy.units as u
 import numpy as np
 
-from photutils.aperture import CircularAnnulus
-from photutils.background import MedianBackground
+from photutils.aperture import ApertureStats, CircularAnnulus
+from photutils.background.core import (BiweightLocationBackground,
+                                       BiweightScaleBackgroundRMS,
+                                       MADStdBackgroundRMS, MeanBackground,
+                                       MedianBackground, MMMBackground,
+                                       ModeEstimatorBackground,
+                                       SExtractorBackground, StdBackgroundRMS)
 from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._repr import make_repr
 
@@ -75,6 +80,118 @@ class LocalBackground:
     def __repr__(self):
         params = ('inner_radius', 'outer_radius', 'bkg_estimator')
         return make_repr(self, params)
+
+    def _fast_estimator_spec(self):
+        """
+        The fast batched estimator specification, or `None`.
+
+        Returns ``(kind, median_factor, mean_factor)`` when
+        ``bkg_estimator`` is a standard photutils estimator
+        class whose statistic can be computed with the batched
+        `~photutils.aperture.ApertureStats` machinery, and `None`
+        otherwise (in which case the per-aperture loop is used). The
+        biweight-based estimators are supported only with their default
+        tuning constants and location anchors, because the batched
+        biweight kernel uses fixed conventions.
+        """
+        estimator = self.bkg_estimator
+        median_factor = mean_factor = 0.0
+        if type(estimator) is MeanBackground:
+            kind = 'mean'
+        elif type(estimator) is MedianBackground:
+            kind = 'median'
+        elif type(estimator) in (ModeEstimatorBackground, MMMBackground):
+            kind = 'mode'
+            median_factor = float(estimator.median_factor)
+            mean_factor = float(estimator.mean_factor)
+        elif type(estimator) is SExtractorBackground:
+            kind = 'sextractor'
+        elif type(estimator) is BiweightLocationBackground:
+            if estimator.c != 6.0 or estimator.M is not None:
+                return None
+            kind = 'biweight_location'
+        elif type(estimator) is StdBackgroundRMS:
+            kind = 'std'
+        elif type(estimator) is MADStdBackgroundRMS:
+            kind = 'mad_std'
+        elif type(estimator) is BiweightScaleBackgroundRMS:
+            if estimator.c != 9.0 or estimator.M is not None:
+                return None
+            kind = 'biweight_scale'
+        else:
+            return None
+
+        return (kind, median_factor, mean_factor)
+
+    def _fast_background(self, data, apertures, mask, spec):
+        """
+        Measure the local backgrounds for all positions using the
+        batched `~photutils.aperture.ApertureStats` machinery.
+
+        This computes the same sigma-clipped statistic as calling the
+        estimator on each annulus, but gathers, clips, and reduces the
+        pixels of all apertures in compiled batch kernels instead of
+        looping over the apertures in Python.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The data array (without units).
+
+        apertures : `~photutils.aperture.CircularAnnulus`
+            The annulus apertures.
+
+        mask : 2D bool `~numpy.ndarray` or `None`
+            The data mask.
+
+        spec : tuple
+            The estimator specification from `_fast_estimator_spec`.
+
+        Returns
+        -------
+        result : 1D float `~numpy.ndarray`
+            The local background values.
+        """
+        kind, median_factor, mean_factor = spec
+        apstats = ApertureStats(data, apertures, mask=mask,
+                                sigma_clip=self.bkg_estimator.sigma_clip,
+                                sum_method='center')
+
+        if kind == 'mean':
+            result = apstats.mean
+        elif kind == 'median':
+            result = apstats.median
+        elif kind == 'mode':
+            result = ((median_factor * apstats.median)
+                      - (mean_factor * apstats.mean))
+        elif kind == 'sextractor':
+            mean = apstats.mean
+            median = apstats.median
+            std = apstats.std
+            result = (2.5 * median) - (1.5 * mean)
+
+            # Set the background to the mean where the std is zero
+            mean_mask = std == 0
+            result[mean_mask] = mean[mean_mask]
+
+            # Set the background to the median when the absolute
+            # difference between the mean and median divided by the
+            # standard deviation is greater than or equal to 0.3
+            with np.errstate(divide='ignore', invalid='ignore'):
+                med_mask = (np.abs(mean - median) / std) >= 0.3
+            med_mask = np.logical_and(med_mask, np.logical_not(mean_mask))
+            result[med_mask] = median[med_mask]
+        elif kind == 'biweight_location':
+            result = apstats.biweight_location
+        elif kind == 'std':
+            result = apstats.std
+        elif kind == 'mad_std':
+            result = apstats.mad_std
+        else:  # 'biweight_scale'
+            with np.errstate(invalid='ignore'):
+                result = np.sqrt(apstats.biweight_midvariance)
+
+        return np.asarray(result, dtype=float)
 
     def to_aperture(self, x, y):
         """
@@ -173,13 +290,17 @@ class LocalBackground:
             data = data.value
 
         apertures = self.to_aperture(x, y)
-        apermasks = apertures.to_mask(method='center')
 
-        n_apertures = len(apermasks)
-        bkg = np.empty(n_apertures)
-        for i, apermask in enumerate(apermasks):
-            values = apermask.get_values(data, mask=mask)
-            bkg[i] = self.bkg_estimator(values)
+        spec = self._fast_estimator_spec()
+        if spec is not None:
+            bkg = self._fast_background(data, apertures, mask, spec)
+        else:
+            apermasks = apertures.to_mask(method='center')
+            n_apertures = len(apermasks)
+            bkg = np.empty(n_apertures)
+            for i, apermask in enumerate(apermasks):
+                values = apermask.get_values(data, mask=mask)
+                bkg[i] = self.bkg_estimator(values)
 
         if bkg.size == 1:
             bkg = bkg[0]

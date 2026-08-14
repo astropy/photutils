@@ -10,7 +10,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.nddata import NDData, StdDevUncertainty
-from astropy.stats import SigmaClip, mad_std
+from astropy.stats import SigmaClip, biweight_location, biweight_scale, mad_std
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
@@ -1135,3 +1135,175 @@ class TestApertureMetadata:
         assert tbl.meta['aperture_a_out'] == saper.a_out
         assert tbl.meta['aperture_b_out'] == saper.b_out
         assert tbl.meta['aperture_theta'] == saper.theta
+
+
+class TestSigmaClipSharedInstance:
+    """
+    Tests for calling a shared SigmaClip instance from the astropy
+    fallback clipping path.
+
+    astropy SigmaClip stores internal state on the instance during
+    calls, and the fallback path is reachable from two different
+    lazyproperties (the center- and sum-footprint cutouts) that do not
+    share a lock. ApertureStats must therefore never call the user's
+    SigmaClip instance directly.
+    """
+
+    def test_user_sigma_clip_instance_not_called(self, monkeypatch):
+        """
+        Test that the user's SigmaClip instance is never called directly
+        (an internal copy must be used).
+        """
+        data = np.ones((51, 51))
+        data[20:30, 20:30] = 100.0
+        aper = CircularAperture([(25, 25), (10, 10)], r=8)
+        # A callable cenfunc is unsupported by the batch clipping
+        # kernels and forces the astropy SigmaClip fallback path.
+        sigclip = SigmaClip(sigma=3.0, maxiters=5, cenfunc=np.nanmedian)
+
+        called_ids = []
+        orig_call = SigmaClip.__call__
+
+        def spy(self, *args, **kwargs):
+            called_ids.append(id(self))
+            return orig_call(self, *args, **kwargs)
+
+        monkeypatch.setattr(SigmaClip, '__call__', spy)
+        apstats = ApertureStats(data, aper, sigma_clip=sigclip,
+                                sum_method='exact')
+        _ = apstats.mean
+        _ = apstats.sum
+
+        assert len(called_ids) > 0  # the fallback path was exercised
+        assert id(sigclip) not in called_ids
+
+    def test_fallback_thread_safety(self):
+        """
+        Test that computing a center-footprint and a sum-footprint
+        property concurrently on the same instance gives the same
+        results as the serial computation.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        rng = np.random.default_rng(0)
+        n_src = 200
+        ny = 51
+        yc = ny // 2
+        xs = np.arange(25, 25 + 50 * n_src, 50)
+        data = rng.normal(0.0, 1.0, (ny, 50 * n_src + 50))
+        for i, x in enumerate(xs):
+            # Strong per-source scale differences make any clipping
+            # bound contamination between sources visible
+            scale = 10.0 ** (i % 6)
+            data[:, x - 20:x + 20] = rng.normal(scale, scale / 10.0,
+                                                (ny, 40))
+            data[yc - 2:yc + 2, x - 2:x + 2] = scale * 50.0  # outliers
+
+        positions = np.column_stack([xs, np.full(n_src, yc)])
+        aper = CircularAperture(positions, r=15)
+        sigclip = SigmaClip(sigma=2.0, maxiters=10, cenfunc=np.nanmedian)
+
+        ref = ApertureStats(data, aper, sigma_clip=sigclip,
+                            sum_method='exact')
+        ref_mean = ref.mean
+        ref_sum = ref.sum
+
+        for _ in range(3):
+            apstats = ApertureStats(data, aper, sigma_clip=sigclip,
+                                    sum_method='exact')
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                mean_future = executor.submit(getattr, apstats, 'mean')
+                sum_future = executor.submit(getattr, apstats, 'sum')
+                mean = mean_future.result()
+                total = sum_future.result()
+            assert_allclose(mean, ref_mean)
+            assert_allclose(total, ref_sum)
+
+
+class TestSigmaClipBiweightStrings:
+    """
+    Tests for the SigmaClip 'biweight' cenfunc/stdfunc string options in
+    the fast clipping kernels.
+    """
+
+    @staticmethod
+    def _make_sigma_clip_biweight(**kwargs):
+        """
+        Create a SigmaClip instance using the 'biweight' cenfunc and
+        stdfunc string options, emulating them on astropy versions that
+        do not support these options.
+        """
+
+        def nanbiloc(data, axis=None):
+            return biweight_location(data, axis=axis, ignore_nan=True)
+
+        def nanbiscale(data, axis=None):
+            return biweight_scale(data, axis=axis, ignore_nan=True)
+
+        try:
+            return SigmaClip(cenfunc='biweight', stdfunc='biweight',
+                             **kwargs)
+        except ValueError:
+            sigma_clip = SigmaClip(**kwargs)
+            sigma_clip.cenfunc = 'biweight'
+            sigma_clip.stdfunc = 'biweight'
+            sigma_clip._cenfunc_parsed = nanbiloc
+            sigma_clip._stdfunc_parsed = nanbiscale
+            return sigma_clip
+
+    def test_biweight_matches_fallback(self, monkeypatch):
+        """
+        Test that the 'biweight' string options are accepted by the fast
+        clipping kernels and match the mask-based fallback path, which
+        clips using the astropy SigmaClip instance.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(10.0, 2.0, (101, 101))
+        data[::7, ::7] = 200.0  # outliers
+        positions = [(20.0, 20.0), (50.0, 50.0), (80.5, 80.5)]
+        aper = CircularAperture(positions, r=12)
+        sigclip = self._make_sigma_clip_biweight(sigma=2.0, maxiters=5)
+
+        apstats1 = ApertureStats(data, aper, sigma_clip=sigclip,
+                                 sum_method='exact')
+        assert apstats1._fast_clip_spec() is not None
+        mean1 = apstats1.mean
+        std1 = apstats1.std
+        sum1 = apstats1.sum
+
+        # Force the mask-based fallback path
+        monkeypatch.setattr(ApertureStats, '_fast_clip_spec',
+                            lambda _self: None)
+        apstats2 = ApertureStats(data, aper, sigma_clip=sigclip,
+                                 sum_method='exact')
+        assert apstats2._fast_clip_spec() is None
+
+        assert_allclose(mean1, apstats2.mean, rtol=1e-10)
+        assert_allclose(std1, apstats2.std, rtol=1e-10)
+        assert_allclose(sum1, apstats2.sum, rtol=1e-10)
+
+
+def test_sigma_clip_sorted_values_reuse(monkeypatch):
+    """
+    Test that the order statistics computed from the sigma-clip kernel's
+    sorted output (reused by _sorted_values instead of re-sorting the
+    clipped values) match the mask-based fallback path.
+    """
+    rng = np.random.default_rng(0)
+    data = rng.normal(10.0, 2.0, (101, 101))
+    data[::5, ::5] = 200.0  # outliers
+    positions = [(20.0, 20.0), (50.0, 50.0), (80.5, 80.5), (3.0, 3.0)]
+    aper = CircularAperture(positions, r=12)
+    sigclip = SigmaClip(sigma=2.0, maxiters=10)
+
+    apstats1 = ApertureStats(data, aper, sigma_clip=sigclip)
+    props = ('min', 'max', 'median', 'mad_std', 'biweight_location',
+             'std', 'mean')
+    results1 = [getattr(apstats1, prop) for prop in props]
+
+    # Force the mask-based fallback path
+    monkeypatch.setattr(ApertureStats, '_fast_clip_spec',
+                        lambda _self: None)
+    apstats2 = ApertureStats(data, aper, sigma_clip=sigclip)
+    for prop, result1 in zip(props, results1, strict=True):
+        assert_allclose(result1, getattr(apstats2, prop), rtol=1e-10)

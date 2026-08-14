@@ -663,3 +663,66 @@ class TestInputNotMutated:
         bkgrms.calc_background_rms(data_ma)
         assert_equal(data_ma.data, data_values_orig)
         assert_equal(data_ma.mask, mask_orig)
+
+
+class TestFastFlatClip:
+    """
+    Tests for routing axis=None sigma clipping through astropy's fast
+    C implementation.
+    """
+
+    @classmethod
+    def setup_class(cls):
+        rng = np.random.default_rng(0)
+        data = rng.normal(10.0, 2.0, (301, 199))
+        data[10:20, 10:20] = 200.0  # outliers to clip
+        cls.data = data
+
+    @pytest.mark.parametrize('est_class',
+                             BACKGROUND_CLASSES + BACKGROUND_RMS_CLASSES)
+    @pytest.mark.parametrize('sigma_clip', [
+        SigmaClip(sigma=2.5, maxiters=10),
+        SigmaClip(sigma_lower=2.0, sigma_upper=4.0, maxiters=None),
+        SigmaClip(sigma=3.0, maxiters=5, cenfunc='mean'),
+        SigmaClip(sigma=3.0, maxiters=5, stdfunc='mad_std')])
+    def test_matches_slow_path(self, est_class, sigma_clip, monkeypatch):
+        """
+        Test that the rerouted fast clipping gives the same results as
+        the previous axis=None code path for all estimator classes.
+        """
+        estimator = est_class(sigma_clip=sigma_clip)
+        result_fast = estimator(self.data)
+
+        monkeypatch.setattr('photutils.background.core._use_fast_flat_clip',
+                            lambda _sigma_clip: False)
+        result_slow = estimator(self.data)
+        assert_allclose(result_fast, result_slow, rtol=1e-12)
+
+    def test_all_clipped_consistent_with_axis(self):
+        """
+        Test that when sigma clipping rejects all values, the
+        axis=None result is consistent with the axis-based result
+        (astropy keeps all values in this degenerate case).
+        Previously, the axis=None path returned NaN.
+        """
+        data = np.array([0.0, 100.0])
+        sigma_clip = SigmaClip(sigma=0.1, maxiters=10)
+        bkg = MeanBackground(sigma_clip=sigma_clip)
+        # astropy's C implementation emits a numpy RuntimeWarning for
+        # the NaN bound comparisons in this degenerate case
+        with np.errstate(invalid='ignore'):
+            value = bkg.calc_background(data)
+            value_axis = bkg.calc_background(data[np.newaxis, :], axis=1)
+        assert_allclose(value, 50.0)
+        assert_allclose(value, value_axis[0])
+
+    def test_unsupported_sigma_clip_uses_slow_path(self):
+        """
+        Test that a sigma_clip with a callable cenfunc (unsupported by
+        the fast C path) still works via the previous code path.
+        """
+        sigma_clip = SigmaClip(sigma=2.5, maxiters=10,
+                               cenfunc=np.nanmedian)
+        bkg1 = MeanBackground(sigma_clip=sigma_clip)
+        bkg2 = MeanBackground(sigma_clip=SigmaClip(sigma=2.5, maxiters=10))
+        assert_allclose(bkg1(self.data), bkg2(self.data), rtol=1e-12)

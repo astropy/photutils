@@ -6,10 +6,17 @@ Tests for the local_background module.
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.stats import SigmaClip
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
 from photutils.aperture import CircularAnnulus
-from photutils.background import LocalBackground, MedianBackground
+from photutils.background import (BiweightLocationBackground,
+                                  BiweightScaleBackgroundRMS, LocalBackground,
+                                  MADStdBackgroundRMS, MeanBackground,
+                                  MedianBackground, MMMBackground,
+                                  ModeEstimatorBackground,
+                                  SExtractorBackground, StdBackgroundRMS)
 
 
 def test_local_background_invalid_radii():
@@ -169,3 +176,112 @@ def test_to_aperture_array():
     y = list(y)
     aperture2 = local_bkg.to_aperture(x, y)
     assert aperture == aperture2
+
+
+class TestFastLocalBackground:
+    """
+    Tests that the batched ApertureStats-based fast path gives the
+    same results as the per-aperture estimator loop.
+    """
+
+    @classmethod
+    def setup_class(cls):
+        rng = np.random.default_rng(0)
+        data = rng.normal(10.0, 2.0, (151, 151))
+        data[40:60, 40:60] += 100.0  # outliers to clip
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[100:130, 100:130] = True  # fully masks one annulus
+        cls.data = data
+        cls.mask = mask
+        # Interior, clipped-outlier, near-mask, fully-masked,
+        # edge-clipped, and off-image positions
+        cls.x = np.array([30.0, 50.0, 75.0, 115.0, 3.0, -50.0])
+        cls.y = np.array([30.0, 50.0, 75.0, 115.0, 3.0, -50.0])
+
+    def _run_both_paths(self, local_bkg, monkeypatch, data=None):
+        if data is None:
+            data = self.data
+        fast = local_bkg(data, self.x, self.y, mask=self.mask)
+        assert local_bkg._fast_estimator_spec() is not None
+        monkeypatch.setattr(LocalBackground, '_fast_estimator_spec',
+                            lambda _self: None)
+        slow = local_bkg(data, self.x, self.y, mask=self.mask)
+        monkeypatch.undo()
+        return fast, slow
+
+    @pytest.mark.parametrize('estimator', [
+        MeanBackground(), MedianBackground(),
+        ModeEstimatorBackground(median_factor=2.5, mean_factor=1.5),
+        MMMBackground(), SExtractorBackground(),
+        BiweightLocationBackground(), StdBackgroundRMS(),
+        MADStdBackgroundRMS(), BiweightScaleBackgroundRMS()])
+    def test_matches_slow_path(self, estimator, monkeypatch):
+        """
+        Test that all supported estimator classes match the per-aperture
+        loop, including for edge-clipped, fully-masked, and
+        non-overlapping apertures (NaN).
+        """
+        local_bkg = LocalBackground(5, 10, bkg_estimator=estimator)
+        fast, slow = self._run_both_paths(local_bkg, monkeypatch)
+        assert np.isnan(fast[3])  # fully masked annulus
+        assert np.isnan(fast[5])  # no overlap with the data
+        assert_allclose(fast, slow, rtol=1e-12)
+
+    @pytest.mark.parametrize('sigma_clip', [
+        None,
+        SigmaClip(sigma=2.0, maxiters=5),
+        SigmaClip(sigma=3.0, maxiters=10, cenfunc='mean',
+                  stdfunc='mad_std')])
+    def test_sigma_clip_variants_match_slow_path(self, sigma_clip,
+                                                 monkeypatch):
+        """
+        Test that estimator sigma_clip variants match the per-aperture
+        loop.
+        """
+        estimator = MedianBackground(sigma_clip=sigma_clip)
+        local_bkg = LocalBackground(5, 10, bkg_estimator=estimator)
+        fast, slow = self._run_both_paths(local_bkg, monkeypatch)
+        assert_allclose(fast, slow, rtol=1e-12)
+
+    def test_nonfinite_data_matches_slow_path(self, monkeypatch):
+        """
+        Test that non-finite data values are excluded, matching the
+        per-aperture loop (where sigma clipping removes them with a
+        warning; the fast path masks them silently).
+        """
+        data = self.data.copy()
+        data[30:34, 36:40] = np.nan  # inside the annulus at (30, 30)
+        local_bkg = LocalBackground(5, 10)
+
+        fast = local_bkg(data, self.x, self.y, mask=self.mask)
+        monkeypatch.setattr(LocalBackground, '_fast_estimator_spec',
+                            lambda _self: None)
+        match = 'Input data contains invalid values'
+        with pytest.warns(AstropyUserWarning, match=match):
+            slow = local_bkg(data, self.x, self.y, mask=self.mask)
+        assert_allclose(fast, slow, rtol=1e-12)
+
+    def test_unsupported_estimators_fall_back(self):
+        """
+        Test that unsupported estimators fall back to the per-aperture
+        loop and still produce finite results.
+        """
+
+        class MyMedianBackground(MedianBackground):
+            pass
+
+        def estimator_func(values):
+            return np.nanmedian(values)
+
+        # Note: np.float64 anchors are used because a Python float M
+        # triggers an astropy biweight_location bug
+        unsupported = [BiweightLocationBackground(c=5.0),
+                       BiweightLocationBackground(M=np.float64(1.0)),
+                       BiweightScaleBackgroundRMS(c=8.0),
+                       BiweightScaleBackgroundRMS(M=np.float64(1.0)),
+                       MyMedianBackground(), estimator_func]
+        data = np.ones((51, 51))
+        for estimator in unsupported:
+            local_bkg = LocalBackground(5, 10, bkg_estimator=estimator)
+            assert local_bkg._fast_estimator_spec() is None
+            assert np.isfinite(local_bkg(data, 25, 25))

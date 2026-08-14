@@ -5,7 +5,7 @@ Tools for calculating properties of sources defined by an Aperture.
 
 import inspect
 import warnings
-from copy import deepcopy
+from copy import copy, deepcopy
 from typing import NamedTuple
 
 import astropy.units as u
@@ -92,7 +92,9 @@ class _BatchGather(NamedTuple):
 
     * center-value gather (``_fast_gather``): ``values``, ``local_x``,
       ``local_y``, ``starts``, ``counts``, ``overlap``, and
-      ``flag_counts``
+      ``flag_counts``, plus ``sorted_values`` (the packed
+      ascending-sorted surviving values) when sigma clipping is
+      applied
 
     * ``sum_method`` gather (``_fast_sum``): ``sum_aper``, ``var_aper``,
       ``sum_area``, ``starts``, ``overlap``, and ``flag_counts``,
@@ -114,6 +116,7 @@ class _BatchGather(NamedTuple):
     sum_errsq: np.ndarray = None
     sum_counts: np.ndarray = None
     flag_counts: np.ndarray = None
+    sorted_values: np.ndarray = None
 
 
 # Public attributes that are never collapsed to a scalar for a scalar
@@ -1028,17 +1031,18 @@ class ApertureStats:
         stdfunc_code)`` when ``sigma_clip`` is a `SigmaClip` instance
         supported by the fast clipping kernel, and `None` otherwise (in
         which case the mask-based path is used). The fast path supports
-        the string ``cenfunc`` values 'median'/'mean', the string
-        ``stdfunc`` values 'std'/'mad_std', and no spatial growing.
+        the string ``cenfunc`` values 'median'/'mean'/'biweight', the
+        string ``stdfunc`` values 'std'/'mad_std'/'biweight', and no
+        spatial growing.
         """
         sc = self.sigma_clip
         if sc is None or not isinstance(sc, SigmaClip):
             return None
-        if not (isinstance(sc.cenfunc, str) and sc.cenfunc in ('median',
-                                                               'mean')):
+        if not (isinstance(sc.cenfunc, str)
+                and sc.cenfunc in ('median', 'mean', 'biweight')):
             return None
-        if not (isinstance(sc.stdfunc, str) and sc.stdfunc in ('std',
-                                                               'mad_std')):
+        if not (isinstance(sc.stdfunc, str)
+                and sc.stdfunc in ('std', 'mad_std', 'biweight')):
             return None
         if sc.grow:  # False or 0 is supported; spatial growing is not
             return None
@@ -1047,8 +1051,8 @@ class ApertureStats:
             maxiters = -1
         else:
             maxiters = int(maxiters)
-        cenfunc_code = 0 if sc.cenfunc == 'median' else 1
-        stdfunc_code = 0 if sc.stdfunc == 'std' else 1
+        cenfunc_code = {'median': 0, 'mean': 1, 'biweight': 2}[sc.cenfunc]
+        stdfunc_code = {'std': 0, 'mad_std': 1, 'biweight': 2}[sc.stdfunc]
         return (float(sc.sigma_lower), float(sc.sigma_upper), maxiters,
                 cenfunc_code, stdfunc_code)
 
@@ -1059,13 +1063,15 @@ class ApertureStats:
         """
         sigma_lower, sigma_upper, maxiters, cenfunc, stdfunc = clip_spec
 
-        (cvalues, clx, cly, cstarts, ccounts) = batch_sigma_clip_center(
+        (cvalues, clx, cly, cstarts, ccounts,
+         csorted) = batch_sigma_clip_center(
             gather.values, gather.local_x, gather.local_y, gather.starts,
             gather.counts, sigma_lower, sigma_upper, maxiters, cenfunc,
             stdfunc)
 
         return gather._replace(values=cvalues, local_x=clx, local_y=cly,
-                               starts=cstarts, counts=ccounts)
+                               starts=cstarts, counts=ccounts,
+                               sorted_values=csorted)
 
     def _apply_sum_clip(self, gather, clip_spec):
         """
@@ -1096,13 +1102,18 @@ class ApertureStats:
         source's packed pixel values are sorted once. The sorted buffer
         is cached and shared by the order statistics (``min``, ``max``,
         ``median``), ``mad_std``, and the biweight estimators, so the
-        per-source sort is performed only once. `None` is returned when
-        the fast path is unavailable.
+        per-source sort is performed only once. When sigma clipping is
+        applied, the sorted surviving values produced by the clipping
+        kernel are reused directly (the clipping already sorts each
+        source's values to compute the clip bounds). `None` is returned
+        when the fast path is unavailable.
         """
         gather = self._fast_gather
         if gather is None:
             return None
         values, starts, counts = gather.values, gather.starts, gather.counts
+        if gather.sorted_values is not None:
+            return (gather.sorted_values, starts, counts)
         return (batch_sort_values(values, starts, counts), starts, counts)
 
     @lazyproperty
@@ -1297,6 +1308,14 @@ class ApertureStats:
             sigma-clipped pixels (always 0 when ``count_clipped`` is
             `False`).
         """
+        # Use a local copy of the SigmaClip instance because SigmaClip
+        # stores internal state on the instance # during calls. This
+        # method is reachable from two different # lazyproperties (the
+        # center- and sum-footprint cutouts), # which do not share a lock,
+        # so calling a shared instance from # multiple threads could
+        # silently corrupt the results.
+        sigma_clip = copy(self.sigma_clip)
+
         data_cutouts = []
         variance_cutouts = []
         mask_cutouts = []
@@ -1393,14 +1412,14 @@ class ApertureStats:
                 mask_cutout = (aperweight_cutout == 0) | data_mask
 
                 data_cutout = data_cutout.copy()
-                if self.sigma_clip is None:
+                if sigma_clip is None:
                     # data_cutout will have zeros where mask_cutout is True
                     data_cutout *= ~mask_cutout
                 else:
                     # To input a mask, SigmaClip needs a MaskedArray
                     data_cutout_ma = np.ma.masked_array(data_cutout,
                                                         mask=mask_cutout)
-                    data_sigclip = self.sigma_clip(data_cutout_ma)
+                    data_sigclip = sigma_clip(data_cutout_ma)
 
                     # Define a mask of only the sigma-clipped pixels
                     sigclip_mask = data_sigclip.mask & ~mask_cutout

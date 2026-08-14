@@ -93,6 +93,10 @@ New Features
   - Added validation of the ``ApertureStats.to_table()`` ``columns``
     keyword. [#2329]
 
+  - Improved the performance of the sigma-clipped ``ApertureStats``
+    order statistics (``min``, ``max``, ``median``), ``mad_std``,
+    and biweight properties. [#2364]
+
 - ``photutils.background``
 
   - Updated ``LocalBackground`` so that ``Quantity`` input data is
@@ -106,6 +110,28 @@ New Features
     and statistics kernels release the GIL, so multithreading can
     significantly speed up the background estimation for large
     images. [#2363]
+
+  - Significantly improved the performance of ``Background2D`` by
+    computing the sigma clipping and the box statistics in a
+    single combined pass in compiled code when the ``sigma_clip``,
+    ``bkg_estimator``, and ``bkg_rms_estimator`` inputs are among the
+    standard supported options. This includes all of the standard
+    photutils background and background RMS estimator classes. The
+    Cython code releases the GIL and composes with the ``n_threads``
+    keyword. Unsupported inputs (e.g., custom estimator callables) fall
+    back to the previous implementation and produce the same results as
+    before. [#2364]
+
+  - Improved the performance of the background and background RMS
+    estimator classes when called with ``axis=None`` (the default)
+    and a supported ``sigma_clip``, by routing the sigma clipping
+    through astropy's fast C implementation. [#2364]
+
+  - Significantly improved the performance of ``LocalBackground``
+    when the ``bkg_estimator`` is a standard photutils estimator class,
+    by computing the local backgrounds for all positions with the
+    batched ``ApertureStats`` kernels instead of a Python loop over the
+    apertures. [#2364]
 
 - ``photutils.detection``
 
@@ -208,6 +234,9 @@ Bug Fixes
     shape parameter after construction validates the inner < outer
     invariant. [#2362]
 
+  - Fixed a thread-safety issue in ``ApertureStats`` by using a copy of
+    the user's SigmaClip instance. [#2364]
+
 - ``photutils.background``
 
   - Fixed the ``exclude_percentile`` box-exclusion criterion in
@@ -292,6 +321,11 @@ Bug Fixes
 
   - Fixed ``EllipseSample`` not resetting ``EllipseGeometry`` cached
     attributes when overriding ``sma``. [#2280]
+
+- ``photutils.utils``
+
+  - Fixed a thread-safety issue in ``ImageDepth`` by using a copy of the
+    user's SigmaClip instance. [#2364]
 
 API Changes
 ^^^^^^^^^^^
