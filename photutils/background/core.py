@@ -429,14 +429,12 @@ class MMMBackground(ModeEstimatorBackground):
 @_insert_sigma_clip_doc
 class SExtractorBackground(BackgroundBase):
     """
-    Class to calculate the background in an array using the Source
-    Extractor algorithm.
+    Class to calculate the background in an array using the
+    SourceExtractor algorithm.
 
     The background is calculated using a mode estimator of the form
     ``(2.5 * median) - (1.5 * mean)``. If ``(mean - median) / std >
     0.3`` then the median is used instead.
-
-    .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
 
     Parameters
     ----------
@@ -472,7 +470,10 @@ class SExtractorBackground(BackgroundBase):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
 
-            _median = np.atleast_1d(nanmedian(data, axis=axis))
+            _median = nanmedian(data, axis=axis)
+            # A scalar median means the reduction consumed all axes
+            is_scalar = np.ndim(_median) == 0
+            _median = np.atleast_1d(_median)
             _mean = np.atleast_1d(nanmean(data, axis=axis))
             _std = np.atleast_1d(nanstd(data, axis=axis))
             result = (2.5 * _median) - (1.5 * _mean)
@@ -488,8 +489,9 @@ class SExtractorBackground(BackgroundBase):
             mask = np.logical_and(med_mask, np.logical_not(mean_mask))
             result[mask] = _median[mask]
 
-            # If result is a scalar, return it as a float
-            if result.shape == (1,) and axis is None:
+            # If the reduction consumed all axes, return a scalar
+            # float, consistent with the other estimator classes
+            if is_scalar:
                 result = result[0]
 
         return _apply_masked(result, masked)
@@ -611,10 +613,10 @@ class MADStdBackgroundRMS(BackgroundRMSBase):
 
     .. math::
 
-        \sigma \approx \frac{{\textrm{{MAD}}}}{{\Phi^{{-1}}(3/4)}}
-            \approx 1.4826 \ \textrm{{MAD}}
+        \sigma \approx \frac{\textrm{MAD}}{\Phi^{-1}(3/4)}
+            \approx 1.4826 \ \textrm{MAD}
 
-    where :math:`\Phi^{{-1}}(P)` is the normal inverse cumulative
+    where :math:`\Phi^{-1}(P)` is the normal inverse cumulative
     distribution function evaluated at probability :math:`P = 3/4`.
 
     Parameters

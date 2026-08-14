@@ -6,12 +6,14 @@ positionally.
 
 import numpy as np
 import pytest
+from astropy.stats import SigmaClip
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.background import (BiweightLocationBackground,
                                   BiweightScaleBackgroundRMS, LocalBackground,
                                   MADStdBackgroundRMS, MeanBackground,
-                                  MedianBackground, ModeEstimatorBackground,
+                                  MedianBackground, MMMBackground,
+                                  ModeEstimatorBackground,
                                   SExtractorBackground, StdBackgroundRMS)
 
 BKG_CLASSES = [MeanBackground,
@@ -74,6 +76,30 @@ class TestBackgroundRMSBasePositionalKwargs:
     def test_call_keyword_no_warning(self, cls):
         bkgrms = cls()
         bkgrms(self.data, axis=None)
+
+
+class TestEstimatorInitPositionalKwargs:
+    """
+    Test that estimator __init__ methods warn for positional optional
+    args.
+    """
+
+    @pytest.mark.parametrize(('cls', 'args'), [
+        (ModeEstimatorBackground, (3.0, 2.0)),
+        (MMMBackground, (SigmaClip(sigma=3.0),)),
+        (BiweightLocationBackground, (6.0,)),
+        (BiweightScaleBackgroundRMS, (9.0,)),
+    ])
+    def test_init_positional_warns(self, cls, args):
+        match = '__init__'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            cls(*args)
+
+    def test_init_keyword_no_warning(self):
+        ModeEstimatorBackground(median_factor=3.0, mean_factor=2.0)
+        MMMBackground(sigma_clip=SigmaClip(sigma=3.0))
+        BiweightLocationBackground(c=6.0, M=None)
+        BiweightScaleBackgroundRMS(c=9.0, M=None)
 
 
 class TestLocalBackgroundPositionalKwargs:

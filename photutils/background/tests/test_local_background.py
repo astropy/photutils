@@ -3,6 +3,7 @@
 Tests for the local_background module.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -77,6 +78,26 @@ def test_local_background():
     assert_allclose(bkg4, bkg)
 
 
+def test_local_background_units():
+    """
+    Test that Quantity input data returns a Quantity with the same unit.
+    """
+    data = np.ones((101, 101))
+    local_bkg = LocalBackground(5, 10)
+
+    bkg = local_bkg(data << u.Jy, 50, 50)
+    assert isinstance(bkg, u.Quantity)
+    assert bkg.unit == u.Jy
+    assert_allclose(bkg.value, local_bkg(data, 50, 50))
+
+    x = [30, 50, 70]
+    y = [30, 50, 70]
+    bkg2 = local_bkg(data << u.Jy, x, y)
+    assert isinstance(bkg2, u.Quantity)
+    assert bkg2.unit == u.Jy
+    assert_allclose(bkg2.value, local_bkg(data, x, y))
+
+
 def test_local_background_estimator_1d():
     """
     Test that the bkg_estimator can be a 1D function that takes an array
@@ -91,6 +112,16 @@ def test_local_background_estimator_1d():
     local_bkg = LocalBackground(3, 6, bkg_estimator=estimator)
     bkg = local_bkg(data, [10, 20], [10, 20])
     assert_allclose(bkg, np.ones(2))
+
+
+def test_to_aperture_mismatched_shapes():
+    """
+    Test that an error is raised if x and y have different shapes.
+    """
+    local_bkg = LocalBackground(5, 10)
+    match = 'x and y must have the same shape'
+    with pytest.raises(ValueError, match=match):
+        local_bkg.to_aperture([1, 2], [1, 2, 3])
 
 
 def test_to_aperture_scalar():

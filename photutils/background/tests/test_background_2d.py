@@ -206,12 +206,7 @@ class TestBackground2D:
     def test_filter_threshold_rms_mesh_before_mesh(self):
         """
         Test that accessing background_rms_mesh before background_mesh
-        does not crash when filter_threshold is set.
-
-        Background2D._bkg_stats is used by _selective_filter, which
-        is called when filter_threshold is not None. It must still
-        be available when background_mesh is computed even if
-        background_rms_mesh was computed first.
+        gives sensible results when filter_threshold is set.
         """
         data = np.ones((100, 100))
         data[25:50, 50:75] = 10.0
@@ -230,11 +225,7 @@ class TestBackground2D:
     def test_rms_mesh_before_mesh_no_filter_threshold(self):
         """
         Test that accessing background_rms_mesh before background_mesh
-        does not crash when filter_threshold is None (the default).
-
-        _try_free_bkg_stats must not free _bkg_stats before
-        background_mesh has been computed, otherwise _interpolate_grid
-        receives None and raises a TypeError on np.isnan.
+        works when filter_threshold is None (the default).
         """
         data = np.ones((101, 101))
         coverage_mask = np.zeros(data.shape, dtype=bool)
@@ -245,6 +236,83 @@ class TestBackground2D:
         rms_mesh = bkg.background_rms_mesh
         mesh = bkg.background_mesh
         assert rms_mesh.shape == mesh.shape
+
+    @pytest.mark.parametrize('filter_threshold', [None, 9.0])
+    def test_mesh_access_order_independent(self, filter_threshold):
+        """
+        Test that the background_mesh and background_rms_mesh values do
+        not depend on the order in which they are first accessed, with
+        and without filter_threshold.
+        """
+        data = np.ones((100, 100))
+        data[25:50, 50:75] = 10.0
+
+        bkg1 = Background2D(data, (25, 25), filter_size=(3, 3),
+                            filter_threshold=filter_threshold)
+        mesh1 = bkg1.background_mesh
+        rms_mesh1 = bkg1.background_rms_mesh
+
+        bkg2 = Background2D(data, (25, 25), filter_size=(3, 3),
+                            filter_threshold=filter_threshold)
+        rms_mesh2 = bkg2.background_rms_mesh
+        mesh2 = bkg2.background_mesh
+
+        assert_allclose(mesh1, mesh2)
+        assert_allclose(rms_mesh1, rms_mesh2)
+
+    @pytest.mark.parametrize('n_threads', [2, 8])
+    def test_n_threads(self, n_threads):
+        """
+        Test that multithreaded box statistics give identical results
+        to the single-threaded computation.
+
+        The data shape is not an integer multiple of the box size, so
+        the extra row, column, and corner boxes are also exercised.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(1.0, 0.5, (121, 289))
+        data[50:60, 50:60] = 1000.0
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[50:60, 50:60] = True
+
+        bkg1 = Background2D(data, (25, 25), mask=mask)
+        bkg2 = Background2D(data, (25, 25), mask=mask, n_threads=n_threads)
+        assert bkg2.n_threads == n_threads
+        assert_equal(bkg1.background_mesh, bkg2.background_mesh)
+        assert_equal(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
+        assert_equal(bkg1.n_pixels_mesh, bkg2.n_pixels_mesh)
+        assert_equal(bkg1.background, bkg2.background)
+
+    def test_n_threads_no_sigma_clip(self):
+        """
+        Test multithreading with sigma clipping disabled.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(1.0, 0.5, (100, 100))
+        bkg1 = Background2D(data, (25, 25), sigma_clip=None)
+        bkg2 = Background2D(data, (25, 25), sigma_clip=None, n_threads=4)
+        assert_equal(bkg1.background_mesh, bkg2.background_mesh)
+        assert_equal(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
+
+    def test_n_threads_single_box_row(self):
+        """
+        Test that n_threads larger than the number of box rows falls
+        back to a single-chunk (serial) computation.
+        """
+        data = np.ones((25, 100))
+        bkg = Background2D(data, (25, 25), n_threads=8)
+        assert bkg.background_mesh.shape == (1, 4)
+        assert_allclose(bkg.background, data)
+
+    def test_invalid_n_threads(self, test_data):
+        """
+        Test that an error is raised if n_threads is not a positive
+        integer.
+        """
+        match = 'n_threads must be a positive integer'
+        for n_threads in (0, -1, 2.5):
+            with pytest.raises(ValueError, match=match):
+                Background2D(test_data, (25, 25), n_threads=n_threads)
 
     def test_no_sigma_clipping(self, test_data):
         """
@@ -365,16 +433,15 @@ class TestBackground2D:
         assert_equal(bkg1.background_rms[:50, :50], fill_value)
 
         # Test that combined mask and coverage_mask gives the same
-        # results
+        # results. The input masks cover all of the non-finite values,
+        # so no warning should be issued.
         mask = np.zeros(test_data.shape, dtype=bool)
         coverage_mask = np.zeros(test_data.shape, dtype=bool)
         mask[:50, :25] = True
         coverage_mask[:50, 25:50] = True
-        match = r'Input data contains non-finite \(NaN or infinity\) values'
-        with pytest.warns(AstropyUserWarning, match=match):
-            bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
-                                coverage_mask=mask, fill_value=0.0,
-                                bkg_estimator=MeanBackground())
+        bkg2 = Background2D(data, (25, 25), filter_size=(1, 1), mask=mask,
+                            coverage_mask=coverage_mask, fill_value=0.0,
+                            bkg_estimator=MeanBackground())
         assert_allclose(bkg1.background_mesh, bkg2.background_mesh)
         assert_allclose(bkg1.background_rms_mesh, bkg2.background_rms_mesh)
 
@@ -388,6 +455,15 @@ class TestBackground2D:
         match = r'Input data contains non-finite \(NaN or infinity\) values'
         with pytest.warns(AstropyUserWarning, match=match):
             bkg = Background2D(data, (25, 25), filter_size=(1, 1))
+        assert_allclose(bkg.background, test_data, rtol=1e-5)
+
+        # A warning is also issued when an input mask is given that
+        # does not cover the non-finite values
+        mask = np.zeros(test_data.shape, dtype=bool)
+        mask[60:70, 60:70] = True
+        with pytest.warns(AstropyUserWarning, match=match):
+            bkg = Background2D(data, (25, 25), filter_size=(1, 1),
+                               mask=mask)
         assert_allclose(bkg.background, test_data, rtol=1e-5)
 
     def test_mask_with_already_masked_nans(self, test_data):
@@ -500,6 +576,57 @@ class TestBackground2D:
         with ctx1, ctx2:
             Background2D(data, (10, 10))
 
+    def test_exclude_percentile_zero(self, test_data):
+        """
+        Test that exclude_percentile=0 keeps fully unmasked boxes and
+        excludes boxes with any masked pixels.
+        """
+        bkg = Background2D(test_data, (25, 25), filter_size=(1, 1),
+                           sigma_clip=None, exclude_percentile=0)
+        assert_allclose(bkg.background_mesh, np.ones((4, 4)))
+
+        # A box with a single masked pixel is excluded. Its mesh value
+        # is then interpolated from the other (unit-valued) boxes.
+        data = np.copy(test_data)
+        data[0:25, 0:25] = 5.0
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0, 0] = True
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1),
+                           sigma_clip=None, mask=mask, exclude_percentile=0)
+        assert_allclose(bkg.background_mesh[0, 0], 1.0)
+
+        # The same box is included when exclude_percentile=100
+        bkg = Background2D(data, (25, 25), filter_size=(1, 1),
+                           sigma_clip=None, mask=mask,
+                           exclude_percentile=100)
+        assert_allclose(bkg.background_mesh[0, 0], 5.0)
+
+    def test_exclude_percentile_boundary(self):
+        """
+        Test that a box with exactly exclude_percentile percent masked
+        pixels is included.
+
+        Only boxes with more than exclude_percentile percent masked
+        pixels are excluded.
+        """
+        data = np.ones((10, 10))
+        data[0, 0:10] = 5.0
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[0, 0:10] = True  # Exactly 10% of the single box
+        bkg = Background2D(data, (10, 10), filter_size=(1, 1),
+                           sigma_clip=None, mask=mask,
+                           exclude_percentile=10.0)
+        assert_allclose(bkg.background_mesh, [[1.0]])
+        assert bkg.n_pixels_mesh[0, 0] == 90
+
+        # More than 10% masked excludes the only box
+        mask[1, 0] = True
+        match = 'All boxes contain fewer than'
+        with pytest.raises(ValueError, match=match):
+            Background2D(data, (10, 10), filter_size=(1, 1),
+                         sigma_clip=None, mask=mask,
+                         exclude_percentile=10.0)
+
     def test_filter_threshold(self, test_data, bkg_mesh):
         """
         Test that the filter_threshold parameter filters the correct
@@ -601,12 +728,12 @@ class TestBackground2D:
         match = 'data and mask must have the same shape'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (25, 25), filter_size=(1, 1),
-                         mask=np.zeros((2, 2)))
+                         mask=np.zeros((2, 2), dtype=bool))
 
         match = 'mask must be a 2D array'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (25, 25), filter_size=(1, 1),
-                         mask=np.zeros((2, 2, 2)))
+                         mask=np.zeros((2, 2, 2), dtype=bool))
 
     def test_invalid_coverage_mask(self, test_data):
         """
@@ -616,12 +743,24 @@ class TestBackground2D:
         match = 'data and coverage_mask must have the same shape'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (25, 25), filter_size=(1, 1),
-                         coverage_mask=np.zeros((2, 2)))
+                         coverage_mask=np.zeros((2, 2), dtype=bool))
 
         match = 'coverage_mask must be a 2D array'
         with pytest.raises(ValueError, match=match):
             Background2D(test_data, (25, 25), filter_size=(1, 1),
-                         coverage_mask=np.zeros((2, 2, 2)))
+                         coverage_mask=np.zeros((2, 2, 2), dtype=bool))
+
+    @pytest.mark.parametrize('name', ['mask', 'coverage_mask'])
+    @pytest.mark.parametrize('dtype', [float, int])
+    def test_invalid_mask_dtype(self, name, dtype, test_data):
+        """
+        Test that an error is raised if the mask or coverage_mask is
+        not a boolean array.
+        """
+        mask = np.zeros(test_data.shape, dtype=dtype)
+        match = f'{name} must be a boolean array'
+        with pytest.raises(TypeError, match=match):
+            Background2D(test_data, (25, 25), **{name: mask})
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_meshes(self, test_data):
@@ -675,10 +814,10 @@ class TestBackground2D:
         arr = np.arange(25.0).reshape(5, 5)
         arr_orig = arr.copy()
         mask = np.zeros(arr.shape, dtype=bool)
-        mask[0, 0] = np.nan
-        mask[-1, 0] = np.nan
-        mask[-1, -1] = np.nan
-        mask[0, -1] = np.nan
+        mask[0, 0] = True
+        mask[-1, 0] = True
+        mask[-1, -1] = True
+        mask[0, -1] = True
 
         box_size = (2, 2)
         exclude_percentile = 100

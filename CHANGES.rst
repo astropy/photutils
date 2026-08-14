@@ -93,6 +93,20 @@ New Features
   - Added validation of the ``ApertureStats.to_table()`` ``columns``
     keyword. [#2329]
 
+- ``photutils.background``
+
+  - Updated ``LocalBackground`` so that ``Quantity`` input data is
+    supported, consistent with the background estimator classes and
+    ``Background2D``. The result is a ``Quantity`` with the same unit as
+    the input data. [#2363]
+
+  - Added an ``n_threads`` keyword to ``Background2D`` to compute the
+    box statistics using multiple threads. The results are identical
+    to the single-threaded computation. The underlying sigma-clipping
+    and statistics kernels release the GIL, so multithreading can
+    significantly speed up the background estimation for large
+    images. [#2363]
+
 - ``photutils.detection``
 
   - Added validation of the ``StarFinderCatalogBase.to_table()``
@@ -193,6 +207,21 @@ Bug Fixes
   - Fixed the annulus apertures so that reassigning an inner or outer
     shape parameter after construction validates the inner < outer
     invariant. [#2362]
+
+- ``photutils.background``
+
+  - Fixed the ``exclude_percentile`` box-exclusion criterion in
+    ``Background2D`` so that a box is excluded only if more than
+    ``exclude_percentile`` percent of its pixels are masked, as
+    documented. Previously, a box with exactly that percentage of masked
+    pixels was excluded, and ``exclude_percentile=0`` excluded all
+    boxes, even fully unmasked ones. [#2363]
+
+  - ``Background2D`` now raises a clear ``TypeError`` if the input
+    ``mask`` or ``coverage_mask`` is not a boolean array. Previously,
+    a non-boolean ``coverage_mask`` raised a cryptic ``IndexError``
+    (or could silently select the wrong pixels) when the background
+    map was computed. [#2363]
 
 - ``photutils.detection``
 
