@@ -133,6 +133,13 @@ New Features
     batched ``ApertureStats`` kernels instead of a Python loop over the
     apertures. [#2364]
 
+  - The ``Background2D`` ``n_threads`` keyword also multithreads
+    the interpolation of the low-resolution meshes to the full-size maps
+    returned by the ``background`` and ``background_rms`` properties
+    (for the 'reflect' and 'mirror' interpolation boundary modes). The
+    multithreaded maps are identical to the single-threaded maps up to
+    floating-point rounding. [#2365]
+
 - ``photutils.detection``
 
   - Added validation of the ``StarFinderCatalogBase.to_table()``
