@@ -22,17 +22,19 @@ class TestEllipsePositionalKwargs:
     """
 
     def setup_method(self):
-        self.data = make_test_image(seed=0)
+        # A small image with a capped fit is sufficient (and fast)
+        # for testing the deprecation warnings
+        self.data = make_test_image(nx=128, ny=128, sma=10.0, seed=0)
 
     def test_init_positional_warns(self):
-        geometry = EllipseGeometry(x0=256, y0=256, sma=10, eps=0.2,
+        geometry = EllipseGeometry(x0=64, y0=64, sma=10, eps=0.2,
                                    pa=np.pi / 2)
         match = '__init__'
         with pytest.warns(AstropyDeprecationWarning, match=match):
             Ellipse(self.data, geometry)
 
     def test_init_keyword_no_warning(self):
-        geometry = EllipseGeometry(x0=256, y0=256, sma=10, eps=0.2,
+        geometry = EllipseGeometry(x0=64, y0=64, sma=10, eps=0.2,
                                    pa=np.pi / 2)
         Ellipse(self.data, geometry=geometry)
 
@@ -40,21 +42,21 @@ class TestEllipsePositionalKwargs:
         ellipse = Ellipse(self.data)
         match = 'fit_image'
         with pytest.warns(AstropyDeprecationWarning, match=match):
-            ellipse.fit_image(10.0)
+            ellipse.fit_image(10.0, maxsma=15.0)
 
     def test_fit_image_keyword_no_warning(self):
         ellipse = Ellipse(self.data)
-        ellipse.fit_image(sma0=10.0)
+        ellipse.fit_image(sma0=10.0, maxsma=15.0)
 
     def test_fit_isophote_positional_warns(self):
         ellipse = Ellipse(self.data)
         match = 'fit_isophote'
         with pytest.warns(AstropyDeprecationWarning, match=match):
-            ellipse.fit_isophote(40.0, 0.1)
+            ellipse.fit_isophote(10.0, 0.1)
 
     def test_fit_isophote_keyword_no_warning(self):
         ellipse = Ellipse(self.data)
-        ellipse.fit_isophote(40.0, step=0.1)
+        ellipse.fit_isophote(10.0, step=0.1)
 
 
 class TestEllipseGeometryPositionalKwargs:
@@ -85,24 +87,35 @@ class TestEllipseGeometryPositionalKwargs:
         geometry.find_center(data, threshold=0.5)
 
 
+@pytest.fixture(name='small_isolist', scope='module')
+def fixture_small_isolist():
+    """
+    Fit isophotes to a small simulated galaxy image.
+
+    A small image with a capped fit is sufficient (and fast) for
+    testing the deprecation warnings, and the fit is shared across
+    tests.
+    """
+    data = make_test_image(nx=128, ny=128, sma=10.0, seed=0)
+    ellipse = Ellipse(data)
+    isolist = ellipse.fit_image(sma0=10.0, maxsma=15.0)
+    return data.shape, isolist
+
+
 class TestBuildEllipseModelPositionalKwargs:
     """
     Test build_ellipse_model.
     """
 
-    def test_positional_warns(self):
-        data = make_test_image(seed=0)
-        ellipse = Ellipse(data)
-        isolist = ellipse.fit_image(sma0=10.0)
+    def test_positional_warns(self, small_isolist):
+        shape, isolist = small_isolist
         match = 'build_ellipse_model'
         with pytest.warns(AstropyDeprecationWarning, match=match):
-            build_ellipse_model(data.shape, isolist, 0.0)
+            build_ellipse_model(shape, isolist, 0.0)
 
-    def test_keyword_no_warning(self):
-        data = make_test_image(seed=0)
-        ellipse = Ellipse(data)
-        isolist = ellipse.fit_image(sma0=10.0)
-        build_ellipse_model(data.shape, isolist, fill=0.0)
+    def test_keyword_no_warning(self, small_isolist):
+        shape, isolist = small_isolist
+        build_ellipse_model(shape, isolist, fill=0.0)
 
 
 class TestEllipseSamplePositionalKwargs:
