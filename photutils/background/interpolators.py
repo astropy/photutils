@@ -3,10 +3,12 @@
 Tools for upsampling images for Background2D using interpolation.
 """
 
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 from astropy.units import Quantity
 from astropy.utils.decorators import deprecated
-from scipy.ndimage import zoom
+from scipy.ndimage import affine_transform, spline_filter, zoom
 
 from photutils.utils import ShepardIDWInterpolator
 from photutils.utils._repr import make_repr
@@ -50,6 +52,12 @@ class _BkgZoomInterpolator:
     `~scipy.ndimage.zoom` ``grid_mode`` is True). This makes
     zoom's behavior consistent with `scipy.ndimage.map_coordinates` and
     `skimage.transform.resize`
+
+    When called with an ``n_threads`` keyword larger than 1 (e.g.,
+    by `~photutils.background.Background2D`) and the ``mode`` is
+    'reflect' or 'mirror', the output is computed concurrently over
+    bands of rows. The multithreaded result is identical to the single
+    `~scipy.ndimage.zoom` call up to floating-point rounding.
     """
 
     def __init__(self, *, order=3, mode='reflect', cval=0.0, clip=True):
@@ -62,6 +70,73 @@ class _BkgZoomInterpolator:
         params = ('order', 'mode', 'cval', 'clip')
         return make_repr(self, params)
 
+    def _threaded_zoom(self, data, zoom_factor, n_threads):
+        """
+        Compute `~scipy.ndimage.zoom` (``grid_mode=True``) of a 2D array
+        using multiple threads over bands of output rows.
+
+        The spline prefilter is applied once to the (small) input mesh
+        exactly as `~scipy.ndimage.zoom` does. The output resampling,
+        which dominates the cost, is then evaluated concurrently
+        over row bands with `~scipy.ndimage.affine_transform` (which
+        releases the GIL and, for a diagonal transform, uses the
+        same fast separable code path as `~scipy.ndimage.zoom`)
+        using the same coordinate mapping as `~scipy.ndimage.zoom`
+        with ``grid_mode=True``. For the 'reflect' and 'mirror'
+        boundary modes, the result is identical to the single
+        `~scipy.ndimage.zoom` call up to floating-point rounding. Other
+        boundary modes have ``grid_mode``-specific edge handling that
+        `~scipy.ndimage.affine_transform` does not reproduce, so the
+        caller must not use this method for them.
+
+        Parameters
+        ----------
+        data : 2D `~numpy.ndarray`
+            The low-resolution 2D mesh array.
+
+        zoom_factor : tuple of int
+            The integer zoom factor along each axis.
+
+        n_threads : int
+            The number of threads to use.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The resized 2D array, with the same dtype as the input.
+        """
+        out_shape = (data.shape[0] * zoom_factor[0],
+                     data.shape[1] * zoom_factor[1])
+
+        # The same coordinate mapping as scipy.ndimage.zoom with
+        # grid_mode=True: input_coord = output_coord * ratio + offset
+        zoom_ratio = np.array(data.shape) / np.array(out_shape)
+        offset = 0.5 * zoom_ratio - 0.5
+
+        if self.order > 1:
+            filtered = spline_filter(data, self.order, output=np.float64,
+                                     mode=self.mode)
+        else:
+            filtered = data
+
+        result = np.empty(out_shape, dtype=data.dtype)
+
+        def resample_band(y0, y1):
+            band_offset = (y0 * zoom_ratio[0] + offset[0], offset[1])
+            affine_transform(filtered, zoom_ratio, offset=band_offset,
+                             output_shape=(y1 - y0, out_shape[1]),
+                             output=result[y0:y1], order=self.order,
+                             mode=self.mode, cval=self.cval,
+                             prefilter=False)
+
+        n_bands = min(n_threads, out_shape[0])
+        band_edges = np.linspace(0, out_shape[0], n_bands + 1).astype(int)
+        with ThreadPoolExecutor(max_workers=n_bands) as executor:
+            list(executor.map(resample_band, band_edges[:-1],
+                              band_edges[1:]))
+
+        return result
+
     def __call__(self, data, **kwargs):
         """
         Resize the 2D mesh array.
@@ -72,7 +147,9 @@ class _BkgZoomInterpolator:
             The low-resolution 2D mesh array.
 
         **kwargs : dict
-            Additional keyword arguments passed to the interpolator.
+            Additional keyword arguments passed to the interpolator,
+            including an optional ``n_threads`` value (see the class
+            Notes).
 
         Returns
         -------
@@ -96,8 +173,12 @@ class _BkgZoomInterpolator:
         # (i.e., zoom_factor should be an integer) and then cropped
         # back to the final data size.
         zoom_factor = kwargs['box_size']
-        result = zoom(data, zoom_factor, order=self.order, mode=self.mode,
-                      cval=self.cval, grid_mode=True)
+        n_threads = kwargs.get('n_threads', 1)
+        if n_threads > 1 and self.mode in ('reflect', 'mirror'):
+            result = self._threaded_zoom(data, zoom_factor, n_threads)
+        else:
+            result = zoom(data, zoom_factor, order=self.order,
+                          mode=self.mode, cval=self.cval, grid_mode=True)
         result = result[0:kwargs['shape'][0], 0:kwargs['shape'][1]]
 
         if self.clip:
