@@ -13,14 +13,12 @@ available options.
 """
 
 import argparse
-import os
-import platform
-import sys
-import time
 from functools import partial
 
 import numpy as np
 from astropy.stats import SigmaClip
+from bench_utils import (format_sweep_cells, make_image, print_environment,
+                         time_best)
 
 from photutils.background import (Background2D, BiweightLocationBackground,
                                   BiweightScaleBackgroundRMS, LocalBackground,
@@ -34,70 +32,6 @@ ESTIMATOR_CLASSES = [MeanBackground, MedianBackground,
                      SExtractorBackground, BiweightLocationBackground,
                      StdBackgroundRMS, MADStdBackgroundRMS,
                      BiweightScaleBackgroundRMS]
-
-
-def time_best(func, *, repeats=3):
-    """
-    Return the best wall-clock time of ``repeats`` calls to ``func``.
-
-    Parameters
-    ----------
-    func : callable
-        The zero-argument callable to time.
-
-    repeats : int, optional
-        The number of times to call ``func``.
-
-    Returns
-    -------
-    result : float
-        The best (minimum) wall-clock time in seconds.
-    """
-    best = np.inf
-    for _ in range(repeats):
-        t0 = time.perf_counter()
-        func()
-        best = min(best, time.perf_counter() - t0)
-    return best
-
-
-def make_image(shape, *, seed=0):
-    """
-    Return a Gaussian-noise image of the given shape.
-
-    Parameters
-    ----------
-    shape : tuple of int
-        The shape of the output image.
-
-    seed : int, optional
-        The random number generator seed.
-
-    Returns
-    -------
-    result : 2D `~numpy.ndarray`
-        The noise image.
-    """
-    rng = np.random.default_rng(seed)
-    return rng.normal(100.0, 5.0, shape)
-
-
-def print_environment():
-    """
-    Print information about the runtime environment.
-    """
-    import astropy
-    import scipy
-
-    import photutils
-    from photutils.utils._optional_deps import HAS_BOTTLENECK
-
-    gil = getattr(sys, '_is_gil_enabled', lambda: True)()
-    print(f'python {platform.python_version()} (GIL enabled: {gil}), '
-          f'{os.cpu_count()} CPUs')
-    print(f'photutils {photutils.__version__}, numpy {np.__version__}, '
-          f'scipy {scipy.__version__}, astropy {astropy.__version__}, '
-          f'bottleneck: {HAS_BOTTLENECK}')
 
 
 def bench_background2d(sizes, box_sizes, n_threads_list, *, repeats=3,
@@ -230,13 +164,19 @@ def bench_estimators(*, size=2048, repeats=3, seed=0):
               f'{f"{t_clip:.3f}s":>17}')
 
 
-def bench_local_background(*, size=2048, n_positions=1000, repeats=3,
-                           seed=0):
+def bench_local_background(n_threads_list, *, size=2048, n_positions=1000,
+                           repeats=3, seed=0):
     """
-    Benchmark LocalBackground at many positions.
+    Benchmark LocalBackground at many positions for each thread
+    count.
+
+    Speedups are relative to the first thread count.
 
     Parameters
     ----------
+    n_threads_list : list of int
+        The thread counts to sweep.
+
     size : int, optional
         The image size; the image is ``(size, size)``.
 
@@ -251,13 +191,20 @@ def bench_local_background(*, size=2048, n_positions=1000, repeats=3,
     """
     print(f'\n== LocalBackground ({n_positions} positions, '
           f'{size}x{size} image) ==')
+    header = ''.join(f'{f"n={n}":>18}' for n in n_threads_list)
+    print(header)
     data = make_image((size, size), seed=seed)
     rng = np.random.default_rng(seed)
     x = rng.uniform(50, size - 50, n_positions)
     y = rng.uniform(50, size - 50, n_positions)
-    local_bkg = LocalBackground(5, 10)
-    t_local = time_best(partial(local_bkg, data, x, y), repeats=repeats)
-    print(f'{t_local:.3f}s')
+
+    times = []
+    for n_threads in n_threads_list:
+        local_bkg = LocalBackground(5, 10, n_threads=n_threads)
+        times.append(time_best(partial(local_bkg, data, x, y),
+                               repeats=repeats))
+    row = ''.join(f'{cell:>18}' for cell in format_sweep_cells(times))
+    print(row)
 
 
 def main():
@@ -303,7 +250,8 @@ def main():
     if args.which in ('all', 'estimators'):
         bench_estimators(repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'local'):
-        bench_local_background(repeats=args.repeats, seed=args.seed)
+        bench_local_background(n_threads_list, repeats=args.repeats,
+                               seed=args.seed)
 
 
 if __name__ == '__main__':

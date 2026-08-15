@@ -5,6 +5,7 @@ Tools for calculating properties of sources defined by an Aperture.
 
 import inspect
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 from copy import copy, deepcopy
 from functools import cached_property
 from typing import NamedTuple
@@ -40,7 +41,7 @@ from photutils.aperture._common import (SCALAR_COLLAPSE_TYPES,
                                         validate_array, validate_mask_method)
 from photutils.aperture._segmentation import (make_segmentation_exclusion,
                                               process_segmentation_inputs)
-from photutils.aperture.core import (_aperture_metadata,
+from photutils.aperture.core import (PixelAperture, _aperture_metadata,
                                      _update_method_subpixels_docstring)
 from photutils.aperture.flags import (APERTURE_FLAGS, _counts_to_flag_bits,
                                       decode_aperture_flags)
@@ -253,6 +254,20 @@ class ApertureStats:
 
     <segmentation_descriptions>
 
+    n_threads : int, optional
+        The number of threads to use to gather the aperture pixel
+        values, compute the aperture sums, and reduce the per-source
+        statistics (e.g., the sorts, order statistics, robust
+        estimators, and moments). The default is 1 (no multithreading).
+        When ``n_threads`` > 1, the aperture positions are divided
+        into chunks and processed concurrently. The per-source
+        results are independent, so they are identical to the
+        single-threaded computation. The underlying kernels release
+        the Python global interpreter lock (GIL), so multithreading
+        can significantly speed up the statistics for many aperture
+        positions. Multithreading is used only on the fast batch code
+        path. Otherwise, the computation is serial.
+
     Notes
     -----
     ``data`` should be background-subtracted for accurate source
@@ -354,12 +369,13 @@ class ApertureStats:
     # index the packed buffer per source and fail or corrupt it.
     _NON_SLICEABLE_CACHES = frozenset({
         '_batch_inputs', '_fast_gather', '_fast_sum', '_sorted_values',
-        '_order_stats', '_mean_var', '_mad', '_biweight', '_gini'})
+        '_order_stats', '_mean_var', '_mad', '_biweight', '_gini',
+        '_fast_cutouts_center'})
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
                  sigma_clip=None, sum_method='exact', subpixels=5, ddof=0,
                  local_bkg=None, segmentation_image=None, labels=None,
-                 mask_method='none'):
+                 mask_method='none', n_threads=1):
 
         if isinstance(data, NDData):
             data, error, mask, wcs = unpack_nddata(data, error, mask, wcs)
@@ -406,6 +422,11 @@ class ApertureStats:
             msg = 'ddof must be a non-negative integer'
             raise ValueError(msg)
         self.ddof = ddof
+
+        if not isinstance(n_threads, (int, np.integer)) or n_threads < 1:
+            msg = 'n_threads must be a positive integer'
+            raise ValueError(msg)
+        self.n_threads = int(n_threads)
 
         self._local_bkg = np.zeros(self.n_positions)  # no local bkg
         if local_bkg is not None:
@@ -511,8 +532,8 @@ class ApertureStats:
         # new class
         init_attr = ('_data', '_data_unit', '_error', '_mask', '_wcs',
                      'sigma_clip', 'sum_method', 'subpixels', 'ddof',
-                     'default_columns', 'meta', '_segmentation',
-                     'segmentation_image', 'mask_method')
+                     'n_threads', 'default_columns', 'meta',
+                     '_segmentation', 'segmentation_image', 'mask_method')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -956,6 +977,10 @@ class ApertureStats:
         (``values``, ``local_x``, ``local_y``, ``starts``, ``counts``),
         ``overlap``, and ``flag_counts`` populated. The ``sum_method``
         fields are `None`.
+
+        When ``n_threads`` > 1, the positions are divided into chunks
+        that are gathered (and sigma clipped) concurrently and then
+        merged (see `_merge_center_gathers`).
         """
         inputs = self._batch_inputs
         if inputs is None:
@@ -964,17 +989,26 @@ class ApertureStats:
          off_x, off_y, _sum_use_exact, _sum_subpixels, local_bkg, seg_arr,
          labels_arr, seg_code, clip_spec) = inputs
 
-        (values, lx, ly, starts, counts, overlap,
-         flag_counts) = batch_aperture_gather(
-            data, mask, positions, shape_code, params, ext_x, ext_y,
-            off_x, off_y, local_bkg, seg_arr, labels_arr, seg_code)
-        gather = _BatchGather(values=values, local_x=lx, local_y=ly,
-                              starts=starts, counts=counts, overlap=overlap,
-                              flag_counts=flag_counts)
+        def gather_chunk(pos, bkg, labels):
+            (values, lx, ly, starts, counts, overlap,
+             flag_counts) = batch_aperture_gather(
+                data, mask, pos, shape_code, params, ext_x, ext_y,
+                off_x, off_y, bkg, seg_arr, labels, seg_code)
+            gather = _BatchGather(values=values, local_x=lx, local_y=ly,
+                                  starts=starts, counts=counts,
+                                  overlap=overlap, flag_counts=flag_counts)
 
-        if clip_spec is not None:
-            gather = self._apply_center_clip(gather, clip_spec)
-        return gather
+            if clip_spec is not None:
+                gather = self._apply_center_clip(gather, clip_spec)
+            return gather
+
+        chunks = self._batch_chunks(positions, local_bkg, labels_arr)
+        if chunks is None:
+            return gather_chunk(positions, local_bkg, labels_arr)
+
+        with ThreadPoolExecutor(max_workers=len(chunks[0])) as executor:
+            gathers = list(executor.map(gather_chunk, *chunks))
+        return self._merge_center_gathers(gathers)
 
     @cached_property
     def _fast_sum(self):
@@ -999,6 +1033,11 @@ class ApertureStats:
         ``var_aper``, ``sum_area``, ``starts``, ``overlap``, and
         ``flag_counts`` fields populated. The center-value fields are
         `None`.
+
+        When ``n_threads`` > 1, the positions are divided into chunks
+        that are computed (and sigma clipped) concurrently and then
+        merged. The merged result keeps only the flat per-source outputs
+        (see `_merge_sum_gathers`).
         """
         inputs = self._batch_inputs
         if inputs is None:
@@ -1008,20 +1047,173 @@ class ApertureStats:
          labels_arr, seg_code, clip_spec) = inputs
 
         emit_sum = 1 if clip_spec is not None else 0
-        (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
-         sum_errsq, scounts, flag_counts) = batch_aperture_sums(
-            data, error, mask, positions, shape_code, params, ext_x, ext_y,
-            off_x, off_y, sum_use_exact, sum_subpixels, seg_arr, labels_arr,
-            seg_code, local_bkg, emit_sum)
-        gather = _BatchGather(starts=starts, sum_aper=sums, var_aper=sum_var,
-                              sum_area=area, overlap=overlap,
-                              sum_values=sum_values, sum_fracs=sum_fracs,
-                              sum_errsq=sum_errsq, sum_counts=scounts,
-                              flag_counts=flag_counts)
 
-        if clip_spec is not None:
-            gather = self._apply_sum_clip(gather, clip_spec)
-        return gather
+        def sum_chunk(pos, bkg, labels):
+            (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
+             sum_errsq, scounts, flag_counts) = batch_aperture_sums(
+                data, error, mask, pos, shape_code, params, ext_x, ext_y,
+                off_x, off_y, sum_use_exact, sum_subpixels, seg_arr,
+                labels, seg_code, bkg, emit_sum)
+            gather = _BatchGather(starts=starts, sum_aper=sums,
+                                  var_aper=sum_var, sum_area=area,
+                                  overlap=overlap, sum_values=sum_values,
+                                  sum_fracs=sum_fracs, sum_errsq=sum_errsq,
+                                  sum_counts=scounts,
+                                  flag_counts=flag_counts)
+
+            if clip_spec is not None:
+                gather = self._apply_sum_clip(gather, clip_spec)
+            return gather
+
+        chunks = self._batch_chunks(positions, local_bkg, labels_arr)
+        if chunks is None:
+            return sum_chunk(positions, local_bkg, labels_arr)
+
+        with ThreadPoolExecutor(max_workers=len(chunks[0])) as executor:
+            gathers = list(executor.map(sum_chunk, *chunks))
+        return self._merge_sum_gathers(gathers)
+
+    def _batch_chunks(self, positions, local_bkg, labels_arr):
+        """
+        Split the per-source batch-driver inputs into per-thread chunks,
+        or return `None` for a single-chunk (serial) computation.
+
+        The number of chunks is ``min(n_threads, n_sources)``. Row
+        slices of the C-contiguous input arrays are themselves
+        C-contiguous, so the chunks can be passed directly to the Cython
+        drivers.
+
+        Returns
+        -------
+        chunks : tuple of list or `None`
+            A ``(positions, local_bkg, labels)`` tuple of per-chunk
+            lists, or `None` when only one chunk would be used.
+        """
+        n_chunks = min(self.n_threads, positions.shape[0])
+        if n_chunks <= 1:  # 0 for empty positions
+            return None
+        pos_chunks = np.array_split(positions, n_chunks)
+        bkg_chunks = np.array_split(local_bkg, n_chunks)
+        if labels_arr is None:
+            labels_chunks = [None] * n_chunks
+        else:
+            labels_chunks = np.array_split(labels_arr, n_chunks)
+        return pos_chunks, bkg_chunks, labels_chunks
+
+    @staticmethod
+    def _merge_center_gathers(gathers):
+        """
+        Merge per-chunk center-value gathers into a single
+        `_BatchGather` equivalent to a single-chunk gather.
+
+        The packed buffers (``values``, ``local_x``, ``local_y``, and
+        ``sorted_values`` when sigma clipping is applied) and the
+        per-source arrays are concatenated. The per-source ``starts``
+        are offset by the cumulative packed-buffer length of the
+        preceding chunks.
+        """
+        starts = []
+        offset = 0
+        for gather in gathers:
+            starts.append(gather.starts + offset)
+            offset += gather.values.shape[0]
+
+        sorted_values = None
+        if gathers[0].sorted_values is not None:
+            sorted_values = np.concatenate(
+                [gather.sorted_values for gather in gathers])
+
+        return _BatchGather(
+            values=np.concatenate([g.values for g in gathers]),
+            local_x=np.concatenate([g.local_x for g in gathers]),
+            local_y=np.concatenate([g.local_y for g in gathers]),
+            starts=np.concatenate(starts),
+            counts=np.concatenate([g.counts for g in gathers]),
+            overlap=np.concatenate([g.overlap for g in gathers]),
+            flag_counts=np.concatenate([g.flag_counts for g in gathers]),
+            sorted_values=sorted_values)
+
+    @staticmethod
+    def _merge_sum_gathers(gathers):
+        """
+        Merge per-chunk ``sum_method`` gathers into a single
+        `_BatchGather`.
+
+        Only the flat per-source outputs are kept. The packed member
+        buffers and their ``starts`` are dropped (`None`). They are
+        consumed within each chunk (by the sigma clipping) and no
+        downstream consumer reads them from the merged result.
+        """
+        return _BatchGather(
+            sum_aper=np.concatenate([g.sum_aper for g in gathers]),
+            var_aper=np.concatenate([g.var_aper for g in gathers]),
+            sum_area=np.concatenate([g.sum_area for g in gathers]),
+            overlap=np.concatenate([g.overlap for g in gathers]),
+            flag_counts=np.concatenate([g.flag_counts for g in gathers]))
+
+    def _threaded_reduction(self, func, buffers, starts, counts,
+                            per_source=()):
+        """
+        Run a per-source packed-buffer reduction, dividing the sources
+        into chunks that are processed concurrently.
+
+        The kernel is called as ``func(*buffers, starts, counts,
+        *per_source)``. When ``n_threads`` > 1, the sources are
+        divided into contiguous ranges; each worker receives the
+        corresponding packed-buffer regions (with the ``starts``
+        rebased to the region) and per-source array slices, so the
+        kernels run concurrently on disjoint data. The per-chunk
+        outputs are concatenated, making the result identical to the
+        single-chunk call. A kernel returning a packed buffer (e.g.,
+        ``batch_sort_values``) also concatenates correctly because the
+        chunk regions partition the buffer in order.
+
+        Parameters
+        ----------
+        func : callable
+            The reduction kernel.
+
+        buffers : tuple of `~numpy.ndarray`
+            The packed per-pixel buffers (equal lengths), passed as
+            the leading kernel arguments.
+
+        starts, counts : `~numpy.ndarray`
+            The per-source start offsets into the buffers and the
+            per-source pixel counts.
+
+        per_source : tuple of `~numpy.ndarray`, optional
+            Additional per-source arrays, passed as the trailing
+            kernel arguments.
+
+        Returns
+        -------
+        result : `~numpy.ndarray` or tuple of `~numpy.ndarray`
+            The kernel output(s), concatenated over the chunks.
+        """
+        n_src = len(counts)
+        n_chunks = min(self.n_threads, n_src)
+        if n_chunks <= 1:  # 0 for empty positions
+            return func(*buffers, starts, counts, *per_source)
+
+        buffer_len = len(buffers[0])
+        src_edges = np.arange(n_chunks + 1) * n_src // n_chunks
+
+        def reduce_chunk(i0, i1):
+            buf0 = starts[i0]
+            buf1 = starts[i1] if i1 < n_src else buffer_len
+            chunk_buffers = [buffer[buf0:buf1] for buffer in buffers]
+            return func(*chunk_buffers, starts[i0:i1] - buf0,
+                        counts[i0:i1],
+                        *[arr[i0:i1] for arr in per_source])
+
+        with ThreadPoolExecutor(max_workers=n_chunks) as executor:
+            results = list(executor.map(reduce_chunk, src_edges[:-1],
+                                        src_edges[1:]))
+
+        if isinstance(results[0], tuple):
+            return tuple(np.concatenate(parts)
+                         for parts in zip(*results, strict=True))
+        return np.concatenate(results)
 
     def _fast_clip_spec(self):
         """
@@ -1107,6 +1299,9 @@ class ApertureStats:
         kernel are reused directly (the clipping already sorts each
         source's values to compute the clip bounds). `None` is returned
         when the fast path is unavailable.
+
+        When ``n_threads`` > 1, the per-source sorts run concurrently
+        (see `_threaded_reduction`).
         """
         gather = self._fast_gather
         if gather is None:
@@ -1114,7 +1309,9 @@ class ApertureStats:
         values, starts, counts = gather.values, gather.starts, gather.counts
         if gather.sorted_values is not None:
             return (gather.sorted_values, starts, counts)
-        return (batch_sort_values(values, starts, counts), starts, counts)
+        sorted_values = self._threaded_reduction(
+            batch_sort_values, (values,), starts, counts)
+        return (sorted_values, starts, counts)
 
     @cached_property
     def _order_stats(self):
@@ -1127,7 +1324,9 @@ class ApertureStats:
         sorted_values = self._sorted_values
         if sorted_values is None:
             return None
-        return batch_order_stats(*sorted_values)
+        values, starts, counts = sorted_values
+        return self._threaded_reduction(batch_order_stats, (values,),
+                                        starts, counts)
 
     @cached_property
     def _mean_var(self):
@@ -1141,7 +1340,8 @@ class ApertureStats:
         gather = self._fast_gather
         if gather is None:
             return None
-        return batch_mean_var(gather.values, gather.starts, gather.counts)
+        return self._threaded_reduction(batch_mean_var, (gather.values,),
+                                        gather.starts, gather.counts)
 
     @cached_property
     def _mad(self):
@@ -1154,7 +1354,8 @@ class ApertureStats:
         sorted_values = self._sorted_values
         if sorted_values is None:
             return None
-        return batch_mad(*sorted_values)
+        values, starts, counts = sorted_values
+        return self._threaded_reduction(batch_mad, (values,), starts, counts)
 
     @cached_property
     def _biweight(self):
@@ -1170,7 +1371,10 @@ class ApertureStats:
         if sorted_values is None:
             return None
         _, _, median = self._order_stats
-        return batch_biweight(*sorted_values, median, self._mad)
+        values, starts, counts = sorted_values
+        return self._threaded_reduction(batch_biweight, (values,),
+                                        starts, counts,
+                                        per_source=(median, self._mad))
 
     @cached_property
     def _gini(self):
@@ -1183,7 +1387,8 @@ class ApertureStats:
         gather = self._fast_gather
         if gather is None:
             return None
-        return batch_gini(gather.values, gather.starts, gather.counts)
+        return self._threaded_reduction(batch_gini, (gather.values,),
+                                        gather.starts, gather.counts)
 
     def _finalize_value_stat(self, fast_result, stat_func, *,
                              square_unit=False, apply_unit=True):
@@ -1487,6 +1692,9 @@ class ApertureStats:
         non-finite ``data`` values, the cutout aperture mask using the
         "center" method, and the sigma-clip mask.
         """
+        fast = self._fast_cutouts_center
+        if fast is not None:
+            return fast[2]
         return list(zip(*self._aperture_cutouts_center, strict=True))[2]
 
     @cached_property
@@ -1499,6 +1707,102 @@ class ApertureStats:
         ``sum_method`` method, and the sigma-clip mask.
         """
         return list(zip(*self._aperture_cutouts, strict=True))[2]
+
+    @cached_property
+    def _fast_cutouts_center(self):
+        """
+        The center-method cutout arrays reconstructed from the packed
+        gather buffers, or `None`.
+
+        Returns a ``(data, variance, mask, weight)`` tuple of
+        per-source cutout lists identical to the mask-based
+        `_aperture_cutouts_center` values. The packed buffer holds
+        exactly the surviving pixels (unmasked, finite, inside the
+        center-method aperture, segmentation-kept, and sigma-clip
+        surviving) together with their cutout coordinates, so the total
+        mask is `True` for every pixel absent from the buffer, and the
+        data, variance, and weight cutouts are zero there (matching
+        the mask-based arrays). Sources whose bounding box does not
+        overlap the data get the same single-NaN sentinel arrays as the
+        mask-based path.
+
+        `None` is returned (and the mask-based path is used) when
+        the fast gather is unavailable or when segmentation neighbor
+        correction is applied: ``mask_method='correct'`` replaces
+        neighbor-pixel data *and error* values with their mirrored
+        values, and the mirrored error values are not recoverable from
+        the packed buffers.
+        """
+        gather = self._fast_gather
+        if gather is None or (self._segmentation is not None
+                              and self.mask_method == 'correct'):
+            return None
+
+        # The kernel's per-source cutout origin is the bounding box
+        # clipped to the data, using the same integer bounds as
+        # ``PixelAperture._bbox_bounds`` (upper bounds exclusive).
+        bounds = self._pixel_aperture._bbox_bounds
+        ny, nx = self._data.shape
+        x0 = np.maximum(bounds[:, 0], 0)
+        x1 = np.minimum(bounds[:, 1], nx)
+        y0 = np.maximum(bounds[:, 2], 0)
+        y1 = np.minimum(bounds[:, 3], ny)
+        overlaps = ((bounds[:, 0] < nx) & (bounds[:, 1] > 0)
+                    & (bounds[:, 2] < ny) & (bounds[:, 3] > 0))
+
+        error = self._error
+        starts, counts = gather.starts, gather.counts
+        values = gather.values
+        local_x, local_y = gather.local_x, gather.local_y
+
+        data_cutouts = []
+        variance_cutouts = []
+        mask_cutouts = []
+        weight_cutouts = []
+        for idx, overlap in enumerate(overlaps):
+            if not overlap:
+                # Match the mask-based no-overlap sentinels
+                data_cutouts.append(np.array([np.nan]))
+                variance_cutouts.append(np.array([np.nan]))
+                mask_cutouts.append(np.array([False]))
+                weight_cutouts.append(np.array([np.nan]))
+                continue
+
+            shape = (y1[idx] - y0[idx], x1[idx] - x0[idx])
+            slc = (slice(y0[idx], y1[idx]), slice(x0[idx], x1[idx]))
+            i0 = starts[idx]
+            i1 = i0 + counts[idx]
+            lx = local_x[i0:i1]
+            ly = local_y[i0:i1]
+
+            data_cutout = np.zeros(shape)
+            data_cutout[ly, lx] = values[i0:i1]
+            if self.sigma_clip is None:
+                # The mask-based path multiplies the data by the
+                # boolean masks, so non-finite pixels are NaN in the
+                # cutout data instead of zero. (With sigma clipping
+                # it instead fills every masked pixel with zero.)
+                data_cutout[~np.isfinite(self._data[slc])] = np.nan
+
+            mask_cutout = np.ones(shape, dtype=bool)
+            mask_cutout[ly, lx] = False
+            weight_cutout = np.zeros(shape)
+            weight_cutout[ly, lx] = 1.0
+            if error is None:
+                variance_cutout = None
+            else:
+                # Multiplying the full variance cutout by the weights
+                # replicates the mask-based arithmetic exactly,
+                # including NaN for masked non-finite error values.
+                variance_cutout = error[slc] ** 2 * weight_cutout
+
+            data_cutouts.append(data_cutout)
+            variance_cutouts.append(variance_cutout)
+            mask_cutouts.append(mask_cutout)
+            weight_cutouts.append(weight_cutout)
+
+        return (data_cutouts, variance_cutouts, mask_cutouts,
+                weight_cutouts)
 
     def _make_masked_array_center(self, array):
         """
@@ -1535,6 +1839,9 @@ class ApertureStats:
         within the aperture, and pixels where the aperture mask has zero
         weight.
         """
+        fast = self._fast_cutouts_center
+        if fast is not None:
+            return self._make_masked_array_center(fast[0])
         return self._make_masked_array_center(
             list(zip(*self._aperture_cutouts_center, strict=True))[0])
 
@@ -1572,6 +1879,9 @@ class ApertureStats:
         """
         if self._error is None:
             return self._null_object
+        fast = self._fast_cutouts_center
+        if fast is not None:
+            return self._make_masked_array_center(fast[1])
         return self._make_masked_array_center(
             list(zip(*self._aperture_cutouts_center, strict=True))[1])
 
@@ -1625,6 +1935,9 @@ class ApertureStats:
         from the input ``mask``, non-finite ``data`` values (NaN and
         inf), and sigma-clipped pixels.
         """
+        fast = self._fast_cutouts_center
+        if fast is not None:
+            return self._make_masked_array_center(fast[3])
         return self._make_masked_array_center(
             list(zip(*self._aperture_cutouts_center, strict=True))[3])
 
@@ -1990,9 +2303,10 @@ class ApertureStats:
         if gather is not None:
             overlap = gather.overlap
             zeros = np.zeros(self.n_positions)
-            mom = batch_moments(gather.values, gather.local_x,
-                                gather.local_y, gather.starts,
-                                gather.counts, zeros, zeros)
+            mom = self._threaded_reduction(
+                batch_moments,
+                (gather.values, gather.local_x, gather.local_y),
+                gather.starts, gather.counts, per_source=(zeros, zeros))
             # No-overlap sources have NaN moments (the mask-based path
             # uses an all-NaN cutout); all-masked overlapping sources
             # have zero moments (an all-zero cutout).
@@ -2014,9 +2328,10 @@ class ApertureStats:
         if gather is not None:
             cen_x = np.ascontiguousarray(cutout_centroid[:, 0])
             cen_y = np.ascontiguousarray(cutout_centroid[:, 1])
-            mom = batch_moments(gather.values, gather.local_x,
-                                gather.local_y, gather.starts,
-                                gather.counts, cen_x, cen_y)
+            mom = self._threaded_reduction(
+                batch_moments,
+                (gather.values, gather.local_x, gather.local_y),
+                gather.starts, gather.counts, per_source=(cen_x, cen_y))
             # Empty sources (no overlap or fully masked) have a NaN
             # centroid, so their central moments are NaN (matching the
             # mask-based path).
@@ -2131,8 +2446,20 @@ class ApertureStats:
     @cached_property
     def _bbox_bounds(self):
         """
-        The bounding box x and y minimum and maximum bounds.
+        The bounding box x and y minimum and maximum (inclusive)
+        bounds, as an ``(n_positions, 4)`` array.
+
+        When the aperture uses the default ``bbox`` implementation,
+        the bounds are taken from the aperture's vectorized integer
+        bounds, so no per-position `~photutils.aperture.BoundingBox`
+        objects are created. An aperture subclass that overrides
+        ``bbox`` falls back to reading the per-position objects.
         """
+        aper = self._pixel_aperture
+        if type(aper).bbox is PixelAperture.bbox:
+            # Convert the exclusive upper bounds to inclusive
+            return aper._bbox_bounds - [0, 1, 0, 1]
+
         bbox = self._array('bbox')
         # The reshape preserves the (n_positions, 4) shape when there
         # are zero positions

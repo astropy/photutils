@@ -1,7 +1,34 @@
 # Photutils Benchmarks
 
 This directory contains standalone benchmark scripts for photutils.
-They are not part of the installed package or the test suite.
+They are not part of the installed package or the test suite. Helper
+functions shared by the scripts live in `bench_utils.py`.
+
+## Aperture statistics (`bench_aperture_stats.py`)
+
+Benchmarks for `ApertureStats`:
+
+- computing the median and all properties for all of the pixel-based
+  aperture types, with and without sigma clipping
+- the cold cost of each individual property (including its lazy
+  dependencies) for a circular aperture, sorted by decreasing
+  sigma-clipped time
+
+```bash
+python benchmarks/bench_aperture_stats.py
+python benchmarks/bench_aperture_stats.py --which types --n-sources 10000
+```
+
+## Aperture photometry (`bench_aperture_photometry.py`)
+
+Benchmarks for `AperturePhotometry`: computing the flux (with an
+error array) for all of the pixel-based aperture types and each
+overlap method (exact, center, and subpixel).
+
+```bash
+python benchmarks/bench_aperture_photometry.py
+python benchmarks/bench_aperture_photometry.py --n-sources 100000
+```
 
 ## Background (`bench_background.py`)
 

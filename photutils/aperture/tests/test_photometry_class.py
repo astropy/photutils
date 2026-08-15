@@ -1000,3 +1000,148 @@ class TestRegionInput:
         phot = AperturePhotometry(data, region)
         ref = AperturePhotometry(data, aper)
         assert_allclose(phot.flux, ref.flux)
+
+
+class TestNThreads:
+    """
+    Tests for the n_threads keyword.
+    """
+
+    @staticmethod
+    def make_inputs():
+        """
+        Build a deterministic image (with non-finite values), error,
+        mask, and positions (including off-edge positions).
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(100.0, 5.0, (120, 130))
+        data[3, 3] = np.nan
+        data[50, 50] = np.inf
+        error = np.abs(rng.normal(5.0, 0.5, data.shape)) + 0.1
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[60:65, 85:90] = True
+        positions = np.column_stack(
+            [rng.uniform(-5, data.shape[1] + 5, 57),
+             rng.uniform(-5, data.shape[0] + 5, 57)])
+        return data, error, mask, positions
+
+    @pytest.mark.parametrize('n_threads', [2, 8])
+    def test_identical_results(self, n_threads):
+        """
+        Test that multithreaded photometry gives results identical to
+        the single-threaded computation, including for off-edge
+        positions, masked pixels, and non-finite data values.
+        """
+        data, error, mask, positions = self.make_inputs()
+        aper = CircularAperture(positions, r=7.0)
+        phot1 = AperturePhotometry(data, aper, error=error, mask=mask)
+        phot2 = AperturePhotometry(data, aper, error=error, mask=mask,
+                                   n_threads=n_threads)
+        assert phot2.n_threads == n_threads
+        assert_equal(phot1.flux, phot2.flux)
+        assert_equal(phot1.flux_err, phot2.flux_err)
+        assert_equal(phot1.area, phot2.area)
+        assert_equal(phot1.flags, phot2.flags)
+
+    def test_more_threads_than_positions(self):
+        """
+        Test that n_threads larger than the number of positions gives
+        identical results.
+        """
+        data = np.ones((40, 40))
+        aper = CircularAperture([(20, 20), (10, 10), (30, 25)], r=5.0)
+        phot1 = AperturePhotometry(data, aper)
+        phot2 = AperturePhotometry(data, aper, n_threads=8)
+        assert_equal(phot1.flux, phot2.flux)
+        assert_equal(phot1.flags, phot2.flags)
+
+    def test_scalar_position(self):
+        """
+        Test that a scalar aperture position with n_threads > 1 falls
+        back to a single-chunk (serial) computation.
+        """
+        data = np.ones((40, 40))
+        aper = CircularAperture((20, 20), r=5.0)
+        phot1 = AperturePhotometry(data, aper)
+        phot2 = AperturePhotometry(data, aper, n_threads=4)
+        assert_equal(phot1.flux, phot2.flux)
+
+    def test_aperture_list(self):
+        """
+        Test multithreading with a list of input apertures.
+        """
+        data, error, mask, positions = self.make_inputs()
+        apers = [CircularAperture(positions, r=r) for r in (3.0, 7.0)]
+        phot1 = AperturePhotometry(data, apers, error=error, mask=mask)
+        phot2 = AperturePhotometry(data, apers, error=error, mask=mask,
+                                   n_threads=4)
+        assert_equal(phot1.flux, phot2.flux)
+        assert_equal(phot1.flux_err, phot2.flux_err)
+        assert_equal(phot1.area, phot2.area)
+        assert_equal(phot1.flags, phot2.flags)
+
+    def test_segmentation_masking(self):
+        """
+        Test that per-source segmentation labels are chunked together
+        with the positions.
+        """
+        data, segm = make_scene()
+        positions = [(21.0, 21.0), (28.0, 22.0), (21.0, 21.5),
+                     (28.5, 22.0), (20.5, 21.0)]
+        labels = [1, 2, 1, 2, 1]
+        aper = CircularAperture(positions, r=8.0)
+        phot1 = AperturePhotometry(data, aper, segmentation_image=segm,
+                                   labels=labels, mask_method='mask')
+        phot2 = AperturePhotometry(data, aper, segmentation_image=segm,
+                                   labels=labels, mask_method='mask',
+                                   n_threads=3)
+        assert_equal(phot1.flux, phot2.flux)
+        assert_equal(phot1.area, phot2.area)
+        assert_equal(phot1.flags, phot2.flags)
+
+    def test_mask_based_fallback(self):
+        """
+        Test that apertures that do not support the batch code path
+        give correct results with n_threads > 1 (the mask-based code
+        path stays serial).
+        """
+        data, _, _, positions = self.make_inputs()
+        aper = NoBatchCircularAperture(positions, r=7.0)
+        ref = AperturePhotometry(data, CircularAperture(positions, r=7.0))
+        phot = AperturePhotometry(data, aper, n_threads=4)
+        assert_allclose(phot.flux, ref.flux, equal_nan=True)
+
+    def test_empty_positions(self):
+        """
+        Test that an aperture with zero positions works with n_threads >
+        1 (zero chunks must fall back to the serial path).
+        """
+        data = np.ones((11, 11))
+        aper = CircularAperture(np.empty((0, 2)), r=3.0)
+        phot = AperturePhotometry(data, aper, n_threads=4)
+        assert phot.n_positions == 0
+        assert phot.flux.shape == (0,)
+
+    def test_invalid_n_threads(self):
+        """
+        Test that an error is raised if n_threads is not a positive
+        integer.
+        """
+        data = np.ones((40, 40))
+        aper = CircularAperture((20, 20), r=5.0)
+        match = 'n_threads must be a positive integer'
+        for n_threads in (0, -1, 2.5):
+            with pytest.raises(ValueError, match=match):
+                AperturePhotometry(data, aper, n_threads=n_threads)
+
+    def test_repr_and_meta(self):
+        """
+        Test that n_threads appears in the repr and in the table
+        metadata calling arguments.
+        """
+        data = np.ones((40, 40))
+        aper = CircularAperture((20, 20), r=5.0)
+        phot = AperturePhotometry(data, aper, n_threads=4)
+        assert 'n_threads=4' in repr(phot)
+        assert 'n_threads=4' in phot.to_table().meta[
+            'aperture_photometry_args']

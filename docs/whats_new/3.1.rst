@@ -19,10 +19,12 @@ smaller improvements and bug fixes, which are described in the full
 Dependency Version Updates
 ==========================
 
-Photutils 3.1 bumps the minimum required versions of several key
-dependencies to provide users with access to the latest features and
-performance improvements. The minimum required versions are now:
+Photutils 3.1 bumps the minimum required versions of Python and
+several key dependencies to provide users with access to the latest
+features and performance improvements. The minimum required versions
+are now:
 
+- Python: 3.12
 - Astropy: 6.1.7
 - SciPy: 1.15
 - Regions: 0.10
@@ -232,33 +234,45 @@ making it safe to call concurrently from multiple threads. The compiled
 extensions are also declared compatible with free-threaded CPython
 builds, so threads can run the computation truly in parallel.
 
-For example, photometry of many apertures on a large image can be
-parallelized across threads by splitting the source positions into
-chunks::
+The simplest way to use multiple threads is the new ``n_threads``
+keyword of `~photutils.aperture.AperturePhotometry` and
+`~photutils.aperture.ApertureStats`. The aperture positions are divided
+into chunks and processed concurrently, producing results identical to
+the single-threaded computation::
 
-    >>> from concurrent.futures import ThreadPoolExecutor
     >>> import numpy as np
-    >>> from astropy.table import vstack
     >>> from photutils.aperture import (AperturePhotometry,
-    ...                                 CircularAperture)
+    ...                                 ApertureStats, CircularAperture)
     >>> rng = np.random.default_rng(seed=0)
     >>> data = rng.random((4096, 4096))
     >>> positions = rng.uniform(0, 4096, (100_000, 2))
-    >>> n_workers = 10
-    >>> chunks = [CircularAperture(pos, r=5.0)
-    ...           for pos in np.array_split(positions, n_workers)]
-    >>> with ThreadPoolExecutor(max_workers=n_workers) as executor:
-    ...     results = list(executor.map(
-    ...         lambda aper: AperturePhotometry(data, aper), chunks))
-    >>> tables = [result.to_table() for result in results]
-    >>> phot_table = vstack(tables)
-    >>> phot_table['id'] = np.arange(1, len(phot_table) + 1)
+    >>> aperture = CircularAperture(positions, r=5.0)
+    >>> phot = AperturePhotometry(data, aperture, n_threads=8)
+    >>> stats = ApertureStats(data, aperture, n_threads=8)
 
-Note that the ``id`` column of each chunk's table is numbered starting
-from 1, so the last line renumbers the stacked ``id`` column to match
-the input source order. Because ``executor.map`` returns results in
-input order, the stacked table rows are in the same order as the input
-``positions``.
+The aperture sums, sigma clipping, and per-source statistic reductions
+(e.g., the sorts, order statistics, robust estimators, and moments)
+all run in the threads, so both classes scale nearly linearly with the
+thread count for large numbers of positions. For the example above,
+measured speedups are ~2x with 2 threads and ~8-10x with 12 threads,
+for the aperture fluxes and sums as well as for statistics such as the
+median, MAD standard deviation, and the biweight estimators.
+
+For more advanced workflows, independent images can also be processed
+concurrently with a thread pool, one instance per frame::
+
+    >>> from concurrent.futures import ThreadPoolExecutor
+    >>> frames = [rng.random((1024, 1024)) for _ in range(8)]
+    >>> aperture = CircularAperture(rng.uniform(0, 1024, (1000, 2)),
+    ...                             r=5.0)
+    >>> with ThreadPoolExecutor(max_workers=8) as executor:
+    ...     results = list(executor.map(
+    ...         lambda frame: AperturePhotometry(frame, aperture),
+    ...         frames))
+    >>> tables = [result.to_table() for result in results]
+
+Because ``executor.map`` returns results in input order, the tables are
+in the same order as the input ``frames``.
 
 
 Multithreaded 2D Background Estimation

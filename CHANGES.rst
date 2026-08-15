@@ -44,6 +44,12 @@ New Features
     construction, so instances are thread-safe and independent frames
     can be processed concurrently. [#2328, #2331]
 
+  - Added an ``n_threads`` keyword to ``AperturePhotometry`` and
+    ``ApertureStats`` to compute the aperture sums and statistics
+    using multiple threads. The aperture positions are divided into
+    chunks and processed concurrently, producing results identical
+    to the single-threaded computation. [#2367]
+
   - Rectangular apertures now support the ``method='exact'`` mask mode.
     Previously this fell back to a 32x subpixel approximation. [#2291]
 
@@ -117,6 +123,13 @@ New Features
     significantly speed up the background estimation for large
     images. [#2363]
 
+  - The ``Background2D`` ``n_threads`` keyword also multithreads
+    the interpolation of the low-resolution meshes to the full-size maps
+    returned by the ``background`` and ``background_rms`` properties
+    (for the 'reflect' and 'mirror' interpolation boundary modes). The
+    multithreaded maps are identical to the single-threaded maps up to
+    floating-point rounding. [#2365]
+
   - Significantly improved the performance of ``Background2D`` by
     computing the sigma clipping and the box statistics in a
     single combined pass in compiled code when the ``sigma_clip``,
@@ -139,12 +152,10 @@ New Features
     batched ``ApertureStats`` kernels instead of a Python loop over the
     apertures. [#2364]
 
-  - The ``Background2D`` ``n_threads`` keyword also multithreads
-    the interpolation of the low-resolution meshes to the full-size maps
-    returned by the ``background`` and ``background_rms`` properties
-    (for the 'reflect' and 'mirror' interpolation boundary modes). The
-    multithreaded maps are identical to the single-threaded maps up to
-    floating-point rounding. [#2365]
+  - Added an ``n_threads`` keyword to ``LocalBackground``, passed
+    through to its internal ``ApertureStats`` computation to measure
+    the local backgrounds using multiple threads. The results are
+    identical to the single-threaded computation. [#2367]
 
 - ``photutils.detection``
 

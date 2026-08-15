@@ -4,6 +4,7 @@ Tests for the stats module.
 """
 
 import sys
+from functools import cached_property
 from unittest.mock import patch
 
 import astropy.units as u
@@ -15,6 +16,7 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
+from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.circle import CircularAnnulus, CircularAperture
 from photutils.aperture.core import _enable_batch_photometry
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
@@ -71,6 +73,25 @@ def stats_data(request):
                                        error=cls.error * cls.unit,
                                        wcs=cls.wcs,
                                        sigma_clip=cls.sigclip)
+
+
+class _ExpandedBboxCircular(CircularAperture):
+    """
+    A `CircularAperture` subclass whose ``bbox`` is expanded by one
+    pixel on each side, overriding the default implementation.
+
+    Used to test that the ``ApertureStats`` bounding-box bounds honor a
+    ``bbox`` override instead of using the vectorized fast path.
+    """
+
+    @cached_property
+    def bbox(self):
+        boxes = [BoundingBox(ixmin=box.ixmin - 1, ixmax=box.ixmax + 1,
+                             iymin=box.iymin - 1, iymax=box.iymax + 1)
+                 for box in self._bbox]
+        if self.isscalar:
+            return boxes[0]
+        return boxes
 
 
 @pytest.mark.usefixtures('stats_data')
@@ -502,6 +523,17 @@ class TestIndexing(BaseApertureStatsData):
         match = '-1 is not a valid source ID number'
         with pytest.raises(ValueError, match=match):
             apstat0 = apstats.select_ids([-1, 0])
+
+    def test_fancy_slicing_list_cache(self):
+        """
+        Test fancy-index slicing of an evaluated list-valued cached
+        property (e.g., the ``bbox`` BoundingBox list), which cannot
+        be indexed directly with an array index.
+        """
+        apstats = self.apstats1.copy()
+        bbox = apstats.bbox  # cache the per-source BoundingBox list
+        sliced = apstats[[2, 1, 0]]
+        assert sliced.bbox == [bbox[2], bbox[1], bbox[0]]
 
     def test_scalar_aperture_stats(self):
         apstats = self.apstats1[0]
@@ -1307,3 +1339,337 @@ def test_sigma_clip_sorted_values_reuse(monkeypatch):
     apstats2 = ApertureStats(data, aper, sigma_clip=sigclip)
     for prop, result1 in zip(props, results1, strict=True):
         assert_allclose(result1, getattr(apstats2, prop), rtol=1e-10)
+
+
+class TestNThreads:
+    """
+    Tests for the n_threads keyword.
+    """
+
+    @staticmethod
+    def make_inputs():
+        """
+        Build a deterministic image (with non-finite values), error,
+        mask, and positions (including off-edge positions).
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(100.0, 5.0, (120, 130))
+        data[3, 3] = np.nan
+        data[50, 50] = np.inf
+        error = np.abs(rng.normal(5.0, 0.5, data.shape)) + 0.1
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[60:65, 85:90] = True
+        positions = np.column_stack(
+            [rng.uniform(-5, data.shape[1] + 5, 57),
+             rng.uniform(-5, data.shape[0] + 5, 57)])
+        return data, error, mask, positions
+
+    @staticmethod
+    def assert_stats_equal(stats1, stats2):
+        """
+        Assert that all (non-cutout) properties of two ApertureStats
+        instances are exactly equal.
+        """
+        for prop in stats1.properties:
+            value1 = getattr(stats1, prop)
+            value2 = getattr(stats2, prop)
+            if prop.endswith('cutout'):
+                for arr1, arr2 in zip(value1, value2, strict=True):
+                    arr1 = np.ma.filled(arr1, np.nan)
+                    arr2 = np.ma.filled(arr2, np.nan)
+                    assert_equal(arr1, arr2)
+            elif prop.startswith('sky_'):
+                # SkyCoord without a wcs is None or an array of None
+                if hasattr(value1, 'ra'):
+                    assert_equal(value1.ra.deg, value2.ra.deg)
+                    assert_equal(value1.dec.deg, value2.dec.deg)
+                else:
+                    assert_equal(value1, value2)
+            else:
+                assert_equal(value1, value2)
+
+    @pytest.mark.parametrize('n_threads', [2, 8])
+    @pytest.mark.parametrize('use_sigma_clip', [False, True])
+    def test_identical_results(self, n_threads, use_sigma_clip):
+        """
+        Test that multithreaded statistics are identical to the
+        single-threaded computation for every property, including for
+        off-edge positions, masked pixels, and non-finite data values.
+        """
+        data, error, mask, positions = self.make_inputs()
+        wcs = make_wcs(data.shape)
+        sigma_clip = (SigmaClip(sigma=3.0, maxiters=10) if use_sigma_clip
+                      else None)
+        aper = CircularAperture(positions, r=7.0)
+        stats1 = ApertureStats(data, aper, error=error, mask=mask,
+                               wcs=wcs, sigma_clip=sigma_clip)
+        stats2 = ApertureStats(data, aper, error=error, mask=mask,
+                               wcs=wcs, sigma_clip=sigma_clip,
+                               n_threads=n_threads)
+        assert stats2.n_threads == n_threads
+        self.assert_stats_equal(stats1, stats2)
+
+    def test_local_bkg_ddof_sum_method(self):
+        """
+        Test that the per-source local background values are chunked
+        together with the positions.
+        """
+        data, error, _, positions = self.make_inputs()
+        local_bkg = np.linspace(-1.0, 1.0, positions.shape[0])
+        aper = CircularAperture(positions, r=6.0)
+        kwargs = {'error': error, 'local_bkg': local_bkg, 'ddof': 1,
+                  'sum_method': 'center'}
+        stats1 = ApertureStats(data, aper, **kwargs)
+        stats2 = ApertureStats(data, aper, n_threads=4, **kwargs)
+        for prop in ('sum', 'sum_err', 'std', 'median', 'mean'):
+            assert_equal(getattr(stats1, prop), getattr(stats2, prop))
+
+    def test_segmentation_masking(self):
+        """
+        Test that the per-source segmentation labels are chunked
+        together with the positions.
+        """
+        data = np.ones((50, 50))
+        segm = np.zeros((50, 50), dtype=int)
+        data[18:25, 18:25] = 10.0
+        segm[18:25, 18:25] = 1
+        data[20:25, 26:32] = 100.0
+        segm[20:25, 26:32] = 2
+        positions = [(21.0, 21.0), (28.0, 22.0), (21.0, 21.5),
+                     (28.5, 22.0), (20.5, 21.0)]
+        labels = [1, 2, 1, 2, 1]
+        aper = CircularAperture(positions, r=8.0)
+        kwargs = {'segmentation_image': segm, 'labels': labels,
+                  'mask_method': 'mask'}
+        stats1 = ApertureStats(data, aper, **kwargs)
+        stats2 = ApertureStats(data, aper, n_threads=3, **kwargs)
+        for prop in ('sum', 'mean', 'median', 'flags', 'sum_flags'):
+            assert_equal(getattr(stats1, prop), getattr(stats2, prop))
+
+    def test_more_threads_than_positions(self):
+        """
+        Test that n_threads larger than the number of positions gives
+        identical results.
+        """
+        data = np.ones((40, 40))
+        aper = CircularAperture([(20, 20), (10, 10), (30, 25)], r=5.0)
+        stats1 = ApertureStats(data, aper)
+        stats2 = ApertureStats(data, aper, n_threads=8)
+        self.assert_stats_equal(stats1, stats2)
+
+    def test_scalar_aperture(self):
+        """
+        Test that a scalar aperture position with n_threads > 1 falls
+        back to a single-chunk (serial) computation.
+        """
+        data = np.ones((40, 40))
+        aper = CircularAperture((20, 20), r=5.0)
+        stats1 = ApertureStats(data, aper)
+        stats2 = ApertureStats(data, aper, n_threads=4)
+        assert_equal(stats1.sum, stats2.sum)
+        assert_equal(stats1.median, stats2.median)
+
+    def test_mask_based_fallback(self):
+        """
+        Test that apertures that do not support the batch code path
+        give correct results with n_threads > 1 (the mask-based code
+        path stays serial).
+        """
+        data, error, _, positions = self.make_inputs()
+        aper = NoBatchCircularAperture(positions, r=7.0)
+        stats = ApertureStats(data, aper, error=error, n_threads=4)
+        assert stats._batch_inputs is None
+        ref = ApertureStats(data, CircularAperture(positions, r=7.0),
+                            error=error)
+        assert_allclose(stats.sum, ref.sum, equal_nan=True)
+        assert_allclose(stats.median, ref.median, equal_nan=True)
+
+    def test_empty_positions(self):
+        """
+        Test that an aperture with zero positions works with
+        n_threads > 1 (regression test for the chunking helper, which
+        must fall back to the serial path for zero chunks).
+        """
+        data = np.ones((11, 11))
+        aper = CircularAperture(np.empty((0, 2)), r=3.0)
+        stats = ApertureStats(data, aper, n_threads=4)
+        assert stats.n_positions == 0
+        assert stats.sum.shape == (0,)
+        assert stats.median.shape == (0,)
+
+    def test_indexing_preserves_n_threads(self):
+        """
+        Test that slicing an ApertureStats instance preserves the
+        n_threads value.
+        """
+        data = np.ones((40, 40))
+        aper = CircularAperture([(20, 20), (10, 10), (30, 25)], r=5.0)
+        stats = ApertureStats(data, aper, n_threads=4)
+        assert stats[1:].n_threads == 4
+        assert stats[0].n_threads == 4
+
+    def test_invalid_n_threads(self):
+        """
+        Test that an error is raised if n_threads is not a positive
+        integer.
+        """
+        data = np.ones((40, 40))
+        aper = CircularAperture((20, 20), r=5.0)
+        match = 'n_threads must be a positive integer'
+        for n_threads in (0, -1, 2.5):
+            with pytest.raises(ValueError, match=match):
+                ApertureStats(data, aper, n_threads=n_threads)
+
+
+def test_overridden_bbox_fallback():
+    """
+    Test that the bounding-box bounds honor an aperture subclass that
+    overrides ``bbox``.
+
+    The bounds are normally computed from the aperture's vectorized
+    integer bounds without creating per-position BoundingBox objects;
+    an overridden ``bbox`` must fall back to reading the objects.
+    """
+    data = np.ones((60, 60))
+    positions = [(20.0, 20.0), (35.5, 24.2), (10.1, 40.7)]
+    stats1 = ApertureStats(data, CircularAperture(positions, r=5.0))
+    stats2 = ApertureStats(data, _ExpandedBboxCircular(positions, r=5.0))
+    assert_equal(stats2.bbox_xmin, stats1.bbox_xmin - 1)
+    assert_equal(stats2.bbox_xmax, stats1.bbox_xmax + 1)
+    assert_equal(stats2.bbox_ymin, stats1.bbox_ymin - 1)
+    assert_equal(stats2.bbox_ymax, stats1.bbox_ymax + 1)
+
+
+class TestCenterCutoutParity:
+    """
+    The center-method cutouts reconstructed from the packed gather
+    buffers must match the mask-based cutouts exactly, including the
+    masked-pixel data values.
+    """
+
+    @staticmethod
+    def make_inputs():
+        """
+        Build a deterministic image (with non-finite data and error
+        values), error, mask, and positions (including partial-overlap
+        and no-overlap positions).
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(100.0, 5.0, (80, 90))
+        data[10, 10] = np.nan
+        data[40, 41] = np.inf
+        error = np.abs(rng.normal(5.0, 0.5, data.shape)) + 0.1
+        error[12, 12] = np.inf
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[30:35, 30:35] = True
+        positions = [(5.0, 5.0), (-20.0, -20.0), (33.0, 32.0),
+                     (45.5, 41.2), (88.0, 3.0), (12.3, 11.1)]
+        return data, error, mask, positions
+
+    @staticmethod
+    def assert_cutout_lists_equal(fast_list, slow_list):
+        """
+        Assert two per-source cutout lists are exactly equal,
+        including the data values under the mask.
+        """
+        for fast, slow in zip(fast_list, slow_list, strict=True):
+            assert_equal(np.ma.getdata(fast), np.ma.getdata(slow))
+            assert_equal(np.ma.getmaskarray(fast),
+                         np.ma.getmaskarray(slow))
+
+    @staticmethod
+    def get_cutouts(stats):
+        """
+        Return the center-method cutout lists of an instance.
+        """
+        return {'data': stats.data_cutout,
+                'variance': stats._variance_cutout_center,
+                'mask': stats._mask_cutout_center,
+                'weight': stats._weight_cutout_center}
+
+    @pytest.mark.parametrize('use_sigma_clip', [False, True])
+    @pytest.mark.parametrize('use_error', [False, True])
+    def test_matches_mask_path(self, use_sigma_clip, use_error):
+        """
+        Test that the buffer-reconstructed cutouts equal the
+        mask-based cutouts, including non-finite pixels, partial
+        overlaps, and the no-overlap sentinel arrays.
+        """
+        data, error, mask, positions = self.make_inputs()
+        sigma_clip = (SigmaClip(sigma=2.0, maxiters=10) if use_sigma_clip
+                      else None)
+        kwargs = {'error': error if use_error else None, 'mask': mask,
+                  'sigma_clip': sigma_clip,
+                  'local_bkg': np.linspace(-1.0, 1.0, len(positions))}
+        aperture = CircularAperture(positions, r=6.0)
+
+        fast = ApertureStats(data, aperture, **kwargs)
+        assert fast._fast_cutouts_center is not None
+        fast_cutouts = self.get_cutouts(fast)
+
+        with patch.object(ApertureStats, '_batch_inputs',
+                          property(lambda _: None)):
+            slow = ApertureStats(data, aperture, **kwargs)
+            assert slow._fast_cutouts_center is None
+            # The mask-based path multiplies non-finite data values by
+            # the boolean masks (NaN * 0), which emits a numpy
+            # RuntimeWarning
+            with np.errstate(invalid='ignore'):
+                slow_cutouts = self.get_cutouts(slow)
+
+        for key in fast_cutouts:
+            if not use_error and key == 'variance':
+                assert all(value is None for value in fast_cutouts[key])
+                assert all(value is None for value in slow_cutouts[key])
+                continue
+            self.assert_cutout_lists_equal(fast_cutouts[key],
+                                           slow_cutouts[key])
+
+    @pytest.mark.parametrize('mask_method', ['mask', 'source_only'])
+    def test_segmentation_masking(self, mask_method):
+        """
+        Test that segmentation-excluded pixels land in the cutout mask
+        identically to the mask-based path.
+        """
+        data = np.ones((50, 50))
+        segm = np.zeros((50, 50), dtype=int)
+        data[18:25, 18:25] = 10.0
+        segm[18:25, 18:25] = 1
+        data[20:25, 26:32] = 100.0
+        segm[20:25, 26:32] = 2
+        aperture = CircularAperture([(21.0, 21.0), (28.0, 22.0)], r=8.0)
+        kwargs = {'segmentation_image': segm, 'labels': [1, 2],
+                  'mask_method': mask_method}
+
+        fast = ApertureStats(data, aperture, **kwargs)
+        assert fast._fast_cutouts_center is not None
+        fast_data = fast.data_cutout
+
+        with patch.object(ApertureStats, '_batch_inputs',
+                          property(lambda _: None)):
+            slow = ApertureStats(data, aperture, **kwargs)
+            slow_data = slow.data_cutout
+
+        self.assert_cutout_lists_equal(fast_data, slow_data)
+
+    def test_correct_mode_fallback(self):
+        """
+        Test that mask_method='correct' uses the mask-based cutout
+        path (the mirrored error values are not recoverable from the
+        packed buffers) and still produces the corrected cutouts.
+        """
+        data = np.ones((50, 50))
+        segm = np.zeros((50, 50), dtype=int)
+        data[18:25, 18:25] = 10.0
+        segm[18:25, 18:25] = 1
+        data[20:25, 26:32] = 100.0
+        segm[20:25, 26:32] = 2
+        aperture = CircularAperture([(21.0, 21.0)], r=8.0)
+        stats = ApertureStats(data, aperture, segmentation_image=segm,
+                              labels=[1], mask_method='correct')
+        assert stats._fast_gather is not None
+        assert stats._fast_cutouts_center is None
+        # The bright neighbor pixel values must not leak into the
+        # cutout (they are replaced by their mirrored values)
+        cutout = stats.data_cutout[0]
+        assert np.ma.getdata(cutout).max() <= 10.0
