@@ -7,12 +7,11 @@ image.
 import warnings
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
-from functools import partial
+from functools import cached_property, partial
 from multiprocessing import cpu_count, get_context
 
 import numpy as np
 from astropy.units import Quantity
-from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import label as ndi_label
 from scipy.ndimage import sum_labels
@@ -387,7 +386,7 @@ class _SingleSourceDeblender:
         self.source_sum = nansum(data_values)
         self.warnings = {}
 
-    @lazyproperty
+    @cached_property
     def linear_thresholds(self):
         """
         Linearly spaced thresholds between the source minimum and
@@ -398,7 +397,7 @@ class _SingleSourceDeblender:
         """
         return np.linspace(self.source_min, self.source_max, self.n_levels + 2)
 
-    @lazyproperty
+    @cached_property
     def normalized_thresholds(self):
         """
         Normalized thresholds (from 0 to 1) between the source minimum

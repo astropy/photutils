@@ -3,11 +3,12 @@
 Tools for performing aperture photometry.
 """
 
+from functools import cached_property
+
 import astropy.units as u
 import numpy as np
 from astropy.nddata import NDData
 from astropy.table import QTable
-from astropy.utils import lazyproperty
 
 from photutils.aperture._common import (SCALAR_COLLAPSE_TYPES,
                                         collapse_scalar_value, unpack_nddata,
@@ -149,10 +150,10 @@ class AperturePhotometry:
     flag (see `~photutils.aperture.decode_aperture_flags`).
 
     This class should be treated as immutable after
-    initialization (aside from the internal compute-once
-    `~astropy.utils.decorators.lazyproperty` cache), so a single
-    instance can be safely shared across threads. Do not reassign its
-    attributes after construction.
+    initialization (aside from the internal lazily-computed
+    `functools.cached_property` cache), so a single instance can be
+    safely shared across threads. Do not reassign its attributes after
+    construction.
 
     One caveat applies to apertures that are not supported by the
     compiled batch code path (e.g., a `~photutils.aperture.Aperture`
@@ -310,7 +311,7 @@ class AperturePhotometry:
         """
         return object.__getattribute__(self, name)
 
-    @lazyproperty
+    @cached_property
     def isscalar(self):
         """
         Whether the instance is scalar (i.e., a single aperture
@@ -318,7 +319,7 @@ class AperturePhotometry:
         """
         return self._pixel_apertures[0].isscalar
 
-    @lazyproperty
+    @cached_property
     def _photometry_results(self):
         """
         The per-aperture photometry result objects, one for each input
@@ -332,42 +333,42 @@ class AperturePhotometry:
             mask_nonfinite=True)
             for aper in self._pixel_apertures]
 
-    @lazyproperty
+    @cached_property
     def _positions(self):
         """
         The aperture positions in pixels, always as a 2D array.
         """
         return np.atleast_2d(self._pixel_apertures[0].positions)
 
-    @lazyproperty
+    @cached_property
     def n_positions(self):
         """
         The number of aperture positions.
         """
         return self._positions.shape[0]
 
-    @lazyproperty
+    @cached_property
     def id(self):
         """
         The aperture identification number(s).
         """
         return np.arange(self.n_positions) + 1
 
-    @lazyproperty
+    @cached_property
     def x_center(self):
         """
         The ``x`` pixel coordinate(s) of the aperture center(s).
         """
         return self._positions[:, 0]
 
-    @lazyproperty
+    @cached_property
     def y_center(self):
         """
         The ``y`` pixel coordinate(s) of the aperture center(s).
         """
         return self._positions[:, 1]
 
-    @lazyproperty
+    @cached_property
     def sky_center(self):
         """
         The sky coordinates of the aperture center(s), or `None` if no
@@ -395,7 +396,7 @@ class AperturePhotometry:
             return values[0]
         return np.stack(values, axis=1)
 
-    @lazyproperty
+    @cached_property
     def flux(self):
         """
         The sum of the (weighted) values within the aperture(s).
@@ -408,7 +409,7 @@ class AperturePhotometry:
             values <<= self._data_unit
         return values
 
-    @lazyproperty
+    @cached_property
     def flux_err(self):
         """
         The uncertainty in the `flux` values.
@@ -422,7 +423,7 @@ class AperturePhotometry:
             values <<= self._data_unit
         return values
 
-    @lazyproperty
+    @cached_property
     def area(self):
         """
         The total unmasked overlap area of the aperture(s) (in
@@ -439,7 +440,7 @@ class AperturePhotometry:
         stacked = np.stack([value.value for value in values], axis=1)
         return u.Quantity(stacked, u.pix**2)
 
-    @lazyproperty
+    @cached_property
     def flags(self):
         """
         The bitwise quality flags for the aperture(s).

@@ -931,7 +931,7 @@ class TestReprAndImmutability:
 
     def test_no_new_attributes_after_init(self, data):
         """
-        Only lazyproperty cache entries may appear after ``__init__``,
+        Only cached-property cache entries may appear after ``__init__``,
         which is required for the instance to be thread-safe.
         """
         aper = CircularAperture(((150, 25), (90, 60)), 8)
@@ -955,8 +955,10 @@ class TestReprAndImmutability:
     def test_concurrent_access(self, data):
         """
         Test that a single shared AperturePhotometry instance can be
-        read concurrently. The lazyproperty caches fill under contention
-        and every thread sees identical values.
+        read concurrently.
+
+        The cached-property caches fill under contention and every
+        thread sees identical values.
         """
         aper = CircularAperture(((150, 25), (90, 60)), 8)
         phot = AperturePhotometry(data, aper, error=np.ones_like(data))

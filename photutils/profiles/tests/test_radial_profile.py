@@ -533,7 +533,7 @@ class TestRadialProfile:
         assert mfit.gamma.value > 0
         assert mfit.alpha.value >= 1
 
-    def test_moffat_lazyproperty(self, profile_data):
+    def test_moffat_cached_property(self, profile_data):
         """
         Test that ``moffat_fit``, ``moffat_profile``, and
         ``moffat_fwhm`` are lazily computed and cached.

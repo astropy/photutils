@@ -384,7 +384,7 @@ class TestApertureParameterMutation:
         """
         theta = 0.7
         aper = aperture_class(SCALAR_POS_20, theta=0.0, **params)
-        # Cache the lazyproperties derived from the original theta
+        # Cache the cached properties derived from the original theta
         aper.to_mask()
         aper.theta = theta
 
@@ -432,7 +432,7 @@ class TestApertureParameterMutation:
         theta = 35.0 * u.deg
         position = SkyCoord(ra=10.0, dec=30.0, unit='deg')
         aper = aperture_class(position, theta=0.0 * u.deg, **params)
-        # Cache the lazyproperties derived from the original theta
+        # Cache the cached properties derived from the original theta
         aper.to_pixel(tan_wcs)
         aper.theta = theta
 

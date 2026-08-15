@@ -4,12 +4,12 @@ Tools for generating radial profiles.
 """
 
 import warnings
+from functools import cached_property
 
 import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian1D, Moffat1D
 from astropy.stats import gaussian_sigma_to_fwhm
-from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture.core import _update_method_subpixels_docstring
@@ -283,7 +283,7 @@ class RadialProfile(ProfileBase):
                        'gaussian_profile', 'gaussian_fwhm', 'moffat_fit',
                        'moffat_profile', 'moffat_fwhm')
 
-    @lazyproperty
+    @cached_property
     def radius(self):
         """
         The profile radius (bin centers) in pixels as a 1D
@@ -299,7 +299,7 @@ class RadialProfile(ProfileBase):
         # Define the radial bin centers from the radial bin edges
         return (self.radii[:-1] + self.radii[1:]) / 2
 
-    @lazyproperty
+    @cached_property
     def apertures(self):
         """
         A list of the circular annulus apertures used to measure the
@@ -325,21 +325,21 @@ class RadialProfile(ProfileBase):
 
         return apertures
 
-    @lazyproperty
+    @cached_property
     def _flux(self):
         """
         The flux in a circular annulus.
         """
         return np.diff(self._photometry[0])
 
-    @lazyproperty
+    @cached_property
     def _flux_err(self):
         """
         The flux error in a circular annulus.
         """
         return np.sqrt(np.diff(self._photometry[1] ** 2))
 
-    @lazyproperty
+    @cached_property
     def area(self):
         """
         The unmasked area in each circular annulus (or aperture) as a
@@ -347,7 +347,7 @@ class RadialProfile(ProfileBase):
         """
         return np.diff(self._photometry[2])
 
-    @lazyproperty
+    @cached_property
     def profile(self):
         """
         The radial profile as a 1D `~numpy.ndarray`.
@@ -357,7 +357,7 @@ class RadialProfile(ProfileBase):
             warnings.simplefilter('ignore', RuntimeWarning)
             return self._flux / self.area
 
-    @lazyproperty
+    @cached_property
     def profile_error(self):
         """
         The radial profile errors as a 1D `~numpy.ndarray`.
@@ -373,11 +373,11 @@ class RadialProfile(ProfileBase):
             warnings.simplefilter('ignore', RuntimeWarning)
             return self._flux_err / self.area
 
-    @lazyproperty
+    @cached_property
     def _profile_nanmask(self):
         return np.isfinite(self.profile)
 
-    @lazyproperty
+    @cached_property
     def gaussian_fit(self):
         """
         The fitted 1D Gaussian to the radial profile as a
@@ -418,7 +418,7 @@ class RadialProfile(ProfileBase):
 
         return gaussian_fit
 
-    @lazyproperty
+    @cached_property
     def gaussian_profile(self):
         """
         The fitted 1D Gaussian profile to the radial profile as a 1D
@@ -434,7 +434,7 @@ class RadialProfile(ProfileBase):
             return None
         return self.gaussian_fit(self.radius)
 
-    @lazyproperty
+    @cached_property
     def gaussian_fwhm(self):
         """
         The full-width at half-maximum (FWHM) in pixels of the 1D
@@ -450,7 +450,7 @@ class RadialProfile(ProfileBase):
             return None
         return self.gaussian_fit.stddev.value * gaussian_sigma_to_fwhm
 
-    @lazyproperty
+    @cached_property
     def moffat_fit(self):
         """
         The fitted 1D Moffat to the radial profile as a
@@ -491,7 +491,7 @@ class RadialProfile(ProfileBase):
         fitter = TRFLSQFitter()
         return fitter(m_init, radius, profile)
 
-    @lazyproperty
+    @cached_property
     def moffat_profile(self):
         """
         The fitted 1D Moffat profile to the radial profile as a 1D
@@ -507,7 +507,7 @@ class RadialProfile(ProfileBase):
             return None
         return self.moffat_fit(self.radius)
 
-    @lazyproperty
+    @cached_property
     def moffat_fwhm(self):
         """
         The full-width at half-maximum (FWHM) in pixels of the 1D Moffat
@@ -523,7 +523,7 @@ class RadialProfile(ProfileBase):
             return None
         return self.moffat_fit.fwhm
 
-    @lazyproperty
+    @cached_property
     def _data_profile(self):
         """
         The raw data profile returned as 1D arrays (`~numpy.ndarray`) of
@@ -560,14 +560,14 @@ class RadialProfile(ProfileBase):
 
         return radii, data_values
 
-    @lazyproperty
+    @cached_property
     def data_radius(self):
         """
         The radii of the raw data profile as a 1D `~numpy.ndarray`.
         """
         return self._data_profile[0]
 
-    @lazyproperty
+    @cached_property
     def data_profile(self):
         """
         The raw data profile as a 1D `~numpy.ndarray`.
@@ -576,7 +576,7 @@ class RadialProfile(ProfileBase):
 
     def _invalidate_fit_cache(self):
         """
-        Remove cached Gaussian and Moffat fit lazy properties so they
+        Remove the cached Gaussian and Moffat fit properties so they
         are recomputed on next access using the current profile.
         """
         for key in self._fit_properties:

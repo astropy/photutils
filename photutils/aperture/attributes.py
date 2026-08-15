@@ -47,7 +47,7 @@ class ApertureAttribute:
         self._validate_ordered_pairs(instance, value)
         # No need to reset if not already in the instance dict
         if self.name in instance.__dict__:
-            self._reset_lazyproperties(instance)
+            self._reset_cached_properties(instance)
         instance.__dict__[self.name] = value
 
     def _validate_ordered_pairs(self, instance, value):
@@ -76,11 +76,11 @@ class ApertureAttribute:
                     msg = f'{outer!r} must be greater than {inner!r}'
                     raise ValueError(msg)
 
-    def _reset_lazyproperties(self, instance):
-        # Reset lazyproperties (if they exist) for aperture parameter
+    def _reset_cached_properties(self, instance):
+        # Reset cached properties (if they exist) for aperture parameter
         # changes
         try:
-            for key in instance._lazyproperties:
+            for key in instance._cached_properties:
                 instance.__dict__.pop(key, None)
         except AttributeError:
             pass
@@ -111,7 +111,7 @@ class PixelPositions(ApertureAttribute):
         value = self._validate(value)  # np.ndarray
         # No need to reset if not already in the instance dict
         if self.name in instance.__dict__:
-            self._reset_lazyproperties(instance)
+            self._reset_cached_properties(instance)
         instance.__dict__[self.name] = value
 
     def _validate(self, value):
@@ -224,7 +224,7 @@ class ScalarAngleOrValue(ApertureAttribute):
         self._validate(value)
         # No need to reset if not already in the instance dict
         if self.name in instance.__dict__:
-            self._reset_lazyproperties(instance)
+            self._reset_cached_properties(instance)
 
         # If theta is not a Quantity, it is assumed to be in radians
         if not isinstance(value, u.Quantity):

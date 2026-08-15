@@ -4,6 +4,8 @@
 General
 ^^^^^^^
 
+- The minimum required Python is now 3.12. [#2366]
+
 - The minimum required astropy is now 6.1.7. [#2211]
 
 - The minimum required SciPy is now 1.15.0. [#2365]
@@ -23,6 +25,10 @@ General
 - Added serialization to ASDF for all PSF models. [#2335]
 
 - Added serialization to ASDF for all apertures. [#2341]
+
+- All lazily-computed class attributes now use
+  ``functools.cached_property`` instead of the astropy ``lazyproperty``
+  decorator. [#2366]
 
 New Features
 ^^^^^^^^^^^^

@@ -5,11 +5,11 @@ coordinates.
 """
 
 import math
+from functools import cached_property
 
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import Angle
-from astropy.utils import lazyproperty
 
 from photutils.aperture._batch_photometry import (SHAPE_ELLIPSE,
                                                   SHAPE_ELLIPTICAL_ANNULUS)
@@ -246,7 +246,7 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
         self.b = b
         self.theta = theta
 
-    @lazyproperty
+    @cached_property
     def _xy_extents(self):
         """
         The half of the bounding box extents of the ellipse in the x and
@@ -257,7 +257,7 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
     def _batch_shape_params(self):
         return SHAPE_ELLIPSE, (self.a, self.b, self._theta_rad)
 
-    @lazyproperty
+    @cached_property
     def area(self):
         """
         The exact geometric area of the aperture shape.
@@ -467,7 +467,7 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
 
         self.theta = theta
 
-    @lazyproperty
+    @cached_property
     def _xy_extents(self):
         """
         The half of the bounding box extents of the outer ellipse in the
@@ -479,7 +479,7 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
         return SHAPE_ELLIPTICAL_ANNULUS, (self.a_in, self.b_in, self.a_out,
                                           self.b_out, self._theta_rad)
 
-    @lazyproperty
+    @cached_property
     def area(self):
         """
         The exact geometric area of the aperture shape.

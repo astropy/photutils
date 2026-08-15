@@ -5,11 +5,11 @@ Tests for the core module.
 
 import sys
 from collections import defaultdict
+from functools import cached_property
 from unittest.mock import PropertyMock, patch
 
 import numpy as np
 import pytest
-from astropy.utils import lazyproperty
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
@@ -80,7 +80,7 @@ class TestSegmentationImage:
     def test_labels_via_raw_slices(self):
         """
         Test that labels can be derived from _raw_slices when that
-        lazyproperty is already cached.
+        cached property is already cached.
         """
         segm = SegmentationImage(self.data.copy())
         # Force _raw_slices to be cached
@@ -283,18 +283,18 @@ class TestSegmentationImage:
 
     def test_shape(self):
         """
-        Test that the shape lazyproperty returns the correct shape.
+        Test that the shape cached property returns the correct shape.
         """
         assert self.segm.shape == (6, 6)
 
-    def test_lazyproperties_class_cache(self):
+    def test_cached_properties_class_cache(self):
         """
-        Test that _lazyproperties is cached on the class and shared
+        Test that _cached_properties is cached on the class and shared
         across instances.
         """
         segm2 = SegmentationImage(self.data.copy())
-        result1 = self.segm._lazyproperties
-        result2 = segm2._lazyproperties
+        result1 = self.segm._cached_properties
+        result2 = segm2._cached_properties
         assert result1 is result2
 
     def test_labels(self):
@@ -990,7 +990,7 @@ class TestSegmentationImage:
 
 
 class CustomSegm(SegmentationImage):
-    @lazyproperty
+    @cached_property
     def value(self):
         return np.median(self.data)
 

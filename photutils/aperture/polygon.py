@@ -3,10 +3,11 @@
 Polygon apertures in both pixel and sky coordinates.
 """
 
+from functools import cached_property
+
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
-from astropy.utils import lazyproperty
 
 from photutils.aperture._batch_photometry import SHAPE_POLYGON
 from photutils.aperture.attributes import (ApertureAttribute, PixelPositions,
@@ -208,7 +209,7 @@ class PixelVertexOffsets(ApertureAttribute):
     def __set__(self, instance, value):
         value = self._validate(value)
         if self.name in instance.__dict__:
-            self._reset_lazyproperties(instance)
+            self._reset_cached_properties(instance)
         instance.__dict__[self.name] = value
 
     def _validate(self, value):
@@ -238,7 +239,7 @@ class SkyVertexOffsets(ApertureAttribute):
     def __set__(self, instance, value):
         value = self._validate(value)
         if self.name in instance.__dict__:
-            self._reset_lazyproperties(instance)
+            self._reset_cached_properties(instance)
         instance.__dict__[self.name] = value
 
     def _validate(self, value):
@@ -718,7 +719,7 @@ class PolygonAperture(PixelAperture):
 
         return cls(positions, offsets)
 
-    @lazyproperty
+    @cached_property
     def vertices(self):
         """
         The absolute pixel ``(x, y)`` vertices of the polygon at each
@@ -739,7 +740,7 @@ class PolygonAperture(PixelAperture):
         # positions shape: (n_positions, 2); result: (n_positions, n_v, 2)
         return self.positions[:, np.newaxis, :] + offsets[np.newaxis, :, :]
 
-    @lazyproperty
+    @cached_property
     def _xy_bounds(self):
         """
         The ``(xmin, xmax, ymin, ymax)`` offsets of the polygon's
@@ -749,7 +750,7 @@ class PolygonAperture(PixelAperture):
         return (float(offsets[:, 0].min()), float(offsets[:, 0].max()),
                 float(offsets[:, 1].min()), float(offsets[:, 1].max()))
 
-    @lazyproperty
+    @cached_property
     def _xy_extents(self):
         """
         Half the extents of the polygon's axis-aligned bounding box.
@@ -757,7 +758,7 @@ class PolygonAperture(PixelAperture):
         xmin, xmax, ymin, ymax = self._xy_bounds
         return 0.5 * (xmax - xmin), 0.5 * (ymax - ymin)
 
-    @lazyproperty
+    @cached_property
     def _xy_bbox_offset(self):
         """
         The (x, y) offset of the bounding box center from ``positions``.
@@ -775,14 +776,14 @@ class PolygonAperture(PixelAperture):
         # the batch Cython photometry driver.
         return SHAPE_POLYGON, tuple(self.vertex_offsets.ravel())
 
-    @lazyproperty
+    @cached_property
     def area(self):
         """
         The exact geometric area of the aperture shape.
         """
         return abs(_signed_polygon_area(self.vertex_offsets))
 
-    @lazyproperty
+    @cached_property
     def perimeter(self):
         """
         The perimeter of the polygon in pixels.
@@ -794,14 +795,14 @@ class PolygonAperture(PixelAperture):
         diff = np.roll(offsets, -1, axis=0) - offsets
         return float(np.sum(np.hypot(diff[:, 0], diff[:, 1])))
 
-    @lazyproperty
+    @cached_property
     def n_vertices(self):
         """
         The number of vertices of the polygon.
         """
         return int(self.vertex_offsets.shape[0])
 
-    @lazyproperty
+    @cached_property
     def _regular_geometry(self):
         """
         Helper that computes the regular-polygon geometric properties
@@ -809,7 +810,7 @@ class PolygonAperture(PixelAperture):
         """
         return _RegularPolygonGeometry(self.vertex_offsets)
 
-    @lazyproperty
+    @cached_property
     def is_regular(self):
         """
         `True` if the polygon is regular (equal-length sides and equal
@@ -824,7 +825,7 @@ class PolygonAperture(PixelAperture):
                    'aperture')
             raise ValueError(msg)
 
-    @lazyproperty
+    @cached_property
     def outer_radius(self):
         """
         The outer (circumscribed-circle) radius of the regular polygon
@@ -839,7 +840,7 @@ class PolygonAperture(PixelAperture):
         self._check_regular('outer_radius')
         return self._regular_geometry.outer_radius
 
-    @lazyproperty
+    @cached_property
     def inner_radius(self):
         """
         The inner (inscribed-circle) radius of the regular polygon in
@@ -855,7 +856,7 @@ class PolygonAperture(PixelAperture):
         self._check_regular('inner_radius')
         return self._regular_geometry.inner_radius
 
-    @lazyproperty
+    @cached_property
     def side_length(self):
         """
         The side length of the regular polygon, in pixels.
@@ -866,7 +867,7 @@ class PolygonAperture(PixelAperture):
         self._check_regular('side_length')
         return self._regular_geometry.side_length
 
-    @lazyproperty
+    @cached_property
     def interior_angle(self):
         """
         The interior angle of the regular polygon as an angular
@@ -878,7 +879,7 @@ class PolygonAperture(PixelAperture):
         self._check_regular('interior_angle')
         return self._regular_geometry.interior_angle
 
-    @lazyproperty
+    @cached_property
     def exterior_angle(self):
         """
         The exterior angle of the regular polygon as an angular
@@ -890,7 +891,7 @@ class PolygonAperture(PixelAperture):
         self._check_regular('exterior_angle')
         return self._regular_geometry.exterior_angle
 
-    @lazyproperty
+    @cached_property
     def theta(self):
         """
         The rotation angle of the regular polygon as an angular
@@ -1191,14 +1192,14 @@ class SkyPolygonAperture(SkyAperture):
 
         return cls(positions=positions, vertex_offsets=offsets)
 
-    @lazyproperty
+    @cached_property
     def n_vertices(self):
         """
         The number of vertices of the polygon.
         """
         return int(self.vertex_offsets.shape[0])
 
-    @lazyproperty
+    @cached_property
     def perimeter(self):
         """
         The angular perimeter of the polygon as a
@@ -1212,7 +1213,7 @@ class SkyPolygonAperture(SkyAperture):
         total = float(np.sum(np.hypot(diff[:, 0], diff[:, 1])))
         return total * u.arcsec
 
-    @lazyproperty
+    @cached_property
     def _regular_geometry(self):
         """
         Helper that computes the regular-polygon geometric properties
@@ -1221,7 +1222,7 @@ class SkyPolygonAperture(SkyAperture):
         return _RegularPolygonGeometry(
             self.vertex_offsets.to_value(u.arcsec))
 
-    @lazyproperty
+    @cached_property
     def is_regular(self):
         """
         `True` if the polygon is regular (equal-length sides and equal
@@ -1236,7 +1237,7 @@ class SkyPolygonAperture(SkyAperture):
                    'aperture')
             raise ValueError(msg)
 
-    @lazyproperty
+    @cached_property
     def outer_radius(self):
         """
         The angular outer (circumscribed-circle) radius of the regular
@@ -1252,7 +1253,7 @@ class SkyPolygonAperture(SkyAperture):
         self._check_regular('outer_radius')
         return self._regular_geometry.outer_radius * u.arcsec
 
-    @lazyproperty
+    @cached_property
     def inner_radius(self):
         """
         The angular inner (inscribed-circle) radius of the regular
@@ -1268,7 +1269,7 @@ class SkyPolygonAperture(SkyAperture):
         self._check_regular('inner_radius')
         return self._regular_geometry.inner_radius * u.arcsec
 
-    @lazyproperty
+    @cached_property
     def side_length(self):
         """
         The angular side length of the regular polygon as a
@@ -1280,7 +1281,7 @@ class SkyPolygonAperture(SkyAperture):
         self._check_regular('side_length')
         return self._regular_geometry.side_length * u.arcsec
 
-    @lazyproperty
+    @cached_property
     def interior_angle(self):
         """
         The interior angle of the regular polygon as an angular
@@ -1292,7 +1293,7 @@ class SkyPolygonAperture(SkyAperture):
         self._check_regular('interior_angle')
         return self._regular_geometry.interior_angle
 
-    @lazyproperty
+    @cached_property
     def exterior_angle(self):
         """
         The exterior angle of the regular polygon as an angular
@@ -1304,7 +1305,7 @@ class SkyPolygonAperture(SkyAperture):
         self._check_regular('exterior_angle')
         return self._regular_geometry.exterior_angle
 
-    @lazyproperty
+    @cached_property
     def theta(self):
         """
         The rotation angle of the regular polygon as an angular
@@ -1331,7 +1332,7 @@ class SkyPolygonAperture(SkyAperture):
         self._check_regular('theta')
         return self._regular_geometry.theta
 
-    @lazyproperty
+    @cached_property
     def vertices(self):
         """
         The absolute sky vertices of the polygon at each aperture

@@ -3,8 +3,9 @@
 Tools for generating curves of growth.
 """
 
+from functools import cached_property
+
 import numpy as np
-from astropy.utils import lazyproperty
 from scipy.interpolate import PchipInterpolator
 
 from photutils.aperture.core import _update_method_subpixels_docstring
@@ -219,7 +220,7 @@ class CurveOfGrowth(ProfileBase):
         super().__init__(data, xycen, radii, error=error, mask=mask,
                          method=method, subpixels=subpixels)
 
-    @lazyproperty
+    @cached_property
     def radius(self):
         """
         The profile radius in pixels as a 1D `~numpy.ndarray`.
@@ -233,7 +234,7 @@ class CurveOfGrowth(ProfileBase):
         """
         return self.radii
 
-    @lazyproperty
+    @cached_property
     def apertures(self):
         """
         A list of `~photutils.aperture.CircularAperture` objects used to
@@ -241,7 +242,7 @@ class CurveOfGrowth(ProfileBase):
         """
         return self._circular_apertures
 
-    @lazyproperty
+    @cached_property
     def _photometry(self):
         """
         The aperture fluxes, flux errors, and areas as a function of
@@ -249,14 +250,14 @@ class CurveOfGrowth(ProfileBase):
         """
         return self._compute_photometry(self.apertures)
 
-    @lazyproperty
+    @cached_property
     def profile(self):
         """
         The curve-of-growth profile as a 1D `~numpy.ndarray`.
         """
         return self._photometry[0]
 
-    @lazyproperty
+    @cached_property
     def profile_error(self):
         """
         The curve-of-growth profile errors as a 1D `~numpy.ndarray`.
@@ -266,7 +267,7 @@ class CurveOfGrowth(ProfileBase):
         """
         return self._photometry[1]
 
-    @lazyproperty
+    @cached_property
     def area(self):
         """
         The unmasked area in each circular aperture as a function of
@@ -513,7 +514,7 @@ class EnsquaredCurveOfGrowth(ProfileBase):
                 f'n_half_sizes={n_half_sizes}, '
                 f'normalized={normalized})')
 
-    @lazyproperty
+    @cached_property
     def half_size(self):
         """
         The profile half-sizes (half side lengths) in pixels as a 1D
@@ -529,7 +530,7 @@ class EnsquaredCurveOfGrowth(ProfileBase):
         """
         return self.half_sizes
 
-    @lazyproperty
+    @cached_property
     def radius(self):
         """
         The profile half-sizes (half side lengths) in pixels as a 1D
@@ -539,7 +540,7 @@ class EnsquaredCurveOfGrowth(ProfileBase):
         """
         return self.half_sizes
 
-    @lazyproperty
+    @cached_property
     def apertures(self):
         """
         A list of `~photutils.aperture.RectangularAperture` objects used
@@ -550,7 +551,7 @@ class EnsquaredCurveOfGrowth(ProfileBase):
         return [RectangularAperture(self.xycen, 2 * hs, 2 * hs)
                 for hs in self.half_sizes]
 
-    @lazyproperty
+    @cached_property
     def _photometry(self):
         """
         The aperture fluxes, flux errors, and areas as a function of
@@ -558,14 +559,14 @@ class EnsquaredCurveOfGrowth(ProfileBase):
         """
         return self._compute_photometry(self.apertures)
 
-    @lazyproperty
+    @cached_property
     def profile(self):
         """
         The ensquared curve-of-growth profile as a 1D `~numpy.ndarray`.
         """
         return self._photometry[0]
 
-    @lazyproperty
+    @cached_property
     def profile_error(self):
         """
         The ensquared curve-of-growth profile errors as a 1D
@@ -576,7 +577,7 @@ class EnsquaredCurveOfGrowth(ProfileBase):
         """
         return self._photometry[1]
 
-    @lazyproperty
+    @cached_property
     def area(self):
         """
         The unmasked area in each square aperture as a function of size
@@ -845,7 +846,7 @@ class EllipticalCurveOfGrowth(ProfileBase):
         super().__init__(data, xycen, radii, error=error, mask=mask,
                          method=method, subpixels=subpixels)
 
-    @lazyproperty
+    @cached_property
     def radius(self):
         """
         The profile semimajor-axis lengths in pixels as a 1D
@@ -859,7 +860,7 @@ class EllipticalCurveOfGrowth(ProfileBase):
         """
         return self.radii
 
-    @lazyproperty
+    @cached_property
     def apertures(self):
         """
         A list of `~photutils.aperture.EllipticalAperture` objects used
@@ -871,7 +872,7 @@ class EllipticalCurveOfGrowth(ProfileBase):
                                    theta=self.theta)
                 for a in self.radii]
 
-    @lazyproperty
+    @cached_property
     def _photometry(self):
         """
         The aperture fluxes, flux errors, and areas as a function of
@@ -879,14 +880,14 @@ class EllipticalCurveOfGrowth(ProfileBase):
         """
         return self._compute_photometry(self.apertures)
 
-    @lazyproperty
+    @cached_property
     def profile(self):
         """
         The elliptical curve-of-growth profile as a 1D `~numpy.ndarray`.
         """
         return self._photometry[0]
 
-    @lazyproperty
+    @cached_property
     def profile_error(self):
         """
         The elliptical curve-of-growth profile errors as a 1D
@@ -897,7 +898,7 @@ class EllipticalCurveOfGrowth(ProfileBase):
         """
         return self._photometry[1]
 
-    @lazyproperty
+    @cached_property
     def area(self):
         """
         The unmasked area in each elliptical aperture as a function of

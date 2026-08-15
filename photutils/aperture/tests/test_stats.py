@@ -81,7 +81,7 @@ class BaseApertureStatsData:
 
     The ``stats_data`` fixture builds the objects once per test class
     rather than at import time, so collection stays cheap and each test
-    class gets its own instances (no lazyproperty-cache state is shared
+    class gets its own instances (no cached-property state is shared
     across classes).
     """
 
@@ -176,14 +176,14 @@ class TestProperties(BaseApertureStatsData):
         assert apstats.x_centroid == 12.0
         assert apstats.y_centroid == 12.0
 
-    def test_lazyproperties_class_cache(self):
+    def test_cached_properties_class_cache(self):
         """
-        Test that _lazyproperties is cached on the class and shared
+        Test that _cached_properties is cached on the class and shared
         across instances.
         """
         apstats2 = ApertureStats(self.data, self.aperture)
-        result1 = self.apstats1._lazyproperties
-        result2 = apstats2._lazyproperties
+        result1 = self.apstats1._cached_properties
+        result2 = apstats2._cached_properties
         assert result1 is result2
 
     def test_repr_str(self):
@@ -1142,11 +1142,11 @@ class TestSigmaClipSharedInstance:
     Tests for calling a shared SigmaClip instance from the astropy
     fallback clipping path.
 
-    astropy SigmaClip stores internal state on the instance during
-    calls, and the fallback path is reachable from two different
-    lazyproperties (the center- and sum-footprint cutouts) that do not
-    share a lock. ApertureStats must therefore never call the user's
-    SigmaClip instance directly.
+    Astropy SigmaClip stores internal state on the instance during
+    calls, and the fallback path is reachable from two different cached
+    properties (the center- and sum-footprint cutouts) that do not share
+    a lock. ApertureStats must therefore never call the user's SigmaClip
+    instance directly.
     """
 
     def test_user_sigma_clip_instance_not_called(self, monkeypatch):

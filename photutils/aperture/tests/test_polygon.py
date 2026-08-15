@@ -491,7 +491,7 @@ class TestPolygonConstruction:
         with pytest.raises(ValueError, match=match):
             PolygonAperture.from_vertices([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]])
 
-    def test_offsets_reset_lazyproperties(self):
+    def test_offsets_reset_cached_properties(self):
         aper = PolygonAperture((0.0, 0.0), SQUARE_OFFSETS)
         _ = aper.vertices
         aper.vertex_offsets = TRIANGLE_OFFSETS
@@ -1004,7 +1004,7 @@ class TestSkyPolygonConstruction:
         assert one.isscalar
         assert_quantity_allclose(one.positions.ra, 180.0 * u.deg)
 
-    def test_offsets_reset_lazyproperties(self):
+    def test_offsets_reset_cached_properties(self):
         """
         Test that changing vertex_offsets on a SkyPolygonAperture clears the
         cached vertices, which are stored as a SkyCoord.

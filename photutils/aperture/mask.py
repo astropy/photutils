@@ -4,10 +4,10 @@ Class for aperture masks.
 """
 
 import warnings
+from functools import cached_property
 
 import astropy.units as u
 import numpy as np
-from astropy.utils import lazyproperty
 
 from photutils.utils._deprecation import deprecated_positional_kwargs
 
@@ -38,7 +38,7 @@ class ApertureMask:
             raise ValueError(msg)
         self.bbox = bbox
 
-    @lazyproperty
+    @cached_property
     def _mask(self):
         """
         A boolean array that is `True` where the aperture mask weight

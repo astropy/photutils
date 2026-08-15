@@ -4,10 +4,10 @@ DAOStarFinder class.
 """
 
 import warnings
+from functools import cached_property
 
 import astropy.units as u
 import numpy as np
-from astropy.utils import lazyproperty
 
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
                                       StarFinderCatalogBase,
@@ -505,7 +505,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
                 'peak_max', 'threshold_eff', 'cutout_shape',
                 'cutout_center', 'default_columns')
 
-    @lazyproperty
+    @cached_property
     def cutout_convdata(self):
         """
         The cutout of the convolved data centered on the source
@@ -513,7 +513,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         return self.make_cutouts(self.convolved_data)
 
-    @lazyproperty
+    @cached_property
     def peak(self):
         """
         The peak pixel value of the source in the original (unconvolved)
@@ -522,7 +522,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         return self.cutout_data[:, self.cutout_center[0],
                                 self.cutout_center[1]]
 
-    @lazyproperty
+    @cached_property
     def convdata_peak(self):
         """
         The peak pixel value of the source in the convolved data.
@@ -530,7 +530,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         return self.cutout_convdata[:, self.cutout_center[0],
                                     self.cutout_center[1]]
 
-    @lazyproperty
+    @cached_property
     def roundness1(self):
         """
         The roundness of the source based on symmetry, defined as
@@ -576,7 +576,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
             warnings.simplefilter('ignore', RuntimeWarning)
             return 2.0 * sum2 / sum4
 
-    @lazyproperty
+    @cached_property
     def sharpness(self):
         """
         The sharpness of the source, defined as the ratio of the
@@ -895,7 +895,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
                                              kern_sums)
         return self._marginal_lstsq(kern_sums, data_sums, sigma, size)
 
-    @lazyproperty
+    @cached_property
     def dx_hx(self):
         """
         The fitted fractional shift (dx) and amplitude (hx) from the
@@ -903,7 +903,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         return self.daofind_marginal_fit(axis=1)
 
-    @lazyproperty
+    @cached_property
     def dy_hy(self):
         """
         The fitted fractional shift (dy) and amplitude (hy) from the
@@ -911,7 +911,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         return self.daofind_marginal_fit(axis=0)
 
-    @lazyproperty
+    @cached_property
     def dx(self):
         """
         The fitted fractional shift in x of the image centroid relative
@@ -919,7 +919,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         return np.transpose(self.dx_hx)[0]
 
-    @lazyproperty
+    @cached_property
     def dy(self):
         """
         The fitted fractional shift in y of the image centroid relative
@@ -927,7 +927,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         return np.transpose(self.dy_hy)[0]
 
-    @lazyproperty
+    @cached_property
     def hx(self):
         """
         The height of the best-fitting Gaussian to the marginal x
@@ -935,7 +935,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         return np.transpose(self.dx_hx)[1]
 
-    @lazyproperty
+    @cached_property
     def hy(self):
         """
         The height of the best-fitting Gaussian to the marginal y
@@ -943,7 +943,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         return np.transpose(self.dy_hy)[1]
 
-    @lazyproperty
+    @cached_property
     def x_centroid(self):
         """
         The fitted x centroid of the source, calculated as the sum of
@@ -952,7 +952,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         return np.transpose(self.xypos)[0] + self.dx
 
-    @lazyproperty
+    @cached_property
     def y_centroid(self):
         """
         The fitted y centroid of the source, calculated as the sum of
@@ -961,7 +961,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         return np.transpose(self.xypos)[1] + self.dy
 
-    @lazyproperty
+    @cached_property
     def roundness2(self):
         """
         The star roundness.
@@ -975,7 +975,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         return 2.0 * (self.hx - self.hy) / (self.hx + self.hy)
 
-    @lazyproperty
+    @cached_property
     def _threshold_eff_per_source(self):
         """
         Per-source effective threshold values.
@@ -994,7 +994,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         ypos = np.round(self.xypos[:, 1]).astype(int)
         return self.threshold_eff[ypos, xpos]
 
-    @lazyproperty
+    @cached_property
     def daofind_mag(self):
         """
         The "mag" parameter returned by the original DAOFIND algorithm.
@@ -1009,7 +1009,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
             return -2.5 * np.log10(self.convdata_peak
                                    / self._threshold_eff_per_source)
 
-    @lazyproperty
+    @cached_property
     def n_pixels(self):
         """
         The total number of pixels in the Gaussian kernel array.

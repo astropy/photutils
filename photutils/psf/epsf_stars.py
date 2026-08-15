@@ -5,12 +5,12 @@ cutouts for fitting and building ePSFs.
 """
 
 import warnings
+from functools import cached_property
 
 import numpy as np
 from astropy.nddata import (NDData, NoOverlapError, PartialOverlapError,
                             StdDevUncertainty, overlap_slices)
 from astropy.table import Table
-from astropy.utils import lazyproperty
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import BoundingBox
@@ -229,7 +229,7 @@ class EPSFStar:
         """
         return self.cutout_center + self.origin
 
-    @lazyproperty
+    @cached_property
     def slices(self):
         """
         A tuple of two slices representing the cutout region with
@@ -238,7 +238,7 @@ class EPSFStar:
         return (slice(self.origin[1], self.origin[1] + self.shape[1]),
                 slice(self.origin[0], self.origin[0] + self.shape[0]))
 
-    @lazyproperty
+    @cached_property
     def bbox(self):
         """
         The minimal `~photutils.aperture.BoundingBox` for the cutout
@@ -322,7 +322,7 @@ class EPSFStar:
         y_centered = yidx[~self.mask].ravel() - self.cutout_center[1]
         return x_centered, y_centered
 
-    @lazyproperty
+    @cached_property
     def _data_values_normalized(self):
         """
         1D array of unmasked cutout data values, normalized by the
@@ -427,7 +427,7 @@ class EPSFStars:
         """
         return np.array([star.center for star in self.all_stars])
 
-    @lazyproperty
+    @cached_property
     def all_stars(self):
         """
         A list of all `EPSFStar` objects stored in this object,
@@ -456,7 +456,7 @@ class EPSFStars:
             stars.append(star)
         return stars
 
-    @lazyproperty
+    @cached_property
     def n_stars(self):
         """
         The total number of stars.
@@ -465,7 +465,7 @@ class EPSFStars:
         """
         return len(self._data)
 
-    @lazyproperty
+    @cached_property
     def n_all_stars(self):
         """
         The total number of `EPSFStar` objects, including all the linked

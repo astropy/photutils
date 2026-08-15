@@ -4,10 +4,10 @@ Image-based PSF models.
 """
 
 import copy
+from functools import cached_property
 
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
-from astropy.utils.decorators import lazyproperty
 from scipy.interpolate import RectBivariateSpline
 
 from photutils.utils._parameters import as_pair
@@ -323,7 +323,7 @@ class ImagePSF(Fittable2DModel):
                 raise ValueError(msg)
         self._origin = origin
 
-    @lazyproperty
+    @cached_property
     def interpolator(self):
         """
         The interpolating spline function.

@@ -5,11 +5,11 @@ coordinates.
 """
 
 import math
+from functools import cached_property
 
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import Angle
-from astropy.utils import lazyproperty
 
 from photutils.aperture._batch_photometry import (SHAPE_CIRCLE,
                                                   SHAPE_CIRCULAR_ANNULUS)
@@ -173,14 +173,14 @@ class CircularAperture(PixelAperture):
         self.positions = positions
         self.r = r
 
-    @lazyproperty
+    @cached_property
     def _xy_extents(self):
         return self.r, self.r
 
     def _batch_shape_params(self):
         return SHAPE_CIRCLE, (self.r,)
 
-    @lazyproperty
+    @cached_property
     def area(self):
         """
         The exact geometric area of the aperture shape.
@@ -347,14 +347,14 @@ class CircularAnnulus(PixelAperture):
         self.r_in = r_in
         self.r_out = r_out
 
-    @lazyproperty
+    @cached_property
     def _xy_extents(self):
         return self.r_out, self.r_out
 
     def _batch_shape_params(self):
         return SHAPE_CIRCULAR_ANNULUS, (self.r_in, self.r_out)
 
-    @lazyproperty
+    @cached_property
     def area(self):
         """
         The exact geometric area of the aperture shape.

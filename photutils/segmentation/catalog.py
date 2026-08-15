@@ -9,12 +9,12 @@ import inspect
 import math
 import warnings
 from copy import deepcopy
+from functools import cached_property
 
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
-from astropy.utils import lazyproperty
 from scipy.ndimage import map_coordinates
 from scipy.optimize import root_scalar
 
@@ -518,18 +518,18 @@ class SourceCatalog:
     @property
     def _properties(self):
         """
-        A list of all class properties, include lazyproperties (even in
-        superclasses).
+        A list of all class properties, including cached properties
+        (even in superclasses).
 
         The result is cached on the class to avoid repeated
         introspection via `inspect.getmembers`.
         """
         cls = self.__class__
-        attr = '_cached_properties'
+        attr = '_properties_cache'
         # Subclasses get their own property list
         if attr not in cls.__dict__:
             def isproperty(obj):
-                return isinstance(obj, property)
+                return isinstance(obj, (property, cached_property))
 
             setattr(cls, attr,
                     [i[0] for i in inspect.getmembers(
@@ -541,32 +541,32 @@ class SourceCatalog:
         """
         A list of built-in source properties.
         """
-        lazyproperties = [name for name in self._lazyproperties if not
-                          name.startswith('_')]
-        lazyproperties.remove('isscalar')
-        lazyproperties.remove('n_labels')
-        lazyproperties.extend(['label', 'labels', 'slices'])
-        lazyproperties.sort()
-        return lazyproperties
+        cached_properties = [name for name in self._cached_properties
+                             if not name.startswith('_')]
+        cached_properties.remove('isscalar')
+        cached_properties.remove('n_labels')
+        cached_properties.extend(['label', 'labels', 'slices'])
+        cached_properties.sort()
+        return cached_properties
 
     @property
-    def _lazyproperties(self):
+    def _cached_properties(self):
         """
-        A list of all class lazyproperties (even in superclasses).
+        A list of all class cached properties (even in superclasses).
 
         The result is cached on the class to avoid repeated
         introspection via `inspect.getmembers`.
         """
         cls = self.__class__
-        attr = '_cached_lazyproperties'
-        # Subclasses get their own lazyproperty list
+        attr = '_cached_properties_cache'
+        # Subclasses get their own cached-property list
         if attr not in cls.__dict__:
-            def islazyproperty(obj):
-                return isinstance(obj, lazyproperty)
+            def is_cached_property(obj):
+                return isinstance(obj, cached_property)
 
             setattr(cls, attr,
                     [i[0] for i in inspect.getmembers(
-                        cls, predicate=islazyproperty)])
+                        cls, predicate=is_cached_property)])
         return getattr(cls, attr)
 
     @staticmethod
@@ -639,9 +639,10 @@ class SourceCatalog:
                                      for key, value
                                      in self._flux_radius_cache.items()}
 
-        # Evaluated lazyproperty objects and extra properties
+        # Evaluated cached-property objects and extra properties
         keys = (set(self.__dict__.keys())
-                & (set(self._lazyproperties) | set(self._custom_properties)))
+                & (set(self._cached_properties)
+                   | set(self._custom_properties)))
         for key in keys:
             value = self.__dict__[key]
 
@@ -652,7 +653,7 @@ class SourceCatalog:
                 continue
 
             try:
-                # Keep private ('_'-prefixed) lazyproperties as length-1
+                # Keep private ('_'-prefixed) cached properties as length-1
                 # iterables. Such properties are never collapsed by
                 # __getattribute__ and internal code relies on them
                 # always being iterable.
@@ -760,7 +761,7 @@ class SourceCatalog:
             return value[np.newaxis, ...]
         return [value]
 
-    @lazyproperty
+    @cached_property
     def isscalar(self):
         """
         Whether the instance is scalar (e.g., a single source).
@@ -929,7 +930,7 @@ class SourceCatalog:
         self.custom_properties.remove(new_name)
         self.custom_properties.insert(idx, new_name)
 
-    @lazyproperty
+    @cached_property
     def _null_objects(self):
         """
         Return `None` values.
@@ -939,7 +940,7 @@ class SourceCatalog:
         """
         return np.array([None] * self.n_labels)
 
-    @lazyproperty
+    @cached_property
     def _null_values(self):
         """
         Return np.nan values.
@@ -951,14 +952,14 @@ class SourceCatalog:
         values.fill(np.nan)
         return values
 
-    @lazyproperty
+    @cached_property
     def _data_cutouts(self):
         """
         A list of data cutouts using the segmentation image slices.
         """
         return [self._data[slc] for slc in self._slices_iter]
 
-    @lazyproperty
+    @cached_property
     def _segmentation_image_cutouts(self):
         """
         A list of segmentation image cutouts using the segmentation
@@ -967,7 +968,7 @@ class SourceCatalog:
         return [self._segmentation_image.data[slc]
                 for slc in self._slices_iter]
 
-    @lazyproperty
+    @cached_property
     def _mask_cutouts(self):
         """
         A list of mask cutouts using the segmentation image slices.
@@ -978,7 +979,7 @@ class SourceCatalog:
             return self._null_objects
         return [self._mask[slc] for slc in self._slices_iter]
 
-    @lazyproperty
+    @cached_property
     def _error_cutouts(self):
         """
         A list of error cutouts using the segmentation image slices.
@@ -989,7 +990,7 @@ class SourceCatalog:
             return self._null_objects
         return [self._error[slc] for slc in self._slices_iter]
 
-    @lazyproperty
+    @cached_property
     def _convdata_cutouts(self):
         """
         A list of convolved data cutouts using the segmentation image
@@ -997,7 +998,7 @@ class SourceCatalog:
         """
         return [self._convolved_data[slc] for slc in self._slices_iter]
 
-    @lazyproperty
+    @cached_property
     def _background_cutouts(self):
         """
         A list of background cutouts using the segmentation image
@@ -1030,7 +1031,7 @@ class SourceCatalog:
                                                           mask_cutout))
         return data_masks
 
-    @lazyproperty
+    @cached_property
     def _cutout_segment_masks(self):
         """
         Cutout boolean mask for source segment.
@@ -1044,7 +1045,7 @@ class SourceCatalog:
                        self._segmentation_image_cutouts,
                        strict=True)]
 
-    @lazyproperty
+    @cached_property
     def _cutout_data_masks(self):
         """
         Cutout boolean mask of non-finite ``data`` values combined with
@@ -1056,7 +1057,7 @@ class SourceCatalog:
         return self._make_cutout_data_masks(self._data_cutouts,
                                             self._mask_cutouts)
 
-    @lazyproperty
+    @cached_property
     def _cutout_total_masks(self):
         """
         Boolean mask representing the combination of
@@ -1071,7 +1072,7 @@ class SourceCatalog:
             masks.append(mask1 | mask2)
         return masks
 
-    @lazyproperty
+    @cached_property
     def _moment_data_cutouts(self):
         """
         A list of 2D `~numpy.ndarray` cutouts from the (convolved) data.
@@ -1237,7 +1238,7 @@ class SourceCatalog:
             tbl[canonical_column] = values
         return tbl
 
-    @lazyproperty
+    @cached_property
     def n_labels(self):
         """
         The number of source labels.
@@ -1282,7 +1283,7 @@ class SourceCatalog:
         """
         return self._slices
 
-    @lazyproperty
+    @cached_property
     def _slices_iter(self):
         """
         A tuple of slice objects defining the minimal bounding box of
@@ -1293,7 +1294,7 @@ class SourceCatalog:
             _slices = (_slices,)
         return _slices
 
-    @lazyproperty
+    @cached_property
     def segment_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout of the segmentation image using the
@@ -1306,7 +1307,7 @@ class SourceCatalog:
             self._segmentation_image_cutouts, units=False,
             masked=False)
 
-    @lazyproperty
+    @cached_property
     def segment_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout of the segmentation image
@@ -1323,7 +1324,7 @@ class SourceCatalog:
             self._segmentation_image_cutouts, units=False,
             masked=True)
 
-    @lazyproperty
+    @cached_property
     def data_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the data using the minimal
@@ -1335,7 +1336,7 @@ class SourceCatalog:
         return self._prepare_cutouts(self._data_cutouts, units=True,
                                      masked=False, dtype=float)
 
-    @lazyproperty
+    @cached_property
     def data_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the data using the
@@ -1351,7 +1352,7 @@ class SourceCatalog:
         return self._prepare_cutouts(self._data_cutouts, units=False,
                                      masked=True, dtype=float)
 
-    @lazyproperty
+    @cached_property
     def conv_data_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the convolved data using the
@@ -1363,7 +1364,7 @@ class SourceCatalog:
         return self._prepare_cutouts(self._convdata_cutouts, units=True,
                                      masked=False, dtype=float)
 
-    @lazyproperty
+    @cached_property
     def conv_data_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the convolved data
@@ -1379,7 +1380,7 @@ class SourceCatalog:
         return self._prepare_cutouts(self._convdata_cutouts, units=False,
                                      masked=True, dtype=float)
 
-    @lazyproperty
+    @cached_property
     def error_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the error array using the
@@ -1393,7 +1394,7 @@ class SourceCatalog:
         return self._prepare_cutouts(self._error_cutouts, units=True,
                                      masked=False)
 
-    @lazyproperty
+    @cached_property
     def error_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the error array using
@@ -1411,7 +1412,7 @@ class SourceCatalog:
         return self._prepare_cutouts(self._error_cutouts, units=False,
                                      masked=True)
 
-    @lazyproperty
+    @cached_property
     def background_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout from the background array using the
@@ -1425,7 +1426,7 @@ class SourceCatalog:
         return self._prepare_cutouts(self._background_cutouts, units=True,
                                      masked=False)
 
-    @lazyproperty
+    @cached_property
     def background_cutout_masked(self):
         """
         A 2D `~numpy.ma.MaskedArray` cutout from the background array.
@@ -1443,7 +1444,7 @@ class SourceCatalog:
         return self._prepare_cutouts(self._background_cutouts, units=False,
                                      masked=True)
 
-    @lazyproperty
+    @cached_property
     def _all_masked(self):
         """
         True if all pixels over the source segment are masked.
@@ -1500,7 +1501,7 @@ class SourceCatalog:
             concat = transform(concat)
         return ufunc.reduceat(concat, splits), sizes
 
-    @lazyproperty
+    @cached_property
     def _data_values(self):
         """
         A 1D array of unmasked data values.
@@ -1510,7 +1511,7 @@ class SourceCatalog:
         """
         return self._get_values(self._array('data_cutout_masked'))
 
-    @lazyproperty
+    @cached_property
     def _error_values(self):
         """
         A 1D array of unmasked error values.
@@ -1522,7 +1523,7 @@ class SourceCatalog:
             return self._null_objects
         return self._get_values(self._array('error_cutout_masked'))
 
-    @lazyproperty
+    @cached_property
     def _background_values(self):
         """
         A 1D array of unmasked background values.
@@ -1534,7 +1535,7 @@ class SourceCatalog:
             return self._null_objects
         return self._get_values(self._array('background_cutout_masked'))
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def moments(self):
         """
@@ -1550,7 +1551,7 @@ class SourceCatalog:
             result.append(yp.T @ arr @ xp)
         return np.array(result)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def moments_central(self):
         """
@@ -1570,7 +1571,7 @@ class SourceCatalog:
             result.append(yp.T @ arr @ xp)
         return np.array(result)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def cutout_centroid(self):
         """
@@ -1589,7 +1590,7 @@ class SourceCatalog:
             x_centroid = moments[:, 0, 1] / moments[:, 0, 0]
         return np.transpose((x_centroid, y_centroid))
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def centroid(self):
         """
@@ -1602,7 +1603,7 @@ class SourceCatalog:
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.cutout_centroid + origin
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def x_centroid(self):
         """
@@ -1614,7 +1615,7 @@ class SourceCatalog:
         """
         return self._array('centroid')[:, 0]
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def y_centroid(self):
         """
@@ -1626,7 +1627,7 @@ class SourceCatalog:
         """
         return self._array('centroid')[:, 1]
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def centroid_win(self):
         """
@@ -1837,7 +1838,7 @@ class SourceCatalog:
 
         return np.transpose((xcen_win, ycen_win))
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def x_centroid_win(self):
         """
@@ -1850,7 +1851,7 @@ class SourceCatalog:
         """
         return self._array('centroid_win')[:, 0]
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def y_centroid_win(self):
         """
@@ -1863,7 +1864,7 @@ class SourceCatalog:
         """
         return self._array('centroid_win')[:, 1]
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def cutout_centroid_win(self):
         """
@@ -1878,7 +1879,7 @@ class SourceCatalog:
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.centroid_win - origin
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def cutout_centroid_quad(self):
         """
@@ -1988,7 +1989,7 @@ class SourceCatalog:
 
         return centroid_quad
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def centroid_quad(self):
         """
@@ -2016,7 +2017,7 @@ class SourceCatalog:
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.cutout_centroid_quad + origin
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def x_centroid_quad(self):
         """
@@ -2026,7 +2027,7 @@ class SourceCatalog:
         """
         return self._array('centroid_quad')[:, 0]
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def y_centroid_quad(self):
         """
@@ -2036,7 +2037,7 @@ class SourceCatalog:
         """
         return self._array('centroid_quad')[:, 1]
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def sky_centroid(self):
         """
@@ -2051,7 +2052,7 @@ class SourceCatalog:
             return self._null_objects
         return self.wcs.pixel_to_world(self.x_centroid, self.y_centroid)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def sky_centroid_icrs(self):
         """
@@ -2065,7 +2066,7 @@ class SourceCatalog:
             return self._null_objects
         return self.sky_centroid.icrs
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def sky_centroid_win(self):
         """
@@ -2082,7 +2083,7 @@ class SourceCatalog:
         return self.wcs.pixel_to_world(self.x_centroid_win,
                                        self.y_centroid_win)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def sky_centroid_quad(self):
         """
@@ -2099,7 +2100,7 @@ class SourceCatalog:
         return self.wcs.pixel_to_world(self.x_centroid_quad,
                                        self.y_centroid_quad)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def _bbox(self):
         """
@@ -2110,7 +2111,7 @@ class SourceCatalog:
                             iymin=slc[0].start, iymax=slc[0].stop)
                 for slc in self._slices_iter]
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def bbox(self):
         """
@@ -2122,7 +2123,7 @@ class SourceCatalog:
         """
         return self._bbox
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def bbox_xmin(self):
         """
@@ -2131,7 +2132,7 @@ class SourceCatalog:
         """
         return np.array([slc[1].start for slc in self._slices_iter])
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def bbox_xmax(self):
         """
@@ -2142,7 +2143,7 @@ class SourceCatalog:
         """
         return np.array([slc[1].stop - 1 for slc in self._slices_iter])
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def bbox_ymin(self):
         """
@@ -2151,7 +2152,7 @@ class SourceCatalog:
         """
         return np.array([slc[0].start for slc in self._slices_iter])
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def bbox_ymax(self):
         """
@@ -2162,7 +2163,7 @@ class SourceCatalog:
         """
         return np.array([slc[0].stop - 1 for slc in self._slices_iter])
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def _bbox_corner_ll(self):
         """
@@ -2171,7 +2172,7 @@ class SourceCatalog:
         return np.array([(bbox_.ixmin - 0.5, bbox_.iymin - 0.5)
                          for bbox_ in self._bbox])
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def _bbox_corner_ul(self):
         """
@@ -2180,7 +2181,7 @@ class SourceCatalog:
         return np.array([(bbox_.ixmin - 0.5, bbox_.iymax + 0.5)
                          for bbox_ in self._bbox])
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def _bbox_corner_lr(self):
         """
@@ -2189,7 +2190,7 @@ class SourceCatalog:
         return np.array([(bbox_.ixmax + 0.5, bbox_.iymin - 0.5)
                          for bbox_ in self._bbox])
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def _bbox_corner_ur(self):
         """
@@ -2198,7 +2199,7 @@ class SourceCatalog:
         return np.array([(bbox_.ixmax + 0.5, bbox_.iymax + 0.5)
                          for bbox_ in self._bbox])
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def sky_bbox_ll(self):
         """
@@ -2216,7 +2217,7 @@ class SourceCatalog:
             return self._null_objects
         return self.wcs.pixel_to_world(*np.transpose(self._bbox_corner_ll))
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def sky_bbox_ul(self):
         """
@@ -2234,7 +2235,7 @@ class SourceCatalog:
             return self._null_objects
         return self.wcs.pixel_to_world(*np.transpose(self._bbox_corner_ul))
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def sky_bbox_lr(self):
         """
@@ -2252,7 +2253,7 @@ class SourceCatalog:
             return self._null_objects
         return self.wcs.pixel_to_world(*np.transpose(self._bbox_corner_lr))
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def sky_bbox_ur(self):
         """
@@ -2270,7 +2271,7 @@ class SourceCatalog:
             return self._null_objects
         return self.wcs.pixel_to_world(*np.transpose(self._bbox_corner_ur))
 
-    @lazyproperty
+    @cached_property
     def min_value(self):
         """
         The minimum pixel value of the ``data`` within the source
@@ -2282,7 +2283,7 @@ class SourceCatalog:
             values <<= self._data_unit
         return values
 
-    @lazyproperty
+    @cached_property
     def max_value(self):
         """
         The maximum pixel value of the ``data`` within the source
@@ -2294,7 +2295,7 @@ class SourceCatalog:
             values <<= self._data_unit
         return values
 
-    @lazyproperty
+    @cached_property
     def cutout_min_value_index(self):
         """
         The ``(y, x)`` coordinate, relative to the cutout data, of the
@@ -2312,7 +2313,7 @@ class SourceCatalog:
                 idx.append(np.unravel_index(np.argmin(arr), arr.shape))
         return np.array(idx)
 
-    @lazyproperty
+    @cached_property
     def cutout_max_value_index(self):
         """
         The ``(y, x)`` coordinate, relative to the cutout data, of the
@@ -2330,7 +2331,7 @@ class SourceCatalog:
                 idx.append(np.unravel_index(np.argmax(arr), arr.shape))
         return np.array(idx)
 
-    @lazyproperty
+    @cached_property
     def min_value_index(self):
         """
         The ``(y, x)`` coordinate of the minimum pixel value of the
@@ -2345,7 +2346,7 @@ class SourceCatalog:
             out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
         return np.array(out)
 
-    @lazyproperty
+    @cached_property
     def max_value_index(self):
         """
         The ``(y, x)`` coordinate of the maximum pixel value of the
@@ -2360,7 +2361,7 @@ class SourceCatalog:
             out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
         return np.array(out)
 
-    @lazyproperty
+    @cached_property
     def min_value_xindex(self):
         """
         The ``x`` coordinate of the minimum pixel value of the ``data``
@@ -2371,7 +2372,7 @@ class SourceCatalog:
         """
         return self._array('min_value_index')[:, 1]
 
-    @lazyproperty
+    @cached_property
     def min_value_yindex(self):
         """
         The ``y`` coordinate of the minimum pixel value of the ``data``
@@ -2382,7 +2383,7 @@ class SourceCatalog:
         """
         return self._array('min_value_index')[:, 0]
 
-    @lazyproperty
+    @cached_property
     def max_value_xindex(self):
         """
         The ``x`` coordinate of the maximum pixel value of the ``data``
@@ -2393,7 +2394,7 @@ class SourceCatalog:
         """
         return self._array('max_value_index')[:, 1]
 
-    @lazyproperty
+    @cached_property
     def max_value_yindex(self):
         """
         The ``y`` coordinate of the maximum pixel value of the ``data``
@@ -2404,7 +2405,7 @@ class SourceCatalog:
         """
         return self._array('max_value_index')[:, 0]
 
-    @lazyproperty
+    @cached_property
     def segment_flux(self):
         r"""
         The sum of the unmasked ``data`` values within the source
@@ -2430,7 +2431,7 @@ class SourceCatalog:
             source_sum <<= self._data_unit
         return source_sum
 
-    @lazyproperty
+    @cached_property
     def segment_flux_err(self):
         r"""
         The uncertainty of `segment_flux`, propagated from the input
@@ -2463,7 +2464,7 @@ class SourceCatalog:
             err <<= self._data_unit
         return err
 
-    @lazyproperty
+    @cached_property
     def background_sum(self):
         """
         The sum of ``background`` values within the source segment.
@@ -2482,7 +2483,7 @@ class SourceCatalog:
             bkg_sum <<= self._data_unit
         return bkg_sum
 
-    @lazyproperty
+    @cached_property
     def background_mean(self):
         """
         The mean of ``background`` values within the source segment.
@@ -2502,7 +2503,7 @@ class SourceCatalog:
             bkg_mean <<= self._data_unit
         return bkg_mean
 
-    @lazyproperty
+    @cached_property
     def background_centroid(self):
         """
         The value of the per-pixel ``background`` at the position of the
@@ -2529,7 +2530,7 @@ class SourceCatalog:
             bkg <<= self._data_unit
         return bkg
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def segment_area(self):
         """
@@ -2547,7 +2548,7 @@ class SourceCatalog:
                 self._segmentation_image[slices] == label))
         return np.array(areas) << (u.pix**2)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def area(self):
         """
@@ -2561,7 +2562,7 @@ class SourceCatalog:
         areas[self._all_masked] = np.nan
         return areas << (u.pix**2)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def equivalent_radius(self):
         """
@@ -2570,7 +2571,7 @@ class SourceCatalog:
         """
         return np.sqrt(self.area / np.pi)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def perimeter(self):
         """
@@ -2630,7 +2631,7 @@ class SourceCatalog:
 
         return np.array(perimeter) * u.pix
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def inertia_tensor(self):
         """
@@ -2644,7 +2645,7 @@ class SourceCatalog:
         tensor = np.array([mu_02, mu_11, mu_11, mu_20]).swapaxes(0, 1)
         return tensor.reshape((tensor.shape[0], 2, 2)) * u.pix**2
 
-    @lazyproperty
+    @cached_property
     def _raw_covariance(self):
         """
         The raw ``(N, 2, 2)`` covariance matrix of the 2D Gaussian
@@ -2665,7 +2666,7 @@ class SourceCatalog:
                           mu_norm[:, 1, 1], mu_norm[:, 2, 0]]).swapaxes(0, 1)
         return covar.reshape((covar.shape[0], 2, 2))
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def _covariance(self):
         """
@@ -2709,7 +2710,7 @@ class SourceCatalog:
             covar[idx, 1, 1] += delta
         return covar
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def covariance(self):
         """
@@ -2718,7 +2719,7 @@ class SourceCatalog:
         """
         return self._covariance * (u.pix**2)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def covariance_eigvals(self):
         """
@@ -2742,7 +2743,7 @@ class SourceCatalog:
 
         return eigvals * u.pix**2
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def semimajor_axis(self):
         """
@@ -2754,7 +2755,7 @@ class SourceCatalog:
         # This matches SourceExtractor's A parameter
         return np.sqrt(eigvals[:, 0])
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def semiminor_axis(self):
         """
@@ -2766,7 +2767,7 @@ class SourceCatalog:
         # This matches SourceExtractor's B parameter
         return np.sqrt(eigvals[:, 1])
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def fwhm(self):
         r"""
@@ -2787,7 +2788,7 @@ class SourceCatalog:
         return 2.0 * np.sqrt(np.log(2.0) * (self.semimajor_axis**2
                                             + self.semiminor_axis**2))
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def orientation(self):
         """
@@ -2803,7 +2804,7 @@ class SourceCatalog:
                                           (covar[:, 0, 0] - covar[:, 1, 1]))
         return np.rad2deg(orient_radians) * u.deg
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def eccentricity(self):
         r"""
@@ -2823,7 +2824,7 @@ class SourceCatalog:
         semimajor_var, semiminor_var = np.transpose(self.covariance_eigvals)
         return np.sqrt(1.0 - (semiminor_var / semimajor_var))
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def elongation(self):
         r"""
@@ -2838,7 +2839,7 @@ class SourceCatalog:
         """
         return self.semimajor_axis / self.semiminor_axis
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def ellipticity(self):
         r"""
@@ -2854,7 +2855,7 @@ class SourceCatalog:
         """
         return 1.0 - (self.semiminor_axis / self.semimajor_axis)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def covariance_xx(self):
         r"""
@@ -2863,7 +2864,7 @@ class SourceCatalog:
         """
         return self._covariance[:, 0, 0] * u.pix**2
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def covariance_yy(self):
         r"""
@@ -2872,7 +2873,7 @@ class SourceCatalog:
         """
         return self._covariance[:, 1, 1] * u.pix**2
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def covariance_xy(self):
         r"""
@@ -2882,7 +2883,7 @@ class SourceCatalog:
         """
         return self._covariance[:, 0, 1] * u.pix**2
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def ellipse_cxx(self):
         r"""
@@ -2905,7 +2906,7 @@ class SourceCatalog:
         return ((np.cos(self.orientation) / self.semimajor_axis)**2
                 + (np.sin(self.orientation) / self.semiminor_axis)**2)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def ellipse_cyy(self):
         r"""
@@ -2928,7 +2929,7 @@ class SourceCatalog:
         return ((np.sin(self.orientation) / self.semimajor_axis)**2
                 + (np.cos(self.orientation) / self.semiminor_axis)**2)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def ellipse_cxy(self):
         r"""
@@ -2952,7 +2953,7 @@ class SourceCatalog:
                 * ((1.0 / self.semimajor_axis**2)
                    - (1.0 / self.semiminor_axis**2)))
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def gini(self):
         r"""
@@ -2981,7 +2982,7 @@ class SourceCatalog:
         """
         return np.array([gini_func(arr) for arr in self._data_values])
 
-    @lazyproperty
+    @cached_property
     def _local_background_apertures(self):
         """
         The `~photutils.aperture.RectangularAnnulus` aperture used to
@@ -3004,7 +3005,7 @@ class SourceCatalog:
                                                 h_in=height_in, theta=0.0))
         return apertures
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def local_background_aperture(self):
         """
@@ -3016,7 +3017,7 @@ class SourceCatalog:
         """
         return self._local_background_apertures
 
-    @lazyproperty
+    @cached_property
     def _local_background(self):
         """
         The local background value (per pixel) estimated using a
@@ -3069,7 +3070,7 @@ class SourceCatalog:
         local_bkgs[self._all_masked] = np.nan
         return local_bkgs
 
-    @lazyproperty
+    @cached_property
     def local_background(self):
         """
         The local background value (per pixel) estimated using a
@@ -3378,7 +3379,7 @@ class SourceCatalog:
 
         return aperture
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def _measured_kron_radius(self):
         r"""
@@ -3563,7 +3564,7 @@ class SourceCatalog:
 
         return kron_radius << u.pix
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def kron_radius(self):
         r"""
@@ -3637,7 +3638,7 @@ class SourceCatalog:
         scale = kron_radius.value * kron_params[0]
         return self._make_elliptical_apertures(scale=scale)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def kron_aperture(self):
         r"""
@@ -4038,7 +4039,7 @@ class SourceCatalog:
 
         return kron_flux, kron_flux_err
 
-    @lazyproperty
+    @cached_property
     def _kron_photometry(self):
         """
         The flux and flux error in the Kron aperture (without units).
@@ -4053,7 +4054,7 @@ class SourceCatalog:
         """
         return np.transpose(self._calc_kron_photometry(kron_params=None))
 
-    @lazyproperty
+    @cached_property
     def kron_flux(self):
         """
         The flux in the Kron aperture.
@@ -4071,7 +4072,7 @@ class SourceCatalog:
             kron_flux <<= self._data_unit
         return kron_flux
 
-    @lazyproperty
+    @cached_property
     def kron_flux_err(self):
         """
         The flux error in the Kron aperture.
@@ -4089,7 +4090,7 @@ class SourceCatalog:
             kron_flux_err <<= self._data_unit
         return kron_flux_err
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def _max_circular_kron_radius(self):
         """
@@ -4119,7 +4120,7 @@ class SourceCatalog:
         flux = np.sum(clean_data * weights)
         return 1.0 - (flux / normflux)
 
-    @lazyproperty
+    @cached_property
     @use_detcat
     def _flux_radius_optimizer_args(self):
         kron_flux = self._kron_photometry[:, 0]  # unitless
