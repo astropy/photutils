@@ -501,14 +501,30 @@ interpreter lock (GIL), so threads can effectively run in parallel:
     >>> with ThreadPoolExecutor() as executor:
     ...     backgrounds = list(executor.map(estimate_background, images))
 
-In addition, the box statistics computed by
-`~photutils.background.Background2D` itself can be multithreaded by
-setting the ``n_threads`` keyword. The results are identical to the
-single-threaded computation. This is most beneficial for large images:
+In addition, the work done by `~photutils.background.Background2D`
+itself can be multithreaded by setting the ``n_threads`` keyword,
+which parallelizes both the box statistics and the interpolation
+of the low-resolution meshes to the full-size maps returned by the
+``background`` and ``background_rms`` properties. The box statistics are
+identical to the single-threaded computation and the full-size maps are
+identical up to floating-point rounding. This is most beneficial for
+large images:
 
 .. doctest-skip::
 
     >>> bkg = Background2D(data2, (15, 15), n_threads=4)
+
+Finally, when both the background and background RMS maps are needed,
+they can be computed concurrently (each property access recalculates its
+map, and the underlying interpolation releases the GIL):
+
+.. doctest-skip::
+
+    >>> with ThreadPoolExecutor(max_workers=2) as executor:
+    ...     bkg_future = executor.submit(getattr, bkg, 'background')
+    ...     rms_future = executor.submit(getattr, bkg, 'background_rms')
+    ...     bkg_image = bkg_future.result()
+    ...     rms_image = rms_future.result()
 
 
 Plotting Meshes

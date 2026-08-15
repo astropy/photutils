@@ -6,7 +6,7 @@ General
 
 - The minimum required astropy is now 6.1.7. [#2211]
 
-- The minimum required SciPy is now 1.14.1. [#2266, #2308]
+- The minimum required SciPy is now 1.15.0. [#2365]
 
 - The minimum required regions is now 0.10. [#2266]
 
@@ -132,6 +132,13 @@ New Features
     by computing the local backgrounds for all positions with the
     batched ``ApertureStats`` kernels instead of a Python loop over the
     apertures. [#2364]
+
+  - The ``Background2D`` ``n_threads`` keyword also multithreads
+    the interpolation of the low-resolution meshes to the full-size maps
+    returned by the ``background`` and ``background_rms`` properties
+    (for the 'reflect' and 'mirror' interpolation boundary modes). The
+    multithreaded maps are identical to the single-threaded maps up to
+    floating-point rounding. [#2365]
 
 - ``photutils.detection``
 

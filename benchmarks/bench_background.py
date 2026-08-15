@@ -150,18 +150,23 @@ def bench_background2d(sizes, box_sizes, n_threads_list, *, repeats=3,
             print(row)
 
 
-def bench_maps(sizes, *, box_size=64, repeats=3, seed=0):
+def bench_maps(sizes, n_threads_list, *, box_size=64, repeats=3, seed=0):
     """
-    Benchmark full-size background and background RMS map generation.
+    Benchmark full-size background map generation.
 
     The ``background`` and ``background_rms`` properties are
     recalculated on each access, so their cost is paid every time
-    they are used.
+    they are used. The ``background`` access time is measured for
+    each ``n_threads`` value, with speedups reported relative to the
+    first value in ``n_threads_list``.
 
     Parameters
     ----------
     sizes : list of int
         The image sizes; each image is ``(size, size)``.
+
+    n_threads_list : list of int
+        The ``n_threads`` values to benchmark.
 
     box_size : int, optional
         The box size used for the Background2D instance.
@@ -172,17 +177,27 @@ def bench_maps(sizes, *, box_size=64, repeats=3, seed=0):
     seed : int, optional
         The random number generator seed.
     """
-    print(f'\n== Full-size map generation (box={box_size}) ==')
-    print(f'{"image":>12}{"background":>14}{"background_rms":>17}')
+    print(f'\n== Full-size background map generation (box={box_size}) ==')
+    header = f'{"image":>12}'
+    for n_threads in n_threads_list:
+        header += f'{f"n_threads={n_threads}":>19}'
+    print(header)
+
     for size in sizes:
         data = make_image((size, size), seed=seed)
-        bkg = Background2D(data, box_size)
-        t_bkg = time_best(partial(getattr, bkg, 'background'),
-                          repeats=repeats)
-        t_rms = time_best(partial(getattr, bkg, 'background_rms'),
-                          repeats=repeats)
-        print(f'{f"{size}x{size}":>12}{f"{t_bkg:.3f}s":>14}'
-              f'{f"{t_rms:.3f}s":>17}')
+        row = f'{f"{size}x{size}":>12}'
+        t_ref = None
+        for n_threads in n_threads_list:
+            bkg = Background2D(data, box_size, n_threads=n_threads)
+            t_bkg = time_best(partial(getattr, bkg, 'background'),
+                              repeats=repeats)
+            if t_ref is None:
+                t_ref = t_bkg
+                cell = f'{t_bkg:.3f}s'
+            else:
+                cell = f'{t_bkg:.3f}s ({t_ref / t_bkg:.2f}x)'
+            row += f'{cell:>19}'
+        print(row)
 
 
 def bench_estimators(*, size=2048, repeats=3, seed=0):
@@ -283,7 +298,8 @@ def main():
         bench_background2d(sizes, box_sizes, n_threads_list,
                            repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'maps'):
-        bench_maps(sizes, repeats=args.repeats, seed=args.seed)
+        bench_maps(sizes, n_threads_list, repeats=args.repeats,
+                   seed=args.seed)
     if args.which in ('all', 'estimators'):
         bench_estimators(repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'local'):

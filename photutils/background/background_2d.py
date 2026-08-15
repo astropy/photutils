@@ -189,11 +189,14 @@ class Background2D:
         `~photutils.background.StdBackgroundRMS`.
 
     n_threads : int, optional
-        The number of threads to use to compute the box statistics. The
-        default is 1 (no multithreading). When ``n_threads`` > 1, the
-        boxes are divided into chunks along the y axis and processed
-        concurrently. The results are identical to the single-threaded
-        computation. The underlying sigma-clipping and statistics
+        The number of threads to use to compute the box statistics
+        and to resize the low-resolution meshes to the full-size
+        maps returned by the ``background`` and ``background_rms``
+        properties. The default is 1 (no multithreading). When
+        ``n_threads`` > 1, the work is divided into chunks along the
+        y axis and processed concurrently. The box statistics are
+        identical to the single-threaded computation and the resized
+        maps are identical up to floating-point rounding. The underlying
         kernels release the Python global interpreter lock (GIL),
         so multithreading can significantly speed up the background
         estimation for large images. If a custom ``bkg_estimator`` or
@@ -340,7 +343,8 @@ class Background2D:
             interp_dtype = np.float32
         self._interp_kwargs = {'shape': self._data.shape,
                                'dtype': interp_dtype,
-                               'box_size': self.box_size}
+                               'box_size': self.box_size,
+                               'n_threads': self.n_threads}
 
         # Perform the initial calculations to avoid storing large data
         # arrays and to keep the memory usage minimal
