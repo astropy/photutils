@@ -3,6 +3,7 @@
 Tools for upsampling images for Background2D using interpolation.
 """
 
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
@@ -131,9 +132,17 @@ class _BkgZoomInterpolator:
 
         n_bands = min(n_threads, out_shape[0])
         band_edges = np.linspace(0, out_shape[0], n_bands + 1).astype(int)
-        with ThreadPoolExecutor(max_workers=n_bands) as executor:
-            list(executor.map(resample_band, band_edges[:-1],
-                              band_edges[1:]))
+        with warnings.catch_warnings():
+            # scipy < 1.16 emits a UserWarning noting that the behavior
+            # of affine_transform with a 1-D matrix changed in scipy
+            # 0.18. The 1-D (per-axis) matrix form is intentional here
+            # because it selects the fast separable code path.
+            warnings.filterwarnings('ignore', message='The behavior of '
+                                    'affine_transform with a 1-D array',
+                                    category=UserWarning)
+            with ThreadPoolExecutor(max_workers=n_bands) as executor:
+                list(executor.map(resample_band, band_edges[:-1],
+                                  band_edges[1:]))
 
         return result
 
