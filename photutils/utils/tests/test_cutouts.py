@@ -213,6 +213,18 @@ class TestMakeCutouts:
         # No overlap
         assert not mask[2].any()
 
+    def test_half_pixel_positions(self):
+        """
+        Test that half-integer positions round half away from zero.
+        """
+        xpos = np.array([2.5])
+        ypos = np.array([3.5])
+        cutouts, mask = _make_cutouts(self.data, xpos, ypos, (3, 3))
+        assert mask[0].all()
+        # Centers round to (y, x) = (4, 3)
+        expected = self.data[3:6, 2:5]
+        np.testing.assert_array_equal(cutouts[0], expected)
+
     def test_even_shaped_cutout(self):
         """
         Test _make_cutouts with an even-shaped cutout.

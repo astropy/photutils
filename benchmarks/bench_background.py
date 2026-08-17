@@ -17,8 +17,8 @@ from functools import partial
 
 import numpy as np
 from astropy.stats import SigmaClip
-from bench_utils import (format_sweep_cells, make_image, print_environment,
-                         time_best)
+from bench_helpers import (format_sweep_cells, make_image, print_environment,
+                           time_best)
 
 from photutils.background import (Background2D, BiweightLocationBackground,
                                   BiweightScaleBackgroundRMS, LocalBackground,

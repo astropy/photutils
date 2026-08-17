@@ -86,8 +86,9 @@ class ImageDepth:
     seed : int, optional
         A seed to initialize the `numpy.random.BitGenerator`. If `None`,
         then fresh, unpredictable entropy will be pulled from the OS.
-        Separate function calls with the same ``seed`` will generate the
-        same results.
+        Each call to the object creates a fresh generator initialized
+        with ``seed``, so all calls with the same ``seed`` generate
+        identical results.
 
     zeropoint : float, optional
         The zeropoint used to calculate the magnitude limit from the
@@ -157,6 +158,12 @@ class ImageDepth:
 
         m_{\mathrm{lim}} = -2.5 \log_{10} f_{\mathrm{lim}}
             + \mathrm{zeropoint}
+
+    Instances are safe to call concurrently from multiple threads.
+    Each call uses only local state, including a fresh random
+    generator initialized with ``seed``. The result attributes
+    (``apertures``, ``n_apertures_used``, ``fluxes``, ``flux_limits``,
+    and ``mag_limits``) reflect the most recently completed call.
 
     Examples
     --------
@@ -237,6 +244,12 @@ class ImageDepth:
         if mask_pad < 0:
             msg = 'mask_pad must be >= 0'
             raise ValueError(msg)
+        if n_apertures < 1:
+            msg = 'n_apertures must be >= 1'
+            raise ValueError(msg)
+        if n_iters < 1:
+            msg = 'n_iters must be >= 1'
+            raise ValueError(msg)
 
         self.aper_radius = aper_radius
         self.n_sigma = n_sigma
@@ -256,7 +269,6 @@ class ImageDepth:
         self.sigma_clip = sigma_clip
         self.progress_bar = progress_bar
 
-        self.rng = np.random.default_rng(self.seed)
         self.dilate_radius = int(np.ceil(self.aper_radius + self.mask_pad))
         self.dilate_footprint = circular_footprint(radius=self.dilate_radius)
 
@@ -327,7 +339,12 @@ class ImageDepth:
             iter_range = add_progress_bar(iter_range,
                                           desc=desc)
 
-        flux_limits = []
+        # Use a fresh, local random generator so that calls use no
+        # shared mutable state and are safe to run concurrently from
+        # multiple threads. With a fixed seed, every call produces
+        # identical results.
+        rng = np.random.default_rng(self.seed)
+
         # Use a local copy of the SigmaClip instance because SigmaClip
         # stores internal state on the instance during calls, so a
         # shared instance is not safe to call concurrently from multiple
@@ -335,13 +352,16 @@ class ImageDepth:
         sigma_clip = copy(self.sigma_clip)
 
         apertures = []
+        all_fluxes = []
+        flux_limits = []
         for _ in iter_range:
             if self.overlap:
-                xycoords = self._make_coords(all_xycoords, n_apertures)
+                xycoords = self._make_coords(all_xycoords, n_apertures,
+                                             rng=rng)
             else:
                 # Cut the number of coords (only need to input ~10x)
                 xycoords = self._make_coords(all_xycoords,
-                                             n_apertures * 10)
+                                             n_apertures * 10, rng=rng)
                 min_separation = self.aper_radius * 2.0
                 xycoords = apply_separation(xycoords, min_separation)
                 xycoords = xycoords[0:self.n_apertures]
@@ -351,12 +371,10 @@ class ImageDepth:
             fluxes = AperturePhotometry(data, apers).flux
             if sigma_clip is not None:
                 fluxes = sigma_clip(fluxes, masked=False)  # ndarray
-            self.fluxes.append(fluxes)
+            all_fluxes.append(fluxes)
             flux_limits.append(self.n_sigma * np.std(fluxes))
 
-        self.apertures = apertures
         n_apertures_used = np.array([len(apers) for apers in apertures])
-        self.n_apertures_used = n_apertures_used
         if np.any(n_apertures_used < self.n_apertures):
             msg = (f'Unable to generate {self.n_apertures} '
                    'non-overlapping apertures in unmasked regions. '
@@ -371,12 +389,12 @@ class ImageDepth:
 
         if isinstance(flux_limits[0], u.Quantity):
             units = True
-            self.flux_limits = u.Quantity(flux_limits)
+            flux_limits = u.Quantity(flux_limits)
         else:
             units = False
-            self.flux_limits = np.array(flux_limits)
-        flux_limit = np.mean(self.flux_limits)
-        if np.any(self.flux_limits == 0):
+            flux_limits = np.array(flux_limits)
+        flux_limit = np.mean(flux_limits)
+        if np.any(flux_limits == 0):
             msg = ('One or more flux_limit values was zero. This is '
                    'likely due to constant image values. Check the '
                    'input mask.')
@@ -385,13 +403,21 @@ class ImageDepth:
         # Ignore divide-by-zero RuntimeWarning in log10
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            flux_limits = self.flux_limits
+            flux_limit_values = flux_limits
             flux_limit_ = flux_limit
             if units:
-                flux_limits = flux_limits.value
+                flux_limit_values = flux_limits.value
                 flux_limit_ = flux_limit.value
-            self.mag_limits = -2.5 * np.log10(flux_limits) + self.zeropoint
+            mag_limits = -2.5 * np.log10(flux_limit_values) + self.zeropoint
             mag_limit = -2.5 * np.log10(flux_limit_) + self.zeropoint
+
+        # Store the per-iteration results computed above. The result
+        # attributes reflect the most recently completed call.
+        self.apertures = apertures
+        self.n_apertures_used = n_apertures_used
+        self.fluxes = all_fluxes
+        self.flux_limits = flux_limits
+        self.mag_limits = mag_limits
 
         return flux_limit, mag_limit
 
@@ -553,7 +579,8 @@ class ImageDepth:
 
         return np.column_stack((xi, yi))
 
-    def _make_coords(self, xycoords, n_apertures):
+    @staticmethod
+    def _make_coords(xycoords, n_apertures, *, rng):
         """
         Randomly choose ``n_apertures`` (without replacement) coordinates
         from the input ``xycoords``.
@@ -565,8 +592,12 @@ class ImageDepth:
         ----------
         xycoords : 2xN `~numpy.ndarray`
             The (x, y) coordinates.
+
         n_apertures : int
             The number of aperture to make.
+
+        rng : `~numpy.random.Generator`
+            The random number generator.
 
         Returns
         -------
@@ -577,10 +608,10 @@ class ImageDepth:
             msg = 'Too many apertures for given unmasked area'
             raise ValueError(msg)
 
-        idx = self.rng.choice(xycoords.shape[0], n_apertures, replace=False)
+        idx = rng.choice(xycoords.shape[0], n_apertures, replace=False)
         xycoords = xycoords[idx, :].astype(float)
 
-        shift = self.rng.uniform(-0.5, 0.5, size=xycoords.shape)
+        shift = rng.uniform(-0.5, 0.5, size=xycoords.shape)
         xycoords += shift
 
         return xycoords

@@ -424,6 +424,14 @@ Bug Fixes
   - Fixed a thread-safety issue in ``ImageDepth`` by using a copy of the
     user's SigmaClip instance. [#2364]
 
+  - Fixed ``ImageDepth`` so that repeated calls on the same instance
+    no longer accumulate the ``fluxes`` attribute across calls. The
+    result attributes now always reflect only the most recent call.
+    [#2375]
+
+  - Fixed a crash in ``calc_total_error`` when the input ``data`` array
+    has an integer data type. [#2375]
+
 API Changes
 ^^^^^^^^^^^
 
@@ -503,6 +511,11 @@ API Changes
     labels the number of sources as ``n_sources`` instead of
     ``nsources`` for naming consistency. [#2338]
 
+  - The star-finder cutout centers used for the shape and flux
+    measurements now round half-integer pixel positions half away
+    from zero instead of half to even, consistent with the rounding
+    convention used elsewhere in photutils. [#2375]
+
 - ``photutils.geometry``
 
   - The ``circular_overlap_grid``, ``elliptical_overlap_grid``, and
@@ -550,6 +563,9 @@ API Changes
     ``STDPSFGrid`` output now labels the grid shape as ``Grid shape``
     instead of ``Grid_shape``. [#2344]
 
+  - ``decode_psf_flags`` now raises a ``TypeError`` for boolean flag
+    values instead of treating `True` as bit value 1. [#2375]
+
 - ``photutils.segmentation``
 
   - The ``deblend_sources`` "too many markers" warning key stored in
@@ -563,6 +579,16 @@ API Changes
     renamed to ``n_coords``, consistent with the ``n_*`` naming used
     elsewhere in photutils. The old ``ncoords`` name is deprecated and
     will be removed in version 4.0. [#2346]
+
+  - ``ImageDepth`` now creates a fresh random generator initialized
+    with ``seed`` on every call instead of consuming a generator shared
+    across calls. With a fixed seed, every call on the same instance now
+    produces identical results. [#2375]
+
+  - ``ShepardIDWInterpolator`` now returns a NumPy scalar for a
+    single input position when ``n_neighbors=1``, consistent with the
+    ``n_neighbors > 1`` case. Previously it returned a Python float.
+    [#2375]
 
 
 3.0.0 (2026-04-17)

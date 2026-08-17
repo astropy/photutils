@@ -184,8 +184,10 @@ def calc_total_error(data, bkg_error, effective_gain):
         data = data.value
         effective_gain = effective_gain.value
 
-    # Do not include source variance where effective_gain = 0
-    source_variance = data.copy()
+    # Do not include source variance where effective_gain = 0. Use a
+    # float array so that integer input data does not raise an error
+    # from the in-place division.
+    source_variance = data.astype(float)
     mask = effective_gain != 0
     source_variance[mask] /= effective_gain[mask]
     source_variance[~mask] = 0.0

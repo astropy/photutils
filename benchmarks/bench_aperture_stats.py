@@ -17,9 +17,9 @@ import argparse
 from functools import partial
 
 from astropy.stats import SigmaClip
-from bench_utils import (format_sweep_cells, make_aperture_inputs,
-                         make_apertures, parse_thread_counts,
-                         print_environment, time_best)
+from bench_helpers import (format_sweep_cells, make_aperture_inputs,
+                           make_apertures, parse_thread_counts,
+                           print_environment, time_best)
 
 from photutils.aperture import ApertureStats, CircularAperture
 

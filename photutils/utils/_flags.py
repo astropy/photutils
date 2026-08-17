@@ -338,7 +338,8 @@ def decode_flags(flags, registry, *, return_bit_values=False):
         """
         Decode a single integer flag value.
         """
-        if not isinstance(flag_value, (int, np.integer)):
+        if (not isinstance(flag_value, (int, np.integer))
+                or isinstance(flag_value, bool)):
             msg = 'Flag value must be an integer'
             raise TypeError(msg)
 

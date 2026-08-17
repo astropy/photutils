@@ -41,6 +41,24 @@ def test_round_scalar():
     assert ar == -1
 
 
+def test_round_0d_array():
+    """
+    Test round_half_away with 0D array inputs.
+    """
+    ar = round_half_away(np.array(1.5))
+    assert np.isscalar(ar)
+    assert isinstance(ar, int)
+    assert ar == 2
+
+    ar = round_half_away(np.float64(-2.5))
+    assert isinstance(ar, int)
+    assert ar == -3
+
+    ar = round_half_away(np.array(np.nan))
+    assert isinstance(ar, float)
+    assert np.isnan(ar)
+
+
 def test_round_nan():
     """
     Test round_half_away with NaN inputs.

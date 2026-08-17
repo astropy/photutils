@@ -18,7 +18,7 @@ import argparse
 from functools import partial
 
 import numpy as np
-from bench_utils import print_environment, time_best
+from bench_helpers import print_environment, time_best
 
 from photutils.geometry import (circular_overlap_grid, elliptical_overlap_grid,
                                 rectangular_overlap_grid)

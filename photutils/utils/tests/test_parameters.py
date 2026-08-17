@@ -44,6 +44,16 @@ class TestAsPairBasic:
         with pytest.raises(ValueError, match=match):
             as_pair('pair', 1.5)
 
+    def test_unsigned_integer_dtype(self):
+        result = as_pair('p', np.array([3, 4], dtype=np.uint8))
+        assert_equal(result, (3, 4))
+
+    def test_bool_dtype(self):
+        value = True
+        match = 'must have integer values'
+        with pytest.raises(ValueError, match=match):
+            as_pair('p', value)
+
     @pytest.mark.parametrize('value', [(1, np.nan), (1, np.inf)])
     def test_non_finite(self, value):
         match = 'must be a finite value'
