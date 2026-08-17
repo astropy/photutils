@@ -57,9 +57,10 @@ def centroid_com(data, mask=None):
     Returns
     -------
     centroid : `~numpy.ndarray`
-        The coordinates of the centroid in pixel order (e.g., ``(x,
-        y)`` or ``(x, y, z)``), not numpy axis order. If the sum of the
-        (unmasked) data is zero, then a `~numpy.ndarray` of NaN values
+        The coordinates of the centroid in pixel order (e.g., ``(x, y)``
+        or ``(x, y, z)``), not numpy axis order. If the absolute value
+        of the sum of the (unmasked) data is smaller than 1e-30 (i.e.,
+        consistent with zero), then a `~numpy.ndarray` of NaN values
         will be returned. If the sum is close to zero, the centroid may
         be poorly defined and fall outside the array bounds.
 
@@ -218,6 +219,9 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
     * quadratic fit maximum falls outside image
     * not enough unmasked data points (6 are required)
 
+    A `ValueError` is raised if all data values are masked or
+    non-finite.
+
     Also note that a fit is not performed if the maximum data value is
     at the edge of the data. In this case, the position of the maximum
     pixel will be returned.
@@ -265,6 +269,10 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
 
     data = _process_data_mask(data, mask)
     ny, nx = data.shape
+
+    if not np.any(np.isfinite(data)):
+        msg = 'All data values are masked or non-finite'
+        raise ValueError(msg)
 
     fit_boxsize = as_pair('fit_boxsize', fit_boxsize, lower_bound=(0, 0),
                           upper_bound=data.shape, check_odd=True)
@@ -332,9 +340,13 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
         warnings.warn(msg, AstropyUserWarning)
         return np.array((np.nan, np.nan))
 
-    # Fit a 2D quadratic polynomial to the fitting region
-    xi = np.arange(xidx0, xidx1)
-    yi = np.arange(yidx0, yidx1)
+    # Fit a 2D quadratic polynomial to the fitting region. The fit
+    # coordinates are centered on the peak pixel to keep the design
+    # matrix well conditioned. With absolute coordinates the condition
+    # number grows as ~coordinate**4 and the fit fails for sources at
+    # large pixel coordinates (e.g., in large mosaic images).
+    xi = np.arange(xidx0, xidx1) - xidx
+    yi = np.arange(yidx0, yidx1) - yidx
     x, y = np.meshgrid(xi, yi)
     x = x.ravel()
     y = y.ravel()
@@ -376,8 +388,10 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
         warnings.warn(msg, AstropyUserWarning)
         return np.array((np.nan, np.nan))
 
-    xm = (c01 * c11 - 2.0 * c02 * c10) / det
-    ym = (c10 * c11 - 2.0 * c20 * c01) / det
+    # Add back the peak-pixel offset to convert the analytic maximum
+    # from fit coordinates to data coordinates
+    xm = (c01 * c11 - 2.0 * c02 * c10) / det + xidx
+    ym = (c10 * c11 - 2.0 * c20 * c01) / det + yidx
     if 0.0 < xm < (nx - 1.0) and 0.0 < ym < (ny - 1.0):
         xycen = np.array((xm, ym), dtype=float)
     else:
@@ -547,20 +561,23 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         A callable object (e.g., function or class) that is used to
         calculate the centroid of a 2D array. The ``centroid_func``
         must accept a 2D `~numpy.ndarray`, have a ``mask`` keyword and
-        optionally an ``error`` keyword. The callable object must return
-        two scalar values representing the (x, y) centroid. The default
-        is `~photutils.centroids.centroid_com`.
+        optionally an ``error`` keyword. A callable whose signature
+        accepts arbitrary keyword arguments (``**kwargs``) is assumed to
+        handle a ``mask`` keyword. The callable object must return two
+        scalar values representing the (x, y) centroid. The default is
+        `~photutils.centroids.centroid_com`.
 
     **kwargs : dict, optional
         Any additional keyword arguments accepted by the
-        ``centroid_func``.
+        ``centroid_func``. A `TypeError` is raised for keyword arguments
+        not accepted by the ``centroid_func``.
 
     Returns
     -------
     xcentroid, ycentroid : `~numpy.ndarray`
         The ``x`` and ``y`` pixel position(s) of the centroids. NaNs
         will be returned where the centroid failed. This is usually due
-        a ``box_size`` that is too small when using a fitting-based
+        to a ``box_size`` that is too small when using a fitting-based
         centroid function (e.g., `centroid_1dg`, `centroid_2dg`, or
         `centroid_quadratic`).
 
@@ -616,6 +633,10 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         msg = 'xpos and ypos must have the same length'
         raise ValueError(msg)
 
+    if not (np.all(np.isfinite(xpos)) and np.all(np.isfinite(ypos))):
+        msg = 'xpos and ypos must contain only finite values'
+        raise ValueError(msg)
+
     if (xpos.min() < 0 or ypos.min() < 0
             or xpos.max() > data.shape[1] - 1
             or ypos.max() > data.shape[0] - 1):
@@ -634,37 +655,57 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         if footprint.ndim != 2:
             msg = 'footprint must be a 2D array'
             raise ValueError(msg)
+        if not np.any(footprint):
+            msg = 'footprint must contain at least one True value'
+            raise ValueError(msg)
 
     if mask is not None and mask.shape != data.shape:
         msg = 'mask and data must have the same shape'
         raise ValueError(msg)
 
+    # error=None is equivalent to no error array, so allow it even for
+    # centroid functions that do not accept an error keyword
+    if kwargs.get('error') is None:
+        kwargs.pop('error', None)
+
+    # Allow arbitrary keyword arguments (**kwargs)
     spec = inspect.signature(centroid_func)
-    if 'mask' not in spec.parameters:
+    accepts_var_keyword = any(param.kind == inspect.Parameter.VAR_KEYWORD
+                              for param in spec.parameters.values())
+    if 'mask' not in spec.parameters and not accepts_var_keyword:
         msg = "The input 'centroid_func' must have a 'mask' keyword."
         raise ValueError(msg)
 
-    # Drop any **kwargs not supported by the centroid_func
-    centroid_kwargs = {key: val for key, val in kwargs.items()
-                       if key in spec.parameters}
+    if not accepts_var_keyword:
+        unknown_keys = set(kwargs) - set(spec.parameters)
+        if unknown_keys:
+            msg = ('Unrecognized keyword argument(s) for the input '
+                   f"'centroid_func': {sorted(unknown_keys)}")
+            raise TypeError(msg)
+    centroid_kwargs = dict(kwargs)
 
-    # Save the original error array before the loop so that each
-    # iteration independently slices the full-image array
-    error_array = centroid_kwargs.get('error')
+    # Save the original error array so that each source independently
+    # slices the full-image array
+    error_array = centroid_kwargs.pop('error', None)
+    if error_array is not None and np.shape(error_array) != data.shape:
+        msg = 'error and data must have the same shape'
+        raise ValueError(msg)
 
-    # Extract xpeak/ypeak before the loop so the original absolute
-    # coordinates are available for every source. The per-iteration
-    # block below re-adds them with the correct cutout offset each time.
+    # Extract xpeak/ypeak so the original absolute coordinates are
+    # available for every source. The per-source function below re-adds
+    # them with the correct cutout offset.
     # Remove this block once xpeak and ypeak are fully deprecated.
     xpeak_orig = centroid_kwargs.pop('xpeak', None)
     ypeak_orig = centroid_kwargs.pop('ypeak', None)
 
-    n_sources = len(xpos)
-    xcentroids = np.zeros(n_sources, dtype=float)
-    ycentroids = np.zeros(n_sources, dtype=float)
-
     inverted_footprint = np.logical_not(footprint)
-    for i, (xp, yp) in enumerate(zip(xpos, ypos, strict=True)):
+
+    def _centroid_source(xypos):
+        """
+        Compute the centroid of the source at the given (x, y)
+        position.
+        """
+        xp, yp = xypos
         slices_large, slices_small = overlap_slices(data.shape,
                                                     footprint.shape, (yp, xp))
         data_cutout = data[slices_large]
@@ -685,28 +726,32 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
                    'footprint.')
             raise ValueError(msg)
 
-        centroid_kwargs.update({'mask': mask_cutout})
+        # Build the per-source keyword arguments from a local copy so
+        # that no shared state is mutated across sources
+        src_kwargs = dict(centroid_kwargs)
+        src_kwargs['mask'] = mask_cutout
 
         if error_array is not None:
-            centroid_kwargs['error'] = error_array[slices_large]
+            src_kwargs['error'] = error_array[slices_large]
 
+        # Add xpeak/ypeak with the offset relative to this source's
+        # cutout.
         # Remove this block once xpeak and ypeak are fully deprecated.
-        # Clear any xpeak/ypeak left by the previous iteration, then
-        # re-add with the offset relative to this source's cutout.
-        centroid_kwargs.pop('xpeak', None)
-        centroid_kwargs.pop('ypeak', None)
         if xpeak_orig is not None and ypeak_orig is not None:
-            centroid_kwargs['xpeak'] = xpeak_orig - slices_large[1].start
-            centroid_kwargs['ypeak'] = ypeak_orig - slices_large[0].start
+            src_kwargs['xpeak'] = xpeak_orig - slices_large[1].start
+            src_kwargs['ypeak'] = ypeak_orig - slices_large[0].start
 
         try:
-            xcen, ycen = centroid_func(data_cutout, **centroid_kwargs)
+            xcen, ycen = centroid_func(data_cutout, **src_kwargs)
         except (ValueError, TypeError) as exc:
             msg = f'Centroid failed for source at ({xp}, {yp}): {exc}'
-            warnings.warn(msg, AstropyUserWarning, stacklevel=2)
+            warnings.warn(msg, AstropyUserWarning)
             xcen, ycen = np.nan, np.nan
 
-        xcentroids[i] = xcen + slices_large[1].start
-        ycentroids[i] = ycen + slices_large[0].start
+        return (xcen + slices_large[1].start,
+                ycen + slices_large[0].start)
 
-    return xcentroids, ycentroids
+    results = [_centroid_source(xypos)
+               for xypos in zip(xpos, ypos, strict=True)]
+    results = np.array(results, dtype=float)
+    return results[:, 0], results[:, 1]

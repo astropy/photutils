@@ -29,8 +29,16 @@ def centroid_1dg(data, error=None, mask=None):
     arrays are automatically masked. The final mask is a logical OR
     combination of the input ``mask``, the automatically generated mask
     for non-finite values, and the mask of the input ``data`` if it is a
-    `~numpy.ma.MaskedArray`. The centroid is calculated using only the
-    unmasked data values.
+    `~numpy.ma.MaskedArray`.
+
+    Masked pixels are excluded by substituting zero into the
+    marginal sums, and the fit weights are zeroed only for
+    fully-masked rows or columns. A partially-masked row or column
+    near the source peak therefore distorts the corresponding
+    marginal distribution and can bias the centroid. Consider using
+    `~photutils.centroids.centroid_2dg`, which excludes individual
+    masked pixels from the fit, when isolated masked or non-finite
+    pixels fall near the source peak.
 
     Parameters
     ----------
@@ -98,6 +106,14 @@ def centroid_1dg(data, error=None, mask=None):
             xy_weights[i][bad_idx[i]] = 0.0
 
     xy_data = [np.sum(data, axis=i) for i in (0, 1)]
+
+    # A zero-sum or constant marginal distribution has undefined
+    # moment estimates (0/0) and cannot be fit with a 1D Gaussian.
+    for data_i in xy_data:
+        if np.sum(data_i) == 0 or np.ptp(data_i) == 0:
+            msg = ('Input data must have a nonzero sum and non-constant '
+                   'values to fit 1D Gaussians.')
+            raise ValueError(msg)
 
     # Gaussian1D stddev is bounded to be strictly positive
     fitter = TRFLSQFitter()
@@ -179,7 +195,7 @@ def centroid_2dg(data, error=None, mask=None):
     data, mask, error = _validate_gaussian_inputs(data, mask, error)
 
     if np.count_nonzero(~mask) < 6:
-        msg = ('Input data must have a least 6 unmasked values to fit a '
+        msg = ('Input data must have at least 6 unmasked values to fit a '
                '2D Gaussian.')
         raise ValueError(msg)
 
@@ -214,11 +230,15 @@ def centroid_2dg(data, error=None, mask=None):
 
     y, x = np.indices(data.shape)
 
-    with warnings.catch_warnings(record=True) as fit_warnings:
-        warnings.simplefilter('always', AstropyUserWarning)
-        gfit = fitter(g_init, x, y, data, weights=weights)
+    gfit = fitter(g_init, x, y, data, weights=weights)
 
-    if any(issubclass(w.category, AstropyUserWarning) for w in fit_warnings):
+    # TRFLSQFitter stores the scipy least_squares result object in
+    # fit_info. Success is False when the optimizer terminated without
+    # satisfying a convergence criterion (e.g., the maximum number of
+    # function evaluations was exceeded). Inspecting fit_info instead
+    # of capturing warnings avoids mutating the process-global warnings
+    # state, which is not thread-safe.
+    if not fitter.fit_info.success:
         msg = 'The fit may not have converged. Please check your results.'
         warnings.warn(msg, AstropyUserWarning)
 

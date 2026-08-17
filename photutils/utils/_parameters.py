@@ -3,8 +3,11 @@
 Tools for parameter validation.
 """
 
+import warnings
+
 import numpy as np
 from astropy.stats import SigmaClip
+from astropy.utils.exceptions import AstropyUserWarning
 
 
 class SigmaClipSentinelDefault:
@@ -71,7 +74,9 @@ def as_pair(name, value, *, lower_bound=None, upper_bound=None,
         A tuple defining the allowed upper bounds of the value along
         each axis. For each axis, if ``value`` is larger than the bound,
         it is reset to the bound. ``upper_bound`` is typically set to an
-        image shape.
+        image shape. If ``check_odd`` is `True` and clamping to an even
+        bound produces an even value, the value is reduced to the next
+        lower odd value and a warning is issued.
 
     check_odd : bool, optional
         Whether to raise a `ValueError` if the values are not odd along
@@ -141,6 +146,19 @@ def as_pair(name, value, *, lower_bound=None, upper_bound=None,
         # upper_bound is typically set to an image shape
         value = np.array((min(value[0], upper_bound[0]),
                           min(value[1], upper_bound[1])))
+
+        # Clamping to an even bound can produce an even value. Reduce
+        # it to the next lower odd value to preserve the odd-values
+        # requirement.
+        if check_odd:
+            even = (value % 2 == 0) & (value > 0)
+            if np.any(even):
+                value = value - even.astype(int)
+                new_value = tuple(int(val) for val in value)
+                msg = (f'{name!r} was clamped to the upper bound and '
+                       f'reduced to {new_value} to keep odd values '
+                       'for both axes')
+                warnings.warn(msg, AstropyUserWarning)
 
     return value
 

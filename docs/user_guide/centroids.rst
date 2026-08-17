@@ -22,10 +22,16 @@ The following functions calculate the centroid of a single source:
 * :func:`~photutils.centroids.centroid_2dg`: Calculates the centroid
   by fitting a 2D Gaussian to the 2D distribution of the data.
 
-Masks can be input into each of these functions to mask bad pixels.
-Error arrays can be input into the two Gaussian fitting methods to
-weight the fits. Non-finite values (e.g., NaN or inf) in the data or
-error arrays are automatically masked.
+Masks can be input into each of these functions to mask bad
+pixels. Error arrays can be input into the two Gaussian fitting
+methods to weight the fits. Non-finite values (e.g., NaN or
+inf) in the data or error arrays are automatically masked. Note
+that because :func:`~photutils.centroids.centroid_1dg` fits the
+marginal distributions of the data, a partially-masked row or
+column near the source peak can bias its result. Consider using
+:func:`~photutils.centroids.centroid_2dg`, which excludes individual
+masked pixels from the fit, when isolated masked or non-finite pixels
+fall near the source peak.
 
 To calculate the centroids of many sources in an image, use the
 :func:`~photutils.centroids.centroid_sources` function. This function
