@@ -12,7 +12,8 @@ from astropy.utils.exceptions import AstropyDeprecationWarning
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
                                       StarFinderCatalogBase,
                                       _handle_deprecated_range,
-                                      _StarFinderKernel, _validate_n_brightest)
+                                      _StarFinderKernel, _validate_n_brightest,
+                                      _validate_xycoords_bounds)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
@@ -106,7 +107,8 @@ class IRAFStarFinder(StarFinderBase):
     xycoords : `None` or Nx2 `~numpy.ndarray`, optional
         The (x, y) pixel coordinates of the approximate centroid
         positions of identified sources. If ``xycoords`` are input, the
-        algorithm will skip the source-finding step.
+        algorithm will skip the source-finding step. The positions must
+        be within the bounds of the input ``data``.
 
     min_separation : `None` or float, optional
         The minimum separation (in pixels) for detected objects. If
@@ -306,6 +308,7 @@ class IRAFStarFinder(StarFinderBase):
                                      mask=mask,
                                      exclude_border=self.exclude_border)
         else:
+            _validate_xycoords_bounds(self.xycoords, data.shape)
             xypos = self.xycoords
 
         if xypos is None:
@@ -405,12 +408,12 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
     sharpness_range : tuple of 2 floats, optional
         The ``(lower, upper)`` inclusive bounds on sharpness for object
         detection. Objects with sharpness outside this range will be
-        rejected.
+        rejected. The default is ``(0.5, 2.0)``.
 
     roundness_range : tuple of 2 floats, optional
         The ``(lower, upper)`` inclusive bounds on roundness for object
         detection. Objects with roundness outside this range will be
-        rejected.
+        rejected. The default is ``(0.0, 0.2)``.
 
     n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
@@ -428,7 +431,7 @@ class _IRAFStarFinderCatalog(StarFinderCatalogBase):
     """
 
     def __init__(self, data, convolved_data, xypos, kernel, *,
-                 sharpness_range=(0.2, 1.0), roundness_range=(-1.0, 1.0),
+                 sharpness_range=(0.5, 2.0), roundness_range=(0.0, 0.2),
                  n_brightest=None, peak_max=None):
 
         # Validate the units, but do not strip them

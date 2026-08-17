@@ -310,6 +310,29 @@ Bug Fixes
     also makes it consistent with ``ApertureStats.orientation`` and
     ``SourceCatalog.orientation``. [#2317]
 
+  - Fixed integer indexing of the star finder catalog classes when
+    multidimensional per-source attributes (e.g., image moments or
+    cutouts) had already been computed. Previously, the integer index
+    dropped the leading source axis of those cached arrays, and
+    accessing dependent properties on the indexed catalog raised an
+    ``IndexError``. [#2377]
+
+  - ``DAOStarFinder`` and ``IRAFStarFinder`` now raise a ``ValueError``
+    if any input ``xycoords`` position is outside the bounds of the
+    input data. [#2377]
+
+  - Fixed ``find_peaks`` (and the star finder classes, which use it)
+    so that masked pixels can no longer suppress nearby peaks within
+    the local region. Masked pixels are now replaced by the minimum
+    finite data value before peak detection, the same treatment already
+    applied to NaN pixels. Previously, a masked pixel (e.g., a flagged
+    cosmic ray or hot pixel) with a value larger than a nearby true peak
+    prevented that peak from being detected. [#2377]
+
+  - ``StarFinder`` now validates the input ``kernel`` values. The
+    kernel must contain only finite values and have a positive
+    maximum. [#2377]
+
 - ``photutils.morphology``
 
   - Fixed ``data_properties`` so that a ``background`` input with

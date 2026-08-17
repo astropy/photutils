@@ -69,6 +69,26 @@ class TestStarFinder:
         with pytest.raises(ValueError, match=match):
             StarFinder(1, bad_kernel)
 
+    def test_kernel_nonpositive(self):
+        """
+        Test that kernels without a positive maximum raise ValueError.
+        """
+        match = 'kernel must have a positive maximum value'
+        for bad_kernel in (np.zeros((3, 3)), -np.ones((3, 3))):
+            with pytest.raises(ValueError, match=match):
+                StarFinder(1, bad_kernel)
+
+    def test_kernel_nonfinite(self):
+        """
+        Test that kernels with non-finite values raise ValueError.
+        """
+        match = 'kernel must contain only finite values'
+        for bad_value in (np.nan, np.inf):
+            kernel = np.ones((3, 3))
+            kernel[1, 1] = bad_value
+            with pytest.raises(ValueError, match=match):
+                StarFinder(1, kernel)
+
     def test_nosources(self, data, kernel):
         """
         Test that no sources returns None with a warning.
@@ -86,7 +106,7 @@ class TestStarFinder:
             tbl = finder(-data)
         assert tbl is None
 
-    def test_exclude_border(self, data, kernel):
+    def test_exclude_border(self):
         """
         Test that border sources are excluded.
         """
@@ -111,8 +131,11 @@ class TestStarFinder:
         tbl1 = starfinder(data)
         tbl2 = starfinder(data, mask=mask)
         assert len(tbl1) == 25
-        assert len(tbl2) == 13
-        assert min(tbl2['y_centroid']) > 50
+        # The 14 sources include one whose unmasked peak pixel lies at
+        # the mask boundary (its centroid falls just below it). Masked
+        # pixels do not suppress nearby peaks.
+        assert len(tbl2) == 14
+        assert min(tbl2['y_centroid']) > 49.5
 
     def test_mask_int(self, data, kernel):
         """

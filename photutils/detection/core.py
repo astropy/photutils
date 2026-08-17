@@ -274,12 +274,20 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         """
         Index or slice the catalog.
 
-        This method should be overridden in subclasses to handle
-        class-specific attributes.
+        Class-specific attributes to copy are declared by overriding
+        the ``_get_init_attributes`` method in subclasses.
         """
         # NOTE: we allow indexing/slicing of scalar (self.isscalar = True)
         #       instances in order to perform catalog filtering even for
         #       a single source
+
+        # Normalize an integer index to a one-element fancy index so
+        # that the leading source axis is always preserved, including
+        # for cached multidimensional per-source arrays (e.g., moments
+        # and cutouts).
+        if (isinstance(index, (int, np.integer))
+                and not isinstance(index, bool)):
+            index = [index]
 
         newcls = object.__new__(self.__class__)
 
@@ -289,10 +297,8 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             setattr(newcls, attr, getattr(self, attr))
 
         # xypos determines ordering and isscalar
-        # NOTE: always keep as 2D array, even for a single source
         attr = 'xypos'
-        value = getattr(self, attr)[index]
-        setattr(newcls, attr, np.atleast_2d(value))
+        setattr(newcls, attr, getattr(self, attr)[index])
 
         # Index/slice the remaining attributes
         keys = set(self.__dict__.keys()) & set(self._cached_properties)
@@ -305,11 +311,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
             if np.isscalar(value):
                 continue
 
-            # Ensure value is always at least a 1D array, even for a
-            # single source
-            value = np.atleast_1d(value[index])
-
-            newcls.__dict__[key] = value
+            newcls.__dict__[key] = value[index]
 
         return newcls
 
@@ -950,6 +952,37 @@ def _validate_n_brightest(n_brightest):
             raise ValueError(msg)
         n_brightest = bright_int
     return n_brightest
+
+
+def _validate_xycoords_bounds(xycoords, shape):
+    """
+    Validate that ``xycoords`` positions are within the data shape.
+
+    Positions are interpreted as pixel coordinates, where pixel centers
+    are at integer values and the image footprint spans ``(-0.5, nx -
+    0.5)`` in x and ``(-0.5, ny - 0.5)`` in y.
+
+    Parameters
+    ----------
+    xycoords : Nx2 `~numpy.ndarray`
+        The (x, y) pixel coordinates of sources.
+
+    shape : tuple of 2 int
+        The ``(ny, nx)`` shape of the data array.
+
+    Raises
+    ------
+    ValueError
+        If any position is outside the bounds of the data.
+    """
+    ny, nx = shape
+    xpos = xycoords[:, 0]
+    ypos = xycoords[:, 1]
+    if np.any((xpos <= -0.5) | (xpos >= nx - 0.5)
+              | (ypos <= -0.5) | (ypos >= ny - 0.5)):
+        msg = ('xycoords must be within the bounds of the input data '
+               f'with shape {tuple(shape)}')
+        raise ValueError(msg)
 
 
 def _handle_deprecated_range(old_lower, old_upper, new_range,

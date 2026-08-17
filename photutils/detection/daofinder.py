@@ -12,7 +12,8 @@ import numpy as np
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
                                       StarFinderCatalogBase,
                                       _handle_deprecated_range,
-                                      _StarFinderKernel, _validate_n_brightest)
+                                      _StarFinderKernel, _validate_n_brightest,
+                                      _validate_xycoords_bounds)
 from photutils.utils._convolution import _filter_data
 from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
@@ -139,7 +140,8 @@ class DAOStarFinder(StarFinderBase):
     xycoords : `None` or Nx2 `~numpy.ndarray`, optional
         The (x, y) pixel coordinates of the approximate centroid
         positions of identified sources. If ``xycoords`` are input, the
-        algorithm will skip the source-finding step.
+        algorithm will skip the source-finding step. The positions must
+        be within the bounds of the input ``data``.
 
     min_separation : `None` or float, optional
         The minimum separation (in pixels) for detected objects. If
@@ -336,6 +338,7 @@ class DAOStarFinder(StarFinderBase):
                                      min_separation=self.min_separation,
                                      exclude_border=self.exclude_border)
         else:
+            _validate_xycoords_bounds(self.xycoords, data.shape)
             xypos = self.xycoords
 
         if xypos is None:
@@ -452,7 +455,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         The ``(lower, upper)`` inclusive bounds on roundness for object
         detection. Objects with roundness outside this range will be
         rejected. Both ``roundness1`` and ``roundness2`` are tested
-        against this range.
+        against this range. The default is ``(-1.0, 1.0)``.
 
     n_brightest : int, None, optional
         The number of brightest objects to keep after sorting the source
@@ -467,6 +470,12 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         `~astropy.units.Quantity` array, then ``peak_max`` must have the
         same units. If ``peak_max`` is set to `None`, then no peak pixel
         value filtering will be performed.
+
+    scale_threshold : bool, optional
+        If `True` (default), the input ``threshold`` is multiplied by
+        the kernel relative error to compute the effective threshold
+        used by ``daofind_mag``. If `False`, the input ``threshold`` is
+        used directly.
     """
 
     def __init__(self, data, convolved_data, xypos, threshold, kernel, *,
@@ -1022,10 +1031,7 @@ class _DAOStarFinderCatalog(StarFinderCatalogBase):
         """
         attrs = ('x_centroid', 'y_centroid', 'hx', 'hy', 'sharpness',
                  'roundness1', 'roundness2', 'peak', 'flux')
-        skip = ()
-        if np.all(self._threshold_eff_per_source == 0):
-            skip = ('flux',)
-        newcat = self._filter_finite(attrs, skip_attrs=skip)
+        newcat = self._filter_finite(attrs)
         if newcat is None:
             return None
 

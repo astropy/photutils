@@ -156,6 +156,24 @@ class TestDAOStarFinder:
         tbl1 = finder1(data)
         assert_array_equal(tbl0, tbl1)
 
+    @pytest.mark.parametrize('xycoords', [[[500, 50]], [[50, 500]],
+                                          [[-50, 50]], [[50, -50]]])
+    def test_xycoords_out_of_bounds(self, data, xycoords):
+        """
+        Test that out-of-bounds xycoords raise a ValueError.
+        """
+        match = 'xycoords must be within the bounds'
+        finder = DAOStarFinder(threshold=5.0, fwhm=2.0,
+                               xycoords=np.array(xycoords))
+        with pytest.raises(ValueError, match=match):
+            finder(data)
+
+        # 2D threshold uses per-source threshold lookups
+        finder = DAOStarFinder(threshold=np.full(data.shape, 5.0),
+                               fwhm=2.0, xycoords=np.array(xycoords))
+        with pytest.raises(ValueError, match=match):
+            finder(data)
+
     def test_min_separation(self, data):
         """
         Test the min_separation parameter.
@@ -325,6 +343,27 @@ class TestDAOStarFinder:
         assert cat.isscalar
         flux = cat.flux[0]  # evaluate the flux so it can be sliced
         assert cat[0].flux == flux
+
+    def test_getitem_int_index_cached_multidim(self, data):
+        """
+        Regression test for integer indexing of the catalog after
+        multidimensional per-source arrays (e.g., the cutouts and
+        marginal-fit results) have been computed.
+
+        Previously, the integer index dropped the leading source axis
+        of those cached arrays, and accessing dependent properties
+        (e.g., ``peak``) on the indexed catalog raised an IndexError.
+        """
+        finder = DAOStarFinder(threshold=5.0, fwhm=2.0)
+        cat = finder._get_raw_catalog(data)
+        _ = cat.cutout_data
+        _ = cat.dx_hx
+
+        sub = cat[0]
+        assert sub.cutout_data.shape == (1, *cat.cutout_shape)
+        assert sub.dx_hx.shape == (1, 2)
+        assert sub.peak[0] == cat.peak[0]
+        assert sub.x_centroid[0] == cat.x_centroid[0]
 
     def test_interval_ends_included(self):
         """

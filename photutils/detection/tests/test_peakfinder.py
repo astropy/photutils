@@ -73,6 +73,57 @@ class TestFindPeaks:
         tbl_int = find_peaks(data, 0.1, box_size=3, mask=int_mask)
         assert_array_equal(tbl_bool, tbl_int)
 
+    def test_masked_pixels_do_not_suppress_peaks(self):
+        """
+        Test that a masked pixel brighter than a nearby true peak does
+        not suppress that peak.
+        """
+        data = np.zeros((20, 20))
+        data[10, 10] = 100.0  # bad pixel (masked)
+        data[10, 12] = 50.0  # real peak, 2 pixels away
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[10, 10] = True
+
+        tbl = find_peaks(data, 1.0, box_size=5, mask=mask)
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 12
+        assert tbl['y_peak'][0] == 10
+
+    def test_masked_pixels_min_separation(self):
+        """
+        Test that masked pixels do not suppress nearby peaks with the
+        fast circular (min_separation) peak detection.
+        """
+        data = np.zeros((40, 40))
+        data[20, 20] = 100.0  # bad pixel (masked)
+        data[20, 24] = 50.0  # real peak, 4 pixels away
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[20, 20] = True
+
+        tbl = find_peaks(data, 1.0, min_separation=6, mask=mask)
+        assert len(tbl) == 1
+        assert tbl['x_peak'][0] == 24
+        assert tbl['y_peak'][0] == 20
+
+    def test_mask_equivalent_to_nan(self):
+        """
+        Test that masking a pixel gives the same result as setting it
+        to NaN.
+        """
+        rng = np.random.default_rng(0)
+        data = rng.normal(0.0, 1.0, (50, 50))
+        data[25, 25] = 100.0
+        data[25, 27] = 50.0
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[25, 25] = True
+
+        data_nan = data.copy()
+        data_nan[25, 25] = np.nan
+
+        tbl_mask = find_peaks(data, 10.0, box_size=5, mask=mask)
+        tbl_nan = find_peaks(data_nan, 10.0, box_size=5)
+        assert_array_equal(tbl_mask, tbl_nan)
+
     def test_maskshape(self, data):
         """
         Test if mask shape doesn't match data shape.
@@ -95,6 +146,40 @@ class TestFindPeaks:
         """
         tbl = find_peaks(data, 0.1, box_size=3, n_peaks=1)
         assert len(tbl) == 1
+
+    def test_n_peaks_integral_float(self, data):
+        """
+        Test that an integral float n_peaks works like the integer.
+        """
+        tbl1 = find_peaks(data, 0.1, box_size=3, n_peaks=5)
+        tbl2 = find_peaks(data, 0.1, box_size=3, n_peaks=5.0)
+        assert_array_equal(tbl1, tbl2)
+
+    @pytest.mark.parametrize('n_peaks', [0, -1, 5.5])
+    def test_n_peaks_invalid(self, data, n_peaks):
+        """
+        Test that non-positive or non-integral n_peaks values raise a
+        ValueError.
+        """
+        match = 'n_peaks must be'
+        with pytest.raises(ValueError, match=match):
+            find_peaks(data, 0.1, box_size=3, n_peaks=n_peaks)
+
+    def test_n_peaks_bool(self, data):
+        """
+        Test that a boolean n_peaks raises a TypeError.
+        """
+        match = 'n_peaks must be an integer'
+        with pytest.raises(TypeError, match=match):
+            find_peaks(data, 0.1, box_size=3, n_peaks=True)
+
+    def test_empty_data(self):
+        """
+        Test that empty input data raises a ValueError.
+        """
+        match = 'data must not be empty'
+        with pytest.raises(ValueError, match=match):
+            find_peaks(np.empty((0, 0)), 0.0)
 
     def test_border_width(self, data):
         """
@@ -466,10 +551,15 @@ class TestFindPeaks:
                     dist = np.sqrt((x[i] - x[j])**2 + (y[i] - y[j])**2)
                     assert dist > 10
 
-    def test_min_separation_matches_circular_footprint(self):
+    @pytest.mark.parametrize('radius', [2.5, 5, 7.3, 10, 12.5, 25, 50])
+    def test_min_separation_matches_circular_footprint(self, radius):
         """
         Test that min_separation produces the same peaks as an
         equivalent circular footprint passed to maximum_filter.
+
+        The fractional radii exercise the even-sized-footprint branch
+        of the fast algorithm, which is the default star finder path
+        (min_separation = 2.5 * fwhm).
         """
         rng = np.random.default_rng(42)
         data = rng.standard_normal((200, 200))
@@ -478,25 +568,21 @@ class TestFindPeaks:
         data[30, 170] = 15.0
         threshold = 3.0
 
-        for radius in (5, 10, 25, 50):
-            # Reference: actual circular footprint (slow but correct)
-            idx = np.arange(-radius, radius + 1)
-            xx, yy = np.meshgrid(idx, idx)
-            fp = np.array((xx**2 + yy**2) <= radius**2, dtype=int)
-            tbl_ref = find_peaks(data, threshold, footprint=fp)
+        # Reference uses the actual circular footprint (slow but correct)
+        idx = np.arange(-radius, radius + 1)
+        xx, yy = np.meshgrid(idx, idx)
+        fp = np.array((xx**2 + yy**2) <= radius**2, dtype=int)
+        tbl_ref = find_peaks(data, threshold, footprint=fp)
 
-            tbl_fast = find_peaks(data, threshold, min_separation=radius)
+        tbl_fast = find_peaks(data, threshold, min_separation=radius)
 
-            if tbl_ref is None:
-                assert tbl_fast is None
-            else:
-                ref_xy = set(zip(tbl_ref['x_peak'].tolist(),
-                                 tbl_ref['y_peak'].tolist(),
-                                 strict=True))
-                fast_xy = set(zip(tbl_fast['x_peak'].tolist(),
-                                  tbl_fast['y_peak'].tolist(),
-                                  strict=True))
-                assert ref_xy == fast_xy
+        ref_xy = set(zip(tbl_ref['x_peak'].tolist(),
+                         tbl_ref['y_peak'].tolist(),
+                         strict=True))
+        fast_xy = set(zip(tbl_fast['x_peak'].tolist(),
+                          tbl_fast['y_peak'].tolist(),
+                          strict=True))
+        assert ref_xy == fast_xy
 
     def test_min_separation_rejects_non_maxima(self):
         """
