@@ -58,8 +58,59 @@ def test_psf_converters(tmp_path, example):
 
     with asdf.open(filename) as af:
         psf2 = af['psf']
-        for param in params:
-            assert_array_equal(getattr(psf, param), getattr(psf2, param))
+
+    # The comparisons are made after the file is closed so that they
+    # also check that no lazily-loaded arrays leak into the object
+    for param in params:
+        assert_array_equal(getattr(psf, param), getattr(psf2, param))
+
+
+# Examples of every PSF model (STDPSFGrid is not a model, so it has
+# no fitting state)
+MODEL_EXAMPLES = [
+    examples.airy_disk,
+    examples.circular_gaussian_prf,
+    examples.circular_gaussian_psf,
+    examples.circular_gaussian_sigma_prf,
+    examples.gaussian_prf,
+    examples.gaussian_psf,
+    examples.moffat_psf,
+    examples.image_psf,
+    examples.gridded_psf,
+]
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('example', MODEL_EXAMPLES, ids=_example_id)
+def test_psf_converters_preserve_fitting_state(tmp_path, example):
+    """
+    Test that non-default fixed, bounds, and name states survive a
+    round trip.
+
+    The file stores only the fixed=True entries and the non-empty
+    bounds, so parameters whose class defaults differ from that
+    baseline (e.g., the shape parameters, which default to fixed=True
+    with a lower bound) must be reset when reading.
+    """
+    psf, _ = example()
+    for name in psf.param_names:
+        psf.fixed[name] = not psf.fixed[name]
+        psf.bounds[name] = (None, None)
+    psf.bounds[psf.param_names[0]] = (0.5, 100.0)
+    psf.name = 'my-psf'
+
+    filename = tmp_path / 'psf.asdf'
+    with asdf.AsdfFile() as af:
+        af['psf'] = psf
+        af.write_to(filename)
+
+    with asdf.open(filename) as af:
+        psf2 = af['psf']
+
+    assert psf2.name == psf.name
+    assert psf2.fixed == psf.fixed
+    assert psf2.bounds == psf.bounds
 
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
@@ -96,8 +147,9 @@ def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path):
 
     with asdf.open(filename) as af:
         psf2 = af['psf']
-        assert_array_equal(psf2.oversampling, (2, 3))
-        assert psf2.meta['oversampling'] == (2, 3)
+
+    assert_array_equal(psf2.oversampling, (2, 3))
+    assert psf2.meta['oversampling'] == (2, 3)
 
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
@@ -155,12 +207,13 @@ def test_stdpsf_grid_converter_preserves_oversampling(tmp_path):
 
     with asdf.open(filename) as af:
         psfgrid2 = af['psf']
-        assert_array_equal(psfgrid2.oversampling, (8, 8))
-        assert psfgrid2.meta['instrument'] == 'test-instrument'
-        assert psfgrid2.meta['custom'] == {'value': 42}
-        assert 'grid_xypos' not in psfgrid2.meta
-        assert 'oversampling' not in psfgrid2.meta
-        assert 'grid_shape' not in psfgrid2.meta
+
+    assert_array_equal(psfgrid2.oversampling, (8, 8))
+    assert psfgrid2.meta['instrument'] == 'test-instrument'
+    assert psfgrid2.meta['custom'] == {'value': 42}
+    assert 'grid_xypos' not in psfgrid2.meta
+    assert 'oversampling' not in psfgrid2.meta
+    assert 'grid_shape' not in psfgrid2.meta
 
 
 @pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
@@ -171,7 +224,7 @@ def test_stdpsf_grid_converter_repeated_grid_coordinate(tmp_path):
     repeated where the two detectors abut.
     """
     filename = examples.PSF_DATA_DIR / 'STDPSF_ACSWFC_F814W_mock.fits'
-    psfgrid = STDPSFGrid(str(filename))
+    psfgrid = STDPSFGrid(filename)
     assert psfgrid._grid_shape == (10, 9)
 
     asdf_filename = tmp_path / 'psf.asdf'
@@ -181,9 +234,10 @@ def test_stdpsf_grid_converter_repeated_grid_coordinate(tmp_path):
 
     with asdf.open(asdf_filename) as af:
         psfgrid2 = af['psf']
-        assert psfgrid2._grid_shape == psfgrid._grid_shape
-        assert_array_equal(psfgrid2.grid_xypos, psfgrid.grid_xypos)
-        assert_array_equal(psfgrid2._xgrid, psfgrid._xgrid)
-        assert_array_equal(psfgrid2._ygrid, psfgrid._ygrid)
-        assert_array_equal(psfgrid2.data, psfgrid.data)
-        assert repr(psfgrid2) == repr(psfgrid)
+
+    assert psfgrid2._grid_shape == psfgrid._grid_shape
+    assert_array_equal(psfgrid2.grid_xypos, psfgrid.grid_xypos)
+    assert_array_equal(psfgrid2._xgrid, psfgrid._xgrid)
+    assert_array_equal(psfgrid2._ygrid, psfgrid._ygrid)
+    assert_array_equal(psfgrid2.data, psfgrid.data)
+    assert repr(psfgrid2) == repr(psfgrid)

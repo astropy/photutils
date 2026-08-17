@@ -19,8 +19,7 @@ from photutils.psf import (AiryDiskPSF, CircularGaussianPRF,
                            GaussianPRF, GaussianPSF, GriddedPSFModel, ImagePSF,
                            MoffatPSF, STDPSFGrid)
 
-# The directory holding the STDPSF test files. STDPSFGrid accepts only
-# a string filename, so the paths are converted where they are used.
+# The directory holding the STDPSF test files
 PSF_DATA_DIR = Path(__file__).resolve().parents[2] / 'psf' / 'tests' / 'data'
 
 parameters = {
@@ -88,7 +87,7 @@ def circular_gaussian_prf():
 
 def circular_gaussian_sigma_prf_units():
     """
-    Return a CircularGaussianPRF with units.
+    Return a CircularGaussianSigmaPRF with units.
     """
     return (CircularGaussianSigmaPRF(flux=71.4 * u.Jy,
                                      x_0=24.3 * u.pix, y_0=25.2 * u.pix,
@@ -98,7 +97,7 @@ def circular_gaussian_sigma_prf_units():
 
 def circular_gaussian_sigma_prf():
     """
-    Return a CircularGaussianPRF without units.
+    Return a CircularGaussianSigmaPRF without units.
     """
     return (CircularGaussianSigmaPRF(flux=71.4, x_0=24.3, y_0=25.2,
                                      sigma=5.1),
@@ -218,7 +217,7 @@ def stdpsf_single_detector():
     """
     Return a STDPSFGrid object read from a FITS STDPSF file.
     """
-    psfgrid = STDPSFGrid(str(PSF_DATA_DIR / 'STDPSF_NRCA1_F150W_mock.fits'))
+    psfgrid = STDPSFGrid(PSF_DATA_DIR / 'STDPSF_NRCA1_F150W_mock.fits')
     return psfgrid, parameters['STDPSFGrid']
 
 

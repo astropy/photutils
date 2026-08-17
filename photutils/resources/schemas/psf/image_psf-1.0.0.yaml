@@ -83,7 +83,7 @@ allOf:
         anyOf:
           - type: array
             items:
-              type: number
+              type: integer
             minItems: 2
             maxItems: 2
           - tag: 'tag:stsci.edu:asdf/core/ndarray-1.*'

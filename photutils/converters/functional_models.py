@@ -54,11 +54,24 @@ class _PSFModelConverter(TransformConverterBase):
         names = ('flux', 'x_0', 'y_0', *self.model_params)
         params = {name: node[name] for name in names}
 
-        return self._model_class()(
+        model = self._model_class()(
             **params,
             **optional_params(node, *self.optional_model_params,
                               'bbox_factor'),
         )
+
+        # The file stores only the fixed=True entries and the non-empty
+        # bounds, relative to a baseline of fixed=False and bounds of
+        # (None, None). The photutils models default their shape
+        # parameters to fixed=True with bounds set, so the constraints
+        # are reset to that baseline here. The caller then applies the
+        # stored constraints on top, which reconstructs the saved state
+        # exactly.
+        for name in model.param_names:
+            model.fixed[name] = False
+            model.bounds[name] = (None, None)
+
+        return model
 
 
 class AiryDiskPSFConverter(_PSFModelConverter):

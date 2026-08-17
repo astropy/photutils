@@ -167,6 +167,17 @@ def test_manifest_schemas_are_registered():
         assert schema['id'] == schema_uri, tag_uri
 
 
+def _check_example_tag(schema_uri, index, tag):
+    """
+    Check that a schema example carries the manifest tag of the schema
+    that contains it.
+    """
+    assert tag is not None, f'{schema_uri} example {index} is untagged'
+    assert tag in MANIFEST_TAGS, f'{tag} is not defined in the manifest'
+    assert MANIFEST_TAGS[tag] == schema_uri, (
+        f'{tag} is defined by a different schema')
+
+
 @pytest.mark.parametrize(('schema_uri', 'index', 'tag'), EXAMPLE_TAGS,
                          ids=EXAMPLE_IDS)
 def test_example_tag_in_manifest(schema_uri, index, tag):
@@ -179,10 +190,7 @@ def test_example_tag_in_manifest(schema_uri, index, tag):
     tag selects no schema at all, which makes the example self-test pass
     without validating anything.
     """
-    assert tag is not None, f'{schema_uri} example {index} is untagged'
-    assert tag in MANIFEST_TAGS, f'{tag} is not defined in the manifest'
-    assert MANIFEST_TAGS[tag] == schema_uri, (
-        f'{tag} is defined by a different schema')
+    _check_example_tag(schema_uri, index, tag)
 
 
 @pytest.mark.parametrize(('example_tag', 'match'), [
@@ -203,7 +211,7 @@ def test_invalid_example_tag_is_detected(example_tag, match):
     assert tag == example_tag
 
     with pytest.raises(AssertionError, match=match):
-        test_example_tag_in_manifest(schema['id'], index, tag)
+        _check_example_tag(schema['id'], index, tag)
 
 
 def _quantity(value):
@@ -404,7 +412,8 @@ GRID_XYPOS = _ndarray(GRID_XYPOS_VALUES)
 
 # The parameters that each PSF schema requires. The remaining
 # parameters are optional; ``bbox_factor`` is optional in every
-# functional-model schema, as is ``theta`` for the elliptical Gaussians.
+# functional-model schema, as is ``theta`` for the elliptical Gaussians
+# and ``oversampling`` for the STDPSF grid.
 REQUIRED_PSF_PARAMS = {
     'airy_disk_psf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0, 'radius': 4.0},
     'circular_gaussian_prf': {'flux': 1.0, 'x_0': 2.0, 'y_0': 3.0,
@@ -427,7 +436,6 @@ REQUIRED_PSF_PARAMS = {
     'stdpsf_grid': {'data': PSF_GRID,
                     'grid_xypos': GRID_XYPOS,
                     'grid_shape': '[2, 2]',
-                    'oversampling': '[4, 4]',
                     'meta': '{}'},
 }
 
@@ -511,6 +519,65 @@ def test_optional_gridded_psf_model_params_use_defaults():
     assert_array_equal(model.data, PSF_GRID_VALUES)
     for name in ('flux', 'x_0', 'y_0', 'fill_value'):
         assert getattr(model, name) == getattr(reference, name)
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+def test_optional_stdpsf_grid_params_use_defaults():
+    """
+    Test that a STDPSFGrid file containing only the parameters
+    required by its schema is read using the default oversampling.
+
+    ``oversampling`` is optional in the schema, and STDPSFGrid assumes
+    a factor of 4 along both axes when it is absent.
+    """
+    grid = _read_psf('stdpsf_grid', REQUIRED_PSF_PARAMS['stdpsf_grid'])
+
+    assert_array_equal(grid.data, PSF_GRID_VALUES)
+    assert_array_equal(grid.grid_xypos, GRID_XYPOS_VALUES)
+    assert_array_equal(grid.oversampling, (4, 4))
+
+
+# The oversampling form not otherwise exercised by each model's
+# round-trip tests. The converters write an ndarray for ImagePSF and
+# GriddedPSFModel and a plain integer array for STDPSFGrid.
+OTHER_OVERSAMPLING_FORMS = {
+    'image_psf': '[2, 2]',
+    'gridded_psf_model': '[1, 1]',
+    'stdpsf_grid': '!core/ndarray-1.1.0 [4, 4]',
+}
+
+
+@pytest.mark.skipif(not _ASDF_ASTROPY_INSTALLED,
+                    reason='asdf-astropy is not installed')
+@pytest.mark.parametrize('stem', list(OTHER_OVERSAMPLING_FORMS))
+def test_oversampling_forms_accepted(stem):
+    """
+    Test that ``oversampling`` may be a plain integer array or an
+    ndarray in every image-based PSF schema.
+    """
+    params = {**REQUIRED_PSF_PARAMS[stem],
+              'oversampling': OTHER_OVERSAMPLING_FORMS[stem]}
+    model = _read_psf(stem, params)
+    expected = yaml.safe_load(
+        OTHER_OVERSAMPLING_FORMS[stem].removeprefix('!core/ndarray-1.1.0'))
+    assert_array_equal(model.oversampling, expected)
+
+
+@pytest.mark.parametrize('stem', list(OTHER_OVERSAMPLING_FORMS))
+def test_float_oversampling_rejected(stem):
+    """
+    Test that a non-integer ``oversampling`` array fails schema
+    validation when read.
+
+    The oversampling factors must be integers, so rejecting floats in
+    the schema reports the problem as a validation error instead of a
+    model initialization error.
+    """
+    params = {**REQUIRED_PSF_PARAMS[stem], 'oversampling': '[2.5, 2.5]'}
+    with pytest.raises(ValidationError), \
+            asdf.open(yaml_to_asdf(f'psf: {_psf_yaml(stem, params)}')):
+        pass
 
 
 @pytest.mark.parametrize('stem', list(REQUIRED_PSF_PARAMS))

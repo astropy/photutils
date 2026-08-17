@@ -111,7 +111,7 @@ class STDPSFGridConverter(Converter):
         # in its meta attribute.
         return {
             'data': model.data,
-            'grid_xypos': np.array(model.grid_xypos),
+            'grid_xypos': np.asarray(model.grid_xypos),
             'grid_shape': model.grid_shape,
             'oversampling': tuple(int(value)
                                   for value in model.oversampling),
@@ -125,6 +125,11 @@ class STDPSFGridConverter(Converter):
         # Load the lazily-read grid positions into memory
         meta['grid_xypos'] = np.asarray(node['grid_xypos'])
         meta['grid_shape'] = node['grid_shape']
-        meta['oversampling'] = node['oversampling']
+        if 'oversampling' in node:
+            # The schema does not require this key. When it is absent
+            # the class supplies its default.
+            meta['oversampling'] = node['oversampling']
 
-        return STDPSFGrid._from_asdf(node['data'], meta)
+        # Load the lazily-read data into memory so that the returned
+        # object remains usable after the file is closed
+        return STDPSFGrid._from_asdf(np.asarray(node['data']), meta)
