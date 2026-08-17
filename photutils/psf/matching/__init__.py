@@ -9,9 +9,10 @@ from astropy.utils.exceptions import AstropyDeprecationWarning
 
 import photutils.psf_matching as _psf_matching
 from photutils.psf_matching.fourier import __all__ as _fourier_all
+from photutils.psf_matching.utils import __all__ as _utils_all
 from photutils.psf_matching.windows import __all__ as _windows_all
 
-__all__ = list(_fourier_all) + list(_windows_all)
+__all__ = list(_fourier_all) + list(_utils_all) + list(_windows_all)
 
 _deprecation_msg = ('photutils.psf.matching is deprecated (since version '
                     '3.0) and will be removed in a future version. Use '

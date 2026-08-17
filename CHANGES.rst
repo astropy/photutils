@@ -389,6 +389,17 @@ Bug Fixes
     filter metadata is missing. The missing values left stray spaces in
     the title. [#2347]
 
+- ``photutils.psf_matching``
+
+  - ``make_wiener_kernel`` now validates a custom ``penalty`` array.
+    It must be 2D with odd dimensions in both axes, contain only finite
+    values, and not be all zeros. [#2372]
+
+  - ``make_kernel`` and ``make_wiener_kernel`` now raise a
+    ``ValueError`` if the computed kernel contains non-finite values,
+    which can occur when the Fourier-space denominator is zero at
+    frequencies where the numerator is also zero. [#2372]
+
 - ``photutils.isophote``
 
   - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a

@@ -138,6 +138,47 @@ def _validate_window_array(window_array, expected_shape):
         raise ValueError(msg)
 
 
+def _normalize_kernel(kernel):
+    """
+    Normalize a matching kernel so that it sums to 1.
+
+    Parameters
+    ----------
+    kernel : 2D `~numpy.ndarray`
+        The matching kernel.
+
+    Returns
+    -------
+    kernel : 2D `~numpy.ndarray`
+        The normalized matching kernel.
+
+    Raises
+    ------
+    ValueError
+        If the kernel contains non-finite values or its sum is zero or
+        nearly zero.
+    """
+    kernel_sum = np.sum(kernel)
+
+    if not np.isfinite(kernel_sum):
+        msg = ('The computed kernel contains non-finite values. This '
+               'can occur when the Fourier-space denominator is zero '
+               'at frequencies where the numerator is also zero (e.g., '
+               'the source OTF and the penalty OTF are both zero at '
+               'the same frequency).')
+        raise ValueError(msg)
+
+    if np.isclose(kernel_sum, 0.0):
+        msg = ('The computed kernel sums to zero, which likely indicates '
+               'that the regularization is too aggressive or that the '
+               'window function suppressed all frequencies. Try reducing '
+               'the regularization parameter or using a different window '
+               'function.')
+        raise ValueError(msg)
+
+    return kernel / kernel_sum
+
+
 def _convert_psf_to_otf(psf, shape):
     """
     Convert a point-spread function to an optical transfer function.
@@ -174,9 +215,6 @@ def _convert_psf_to_otf(psf, shape):
     otf : 2D `~numpy.ndarray`
         The optical transfer function (complex array).
     """
-    if np.all(psf == 0):
-        return np.zeros(shape, dtype=complex)
-
     if psf.ndim != 2:
         msg = 'psf must be a 2D array.'
         raise ValueError(msg)
@@ -184,6 +222,9 @@ def _convert_psf_to_otf(psf, shape):
     if psf.shape[0] % 2 == 0 or psf.shape[1] % 2 == 0:
         msg = f'psf must have odd dimensions, got shape {psf.shape}.'
         raise ValueError(msg)
+
+    if np.all(psf == 0):
+        return np.zeros(shape, dtype=complex)
 
     inshape = psf.shape
 
@@ -284,8 +325,9 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
     Raises
     ------
     ValueError
-        If ``psf`` is not a 2D array, has even dimensions, is not
-        centered, or if the pixel scales are not positive.
+        If ``psf`` is not a 2D array, has even dimensions, contains NaN
+        or Inf values, or has a zero sum, or if the pixel scales are not
+        positive.
     """
     psf = np.asarray(psf, dtype=float)
 

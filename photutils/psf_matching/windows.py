@@ -59,11 +59,11 @@ class SplitCosineBellWindow:
 
     Parameters
     ----------
-    alpha : float, optional
+    alpha : float
         The percentage of array values that are tapered. ``alpha`` must
         be between 0.0 and 1.0, inclusive.
 
-    beta : float, optional
+    beta : float
         The inner diameter as a fraction of the array size beyond
         which the taper begins. ``beta`` must be between 0.0 and 1.0,
         inclusive.
@@ -212,9 +212,6 @@ class HanningWindow(SplitCosineBellWindow):
     def __repr__(self):
         return f'{self.__class__.__name__}()'
 
-    def __str__(self):
-        return self.__repr__()
-
 
 class TukeyWindow(SplitCosineBellWindow):
     """
@@ -237,7 +234,7 @@ class TukeyWindow(SplitCosineBellWindow):
 
     Parameters
     ----------
-    alpha : float, optional
+    alpha : float
         The percentage of array values that are tapered. Must be
         between 0.0 and 1.0, inclusive. When ``alpha=0``, this
         becomes a `TopHatWindow`. When ``alpha=1``, this becomes a
@@ -283,9 +280,6 @@ class TukeyWindow(SplitCosineBellWindow):
         return (f'{self.__class__.__name__}'
                 f'(alpha={self.alpha!r})')
 
-    def __str__(self):
-        return self.__repr__()
-
 
 class CosineBellWindow(SplitCosineBellWindow):
     """
@@ -304,7 +298,7 @@ class CosineBellWindow(SplitCosineBellWindow):
 
     Parameters
     ----------
-    alpha : float, optional
+    alpha : float
         The percentage of array values that are tapered. Must be between
         0.0 and 1.0, inclusive. When ``alpha=1``, this becomes a
         `HanningWindow`.
@@ -348,9 +342,6 @@ class CosineBellWindow(SplitCosineBellWindow):
         return (f'{self.__class__.__name__}'
                 f'(alpha={self.alpha!r})')
 
-    def __str__(self):
-        return self.__repr__()
-
 
 class TopHatWindow(SplitCosineBellWindow):
     """
@@ -373,7 +364,7 @@ class TopHatWindow(SplitCosineBellWindow):
 
     Parameters
     ----------
-    beta : float, optional
+    beta : float
         The inner diameter as a fraction of the array size beyond
         which the window drops to zero. Must be between 0.0 and 1.0,
         inclusive.
@@ -416,6 +407,3 @@ class TopHatWindow(SplitCosineBellWindow):
     def __repr__(self):
         return (f'{self.__class__.__name__}'
                 f'(beta={self.beta!r})')
-
-    def __str__(self):
-        return self.__repr__()
