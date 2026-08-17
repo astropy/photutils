@@ -199,7 +199,9 @@ class Background2D:
         maps are identical up to floating-point rounding. The underlying
         kernels release the Python global interpreter lock (GIL),
         so multithreading can significantly speed up the background
-        estimation for large images. If a custom ``bkg_estimator`` or
+        estimation for large images. Resizing the meshes concurrently
+        requires scipy 1.16 or later. With older versions the resizing
+        step is single-threaded. If a custom ``bkg_estimator`` or
         ``bkg_rms_estimator`` callable is input, it must be thread-safe.
 
     interpolator : callable, optional

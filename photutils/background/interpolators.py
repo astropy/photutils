@@ -3,11 +3,11 @@
 Tools for upsampling images for Background2D using interpolation.
 """
 
-import warnings
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 from astropy.units import Quantity
+from astropy.utils import minversion
 from astropy.utils.decorators import deprecated
 from scipy.ndimage import affine_transform, spline_filter, zoom
 
@@ -15,6 +15,12 @@ from photutils.utils import ShepardIDWInterpolator
 from photutils.utils._repr import make_repr
 
 __all__ = ['BkgIDWInterpolator', 'BkgZoomInterpolator']
+
+# scipy < 1.16 emits a UserWarning on the 1-D matrix code path of
+# affine_transform used by the threaded zoom. Suppressing the warning
+# with warnings.catch_warnings is not thread-safe, so the threaded
+# zoom requires scipy 1.16 or later.
+SCIPY_GE_1_16 = minversion('scipy', '1.16')
 
 
 class _BkgZoomInterpolator:
@@ -54,11 +60,12 @@ class _BkgZoomInterpolator:
     zoom's behavior consistent with `scipy.ndimage.map_coordinates` and
     `skimage.transform.resize`
 
-    When called with an ``n_threads`` keyword larger than 1 (e.g.,
-    by `~photutils.background.Background2D`) and the ``mode`` is
-    'reflect' or 'mirror', the output is computed concurrently over
-    bands of rows. The multithreaded result is identical to the single
-    `~scipy.ndimage.zoom` call up to floating-point rounding.
+    When called with an ``n_threads`` keyword larger than 1 (e.g., by
+    `~photutils.background.Background2D`), the ``mode`` is 'reflect'
+    or 'mirror', and scipy 1.16 or later is installed, the output
+    is computed concurrently over bands of rows. The multithreaded
+    result is identical to the single `~scipy.ndimage.zoom` call up to
+    floating-point rounding.
     """
 
     def __init__(self, *, order=3, mode='reflect', cval=0.0, clip=True):
@@ -89,6 +96,11 @@ class _BkgZoomInterpolator:
         boundary modes have ``grid_mode``-specific edge handling that
         `~scipy.ndimage.affine_transform` does not reproduce, so the
         caller must not use this method for them.
+
+        scipy < 1.16 emits a UserWarning on the 1-D matrix code path of
+        `~scipy.ndimage.affine_transform` used here, and suppressing it
+        with `warnings.catch_warnings` is not thread-safe, so the caller
+        must also require scipy 1.16 or later.
 
         Parameters
         ----------
@@ -132,17 +144,9 @@ class _BkgZoomInterpolator:
 
         n_bands = min(n_threads, out_shape[0])
         band_edges = np.linspace(0, out_shape[0], n_bands + 1).astype(int)
-        with warnings.catch_warnings():
-            # scipy < 1.16 emits a UserWarning noting that the behavior
-            # of affine_transform with a 1-D matrix changed in scipy
-            # 0.18. The 1-D (per-axis) matrix form is intentional here
-            # because it selects the fast separable code path.
-            warnings.filterwarnings('ignore', message='The behavior of '
-                                    'affine_transform with a 1-D array',
-                                    category=UserWarning)
-            with ThreadPoolExecutor(max_workers=n_bands) as executor:
-                list(executor.map(resample_band, band_edges[:-1],
-                                  band_edges[1:]))
+        with ThreadPoolExecutor(max_workers=n_bands) as executor:
+            list(executor.map(resample_band, band_edges[:-1],
+                              band_edges[1:]))
 
         return result
 
@@ -183,7 +187,8 @@ class _BkgZoomInterpolator:
         # back to the final data size.
         zoom_factor = kwargs['box_size']
         n_threads = kwargs.get('n_threads', 1)
-        if n_threads > 1 and self.mode in ('reflect', 'mirror'):
+        if (n_threads > 1 and SCIPY_GE_1_16
+                and self.mode in ('reflect', 'mirror')):
             result = self._threaded_zoom(data, zoom_factor, n_threads)
         else:
             result = zoom(data, zoom_factor, order=self.order,
