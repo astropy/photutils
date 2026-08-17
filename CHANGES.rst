@@ -214,10 +214,18 @@ New Features
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``
     keyword. [#2329]
 
-  - ``SegmentationImage`` objects now always have an ``info``
-    attribute, a dictionary containing auxiliary information.
-    Segmentation images returned by ``deblend_sources`` store any
-    deblending warnings under a ``'warnings'`` key. [#2378]
+  - ``SegmentationImage`` objects now always have an ``info`` attribute,
+    a dictionary containing auxiliary information. Segmentation
+    images returned by ``deblend_sources`` store the input labels
+    affected by deblending warnings under ``'nonposmin_labels'`` and
+    ``'n_markers_labels'`` keys. [#2378]
+
+- ``photutils.utils``
+
+  - Added a new ``DeblendWarning`` class, a subclass of astropy's
+    ``AstropyUserWarning``, which is raised by ``deblend_sources``
+    when the deblending mode is changed to "linear" for one or more
+    sources. [#2378]
 
 Bug Fixes
 ^^^^^^^^^
@@ -623,6 +631,16 @@ API Changes
     the returned ``SegmentationImage.info['warnings']`` dictionary has
     been renamed from ``'nmarkers'`` to ``'n_markers'``, consistent
     with the ``n_*`` naming used elsewhere in photutils. [#2346]
+
+  - The deblending warning information stored by ``deblend_sources``
+    in the returned ``SegmentationImage`` ``info`` dictionary has been
+    restructured. The affected input labels are now stored as arrays
+    directly under ``'nonposmin_labels'`` and ``'n_markers_labels'``
+    keys. The nested ``info['warnings']`` dictionary, including
+    its ``'message'`` entries, has been removed. The emitted
+    warning is now a ``DeblendWarning`` (a subclass of astropy's
+    ``AstropyUserWarning``) instead of an ``AstropyUserWarning``.
+    [#2378]
 
 - ``photutils.utils``
 

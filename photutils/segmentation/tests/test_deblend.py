@@ -16,6 +16,7 @@ from photutils.segmentation import (SegmentationImage, deblend_sources,
 from photutils.segmentation.deblend import (_DeblendParams,
                                             _SingleSourceDeblender)
 from photutils.utils._optional_deps import HAS_SKIMAGE
+from photutils.utils.exceptions import DeblendWarning
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
@@ -345,10 +346,11 @@ class TestDeblendSources:
         data = self.data.copy()
         data -= 20
         match = 'The deblending mode of one or more source labels from the'
-        with pytest.warns(AstropyUserWarning, match=match):
+        with pytest.warns(DeblendWarning, match=match):
             segm = deblend_sources(data, self.segm, self.n_pixels,
                                    progress_bar=False)
-        assert segm.info['warnings']['nonposmin']['input_labels'] == 1
+        assert list(segm.info) == ['nonposmin_labels']
+        assert_equal(segm.info['nonposmin_labels'], [1])
 
     def test_source_zero_min(self):
         """
@@ -357,10 +359,10 @@ class TestDeblendSources:
         data = self.data.copy()
         data -= data[self.segm.data > 0].min()
         match = 'The deblending mode of one or more source labels from the'
-        with pytest.warns(AstropyUserWarning, match=match):
+        with pytest.warns(DeblendWarning, match=match):
             segm = deblend_sources(data, self.segm, self.n_pixels,
                                    progress_bar=False)
-        assert segm.info['warnings']['nonposmin']['input_labels'] == 1
+        assert_equal(segm.info['nonposmin_labels'], [1])
 
     def test_connectivity(self):
         """
@@ -507,11 +509,9 @@ def test_n_markers_fallback():
 
     segm = detect_sources(data, 0.01, 10)
     match = 'The deblending mode of one or more source labels from the'
-    with pytest.warns(AstropyUserWarning, match=match):
+    with pytest.warns(DeblendWarning, match=match):
         segm2 = deblend_sources(data, segm, 1, mode='exponential')
-    assert segm2.info['warnings']['n_markers']['input_labels'][0] == 1
-    mesg = segm2.info['warnings']['n_markers']['message']
-    assert mesg.startswith('Deblending mode changed')
+    assert segm2.info['n_markers_labels'][0] == 1
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
@@ -536,18 +536,21 @@ def test_n_markers_fallback_multiproc():
 
     segm = detect_sources(data, 0.01, 10)
     match = 'The deblending mode of one or more source labels from the'
-    with pytest.warns(AstropyUserWarning, match=match):
+    with pytest.warns(DeblendWarning, match=match):
         segm2 = deblend_sources(data, segm, 1, mode='exponential',
                                 n_processes=2)
-    assert segm2.info['warnings']['n_markers']['input_labels'][0] == 1
+    assert segm2.info['n_markers_labels'][0] == 1
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_nonposmin_multiproc():
     """
     Test nonposmin warning via multiprocessing (n_processes=2).
+
     This covers the multiprocessing result-processing block for
-    nonposmin.
+    nonposmin. The warning is caught as an AstropyUserWarning to check
+    that DeblendWarning is a subclass of it, so existing warning filters
+    continue to work.
     """
     g1 = Gaussian2D(100, 50, 50, 8, 8)
     g2 = Gaussian2D(100, 35, 50, 8, 8)
@@ -559,7 +562,7 @@ def test_nonposmin_multiproc():
     with pytest.warns(AstropyUserWarning, match=match):
         segm2 = deblend_sources(data, segm, 5, progress_bar=False,
                                 n_processes=2)
-    assert 'nonposmin' in segm2.info['warnings']
+    assert 'nonposmin_labels' in segm2.info
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')

@@ -30,6 +30,9 @@ Some functions and classes of note include:
   colormap consisting of random muted colors. This type of colormap is
   useful for plotting segmentation images.
 
+* :class:`~photutils.utils.DeblendWarning`: Warning class to indicate
+  issues encountered while deblending sources.
+
 * :class:`~photutils.utils.NoDetectionsWarning`: Warning class to
   indicate no sources were detected.
 

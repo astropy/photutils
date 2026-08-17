@@ -598,10 +598,14 @@ The ``'grid_shape'`` key has been removed from the
 ``grid_shape`` attribute instead, i.e., ``psfmodel.grid_shape`` instead
 of ``psfmodel.meta['grid_shape']``.
 
-Deblending ``n_markers`` Warning Key
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Deblending Warning Information
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The "too many markers" warning entry recorded by
-`~photutils.segmentation.deblend_sources` in the returned
-`~photutils.segmentation.SegmentationImage` ``info['warnings']``
-dictionary has been renamed from ``'nmarkers'`` to ``'n_markers'``.
+`~photutils.segmentation.deblend_sources` now emits a
+`~photutils.utils.DeblendWarning` (a subclass of astropy's
+``AstropyUserWarning``) when the deblending mode is changed to "linear"
+for one or more sources. The affected input labels are now stored as
+arrays directly under ``'nonposmin_labels'`` and ``'n_markers_labels'``
+keys in the returned `~photutils.segmentation.SegmentationImage`
+``info`` dictionary, replacing the nested ``info['warnings']``
+dictionary.
