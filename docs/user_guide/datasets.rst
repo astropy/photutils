@@ -127,4 +127,3 @@ API Reference
 
 
 .. _astropy-data: https://github.com/astropy/astropy-data/
-.. _skymaker: https://github.com/astromatic/skymaker

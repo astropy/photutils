@@ -10,7 +10,6 @@ from astropy.modeling import Model
 from astropy.nddata import NoOverlapError, overlap_slices
 from astropy.table import Table
 
-from photutils.utils._deprecation import deprecated_positional_kwargs
 from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 
@@ -34,8 +33,9 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
     Parameters
     ----------
-    shape : 2-tuple of int
-        The shape of the output image.
+    shape : 2-tuple of int or int
+        The shape of the output image. If a single integer is provided,
+        it will be used for both dimensions.
 
     model : 2D `astropy.modeling.Model`
         The 2D model to be used to render the sources. The model must
@@ -56,7 +56,8 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         or ``params_map`` will be set to the ``model`` default value. To
         attach units to model parameters, ``params_table`` must be input
         as a `~astropy.table.QTable`. Rows that contain any non-finite
-        model parameters will be skipped.
+        model parameters or a non-finite ``'local_bkg'`` value will be
+        skipped.
 
         If the table contains a column named 'model_shape', then
         the values in that column will be used to override the
@@ -65,7 +66,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         shape.
 
         If the table contains a column named 'local_bkg', then the
-        per-pixel local background values in that column will be to
+        per-pixel local background values in that column will be
         added to each model source over the region defined by its
         ``model_shape``. The 'local_bkg' column must have the same
         flux units as the output image (e.g., if the input ``model``
@@ -79,7 +80,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         unless ``params_map`` is input.
 
     model_shape : 2-tuple of int, int, or `None`, optional
-        The shape around the (x, y) center of each source that will
+        The shape around the (x, y) center of each source that will be
         used to evaluate the ``model``. If ``model_shape`` is a scalar
         integer, then a square shape of size ``model_shape`` will be
         used. If `None`, then the bounding box of the model will be
@@ -104,12 +105,12 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
     x_name : str, optional
         The name of the ``model`` parameter that corresponds to the x
-        position of the sources. If ``param_map`` is not input, then
+        position of the sources. If ``params_map`` is not input, then
         this value must also be a column name in ``params_table``.
 
     y_name : str, optional
         The name of the ``model`` parameter that corresponds to the y
-        position of the sources. If ``param_map`` is not input, then
+        position of the sources. If ``params_map`` is not input, then
         this value must also be a column name in ``params_table``.
 
     params_map : dict or None, optional
@@ -120,7 +121,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         names to model parameter names that are different. For example,
         if the input column name is 'flux_f200w' and the model parameter
         name is 'flux', then use ``params_map={'flux': 'flux_f200w'}``.
-        This table may also be used if you want to map the model x and y
+        This dictionary may also be used to map the model x and y
         parameters to different columns than ``x_name`` and ``y_name``,
         but the ``x_name`` and ``y_name`` keys must be included in the
         dictionary.
@@ -152,7 +153,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
     discretize_oversample : int, optional
         The integer oversampling factor used when
-        ``descretize_method='oversample'``. This keyword is ignored
+        ``discretize_method='oversample'``. This keyword is ignored
         otherwise.
 
     progress_bar : bool, optional
@@ -225,9 +226,7 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
         ax.imshow(data, origin='lower')
         fig.tight_layout()
     """
-    if not isinstance(shape, tuple) or len(shape) != 2:
-        msg = 'shape must be a 2-tuple'
-        raise ValueError(msg)
+    shape = as_pair('shape', shape, lower_bound=(0, 0))
 
     if not isinstance(model, Model):
         msg = 'model must be a Model instance'
@@ -238,6 +237,14 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     if not isinstance(params_table, Table):
         msg = 'params_table must be an astropy Table'
         raise TypeError(msg)
+
+    valid_methods = ('center', 'interp', 'oversample', 'integrate')
+    if discretize_method not in valid_methods:
+        msg = (f'Invalid discretize_method: {discretize_method!r}. '
+               f'discretize_method must be one of {valid_methods}')
+        raise ValueError(msg)
+    if discretize_method == 'interp':
+        discretize_method = 'linear_interp'
 
     xypos_map = {x_name: x_name, y_name: y_name}
 
@@ -265,10 +272,9 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
 
     variable_shape = False
     if 'model_shape' in params_table.colnames:
-        model_shape = np.array(params_table['model_shape'])
-        if model_shape.ndim == 1:
-            model_shape = np.array([as_pair('model_shape', shape)
-                                    for shape in model_shape])
+        model_shape = np.array([as_pair('model_shape', mshape,
+                                        lower_bound=(0, 0))
+                                for mshape in params_table['model_shape']])
         variable_shape = True
 
     if model_shape is None:
@@ -287,81 +293,80 @@ def make_model_image(shape, model, params_table, *, model_shape=None,
     # Copy the input model to leave it unchanged
     model = model.copy()
 
+    image = np.zeros(shape, dtype=float)
+
+    # Determine the output image units, if any, by evaluating the model
+    # with unit scalars derived from the mapped table columns. Unmapped
+    # model parameters keep their default values (and units). This is
+    # done up front so that the output units do not depend on whether
+    # any sources are actually rendered (e.g., a zero-row table or
+    # sources that do not overlap the image).
+    for key, param in params_map.items():
+        unit = getattr(params_table[param], 'unit', None)
+        setattr(model, key, 1 if unit is None else 1 * unit)
+    result = model(0, 0)
+    if isinstance(result, u.Quantity):
+        image <<= result.unit
+
     if progress_bar:
         desc = 'Add model sources'
         params_table = add_progress_bar(params_table, desc=desc)
 
-    image = np.zeros(shape, dtype=float)
-    apply_units = True
     for i, source in enumerate(params_table):
-        for key, param in params_map.items():
-            value = source[param]
-            # Skip if any parameter value is not finite
-            if not np.isfinite(value):
-                break
+        params = {key: source[param] for key, param in params_map.items()}
+
+        # Skip sources that have any non-finite parameter or local
+        # background value
+        if (not all(np.isfinite(value) for value in params.values())
+                or not np.isfinite(local_bkg[i])):
+            continue
+
+        for key, value in params.items():
             setattr(model, key, value)
 
-        else:  # All parameters are finite for the source
-            # This assumes that if the user also uses params_table to
-            # override the (x/y)_name mapping that the x_name and y_name
-            # values are correct (i.e., the mapping keys include x_name
-            # and y_name). There is no good way to check/enforce this.
-            x0 = getattr(model, x_name).value
-            y0 = getattr(model, y_name).value
+        # This assumes that if the user also uses params_table to
+        # override the (x/y)_name mapping that the x_name and y_name
+        # values are correct (i.e., the mapping keys include x_name and
+        # y_name). There is no good way to check/enforce this.
+        x0 = getattr(model, x_name).value
+        y0 = getattr(model, y_name).value
 
-            if variable_shape:
-                mod_shape = model_shape[i]
-            elif model_shape is None:
-                # The bounding box size generally depends on model
-                # parameters, so needs to be calculated for each source
-                mod_shape = _model_shape_from_bbox(model,
-                                                   bbox_factor=bbox_factor)
-            else:
-                mod_shape = model_shape
+        if variable_shape:
+            mod_shape = model_shape[i]
+        elif model_shape is None:
+            # The bounding box size generally depends on model
+            # parameters, so needs to be calculated for each source
+            mod_shape = _model_shape_from_bbox(model, bbox_factor=bbox_factor)
+        else:
+            mod_shape = model_shape
 
-            try:
-                slc_lg, _ = overlap_slices(shape, mod_shape, (y0, x0),
-                                           mode='trim')
+        try:
+            slc_lg, _ = overlap_slices(shape, mod_shape, (y0, x0), mode='trim')
+        except NoOverlapError:
+            continue
 
-                if discretize_method == 'center':
-                    yy, xx = np.mgrid[slc_lg]
-                    subimg = model(xx, yy)
-                else:
-                    if discretize_method == 'interp':
-                        discretize_method = 'linear_interp'
-                    x_range = (slc_lg[1].start, slc_lg[1].stop)
-                    y_range = (slc_lg[0].start, slc_lg[0].stop)
-                    subimg = discretize_model(model, x_range=x_range,
-                                              y_range=y_range,
-                                              mode=discretize_method,
-                                              factor=discretize_oversample)
+        if discretize_method == 'center':
+            yy, xx = np.mgrid[slc_lg]
+            subimg = model(xx, yy)
+        else:
+            x_range = (slc_lg[1].start, slc_lg[1].stop)
+            y_range = (slc_lg[0].start, slc_lg[0].stop)
+            subimg = discretize_model(model, x_range=x_range,
+                                      y_range=y_range,
+                                      mode=discretize_method,
+                                      factor=discretize_oversample)
 
-                # If the model is a Quantity, then the output image
-                # should also be a Quantity with the same units;
-                # but apply the units only once
-                if apply_units and isinstance(subimg, u.Quantity):
-                    apply_units = False
-                    image <<= subimg.unit
-
-                try:
-                    image[slc_lg] += subimg + local_bkg[i]
-                except u.UnitConversionError as exc:
-                    msg = ('The local_bkg column must have the same flux '
-                           'units as the output image')
-                    raise ValueError(msg) from exc
-
-            except NoOverlapError:
-                # Evaluate the model to get the model output units
-                result = model(0, 0)
-                if isinstance(result, u.Quantity):
-                    image <<= result.unit
-                continue
+        try:
+            image[slc_lg] += subimg + local_bkg[i]
+        except u.UnitConversionError as exc:
+            msg = ('The local_bkg column must have the same flux units as '
+                   'the output image')
+            raise ValueError(msg) from exc
 
     return image
 
 
-@deprecated_positional_kwargs(since='3.0', until='4.0')
-def _model_shape_from_bbox(model, bbox_factor=None):
+def _model_shape_from_bbox(model, *, bbox_factor=None):
     """
     Calculate the model shape from the model bounding box.
 
@@ -380,8 +385,8 @@ def _model_shape_from_bbox(model, bbox_factor=None):
     Returns
     -------
     model_shape : 2-tuple of int
-        The shape around the (x, y) center of the model that will used
-        to evaluate the model.
+        The shape around the (x, y) center of the model that will be
+        used to evaluate the model.
 
     Raises
     ------

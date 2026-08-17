@@ -295,6 +295,12 @@ Bug Fixes
     coordinates that could cause failures and spurious NaN results.
     [#2368]
 
+- ``photutils.datasets``
+
+  - Fixed ``make_wcs`` so that the WCS ``pixel_shape`` attribute is
+    set in (nx, ny) order. The WCS transformation itself was unaffected.
+    [#2374]
+
 - ``photutils.detection``
 
   - Fixed ``DAOStarFinder`` and ``IRAFStarFinder`` ``orientation``
@@ -463,6 +469,33 @@ API Changes
 
   - The ``PixelAperture.plot`` method now returns a list of patches
     for scalar apertures, as documented, instead of a tuple. [#2362]
+
+- ``photutils.datasets``
+
+  - ``make_model_image`` now also skips sources that have a
+    non-finite ``'local_bkg'`` value. Previously, a non-finite local
+    background was added to the source region, propagating NaN or
+    inf values into the output image. [#2374]
+
+  - ``make_model_image`` now determines the output image units
+    up front from the parameter table column units, so the output
+    units no longer depend on whether any sources are actually
+    rendered (e.g., a zero-row table or sources that are skipped
+    or do not overlap the image). [#2374]
+
+  - ``make_model_image`` now validates the ``discretize_method``
+    keyword and the values in a ``'model_shape'`` column (which must
+    be finite and positive) up front with clear error messages.
+    Previously, invalid values raised cryptic errors from within the
+    source loop or silently rendered nothing. [#2374]
+
+  - The ``make_model_image`` ``shape`` argument now also accepts a
+    single integer, which is used for both dimensions, consistent
+    with ``make_model_params``. [#2374]
+
+  - The ``make_model_params`` output table now includes the creation
+    date and photutils version metadata, consistent with
+    ``make_random_models_table``. [#2384x]
 
 - ``photutils.detection``
 

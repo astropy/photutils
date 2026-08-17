@@ -51,9 +51,25 @@ def test_make_model_params():
     with pytest.raises(ValueError, match=match):
         make_model_params(shape, n_sources, flux=(1, 2, 3))
 
-    match = 'must be a 2-tuple'
+    with pytest.raises(ValueError, match=match):
+        make_model_params(shape, n_sources, flux=5)
+
+    match = 'alpha must be a 2-tuple'
     with pytest.raises(ValueError, match=match):
         make_model_params(shape, n_sources, flux=(1, 2), alpha=(1, 2, 3))
+
+    match = 'n_sources must be >= 0'
+    with pytest.raises(ValueError, match=match):
+        make_model_params(shape, -1, flux=(1, 2))
+
+
+def test_make_model_params_meta():
+    """
+    Test that the output table contains version metadata.
+    """
+    params = make_model_params((50, 50), 2, seed=0)
+    assert 'date' in params.meta
+    assert 'version' in params.meta
 
 
 def test_make_model_params_nsources():
@@ -99,6 +115,22 @@ def test_make_random_models_table():
         assert np.max(source_table[col]) <= param_ranges[col][1]
 
 
+def test_make_random_models_table_inputs():
+    """
+    Test invalid inputs to ``make_random_models_table``.
+    """
+    match = 'amplitude must be a 2-tuple'
+    with pytest.raises(ValueError, match=match):
+        make_random_models_table(3, {'amplitude': (1, 2, 3)})
+
+    with pytest.raises(ValueError, match=match):
+        make_random_models_table(3, {'amplitude': 5})
+
+    match = 'n_sources must be >= 0'
+    with pytest.raises(ValueError, match=match):
+        make_random_models_table(-1, {'amplitude': (1, 2)})
+
+
 def test_params_table_to_models():
     """
     Test the basic functionality of ``params_table_to_models``.
@@ -124,3 +156,7 @@ def test_params_table_to_models():
     match = 'No matching model parameter names found in params_table'
     with pytest.raises(ValueError, match=match):
         params_table_to_models(tbl, model)
+
+    match = 'model must be a Model instance'
+    with pytest.raises(TypeError, match=match):
+        params_table_to_models(tbl, None)

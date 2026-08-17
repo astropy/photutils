@@ -6,10 +6,8 @@ positionally.
 
 import numpy as np
 import pytest
-from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyDeprecationWarning
 
-from photutils.datasets.images import _model_shape_from_bbox
 from photutils.datasets.load import load_irac_psf
 from photutils.datasets.model_params import make_random_models_table
 from photutils.datasets.noise import apply_poisson_noise, make_noise_image
@@ -107,19 +105,3 @@ class TestMakeGwcsPositionalKwargs:
     @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
     def test_keyword_no_warning(self):
         make_gwcs((100, 100), galactic=False)
-
-
-class TestModelShapeFromBboxPositionalKwargs:
-    """
-    Test that _model_shape_from_bbox warns for positional optional args.
-    """
-
-    def test_positional_warns(self):
-        model = Gaussian2D()
-        match = '_model_shape_from_bbox'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
-            _model_shape_from_bbox(model, 5.0)
-
-    def test_keyword_no_warning(self):
-        model = Gaussian2D()
-        _model_shape_from_bbox(model, bbox_factor=5.0)
