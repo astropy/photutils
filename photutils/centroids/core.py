@@ -5,7 +5,6 @@ Tools for centroiding sources.
 
 import inspect
 import warnings
-from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 from astropy.nddata import overlap_slices
@@ -501,8 +500,7 @@ class CentroidQuadratic:
 
 @deprecated_positional_kwargs(since='3.0', until='4.0')
 def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
-                     mask=None, centroid_func=centroid_com, n_threads=1,
-                     **kwargs):
+                     mask=None, centroid_func=centroid_com, **kwargs):
     """
     Calculate the centroid of sources at the defined positions in a 2D
     array using a specified centroid function.
@@ -568,15 +566,6 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         handle a ``mask`` keyword. The callable object must return two
         scalar values representing the (x, y) centroid. The default is
         `~photutils.centroids.centroid_com`.
-
-    n_threads : int, optional
-        The number of threads to use to compute the centroids. The
-        default is 1 (no multithreading). When ``n_threads`` > 1,
-        the sources are divided among the threads and processed
-        concurrently, producing results identical to the single-threaded
-        computation. The per-source computations are Python-level and
-        hold the global interpreter lock (GIL), so speedups are expected
-        primarily on free-threaded Python builds.
 
     **kwargs : dict, optional
         Any additional keyword arguments accepted by the
@@ -674,10 +663,6 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         msg = 'mask and data must have the same shape'
         raise ValueError(msg)
 
-    if not isinstance(n_threads, (int, np.integer)) or n_threads < 1:
-        msg = 'n_threads must be a positive integer'
-        raise ValueError(msg)
-
     # error=None is equivalent to no error array, so allow it even for
     # centroid functions that do not accept an error keyword
     if kwargs.get('error') is None:
@@ -742,7 +727,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
             raise ValueError(msg)
 
         # Build the per-source keyword arguments from a local copy so
-        # that concurrent tasks do not mutate shared state
+        # that no shared state is mutated across sources
         src_kwargs = dict(centroid_kwargs)
         src_kwargs['mask'] = mask_cutout
 
@@ -766,12 +751,7 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         return (xcen + slices_large[1].start,
                 ycen + slices_large[0].start)
 
-    xypos_pairs = list(zip(xpos, ypos, strict=True))
-    if n_threads == 1:
-        results = [_centroid_source(xypos) for xypos in xypos_pairs]
-    else:
-        with ThreadPoolExecutor(max_workers=n_threads) as executor:
-            results = list(executor.map(_centroid_source, xypos_pairs))
-
+    results = [_centroid_source(xypos)
+               for xypos in zip(xpos, ypos, strict=True)]
     results = np.array(results, dtype=float)
     return results[:, 0], results[:, 1]

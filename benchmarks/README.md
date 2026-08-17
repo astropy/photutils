@@ -37,11 +37,7 @@ Benchmarks for the `photutils.centroids` subpackage:
 - the per-call cost of the single-source centroid functions
   (`centroid_com`, `centroid_quadratic`, `centroid_1dg`, and
   `centroid_2dg`), with and without an error array
-- `centroid_sources` at many positions for each centroid function
-  and `n_threads` value (with speedups relative to the first
-  `n_threads` value). The per-source computations are Python-level
-  and hold the GIL, so `n_threads` speedups are expected primarily
-  on free-threaded Python builds.
+- `centroid_sources` at many positions for each centroid function.
 
 ```bash
 python benchmarks/bench_centroids.py

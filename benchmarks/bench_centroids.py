@@ -5,8 +5,7 @@ Benchmarks for the photutils.centroids subpackage.
 
 The benchmarks cover the per-call cost of the single-source centroid
 functions (centroid_com, centroid_quadratic, centroid_1dg, and
-centroid_2dg) and centroid_sources at many positions across n_threads
-values.
+centroid_2dg) and centroid_sources at many positions.
 
 Run ``python benchmarks/bench_centroids.py --help`` to see the
 available options.
@@ -18,8 +17,7 @@ from functools import partial
 import numpy as np
 from astropy.modeling.models import Gaussian2D
 from astropy.stats import gaussian_fwhm_to_sigma
-from bench_utils import (format_sweep_cells, parse_thread_counts,
-                         print_environment, time_best)
+from bench_utils import print_environment, time_best
 
 from photutils.centroids import (centroid_1dg, centroid_2dg, centroid_com,
                                  centroid_quadratic, centroid_sources)
@@ -190,19 +188,14 @@ def bench_functions(*, cutout_size=21, n_iter=200, repeats=3, seed=0):
         print(f'{name:>22}{cells}')
 
 
-def bench_centroid_sources(n_threads_list, *, n_sources=1000, box_size=11,
-                           repeats=3, seed=0):
+def bench_centroid_sources(*, n_sources=1000, box_size=11, repeats=3,
+                           seed=0):
     """
     Benchmark centroid_sources at many positions for each centroid
-    function and thread count.
-
-    Speedups are relative to the first thread count.
+    function.
 
     Parameters
     ----------
-    n_threads_list : list of int
-        The thread counts to sweep.
-
     n_sources : int, optional
         The number of sources.
 
@@ -218,19 +211,13 @@ def bench_centroid_sources(n_threads_list, *, n_sources=1000, box_size=11,
     data, xpos, ypos = make_sources_image(n_sources, seed=seed)
     print(f'\n== centroid_sources ({n_sources} sources, '
           f'{data.shape[0]}x{data.shape[1]} image, box_size={box_size}) ==')
-    header = f'{"function":>22}'
-    header += ''.join(f'{f"n={n}":>18}' for n in n_threads_list)
-    print(header)
+    print(f'{"function":>22}{"time":>12}')
 
     for name, func in CENTROID_FUNCS:
-        times = []
-        for n_threads in n_threads_list:
-            bench = partial(centroid_sources, data, xpos, ypos,
-                            box_size=box_size, centroid_func=func,
-                            n_threads=n_threads)
-            times.append(time_best(bench, repeats=repeats))
-        row = ''.join(f'{cell:>18}' for cell in format_sweep_cells(times))
-        print(f'{name:>22}{row}')
+        bench = partial(centroid_sources, data, xpos, ypos,
+                        box_size=box_size, centroid_func=func)
+        t_best = time_best(bench, repeats=repeats)
+        print(f'{name:>22}{f"{t_best:.4f}s":>12}')
 
 
 def main():
@@ -248,9 +235,6 @@ def main():
     parser.add_argument('--box-size', type=int, default=11,
                         help='centroid_sources cutout box size '
                              '(default: %(default)s)')
-    parser.add_argument('--n-threads', default='1,2,4,8',
-                        help='comma-separated n_threads values '
-                             '(default: %(default)s)')
     parser.add_argument('--repeats', type=int, default=3,
                         help='number of repeats per timing; the best '
                              'time is reported (default: %(default)s)')
@@ -263,15 +247,13 @@ def main():
                              '(default: %(default)s)')
     args = parser.parse_args()
 
-    n_threads_list = parse_thread_counts(args.n_threads)
-
     print_environment()
 
     if args.which in ('all', 'functions'):
         bench_functions(cutout_size=args.cutout_size, repeats=args.repeats,
                         seed=args.seed)
     if args.which in ('all', 'sources'):
-        bench_centroid_sources(n_threads_list, n_sources=args.n_sources,
+        bench_centroid_sources(n_sources=args.n_sources,
                                box_size=args.box_size, repeats=args.repeats,
                                seed=args.seed)
 
