@@ -179,6 +179,18 @@ New Features
     keyword. Also restored the ``npix_e`` and ``npix_c`` properties to
     the ``columns='all'`` output. [#2329]
 
+- ``photutils.profiles``
+
+  - Improved the performance of the profile classes by computing the
+    aperture photometry and unmasked areas for all radii in a single
+    batched ``AperturePhotometry`` call instead of one photometry and
+    one area calculation per radius. Profile construction is now ~3x
+    faster. [#2371]
+
+  - The profile classes are now thread-safe. All lazily-computed
+    attributes cache raw (unnormalized) values that are immutable
+    once computed. [#2371]
+
 - ``photutils.psf``
 
   - Improved ``GriddedPSFModel`` evaluation performance by ~20-25%
@@ -298,6 +310,36 @@ Bug Fixes
     units is preserved. Previously, the units were stripped, and a
     confusing units-mismatch error was raised when ``data`` was a
     ``Quantity``. [#2370]
+
+- ``photutils.profiles``
+
+  - Fixed ``RadialProfile.data_profile`` so that its values are always
+    consistent with the current profile normalization. Previously, if
+    ``normalize`` was called before ``data_profile`` was first accessed,
+    the raw (unnormalized) values were returned, and a subsequent
+    ``unnormalize`` call then incorrectly multiplied those raw values by
+    the normalization. [#2371]
+
+  - Fixed ``RadialProfile.data_profile`` to return a ``Quantity``
+    when the input data is a ``Quantity``, consistent with the
+    ``profile`` attribute. [#2371]
+
+  - Fixed the ``RadialProfile`` ``data_radius`` and ``data_profile``
+    attributes so that pixels whose centers lie exactly at the maximum
+    input radius are included on all sides of the center. Previously,
+    such pixels were excluded on the upper-x and upper-y sides of the
+    center. [#2371]
+
+  - Fixed the profile ``plot`` method so that the y-axis label no
+    longer includes the data unit after the profile has been normalized
+    (a normalized profile is dimensionless). [#2371]
+
+  - A ``Quantity`` ``radii`` (or ``half_sizes``) input to the profile
+    classes now raises a ``TypeError``. Previously, the units were
+    silently dropped. [#2371]
+
+  - The ``EnsquaredCurveOfGrowth`` input validation error messages now
+    refer to the ``half_sizes`` parameter instead of ``radii``. [#xxxx]
 
 - ``photutils.segmentation``
 

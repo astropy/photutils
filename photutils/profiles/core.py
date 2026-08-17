@@ -7,6 +7,7 @@ import abc
 import warnings
 from functools import cached_property
 
+import astropy.units as u
 import numpy as np
 from astropy.utils.exceptions import AstropyUserWarning
 
@@ -59,6 +60,11 @@ class ProfileBase(metaclass=abc.ABCMeta):
     _xlabel = 'Radius (pixels)'
     _ylabel = 'Profile'
 
+    # The user-facing name of the ``radii`` parameter, used in
+    # validation error messages. Subclasses that rename the parameter
+    # (e.g., ``half_sizes``) may override this.
+    _radii_name = 'radii'
+
     def __init__(self, data, xycen, radii, *, error=None, mask=None,
                  method='exact', subpixels=5):
 
@@ -77,22 +83,36 @@ class ProfileBase(metaclass=abc.ABCMeta):
         self.mask = self._compute_mask(data, error, mask)
         self.method = method
         self.subpixels = subpixels
+
+        # The total normalization applied to the profile. This is the
+        # only mutable state of the class. All normalization-dependent
+        # attributes (e.g., ``profile``) are derived from immutable
+        # cached values divided by this value, and `normalize` and
+        # `unnormalize` update it with a single atomic attribute
+        # store, making the class safe for concurrent reads during
+        # normalization changes.
         self.normalization_value = 1.0
 
     def _validate_radii(self, radii):
         """
         Validate and return the radii array.
         """
+        name = self._radii_name
+        if isinstance(radii, u.Quantity):
+            msg = (f'{name} must be a plain array of pixel values, '
+                   'not a Quantity')
+            raise TypeError(msg)
+
         radii = np.array(radii)
         if radii.ndim != 1 or radii.size < 2:
-            msg = 'radii must be a 1D array and have at least two values'
+            msg = f'{name} must be a 1D array and have at least two values'
             raise ValueError(msg)
         if radii.min() < 0:
-            msg = 'minimum radii must be >= 0'
+            msg = f'minimum {name} must be >= 0'
             raise ValueError(msg)
 
         if not np.all(radii[1:] > radii[:-1]):
-            msg = 'radii must be strictly increasing'
+            msg = f'{name} must be strictly increasing'
             raise ValueError(msg)
 
         return radii
@@ -131,20 +151,41 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def profile(self):
+    def _raw_profile(self):
         """
-        The radial profile as a 1D `~numpy.ndarray`.
+        The raw (unnormalized) profile as a 1D `~numpy.ndarray`.
         """
 
     @property
     @abc.abstractmethod
-    def profile_error(self):
+    def _raw_profile_error(self):
         """
-        The profile errors as a 1D `~numpy.ndarray`.
+        The raw (unnormalized) profile errors as a 1D `~numpy.ndarray`.
 
         If no ``error`` array was provided, an empty array with shape
         ``(0,)`` is returned.
         """
+
+    @property
+    def profile(self):
+        """
+        The profile as a 1D `~numpy.ndarray`.
+
+        The returned values reflect the current profile normalization
+        (see `normalize`).
+        """
+        return self._raw_profile / self.normalization_value
+
+    @property
+    def profile_error(self):
+        """
+        The profile errors as a 1D `~numpy.ndarray`.
+
+        The returned values reflect the current profile normalization
+        (see `normalize`). If no ``error`` array was provided, an empty
+        array with shape ``(0,)`` is returned.
+        """
+        return self._raw_profile_error / self.normalization_value
 
     @cached_property
     def _circular_apertures(self):
@@ -166,14 +207,15 @@ class ProfileBase(metaclass=abc.ABCMeta):
     def _compute_photometry(self, apertures):
         """
         Compute aperture fluxes, flux errors, and areas for the given
-        apertures.
+        apertures using a single batched photometry call.
 
         Parameters
         ----------
         apertures : list
-            A list of aperture objects. Elements may be `None`, in which
-            case the corresponding flux, error, and area are set to
-            zero.
+            A list of aperture objects sharing the same position.
+            Leading elements may be `None` (e.g., for a zero radius), in
+            which case the corresponding flux, error, and area are set
+            to zero.
 
         Returns
         -------
@@ -186,32 +228,26 @@ class ProfileBase(metaclass=abc.ABCMeta):
         areas : `~numpy.ndarray`
             The aperture areas.
         """
-        fluxes = []
-        flux_errs = []
-        areas = []
-        for aperture in apertures:
-            if aperture is None:
-                flux, flux_err = 0.0, 0.0
-                area = 0.0
-            else:
-                result = AperturePhotometry(
-                    self.data, aperture, error=self.error, mask=self.mask,
-                    method=self.method, subpixels=self.subpixels)
-                flux, flux_err = result.flux, result.flux_err
-                area = aperture.area_overlap(self.data, mask=self.mask,
-                                             method=self.method,
-                                             subpixels=self.subpixels)
-            fluxes.append(flux)
-            if self.error is not None:
-                flux_errs.append(flux_err)
-            areas.append(area)
+        n_none = sum(aperture is None for aperture in apertures)
+        result = AperturePhotometry(
+            self.data, apertures[n_none:], error=self.error,
+            mask=self.mask, method=self.method, subpixels=self.subpixels)
 
-        fluxes = np.array(fluxes)
-        flux_errs = np.array(flux_errs)
-        areas = np.array(areas)
+        fluxes = result.flux
+        areas = result.area.to_value(u.pix ** 2)
+        flux_errs = (result.flux_err if self.error is not None
+                     else np.array([]))
+
+        if n_none > 0:
+            zeros = np.zeros(n_none)
+            fluxes = np.concatenate((zeros, fluxes))
+            areas = np.concatenate((zeros, areas))
+            if self.error is not None:
+                flux_errs = np.concatenate((zeros, flux_errs))
+
         if self.unit is not None:
-            fluxes <<= self.unit
-            flux_errs <<= self.unit
+            fluxes = fluxes << self.unit
+            flux_errs = flux_errs << self.unit
 
         return fluxes, flux_errs, areas
 
@@ -228,6 +264,12 @@ class ProfileBase(metaclass=abc.ABCMeta):
         """
         Normalize the profile.
 
+        The normalization is computed from the raw (unnormalized)
+        profile values, so repeated calls do not accumulate. The
+        most recent call determines the normalization. Because both
+        normalization methods scale linearly with the profile values,
+        this is equivalent to normalizing an already-normalized profile.
+
         Parameters
         ----------
         method : {'max', 'sum'}, optional
@@ -238,71 +280,37 @@ class ProfileBase(metaclass=abc.ABCMeta):
               1.
 
             * ``'sum'``:
-              The profile is normalized such that its sum (integral) is
-              1.
+              The profile is normalized such that the sum of its values
+              is 1.
         """
         if method == 'max':
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                normalization = nanmax(self.profile)
+            func = nanmax
         elif method == 'sum':
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                normalization = nansum(self.profile)
+            func = nansum
         else:
             msg = "invalid method, must be 'max' or 'sum'"
             raise ValueError(msg)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            normalization = func(self._raw_profile)
 
         if normalization == 0 or not np.isfinite(normalization):
             msg = ('The profile cannot be normalized because the max or '
                    'sum is zero or non-finite.')
             warnings.warn(msg, AstropyUserWarning)
         else:
-            # normalization_values accumulate if normalize is run
-            # multiple times (e.g., different methods)
-            self.normalization_value *= normalization
-
-            # Need to use __dict__ as these are cached properties
-            self.__dict__['profile'] = self.profile / normalization
-            self.__dict__['profile_error'] = self.profile_error / normalization
-            self._normalize_hook(normalization)
-
-    def _normalize_hook(self, normalization):  # noqa: B027
-        """
-        Hook called by `normalize` after normalizing ``profile`` and
-        ``profile_error``.
-
-        This hook is only called when normalization succeeds (i.e., when
-        the normalization value is non-zero and finite).
-
-        Subclasses can override this to normalize additional lazy
-        properties (e.g., ``data_profile``).
-
-        Parameters
-        ----------
-        normalization : float
-            The normalization value applied to the profile.
-        """
+            # A single atomic attribute store. Concurrent readers see
+            # either the old or the new normalization, never a mixed
+            # state.
+            self.normalization_value = normalization
 
     def unnormalize(self):
         """
         Unnormalize the profile back to the original state before any
         calls to `normalize`.
         """
-        self.__dict__['profile'] = self.profile * self.normalization_value
-        self.__dict__['profile_error'] = (self.profile_error
-                                          * self.normalization_value)
-        self._unnormalize_hook()
         self.normalization_value = 1.0
-
-    def _unnormalize_hook(self):  # noqa: B027
-        """
-        Hook called by `unnormalize` after unnormalizing ``profile`` and
-        ``profile_error``, but before resetting ``normalization_value``.
-
-        Subclasses can override this to unnormalize additional lazy
-        properties (e.g., ``data_profile``).
-        """
 
     @staticmethod
     def _trim_to_monotonic(xarr, profile, name):
@@ -391,11 +399,19 @@ class ProfileBase(metaclass=abc.ABCMeta):
         if ax is None:
             ax = plt.gca()
 
-        lines = ax.plot(self.radius, self.profile, **kwargs)
+        profile = self.profile
+        unit = None
+        if isinstance(profile, u.Quantity):
+            unit = profile.unit
+            profile = profile.value
+
+        lines = ax.plot(self.radius, profile, **kwargs)
         ax.set_xlabel(self._xlabel)
         ylabel = self._ylabel
-        if self.unit is not None:
-            ylabel = f'{ylabel} ({self.unit})'
+        # A normalized profile is dimensionless, so the unit is
+        # included only when the profile has a physical unit
+        if unit is not None and unit != u.dimensionless_unscaled:
+            ylabel = f'{ylabel} ({unit})'
         ax.set_ylabel(ylabel)
 
         return lines
@@ -442,8 +458,9 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         profile = self.profile
         profile_error = self.profile_error
-        if self.unit is not None:
+        if isinstance(profile, u.Quantity):
             profile = profile.value
+        if isinstance(profile_error, u.Quantity):
             profile_error = profile_error.value
         ymin = profile - profile_error
         ymax = profile + profile_error

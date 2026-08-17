@@ -3,6 +3,7 @@
 Tools for generating curves of growth.
 """
 
+import abc
 from functools import cached_property
 
 import numpy as np
@@ -15,8 +16,59 @@ __all__ = ['CurveOfGrowth', 'EllipticalCurveOfGrowth',
            'EnsquaredCurveOfGrowth']
 
 
+class _CurveOfGrowthBase(ProfileBase):
+    """
+    Base class for curve-of-growth profile classes.
+
+    Curve-of-growth profiles measure the cumulative flux directly
+    within the apertures defined by the ``apertures`` property.
+    """
+
+    @property
+    @abc.abstractmethod
+    def apertures(self):
+        """
+        A list of the aperture objects used to measure the profile.
+        """
+
+    @cached_property
+    def _photometry(self):
+        """
+        The aperture fluxes, flux errors, and areas as a function of
+        radius.
+        """
+        return self._compute_photometry(self.apertures)
+
+    @cached_property
+    def _raw_profile(self):
+        """
+        The raw (unnormalized) curve-of-growth profile as a 1D
+        `~numpy.ndarray`.
+        """
+        return self._photometry[0]
+
+    @cached_property
+    def _raw_profile_error(self):
+        """
+        The raw (unnormalized) curve-of-growth profile errors as a 1D
+        `~numpy.ndarray`.
+
+        If no ``error`` array was provided, an empty array with shape
+        ``(0,)`` is returned.
+        """
+        return self._photometry[1]
+
+    @cached_property
+    def area(self):
+        """
+        The unmasked area within each aperture as a function of radius
+        as a 1D `~numpy.ndarray`.
+        """
+        return self._photometry[2]
+
+
 @_update_method_subpixels_docstring
-class CurveOfGrowth(ProfileBase):
+class CurveOfGrowth(_CurveOfGrowthBase):
     # numpydoc ignore: PR01,PR02,PR04,PR07
     """
     Class to create a curve of growth using concentric circular
@@ -242,39 +294,6 @@ class CurveOfGrowth(ProfileBase):
         """
         return self._circular_apertures
 
-    @cached_property
-    def _photometry(self):
-        """
-        The aperture fluxes, flux errors, and areas as a function of
-        radius.
-        """
-        return self._compute_photometry(self.apertures)
-
-    @cached_property
-    def profile(self):
-        """
-        The curve-of-growth profile as a 1D `~numpy.ndarray`.
-        """
-        return self._photometry[0]
-
-    @cached_property
-    def profile_error(self):
-        """
-        The curve-of-growth profile errors as a 1D `~numpy.ndarray`.
-
-        If no ``error`` array was provided, an empty array with shape
-        ``(0,)`` is returned.
-        """
-        return self._photometry[1]
-
-    @cached_property
-    def area(self):
-        """
-        The unmasked area in each circular aperture as a function of
-        radius as a 1D `~numpy.ndarray`.
-        """
-        return self._photometry[2]
-
     def calc_ee_at_radius(self, radius):
         """
         Calculate the encircled energy at a given radius using a cubic
@@ -332,7 +351,7 @@ class CurveOfGrowth(ProfileBase):
 
 
 @_update_method_subpixels_docstring
-class EnsquaredCurveOfGrowth(ProfileBase):
+class EnsquaredCurveOfGrowth(_CurveOfGrowthBase):
     # numpydoc ignore: PR01,PR02,PR04,PR07
     """
     Class to create a curve of growth using concentric square
@@ -494,6 +513,10 @@ class EnsquaredCurveOfGrowth(ProfileBase):
     _xlabel = 'Half-Size (pixels)'
     _ylabel = 'Ensquared Curve of Growth'
 
+    # The user-facing name of the sizes parameter, used in validation
+    # error messages
+    _radii_name = 'half_sizes'
+
     def __init__(self, data, xycen, half_sizes, *, error=None, mask=None,
                  method='exact', subpixels=5):
 
@@ -503,7 +526,8 @@ class EnsquaredCurveOfGrowth(ProfileBase):
 
         super().__init__(data, xycen, half_sizes, error=error, mask=mask,
                          method=method, subpixels=subpixels)
-        # self.radii is set by the parent class
+        # Alias the validated sizes under the user-facing name. The
+        # inherited ``radii`` attribute holds the same array.
         self.half_sizes = self.radii
 
     def __repr__(self):
@@ -550,40 +574,6 @@ class EnsquaredCurveOfGrowth(ProfileBase):
 
         return [RectangularAperture(self.xycen, 2 * hs, 2 * hs)
                 for hs in self.half_sizes]
-
-    @cached_property
-    def _photometry(self):
-        """
-        The aperture fluxes, flux errors, and areas as a function of
-        size.
-        """
-        return self._compute_photometry(self.apertures)
-
-    @cached_property
-    def profile(self):
-        """
-        The ensquared curve-of-growth profile as a 1D `~numpy.ndarray`.
-        """
-        return self._photometry[0]
-
-    @cached_property
-    def profile_error(self):
-        """
-        The ensquared curve-of-growth profile errors as a 1D
-        `~numpy.ndarray`.
-
-        If no ``error`` array was provided, an empty array with shape
-        ``(0,)`` is returned.
-        """
-        return self._photometry[1]
-
-    @cached_property
-    def area(self):
-        """
-        The unmasked area in each square aperture as a function of size
-        as a 1D `~numpy.ndarray`.
-        """
-        return self._photometry[2]
 
     def calc_ee_at_half_size(self, half_size):
         """
@@ -644,7 +634,7 @@ class EnsquaredCurveOfGrowth(ProfileBase):
 
 
 @_update_method_subpixels_docstring
-class EllipticalCurveOfGrowth(ProfileBase):
+class EllipticalCurveOfGrowth(_CurveOfGrowthBase):
     # numpydoc ignore: PR01,PR02,PR04,PR07
     """
     Class to create a curve of growth using concentric elliptical
@@ -846,6 +836,14 @@ class EllipticalCurveOfGrowth(ProfileBase):
         super().__init__(data, xycen, radii, error=error, mask=mask,
                          method=method, subpixels=subpixels)
 
+    def __repr__(self):
+        cls_name = self.__class__.__name__
+        n_radii = len(self.radii)
+        normalized = self.normalization_value != 1.0
+        return (f'{cls_name}(xycen={self.xycen}, n_radii={n_radii}, '
+                f'axis_ratio={self.axis_ratio}, theta={self.theta}, '
+                f'normalized={normalized})')
+
     @cached_property
     def radius(self):
         """
@@ -871,40 +869,6 @@ class EllipticalCurveOfGrowth(ProfileBase):
         return [EllipticalAperture(self.xycen, a, a * self.axis_ratio,
                                    theta=self.theta)
                 for a in self.radii]
-
-    @cached_property
-    def _photometry(self):
-        """
-        The aperture fluxes, flux errors, and areas as a function of
-        semimajor axis.
-        """
-        return self._compute_photometry(self.apertures)
-
-    @cached_property
-    def profile(self):
-        """
-        The elliptical curve-of-growth profile as a 1D `~numpy.ndarray`.
-        """
-        return self._photometry[0]
-
-    @cached_property
-    def profile_error(self):
-        """
-        The elliptical curve-of-growth profile errors as a 1D
-        `~numpy.ndarray`.
-
-        If no ``error`` array was provided, an empty array with shape
-        ``(0,)`` is returned.
-        """
-        return self._photometry[1]
-
-    @cached_property
-    def area(self):
-        """
-        The unmasked area in each elliptical aperture as a function of
-        semimajor axis as a 1D `~numpy.ndarray`.
-        """
-        return self._photometry[2]
 
     def calc_ee_at_radius(self, radius):
         """

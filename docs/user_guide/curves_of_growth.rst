@@ -115,7 +115,7 @@ radius. The curve-of-growth profile can be normalized using the
 :meth:`~photutils.profiles.CurveOfGrowth.normalize` method. By default
 (``method='max'``), the profile is normalized such that its maximum
 value is 1. Setting ``method='sum'`` can also be used to normalize the
-profile such that its sum (integral) is 1::
+profile such that the sum of its values is 1::
 
     >>> cog.normalize(method='max')
 

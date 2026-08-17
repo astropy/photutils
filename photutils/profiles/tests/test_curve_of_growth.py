@@ -124,7 +124,7 @@ class TestCurveOfGrowth:
         with pytest.raises(ValueError, match=match):
             cg1.normalize(method='invalid')
 
-        cg1.__dict__['profile'] -= np.nanmax(cg1.__dict__['profile'])
+        cg1.__dict__['_raw_profile'] = cg1.profile - np.nanmax(cg1.profile)
         match = 'The profile cannot be normalized'
         with pytest.warns(AstropyUserWarning, match=match):
             cg1.normalize(method='max')
@@ -170,7 +170,7 @@ class TestCurveOfGrowth:
         # elements
         profile = cg1.profile.copy()
         profile[0] = profile[1]
-        cg1.__dict__['profile'] = profile
+        cg1.__dict__['_raw_profile'] = profile
 
         match = 'The curve-of-growth profile is not monotonically increasing'
         with pytest.raises(ValueError, match=match):
@@ -435,7 +435,7 @@ class TestEnsquaredCurveOfGrowth:
         with pytest.raises(ValueError, match=match):
             ecg1.normalize(method='invalid')
 
-        ecg1.__dict__['profile'] -= np.nanmax(ecg1.__dict__['profile'])
+        ecg1.__dict__['_raw_profile'] = ecg1.profile - np.nanmax(ecg1.profile)
         match = 'The profile cannot be normalized'
         with pytest.warns(AstropyUserWarning, match=match):
             ecg1.normalize(method='max')
@@ -477,7 +477,7 @@ class TestEnsquaredCurveOfGrowth:
         # Force non-monotonicity at the first point
         profile = ecg1.profile.copy()
         profile[0] = profile[1]
-        ecg1.__dict__['profile'] = profile
+        ecg1.__dict__['_raw_profile'] = profile
 
         match = 'The ensquared curve-of-growth profile is not monotonically'
         with pytest.raises(ValueError, match=match):
@@ -495,7 +495,7 @@ class TestEnsquaredCurveOfGrowth:
             EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=None,
                                    mask=None)
 
-        match = 'radii must be a 1D array and have at least two values'
+        match = 'half_sizes must be a 1D array and have at least two values'
         with pytest.raises(ValueError, match=match):
             EnsquaredCurveOfGrowth(data, xycen, [1], error=None, mask=None)
         with pytest.raises(ValueError, match=match):
@@ -503,9 +503,15 @@ class TestEnsquaredCurveOfGrowth:
                                    np.arange(1, 7).reshape(2, 3),
                                    error=None, mask=None)
 
-        match = 'radii must be strictly increasing'
+        match = 'half_sizes must be strictly increasing'
         half_sizes = np.arange(1, 10)[::-1]
         with pytest.raises(ValueError, match=match):
+            EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=None,
+                                   mask=None)
+
+        match = 'half_sizes must be a plain array of pixel values'
+        half_sizes = np.arange(1, 10) << u.pix
+        with pytest.raises(TypeError, match=match):
             EnsquaredCurveOfGrowth(data, xycen, half_sizes, error=None,
                                    mask=None)
 
@@ -716,7 +722,7 @@ class TestEllipticalCurveOfGrowth:
         with pytest.raises(ValueError, match=match):
             ecg1.normalize(method='invalid')
 
-        ecg1.__dict__['profile'] -= np.nanmax(ecg1.__dict__['profile'])
+        ecg1.__dict__['_raw_profile'] = ecg1.profile - np.nanmax(ecg1.profile)
         match = 'The profile cannot be normalized'
         with pytest.warns(AstropyUserWarning, match=match):
             ecg1.normalize(method='max')
@@ -759,7 +765,7 @@ class TestEllipticalCurveOfGrowth:
         # Force non-monotonicity at the first point
         profile = ecg1.profile.copy()
         profile[0] = profile[1]
-        ecg1.__dict__['profile'] = profile
+        ecg1.__dict__['_raw_profile'] = profile
 
         match = 'The elliptical curve-of-growth profile is not monotonically'
         with pytest.raises(ValueError, match=match):
@@ -873,9 +879,12 @@ class TestEllipticalCurveOfGrowth:
         xycen, data, _, _ = profile_data
 
         radii = np.arange(1, 36)
-        ecg = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5)
+        ecg = EllipticalCurveOfGrowth(data, xycen, radii, axis_ratio=0.5,
+                                      theta=0.7)
         r = repr(ecg)
         assert 'EllipticalCurveOfGrowth' in r
         assert f'xycen={xycen}' in r
         assert f'n_radii={len(radii)}' in r
+        assert 'axis_ratio=0.5' in r
+        assert 'theta=0.7' in r
         assert 'normalized=False' in r

@@ -163,7 +163,7 @@ If desired, the radial profile can be normalized using the
 :meth:`~photutils.profiles.RadialProfile.normalize` method. By default
 (``method='max'``), the profile is normalized such that its maximum
 value is 1. Setting ``method='sum'`` can be used to normalize the
-profile such that its sum (integral) is 1::
+profile such that the sum of its values is 1::
 
     >>> rp.normalize(method='max')
 

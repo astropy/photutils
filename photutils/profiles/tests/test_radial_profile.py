@@ -104,6 +104,73 @@ class TestRadialProfile:
         assert np.all(np.isfinite(rp3.data_profile))
         assert len(rp3.data_profile) < len(rp1.data_profile)
 
+    def test_data_boundary_pixels(self):
+        """
+        Test that pixels whose centers lie exactly at the maximum radius
+        are included in the data profile on all sides of the center.
+        """
+        data = np.ones((101, 101))
+        xycen = (50.0, 50.0)
+        max_radius = 25
+        rp = RadialProfile(data, xycen, np.arange(max_radius + 1))
+
+        yy, xx = np.mgrid[0:101, 0:101]
+        dist = np.hypot(xx - xycen[0], yy - xycen[1])
+        assert len(rp.data_radius) == np.sum(dist <= max_radius)
+
+        n_boundary = np.sum(rp.data_radius == max_radius)
+        assert n_boundary == np.sum(dist == max_radius)
+
+    def test_data_profile_access_after_normalize(self, profile_data):
+        """
+        Test that data_profile is consistent with the profile
+        normalization when it is first accessed after normalize, and
+        that unnormalize restores the raw values.
+        """
+        xycen, data, _, _ = profile_data
+
+        edge_radii = np.arange(36)
+        rp1 = RadialProfile(data, xycen, edge_radii)
+        raw = rp1.data_profile.copy()
+        normalization = np.max(rp1.profile)
+
+        # Access data_profile for the first time after normalizing
+        rp2 = RadialProfile(data, xycen, edge_radii)
+        rp2.normalize()
+        assert_allclose(rp2.data_profile, raw / normalization)
+
+        # Unnormalizing must restore the raw values
+        rp2.unnormalize()
+        assert_allclose(rp2.data_profile, raw)
+
+        # Repeated normalize calls must compound consistently
+        rp2.normalize(method='max')
+        rp2.normalize(method='sum')
+        assert_allclose(rp2.data_profile, raw / rp2.normalization_value)
+        rp2.unnormalize()
+        assert_allclose(rp2.data_profile, raw)
+
+    def test_data_profile_units(self, profile_data):
+        """
+        Test that data_profile is a Quantity when the input data is a
+        Quantity, and is dimensionless after normalization.
+        """
+        xycen, data, error, _ = profile_data
+
+        unit = u.Jy
+        edge_radii = np.arange(36)
+        rp = RadialProfile(data << unit, xycen, edge_radii,
+                           error=error << unit)
+        assert rp.data_profile.unit == unit
+        assert not isinstance(rp.data_radius, u.Quantity)
+
+        rp.normalize()
+        assert rp.profile.unit == u.dimensionless_unscaled
+        assert rp.data_profile.unit == u.dimensionless_unscaled
+
+        rp.unnormalize()
+        assert rp.data_profile.unit == unit
+
     def test_inputs(self, profile_data):
         """
         Test RadialProfile input validation.
@@ -127,6 +194,11 @@ class TestRadialProfile:
         match = 'radii must be strictly increasing'
         edge_radii = np.arange(10)[::-1]
         with pytest.raises(ValueError, match=match):
+            RadialProfile(data, xycen, edge_radii, error=None, mask=None)
+
+        match = 'radii must be a plain array of pixel values'
+        edge_radii = np.arange(10) << u.pix
+        with pytest.raises(TypeError, match=match):
             RadialProfile(data, xycen, edge_radii, error=None, mask=None)
 
         match = 'error must have the same shape as data'
@@ -325,6 +397,32 @@ class TestRadialProfile:
                             error=error << unit)
         rp3.plot()
         rp3.plot_error()
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_plot_ylabel_units(self, profile_data):
+        """
+        Test that the plot y-axis label includes the data unit only
+        when the profile has a physical unit.
+
+        A normalized profile is dimensionless.
+        """
+        xycen, data, error, _ = profile_data
+        edge_radii = np.arange(36)
+
+        rp1 = RadialProfile(data, xycen, edge_radii)
+        lines = rp1.plot()
+        assert lines[0].axes.get_ylabel() == 'Radial Profile'
+
+        unit = u.Jy
+        rp2 = RadialProfile(data << unit, xycen, edge_radii,
+                            error=error << unit)
+        lines = rp2.plot()
+        assert lines[0].axes.get_ylabel() == 'Radial Profile (Jy)'
+
+        rp2.normalize()
+        lines = rp2.plot()
+        assert lines[0].axes.get_ylabel() == 'Radial Profile'
+        rp2.plot_error()
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_plot_error_none(self, profile_data):
@@ -533,10 +631,13 @@ class TestRadialProfile:
         assert mfit.gamma.value > 0
         assert mfit.alpha.value >= 1
 
-    def test_moffat_cached_property(self, profile_data):
+    def test_moffat_repeated_access(self, profile_data):
         """
-        Test that ``moffat_fit``, ``moffat_profile``, and
-        ``moffat_fwhm`` are lazily computed and cached.
+        Test that repeated access to ``moffat_fit``, ``moffat_profile``,
+        and ``moffat_fwhm`` returns consistent values.
+
+        The underlying fit is computed once and the returned values are
+        derived from it.
         """
         xycen, data, _, _ = profile_data
 
@@ -545,11 +646,11 @@ class TestRadialProfile:
 
         fit1 = rp.moffat_fit
         fit2 = rp.moffat_fit
-        assert fit1 is fit2
+        assert_equal(fit1.parameters, fit2.parameters)
 
         prof1 = rp.moffat_profile
         prof2 = rp.moffat_profile
-        assert prof1 is prof2
+        assert_equal(prof1, prof2)
 
         fwhm1 = rp.moffat_fwhm
         fwhm2 = rp.moffat_fwhm
@@ -557,8 +658,7 @@ class TestRadialProfile:
 
     def test_moffat_normalized(self, profile_data):
         """
-        Test that normalizing the profile invalidates the Moffat fit
-        cache and the fit is recomputed on the normalized profile.
+        Test that the Moffat fit reflects the profile normalization.
         """
         xycen, data, _, _ = profile_data
 
@@ -613,11 +713,10 @@ class TestRadialProfile:
         assert isinstance(rp.moffat_fit, Moffat1D)
         assert rp.moffat_fwhm > 0
 
-    def test_gaussian_fit_invalidated_on_normalize(self, profile_data):
+    def test_gaussian_fit_updated_on_normalize(self, profile_data):
         """
-        Test that Gaussian fit properties are invalidated when the
-        profile is normalized, and the recomputed fit matches the
-        normalized profile.
+        Test that the Gaussian fit properties reflect the profile
+        normalization after normalize is called.
         """
         xycen, data, _, _ = profile_data
 
@@ -649,11 +748,10 @@ class TestRadialProfile:
         fwhm_after = rp.gaussian_fwhm
         assert_allclose(fwhm_after, fwhm_before, rtol=0.1)
 
-    def test_moffat_fit_invalidated_on_normalize(self, profile_data):
+    def test_moffat_fit_updated_on_normalize(self, profile_data):
         """
-        Test that Moffat fit properties are invalidated when the profile
-        is normalized, and the recomputed fit matches the normalized
-        profile.
+        Test that the Moffat fit properties reflect the profile
+        normalization after normalize is called.
         """
         xycen, data, _, _ = profile_data
 
@@ -668,7 +766,7 @@ class TestRadialProfile:
 
         rp.normalize()
 
-        # The fit should be a new object (recomputed)
+        # The fit should be a new, recomputed object
         mfit_after = rp.moffat_fit
         assert mfit_after is not mfit_before
 
@@ -684,11 +782,10 @@ class TestRadialProfile:
         fwhm_after = rp.moffat_fwhm
         assert_allclose(fwhm_after, fwhm_before, rtol=0.1)
 
-    def test_fit_invalidated_on_unnormalize(self, profile_data):
+    def test_fits_updated_on_unnormalize(self, profile_data):
         """
-        Test that Gaussian and Moffat fits are invalidated when
-        unnormalize is called, and the recomputed fits match the
-        original (unnormalized) profile.
+        Test that the Gaussian and Moffat fits match the original
+        (unnormalized) profile after unnormalize is called.
         """
         xycen, data, _, _ = profile_data
 
