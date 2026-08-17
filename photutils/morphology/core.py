@@ -26,13 +26,14 @@ def data_properties(data, mask=None, background=None, wcs=None):
         value indicates the corresponding element of ``data`` is masked.
         Masked data are excluded from all calculations.
 
-    background : float or array_like, optional
+    background : float, array_like, or `~astropy.units.Quantity`, optional
         The background level previously present in the input ``data``.
         ``background`` may be a scalar value or a 2D array with the same
-        shape as ``data``. The input ``background`` is not subtracted
-        from ``data``, which should already be background-subtracted;
-        providing it only enables background-related properties to be
-        measured.
+        shape as ``data``. If ``data`` is a `~astropy.units.Quantity`,
+        then ``background`` must have the same units. The input
+        ``background`` is not subtracted from ``data``, which should
+        already be background-subtracted; providing it only enables
+        background-related properties to be measured.
 
     wcs : WCS object or `None`, optional
         A world coordinate system (WCS) transformation that
@@ -53,6 +54,9 @@ def data_properties(data, mask=None, background=None, wcs=None):
         If ``data`` is not a 2D array.
 
     ValueError
+        If ``data`` is empty.
+
+    ValueError
         If ``mask`` is provided and does not have the same shape as
         ``data``.
 
@@ -67,8 +71,11 @@ def data_properties(data, mask=None, background=None, wcs=None):
     from photutils.segmentation import SegmentationImage, SourceCatalog
 
     data = np.asanyarray(data)
-    if len(data.shape) != 2:
+    if data.ndim != 2:
         msg = 'data must be a 2D array'
+        raise ValueError(msg)
+    if data.size == 0:
+        msg = 'data must not be empty'
         raise ValueError(msg)
 
     seg_arr = np.ones(data.shape, dtype=int)
@@ -85,9 +92,11 @@ def data_properties(data, mask=None, background=None, wcs=None):
     segment_image = SegmentationImage(seg_arr)
 
     if background is not None:
-        background = np.asarray(background)
+        # asanyarray and the multiplication below preserve Quantity
+        # units
+        background = np.asanyarray(background)
         if background.ndim == 0:
-            background = np.full(data.shape, float(background))
+            background = np.full(data.shape, 1.0) * background
         elif background.shape != data.shape:
             msg = ('background must be a scalar or a 2D array '
                    'with the same shape as data')

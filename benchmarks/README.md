@@ -62,6 +62,20 @@ python benchmarks/bench_geometry.py
 python benchmarks/bench_geometry.py --which polygon --n-vertices 8,64,512
 ```
 
+## Morphology (`bench_morphology.py`)
+
+Benchmarks for the `photutils.morphology` subpackage:
+
+- the per-call cost of `data_properties`: catalog construction alone
+  and with the morphological properties computed, with and without a
+  mask, background, and WCS
+- the scaling of `gini` with array size, with and without a mask
+
+```bash
+python benchmarks/bench_morphology.py
+python benchmarks/bench_morphology.py --which gini --sizes 256,1024,4096
+```
+
 ## Background (`bench_background.py`)
 
 Benchmarks for the `photutils.background` subpackage:

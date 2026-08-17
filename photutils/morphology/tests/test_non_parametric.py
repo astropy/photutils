@@ -31,6 +31,17 @@ def test_gini_1d():
     assert gini(data_1d) == 1.0
 
 
+def test_gini_nd():
+    """
+    Test that arrays of any dimensionality are accepted and treated as
+    a flattened set of values.
+    """
+    data_3d = np.zeros((3, 3, 3))
+    data_3d[1, 1, 1] = 1.0
+    assert gini(data_3d) == 1.0
+    assert gini(data_3d) == gini(data_3d.ravel())
+
+
 def test_gini_mask():
     """
     Test Gini coefficient calculation with a mask.

@@ -133,9 +133,10 @@ coefficient.
 
 The :func:`~photutils.morphology.gini` function calculates the Gini
 coefficient of the distribution of absolute flux values of a single
-source using the values in a cutout image. The input array may be
-1D or 2D. Negative pixel values are used via their absolute value.
-Invalid values (NaN and inf) are automatically excluded from the
+source using the values in a cutout image. The input array may have any
+dimensionality (e.g., a 1D array or a 2D image), with its values treated
+as a flattened set. Negative pixel values are used via their absolute
+value. Invalid values (NaN and inf) are automatically excluded from the
 calculation. An optional boolean mask can be used to exclude pixels from
 the calculation.
 

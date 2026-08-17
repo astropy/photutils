@@ -27,8 +27,8 @@ def gini(data, mask=None):
             \sum^{n}_{i} (2i - n - 1) \left | x_i \right |
 
     where :math:`\overline{|x|}` is the mean of the absolute value of
-    all pixel values :math:`x_i`. If the sum of all pixel values is
-    zero, the Gini coefficient is zero.
+    all pixel values :math:`x_i`. If all pixel values are zero, the Gini
+    coefficient is zero.
 
     The Gini coefficient is a way of measuring the inequality in a given
     set of values. In the context of galaxy morphology, it measures how
@@ -46,13 +46,15 @@ def gini(data, mask=None):
     Negative pixel values are used via their absolute value. Invalid
     values (NaN and inf) in the input are automatically excluded from
     the calculation. If only a single finite pixel remains after
-    filtering, the Gini coefficient is 0.0.
+    filtering, the Gini coefficient is 0.0. If no finite, unmasked
+    pixels remain, NaN is returned.
 
     Parameters
     ----------
     data : array_like
-        The 1D or 2D data array or object that can be converted to an
-        array.
+        The data array or object that can be converted to an array. The
+        array may have any dimensionality (e.g., a 1D array or a 2D
+        image), with its values treated as a flattened set.
 
     mask : array_like, optional
         A boolean mask with the same shape as ``data`` where `True`
@@ -62,7 +64,8 @@ def gini(data, mask=None):
     Returns
     -------
     result : float
-        The Gini coefficient of the input array.
+        The Gini coefficient of the input array. NaN is returned if
+        there are no finite, unmasked values.
 
     Raises
     ------
