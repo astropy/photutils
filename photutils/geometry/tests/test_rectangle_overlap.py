@@ -1,6 +1,6 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for the rectangular_overlap_grid module.
+Tests for the rectangle_overlap module.
 """
 
 import math
@@ -77,22 +77,57 @@ def test_rectangle_exact_matches_high_subpixel():
     assert np.abs(exact - sub).max() < 0.02
 
 
-def test_rectangle_exact_full_pixel_is_one():
+@pytest.mark.parametrize('use_exact', [0, 1])
+def test_rectangle_full_pixel_is_one(use_exact):
     """
     A pixel completely inside the rectangle must have overlap = 1.
     """
     grid = rectangular_overlap_grid(-2.0, 2.0, -2.0, 2.0, 4, 4,
-                                    10.0, 10.0, 0.3, 1, 1)
+                                    10.0, 10.0, 0.3, use_exact, 4)
     assert_allclose(grid, 1.0)
 
 
-def test_rectangle_exact_no_overlap():
+@pytest.mark.parametrize('theta', [0.0, 0.3])
+def test_rectangle_exact_smaller_than_pixel(theta):
+    """
+    A rectangle smaller than a pixel, centered exactly on a pixel
+    center, must return the rectangle area, not 1.0.
+    """
+    grid = rectangular_overlap_grid(-1.5, 1.5, -1.5, 1.5, 3, 3,
+                                    0.6, 0.8, theta, 1, 1)
+    assert_allclose(grid[1, 1], 0.48, rtol=1e-12)
+    assert_allclose(grid.sum(), 0.48, rtol=1e-12)
+
+
+@pytest.mark.parametrize('use_exact', [0, 1])
+def test_rectangle_no_overlap(use_exact):
     """
     A rectangle entirely outside the grid yields all zeros.
     """
     grid = rectangular_overlap_grid(10.0, 12.0, 10.0, 12.0, 4, 4,
-                                    1.0, 1.0, 0.0, 1, 1)
+                                    1.0, 1.0, 0.0, use_exact, 4)
     assert_allclose(grid, 0.0)
+
+
+def test_rectangular_overlap_grid_validation():
+    """
+    Test that invalid use_exact and subpixels inputs raise errors.
+    """
+    match = 'use_exact must be 0 or 1'
+    with pytest.raises(ValueError, match=match):
+        rectangular_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, 1.0, 0.5,
+                                 0.1, 2, 5)
+
+    match = 'subpixels must be a strictly positive integer'
+    for subpixels in (0, -1):
+        with pytest.raises(ValueError, match=match):
+            rectangular_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, 1.0, 0.5,
+                                     0.1, 0, subpixels)
+
+    # subpixels is ignored (not validated) for the exact method
+    g = rectangular_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, 1.0, 0.5,
+                                 0.1, 1, 0)
+    assert np.isfinite(g).all()
 
 
 @pytest.mark.parametrize('use_exact', [0, 1])

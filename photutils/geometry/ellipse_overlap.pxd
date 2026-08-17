@@ -37,12 +37,15 @@ cdef inline void ellipse_quadratic_coeffs(double rx, double ry,
     orientation ``cos_theta``/``sin_theta``, for a pixel grid of spacing
     ``dx``/``dy``.
 
-    A point (x, y) lies inside the ellipse when
-    ``cxx*x**2 + cyy*y**2 + cxy*x*y < 1``. A pixel is wholly inside
-    when its center value is ``<= f_in`` and wholly outside when it is
-    ``>= f_out`` (see ``elliptical_overlap_grid``). The results are
-    returned through the output pointers so the same setup can be
-    computed once and reused wherever it is needed.
+    A point (x, y) lies inside the ellipse when ``cxx*x**2 + cyy*y**2
+    + cxy*x*y < 1``. A pixel is wholly inside when its center value
+    is ``<= f_in`` and wholly outside when it is ``>= f_out`` (see
+    ``elliptical_overlap_grid``). When the pixel diagonal exceeds the
+    smallest semiaxis no pixel can be wholly inside, and ``f_in`` is set
+    to -1 so the interior fast path never triggers (the center value is
+    always >= 0). The results are returned through the output pointers
+    so the same setup can be computed once and reused wherever it is
+    needed.
 
     Parameters
     ----------
@@ -71,7 +74,10 @@ cdef inline void ellipse_quadratic_coeffs(double rx, double ry,
 
     margin = 0.5 * sqrt(dx * dx + dy * dy) / fmin(rx, ry)
     fin = 1.0 - margin
-    f_in[0] = fin * fin if fin > 0.0 else 0.0
+    # Use a negative sentinel when no pixel can be wholly inside.
+    # Clamping to 0 would misclassify a pixel whose center lies exactly
+    # on the ellipse center (value 0) as wholly inside.
+    f_in[0] = fin * fin if fin > 0.0 else -1.0
     f_out[0] = (1.0 + margin) * (1.0 + margin)
 
 

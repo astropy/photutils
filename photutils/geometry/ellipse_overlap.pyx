@@ -42,9 +42,6 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                             int nx, int ny, double rx, double ry, double theta,
                             int use_exact, int subpixels):
     """
-    ellipse_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, rx, ry,
-                         theta, use_exact, subpixels)
-
     Calculate the fractional overlap between an ellipse and a pixel
     grid.
 
@@ -101,6 +98,13 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         * dx, ymin + (j + 1) * dy), where dx and dy are the width of
         each pixel in the x and y direction, respectively.
     """
+    if use_exact != 0 and use_exact != 1:
+        msg = 'use_exact must be 0 or 1'
+        raise ValueError(msg)
+    if use_exact == 0 and subpixels < 1:
+        msg = 'subpixels must be a strictly positive integer'
+        raise ValueError(msg)
+
     cdef unsigned int i, j
     cdef double dx, dy
     cdef double bx, by
@@ -156,7 +160,8 @@ def elliptical_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                                  + cyy * pycen * pycen
                                  + cxy * pxcen * pycen)
                         # Per-pixel decision core, factored out into
-                        # ``ellipse_frac_from_rpix2`` above.
+                        # ``ellipse_frac_from_rpix2`` in
+                        # ellipse_overlap.pxd.
                         frac_view[j, i] = ellipse_frac_from_rpix2(
                             pxmin, pymin, pxmax, pymax, norm, rx, ry,
                             cos_theta, sin_theta, rpix2, f_in, f_out,

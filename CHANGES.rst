@@ -410,6 +410,13 @@ API Changes
     labels the number of sources as ``n_sources`` instead of
     ``nsources`` for naming consistency. [#2338]
 
+- ``photutils.geometry``
+
+  - The ``circular_overlap_grid``, ``elliptical_overlap_grid``, and
+    ``rectangular_overlap_grid`` functions now validate the
+    ``use_exact`` and ``subpixels`` inputs, raising a ``ValueError``
+    for values outside the documented ranges. [#2369]
+
 - ``photutils.psf``
 
   - The ``EPSFBuildResult`` class returned by ``EPSFBuilder`` has been

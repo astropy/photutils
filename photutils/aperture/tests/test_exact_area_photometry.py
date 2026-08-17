@@ -137,6 +137,29 @@ class TestBuiltinShapeAreas:
         assert_allclose(_phot_sum(aper), aper.area, rtol=1e-12, atol=1e-12)
 
 
+class TestSubPixelApertureAreas:
+    """
+    Apertures smaller than a pixel, centered exactly on a pixel center,
+    must still return the analytic area in exact mode.
+    """
+
+    def test_circular_aperture(self):
+        aper = CircularAperture((50.0, 50.0), r=0.3)
+        assert_allclose(_phot_sum(aper), aper.area, rtol=1e-10)
+
+    @pytest.mark.parametrize('theta_deg', [0.0, 30.0])
+    def test_elliptical_aperture(self, theta_deg):
+        aper = EllipticalAperture((50.0, 50.0), a=0.4, b=0.3,
+                                  theta=np.deg2rad(theta_deg))
+        assert_allclose(_phot_sum(aper), aper.area, rtol=1e-10)
+
+    @pytest.mark.parametrize('theta_deg', [0.0, 30.0])
+    def test_rectangular_aperture(self, theta_deg):
+        aper = RectangularAperture((50.0, 50.0), w=0.6, h=0.8,
+                                   theta=np.deg2rad(theta_deg))
+        assert_allclose(_phot_sum(aper), aper.area, rtol=1e-12)
+
+
 class TestPolygonAreas:
     """
     The exact-method polygon aperture sum must equal the analytic

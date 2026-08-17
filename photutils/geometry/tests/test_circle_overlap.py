@@ -1,8 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tests for the circular_overlap_grid module.
+Tests for the circle_overlap module.
 """
 
+import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
@@ -26,6 +27,47 @@ def test_circular_overlap_grid(grid_size, circ_size, use_exact, subsample):
     g = circular_overlap_grid(-1.0, 1.0, -1.0, 1.0, grid_size, grid_size,
                               circ_size, use_exact, subsample)
     assert_allclose(g.max(), 1.0)
+
+
+@pytest.mark.parametrize('r', [0.3, 0.5, 1.7, 3.3])
+def test_circular_overlap_exact_total_area(r):
+    """
+    The exact-mode total overlap times the pixel area equals the
+    analytic circle area when the circle fits inside the grid.
+    """
+    grid = circular_overlap_grid(-5.0, 5.0, -5.0, 5.0, 100, 100, r, 1, 1)
+    pixel_area = (10.0 / 100) ** 2
+    assert_allclose(grid.sum() * pixel_area, np.pi * r ** 2, rtol=1e-12)
+
+
+def test_circular_overlap_exact_matches_high_subpixel():
+    """
+    The exact result should agree with a high subpixel approximation to
+    within the subpixel-sampling error.
+    """
+    args = (-2.0, 2.0, -2.0, 2.0, 20, 20, 1.3)
+    exact = circular_overlap_grid(*args, 1, 1)
+    sub = circular_overlap_grid(*args, 0, 64)
+    assert np.abs(exact - sub).max() < 0.02
+
+
+def test_circular_overlap_grid_validation():
+    """
+    Test that invalid use_exact and subpixels inputs raise errors.
+    """
+    match = 'use_exact must be 0 or 1'
+    with pytest.raises(ValueError, match=match):
+        circular_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, 0.5, 2, 5)
+
+    match = 'subpixels must be a strictly positive integer'
+    for subpixels in (0, -1):
+        with pytest.raises(ValueError, match=match):
+            circular_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, 0.5, 0,
+                                  subpixels)
+
+    # subpixels is ignored (not validated) for the exact method
+    g = circular_overlap_grid(-1.0, 1.0, -1.0, 1.0, 4, 4, 0.5, 1, 0)
+    assert np.isfinite(g).all()
 
 
 @pytest.mark.parametrize('use_exact', use_exacts)

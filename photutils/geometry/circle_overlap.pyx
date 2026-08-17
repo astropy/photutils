@@ -37,9 +37,6 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                           int nx, int ny, double r, int use_exact,
                           int subpixels):
     """
-    circle_overlap_grid(xmin, xmax, ymin, ymax, nx, ny, r, use_exact,
-                        subpixels)
-
     Calculate the fractional overlap between a circle and a pixel grid.
 
     The circle is centered on the origin.
@@ -88,6 +85,13 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
         * dx, ymin + (j + 1) * dy), where dx and dy are the width of
         each pixel in the x and y direction, respectively.
     """
+    if use_exact != 0 and use_exact != 1:
+        msg = 'use_exact must be 0 or 1'
+        raise ValueError(msg)
+    if use_exact == 0 and subpixels < 1:
+        msg = 'subpixels must be a strictly positive integer'
+        raise ValueError(msg)
+
     cdef unsigned int i, j
     cdef double dx, dy, d2, pixel_radius
     cdef double bxmin, bxmax, bymin, bymax
@@ -127,7 +131,7 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
                         # Per-pixel decision core (interior/exterior
                         # fast path and exact/subpixel dispatch),
                         # factored out into ``circle_frac_from_d2``
-                        # above.
+                        # in circle_overlap.pxd.
                         frac_view[j, i] = circle_frac_from_d2(
                             pxmin, pymin, pxmax, pymax, dx, dy,
                             pixel_radius, d2, r, use_exact, subpixels)

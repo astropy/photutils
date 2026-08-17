@@ -22,7 +22,7 @@ builds.
 """
 
 from photutils.geometry._polygon_overlap cimport (
-    convex_polygon_pixel_overlap, polygon_overlap_single_subpixel,
+    convex_polygon_pixel_overlap, convex_polygon_pixel_subpixel,
     polygon_pixel_overlap)
 from photutils.geometry.circle_overlap cimport circle_frac_from_d2
 from photutils.geometry.ellipse_overlap cimport ellipse_frac_from_rpix2
@@ -548,7 +548,10 @@ cdef inline double _ellipse_frac_core(double pxmin, double pymin,
     cxy = 2.0 * cos_theta * sin_theta * (inv_rx2 - inv_ry2)
     margin = 0.5 * sqrt(dx * dx + dy * dy) / fmin(rx, ry)
     f_in = 1.0 - margin
-    f_in = f_in * f_in if f_in > 0.0 else 0.0
+    # Use a negative sentinel when no pixel can be wholly inside.
+    # Clamping to 0 would misclassify a pixel whose center lies exactly
+    # on the ellipse center (value 0) as wholly inside.
+    f_in = f_in * f_in if f_in > 0.0 else -1.0
     f_out = (1.0 + margin) * (1.0 + margin)
 
     rpix2 = cxx * pxcen * pxcen + cyy * pycen * pycen + cxy * pxcen * pycen
@@ -980,12 +983,12 @@ cdef inline double _polygon_pixel_frac(double pxmin, double pymin,
     Fraction of a single pixel that overlaps a simple polygon, supplied
     as counter-clockwise vertices centered on the origin.
 
-    This replicates the per-pixel logic of ``polygon_overlap_grid``: the
-    exact mode uses an interior/exterior fast path for convex polygons
-    (``is_convex``) and otherwise clips the pixel against the polygon
-    using the Sutherland-Hodgman algorithm; the subpixel mode instead
-    samples pixel centers with point-in-polygon tests. The result is
-    identical to the grid function.
+    This replicates the per-pixel logic of ``polygon_overlap_grid``.
+    Both modes use an interior/exterior fast path for convex polygons
+    (``is_convex``). Boundary-band pixels are clipped against the
+    polygon using the Sutherland-Hodgman algorithm in exact mode, or
+    sampled at subpixel centers with point-in-polygon tests in subpixel
+    mode. The result is identical to the grid function.
 
     Parameters
     ----------
@@ -1043,7 +1046,8 @@ cdef inline double _polygon_pixel_frac(double pxmin, double pymin,
             edge_nx, edge_ny, edge_c, is_convex, margin,
             buf_a_x, buf_a_y, buf_b_x, buf_b_y, buf_size) / (dx * dy)
 
-    return polygon_overlap_single_subpixel(pxmin, pymin, pxmax, pymax,
-                                           poly_x, poly_y, n_poly,
-                                           subpixels, buf_a_x, buf_a_y,
-                                           buf_b_x)
+    return convex_polygon_pixel_subpixel(pxmin, pymin, pxmax, pymax,
+                                         poly_x, poly_y, n_poly,
+                                         edge_nx, edge_ny, edge_c,
+                                         is_convex, margin, subpixels,
+                                         buf_a_x, buf_a_y, buf_b_x)
