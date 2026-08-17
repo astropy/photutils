@@ -173,7 +173,7 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
     footprint : array_like
         A footprint that defines feature connections. As an example,
         for connectivity along pixel edges only, the footprint is
-        ``np.array([[0, 1, 0]], [1, 1, 1], [0, 1, 0]])``.
+        ``np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])``.
 
     inverse_mask : 2D bool `~numpy.ndarray`
         A boolean mask, with the same shape as the input ``data``, where
@@ -252,12 +252,8 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
         labels = segm_labels
 
     if return_segmimg:
-        segm = object.__new__(SegmentationImage)
-        segm._data = segment_img
-        segm.__dict__['labels'] = labels
-        segm.__dict__['slices'] = segm_slices
-        segm.__dict__['_deblend_label_map'] = {}
-        return segm
+        return SegmentationImage._from_data(segment_img, labels=labels,
+                                            slices=segm_slices)
 
     # This is used by deblend_sources
     if len(labels) == 1:
@@ -390,7 +386,7 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
 
     if segm is None:
         msg = ('No sources were found. Try lowering the threshold or '
-               'pixels parameters.')
+               'n_pixels parameters.')
         warnings.warn(msg, NoDetectionsWarning)
 
     return segm

@@ -51,6 +51,18 @@ class SegmentationImage:
         for the background. The segmentation image must have integer
         type.
 
+    Attributes
+    ----------
+    info : dict
+        A dictionary containing auxiliary information about the
+        segmentation image. For example, segmentation images returned
+        by :func:`~photutils.segmentation.deblend_sources` store the
+        input labels affected by deblending warnings under
+        ``'nonposmin_labels'`` and ``'n_markers_labels'`` keys. The
+        dictionary is empty if there is no auxiliary information. It is
+        reset to an empty dictionary when the ``data`` attribute is
+        reassigned.
+
     Notes
     -----
     The `SegmentationImage` instance may be sliced, but note that the
@@ -66,6 +78,52 @@ class SegmentationImage:
             raise TypeError(msg)
         self.data = data
         self._deblend_label_map = {}  # set by source deblender
+
+    @classmethod
+    def _from_data(cls, data, *, labels=None, slices=None,
+                   deblend_label_map=None):
+        """
+        Create a `SegmentationImage` from a pre-validated segmentation
+        array, optionally seeding cached properties.
+
+        This bypasses the input validation performed by ``__init__``
+        and is used internally where the input array is already
+        known to be a valid segmentation image (e.g., the
+        outputs of `~photutils.segmentation.detect_sources` and
+        `~photutils.segmentation.deblend_sources`).
+
+        Parameters
+        ----------
+        data : 2D int `~numpy.ndarray`
+            The valid 2D segmentation array.
+
+        labels : `~numpy.ndarray`, optional
+            The sorted non-zero labels in ``data``, used to seed the
+            ``labels`` cached property.
+
+        slices : list of tuple of slice, optional
+            The slices for each label, used to seed the ``slices``
+            cached property. The list order must match ``labels``.
+
+        deblend_label_map : dict, optional
+            The mapping of parent label numbers to deblended label
+            numbers. If `None`, an empty mapping is used.
+
+        Returns
+        -------
+        segment_img : `SegmentationImage`
+            The new `SegmentationImage` instance.
+        """
+        segm = object.__new__(cls)
+        segm._data = data
+        if labels is not None:
+            segm.__dict__['labels'] = labels
+        if slices is not None:
+            segm.__dict__['slices'] = slices
+        segm._deblend_label_map = ({} if deblend_label_map is None
+                                   else deblend_label_map)
+        segm.info = {}
+        return segm
 
     def __str__(self):
         cls_name = f'<{self.__class__.__module__}.{self.__class__.__name__}>'
@@ -260,10 +318,11 @@ class SegmentationImage:
         self._data = value  # pylint: disable=attribute-defined-outside-init
         self.__dict__['labels'] = labels
 
-        # Reset deblended labels explicitly since _deblend_label_map
-        # is a regular attribute, not a cached property cleared by
-        # _reset_cached_properties above.
+        # Reset deblended labels and auxiliary info explicitly since
+        # _deblend_label_map and info are regular attributes, not cached
+        # properties cleared by _reset_cached_properties above.
         self.__dict__['_deblend_label_map'] = {}
+        self.__dict__['info'] = {}
 
     @cached_property
     def data_masked(self):
@@ -683,7 +742,8 @@ class SegmentationImage:
         bad_labels.update(labels[~valid_mask])
 
         if bad_labels:
-            bad_labels = sorted(bad_labels)
+            # Convert numpy scalars to Python ints for a clean message
+            bad_labels = sorted(int(label) for label in bad_labels)
             label_str = 'label'
             conj_str = 'is'
             if len(bad_labels) > 1:
@@ -1270,7 +1330,9 @@ class SegmentationImage:
         Parameters
         ----------
         border_width : int
-            The width of the border region in pixels.
+            The width of the border region in pixels. It must be
+            positive and smaller than half the array size in any
+            dimension.
 
         partial_overlap : bool, optional
             If this is set to `True` (the default), a segment that
@@ -1319,6 +1381,9 @@ class SegmentationImage:
                [7, 7, 0, 5, 5, 5],
                [7, 7, 0, 0, 5, 5]])
         """
+        if border_width <= 0:
+            msg = 'border_width must be a positive integer'
+            raise ValueError(msg)
         if border_width >= min(self.shape) / 2:
             msg = ('border_width must be smaller than half the array size '
                    'in any dimension')
@@ -2297,7 +2362,9 @@ class SegmentationImage:
                        alpha=alpha, vmin=vmin, vmax=vmax)
 
         cbar_info = None
-        cbar_labels = np.hstack((0, self.labels))
+        # The unique data values are the colorbar tick labels. 0 is
+        # included only if background pixels are present.
+        cbar_labels = data
         if len(cbar_labels) <= max_labels:
             cbar_ticks = np.arange(len(cbar_labels))
             cbar = ax.figure.colorbar(im, ax=ax, ticks=cbar_ticks)

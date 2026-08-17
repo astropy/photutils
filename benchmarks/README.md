@@ -156,6 +156,41 @@ python benchmarks/bench_detection.py
 python benchmarks/bench_detection.py --which min-separation --radii 10,50
 ```
 
+## Segmentation (`bench_segmentation.py`)
+
+Benchmarks for the `photutils.segmentation` subpackage, using an
+image of blended Gaussian-source pairs so that deblending has work to
+do:
+
+- source detection (`detect_threshold` and `detect_sources` with
+  4- and 8-connectivity)
+- source deblending (`deblend_sources`) across the threshold modes
+  (`linear`, `exponential`, and `sinh`) and `n_processes` values
+- the combined `SourceFinder` class with and without deblending
+- `SegmentationImage` operations (cached properties, relabeling,
+  border-label removal, square and circular source masks, and
+  polygons)
+- all `SourceCatalog` properties (from the catalog `properties`
+  attribute, computed with convolved data, error, background, and
+  WCS inputs) plus the method-based measurements (`flux_radius`,
+  `circular_photometry`, `kron_photometry`, and `to_table`), each on
+  a fresh catalog (times include dependent properties, e.g.,
+  `centroid_win` includes the Kron flux and `flux_radius` it depends
+  on)
+- concurrent `SourceCatalog` measurement jobs across thread counts
+  (with speedups relative to the first thread count)
+
+Examples:
+
+```bash
+# Run everything with the default settings
+python benchmarks/bench_segmentation.py
+
+# Only the deblending benchmark with a larger image
+python benchmarks/bench_segmentation.py --which deblend \
+    --n-sources 4000 --n-processes 1,4,8
+```
+
 ## Background (`bench_background.py`)
 
 Benchmarks for the `photutils.background` subpackage:

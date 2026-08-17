@@ -3,12 +3,19 @@
 Custom exceptions.
 """
 
-from astropy.utils.exceptions import AstropyWarning
+from astropy.utils.exceptions import AstropyUserWarning, AstropyWarning
 
-__all__ = ['NoDetectionsWarning']
+__all__ = ['DeblendWarning', 'NoDetectionsWarning']
 
 
 class NoDetectionsWarning(AstropyWarning):
     """
     A warning class to indicate no sources were detected.
+    """
+
+
+class DeblendWarning(AstropyUserWarning):
+    """
+    A warning class to indicate issues encountered while deblending
+    sources.
     """

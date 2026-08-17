@@ -12,7 +12,6 @@ from multiprocessing import cpu_count, get_context
 
 import numpy as np
 from astropy.units import Quantity
-from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import label as ndi_label
 from scipy.ndimage import sum_labels
 
@@ -22,6 +21,7 @@ from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._deprecation import deprecated_renamed_argument
 from photutils.utils._progress_bars import add_progress_bar, tqdm
 from photutils.utils._stats import nanmax, nanmin, nansum
+from photutils.utils.exceptions import DeblendWarning
 
 __all__ = ['deblend_sources']
 
@@ -137,8 +137,21 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     -------
     segment_image : `~photutils.segmentation.SegmentationImage`
         A segmentation image, with the same shape as ``data``, where
-        sources are marked by different positive integer values. A value
-        of zero is reserved for the background.
+        sources are marked by different positive integer values. A
+        value of zero is reserved for the background. The ``info``
+        attribute of the returned segmentation image is a dictionary
+        that stores the input labels for which the deblending mode was
+        changed to "linear" as arrays under ``'nonposmin_labels'``
+        (non-positive minimum data values) and ``'n_markers_labels'``
+        (too many potential deblended sources) keys. The dictionary is
+        empty if no mode fallbacks occurred.
+
+    Warns
+    -----
+    DeblendWarning
+        If the deblending mode for one or more sources was changed from
+        ``mode`` to "linear" due to non-positive minimum data values or
+        too many potential deblended sources.
 
     See Also
     --------
@@ -156,6 +169,14 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         msg = 'segmentation_image must have the same shape as data'
         raise ValueError(msg)
 
+    if segmentation_image.n_labels == 0:
+        msg = 'segmentation_image must have at least one non-zero label'
+        raise ValueError(msg)
+
+    if (n_pixels <= 0) or (int(n_pixels) != n_pixels):
+        msg = f'n_pixels must be a positive integer, got {n_pixels!r}'
+        raise ValueError(msg)
+
     if n_levels < 1:
         msg = 'n_levels must be >= 1'
         raise ValueError(msg)
@@ -163,12 +184,15 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         msg = 'contrast must be >= 0 and <= 1'
         raise ValueError(msg)
 
-    if contrast == 1:  # no deblending
-        return segmentation_image.copy()
-
     if mode not in ('exponential', 'linear', 'sinh'):
         msg = "mode must be 'exponential', 'linear', or 'sinh'"
         raise ValueError(msg)
+
+    if contrast == 1:  # no deblending
+        segm_img = segmentation_image.copy()
+        if relabel:
+            segm_img.relabel_consecutive()
+        return segm_img
 
     if labels is None:
         labels = segmentation_image.labels
@@ -296,28 +320,12 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                 deblend_label_map[label] = new_labels
                 max_label += len(new_labels)
 
-    # Process any warnings during deblending
-    warning_info = {}
     if nonposmin_labels or n_markers_labels:
         msg = ('The deblending mode of one or more source labels from the '
                f'input segmentation image was changed from "{mode}" to '
-               '"linear". See the "info" attribute for the list of affected '
-               'input labels.')
-        warnings.warn(msg, AstropyUserWarning)
-
-        if nonposmin_labels:
-            nonposmin_labels = np.array(nonposmin_labels)
-            msg = (f'Deblending mode changed from {mode} to linear due to '
-                   'non-positive minimum data values.')
-            warn = {'message': msg, 'input_labels': nonposmin_labels}
-            warning_info['nonposmin'] = warn
-
-        if n_markers_labels:
-            n_markers_labels = np.array(n_markers_labels)
-            msg = (f'Deblending mode changed from {mode} to linear due to '
-                   'too many potential deblended sources.')
-            warn = {'message': msg, 'input_labels': n_markers_labels}
-            warning_info['n_markers'] = warn
+               '"linear". See the "info" attribute of the returned '
+               'segmentation image for the affected input labels.')
+        warnings.warn(msg, DeblendWarning)
 
     if relabel:
         relabel_map = _create_relabel_map(segm_deblended, start_label=1)
@@ -326,13 +334,15 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
             deblend_label_map = _update_deblend_label_map(deblend_label_map,
                                                           relabel_map)
 
-    segm_img = object.__new__(SegmentationImage)
-    segm_img._data = segm_deblended
-    segm_img._deblend_label_map = deblend_label_map
+    segm_img = SegmentationImage._from_data(
+        segm_deblended, deblend_label_map=deblend_label_map)
 
-    # Store the warnings in the output SegmentationImage info attribute
-    if warning_info:
-        segm_img.info = {'warnings': warning_info}
+    # Store the input labels affected by deblending mode fallbacks in
+    # the info attribute
+    if nonposmin_labels:
+        segm_img.info['nonposmin_labels'] = np.array(nonposmin_labels)
+    if n_markers_labels:
+        segm_img.info['n_markers_labels'] = np.array(n_markers_labels)
 
     return segm_img
 

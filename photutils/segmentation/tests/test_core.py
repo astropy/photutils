@@ -4,7 +4,9 @@ Tests for the core module.
 """
 
 import sys
+import threading
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from functools import cached_property
 from unittest.mock import PropertyMock, patch
 
@@ -111,6 +113,18 @@ class TestSegmentationImage:
         segm.data = self.data[0:3, :].copy()
         assert_equal(segm.labels, [1, 3, 4])
 
+    def test_info(self):
+        """
+        Test that the info attribute always exists and is reset when the
+        data attribute is reassigned.
+        """
+        segm = SegmentationImage(self.data.copy())
+        assert segm.info == {}
+
+        segm.info['key'] = 'value'
+        segm.data = self.data[0:3, :].copy()
+        assert segm.info == {}
+
     def test_invalid_data(self):
         """
         Test invalid data.
@@ -147,8 +161,10 @@ class TestSegmentationImage:
     def test_invalid_label_array(self):
         """
         Test invalid label array.
+
+        The message must show plain integers, not numpy scalar reprs.
         """
-        match = 'are invalid'
+        match = r'labels \[-1, 0, 2\] are invalid'
         with pytest.raises(ValueError, match=match):
             self.segm.check_labels([0, -1, 2])
 
@@ -611,6 +627,18 @@ class TestSegmentationImage:
         with pytest.raises(ValueError, match=match):
             segm.remove_border_labels(border_width=3)
 
+    @pytest.mark.parametrize('border_width', [0, -1])
+    def test_remove_border_labels_nonpositive_border_width(self,
+                                                           border_width):
+        """
+        Test that remove_border_labels raises for non-positive border
+        widths instead of removing every label.
+        """
+        segm = SegmentationImage(self.data.copy())
+        match = 'border_width must be a positive integer'
+        with pytest.raises(ValueError, match=match):
+            segm.remove_border_labels(border_width=border_width)
+
     def test_remove_border_labels_no_remaining_segments(self):
         """
         Test remove border labels no remaining segments.
@@ -1008,7 +1036,8 @@ def test_subclass(segm_data):
                       [70, 70, 0, 0],
                       [70, 70, 0, 1]])
     segm.data = data2
-    assert len(segm.__dict__) == 3
+    # Only _data, labels, _deblend_label_map, and info should remain
+    assert len(segm.__dict__) == 4
     assert_equal(segm.areas, [1, 2, 2, 4])
 
 
@@ -1199,6 +1228,34 @@ def test_imshow_map_cbar_labelsize(segm_data):
     segm = SegmentationImage(segm_data)
     _im, cbar_info = segm.imshow_map(cbar_labelsize=8)
     assert cbar_info is not None
+
+    _cbar, ticks, labels = cbar_info
+    assert_equal(labels, [0, 1, 3, 4, 5, 7])
+    assert_equal(ticks, np.arange(len(labels)))
+
+
+@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+def test_imshow_map_no_background():
+    """
+    Test imshow_map colorbar labels for a segmentation image with no
+    background (zero) pixels.
+
+    Regression test for a bug where 0 was unconditionally prepended to
+    the colorbar tick labels, shifting every label by one position when
+    the segmentation image contained no background pixels.
+    """
+    data = np.array([[1, 1, 2, 2],
+                     [1, 1, 2, 2],
+                     [5, 5, 9, 9],
+                     [5, 5, 9, 9]])
+    segm = SegmentationImage(data)
+    im, cbar_info = segm.imshow_map()
+    assert cbar_info is not None
+
+    _cbar, ticks, labels = cbar_info
+    assert_equal(labels, [1, 2, 5, 9])
+    assert_equal(ticks, np.arange(len(labels)))
+    assert np.max(np.asarray(im.get_array())) == len(labels) - 1
 
 
 class TestGetSegment:
@@ -1677,6 +1734,72 @@ class TestGetRegion:
         regions = self.segm.to_regions()
         for region in regions:
             assert not region.visual
+
+
+class TestThreadSafety:
+    """
+    Thread-safety tests for the SegmentationImage class.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self, segm_data):
+        self.data = segm_data
+
+    def test_concurrent_cached_property_access(self):
+        """
+        Test concurrent first access of cached properties on a shared
+        segmentation image.
+
+        cached_property does not lock, so concurrent first accesses may
+        run a getter more than once, but every thread must see values
+        identical to the serial computation.
+        """
+        expected = SegmentationImage(self.data.copy())
+        segm = SegmentationImage(self.data.copy())
+
+        n_threads = 8
+        barrier = threading.Barrier(n_threads)
+
+        def worker(_):
+            barrier.wait()
+            return (segm.labels, segm.areas, segm.slices,
+                    segm.missing_labels)
+
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            results = list(executor.map(worker, range(n_threads)))
+
+        for labels, areas, slices, missing_labels in results:
+            assert_equal(labels, expected.labels)
+            assert_equal(areas, expected.areas)
+            assert slices == expected.slices
+            assert_equal(missing_labels, expected.missing_labels)
+
+    def test_concurrent_cached_properties_introspection(self):
+        """
+        Test concurrent first access of the class-level
+        _cached_properties introspection cache on a fresh subclass.
+
+        The lazy class-level cache is written without a lock; the race
+        is benign because the computed list is identical for every
+        thread.
+        """
+        class FreshSegm(SegmentationImage):
+            pass
+
+        segms = [FreshSegm(self.data.copy()) for _ in range(8)]
+
+        n_threads = len(segms)
+        barrier = threading.Barrier(n_threads)
+
+        def worker(segm):
+            barrier.wait()
+            return segm._cached_properties
+
+        with ThreadPoolExecutor(max_workers=n_threads) as executor:
+            results = list(executor.map(worker, segms))
+
+        assert all(result == results[0] for result in results)
+        assert 'areas' in results[0]
 
 
 def test_segment_deprecations(segm_data):

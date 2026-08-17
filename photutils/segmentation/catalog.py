@@ -180,12 +180,11 @@ class SourceCatalog:
         values (NaN and inf) in the input ``data`` are automatically
         masked.
 
-    background : float, 2D `~numpy.ndarray`, or `~astropy.units.Quantity`, \
-            optional
-        The background level that was *previously* present in the input
-        ``data``. ``background`` may either be a scalar value or a 2D
-        image with the same shape as the input ``data``. If ``data``
-        is a `~astropy.units.Quantity` array then ``background`` must
+    background : 2D `~numpy.ndarray` or `~astropy.units.Quantity`, optional
+        The background level that was *previously* present in the
+        input ``data``. ``background`` must be a 2D image with
+        the same shape as the input ``data``. If ``data`` is a
+        `~astropy.units.Quantity` array then ``background`` must
         be a `~astropy.units.Quantity` array (and vice versa) with
         identical units. Inputing the ``background`` merely allows
         for its properties to be measured within each source segment.
@@ -516,27 +515,6 @@ class SourceCatalog:
         }
 
     @property
-    def _properties(self):
-        """
-        A list of all class properties, including cached properties
-        (even in superclasses).
-
-        The result is cached on the class to avoid repeated
-        introspection via `inspect.getmembers`.
-        """
-        cls = self.__class__
-        attr = '_properties_cache'
-        # Subclasses get their own property list
-        if attr not in cls.__dict__:
-            def isproperty(obj):
-                return isinstance(obj, (property, cached_property))
-
-            setattr(cls, attr,
-                    [i[0] for i in inspect.getmembers(
-                        cls, predicate=isproperty)])
-        return getattr(cls, attr)
-
-    @property
     def properties(self):
         """
         A list of built-in source properties.
@@ -614,10 +592,19 @@ class SourceCatalog:
         init_attr = ('_data', '_segmentation_image', '_error', '_mask',
                      '_background', 'wcs', '_data_unit', '_convolved_data',
                      'local_bkg_width', 'aperture_mask_method',
-                     'kron_params', 'default_columns', '_custom_properties',
-                     'meta', '_aperture_mask_kwargs', 'progress_bar')
+                     'kron_params', 'progress_bar')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
+
+        # Copy mutable containers so that mutating the sliced catalog
+        # (e.g., via add_property) does not also mutate the parent
+        # catalog (and vice versa).
+        newcls.default_columns = self.default_columns.copy()
+        newcls._custom_properties = self._custom_properties.copy()
+        newcls.meta = self.meta.copy()
+        newcls._aperture_mask_kwargs = {
+            key: value.copy()
+            for key, value in self._aperture_mask_kwargs.items()}
 
         # _labels determines ordering and isscalar
         attr = '_labels'
@@ -822,8 +809,11 @@ class SourceCatalog:
         overwrite : bool, option
             If `True`, will overwrite the existing property ``name``.
         """
+        # dir() includes all class-level attributes (properties, cached
+        # properties, and methods), so built-in methods (e.g., to_table)
+        # cannot be clobbered even with overwrite=True
         internal_attributes = ((set(self.__dict__.keys())
-                               | set(self._properties))
+                                | set(dir(self.__class__)))
                                - set(self.custom_properties))
         if name in internal_attributes:
             msg = f'{name} cannot be set because it is a built-in attribute'
@@ -1459,8 +1449,13 @@ class SourceCatalog:
         An array with a single NaN is returned for completely-masked
         sources.
         """
-        return [arr.compressed() if len(arr.compressed()) > 0
-                else np.array([np.nan]) for arr in array]
+        values = []
+        for arr in array:
+            compressed = arr.compressed()
+            if len(compressed) == 0:
+                compressed = np.array([np.nan])
+            values.append(compressed)
+        return values
 
     @staticmethod
     def _reduceat(values, ufunc, *, transform=None):
@@ -2422,11 +2417,13 @@ class SourceCatalog:
         Non-finite pixel values (NaN and inf) are excluded
         (automatically masked).
         """
-        localbkg = self._local_background
-        if self.isscalar:
-            localbkg = localbkg[0]
-        source_sum, _ = self._reduceat(self._data_values, np.add)
-        source_sum -= self.area.value * localbkg
+        source_sum, sizes = self._reduceat(self._data_values, np.add)
+        # Subtract the local background over the number of unmasked
+        # pixels actually included in the sum. The "area" property is
+        # not used here because it is taken from the detection catalog
+        # (if input), whose pixel count can differ when the data masks
+        # differ.
+        source_sum -= sizes * self._local_background
         if self._data_unit is not None:
             source_sum <<= self._data_unit
         return source_sum
@@ -4123,6 +4120,10 @@ class SourceCatalog:
     @cached_property
     @use_detcat
     def _flux_radius_optimizer_args(self):
+        # NOTE: this cached property snapshots the current
+        # _aperture_mask_kwargs['flux_radius'] settings. Changing them
+        # (e.g., via _set_semode) after the first flux_radius call has
+        # no effect.
         kron_flux = self._kron_photometry[:, 0]  # unitless
         max_radius = self._max_circular_kron_radius
         kwargs = self._aperture_mask_kwargs['flux_radius']
@@ -4285,7 +4286,7 @@ class SourceCatalog:
 
             clean_data, grid_params, kronflux, max_radius = flux_radius_args
             normflux = kronflux * fraction
-            args = (clean_data, grid_params, normflux)
+            fcn_args = (clean_data, grid_params, normflux)
 
             # Try to find the root of self._flux_radius_func, which
             # is bracketed by a min and max radius. A ValueError is
@@ -4305,8 +4306,9 @@ class SourceCatalog:
             while max_radius > min_radius and found is False:
                 try:
                     bracket = [min_radius, max_radius]
-                    result = root_scalar(self._flux_radius_fcn, args=args,
-                                         bracket=bracket, method='brentq')
+                    result = root_scalar(self._flux_radius_fcn,
+                                         args=fcn_args, bracket=bracket,
+                                         method='brentq')
                     result = result.root
                     found = True
                 except ValueError:

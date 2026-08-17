@@ -466,8 +466,8 @@ subset of labels is needed::
     1 47
 
     >>> segments = segment_map.get_segments([1, 5, 10])
-    >>> [segment.label for segment in segments]
-    [np.int32(1), np.int32(5), np.int32(10)]
+    >>> [int(segment.label) for segment in segments]
+    [1, 5, 10]
 
 A `~photutils.segmentation.Segment` can provide cutout arrays
 of the segment data and of arbitrary data arrays via its
@@ -665,7 +665,6 @@ that was subtracted from the data into the ``background`` keyword
 of :class:`~photutils.segmentation.SourceCatalog`, the background
 properties for each source will also be calculated:
 
-.. doctest-requires:: scipy >= 1.8
 .. doctest-requires:: skimage
 
     >>> cat = SourceCatalog(data, segment_map, background=bkg.background)
@@ -719,7 +718,6 @@ calculated. `~photutils.segmentation.SourceCatalog.segment_flux`
 and `~photutils.segmentation.SourceCatalog.segment_flux_err` are the
 instrumental flux and propagated flux error within the source segments:
 
-.. doctest-requires:: scipy >= 1.8
 .. doctest-requires:: skimage
 
     >>> from photutils.utils import calc_total_error
@@ -739,13 +737,13 @@ instrumental flux and propagated flux error within the source segments:
     ...     tbl5[col].info.format = '%.8g'  # for consistent table output
     >>> print(tbl5)
     label x_centroid y_centroid segment_flux segment_flux_err
-    ----- --------- --------- ------------ ----------------
-        1 235.24302 1.1928271    433.35463        14.167067
-        5 257.82267 12.228232    489.96534        18.998371
-       20 347.15384 66.417567    625.96683        22.475065
-       50 380.94448 174.57181    249.01701        15.261334
-       75 74.413068 259.76066     836.4803        17.193721
-       80 14.920217 60.024006     666.6014        19.605394
+    ----- ---------- ---------- ------------ ----------------
+        1  235.24302  1.1928271    433.35462        14.167067
+        5  257.82267  12.228232    489.96532        18.998371
+       20  347.15384  66.417567    625.96682        22.475065
+       50  380.94448  174.57181    249.01701        15.261334
+       75  74.413068  259.76066     836.4803        17.193721
+       80  14.920217  60.024006    666.60139        19.605394
 
 
 Pixel Masking
