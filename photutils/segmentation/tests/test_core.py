@@ -113,6 +113,40 @@ class TestSegmentationImage:
         segm.data = self.data[0:3, :].copy()
         assert_equal(segm.labels, [1, 3, 4])
 
+    def test_set_data_seeds_derived_state(self):
+        """
+        Test that _set_data seeds the derived cached properties and
+        resets the mutable attributes.
+        """
+        segm = SegmentationImage(self.data.copy())
+        segm.info['key'] = 'value'
+
+        data2 = np.array([[2, 2, 0], [0, 0, 5], [5, 5, 0]])
+        labels = np.array([2, 5])
+        areas = np.array([2, 3])
+        slices = [(slice(0, 1), slice(0, 2)), (slice(1, 3), slice(0, 3))]
+        segm._set_data(data2, labels=labels, areas=areas, slices=slices)
+
+        assert_equal(segm.data, data2)
+        assert_equal(segm.labels, labels)
+        assert_equal(segm.areas, areas)
+        assert segm.slices == slices
+        assert segm.info == {}
+        assert segm._deblend_label_map == {}
+
+    def test_set_data_without_seeds(self):
+        """
+        Test that _set_data computes the derived properties on demand
+        when they are not supplied.
+        """
+        segm = SegmentationImage(self.data.copy())
+        data2 = np.array([[2, 2, 0], [0, 0, 5], [5, 5, 0]])
+        segm._set_data(data2)
+
+        assert_equal(segm.labels, [2, 5])
+        assert_equal(segm.areas, [2, 3])
+        assert len(segm.slices) == 2
+
     def test_info(self):
         """
         Test that the info attribute always exists and is reset when the

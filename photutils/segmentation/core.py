@@ -77,10 +77,9 @@ class SegmentationImage:
             msg = 'Input data must be a numpy array'
             raise TypeError(msg)
         self.data = data
-        self._deblend_label_map = {}  # set by source deblender
 
     @classmethod
-    def _from_data(cls, data, *, labels=None, slices=None,
+    def _from_data(cls, data, *, labels=None, areas=None, slices=None,
                    deblend_label_map=None):
         """
         Create a `SegmentationImage` from a pre-validated segmentation
@@ -101,6 +100,10 @@ class SegmentationImage:
             The sorted non-zero labels in ``data``, used to seed the
             ``labels`` cached property.
 
+        areas : `~numpy.ndarray`, optional
+            The pixel area of each label, in the same order as
+            ``labels``, used to seed the ``areas`` cached property.
+
         slices : list of tuple of slice, optional
             The slices for each label, used to seed the ``slices``
             cached property. The list order must match ``labels``.
@@ -115,14 +118,9 @@ class SegmentationImage:
             The new `SegmentationImage` instance.
         """
         segm = object.__new__(cls)
-        segm._data = data
-        if labels is not None:
-            segm.__dict__['labels'] = labels
-        if slices is not None:
-            segm.__dict__['slices'] = slices
-        segm._deblend_label_map = ({} if deblend_label_map is None
-                                   else deblend_label_map)
-        segm.info = {}
+        segm._set_data(data, labels=labels, areas=areas, slices=slices)
+        if deblend_label_map is not None:
+            segm._deblend_label_map = deblend_label_map
         return segm
 
     def __str__(self):
@@ -300,6 +298,57 @@ class SegmentationImage:
         for key in self._cached_properties:
             self.__dict__.pop(key, None)
 
+    def _set_data(self, data, *, labels=None, areas=None, slices=None):
+        """
+        Set the segmentation array and seed its derived properties.
+
+        This is the only method that assigns the ``_data`` attribute.
+        It performs no validation. The caller is responsible for
+        passing a valid 2D integer segmentation array.
+
+        Any derived value that is not supplied is computed on first
+        access. Supplied values are trusted and are not checked against
+        ``data``.
+
+        Parameters
+        ----------
+        data : 2D int `~numpy.ndarray`
+            The valid 2D segmentation array.
+
+        labels : 1D int `~numpy.ndarray`, optional
+            The sorted non-zero labels in ``data``.
+
+        areas : 1D int `~numpy.ndarray`, optional
+            The pixel area of each label, in the same order as
+            ``labels``.
+
+        slices : list of tuple of slice, optional
+            The minimal bounding slices of each label, in the same
+            order as ``labels``.
+        """
+        if '_data' in self.__dict__:
+            # Reset cached properties when data is reassigned, but not
+            # on init
+            self._reset_cached_properties()
+
+        # Bypass __setattr__, which rejects direct _data assignment
+        object.__setattr__(self, '_data', data)
+
+        # Seed the known derived values. functools.cached_property
+        # reads the instance dictionary first, so a seeded entry is
+        # returned as-is and an absent one falls through to the
+        # property body.
+        for name, value in (('labels', labels), ('areas', areas),
+                            ('slices', slices)):
+            if value is not None:
+                self.__dict__[name] = value
+
+        # Reset deblended labels and auxiliary info explicitly since
+        # _deblend_label_map and info are regular attributes, not
+        # cached properties cleared by _reset_cached_properties above.
+        self.__dict__['_deblend_label_map'] = {}
+        self.__dict__['info'] = {}
+
     @data.setter
     def data(self, value):
         if not np.issubdtype(value.dtype, np.integer):
@@ -311,18 +360,7 @@ class SegmentationImage:
             msg = 'The segmentation image cannot contain negative integers.'
             raise ValueError(msg)
 
-        if '_data' in self.__dict__:
-            # Reset cached properties when data is reassigned, but not on init
-            self._reset_cached_properties()
-
-        self._data = value  # pylint: disable=attribute-defined-outside-init
-        self.__dict__['labels'] = labels
-
-        # Reset deblended labels and auxiliary info explicitly since
-        # _deblend_label_map and info are regular attributes, not cached
-        # properties cleared by _reset_cached_properties above.
-        self.__dict__['_deblend_label_map'] = {}
-        self.__dict__['info'] = {}
+        self._set_data(value, labels=labels)
 
     @cached_property
     def data_masked(self):
