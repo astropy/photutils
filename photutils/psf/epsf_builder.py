@@ -198,16 +198,20 @@ class _EPSFValidator:
                    'Please provide at least one star for ePSF building.')
             raise ValueError(msg)
 
+        # Iterate over the flat star list so that the stars within
+        # LinkedEPSFStar objects are validated individually
+        star_list = getattr(stars, 'all_stars', stars)
+
         # Collect star dimension statistics
-        star_heights = [star.shape[0] for star in stars]
-        star_widths = [star.shape[1] for star in stars]
+        star_heights = [star.shape[0] for star in star_list]
+        star_widths = [star.shape[1] for star in star_list]
         max_height = max(star_heights)
         max_width = max(star_widths)
 
         # Check for extremely small stars that may cause issues
         min_star_size = 3  # minimum reasonable star cutout size
         problematic_stars = []
-        for i, star in enumerate(stars):
+        for i, star in enumerate(star_list):
             if min(star.shape) < min_star_size:
                 problematic_stars.append(f'Star {i}: {star.shape}')
 
@@ -276,9 +280,13 @@ class _EPSFValidator:
                 msg = f'{context}: {msg}'
             raise ValueError(msg)
 
-        # Validate individual stars
+        # Validate the individual stars in the flat star list so that
+        # the stars within LinkedEPSFStar objects are checked (their
+        # container delegates attributes like shape as lists). The
+        # flat indices in error messages match excluded_star_indices.
+        star_list = getattr(stars, 'all_stars', stars)
         invalid_stars = []
-        for i, star in enumerate(stars):
+        for i, star in enumerate(star_list):
             try:
                 # Check for valid data
                 if not hasattr(star, 'data') or star.data is None:
@@ -310,7 +318,7 @@ class _EPSFValidator:
                 error_details.append(f'... and {len(invalid_stars) - 5} more')
 
             msg = (f'Found {len(invalid_stars)} invalid stars out of '
-                   f'{len(stars)} total:\n' + '\n'.join(error_details))
+                   f'{len(star_list)} total:\n' + '\n'.join(error_details))
             if context:
                 msg = f'{context}: {msg}'
             raise ValueError(msg)
@@ -1109,7 +1117,7 @@ class EPSFBuilder:
             raise TypeError(msg)
         self._sigma_clip = sigma_clip
 
-        # store each ePSF build iteration
+        # Store each ePSF build iteration
         self._epsf = []
 
     def __call__(self, stars):
@@ -1235,8 +1243,9 @@ class EPSFBuilder:
             shape = as_pair('shape', shape, lower_bound=(0, 0), check_odd=True)
         else:
             # Use coordinate transformer to compute shape from star
-            # dimensions
-            star_shapes = [star.shape for star in stars]
+            # dimensions (use the flat star list so that stars within
+            # LinkedEPSFStar objects contribute individual shapes)
+            star_shapes = [star.shape for star in stars.all_stars]
             shape = self.coord_transformer.compute_epsf_shape(star_shapes)
 
         # Initialize with zeros
@@ -1898,10 +1907,14 @@ class EPSFBuilder:
                     else:  # _fit_error_status == 2
                         reason = 'the fit did not converge'
 
-                    msg = (f'The star at ({star._center_original[0]:.2f}, '
-                           f'{star._center_original[1]:.2f}) (index='
-                           f'{star.id_label - 1}) has been excluded from '
-                           f'ePSF fitting because {reason}.')
+                    label = ''
+                    if star.id_label is not None:
+                        label = f' (id={star.id_label})'
+                    msg = (f'The star at '
+                           f'({star._center_original[0]:.2f}, '
+                           f'{star._center_original[1]:.2f}) '
+                           f'(index={i}){label} has been excluded '
+                           f'from ePSF fitting because {reason}.')
                     warnings.warn(msg, AstropyUserWarning)
                 star._excluded_from_fit = True
 
@@ -2003,7 +2016,7 @@ class EPSFBuilder:
                                                     shape=self.shape)
 
         # Initialize variables for building process
-        fit_failed = np.zeros(stars.n_stars, dtype=bool)
+        fit_failed = np.zeros(stars.n_all_stars, dtype=bool)
         centers = stars.cutout_center_flat
 
         # Setup progress tracking
