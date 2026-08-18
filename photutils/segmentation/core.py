@@ -398,6 +398,9 @@ class SegmentationImage:
         if not isinstance(value, np.ndarray):
             msg = 'Input data must be a numpy array'
             raise TypeError(msg)
+        if isinstance(value, np.ma.MaskedArray):
+            msg = 'Input data must not be a numpy masked array'
+            raise TypeError(msg)
         if value.ndim != 2:
             msg = 'Input data must be a 2D array'
             raise ValueError(msg)

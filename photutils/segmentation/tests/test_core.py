@@ -350,6 +350,13 @@ class TestSegmentationImage:
         with pytest.raises(TypeError, match=match):
             SegmentationImage(data)
 
+        # Is a masked array
+        data = np.ma.masked_array([[1, 1], [0, 1]],
+                                  mask=[[False, True], [False, False]])
+        match = 'Input data must not be a numpy masked array'
+        with pytest.raises(TypeError, match=match):
+            SegmentationImage(data)
+
         # Is not 2D
         data = np.ones(3, dtype=int)
         match = 'Input data must be a 2D array'
