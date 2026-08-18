@@ -66,6 +66,30 @@ def _get_labels(array, *, return_counts=False):
     return np.unique(array[array != 0], return_counts=return_counts)
 
 
+def _remap_deblend_label_map(deblend_label_map, relabel_map):
+    """
+    Return a new deblend label map with remapped child labels.
+
+    Parameters
+    ----------
+    deblend_label_map : dict
+        The mapping of parent label numbers to arrays of deblended
+        (child) label numbers.
+
+    relabel_map : 1D `~numpy.ndarray`
+        An array mapping the original label numbers to the new label
+        numbers.
+
+    Returns
+    -------
+    result : dict
+        A new mapping with the same parent keys, where each array of
+        child labels has been translated through ``relabel_map``.
+    """
+    return {parent_label: relabel_map[child_labels]
+            for parent_label, child_labels in deblend_label_map.items()}
+
+
 class SegmentationImage:
     """
     Class for a segmentation image.
@@ -898,26 +922,6 @@ class SegmentationImage:
         """
         return self.make_cmap(background_color='#000000ff', seed=0)
 
-    def _update_deblend_label_map(self, deblend_label_map, relabel_map):
-        """
-        Update the deblended label map based on the input
-        ``relabel_map``.
-
-        Parameters
-        ----------
-        deblend_label_map : dict
-            The mapping of parent label numbers to deblended (child)
-            label numbers to update. This is passed explicitly because
-            :meth:`_set_data` resets the instance attribute.
-
-        relabel_map : `~numpy.ndarray`
-            An array mapping the original label numbers to the new
-            label numbers.
-        """
-        # child_labels are the deblended labels
-        for parent_label, child_labels in deblend_label_map.items():
-            self._deblend_label_map[parent_label] = relabel_map[child_labels]
-
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def reassign_label(self, label, new_label, relabel=False):
         """
@@ -1096,7 +1100,8 @@ class SegmentationImage:
         info = self.info
         self._set_data(data_new)
         self.__dict__['info'] = info
-        self._update_deblend_label_map(deblend_label_map, relabel_map)
+        self._deblend_label_map = _remap_deblend_label_map(
+            deblend_label_map, relabel_map)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def relabel_consecutive(self, start_label=1):
@@ -1161,7 +1166,8 @@ class SegmentationImage:
         self._set_data(data_new, labels=new_labels, areas=old_areas,
                        slices=old_slices)
         self.__dict__['info'] = info
-        self._update_deblend_label_map(deblend_label_map, new_label_map)
+        self._deblend_label_map = _remap_deblend_label_map(
+            deblend_label_map, new_label_map)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def keep_label(self, label, relabel=False):

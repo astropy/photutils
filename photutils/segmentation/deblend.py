@@ -15,7 +15,8 @@ from astropy.units import Quantity
 from scipy.ndimage import label as ndi_label
 from scipy.ndimage import sum_labels
 
-from photutils.segmentation.core import SegmentationImage, _get_labels
+from photutils.segmentation.core import (SegmentationImage, _get_labels,
+                                         _remap_deblend_label_map)
 from photutils.segmentation.detect import _detect_sources
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._deprecation import deprecated_renamed_argument
@@ -331,8 +332,8 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         relabel_map = _create_relabel_map(segm_deblended, start_label=1)
         if relabel_map is not None:
             segm_deblended = relabel_map[segm_deblended]
-            deblend_label_map = _update_deblend_label_map(deblend_label_map,
-                                                          relabel_map)
+            deblend_label_map = _remap_deblend_label_map(deblend_label_map,
+                                                         relabel_map)
 
     segm_img = SegmentationImage._from_data(
         segm_deblended, deblend_label_map=deblend_label_map)
@@ -693,27 +694,3 @@ def _create_relabel_map(array, *, start_label=1):
     relabel_map[labels] = np.arange(len(labels)) + start_label
 
     return relabel_map
-
-
-def _update_deblend_label_map(deblend_label_map, relabel_map):
-    """
-    Update the deblend_label_map to reflect the new labels that are
-    consecutive integers.
-
-    Parameters
-    ----------
-    deblend_label_map : dict
-        A dictionary mapping the original labels to the new deblended
-        labels.
-
-    relabel_map : 1D `~numpy.ndarray`
-        The array mapping the original labels to the new labels.
-
-    Returns
-    -------
-    deblend_label_map : dict
-        The updated deblend_label_map.
-    """
-    for old_label, new_labels in deblend_label_map.items():
-        deblend_label_map[old_label] = relabel_map[new_labels]
-    return deblend_label_map
