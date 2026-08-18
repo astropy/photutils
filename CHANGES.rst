@@ -643,6 +643,11 @@ API Changes
     ``AstropyUserWarning``) instead of an ``AstropyUserWarning``.
     [#2378]
 
+  - ``SegmentationImage`` now requires a 2D input array. Previously,
+    arrays of other dimensions were accepted and raised a
+    ``ValueError`` only when the ``bbox`` attribute was accessed.
+    [#XXXX]
+
 - ``photutils.utils``
 
   - The ``ShepardIDWInterpolator`` ``ncoords`` attribute has been
