@@ -156,6 +156,20 @@ class SegmentationImage:
         msg = f'{key!r} is not a valid 2D slice object'
         raise TypeError(msg)
 
+    def __setattr__(self, name, value):
+        """
+        Set an attribute.
+
+        The segmentation array is write protected because the derived
+        cached properties must be reset whenever it changes. Use the
+        ``data`` attribute or :meth:`_set_data` instead.
+        """
+        if name == '_data':
+            msg = ('Direct assignment to _data is not allowed. Assign '
+                   'to the data attribute or call _set_data()')
+            raise AttributeError(msg)
+        super().__setattr__(name, value)
+
     def __array__(self):
         """
         Array representation of the segmentation array (e.g., for

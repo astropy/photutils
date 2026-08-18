@@ -203,6 +203,16 @@ class TestSegmentationImage:
                              return_counts=True)[1]
         assert_equal(segm.areas, expected)
 
+    def test_data_attribute_is_write_protected(self):
+        """
+        Test that _data cannot be assigned directly, which would leave
+        the derived properties stale.
+        """
+        segm = SegmentationImage(self.data.copy())
+        match = 'Direct assignment to _data is not allowed'
+        with pytest.raises(AttributeError, match=match):
+            segm._data = np.zeros((3, 3), dtype=int)
+
     def test_set_data_seeds_derived_state(self):
         """
         Test that _set_data seeds the derived cached properties and
@@ -1231,8 +1241,7 @@ def test_geojson_polygons_int64_out_of_range():
     data = np.array([[0, 0, 0],
                      [0, np.iinfo(np.int32).max + 1, 0],
                      [0, 0, 0]], dtype=np.int64)
-    segm = SegmentationImage.__new__(SegmentationImage)
-    segm._data = data
+    segm = SegmentationImage._from_data(data)
     match = 'values outside the safe np.int32 range'
     with pytest.raises(ValueError, match=match):
         _ = segm._geojson_polygons
