@@ -221,6 +221,12 @@ New Features
     affected by deblending warnings under ``'nonposmin_labels'`` and
     ``'n_markers_labels'`` keys. [#2378]
 
+  - Added a ``get_label_mapping`` method to ``SegmentationImage`` to find
+    the mapping of labels to another segmentation image defined on the
+    same pixel grid, e.g., mapping the original (parent) labels to the
+    deblended (child) labels between segmentation images made before
+    and after deblending. [#2382]
+
 - ``photutils.utils``
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's

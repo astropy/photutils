@@ -1467,6 +1467,155 @@ def test_imshow_map_no_background():
     assert np.max(np.asarray(im.get_array())) == len(labels) - 1
 
 
+class TestGetLabelMapping:
+    """
+    Tests for the get_label_mapping method.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self, segm_data):
+        self.parent = SegmentationImage(segm_data)
+        # A deblend-like version of segm_data with the identical
+        # non-zero footprint: label 5 is split into labels 8 and 9,
+        # and label 7 is split into labels 10 and 11
+        child_data = np.array([[1, 1, 0, 0, 4, 4],
+                               [0, 0, 0, 0, 0, 4],
+                               [0, 0, 3, 3, 0, 0],
+                               [10, 0, 0, 0, 0, 8],
+                               [10, 10, 0, 8, 8, 9],
+                               [10, 11, 0, 0, 9, 9]])
+        self.child = SegmentationImage(child_data)
+
+    def test_basic(self):
+        """
+        Test the full parent-to-child mapping.
+        """
+        mapping = self.parent.get_label_mapping(self.child)
+        expected = {1: [1], 3: [3], 4: [4], 5: [8, 9], 7: [10, 11]}
+        assert list(mapping.keys()) == list(expected.keys())
+        for label, child_labels in expected.items():
+            assert_equal(mapping[label], child_labels)
+
+    def test_key_and_value_types(self):
+        """
+        Test that the keys are Python ints and the values are sorted
+        arrays with the dtype of the other segmentation image.
+        """
+        mapping = self.parent.get_label_mapping(self.child)
+        assert all(isinstance(key, int) for key in mapping)
+        for value in mapping.values():
+            assert isinstance(value, np.ndarray)
+            assert value.dtype == self.child.data.dtype
+            assert_equal(value, np.sort(value))
+
+    def test_identity(self):
+        """
+        Test that mapping a segmentation image to itself maps every
+        label to itself.
+        """
+        mapping = self.parent.get_label_mapping(self.parent)
+        for label, mapped in mapping.items():
+            assert_equal(mapped, [label])
+
+    def test_inverse(self):
+        """
+        Test the child-to-parent mapping.
+        """
+        mapping = self.child.get_label_mapping(self.parent)
+        expected = {1: [1], 3: [3], 4: [4], 8: [5], 9: [5], 10: [7],
+                    11: [7]}
+        assert list(mapping.keys()) == list(expected.keys())
+        for label, parent_labels in expected.items():
+            assert_equal(mapping[label], parent_labels)
+
+    def test_labels_scalar(self):
+        """
+        Test mapping a single scalar label.
+        """
+        mapping = self.parent.get_label_mapping(self.child, labels=5)
+        assert list(mapping.keys()) == [5]
+        assert_equal(mapping[5], [8, 9])
+
+    def test_labels_subset(self):
+        """
+        Test that a labels subset preserves the input label order.
+        """
+        mapping = self.parent.get_label_mapping(self.child, labels=[7, 1])
+        assert list(mapping.keys()) == [7, 1]
+        assert_equal(mapping[7], [10, 11])
+        assert_equal(mapping[1], [1])
+
+    def test_labels_empty(self):
+        """
+        Test that an empty labels list returns an empty dict.
+        """
+        assert self.parent.get_label_mapping(self.child, labels=[]) == {}
+
+    def test_labels_invalid(self):
+        """
+        Test that invalid labels raise a ValueError.
+        """
+        match = r'label \[2\] is invalid'
+        with pytest.raises(ValueError, match=match):
+            self.parent.get_label_mapping(self.child, labels=2)
+
+    def test_labels_positional(self):
+        """
+        Test that labels cannot be passed as a positional argument.
+        """
+        match = 'positional argument'
+        with pytest.raises(TypeError, match=match):
+            self.parent.get_label_mapping(self.child, [5])
+
+    def test_other_invalid_type(self):
+        """
+        Test that a non-SegmentationImage other raises a TypeError.
+        """
+        match = 'must be a SegmentationImage instance'
+        with pytest.raises(TypeError, match=match):
+            self.parent.get_label_mapping(self.child.data)
+
+    def test_other_shape_mismatch(self):
+        """
+        Test that a shape mismatch raises a ValueError.
+        """
+        segm = SegmentationImage(np.array([[1, 1], [0, 2]]))
+        match = 'must have the same shape'
+        with pytest.raises(ValueError, match=match):
+            self.parent.get_label_mapping(segm)
+
+    def test_all_zeros(self):
+        """
+        Test that a segmentation image with no labels returns an empty
+        dict.
+        """
+        segm = SegmentationImage(np.zeros((6, 6), dtype=int))
+        assert segm.get_label_mapping(self.child) == {}
+
+    def test_other_all_zeros(self):
+        """
+        Test that every label maps to the background when the other
+        segmentation image is all zeros.
+        """
+        segm = SegmentationImage(np.zeros((6, 6), dtype=int))
+        mapping = self.parent.get_label_mapping(segm)
+        assert list(mapping.keys()) == [1, 3, 4, 5, 7]
+        for mapped in mapping.values():
+            assert_equal(mapped, [0])
+
+    def test_footprint_mismatch(self):
+        """
+        Test that zero appears in the mapped labels where the other
+        segmentation image has background pixels within a labeled
+        region.
+        """
+        child_data = self.child.data.copy()
+        child_data[0, 0] = 0
+        child = SegmentationImage(child_data)
+        mapping = self.parent.get_label_mapping(child)
+        assert_equal(mapping[1], [0, 1])
+
+
 class TestGetSegment:
     """
     Tests for get_segment and get_segments methods.

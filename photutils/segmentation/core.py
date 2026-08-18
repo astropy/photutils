@@ -2271,6 +2271,103 @@ class SegmentationImage:
                 poly, label=int(label), visual_kwargs=visual_kwargs))
         return regions
 
+    def get_label_mapping(self, other, *, labels=None):
+        """
+        Find the mapping of labels between this segmentation image
+        and another one defined on the same pixel grid.
+
+        For each label in this segmentation image, find the labels in
+        ``other`` that cover any of the same pixels. The typical use
+        case is comparing segmentation images of the same sources
+        before and after deblending, where the result maps each
+        original (parent) label to the deblended (child) labels that
+        replaced it.
+
+        Parameters
+        ----------
+        other : `SegmentationImage`
+            The segmentation image to which the labels are mapped. It
+            must have the same shape as this segmentation image.
+
+        labels : int or 1D array_like (int), optional
+            The label number(s) to map. If `None` (default), all
+            labels are mapped.
+
+        Returns
+        -------
+        mapping : dict
+            A dictionary mapping each label number in this
+            segmentation image to a sorted 1D array of the label
+            numbers in ``other`` that share pixels with it.
+
+        Notes
+        -----
+        The two segmentation images are usually assumed to have
+        identical non-zero footprints. That assumption is not
+        checked. If ``other`` contains background (zero) pixels
+        within a labeled region of this segmentation image, then 0
+        will be included in the mapped labels for that label.
+
+        For segmentation images deblended in the current session, the
+        :attr:`parent_to_deblended_labels` and
+        :attr:`deblended_label_to_parent` attributes already provide
+        the label mapping. This method is the general tool for two
+        segmentation images without that provenance, e.g., images
+        read from files. The inverse mapping can be computed with
+        ``other.get_label_mapping(self)``.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from photutils.segmentation import SegmentationImage
+        >>> segm1 = SegmentationImage(np.array([[1, 1, 0, 2],
+        ...                                     [0, 1, 0, 2]]))
+        >>> segm2 = SegmentationImage(np.array([[1, 3, 0, 2],
+        ...                                     [0, 3, 0, 2]]))
+        >>> segm1.get_label_mapping(segm2)
+        {1: array([1, 3]), 2: array([2])}
+        >>> segm1.get_label_mapping(segm2, labels=1)
+        {1: array([1, 3])}
+        """
+        if not isinstance(other, SegmentationImage):
+            msg = ('The other segmentation image must be a '
+                   'SegmentationImage instance')
+            raise TypeError(msg)
+
+        if other.shape != self.shape:
+            msg = ('The other segmentation image must have the same '
+                   'shape as this one')
+            raise ValueError(msg)
+
+        mask = self._data > 0
+        parents = self._data[mask].astype(np.int64)
+        children = other._data[mask].astype(np.int64)
+
+        if parents.size == 0:
+            mapping = {}
+        else:
+            # Pack each (parent, child) label pair into a single
+            # int64 key so that one sorting pass finds all unique
+            # pairs. This is safe from overflow for label values
+            # below 2**31.
+            mult = np.int64(other.max_label) + 1
+            pairs = np.unique(parents * mult + children)
+            parents = pairs // mult
+            children = (pairs % mult).astype(other._data.dtype)
+
+            unique_parents, starts = np.unique(parents,
+                                               return_index=True)
+            mapping = dict(zip(unique_parents.tolist(),
+                               np.split(children, starts[1:]),
+                               strict=True))
+
+        if labels is not None:
+            self.check_labels(labels)
+            mapping = {int(label): mapping[int(label)]
+                       for label in np.atleast_1d(labels)}
+
+        return mapping
+
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def imshow(self, ax=None, figsize=None, dpi=None, cmap=None, alpha=None):
         """
