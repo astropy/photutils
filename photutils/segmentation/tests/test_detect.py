@@ -157,6 +157,43 @@ class TestDetectThreshold:
             detect_threshold(DATA, 1.0, sigma_clip=10)
 
 
+def test_detect_sources_seeds_areas():
+    """
+    Test that detect_sources returns a SegmentationImage with the
+    areas already cached and correct.
+    """
+    data = np.zeros((10, 10))
+    data[2:5, 2:5] = 10.0
+    data[6:8, 6:9] = 10.0
+
+    segm = detect_sources(data, 1.0, 4)
+    assert 'areas' in segm.__dict__
+
+    expected = np.unique(segm.data[segm.data != 0],
+                         return_counts=True)[1]
+    assert_equal(segm.areas, expected)
+
+
+def test_detect_sources_seeded_areas_after_relabel():
+    """
+    Test that the seeded areas stay aligned with the labels when the
+    n_pixels cut removes sources and the remaining ones are relabeled.
+    """
+    data = np.zeros((20, 20))
+    data[1:2, 1:2] = 10.0  # 1 pixel, removed
+    data[4:7, 4:7] = 10.0  # 9 pixels, kept
+    data[9:10, 9:11] = 10.0  # 2 pixels, removed
+    data[12:16, 12:17] = 10.0  # 20 pixels, kept
+
+    segm = detect_sources(data, 1.0, 4)
+    assert_equal(segm.labels, [1, 2])
+    assert_equal(segm.areas, [9, 20])
+
+    expected = np.unique(segm.data[segm.data != 0],
+                         return_counts=True)[1]
+    assert_equal(segm.areas, expected)
+
+
 class TestDetectSources:
     def setup_class(self):
         self.data = np.array([[0, 1, 0], [0, 2, 0],

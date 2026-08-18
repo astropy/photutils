@@ -39,6 +39,57 @@ _SEGMENT_DEPRECATED_ATTRIBUTES = {
 }
 
 
+def _get_labels(array, *, return_counts=False):
+    """
+    Return the sorted non-zero values in ``array``.
+
+    Parameters
+    ----------
+    array : `~numpy.ndarray`
+        An array of label values. It may have any shape (e.g., a full
+        segmentation array or already-extracted values).
+
+    return_counts : bool, optional
+        If `True`, also return the number of occurrences of each
+        label.
+
+    Returns
+    -------
+    labels : `~numpy.ndarray`
+        The sorted non-zero label values. `numpy.unique` preserves the
+        input dtype.
+
+    counts : `~numpy.ndarray`, optional
+        The number of occurrences of each label, in the same order as
+        ``labels``. Only returned if ``return_counts`` is `True`.
+    """
+    return np.unique(array[array != 0], return_counts=return_counts)
+
+
+def _remap_deblend_label_map(deblend_label_map, relabel_map):
+    """
+    Return a new deblend label map with remapped child labels.
+
+    Parameters
+    ----------
+    deblend_label_map : dict
+        The mapping of parent label numbers to arrays of deblended
+        (child) label numbers.
+
+    relabel_map : 1D `~numpy.ndarray`
+        An array mapping the original label numbers to the new label
+        numbers.
+
+    Returns
+    -------
+    result : dict
+        A new mapping with the same parent keys, where each array of
+        child labels has been translated through ``relabel_map``.
+    """
+    return {parent_label: relabel_map[child_labels]
+            for parent_label, child_labels in deblend_label_map.items()}
+
+
 class SegmentationImage:
     """
     Class for a segmentation image.
@@ -73,14 +124,10 @@ class SegmentationImage:
     """
 
     def __init__(self, data):
-        if not isinstance(data, np.ndarray):
-            msg = 'Input data must be a numpy array'
-            raise TypeError(msg)
         self.data = data
-        self._deblend_label_map = {}  # set by source deblender
 
     @classmethod
-    def _from_data(cls, data, *, labels=None, slices=None,
+    def _from_data(cls, data, *, labels=None, areas=None, slices=None,
                    deblend_label_map=None):
         """
         Create a `SegmentationImage` from a pre-validated segmentation
@@ -101,6 +148,10 @@ class SegmentationImage:
             The sorted non-zero labels in ``data``, used to seed the
             ``labels`` cached property.
 
+        areas : `~numpy.ndarray`, optional
+            The pixel area of each label, in the same order as
+            ``labels``, used to seed the ``areas`` cached property.
+
         slices : list of tuple of slice, optional
             The slices for each label, used to seed the ``slices``
             cached property. The list order must match ``labels``.
@@ -115,14 +166,9 @@ class SegmentationImage:
             The new `SegmentationImage` instance.
         """
         segm = object.__new__(cls)
-        segm._data = data
-        if labels is not None:
-            segm.__dict__['labels'] = labels
-        if slices is not None:
-            segm.__dict__['slices'] = slices
-        segm._deblend_label_map = ({} if deblend_label_map is None
-                                   else deblend_label_map)
-        segm.info = {}
+        segm._set_data(data, labels=labels, areas=areas, slices=slices)
+        if deblend_label_map is not None:
+            segm._deblend_label_map = deblend_label_map
         return segm
 
     def __str__(self):
@@ -161,39 +207,26 @@ class SegmentationImage:
         msg = f'{key!r} is not a valid 2D slice object'
         raise TypeError(msg)
 
+    def __setattr__(self, name, value):
+        """
+        Set an attribute.
+
+        The segmentation array is write protected because the derived
+        cached properties must be reset whenever it changes. Use the
+        ``data`` attribute or :meth:`_set_data` instead.
+        """
+        if name == '_data':
+            msg = ('Direct assignment to _data is not allowed. Assign '
+                   'to the data attribute or call _set_data()')
+            raise AttributeError(msg)
+        super().__setattr__(name, value)
+
     def __array__(self):
         """
         Array representation of the segmentation array (e.g., for
         matplotlib).
         """
         return self._data
-
-    @staticmethod
-    def _get_labels(data):
-        """
-        Return a sorted array of the non-zero labels in the segmentation
-        image.
-
-        Parameters
-        ----------
-        data : array_like (int)
-            A segmentation array where source regions are labeled by
-            different positive integer values. A value of zero is
-            reserved for the background.
-
-        Returns
-        -------
-        result : `~numpy.ndarray`
-            An array of non-zero label numbers.
-
-        Notes
-        -----
-        This is a static method so it can be used in
-        :meth:`remove_masked_labels` on a masked version of the
-        segmentation array.
-        """
-        # np.unique preserves dtype and also sorts elements
-        return np.unique(data[data != 0])
 
     @cached_property
     def segments(self):
@@ -300,29 +333,89 @@ class SegmentationImage:
         for key in self._cached_properties:
             self.__dict__.pop(key, None)
 
+    def _set_data(self, data, *, labels=None, areas=None, slices=None,
+                  preserve_info=False):
+        """
+        Set the segmentation array and seed its derived properties.
+
+        This is the only method that assigns the ``_data`` attribute.
+        It performs no validation. The caller is responsible for
+        passing a valid integer segmentation array.
+
+        Any derived value that is not supplied is computed on first
+        access. Supplied values are trusted and are not checked against
+        ``data``.
+
+        Parameters
+        ----------
+        data : 2D int `~numpy.ndarray`
+            The valid 2D segmentation array.
+
+        labels : 1D int `~numpy.ndarray`, optional
+            The sorted non-zero labels in ``data``.
+
+        areas : 1D int `~numpy.ndarray`, optional
+            The pixel area of each label, in the same order as
+            ``labels``.
+
+        slices : list of tuple of slice, optional
+            The minimal bounding slices of each label, in the same
+            order as ``labels``.
+
+        preserve_info : bool, optional
+            If `True`, keep the current ``info`` dictionary instead of
+            resetting it to an empty one. This is used by the
+            relabeling methods, where the change is an in-place
+            relabeling rather than a data reassignment.
+        """
+        if '_data' in self.__dict__:
+            # Reset cached properties when data is reassigned, but not
+            # on init
+            self._reset_cached_properties()
+
+        # Bypass __setattr__, which rejects direct _data assignment
+        object.__setattr__(self, '_data', data)
+
+        # Seed the known derived values. functools.cached_property
+        # reads the instance dictionary first, so a seeded entry is
+        # returned as-is and an absent one falls through to the
+        # property body.
+        for name, value in (('labels', labels), ('areas', areas),
+                            ('slices', slices)):
+            if value is not None:
+                self.__dict__[name] = value
+
+        # Reset the deblended label map and auxiliary info explicitly
+        # since _deblend_label_map and info are regular attributes,
+        # not cached properties cleared by _reset_cached_properties
+        # above.
+        self.__dict__['_deblend_label_map'] = {}
+        if not preserve_info:
+            self.__dict__['info'] = {}
+
     @data.setter
     def data(self, value):
+        if not isinstance(value, np.ndarray):
+            msg = 'Input data must be a numpy array'
+            raise TypeError(msg)
+        if isinstance(value, np.ma.MaskedArray):
+            msg = 'Input data must not be a numpy masked array'
+            raise TypeError(msg)
         if not np.issubdtype(value.dtype, np.integer):
             msg = 'data must have integer type'
             raise TypeError(msg)
 
-        labels = self._get_labels(value)  # array([]) if value all zeros
-        if labels.shape != (0,) and np.min(labels) < 0:
+        # A single pass over the non-zero pixels yields both the
+        # sorted labels and their pixel areas
+        labels, areas = _get_labels(value, return_counts=True)
+
+        # labels is sorted, so only the first element can be negative.
+        # The size check also covers all-zero and zero-size arrays.
+        if labels.size and labels[0] < 0:
             msg = 'The segmentation image cannot contain negative integers.'
             raise ValueError(msg)
 
-        if '_data' in self.__dict__:
-            # Reset cached properties when data is reassigned, but not on init
-            self._reset_cached_properties()
-
-        self._data = value  # pylint: disable=attribute-defined-outside-init
-        self.__dict__['labels'] = labels
-
-        # Reset deblended labels and auxiliary info explicitly since
-        # _deblend_label_map and info are regular attributes, not cached
-        # properties cleared by _reset_cached_properties above.
-        self.__dict__['_deblend_label_map'] = {}
-        self.__dict__['info'] = {}
+        self._set_data(value, labels=labels, areas=areas)
 
     @cached_property
     def data_masked(self):
@@ -340,27 +433,13 @@ class SegmentationImage:
         return self._data.shape
 
     @cached_property
-    def _ndim(self):
-        """
-        The number of array dimensions of the segmentation array.
-        """
-        return self._data.ndim
-
-    @cached_property
     def labels(self):
         """
         The sorted non-zero labels in the segmentation array.
         """
-        if '_raw_slices' in self.__dict__:
-            labels_all = np.arange(len(self._raw_slices)) + 1
-            labels = []
-            # If a label is missing, raw_slices will be None instead of a slice
-            for label, slc in zip(labels_all, self._raw_slices, strict=True):
-                if slc is not None:
-                    labels.append(label)
-            return np.array(labels, dtype=self._data.dtype)
-
-        return self._get_labels(self.data)
+        # Normally seeded by _set_data. This runs only when the array
+        # was set without known labels.
+        return _get_labels(self._data)
 
     @cached_property
     def n_labels(self):
@@ -382,15 +461,20 @@ class SegmentationImage:
         """
         Find the index of the input ``label``.
 
+        Array input is also accepted, in which case an array of
+        indices is returned. :meth:`get_indices` delegates to this
+        method.
+
         Parameters
         ----------
-        label : int
-            The label number to find.
+        label : int or 1D array_like (int)
+            The label number(s) to find.
 
         Returns
         -------
-        index : int
-            The array index.
+        index : int or 1D int `~numpy.ndarray`
+            The array index or indices. If ``label`` is a scalar, then
+            the returned index will also be a scalar.
 
         Raises
         ------
@@ -422,22 +506,7 @@ class SegmentationImage:
         ValueError
             If any input ``labels`` are invalid.
         """
-        self.check_labels(labels)
-        # self.labels is always sorted
-        return np.searchsorted(self.labels, labels)
-
-    @cached_property
-    def _raw_slices(self):
-        """
-        A list of tuples, where each tuple contains two slices representing
-        the minimal box that contains the labeled region.
-
-        The list starts with the *non-zero* label. The returned list has
-        a length equal to the maximum label number and is indexed by
-        (label - 1). If a label is missing, then the corresponding list
-        element will be `None` instead of a slice.
-        """
-        return find_objects(self.data)
+        return self.get_index(labels)
 
     @cached_property
     def slices(self):
@@ -449,7 +518,29 @@ class SegmentationImage:
         a length equal to the number of labels and matches the order of
         the ``labels`` attribute.
         """
-        return [slc for slc in self._raw_slices if slc is not None]
+        return [slc for slc in find_objects(self._data)
+                if slc is not None]
+
+    def _get_slice(self, label):
+        """
+        Return the bounding slice for a single label.
+
+        The input ``label`` must already be known to be valid. Use
+        :meth:`check_labels` first if that is not guaranteed.
+
+        Parameters
+        ----------
+        label : int
+            The label number.
+
+        Returns
+        -------
+        slc : tuple of slice
+            The minimal bounding slice containing the labeled region.
+        """
+        # self.labels is sorted, so searchsorted gives the position in
+        # the slices list, which matches the labels order
+        return self.slices[np.searchsorted(self.labels, label)]
 
     @cached_property
     def bbox(self):
@@ -457,7 +548,7 @@ class SegmentationImage:
         A list of `~photutils.aperture.BoundingBox` of the minimal
         bounding boxes containing the labeled regions.
         """
-        if self._ndim != 2:
+        if self._data.ndim != 2:
             msg = "The 'bbox' attribute requires a 2D segmentation image."
             raise ValueError(msg)
 
@@ -482,14 +573,10 @@ class SegmentationImage:
         returned array has a length equal to the number of labels and
         matches the order of the ``labels`` attribute.
         """
-        # NOTE: np.bincount was benchmarked but is slower for typical
-        # large images because its cost is O(total_pixels) whereas the
-        # per-bbox loop below is O(sum_of_bbox_areas), which is much
-        # smaller when segments occupy a small fraction of the image.
-        areas = []
-        for label, slices in zip(self.labels, self.slices, strict=True):
-            areas.append(np.count_nonzero(self._data[slices] == label))
-        return np.array(areas)
+        # Normally seeded by _set_data from the same single pass that
+        # produces the labels. This runs only when the array was set
+        # without known areas.
+        return _get_labels(self._data, return_counts=True)[1]
 
     def get_area(self, label):
         """
@@ -594,10 +681,8 @@ class SegmentationImage:
         segment : `Segment`
             The segment object.
         """
-        # _raw_slices is indexed by (label - 1) since it includes all
-        # labels up to max_label, even if some are missing
         label = self._data.dtype.type(label)
-        slc = self._raw_slices[label - 1]
+        slc = self._get_slice(label)
         bbox = BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,
                            iymin=slc[0].start, iymax=slc[0].stop)
         area = np.count_nonzero(self._data[slc] == label)
@@ -855,21 +940,6 @@ class SegmentationImage:
         """
         return self.make_cmap(background_color='#000000ff', seed=0)
 
-    def _update_deblend_label_map(self, relabel_map):
-        """
-        Update the deblended label map based on the input
-        ``relabel_map``.
-
-        Parameters
-        ----------
-        relabel_map : `~numpy.ndarray`
-            An array mapping the original label numbers to the new label
-            numbers.
-        """
-        # child_labels are the deblended labels
-        for parent_label, child_labels in self._deblend_label_map.items():
-            self._deblend_label_map[parent_label] = relabel_map[child_labels]
-
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def reassign_label(self, label, new_label, relabel=False):
         """
@@ -1040,9 +1110,14 @@ class SegmentationImage:
                 relabel_map = map2[relabel_map]
 
         data_new = relabel_map[self.data]
-        self._reset_cached_properties()  # reset all cached properties
-        self._data = data_new  # use _data to avoid validation
-        self._update_deblend_label_map(relabel_map)
+        # Relabeling is an in-place change, not a data reassignment,
+        # so the auxiliary info and the deblending provenance are
+        # kept. The local reference is needed because _set_data
+        # rebinds _deblend_label_map to a new empty dict.
+        deblend_label_map = self._deblend_label_map
+        self._set_data(data_new, preserve_info=True)
+        self._deblend_label_map = _remap_deblend_label_map(
+            deblend_label_map, relabel_map)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def relabel_consecutive(self, start_label=1):
@@ -1089,18 +1164,24 @@ class SegmentationImage:
             return
 
         old_slices = self.__dict__.get('slices', None)
+        old_areas = self.__dict__.get('areas', None)
         dtype = self.data.dtype  # keep the original dtype
         new_labels = np.arange(self.n_labels, dtype=dtype) + start_label
         new_label_map = np.zeros(self.max_label + 1, dtype=dtype)
         new_label_map[self.labels] = new_labels
 
         data_new = new_label_map[self.data]
-        self._reset_cached_properties()  # reset all cached properties
-        self._data = data_new  # use _data to avoid validation
-        self.__dict__['labels'] = new_labels
-        if old_slices is not None:
-            self.__dict__['slices'] = old_slices  # slice order is unchanged
-        self._update_deblend_label_map(new_label_map)
+        # Relabeling is an in-place change, not a data reassignment,
+        # so the auxiliary info and the deblending provenance are
+        # kept. The local reference is needed because _set_data
+        # rebinds _deblend_label_map to a new empty dict.
+        deblend_label_map = self._deblend_label_map
+        # Relabeling is order-preserving, so the areas and slices are
+        # unchanged and carry over under the new label numbers
+        self._set_data(data_new, labels=new_labels, areas=old_areas,
+                       slices=old_slices, preserve_info=True)
+        self._deblend_label_map = _remap_deblend_label_map(
+            deblend_label_map, new_label_map)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def keep_label(self, label, relabel=False):
@@ -1463,10 +1544,11 @@ class SegmentationImage:
         if mask.shape != self.shape:
             msg = 'mask must have the same shape as the segmentation array'
             raise ValueError(msg)
-        remove_labels = self._get_labels(self.data[mask])
+        remove_labels = _get_labels(self.data[mask])
         if not partial_overlap:
-            interior_labels = self._get_labels(self.data[~mask])
-            remove_labels = list(set(remove_labels) - set(interior_labels))
+            interior_labels = _get_labels(self.data[~mask])
+            remove_labels = list(set(remove_labels)
+                                 - set(interior_labels))
         self.remove_labels(remove_labels, relabel=relabel)
 
     def make_source_mask(self, *, size=None, footprint=None):
@@ -1754,7 +1836,7 @@ class SegmentationImage:
         """
         labels = np.atleast_1d(labels)
         self.check_labels(labels)
-        return [self._make_polygon(label, self._raw_slices[label - 1])
+        return [self._make_polygon(label, self._get_slice(label))
                 for label in labels]
 
     @staticmethod
@@ -1948,7 +2030,7 @@ class SegmentationImage:
         patch_kwargs.update(kwargs)
         patches = []
         for label in labels:
-            poly = self._make_polygon(label, self._raw_slices[label - 1])
+            poly = self._make_polygon(label, self._get_slice(label))
             patches.append(self._convert_shapely_to_pathpatch(
                 poly, origin=origin, scale=scale, **patch_kwargs))
         return patches
@@ -2184,7 +2266,7 @@ class SegmentationImage:
         visual_kwargs = kwargs or None
         regions = []
         for label in labels:
-            poly = self._make_polygon(label, self._raw_slices[label - 1])
+            poly = self._make_polygon(label, self._get_slice(label))
             regions.append(_shapely_polygon_to_region(
                 poly, label=int(label), visual_kwargs=visual_kwargs))
         return regions

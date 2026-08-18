@@ -643,6 +643,9 @@ API Changes
     ``AstropyUserWarning``) instead of an ``AstropyUserWarning``.
     [#2378]
 
+  - ``SegmentationImage`` now raises a ``TypeError`` for masked array
+    input. [#2381]
+
 - ``photutils.utils``
 
   - The ``ShepardIDWInterpolator`` ``ncoords`` attribute has been

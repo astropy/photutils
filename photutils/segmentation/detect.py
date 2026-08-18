@@ -225,14 +225,19 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
     slices = find_objects(segment_img)
     segm_labels = []
     segm_slices = []
+    segm_areas = []
     for label, slc in zip(labels, slices, strict=True):
         cutout = segment_img[slc]
         segment_mask = (cutout == label)
-        if np.count_nonzero(segment_mask) < n_pixels:
+        # The pixel count is the segment area, so it is kept to seed
+        # the SegmentationImage areas instead of being recomputed
+        area = np.count_nonzero(segment_mask)
+        if area < n_pixels:
             cutout[segment_mask] = 0
             continue
         segm_labels.append(label)
         segm_slices.append(slc)
+        segm_areas.append(area)
 
     if np.count_nonzero(segment_img) == 0:
         return None
@@ -249,10 +254,13 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
             label_map[segm_labels] = labels
             segment_img = label_map[segment_img]
     else:
-        labels = segm_labels
+        # Use an ndarray so that seeded labels are always an array,
+        # matching the relabel path
+        labels = np.asarray(segm_labels)
 
     if return_segmimg:
         return SegmentationImage._from_data(segment_img, labels=labels,
+                                            areas=np.array(segm_areas),
                                             slices=segm_slices)
 
     # This is used by deblend_sources

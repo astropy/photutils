@@ -16,6 +16,7 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
+import photutils.segmentation.core as segm_core
 from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.utils import circular_footprint
 from photutils.utils._optional_deps import (HAS_MATPLOTLIB, HAS_RASTERIO,
@@ -79,19 +80,6 @@ class TestSegmentationImage:
         with pytest.raises(ValueError, match=match):
             self.segm[5:2, 0:3]
 
-    def test_labels_via_raw_slices(self):
-        """
-        Test that labels can be derived from _raw_slices when that
-        cached property is already cached.
-        """
-        segm = SegmentationImage(self.data.copy())
-        # Force _raw_slices to be cached
-        _ = segm._raw_slices
-        # Remove labels from instance dict to force the _raw_slices path
-        del segm.__dict__['labels']
-        labels = segm.labels
-        assert_equal(labels, [1, 3, 4, 5, 7])
-
     def test_data_all_zeros(self):
         """
         Test data all zeros.
@@ -112,6 +100,230 @@ class TestSegmentationImage:
         segm = SegmentationImage(self.data.copy())
         segm.data = self.data[0:3, :].copy()
         assert_equal(segm.labels, [1, 3, 4])
+
+    def test_labels_and_areas_seeded_together(self):
+        """
+        Test that assigning data seeds both labels and areas from a
+        single pass, without computing either on demand.
+        """
+        segm = SegmentationImage(self.data.copy())
+        assert 'labels' in segm.__dict__
+        assert 'areas' in segm.__dict__
+        assert_equal(segm.labels, [1, 3, 4, 5, 7])
+        assert_equal(segm.areas, [2, 2, 3, 6, 5])
+
+    def test_areas_computed_when_not_seeded(self):
+        """
+        Test that areas fall back to on-demand computation when they
+        are not seeded, and match the seeded values.
+        """
+        segm = SegmentationImage(self.data.copy())
+        expected = segm.areas.copy()
+
+        segm2 = SegmentationImage._from_data(self.data.copy())
+        assert 'areas' not in segm2.__dict__
+        assert_equal(segm2.areas, expected)
+        assert 'areas' in segm2.__dict__  # now cached
+
+    def test_labels_independent_of_slices_access(self):
+        """
+        Test that labels do not depend on whether slices have been
+        accessed.
+        """
+        segm1 = SegmentationImage(self.data.copy())
+        segm2 = SegmentationImage._from_data(self.data.copy())
+        _ = segm2.slices
+        assert_equal(segm1.labels, segm2.labels)
+
+    def test_remove_masked_labels_partial_overlap(self):
+        """
+        Test remove_masked_labels for both partial_overlap settings.
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[0, :] = True
+
+        segm = SegmentationImage(self.data.copy())
+        segm.remove_masked_labels(mask, partial_overlap=True)
+        # Labels 1 and 4 both touch the masked first row
+        assert_equal(segm.labels, [3, 5, 7])
+
+        segm = SegmentationImage(self.data.copy())
+        segm.remove_masked_labels(mask, partial_overlap=False)
+        # Label 4 extends beyond the mask, so it is kept
+        assert_equal(segm.labels, [3, 4, 5, 7])
+
+    def test_data_setter_validation(self):
+        """
+        Test that the data setter validates reassigned arrays.
+        """
+        segm = SegmentationImage(self.data.copy())
+
+        match = 'Input data must be a numpy array'
+        with pytest.raises(TypeError, match=match):
+            segm.data = [[1, 1], [0, 1]]
+
+    def test_non_2d_data(self):
+        """
+        Test that non-2D input is accepted and the derived properties
+        work, but that the bbox attribute requires a 2D array.
+        """
+        segm = SegmentationImage(np.array([0, 1, 1, 0, 2, 2, 2]))
+        assert_equal(segm.labels, [1, 2])
+        assert_equal(segm.areas, [2, 3])
+        assert segm.slices == [(slice(1, 3),), (slice(4, 7),)]
+
+        match = "The 'bbox' attribute requires a 2D segmentation image"
+        with pytest.raises(ValueError, match=match):
+            _ = segm.bbox
+
+    def test_zero_size_data(self):
+        """
+        Test that a zero-size 2D array is still accepted.
+
+        This guards the negative-value check against raising a numpy
+        reduction error on an empty array.
+        """
+        segm = SegmentationImage(np.zeros((0, 0), dtype=int))
+        assert segm.n_labels == 0
+        assert_equal(segm.labels, [])
+        assert_equal(segm.areas, [])
+
+    def test_relabel_consecutive_carries_areas(self):
+        """
+        Test that relabel_consecutive carries labels, areas, and
+        slices across without recomputing them.
+        """
+        segm = SegmentationImage(self.data.copy())
+        old_areas = segm.areas.copy()
+        _ = segm.slices
+
+        segm.relabel_consecutive()
+
+        assert_equal(segm.labels, np.arange(len(old_areas)) + 1)
+        assert 'areas' in segm.__dict__
+        assert_equal(segm.areas, old_areas)
+
+    def test_reassign_labels_areas_recomputed(self):
+        """
+        Test that reassign_labels leaves areas correct after labels
+        are merged.
+        """
+        segm = SegmentationImage(self.data.copy())
+        segm.reassign_label(label=3, new_label=1)
+        expected = np.unique(segm.data[segm.data != 0],
+                             return_counts=True)[1]
+        assert_equal(segm.areas, expected)
+
+    def test_data_attribute_is_write_protected(self):
+        """
+        Test that _data cannot be assigned directly, which would leave
+        the derived properties stale.
+        """
+        segm = SegmentationImage(self.data.copy())
+        match = 'Direct assignment to _data is not allowed'
+        with pytest.raises(AttributeError, match=match):
+            segm._data = np.zeros((3, 3), dtype=int)
+
+    def test_get_slice_matches_slices(self):
+        """
+        Test that _get_slice returns the same slice as indexing into
+        the slices list by label index.
+        """
+        segm = SegmentationImage(self.data.copy())
+        for label in segm.labels:
+            idx = segm.get_index(label)
+            assert segm._get_slice(label) == segm.slices[idx]
+
+    def test_find_objects_called_once(self, monkeypatch):
+        """
+        Test that the bounding slices are computed only once, even
+        when both slices and per-label segments are used.
+        """
+        calls = []
+        original = segm_core.find_objects
+
+        def counting_find_objects(*args, **kwargs):
+            calls.append(1)
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(segm_core, 'find_objects',
+                            counting_find_objects)
+
+        segm = SegmentationImage(self.data.copy())
+        _ = segm.slices
+        _ = segm.get_segment(int(segm.labels[0]))
+        assert len(calls) == 1
+
+    def test_get_index_and_get_indices_agree(self):
+        """
+        Test that get_index and get_indices return the same result for
+        both scalar and array inputs.
+        """
+        segm = SegmentationImage(self.data.copy())
+        labels = segm.labels
+
+        assert_equal(segm.get_indices(labels), segm.get_index(labels))
+        assert segm.get_indices(labels[0]) == segm.get_index(labels[0])
+        assert np.ndim(segm.get_indices(labels[0])) == 0
+
+    def test_relabeling_preserves_info(self):
+        """
+        Test that relabeling keeps the auxiliary info dictionary.
+
+        Relabeling is an in-place change, not a data reassignment, so
+        the deblending provenance stored in info still applies.
+        """
+        for relabel in (lambda s: s.relabel_consecutive(),
+                        lambda s: s.reassign_label(label=3, new_label=1)):
+            segm = SegmentationImage(self.data.copy())
+            segm.info['nonposmin_labels'] = np.array([3, 5])
+            relabel(segm)
+            assert_equal(segm.info['nonposmin_labels'], [3, 5])
+
+        # Reassigning data does reset info
+        segm = SegmentationImage(self.data.copy())
+        segm.info['nonposmin_labels'] = np.array([3, 5])
+        segm.data = self.data.copy()
+        assert segm.info == {}
+
+    def test_set_data_seeds_derived_state(self):
+        """
+        Test that _set_data seeds the derived cached properties and
+        resets the mutable attributes.
+        """
+        segm = SegmentationImage(self.data.copy())
+        segm.info['key'] = 'value'
+
+        data2 = np.array([[2, 2, 0], [0, 0, 5], [5, 5, 0]])
+        labels = np.array([2, 5])
+        areas = np.array([2, 3])
+        slices = [(slice(0, 1), slice(0, 2)), (slice(1, 3), slice(0, 3))]
+        segm._set_data(data2, labels=labels, areas=areas, slices=slices)
+
+        assert_equal(segm.data, data2)
+        assert_equal(segm.labels, labels)
+        assert_equal(segm.areas, areas)
+        assert segm.slices == slices
+        assert segm.info == {}
+        assert segm._deblend_label_map == {}
+
+        # preserve_info keeps the info dictionary
+        segm.info['key'] = 'value'
+        segm._set_data(data2, preserve_info=True)
+        assert segm.info == {'key': 'value'}
+
+    def test_set_data_without_seeds(self):
+        """
+        Test that _set_data computes the derived properties on demand
+        when they are not supplied.
+        """
+        segm = SegmentationImage(self.data.copy())
+        data2 = np.array([[2, 2, 0], [0, 0, 5], [5, 5, 0]])
+        segm._set_data(data2)
+
+        assert_equal(segm.labels, [2, 5])
+        assert_equal(segm.areas, [2, 3])
+        assert len(segm.slices) == 2
 
     def test_info(self):
         """
@@ -144,6 +356,13 @@ class TestSegmentationImage:
         # Is not ndarray
         data = [[1, 1], [0, 1]]
         match = 'Input data must be a numpy array'
+        with pytest.raises(TypeError, match=match):
+            SegmentationImage(data)
+
+        # Is a masked array
+        data = np.ma.masked_array([[1, 1], [0, 1]],
+                                  mask=[[False, True], [False, False]])
+        match = 'Input data must not be a numpy masked array'
         with pytest.raises(TypeError, match=match):
             SegmentationImage(data)
 
@@ -444,15 +663,6 @@ class TestSegmentationImage:
         bbox = self.segm.bbox[idx]
         assert isinstance(bbox, BoundingBox)
         assert (bbox.iymin, bbox.iymax, bbox.ixmin, bbox.ixmax) == expected
-
-    def test_bbox_1d(self):
-        """
-        Test bbox 1d.
-        """
-        segm = SegmentationImage(np.array([0, 0, 1, 1, 0, 2, 2, 0]))
-        match = "The 'bbox' attribute requires a 2D segmentation image"
-        with pytest.raises(ValueError, match=match):
-            _ = segm.bbox
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_reset_cmap(self):
@@ -1036,8 +1246,8 @@ def test_subclass(segm_data):
                       [70, 70, 0, 0],
                       [70, 70, 0, 1]])
     segm.data = data2
-    # Only _data, labels, _deblend_label_map, and info should remain
-    assert len(segm.__dict__) == 4
+    # Only _data, labels, areas, _deblend_label_map, and info remain
+    assert len(segm.__dict__) == 5
     assert_equal(segm.areas, [1, 2, 2, 4])
 
 
@@ -1106,8 +1316,7 @@ def test_geojson_polygons_int64_out_of_range():
     data = np.array([[0, 0, 0],
                      [0, np.iinfo(np.int32).max + 1, 0],
                      [0, 0, 0]], dtype=np.int64)
-    segm = SegmentationImage.__new__(SegmentationImage)
-    segm._data = data
+    segm = SegmentationImage._from_data(data)
     match = 'values outside the safe np.int32 range'
     with pytest.raises(ValueError, match=match):
         _ = segm._geojson_polygons
