@@ -32,6 +32,21 @@ python benchmarks/bench_aperture_photometry.py
 python benchmarks/bench_aperture_photometry.py --n-sources 100000
 ```
 
+## SEP comparison (`bench_aperture_sep.py`)
+
+Benchmark and validation of the photutils aperture-photometry entry
+points (`aperture_photometry`, `AperturePhotometry`, and
+`ApertureStats`) against the SEP package, across masking scenarios
+(the `mask` keyword and segmentation-based masking), plus an
+`n_threads` sweep of `AperturePhotometry` against the
+single-threaded SEP baseline. Requires the optional `sep` package
+for the SEP comparisons.
+
+```bash
+python benchmarks/bench_aperture_sep.py
+python benchmarks/bench_aperture_sep.py --which threads --n-threads 1,4,12
+```
+
 ## Centroids (`bench_centroids.py`)
 
 Benchmarks for the `photutils.centroids` subpackage:
