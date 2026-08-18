@@ -95,12 +95,13 @@ New Features
 
   - Added per-source bitwise quality flags to aperture photometry and
     statistics. The ``AperturePhotometry`` and ``ApertureStats``
-    classes provide a ``flags`` attribute (and a ``'flags'`` column,
-    or ``'flags_<i>'`` columns for multiple apertures, in their
-    default ``to_table()`` output), and ``ApertureStats`` also
-    provides a ``sum_flags`` attribute for the sum properties. A new
-    ``decode_aperture_flags`` function decodes the flag values into
-    human-readable names. [#2327, #2328, #2362]
+    classes provide a ``flags`` attribute (and a ``'flags'`` column, or
+    ``'flags_<i>'`` columns for multiple apertures, in their default
+    ``to_table()`` output). The ``ApertureStats.flags`` property reports
+    conditions from both the "center"-method footprint used by the
+    value statistics and the ``sum_method`` footprint used by the sum
+    properties. A new ``decode_aperture_flags`` function decodes the
+    flag values into human-readable names. [#2327, #2328, #2362, #2379]
 
   - Added validation of the ``ApertureStats.to_table()`` ``columns``
     keyword. [#2329]
@@ -500,8 +501,8 @@ API Changes
     will be removed in version 4.0. Use the new ``AperturePhotometry``
     class instead. [#2324, #2328]
 
-  - The default ``ApertureStats.to_table()`` columns now include
-    ``'flags'`` and ``'sum_flags'`` columns. [#2327]
+  - The default ``ApertureStats.to_table()`` columns now include a
+    ``'flags'`` column. [#2327, #2379]
 
   - The ``ApertureStats.ids`` attribute is now deprecated and will
     be removed in version 4.0. Use the ``ApertureStats.id`` attribute
