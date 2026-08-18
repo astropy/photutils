@@ -464,15 +464,20 @@ class SegmentationImage:
         """
         Find the index of the input ``label``.
 
+        Array input is also accepted, in which case an array of
+        indices is returned. :meth:`get_indices` delegates to this
+        method.
+
         Parameters
         ----------
-        label : int
-            The label number to find.
+        label : int or 1D array_like (int)
+            The label number(s) to find.
 
         Returns
         -------
-        index : int
-            The array index.
+        index : int or 1D int `~numpy.ndarray`
+            The array index or indices. If ``label`` is a scalar, then
+            the returned index will also be a scalar.
 
         Raises
         ------
