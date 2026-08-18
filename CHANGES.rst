@@ -418,6 +418,18 @@ Bug Fixes
     units. The error message for a truly unitless column now suggests
     using a Quantity column. [#2384]
 
+- ``photutils.psf``
+
+  - Fixed a bug where ``EPSFBuilder`` rejected all ``LinkedEPSFStar``
+    inputs as invalid stars, a regression introduced in version 3.0.
+    [#2385]
+
+  - Fixed a bug where the ``EPSFBuilder`` star exclusion warning
+    raised a ``TypeError`` for stars with the default (`None`) or
+    string ``id_label`` values. The warning message now always
+    reports the flat star index and includes the id label when
+    available. [#2385]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range

@@ -69,6 +69,18 @@ def epsf_fitter_data(epsf_test_data):
     return {'stars': stars, 'epsf': epsf}
 
 
+class _MockWCS:
+    """
+    Mock WCS with an identity pixel-to-world transform.
+    """
+
+    def pixel_to_world_values(self, x, y):
+        return x, y
+
+    def world_to_pixel_values(self, ra, dec):
+        return ra, dec
+
+
 def _make_epsf_fitter(**kwargs):
     """
     Helper to create EPSFFitter suppressing the deprecation warning.
@@ -79,6 +91,26 @@ def _make_epsf_fitter(**kwargs):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', AstropyDeprecationWarning)
         return EPSFFitter(**kwargs)
+
+
+def test_build_epsf_linked_stars():
+    """
+    Regression test that the public builder accepts LinkedEPSFStar
+    inputs.
+    """
+    yy, xx = np.indices((11, 11))
+    sig = 2.5 / 2.3548
+    star_data = np.exp(-((xx - 5.0)**2 + (yy - 5.0)**2)
+                       / (2 * sig**2))
+    stars_list = [EPSFStar(star_data.copy(), cutout_center=(5.0, 5.0),
+                           origin=(0, 0), wcs_large=_MockWCS())
+                  for _ in range(2)]
+    linked = LinkedEPSFStar(stars_list)
+    stars = EPSFStars([linked])
+    builder = EPSFBuilder(oversampling=1, maxiters=2,
+                          progress_bar=False)
+    result = builder(stars)
+    assert result.epsf.data.shape[0] >= 11
 
 
 class TestSmoothingKernel:
@@ -1478,6 +1510,25 @@ class TestEPSFBuilder:
         assert result.fitted_stars.n_good_stars == 4
         assert result.fitted_stars.n_all_stars == 5
 
+    @pytest.mark.parametrize('id_label', [None, 'star_a'])
+    def test_star_exclusion_id_label(self, epsf_test_data, id_label):
+        """
+        Regression test that the exclusion warning works for the
+        default (None) and string star id labels.
+        """
+        tbl = epsf_test_data['init_stars'][:5].copy()
+        tbl['x'][0] = 465
+        tbl['y'][0] = 30
+        stars = extract_stars(epsf_test_data['nddata'], tbl, size=11)
+        for star in stars.all_stars:
+            star.id_label = id_label
+
+        builder = EPSFBuilder(oversampling=1, maxiters=5,
+                              progress_bar=False)
+        with pytest.warns(AstropyUserWarning,
+                          match='has been excluded from ePSF fitting'):
+            builder(stars)
+
     def test_star_exclusion_single_warning(self, epsf_test_data):
         """
         Test that only a single warning is emitted per excluded star.
@@ -2382,7 +2433,7 @@ class TestEPSFBuilder:
         # cutout_center should NOT have been updated
         assert_array_equal(fitted_star.cutout_center, original_center)
 
-        # flux should NOT have been updated
+        # Flux should NOT have been updated
         assert fitted_star.flux == original_flux
 
     def test_fit_star_position_negative_outside_cutout(self, epsf_test_data):
