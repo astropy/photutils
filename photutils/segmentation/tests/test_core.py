@@ -162,9 +162,19 @@ class TestSegmentationImage:
         with pytest.raises(TypeError, match=match):
             segm.data = [[1, 1], [0, 1]]
 
-        match = 'Input data must be a 2D array'
+    def test_non_2d_data(self):
+        """
+        Test that non-2D input is accepted and the derived properties
+        work, but that the bbox attribute requires a 2D array.
+        """
+        segm = SegmentationImage(np.array([0, 1, 1, 0, 2, 2, 2]))
+        assert_equal(segm.labels, [1, 2])
+        assert_equal(segm.areas, [2, 3])
+        assert segm.slices == [(slice(1, 3),), (slice(4, 7),)]
+
+        match = "The 'bbox' attribute requires a 2D segmentation image"
         with pytest.raises(ValueError, match=match):
-            segm.data = np.ones(3, dtype=int)
+            _ = segm.bbox
 
     def test_zero_size_data(self):
         """
@@ -354,16 +364,6 @@ class TestSegmentationImage:
                                   mask=[[False, True], [False, False]])
         match = 'Input data must not be a numpy masked array'
         with pytest.raises(TypeError, match=match):
-            SegmentationImage(data)
-
-        # Is not 2D
-        data = np.ones(3, dtype=int)
-        match = 'Input data must be a 2D array'
-        with pytest.raises(ValueError, match=match):
-            SegmentationImage(data)
-
-        data = np.ones((2, 2, 2), dtype=int)
-        with pytest.raises(ValueError, match=match):
             SegmentationImage(data)
 
     @pytest.mark.parametrize('label', [0, -1, 2])

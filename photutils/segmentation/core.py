@@ -340,7 +340,7 @@ class SegmentationImage:
 
         This is the only method that assigns the ``_data`` attribute.
         It performs no validation. The caller is responsible for
-        passing a valid 2D integer segmentation array.
+        passing a valid integer segmentation array.
 
         Any derived value that is not supplied is computed on first
         access. Supplied values are trusted and are not checked against
@@ -401,9 +401,6 @@ class SegmentationImage:
         if isinstance(value, np.ma.MaskedArray):
             msg = 'Input data must not be a numpy masked array'
             raise TypeError(msg)
-        if value.ndim != 2:
-            msg = 'Input data must be a 2D array'
-            raise ValueError(msg)
         if not np.issubdtype(value.dtype, np.integer):
             msg = 'data must have integer type'
             raise TypeError(msg)
@@ -551,6 +548,10 @@ class SegmentationImage:
         A list of `~photutils.aperture.BoundingBox` of the minimal
         bounding boxes containing the labeled regions.
         """
+        if self._data.ndim != 2:
+            msg = "The 'bbox' attribute requires a 2D segmentation image."
+            raise ValueError(msg)
+
         return [BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,
                             iymin=slc[0].start, iymax=slc[0].stop)
                 for slc in self.slices]
