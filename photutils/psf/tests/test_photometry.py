@@ -143,7 +143,7 @@ def test_invalid_inputs():
     with pytest.raises(ValueError, match=match):
         _ = psfphot(data, init_params=tbl)
 
-    # test no finder or init_params
+    # Test no finder or init_params
     match = 'finder must be defined if init_params is not input'
     psfphot = PSFPhotometry(model, (3, 3), aperture_radius=5)
     data = np.ones((11, 11))
@@ -213,18 +213,18 @@ def test_psf_photometry(test_data):
     assert isinstance(resid_data, np.ndarray)
     assert resid_data.shape == data.shape
     assert phot.colnames[:4] == ['id', 'group_id', 'group_size', 'local_bkg']
-    # test that error columns are ordered correctly
+    # Test that error columns are ordered correctly
     assert phot['x_err'].max() > 0.0062
     assert phot['y_err'].max() > 0.0065
     assert phot['flux_err'].max() > 2.5
 
     assert isinstance(psfphot.fit_info, list)
 
-    # test that repeated calls reset the results
+    # Test that repeated calls reset the results
     phot = psfphot(data, error=error)
     assert len(psfphot.fit_info) == len(phot)
 
-    # test units
+    # Test units
     unit = u.Jy
     finderu = DAOStarFinder(6.0 * unit, 2.0)
     psfphotu = PSFPhotometry(psf_model, fit_shape, finder=finderu,
@@ -284,7 +284,7 @@ def test_psf_photometry_nddata(test_data):
     fit_shape = (5, 5)
     finder = DAOStarFinder(6.0, 2.0)
 
-    # test NDData input
+    # Test NDData input
     uncertainty = StdDevUncertainty(error)
     nddata = NDData(data, uncertainty=uncertainty)
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
@@ -299,7 +299,7 @@ def test_psf_photometry_nddata(test_data):
     assert resid_data2.data.shape == data.shape
     assert_allclose(resid_data1, resid_data2.data)
 
-    # test NDData input with units
+    # Test NDData input with units
     unit = u.Jy
     finderu = DAOStarFinder(6.0 * unit, 2.0)
     psfphotu = PSFPhotometry(psf_model, fit_shape, finder=finderu,
@@ -406,8 +406,8 @@ def test_model_residual_image_nonfinite_localbkg(test_data):
     assert np.all(np.isfinite(model_without_bkg))
 
     # For sources with non-finite local_bkg, the model with and without
-    # local_bkg should be identical (since non-finite is treated as 0)
-    # Check this by comparing the models at source positions
+    # local_bkg should be identical (since non-finite is treated as 0).
+    # Check this by comparing the models at source positions.
     for i in range(min(3, len(phot))):
         if not np.isfinite(phot['local_bkg'][i]):
             x_fit = int(phot['x_fit'][i])
@@ -440,7 +440,8 @@ def test_residual_image_localbkg_invalid_sources(test_data):
     sources['x_centroid'][-3] = 1000
     sources['y_centroid'][-3] = 1000
 
-    # Perform PSF photometry with init_params containing non-finite local_bkg
+    # Perform PSF photometry with init_params containing non-finite
+    # local_bkg
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
     psfphot(data, error=error, init_params=sources)
@@ -481,7 +482,7 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
         for colname in colnames:
             assert colname in phot.colnames
 
-    # test model and residual images
+    # Test model and residual images
     psf_shape = (9, 9)
     model1 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
                                       include_local_bkg=False)
@@ -498,7 +499,7 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
     assert_equal(data - model1, resid1)
     assert_equal(data - model2, resid2)
 
-    # test with init_params
+    # Test with init_params
     init_params = psfphot.results_to_init_params()
     phot = psfphot(data, error=error, init_params=init_params)
     assert isinstance(phot, QTable)
@@ -511,7 +512,7 @@ def test_psf_photometry_compound_psfmodel(test_data, fit_stddev):
         for colname in colnames:
             assert colname in phot.colnames
 
-    # test results when fit does not converge (fitter_maxiters=3)
+    # Test results when fit does not converge (fitter_maxiters=3)
     match = r'One or more fit\(s\) may not have converged.'
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4, fitter_maxiters=3)
@@ -529,12 +530,12 @@ def test_psf_photometry_mask(test_data):
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=4)
 
-    # test np.ma.nomask
+    # Test np.ma.nomask
     phot = psfphot(data, error=error, mask=None)
     photm = psfphot(data, error=error, mask=np.ma.nomask)
     assert np.all(phot == photm)
 
-    # masked near source at ~(63, 49)
+    # Masked near source at ~(63, 49)
     data_orig = data.copy()
     data = data.copy()
     data[55, 60:70] = np.nan
@@ -548,7 +549,7 @@ def test_psf_photometry_mask(test_data):
     phot2 = psfphot(data, error=error, mask=mask)
     assert np.all(phot1 == phot2)
 
-    # unmasked NaN with mask not None
+    # Unmasked NaN with mask not None
     match = 'Input data contains unmasked non-finite values'
     mask = ~np.isfinite(data)
     mask[55, 65] = False
@@ -556,13 +557,13 @@ def test_psf_photometry_mask(test_data):
         phot = psfphot(data, error=error, mask=mask)
     assert len(phot) == len(sources)
 
-    # mask all True; finder returns no sources
+    # With mask all True, the finder should return no sources
     match = 'No sources were found'
     mask = np.ones(data.shape, dtype=bool)
     with pytest.warns(NoDetectionsWarning, match=match):
         psfphot(data, mask=mask)
 
-    # completely masked source should return NaNs and not raise
+    # Completely masked source should return NaNs and not raise
     init_params = QTable()
     init_params['x'] = [63]
     init_params['y'] = [49]
@@ -576,10 +577,10 @@ def test_psf_photometry_mask(test_data):
         assert np.isnan(phot_masked[col][0])
     assert phot_masked['n_pixels_fit'][0] == 0
     assert phot_masked['group_size'][0] == 1
-    # new flag 128 for fully masked
+    # New flag 128 for fully masked
     assert (phot_masked['flags'][0] & 128) == 128
 
-    # masked central pixel
+    # Masked central pixel
     init_params = QTable()
     init_params['x'] = [63]
     init_params['y'] = [49]
@@ -589,7 +590,7 @@ def test_psf_photometry_mask(test_data):
     assert len(phot) == 1
     assert np.isnan(phot['cfit'][0])
 
-    # this should not raise a warning because the non-finite pixel was
+    # This should not raise a warning because the non-finite pixel was
     # explicitly masked
     psfphot = PSFPhotometry(psf_model, (3, 3), aperture_radius=3)
     data = np.ones((11, 11))
@@ -657,7 +658,7 @@ def test_psf_photometry_init_params(test_data):
     colnames = ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
                 'qfit', 'cfit', 'reduced_chi2')
 
-    # no-overlap source should return NaNs and not raise; also test
+    # No-overlap source should return NaNs and not raise; also test
     # too-few-pixels
     init_params = QTable()
     init_params['x'] = [-63]
@@ -669,10 +670,10 @@ def test_psf_photometry_init_params(test_data):
         assert np.isnan(phot_no_overlap[col][0])
     assert phot_no_overlap['n_pixels_fit'][0] == 0
     assert phot_no_overlap['group_size'][0] == 1
-    # new flag 64 for no overlap
+    # New flag 64 for no overlap
     assert (phot_no_overlap['flags'][0] & 64) == 64
 
-    # too-few pixels (unmasking only 2 pixels < 3 free params) should
+    # Too-few pixels (unmasking only 2 pixels < 3 free params) should
     # give NaNs
     init_params = QTable()
     init_params['x'] = [63]
@@ -686,10 +687,10 @@ def test_psf_photometry_init_params(test_data):
         assert np.isnan(phot_few[col][0])
     assert phot_few['n_pixels_fit'][0] == 2
     assert phot_few['group_size'][0] == 1
-    # new flag 256 for too few pixels
+    # New flag 256 for too few pixels
     assert (phot_few['flags'][0] & 256) == 256
 
-    # check that the first matching column name is used
+    # Check that the first matching column name is used
     init_params = QTable()
     x = 63
     y = 49
@@ -741,7 +742,7 @@ def test_psf_photometry_init_params_units(test_data):
         assert isinstance(resid, u.Quantity)
         assert resid.unit == unit
 
-    # test invalid units
+    # Test invalid units
     colnames = ('flux', 'local_bkg')
     for col in colnames:
         init_params2 = init_params.copy()
@@ -839,7 +840,7 @@ def test_grouper_init_params(test_data):
     assert_equal(phot1['group_size'],
                  np.ones(n_sources, dtype=int) * n_sources)
 
-    # test with grouper=None
+    # Test with grouper=None
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             grouper=None, aperture_radius=4)
     phot2 = psfphot(data, error=error, init_params=init_params)
@@ -847,6 +848,30 @@ def test_grouper_init_params(test_data):
     assert_equal(phot1['group_id'], np.ones(n_sources, dtype=int))
     assert_equal(phot1['group_size'],
                  np.ones(n_sources, dtype=int) * n_sources)
+
+
+def test_grouper_not_mutated_by_group_id():
+    """
+    Regression test that a call with init_params['group_id'] does
+    not disable the grouper for subsequent calls.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, true_params = make_psf_model_image(
+        (80, 80), model, 10, model_shape=(9, 9), flux=(500, 700),
+        min_separation=3, seed=0)
+    init = Table({'x': true_params['x_0'], 'y': true_params['y_0']})
+    grouper = SourceGrouper(min_separation=10)
+    psfphot = PSFPhotometry(model, (5, 5), grouper=grouper,
+                            aperture_radius=4)
+    phot1 = psfphot(data, init_params=init)
+
+    init2 = init.copy()
+    init2['group_id'] = np.ones(len(init2), dtype=int)
+    psfphot(data, init_params=init2)
+    assert psfphot.grouper is grouper
+
+    phot3 = psfphot(data, init_params=init)
+    assert_equal(phot1['group_id'], phot3['group_id'])
 
 
 def test_large_group_warning():
@@ -1011,7 +1036,7 @@ def test_fit_warning(test_data):
     fit_shape = (5, 5)
     fitter = LMLSQFitter()  # uses "status" instead of "ierr"
     finder = DAOStarFinder(6.0, 2.0)
-    # set fitter_maxiters = 1 so that the fit error status is set
+    # Set fitter_maxiters = 1 so that the fit error status is set
     psfphot = PSFPhotometry(psf_model, fit_shape, fitter=fitter,
                             fitter_maxiters=1, finder=finder,
                             aperture_radius=4)
@@ -1020,7 +1045,7 @@ def test_fit_warning(test_data):
     with pytest.warns(AstropyUserWarning, match=match):
         phot = psfphot(data)
 
-    # check that flag=8 is set for these sources
+    # Check that flag=8 is set for these sources
     assert_equal(phot['flags'][0] & 8, np.ones(len(phot)) * 8)
 
 
@@ -1094,7 +1119,7 @@ def test_xy_bounds(test_data):
     assert phot['y_fit'] < 48.7
     assert phot['flags'] == 0
 
-    # test invalid inputs
+    # Test invalid inputs
     match = 'xy_bounds must have 1 or 2 elements'
     with pytest.raises(ValueError, match=match):
         PSFPhotometry(psf_model, fit_shape, xy_bounds=(1, 2, 3))
@@ -1133,12 +1158,12 @@ def test_grouper_with_xy_bounds(test_data):
 
     phot = psfphot(data, error=error, init_params=init_params)
 
-    # verify sources were grouped
+    # Verify sources were grouped
     assert len(phot) == len(init_params)
     assert len(np.unique(phot['group_id'])) < len(phot)
 
-    # Verify that xy_bounds were applied during fitting
-    # The fitted positions should be constrained
+    # Verify that xy_bounds were applied during fitting.
+    # The fitted positions should be constrained.
     for i, row in enumerate(phot):
         x_init = init_params['x_init'][i]
         y_init = init_params['y_init'][i]
@@ -1223,9 +1248,8 @@ def test_out_of_bounds_centroids():
 
     phot = psfphot(data, init_params=sources)
 
-    # at least one of the best-fit centroids should be
-    # out of the bounds of the dataset, producing a
-    # masked value in the `cfit` column:
+    # At least one of the best-fit centroids should be out of the bounds
+    # of the dataset, producing a masked value in the `cfit` column.
     assert np.any(np.isnan(phot['cfit']))
 
 
@@ -1309,7 +1333,7 @@ def test_finder_column_names(x_col, y_col):
     psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
                             aperture_radius=10)
 
-    # invalid column names should raise an error
+    # Invalid column names should raise an error
     if x_col == 'x_invalid' or y_col == 'y_invalid':
         match = 'must contain columns for x and y coordinates'
         with pytest.raises(ValueError, match=match):
@@ -1380,7 +1404,7 @@ def test_flag64_no_overlap():
     psf_model = CircularGaussianPRF(fwhm=3.0)
     data = np.zeros(shape)
     init_params = QTable()
-    # place source completely outside (beyond + side)
+    # Place source completely outside (beyond + side)
     init_params['x_0'] = [100.0]
     init_params['y_0'] = [100.0]
     init_params['flux'] = [500.0]
@@ -1450,7 +1474,7 @@ def test_flag16_missing_covariance():
     init_params['flux'] = [500.0, 500.0]
     init_params['group_id'] = [1, 1]
 
-    # mock fitter that does not return a covariance matrix
+    # Mock fitter that does not return a covariance matrix
     def mock_fitter(model, *args, **kwargs):  # noqa: ARG001
         mock_fitter.fit_info = {'status': 1}
         return model
@@ -1608,12 +1632,12 @@ def test_invalid_sources(test_data, units):
         error = error << unit
     init_params = sources.copy()
 
-    # one item in group is invalid
+    # One item in group is invalid
     init_params['x_0'][0] = 1000
     init_params['y_0'][0] = 1000
     init_params['x_0'][5] = 1000
 
-    # entire group is invalid
+    # Entire group is invalid
     init_params['x_0'][-2] = 1000
     init_params['x_0'][-1] = 1000
 
@@ -1848,9 +1872,9 @@ def test_get_source_cutout_data_no_overlap():
 
     y_offsets, x_offsets = psfphot._data_processor.get_fit_offsets()
 
-    # Create a source that will definitely cause NoOverlapError
+    # Create a source that will definitely cause NoOverlapError.
     # Place it far outside the data bounds (-100, -100) to trigger
-    # the exception in overlap_slices and test lines 1183-1192
+    # the exception in overlap_slices.
     init_params = QTable()
     init_params['x_init'] = [-100.0]
     init_params['y_init'] = [-100.0]
@@ -1987,7 +2011,7 @@ def test_init_params_id_order(test_data, reorder, with_groups,
     rng = np.random.default_rng(seed=0)
     init_params['id'] = np.arange(1, n_sources + 1)
     if with_groups:
-        # same groupings, but different group ids
+        # Same groupings, but different group ids
         if nonconsec_groups:
             group_ids = [11, 20, 11, 20, 20, 39, 20, 39, 44, 44]
         else:
@@ -2005,11 +2029,11 @@ def test_init_params_id_order(test_data, reorder, with_groups,
     psfphot1 = PSFPhotometry(psf_model, fit_shape)
     phot1 = psfphot1(data, error=error, init_params=init_params)
 
-    # reorder init_params
+    # Reorder init_params
     init_params2 = init_params.copy()
     if nonconsec_ids:
-        # non-consecutive random ids
-        # monotonically increasing so final results order should be same
+        # Non-consecutive random ids, monotonically increasing so final
+        # results order should be same
         steps = rng.integers(1, 51, size=n_sources - 1)
         init_params2['id'] = np.concatenate(([1], 1 + np.cumsum(steps)))
     if reorder == 'reversed':
@@ -2024,7 +2048,7 @@ def test_init_params_id_order(test_data, reorder, with_groups,
         assert_equal(phot1['id'], phot2['id'])
 
     if with_groups:
-        # without group_id, group_id gets set to id
+        # Without group_id, group_id gets set to id
         assert_equal(phot1['group_id'], phot2['group_id'])
 
     assert np.all([np.allclose(phot1[col], phot2[col], equal_nan=True)
@@ -2159,8 +2183,9 @@ def test_decode_flags():
     # Check that the second source has the negative_flux flag
     assert 'negative_flux' in decoded_flags[1]
 
-    # Check that the third source has flags (it's outside the image bounds)
-    # It should have 'no_overlap' since it's completely outside
+    # Check that the third source has flags (it's outside the image
+    # bounds). It should have 'no_overlap' since it's completely
+    # outside.
     assert len(decoded_flags[2]) > 0
     assert 'no_overlap' in decoded_flags[2]
 
