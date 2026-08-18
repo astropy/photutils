@@ -430,6 +430,16 @@ Bug Fixes
     reports the flat star index and includes the id label when
     available. [#2385]
 
+- ``photutils.psf``
+
+  - Fixed a bug where the ``EPSFStar`` ``slices`` and ``bbox``
+    attributes were transposed for non-square cutouts. [#2386]
+
+  - Fixed a bug where the ePSF building flux renormalization used
+    stale cached values, so every iteration normalized the star data
+    with the first-iteration flux instead of the updated fitted flux.
+    [#2386]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range

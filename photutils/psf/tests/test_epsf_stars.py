@@ -3,6 +3,7 @@
 Tests for the epsf_stars module.
 """
 
+import copy
 import warnings
 from multiprocessing.reduction import ForkingPickler
 
@@ -534,17 +535,43 @@ class TestEPSFStar:
         assert_array_equal(star.center, expected_center)
 
         # Test slices property
-        # Implementation uses (origin_y to origin_y+shape[0],
-        # origin_x to origin_x+shape[1])
-        expected_slices = (slice(20, 29), slice(10, 17))
+        expected_slices = (slice(20, 27), slice(10, 19))
         assert star.slices == expected_slices
 
         # Test bbox property
         bbox = star.bbox
         assert bbox.ixmin == 10
-        assert bbox.ixmax == 17
+        assert bbox.ixmax == 19
         assert bbox.iymin == 20
-        assert bbox.iymax == 29
+        assert bbox.iymax == 27
+
+    def test_slices_bbox_rectangular_roundtrip(self):
+        """
+        Regression test that slices/bbox are correct for non-square
+        cutouts: indexing the parent image with star.slices must
+        return the cutout.
+        """
+        img = np.arange(60 * 80, dtype=float).reshape(60, 80)
+        stars = extract_stars(NDData(img),
+                              Table({'x': [40.0], 'y': [30.0]}),
+                              size=(11, 15))
+        star = stars[0]
+        assert star.data.shape == (11, 15)
+        assert_array_equal(img[star.slices], star.data)
+
+    def test_flux_update_invalidates_normalization(self):
+        """
+        Regression test that updating flux (including on a shallow
+        copy, as the ePSF builder does) refreshes the cached
+        normalized data values.
+        """
+        star = EPSFStar(np.ones((5, 5)))
+        norm = star._data_values_normalized.copy()
+        star2 = copy.copy(star)
+        star2.flux = star.flux * 2
+        assert_allclose(star2._data_values_normalized, norm / 2)
+        star.flux = star.flux * 4
+        assert_allclose(star._data_values_normalized, norm / 4)
 
     def test_flux_estimation_interpolation_fallback(self):
         """
@@ -1449,6 +1476,25 @@ class TestExtractStars:
         # Should have extracted at least 1 star (from first image)
         # The second image star is outside bounds so only 1 is extracted
         assert len(stars) >= 1
+
+    def test_extract_stars_flux_column(self):
+        """
+        Test that a catalog flux column is used for the star fluxes.
+        """
+        data = np.ones((50, 50))
+        catalog = Table({'x': [25.0], 'y': [25.0], 'flux': [12345.0]})
+        stars = extract_stars(NDData(data), catalog, size=11)
+        assert stars[0].flux == 12345.0
+
+    def test_extract_stars_no_flux_column(self):
+        """
+        Test that star fluxes are estimated from the cutout data when
+        the catalog has no flux column.
+        """
+        data = np.ones((50, 50))
+        catalog = Table({'x': [25.0], 'y': [25.0]})
+        stars = extract_stars(NDData(data), catalog, size=11)
+        assert_allclose(stars[0].flux, 121.0)
 
     def test_extract_stars_flux_estimation_failure(self):
         """

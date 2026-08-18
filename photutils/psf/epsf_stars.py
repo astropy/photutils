@@ -145,8 +145,8 @@ class EPSFStar:
                        'available')
                 raise ValueError(msg)
 
-            # Check if all unmasked data values are exactly zero
-            # Store flag for later warning (to avoid duplicate warnings)
+            # Check if all unmasked data values are exactly zero.
+            # Store flag for later warning (to avoid duplicate warnings).
             unmasked_data = self._data[~self.mask]
             self._has_all_zero_data = bool(np.all(unmasked_data == 0.0))
 
@@ -178,6 +178,27 @@ class EPSFStar:
         The 2D cutout image.
         """
         return self._data
+
+    @property
+    def flux(self):
+        """
+        The total flux of the star.
+        """
+        return self._flux
+
+    @flux.setter
+    def flux(self, value):
+        """
+        Set the total flux of the star.
+
+        Parameters
+        ----------
+        value : float
+            The total flux of the star.
+        """
+        self._flux = float(value)
+        # The cached normalized data values depend on the flux
+        self.__dict__.pop('_data_values_normalized', None)
 
     @property
     def cutout_center(self):
@@ -235,8 +256,8 @@ class EPSFStar:
         A tuple of two slices representing the cutout region with
         respect to the original (large) image.
         """
-        return (slice(self.origin[1], self.origin[1] + self.shape[1]),
-                slice(self.origin[0], self.origin[0] + self.shape[0]))
+        return (slice(self.origin[1], self.origin[1] + self.shape[0]),
+                slice(self.origin[0], self.origin[0] + self.shape[1]))
 
     @cached_property
     def bbox(self):
@@ -283,7 +304,7 @@ class EPSFStar:
         data : `~numpy.ndarray`
             A 2D array of the registered/scaled ePSF.
         """
-        # evaluate the input ePSF on the star cutout grid
+        # Evaluate the input ePSF on the star cutout grid
         yy, xx = np.indices(self.shape, dtype=float)
         return epsf.evaluate(xx, yy, flux=self.flux,
                              x_0=self.cutout_center[0],
@@ -659,9 +680,9 @@ class LinkedEPSFStar:
             warnings.warn(msg, AstropyUserWarning)
             return
 
-        # Convert pixel coordinates to sky coordinates
+        # Convert pixel coordinates to sky coordinates.
         # Note: each star may have a different WCS, so we cannot
-        # vectorize
+        # vectorize.
         good_stars = self.all_good_stars
         sky_coords = np.array([
             star.wcs_large.pixel_to_world_values(*star.center)
@@ -938,8 +959,11 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
         Optionally, each catalog may also contain an ``id`` column
         representing the ID/name of stars. If this column is not
         present then the extracted stars will be given an ``id`` number
-        corresponding the table row number (starting at 1). Any other
-        columns present in the input ``catalogs`` will be ignored.
+        corresponding the table row number (starting at 1). The catalogs
+        may also contain an optional ``flux`` column giving the flux
+        of each star. If present, these values are used instead of
+        estimating the flux from the cutout data. Any other columns
+        present in the input ``catalogs`` will be ignored.
 
     size : int or array_like (int), optional
         The extraction box size along each axis. If ``size`` is a scalar
