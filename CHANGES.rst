@@ -387,9 +387,6 @@ Bug Fixes
     classes now raises a ``TypeError``. Previously, the units were
     silently dropped. [#2371]
 
-  - The ``EnsquaredCurveOfGrowth`` input validation error messages now
-    refer to the ``half_sizes`` parameter instead of ``radii``. [#xxxx]
-
 - ``photutils.psf``
 
   - Fixed a bug where calling ``PSFPhotometry`` with an ``init_params``
@@ -399,6 +396,27 @@ Bug Fixes
   - Fixed a bug where non-finite data values were not merged into a
     user-provided mask, causing fit failures in ``fit_2dgaussian``,
     ``fit_fwhm``, and ``PSFPhotometry``. [#2383]
+
+  - Fixed a bug where grouped fits could silently reuse a stale
+    cached flat-model class when multiple PSF models of the same class
+    (e.g., two different ``ImagePSF`` models) were used, producing
+    incorrect photometry. The flat-model class cache is now stored per
+    fitter instance. [#2384]
+
+  - Fixed a bug where PSF model parameter bounds were not applied in
+    grouped fits, so grouped fits were unconstrained where single-source
+    fits were constrained. The bounds are now also propagated back to
+    the fitted models, so the ``NEAR_BOUND`` flag is now set for grouped
+    sources. [#2384]
+
+  - Fixed a bug where ``PSFPhotometry`` raised an error for
+    integer-dtype data when a ``local_bkg`` column was provided. [#2384]
+
+  - An ``init_params`` table column that has a unit attribute (e.g.,
+    from a ``Table`` instead of a ``QTable``) is now converted to the
+    data unit instead of raising an error claiming the column has no
+    units. The error message for a truly unitless column now suggests
+    using a Quantity column. [#2384]
 
 - ``photutils.segmentation``
 

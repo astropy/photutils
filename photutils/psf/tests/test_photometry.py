@@ -3,6 +3,7 @@
 Tests for the photometry module.
 """
 
+import gc
 import tempfile
 
 import astropy.units as u
@@ -20,8 +21,8 @@ from numpy.testing import assert_allclose, assert_equal
 from photutils.background import LocalBackground, MMMBackground
 from photutils.datasets import make_model_image, make_noise_image
 from photutils.detection import DAOStarFinder
-from photutils.psf import (CircularGaussianPRF, PSFPhotometry, SourceGrouper,
-                           make_psf_model, make_psf_model_image)
+from photutils.psf import (CircularGaussianPRF, ImagePSF, PSFPhotometry,
+                           SourceGrouper, make_psf_model, make_psf_model_image)
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
@@ -798,6 +799,76 @@ def test_psf_photometry_init_params_columns(test_data):
         assert_allclose(phot['x_fit'], phots[0]['x_fit'])
         assert_allclose(phot['y_fit'], phots[0]['y_fit'])
         assert_allclose(phot['flux_fit'], phots[0]['flux_fit'])
+
+
+def test_grouped_fit_two_image_psfs():
+    """
+    Regression test that grouped fits with two different same-class
+    PSF models do not reuse a stale cached flat-model class.
+    """
+    def make_image_psf(sigma2):
+        yy, xx = np.mgrid[:21, :21]
+        psf_data = np.exp(-((xx - 10.0)**2 + (yy - 10.0)**2)
+                          / (2 * sigma2))
+        return ImagePSF(psf_data / psf_data.sum())
+
+    def make_scene(psf):
+        yy, xx = np.mgrid[:60, :60]
+        data = np.zeros((60, 60))
+        for (xpos, ypos), flux in zip(((20.0, 20.0), (24.0, 22.0)),
+                                      (500.0, 300.0), strict=True):
+            data += psf.evaluate(xx, yy, flux, xpos, ypos)
+        return data
+
+    init = Table({'x': [20.0, 24.0], 'y': [20.0, 22.0],
+                  'flux': [450.0, 280.0], 'group_id': [1, 1]})
+    # disable garbage collection so that a stale cached flat-model
+    # class cannot be silently evicted between the fits
+    gc.disable()
+    try:
+        for sigma2 in (1.0, 16.0):
+            psf = make_image_psf(sigma2)
+            phot = PSFPhotometry(psf, (11, 11))
+            result = phot(make_scene(psf), init_params=init.copy())
+            assert_allclose(result['flux_fit'], [500.0, 300.0],
+                            rtol=1e-3)
+    finally:
+        gc.enable()
+
+
+def test_near_bound_flag_grouped():
+    """
+    Regression test that the NEAR_BOUND flag (bit 32) is set for
+    grouped sources, matching single-source behavior.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image(
+        (50, 50), model, 2, model_shape=(9, 9), flux=(500, 500),
+        min_separation=15, seed=0)
+    # offset the initial positions so the fit runs into the bound
+    init = Table({'x': params['x_0'] + 2.0, 'y': params['y_0'],
+                  'flux': [500.0, 500.0],
+                  'group_id': [1, 1]})
+    psfphot = PSFPhotometry(model, (5, 5), xy_bounds=0.5)
+    phot = psfphot(data, init_params=init)
+    assert np.all(phot['flags'] & 32)
+
+
+def test_int_data_with_local_bkg():
+    """
+    Regression test that integer-dtype data works with a float
+    local_bkg column.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image(
+        (50, 50), model, 3, model_shape=(9, 9), flux=(500, 700),
+        min_separation=10, seed=0)
+    data = (data * 100).astype(int)
+    init = Table({'x': params['x_0'], 'y': params['y_0'],
+                  'local_bkg': [10.5, 10.5, 10.5]})
+    psfphot = PSFPhotometry(model, (5, 5), aperture_radius=4)
+    phot = psfphot(data, init_params=init)
+    assert len(phot) == 3
 
 
 def test_grouper(test_data):

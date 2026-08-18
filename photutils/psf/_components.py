@@ -8,7 +8,6 @@ of the PSFPhotometry class and are not intended for direct public use.
 
 import contextlib
 import warnings
-import weakref
 from copy import deepcopy
 
 import astropy
@@ -72,6 +71,10 @@ def _create_flat_model_class(n_sources, psf_model):
     The dynamic flat model class directly evaluates each PSF and sums them,
     providing much better performance for large groups.
 
+    Each flat parameter copies the default value, fixed status, and
+    bounds from the base PSF model parameter. Tied constraints are not
+    propagated to grouped fits.
+
     Parameters
     ----------
     n_sources : int
@@ -96,11 +99,14 @@ def _create_flat_model_class(n_sources, psf_model):
     for i in range(n_sources):
         for base_param in base_param_names:
             flat_param_name = f'{base_param}_{i}'
-            # Use default value and fixed status from base PSF model
+            # Use default value, fixed status, and bounds from the
+            # base PSF model. Note that tied constraints are not
+            # propagated to grouped fits.
             base_param_obj = getattr(base_psf_model, base_param)
             default_value = base_param_obj.value
             is_fixed = base_param_obj.fixed
-            param = Parameter(default=default_value, fixed=is_fixed)
+            param = Parameter(default=default_value, fixed=is_fixed,
+                              bounds=base_param_obj.bounds)
             class_attrs[flat_param_name] = param
 
     # Add methods
@@ -214,21 +220,19 @@ def _instantiate_flat_model(model_class, sources, psf_model, param_mapper, *,
     return model
 
 
-# Weak reference cache for flat model classes to prevent memory leaks
-_FLAT_MODEL_CACHE = weakref.WeakValueDictionary()
-
-
-def _get_flat_model(sources, psf_model, param_mapper, *, xy_bounds=None):
+def _get_flat_model(sources, psf_model, param_mapper, *, xy_bounds=None,
+                    class_cache=None):
     """
     Get or create a flat model for a group of sources.
 
-    This function caches the dynamically-generated flat model classes
-    to avoid recreating them for groups with the same characteristics,
+    The dynamically-generated flat model classes can be cached to
+    avoid recreating them for groups with the same number of sources,
     improving performance when processing many groups.
 
-    The caching uses weak references to prevent memory leaks and
-    includes the PSF model type in the cache key to avoid collisions
-    between different model types with similar parameter names.
+    A cached class captures a copy of ``psf_model`` (including its
+    parameter values, fixed flags, and bounds), so a given cache dict is
+    valid only for a single, fixed ``psf_model``. The caller owns the
+    cache dict and must not share it between different PSF models.
 
     Parameters
     ----------
@@ -245,6 +249,10 @@ def _get_flat_model(sources, psf_model, param_mapper, *, xy_bounds=None):
     xy_bounds : tuple of float or None, optional
         Bounds for x and y position parameters as (x_bound, y_bound).
 
+    class_cache : dict or None, optional
+        Cache of flat model classes keyed on the number of sources. If
+        `None`, a new class is always created.
+
     Returns
     -------
     model : `~astropy.modeling.Model`
@@ -252,19 +260,14 @@ def _get_flat_model(sources, psf_model, param_mapper, *, xy_bounds=None):
         set from the sources and bounds applied.
     """
     n_sources = len(sources)
-
-    # Create robust cache key to avoid model type collisions
-    # Use number of sources and the PSF model class name
-    model_class = psf_model.__class__
-    model_type = f'{model_class.__module__}.{model_class.__name__}'
-    cache_key = (n_sources, model_type)
-
-    # Get cached model class or create new one
-    if cache_key not in _FLAT_MODEL_CACHE:
+    if class_cache is None:
         model_class = _create_flat_model_class(n_sources, psf_model)
-        _FLAT_MODEL_CACHE[cache_key] = model_class
-
-    model_class = _FLAT_MODEL_CACHE[cache_key]
+    else:
+        model_class = class_cache.get(n_sources)
+        if model_class is None:
+            model_class = _create_flat_model_class(n_sources,
+                                                   psf_model)
+            class_cache[n_sources] = model_class
 
     # Create instance with source-specific parameter values
     return _instantiate_flat_model(model_class, sources, psf_model,
@@ -383,6 +386,13 @@ class PSFDataProcessor:
             and the data units.
         """
         values = init_params[colname]
+
+        # Convert a plain Column carrying a unit attribute (e.g., from
+        # a Table instead of a QTable) to a Quantity
+        if (not isinstance(values, u.Quantity)
+                and getattr(values, 'unit', None) is not None):
+            values = u.Quantity(values)
+
         if isinstance(values, u.Quantity):
             if self.data_unit is None:
                 msg = (f'init_params {colname} column has units, but the '
@@ -395,8 +405,9 @@ class PSFDataProcessor:
                        'incompatible with the input data units')
                 raise ValueError(msg) from exc
         elif self.data_unit is not None:
-            msg = ('The input data has units, but the init_params '
-                   f'{colname} column does not have units.')
+            msg = (f'The input data has units, but the init_params '
+                   f'{colname} column does not. It must be a Quantity '
+                   'column (e.g., use a QTable).')
             raise ValueError(msg)
         return init_params
 
@@ -692,15 +703,15 @@ class PSFDataProcessor:
         y_cen = row[self.param_mapper.init_colnames['y']]
         flux_init = row[self.param_mapper.init_colnames['flux']]
 
-        # check for non-finite positions
+        # Check for non-finite positions
         if not (np.isfinite(x_cen) and np.isfinite(y_cen)):
             return True, 'invalid_position'
 
-        # check for non-finite flux
+        # Check for non-finite flux
         if not np.isfinite(flux_init):
             return True, 'non_finite_flux'
 
-        # source that are clearly beyond any possible overlap
+        # Sources that are clearly beyond any possible overlap
         half_fit = max(self.fit_shape) // 2
         clear_margin = half_fit + 1  # a bit beyond the fit region
         if (x_cen < -clear_margin or y_cen < -clear_margin
@@ -787,8 +798,8 @@ class PSFDataProcessor:
 
         cutout = data[yy_flat, xx_flat]
 
-        # Local background subtraction (local_bkg = 0 if not provided)
-        # Only subtract if the local_bkg is finite (not NaN or inf)
+        # Local background subtraction (local_bkg = 0 if not provided).
+        # Only subtract if the local_bkg is finite (not NaN or inf).
         local_bkg = row['local_bkg']
         if np.any(local_bkg != 0):
             if isinstance(local_bkg, u.Quantity):
@@ -796,9 +807,12 @@ class PSFDataProcessor:
             else:
                 local_bkg_value = local_bkg
 
-            # Only subtract if local_bkg is finite
+            # Only subtract if local_bkg is finite. The subtraction
+            # is not done in place so that integer-dtype data works
+            # with a float local_bkg (the fancy index above already
+            # returned a copy).
             if np.isfinite(local_bkg_value):
-                cutout -= local_bkg_value
+                cutout = cutout - local_bkg_value
 
         # Center pixel index (before trimming)
         x_cen_idx = np.ceil(x_cen - 0.5).astype(int)
@@ -861,6 +875,11 @@ class PSFFitter:
         self.xy_bounds = xy_bounds
         self.group_warning_threshold = group_warning_threshold
 
+        # Cache of flat model classes keyed on the number of sources.
+        # The cache is per-instance because the cached classes capture
+        # a copy of psf_model.
+        self._flat_model_classes = {}
+
     def make_psf_model(self, sources):
         """
         Create a single PSF model or a flat model for a group of
@@ -875,9 +894,9 @@ class PSFFitter:
         The dynamic flat model class directly evaluates each PSF and
         sums them, providing much better performance for large groups.
 
-        Flat model classes are cached based on the number of sources and
-        PSF model characteristics to improve performance for repeated
-        group sizes.
+        Flat model classes are cached per PSFFitter instance based on
+        the number of sources to improve performance for repeated group
+        sizes.
 
         Parameters
         ----------
@@ -915,7 +934,8 @@ class PSFFitter:
 
         # For multiple sources, use cached flat model class
         return _get_flat_model(sources, self.psf_model, self.param_mapper,
-                               xy_bounds=self.xy_bounds)
+                               xy_bounds=self.xy_bounds,
+                               class_cache=self._flat_model_classes)
 
     def _apply_bounds_to_param(self, model, param_name, param_value,
                                bound_value):
@@ -1001,7 +1021,7 @@ class PSFFitter:
                 raise ValueError(msg)
             weights = 1.0 / error[yi, xi]
 
-        # keep fit-info entries (but exclude residual vectors)
+        # Keep fit-info entries (but exclude residual vectors)
         fit_info_keys = ('param_cov', 'ierr', 'message', 'status')
 
         with warnings.catch_warnings():
@@ -1009,7 +1029,7 @@ class PSFFitter:
             fit_model = self.fitter(psf_model, xi, yi, cutout,
                                     weights=weights, **kwargs)
 
-            # clear any model cache, if supported by the model
+            # Clear any model cache, if supported by the model
             with contextlib.suppress(AttributeError):
                 fit_model.clear_cache()
 
@@ -1084,12 +1104,15 @@ class PSFFitter:
             # Create a copy of the base PSF model
             source_model = self.psf_model.copy()
 
-            # Extract parameters for this source from the flat model
+            # Extract parameter values and bounds for this source from
+            # the flat model
             for param_name in param_names:
                 flat_param_name = f'{param_name}_{i}'
                 if hasattr(flat_model, flat_param_name):
-                    param_value = getattr(flat_model, flat_param_name).value
-                    setattr(source_model, param_name, param_value)
+                    flat_param = getattr(flat_model, flat_param_name)
+                    setattr(source_model, param_name, flat_param.value)
+                    getattr(source_model,
+                            param_name).bounds = flat_param.bounds
 
             source_models.append(source_model)
 
@@ -1192,7 +1215,7 @@ class PSFResultsAssembler:
         """
         table = QTable()
 
-        # create error columns for models parameters that were fit
+        # Create error columns for models parameters that were fit
         mapper = self.param_mapper
         fitted_params = mapper.fitted_param_names
         model_param_to_alias = mapper.model_param_to_alias
@@ -1206,13 +1229,13 @@ class PSFResultsAssembler:
                       for i, err_col in enumerate(fitted_err_cols)}
         table = QTable(table_data)
 
-        # ensure columns for non-fitted (fixed) params exist
+        # Ensure columns for non-fitted (fixed) params exist
         all_err_cols = list(err_colnames.values())
         for err_col in all_err_cols:
             if err_col not in table.colnames:
                 table[err_col] = np.nan
 
-        # apply data_unit to flux_err column
+        # Apply data_unit to flux_err column
         if data_unit is not None:
             flux_err_col = err_colnames['flux']
             table[flux_err_col] <<= data_unit
@@ -1327,7 +1350,7 @@ class PSFResultsAssembler:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
 
-            # create masks for valid data
+            # Create masks for valid data
             valid_sa = np.isfinite(sum_abs_residuals)
             valid_cr = np.isfinite(cen_residuals)
             nonzero_flux = (flux_vals != 0)
@@ -1709,7 +1732,7 @@ class _ModelImageMaker:
         progress_bar = self.progress_bar
 
         if include_local_bkg:
-            # add local_bkg, but set non-finite values to 0 to avoid
+            # Add local_bkg, but set non-finite values to 0 to avoid
             # corrupting the model image
             model_params = model_params.copy()
             local_bkgs_clean = local_bkgs.copy()
