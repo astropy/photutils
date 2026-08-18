@@ -15,7 +15,7 @@ from astropy.units import Quantity
 from scipy.ndimage import label as ndi_label
 from scipy.ndimage import sum_labels
 
-from photutils.segmentation.core import SegmentationImage
+from photutils.segmentation.core import SegmentationImage, _get_labels
 from photutils.segmentation.detect import _detect_sources
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._deprecation import deprecated_renamed_argument
@@ -656,24 +656,6 @@ class _SingleSourceDeblender:
         if relabel_map is not None:
             markers = relabel_map[markers]
         return markers
-
-
-def _get_labels(array):
-    """
-    Get the unique labels greater than zero in an array.
-
-    Parameters
-    ----------
-    array : `~numpy.ndarray`
-        The array to get the unique labels from.
-
-    Returns
-    -------
-    labels : int `~numpy.ndarray`
-        The unique labels in the array.
-    """
-    labels = np.unique(array)
-    return labels[labels != 0]
 
 
 def _create_relabel_map(array, *, start_label=1):

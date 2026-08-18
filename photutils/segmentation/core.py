@@ -39,6 +39,33 @@ _SEGMENT_DEPRECATED_ATTRIBUTES = {
 }
 
 
+def _get_labels(array, *, return_counts=False):
+    """
+    Return the sorted non-zero values in ``array``.
+
+    Parameters
+    ----------
+    array : `~numpy.ndarray`
+        An array of label values. It may have any shape (e.g., a full
+        segmentation array or already-extracted values).
+
+    return_counts : bool, optional
+        If `True`, also return the number of occurrences of each
+        label.
+
+    Returns
+    -------
+    labels : `~numpy.ndarray`
+        The sorted non-zero label values. `numpy.unique` preserves the
+        input dtype.
+
+    counts : `~numpy.ndarray`, optional
+        The number of occurrences of each label, in the same order as
+        ``labels``. Only returned if ``return_counts`` is `True`.
+    """
+    return np.unique(array[array != 0], return_counts=return_counts)
+
+
 class SegmentationImage:
     """
     Class for a segmentation image.
@@ -346,9 +373,8 @@ class SegmentationImage:
             raise TypeError(msg)
 
         # A single pass over the non-zero pixels yields both the
-        # sorted labels and their pixel areas. np.unique preserves
-        # dtype and also sorts elements.
-        labels, areas = np.unique(value[value != 0], return_counts=True)
+        # sorted labels and their pixel areas
+        labels, areas = _get_labels(value, return_counts=True)
 
         # labels is sorted, so only the first element can be negative.
         # The size check also covers all-zero and zero-size arrays.
@@ -379,9 +405,8 @@ class SegmentationImage:
         The sorted non-zero labels in the segmentation array.
         """
         # Normally seeded by _set_data. This runs only when the array
-        # was set without known labels. np.unique preserves dtype and
-        # also sorts elements.
-        return np.unique(self._data[self._data != 0])
+        # was set without known labels.
+        return _get_labels(self._data)
 
     @cached_property
     def n_labels(self):
@@ -506,11 +531,10 @@ class SegmentationImage:
         returned array has a length equal to the number of labels and
         matches the order of the ``labels`` attribute.
         """
-        # Normally seeded by _set_data from the same np.unique pass
-        # that produces the labels. This runs only when the array was
-        # set without known areas.
-        data = self._data
-        return np.unique(data[data != 0], return_counts=True)[1]
+        # Normally seeded by _set_data from the same single pass that
+        # produces the labels. This runs only when the array was set
+        # without known areas.
+        return _get_labels(self._data, return_counts=True)[1]
 
     def get_area(self, label):
         """
@@ -1500,12 +1524,9 @@ class SegmentationImage:
         if mask.shape != self.shape:
             msg = 'mask must have the same shape as the segmentation array'
             raise ValueError(msg)
-        masked_data = self.data[mask]
-        remove_labels = np.unique(masked_data[masked_data != 0])
+        remove_labels = _get_labels(self.data[mask])
         if not partial_overlap:
-            interior_data = self.data[~mask]
-            interior_labels = np.unique(
-                interior_data[interior_data != 0])
+            interior_labels = _get_labels(self.data[~mask])
             remove_labels = list(set(remove_labels)
                                  - set(interior_labels))
         self.remove_labels(remove_labels, relabel=relabel)
