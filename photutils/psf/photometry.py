@@ -238,8 +238,8 @@ class PSFPhotometry:
         will be used to define the PSF-fitting data. If ``fit_shape``
         is a scalar then a square shape of size ``fit_shape`` will be
         used. If ``fit_shape`` has two elements, they must be in ``(ny,
-        nx)`` order. Each element of ``fit_shape`` must be an odd number
-        greater than or equal to 3. In general, ``fit_shape`` should be
+        nx)`` order. Each element of ``fit_shape`` must be a positive
+        odd number. In general, ``fit_shape`` should be
         set to a small size (e.g., ``(5, 5)``) that covers the region
         with the highest flux signal-to-noise.
 
@@ -323,6 +323,31 @@ class PSFPhotometry:
         (or groups). The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
 
+    Attributes
+    ----------
+    results : `~astropy.table.QTable` or `None`
+        The table of fit results from the most recent call, or `None`
+        if the instance has not yet been run. The rows are sorted by
+        the source ``id`` column.
+
+    fit_info : list of dict
+        A list of dictionaries, one per source in the same row order
+        as ``results``, containing information about each source fit
+        with keys such as ``param_cov``, ``ierr``, ``message``, and
+        ``status`` (the exact keys depend on the ``fitter``).
+
+    finder_results : `~astropy.table.QTable` or `None`
+        The table of sources returned by the ``finder`` during the
+        most recent call, or `None` if the finder was not used.
+
+    init_params : `~astropy.table.QTable` or `None`
+        The table of initial parameters used in the most recent call,
+        or `None` if the instance has not yet been run.
+
+    data_unit : `~astropy.units.Unit` or `None`
+        The unit of the input data from the most recent call, or
+        `None` if the data did not have units.
+
     Notes
     -----
     The data that will be fit for each source is defined by the
@@ -350,7 +375,7 @@ class PSFPhotometry:
 
     If the fitted model parameter errors are NaN, then either the fit
     did not converge, the model parameter was fixed, or the input
-    ``fitter`` did not return parameter errors. For the later case, one
+    ``fitter`` did not return parameter errors. For the latter case, one
     can try a different Astropy fitter that returns parameter errors.
 
     The local background value around each source is optionally
@@ -401,7 +426,8 @@ class PSFPhotometry:
         self.aperture_radius = self._validate_radius(aperture_radius)
         self.local_bkg_estimator = self._validate_localbkg(
             local_bkg_estimator, 'local_bkg_estimator')
-        self.group_warning_threshold = group_warning_threshold
+        self.group_warning_threshold = self._validate_group_threshold(
+            group_warning_threshold)
         self.progress_bar = progress_bar
 
         self._data_processor = PSFDataProcessor(
@@ -438,9 +464,9 @@ class PSFPhotometry:
         self.results = None
         self.fit_info = []
 
-        # Sync data_unit with components
-        if hasattr(self, '_data_processor'):
-            self._data_processor.data_unit = None
+        # Sync state with components
+        self._data_processor.data_unit = None
+        self._data_processor.finder_results = None
 
         # Internal state container
         self._state = {
@@ -671,6 +697,12 @@ class PSFPhotometry:
         if xy_bounds.ndim != 1:
             msg = 'xy_bounds must be a 1D array'
             raise ValueError(msg)
+        # None elements are allowed to indicate no bound along an axis
+        if not all(bound is None or isinstance(bound, (int, float,
+                                                       np.number))
+                   for bound in xy_bounds):
+            msg = 'xy_bounds must be numeric'
+            raise ValueError(msg)
         for bound in xy_bounds:
             if bound is not None:
                 if bound <= 0:
@@ -702,11 +734,40 @@ class PSFPhotometry:
             If radius is not None and is not a strictly positive finite
             scalar.
         """
-        if radius is not None and (not np.isscalar(radius)
-                                   or radius <= 0 or not np.isfinite(radius)):
-            msg = 'aperture_radius must be a strictly-positive scalar'
-            raise ValueError(msg)
+        if radius is not None:
+            if (np.ndim(radius) != 0 or radius <= 0
+                    or not np.isfinite(radius)):
+                msg = 'aperture_radius must be a strictly-positive scalar'
+                raise ValueError(msg)
+            radius = float(radius)
         return radius
+
+    @staticmethod
+    def _validate_group_threshold(value):
+        """
+        Validate the input ``group_warning_threshold`` value.
+
+        Parameters
+        ----------
+        value : int
+            The group size threshold to validate.
+
+        Returns
+        -------
+        value : int
+            The validated threshold value.
+
+        Raises
+        ------
+        ValueError
+            If value is not a positive integer.
+        """
+        if (isinstance(value, bool)
+                or not isinstance(value, (int, np.integer))
+                or value <= 0):
+            msg = 'group_warning_threshold must be a positive integer'
+            raise ValueError(msg)
+        return int(value)
 
     def _validate_localbkg(self, value, name):
         """
@@ -736,7 +797,7 @@ class PSFPhotometry:
 
     def _validate_maxiters(self, maxiters):
         """
-        Validate the input ``maxiters`` value.
+        Validate the input ``fitter_maxiters`` value.
 
         Parameters
         ----------
@@ -751,8 +812,9 @@ class PSFPhotometry:
         """
         spec = inspect.signature(self.fitter.__call__)
         if 'maxiter' not in spec.parameters:
-            msg = ("'maxiters' will be ignored because it is not accepted "
-                   'by the input fitter __call__ method.')
+            msg = ("'fitter_maxiters' will be ignored because the "
+                   "fitter's __call__ method does not accept a "
+                   "'maxiter' keyword.")
             warnings.warn(msg, AstropyUserWarning)
             maxiters = None
         return maxiters
@@ -767,8 +829,7 @@ class PSFPhotometry:
 
         This method modifies the internal state in-place.
         """
-        if hasattr(self, '_data_processor'):
-            self._data_processor.data_unit = self.data_unit
+        self._data_processor.data_unit = self.data_unit
 
     def _find_sources_if_needed(self, data, mask, init_params):
         """
@@ -800,6 +861,7 @@ class PSFPhotometry:
         """
         # A user-provided group_id column takes precedence for this
         # call
+        derived_from_id = False
         if 'group_id' not in init_params.colnames:
             if self.grouper is not None:
                 x_col = self._param_mapper.init_colnames['x']
@@ -809,6 +871,7 @@ class PSFPhotometry:
             else:
                 # No grouper provided, so each source is its own group
                 init_params['group_id'] = init_params['id'].copy()
+                derived_from_id = True
 
         # Ensure group_id contains only positive (> 0) integers
         group_id = init_params['group_id']
@@ -816,7 +879,11 @@ class PSFPhotometry:
             msg = 'group_id must be finite'
             raise ValueError(msg)
         if not np.issubdtype(group_id.dtype, np.integer):
-            msg = 'group_id must be an integer array'
+            if derived_from_id:
+                msg = ('group_id (or the id column it was derived from) '
+                       'must be an integer array')
+            else:
+                msg = 'group_id must be an integer array'
             raise TypeError(msg)
         if np.any(group_id <= 0):
             msg = 'group_id must contain only positive (> 0) integers'
@@ -864,15 +931,14 @@ class PSFPhotometry:
 
         # Check for large group sizes after grouping is complete
         warn_size = self.group_warning_threshold
-        if 'group_id' in init_params.colnames:
-            _, counts = np.unique(init_params['group_id'], return_counts=True)
-            if len(counts) > 0 and max(counts) > warn_size:
-                msg = (f'Some groups have more than {warn_size} '
-                       'sources. Fitting such groups may take a long time '
-                       'and be error-prone. You may want to consider using '
-                       'different `SourceGrouper` parameters or changing '
-                       'the "group_id" column in "init_params".')
-                warnings.warn(msg, AstropyUserWarning)
+        _, counts = np.unique(init_params['group_id'], return_counts=True)
+        if len(counts) > 0 and max(counts) > warn_size:
+            msg = (f'Some groups have more than {warn_size} '
+                   'sources. Fitting such groups may take a long time '
+                   'and be error-prone. You may want to consider using '
+                   'different `SourceGrouper` parameters or changing '
+                   'the "group_id" column in "init_params".')
+            warnings.warn(msg, AstropyUserWarning)
 
         # Add columns for any additional model parameters that are
         # fit using the model's default value, if not already present.
@@ -954,11 +1020,19 @@ class PSFPhotometry:
         mask = _make_mask(data, mask)
 
         init_params = self._data_processor.validate_init_params(init_params)
+        if init_params is not None and len(init_params) == 0:
+            msg = 'init_params must contain at least one row'
+            raise ValueError(msg)
         init_params = self._build_initial_parameters(data, mask, init_params)
 
         if init_params is None:
             # No sources found
             return None, None, None, None
+
+        ids = np.asarray(init_params['id'])
+        if len(np.unique(ids)) != len(ids):
+            msg = 'init_params id column must contain unique values'
+            raise ValueError(msg)
 
         return data, mask, error, init_params
 
@@ -1076,19 +1150,11 @@ class PSFPhotometry:
         yi_all : list or None, optional
             List of y-coordinates for each valid source's cutout pixels.
 
-        Returns
-        -------
-        sum_abs_residuals : ndarray
-            Sum of absolute residuals for each source, or np.nan for
-            invalid sources.
-
-        cen_residuals : ndarray
-            Center residuals for each source, or np.nan for invalid
-            sources.
-
-        reduced_chi2 : ndarray
-            Reduced chi-squared values for each source, or np.nan for
-            invalid sources.
+        Notes
+        -----
+        The computed metrics (sum of absolute residuals, center
+        residuals, and reduced chi-squared) are stored in the state
+        container, with np.nan values for invalid sources.
         """
         # Extract residuals from fit_info
         residual_key = None
@@ -1134,23 +1200,22 @@ class PSFPhotometry:
                     end_pos = cumsum_n_pixels[idx + 1]
                     source_residuals = residuals[start_pos:end_pos]
 
-                    # For qfit and cfit calculations, we need raw residuals
-                    # (data - model), not weighted residuals
-                    # (data - model)/error. If errors were provided, convert
-                    # weighted residuals back to raw residuals.
-                    raw_residuals = source_residuals
+                    # Extract error values for this source's pixels.
+                    # run_fitter has already validated that these
+                    # values are positive and finite.
+                    error_vals = None
                     if (error is not None and xi_all is not None
                             and yi_all is not None):
-                        # Extract error values for this source's pixels
-                        xi_source = xi_all[idx]
-                        yi_source = yi_all[idx]
-                        error_vals = error[yi_source, xi_source]
+                        error_vals = error[yi_all[idx], xi_all[idx]]
 
-                        # Multiply by error to convert weighted
-                        # residuals to raw residuals
-                        if (np.all(error_vals > 0)
-                                and np.all(np.isfinite(error_vals))):
-                            raw_residuals = source_residuals * error_vals
+                    # For qfit and cfit calculations, we need raw
+                    # residuals (data - model), not weighted residuals
+                    # (data - model)/error. If errors were provided,
+                    # multiply by error to convert weighted residuals
+                    # back to raw residuals.
+                    raw_residuals = source_residuals
+                    if error_vals is not None:
+                        raw_residuals = source_residuals * error_vals
 
                     # Sum of absolute residuals
                     sum_abs_residuals[valid_idx] = float(
@@ -1162,31 +1227,20 @@ class PSFPhotometry:
                     if np.isfinite(cen_idx):
                         cen_residuals[valid_idx] = float(
                             -raw_residuals[int(cen_idx)])
-                    else:
-                        cen_residuals[valid_idx] = np.nan
 
                     # Calculate chi-squared. The residuals have already
                     # been weighted by (1 / error). If errors are not
-                    # input, then reduced_chi2 will be NaN.
+                    # input or there are no degrees of freedom, then
+                    # reduced_chi2 will be NaN.
                     dof = float(n_pixels_valid[idx] - n_fit_params)
-                    if (error is not None and xi_all is not None
-                            and yi_all is not None):
-                        # Extract error values for this source's pixels
-                        xi_source = xi_all[idx]
-                        yi_source = yi_all[idx]
-                        error_vals = error[yi_source, xi_source]
-
-                        if (np.all(error_vals > 0)
-                                and np.all(np.isfinite(error_vals))):
-                            chi2 = np.sum(source_residuals**2)
-                            reduced_chi2[valid_idx] = chi2 / dof
+                    if error_vals is not None and dof > 0:
+                        chi2 = np.sum(source_residuals**2)
+                        reduced_chi2[valid_idx] = chi2 / dof
 
         row_indices_arr = np.array(row_indices)
         self._state['sum_abs_residuals'][row_indices_arr] = sum_abs_residuals
         self._state['cen_residuals'][row_indices_arr] = cen_residuals
         self._state['reduced_chi2'][row_indices_arr] = reduced_chi2
-
-        return sum_abs_residuals, cen_residuals, reduced_chi2
 
     def _fit_source_groups(self, source_groups, data, mask, error):
         """
@@ -1384,12 +1438,13 @@ class PSFPhotometry:
             init_params['_row_index'] = np.arange(len(init_params))
         self._initialize_source_state_storage(len(init_params))
 
-        source_groups = init_params.group_by('group_id').groups
-        self._fit_source_groups(source_groups, data, mask, error)
-
-        # Clean up temporary row index column
-        if '_row_index' in init_params.colnames:
-            init_params.remove_column('_row_index')
+        try:
+            source_groups = init_params.group_by('group_id').groups
+            self._fit_source_groups(source_groups, data, mask, error)
+        finally:
+            # Clean up temporary row index column
+            if '_row_index' in init_params.colnames:
+                init_params.remove_column('_row_index')
 
         return self._assemble_fit_results()
 
@@ -1516,6 +1571,13 @@ class PSFPhotometry:
             self.results = self._assemble_results_table(
                 init_params, fit_params, data.shape)
 
+            # Reorder fit_info to match the results table rows, which
+            # are sorted by the id column during table assembly
+            row_map = {src_id: idx
+                       for idx, src_id in enumerate(init_params['id'])}
+            self.fit_info = [self.fit_info[row_map[src_id]]
+                             for src_id in self.results['id']]
+
         except Exception:
             # Ensure state cleanup even if an exception occurs
             self._reset_state()
@@ -1549,10 +1611,38 @@ class PSFPhotometry:
 
         tbl = QTable()
         for col_name in self.results.colnames:
-            if col_name == 'id' or '_fit' in col_name or '_err' in col_name:
+            if (col_name == 'id'
+                    or (col_name.endswith('_fit')
+                        and col_name not in self._NON_PARAM_FIT_COLS)
+                    or col_name.endswith('_err')):
                 tbl[col_name] = self.results[col_name]
 
         return tbl
+
+    # Results columns ending in '_fit' that are not fitted model
+    # parameters
+    _NON_PARAM_FIT_COLS = ('n_pixels_fit',)
+
+    @staticmethod
+    def _iter_fit_param_cols(results_tbl):
+        """
+        Yield the 'id' column name plus the fitted model-parameter
+        column names.
+        """
+        for col_name in results_tbl.colnames:
+            if col_name == 'id' or (
+                    col_name.endswith('_fit')
+                    and col_name
+                    not in PSFPhotometry._NON_PARAM_FIT_COLS):
+                yield col_name
+
+    @staticmethod
+    def _finite_fit_mask(tbl):
+        """
+        Return a boolean mask of rows where every column is finite.
+        """
+        return np.all([np.isfinite(tbl[col])
+                       for col in tbl.colnames], axis=0)
 
     @staticmethod
     def _results_to_init_params(results_tbl, *, remove_invalid=True,
@@ -1604,15 +1694,13 @@ class PSFPhotometry:
             return None
 
         tbl = QTable()
-        for col_name in results_tbl.colnames:
-            if col_name == 'id' or '_fit' in col_name:
-                init_name = col_name.replace('_fit', '_init')
-                tbl[init_name] = results_tbl[col_name]
+        for col_name in PSFPhotometry._iter_fit_param_cols(results_tbl):
+            init_name = col_name.replace('_fit', '_init')
+            tbl[init_name] = results_tbl[col_name]
 
         if remove_invalid:
             # Remove rows with any non-finite fitted values
-            keep = np.all([np.isfinite(tbl[col])
-                           for col in tbl.colnames], axis=0)
+            keep = PSFPhotometry._finite_fit_mask(tbl)
             tbl = tbl[keep]
 
             if reset_ids:
@@ -1674,17 +1762,15 @@ class PSFPhotometry:
             return None
 
         tbl = QTable()
-        for col_name in results_tbl.colnames:
-            if col_name == 'id' or '_fit' in col_name:
-                alias = col_name.replace('_fit', '')
-                model_param_name = param_mapper.alias_to_model_param.get(
-                    alias, alias)
-                tbl[model_param_name] = results_tbl[col_name]
+        for col_name in PSFPhotometry._iter_fit_param_cols(results_tbl):
+            alias = col_name.replace('_fit', '')
+            model_param_name = param_mapper.alias_to_model_param.get(
+                alias, alias)
+            tbl[model_param_name] = results_tbl[col_name]
 
         if remove_invalid:
             # Remove rows with any non-finite fitted values
-            keep = np.all([np.isfinite(tbl[col])
-                           for col in tbl.colnames], axis=0)
+            keep = PSFPhotometry._finite_fit_mask(tbl)
             tbl = tbl[keep]
 
             if reset_ids:
@@ -1711,6 +1797,12 @@ class PSFPhotometry:
             numbering starting from 1. If `False`, the 'id' column will
             remain unchanged from the results table. This option is
             ignored if ``remove_invalid`` is `False`.
+
+        Returns
+        -------
+        init_params_tbl : `~astropy.table.QTable` or `None`
+            The table of initial parameters, or `None` if the
+            instance has not yet been run.
         """
         return self._results_to_init_params(self.results,
                                             remove_invalid=remove_invalid,
@@ -1735,6 +1827,12 @@ class PSFPhotometry:
             numbering starting from 1. If `False`, the 'id' column will
             remain unchanged from the results table. This option is
             ignored if ``remove_invalid`` is `False`.
+
+        Returns
+        -------
+        model_params_tbl : `~astropy.table.QTable` or `None`
+            The table of model parameters, or `None` if the instance
+            has not yet been run.
         """
         return self._results_to_model_params(self.results,
                                              self._param_mapper,
