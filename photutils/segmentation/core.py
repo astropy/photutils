@@ -1064,10 +1064,14 @@ class SegmentationImage:
                 relabel_map = map2[relabel_map]
 
         data_new = relabel_map[self.data]
-        # _set_data rebinds _deblend_label_map to a new dict, so this
-        # local reference still points at the old mapping
+        # _set_data rebinds _deblend_label_map and info to new dicts,
+        # so these local references still point at the old ones.
+        # Relabeling is an in-place change, not a data reassignment,
+        # so the auxiliary info is kept.
         deblend_label_map = self._deblend_label_map
+        info = self.info
         self._set_data(data_new)
+        self.__dict__['info'] = info
         self._update_deblend_label_map(deblend_label_map, relabel_map)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
@@ -1122,13 +1126,17 @@ class SegmentationImage:
         new_label_map[self.labels] = new_labels
 
         data_new = new_label_map[self.data]
-        # _set_data rebinds _deblend_label_map to a new dict, so this
-        # local reference still points at the old mapping
+        # _set_data rebinds _deblend_label_map and info to new dicts,
+        # so these local references still point at the old ones.
+        # Relabeling is an in-place change, not a data reassignment,
+        # so the auxiliary info is kept.
         deblend_label_map = self._deblend_label_map
+        info = self.info
         # Relabeling is order-preserving, so the areas and slices are
         # unchanged and carry over under the new label numbers
         self._set_data(data_new, labels=new_labels, areas=old_areas,
                        slices=old_slices)
+        self.__dict__['info'] = info
         self._update_deblend_label_map(deblend_label_map, new_label_map)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')

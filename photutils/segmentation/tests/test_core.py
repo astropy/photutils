@@ -257,6 +257,26 @@ class TestSegmentationImage:
         assert segm.get_indices(labels[0]) == segm.get_index(labels[0])
         assert np.ndim(segm.get_indices(labels[0])) == 0
 
+    def test_relabeling_preserves_info(self):
+        """
+        Test that relabeling keeps the auxiliary info dictionary.
+
+        Relabeling is an in-place change, not a data reassignment, so
+        the deblending provenance stored in info still applies.
+        """
+        for relabel in (lambda s: s.relabel_consecutive(),
+                        lambda s: s.reassign_label(label=3, new_label=1)):
+            segm = SegmentationImage(self.data.copy())
+            segm.info['nonposmin_labels'] = np.array([3, 5])
+            relabel(segm)
+            assert_equal(segm.info['nonposmin_labels'], [3, 5])
+
+        # Reassigning data does reset info
+        segm = SegmentationImage(self.data.copy())
+        segm.info['nonposmin_labels'] = np.array([3, 5])
+        segm.data = self.data.copy()
+        assert segm.info == {}
+
     def test_set_data_seeds_derived_state(self):
         """
         Test that _set_data seeds the derived cached properties and
