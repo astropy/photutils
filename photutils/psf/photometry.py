@@ -82,14 +82,14 @@ class _PSFParameterMapper:
             names in the PSF model. The keys are 'x', 'y', 'flux', and
             any additional parameters defined in the model.
         """
-        # the order of the main parameters is important; it defines
-        # the order of table outputs
+        # The order of the main parameters is important. It defines
+        # the order of table outputs.
         main_params = _get_psf_model_main_params(self.psf_model)
         params_map = dict(zip(self.MAIN_ALIASES, main_params, strict=True))
 
-        # extra parameters that are not 'x', 'y', or 'flux', but
+        # Extra parameters that are not 'x', 'y', or 'flux', but
         # are free to be fit (fixed = False), are added to the map
-        # with their own aliases
+        # with their own aliases.
         fitted_params = [
             param for param in self.psf_model.param_names
             if not self.psf_model.fixed[param]
@@ -179,7 +179,7 @@ class _PSFParameterMapper:
         try:
             valid_names = self.VALID_INIT_COLNAMES[param_alias]
         except KeyError:
-            # valid names for extra parameters are more limited
+            # Valid names for extra parameters are more limited
             valid_names = (f'{param_alias}_init', param_alias,
                            f'{param_alias}_fit')
 
@@ -420,7 +420,7 @@ class PSFPhotometry:
             self._param_mapper, self.fit_shape, xy_bounds=self.xy_bounds,
         )
 
-        # used by the __repr__ method and the output table metadata
+        # Used by the __repr__ method and the output table metadata
         self._attrs = ('psf_model', 'fit_shape', 'finder', 'grouper', 'fitter',
                        'fitter_maxiters', 'xy_bounds', 'aperture_radius',
                        'local_bkg_estimator', 'group_warning_threshold',
@@ -438,11 +438,11 @@ class PSFPhotometry:
         self.results = None
         self.fit_info = []
 
-        # sync data_unit with components
+        # Sync data_unit with components
         if hasattr(self, '_data_processor'):
             self._data_processor.data_unit = None
 
-        # internal state container
+        # Internal state container
         self._state = {
             'valid_mask_by_id': None,
             'fit_param_errs': None,
@@ -491,20 +491,20 @@ class PSFPhotometry:
         only the parameter values, fixed flags, and bounds that are
         needed for the results table.
         """
-        # get all parameter names from the PSF model
+        # Get all parameter names from the PSF model
         model_params = list(self.psf_model.param_names)
 
-        # initialize parameter value storage
+        # Initialize parameter value storage
         param_data = {}
         for model_param in model_params:
-            # initialize all parameters with np.nan (for invalid sources)
+            # Initialize all parameters with np.nan (for invalid sources)
             param_data[model_param] = np.full(n_sources,
                                               self._DEFAULT_PARAM_VALUE)
             param_data[f'{model_param}_fixed'] = [None] * n_sources
             param_data[f'{model_param}_bounds'] = [None] * n_sources
 
-        # add placehold IDs column -- this will be updated later to
-        # match IDs in init_params
+        # Add placehold IDs column. This will be updated later to
+        # match IDs in init_params.
         param_data['id'] = np.arange(1, n_sources + 1)
 
         self._state['model_param_data'] = param_data
@@ -798,22 +798,19 @@ class PSFPhotometry:
         init_params : `~astropy.table.Table`
             The table of initial parameters with a 'group_id' column.
         """
-        if 'group_id' in init_params.colnames:
-            # user-provided group_id takes precedence
-            self.grouper = None
+        # A user-provided group_id column takes precedence for this
+        # call
+        if 'group_id' not in init_params.colnames:
+            if self.grouper is not None:
+                x_col = self._param_mapper.init_colnames['x']
+                y_col = self._param_mapper.init_colnames['y']
+                init_params['group_id'] = self.grouper(
+                    init_params[x_col], init_params[y_col])
+            else:
+                # No grouper provided, so each source is its own group
+                init_params['group_id'] = init_params['id'].copy()
 
-        elif self.grouper is not None:
-            # use the grouper to group sources
-            x_col = self._param_mapper.init_colnames['x']
-            y_col = self._param_mapper.init_colnames['y']
-            init_params['group_id'] = self.grouper(init_params[x_col],
-                                                   init_params[y_col])
-
-        else:
-            # no grouper provided, so each source is its own group
-            init_params['group_id'] = init_params['id'].copy()
-
-        # ensure group_id contains only positive (> 0) integers
+        # Ensure group_id contains only positive (> 0) integers
         group_id = init_params['group_id']
         if np.any(~np.isfinite(group_id)):
             msg = 'group_id must be finite'
@@ -855,7 +852,7 @@ class PSFPhotometry:
         if init_params is None:
             return None
 
-        # strip any units from the x/y position columns
+        # Strip any units from the x/y position columns
         for axis in ('x', 'y'):
             colname = self._param_mapper.init_colnames[axis]
             if isinstance(init_params[colname], u.Quantity):
@@ -865,7 +862,7 @@ class PSFPhotometry:
         init_params = add_flux_bkg(data, mask, init_params)
         init_params = self._group_sources(init_params)
 
-        # check for large group sizes after grouping is complete
+        # Check for large group sizes after grouping is complete
         warn_size = self.group_warning_threshold
         if 'group_id' in init_params.colnames:
             _, counts = np.unique(init_params['group_id'], return_counts=True)
@@ -947,7 +944,7 @@ class PSFPhotometry:
         (data, error), unit = process_quantities((data, error),
                                                  ('data', 'error'))
         self.data_unit = unit
-        self._sync_data_unit()  # Sync with components
+        self._sync_data_unit()  # sync with components
 
         data = self._data_processor.validate_array(data, 'data')
         error = self._data_processor.validate_array(error, 'error',
@@ -960,7 +957,7 @@ class PSFPhotometry:
         init_params = self._build_initial_parameters(data, mask, init_params)
 
         if init_params is None:
-            # no sources found
+            # No sources found
             return None, None, None, None
 
         return data, mask, error, init_params
@@ -1114,24 +1111,24 @@ class PSFPhotometry:
         reduced_chi2 = np.full(n_sources, np.nan, dtype=float)
 
         if residuals is not None:
-            # convert to numpy arrays for vectorized operations
+            # Convert to numpy arrays for vectorized operations
             valid_mask_arr = np.array(valid_mask, dtype=bool)
             n_pixels_fit_arr = np.array(n_pixels_fit_full)
             cen_index_arr = np.array(cen_index_full)
 
-            # get valid source indices
+            # Get valid source indices
             valid_indices = np.where(valid_mask_arr)[0]
             if len(valid_indices) > 0:
                 n_pixels_valid = n_pixels_fit_arr[valid_indices]
 
-                # calculate cumulative pixel positions
+                # Calculate cumulative pixel positions
                 cumsum_n_pixels = np.concatenate(
                     ([0], np.cumsum(n_pixels_valid)))
 
-                # get the number of fitted parameters
+                # Get the number of fitted parameters
                 n_fit_params = len(self._param_mapper.fitted_param_names)
 
-                # process all valid sources
+                # Process all valid sources
                 for idx, valid_idx in enumerate(valid_indices):
                     start_pos = cumsum_n_pixels[idx]
                     end_pos = cumsum_n_pixels[idx + 1]
@@ -1149,17 +1146,18 @@ class PSFPhotometry:
                         yi_source = yi_all[idx]
                         error_vals = error[yi_source, xi_source]
 
-                        # Convert weighted residuals to raw residuals:
-                        # multiply by error
+                        # Multiply by error to convert weighted
+                        # residuals to raw residuals
                         if (np.all(error_vals > 0)
                                 and np.all(np.isfinite(error_vals))):
                             raw_residuals = source_residuals * error_vals
 
-                    # sum of absolute residuals
+                    # Sum of absolute residuals
                     sum_abs_residuals[valid_idx] = float(
                         np.abs(raw_residuals).sum())
 
-                    # center residual
+                    # Residual at the center pixel (cen_index) for this
+                    # source
                     cen_idx = cen_index_arr[valid_idx]
                     if np.isfinite(cen_idx):
                         cen_residuals[valid_idx] = float(
@@ -1220,7 +1218,7 @@ class PSFPhotometry:
         y_offsets, x_offsets = self._data_processor.get_fit_offsets()
         n_fit_params_per_source = len(self._param_mapper.fitted_param_names)
 
-        # sources are fit by groups in group ID order
+        # Sources are fit by groups in group ID order
         for source_group in source_groups:
             group_size = len(source_group)
             xi_all = []
@@ -1350,7 +1348,7 @@ class PSFPhotometry:
         fitted_models_table = self._build_fitted_models_table()
         fit_params = self._create_fit_results(fitted_models_table)
 
-        # store results in state for other methods that need them
+        # Store results in state for other methods that need them
         self._state['fit_error_indices'] = fit_error_indices
         self._state['fitted_models_table'] = fitted_models_table
         self._state['fit_params'] = fit_params
@@ -1381,7 +1379,7 @@ class PSFPhotometry:
             The table of fitted parameters and fit quality metrics for
             each source.
         """
-        # add row index for stable mapping
+        # Add row index for stable mapping
         if '_row_index' not in init_params.colnames:
             init_params['_row_index'] = np.arange(len(init_params))
         self._initialize_source_state_storage(len(init_params))
@@ -1389,7 +1387,7 @@ class PSFPhotometry:
         source_groups = init_params.group_by('group_id').groups
         self._fit_source_groups(source_groups, data, mask, error)
 
-        # clean up temporary row index column
+        # Clean up temporary row index column
         if '_row_index' in init_params.colnames:
             init_params.remove_column('_row_index')
 
@@ -1429,7 +1427,7 @@ class PSFPhotometry:
 
         This method delegates to the results assembler component.
         """
-        # prepare metadata attributes
+        # Prepare metadata attributes
         class_attrs = {'psf_model', 'finder', 'grouper', 'fitter',
                        'local_bkg_estimator'}
         metadata_attrs = {}
@@ -1490,36 +1488,36 @@ class PSFPhotometry:
 
     @_create_call_docstring(iterative=False)
     def __call__(self, data, *, mask=None, error=None, init_params=None):
-        # reset state from previous runs
+        # Reset state from previous runs
         self._reset_results()
 
         try:
-            # handle NDData input
+            # Handle NDData input
             if isinstance(data, NDData):
                 data, mask, error = self._coerce_nddata(data)
 
-            # prepare all inputs for sources to be fit
+            # Prepare all inputs for sources to be fit
             data, mask, error, init_params = self._prepare_fit_inputs(
                 data, mask=mask, error=error, init_params=init_params,
             )
 
-            # handle the case where no sources were found
+            # Handle the case where no sources were found
             if init_params is None:
                 return None
 
             self.init_params = init_params
 
-            # fit sources defined in init_params
+            # Fit sources defined in init_params
             fit_params = self._fit_sources(data, init_params, error=error,
                                            mask=mask)
 
-            # assemble the final results table
+            # Assemble the final results table
             # Note: _assemble_results_table handles _state cleanup
             self.results = self._assemble_results_table(
                 init_params, fit_params, data.shape)
 
         except Exception:
-            # ensure state cleanup even if an exception occurs
+            # Ensure state cleanup even if an exception occurs
             self._reset_state()
             raise
 

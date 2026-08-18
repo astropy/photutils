@@ -390,6 +390,12 @@ Bug Fixes
   - The ``EnsquaredCurveOfGrowth`` input validation error messages now
     refer to the ``half_sizes`` parameter instead of ``radii``. [#xxxx]
 
+- ``photutils.psf``
+
+  - Fixed a bug where calling ``PSFPhotometry`` with an ``init_params``
+    table containing a ``group_id`` column permanently disabled the
+    grouper for all subsequent calls on the same instance. [#2383]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range
