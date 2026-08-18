@@ -4,7 +4,6 @@ Tests for the photometry module.
 """
 
 import gc
-import tempfile
 
 import astropy.units as u
 import numpy as np
@@ -23,6 +22,7 @@ from photutils.datasets import make_model_image, make_noise_image
 from photutils.detection import DAOStarFinder
 from photutils.psf import (CircularGaussianPRF, ImagePSF, PSFPhotometry,
                            SourceGrouper, make_psf_model, make_psf_model_image)
+from photutils.psf.flags import decode_psf_flags
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
@@ -916,8 +916,8 @@ def test_grouper_init_params(test_data):
                             grouper=None, aperture_radius=4)
     phot2 = psfphot(data, error=error, init_params=init_params)
     assert isinstance(phot2, QTable)
-    assert_equal(phot1['group_id'], np.ones(n_sources, dtype=int))
-    assert_equal(phot1['group_size'],
+    assert_equal(phot2['group_id'], np.ones(n_sources, dtype=int))
+    assert_equal(phot2['group_size'],
                  np.ones(n_sources, dtype=int) * n_sources)
 
 
@@ -1117,7 +1117,7 @@ def test_fit_warning(test_data):
         phot = psfphot(data)
 
     # Check that flag=8 is set for these sources
-    assert_equal(phot['flags'][0] & 8, np.ones(len(phot)) * 8)
+    assert np.all(phot['flags'] & 8)
 
 
 def test_fitter_no_maxiters_no_metrics(test_data):
@@ -1132,7 +1132,7 @@ def test_fitter_no_maxiters_no_metrics(test_data):
     fit_shape = (5, 5)
     fitter = SimplexLSQFitter()  # does not produce residual array
     finder = DAOStarFinder(6.0, 2.0)
-    match = "'maxiters' will be ignored because it is not accepted by"
+    match = "'fitter_maxiters' will be ignored because the fitter's"
     with pytest.warns(AstropyUserWarning, match=match):
         psfphot = PSFPhotometry(psf_model, fit_shape, fitter=fitter,
                                 finder=finder, aperture_radius=4)
@@ -1203,6 +1203,9 @@ def test_xy_bounds(test_data):
     match = 'xy_bounds must be finite'
     with pytest.raises(ValueError, match=match):
         PSFPhotometry(psf_model, fit_shape, xy_bounds=(np.nan, 2))
+    match = 'xy_bounds must be numeric'
+    with pytest.raises(ValueError, match=match):
+        PSFPhotometry(psf_model, fit_shape, xy_bounds='a')
 
 
 def test_grouper_with_xy_bounds(test_data):
@@ -1553,7 +1556,7 @@ def test_flag16_missing_covariance():
     mock_fitter.fit_info = {}
     fit_shape = (5, 5)
 
-    match = r"'maxiters' will be ignored because it is not accepted"
+    match = "'fitter_maxiters' will be ignored because the fitter's"
     with pytest.warns(AstropyUserWarning, match=match):
         psfphot = PSFPhotometry(psf_model, fit_shape, fitter=mock_fitter)
 
@@ -1750,7 +1753,181 @@ def test_invalid_sources(test_data, units):
     assert_equal(model_params['id'], np.arange(1, 7))
 
 
-def test_psf_photometry_table_serialization(test_data):
+def test_results_to_params_exclude_n_pixels():
+    """
+    Regression test that the n_pixels_fit column does not leak into
+    the init/model parameter tables.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image(
+        (60, 60), model, 5, model_shape=(9, 9), flux=(500, 700),
+        min_separation=10, seed=0)
+    init = Table({'x': params['x_0'], 'y': params['y_0']})
+    psfphot = PSFPhotometry(model, (5, 5), aperture_radius=4)
+    psfphot(data, init_params=init)
+    init_tbl = psfphot.results_to_init_params()
+    assert 'n_pixels_init' not in init_tbl.colnames
+    model_tbl = psfphot.results_to_model_params()
+    assert 'n_pixels' not in model_tbl.colnames
+    assert set(model_tbl.colnames) == {'id', 'x_0', 'y_0', 'flux'}
+
+
+def test_duplicate_init_params_ids():
+    """
+    Regression test that duplicate init_params ids are rejected
+    instead of producing a cartesian product of mispaired rows.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data = np.zeros((30, 30))
+    init = Table({'id': [1, 1], 'x': [12.0, 13.0],
+                  'y': [12.0, 13.0], 'flux': [1.0, 1.0]})
+    psfphot = PSFPhotometry(model, (5, 5))
+    match = 'id column must contain unique values'
+    with pytest.raises(ValueError, match=match):
+        psfphot(data, init_params=init)
+
+
+def test_finder_results_reset(test_data):
+    """
+    Regression test that finder_results from a finder-based call does
+    not persist into a subsequent call that uses init_params.
+    """
+    data, error, _ = test_data
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = PSFPhotometry(psf_model, (5, 5), finder=finder,
+                            aperture_radius=4)
+    phot = psfphot(data, error=error)
+    assert psfphot.finder_results is not None
+
+    init = Table({'x': phot['x_fit'], 'y': phot['y_fit']})
+    psfphot(data, error=error, init_params=init)
+    assert psfphot.finder_results is None
+
+
+def test_empty_init_params():
+    """
+    Test that a zero-row init_params table raises an error.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data = np.ones((11, 11))
+    init = Table({'x': [1.0], 'y': [1.0]})[:0]
+    psfphot = PSFPhotometry(model, (3, 3), aperture_radius=3)
+    match = 'init_params must contain at least one row'
+    with pytest.raises(ValueError, match=match):
+        psfphot(data, init_params=init)
+
+
+def test_reduced_chi2_zero_dof():
+    """
+    Regression test that reduced_chi2 is NaN (with no warning) when
+    the number of fit pixels equals the number of fit parameters.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image(
+        (50, 50), model, 1, model_shape=(9, 9), flux=(500, 700),
+        min_separation=10, seed=0)
+    error = np.ones(data.shape)
+    xcen = int(params['x_0'][0])
+    ycen = int(params['y_0'][0])
+
+    # Unmask exactly 3 pixels, matching the number of fit parameters
+    mask = np.ones(data.shape, dtype=bool)
+    mask[ycen, xcen] = False
+    mask[ycen, xcen + 1] = False
+    mask[ycen + 1, xcen] = False
+
+    init = Table({'x': params['x_0'], 'y': params['y_0'],
+                  'flux': [600.0]})
+    psfphot = PSFPhotometry(model, (3, 3))
+    phot = psfphot(data, error=error, mask=mask, init_params=init)
+    assert np.isnan(phot['reduced_chi2'][0])
+
+
+def test_group_warning_threshold_validation():
+    """
+    Test that invalid group_warning_threshold values raise an error.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    match = 'group_warning_threshold must be a positive integer'
+    for value in (None, -1, 2.5):
+        with pytest.raises(ValueError, match=match):
+            PSFPhotometry(model, (5, 5), group_warning_threshold=value)
+
+
+def test_row_index_not_leaked_on_failure():
+    """
+    Regression test that a failed call does not leak the private
+    _row_index column into the stored init_params table.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image(
+        (50, 50), model, 3, model_shape=(9, 9), flux=(500, 700),
+        min_separation=10, seed=0)
+    error = np.full(data.shape, -1.0)
+    init = Table({'x': params['x_0'], 'y': params['y_0'],
+                  'flux': [500.0, 500.0, 500.0]})
+    psfphot = PSFPhotometry(model, (5, 5))
+    match = 'Error array contains non-positive'
+    with pytest.raises(ValueError, match=match):
+        psfphot(data, error=error, init_params=init)
+    assert '_row_index' not in psfphot.init_params.colnames
+
+
+def test_group_id_from_float_id_message():
+    """
+    Test that the group_id dtype error names the id column when
+    group_id was derived from it.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data = np.ones((11, 11))
+    init = Table({'id': [1.0, 2.0], 'x': [3.0, 7.0], 'y': [3.0, 7.0],
+                  'flux': [1.0, 1.0]})
+    psfphot = PSFPhotometry(model, (3, 3))
+    match = (r'group_id \(or the id column it was derived from\) '
+             'must be an integer array')
+    with pytest.raises(TypeError, match=match):
+        psfphot(data, init_params=init)
+
+
+def test_aperture_radius_0d_array():
+    """
+    Test that a 0-d array aperture_radius is accepted.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    psfphot = PSFPhotometry(model, (5, 5),
+                            aperture_radius=np.array(3.0))
+    assert psfphot.aperture_radius == 3.0
+
+
+def test_deprecated_shims(test_data):
+    """
+    Test the deprecated keyword and positional-argument shims.
+    """
+    data, error, _ = test_data
+    model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    finder = DAOStarFinder(6.0, 2.0)
+
+    match = "'localbkg_estimator' was deprecated in version 3.0"
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        psfphot = PSFPhotometry(model, (5, 5), finder=finder,
+                                aperture_radius=4,
+                                localbkg_estimator=None)
+    psfphot(data, error=error)
+
+    match = "'include_localbkg' was deprecated in version 3.0"
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        psfphot.make_model_image((25, 25), include_localbkg=False)
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        psfphot.make_residual_image(data, include_localbkg=False)
+
+    match = ("Passing 'return_bit_values' positionally to "
+             "'decode_flags' is deprecated")
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        psfphot.decode_flags(True)  # noqa: FBT003
+
+
+def test_psf_photometry_table_serialization(test_data, tmp_path):
     """
     Test that photometry results table can be written to file.
     """
@@ -1804,24 +1981,24 @@ def test_psf_photometry_table_serialization(test_data):
     assert 'TRFLSQFitter' in meta['fitter']
 
     # Test file writing - this should not raise any errors
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.ecsv',
-                                     delete=False) as tmp:
-        # Write table to ECSV format
-        results.write(tmp.name, format='ascii.ecsv', overwrite=True)
+    filename = tmp_path / 'psf_results.ecsv'
 
-        # Read it back to verify it's readable
-        read_table = Table.read(tmp.name, format='ascii.ecsv')
+    # Write table to ECSV format
+    results.write(filename, format='ascii.ecsv', overwrite=True)
 
-        # Basic checks that the table was written and read correctly
-        assert len(read_table) == len(results)
-        assert set(read_table.colnames) == set(results.colnames)
+    # Read it back to verify it's readable
+    read_table = Table.read(filename, format='ascii.ecsv')
 
-        # Check that metadata was preserved
-        read_meta = read_table.meta
-        assert 'psf_model' in read_meta
-        assert 'finder' in read_meta
-        assert isinstance(read_meta['psf_model'], str)
-        assert isinstance(read_meta['finder'], str)
+    # Basic checks that the table was written and read correctly
+    assert len(read_table) == len(results)
+    assert set(read_table.colnames) == set(results.colnames)
+
+    # Check that metadata was preserved
+    read_meta = read_table.meta
+    assert 'psf_model' in read_meta
+    assert 'finder' in read_meta
+    assert isinstance(read_meta['psf_model'], str)
+    assert isinstance(read_meta['finder'], str)
 
 
 def test_psf_photometry_invalid_coordinates():
@@ -2059,8 +2236,11 @@ def _compare_lists_with_arrays(list1, list2):
                 return False
             for key in item1:
                 if isinstance(item1[key], np.ndarray):
-                    if not np.array_equal(item1[key], item2[key],
-                                          equal_nan=True):
+                    # Array values (e.g., param_cov) can differ by
+                    # float rounding when the within-group source
+                    # order differs, so compare with a tolerance
+                    if not np.allclose(item1[key], item2[key],
+                                       equal_nan=True):
                         return False
                 elif item1[key] != item2[key]:
                     return False
@@ -2126,7 +2306,7 @@ def test_init_params_id_order(test_data, reorder, with_groups,
                    for col in phot1.colnames if col not in ('id', 'group_id')])
 
     # Compare fit_info with special handling for numpy arrays
-    _compare_lists_with_arrays(psfphot1.fit_info, psfphot2.fit_info)
+    assert _compare_lists_with_arrays(psfphot1.fit_info, psfphot2.fit_info)
 
 
 def test_reduced_chi2_metric():
@@ -2262,6 +2442,5 @@ def test_decode_flags():
 
     # Verify that decode_flags gives the same result as calling
     # decode_psf_flags directly
-    from photutils.psf.flags import decode_psf_flags
     direct_decoded = decode_psf_flags(results['flags'])
     assert decoded_flags == direct_decoded

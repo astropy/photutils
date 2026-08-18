@@ -11,7 +11,8 @@ from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable, Table
-from astropy.utils.exceptions import AstropyUserWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background import LocalBackground, MMMBackground
@@ -19,6 +20,7 @@ from photutils.datasets import make_model_image, make_noise_image
 from photutils.detection import DAOStarFinder
 from photutils.psf import (CircularGaussianPRF, IterativePSFPhotometry,
                            SourceGrouper, make_psf_model, make_psf_model_image)
+from photutils.psf.flags import decode_psf_flags
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
@@ -104,7 +106,7 @@ def test_iterative_psf_photometry_compound(mode):
     for colname in colnames:
         assert colname in phot.colnames
 
-    # test model and residual images
+    # Test model and residual images
     psf_shape = (9, 9)
     model1 = psfphot.make_model_image(data.shape, psf_shape=psf_shape,
                                       include_local_bkg=False)
@@ -121,7 +123,7 @@ def test_iterative_psf_photometry_compound(mode):
     assert_equal(data - model1, resid1)
     assert_equal(data - model2, resid2)
 
-    # test with init_params
+    # Test with init_params
     init_params = psfphot.fit_results[-1].results_to_init_params()
     phot = psfphot(data, error=error, init_params=init_params)
     assert isinstance(phot, QTable)
@@ -167,11 +169,11 @@ def test_iterative_psf_photometry_mode_new(test_data):
     assert isinstance(resid_nddata, NDData)
     assert resid_nddata.data.shape == data.shape
 
-    # test that repeated calls reset the results
+    # Test that repeated calls reset the results
     phot = psfphot(data, error=error, init_params=init_params)
     assert len(psfphot.fit_results) == 2
 
-    # test NDData without units
+    # Test NDData without units
     uncertainty = StdDevUncertainty(error)
     nddata = NDData(data, uncertainty=uncertainty)
     phot0 = psfphot(nddata, init_params=init_params)
@@ -182,7 +184,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
     assert isinstance(resid_nddata, NDData)
     assert_equal(resid_nddata.data, resid_data)
 
-    # test with units and mode='new'
+    # Test with units and mode='new'
     unit = u.Jy
     finder_units = DAOStarFinder(10.0 * unit, 2.0)
     psfphot = IterativePSFPhotometry(psf_model, fit_shape,
@@ -197,7 +199,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
         assert phot2[col].unit == unit
         assert_allclose(phot2[col].value, phot[col])
 
-    # test NDData with units
+    # Test NDData with units
     uncertainty = StdDevUncertainty(error << unit)
     nddata = NDData(data << unit, uncertainty=uncertainty)
     phot3 = psfphot(nddata, init_params=init_params)
@@ -209,7 +211,7 @@ def test_iterative_psf_photometry_mode_new(test_data):
     assert isinstance(resid_nddata, NDData)
     assert resid_nddata.unit == unit
 
-    # test return None if no stars are found on first iteration
+    # Test return None if no stars are found on first iteration
     finder = DAOStarFinder(1000.0, 2.0)
     psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                      mode='new',
@@ -264,7 +266,7 @@ def test_iterative_psf_photometry_mode_all():
                                          grouper=None, aperture_radius=4,
                                          sub_shape=sub_shape, mode='all')
 
-    # test with units and mode='all'
+    # Test with units and mode='all'
     unit = u.Jy
     finderu = DAOStarFinder(0.2 * unit, fwhm=6.0, min_separation=0)
     psfphotu = IterativePSFPhotometry(psf_model, fit_shape, finder=finderu,
@@ -280,7 +282,7 @@ def test_iterative_psf_photometry_mode_all():
         assert phot2[col].unit == unit
         assert_allclose(phot2[col].value, phot[col])
 
-    # test NDData with units
+    # Test NDData with units
     nddata = NDData(data * unit)
     phot3 = psfphotu(nddata)
     colnames = ('flux_init', 'flux_fit', 'flux_err', 'local_bkg')
@@ -290,6 +292,130 @@ def test_iterative_psf_photometry_mode_all():
     resid_nddata = psfphotu.make_residual_image(nddata, psf_shape=fit_shape)
     assert isinstance(resid_nddata, NDData)
     assert resid_nddata.unit == unit
+
+
+def make_one_shot_finder(x, y):
+    """
+    Make a mock finder that detects one source on the first call and
+    nothing on subsequent calls.
+    """
+    state = {'called': False}
+
+    def finder(data, *, mask=None):  # noqa: ARG001
+        if state['called']:
+            return None
+        state['called'] = True
+        tbl = QTable()
+        tbl['x'] = [x]
+        tbl['y'] = [y]
+        return tbl
+
+    return finder
+
+
+def test_mode_all_invalid_source():
+    """
+    Regression test for mode='all' when an earlier iteration
+    produced a non-finite fit (the invalid row is dropped and
+    iter_detected must stay aligned).
+    """
+    sources = QTable()
+    sources['x_0'] = [30.0, 70.0, 50.0]
+    sources['y_0'] = [30.0, 70.0, 50.0]
+    sources['flux'] = [500.0, 300.0, 200.0]
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    data = make_model_image((101, 101), psf_model, sources,
+                            model_shape=(9, 9))
+    init_params = QTable()
+    init_params['x'] = [30.0, 70.0, 1000.0]
+    init_params['y'] = [30.0, 70.0, 1000.0]
+    psfphot = IterativePSFPhotometry(
+        psf_model, (5, 5), finder=make_one_shot_finder(50.0, 50.0),
+        grouper=SourceGrouper(min_separation=5), aperture_radius=4,
+        mode='all', maxiters=2, sub_shape=(5, 5))
+    phot = psfphot(data, init_params=init_params)
+    assert len(phot) == 3
+    assert 'iter_detected' in phot.colnames
+    assert_equal(phot['iter_detected'], [1, 1, 2])
+    assert_allclose(phot['flux_fit'], [500.0, 300.0, 200.0],
+                    rtol=0.01)
+
+
+def test_mode_all_carries_local_bkg():
+    """
+    Regression test that user-supplied local_bkg persists across
+    mode='all' iterations.
+    """
+    sources = QTable()
+    sources['x_0'] = [30.0, 70.0, 50.0]
+    sources['y_0'] = [30.0, 70.0, 50.0]
+    sources['flux'] = [500.0, 300.0, 200.0]
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    data = make_model_image((101, 101), psf_model, sources,
+                            model_shape=(9, 9)) + 5.0
+
+    init_params = QTable()
+    init_params['x'] = [30.0, 70.0]
+    init_params['y'] = [30.0, 70.0]
+    init_params['local_bkg'] = [5.0, 5.0]
+    psfphot = IterativePSFPhotometry(
+        psf_model, (5, 5), finder=make_one_shot_finder(50.0, 50.0),
+        grouper=SourceGrouper(min_separation=5), aperture_radius=4,
+        mode='all', maxiters=3, sub_shape=(5, 5))
+    phot = psfphot(data, init_params=init_params)
+    assert_allclose(phot['local_bkg'][:2], [5.0, 5.0])
+    assert_allclose(phot['flux_fit'][:2], [500.0, 300.0], rtol=0.01)
+
+
+def test_image_methods_after_no_detections(test_data):
+    """
+    Regression test that the image methods raise a clear error after
+    a run in which no sources were detected.
+    """
+    data, _, _ = test_data
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    finder = DAOStarFinder(1e6, 2.0)
+    psfphot = IterativePSFPhotometry(psf_model, (5, 5), finder=finder,
+                                     aperture_radius=4)
+    with pytest.warns(NoDetectionsWarning):
+        result = psfphot(data)
+    assert result is None
+
+    match = 'No results available'
+    with pytest.raises(ValueError, match=match):
+        psfphot.make_model_image((25, 25))
+    with pytest.raises(ValueError, match=match):
+        psfphot.make_residual_image(data)
+
+
+def test_empty_finder_table_stops_iteration():
+    """
+    Regression test that a callable finder returning a zero-row table
+    stops the iteration cleanly.
+    """
+    sources = QTable()
+    sources['x_0'] = [30.0, 70.0]
+    sources['y_0'] = [30.0, 70.0]
+    sources['flux'] = [500.0, 300.0]
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    data = make_model_image((101, 101), psf_model, sources,
+                            model_shape=(9, 9))
+
+    def finder(data, *, mask=None):  # noqa: ARG001
+        tbl = QTable()
+        tbl['x'] = np.array([], dtype=float)
+        tbl['y'] = np.array([], dtype=float)
+        return tbl
+
+    init_params = QTable()
+    init_params['x'] = [30.0, 70.0]
+    init_params['y'] = [30.0, 70.0]
+    psfphot = IterativePSFPhotometry(psf_model, (5, 5), finder=finder,
+                                     aperture_radius=4, maxiters=3,
+                                     sub_shape=(5, 5))
+    phot = psfphot(data, init_params=init_params)
+    assert len(phot) == 2
+    assert_equal(phot['iter_detected'], [1, 1])
 
 
 def test_iterative_methods(test_data):
@@ -410,10 +536,28 @@ def test_iterative_psf_photometry_inputs():
         _ = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                    aperture_radius=4, maxiters=[1, 2])
 
+    match = 'maxiters must be a strictly-positive scalar'
+    with pytest.raises(ValueError, match=match):
+        _ = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                   aperture_radius=4, maxiters='3')
+    with pytest.raises(ValueError, match=match):
+        _ = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                   aperture_radius=4, maxiters=True)
+
     match = 'maxiters must be an integer'
     with pytest.raises(ValueError, match=match):
         _ = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                    aperture_radius=4, maxiters=3.14)
+
+    psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                     aperture_radius=4, maxiters=3.0)
+    assert psfphot.maxiters == 3
+    assert isinstance(psfphot.maxiters, int)
+
+    match = 'sub_shape must have an odd value for both axes'
+    with pytest.raises(ValueError, match=match):
+        _ = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                   aperture_radius=4, sub_shape=4)
 
 
 @pytest.mark.parametrize(('x_col', 'y_col'), FINDER_COLUMN_NAMES)
@@ -437,7 +581,7 @@ def test_iterative_finder_column_names(x_col, y_col):
     psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
                                      aperture_radius=10, maxiters=3)
 
-    # invalid column names should raise an error
+    # Invalid column names should raise an error
     if x_col == 'x_invalid' or y_col == 'y_invalid':
         match = 'must contain columns for x and y coordinates'
         with pytest.raises(ValueError, match=match):
@@ -446,6 +590,8 @@ def test_iterative_finder_column_names(x_col, y_col):
 
     phot_tbl = psfphot(data)
 
+    assert len(phot_tbl) == 3
+    assert_equal(phot_tbl['iter_detected'], [1, 2, 3])
     assert_allclose(phot_tbl['x_init'][0], 25.1)
     assert_allclose(phot_tbl['y_init'][0], 24.9)
     assert_allclose(phot_tbl['x_fit'][0], 25.0, atol=1e-6)
@@ -462,6 +608,7 @@ def test_repr():
                                      aperture_radius=10)
     cls_repr = repr(psfphot)
     assert cls_repr.startswith(f'{psfphot.__class__.__name__}(')
+    assert 'group_warning_threshold' in cls_repr
 
 
 def test_move_column():
@@ -481,6 +628,33 @@ def test_move_column():
     assert tbl2.colnames == ['a', 'b', 'c']
     tbl3 = psfphot._move_column(tbl, 'b', 'b')
     assert tbl3.colnames == ['a', 'b', 'c']
+
+
+def test_iterative_deprecated_shims(test_data):
+    """
+    Test the deprecated keyword and positional-argument shims.
+    """
+    data, error, _ = test_data
+    model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    finder = DAOStarFinder(6.0, 2.0)
+
+    match = "'localbkg_estimator' was deprecated in version 3.0"
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        psfphot = IterativePSFPhotometry(model, (5, 5), finder=finder,
+                                         aperture_radius=4,
+                                         localbkg_estimator=None)
+    psfphot(data, error=error)
+
+    match = "'include_localbkg' was deprecated in version 3.0"
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        psfphot.make_model_image((25, 25), include_localbkg=False)
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        psfphot.make_residual_image(data, include_localbkg=False)
+
+    match = ("Passing 'return_bit_values' positionally to "
+             "'decode_flags' is deprecated")
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        psfphot.decode_flags(True)  # noqa: FBT003
 
 
 def test_iterative_model_residual_image_nonfinite_localbkg(test_data):
@@ -523,8 +697,8 @@ def test_iterative_model_residual_image_nonfinite_localbkg(test_data):
     assert np.all(np.isfinite(model_without_bkg))
 
     # For sources with non-finite local_bkg, the model with and without
-    # local_bkg should be identical (since non-finite is treated as 0)
-    # Check this by comparing the models at source positions
+    # local_bkg should be identical (since non-finite is treated as 0).
+    # Check this by comparing the models at source positions.
     for i in range(min(3, len(phot))):
         if not np.isfinite(phot['local_bkg'][i]):
             x_fit = int(phot['x_fit'][i])
@@ -580,7 +754,7 @@ def test_decode_flags():
     m1 = CircularGaussianPRF(flux=100, x_0=10, y_0=10, fwhm=2)
     # Source 2: negative flux (will have negative_flux flag)
     m2 = CircularGaussianPRF(flux=-50, x_0=5, y_0=5, fwhm=2)
-    # Source 3: outside bounds (will have outside_bounds flag)
+    # Source 3: outside the image (will have the no_overlap flag)
     m3 = CircularGaussianPRF(flux=100, x_0=25, y_0=25, fwhm=2)
 
     data = m1(xx, yy) + m2(xx, yy) + m3(xx, yy)
@@ -623,13 +797,12 @@ def test_decode_flags():
     # Check that the second source has the negative_flux flag
     assert 'negative_flux' in decoded_flags[1]
 
-    # Check that the third source has flags (it's outside the image bounds)
-    # It should have 'no_overlap' since it's completely outside
+    # Check that the third source has flags (it's outside the image
+    # bounds). It should have 'no_overlap' since it's completely outside.
     assert len(decoded_flags[2]) > 0
     assert 'no_overlap' in decoded_flags[2]
 
     # Verify that decode_flags gives the same result as calling
     # decode_psf_flags directly
-    from photutils.psf.flags import decode_psf_flags
     direct_decoded = decode_psf_flags(results['flags'])
     assert decoded_flags == direct_decoded

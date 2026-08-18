@@ -440,6 +440,63 @@ Bug Fixes
     with the first-iteration flux instead of the updated fitted flux.
     [#2386]
 
+- ``photutils.psf``
+
+  - Fixed a bug where the ``n_pixels_fit`` results column leaked
+    into the tables returned by the ``PSFPhotometry``
+    ``results_to_init_params`` and ``results_to_model_params``
+    methods (as ``n_pixels_init`` and ``n_pixels`` columns) and into
+    the deprecated ``fit_params`` table. [#2387]
+
+  - ``PSFPhotometry`` now raises a ``ValueError`` if the
+    ``init_params`` table contains duplicate ``id`` values.
+    Previously, duplicate ids silently produced a results table with
+    extra mispaired rows. [#2387]
+
+  - Fixed a bug where ``PSFPhotometry.finder_results`` retained the
+    results from a previous call when a subsequent call provided
+    ``init_params`` (so the finder was not used). [#2387]
+
+  - ``PSFPhotometry`` now raises a ``ValueError`` if the
+    ``init_params`` table has no rows. [#2387]
+
+  - Fixed a bug where the ``PSFPhotometry`` ``fit_info`` list was
+    not reordered to match the results table when the ``init_params``
+    table was not sorted by the ``id`` column. [#2387]
+
+  - Fixed a bug where the ``reduced_chi2`` calculation emitted a
+    divide-by-zero warning when the number of fit pixels equaled the
+    number of fit parameters. NaN is now returned without a warning
+    when there are no degrees of freedom. [#2387]
+
+  - The ``PSFPhotometry`` ``group_warning_threshold`` keyword is now
+    validated to be a positive integer. [#2387]
+
+  - Fixed a bug where ``IterativePSFPhotometry`` with ``mode='all'``
+    raised an error when an earlier iteration produced a source with
+    non-finite fit results. Such sources are now dropped from later
+    iterations. [#2387]
+
+  - Fixed a bug where ``IterativePSFPhotometry`` with ``mode='all'``
+    did not carry the local background values into iterations after
+    the first, so sources were refit with a local background of
+    zero. [#2387]
+
+  - Fixed a bug where a callable ``finder`` returning a zero-row
+    table caused an error in ``IterativePSFPhotometry``. The
+    iteration now stops cleanly. [#2387]
+
+  - Fixed a bug where the ``IterativePSFPhotometry``
+    ``make_model_image`` and ``make_residual_image`` methods raised a
+    confusing error after a run in which no sources were detected.
+    They now raise a clear ``ValueError``. [#2387]
+
+  - The ``IterativePSFPhotometry`` ``sub_shape`` keyword is now
+    validated at initialization to have odd, positive values,
+    matching the documented requirement. The ``maxiters`` keyword
+    validation now also rejects non-numeric and boolean inputs.
+    [#2387]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range
