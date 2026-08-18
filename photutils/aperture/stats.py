@@ -131,26 +131,6 @@ _SCALAR_EXCLUDE = frozenset({'default_columns', 'isscalar', 'labels',
                              'segmentation_image'})
 
 
-class _UncachedProperty(cached_property):
-    """
-    A property that is discovered as a source property (like
-    `functools.cached_property`) but is recomputed on every access
-    instead of being cached.
-
-    This is used for `ApertureStats.flags`, whose value can change
-    over the object's lifetime. It reflects whether covariance-derived
-    properties have been computed (see `ApertureStats.flags`). Caching
-    would freeze the first-computed value, so the getter runs on every
-    access. Subclassing `functools.cached_property` keeps it in the
-    `ApertureStats.properties` list and the ``to_table`` machinery.
-    """
-
-    def __get__(self, obj, owner=None):
-        if obj is None:
-            return self
-        return self.func(obj)
-
-
 @_update_method_subpixels_docstring
 class ApertureStats:
     # numpydoc ignore: PR01,PR02,PR04,PR07
@@ -308,11 +288,9 @@ class ApertureStats:
     of ``sum_method``. The default is ``sum_method='exact'``, which
     produces exact aperture-weighted photometry.
 
-    The sum-related properties have their own separate `sum_flags`
-    quality flags, distinct from the `flags` property used by all
-    other properties. To check for any quality issue across both
-    footprints, combine the two flag columns with a bitwise OR, e.g.,
-    ``aperstats.flags | aperstats.sum_flags``.
+    The `flags` property reports quality conditions from both the
+    "center"-method footprint and the ``sum_method`` footprint (see the
+    `flags` docstring for the per-bit details).
 
     The calculated statistics are always float64, regardless of the
     input ``data`` dtype (`~astropy.units.Quantity` values with float64
@@ -358,8 +336,7 @@ class ApertureStats:
     # footprint (set by the ``sum_method``/``subpixels`` keywords).
     # All other properties use the "center" aperture-mask method.
     SUM_FOOTPRINT_PROPERTIES = ('sum', 'sum_err', 'sum_aper_area',
-                                'data_sum_cutout', 'error_sum_cutout',
-                                'sum_flags')
+                                'data_sum_cutout', 'error_sum_cutout')
 
     # Cached properties that are not per-source sliceable: the packed
     # gather buffers and their reductions. ``__getitem__`` drops these
@@ -451,11 +428,11 @@ class ApertureStats:
         self._ids = np.arange(self.n_positions) + 1
         self.default_columns = ['id', 'x_centroid', 'y_centroid',
                                 'sky_centroid', 'sum', 'sum_err',
-                                'sum_aper_area', 'sum_flags',
-                                'center_aper_area', 'min', 'max', 'mean',
-                                'median', 'mode', 'std', 'mad_std', 'var',
-                                'biweight_location', 'biweight_midvariance',
-                                'fwhm', 'semimajor_axis', 'semiminor_axis',
+                                'sum_aper_area', 'center_aper_area',
+                                'min', 'max', 'mean', 'median', 'mode',
+                                'std', 'mad_std', 'var', 'biweight_location',
+                                'biweight_midvariance', 'fwhm',
+                                'semimajor_axis', 'semiminor_axis',
                                 'orientation', 'eccentricity', 'flags']
 
         self.meta = _get_meta()
@@ -827,35 +804,19 @@ class ApertureStats:
 
         tbl.meta.update(self.meta)  # keep tbl.meta type
 
-        # Evaluate the flag columns last (while preserving the
-        # requested column order in the output table). The ``flags``
-        # column reports the ``'singular_covariance'`` bit only if a
-        # covariance-derived shape property has already been computed
-        # (see `flags`). Evaluating the flag columns after all other
-        # columns ensures that any shape columns present in the same
-        # table are computed first, so the table's ``flags`` column
-        # consistently reflects the other columns it is shown alongside.
-        flag_columns = {'flags', 'sum_flags'}
-        eval_order = ([col for col in table_columns
-                       if col not in flag_columns]
-                      + [col for col in table_columns if col in flag_columns])
-        values_map = {}
-        for column in eval_order:
+        for column in table_columns:
             values = getattr(self, column)
 
             # Column assignment requires an object with a length
             if self.isscalar:
                 values = (values,)
 
-            values_map[column] = values
-
-        for column in table_columns:
             # Use the canonical (non-deprecated) column name so that
             # assigning into ``tbl`` does not trigger a second,
             # redundant deprecation warning (the deprecated attribute
             # access above already warned once).
             canonical_column = _DEPRECATED_ATTRIBUTES.get(column, column)
-            tbl[canonical_column] = values_map[column]
+            tbl[canonical_column] = values
         return tbl
 
     @cached_property
@@ -2063,16 +2024,15 @@ class ApertureStats:
         """
         The count-based value-statistics flag bits (1D int array).
 
-        These are the flag bits that do not depend on any lazily
-        computed moment or covariance property: the "center"-method
-        footprint bits plus the sigma-clip and ``ddof`` bits. The
-        ``undefined_shape`` and ``singular_covariance`` bits are
-        folded in by the `flags` property only if a moment-derived or
-        covariance-derived property, respectively, has been computed.
+        These are the "center"-method footprint bits plus the sigma-clip
+        and ``ddof`` bits. The `flags` property combines them with the
+        ``sum_method`` footprint bits and the ``undefined_shape`` and
+        ``singular_covariance`` bits.
         """
         # The gather kernel and the center-method cutouts do not
-        # evaluate error values, so the non-finite-error bit is defined
-        # by the sum footprint only (see `sum_flags`).
+        # evaluate error values, so the non-finite-error bit is stripped
+        # here. `flags` picks it up from the sum footprint, the only
+        # footprint where error values are evaluated.
         flags = (self._footprint_flags('center')
                  & ~APERTURE_FLAGS.NON_FINITE_ERROR)
 
@@ -2150,91 +2110,50 @@ class ApertureStats:
         finite = np.isfinite(covar_det) & np.isfinite(min_eigval)
         return finite & ((covar_det < delta**2) | (min_eigval < delta))
 
-    @_UncachedProperty
+    @cached_property
     @_update_method_subpixels_docstring
     def flags(self):
         # numpydoc ignore: RT01
         """
-        The bitwise quality flags for the value statistics.
+        The bitwise quality flags.
 
-        The flags are evaluated on the "center"-method footprint used
-        by the value statistics (e.g., ``mean``, ``median``, ``std``).
-        The sum properties (``sum``, ``sum_err``, and ``sum_aper_area``)
-        have their own separate `sum_flags`. The ``'sigma_clipped'``,
+        The footprint-based flags (e.g., ``'masked_pixels'``,
+        ``'non_finite_data'``, and the overlap flags) are evaluated
+        on the union of the "center"-method footprint used by the
+        value statistics and the ``sum_method`` footprint used by the
+        sum properties. The ``'non_finite_error'`` flag is evaluated
+        on the ``sum_method`` footprint. The ``'sigma_clipped'``,
         ``'all_clipped'``, and ``'too_few_pixels'`` flags are evaluated
-        on this footprint. To check for any quality issue across both
-        footprints, combine the two flag columns with a bitwise OR
-        (e.g., ``flags | sum_flags``).
-
-        The ``'undefined_shape'`` and ``'singular_covariance'`` bits
-        are special. They report conditions that are only knowable
-        once a moment-derived property (e.g., ``centroid``) or a
-        covariance-derived shape property (e.g., ``semimajor_axis``,
-        ``orientation``, ``eccentricity``) has been computed. To avoid
-        forcing those computations, each bit is included only if such a
-        property has already been evaluated on this object. Otherwise
-        it is omitted. This means the value of ``flags`` reflects the
-        measurements requested so far, so accessing a shape property and
-        then re-reading ``flags`` may set additional bits. The default
-        `to_table` always evaluates the moment and shape properties, so
-        its ``flags`` column always reflects both bits.
+        on the value-statistics footprint. The ``'undefined_shape'`` and
+        ``'singular_covariance'`` flags are always evaluated. Accessing
+        ``flags`` computes the moment and covariance properties if they
+        have not already been computed (the results are cached and
+        shared with the corresponding shape properties).
 
         See `~photutils.aperture.decode_aperture_flags` for decoding
         flag values. The flags are:
 
         <flag_descriptions>
         """
-        # A fresh array is returned on every access (never mutating the
-        # cached `_base_flags`), so concurrent readers and previously
-        # returned arrays are never modified in place.
-        flags = self._base_flags.copy()
-        if 'moments' in self.__dict__:
-            flags[self._undefined_shape_mask] |= (
-                APERTURE_FLAGS.UNDEFINED_SHAPE)
-        if '_covariance' in self.__dict__:
-            flags[self._singular_covariance_mask] |= (
-                APERTURE_FLAGS.SINGULAR_COVARIANCE)
+        # The | allocates a new array, so the in-place |= below never
+        # mutates the cached `_base_flags`
+        flags = self._base_flags | self._footprint_flags('sum')
+        flags[self._undefined_shape_mask] |= (
+            APERTURE_FLAGS.UNDEFINED_SHAPE)
+        flags[self._singular_covariance_mask] |= (
+            APERTURE_FLAGS.SINGULAR_COVARIANCE)
         return flags
 
-    @cached_property
-    @_update_method_subpixels_docstring
-    def sum_flags(self):
-        # numpydoc ignore: RT01
-        """
-        The bitwise quality flags for the sum properties.
-
-        The flags are evaluated on the ``sum_method`` footprint
-        used by the sum properties (``sum``, ``sum_err``, and
-        ``sum_aper_area``). The value statistics have their own separate
-        `flags`. The ``'non_finite_error'`` flag is evaluated on this
-        footprint. The ``'sigma_clipped'``, ``'all_clipped'``, and
-        ``'too_few_pixels'`` flags apply only to the value statistics
-        and are never set here. To check for any quality issue across
-        both footprints, combine the two flag columns with a bitwise OR
-        (e.g., ``flags | sum_flags``).
-
-        See `~photutils.aperture.decode_aperture_flags` for decoding
-        flag values. The flags are:
-
-        <flag_descriptions>
-        """
-        return self._footprint_flags('sum')
-
-    def decode_flags(self, *, column='flags', return_bit_values=False):
+    def decode_flags(self, *, return_bit_values=False):
         """
         Decode the source quality flags into individual components.
 
         This is a convenience method that calls
-        `~photutils.aperture.decode_aperture_flags` with the `flags` or
-        `sum_flags` property.
+        `~photutils.aperture.decode_aperture_flags` with the `flags`
+        property.
 
         Parameters
         ----------
-        column : {'flags', 'sum_flags'}, optional
-            Which quality flags to decode: ``'flags'`` for the value
-            statistics (default) or ``'sum_flags'`` for the sum
-            properties.
-
         return_bit_values : bool, optional
             If `True`, return the decoded bit flags (integers) instead
             of the flag names (strings).
@@ -2263,11 +2182,7 @@ class ApertureStats:
         ['masked_pixels']
         ['partial_overlap']
         """
-        if column not in ('flags', 'sum_flags'):
-            msg = "column must be 'flags' or 'sum_flags'"
-            raise ValueError(msg)
-
-        return decode_aperture_flags(self._array(column),
+        return decode_aperture_flags(self._array('flags'),
                                      return_bit_values=return_bit_values)
 
     def _get_values(self, array):

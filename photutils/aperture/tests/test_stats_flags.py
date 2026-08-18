@@ -145,24 +145,21 @@ class TestMaskedAndNonFiniteFlags:
             APERTURE_FLAGS.MASKED_PIXELS | APERTURE_FLAGS.ALL_MASKED)
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_sum_footprint_only(self, unit_data, unit_mask):
+    def test_sum_footprint_masked(self, unit_data, unit_mask):
         """
         Test that a masked boundary pixel touched only by the exact-method
         sum footprint (its center lies exactly on the aperture boundary)
-        sets masked_pixels in sum_flags but not in the value-statistics
-        flags.
+        sets masked_pixels in the merged flags.
         """
         data = unit_data
         aper = CircularAperture((12, 12), r=3.0)
         mask = unit_mask
         mask[15, 12] = True  # center at distance exactly 3.0 (boundary)
         stats = ApertureStats(data, aper, mask=mask)
-        assert stats.sum_flags == APERTURE_FLAGS.MASKED_PIXELS
-        # The pixel is excluded from the center (value-statistics) footprint
-        assert stats.flags == 0
+        assert stats.flags == APERTURE_FLAGS.MASKED_PIXELS
+        # With sum_method='center' both footprints exclude the pixel
         stats = ApertureStats(data, aper, mask=mask, sum_method='center')
         assert stats.flags == 0
-        assert stats.sum_flags == 0
 
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_non_finite_data(self, unit_mask):
@@ -202,11 +199,8 @@ class TestMaskedAndNonFiniteFlags:
         error[12, 12] = np.nan
         aper = CircularAperture((12, 12), r=3.0)
         stats = ApertureStats(data, aper, error=error)
-        # non_finite_error is a sum-footprint flag, not a value-statistics
-        # flag, so it appears in sum_flags but not flags
-        assert stats.sum_flags == APERTURE_FLAGS.NON_FINITE_ERROR
-        assert stats.flags == 0
-        assert ApertureStats(data, aper).sum_flags == 0
+        assert stats.flags == APERTURE_FLAGS.NON_FINITE_ERROR
+        assert ApertureStats(data, aper).flags == 0
 
 
 class TestSigmaClipFlags:
@@ -227,12 +221,10 @@ class TestSigmaClipFlags:
         flags = _stats_flags(data, aper, sigma_clip=sigclip)
         assert flags == APERTURE_FLAGS.SIGMA_CLIPPED
 
-        # Sigma-clip flags apply only to the value statistics, not sum_flags
-        stats = ApertureStats(data, aper, sigma_clip=sigclip)
-        assert not stats.sum_flags & APERTURE_FLAGS.SIGMA_CLIPPED
-
-        # Without clipping, no flag is set
-        assert _stats_flags(data, aper) == 0
+        # Without clipping, the sigma_clipped flag is not set. The
+        # unclipped outlier dominates the moments, making the source
+        # point-like, so the singular_covariance bit is set instead.
+        assert _stats_flags(data, aper) == APERTURE_FLAGS.SINGULAR_COVARIANCE
 
     def test_all_clipped(self, unit_data):
         """
@@ -343,7 +335,6 @@ class TestMaskPathParity:
                 slow = ApertureStats(data, aper, **kwargs)
                 assert slow._batch_inputs is None
                 assert_array_equal(fast.flags, slow.flags)
-                assert_array_equal(fast.sum_flags, slow.sum_flags)
 
 
 class TestFlagsAPI:
@@ -360,13 +351,31 @@ class TestFlagsAPI:
         aper = CircularAperture([(12, 12), (-50, 12)], r=3.0)
         stats = ApertureStats(data, aper)
         assert 'flags' in stats.properties
-        assert 'sum_flags' in stats.properties
+        assert 'sum_flags' not in stats.properties
         tbl = stats.to_table()
         assert 'flags' in tbl.colnames
-        assert 'sum_flags' in tbl.colnames
+        assert 'sum_flags' not in tbl.colnames
         expected = [0, APERTURE_FLAGS.NO_OVERLAP | APERTURE_FLAGS.NO_PIXELS]
         assert_array_equal(tbl['flags'], expected)
-        assert_array_equal(tbl['sum_flags'], expected)
+
+    def test_flags_deterministic(self, unit_data, unit_mask):
+        """
+        Test that flags is stable regardless of property access order
+        and includes the shape bits without prior shape access.
+        """
+        data = unit_data.copy()
+        data[12, 12] = -100.0  # non-positive net flux for source 1
+        mask = unit_mask
+        mask[18, 18] = True
+        aper = CircularAperture([(12.0, 12.0), (18.0, 18.0)], r=3.0)
+        stats = ApertureStats(data, aper, mask=mask)
+        flags1 = stats.flags.copy()
+        assert (flags1[0] & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
+        assert (flags1[1] & APERTURE_FLAGS.MASKED_PIXELS) != 0
+        _ = stats.semimajor_axis
+        _ = stats.eccentricity
+        _ = stats.sum
+        assert_array_equal(stats.flags, flags1)
 
     def test_flags_slicing(self, unit_data, unit_mask):
         """
@@ -401,65 +410,48 @@ class TestFlagsAPI:
         assert decoded == [[APERTURE_FLAGS.MASKED_PIXELS],
                            [APERTURE_FLAGS.PARTIAL_OVERLAP]]
 
-        # Decode the sum flags via the column keyword
-        decoded = stats.decode_flags(column='sum_flags')
-        assert decoded == [['masked_pixels'], ['partial_overlap']]
-
-        match = "column must be 'flags' or 'sum_flags'"
-        with pytest.raises(ValueError, match=match):
-            stats.decode_flags(column='invalid')
-
         # Scalar ApertureStats also returns a list of lists
         stats = ApertureStats(data, CircularAperture((0.0, 12.0), r=3.0))
         assert stats.decode_flags() == [['partial_overlap']]
-        assert stats.decode_flags(column='sum_flags') == [['partial_overlap']]
+
+    def test_decode_flags_no_column_keyword(self, unit_data):
+        """
+        Test that decode_flags no longer accepts a column keyword.
+        """
+        data = unit_data
+        aper = CircularAperture((12.0, 12.0), r=3.0)
+        stats = ApertureStats(data, aper)
+        match = 'unexpected keyword'
+        with pytest.raises(TypeError, match=match):
+            stats.decode_flags(column='flags')
+        assert stats.decode_flags() == [[]]
 
     def test_flags_docstring(self):
         """
         Test that the flags docstring placeholder was substituted.
         """
-        for prop in (ApertureStats.flags, ApertureStats.sum_flags):
-            docstring = prop.__doc__
-            assert '<flag_descriptions>' not in docstring
-            assert "**1** (``'no_overlap'``)" in docstring
+        docstring = ApertureStats.flags.__doc__
+        assert '<flag_descriptions>' not in docstring
+        assert "**1** (``'no_overlap'``)" in docstring
 
 
 class TestSingularCovariance:
     """
-    Tests for the singular_covariance flag, which is set only once a
-    covariance-derived shape property has been computed.
+    Tests for the singular_covariance flag, which is always evaluated
+    by the flags property.
     """
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_requires_shape(self):
+    def test_set_without_shape_access(self):
         """
-        Test that the singular_covariance bit is not set until a
-        covariance-derived property is accessed.
+        Test that the singular_covariance bit is set without any prior
+        covariance-derived property access.
         """
         data = _single_pixel_data()
         aper = CircularAperture((12.0, 12.0), r=5.0)
         stats = ApertureStats(data, aper)
-
-        # Not set before any covariance-derived property is accessed
-        assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) == 0
-        assert 'singular_covariance' not in stats.decode_flags()[0]
-
-        # Accessing a shape property makes a reread include the bit
-        _ = stats.semimajor_axis
         assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
         assert 'singular_covariance' in stats.decode_flags()[0]
-
-    @pytest.mark.usefixtures('maybe_mask_path')
-    def test_triggered_by_covariance(self):
-        """
-        Test that the singular_covariance bit is set when the covariance
-        matrix is computed, even if no shape properties are accessed.
-        """
-        data = _single_pixel_data()
-        aper = CircularAperture((12.0, 12.0), r=5.0)
-        stats = ApertureStats(data, aper)
-        _ = stats.covariance
-        assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
 
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_array_and_guards(self):
@@ -476,7 +468,6 @@ class TestSingularCovariance:
         aper = CircularAperture([(6.0, 6.0), (18.0, 18.0), (-50.0, 12.0)],
                                 r=4.0)
         stats = ApertureStats(data, aper)
-        _ = stats.semimajor_axis  # force the covariance computation
         flags = stats.flags
         covar_flag = APERTURE_FLAGS.SINGULAR_COVARIANCE
         assert (flags[0] & covar_flag) != 0  # singular point source
@@ -494,7 +485,6 @@ class TestSingularCovariance:
         data = 100.0 * np.exp(-((xx - 12)**2 + (yy - 12)**2) / (2 * 3.0**2))
         aper = CircularAperture((12.0, 12.0), r=6.0)
         stats = ApertureStats(data, aper)
-        _ = stats.semimajor_axis
         assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) == 0
 
     @pytest.mark.usefixtures('maybe_mask_path')
@@ -510,31 +500,16 @@ class TestSingularCovariance:
         assert (tbl['flags'][0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_to_table_evaluates_flags_last(self):
+    def test_to_table_flags_only(self):
         """
-        Test that requesting a shape column before 'flags' still yields a
-        flags column that reflects the singular_covariance bit.
-        """
-        data = _single_pixel_data()
-        aper = CircularAperture((12.0, 12.0), r=5.0)
-        stats = ApertureStats(data, aper)
-        columns = ['flags', 'semimajor_axis']
-        tbl = stats.to_table(columns=columns)
-        assert tbl.colnames == columns  # check order
-        assert (tbl['flags'][0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
-
-    @pytest.mark.usefixtures('maybe_mask_path')
-    def test_to_table_flags_only_no_singular_bit(self):
-        """
-        Test that requesting only the 'flags' column does not trigger the
-        covariance computation and so does not set the singular_covariance
-        bit.
+        Test that requesting only the 'flags' column reports the
+        singular_covariance bit.
         """
         data = _single_pixel_data()
         aper = CircularAperture((12.0, 12.0), r=5.0)
         stats = ApertureStats(data, aper)
         tbl = stats.to_table(columns=['flags'])
-        assert (tbl['flags'][0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) == 0
+        assert (tbl['flags'][0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
 
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_in_properties(self):
@@ -557,7 +532,6 @@ class TestSingularCovariance:
         data[6, 6] = 100.0
         aper = CircularAperture([(6.0, 6.0), (12.0, 12.0)], r=4.0)
         stats = ApertureStats(data, aper)
-        _ = stats.semimajor_axis
         covar_flag = APERTURE_FLAGS.SINGULAR_COVARIANCE
         assert (stats[0].flags & covar_flag) != 0
         assert (stats[1].flags & covar_flag) != 0
@@ -581,9 +555,6 @@ class TestSingularCovariance:
         assert delta**2 < 0.5 * 0.05  # determinant test alone would miss it
         assert delta > 0.05  # minor-axis variance below the floor
         assert stats._singular_covariance_mask[0]
-
-        # The bit is reflected in flags once a shape property is computed
-        _ = stats.semimajor_axis
         assert (stats.flags[0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
 
     def test_not_positive_semidefinite(self):
@@ -595,37 +566,27 @@ class TestSingularCovariance:
                                                 cov_xy=2.0)
         assert (1.0 * 1.0 - 2.0**2) < 0  # negative determinant
         assert stats._singular_covariance_mask[0]
-
-        _ = stats.semimajor_axis
         assert (stats.flags[0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
 
 
 class TestUndefinedShape:
     """
     Tests for the undefined_shape flag, which marks sources whose net
-    flux is not positive and is set only once a moment-derived property
-    has been computed.
+    flux is not positive and is always evaluated by the flags property.
     """
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_requires_moments(self):
+    def test_set_without_moment_access(self):
         """
-        Test that the undefined_shape bit is not set until a
-        moment-derived property is accessed.
+        Test that the undefined_shape bit is set without any prior
+        moment-derived property access.
         """
         data = np.zeros(UNIT_SHAPE)
         aper = CircularAperture((12.0, 12.0), r=5.0)
         stats = ApertureStats(data, aper)
-
-        # Not set before any moment-derived property is accessed
-        assert (stats.flags & APERTURE_FLAGS.UNDEFINED_SHAPE) == 0
-        assert 'undefined_shape' not in stats.decode_flags()[0]
-
-        # Accessing the centroid makes a reread include the bit
-        _ = stats.centroid
-        assert np.all(np.isnan(stats.centroid))
         assert (stats.flags & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
         assert 'undefined_shape' in stats.decode_flags()[0]
+        assert np.all(np.isnan(stats.centroid))
 
     @pytest.mark.usefixtures('maybe_mask_path')
     @pytest.mark.parametrize('value', [0.0, -1.0])
@@ -637,7 +598,6 @@ class TestUndefinedShape:
         data = np.full(UNIT_SHAPE, value)
         aper = CircularAperture((12.0, 12.0), r=5.0)
         stats = ApertureStats(data, aper)
-        _ = stats.centroid
         assert (stats.flags & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
 
     @pytest.mark.usefixtures('maybe_mask_path')
@@ -648,7 +608,6 @@ class TestUndefinedShape:
         data = np.ones(UNIT_SHAPE)
         aper = CircularAperture((12.0, 12.0), r=5.0)
         stats = ApertureStats(data, aper)
-        _ = stats.centroid
         assert (stats.flags & APERTURE_FLAGS.UNDEFINED_SHAPE) == 0
 
     @pytest.mark.usefixtures('maybe_mask_path')
@@ -666,7 +625,6 @@ class TestUndefinedShape:
         aper = CircularAperture([(6.0, 18.0), (18.0, 18.0), (6.0, 6.0),
                                  (-50.0, 12.0)], r=4.0)
         stats = ApertureStats(data, aper, mask=mask)
-        _ = stats.centroid
         flags = stats.flags
         shape_flag = APERTURE_FLAGS.UNDEFINED_SHAPE
         assert (flags[0] & shape_flag) != 0  # zero-flux source
@@ -689,17 +647,16 @@ class TestUndefinedShape:
         assert (tbl['flags'][0] & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
 
     @pytest.mark.usefixtures('maybe_mask_path')
-    def test_to_table_flags_only_no_shape_bit(self):
+    def test_to_table_flags_only(self):
         """
-        Test that requesting only the 'flags' column does not trigger
-        the moments computation and so does not set the undefined_shape
-        bit.
+        Test that requesting only the 'flags' column reports the
+        undefined_shape bit.
         """
         data = np.zeros(UNIT_SHAPE)
         aper = CircularAperture((12.0, 12.0), r=5.0)
         stats = ApertureStats(data, aper)
         tbl = stats.to_table(columns=['flags'])
-        assert (tbl['flags'][0] & APERTURE_FLAGS.UNDEFINED_SHAPE) == 0
+        assert (tbl['flags'][0] & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
 
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_slicing(self):
@@ -711,7 +668,6 @@ class TestUndefinedShape:
         data[18, 18] = 100.0
         aper = CircularAperture([(6.0, 6.0), (18.0, 18.0)], r=4.0)
         stats = ApertureStats(data, aper)
-        _ = stats.centroid
         shape_flag = APERTURE_FLAGS.UNDEFINED_SHAPE
         assert (stats[0].flags & shape_flag) != 0
         assert (stats[1].flags & shape_flag) == 0
@@ -726,7 +682,6 @@ class TestUndefinedShape:
         data[12, 12] = -100.0
         aper = CircularAperture((12.0, 12.0), r=5.0)
         stats = ApertureStats(data, aper)
-        _ = stats.semimajor_axis
         flags = stats.flags
         assert (flags & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
         assert (flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0

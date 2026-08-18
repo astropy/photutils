@@ -159,12 +159,8 @@ class _ApertureFlags(FlagRegistry):
                                   'not positive, so the centroid and '
                                   'the covariance-derived shape '
                                   'properties (e.g., ``centroid``, '
-                                  '``semimajor_axis``, '
-                                  '``orientation``) are undefined or '
-                                  'unreliable. This is a stats-only '
-                                  'flag that is set only when a '
-                                  'moment-derived property has been '
-                                  'computed.'),
+                                  '``semimajor_axis``, ``orientation``)'
+                                  ' are undefined or unreliable.'),
         ),
         FlagDefinition(
             bit_value=8192,
@@ -176,13 +172,10 @@ class _ApertureFlags(FlagRegistry):
                                   '``1/12``, the variance of a uniform '
                                   'distribution across a single pixel), '
                                   'so covariance-derived shape '
-                                  'properties (e.g., '
-                                  '``semimajor_axis``, ``orientation``, '
-                                  '``eccentricity``) are ill-defined '
-                                  'and have been regularized or set to '
-                                  'NaN. This is a stats-only flag that '
-                                  'is set only when a covariance-derived '
-                                  'property has been computed.'),
+                                  'properties (e.g., ``semimajor_axis``, '
+                                  '``orientation``, ``eccentricity``) are '
+                                  'ill-defined and have been regularized '
+                                  'or set to NaN.'),
         ),
     ]
 

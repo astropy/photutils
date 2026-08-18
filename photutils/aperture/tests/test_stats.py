@@ -230,7 +230,7 @@ class TestSumMethod(BaseApertureStatsData):
         for prop in apstats1.properties:
             if prop in scalar_props:
                 continue
-            if 'sum' in prop and prop != 'sum_flags':
+            if 'sum' in prop:
                 # The sum-footprint properties must differ between the
                 # two sum methods
                 equal = True
@@ -310,7 +310,7 @@ class TestMasking(BaseApertureStatsData):
         assert apstats[1].sum_err < self.apstats1[1].sum_err
 
         exclude = ('isscalar', 'n_positions', 'sky_centroid',
-                   'sky_centroid_icrs', 'flags', 'sum_flags')
+                   'sky_centroid_icrs', 'flags')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
             if (prop in exclude or 'bbox' in prop or 'cutout' in prop
@@ -391,7 +391,7 @@ class TestMasking(BaseApertureStatsData):
         assert_equal(apstats._overlap, [True, True, False])
 
         exclude = ('isscalar', 'n_positions', 'sky_centroid',
-                   'sky_centroid_icrs', 'flags', 'sum_flags')
+                   'sky_centroid_icrs', 'flags')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
             if (prop in exclude or 'bbox' in prop or 'cutout' in prop
@@ -1443,7 +1443,7 @@ class TestNThreads:
                   'mask_method': 'mask'}
         stats1 = ApertureStats(data, aper, **kwargs)
         stats2 = ApertureStats(data, aper, n_threads=3, **kwargs)
-        for prop in ('sum', 'mean', 'median', 'flags', 'sum_flags'):
+        for prop in ('sum', 'mean', 'median', 'flags'):
             assert_equal(getattr(stats1, prop), getattr(stats2, prop))
 
     def test_more_threads_than_positions(self):

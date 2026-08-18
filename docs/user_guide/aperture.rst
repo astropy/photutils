@@ -753,28 +753,23 @@ method::
     ['partial_overlap']
     ['no_overlap', 'no_pixels']
 
-For `~photutils.aperture.ApertureStats`, the value statistics
-and the sum properties are measured on two different
-footprints, so they have separate flag columns. The
-:attr:`~photutils.aperture.ApertureStats.flags` property reports the
-flags for the value statistics (e.g., ``mean``, ``median``, ``std``),
-evaluated on the ``'center'``-method footprint, and includes the
-``'sigma_clipped'``, ``'all_clipped'``, and ``'too_few_pixels'`` flags.
-The :attr:`~photutils.aperture.ApertureStats.sum_flags` property
-reports the flags for the sum properties (``sum``, ``sum_err``, and
-``sum_aper_area``), evaluated on the ``sum_method`` footprint, and
-includes the ``'non_finite_error'`` flag. Only ``flags`` reports whether
-clipping occurred (via the ``'sigma_clipped'``, ``'all_clipped'``, and
-``'too_few_pixels'`` bits). ``sum_flags`` never sets those bits, even
-though the sum-related properties are computed from the sigma-clipped
-``sum_method`` footprint.
-
-Both columns are included in the default ``to_table()``
-output, and either can be decoded by passing
-``column='flags'`` (the default) or ``column='sum_flags'`` to
-:meth:`~photutils.aperture.ApertureStats.decode_flags`. To check for
-any quality issue across both footprints, combine the two flag columns
-with a bitwise OR, e.g., ``aperstats.flags | aperstats.sum_flags``.
+For `~photutils.aperture.ApertureStats`, the value statistics and
+the sum properties are measured on two different footprints, and
+the single :attr:`~photutils.aperture.ApertureStats.flags` property
+reports the quality conditions from both. The footprint-based flags
+(e.g., ``'masked_pixels'``, ``'non_finite_data'``, and the overlap
+flags) are evaluated on the union of the ``'center'``-method footprint
+used by the value statistics (e.g., ``mean``, ``median``, ``std``)
+and the ``sum_method`` footprint used by the sum properties (``sum``,
+``sum_err``, and ``sum_aper_area``). The ``'non_finite_error'``
+flag is evaluated on the ``sum_method`` footprint, while the
+``'sigma_clipped'``, ``'all_clipped'``, and ``'too_few_pixels'``
+flags are evaluated on the value-statistics footprint. The
+``'undefined_shape'`` and ``'singular_covariance'`` flags are always
+evaluated. Accessing ``flags`` computes the sum, moment, and covariance
+quantities if they have not already been computed (the results are
+cached and shared with the corresponding properties), so the flag values
+never depend on which properties were accessed first.
 
 Because non-finite values are automatically masked in
 both :class:`~photutils.aperture.AperturePhotometry` and
@@ -844,7 +839,7 @@ annulus aperture to estimate the local background level. Sigma clipping
 is applied independently on the "center" and ``sum_method`` footprints
 described above, so the sum-related properties are also computed from
 sigma-clipped data; see :ref:`aperture_flags` for how this affects the
-``flags`` and ``sum_flags`` properties.
+``flags`` property.
 
 Here is a simple example using a circular aperture at one position.
 Note that like :class:`~photutils.aperture.AperturePhotometry`,
