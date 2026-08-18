@@ -183,9 +183,24 @@ class TestPSFDataProcessor:
         processor.data_unit = u.count
 
         init_params = Table({'flux_init': [100.0, 200.0]})
-        match_str = 'input data has units.*does not have units'
+        match_str = 'must be a Quantity column'
         with pytest.raises(ValueError, match=match_str):
             processor.normalize_init_units(init_params, 'flux_init')
+
+    def test_normalize_init_units_column_with_unit(self, param_mapper):
+        """
+        Regression test that a plain Table column carrying a unit
+        attribute is converted to the data unit instead of raising an
+        error claiming the column has no units.
+        """
+        processor = PSFDataProcessor(param_mapper, (7, 7))
+        processor.data_unit = u.Jy
+
+        init_params = Table({'flux_init': [1000.0, 2000.0]})
+        init_params['flux_init'].unit = u.mJy
+        result = processor.normalize_init_units(init_params,
+                                                'flux_init')
+        assert_equal(np.asarray(result['flux_init']), [1.0, 2.0])
 
     def test_normalize_init_units_init_has_units_data_does_not(
             self, param_mapper):
@@ -417,6 +432,51 @@ class TestPSFFitter:
         assert model.flux_1.value == 200.0
         assert model.x_0_1.value == 20.0
         assert model.y_0_1.value == 25.0
+
+    def test_make_psf_model_no_stale_class_cache(self):
+        """
+        Regression test that flat-model classes are not shared
+        between PSFFitter instances with different PSF models of the
+        same class.
+        """
+        sources = Table({
+            'id': [1, 2],
+            'x_init': [10.0, 20.0],
+            'y_init': [15.0, 25.0],
+            'flux_init': [100.0, 200.0],
+            'fwhm_init': [2.7, 2.7],
+        })
+
+        psf_model1 = CircularGaussianPRF(flux=1, fwhm=2.7)
+        fitter1 = PSFFitter(psf_model1, _PSFParameterMapper(psf_model1))
+        flat_model1 = fitter1.make_psf_model(sources)
+        assert flat_model1.fwhm_0.fixed is True
+
+        psf_model2 = CircularGaussianPRF(flux=1, fwhm=2.7)
+        psf_model2.fwhm.fixed = False
+        fitter2 = PSFFitter(psf_model2, _PSFParameterMapper(psf_model2))
+        flat_model2 = fitter2.make_psf_model(sources)
+        assert flat_model2.fwhm_0.fixed is False
+        assert flat_model2.fwhm_1.fixed is False
+
+    def test_flat_model_preserves_bounds(self, psf_model, param_mapper):
+        """
+        Regression test that flat models preserve the parameter
+        bounds of the base PSF model.
+        """
+        assert psf_model.fwhm.bounds[0] is not None
+        fitter = PSFFitter(psf_model, param_mapper)
+
+        sources = Table({
+            'id': [1, 2],
+            'x_init': [10.0, 20.0],
+            'y_init': [15.0, 25.0],
+            'flux_init': [100.0, 200.0],
+        })
+
+        flat_model = fitter.make_psf_model(sources)
+        assert flat_model.fwhm_0.bounds == psf_model.fwhm.bounds
+        assert flat_model.fwhm_1.bounds == psf_model.fwhm.bounds
 
     def test_make_psf_model_with_xy_bounds(self, psf_model, param_mapper):
         """
