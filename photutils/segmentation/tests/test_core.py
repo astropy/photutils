@@ -245,6 +245,18 @@ class TestSegmentationImage:
         _ = segm.get_segment(int(segm.labels[0]))
         assert len(calls) == 1
 
+    def test_get_index_and_get_indices_agree(self):
+        """
+        Test that get_index and get_indices return the same result for
+        both scalar and array inputs.
+        """
+        segm = SegmentationImage(self.data.copy())
+        labels = segm.labels
+
+        assert_equal(segm.get_indices(labels), segm.get_index(labels))
+        assert segm.get_indices(labels[0]) == segm.get_index(labels[0])
+        assert np.ndim(segm.get_indices(labels[0])) == 0
+
     def test_set_data_seeds_derived_state(self):
         """
         Test that _set_data seeds the derived cached properties and

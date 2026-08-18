@@ -443,9 +443,7 @@ class SegmentationImage:
         ValueError
             If any input ``labels`` are invalid.
         """
-        self.check_labels(labels)
-        # self.labels is always sorted
-        return np.searchsorted(self.labels, labels)
+        return self.get_index(labels)
 
     @cached_property
     def slices(self):
