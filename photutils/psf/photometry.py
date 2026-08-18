@@ -1780,7 +1780,7 @@ class PSFPhotometry:
 
     def results_to_init_params(self, *, remove_invalid=True, reset_ids=True):
         """
-        Create a table of the fitted model parameters from the results.
+        Create a table of initial parameters from the fitted results.
 
         The table columns are named according to those expected for the
         initial parameters table. It can be used as the ``init_params``

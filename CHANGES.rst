@@ -472,6 +472,31 @@ Bug Fixes
   - The ``PSFPhotometry`` ``group_warning_threshold`` keyword is now
     validated to be a positive integer. [#2387]
 
+  - Fixed a bug where ``IterativePSFPhotometry`` with ``mode='all'``
+    raised an error when an earlier iteration produced a source with
+    non-finite fit results. Such sources are now dropped from later
+    iterations. [#2387]
+
+  - Fixed a bug where ``IterativePSFPhotometry`` with ``mode='all'``
+    did not carry the local background values into iterations after
+    the first, so sources were refit with a local background of
+    zero. [#2387]
+
+  - Fixed a bug where a callable ``finder`` returning a zero-row
+    table caused an error in ``IterativePSFPhotometry``. The
+    iteration now stops cleanly. [#2387]
+
+  - Fixed a bug where the ``IterativePSFPhotometry``
+    ``make_model_image`` and ``make_residual_image`` methods raised a
+    confusing error after a run in which no sources were detected.
+    They now raise a clear ``ValueError``. [#2387]
+
+  - The ``IterativePSFPhotometry`` ``sub_shape`` keyword is now
+    validated at initialization to have odd, positive values,
+    matching the documented requirement. The ``maxiters`` keyword
+    validation now also rejects non-numeric and boolean inputs.
+    [#2387]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range
