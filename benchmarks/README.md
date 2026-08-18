@@ -9,14 +9,16 @@ functions shared by the scripts live in `bench_helpers.py`.
 Benchmarks for `ApertureStats`:
 
 - computing the median and all properties for all of the pixel-based
-  aperture types, with and without sigma clipping
+  aperture types, with and without sigma clipping (the all-properties
+  timings exclude the serial per-source cutout and bounding-box
+  properties by default; use `--all-properties` to include them)
 - the cold cost of each individual property (including its lazy
   dependencies) for a circular aperture, sorted by decreasing
   sigma-clipped time
 
 ```bash
 python benchmarks/bench_aperture_stats.py
-python benchmarks/bench_aperture_stats.py --which types --n-sources 10000
+python benchmarks/bench_aperture_stats.py --which threads --n-threads 1,4,12
 ```
 
 ## Aperture photometry (`bench_aperture_photometry.py`)
