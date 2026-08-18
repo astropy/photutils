@@ -333,7 +333,8 @@ class SegmentationImage:
         for key in self._cached_properties:
             self.__dict__.pop(key, None)
 
-    def _set_data(self, data, *, labels=None, areas=None, slices=None):
+    def _set_data(self, data, *, labels=None, areas=None, slices=None,
+                  preserve_info=False):
         """
         Set the segmentation array and seed its derived properties.
 
@@ -360,6 +361,12 @@ class SegmentationImage:
         slices : list of tuple of slice, optional
             The minimal bounding slices of each label, in the same
             order as ``labels``.
+
+        preserve_info : bool, optional
+            If `True`, keep the current ``info`` dictionary instead of
+            resetting it to an empty one. This is used by the
+            relabeling methods, where the change is an in-place
+            relabeling rather than a data reassignment.
         """
         if '_data' in self.__dict__:
             # Reset cached properties when data is reassigned, but not
@@ -378,11 +385,13 @@ class SegmentationImage:
             if value is not None:
                 self.__dict__[name] = value
 
-        # Reset deblended labels and auxiliary info explicitly since
-        # _deblend_label_map and info are regular attributes, not
-        # cached properties cleared by _reset_cached_properties above.
+        # Reset the deblended label map and auxiliary info explicitly
+        # since _deblend_label_map and info are regular attributes,
+        # not cached properties cleared by _reset_cached_properties
+        # above.
         self.__dict__['_deblend_label_map'] = {}
-        self.__dict__['info'] = {}
+        if not preserve_info:
+            self.__dict__['info'] = {}
 
     @data.setter
     def data(self, value):
@@ -1092,14 +1101,12 @@ class SegmentationImage:
                 relabel_map = map2[relabel_map]
 
         data_new = relabel_map[self.data]
-        # _set_data rebinds _deblend_label_map and info to new dicts,
-        # so these local references still point at the old ones.
         # Relabeling is an in-place change, not a data reassignment,
-        # so the auxiliary info is kept.
+        # so the auxiliary info and the deblending provenance are
+        # kept. The local reference is needed because _set_data
+        # rebinds _deblend_label_map to a new empty dict.
         deblend_label_map = self._deblend_label_map
-        info = self.info
-        self._set_data(data_new)
-        self.__dict__['info'] = info
+        self._set_data(data_new, preserve_info=True)
         self._deblend_label_map = _remap_deblend_label_map(
             deblend_label_map, relabel_map)
 
@@ -1155,17 +1162,15 @@ class SegmentationImage:
         new_label_map[self.labels] = new_labels
 
         data_new = new_label_map[self.data]
-        # _set_data rebinds _deblend_label_map and info to new dicts,
-        # so these local references still point at the old ones.
         # Relabeling is an in-place change, not a data reassignment,
-        # so the auxiliary info is kept.
+        # so the auxiliary info and the deblending provenance are
+        # kept. The local reference is needed because _set_data
+        # rebinds _deblend_label_map to a new empty dict.
         deblend_label_map = self._deblend_label_map
-        info = self.info
         # Relabeling is order-preserving, so the areas and slices are
         # unchanged and carry over under the new label numbers
         self._set_data(data_new, labels=new_labels, areas=old_areas,
-                       slices=old_slices)
-        self.__dict__['info'] = info
+                       slices=old_slices, preserve_info=True)
         self._deblend_label_map = _remap_deblend_label_map(
             deblend_label_map, new_label_map)
 

@@ -298,6 +298,11 @@ class TestSegmentationImage:
         assert segm.info == {}
         assert segm._deblend_label_map == {}
 
+        # preserve_info keeps the info dictionary
+        segm.info['key'] = 'value'
+        segm._set_data(data2, preserve_info=True)
+        assert segm.info == {'key': 'value'}
+
     def test_set_data_without_seeds(self):
         """
         Test that _set_data computes the derived properties on demand
