@@ -73,9 +73,6 @@ class SegmentationImage:
     """
 
     def __init__(self, data):
-        if not isinstance(data, np.ndarray):
-            msg = 'Input data must be a numpy array'
-            raise TypeError(msg)
         self.data = data
 
     @classmethod
@@ -324,6 +321,12 @@ class SegmentationImage:
 
     @data.setter
     def data(self, value):
+        if not isinstance(value, np.ndarray):
+            msg = 'Input data must be a numpy array'
+            raise TypeError(msg)
+        if value.ndim != 2:
+            msg = 'Input data must be a 2D array'
+            raise ValueError(msg)
         if not np.issubdtype(value.dtype, np.integer):
             msg = 'data must have integer type'
             raise TypeError(msg)
@@ -355,13 +358,6 @@ class SegmentationImage:
         The shape of the segmentation array.
         """
         return self._data.shape
-
-    @cached_property
-    def _ndim(self):
-        """
-        The number of array dimensions of the segmentation array.
-        """
-        return self._data.ndim
 
     @cached_property
     def labels(self):
@@ -468,10 +464,6 @@ class SegmentationImage:
         A list of `~photutils.aperture.BoundingBox` of the minimal
         bounding boxes containing the labeled regions.
         """
-        if self._ndim != 2:
-            msg = "The 'bbox' attribute requires a 2D segmentation image."
-            raise ValueError(msg)
-
         return [BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,
                             iymin=slc[0].start, iymax=slc[0].stop)
                 for slc in self.slices]

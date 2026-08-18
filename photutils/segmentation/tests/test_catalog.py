@@ -464,11 +464,10 @@ class TestSourceCatalog:
             SourceCatalog(self.data, segm)
 
         # Test 1D arrays
-        img1d = np.arange(4)
-        segm = SegmentationImage(img1d)
+        segm = SegmentationImage(np.arange(9).reshape((3, 3)))
         match = 'data must be a 2D array'
         with pytest.raises(ValueError, match=match):
-            SourceCatalog(img1d, segm)
+            SourceCatalog(np.arange(3), segm)
 
         wrong_shape = np.ones((3, 3), dtype=int)
         match = 'segmentation_image and data must have the same shape'

@@ -151,6 +151,32 @@ class TestSegmentationImage:
         # Label 4 extends beyond the mask, so it is kept
         assert_equal(segm.labels, [3, 4, 5, 7])
 
+    def test_data_setter_validation(self):
+        """
+        Test that the data setter validates reassigned arrays.
+        """
+        segm = SegmentationImage(self.data.copy())
+
+        match = 'Input data must be a numpy array'
+        with pytest.raises(TypeError, match=match):
+            segm.data = [[1, 1], [0, 1]]
+
+        match = 'Input data must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            segm.data = np.ones(3, dtype=int)
+
+    def test_zero_size_data(self):
+        """
+        Test that a zero-size 2D array is still accepted.
+
+        This guards the negative-value check against raising a numpy
+        reduction error on an empty array.
+        """
+        segm = SegmentationImage(np.zeros((0, 0), dtype=int))
+        assert segm.n_labels == 0
+        assert_equal(segm.labels, [])
+        assert_equal(segm.areas, [])
+
     def test_set_data_seeds_derived_state(self):
         """
         Test that _set_data seeds the derived cached properties and
@@ -217,6 +243,16 @@ class TestSegmentationImage:
         data = [[1, 1], [0, 1]]
         match = 'Input data must be a numpy array'
         with pytest.raises(TypeError, match=match):
+            SegmentationImage(data)
+
+        # Is not 2D
+        data = np.ones(3, dtype=int)
+        match = 'Input data must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            SegmentationImage(data)
+
+        data = np.ones((2, 2, 2), dtype=int)
+        with pytest.raises(ValueError, match=match):
             SegmentationImage(data)
 
     @pytest.mark.parametrize('label', [0, -1, 2])
@@ -516,15 +552,6 @@ class TestSegmentationImage:
         bbox = self.segm.bbox[idx]
         assert isinstance(bbox, BoundingBox)
         assert (bbox.iymin, bbox.iymax, bbox.ixmin, bbox.ixmax) == expected
-
-    def test_bbox_1d(self):
-        """
-        Test bbox 1d.
-        """
-        segm = SegmentationImage(np.array([0, 0, 1, 1, 0, 2, 2, 0]))
-        match = "The 'bbox' attribute requires a 2D segmentation image"
-        with pytest.raises(ValueError, match=match):
-            _ = segm.bbox
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_reset_cmap(self):
