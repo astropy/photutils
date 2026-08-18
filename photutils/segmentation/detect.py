@@ -254,7 +254,9 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
             label_map[segm_labels] = labels
             segment_img = label_map[segment_img]
     else:
-        labels = segm_labels
+        # Use an ndarray so that seeded labels are always an array,
+        # matching the relabel path
+        labels = np.asarray(segm_labels)
 
     if return_segmimg:
         return SegmentationImage._from_data(segment_img, labels=labels,
