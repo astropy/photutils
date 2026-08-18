@@ -9,14 +9,16 @@ functions shared by the scripts live in `bench_helpers.py`.
 Benchmarks for `ApertureStats`:
 
 - computing the median and all properties for all of the pixel-based
-  aperture types, with and without sigma clipping
+  aperture types, with and without sigma clipping (the all-properties
+  timings exclude the serial per-source cutout and bounding-box
+  properties by default; use `--all-properties` to include them)
 - the cold cost of each individual property (including its lazy
   dependencies) for a circular aperture, sorted by decreasing
   sigma-clipped time
 
 ```bash
 python benchmarks/bench_aperture_stats.py
-python benchmarks/bench_aperture_stats.py --which types --n-sources 10000
+python benchmarks/bench_aperture_stats.py --which threads --n-threads 1,4,12
 ```
 
 ## Aperture photometry (`bench_aperture_photometry.py`)
@@ -28,6 +30,21 @@ overlap method (exact, center, and subpixel).
 ```bash
 python benchmarks/bench_aperture_photometry.py
 python benchmarks/bench_aperture_photometry.py --n-sources 100000
+```
+
+## SEP comparison (`bench_aperture_sep.py`)
+
+Benchmark and validation of the photutils aperture-photometry entry
+points (`aperture_photometry`, `AperturePhotometry`, and
+`ApertureStats`) against the SEP package, across masking scenarios
+(the `mask` keyword and segmentation-based masking), plus an
+`n_threads` sweep of `AperturePhotometry` against the
+single-threaded SEP baseline. Requires the optional `sep` package
+for the SEP comparisons.
+
+```bash
+python benchmarks/bench_aperture_sep.py
+python benchmarks/bench_aperture_sep.py --which threads --n-threads 1,4,12
 ```
 
 ## Centroids (`bench_centroids.py`)

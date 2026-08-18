@@ -3,11 +3,17 @@
 """
 Benchmarks for ApertureStats in the photutils.aperture subpackage.
 
-The benchmarks cover computing all ApertureStats properties for all
+The benchmarks cover computing the ApertureStats properties for all
 of the pixel-based aperture types, with and without sigma clipping,
 the cold cost of each individual ApertureStats property (including
 its lazy dependencies) for a circular aperture, and the thread
 scaling of the ``n_threads`` keyword.
+
+The all-properties timings exclude the properties that construct
+per-source Python objects (the cutouts and bounding boxes) by
+default because they do not parallelize with ``n_threads`` and
+would otherwise dominate the timings. Use ``--all-properties`` to
+include them.
 
 Run ``python benchmarks/bench_aperture_stats.py --help`` to see the
 available options.
@@ -23,15 +29,29 @@ from bench_helpers import (format_sweep_cells, make_aperture_inputs,
 
 from photutils.aperture import ApertureStats, CircularAperture
 
+# Properties that construct per-source Python objects (aperture-mask
+# cutouts and bounding boxes). They run serially regardless of
+# n_threads, so they are excluded from the all-properties timings by
+# default (see the --all-properties option).
+SERIAL_PROPERTIES = ('bbox', 'data_cutout', 'data_sum_cutout',
+                     'error_sum_cutout')
+
 
 def _compute_all_properties(data, aperture, *, error=None, wcs=None,
-                            sigma_clip=None, n_threads=1):
+                            sigma_clip=None, n_threads=1,
+                            all_properties=False):
     """
-    Construct an ApertureStats instance and compute every property.
+    Construct an ApertureStats instance and compute its properties.
+
+    The serial cutout and bounding-box properties are skipped unless
+    ``all_properties`` is `True`.
     """
     apstats = ApertureStats(data, aperture, error=error, wcs=wcs,
                             sigma_clip=sigma_clip, n_threads=n_threads)
-    for prop in apstats.properties:
+    props = apstats.properties
+    if not all_properties:
+        props = [prop for prop in props if prop not in SERIAL_PROPERTIES]
+    for prop in props:
         getattr(apstats, prop)
 
 
@@ -55,12 +75,12 @@ def _compute_property(data, aperture, prop, *, error=None, wcs=None,
 
 
 def bench_aperture_types(size, n_sources, n_threads_list, *, repeats=3,
-                         seed=0):
+                         seed=0, all_properties=False):
     """
     Benchmark ApertureStats for all pixel-based aperture types.
 
     For each aperture type, the time to compute the median and the
-    time to compute all ApertureStats properties are measured, with
+    time to compute the ApertureStats properties are measured, with
     and without sigma clipping. When more than one thread count is
     requested, additional tables sweep the all-properties timings
     over the thread counts, with speedups relative to the first
@@ -82,9 +102,19 @@ def bench_aperture_types(size, n_sources, n_threads_list, *, repeats=3,
 
     seed : int, optional
         The random number generator seed.
+
+    all_properties : bool, optional
+        Whether to include the serial cutout and bounding-box
+        properties in the all-properties timings.
     """
+    if all_properties:
+        note = 'all props includes the serial cutout/bbox properties'
+    else:
+        note = ('all props excludes the serial cutout/bbox properties; '
+                'use --all-properties to include them')
     print(f'\n== ApertureStats aperture types '
           f'({n_sources} sources, {size}x{size} image) ==')
+    print(f'({note})')
     print(f'{"aperture":>22}{"median":>10}{"all props":>12}'
           f'{"all props+clip":>16}')
     (data, error, wcs,
@@ -97,10 +127,12 @@ def bench_aperture_types(size, n_sources, n_threads_list, *, repeats=3,
                     wcs=wcs), repeats=repeats)
         t_all = time_best(
             partial(_compute_all_properties, data, aperture, error=error,
-                    wcs=wcs), repeats=repeats)
+                    wcs=wcs, all_properties=all_properties),
+            repeats=repeats)
         t_all_clip = time_best(
             partial(_compute_all_properties, data, aperture, error=error,
-                    wcs=wcs, sigma_clip=sigma_clip), repeats=repeats)
+                    wcs=wcs, sigma_clip=sigma_clip,
+                    all_properties=all_properties), repeats=repeats)
         print(f'{name:>22}{f"{t_median:.3f}s":>10}'
               f'{f"{t_all:.3f}s":>12}{f"{t_all_clip:.3f}s":>16}')
 
@@ -111,6 +143,7 @@ def bench_aperture_types(size, n_sources, n_threads_list, *, repeats=3,
                            ('all properties + sigma clip', sigma_clip)):
         print(f'\n== ApertureStats aperture types n_threads sweep: '
               f'{label} ({n_sources} sources, {size}x{size} image) ==')
+        print(f'({note})')
         header = f'{"aperture":>22}'
         header += ''.join(f'{f"n={n}":>18}' for n in n_threads_list)
         print(header)
@@ -119,7 +152,8 @@ def bench_aperture_types(size, n_sources, n_threads_list, *, repeats=3,
             times = [time_best(
                 partial(_compute_all_properties, data, aperture,
                         error=error, wcs=wcs, sigma_clip=sigclip,
-                        n_threads=n_threads),
+                        n_threads=n_threads,
+                        all_properties=all_properties),
                 repeats=repeats) for n_threads in n_threads_list]
             row = f'{name:>22}'
             row += ''.join(f'{cell:>18}'
@@ -254,7 +288,7 @@ def main():
         description='Benchmarks for ApertureStats.')
     parser.add_argument('--size', type=int, default=2048,
                         help='image size (default: %(default)s)')
-    parser.add_argument('--n-sources', type=int, default=1000,
+    parser.add_argument('--n-sources', type=int, default=5000,
                         help='number of sources (default: %(default)s)')
     parser.add_argument('--repeats', type=int, default=3,
                         help='number of repeats per timing; the best '
@@ -267,16 +301,22 @@ def main():
                         help='which benchmark to run '
                              '(default: %(default)s)')
     parser.add_argument('--n-threads', type=parse_thread_counts,
-                        default='1,2,4,8',
+                        default='1,8',
                         help='comma-separated thread counts for the '
-                             'threads benchmark (default: %(default)s)')
+                             'thread sweeps (default: %(default)s)')
+    parser.add_argument('--all-properties', action='store_true',
+                        help='include the serial cutout and bounding-box '
+                             'properties in the all-properties timings '
+                             '(excluded by default because they do not '
+                             'parallelize with n_threads)')
     args = parser.parse_args()
 
     print_environment()
 
     if args.which in ('all', 'types'):
         bench_aperture_types(args.size, args.n_sources, args.n_threads,
-                             repeats=args.repeats, seed=args.seed)
+                             repeats=args.repeats, seed=args.seed,
+                             all_properties=args.all_properties)
     if args.which in ('all', 'properties'):
         bench_properties(args.size, args.n_sources, args.n_threads,
                          repeats=args.repeats, seed=args.seed)
