@@ -221,10 +221,10 @@ class TestSigmaClipFlags:
         flags = _stats_flags(data, aper, sigma_clip=sigclip)
         assert flags == APERTURE_FLAGS.SIGMA_CLIPPED
 
-        # Without clipping, the sigma_clipped flag is not set (the
-        # unclipped outlier makes the source point-like, so the
-        # always-evaluated singular_covariance bit may be set)
-        assert not _stats_flags(data, aper) & APERTURE_FLAGS.SIGMA_CLIPPED
+        # Without clipping, the sigma_clipped flag is not set. The
+        # unclipped outlier dominates the moments, making the source
+        # point-like, so the singular_covariance bit is set instead.
+        assert _stats_flags(data, aper) == APERTURE_FLAGS.SINGULAR_COVARIANCE
 
     def test_all_clipped(self, unit_data):
         """
