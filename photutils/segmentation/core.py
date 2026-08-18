@@ -166,33 +166,6 @@ class SegmentationImage:
         """
         return self._data
 
-    @staticmethod
-    def _get_labels(data):
-        """
-        Return a sorted array of the non-zero labels in the segmentation
-        image.
-
-        Parameters
-        ----------
-        data : array_like (int)
-            A segmentation array where source regions are labeled by
-            different positive integer values. A value of zero is
-            reserved for the background.
-
-        Returns
-        -------
-        result : `~numpy.ndarray`
-            An array of non-zero label numbers.
-
-        Notes
-        -----
-        This is a static method so it can be used in
-        :meth:`remove_masked_labels` on a masked version of the
-        segmentation array.
-        """
-        # np.unique preserves dtype and also sorts elements
-        return np.unique(data[data != 0])
-
     @cached_property
     def segments(self):
         """
@@ -1498,10 +1471,14 @@ class SegmentationImage:
         if mask.shape != self.shape:
             msg = 'mask must have the same shape as the segmentation array'
             raise ValueError(msg)
-        remove_labels = self._get_labels(self.data[mask])
+        masked_data = self.data[mask]
+        remove_labels = np.unique(masked_data[masked_data != 0])
         if not partial_overlap:
-            interior_labels = self._get_labels(self.data[~mask])
-            remove_labels = list(set(remove_labels) - set(interior_labels))
+            interior_data = self.data[~mask]
+            interior_labels = np.unique(
+                interior_data[interior_data != 0])
+            remove_labels = list(set(remove_labels)
+                                 - set(interior_labels))
         self.remove_labels(remove_labels, relabel=relabel)
 
     def make_source_mask(self, *, size=None, footprint=None):

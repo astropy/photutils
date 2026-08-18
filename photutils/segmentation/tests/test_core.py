@@ -134,6 +134,23 @@ class TestSegmentationImage:
         _ = segm2.slices
         assert_equal(segm1.labels, segm2.labels)
 
+    def test_remove_masked_labels_partial_overlap(self):
+        """
+        Test remove_masked_labels for both partial_overlap settings.
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[0, :] = True
+
+        segm = SegmentationImage(self.data.copy())
+        segm.remove_masked_labels(mask, partial_overlap=True)
+        # Labels 1 and 4 both touch the masked first row
+        assert_equal(segm.labels, [3, 5, 7])
+
+        segm = SegmentationImage(self.data.copy())
+        segm.remove_masked_labels(mask, partial_overlap=False)
+        # Label 4 extends beyond the mask, so it is kept
+        assert_equal(segm.labels, [3, 4, 5, 7])
+
     def test_set_data_seeds_derived_state(self):
         """
         Test that _set_data seeds the derived cached properties and
