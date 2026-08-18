@@ -16,6 +16,7 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
 
+import photutils.segmentation.core as segm_core
 from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.utils import circular_footprint
 from photutils.utils._optional_deps import (HAS_MATPLOTLIB, HAS_RASTERIO,
@@ -228,8 +229,6 @@ class TestSegmentationImage:
         Test that the bounding slices are computed only once, even
         when both slices and per-label segments are used.
         """
-        import photutils.segmentation.core as segm_core
-
         calls = []
         original = segm_core.find_objects
 
