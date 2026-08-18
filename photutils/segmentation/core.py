@@ -448,19 +448,6 @@ class SegmentationImage:
         return np.searchsorted(self.labels, labels)
 
     @cached_property
-    def _raw_slices(self):
-        """
-        A list of tuples, where each tuple contains two slices representing
-        the minimal box that contains the labeled region.
-
-        The list starts with the *non-zero* label. The returned list has
-        a length equal to the maximum label number and is indexed by
-        (label - 1). If a label is missing, then the corresponding list
-        element will be `None` instead of a slice.
-        """
-        return find_objects(self.data)
-
-    @cached_property
     def slices(self):
         """
         A list of tuples, where each tuple contains two slices
@@ -470,7 +457,29 @@ class SegmentationImage:
         a length equal to the number of labels and matches the order of
         the ``labels`` attribute.
         """
-        return [slc for slc in self._raw_slices if slc is not None]
+        return [slc for slc in find_objects(self._data)
+                if slc is not None]
+
+    def _get_slice(self, label):
+        """
+        Return the bounding slice for a single label.
+
+        The input ``label`` must already be known to be valid. Use
+        :meth:`check_labels` first if that is not guaranteed.
+
+        Parameters
+        ----------
+        label : int
+            The label number.
+
+        Returns
+        -------
+        slc : tuple of slice
+            The minimal bounding slice containing the labeled region.
+        """
+        # self.labels is sorted, so searchsorted gives the position in
+        # the slices list, which matches the labels order
+        return self.slices[np.searchsorted(self.labels, label)]
 
     @cached_property
     def bbox(self):
@@ -608,10 +617,8 @@ class SegmentationImage:
         segment : `Segment`
             The segment object.
         """
-        # _raw_slices is indexed by (label - 1) since it includes all
-        # labels up to max_label, even if some are missing
         label = self._data.dtype.type(label)
-        slc = self._raw_slices[label - 1]
+        slc = self._get_slice(label)
         bbox = BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,
                            iymin=slc[0].start, iymax=slc[0].stop)
         area = np.count_nonzero(self._data[slc] == label)
@@ -1782,7 +1789,7 @@ class SegmentationImage:
         """
         labels = np.atleast_1d(labels)
         self.check_labels(labels)
-        return [self._make_polygon(label, self._raw_slices[label - 1])
+        return [self._make_polygon(label, self._get_slice(label))
                 for label in labels]
 
     @staticmethod
@@ -1976,7 +1983,7 @@ class SegmentationImage:
         patch_kwargs.update(kwargs)
         patches = []
         for label in labels:
-            poly = self._make_polygon(label, self._raw_slices[label - 1])
+            poly = self._make_polygon(label, self._get_slice(label))
             patches.append(self._convert_shapely_to_pathpatch(
                 poly, origin=origin, scale=scale, **patch_kwargs))
         return patches
@@ -2212,7 +2219,7 @@ class SegmentationImage:
         visual_kwargs = kwargs or None
         regions = []
         for label in labels:
-            poly = self._make_polygon(label, self._raw_slices[label - 1])
+            poly = self._make_polygon(label, self._get_slice(label))
             regions.append(_shapely_polygon_to_region(
                 poly, label=int(label), visual_kwargs=visual_kwargs))
         return regions

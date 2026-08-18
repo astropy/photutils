@@ -213,6 +213,38 @@ class TestSegmentationImage:
         with pytest.raises(AttributeError, match=match):
             segm._data = np.zeros((3, 3), dtype=int)
 
+    def test_get_slice_matches_slices(self):
+        """
+        Test that _get_slice returns the same slice as indexing into
+        the slices list by label index.
+        """
+        segm = SegmentationImage(self.data.copy())
+        for label in segm.labels:
+            idx = segm.get_index(label)
+            assert segm._get_slice(label) == segm.slices[idx]
+
+    def test_find_objects_called_once(self, monkeypatch):
+        """
+        Test that the bounding slices are computed only once, even
+        when both slices and per-label segments are used.
+        """
+        import photutils.segmentation.core as segm_core
+
+        calls = []
+        original = segm_core.find_objects
+
+        def counting_find_objects(*args, **kwargs):
+            calls.append(1)
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(segm_core, 'find_objects',
+                            counting_find_objects)
+
+        segm = SegmentationImage(self.data.copy())
+        _ = segm.slices
+        _ = segm.get_segment(int(segm.labels[0]))
+        assert len(calls) == 1
+
     def test_set_data_seeds_derived_state(self):
         """
         Test that _set_data seeds the derived cached properties and
