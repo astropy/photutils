@@ -49,14 +49,15 @@ def _make_mask(image, mask):
                '(NaN or inf), which were automatically ignored.')
         warnings.warn(msg, AstropyUserWarning)
 
-    # if NaNs are in the data, no actual fitting takes place
+    # If NaNs are in the data, no actual fitting takes place
     # https://github.com/astropy/astropy/pull/12811
     finite_mask = ~np.isfinite(image)
 
     if mask is not None:
-        finite_mask |= mask
-        if np.any(finite_mask & ~mask):
+        combined_mask = finite_mask | mask
+        if np.any(combined_mask & ~mask):
             warn_nonfinite()
+        mask = combined_mask
     else:
         mask = finite_mask
         if np.any(finite_mask):
@@ -190,10 +191,10 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
       4  8.4214 12.0369   3.2026 192.3530
       5 76.9412 35.9061   6.6600 126.6130
     """
-    # prevent circular import
+    # Prevent circular import
     from photutils.psf.photometry import PSFPhotometry
 
-    # mask non-finite values
+    # Mask non-finite values
     mask = _make_mask(data, mask)
 
     if xypos is None:
@@ -212,8 +213,8 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
             raise ValueError(msg)
 
         fit_shape = data.shape
-        # Ensure odd shape required by the PSF photometry fitting
-        # Here we trim the even edges by 1 pixel
+        # Ensure odd shape required by the PSF photometry fitting.
+        # Here we trim the even edges by 1 pixel.
         fit_shape = tuple(s - 1 if s % 2 == 0 else s for s in fit_shape)
 
         msg = ('fit_shape is None, so the input data array is assumed to be '
@@ -430,12 +431,12 @@ def _interpolate_missing_data(data, mask, *, method='cubic'):
         data_interp[:] = np.nan
         return data_interp
 
-    # initialize the interpolator
+    # Initialize the interpolator
     y, x = np.indices(data_interp.shape)
     xy = np.dstack((x[~mask].ravel(), y[~mask].ravel()))[0]
     z = data_interp[~mask].ravel()
 
-    # interpolate the missing data
+    # Interpolate the missing data
     if method == 'nearest':
         interpol = interpolate.NearestNDInterpolator(xy, z)
     elif method == 'cubic':

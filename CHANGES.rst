@@ -396,6 +396,10 @@ Bug Fixes
     table containing a ``group_id`` column permanently disabled the
     grouper for all subsequent calls on the same instance. [#2383]
 
+  - Fixed a bug where non-finite data values were not merged into a
+    user-provided mask, causing fit failures in ``fit_2dgaussian``,
+    ``fit_fwhm``, and ``PSFPhotometry``. [#2383]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range

@@ -50,7 +50,7 @@ def test_fit_2dgaussian_single(fix_fwhm):
         assert 'fwhm_fit' in fit_tbl.colnames
         assert_allclose(fit_tbl['fwhm_fit'], fwhm)
 
-    # test with NaNs - will emit two warnings
+    # Test with NaNs - will emit two warnings
     data[22, 29] = np.nan
     with pytest.warns(AstropyUserWarning) as record:
         fit = fit_2dgaussian(data, fwhm=3, fix_fwhm=fix_fwhm)
@@ -63,7 +63,7 @@ def test_fit_2dgaussian_single(fix_fwhm):
     assert isinstance(fit_tbl, QTable)
     assert len(fit_tbl) == 1
 
-    # test with NaNs and mask - only fit_shape warning
+    # Test with NaNs and mask - only fit_shape warning
     data[22, 29] = np.nan
     mask = np.isnan(data)
     match = ('fit_shape is None, so the input data array is assumed to be '
@@ -73,6 +73,30 @@ def test_fit_2dgaussian_single(fix_fwhm):
     fit_tbl = fit.results
     assert isinstance(fit_tbl, QTable)
     assert len(fit_tbl) == 1
+
+
+def test_fit_2dgaussian_user_mask_with_nan():
+    """
+    Regression test that unmasked non-finite values are merged into
+    a user-provided mask.
+    """
+    rng = np.random.default_rng(0)
+    yy, xx = np.mgrid[0:31, 0:31]
+    data = Gaussian2D(100, 15, 15, 3, 3)(xx, yy)
+    data += rng.normal(0, 0.1, data.shape)
+    data[5, 5] = np.nan
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[0, 0] = True
+    # Expect exactly two warnings: fit_shape is None and unmasked
+    # non-finite values
+    with pytest.warns(AstropyUserWarning) as record:
+        fit = fit_2dgaussian(data, mask=mask, fix_fwhm=False)
+    assert len(record) == 2
+    warning_msgs = [str(w.message) for w in record]
+    assert any('fit_shape is None' in msg for msg in warning_msgs)
+    assert any('unmasked non-finite values' in msg
+               for msg in warning_msgs)
+    assert_allclose(fit.results['x_fit'][0], 15.0, atol=0.1)
 
 
 @pytest.mark.parametrize(('fix_fwhm', 'with_units'),
@@ -96,7 +120,7 @@ def test_fit_2dgaussian_multiple(test_data, fix_fwhm, with_units):
         assert 'fwhm_fit' in fit_tbl.colnames
         assert_allclose(fit_tbl['fwhm_fit'], sources['fwhm'])
 
-    # test with zip instead of list
+    # Test with zip instead of list
     xypos = zip(sources['x_0'], sources['y_0'], strict=True)
     fit2 = fit_2dgaussian(data, xypos=xypos, fit_shape=(5, 5),
                           fix_fwhm=fix_fwhm)
@@ -187,7 +211,7 @@ def test_fit_fwhm_single():
     assert len(fwhm) == 1
     assert_allclose(fwhm, fwhm0)
 
-    # test warning message for convergence issues - flat data should also
+    # Test warning message for convergence issues - flat data should also
     # emit the fit_shape warning since fit_shape=None
     with pytest.warns(AstropyUserWarning) as record:
         fwhm = fit_fwhm(np.zeros(data.shape) + 1)
