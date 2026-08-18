@@ -820,7 +820,7 @@ class TestReadOnlyInputs:
                               mask_method='correct')
         for attr in ('sum', 'sum_err', 'mean', 'median', 'std', 'mad_std',
                      'biweight_location', 'gini', 'centroid',
-                     'semimajor_axis', 'fwhm', 'flags', 'sum_flags'):
+                     'semimajor_axis', 'fwhm', 'flags'):
             _ = getattr(stats, attr)
         assert np.isfinite(stats.mean)
         _ = stats.to_table()

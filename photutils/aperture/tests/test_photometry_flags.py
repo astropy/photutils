@@ -197,7 +197,6 @@ class TestPolygonOverlapFlags:
         assert result.flags == 0
         stats = ApertureStats(data, aper, sum_method=method,
                               subpixels=subpixels)
-        assert stats.sum_flags == 0
         assert stats.flags == 0
 
     @pytest.mark.parametrize(('method', 'subpixels'), METHODS)
@@ -218,7 +217,7 @@ class TestPolygonOverlapFlags:
         assert result.flags == APERTURE_FLAGS.PARTIAL_OVERLAP
         stats = ApertureStats(data, aper, sum_method=method,
                               subpixels=subpixels)
-        assert stats.sum_flags == APERTURE_FLAGS.PARTIAL_OVERLAP
+        assert stats.flags == APERTURE_FLAGS.PARTIAL_OVERLAP
 
 
 class TestMaskedAndNonFiniteFlags:

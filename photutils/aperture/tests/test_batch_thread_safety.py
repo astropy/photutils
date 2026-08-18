@@ -261,7 +261,7 @@ class TestApertureStatsThreadSafety:
 
         def read():
             return {name: np.asarray(getattr(stats, name))
-                    for name in (*_STATS_PROPERTIES, 'sum_flags')}
+                    for name in (*_STATS_PROPERTIES, 'flags')}
 
         with ThreadPoolExecutor(max_workers=N_THREADS) as ex:
             futures = [ex.submit(read)
