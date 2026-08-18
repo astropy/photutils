@@ -79,19 +79,6 @@ class TestSegmentationImage:
         with pytest.raises(ValueError, match=match):
             self.segm[5:2, 0:3]
 
-    def test_labels_via_raw_slices(self):
-        """
-        Test that labels can be derived from _raw_slices when that
-        cached property is already cached.
-        """
-        segm = SegmentationImage(self.data.copy())
-        # Force _raw_slices to be cached
-        _ = segm._raw_slices
-        # Remove labels from instance dict to force the _raw_slices path
-        del segm.__dict__['labels']
-        labels = segm.labels
-        assert_equal(labels, [1, 3, 4, 5, 7])
-
     def test_data_all_zeros(self):
         """
         Test data all zeros.
@@ -112,6 +99,40 @@ class TestSegmentationImage:
         segm = SegmentationImage(self.data.copy())
         segm.data = self.data[0:3, :].copy()
         assert_equal(segm.labels, [1, 3, 4])
+
+    def test_labels_and_areas_seeded_together(self):
+        """
+        Test that assigning data seeds both labels and areas from a
+        single pass, without computing either on demand.
+        """
+        segm = SegmentationImage(self.data.copy())
+        assert 'labels' in segm.__dict__
+        assert 'areas' in segm.__dict__
+        assert_equal(segm.labels, [1, 3, 4, 5, 7])
+        assert_equal(segm.areas, [2, 2, 3, 6, 5])
+
+    def test_areas_computed_when_not_seeded(self):
+        """
+        Test that areas fall back to on-demand computation when they
+        are not seeded, and match the seeded values.
+        """
+        segm = SegmentationImage(self.data.copy())
+        expected = segm.areas.copy()
+
+        segm2 = SegmentationImage._from_data(self.data.copy())
+        assert 'areas' not in segm2.__dict__
+        assert_equal(segm2.areas, expected)
+        assert 'areas' in segm2.__dict__  # now cached
+
+    def test_labels_independent_of_slices_access(self):
+        """
+        Test that labels do not depend on whether slices have been
+        accessed.
+        """
+        segm1 = SegmentationImage(self.data.copy())
+        segm2 = SegmentationImage._from_data(self.data.copy())
+        _ = segm2.slices
+        assert_equal(segm1.labels, segm2.labels)
 
     def test_set_data_seeds_derived_state(self):
         """
@@ -1070,8 +1091,8 @@ def test_subclass(segm_data):
                       [70, 70, 0, 0],
                       [70, 70, 0, 1]])
     segm.data = data2
-    # Only _data, labels, _deblend_label_map, and info should remain
-    assert len(segm.__dict__) == 4
+    # Only _data, labels, areas, _deblend_label_map, and info remain
+    assert len(segm.__dict__) == 5
     assert_equal(segm.areas, [1, 2, 2, 4])
 
 

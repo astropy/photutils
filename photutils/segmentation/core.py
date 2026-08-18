@@ -355,12 +355,18 @@ class SegmentationImage:
             msg = 'data must have integer type'
             raise TypeError(msg)
 
-        labels = self._get_labels(value)  # array([]) if value all zeros
-        if labels.shape != (0,) and np.min(labels) < 0:
+        # A single pass over the non-zero pixels yields both the
+        # sorted labels and their pixel areas. np.unique preserves
+        # dtype and also sorts elements.
+        labels, areas = np.unique(value[value != 0], return_counts=True)
+
+        # labels is sorted, so only the first element can be negative.
+        # The size check also covers all-zero and zero-size arrays.
+        if labels.size and labels[0] < 0:
             msg = 'The segmentation image cannot contain negative integers.'
             raise ValueError(msg)
 
-        self._set_data(value, labels=labels)
+        self._set_data(value, labels=labels, areas=areas)
 
     @cached_property
     def data_masked(self):
@@ -389,16 +395,10 @@ class SegmentationImage:
         """
         The sorted non-zero labels in the segmentation array.
         """
-        if '_raw_slices' in self.__dict__:
-            labels_all = np.arange(len(self._raw_slices)) + 1
-            labels = []
-            # If a label is missing, raw_slices will be None instead of a slice
-            for label, slc in zip(labels_all, self._raw_slices, strict=True):
-                if slc is not None:
-                    labels.append(label)
-            return np.array(labels, dtype=self._data.dtype)
-
-        return self._get_labels(self.data)
+        # Normally seeded by _set_data. This runs only when the array
+        # was set without known labels. np.unique preserves dtype and
+        # also sorts elements.
+        return np.unique(self._data[self._data != 0])
 
     @cached_property
     def n_labels(self):
@@ -520,14 +520,11 @@ class SegmentationImage:
         returned array has a length equal to the number of labels and
         matches the order of the ``labels`` attribute.
         """
-        # NOTE: np.bincount was benchmarked but is slower for typical
-        # large images because its cost is O(total_pixels) whereas the
-        # per-bbox loop below is O(sum_of_bbox_areas), which is much
-        # smaller when segments occupy a small fraction of the image.
-        areas = []
-        for label, slices in zip(self.labels, self.slices, strict=True):
-            areas.append(np.count_nonzero(self._data[slices] == label))
-        return np.array(areas)
+        # Normally seeded by _set_data from the same np.unique pass
+        # that produces the labels. This runs only when the array was
+        # set without known areas.
+        data = self._data
+        return np.unique(data[data != 0], return_counts=True)[1]
 
     def get_area(self, label):
         """
