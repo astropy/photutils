@@ -855,19 +855,24 @@ class SegmentationImage:
         """
         return self.make_cmap(background_color='#000000ff', seed=0)
 
-    def _update_deblend_label_map(self, relabel_map):
+    def _update_deblend_label_map(self, deblend_label_map, relabel_map):
         """
         Update the deblended label map based on the input
         ``relabel_map``.
 
         Parameters
         ----------
+        deblend_label_map : dict
+            The mapping of parent label numbers to deblended (child)
+            label numbers to update. This is passed explicitly because
+            :meth:`_set_data` resets the instance attribute.
+
         relabel_map : `~numpy.ndarray`
-            An array mapping the original label numbers to the new label
-            numbers.
+            An array mapping the original label numbers to the new
+            label numbers.
         """
         # child_labels are the deblended labels
-        for parent_label, child_labels in self._deblend_label_map.items():
+        for parent_label, child_labels in deblend_label_map.items():
             self._deblend_label_map[parent_label] = relabel_map[child_labels]
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
@@ -1040,9 +1045,11 @@ class SegmentationImage:
                 relabel_map = map2[relabel_map]
 
         data_new = relabel_map[self.data]
-        self._reset_cached_properties()  # reset all cached properties
-        self._data = data_new  # use _data to avoid validation
-        self._update_deblend_label_map(relabel_map)
+        # _set_data rebinds _deblend_label_map to a new dict, so this
+        # local reference still points at the old mapping
+        deblend_label_map = self._deblend_label_map
+        self._set_data(data_new)
+        self._update_deblend_label_map(deblend_label_map, relabel_map)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def relabel_consecutive(self, start_label=1):
@@ -1089,18 +1096,21 @@ class SegmentationImage:
             return
 
         old_slices = self.__dict__.get('slices', None)
+        old_areas = self.__dict__.get('areas', None)
         dtype = self.data.dtype  # keep the original dtype
         new_labels = np.arange(self.n_labels, dtype=dtype) + start_label
         new_label_map = np.zeros(self.max_label + 1, dtype=dtype)
         new_label_map[self.labels] = new_labels
 
         data_new = new_label_map[self.data]
-        self._reset_cached_properties()  # reset all cached properties
-        self._data = data_new  # use _data to avoid validation
-        self.__dict__['labels'] = new_labels
-        if old_slices is not None:
-            self.__dict__['slices'] = old_slices  # slice order is unchanged
-        self._update_deblend_label_map(new_label_map)
+        # _set_data rebinds _deblend_label_map to a new dict, so this
+        # local reference still points at the old mapping
+        deblend_label_map = self._deblend_label_map
+        # Relabeling is order-preserving, so the areas and slices are
+        # unchanged and carry over under the new label numbers
+        self._set_data(data_new, labels=new_labels, areas=old_areas,
+                       slices=old_slices)
+        self._update_deblend_label_map(deblend_label_map, new_label_map)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def keep_label(self, label, relabel=False):

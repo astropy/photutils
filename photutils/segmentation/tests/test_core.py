@@ -177,6 +177,32 @@ class TestSegmentationImage:
         assert_equal(segm.labels, [])
         assert_equal(segm.areas, [])
 
+    def test_relabel_consecutive_carries_areas(self):
+        """
+        Test that relabel_consecutive carries labels, areas, and
+        slices across without recomputing them.
+        """
+        segm = SegmentationImage(self.data.copy())
+        old_areas = segm.areas.copy()
+        _ = segm.slices
+
+        segm.relabel_consecutive()
+
+        assert_equal(segm.labels, np.arange(len(old_areas)) + 1)
+        assert 'areas' in segm.__dict__
+        assert_equal(segm.areas, old_areas)
+
+    def test_reassign_labels_areas_recomputed(self):
+        """
+        Test that reassign_labels leaves areas correct after labels
+        are merged.
+        """
+        segm = SegmentationImage(self.data.copy())
+        segm.reassign_label(label=3, new_label=1)
+        expected = np.unique(segm.data[segm.data != 0],
+                             return_counts=True)[1]
+        assert_equal(segm.areas, expected)
+
     def test_set_data_seeds_derived_state(self):
         """
         Test that _set_data seeds the derived cached properties and
