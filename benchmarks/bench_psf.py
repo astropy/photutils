@@ -93,7 +93,7 @@ def make_image_psf(*, fwhm=FWHM, oversampling=4):
 
 
 def make_gridded_psf_model(*, fwhm=FWHM, oversampling=4, n_psfs_side=3,
-                           image_size=2048):
+                           image_size=2048, model_class=GriddedPSFModel):
     """
     Return a synthetic `~photutils.psf.GriddedPSFModel`.
 
@@ -115,6 +115,9 @@ def make_gridded_psf_model(*, fwhm=FWHM, oversampling=4, n_psfs_side=3,
     image_size : int, optional
         The size of the detector image spanned by the grid.
 
+    model_class : class, optional
+        The gridded PSF model class to construct.
+
     Returns
     -------
     result : `~photutils.psf.GriddedPSFModel`
@@ -125,12 +128,23 @@ def make_gridded_psf_model(*, fwhm=FWHM, oversampling=4, n_psfs_side=3,
     grid_xypos = [(x, y) for y in coords for x in coords]
     planes = np.repeat(epsf[None], len(grid_xypos), axis=0)
     meta = {'grid_xypos': grid_xypos, 'oversampling': oversampling}
-    return GriddedPSFModel(NDData(planes, meta=meta))
+    return model_class(NDData(planes, meta=meta))
 
 
 class _NoDerivImagePSF(ImagePSF):
     """
     An ImagePSF variant with the analytic Jacobian disabled.
+
+    It is used by the Jacobian benchmark to time the fitter's
+    finite-difference fallback.
+    """
+
+    fit_deriv = None
+
+
+class _NoDerivGriddedPSFModel(GriddedPSFModel):
+    """
+    A GriddedPSFModel variant with the analytic Jacobian disabled.
 
     It is used by the Jacobian benchmark to time the fitter's
     finite-difference fallback.
@@ -433,11 +447,12 @@ def bench_model_types(*, size=512, n_sources=100, repeats=3, seed=0):
 def bench_jacobian(*, size=512, n_sources=100, fit_shapes=(5, 11),
                    repeats=3, seed=0):
     """
-    Benchmark the ImagePSF analytic Jacobian in PSFPhotometry.
+    Benchmark the analytic PSF model Jacobians in PSFPhotometry.
 
-    The analytic Jacobian (``fit_deriv``) is compared against the
-    fitter's finite-difference approximation, with the source
-    positions and fluxes given via ``init_params``.
+    For ImagePSF and GriddedPSFModel, the analytic Jacobian
+    (``fit_deriv``) is compared against the fitter's finite-difference
+    approximation, with the source positions and fluxes given via
+    ``init_params``.
 
     Parameters
     ----------
@@ -457,39 +472,47 @@ def bench_jacobian(*, size=512, n_sources=100, fit_shapes=(5, 11),
         The random number generator seed.
     """
     epsf_data = make_epsf_data()
-    variants = [
-        ('analytic (fit_deriv)', ImagePSF(epsf_data, oversampling=4)),
-        ('finite difference', _NoDerivImagePSF(epsf_data, oversampling=4)),
+    families = [
+        ('ImagePSF',
+         ImagePSF(epsf_data, oversampling=4),
+         _NoDerivImagePSF(epsf_data, oversampling=4)),
+        ('GriddedPSFModel',
+         make_gridded_psf_model(image_size=size),
+         make_gridded_psf_model(image_size=size,
+                                model_class=_NoDerivGriddedPSFModel)),
     ]
-    data, params = make_scene(variants[0][1], (size, size), n_sources,
-                              seed=seed)
-    init_params = params['x_0', 'y_0', 'flux']
 
-    print(f'\n== ImagePSF Jacobian ({size}x{size} image, {n_sources} '
+    print(f'\n== PSF model Jacobians ({size}x{size} image, {n_sources} '
           'sources, per-call time) ==')
-    header = f'{"variant":>24}'
+    header = f'{"variant":>40}'
     for fit_shape in fit_shapes:
         header += f'{f"fit_shape={fit_shape}":>22}'
     print(header)
-    times = {}
-    for name, psf_model in variants:
+    for family, analytic_model, numeric_model in families:
+        data, params = make_scene(analytic_model, (size, size), n_sources,
+                                  seed=seed)
+        init_params = params['x_0', 'y_0', 'flux']
+        times = {}
+        variants = [('analytic (fit_deriv)', analytic_model),
+                    ('finite difference', numeric_model)]
+        for name, psf_model in variants:
+            cells = ''
+            for fit_shape in fit_shapes:
+                phot = PSFPhotometry(psf_model, fit_shape=fit_shape,
+                                     group_warning_threshold=10**9)
+                bench = partial(run_photometry, phot, data, init_params)
+                t_call = time_best(bench, repeats=repeats)
+                times[name, fit_shape] = t_call
+                per_source = t_call / n_sources * 1e3
+                cells += f'{f"{t_call:.3f}s ({per_source:.2f}ms/src)":>22}'
+            print(f'{f"{family} {name}":>40}{cells}')
+
         cells = ''
         for fit_shape in fit_shapes:
-            phot = PSFPhotometry(psf_model, fit_shape=fit_shape,
-                                 group_warning_threshold=10**9)
-            bench = partial(run_photometry, phot, data, init_params)
-            t_call = time_best(bench, repeats=repeats)
-            times[name, fit_shape] = t_call
-            per_source = t_call / n_sources * 1e3
-            cells += f'{f"{t_call:.3f}s ({per_source:.2f}ms/src)":>22}'
-        print(f'{name:>24}{cells}')
-
-    cells = ''
-    for fit_shape in fit_shapes:
-        speedup = (times['finite difference', fit_shape]
-                   / times['analytic (fit_deriv)', fit_shape])
-        cells += f'{f"{speedup:.2f}x":>22}'
-    print(f'{"speedup":>24}{cells}')
+            speedup = (times['finite difference', fit_shape]
+                       / times['analytic (fit_deriv)', fit_shape])
+            cells += f'{f"{speedup:.2f}x":>22}'
+        print(f'{f"{family} speedup":>40}{cells}')
 
 
 def run_grouper(grouper, x, y, n_iter):
