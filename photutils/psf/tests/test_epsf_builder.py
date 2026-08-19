@@ -1159,7 +1159,7 @@ class TestEPSFBuilder:
 
         # Verify basic EPSF properties
         assert len(fitted_stars) == 10
-        # ePSF should sum to ~oversamp^2 for properly normalized
+        # EPSF should sum to ~oversamp^2 for properly normalized
         # oversampled PSF
         expected_sum = oversampling ** 2
         assert 0.9 * expected_sum < epsf.data.sum() < 1.1 * expected_sum
@@ -2427,13 +2427,13 @@ class TestEPSFBuilder:
 
         fitted_star = builder_shift._fit_star(epsf, star)
 
-        # fit_error_status should be 3
+        # The fitted star _fit_error_status should be 3
         assert fitted_star._fit_error_status == 3
 
-        # cutout_center should NOT have been updated
+        # The fitted star cutout_center should not have been updated
         assert_array_equal(fitted_star.cutout_center, original_center)
 
-        # Flux should NOT have been updated
+        # The fitted star flux should not have been updated
         assert fitted_star.flux == original_flux
 
     def test_fit_star_position_negative_outside_cutout(self, epsf_test_data):
@@ -2507,7 +2507,7 @@ class TestEPSFBuilder:
 
         fitted_star = builder_shift._fit_star(epsf, star)
 
-        # fit_error_status should be 0 (success)
+        # The fitted_star _fit_error_status should be 0 (success)
         assert fitted_star._fit_error_status == 0
 
         # cutout_center should have been updated

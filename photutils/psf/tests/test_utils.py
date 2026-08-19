@@ -6,7 +6,7 @@ Tests for the utils module.
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.modeling.models import Gaussian1D, Gaussian2D
+from astropy.modeling.models import Gaussian1D, Gaussian2D, Identity
 from astropy.table import QTable
 from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
@@ -131,7 +131,21 @@ def test_fit_2dgaussian_multiple(test_data, fix_fwhm, with_units):
     if with_units:
         for column in fit_tbl.colnames:
             if 'flux' in column:
-                assert fit_tbl['flux_fit'].unit == unit
+                assert fit_tbl[column].unit == unit
+
+
+def test_fit_2dgaussian_generator_xypos(test_data):
+    """
+    Test that xypos can be an iterator, such as a generator.
+    """
+    data, sources = test_data
+
+    xypos = ((x, y) for x, y in zip(sources['x_0'], sources['y_0'],
+                                    strict=True))
+    fit = fit_2dgaussian(data, xypos=xypos, fit_shape=(5, 5))
+    fit_tbl = fit.results
+    assert isinstance(fit_tbl, QTable)
+    assert len(fit_tbl) == len(sources)
 
 
 def test_fit_2dgaussian_fit_shape_none_single():
@@ -220,6 +234,19 @@ def test_fit_fwhm_single():
     warning_msgs = [str(w.message) for w in record]
     assert any('fit_shape is None' in msg for msg in warning_msgs)
     assert len(fwhm) == 1
+
+
+def test_fit_fwhm_convergence_warning_not_swallowed():
+    """
+    Test that the convergence warning is emitted even when the
+    fit_shape warning also fired.
+    """
+    data = np.ones((25, 25))
+    with pytest.warns(AstropyUserWarning) as record:
+        fit_fwhm(data)
+    warning_msgs = [str(w.message) for w in record]
+    assert any('fit_shape is None' in msg for msg in warning_msgs)
+    assert any('may not have converged' in msg for msg in warning_msgs)
 
 
 @pytest.mark.parametrize('with_units', [False, True])
@@ -323,6 +350,25 @@ def test_interpolate_missing_data_all_masked():
     assert np.all(np.isnan(data_int))
 
 
+def test_interpolate_missing_data_int_input():
+    """
+    Test that integer input data is interpolated in float.
+    """
+    data = np.arange(100).reshape(10, 10)
+    mask = np.ones_like(data, dtype=bool)  # All pixels masked
+
+    data_int = _interpolate_missing_data(data, mask, method='cubic')
+    assert np.all(np.isnan(data_int))
+
+    # A masked corner pixel must be filled with a finite value
+    # derived from its neighbors
+    mask = np.zeros_like(data, dtype=bool)
+    mask[0, 0] = True
+    data_int = _interpolate_missing_data(data, mask, method='cubic')
+    assert np.isfinite(data_int[0, 0])
+    assert 1 <= data_int[0, 0] <= 11
+
+
 def test_validate_psf_model():
     model = np.arange(10)
 
@@ -336,7 +382,7 @@ def test_validate_psf_model():
         _validate_psf_model(model)
 
     match = 'psf_model must be two-dimensional'
-    model = Gaussian1D()
+    model = Identity(2)  # 2 inputs, but also 2 outputs
     with pytest.raises(ValueError, match=match):
         _validate_psf_model(model)
 

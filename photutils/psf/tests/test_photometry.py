@@ -845,7 +845,7 @@ def test_near_bound_flag_grouped():
     data, params = make_psf_model_image(
         (50, 50), model, 2, model_shape=(9, 9), flux=(500, 500),
         min_separation=15, seed=0)
-    # offset the initial positions so the fit runs into the bound
+    # Offset the initial positions so the fit runs into the bound
     init = Table({'x': params['x_0'] + 2.0, 'y': params['y_0'],
                   'flux': [500.0, 500.0],
                   'group_id': [1, 1]})

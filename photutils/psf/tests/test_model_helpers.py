@@ -59,7 +59,7 @@ def test_integrate_model():
 def fixture_moffat_source():
     model = Moffat2D(alpha=4.8)
 
-    # this is the analytic value needed to get a total flux of 1
+    # This is the analytic value needed to get a total flux of 1
     model.amplitude = (model.alpha - 1.0) / (np.pi * model.gamma**2)
 
     xx, yy = np.meshgrid(*([np.linspace(-2, 2, 100)] * 2))
@@ -73,7 +73,7 @@ def test_moffat_fitting(moffat_source):
     """
     model, (xx, yy, data) = moffat_source
 
-    # initial Moffat2D model close to the original
+    # Initial Moffat2D model close to the original
     guess_moffat = Moffat2D(x_0=0.1, y_0=-0.05, gamma=1.05,
                             amplitude=model.amplitude * 1.06, alpha=4.75)
 
@@ -82,7 +82,7 @@ def test_moffat_fitting(moffat_source):
     assert_allclose(fit.parameters, model.parameters, rtol=0.01, atol=0.0005)
 
 
-# we set the tolerances in flux to be 2-3% because the guessed model
+# We set the tolerances in flux to be 2-3% because the guessed model
 # parameters are known to be wrong
 @pytest.mark.parametrize(('kwargs', 'tols'),
                          [({'x_name': 'x_0', 'y_name': 'y_0',
@@ -98,11 +98,11 @@ def test_moffat_fitting(moffat_source):
 def test_make_psf_model(moffat_source, kwargs, tols):
     model, (xx, yy, data) = moffat_source
 
-    # a close-but-wrong "guessed Moffat"
+    # A close-but-wrong "guessed Moffat"
     guess_moffat = Moffat2D(x_0=0.1, y_0=-0.05, gamma=1.01,
                             amplitude=model.amplitude * 1.01, alpha=4.79)
     if kwargs['normalize']:
-        # definitely very wrong, so this ensures the renormalization
+        # Definitely very wrong, so this ensures the renormalization
         # works
         guess_moffat.amplitude = 5.0
 
@@ -122,7 +122,7 @@ def test_make_psf_model(moffat_source, kwargs, tols):
     if fluxtol is not None:
         assert np.abs(1.0 - getattr(fit_model, fit_model.flux_name)) < fluxtol
 
-    # ensure the model parameters did not change
+    # Ensure the model parameters did not change
     assert fit_model[2].gamma == guess_moffat.gamma
     assert fit_model[2].alpha == guess_moffat.alpha
     if kwargs['flux_name'] is None:
@@ -162,12 +162,46 @@ def test_make_psf_model_inputs():
         make_psf_model(model, x_name='x_mean', y_name='y_mean_10')
 
 
+def test_make_psf_model_invalid_flux_name():
+    """
+    Test that an invalid flux_name raises a clear ValueError.
+    """
+    match = 'parameter name not found in the input model'
+    with pytest.raises(ValueError, match=match):
+        make_psf_model(Moffat2D(), x_name='x_0', y_name='y_0',
+                       flux_name='invalid')
+
+    model = Gaussian2D(1, 5, 5, 1, 1) * Const2D(1.0)
+    with pytest.raises(ValueError, match=match):
+        make_psf_model(model, x_name='x_mean_0', y_name='y_mean_0',
+                       flux_name='invalid')
+
+
 def test_make_psf_model_integral():
     model = Gaussian2D(1, 5, 5, 1, 1) * Const2D(0.0)
     match = 'Cannot normalize the model because the integrated flux is zero'
     with pytest.raises(ValueError, match=match):
         make_psf_model(model, x_name='x_mean_0', y_name='y_mean_0',
                        normalize=True)
+
+
+def test_make_psf_model_normalize_dx_dy():
+    """
+    Regression test that make_psf_model normalization works with
+    dx != dy.
+    """
+    gauss = Gaussian2D(1, 0, 0, 1, 1)
+    psf = make_psf_model(gauss, x_name='x_mean', y_name='y_mean',
+                         dx=11, dy=21, subsample=10)
+    yy, xx = np.mgrid[-10:11, -10:11]
+    total = psf(xx, yy).sum()
+    assert_allclose(total, 1.0, atol=1e-3)
+
+    # The square default grid must still integrate a unit Gaussian
+    # to 2 * pi
+    model = Gaussian2D(1, 0, 0, 1, 1)
+    integral = _integrate_model(model, x_name='x_mean', y_name='y_mean')
+    assert_allclose(integral, 2.0 * np.pi, rtol=1e-6)
 
 
 def test_make_psf_model_offset():
@@ -192,21 +226,21 @@ class TestGridFromEPSFs:
     """
 
     def setup_class(self, *, cutout_size=25):
-        # make a set of 4 EPSF models
+        # Make a set of 4 EPSF models
 
         self.cutout_size = cutout_size
 
-        # make simulated image
+        # Make simulated image
         hdu = datasets.load_simulated_hst_star_image()
         data = hdu.data
 
-        # break up the image into four quadrants
+        # Break up the image into four quadrants
         q1 = data[0:500, 0:500]
         q2 = data[0:500, 500:1000]
         q3 = data[500:1000, 0:500]
         q4 = data[500:1000, 500:1000]
 
-        # select some starts from each quadrant to use to build the epsf
+        # Select some starts from each quadrant to use to build the epsf
         quad_stars = {'q1': {'data': q1, 'fiducial': (0., 0.), 'epsf': None},
                       'q2': {'data': q2, 'fiducial': (1000., 1000.),
                              'epsf': None},
@@ -219,7 +253,7 @@ class TestGridFromEPSFs:
             quad_data = quad_stars[q]['data']
             peaks_tbl = find_peaks(quad_data, threshold=500.)
 
-            # filter out sources near edge
+            # Filter out sources near edge
             size = cutout_size
             hsize = (size - 1) / 2
             x = peaks_tbl['x_peak']
@@ -238,7 +272,7 @@ class TestGridFromEPSFs:
                                        progress_bar=False)
             epsf, _ = epsf_builder(stars)
 
-            # set x_0, y_0 to fiducial point
+            # Set x_0, y_0 to fiducial point
             epsf.y_0 = quad_stars[q]['fiducial'][0]
             epsf.x_0 = quad_stars[q]['fiducial'][1]
 
@@ -259,7 +293,7 @@ class TestGridFromEPSFs:
         """
         Test both options for setting PSF locations.
         """
-        # default option x_0 and y_0s on input EPSFs
+        # Default option x_0 and y_0s on input EPSFs
         with pytest.warns(AstropyDeprecationWarning):
             psf_grid = grid_from_epsfs(self.epsfs)
 
@@ -269,7 +303,7 @@ class TestGridFromEPSFs:
                       (0.0, 1000.0), (1000.0, 1000.0)])
         assert_equal(psf_grid.meta['grid_xypos'], psf_grid.grid_xypos)
 
-        # or pass in a list
+        # Pass in a list
         grid_xypos = [(250.0, 250.0), (750.0, 750.0),
                       (250.0, 750.0), (750.0, 250.0)]
 
@@ -286,14 +320,14 @@ class TestGridFromEPSFs:
         """
         keys = ['grid_xypos', 'oversampling', 'fill_value']
 
-        # when 'meta' isn't provided, there should be just three keys
+        # When 'meta' isn't provided, there should be just three keys
         with pytest.warns(AstropyDeprecationWarning):
             psf_grid = grid_from_epsfs(self.epsfs)
         for key in keys:
             assert key in psf_grid.meta
 
-        # when meta is provided, those new keys should exist and anything
-        # in the list above should be overwritten
+        # When meta is provided, those new keys should exist and
+        # anything in the list above should be overwritten
         meta = {'grid_xypos': 0.0, 'oversampling': 0.0,
                 'fill_value': -999, 'extra_key': 'extra'}
         with pytest.warns(AstropyDeprecationWarning):

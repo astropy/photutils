@@ -91,6 +91,13 @@ class SourceGroups:
             msg = 'x, y, and groups must have the same shape'
             raise ValueError(msg)
 
+        if not np.isfinite(self.x).all():
+            msg = 'x coordinates must be finite (no NaN or inf values)'
+            raise ValueError(msg)
+        if not np.isfinite(self.y).all():
+            msg = 'y coordinates must be finite (no NaN or inf values)'
+            raise ValueError(msg)
+
         self.n_sources = len(self.groups)
 
         unique_groups, counts = np.unique(self.groups, return_counts=True)
@@ -240,11 +247,14 @@ class SourceGroups:
         fractions = np.arange(self.n_groups) / max(self.n_groups - 1, 1)
         colors = cmap(fractions)
 
-        # Set default label kwargs
-        if label_kwargs is None:
-            label_kwargs = {'ha': 'center',
-                            'va': 'center',
-                            'zorder': 10}
+        # Merge user label kwargs with the defaults
+        default_label_kwargs = {'ha': 'center',
+                                'va': 'center',
+                                'zorder': 10}
+        label_kwargs = {**default_label_kwargs, **(label_kwargs or {})}
+
+        # A user-supplied color overrides the per-group colors
+        user_color = kwargs.pop('color', None)
 
         # Get label offset
         label_dx, label_dy = label_offset
@@ -253,7 +263,7 @@ class SourceGroups:
             mask = self.groups == group_id
             xypos = zip(self.x[mask], self.y[mask], strict=True)
             ap = CircularAperture(xypos, r=radius)
-            color = colors[i]
+            color = colors[i] if user_color is None else user_color
             ap.plot(ax=ax, color=color, **kwargs)
 
             if label_groups:
@@ -335,7 +345,7 @@ class SourceGrouper:
     def _compute_groups(self, x, y):
         """
         Group sources into clusters based on a minimum distance
-        criteria.
+        criterion.
 
         Parameters
         ----------
@@ -351,6 +361,9 @@ class SourceGrouper:
         x = np.atleast_1d(x)
         y = np.atleast_1d(y)
 
+        if x.ndim != 1 or y.ndim != 1:
+            msg = 'x and y must be 1D arrays'
+            raise ValueError(msg)
         if x.shape != y.shape:
             msg = (f'x and y must have the same shape, got x.shape={x.shape} '
                    f'and y.shape={y.shape}')
@@ -385,7 +398,7 @@ class SourceGrouper:
     def __call__(self, x, y, return_groups_object=False):
         """
         Group sources into clusters based on a minimum distance
-        criteria.
+        criterion.
 
         Parameters
         ----------
@@ -438,6 +451,8 @@ class SourceGrouper:
         >>> print(groups.groups)
         [1 1 2]
         """
+        x = np.atleast_1d(x)
+        y = np.atleast_1d(y)
         groups = self._compute_groups(x, y)
         if return_groups_object:
             return SourceGroups(x, y, groups)
