@@ -2542,8 +2542,9 @@ def test_centroid_errors_scalar():
                         error=error, aperture_mask_method='none')
 
     single = cat[0]
+    # Private properties always keep the leading source axis
     errors = single._centroid_errors
-    assert errors.shape == (2,)
+    assert errors.shape == (1, 2)
     assert np.all(np.isfinite(errors))
     assert np.all(errors > 0)
 
@@ -2579,6 +2580,35 @@ def test_centroid_errors_singularity():
     errors = cat._centroid_errors
     assert np.all(np.isfinite(errors))
     assert np.all(errors > 0)
+
+
+def test_centroid_errors_formula():
+    """
+    Test that _centroid_errors matches the analytic error-propagation
+    formula, Var(x_c) = sum(sigma_i^2 * (x_i - x_c)^2) / F^2, for a
+    non-singular source (this is also the SourceExtractor and SEP
+    formula).
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = Gaussian2D(100.0, 12.2, 12.6, 2.5, 2.5)(xx, yy)
+    error = np.full(data.shape, 3.0)
+
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[6:20, 6:20] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    mask = segment_data == 1
+    flux = np.sum(data[mask])
+    xcen = np.sum(data[mask] * xx[mask]) / flux
+    ycen = np.sum(data[mask] * yy[mask]) / flux
+    var_x = np.sum(error[mask]**2 * (xx[mask] - xcen)**2) / flux**2
+    var_y = np.sum(error[mask]**2 * (yy[mask] - ycen)**2) / flux**2
+
+    errors = cat._centroid_errors
+    assert_allclose(cat.centroid[0], (xcen, ycen))
+    assert_allclose(errors[0], np.sqrt((var_x, var_y)))
 
 
 def test_centroid_errors_zero_flux():

@@ -1627,11 +1627,11 @@ class SourceCatalog:
     def _centroid_errors(self):
         """
         The 1-sigma errors on the ``(x, y)`` isophotal centroid
-        position.
+        position as a 2D array with a leading source axis.
 
-        The errors are computed by propagating the input ``error``
-        array through the center-of-mass centroid formula. If no
-        error array was provided, the errors are ``np.nan``.
+        The errors are computed by propagating the input ``error`` array
+        through the center-of-mass centroid formula. If no error array
+        was provided, the errors are ``np.nan``.
 
         For a centroid defined as :math:`x_c = \\sum f_i x_i / F`,
         the variance is:
@@ -1641,36 +1641,17 @@ class SourceCatalog:
             \\text{Var}(x_c) = \\frac{\\sum_i (x_i - x_c)^2
             \\sigma_i^2}{F^2}
 
-        A 1/12 correction is added for finite pixel size, and a
-        singularity correction is applied for point-like sources whose
-        shape covariance determinant is below :math:`(1/12)^2`.
+        For point-like sources whose shape covariance determinant is
+        below :math:`(1/12)^2` (see ``_singular_covariance_mask``), a
+        singularity correction of :math:`\\sum_i \\sigma_i^2 / (12
+        F^2)` is added to the variances if the error covariance matrix
+        is itself nearly singular.
         """
         if self._error is None:
-            result = np.full((self.n_labels, 2), np.nan)
-            if self.isscalar:
-                return result[0]
-            return result
+            return np.full((self.n_labels, 2), np.nan)
 
-        cutout_centroid = self.cutout_centroid
-        if self.isscalar:
-            cutout_centroid = cutout_centroid[np.newaxis, :]
-
-        # Use the raw (uncorrected) shape covariance determinant to
-        # determine which sources are point-like (singularity
-        # flag): the flag is set when the covariance determinant
-        # < (1/12)^2 BEFORE the diagonal correction is applied.
-        # We compute from central moments directly.
-        moments_cen = self.moments_central
-        if self.isscalar:
-            moments_cen = moments_cen[np.newaxis, :]
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            mu00 = moments_cen[:, 0, 0]
-            raw_var_xx = moments_cen[:, 0, 2] / mu00
-            raw_var_yy = moments_cen[:, 2, 0] / mu00
-            raw_var_xy = moments_cen[:, 1, 1] / mu00
-        raw_det = raw_var_xx * raw_var_yy - raw_var_xy**2
-        is_singular = raw_det < (1.0 / 12)**2
+        cutout_centroid = self._array('cutout_centroid')
+        is_singular = self._singular_covariance_mask
 
         xerr_arr = []
         yerr_arr = []
@@ -1688,44 +1669,38 @@ class SourceCatalog:
                 continue
 
             err_sq = error_cutout.astype(float)**2
-            err_sq[total_mask] = 0.0
+            # Zero the variance at masked pixels and at pixels that
+            # were excluded from the moment data (e.g., non-finite or
+            # negative convolved values), so that pixels that do not
+            # contribute flux weight also do not contribute error
+            # variance.
+            err_sq[total_mask | (moment_data == 0)] = 0.0
 
             yy, xx = np.mgrid[0:err_sq.shape[0], 0:err_sq.shape[1]]
             dx = xx - xcen
             dy = yy - ycen
 
-            # Compute raw error variances without the pixel-size
-            # correction.
-            err_var_x = np.sum(err_sq * dx**2)
-            err_var_y = np.sum(err_sq * dy**2)
-            err_sum = np.sum(err_sq)
-
+            # Propagate the error through the centroid formula.
             norm = 1.0 / (total_flux**2)
-            err_var_x *= norm
-            err_var_y *= norm
-            err_sum_norm = err_sum * pixel_var * norm
+            err_var_x = np.sum(err_sq * dx**2) * norm
+            err_var_y = np.sum(err_sq * dy**2) * norm
 
-            # Singularity correction for point-like sources. The
-            # check is performed on the raw error matrix (without
-            # the 1/12 pixel-size correction).
+            # Singularity correction for point-like sources. If the
+            # error covariance matrix is nearly singular, add the
+            # variance of a uniform distribution across a single
+            # pixel (1/12) scaled by the summed pixel variance.
             if singular:
+                err_sum_norm = np.sum(err_sq) * pixel_var * norm
                 err_cov_xy = np.sum(err_sq * dx * dy) * norm
                 if (err_var_x * err_var_y
                         - err_cov_xy**2) < err_sum_norm**2:
                     err_var_x += err_sum_norm
                     err_var_y += err_sum_norm
 
-            # Add the pixel-size variance correction (1/12).
-            err_var_x += err_sum_norm
-            err_var_y += err_sum_norm
-
             xerr_arr.append(np.sqrt(err_var_x))
             yerr_arr.append(np.sqrt(err_var_y))
 
-        result = np.transpose((xerr_arr, yerr_arr))
-        if self.isscalar:
-            return result[0]
-        return result
+        return np.transpose((xerr_arr, yerr_arr))
 
     @staticmethod
     def _normalize_win_errors(err_sum, err_var_x, err_var_y, err_cov_xy,
@@ -3033,6 +3008,24 @@ class SourceCatalog:
         mu_20 = moments[:, 2, 0]
         tensor = np.array([mu_02, mu_11, mu_11, mu_20]).swapaxes(0, 1)
         return tensor.reshape((tensor.shape[0], 2, 2)) * u.pix**2
+
+    @cached_property
+    def _singular_covariance_mask(self):
+        """
+        A boolean mask with a leading source axis that is `True` for
+        sources whose raw covariance matrix is singular or nearly
+        singular (i.e., point-like sources).
+
+        A source is flagged as singular when the determinant of its raw
+        (unregularized) covariance matrix is less than ``(1 / 12)**2``,
+        the squared variance of a uniform distribution across a single
+        pixel. Sources with non-finite covariance are not flagged.
+        """
+        # Ignore RuntimeWarning from NaN values in the covariance
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            covar_det = np.linalg.det(self._raw_covariance)
+        return covar_det < (1.0 / 12.0)**2
 
     @cached_property
     def _raw_covariance(self):
