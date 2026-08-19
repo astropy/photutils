@@ -70,6 +70,34 @@ def _make_mask(image, mask):
     return mask
 
 
+def _out_of_grid_mask(xi, yi, shape):
+    """
+    Compute a mask of positions outside an ePSF pixel grid.
+
+    The bounds match the `~scipy.interpolate.RegularGridInterpolator`
+    bounds. This helper defines the pixel-grid bounds used by both the
+    image-based PSF model evaluations and their analytic Jacobians
+    (``fit_deriv``), which must agree.
+
+    Parameters
+    ----------
+    xi, yi : `~numpy.ndarray`
+        The (x, y) coordinates in the oversampled pixel frame of the
+        ePSF image.
+
+    shape : tuple of int
+        The ``(ny, nx)`` shape of the ePSF image.
+
+    Returns
+    -------
+    mask : bool `~numpy.ndarray`
+        A mask where `True` indicates the position is outside the ePSF
+        pixel grid.
+    """
+    ny, nx = shape
+    return (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
+
+
 def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
                    fit_shape=None, mask=None, error=None):
     """

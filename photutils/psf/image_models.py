@@ -10,6 +10,7 @@ import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from scipy.interpolate import RectBivariateSpline
 
+from photutils.psf.utils import _out_of_grid_mask
 from photutils.utils._parameters import as_pair
 
 __all__ = ['ImagePSF']
@@ -450,10 +451,8 @@ class ImagePSF(Fittable2DModel):
 
         if self.fill_value is not None:
             # Set pixels that are outside the input pixel grid to the
-            # fill_value to avoid extrapolation. These bounds match the
-            # RegularGridInterpolator bounds.
-            ny, nx = self.data.shape
-            invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
+            # fill_value to avoid extrapolation
+            invalid = _out_of_grid_mask(xi, yi, self.data.shape)
             evaluated_model[invalid] = self.fill_value
 
         return evaluated_model
@@ -510,8 +509,7 @@ class ImagePSF(Fittable2DModel):
         if self.fill_value is not None:
             # Outside the input pixel grid the model is constant
             # (fill_value), so all derivatives are zero there
-            ny, nx = self.data.shape
-            invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
+            invalid = _out_of_grid_mask(xi, yi, self.data.shape)
             d_flux[invalid] = 0.0
             d_x_0[invalid] = 0.0
             d_y_0[invalid] = 0.0

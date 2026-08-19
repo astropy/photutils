@@ -19,6 +19,7 @@ from photutils.psf.model_io import (GriddedPSFModelRead, _get_metadata,
                                     stdpsf_reader, webbpsf_reader)
 from photutils.psf.model_plotting import (_ModelGridPlotter,
                                           _plot_grid_docstring)
+from photutils.psf.utils import _out_of_grid_mask
 from photutils.utils._parameters import as_pair
 
 __all__ = ['GriddedPSFModel', 'STDPSFGrid']
@@ -885,10 +886,8 @@ class GriddedPSFModel(Fittable2DModel):
 
         if self.fill_value is not None:
             # Set pixels that are outside the input pixel grid to the
-            # fill_value to avoid extrapolation; these bounds match the
-            # RegularGridInterpolator bounds.
-            ny, nx = self.data.shape[1:]
-            invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
+            # fill_value to avoid extrapolation
+            invalid = _out_of_grid_mask(xi, yi, self.data.shape[1:])
             evaluated_model[invalid] = self.fill_value
 
         return evaluated_model
@@ -992,8 +991,7 @@ class GriddedPSFModel(Fittable2DModel):
         if self.fill_value is not None:
             # Outside the input pixel grid the model is constant
             # (fill_value), so all derivatives are zero there
-            ny, nx = self.data.shape[1:]
-            invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
+            invalid = _out_of_grid_mask(xi, yi, self.data.shape[1:])
             d_flux[invalid] = 0.0
             d_x_0[invalid] = 0.0
             d_y_0[invalid] = 0.0
