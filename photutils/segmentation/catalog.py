@@ -1702,8 +1702,8 @@ class SourceCatalog:
 
         return np.transpose((xerr_arr, yerr_arr))
 
-    def _normalize_win_errors(self, err_sum, err_var_x, err_var_y,
-                              err_cov_xy, weighted_flux):
+    def _normalize_centroid_win_err(self, err_sum, err_var_x, err_var_y,
+                                    err_cov_xy, weighted_flux):
         """
         Normalize the windowed centroid position-error variances.
 
@@ -1857,10 +1857,11 @@ class SourceCatalog:
 
         return np.transpose((xcen_win, ycen_win, xerr, yerr))
 
-    def _centroid_win_iter(self, label, xcen, ycen, rad_hl, nan_hl_,
-                           *, data_arr, mask_arr, error_arr, segm_data,
-                           data_shape, do_correct, do_segm_mask,
-                           compute_err, max_aper_size):
+    def _iterate_centroid_win(self, label, xcen, ycen, rad_hl,
+                              nan_hl_source, *, data_arr, mask_arr,
+                              error_arr, segm_data, data_shape,
+                              do_correct, do_segm_mask, compute_err,
+                              max_aper_size):
         """
         Compute the windowed centroid for a single source.
 
@@ -1878,7 +1879,7 @@ class SourceCatalog:
         rad_hl : float
             Half-light radius for this source.
 
-        nan_hl_ : bool
+        nan_hl_source : bool
             Whether the half-light radius is NaN.
 
         data_arr : `~numpy.ndarray`
@@ -1915,11 +1916,11 @@ class SourceCatalog:
             cen_mom_yy, cen_mom_xy, err_sum, err_var_x, err_var_y,
             err_cov_xy). The error terms are the raw (unnormalized)
             weighted sums from the last iteration (see
-            ``_normalize_win_errors``).
+            ``_normalize_centroid_win_err``).
         """
         nan_result = (np.nan, np.nan, 0.0, 0.0, 0.0, 0.0,
                       np.nan, np.nan, np.nan, np.nan)
-        if nan_hl_ or math.isnan(xcen) or math.isnan(ycen):
+        if nan_hl_source or math.isnan(xcen) or math.isnan(ycen):
             return nan_result
 
         sigma = 2.0 * rad_hl * gaussian_fwhm_to_sigma
@@ -2134,11 +2135,11 @@ class SourceCatalog:
         }
 
         results = []
-        for label, xcen, ycen, rad_hl, nan_hl_ in zip(
+        for label, xcen, ycen, rad_hl, nan_hl_source in zip(
                 labels, x_centroid, y_centroid, radius_hl, nan_hl,
                 strict=True):
-            results.append(self._centroid_win_iter(
-                label, xcen, ycen, rad_hl, nan_hl_, **iter_kwargs))
+            results.append(self._iterate_centroid_win(
+                label, xcen, ycen, rad_hl, nan_hl_source, **iter_kwargs))
 
         (xcen_win, ycen_win, win_weighted_flux,
          win_cen_mom_xx, win_cen_mom_yy, win_cen_mom_xy,
@@ -2148,7 +2149,7 @@ class SourceCatalog:
 
         # Normalize error terms by step_factor^2 / weighted_flux^2
         if compute_err:
-            win_err_var_x, win_err_var_y = self._normalize_win_errors(
+            win_err_var_x, win_err_var_y = self._normalize_centroid_win_err(
                 win_err_sum, win_err_var_x, win_err_var_y,
                 win_err_cov_xy, win_weighted_flux)
 
