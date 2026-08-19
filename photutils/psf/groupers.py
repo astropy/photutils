@@ -283,17 +283,17 @@ class SourceGrouper:
     distance.
 
     The groups are the connected components of the graph linking pairs
-    of sources separated by less than ``min_separation``. This is
-    identical to single-linkage hierarchical agglomerative clustering
-    with a distance criterion, but is computed using a KD-tree so that
-    it scales to large numbers of sources.
+    of sources separated by less than or equal to ``min_separation``.
+    This is identical to single-linkage hierarchical agglomerative
+    clustering with a distance criterion, but is computed using a
+    KD-tree so that it scales to large numbers of sources.
 
     Parameters
     ----------
     min_separation : float
         The minimum distance (in pixels) such that any two sources
-        separated by less than this distance will be placed in the same
-        group.
+        separated by less than or equal to this distance will be placed
+        in the same group.
 
     See Also
     --------

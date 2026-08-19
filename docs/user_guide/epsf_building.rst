@@ -68,7 +68,6 @@ add those to the image::
 Let's show the image:
 
 .. plot::
-    :include-source:
 
     import matplotlib.pyplot as plt
     from astropy.visualization import simple_norm
@@ -175,7 +174,8 @@ across the image, one should use more sophisticated methods (e.g.,
 Let's subtract the background from the image::
 
     >>> from astropy.stats import sigma_clipped_stats
-    >>> mean_val, median_val, std_val = sigma_clipped_stats(data, sigma=2.0)  # doctest: +REMOTE_DATA
+    >>> mean_val, median_val, std_val = sigma_clipped_stats(
+    ...     data, sigma=2.0)  # doctest: +REMOTE_DATA
     >>> data -= median_val  # doctest: +REMOTE_DATA
 
 The :func:`~photutils.psf.extract_stars` function requires the input
@@ -293,12 +293,12 @@ The :class:`~photutils.psf.EPSFBuilder` returns an
 the fitted stars, and detailed information about the build process. This
 result object supports tuple unpacking, so both of the following work::
 
-    >>> # New style: access result attributes
+    >>> # Access result attributes
     >>> epsf = result.epsf  # doctest: +REMOTE_DATA
     >>> fitted_stars = result.fitted_stars  # doctest: +REMOTE_DATA
 
-    >>> # Old style: tuple unpacking still works
-    >>> epsf, fitted_stars = epsf_builder(stars)  # doctest: +REMOTE_DATA
+    >>> # Tuple unpacking also works
+    >>> epsf, fitted_stars = result  # doctest: +REMOTE_DATA
 
 The `~photutils.psf.EPSFBuildResults` object provides useful diagnostic
 information about the build process::
@@ -452,6 +452,7 @@ your `~astropy.nddata.NDData` object. The uncertainty can be
 any of the `~astropy.nddata.NDUncertainty` subclasses (e.g.,
 `~astropy.nddata.StdDevUncertainty`)::
 
+    >>> import numpy as np
     >>> from astropy.nddata import StdDevUncertainty
     >>> uncertainty = StdDevUncertainty(np.sqrt(np.abs(data)))  # doctest: +REMOTE_DATA, +SKIP
     >>> nddata = NDData(data=data, uncertainty=uncertainty)  # doctest: +REMOTE_DATA, +SKIP
@@ -473,6 +474,7 @@ are constrained to have the same sky coordinate across all images.
 
 .. doctest-skip::
 
+    >>> import astropy.units as u
     >>> from astropy.coordinates import SkyCoord
     >>> catalog = Table()
     >>> catalog['skycoord'] = SkyCoord(ra=[...]*u.deg, dec=[...]*u.deg)
