@@ -2368,9 +2368,9 @@ def test_measured_kron_radius_circular_no_min_radius(gauss_101_data):
         assert np.all(np.isnan(kr))
 
 
-def test_centroid_win_errors():
+def test_centroid_win_err():
     """
-    Test that _centroid_win_errors returns finite 1-sigma position
+    Test that centroid_win_err returns finite 1-sigma position
     errors when an error array is provided.
     """
     g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
@@ -2391,7 +2391,7 @@ def test_centroid_win_errors():
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')
 
-    errors = cat._centroid_win_errors
+    errors = cat.centroid_win_err
     assert errors.shape == (cat.n_labels, 2)
     # Source 0 converged; errors should be finite and positive
     assert np.all(np.isfinite(errors[0]))
@@ -2399,12 +2399,12 @@ def test_centroid_win_errors():
     # Source 1 fell back to the isophotal centroid, so its errors
     # are the isophotal centroid errors
     assert_allclose(cat.centroid_win[1], cat.centroid[1])
-    assert_allclose(errors[1], cat._centroid_errors[1])
+    assert_allclose(errors[1], cat.centroid_err[1])
 
 
-def test_centroid_win_errors_no_error():
+def test_centroid_win_err_no_error():
     """
-    Test that _centroid_win_errors returns NaN when no error array is
+    Test that centroid_win_err returns NaN when no error array is
     provided.
     """
     g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
@@ -2418,14 +2418,14 @@ def test_centroid_win_errors_no_error():
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         aperture_mask_method='none')
 
-    errors = cat._centroid_win_errors
+    errors = cat.centroid_win_err
     # No error array provided, so errors should be NaN
     assert np.all(np.isnan(errors))
 
 
-def test_centroid_win_errors_scalar():
+def test_centroid_win_err_scalar():
     """
-    Test that _centroid_win_errors works for scalar (single-source) case.
+    Test that centroid_win_err works for scalar (single-source) case.
     """
     g1 = Gaussian2D(1621, 10.0, 10.0, 2.0, 2.0)
     yy, xx = np.mgrid[0:21, 0:21]
@@ -2440,16 +2440,19 @@ def test_centroid_win_errors_scalar():
                         error=error, aperture_mask_method='none')
 
     single = cat[0]
-    # Private properties always keep the leading source axis
-    errors = single._centroid_win_errors
-    assert errors.shape == (1, 2)
+    # Public properties collapse to a single (x, y) pair for a
+    # scalar catalog
+    errors = single.centroid_win_err
+    assert errors.shape == (2,)
     assert np.all(np.isfinite(errors))
     assert np.all(errors > 0)
+    assert single.x_centroid_win_err == errors[0]
+    assert single.y_centroid_win_err == errors[1]
 
 
-def test_centroid_win_errors_sliced():
+def test_centroid_win_err_sliced():
     """
-    Test that _centroid_win_errors works on a sliced catalog after
+    Test that centroid_win_err works on a sliced catalog after
     centroid_win was computed on the parent catalog (regression test
     for a side-effect attribute that was not propagated by slicing).
     """
@@ -2471,16 +2474,16 @@ def test_centroid_win_errors_sliced():
 
     # Compute centroid_win on the parent before slicing
     _ = cat.centroid_win
-    errors = cat._centroid_win_errors
+    errors = cat.centroid_win_err
     single = cat[0]
-    assert_allclose(single._centroid_win_errors, errors[0:1])
+    assert_allclose(single.centroid_win_err, errors[0])
     sub = cat[[1, 0]]
-    assert_allclose(sub._centroid_win_errors, errors[[1, 0]])
+    assert_allclose(sub.centroid_win_err, errors[[1, 0]])
 
 
-def test_centroid_win_errors_singularity():
+def test_centroid_win_err_singularity():
     """
-    Test that the singularity correction in _centroid_win_errors is
+    Test that the singularity correction in centroid_win_err is
     applied for a source where non-zero error is limited to a single
     pixel, causing a nearly singular error covariance.
     """
@@ -2503,15 +2506,15 @@ def test_centroid_win_errors_singularity():
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')
 
-    errors = cat._centroid_win_errors
+    errors = cat.centroid_win_err
     # Errors should be finite (singularity correction applied)
     assert np.all(np.isfinite(errors))
     assert np.all(errors > 0)
 
 
-def test_centroid_errors():
+def test_centroid_err():
     """
-    Test that _centroid_errors returns finite 1-sigma position errors
+    Test that centroid_err returns finite 1-sigma position errors
     when an error array is provided.
     """
     g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
@@ -2530,7 +2533,7 @@ def test_centroid_errors():
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')
 
-    errors = cat._centroid_errors
+    errors = cat.centroid_err
     assert errors.shape == (cat.n_labels, 2)
     # Both sources should have finite, positive errors
     assert np.all(np.isfinite(errors))
@@ -2539,9 +2542,9 @@ def test_centroid_errors():
     assert np.all(errors < 1.0)
 
 
-def test_centroid_errors_no_error():
+def test_centroid_err_no_error():
     """
-    Test that _centroid_errors returns NaN when no error array is
+    Test that centroid_err returns NaN when no error array is
     provided.
     """
     g1 = Gaussian2D(1621, 10.0, 10.0, 2.0, 2.0)
@@ -2555,13 +2558,13 @@ def test_centroid_errors_no_error():
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         aperture_mask_method='none')
 
-    errors = cat._centroid_errors
+    errors = cat.centroid_err
     assert np.all(np.isnan(errors))
 
 
-def test_centroid_errors_scalar():
+def test_centroid_err_scalar():
     """
-    Test that _centroid_errors works for a scalar (single-source) case.
+    Test that centroid_err works for a scalar (single-source) case.
     """
     g1 = Gaussian2D(1621, 10.0, 10.0, 2.0, 2.0)
     yy, xx = np.mgrid[0:21, 0:21]
@@ -2576,16 +2579,19 @@ def test_centroid_errors_scalar():
                         error=error, aperture_mask_method='none')
 
     single = cat[0]
-    # Private properties always keep the leading source axis
-    errors = single._centroid_errors
-    assert errors.shape == (1, 2)
+    # Public properties collapse to a single (x, y) pair for a
+    # scalar catalog
+    errors = single.centroid_err
+    assert errors.shape == (2,)
     assert np.all(np.isfinite(errors))
     assert np.all(errors > 0)
+    assert single.x_centroid_err == errors[0]
+    assert single.y_centroid_err == errors[1]
 
 
-def test_centroid_errors_singularity():
+def test_centroid_err_singularity():
     """
-    Test that the singularity correction in _centroid_errors is applied
+    Test that the singularity correction in centroid_err is applied
     for a source where the error covariance matrix is nearly singular.
     This happens when error is concentrated at only the centroid pixel,
     making det == esn^2 exactly, so we use <= in a modified check or
@@ -2611,14 +2617,14 @@ def test_centroid_errors_singularity():
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')
 
-    errors = cat._centroid_errors
+    errors = cat.centroid_err
     assert np.all(np.isfinite(errors))
     assert np.all(errors > 0)
 
 
-def test_centroid_errors_formula():
+def test_centroid_err_formula():
     """
-    Test that _centroid_errors matches the analytic error-propagation
+    Test that centroid_err matches the analytic error-propagation
     formula, Var(x_c) = sum(sigma_i^2 * (x_i - x_c)^2) / F^2, for a
     non-singular source (this is also the SourceExtractor and SEP
     formula).
@@ -2640,14 +2646,14 @@ def test_centroid_errors_formula():
     var_x = np.sum(error[mask]**2 * (xx[mask] - xcen)**2) / flux**2
     var_y = np.sum(error[mask]**2 * (yy[mask] - ycen)**2) / flux**2
 
-    errors = cat._centroid_errors
+    errors = cat.centroid_err
     assert_allclose(cat.centroid[0], (xcen, ycen))
     assert_allclose(errors[0], np.sqrt((var_x, var_y)))
 
 
-def test_centroid_errors_zero_flux():
+def test_centroid_err_zero_flux():
     """
-    Test that _centroid_errors returns NaN when the convolved data
+    Test that centroid_err returns NaN when the convolved data
     total flux is zero within the segment (total_flux <= 0 branch).
     """
     data = np.ones((11, 11))
@@ -2662,5 +2668,37 @@ def test_centroid_errors_zero_flux():
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')
 
-    errors = cat._centroid_errors
+    errors = cat.centroid_err
     assert np.all(np.isnan(errors))
+
+
+def test_centroid_err_columns():
+    """
+    Test the x/y centroid error properties and their use as to_table
+    columns.
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    m = g1 + g2
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = m(xx, yy)
+
+    error = np.full(data.shape, 65.0)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    segment_map = finder(convolved_data, 107.9)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    assert_allclose(cat.x_centroid_err, cat.centroid_err[:, 0])
+    assert_allclose(cat.y_centroid_err, cat.centroid_err[:, 1])
+    assert_allclose(cat.x_centroid_win_err, cat.centroid_win_err[:, 0])
+    assert_allclose(cat.y_centroid_win_err, cat.centroid_win_err[:, 1])
+
+    columns = ['label', 'x_centroid_err', 'y_centroid_err',
+               'x_centroid_win_err', 'y_centroid_win_err']
+    tbl = cat.to_table(columns=columns)
+    assert tbl.colnames == columns
+    assert_allclose(tbl['x_centroid_err'], cat.x_centroid_err)
+    assert_allclose(tbl['y_centroid_win_err'], cat.y_centroid_win_err)

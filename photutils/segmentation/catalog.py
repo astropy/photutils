@@ -1624,14 +1624,13 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
-    def _centroid_errors(self):
+    def centroid_err(self):
         """
-        The 1-sigma errors on the ``(x, y)`` isophotal centroid
-        position as a 2D array with a leading source axis.
+        The ``(x, y)`` 1-sigma errors on the `centroid` position.
 
         The errors are computed by propagating the input ``error`` array
-        through the center-of-mass centroid formula. If no error array
-        was provided, the errors are ``np.nan``.
+        through the center-of-mass centroid formula. If ``error`` was
+        not input, then the errors are NaN.
 
         For a centroid defined as :math:`x_c = \\sum f_i x_i / F`,
         the variance is:
@@ -1641,11 +1640,10 @@ class SourceCatalog:
             \\text{Var}(x_c) = \\frac{\\sum_i (x_i - x_c)^2
             \\sigma_i^2}{F^2}
 
-        For point-like sources whose shape covariance determinant is
-        below :math:`(1/12)^2` (see ``_singular_covariance_mask``), a
-        singularity correction of :math:`\\sum_i \\sigma_i^2 / (12
-        F^2)` is added to the variances if the error covariance matrix
-        is itself nearly singular.
+        For point-like sources whose shape covariance determinant
+        is below :math:`(1/12)^2`, a singularity correction of
+        :math:`\\sum_i \\sigma_i^2 / (12 F^2)` is added to the variances
+        if the error covariance matrix is itself nearly singular.
         """
         if self._error is None:
             return np.full((self.n_labels, 2), np.nan)
@@ -1701,6 +1699,28 @@ class SourceCatalog:
             yerr_arr.append(np.sqrt(err_var_y))
 
         return np.transpose((xerr_arr, yerr_arr))
+
+    @cached_property
+    @use_detcat
+    def x_centroid_err(self):
+        """
+        The 1-sigma error on the ``x`` coordinate of the `centroid`.
+
+        See `centroid_err` for details. If ``error`` was not input, then
+        the errors are NaN.
+        """
+        return self._array('centroid_err')[:, 0]
+
+    @cached_property
+    @use_detcat
+    def y_centroid_err(self):
+        """
+        The 1-sigma error on the ``y`` coordinate of the `centroid`.
+
+        See `centroid_err` for details. If ``error`` was not input, then
+        the errors are NaN.
+        """
+        return self._array('centroid_err')[:, 1]
 
     def _normalize_centroid_win_err(self, err_sum, err_var_x, err_var_y,
                                     err_cov_xy, weighted_flux):
@@ -1851,7 +1871,7 @@ class SourceCatalog:
             ycen_win[reset] = y_centroid[reset]
             # Fallback sources use the isophotal centroid, so also
             # use the isophotal centroid errors
-            iso_errors = self._centroid_errors
+            iso_errors = self._array('centroid_err')
             xerr[reset] = iso_errors[reset, 0]
             yerr[reset] = iso_errors[reset, 1]
 
@@ -2082,8 +2102,8 @@ class SourceCatalog:
         ``(n_labels, 4)``.
 
         This is the single computation behind `centroid_win` and
-        ``_centroid_win_errors``. See `centroid_win` for the
-        algorithm details.
+        `centroid_win_err`. See `centroid_win` for the algorithm
+        details.
         """
         # Use .copy() to avoid mutating the cached flux_radius value
         radius_hl = self.flux_radius(0.5).value.copy()
@@ -2219,22 +2239,45 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
-    def _centroid_win_errors(self):
+    def centroid_win_err(self):
         """
-        The 1-sigma errors on the ``(x, y)`` windowed centroid
-        position as a 2D array with a leading source axis.
+        The ``(x, y)`` 1-sigma errors on the "windowed" centroid
+        (`centroid_win`) position.
 
-        The errors are computed by propagating the error array
-        passed to `SourceCatalog` through the windowed centroid
-        computation. If no error array was provided, the errors are
-        ``np.nan``.
+        The errors are computed by propagating the input ``error`` array
+        through the Gaussian-weighted windowed centroid formula. If
+        ``error`` was not input, then the errors are NaN.
 
         Sources where the windowed centroid fell back to the
-        isophotal centroid have the isophotal centroid errors (see
-        ``_centroid_errors``). Errors are ``np.nan`` where the
-        half-light radius is non-finite.
+        isophotal `centroid` have the isophotal centroid errors (see
+        `centroid_err`). The errors are NaN where the half-light radius
+        is not finite.
         """
         return self._centroid_win_results[:, 2:4].copy()
+
+    @cached_property
+    @use_detcat
+    def x_centroid_win_err(self):
+        """
+        The 1-sigma error on the ``x`` coordinate of the "windowed"
+        centroid (`centroid_win`).
+
+        See `centroid_win_err` for details. If ``error`` was not input,
+        then the errors are NaN.
+        """
+        return self._array('centroid_win_err')[:, 0]
+
+    @cached_property
+    @use_detcat
+    def y_centroid_win_err(self):
+        """
+        The 1-sigma error on the ``y`` coordinate of the "windowed"
+        centroid (`centroid_win`).
+
+        See `centroid_win_err` for details. If ``error`` was not input,
+        then the errors are NaN.
+        """
+        return self._array('centroid_win_err')[:, 1]
 
     @cached_property
     @use_detcat
@@ -2243,10 +2286,9 @@ class SourceCatalog:
         The ``(x, y)`` coordinate, relative to the cutout data, of the
         "windowed" centroid.
 
-        The window centroid is computed using an iterative algorithm
-        to derive a more accurate centroid. It is equivalent to
-        `SourceExtractor`_'s XWIN_IMAGE and YWIN_IMAGE parameters. See
-        `centroid_win` for further details about the algorithm.
+        The window centroid is computed using an iterative algorithm to
+        derive a more accurate centroid. See `centroid_win` for further
+        details about the algorithm.
         """
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.centroid_win - origin
