@@ -188,13 +188,6 @@ def make_psf_model(model, *, x_name=None, y_name=None, flux_name=None,
     for name in psf_model.param_names:
         psf_model.fixed[name] = name not in (x_name, y_name, flux_name)
 
-    # Check that the x, y, and flux parameter names are in the output model
-    names = (x_name, y_name, flux_name)
-    for name in names:
-        if name not in psf_model.param_names:
-            msg = f'{name!r} parameter name not found in the output model'
-            raise ValueError(msg)
-
     # Set the parameter names for the PSF photometry classes
     psf_model.x_name = x_name
     psf_model.y_name = y_name

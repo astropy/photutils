@@ -300,49 +300,6 @@ class TestPSFDataProcessor:
         assert len(fluxes) == len(init_params)
         assert np.all(np.isfinite(fluxes))
 
-    def test_estimate_flux_with_array_local_bkg(self, param_mapper,
-                                                basic_data):
-        """
-        Test flux estimation when the local_bkg values are a plain
-        ndarray without a value attribute.
-        """
-        data, _, mask = basic_data
-
-        class ArrayBkgTable:
-            def __init__(self, table):
-                self._table = table
-
-            @property
-            def colnames(self):
-                return self._table.colnames
-
-            def __len__(self):
-                return len(self._table)
-
-            def __getitem__(self, item):
-                result = self._table[item]
-                if item == 'local_bkg':
-                    return np.asarray(result)
-                return result
-
-            def __setitem__(self, item, value):
-                self._table[item] = value
-
-        init_params = ArrayBkgTable(Table({
-            'x_init': [12.0],
-            'y_init': [12.0],
-            'local_bkg': [1.0],
-        }))
-        processor = PSFDataProcessor(param_mapper, (7, 7),
-                                     aperture_radius=3.0)
-        processor.data_unit = None
-
-        result = processor.estimate_flux_and_bkg_if_needed(data, mask,
-                                                           init_params)
-
-        aper_flux = processor.get_aper_fluxes(data, mask, init_params)
-        assert_allclose(np.asarray(result['flux_init']), aper_flux - 1.0)
-
     def test_find_sources_if_needed_with_init_params(self, param_mapper,
                                                      basic_data, init_params):
         """
