@@ -13,7 +13,8 @@ from numpy.testing import assert_allclose, assert_equal
 from photutils.detection import DAOStarFinder
 from photutils.psf import CircularGaussianPRF
 from photutils.psf._components import (PSFDataProcessor, PSFFitter,
-                                       PSFResultsAssembler, _ModelImageMaker)
+                                       PSFResultsAssembler, _get_flat_model,
+                                       _ModelImageMaker)
 from photutils.psf.photometry import _PSFParameterMapper
 
 
@@ -431,6 +432,33 @@ class TestPSFFitter:
         assert model.flux_1.value == 200.0
         assert model.x_0_1.value == 20.0
         assert model.y_0_1.value == 25.0
+
+    def test_get_flat_model_without_class_cache(self, psf_model,
+                                                param_mapper):
+        """
+        Test that _get_flat_model creates a new flat-model class on
+        every call when no class cache is given.
+        """
+        sources = Table({
+            'id': [1, 2],
+            'x_init': [10.0, 20.0],
+            'y_init': [15.0, 25.0],
+            'flux_init': [100.0, 200.0],
+        })
+
+        model1 = _get_flat_model(sources, psf_model, param_mapper)
+        model2 = _get_flat_model(sources, psf_model, param_mapper)
+        assert type(model1) is not type(model2)
+        assert model1.flux_0.value == 100.0
+        assert model1.x_0_1.value == 20.0
+
+        # With a cache, the class is created once and then reused
+        cache = {}
+        model3 = _get_flat_model(sources, psf_model, param_mapper,
+                                 class_cache=cache)
+        model4 = _get_flat_model(sources, psf_model, param_mapper,
+                                 class_cache=cache)
+        assert type(model3) is type(model4)
 
     def test_make_psf_model_no_stale_class_cache(self):
         """

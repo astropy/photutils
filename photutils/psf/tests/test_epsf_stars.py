@@ -207,6 +207,25 @@ def test_prepare_uncertainty_info_variants():
     assert_allclose(info['array'], np.ones((5, 5)) * 0.2)
 
 
+def test_prepare_uncertainty_info_no_represent_as():
+    """
+    Test uncertainty preparation for a duck-typed uncertainty that
+    cannot be converted to a standard deviation.
+    """
+    class PlainUncertainty:
+        uncertainty_type = 'std'
+
+        def __init__(self, array):
+            self.array = array
+
+    data = NDData(np.ones((5, 5)))
+    data.uncertainty = PlainUncertainty(np.ones((5, 5)) * 0.5)
+
+    info = _prepare_uncertainty_info(data)
+    assert info['type'] == 'uncertainty'
+    assert_allclose(info['array'], np.ones((5, 5)) * 0.5)
+
+
 def test_create_weights_cutout():
     """
     Test weights cutout creation.

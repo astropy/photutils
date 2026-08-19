@@ -642,16 +642,9 @@ class PSFDataProcessor:
             if self.data_unit is not None:
                 flux <<= self.data_unit
 
-            # Only subtract local_bkg if it's finite
-            local_bkg = init_params['local_bkg']
-            if hasattr(local_bkg, 'value'):
-                # Handle Quantity
-                local_bkg_vals = local_bkg.value
-            else:
-                local_bkg_vals = np.asarray(local_bkg)
-
             # Subtract only finite local_bkg values
-            finite_mask = np.isfinite(local_bkg_vals)
+            local_bkg = init_params['local_bkg']
+            finite_mask = np.isfinite(local_bkg.value)
             if np.any(finite_mask):
                 flux[finite_mask] -= local_bkg[finite_mask]
 

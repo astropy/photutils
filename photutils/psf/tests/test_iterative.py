@@ -294,6 +294,39 @@ def test_iterative_psf_photometry_mode_all():
     assert resid_nddata.unit == unit
 
 
+def test_iterative_psf_photometry_mode_all_local_bkg():
+    """
+    Test mode='all' with a local_bkg_estimator, which is used to
+    estimate the local background of sources detected in later
+    iterations.
+    """
+    sources = QTable()
+    sources['x_0'] = [50, 45, 55, 27, 22, 77, 82]
+    sources['y_0'] = [50, 52, 48, 27, 30, 77, 79]
+    sources['flux'] = [1000, 100, 50, 1000, 100, 1000, 100]
+
+    shape = (101, 101)
+    psf_model = CircularGaussianPRF(flux=500, fwhm=9.4)
+    psf_shape = (41, 41)
+    data = make_model_image(shape, psf_model, sources, model_shape=psf_shape)
+
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(0.2, fwhm=6.0, min_separation=0)
+    grouper = SourceGrouper(10)
+    bkgstat = MMMBackground()
+    local_bkg_estimator = LocalBackground(15, 20, bkg_estimator=bkgstat)
+    psfphot = IterativePSFPhotometry(psf_model, fit_shape, finder=finder,
+                                     grouper=grouper, aperture_radius=4,
+                                     sub_shape=psf_shape, mode='all',
+                                     local_bkg_estimator=local_bkg_estimator,
+                                     maxiters=3)
+    phot = psfphot(data)
+
+    assert 'local_bkg' in phot.colnames
+    assert np.max(phot['iter_detected']) == 2
+    assert np.all(np.isfinite(phot['local_bkg']))
+
+
 def make_one_shot_finder(x, y):
     """
     Make a mock finder that detects one source on the first call and
