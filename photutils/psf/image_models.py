@@ -465,8 +465,13 @@ class ImagePSF(Fittable2DModel):
             The list of partial derivatives with respect to the
             ``flux``, ``x_0``, and ``y_0`` parameters.
         """
-        xi = self.oversampling[1] * (np.asarray(x, dtype=float) - x_0)
-        yi = self.oversampling[0] * (np.asarray(y, dtype=float) - y_0)
+        # Promote scalar inputs to 1D arrays so that the interpolator
+        # returns an array that supports masked assignment below,
+        # regardless of the scipy version
+        x = np.atleast_1d(np.asarray(x, dtype=float))
+        y = np.atleast_1d(np.asarray(y, dtype=float))
+        xi = self.oversampling[1] * (x - x_0)
+        yi = self.oversampling[0] * (y - y_0)
         xi += self._origin[0]
         yi += self._origin[1]
 
