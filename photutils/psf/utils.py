@@ -329,6 +329,10 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
     ``fwhm`` is `None`, then the initial guess for the FWHM is half the
     mean of the x and y sizes of the ``fit_shape`` values.
 
+    This function captures warnings using the process-global warning
+    machinery, so concurrent calls from multiple threads may
+    misattribute warnings on non-free-threaded Python builds.
+
     Examples
     --------
     Fit the FWHM of a single source (e.g., a cutout image):

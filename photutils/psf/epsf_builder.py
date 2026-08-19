@@ -1075,6 +1075,15 @@ class EPSFBuilder:
         Whether to print the progress bar during the build
         iterations. The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
+
+    Notes
+    -----
+    This class stores per-call state on the instance (e.g., the list
+    of per-iteration ePSFs), so a single instance must not be called
+    concurrently from multiple threads. Create one instance per
+    thread for concurrent use. Sharing a single Astropy fitter
+    instance across concurrently-used objects is also unsafe because
+    Astropy fitters store ``fit_info`` on themselves.
     """
 
     coord_transformer = deprecated_attribute('coord_transformer', '3.1')

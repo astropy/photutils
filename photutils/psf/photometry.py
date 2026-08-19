@@ -398,6 +398,13 @@ class PSFPhotometry:
     large amounts of memory; this will hopefully be fixed in a future
     Astropy version. A warning will be raised if the number of sources
     in a group exceeds the ``group_warning_threshold`` value.
+
+    This class stores per-call state on the instance (e.g., ``results``
+    and ``fit_info``), so a single instance must not be called
+    concurrently from multiple threads. Create one instance per thread
+    for concurrent use. Sharing a single Astropy fitter instance across
+    concurrently-used objects is also unsafe because Astropy fitters
+    store ``fit_info`` on themselves.
     """
 
     # Default value for parameter initialization (invalid sources)
