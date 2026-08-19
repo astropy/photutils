@@ -5,6 +5,7 @@ Tests for the image_models module.
 
 import numpy as np
 import pytest
+from astropy.modeling.fitting import TRFLSQFitter
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.psf import CircularGaussianPSF, ImagePSF
@@ -37,35 +38,50 @@ class TestImagePSF:
         for x, y in [(0.5, 0.5), (-0.5, 1.75)]:
             assert_allclose(model(x, y), gaussian_psf(x, y), atol=4e-3)
 
-    def test_fit_deriv(self):
+    @pytest.mark.parametrize('oversampling', [1, 2, (2, 3)])
+    @pytest.mark.parametrize('origin', [None, (11.0, 13.0)])
+    def test_fit_deriv(self, oversampling, origin):
         gaussian_psf = CircularGaussianPSF(flux=1, x_0=12, y_0=12, fwhm=3.5)
         yy, xx = np.mgrid[0:25, 0:25].astype(float)
         psf_data = gaussian_psf(xx, yy)
 
-        for oversampling in (1, 2):
-            model = ImagePSF(psf_data, flux=2.0, x_0=12.3, y_0=11.7,
-                             oversampling=oversampling)
-            y, x = np.mgrid[0:15, 0:15].astype(float)
-            x = x.ravel() + 5
-            y = y.ravel() + 4
-            flux, x_0, y_0 = 2.0, 12.3, 11.7
-            d_flux, d_x_0, d_y_0 = model.fit_deriv(x, y, flux, x_0, y_0)
+        flux, x_0, y_0 = 2.0, 12.3, 11.7
+        model = ImagePSF(psf_data, flux=flux, x_0=x_0, y_0=y_0,
+                         oversampling=oversampling, origin=origin)
 
-            eps = 1e-6
+        # Evaluation points covering the valid model domain, with a
+        # margin so that the central differences below do not cross
+        # the fill_value boundary
+        ny, nx = psf_data.shape
+        margin = 0.5
+        x_lo = x_0 - model.origin[0] / model.oversampling[1] + margin
+        x_hi = (x_0 + (nx - 1 - model.origin[0]) / model.oversampling[1]
+                - margin)
+        y_lo = y_0 - model.origin[1] / model.oversampling[0] + margin
+        y_hi = (y_0 + (ny - 1 - model.origin[1]) / model.oversampling[0]
+                - margin)
+        x, y = np.meshgrid(np.linspace(x_lo, x_hi, 15),
+                           np.linspace(y_lo, y_hi, 15))
+        x = x.ravel()
+        y = y.ravel()
 
-            def ev(f, a, b, model=model, x=x, y=y):
-                return model.evaluate(x, y, f, a, b)
+        d_flux, d_x_0, d_y_0 = model.fit_deriv(x, y, flux, x_0, y_0)
 
-            num_flux = (ev(flux + eps, x_0, y_0)
-                        - ev(flux - eps, x_0, y_0)) / (2 * eps)
-            num_x_0 = (ev(flux, x_0 + eps, y_0)
-                       - ev(flux, x_0 - eps, y_0)) / (2 * eps)
-            num_y_0 = (ev(flux, x_0, y_0 + eps)
-                       - ev(flux, x_0, y_0 - eps)) / (2 * eps)
+        eps = 1e-6
 
-            assert_allclose(d_flux, num_flux, atol=1e-8)
-            assert_allclose(d_x_0, num_x_0, atol=1e-7)
-            assert_allclose(d_y_0, num_y_0, atol=1e-7)
+        def ev(f, a, b):
+            return model.evaluate(x, y, f, a, b)
+
+        num_flux = (ev(flux + eps, x_0, y_0)
+                    - ev(flux - eps, x_0, y_0)) / (2 * eps)
+        num_x_0 = (ev(flux, x_0 + eps, y_0)
+                   - ev(flux, x_0 - eps, y_0)) / (2 * eps)
+        num_y_0 = (ev(flux, x_0, y_0 + eps)
+                   - ev(flux, x_0, y_0 - eps)) / (2 * eps)
+
+        assert_allclose(d_flux, num_flux, atol=1e-8)
+        assert_allclose(d_x_0, num_x_0, atol=1e-7)
+        assert_allclose(d_y_0, num_y_0, atol=1e-7)
 
     def test_fit_deriv_out_of_bounds(self):
         gaussian_psf = CircularGaussianPSF(flux=1, x_0=5, y_0=5, fwhm=2.0)
@@ -77,10 +93,71 @@ class TestImagePSF:
         x = np.array([5.0, -50.0, 100.0])
         y = np.array([5.0, 5.0, 5.0])
         d_flux, d_x_0, d_y_0 = model.fit_deriv(x, y, 1.0, 5.0, 5.0)
+
         # Derivatives must be zero outside the input pixel grid
         assert d_flux[1] == 0.0
         assert d_x_0[1] == 0.0
         assert d_y_0[2] == 0.0
+        derivs = model.fit_deriv(x, y, 1.0, 5.0, 5.0)
+
+        # All derivatives must be zero outside the input pixel grid
+        for deriv in derivs:
+            assert_equal(deriv[1:], 0.0)
+        # The flux derivative is nonzero at the in-bounds peak position
+        assert derivs[0][0] > 0.0
+
+        # With fill_value=None, out-of-bounds derivatives are
+        # extrapolated from the spline fit instead of being zeroed
+        model = ImagePSF(psf_data, flux=1.0, x_0=5.0, y_0=5.0,
+                         fill_value=None)
+        derivs = model.fit_deriv(np.array([12.0]), np.array([5.0]),
+                                 1.0, 5.0, 5.0)
+        assert np.all(np.isfinite([deriv[0] for deriv in derivs]))
+        assert derivs[1][0] != 0.0
+
+    def test_fit_deriv_scalar(self):
+        gaussian_psf = CircularGaussianPSF(flux=1, x_0=5, y_0=5, fwhm=2.0)
+        yy, xx = np.mgrid[0:11, 0:11].astype(float)
+        psf_data = gaussian_psf(xx, yy)
+        model = ImagePSF(psf_data, flux=1.0, x_0=5.0, y_0=5.0)
+
+        # Scalar inputs are promoted to 1D arrays, matching evaluate
+        derivs = model.fit_deriv(4.5, 5.5, 1.0, 5.0, 5.0)
+        expected = model.fit_deriv(np.array([4.5]), np.array([5.5]),
+                                   1.0, 5.0, 5.0)
+        for deriv, exp in zip(derivs, expected, strict=True):
+            assert deriv.shape == (1,)
+            assert_allclose(deriv, exp)
+
+        # Scalar out-of-bounds inputs give zero derivatives
+        derivs = model.fit_deriv(-50.0, 5.0, 1.0, 5.0, 5.0)
+        for deriv in derivs:
+            assert_equal(deriv, 0.0)
+
+    def test_fit_deriv_fitting(self):
+        """
+        Test that fitting with the analytic Jacobian recovers the true
+        parameters and matches the finite-difference approximation.
+        """
+        gaussian_psf = CircularGaussianPSF(flux=1, x_0=12, y_0=12, fwhm=3.5)
+        yy, xx = np.mgrid[0:25, 0:25].astype(float)
+        psf_data = gaussian_psf(xx, yy)
+
+        truth = ImagePSF(psf_data, flux=250.0, x_0=11.6, y_0=12.4)
+        rng = np.random.default_rng(0)
+        data = truth(xx, yy) + rng.normal(0.0, 0.02, xx.shape)
+
+        assert ImagePSF.fit_deriv is not None
+        fit_params = []
+        for estimate_jacobian in (False, True):
+            init = ImagePSF(psf_data, flux=200.0, x_0=12.0, y_0=12.0)
+            fitter = TRFLSQFitter()
+            fit = fitter(init, xx.ravel(), yy.ravel(), data.ravel(),
+                         estimate_jacobian=estimate_jacobian)
+            fit_params.append(fit.parameters)
+
+        assert_allclose(fit_params[0], fit_params[1], rtol=1e-5)
+        assert_allclose(fit_params[0], (250.0, 11.6, 12.4), rtol=1e-2)
 
     def test_imagepsf_oversampling(self, gaussian_psf):
         oversamp = 3
