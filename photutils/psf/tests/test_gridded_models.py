@@ -215,7 +215,9 @@ class TestGriddedPSFModel:
         meta = {'grid_xypos': [(100, 100)], 'oversampling': 1}
         model = GriddedPSFModel(NDData(np.ones((1, 5, 5)), meta=meta))
         assert model.grid_shape == (1, 1)
-        assert model(0, 0) == 1
+        # The spline-interpolated value can be off by 1 ulp on some
+        # platforms, so do not test for exact equality
+        assert_allclose(model(0, 0), 1)
         assert model(100, 100) == 0
         assert_allclose(model([0, 100], [0, 100]), [1, 0])
 
