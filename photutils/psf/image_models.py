@@ -436,3 +436,57 @@ class ImagePSF(Fittable2DModel):
             evaluated_model[invalid] = self.fill_value
 
         return evaluated_model
+
+    def fit_deriv(self, x, y, flux, x_0, y_0):
+        """
+        Calculate the partial derivatives of the image model with
+        respect to the model parameters.
+
+        Providing this analytic Jacobian allows the fitter to avoid the
+        finite-difference approximation, which requires additional model
+        evaluations.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            The total flux of the source, assuming the input image
+            was properly normalized.
+
+        x_0, y_0 : float
+            The x and y positions of the feature in the image in the
+            output coordinate grid on which the model is evaluated.
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to the
+            ``flux``, ``x_0``, and ``y_0`` parameters.
+        """
+        xi = self.oversampling[1] * (np.asarray(x, dtype=float) - x_0)
+        yi = self.oversampling[0] * (np.asarray(y, dtype=float) - y_0)
+        xi += self._origin[0]
+        yi += self._origin[1]
+
+        # The spline interpolation is linear in flux, and the chain rule
+        # gives the x_0 and y_0 derivatives from the spline partial
+        # derivatives (dxi/dx_0 = -oversampling[1], dyi/dy_0 =
+        # -oversampling[0])
+        d_flux = self.interpolator(xi, yi, grid=False)
+        d_x_0 = (-flux * self.oversampling[1]
+                 * self.interpolator(xi, yi, dx=1, grid=False))
+        d_y_0 = (-flux * self.oversampling[0]
+                 * self.interpolator(xi, yi, dy=1, grid=False))
+
+        if self.fill_value is not None:
+            # Outside the input pixel grid the model is constant
+            # (fill_value), so all derivatives are zero there
+            ny, nx = self.data.shape
+            invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
+            d_flux[invalid] = 0.0
+            d_x_0[invalid] = 0.0
+            d_y_0[invalid] = 0.0
+
+        return [d_flux, d_x_0, d_y_0]

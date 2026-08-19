@@ -37,6 +37,51 @@ class TestImagePSF:
         for x, y in [(0.5, 0.5), (-0.5, 1.75)]:
             assert_allclose(model(x, y), gaussian_psf(x, y), atol=4e-3)
 
+    def test_fit_deriv(self):
+        gaussian_psf = CircularGaussianPSF(flux=1, x_0=12, y_0=12, fwhm=3.5)
+        yy, xx = np.mgrid[0:25, 0:25].astype(float)
+        psf_data = gaussian_psf(xx, yy)
+
+        for oversampling in (1, 2):
+            model = ImagePSF(psf_data, flux=2.0, x_0=12.3, y_0=11.7,
+                             oversampling=oversampling)
+            y, x = np.mgrid[0:15, 0:15].astype(float)
+            x = x.ravel() + 5
+            y = y.ravel() + 4
+            flux, x_0, y_0 = 2.0, 12.3, 11.7
+            d_flux, d_x_0, d_y_0 = model.fit_deriv(x, y, flux, x_0, y_0)
+
+            eps = 1e-6
+
+            def ev(f, a, b, model=model, x=x, y=y):
+                return model.evaluate(x, y, f, a, b)
+
+            num_flux = (ev(flux + eps, x_0, y_0)
+                        - ev(flux - eps, x_0, y_0)) / (2 * eps)
+            num_x_0 = (ev(flux, x_0 + eps, y_0)
+                       - ev(flux, x_0 - eps, y_0)) / (2 * eps)
+            num_y_0 = (ev(flux, x_0, y_0 + eps)
+                       - ev(flux, x_0, y_0 - eps)) / (2 * eps)
+
+            assert_allclose(d_flux, num_flux, atol=1e-8)
+            assert_allclose(d_x_0, num_x_0, atol=1e-7)
+            assert_allclose(d_y_0, num_y_0, atol=1e-7)
+
+    def test_fit_deriv_out_of_bounds(self):
+        gaussian_psf = CircularGaussianPSF(flux=1, x_0=5, y_0=5, fwhm=2.0)
+        yy, xx = np.mgrid[0:11, 0:11].astype(float)
+        psf_data = gaussian_psf(xx, yy)
+        model = ImagePSF(psf_data, flux=1.0, x_0=5.0, y_0=5.0)
+
+        # Include positions that map outside the input pixel grid
+        x = np.array([5.0, -50.0, 100.0])
+        y = np.array([5.0, 5.0, 5.0])
+        d_flux, d_x_0, d_y_0 = model.fit_deriv(x, y, 1.0, 5.0, 5.0)
+        # Derivatives must be zero outside the input pixel grid
+        assert d_flux[1] == 0.0
+        assert d_x_0[1] == 0.0
+        assert d_y_0[2] == 0.0
+
     def test_imagepsf_oversampling(self, gaussian_psf):
         oversamp = 3
         yy, xx = np.mgrid[-3:3.00001:(1 / oversamp), -3:3.00001:(1 / oversamp)]
