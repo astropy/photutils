@@ -73,9 +73,13 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
         Keyword arguments are accepted for additional model parameters.
         The values should be 2-tuples of the lower and upper bounds for
         the parameter range. The parameter values will be uniformly
-        distributed between the lower and upper bounds, inclusively. If
-        the parameter is not in the input ``psf_model`` parameter names,
-        it will be ignored.
+        distributed between the lower and upper bounds, inclusively.
+        A ``flux`` keyword is mapped to the model's flux parameter
+        name (e.g., for models output from `make_psf_model`). If the
+        parameter is not in the input ``psf_model`` parameter names, it
+        will be ignored. Keywords matching the model's x and y position
+        parameter names are also ignored because the source positions
+        are randomly generated.
 
     Returns
     -------
@@ -148,11 +152,17 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
 
     other_params = {}
     if kwargs:
-        # include only kwargs that are not x, y, or flux (main params)
+        # Include only kwargs that are model parameters, but not the
+        # x and y position parameters
         for key, val in kwargs.items():
-            if key not in psf_model.param_names or key in main_params[0:2]:
+            param = key
+            if key == 'flux' and 'flux' not in psf_model.param_names:
+                # Map the flux kwarg to the model's flux parameter name
+                param = main_params[2]
+            if (param not in psf_model.param_names
+                    or param in main_params[0:2]):
                 continue  # skip the x, y parameters
-            other_params[key] = val
+            other_params[param] = val
 
     x_name, y_name = main_params[0:2]
     params = make_model_params(shape, n_sources, x_name=x_name, y_name=y_name,

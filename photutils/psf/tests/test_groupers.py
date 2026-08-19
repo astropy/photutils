@@ -6,6 +6,7 @@ Tests for the groupers module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal
+from scipy.cluster.hierarchy import fclusterdata
 
 from photutils.psf import SourceGrouper, SourceGroups
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
@@ -79,6 +80,31 @@ class TestSourceGrouper:
         assert_equal(result.groups, [1])
         assert result.n_sources == 1
         assert result.n_groups == 1
+
+    def test_scalar_input(self):
+        """
+        Test that scalar inputs are treated as single-source arrays.
+        """
+        grouper = SourceGrouper(min_separation=5)
+        result = grouper(5.0, 5.0)
+        assert isinstance(result, np.ndarray)
+        assert_equal(result, [1])
+
+        groups = grouper(5.0, 5.0, return_groups_object=True)
+        assert isinstance(groups, SourceGroups)
+        assert groups.n_sources == 1
+        assert groups.n_groups == 1
+
+    def test_2d_input(self):
+        """
+        Test that 2D coordinate arrays raise ValueError.
+        """
+        xx = np.arange(4.0).reshape(4, 1)
+        yy = np.arange(4.0).reshape(4, 1)
+        grouper = SourceGrouper(min_separation=5)
+        match = 'x and y must be 1D arrays'
+        with pytest.raises(ValueError, match=match):
+            grouper(xx, yy)
 
     def test_mismatched_shapes(self):
         """
@@ -394,6 +420,27 @@ class TestSourceGrouper:
         assert_equal(result, gg)
         assert len(np.unique(result)) == 3
 
+    def test_grouper_matches_fclusterdata(self):
+        """
+        The grouper must produce the identical partition as
+        single-linkage fclusterdata with the distance criterion.
+        """
+        rng = np.random.default_rng(0)
+        x = rng.uniform(0, 500, 1000)
+        y = rng.uniform(0, 500, 1000)
+        for min_separation in (1.0, 5.0, 20.0):
+            grouper = SourceGrouper(min_separation=min_separation)
+            got = grouper(x, y)
+            expected = fclusterdata(np.column_stack((x, y)),
+                                    t=min_separation,
+                                    criterion='distance')
+            # Compare partitions (labels may differ)
+            got_parts = {frozenset(np.nonzero(got == g)[0])
+                         for g in np.unique(got)}
+            exp_parts = {frozenset(np.nonzero(expected == g)[0])
+                         for g in np.unique(expected)}
+            assert got_parts == exp_parts
+
     def test_list_input(self):
         """
         Test that list inputs are handled correctly.
@@ -610,6 +657,21 @@ class TestSourceGroups:
         with pytest.raises(ValueError, match=match):
             SourceGroups(x, y, groups)
 
+    def test_non_finite_input(self):
+        """
+        Test that non-finite coordinates raise ValueError.
+        """
+        groups = np.array([1, 1, 2])
+        match = 'x coordinates must be finite'
+        with pytest.raises(ValueError, match=match):
+            SourceGroups(np.array([1, np.nan, 3]), np.array([1, 2, 3]),
+                         groups)
+
+        match = 'y coordinates must be finite'
+        with pytest.raises(ValueError, match=match):
+            SourceGroups(np.array([1, 2, 3]), np.array([1, np.inf, 3]),
+                         groups)
+
     def test_repr(self, sample_groups):
         """
         Test string representation.
@@ -790,6 +852,37 @@ class TestSourceGroups:
             label_kwargs=label_kwargs, lw=3, alpha=0.5)
 
         assert result_ax is ax
+        plt.close(fig)
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_plot_color_kwarg(self, sample_groups):
+        """
+        Test that a user-supplied color overrides the group colors.
+        """
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots()
+        result_ax = sample_groups['groups'].plot(radius=0.5, ax=ax,
+                                                 color='red')
+
+        assert result_ax is ax
+        plt.close(fig)
+
+    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
+    def test_plot_label_kwargs_merge(self, sample_groups):
+        """
+        Test that user label_kwargs are merged with the defaults.
+        """
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots()
+        sample_groups['groups'].plot(radius=0.5, ax=ax, label_groups=True,
+                                     label_kwargs={'fontsize': 12})
+
+        assert len(ax.texts) == 3
+        for text in ax.texts:
+            assert text.get_fontsize() == 12
+            assert text.get_horizontalalignment() == 'center'
         plt.close(fig)
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')

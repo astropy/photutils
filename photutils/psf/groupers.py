@@ -7,7 +7,7 @@ from collections import defaultdict
 from functools import cached_property
 
 import numpy as np
-from scipy.cluster.hierarchy import fclusterdata
+from scipy.spatial import cKDTree
 
 from photutils.aperture import CircularAperture
 from photutils.utils import make_random_cmap
@@ -89,6 +89,13 @@ class SourceGroups:
 
         if self.x.shape != self.y.shape or self.x.shape != self.groups.shape:
             msg = 'x, y, and groups must have the same shape'
+            raise ValueError(msg)
+
+        if not np.isfinite(self.x).all():
+            msg = 'x coordinates must be finite (no NaN or inf values)'
+            raise ValueError(msg)
+        if not np.isfinite(self.y).all():
+            msg = 'y coordinates must be finite (no NaN or inf values)'
             raise ValueError(msg)
 
         self.n_sources = len(self.groups)
@@ -240,11 +247,14 @@ class SourceGroups:
         fractions = np.arange(self.n_groups) / max(self.n_groups - 1, 1)
         colors = cmap(fractions)
 
-        # Set default label kwargs
-        if label_kwargs is None:
-            label_kwargs = {'ha': 'center',
-                            'va': 'center',
-                            'zorder': 10}
+        # Merge user label kwargs with the defaults
+        default_label_kwargs = {'ha': 'center',
+                                'va': 'center',
+                                'zorder': 10}
+        label_kwargs = {**default_label_kwargs, **(label_kwargs or {})}
+
+        # A user-supplied color overrides the per-group colors
+        user_color = kwargs.pop('color', None)
 
         # Get label offset
         label_dx, label_dy = label_offset
@@ -253,7 +263,7 @@ class SourceGroups:
             mask = self.groups == group_id
             xypos = zip(self.x[mask], self.y[mask], strict=True)
             ap = CircularAperture(xypos, r=radius)
-            color = colors[i]
+            color = colors[i] if user_color is None else user_color
             ap.plot(ax=ax, color=color, **kwargs)
 
             if label_groups:
@@ -272,9 +282,11 @@ class SourceGrouper:
     Class to group sources into clusters based on a minimum separation
     distance.
 
-    The groups are formed using hierarchical agglomerative
-    clustering with a distance criterion, calling the
-    `scipy.cluster.hierarchy.fclusterdata` function.
+    The groups are the connected components of the graph linking pairs
+    of sources separated by less than ``min_separation``. This is
+    identical to single-linkage hierarchical agglomerative clustering
+    with a distance criterion, but is computed using a KD-tree so that
+    it scales to large numbers of sources.
 
     Parameters
     ----------
@@ -335,7 +347,7 @@ class SourceGrouper:
     def _compute_groups(self, x, y):
         """
         Group sources into clusters based on a minimum distance
-        criteria.
+        criterion.
 
         Parameters
         ----------
@@ -351,6 +363,9 @@ class SourceGrouper:
         x = np.atleast_1d(x)
         y = np.atleast_1d(y)
 
+        if x.ndim != 1 or y.ndim != 1:
+            msg = 'x and y must be 1D arrays'
+            raise ValueError(msg)
         if x.shape != y.shape:
             msg = (f'x and y must have the same shape, got x.shape={x.shape} '
                    f'and y.shape={y.shape}')
@@ -369,10 +384,32 @@ class SourceGrouper:
         if x.shape == (1,):
             return np.array([1])
 
-        # Prepare coordinate pairs for hierarchical clustering
-        coordinates = np.transpose((x, y))
-        cluster_labels = fclusterdata(coordinates, t=self.min_separation,
-                                      criterion='distance')
+        # Find all pairs of sources separated by min_separation or less.
+        # query_pairs includes pairs at exactly min_separation, matching
+        # the inclusive fclusterdata distance criterion.
+        xypos = np.column_stack((x, y))
+        tree = cKDTree(xypos)
+        pairs = tree.query_pairs(self.min_separation,
+                                 output_type='ndarray')
+
+        # Union-find over the pairs to get the connected components,
+        # which for single linkage are identical to the clusters from
+        # hierarchical clustering with a distance criterion.
+        parent = np.arange(len(x))
+
+        def find(idx):
+            while parent[idx] != idx:
+                parent[idx] = parent[parent[idx]]
+                idx = parent[idx]
+            return idx
+
+        for i, j in pairs:
+            root_i = find(i)
+            root_j = find(j)
+            if root_i != root_j:
+                parent[root_j] = root_i
+
+        cluster_labels = [find(i) for i in range(len(x))]
 
         # Reorder cluster labels to start from 1 and increase
         # sequentially (this matches the behavior of DBSCAN and other
@@ -385,7 +422,7 @@ class SourceGrouper:
     def __call__(self, x, y, return_groups_object=False):
         """
         Group sources into clusters based on a minimum distance
-        criteria.
+        criterion.
 
         Parameters
         ----------
@@ -438,6 +475,8 @@ class SourceGrouper:
         >>> print(groups.groups)
         [1 1 2]
         """
+        x = np.atleast_1d(x)
+        y = np.atleast_1d(y)
         groups = self._compute_groups(x, y)
         if return_groups_object:
             return SourceGroups(x, y, groups)

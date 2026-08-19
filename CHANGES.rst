@@ -210,6 +210,11 @@ New Features
     accept path-like inputs (e.g., ``pathlib.Path``) in addition to
     strings. [#2355]
 
+  - ``SourceGrouper`` now scales to large source lists by computing
+    the connected components of the minimum-separation graph with a
+    KD-tree instead of building a dense pairwise distance matrix.
+    [#2389]
+
 - ``photutils.segmentation``
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``
@@ -418,8 +423,6 @@ Bug Fixes
     units. The error message for a truly unitless column now suggests
     using a Quantity column. [#2384]
 
-- ``photutils.psf``
-
   - Fixed a bug where ``EPSFBuilder`` rejected all ``LinkedEPSFStar``
     inputs as invalid stars, a regression introduced in version 3.0.
     [#2385]
@@ -430,8 +433,6 @@ Bug Fixes
     reports the flat star index and includes the id label when
     available. [#2385]
 
-- ``photutils.psf``
-
   - Fixed a bug where the ``EPSFStar`` ``slices`` and ``bbox``
     attributes were transposed for non-square cutouts. [#2386]
 
@@ -439,8 +440,6 @@ Bug Fixes
     stale cached values, so every iteration normalized the star data
     with the first-iteration flux instead of the updated fitted flux.
     [#2386]
-
-- ``photutils.psf``
 
   - Fixed a bug where the ``n_pixels_fit`` results column leaked
     into the tables returned by the ``PSFPhotometry``
@@ -549,6 +548,21 @@ Bug Fixes
   - Fixed ``GriddedPSFModel.read`` to raise the standard format
     identification error for a corrupt file with a FITS extension
     instead of an ``OSError``. [#2388]
+
+  - Fixed a bug where ``SourceGrouper`` raised an error for scalar
+    x and y inputs when ``return_groups_object=True``. 2D coordinate
+    arrays now raise a clear ``ValueError``, and ``SourceGroups`` now
+    validates that the input coordinates are finite. [#2389]
+
+  - Fixed a bug where the interpolation of masked pixels in ePSF
+    building raised an error for integer-dtype star data. The
+    interpolation is now always performed in float. [#2389]
+
+  - Fixed a bug in ``make_psf_model_image`` where the ``flux``
+    keyword was silently ignored for models whose flux parameter has
+    a different name (e.g., models output from ``make_psf_model``).
+    The keyword is now mapped to the model's flux parameter name.
+    [#2389]
 
 - ``photutils.segmentation``
 

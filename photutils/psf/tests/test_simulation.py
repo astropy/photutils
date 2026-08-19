@@ -58,6 +58,25 @@ def test_make_psf_model_image_custom():
     assert len(params) == n_sources
 
 
+def test_make_psf_model_image_flux_mapping():
+    """
+    Test that the flux kwarg maps to the flux parameter name of a
+    model made with make_psf_model.
+    """
+    shape = (100, 100)
+    n_sources = 5
+    model = Gaussian2D()
+    psf_model = make_psf_model(model, x_name='x_mean', y_name='y_mean')
+    flux = (100, 200)
+    _, params = make_psf_model_image(shape, psf_model, n_sources,
+                                     model_shape=(11, 11), flux=flux,
+                                     seed=0)
+    flux_name = psf_model.flux_name
+    assert flux_name in params.colnames
+    assert np.min(params[flux_name]) >= flux[0]
+    assert np.max(params[flux_name]) <= flux[1]
+
+
 def test_make_psf_model_image_inputs():
     shape = (50, 50)
     match = 'psf_model must be an Astropy Model subclass'

@@ -4,6 +4,7 @@ Tools for PSF-fitting photometry.
 """
 
 import warnings
+from collections.abc import Iterator
 
 import numpy as np
 from astropy.modeling import Model
@@ -34,9 +35,10 @@ def _make_mask(image, mask):
     image : 2D `~numpy.ndarray`
         The input image.
 
-    mask : 2D bool `~numpy.array` or None
-        A boolean mask with the same shape as ``data``, where a `True`
-        value indicates the corresponding element of ``data`` is masked.
+    mask : 2D bool `~numpy.ndarray` or None
+        A boolean mask with the same shape as ``image``, where a `True`
+        value indicates the corresponding element of ``image`` is
+        masked.
 
     Returns
     -------
@@ -199,8 +201,9 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
 
     if xypos is None:
         xypos = centroid_com(data, mask=mask)
-    if isinstance(xypos, zip):
-        xypos = np.array(list(xypos))
+    if isinstance(xypos, Iterator):
+        # Consume iterators such as zip, map, and generators
+        xypos = list(xypos)
     xypos = np.atleast_2d(xypos)
 
     if fit_shape is None:
@@ -362,16 +365,14 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
                               fit_shape=fit_shape, mask=mask, error=error)
 
     # Re-emit fit_shape warnings and check for other warnings
-    fit_shape_warning = False
     other_warnings = False
     for warning in fit_warnings:
         if 'fit_shape is None' in str(warning.message):
             warnings.warn(str(warning.message), warning.category)
-            fit_shape_warning = True
         else:
             other_warnings = True
 
-    if other_warnings and not fit_shape_warning:
+    if other_warnings:
         msg = ('One or more fit(s) may not have converged. Please '
                'carefully check your results. You may need to change '
                'the input "xypos" and "fit_shape" parameters.')
@@ -413,7 +414,7 @@ def _interpolate_missing_data(data, mask, *, method='cubic'):
         to be filled if there are any valid (unmasked) pixels. If all
         pixels are masked, the returned array will contain NaN values.
     """
-    data_interp = np.copy(data)
+    data_interp = np.array(data, dtype=float)
 
     if len(data_interp.shape) != 2:
         msg = 'data must be a 2D array'
@@ -634,7 +635,7 @@ def _create_call_docstring(*, iterative=False):
             above order, stopping at the first match.
 
             If ``data`` is a `~astropy.units.Quantity` array, then the
-            initial flux values in this table must also must also have
+            initial flux values in this table must also have
             compatible units.
 
             The table can also have ``'group_id'`` and ``'local_bkg'``
@@ -660,7 +661,7 @@ def _create_call_docstring(*, iterative=False):
               input data, or having too few pixels for a fit.
             {iter_detected_column}
             * ``'x_init'``, ``'x_fit'``, ``'x_err'`` : the initial,
-              fit and error of the source x center
+              fit, and error of the source x center
             * ``'y_init'``, ``'y_fit'``, ``'y_err'`` : the initial, fit,
               and error of the source y center
             * ``'flux_init'``, ``'flux_fit'``, ``'flux_err'`` : the
