@@ -250,8 +250,10 @@ class ImagePSF(Fittable2DModel):
         """
         self._validate_data(value)
         self._data = value
-        # Discard the cached interpolator, which is tied to the old data
+        # Discard the cached interpolators, which are tied to the old
+        # data
         self.__dict__.pop('interpolator', None)
+        self.__dict__.pop('_deriv_interpolators', None)
 
     @property
     def shape(self):
@@ -339,13 +341,32 @@ class ImagePSF(Fittable2DModel):
 
         Notes
         -----
-        This property can be overridden in a subclass to define custom
-        interpolators.
+        This property can be overridden in a subclass to define
+        custom interpolators. A custom interpolator must provide
+        a `~scipy.interpolate.RectBivariateSpline`-compatible
+        ``partial_derivative`` method to support `fit_deriv`. Otherwise,
+        the subclass should also set ``fit_deriv = None`` to fall back
+        to the fitter's finite-difference Jacobian.
         """
         x = np.arange(self.data.shape[1])
         y = np.arange(self.data.shape[0])
         # RectBivariateSpline expects the data to be in (x, y) axis order
         return RectBivariateSpline(x, y, self.data.T, kx=3, ky=3, s=0)
+
+    @cached_property
+    def _deriv_interpolators(self):
+        """
+        The spline partial-derivative interpolators.
+
+        The interpolators evaluate the partial derivatives of
+        `interpolator` with respect to its first (x) and second (y)
+        variables. They are precomputed here because evaluating them
+        is faster than passing ``dx=1`` or ``dy=1`` to `interpolator`,
+        which computes the derivative on the fly. They are used by
+        `fit_deriv`.
+        """
+        return (self.interpolator.partial_derivative(1, 0),
+                self.interpolator.partial_derivative(0, 1))
 
     def _calc_bounding_box(self):
         """
@@ -479,11 +500,12 @@ class ImagePSF(Fittable2DModel):
         # gives the x_0 and y_0 derivatives from the spline partial
         # derivatives (dxi/dx_0 = -oversampling[1], dyi/dy_0 =
         # -oversampling[0])
+        dx_interp, dy_interp = self._deriv_interpolators
         d_flux = self.interpolator(xi, yi, grid=False)
         d_x_0 = (-flux * self.oversampling[1]
-                 * self.interpolator(xi, yi, dx=1, grid=False))
+                 * dx_interp(xi, yi, grid=False))
         d_y_0 = (-flux * self.oversampling[0]
-                 * self.interpolator(xi, yi, dy=1, grid=False))
+                 * dy_interp(xi, yi, grid=False))
 
         if self.fill_value is not None:
             # Outside the input pixel grid the model is constant
