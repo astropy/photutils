@@ -9,6 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData
 from astropy.table import QTable
@@ -359,6 +360,177 @@ class TestGriddedPSFModel:
             result = psfmodel._calc_model_values(x_0, y_0, xi, yi)
             expected = _reference_calc_model_values(psfmodel, x_0, y_0, xi, yi)
             assert_allclose(result, expected, rtol=1e-12, atol=1e-12)
+
+    @pytest.mark.parametrize('oversampling', [4, (2, 3)])
+    @pytest.mark.parametrize('position', [(95.3, 87.6), (-30.0, 87.6),
+                                          (95.3, 230.0)])
+    def test_fit_deriv(self, psfmodel, oversampling, position):
+        """
+        Test the analytic derivatives against central finite differences
+        of evaluate, for interior and outside-grid model positions and
+        for symmetric and asymmetric oversampling.
+
+        The grid planes are distinct, so this test also verifies the
+        derivative term from the change of the bilinearly interpolated
+        ePSF with the model position (omitting it gives errors of about
+        1e-3, far above the tolerances).
+        """
+        meta = {'grid_xypos': psfmodel.grid_xypos,
+                'oversampling': oversampling}
+        model = GriddedPSFModel(NDData(psfmodel.data, meta=meta))
+
+        flux = 3.0
+        x_0, y_0 = position
+        x, y = np.meshgrid(np.linspace(x_0 - 8, x_0 + 8, 13),
+                           np.linspace(y_0 - 8, y_0 + 8, 13))
+        x = x.ravel()
+        y = y.ravel()
+
+        d_flux, d_x_0, d_y_0 = model.fit_deriv(x, y, flux, x_0, y_0)
+
+        eps = 1e-6
+
+        def ev(f, a, b):
+            return model.evaluate(x, y, f, a, b)
+
+        num_flux = (ev(flux + eps, x_0, y_0)
+                    - ev(flux - eps, x_0, y_0)) / (2 * eps)
+        num_x_0 = (ev(flux, x_0 + eps, y_0)
+                   - ev(flux, x_0 - eps, y_0)) / (2 * eps)
+        num_y_0 = (ev(flux, x_0, y_0 + eps)
+                   - ev(flux, x_0, y_0 - eps)) / (2 * eps)
+
+        assert_allclose(d_flux, num_flux, atol=1e-8)
+        assert_allclose(d_x_0, num_x_0, atol=1e-7)
+        assert_allclose(d_y_0, num_y_0, atol=1e-7)
+
+    def test_fit_deriv_grid_corner(self, psfmodel):
+        """
+        Test the derivatives with the model positioned exactly on a
+        grid corner, where one bounding ePSF has zero weight and zero
+        weight derivatives.
+        """
+        x_0, y_0 = 40.0, 60.0  # grid corner
+        x = np.linspace(x_0 - 8, x_0 + 8, 9)
+        y = np.linspace(y_0 - 8, y_0 + 8, 9)
+        derivs = psfmodel.fit_deriv(x, y, 2.0, x_0, y_0)
+        for deriv in derivs:
+            assert np.all(np.isfinite(deriv))
+        # The flux derivative is the unit-flux model value
+        assert_allclose(derivs[0],
+                        psfmodel.evaluate(x, y, 1.0, x_0, y_0))
+
+    def test_fit_deriv_single_plane(self, psfmodel):
+        """
+        Test the derivatives for a grid containing a single ePSF,
+        which has no dependence on the model position through the
+        bilinear weights.
+        """
+        meta = {'grid_xypos': [psfmodel.grid_xypos[0]],
+                'oversampling': psfmodel.oversampling}
+        model = GriddedPSFModel(NDData(psfmodel.data[:1], meta=meta))
+
+        flux, x_0, y_0 = 2.0, 10.3, -4.6
+        x, y = np.meshgrid(np.linspace(x_0 - 8, x_0 + 8, 9),
+                           np.linspace(y_0 - 8, y_0 + 8, 9))
+        x = x.ravel()
+        y = y.ravel()
+        d_flux, d_x_0, d_y_0 = model.fit_deriv(x, y, flux, x_0, y_0)
+
+        eps = 1e-6
+
+        def ev(f, a, b):
+            return model.evaluate(x, y, f, a, b)
+
+        num_flux = (ev(flux + eps, x_0, y_0)
+                    - ev(flux - eps, x_0, y_0)) / (2 * eps)
+        num_x_0 = (ev(flux, x_0 + eps, y_0)
+                   - ev(flux, x_0 - eps, y_0)) / (2 * eps)
+        num_y_0 = (ev(flux, x_0, y_0 + eps)
+                   - ev(flux, x_0, y_0 - eps)) / (2 * eps)
+
+        assert_allclose(d_flux, num_flux, atol=1e-8)
+        assert_allclose(d_x_0, num_x_0, atol=1e-7)
+        assert_allclose(d_y_0, num_y_0, atol=1e-7)
+
+    def test_fit_deriv_out_of_bounds(self, psfmodel):
+        """
+        Test the derivatives at positions that map outside the ePSF
+        pixel grid.
+        """
+        x_0, y_0 = 95.3, 87.6
+        x = np.array([x_0, x_0 - 100.0, x_0 + 100.0])
+        y = np.array([y_0, y_0, y_0])
+        derivs = psfmodel.fit_deriv(x, y, 1.0, x_0, y_0)
+        # All derivatives must be zero outside the ePSF pixel grid
+        for deriv in derivs:
+            assert_equal(deriv[1:], 0.0)
+        # The flux derivative is nonzero at the in-bounds peak position
+        assert derivs[0][0] > 0.0
+
+        # With fill_value=None, out-of-bounds derivatives are
+        # extrapolated from the spline fit instead of being zeroed
+        meta = {'grid_xypos': psfmodel.grid_xypos,
+                'oversampling': psfmodel.oversampling}
+        model = GriddedPSFModel(NDData(psfmodel.data, meta=meta),
+                                fill_value=None)
+        derivs = model.fit_deriv(np.array([x_0 + 14.0]), np.array([y_0]),
+                                 1.0, x_0, y_0)
+        assert np.all(np.isfinite([deriv[0] for deriv in derivs]))
+        assert derivs[1][0] != 0.0
+
+    def test_fit_deriv_scalar(self, psfmodel):
+        """
+        Test that scalar inputs are promoted to 1D arrays, matching
+        evaluate, and that inputs with more than 2 dimensions raise an
+        error.
+        """
+        x_0, y_0 = 95.3, 87.6
+        derivs = psfmodel.fit_deriv(x_0 + 1.5, y_0 - 2.5, 1.0, x_0, y_0)
+        expected = psfmodel.fit_deriv(np.array([x_0 + 1.5]),
+                                      np.array([y_0 - 2.5]), 1.0, x_0, y_0)
+        for deriv, exp in zip(derivs, expected, strict=True):
+            assert deriv.shape == (1,)
+            assert_allclose(deriv, exp)
+
+        # Size-1 array model parameters, as passed by the fitting
+        # machinery, are converted to scalars
+        derivs = psfmodel.fit_deriv(x_0 + 1.5, y_0 - 2.5, 1.0,
+                                    np.array([x_0]), np.array([y_0]))
+        for deriv, exp in zip(derivs, expected, strict=True):
+            assert_allclose(deriv, exp)
+
+        match = 'x and y must be 1D or 2D'
+        with pytest.raises(ValueError, match=match):
+            psfmodel.fit_deriv(np.ones((2, 2, 2)), np.ones((2, 2, 2)),
+                               1.0, x_0, y_0)
+
+    def test_fit_deriv_fitting(self, psfmodel):
+        """
+        Test that fitting with the analytic Jacobian recovers the true
+        parameters and matches the finite-difference approximation.
+        """
+        yy, xx = np.mgrid[0:25, 0:25].astype(float)
+        xx += 84.0
+        yy += 76.0
+
+        truth = psfmodel.copy()
+        truth.flux, truth.x_0, truth.y_0 = 5.0, 96.4, 88.6
+        rng = np.random.default_rng(0)
+        data = truth(xx, yy) + rng.normal(0.0, 0.005, xx.shape)
+
+        assert GriddedPSFModel.fit_deriv is not None
+        fit_params = []
+        for estimate_jacobian in (False, True):
+            init = psfmodel.copy()
+            init.flux, init.x_0, init.y_0 = 3.0, 96.0, 89.0
+            fitter = TRFLSQFitter()
+            fit = fitter(init, xx.ravel(), yy.ravel(), data.ravel(),
+                         estimate_jacobian=estimate_jacobian)
+            fit_params.append(fit.parameters)
+
+        assert_allclose(fit_params[0], fit_params[1], rtol=1e-4)
+        assert_allclose(fit_params[0], (5.0, 96.4, 88.6), rtol=1e-2)
 
     def test_gridded_psf_model_invalid_inputs(self):
         data = np.ones((4, 5, 5))
