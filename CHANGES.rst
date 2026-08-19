@@ -564,6 +564,38 @@ Bug Fixes
     The keyword is now mapped to the model's flux parameter name.
     [#2389]
 
+  - Fixed a bug where the ``EPSFStars`` star counts and flat star
+    list were stale after deleting a star from the container. [#2390]
+
+  - Fixed a bug where ``extract_stars`` could modify a user-supplied
+    weights uncertainty array when masking pixels. [#2390]
+
+  - ``extract_stars`` no longer requires every input image to have a
+    WCS when multiple catalogs are input. A WCS is now required only
+    for images whose catalog provides only sky coordinates. [#2390]
+
+  - ``EPSFStar`` now raises a ``TypeError`` for ``Quantity`` input
+    data. Previously, ``Quantity`` data produced confusing downstream
+    errors. [#2390]
+
+  - Fixed a bug where an even ``EPSFBuilder`` ``shape`` value raised
+    an error instead of being made odd by adding one (with a
+    warning), as documented. [#2390]
+
+  - Fixed the ``EPSFBuilder`` minimum-shape validation to match the
+    automatically derived ePSF shape. Previously, a ``shape`` equal
+    to the derived shape could be rejected as too small when the
+    star size times the oversampling factor was odd. [#2390]
+
+  - ``EPSFBuilder`` now raises a ``ValueError`` if the initial ePSF
+    model passed to ``build_epsf`` has an oversampling that does not
+    match the builder oversampling. [#2390]
+
+  - Fixed a bug where a fitter that raised a ``TypeError`` during
+    ePSF fitting was silently retried without weights. Whether the
+    fitter supports weights is now determined from its call
+    signature. [#2390]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range
@@ -743,7 +775,7 @@ API Changes
 
   - The ``make_model_params`` output table now includes the creation
     date and photutils version metadata, consistent with
-    ``make_random_models_table``. [#2384x]
+    ``make_random_models_table``. [#2384]
 
 - ``photutils.detection``
 
@@ -805,6 +837,15 @@ API Changes
 
   - ``decode_psf_flags`` now raises a ``TypeError`` for boolean flag
     values instead of treating `True` as bit value 1. [#2375]
+
+  - The ``EPSFBuilder`` ``coord_transformer`` attribute is now
+    deprecated and will be removed in a future version. It is an
+    internal helper object that was never intended to be public.
+    [#2390]
+
+  - ``EPSFBuilder`` now supports ``sigma_clip=None`` to disable sigma
+    clipping when stacking the ePSF residuals, as its docstring
+    already documented. [#2390]
 
 - ``photutils.segmentation``
 

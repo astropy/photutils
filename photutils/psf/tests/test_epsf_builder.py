@@ -320,19 +320,26 @@ class TestEPSFValidator:
             _EPSFValidator.validate_shape_compatibility(stars, (2, 2),
                                                         shape=(5, 5))
 
-    def test_validate_shape_compatibility_even_dimensions_warning(self):
+    def test_validate_shape_compatibility_minimum_shape(self):
         """
-        Test shape compatibility with even dimensions warning.
+        Test that the minimum-shape rule matches compute_epsf_shape (add
+        1 only when the star size times oversampling is even).
         """
-        data = np.ones((5, 5))
-        star = EPSFStar(data, cutout_center=(2, 2))
+        data = np.ones((11, 11))
+        star = EPSFStar(data, cutout_center=(5, 5))
         stars = EPSFStars([star])
 
-        # Test even dimensions trigger warning
-        match = 'ePSF shape .* has even dimensions'
-        with pytest.warns(UserWarning, match=match):
-            _EPSFValidator.validate_shape_compatibility(stars, (1, 1),
-                                                        shape=(20, 20))
+        # 11 * 1 = 11 (odd), so shape (11, 11) is compatible
+        _EPSFValidator.validate_shape_compatibility(stars, (1, 1),
+                                                    shape=(11, 11))
+
+        # 11 * 2 = 22 (even), so the minimum shape is (23, 23)
+        match = r'Requested ePSF shape .* is incompatible'
+        with pytest.raises(ValueError, match=match):
+            _EPSFValidator.validate_shape_compatibility(stars, (2, 2),
+                                                        shape=(21, 21))
+        _EPSFValidator.validate_shape_compatibility(stars, (2, 2),
+                                                    shape=(23, 23))
 
     def test_validate_stars_empty_list(self):
         """
@@ -786,7 +793,7 @@ class TestEPSFBuildResults:
         assert result.epsf is not None
         assert result.fitted_stars is not None
         assert isinstance(result.iterations, int)
-        assert isinstance(result.converged, (bool, np.bool_))
+        assert isinstance(result.converged, bool)
         assert isinstance(result.final_center_accuracy, (float, np.floating))
         assert isinstance(result.n_excluded_stars, int)
         assert isinstance(result.excluded_star_indices, list)
@@ -938,26 +945,27 @@ class TestEPSFFitter:
 
     def test_weights_not_supported(self, epsf_fitter_data):
         """
-        Test EPSFFitter when fitter raises TypeError for weights.
+        Test EPSFFitter with a fitter whose signature does not accept
+        weights.
+
+        The weights are dropped based on the fitter call signature.
         """
         stars = epsf_fitter_data['stars']
         epsf = epsf_fitter_data['epsf']
 
-        # Create a fitter that raises TypeError when weights is passed
+        # Create a fitter whose signature has no weights keyword
         class NoWeightsFitter:
             def __init__(self):
                 self.fit_info = {'ierr': 1}
 
-            def __call__(self, model, *_args, **kwargs):
-                if 'weights' in kwargs:
-                    msg = 'weights not supported'
-                    raise TypeError(msg)
+            def __call__(self, model, x, y, z):  # noqa: ARG002
                 return model
 
         no_weights_fitter = NoWeightsFitter()
         fitter = _make_epsf_fitter(fitter=no_weights_fitter)
+        assert not fitter._fitter_accepts_weights
 
-        # Fit the stars - should handle TypeError gracefully
+        # Fit the stars - the fitter is called without weights
         fitted_stars = fitter(epsf, stars)
         assert len(fitted_stars) == len(stars)
 
@@ -1010,15 +1018,7 @@ class TestEPSFFitter:
         stars = epsf_fitter_data['stars']
         epsf = epsf_fitter_data['epsf']
 
-        # Create mock WCS that returns identity transform
-        class MockWCS:
-            def pixel_to_world_values(self, x, y):
-                return x, y
-
-            def world_to_pixel_values(self, ra, dec):
-                return ra, dec
-
-        mock_wcs = MockWCS()
+        mock_wcs = _MockWCS()
 
         # Create EPSFStar objects with mock WCS
         linked_stars_list = []
@@ -1067,20 +1067,13 @@ class TestEPSFFitter:
         """
         Test EPSFFitter with LinkedEPSFStar containing excluded star.
 
-        This tests lines 825, 856-860 (excluded star in LinkedEPSFStar).
+        Excluded stars within a LinkedEPSFStar are passed through
+        unchanged while the remaining linked stars are fitted.
         """
         stars = epsf_fitter_data['stars']
         epsf = epsf_fitter_data['epsf']
 
-        # Create mock WCS
-        class MockWCS:
-            def pixel_to_world_values(self, x, y):
-                return x, y
-
-            def world_to_pixel_values(self, ra, dec):
-                return ra, dec
-
-        mock_wcs = MockWCS()
+        mock_wcs = _MockWCS()
 
         # Create LinkedEPSFStar with two stars, one excluded
         linked_stars_list = []
@@ -1196,10 +1189,18 @@ class TestEPSFBuilder:
         with pytest.raises(ValueError, match=match):
             EPSFBuilder(oversampling=[-1, 4])
 
-        for sigma_clip in [None, [], 'a']:
+        for sigma_clip in [[], 'a']:
             match = 'sigma_clip must be an astropy.stats.SigmaClip instance'
             with pytest.raises(TypeError, match=match):
                 EPSFBuilder(sigma_clip=sigma_clip)
+
+        match = 'fitter_maxiters must be an integer'
+        with pytest.raises(TypeError, match=match):
+            EPSFBuilder(fitter_maxiters=2.5)
+
+        match = 'fitter_maxiters must be a positive integer'
+        with pytest.raises(ValueError, match=match):
+            EPSFBuilder(fitter_maxiters=-5)
 
     def test_fitter_options(self):
         """
@@ -1402,6 +1403,119 @@ class TestEPSFBuilder:
         assert epsf is not None
         assert epsf.data.shape == shape
 
+    def test_even_shape_made_odd(self, epsf_test_data):
+        """
+        Test that an even input shape is made odd by adding one, with
+        a warning, as documented.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:3], size=11)
+
+        match = 'has even values'
+        with pytest.warns(AstropyUserWarning, match=match):
+            builder = EPSFBuilder(oversampling=1, shape=(24, 24),
+                                  maxiters=1, progress_bar=False)
+        assert_array_equal(builder.shape, (25, 25))
+
+        epsf, _ = builder(stars)
+        assert epsf.data.shape == (25, 25)
+
+    def test_shape_equal_to_star_size(self, epsf_test_data):
+        """
+        Test that a shape equal to the star size times the (odd product)
+        oversampling is accepted, consistent with the automatically
+        derived shape.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:3], size=11)
+
+        builder = EPSFBuilder(oversampling=1, shape=(11, 11),
+                              maxiters=1, progress_bar=False)
+        epsf, _ = builder(stars)
+        assert epsf.data.shape == (11, 11)
+
+    def test_sigma_clip_none(self, epsf_test_data):
+        """
+        Test that sigma_clip=None (no sigma clipping) is supported.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:5], size=11)
+
+        builder = EPSFBuilder(oversampling=1, maxiters=2,
+                              sigma_clip=None, progress_bar=False)
+        assert builder._sigma_clip is None
+        result = builder(stars)
+        assert result.epsf is not None
+        assert result.epsf.data.shape == (11, 11)
+
+    def test_build_epsf_resume(self, epsf_test_data):
+        """
+        Test resuming a build from a previously built ePSF and that a
+        mismatched initial-ePSF oversampling is rejected.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:5], size=11)
+
+        builder = EPSFBuilder(oversampling=1, maxiters=2,
+                              progress_bar=False)
+        result1 = builder.build_epsf(stars)
+
+        # Resume from the previous ePSF with matching oversampling
+        result2 = builder.build_epsf(stars, epsf=result1.epsf)
+        assert isinstance(result2, EPSFBuildResults)
+        assert result2.epsf.data.shape == result1.epsf.data.shape
+
+        # A mismatched initial-ePSF oversampling raises an error
+        builder4 = EPSFBuilder(oversampling=4, maxiters=2,
+                               progress_bar=False)
+        epsf_bad = ImagePSF(np.zeros((45, 45)), oversampling=2)
+        match = 'oversampling'
+        with pytest.raises(ValueError, match=match):
+            builder4.build_epsf(stars, epsf=epsf_bad)
+
+    def test_build_results_len(self, epsf_test_data):
+        """
+        Test that EPSFBuildResults has length 2 for tuple unpacking.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:3], size=11)
+        builder = EPSFBuilder(oversampling=1, maxiters=1,
+                              progress_bar=False)
+        result = builder(stars)
+        assert len(result) == 2
+
+    def test_numpy_scalar_parameters(self):
+        """
+        Test that NumPy scalar center_accuracy and maxiters values
+        are accepted, while bool maxiters values are rejected.
+        """
+        builder = EPSFBuilder(center_accuracy=np.float32(0.01),
+                              maxiters=np.int64(5))
+        assert builder.maxiters == 5
+
+        match = 'maxiters must be an integer'
+        with pytest.raises(TypeError, match=match):
+            EPSFBuilder(maxiters=True)
+
+    def test_smoothing_kernel_1d_raises(self):
+        """
+        Test that a 1D custom smoothing kernel raises a ValueError.
+        """
+        match = 'smoothing_kernel must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            _SmoothingKernel.get_kernel(np.ones(5))
+
+    def test_coord_transformer_deprecated(self):
+        """
+        Test that the public coord_transformer attribute is
+        deprecated.
+        """
+        builder = EPSFBuilder(maxiters=1, progress_bar=False)
+        with pytest.warns(AstropyDeprecationWarning,
+                          match='coord_transformer'):
+            transformer = builder.coord_transformer
+        assert transformer is builder._coord_transformer
+
     def test_check_convergence_no_good_stars(self):
         """
         Test EPSFBuilder._check_convergence with no good stars.
@@ -1421,8 +1535,8 @@ class TestEPSFBuilder:
 
         # Should return False (not converged) when no good stars
         assert converged is False
-        # center_dist_sq should be high to prevent false convergence
-        assert center_dist_sq[0] > builder.center_accuracy_sq
+        # No center movement could be measured
+        assert np.isnan(center_dist_sq[0])
 
     def test_resample_residuals_no_good_stars(self, epsf_test_data):
         """
@@ -1719,52 +1833,27 @@ class TestEPSFBuilder:
 
     def test_build_tracks_excluded_indices(self, epsf_test_data):
         """
-        Test that build_epsf properly tracks excluded star indices.
+        Test that build_epsf tracks the excluded star indices.
         """
-        stars = extract_stars(epsf_test_data['nddata'],
-                              epsf_test_data['init_stars'][:10], size=11)
+        # The first star is placed near the image corner so that
+        # its fitting region extends beyond the cutout and it is
+        # excluded after repeated fit failures (same setup as
+        # test_star_exclusion).
+        tbl = epsf_test_data['init_stars'][:5].copy()
+        tbl['x'][0] = 465
+        tbl['y'][0] = 30
+        stars = extract_stars(epsf_test_data['nddata'], tbl, size=11)
 
-        # Create a fitter that:
-        # 1. Adds noise to centers to prevent convergence
-        # 2. Fails first 3 stars on iteration 4+
-        n_stars = len(stars.all_stars)
-
-        class NoConvergeFitter:
-            def __init__(self):
-                self.star_count = 0
-                self.fit_info = {'ierr': 1}
-
-            def __call__(self, model, *_args, **_kwargs):
-                self.star_count += 1
-                iteration = self.star_count // n_stars + 1
-                star_idx = (self.star_count - 1) % n_stars
-
-                # On iteration 4+, fail first 3 stars
-                if iteration > 4 and star_idx < 3:
-                    self.fit_info = {'ierr': 0}  # Invalid
-                else:
-                    self.fit_info = {'ierr': 1}  # Valid
-
-                # Add slight offset to x_0 to prevent convergence
-                model.x_0 = model.x_0 + 0.01 * (iteration % 2)
-                return model
-
-        fitter_obj = NoConvergeFitter()
-        builder = EPSFBuilder(oversampling=1, maxiters=7,
-                              progress_bar=False,
-                              fitter=fitter_obj,
-                              center_accuracy=1e-6)
-
-        # Build - this should trigger exclusion tracking
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
+        builder = EPSFBuilder(oversampling=1, maxiters=5,
+                              progress_bar=False)
+        match = 'has been excluded from ePSF fitting'
+        with pytest.warns(AstropyUserWarning, match=match):
             result = builder(stars)
 
-        # Check that excluded_star_indices was populated
-        assert hasattr(result, 'excluded_star_indices')
-        assert isinstance(result.excluded_star_indices, list)
-        # We may or may not have excluded stars depending on exact timing
-        assert result.n_excluded_stars >= 0
+        assert result.excluded_star_indices == [0]
+        assert result.n_excluded_stars == 1
+        assert all(type(idx) is int
+                   for idx in result.excluded_star_indices)
 
     def test_build_step_origin_is_none_branch(self, epsf_test_data):
         """
@@ -1965,15 +2054,7 @@ class TestEPSFBuilder:
         builder = EPSFBuilder(oversampling=1, maxiters=2, progress_bar=False)
         epsf, _ = builder(stars)
 
-        # Create mock WCS
-        class MockWCS:
-            def pixel_to_world_values(self, x, y):
-                return x, y
-
-            def world_to_pixel_values(self, ra, dec):
-                return ra, dec
-
-        mock_wcs = MockWCS()
+        mock_wcs = _MockWCS()
 
         # Create LinkedEPSFStar from first two stars
         linked_stars_list = []
@@ -2014,15 +2095,7 @@ class TestEPSFBuilder:
         builder = EPSFBuilder(oversampling=1, maxiters=2, progress_bar=False)
         epsf, _ = builder(stars)
 
-        # Create mock WCS
-        class MockWCS:
-            def pixel_to_world_values(self, x, y):
-                return x, y
-
-            def world_to_pixel_values(self, ra, dec):
-                return ra, dec
-
-        mock_wcs = MockWCS()
+        mock_wcs = _MockWCS()
 
         # Create LinkedEPSFStar with one excluded star
         linked_stars_list = []
@@ -2125,9 +2198,33 @@ class TestEPSFBuilder:
         # Create zero-sum ePSF data
         epsf_data = np.zeros((5, 5))
 
-        match = 'Cannot normalize ePSF: data sum is zero'
+        match = 'Cannot normalize ePSF'
         with pytest.raises(ValueError, match=match):
             builder._normalize_epsf(epsf_data)
+
+        # Non-finite sums are also rejected
+        epsf_data = np.full((5, 5), np.nan)
+        with pytest.raises(ValueError, match=match):
+            builder._normalize_epsf(epsf_data)
+
+    def test_normalize_epsf_nonfinite_recentering(self, epsf_test_data):
+        """
+        Test that a recentering function returning non-finite centroids
+        produces a clear error during building.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:3], size=11)
+
+        def bad_centroid(data, *, mask=None):  # noqa: ARG001
+            return (np.nan, np.nan)
+
+        builder = EPSFBuilder(oversampling=1, maxiters=2,
+                              recentering_func=bad_centroid,
+                              progress_bar=False)
+
+        match = 'Cannot normalize ePSF'
+        with pytest.raises(ValueError, match=match):
+            builder(stars)
 
     @pytest.mark.parametrize('oversamp', [1, 2, 3, 4, 5])
     def test_build_oversampling(self, oversamp):
@@ -2251,15 +2348,7 @@ class TestEPSFBuilder:
         result = builder(stars)
         epsf = result.epsf
 
-        # Create mock WCS
-        class MockWCS:
-            def pixel_to_world_values(self, x, y):
-                return x, y
-
-            def world_to_pixel_values(self, ra, dec):
-                return ra, dec
-
-        mock_wcs = MockWCS()
+        mock_wcs = _MockWCS()
 
         # Create LinkedEPSFStar with two stars, one excluded
         linked_stars_list = []
@@ -2286,25 +2375,26 @@ class TestEPSFBuilder:
 
     def test_fit_star_fitter_without_weights(self, epsf_test_data):
         """
-        Test _fit_star with fitter that doesn't support weights.
+        Test _fit_star with a fitter whose signature does not accept
+        weights.
+
+        The weights are dropped based on the fitter call signature.
         """
         stars = extract_stars(epsf_test_data['nddata'],
                               epsf_test_data['init_stars'][:2], size=11)
 
-        # Create a fitter that raises TypeError when weights is passed
+        # Create a fitter whose signature has no weights keyword
         class NoWeightsFitter:
             def __init__(self):
                 self.fit_info = {'ierr': 1}
 
-            def __call__(self, model, *_args, **kwargs):
-                if 'weights' in kwargs:
-                    msg = 'weights not supported'
-                    raise TypeError(msg)
+            def __call__(self, model, x, y, z, maxiter=None):  # noqa: ARG002
                 return model
 
         no_weights_fitter = NoWeightsFitter()
         builder = EPSFBuilder(oversampling=1, maxiters=1, progress_bar=False,
                               fitter=no_weights_fitter)
+        assert not builder._fitter_accepts_weights
 
         # Build initial ePSF
         result = builder(stars)
@@ -2378,11 +2468,13 @@ class TestEPSFBuilder:
         result = builder(stars)
         epsf = result.epsf
 
-        # Create EPSFStars with invalid star type
+        # Create EPSFStars holding an invalid star type (bypass the
+        # EPSFStars constructor validation)
         class InvalidStar:
             pass
 
-        invalid_stars = EPSFStars([InvalidStar()])
+        invalid_stars = EPSFStars([])
+        invalid_stars._data.append(InvalidStar())
 
         # Call _fit_stars with invalid star type
         match = 'stars must contain only EPSFStar and/or LinkedEPSFStar'

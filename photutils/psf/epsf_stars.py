@@ -7,6 +7,7 @@ cutouts for fitting and building ePSFs.
 import warnings
 from functools import cached_property
 
+import astropy.units as u
 import numpy as np
 from astropy.nddata import (NDData, NoOverlapError, PartialOverlapError,
                             StdDevUncertainty, overlap_slices)
@@ -32,6 +33,8 @@ class EPSFStar:
 
     weights : `~numpy.ndarray` or `None`, optional
         A 2D array of the weights associated with the input ``data``.
+        Pixels where ``weights`` is not positive are treated as
+        masked.
 
     cutout_center : tuple of two floats or `None`, optional
         The ``(x, y)`` position of the star's center with respect to the
@@ -66,6 +69,11 @@ class EPSFStar:
 
     def __init__(self, data, *, weights=None, cutout_center=None, flux=None,
                  origin=(0, 0), wcs_large=None, id_label=None):
+
+        if isinstance(data, u.Quantity):
+            msg = ('data must be a plain ndarray; Quantity inputs are '
+                   'not supported')
+            raise TypeError(msg)
 
         self._data = np.asanyarray(data)
 
@@ -114,7 +122,7 @@ class EPSFStar:
         # Validate origin
         origin = np.asarray(origin)
         if origin.shape != (2,):
-            msg = f'Origin must have exactly 2 elements, got {len(origin)}'
+            msg = f'Origin must have exactly 2 elements, got {origin.size}'
             raise ValueError(msg)
         if not np.all(np.isfinite(origin)):
             msg = 'Origin coordinates must be finite'
@@ -164,13 +172,16 @@ class EPSFStar:
 
         self._excluded_from_fit = False
         self._fit_error_status = 0  # 0: no error, >0: error during fitting
-        self._fitinfo = None
+        self._fit_info = None
 
-    def __array__(self):
+    def __array__(self, dtype=None, copy=None):
         """
-        Array representation of the data array (e.g., for matplotlib).
+        Array representation of the data array (e.g., for
+        matplotlib).
         """
-        return self._data
+        if copy is False:
+            return np.asarray(self._data, dtype=dtype)
+        return np.array(self._data, dtype=dtype, copy=True)
 
     @property
     def data(self):
@@ -240,7 +251,7 @@ class EPSFStar:
                    f'cutout bounds [0, {self.shape[0]})')
             warnings.warn(msg, AstropyUserWarning)
 
-        self._cutout_center = np.asarray(value)
+        self._cutout_center = np.array(value, dtype=float)
 
     @property
     def center(self):
@@ -279,8 +290,7 @@ class EPSFStar:
         Returns
         -------
         flux : float
-            The estimated star's flux. If there is no valid data in the
-            cutout, `numpy.nan` will be returned.
+            The estimated star's flux.
         """
         if not np.any(self.mask):
             return float(np.sum(self.data))
@@ -363,13 +373,16 @@ class EPSFStars:
     """
 
     def __init__(self, stars_list):
+        msg = ('stars_list must be a list of EPSFStar and/or '
+               'LinkedEPSFStar objects')
         if isinstance(stars_list, (EPSFStar, LinkedEPSFStar)):
             self._data = [stars_list]
         elif isinstance(stars_list, list):
+            for star in stars_list:
+                if not isinstance(star, (EPSFStar, LinkedEPSFStar)):
+                    raise TypeError(msg)
             self._data = stars_list
         else:
-            msg = ('stars_list must be a list of EPSFStar and/or '
-                   'LinkedEPSFStar objects')
             raise TypeError(msg)
 
     def __len__(self):
@@ -389,6 +402,8 @@ class EPSFStars:
         Delete the star at the given index.
         """
         del self._data[index]
+        for key in ('all_stars', 'n_stars', 'n_all_stars'):
+            self.__dict__.pop(key, None)
 
     def __iter__(self):
         """
@@ -414,11 +429,21 @@ class EPSFStars:
 
         This allows accessing star attributes (like ``cutout_center``,
         ``center``, ``flux``) directly on the EPSFStars container,
-        returning an array of values from all contained stars.
+        returning an array of values from all contained stars. If the
+        per-star values have inconsistent shapes (e.g., for a mix of
+        `EPSFStar` and multi-star `LinkedEPSFStar` objects), an object
+        array is returned.
         """
         result = [getattr(star, attr) for star in self._data]
         if attr in ['cutout_center', 'center', 'flux', '_excluded_from_fit']:
-            result = np.array(result)
+            try:
+                result = np.array(result)
+            except ValueError:
+                # Ragged per-star values (e.g., a mix of EPSFStar and
+                # multi-star LinkedEPSFStar objects)
+                arr = np.empty(len(result), dtype=object)
+                arr[:] = result
+                result = arr
         if len(self._data) == 1:
             result = result[0]
         return result
@@ -565,6 +590,9 @@ class LinkedEPSFStar:
         This provides access to common star attributes like cutout_center,
         center, flux, etc. as arrays when accessed on the LinkedEPSFStar.
         """
+        if attr == '_excluded_from_fit':
+            return np.array([star._excluded_from_fit
+                             for star in self._data])
         if attr.startswith('_'):
             msg = f"'{type(self).__name__}' object has no attribute '{attr}'"
             raise AttributeError(msg)
@@ -891,7 +919,8 @@ def _validate_coordinate_consistency(data, catalogs):
                        "'x' and 'y' columns or a 'skycoord' column.")
                 raise ValueError(msg)
 
-            # If only skycoord is available, ensure WCS is present
+            # If only skycoord is available, ensure the corresponding
+            # NDData object has a WCS
             if has_skycoord and not has_xy:
                 data_idx = i if len(data) == len(catalogs) else 0
                 if (data_idx < len(data)
@@ -899,12 +928,6 @@ def _validate_coordinate_consistency(data, catalogs):
                     msg = (f'When catalog at index {i} contains only skycoord '
                            f'positions, the corresponding NDData object must '
                            'have a wcs attribute.')
-                    raise ValueError(msg)
-
-                if any(img.wcs is None for img in data):
-                    msg = ('When inputting catalog(s) with only skycoord '
-                           'positions, each NDData object must have a '
-                           'wcs attribute.')
                     raise ValueError(msg)
 
         if len(data) != len(catalogs):
@@ -929,7 +952,8 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
         which to extract the stars. If the input ``catalogs`` contain
         only the sky coordinates (i.e., not the pixel coordinates) of
         the stars then each of the `~astropy.nddata.NDData` objects must
-        have a valid ``wcs`` attribute.
+        have a valid ``wcs`` attribute. Any ``unit`` attribute of the
+        `~astropy.nddata.NDData` objects is ignored.
 
     catalogs : `~astropy.table.Table`, list of `~astropy.table.Table`
         A catalog or list of catalogs of sources to be extracted from
@@ -959,10 +983,10 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
         Optionally, each catalog may also contain an ``id`` column
         representing the ID/name of stars. If this column is not
         present then the extracted stars will be given an ``id`` number
-        corresponding the table row number (starting at 1). The catalogs
-        may also contain an optional ``flux`` column giving the flux
-        of each star. If present, these values are used instead of
-        estimating the flux from the cutout data. Any other columns
+        corresponding to the table row number (starting at 1). The
+        catalogs may also contain an optional ``flux`` column giving the
+        flux of each star. If present, these values are used instead
+        of estimating the flux from the cutout data. Any other columns
         present in the input ``catalogs`` will be ignored.
 
     size : int or array_like (int), optional
@@ -974,7 +998,7 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
     Returns
     -------
     stars : `EPSFStars` instance
-        A `EPSFStars` instance containing the extracted stars.
+        An `EPSFStars` instance containing the extracted stars.
     """
     data = _normalize_data_input(data)
     catalogs = _normalize_catalog_input(catalogs)
@@ -984,14 +1008,14 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
     size = as_pair('size', size, lower_bound=(3, 1), check_odd=True)
 
     if len(catalogs) == 1:  # may include linked stars
-        stars_out, overlap_fail_count = _extract_linked_stars(
+        stars_out, n_overlap_failed = _extract_linked_stars(
             data, catalogs[0], size)
     else:  # no linked stars
-        stars_out, overlap_fail_count = _extract_unlinked_stars(
+        stars_out, n_overlap_failed = _extract_unlinked_stars(
             data, catalogs, size)
 
-    if overlap_fail_count > 0:
-        msg = (f'{overlap_fail_count} star(s) were not extracted '
+    if n_overlap_failed > 0:
+        msg = (f'{n_overlap_failed} star(s) were not extracted '
                'because their cutout region extended beyond the '
                'input image.')
         warnings.warn(msg, AstropyUserWarning)
@@ -1031,7 +1055,7 @@ def _extract_linked_stars(data, catalog, size):
         instance containing the corresponding `EPSFStar` instances from
         each image. Failed extractions are represented as `None`.
 
-    overlap_fail_count : int
+    n_overlap_failed : int
         The number of stars that failed extraction because their cutout
         region extended beyond the input image.
     """
@@ -1042,7 +1066,7 @@ def _extract_linked_stars(data, catalog, size):
     results = [_extract_stars(img, catalog, size=size, use_xy=use_xy)
                for img in data]
     stars = [r[0] for r in results]
-    overlap_fail_count = sum(r[1] for r in results)
+    n_overlap_failed = sum(r[1] for r in results)
 
     # Transpose to associate linked stars across images
     stars = list(map(list, zip(*stars, strict=True)))
@@ -1062,7 +1086,7 @@ def _extract_linked_stars(data, catalog, size):
             # Multiple stars - create linked star
             stars_out.append(LinkedEPSFStar(good_stars))
 
-    return stars_out, overlap_fail_count
+    return stars_out, n_overlap_failed
 
 
 def _extract_unlinked_stars(data, catalogs, size):
@@ -1082,7 +1106,7 @@ def _extract_unlinked_stars(data, catalogs, size):
         separate source catalog for each 2D image). The center of each
         source can be defined either in pixel coordinates (in ``x`` and
         ``y`` columns) or sky coordinates (in a ``skycoord`` column
-        containing a `~astropy.coordinates.SkyCoord`.
+        containing a `~astropy.coordinates.SkyCoord` object).
 
     size : int or array_like (int)
         The extraction box size along each axis. If ``size`` is a scalar
@@ -1095,21 +1119,21 @@ def _extract_unlinked_stars(data, catalogs, size):
         A list of `EPSFStar` instances containing the extracted stars.
         Failed extractions are represented as `None`.
 
-    overlap_fail_count : int
+    n_overlap_failed : int
         The number of stars that failed extraction because their cutout
         region extended beyond the input image.
     """
     stars_out = []
-    total_overlap_fail_count = 0
+    n_overlap_failed_total = 0
     for img, cat in zip(data, catalogs, strict=True):
-        extracted, overlap_fail_count = _extract_stars(
+        extracted, n_overlap_failed = _extract_stars(
             img, cat, size=size, use_xy=True)
         stars_out.extend(extracted)
-        total_overlap_fail_count += overlap_fail_count
+        n_overlap_failed_total += n_overlap_failed
 
     # Filter out None values
     return ([star for star in stars_out if star is not None],
-            total_overlap_fail_count)
+            n_overlap_failed_total)
 
 
 def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
@@ -1153,7 +1177,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
         A list of `EPSFStar` instances containing the extracted stars.
         Failed extractions are represented as `None`.
 
-    overlap_fail_count : int
+    n_overlap_failed : int
         The number of stars that failed extraction because their cutout
         region extended beyond the input image.
     """
@@ -1177,18 +1201,24 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     data_mask = data.mask  # Cache mask reference
 
     stars = []
-    nonfinite_weights_count = 0
-    overlap_fail_count = 0
+    n_nonfinite_weights = 0
+    n_nonfinite_positions = 0
+    n_overlap_failed = 0
     flux_failures = []  # Collect flux estimation failures
     all_zero_stars = []  # Collect stars with all-zero data
     for i, (xcenter, ycenter) in enumerate(zip(xcenters, ycenters,
                                                strict=True)):
+        if not (np.isfinite(xcenter) and np.isfinite(ycenter)):
+            stars.append(None)
+            n_nonfinite_positions += 1
+            continue
+
         try:
             large_slc, _ = overlap_slices(data.data.shape, size,
                                           (ycenter, xcenter), mode='strict')
         except (PartialOverlapError, NoOverlapError):
             stars.append(None)
-            overlap_fail_count += 1
+            n_overlap_failed += 1
             continue
 
         # Extract data cutout
@@ -1198,7 +1228,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
         weights_cutout, has_nonfinite = _create_weights_cutout(
             uncertainty_info, data_mask, large_slc)
         if has_nonfinite:
-            nonfinite_weights_count += 1
+            n_nonfinite_weights += 1
 
         origin = (large_slc[1].start, large_slc[0].start)
         cutout_center = (xcenter - origin[0], ycenter - origin[1])
@@ -1216,16 +1246,22 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
             stars.append(star)
 
             # Track stars with all-zero data
-            if hasattr(star, '_has_all_zero_data') and star._has_all_zero_data:
+            if star._has_all_zero_data:
                 all_zero_stars.append((xcenter, ycenter))
         except ValueError as exc:
             # Collect flux estimation failures; emit warnings later
             flux_failures.append((xcenter, ycenter, exc))
             stars.append(None)
 
+    # Emit consolidated warning for non-finite positions
+    if n_nonfinite_positions > 0:
+        msg = (f'{n_nonfinite_positions} star(s) were not extracted '
+               'because their (x, y) positions were not finite.')
+        warnings.warn(msg, AstropyUserWarning)
+
     # Emit consolidated warning for non-finite weights
-    if nonfinite_weights_count > 0:
-        msg = (f'{nonfinite_weights_count} star cutout(s) had '
+    if n_nonfinite_weights > 0:
+        msg = (f'{n_nonfinite_weights} star cutout(s) had '
                'non-finite weight values which were set to zero. '
                'Please check the input uncertainty values in the '
                'NDData object.')
@@ -1246,7 +1282,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
                'unmasked data values equal to zero')
         warnings.warn(msg, AstropyUserWarning)
 
-    return stars, overlap_fail_count
+    return stars, n_overlap_failed
 
 
 def _prepare_uncertainty_info(data):
@@ -1268,11 +1304,10 @@ def _prepare_uncertainty_info(data):
         A dictionary with keys:
         - 'type' : str
             One of 'none', 'weights', or 'uncertainty'.
-        - 'array' : `~numpy.ndarray` (only if type='weights')
-            The weight array from the input data.
-        - 'uncertainty' : `~astropy.nddata.NDUncertainty` (only if
+        - 'array' : `~numpy.ndarray` (only if type='weights' or
             type='uncertainty')
-            The uncertainty object for on-the-fly conversion to weights.
+            The weight array (type='weights') or the standard
+            deviation array (type='uncertainty') from the input data.
     """
     if data.uncertainty is None:
         return {'type': 'none'}
@@ -1283,10 +1318,19 @@ def _prepare_uncertainty_info(data):
             'array': data.uncertainty.array,
         }
 
-    # For other uncertainties, prepare the conversion
+    # For other uncertainties, convert the full array to standard
+    # deviation once so that cutouts only need to be sliced
+    uncertainty = data.uncertainty
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        if hasattr(uncertainty, 'represent_as'):
+            stddev_array = uncertainty.represent_as(StdDevUncertainty).array
+        else:
+            stddev_array = uncertainty.array
+
     return {
         'type': 'uncertainty',
-        'uncertainty': data.uncertainty,
+        'array': stddev_array,
     }
 
 
@@ -1322,20 +1366,15 @@ def _create_weights_cutout(uncertainty_info, data_mask, slices):
     if uncertainty_info['type'] == 'none':
         weights_cutout = np.ones(cutout_shape, dtype=float)
     elif uncertainty_info['type'] == 'weights':
-        weights_cutout = np.asarray(
+        # Copy so that modifications below (e.g., masking) do not
+        # propagate back to the user's input array
+        weights_cutout = np.array(
             uncertainty_info['array'][slices], dtype=float)
     else:
-        # Convert uncertainty to weights for this cutout only
-        uncertainty_cutout = uncertainty_info['uncertainty'].array[slices]
+        # Convert the standard deviation cutout to weights
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            # Convert to standard deviation representation if needed
-            if hasattr(uncertainty_info['uncertainty'], 'represent_as'):
-                uncertainty_cutout = (
-                    uncertainty_info['uncertainty']
-                    .represent_as(StdDevUncertainty).array[slices])
-            # First compute weights, then check for non-finite values
-            weights_cutout = 1.0 / uncertainty_cutout
+            weights_cutout = 1.0 / uncertainty_info['array'][slices]
 
     # Check for non-finite weights and track if found
     has_nonfinite = not np.all(np.isfinite(weights_cutout))
