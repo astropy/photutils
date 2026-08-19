@@ -1270,7 +1270,7 @@ class PSFPhotometry:
         error : 2D ndarray or None
             The 1-sigma uncertainties of the input data.
         """
-        if self.progress_bar:  # pragma: no cover
+        if self.progress_bar:
             source_groups = add_progress_bar(source_groups,
                                              desc='Fit source/group')
 

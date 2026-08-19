@@ -1119,6 +1119,38 @@ class TestEPSFFitter:
         # Check that star has fit_error_status set
         assert fitted_stars.all_stars[0]._fit_error_status == 1
 
+    def test_fit_star_center_outside_cutout(self, epsf_fitter_data):
+        """
+        Test EPSFFitter._fit_star when the fitted center falls outside
+        the star cutout.
+        """
+        epsf = epsf_fitter_data['epsf']
+
+        class ShiftedFitter:
+            """
+            Mock fitter that shifts the model center far outside the
+            star cutout.
+            """
+
+            def __call__(self, model, **kwargs):  # noqa: ARG002
+                fitted = model.copy()
+                fitted.x_0 = 1000.0
+                return fitted
+
+        star_data = np.ones((11, 11))
+        star = EPSFStar(star_data, cutout_center=(5.0, 5.0))
+        stars = EPSFStars([star])
+
+        fitter = _make_epsf_fitter(fitter=ShiftedFitter(),
+                                   fit_boxsize=None)
+        fitted_stars = fitter(epsf, stars)
+
+        # The star center and flux must be left unchanged
+        fitted_star = fitted_stars.all_stars[0]
+        assert fitted_star._fit_error_status == 3
+        assert_allclose(fitted_star.cutout_center, (5.0, 5.0))
+        assert fitted_star.flux == star.flux
+
 
 class TestEPSFBuilder:
     """

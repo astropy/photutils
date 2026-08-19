@@ -246,6 +246,23 @@ def test_psf_photometry(test_data):
         assert isinstance(psfphot.fit_params, Table)
 
 
+def test_psf_photometry_progress_bar(test_data):
+    """
+    Test that photometry runs with a progress bar enabled.
+    """
+    data, error, sources = test_data
+
+    psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
+    fit_shape = (5, 5)
+    finder = DAOStarFinder(6.0, 2.0)
+    psfphot = PSFPhotometry(psf_model, fit_shape, finder=finder,
+                            aperture_radius=4, progress_bar=True)
+    phot = psfphot(data, error=error)
+
+    assert isinstance(phot, QTable)
+    assert len(phot) == len(sources)
+
+
 @pytest.mark.parametrize('fit_fwhm', [False, True])
 def test_psf_photometry_forced(test_data, fit_fwhm):
     data, error, sources = test_data

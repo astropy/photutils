@@ -961,7 +961,7 @@ class EPSFFitter:
         # Check if fitted position is outside the data cutout
         if (x_center < 0 or x_center >= star.shape[1]
                 or y_center < 0 or y_center >= star.shape[0]):
-            fit_error_status = 3  # pragma: no cover
+            fit_error_status = 3
 
         if fit_error_status != 3:
             star.cutout_center = (x_center, y_center)
