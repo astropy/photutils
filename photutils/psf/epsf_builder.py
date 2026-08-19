@@ -6,6 +6,7 @@ King 2000 (PASP 112, 1360) and Anderson 2016 (WFC3 ISR 2016-12).
 
 import copy
 import inspect
+import numbers
 import warnings
 from dataclasses import dataclass
 
@@ -13,7 +14,7 @@ import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NoOverlapError, PartialOverlapError, overlap_slices
 from astropy.stats import SigmaClip
-from astropy.utils.decorators import deprecated
+from astropy.utils.decorators import deprecated, deprecated_attribute
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from scipy.ndimage import convolve
@@ -31,6 +32,27 @@ from photutils.utils._stats import nanmedian
 __all__ = ['EPSFBuildResults', 'EPSFBuilder', 'EPSFFitter']
 
 SIGMA_CLIP = SigmaClipSentinelDefault(sigma=3.0, maxiters=10)
+
+
+def _fitter_accepts_weights(fitter):
+    """
+    Determine whether a fitter accepts a ``weights`` keyword.
+
+    Parameters
+    ----------
+    fitter : callable
+        The fitter to inspect.
+
+    Returns
+    -------
+    result : bool
+        `True` if the fitter call signature accepts a ``weights``
+        keyword (directly or via ``**kwargs``).
+    """
+    spec = inspect.signature(fitter.__call__)
+    return ('weights' in spec.parameters
+            or any(p.kind == inspect.Parameter.VAR_KEYWORD
+                   for p in spec.parameters.values()))
 
 
 class _SmoothingKernel:
@@ -76,6 +98,9 @@ class _SmoothingKernel:
         TypeError
             If `kernel_type` is not supported.
 
+        ValueError
+            If a custom kernel array is not 2D.
+
         Notes
         -----
         The predefined kernels are derived from polynomial fits:
@@ -88,6 +113,9 @@ class _SmoothingKernel:
           polynomial.
         """
         if isinstance(kernel_type, np.ndarray):
+            if kernel_type.ndim != 2:
+                msg = 'smoothing_kernel must be a 2D array'
+                raise ValueError(msg)
             return kernel_type
         if kernel_type == 'quartic':
             return cls.QUARTIC_KERNEL
@@ -222,10 +250,15 @@ class _EPSFValidator:
                    'star cutouts for better ePSF quality.')
             raise ValueError(msg)
 
-        # Compute minimum required ePSF shape with proper padding
-        # The +1 ensures odd dimensions for proper centering
-        min_epsf_height = max_height * oversampling[0] + 1
-        min_epsf_width = max_width * oversampling[1] + 1
+        # Compute the minimum required ePSF shape, consistent with
+        # _CoordinateTransformer.compute_epsf_shape (add 1 only when
+        # the product is even, to ensure odd dimensions)
+        min_epsf_height = max_height * oversampling[0]
+        if min_epsf_height % 2 == 0:
+            min_epsf_height += 1
+        min_epsf_width = max_width * oversampling[1]
+        if min_epsf_width % 2 == 0:
+            min_epsf_width += 1
 
         # Validate requested shape if provided
         if shape is not None:
@@ -246,15 +279,6 @@ class _EPSFValidator:
                        f'or reduce oversampling factors.')
                 raise ValueError(msg)
 
-            # Check for odd dimensions (for proper centering)
-            if shape[0] % 2 == 0 or shape[1] % 2 == 0:
-                msg = (f'Requested ePSF shape {shape} has even dimensions. '
-                       f'Odd dimensions are recommended for proper ePSF '
-                       f'centering. Consider using '
-                       f'({shape[0] + shape[0] % 2}, '
-                       f'{shape[1] + shape[1] % 2}) instead.')
-                warnings.warn(msg, AstropyUserWarning)
-
     @staticmethod
     def validate_stars(stars, *, context=''):
         """
@@ -270,7 +294,7 @@ class _EPSFValidator:
 
         Raises
         ------
-        ValueError, TypeError
+        ValueError
             If stars are invalid.
         """
         # Check basic type and structure
@@ -335,10 +359,13 @@ class _EPSFValidator:
 
         Raises
         ------
+        TypeError
+            If center accuracy is not a number.
+
         ValueError
-            If center accuracy is invalid.
+            If center accuracy is not positive.
         """
-        if not isinstance(center_accuracy, (int, float)):
+        if not isinstance(center_accuracy, numbers.Real):
             msg = (f'center_accuracy must be a number, got '
                    f'{type(center_accuracy)}')
             raise TypeError(msg)
@@ -366,10 +393,14 @@ class _EPSFValidator:
 
         Raises
         ------
-        ValueError, TypeError
-            If maxiters is invalid.
+        TypeError
+            If maxiters is not an integer.
+
+        ValueError
+            If maxiters is not positive.
         """
-        if not isinstance(maxiters, int):
+        if isinstance(maxiters, bool) or not isinstance(maxiters,
+                                                        numbers.Integral):
             msg = f'maxiters must be an integer, got {type(maxiters)}'
             raise TypeError(msg)
 
@@ -705,6 +736,17 @@ class EPSFBuildResults:
         """
         return iter((self.epsf, self.fitted_stars))
 
+    def __len__(self):
+        """
+        Return the length of the backward-compatible 2-tuple.
+
+        Returns
+        -------
+        length : int
+            Always 2, for (epsf, fitted_stars).
+        """
+        return 2
+
     def __getitem__(self, index):
         """
         Allow indexing for backward compatibility.
@@ -729,7 +771,7 @@ class EPSFBuildResults:
 
 
 @deprecated(since='3.0',
-            message=('EPSFFitter is deprecated and will be removed in a '
+            message=('EPSFFitter is deprecated and will be removed in '
                      'version 4.0. Use EPSFBuilder with the fitter, '
                      'fit_shape, and fitter_maxiters parameters instead.'))
 class EPSFFitter:
@@ -764,6 +806,7 @@ class EPSFFitter:
             fitter = TRFLSQFitter()
         self.fitter = fitter
         self.fitter_has_fit_info = hasattr(self.fitter, 'fit_info')
+        self._fitter_accepts_weights = _fitter_accepts_weights(self.fitter)
         if fit_boxsize is not None:
             self.fit_boxsize = as_pair('fit_boxsize', fit_boxsize,
                                        lower_bound=(3, 1), check_odd=True)
@@ -789,7 +832,7 @@ class EPSFFitter:
         stars : `EPSFStars` object
             The stars to be fit. The center coordinates for each star
             should be as close as possible to actual centers. For stars
-            than contain weights, a weighted fit of the ePSF to the star
+            that contain weights, a weighted fit of the ePSF to the star
             will be performed.
 
         Returns
@@ -895,11 +938,10 @@ class EPSFFitter:
         epsf.x_0 = 0.0
         epsf.y_0 = 0.0
 
-        try:
+        if self._fitter_accepts_weights:
             fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=data,
                                  weights=weights, **fitter_kwargs)
-        except TypeError:
-            # Handle case where the fitter does not support weights
+        else:
             fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=data,
                                  **fitter_kwargs)
 
@@ -944,19 +986,19 @@ class EPSFBuilder:
 
     Parameters
     ----------
-    oversampling : int or array_like (int)
+    oversampling : int or array_like (int), optional
         The integer oversampling factor(s) of the output ePSF relative
         to the input ``stars`` along each axis. If ``oversampling`` is a
         scalar then it will be used for both axes. If ``oversampling``
         has two elements, they must be in ``(y, x)`` order.
 
-    shape : float, tuple of two floats, or `None`, optional
+    shape : int, tuple of two ints, or `None`, optional
         The (ny, nx) shape of the output ePSF. If the input shape is
-        even along any axis, it will be made odd by adding one. If the
-        ``shape`` is `None`, it will be derived from the sizes of the
-        input ``stars`` and the ePSF ``oversampling`` factor. The output
-        ePSF will always have odd sizes along both axes to ensure a
-        well-defined central pixel.
+        even along any axis, it will be made odd by adding one (with a
+        warning). If the ``shape`` is `None`, it will be derived from
+        the sizes of the input ``stars`` and the ePSF ``oversampling``
+        factor. The output ePSF will always have odd sizes along both
+        axes to ensure a well-defined central pixel.
 
     smoothing_kernel : {'quartic', 'quadratic'}, 2D `~numpy.ndarray`, or `None`
         The smoothing kernel to apply to the ePSF during each iteration
@@ -977,7 +1019,7 @@ class EPSFBuilder:
         a ``mask`` keyword and optionally an ``error`` keyword. The
         callable object must return a tuple of (x, y) centroids.
 
-    recentering_boxsize : float or tuple of two floats, optional
+    recentering_boxsize : int or tuple of two ints, optional
         The size (in pixels) of the box used to calculate the centroid
         of the ePSF during each build iteration. The size is in
         the input star (i.e., undersampled) pixel space; it is
@@ -1029,11 +1071,13 @@ class EPSFBuilder:
     maxiters : int, optional
         The maximum number of ePSF building iterations to perform.
 
-    progress_bar : bool, option
+    progress_bar : bool, optional
         Whether to print the progress bar during the build
         iterations. The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
     """
+
+    coord_transformer = deprecated_attribute('coord_transformer', '3.1')
 
     def __init__(self, *, oversampling=4, shape=None,
                  smoothing_kernel='quartic', sigma_clip=SIGMA_CLIP,
@@ -1047,12 +1091,19 @@ class EPSFBuilder:
             oversampling, context='EPSFBuilder initialization')
 
         # Initialize coordinate transformer for consistent transformations
-        self.coord_transformer = _CoordinateTransformer(self.oversampling)
+        self._coord_transformer = _CoordinateTransformer(self.oversampling)
 
         if shape is not None:
-            self.shape = as_pair('shape', shape, lower_bound=(0, 0))
-        else:
-            self.shape = shape
+            shape = as_pair('shape', shape, lower_bound=(0, 0))
+            even = shape % 2 == 0
+            if np.any(even):
+                new_shape = shape + even.astype(int)
+                msg = (f'The input shape {tuple(shape)} has even '
+                       f'values; using {tuple(new_shape)} instead '
+                       'for proper ePSF centering.')
+                warnings.warn(msg, AstropyUserWarning)
+                shape = new_shape
+        self.shape = shape
 
         self.recentering_func = recentering_func
         self.recentering_maxiters = recentering_maxiters
@@ -1098,6 +1149,7 @@ class EPSFBuilder:
                 self._fitter_kwargs['maxiter'] = self.fitter_maxiters
 
         self._fitter_has_fit_info = hasattr(self.fitter, 'fit_info')
+        self._fitter_accepts_weights = _fitter_accepts_weights(self.fitter)
 
         # Validate center accuracy using the validator
         _EPSFValidator.validate_center_accuracy(center_accuracy)
@@ -1112,13 +1164,11 @@ class EPSFBuilder:
         if sigma_clip is SIGMA_CLIP:
             sigma_clip = create_default_sigmaclip(sigma=SIGMA_CLIP.sigma,
                                                   maxiters=SIGMA_CLIP.maxiters)
-        if not isinstance(sigma_clip, SigmaClip):
-            msg = 'sigma_clip must be an astropy.stats.SigmaClip instance'
+        if sigma_clip is not None and not isinstance(sigma_clip, SigmaClip):
+            msg = ('sigma_clip must be an astropy.stats.SigmaClip '
+                   'instance or None')
             raise TypeError(msg)
         self._sigma_clip = sigma_clip
-
-        # Store each ePSF build iteration
-        self._epsf = []
 
     def __call__(self, stars):
         """
@@ -1151,6 +1201,15 @@ class EPSFBuilder:
             The validated value, or `None` if the fitter does not
             support the ``maxiter`` parameter.
         """
+        if isinstance(fitter_maxiters, bool) or not isinstance(
+                fitter_maxiters, numbers.Integral):
+            msg = ('fitter_maxiters must be an integer, got '
+                   f'{type(fitter_maxiters)}')
+            raise TypeError(msg)
+        if fitter_maxiters <= 0:
+            msg = 'fitter_maxiters must be a positive integer'
+            raise ValueError(msg)
+
         spec = inspect.signature(self.fitter.__call__)
         has_maxiter = ('maxiter' in spec.parameters
                        or any(p.kind == inspect.Parameter.VAR_KEYWORD
@@ -1166,74 +1225,21 @@ class EPSFBuilder:
         """
         Create an initial `ImagePSF` object with zero data.
 
-        This method initializes the ePSF building process by creating a
-        blank ImagePSF model with the appropriate size and coordinate
-        system. The initial ePSF data are all zeros and will be
-        populated through the iterative building process.
-
-        Shape Determination Algorithm
-        -----------------------------
-        1. If shape is explicitly provided, use it (ensuring odd
-           dimensions)
-
-        2. Otherwise, determine shape from input stars and oversampling:
-           - Take the maximum star cutout dimensions
-           - Apply oversampling factor: new_size = old_size * oversampling
-           - Ensure resulting dimensions are odd (add 1 if even)
-
-        This ensures that oversampled arrays have a well-defined center
-        pixel, which is crucial for PSF modeling and fitting.
-
-        Coordinate System Setup
-        -----------------------
-        The method establishes the coordinate system for the ImagePSF.
-        The origin is set to the geometric center of the data array,
-        which ensures that the PSF center aligns with the array center.
-        The coordinate system is consistent with the expectations of the
-        ImagePSF class and allows for straightforward mapping between
-        star-relative coordinates and ePSF grid coordinates during the
-        building process.
+        The ePSF shape is the configured ``shape`` if provided,
+        otherwise it is derived from the maximum star cutout dimensions
+        and the oversampling factors (made odd along each axis so the
+        ePSF has a well-defined central pixel). The origin is set to the
+        geometric center of the data array.
 
         Parameters
         ----------
         stars : `EPSFStars` object
-            The stars used to build the ePSF. The method uses
-            stars._max_shape to ensure the ePSF is large enough to
-            contain all stars.
+            The stars used to build the ePSF.
 
         Returns
         -------
         epsf : `ImagePSF` object
-            The initial ePSF model with:
-            - data: Zero-filled array of appropriate dimensions
-            - origin: Set to the array center in (x, y) order
-            - oversampling: Copied from the EPSFBuilder configuration
-            - fill_value: Set to 0.0 for regions outside the PSF
-
-        Notes
-        -----
-        The initial ePSF has zero flux and data values. These will be
-        populated through the iterative building process as residuals
-        from individual stars are combined.
-
-        The method ensures that:
-        - Array dimensions are always odd (ensuring a center pixel)
-        - The coordinate system is properly established
-        - All necessary attributes are set for downstream processing
-
-        Examples
-        --------
-        For stars with maximum shape (25, 25) and oversampling=4:
-        - x_shape = 25 * 4 = 100 (even), add 1 -> 101
-        - y_shape = 25 * 4 = 100 (even), add 1 -> 101
-        - Final shape: (101, 101)
-        - Origin: (50.0, 50.0)
-
-        For stars with maximum shape (25, 25) and oversampling=3:
-        - x_shape = 25 * 3 = 75 (already odd)
-        - y_shape = 25 * 3 = 75 (already odd)
-        - Final shape: (75, 75)
-        - Origin: (37.0, 37.0)
+            The initial zero-data ePSF model.
         """
         oversampling = self.oversampling
         shape = self.shape
@@ -1246,13 +1252,13 @@ class EPSFBuilder:
             # dimensions (use the flat star list so that stars within
             # LinkedEPSFStar objects contribute individual shapes)
             star_shapes = [star.shape for star in stars.all_stars]
-            shape = self.coord_transformer.compute_epsf_shape(star_shapes)
+            shape = self._coord_transformer.compute_epsf_shape(star_shapes)
 
         # Initialize with zeros
         data = np.zeros(shape, dtype=float)
 
         # Use coordinate transformer to compute origin
-        origin_xy = self.coord_transformer.compute_epsf_origin(shape)
+        origin_xy = self._coord_transformer.compute_epsf_origin(shape)
 
         return ImagePSF(data=data, origin=origin_xy, oversampling=oversampling,
                         fill_value=0.0)
@@ -1296,7 +1302,7 @@ class EPSFBuilder:
                                     flux=1.0, x_0=0.0, y_0=0.0))
 
         # Use coordinate transformer to map to the oversampled ePSF grid
-        xidx, yidx = self.coord_transformer.star_to_epsf_coords(
+        xidx, yidx = self._coord_transformer.star_to_epsf_coords(
             xidx_centered, yidx_centered, epsf.origin)
 
         epsf_shape = epsf.data.shape
@@ -1315,8 +1321,6 @@ class EPSFBuilder:
     def _resample_residuals(self, stars, epsf):
         """
         Compute normalized residual images for all the input stars.
-
-        Optimized to minimize memory allocations.
 
         Parameters
         ----------
@@ -1396,8 +1400,12 @@ class EPSFBuilder:
         oversampling_product = np.prod(self.oversampling)
         current_sum = np.sum(epsf_data)
 
-        if current_sum == 0:
-            msg = 'Cannot normalize ePSF: data sum is zero'
+        if not np.isfinite(current_sum) or current_sum <= 0:
+            msg = (f'Cannot normalize ePSF: the data sum ({current_sum}) '
+                   'is not finite and positive. This usually indicates '
+                   'a problem in the recentering or smoothing steps, '
+                   'e.g., a recentering function that returned '
+                   'non-finite centroids.')
             raise ValueError(msg)
 
         return epsf_data * (oversampling_product / current_sum)
@@ -1408,16 +1416,8 @@ class EPSFBuilder:
         Recenter the ePSF data by shifting to the array center.
 
         This method uses iterative centroiding to find the center of
-        the ePSF and applies sub-pixel shifts using interpolation.
-        This provides accurate centering even when the PSF is offset
-        by fractional pixels.
-
-        Algorithm Overview
-        ------------------
-        1. Find the centroid of the ePSF using the centroid function
-        2. Calculate the sub-pixel shift needed to center the PSF
-        3. Apply the shift using spline interpolation via epsf.evaluate()
-        4. Iterate until convergence or max iterations reached
+        the ePSF and applies sub-pixel shifts using spline
+        interpolation via the ImagePSF ``evaluate`` method.
 
         Parameters
         ----------
@@ -1425,29 +1425,24 @@ class EPSFBuilder:
             The ePSF model containing the data to be recentered.
 
         centroid_func : callable, optional
-            A callable object (e.g., function or class) that is used
-            to calculate the centroid of a 2D array. The callable must
-            accept a 2D `~numpy.ndarray`, have a ``mask`` keyword
-            and optionally an ``error`` keyword. The callable object
-            must return a tuple of two 1D `~numpy.ndarray` variables,
-            representing the x and y centroids. If `None`, uses the
-            builder's configured recentering_func.
+            A callable object used to calculate the centroid of a 2D
+            array. The callable must accept a 2D `~numpy.ndarray`,
+            have a ``mask`` keyword, and optionally an ``error``
+            keyword. The callable object must return a tuple of (x, y)
+            scalar centroids. If `None`, uses the builder's configured
+            recentering_func.
 
-        box_size : float or tuple of two floats, optional
+        box_size : int or tuple of two ints, optional
             The size (in pixels) of the box used to calculate the
-            centroid of the ePSF during each iteration. The size is
-            in the input star (i.e., undersampled) pixel space; it is
-            automatically scaled by the oversampling factor when applied
-            to the oversampled ePSF grid. If a single integer number
-            is provided, then a square box will be used. If two values
-            are provided, then they must be in ``(ny, nx)`` order.
-            ``box_size`` must have odd values and be greater than or
-            equal to 3 for both axes. If `None`, uses the builder's
+            centroid of the ePSF during each iteration, in the input
+            star (i.e., undersampled) pixel space. It is automatically
+            scaled by the oversampling factor when applied to the
+            oversampled ePSF grid. If `None`, uses the builder's
             configured recentering_boxsize.
 
         maxiters : int, optional
             The maximum number of recentering iterations to perform. If
-            `None`, uses the builder's configured recentering_maxiters .
+            `None`, uses the builder's configured recentering_maxiters.
 
         center_accuracy : float, optional
             The desired accuracy for the center position. The centering
@@ -1459,13 +1454,6 @@ class EPSFBuilder:
         -------
         result : 2D `~numpy.ndarray`
             The recentered ePSF data array with the same shape as input.
-
-        Notes
-        -----
-        This method uses spline interpolation to apply sub-pixel shifts,
-        which preserves the PSF shape more accurately than integer
-        pixel shifting. The interpolation is done using the ImagePSF's
-        evaluate method.
         """
         # Use instance defaults if not specified
         if centroid_func is None:
@@ -1488,17 +1476,17 @@ class EPSFBuilder:
 
         # The center of the ePSF in oversampled pixel coordinates.
         # This is where we want the PSF center to be.
-        xcenter, ycenter = self.coord_transformer.compute_epsf_origin(
+        xcenter, ycenter = self._coord_transformer.compute_epsf_origin(
             epsf.data.shape)
 
         # Create coordinate grids in undersampled units for evaluate()
         y, x = np.indices(epsf.data.shape, dtype=float)
-        x, y = self.coord_transformer.oversampled_to_undersampled(x, y)
+        x, y = self._coord_transformer.oversampled_to_undersampled(x, y)
 
         # The origin in undersampled units (for use with evaluate)
         x_origin, y_origin = (
-            self.coord_transformer.oversampled_to_undersampled(xcenter,
-                                                               ycenter))
+            self._coord_transformer.oversampled_to_undersampled(
+                xcenter, ycenter))
 
         dx_total, dy_total = 0.0, 0.0
         iter_num = 0
@@ -1537,7 +1525,7 @@ class EPSFBuilder:
 
             # Accumulate total shift in undersampled units
             dx_under, dy_under = (
-                self.coord_transformer.oversampled_to_undersampled(dx, dy))
+                self._coord_transformer.oversampled_to_undersampled(dx, dy))
             dx_total += dx_under
             dy_total += dy_under
 
@@ -1578,8 +1566,9 @@ class EPSFBuilder:
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
             warnings.simplefilter('ignore', category=AstropyUserWarning)
-            residuals = self._sigma_clip(residuals, axis=0, masked=False,
-                                         return_bounds=False)
+            if self._sigma_clip is not None:
+                residuals = self._sigma_clip(residuals, axis=0, masked=False,
+                                             return_bounds=False)
             residuals = nanmedian(residuals, axis=0)
 
         # Interpolate any missing data (np.nan values) in the residual
@@ -1618,14 +1607,10 @@ class EPSFBuilder:
         """
         Check if the ePSF building has converged.
 
-        Convergence is determined by checking the movement of star
-        centers between iterations. The method calculates the squared
-        distance of center movements for successfully fitted stars and
-        applies enhanced convergence criteria that consider both the
-        maximum movement and the overall stability of the star centers.
-        This provides a more robust convergence detection mechanism that
-        is less sensitive to outliers and provides better diagnostic
-        information on the quality of convergence.
+        Convergence is determined by the movement of the star centers
+        between iterations. The build has converged when the maximum
+        squared center movement among successfully fitted stars is less
+        than the configured center accuracy.
 
         Parameters
         ----------
@@ -1657,30 +1642,18 @@ class EPSFBuilder:
         good_stars = np.logical_not(fit_failed)
 
         if not np.any(good_stars):
-            # No good stars - cannot determine convergence
-            # Return high values to prevent false convergence
-            return False, np.array([self.center_accuracy_sq * 10]), new_centers
+            # No good stars, so convergence cannot be determined. This
+            # is unreachable from build_epsf (all-failed fits raise
+            # earlier), but guards direct calls. NaN indicates that no
+            # center movement could be measured.
+            return False, np.array([np.nan]), new_centers
 
         dx_dy_good = dx_dy[good_stars]
         center_dist_sq = np.sum(dx_dy_good * dx_dy_good, axis=1,
                                 dtype=np.float64)
 
-        # Enhanced convergence criteria
         max_movement = np.max(center_dist_sq)
-
-        # Primary convergence check
-        primary_converged = max_movement < self.center_accuracy_sq
-
-        # Secondary check: ensure most stars are stable
-        # 80% of stars must be stable
-        stable_fraction_threshold = 0.8
-        stable_fraction = (np.sum(center_dist_sq < self.center_accuracy_sq)
-                           / len(center_dist_sq))
-        stability_converged = stable_fraction > stable_fraction_threshold
-
-        # Combined convergence: both criteria must be met for robust
-        # results
-        converged = primary_converged and stability_converged
+        converged = bool(max_movement < self.center_accuracy_sq)
 
         return converged, center_dist_sq, new_centers
 
@@ -1807,11 +1780,10 @@ class EPSFBuilder:
         epsf.x_0 = 0.0
         epsf.y_0 = 0.0
 
-        try:
+        if self._fitter_accepts_weights:
             fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=data,
                                  weights=weights, **fitter_kwargs)
-        except TypeError:
-            # Handle case where the fitter does not support weights
+        else:
             fitted_epsf = fitter(model=epsf, x=xx, y=yy, z=data,
                                  **fitter_kwargs)
 
@@ -1918,16 +1890,15 @@ class EPSFBuilder:
                     warnings.warn(msg, AstropyUserWarning)
                 star._excluded_from_fit = True
 
-        # Store the ePSF from this iteration
-        self._epsf.append(epsf)
-
         return epsf, stars, fit_failed
 
     def _finalize_build(self, epsf, stars, progress_reporter, iter_num,
-                        converged, final_center_accuracy,
-                        excluded_star_indices):
+                        converged, final_center_accuracy):
         """
         Finalize the ePSF building process and create result object.
+
+        The excluded star indices are derived from the per-star
+        exclusion flags, which are the single source of truth.
 
         Parameters
         ----------
@@ -1949,9 +1920,6 @@ class EPSFBuilder:
         final_center_accuracy : float
             Final center accuracy achieved.
 
-        excluded_star_indices : list
-            Indices of excluded stars.
-
         Returns
         -------
         result : `EPSFBuildResults`
@@ -1962,6 +1930,10 @@ class EPSFBuilder:
         if iter_num < self.maxiters:
             progress_reporter.write_convergence_message(iter_num)
         progress_reporter.close()
+
+        excluded_star_indices = [i for i, star
+                                 in enumerate(stars.all_stars)
+                                 if star._excluded_from_fit]
 
         # Create structured result
         return EPSFBuildResults(
@@ -1994,11 +1966,11 @@ class EPSFBuilder:
 
         Returns
         -------
-        result : `EPSFBuildResults` or tuple
-            The ePSF building results. Returns an `EPSFBuildResults` object
-            with detailed information about the building process. For
-            backward compatibility, the result can be unpacked as a tuple:
-            ``(epsf, fitted_stars) = epsf_builder(stars)``.
+        result : `EPSFBuildResults`
+            The ePSF building results, with detailed information about
+            the building process. For backward compatibility, the
+            result can be unpacked as a tuple: ``(epsf, fitted_stars) =
+            epsf_builder(stars)``.
 
         Notes
         -----
@@ -2011,6 +1983,13 @@ class EPSFBuilder:
         - n_excluded_stars: Number of stars excluded due to fit failures
         - excluded_star_indices: Indices of excluded stars
         """
+        if epsf is not None and not np.array_equal(epsf.oversampling,
+                                                   self.oversampling):
+            msg = (f'The input epsf oversampling '
+                   f'{tuple(epsf.oversampling)} does not match the '
+                   f'builder oversampling {tuple(self.oversampling)}')
+            raise ValueError(msg)
+
         _EPSFValidator.validate_stars(stars, context='ePSF building')
         _EPSFValidator.validate_shape_compatibility(stars, self.oversampling,
                                                     shape=self.shape)
@@ -2023,11 +2002,10 @@ class EPSFBuilder:
         progress_reporter = _ProgressReporter(self.progress_bar,
                                               self.maxiters).setup()
 
-        # Initialize iteration variables and tracking
+        # Initialize iteration variables
         iter_num = 0
         converged = False
         center_dist_sq = np.array([self.center_accuracy_sq + 1.0])
-        excluded_star_indices = []
 
         # Main iteration loop
         while (iter_num < self.maxiters and not np.all(fit_failed)
@@ -2039,13 +2017,6 @@ class EPSFBuilder:
             epsf, stars, fit_failed = self._process_iteration(
                 stars, epsf, iter_num)
 
-            # Track newly excluded stars
-            if iter_num > 3 and np.any(fit_failed):
-                new_excluded = fit_failed.nonzero()[0]
-                for idx in new_excluded:
-                    if idx not in excluded_star_indices:
-                        excluded_star_indices.append(idx)
-
             # Check convergence based on center movements
             converged, center_dist_sq, centers = self._check_convergence(
                 stars, centers, fit_failed)
@@ -2054,14 +2025,12 @@ class EPSFBuilder:
             progress_reporter.update()
 
         # Calculate the final center accuracy
-        final_converged = converged
         final_center_accuracy = np.max(center_dist_sq) ** 0.5
 
         # Finalize and return structured results
         return self._finalize_build(epsf, stars, progress_reporter,
-                                    iter_num, final_converged,
-                                    final_center_accuracy,
-                                    excluded_star_indices)
+                                    iter_num, converged,
+                                    final_center_accuracy)
 
 
 def __getattr__(name):
