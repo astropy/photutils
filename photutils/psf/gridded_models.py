@@ -756,8 +756,11 @@ class GriddedPSFModel(Fittable2DModel):
         evaluated_model : `~numpy.ndarray`
             The evaluated model.
         """
-        x = np.asarray(x)
-        y = np.asarray(y)
+        # Promote scalar inputs to 1D arrays so that the interpolator
+        # returns an array that supports masked assignment below,
+        # regardless of the scipy version
+        x = np.atleast_1d(x)
+        y = np.atleast_1d(y)
         if x.ndim > 2:
             msg = 'x and y must be 1D or 2D'
             raise ValueError(msg)

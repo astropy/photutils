@@ -147,6 +147,14 @@ class TestImagePSF:
         assert image_psf.shape == image_psf.data.shape
         assert image_psf.shape == (21, 21)
 
+    def test_evaluate_scalar_coords(self, image_psf):
+        """
+        Test that evaluate accepts scalar coordinates when called
+        directly.
+        """
+        value = image_psf.evaluate(0.5, 0.5, 1.0, 0.0, 0.0)
+        assert np.isfinite(value)
+
     def test_data_setter(self):
         yy, xx = np.mgrid[0:25, 0:25]
         data1 = CircularGaussianPSF(x_0=12, y_0=12, fwhm=3.0)(xx, yy)

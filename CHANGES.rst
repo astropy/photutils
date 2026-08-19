@@ -543,8 +543,8 @@ Bug Fixes
     are now normalized by the average ePSF peak, as documented, instead
     of the maximum difference value. [#2388]
 
-  - Fixed ``GriddedPSFModel.evaluate`` to accept scalar coordinates
-    when called directly. [#2388]
+  - Fixed ``GriddedPSFModel.evaluate`` and ``ImagePSF.evaluate`` to
+    accept scalar coordinates when called directly. [#2388]
 
   - Fixed ``GriddedPSFModel.read`` to raise the standard format
     identification error for a corrupt file with a FITS extension
