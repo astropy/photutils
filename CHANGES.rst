@@ -596,6 +596,11 @@ Bug Fixes
     fitter supports weights is now determined from its call
     signature. [#2390]
 
+  - Fixed a bug where the ``make_model_image`` and
+    ``make_residual_image`` methods raised an error with
+    ``include_local_bkg=True`` when no local background values were
+    available. The local background is now treated as zero. [#2391]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range

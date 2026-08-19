@@ -110,7 +110,7 @@ The size of the annulus and the statistic function can be configured in
 `~photutils.background.LocalBackground`.
 
 The next step is to fit the sources and/or groups. This
-task is performed using an astropy fitter, for example
+task is performed using an Astropy fitter, for example
 `~astropy.modeling.fitting.TRFLSQFitter`, input via the ``fitter``
 keyword. The shape of the region to be fitted can be configured using
 the ``fit_shape`` parameter. In general, ``fit_shape`` should be set to
@@ -138,7 +138,7 @@ in which the PSF-fitting steps described above are performed, but
 all the stages can be turned on or off or replaced with different
 implementations as the user desires. This makes the tools very flexible.
 One can also bypass several of the steps by directly inputting to
-``init_params`` an astropy table containing the initial parameters for
+``init_params`` an Astropy table containing the initial parameters for
 the source centers, fluxes, group identifiers, and local backgrounds.
 This is also useful if one is interested in fitting only one or a few
 sources in an image.
@@ -175,7 +175,7 @@ empirical PSF models for ACS and WFC3 (e.g., `WFC3 PSF Search
 Similarly, the `James Webb Space Telescope <https://www.stsci.edu/jwst>`_
 and the `Nancy Grace Roman Space Telescope <https://www.stsci.edu/roman>`_
 provide the `STPSF <https://stpsf.readthedocs.io/>`_ Python software
-for creating PSF models. In particular, WebbPSF outputs gridded PSF
+for creating PSF models. In particular, STPSF outputs gridded PSF
 models directly as Photutils `~photutils.psf.GriddedPSFModel` instances.
 
 If you cannot obtain a PSF model from an empirical library or
@@ -224,7 +224,7 @@ models:
 - `~photutils.psf.CircularGaussianPSF`: a circular 2D Gaussian PSF model
   parameterized in terms of the position, total flux, and FWHM.
 
-- `~photutils.psf.GaussianPRF`: a general 2D Gaussian PSF model
+- `~photutils.psf.GaussianPRF`: a general 2D Gaussian PRF model
   parameterized in terms of the position, total flux, and FWHM
   along the x and y axes. Rotation can also be included.
 
@@ -252,8 +252,8 @@ If one needs a custom PRF model based on an analytical PSF model, an
 efficient option is to first discretize the model on a grid using
 :func:`~astropy.convolution.discretize_model` with the ``'oversample'``
 or ``'integrate'`` mode. The resulting 2D image can then be used as the
-input to `~photutils.psf.ImagePSF` (see :ref:`psf-image_models` below)
-to create an ePSF model.
+input to `~photutils.psf.ImagePSF` (see :ref:`psf-image-models` below)
+to create an image-based PSF model.
 
 Note that the non-circular Gaussian and Moffat models above have
 additional parameters beyond the standard PSF model parameters of
@@ -271,7 +271,7 @@ the Astropy modeling framework that will provide better performance than
 using :func:`~photutils.psf.make_psf_model`.
 
 
-.. _psf-image_models:
+.. _psf-image-models:
 
 Image-based PSF Models
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -316,7 +316,7 @@ provided by the :ref:`photutils.datasets <datasets>` module::
     ...                                          min_separation=10, seed=0)
     >>> noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     >>> data += noise
-    >>> error = np.abs(noise)
+    >>> error = np.full(data.shape, 1.0)
 
 Let's plot the image:
 
@@ -355,8 +355,8 @@ not include background.
 
 We'll use the `~photutils.detection.DAOStarFinder` class for
 source detection. We'll estimate the initial fluxes of each
-source using a circular aperture with a radius 4 pixels. The
-central 5x5 pixel region of each source will be fit using an
+source using a circular aperture with a radius of 4 pixels. The
+central 5x5 pixel region of each source will be fit using a
 `~photutils.psf.CircularGaussianPRF` PSF model. First, let's create an
 instance of the `~photutils.psf.PSFPhotometry` class::
 
@@ -390,7 +390,7 @@ uncertainty object that can be converted to standard-deviation errors:
     >>> nddata = NDData(data, uncertainty=uncertainty)
     >>> phot2 = psfphot(nddata)
 
-The result is an astropy `~astropy.table.Table` with columns for the
+The result is an Astropy `~astropy.table.QTable` with columns for the
 source and group identification numbers, the x, y, and flux initial,
 fit, and error values, local background, number of unmasked pixels
 fit, the group size, quality-of-fit metrics, and flags. See the
@@ -406,16 +406,16 @@ print the source ID along with the fit x, y, and flux values::
     >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])
      id  x_fit   y_fit  flux_fit
     --- ------- ------- --------
-      1 54.5658  7.7644 514.0091
-      2 29.0865 25.6111 536.5793
-      3 79.6281 28.7487 618.7642
-      4 63.2340 48.6408 563.3437
-      5 88.8848 54.1202 619.8904
-      6 79.8763 61.1380 648.1658
-      7 90.9606 72.0861 601.8593
-      8  7.8038 78.5734 635.6317
-      9  5.5350 89.8870 539.6831
-     10 71.8414 90.5842 692.3373
+      1 54.5716  7.7458 513.2209
+      2 29.0873 25.6223 534.1826
+      3 79.6336 28.7482 619.7632
+      4 63.2403 48.6157 560.0202
+      5 88.8816 54.1347 616.2282
+      6 79.8673 61.1302 650.1411
+      7 90.9502 72.0862 597.1119
+      8  7.8034 78.5703 638.4794
+      9  5.5219 89.8622 542.6817
+     10 71.8331 90.5734 692.6518
 
 Let's create the residual image::
 
@@ -444,7 +444,7 @@ and plot it:
                                              min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
-    error = np.abs(noise)
+    error = np.full(data.shape, 1.0)
 
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
@@ -472,11 +472,11 @@ Further details about the PSF fitting can be obtained from attributes on
 the `~photutils.psf.PSFPhotometry` instance. For example, the results
 from the ``finder`` instance called during PSF fitting can be accessed
 using the ``finder_results`` attribute (the ``finder`` returns an
-astropy table)::
+Astropy table)::
 
     >>> psfphot.finder_results['x_centroid'].info.format = '.4f'  # optional format
-    >>> psfphot.finder_results['y_centroid'].info.format = '.4f'  # optional format
-    >>> psfphot.finder_results['sharpness'].info.format = '.4f'  # optional format
+    >>> psfphot.finder_results['y_centroid'].info.format = '.4f'
+    >>> psfphot.finder_results['sharpness'].info.format = '.4f'
     >>> psfphot.finder_results['peak'].info.format = '.4f'
     >>> psfphot.finder_results['flux'].info.format = '.4f'
     >>> psfphot.finder_results['mag'].info.format = '.4f'
@@ -524,7 +524,7 @@ The output table contains only the fit results for the input source::
     >>> print(phot[('id', 'x_fit', 'y_fit', 'flux_fit')])
      id  x_fit   y_fit  flux_fit
     --- ------- ------- --------
-      1 63.2340 48.6408 563.3426
+      1 63.2403 48.6157 560.0201
 
 Finally, let's show the residual image. The red circular aperture shows
 the location of the source that was fit and subtracted.
@@ -552,7 +552,7 @@ the location of the source that was fit and subtracted.
                                              min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
-    error = np.abs(noise)
+    error = np.full(data.shape, 1.0)
 
     psf_model = CircularGaussianPRF(flux=1, fwhm=2.7)
     fit_shape = (5, 5)
@@ -589,7 +589,7 @@ Forced Photometry (Fixed Model Parameters)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In general, the three parameters fit for each source are the x and
-y positions and the flux. However, the astropy modeling and fitting
+y positions and the flux. However, the Astropy modeling and fitting
 framework allows any of these parameters to be fixed during the fitting.
 
 Let's say you want to fix the (x, y) position for each source. You can
@@ -601,7 +601,7 @@ do that by setting the ``fixed`` attribute on the model parameters::
     >>> psf_model2.fixed
     {'flux': False, 'x_0': True, 'y_0': True, 'fwhm': True}
 
-Now when the model is fit, the flux will be varied but, the (x, y)
+Now when the model is fit, the flux will be varied, but the (x, y)
 position will be fixed at its initial position for every source. Let's
 just fit a single source (defined in ``init_params``)::
 
@@ -619,7 +619,7 @@ fit::
     ...             'y_fit', 'flux_fit')])
      id x_init y_init flux_init x_fit y_fit flux_fit
     --- ------ ------ --------- ----- ----- --------
-      1     63     49  556.5067  63.0  49.0 500.2997
+      1     63     49  556.5067  63.0  49.0 539.4673
 
 
 .. _psf-bounded-parameters:
@@ -627,9 +627,9 @@ fit::
 Bounded Model Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-The astropy modeling and fitting framework also allows for bounding the
-parameter values during the fitting process. However, not all astropy
-"Fitter" classes support parameter bounds. Please see `Fitting Model to
+The Astropy modeling and fitting framework also allows for bounding the
+parameter values during the fitting process. However, not all Astropy
+"Fitter" classes support parameter bounds. Please see `Fitting Models to
 Data <https://docs.astropy.org/en/stable/modeling/fitting.html>`_ for
 more details.
 
@@ -651,14 +651,14 @@ parameters. Here we constrain the flux to be greater than or equal to
     >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model3.flux.bounds = (0, None)
     >>> psf_model3.bounds
-    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (0.0, None)}
+    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (1.1754943508222875e-38, None)}
 
 The model parameter ``bounds`` can also be set using the ``min`` and/or
 ``max`` attributes. Here we set the minimum flux to be 0::
 
     >>> psf_model3.flux.min = 0
     >>> psf_model3.bounds
-    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (0.0, None)}
+    {'flux': (0.0, None), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (1.1754943508222875e-38, None)}
 
 For this example, let's constrain the flux value to be between
 400 and 600::
@@ -666,7 +666,7 @@ For this example, let's constrain the flux value to be between
     >>> psf_model3 = CircularGaussianPRF(flux=1, fwhm=2.7)
     >>> psf_model3.flux.bounds = (400, 600)
     >>> psf_model3.bounds
-    {'flux': (400.0, 600.0), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (0.0, None)}
+    {'flux': (400.0, 600.0), 'x_0': (None, None), 'y_0': (None, None), 'fwhm': (1.1754943508222875e-38, None)}
 
 
 Source Grouping
@@ -702,11 +702,8 @@ sources in each group were simultaneously fit::
 
 Care should be taken in defining the source groups. Simultaneously
 fitting very large source groups is computationally expensive and
-error-prone. Internally, source grouping requires the creation of a
-compound Astropy model. Due to the way compound Astropy models are
-currently constructed, large groups also require excessively large
-amounts of memory; this will hopefully be fixed in a future Astropy
-version. A warning will be raised if the number of sources in a group
+error-prone, because the number of fitted parameters grows with the
+group size. A warning will be raised if the number of sources in a group
 exceeds a threshold defined by the ``group_warning_threshold`` keyword.
 
 
@@ -787,42 +784,43 @@ the source was detected::
     >>> print(phot[('id', 'iter_detected', 'x_fit', 'y_fit', 'flux_fit')])
      id iter_detected  x_fit   y_fit  flux_fit
     --- ------------- ------- ------- --------
-      1             1 54.5665  7.7641 514.2650
-      2             1 29.0883 25.6092 534.0850
-      3             1 79.6273 28.7480 613.0496
-      4             2 63.2340 48.6415 564.1528
-      5             2 88.8856 54.1203 615.4907
-      6             2 79.8765 61.1359 649.9589
-      7             2 90.9631 72.0880 603.7433
-      8             2  7.8203 78.5821 641.8223
-      9             2  5.5350 89.8870 539.5237
-     10             2 71.8485 90.5830 687.4573
+      1             1 54.5694  7.7454 513.4505
+      2             1 29.0875 25.6216 531.3096
+      3             1 79.6327 28.7475 615.1111
+      4             2 63.2401 48.6159 560.9633
+      5             2 88.8813 54.1350 612.0937
+      6             2 79.8674 61.1301 651.4973
+      7             2 90.9502 72.0861 598.9888
+      8             2  7.8037 78.5711 642.0335
+      9             2  5.5218 89.8621 542.5141
+     10             2 71.8326 90.5721 686.2071
 
 
-Estimating the FWHM of sources
+Estimating the FWHM of Sources
 ------------------------------
 
-The `photutils.psf` package also provides a convenience function
-called `~photutils.psf.fit_fwhm` to estimate the full width
-at half maximum (FWHM) of one or more sources in an image.
-This function fits the source(s) with a circular 2D Gaussian
-PRF model (`~photutils.psf.CircularGaussianPRF`) using the
-`~photutils.psf.PSFPhotometry` class. If your sources are not
-circular or non-Gaussian, you can fit your sources using the
-`~photutils.psf.PSFPhotometry` class using a different PSF model.
+The `photutils.psf` package also provides a convenience
+function called `~photutils.psf.fit_fwhm` to estimate the
+full width at half maximum (FWHM) of one or more sources in
+an image. This function fits the source(s) with a circular
+2D Gaussian PRF model (`~photutils.psf.CircularGaussianPRF`)
+using the `~photutils.psf.PSFPhotometry` class. If your sources
+are non-circular or non-Gaussian, you can fit them with the
+`~photutils.psf.PSFPhotometry` class and a different PSF model.
 
 For example, let's estimate the FWHM of the sources in our example image
 defined above::
 
-   >>> from photutils.psf import fit_fwhm
-   >>> finder = DAOStarFinder(6.0, 2.0)
-   >>> finder_tbl = finder(data)
-   >>> xypos = list(zip(finder_tbl['x_centroid'],
-   ...                  finder_tbl['y_centroid'], strict=True))
-   >>> fwhm = fit_fwhm(data, xypos=xypos, error=error, fit_shape=(5, 5), fwhm=2)
-   >>> fwhm
-   array([2.69735154, 2.70371211, 2.68917219, 2.69310558, 2.68931721,
-          2.69804194, 2.69651045, 2.70423936, 2.71458867, 2.70285813])
+    >>> from photutils.psf import fit_fwhm
+    >>> finder = DAOStarFinder(6.0, 2.0)
+    >>> finder_tbl = finder(data)
+    >>> xypos = list(zip(finder_tbl['x_centroid'],
+    ...                  finder_tbl['y_centroid'], strict=True))
+    >>> fwhm = fit_fwhm(data, xypos=xypos, error=error, fit_shape=(5, 5),
+    ...                 fwhm=2)
+    >>> fwhm
+    array([2.70584007, 2.71009548, 2.67319293, 2.6932673 , 2.6674289 ,
+           2.69499608, 2.68722503, 2.73280482, 2.7200538 , 2.68340968])
 
 
 Convenience Gaussian Fitting Function

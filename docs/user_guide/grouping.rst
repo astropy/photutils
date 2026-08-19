@@ -22,15 +22,15 @@ efficient than attempting to fit a model to all the sources in an
 image at once, a task that is often impractical, especially in densely
 populated star fields.
 
-A straightforward method for this grouping was introduced by `Stetson (1987)
+A straightforward method for this grouping
+was introduced by `Stetson (1987)
 <https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract>`_. This
 algorithm determines whether a given source's light profile interferes
 with that of any other source by using a "critical separation"
-parameter. This parameter sets the minimum distance required between
-two sources for them to be placed in separate groups. Typically, this
-critical separation is defined as a multiple of the stellar full width
-at half maximum (FWHM), which is a measure of the source's apparent
-size.
+parameter. Sources separated by less than or equal to this distance are
+placed in the same group. Typically, this critical separation is defined
+as a multiple of the stellar full width at half maximum (FWHM), which is
+a measure of the source's apparent size.
 
 
 Getting Started
@@ -70,8 +70,8 @@ the `~photutils.psf.make_psf_model_image` function::
     >>> noise = make_noise_image(shape, mean=0, stddev=2, seed=123)
     >>> data += noise
 
-The `~photutils.psf.make_psf_model_image` provides two outputs: the
-image itself, which we call ``data``, and a table containing the
+The `~photutils.psf.make_psf_model_image` function provides two outputs:
+the image itself, which we call ``data``, and a table containing the
 positions and fluxes of the stars, which we call ``stars``. The x and y
 coordinates of the stars are located in the ``x_0`` and ``y_0`` columns
 of this table.
@@ -125,15 +125,15 @@ the x and y coordinates of the stars. While we are using the known, true
 positions from our simulated data, you would typically use a source
 detection tool to find the star positions in an actual image::
 
-   >>> import numpy as np
-   >>> x = np.array(stars['x_0'])
-   >>> y = np.array(stars['y_0'])
-   >>> group_ids = grouper(x, y)
-   >>> print(group_ids[:20])  # first 20 group IDs
-   [ 1  2  3  4  5  6  7  8  9 10 11  4  6  3 12 13 14 15 16 17]
+    >>> import numpy as np
+    >>> x = np.array(stars['x_0'])
+    >>> y = np.array(stars['y_0'])
+    >>> group_ids = grouper(x, y)
+    >>> print(group_ids[:20])  # first 20 group IDs
+    [ 1  2  3  4  5  6  7  8  9 10 11  4  6  3 12 13 14 15 16 17]
 
-The result of this process is an array of integers, ``group_id``, where
-each integer represents the group to which the corresponding star
+The result of this process is an array of integers, ``group_ids``,
+where each integer represents the group to which the corresponding star
 belongs. Stars that share the same group ID are considered part of the
 same group.
 
@@ -152,9 +152,9 @@ Alternatively, you can set the ``return_groups_object`` keyword to
 it will return a `~photutils.psf.SourceGroups` object instead of an
 array of integers::
 
-   >>> groups = grouper(x, y, return_groups_object=True)
-   >>> print(type(groups))
-   <class 'photutils.psf.groupers.SourceGroups'>
+    >>> groups = grouper(x, y, return_groups_object=True)
+    >>> print(type(groups))
+    <class 'photutils.psf.groupers.SourceGroups'>
 
 In this case, ``groups`` is a `~photutils.psf.SourceGroups` object
 that contains the grouping results and provides convenient methods for
@@ -170,8 +170,8 @@ You can access the group IDs directly from the ``groups`` attribute,
 which is an array of integers corresponding to the input star
 coordinates. Stars with the same group ID belong to the same group::
 
-   >>> print(groups.groups[:20])  # first 20 group IDs
-   [ 1  2  3  4  5  6  7  8  9 10 11  4  6  3 12 13 14 15 16 17]
+    >>> print(groups.groups[:20])  # first 20 group IDs
+    [ 1  2  3  4  5  6  7  8  9 10 11  4  6  3 12 13 14 15 16 17]
 
 Similar to above, you can add the group IDs from ``groups.groups`` to
 the initial parameters table (``init_params``) that is passed to the
@@ -180,36 +180,36 @@ photometry tool to define the source grouping.
 To find the positions of the stars in group 3, you can use the
 `~photutils.psf.SourceGroups.get_group_sources` method::
 
-   >>> x_group3, y_group3 = groups.get_group_sources(3)
-   >>> print(x_group3, y_group3)
-   [60.32708921 58.73063714] [147.24184586 158.0612346 ]
+    >>> x_group3, y_group3 = groups.get_group_sources(3)
+    >>> print(x_group3, y_group3)
+    [60.32708921 58.73063714] [147.24184586 158.0612346 ]
 
 The `~photutils.psf.SourceGroups` object also provides useful properties
 and methods to analyze the grouping results::
 
-   >>> # Get the size of each group for each source
-   >>> sizes = groups.sizes
-   >>> print(f'Group sizes: {sizes[:5]}')  # first 5
-   Group sizes: [1 2 2 5 2]
+    >>> # Get the size of each group for each source
+    >>> sizes = groups.sizes
+    >>> print(f'Group sizes: {sizes[:5]}')  # first 5
+    Group sizes: [1 2 2 5 2]
 
-   >>> # Get the mapping of group IDs to group sizes
-   >>> size_map = groups.size_map
-   >>> print(f'Size map: {list(size_map.items())[:5]}')  # first 5
-   Size map: [(1, 1), (2, 2), (3, 2), (4, 5), (5, 2)]
+    >>> # Get the mapping of group IDs to group sizes
+    >>> size_map = groups.size_map
+    >>> print(f'Size map: {list(size_map.items())[:5]}')  # first 5
+    Size map: [(1, 1), (2, 2), (3, 2), (4, 5), (5, 2)]
 
-   >>> print(f'Largest group size: {max(size_map.values())}')
-   Largest group size: 5
+    >>> print(f'Largest group size: {max(size_map.values())}')
+    Largest group size: 5
 
-   >>> # Get a list of group IDs that have the largest group size
-   >>> largest_group_ids = ([gid for gid, size in size_map.items()
-   ...                       if size == max(size_map.values())])
-   >>> print(f'Largest group IDs: {largest_group_ids}')
-   Largest group IDs: [4]
+    >>> # Get a list of group IDs that have the largest group size
+    >>> largest_group_ids = ([gid for gid, size in size_map.items()
+    ...                       if size == max(size_map.values())])
+    >>> print(f'Largest group IDs: {largest_group_ids}')
+    Largest group IDs: [4]
 
-   >>> # Get the centroid of group 5
-   >>> xy_center = groups.group_centers[5]
-   >>> print(f'Group 5 center: {xy_center}')
-   Group 5 center: (48.35899721341876, 73.85258893310564)
+    >>> # Get the centroid of group 5
+    >>> xy_center = groups.group_centers[5]
+    >>> print(f'Group 5 center: {xy_center}')
+    Group 5 center: (48.35899721341876, 73.85258893310564)
 
 To visualize the results, we can use the
 `~photutils.psf.SourceGroups.plot` method, which draws color-coded

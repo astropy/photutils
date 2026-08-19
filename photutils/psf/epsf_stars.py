@@ -1235,7 +1235,10 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
         flux = fluxes[i] if fluxes is not None else None
 
         try:
-            # Suppress all-zero warning in EPSFStar (we emit our own below)
+            # Suppress all-zero warning in EPSFStar (we emit our own
+            # below). This mutates the process-global warning filters,
+            # so it is safe only for this brief star-construction
+            # window under single-threaded use.
             with warnings.catch_warnings():
                 msg = 'All unmasked data values in star cutout are zero'
                 warnings.filterwarnings('ignore', message=msg,
@@ -1321,8 +1324,7 @@ def _prepare_uncertainty_info(data):
     # For other uncertainties, convert the full array to standard
     # deviation once so that cutouts only need to be sliced
     uncertainty = data.uncertainty
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', RuntimeWarning)
+    with np.errstate(divide='ignore', invalid='ignore'):
         if hasattr(uncertainty, 'represent_as'):
             stddev_array = uncertainty.represent_as(StdDevUncertainty).array
         else:
@@ -1372,8 +1374,7 @@ def _create_weights_cutout(uncertainty_info, data_mask, slices):
             uncertainty_info['array'][slices], dtype=float)
     else:
         # Convert the standard deviation cutout to weights
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
+        with np.errstate(divide='ignore', invalid='ignore'):
             weights_cutout = 1.0 / uncertainty_info['array'][slices]
 
     # Check for non-finite weights and track if found

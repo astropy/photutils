@@ -392,12 +392,16 @@ class PSFPhotometry:
 
     Care should be taken in defining the source groups. Simultaneously
     fitting very large source groups is computationally expensive and
-    error-prone. Internally, source grouping requires the creation of
-    a compound Astropy model. Due to the way compound Astropy models
-    are currently constructed, large groups also require excessively
-    large amounts of memory; this will hopefully be fixed in a future
-    Astropy version. A warning will be raised if the number of sources
-    in a group exceeds the ``group_warning_threshold`` value.
+    error-prone, because the number of fitted parameters grows with the
+    group size. A warning will be raised if the number of sources in a
+    group exceeds the ``group_warning_threshold`` value.
+
+    This class stores per-call state on the instance (e.g., ``results``
+    and ``fit_info``), so a single instance must not be called
+    concurrently from multiple threads. Create one instance per thread
+    for concurrent use. Sharing a single Astropy fitter instance across
+    concurrently-used objects is also unsafe because Astropy fitters
+    store ``fit_info`` on themselves.
     """
 
     # Default value for parameter initialization (invalid sources)
@@ -1062,8 +1066,9 @@ class PSFPhotometry:
             Boolean mask indicating which sources in the group are valid.
 
         group_model : `astropy.modeling.Model`
-            The fitted model for a single group. This can be a compound
-            model.
+            The fitted model for a single group. For groups with
+            multiple sources, this is a flat model with per-source
+            parameters.
 
         group_fit_info : dict
             The fit_info dictionary corresponding to the group fit.
