@@ -6,6 +6,7 @@ Tests for the groupers module.
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_equal
+from scipy.cluster.hierarchy import fclusterdata
 
 from photutils.psf import SourceGrouper, SourceGroups
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
@@ -418,6 +419,27 @@ class TestSourceGrouper:
 
         assert_equal(result, gg)
         assert len(np.unique(result)) == 3
+
+    def test_grouper_matches_fclusterdata(self):
+        """
+        The grouper must produce the identical partition as
+        single-linkage fclusterdata with the distance criterion.
+        """
+        rng = np.random.default_rng(0)
+        x = rng.uniform(0, 500, 1000)
+        y = rng.uniform(0, 500, 1000)
+        for min_separation in (1.0, 5.0, 20.0):
+            grouper = SourceGrouper(min_separation=min_separation)
+            got = grouper(x, y)
+            expected = fclusterdata(np.column_stack((x, y)),
+                                    t=min_separation,
+                                    criterion='distance')
+            # Compare partitions (labels may differ)
+            got_parts = {frozenset(np.nonzero(got == g)[0])
+                         for g in np.unique(got)}
+            exp_parts = {frozenset(np.nonzero(expected == g)[0])
+                         for g in np.unique(expected)}
+            assert got_parts == exp_parts
 
     def test_list_input(self):
         """

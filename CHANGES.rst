@@ -210,6 +210,11 @@ New Features
     accept path-like inputs (e.g., ``pathlib.Path``) in addition to
     strings. [#2355]
 
+  - ``SourceGrouper`` now scales to large source lists by computing
+    the connected components of the minimum-separation graph with a
+    KD-tree instead of building a dense pairwise distance matrix.
+    [#2389]
+
 - ``photutils.segmentation``
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``
