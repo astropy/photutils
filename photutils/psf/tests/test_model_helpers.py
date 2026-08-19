@@ -16,7 +16,7 @@ from numpy.testing import assert_allclose, assert_equal
 from photutils import datasets
 from photutils.detection import find_peaks
 from photutils.psf import (EPSFBuilder, extract_stars, grid_from_epsfs,
-                           make_psf_model)
+                           make_psf_model, model_helpers)
 from photutils.psf.model_helpers import _integrate_model, _InverseShift
 
 
@@ -175,6 +175,22 @@ def test_make_psf_model_invalid_flux_name():
     with pytest.raises(ValueError, match=match):
         make_psf_model(model, x_name='x_mean_0', y_name='y_mean_0',
                        flux_name='invalid')
+
+
+def test_make_psf_model_output_name_check(monkeypatch):
+    """
+    Test the sanity check that the mapped parameter names must exist
+    in the output model.
+    """
+    def bad_shift(model, param_name, *, shift=2):  # noqa: ARG001
+        return 'bad_name'
+
+    monkeypatch.setattr(model_helpers, '_shift_model_param', bad_shift)
+    model = Gaussian2D(1, 5, 5, 1, 1)
+    match = 'parameter name not found in the output model'
+    with pytest.raises(ValueError, match=match):
+        make_psf_model(model, x_name='x_mean', y_name='y_mean',
+                       normalize=False)
 
 
 def test_make_psf_model_integral():

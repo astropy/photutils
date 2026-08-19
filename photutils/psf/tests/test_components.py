@@ -13,7 +13,8 @@ from numpy.testing import assert_allclose, assert_equal
 from photutils.detection import DAOStarFinder
 from photutils.psf import CircularGaussianPRF
 from photutils.psf._components import (PSFDataProcessor, PSFFitter,
-                                       PSFResultsAssembler, _ModelImageMaker)
+                                       PSFResultsAssembler, _get_flat_model,
+                                       _ModelImageMaker)
 from photutils.psf.photometry import _PSFParameterMapper
 
 
@@ -299,6 +300,49 @@ class TestPSFDataProcessor:
         assert len(fluxes) == len(init_params)
         assert np.all(np.isfinite(fluxes))
 
+    def test_estimate_flux_with_array_local_bkg(self, param_mapper,
+                                                basic_data):
+        """
+        Test flux estimation when the local_bkg values are a plain
+        ndarray without a value attribute.
+        """
+        data, _, mask = basic_data
+
+        class ArrayBkgTable:
+            def __init__(self, table):
+                self._table = table
+
+            @property
+            def colnames(self):
+                return self._table.colnames
+
+            def __len__(self):
+                return len(self._table)
+
+            def __getitem__(self, item):
+                result = self._table[item]
+                if item == 'local_bkg':
+                    return np.asarray(result)
+                return result
+
+            def __setitem__(self, item, value):
+                self._table[item] = value
+
+        init_params = ArrayBkgTable(Table({
+            'x_init': [12.0],
+            'y_init': [12.0],
+            'local_bkg': [1.0],
+        }))
+        processor = PSFDataProcessor(param_mapper, (7, 7),
+                                     aperture_radius=3.0)
+        processor.data_unit = None
+
+        result = processor.estimate_flux_and_bkg_if_needed(data, mask,
+                                                           init_params)
+
+        aper_flux = processor.get_aper_fluxes(data, mask, init_params)
+        assert_allclose(np.asarray(result['flux_init']), aper_flux - 1.0)
+
     def test_find_sources_if_needed_with_init_params(self, param_mapper,
                                                      basic_data, init_params):
         """
@@ -431,6 +475,33 @@ class TestPSFFitter:
         assert model.flux_1.value == 200.0
         assert model.x_0_1.value == 20.0
         assert model.y_0_1.value == 25.0
+
+    def test_get_flat_model_without_class_cache(self, psf_model,
+                                                param_mapper):
+        """
+        Test that _get_flat_model creates a new flat-model class on
+        every call when no class cache is given.
+        """
+        sources = Table({
+            'id': [1, 2],
+            'x_init': [10.0, 20.0],
+            'y_init': [15.0, 25.0],
+            'flux_init': [100.0, 200.0],
+        })
+
+        model1 = _get_flat_model(sources, psf_model, param_mapper)
+        model2 = _get_flat_model(sources, psf_model, param_mapper)
+        assert type(model1) is not type(model2)
+        assert model1.flux_0.value == 100.0
+        assert model1.x_0_1.value == 20.0
+
+        # With a cache, the class is created once and then reused
+        cache = {}
+        model3 = _get_flat_model(sources, psf_model, param_mapper,
+                                 class_cache=cache)
+        model4 = _get_flat_model(sources, psf_model, param_mapper,
+                                 class_cache=cache)
+        assert type(model3) is type(model4)
 
     def test_make_psf_model_no_stale_class_cache(self):
         """

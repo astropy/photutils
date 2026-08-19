@@ -471,6 +471,17 @@ class TestFormatIdentifiers:
         assert not is_stdpsf('read', filepath, None)
         assert not is_webbpsf('read', filepath, None)
 
+    def test_corrupt_fits_filepath(self, tmp_path):
+        """
+        Test that a corrupt file with a FITS extension is not
+        identified when given only a file path.
+        """
+        filename = str(tmp_path / 'bad.fits')
+        with open(filename, 'w') as f:
+            f.write('This is not a FITS file.')
+        assert not is_stdpsf('read', filename, None)
+        assert not is_webbpsf('read', filename, None)
+
     def test_has_fits_header_keys(self):
         filename = get_data_filename('STDPSF_NRCA1_F150W_mock.fits')
         assert _has_fits_header_keys(filename, ('NAXIS3',))
