@@ -2378,11 +2378,13 @@ class TestEPSFBuilder:
         result = builder(stars)
         epsf = result.epsf
 
-        # Create EPSFStars with invalid star type
+        # Create EPSFStars holding an invalid star type (bypass the
+        # EPSFStars constructor validation)
         class InvalidStar:
             pass
 
-        invalid_stars = EPSFStars([InvalidStar()])
+        invalid_stars = EPSFStars([])
+        invalid_stars._data.append(InvalidStar())
 
         # Call _fit_stars with invalid star type
         match = 'stars must contain only EPSFStar and/or LinkedEPSFStar'

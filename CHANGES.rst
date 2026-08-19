@@ -564,6 +564,20 @@ Bug Fixes
     The keyword is now mapped to the model's flux parameter name.
     [#2389]
 
+  - Fixed a bug where the ``EPSFStars`` star counts and flat star
+    list were stale after deleting a star from the container. [#2390]
+
+  - Fixed a bug where ``extract_stars`` could modify a user-supplied
+    weights uncertainty array when masking pixels. [#2390]
+
+  - ``extract_stars`` no longer requires every input image to have a
+    WCS when multiple catalogs are input. A WCS is now required only
+    for images whose catalog provides only sky coordinates. [#2390]
+
+  - ``EPSFStar`` now raises a ``TypeError`` for ``Quantity`` input
+    data. Previously, ``Quantity`` data produced confusing downstream
+    errors. [#2390]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range
@@ -743,7 +757,7 @@ API Changes
 
   - The ``make_model_params`` output table now includes the creation
     date and photutils version metadata, consistent with
-    ``make_random_models_table``. [#2384x]
+    ``make_random_models_table``. [#2384]
 
 - ``photutils.detection``
 
