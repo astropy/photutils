@@ -745,6 +745,34 @@ instrumental flux and propagated flux error within the source segments:
        75  74.413068  259.76066     836.4803        17.193721
        80  14.920217  60.024006    666.60139        19.605394
 
+The 1-sigma centroid position errors are also calculated
+when a total ``error`` is input, via the
+`~photutils.segmentation.SourceCatalog.centroid_err` and
+`~photutils.segmentation.SourceCatalog.centroid_win_err`
+properties and their per-axis
+`~photutils.segmentation.SourceCatalog.x_centroid_err`,
+`~photutils.segmentation.SourceCatalog.y_centroid_err`,
+`~photutils.segmentation.SourceCatalog.x_centroid_win_err`, and
+`~photutils.segmentation.SourceCatalog.y_centroid_win_err`
+equivalents:
+
+.. doctest-requires:: skimage
+
+    >>> columns = ['label', 'x_centroid', 'x_centroid_err', 'y_centroid',
+    ...            'y_centroid_err']
+    >>> tbl6 = cat_subset.to_table(columns=columns)
+    >>> for col in tbl6.colnames:
+    ...     tbl6[col].info.format = '%.8g'  # for consistent table output
+    >>> print(tbl6)
+    label x_centroid x_centroid_err y_centroid y_centroid_err
+    ----- ---------- -------------- ---------- --------------
+        1  235.24302     0.10078987  1.1928271    0.043716311
+        5  257.82267    0.092017708  12.228232     0.11001639
+       20  347.15384     0.11928677  66.417567    0.088327137
+       50  380.94448     0.13065541  174.57181     0.11247878
+       75  74.413068    0.051327718  259.76066    0.045532249
+       80  14.920217    0.069001032  60.024006    0.093764369
+
 
 Pixel Masking
 ^^^^^^^^^^^^^
