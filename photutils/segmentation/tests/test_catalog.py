@@ -2396,8 +2396,10 @@ def test_centroid_win_errors():
     # Source 0 converged; errors should be finite and positive
     assert np.all(np.isfinite(errors[0]))
     assert np.all(errors[0] > 0)
-    # Source 1 fell back to isophotal centroid; errors should be NaN
-    assert np.all(np.isnan(errors[1]))
+    # Source 1 fell back to the isophotal centroid, so its errors
+    # are the isophotal centroid errors
+    assert_allclose(cat.centroid_win[1], cat.centroid[1])
+    assert_allclose(errors[1], cat._centroid_errors[1])
 
 
 def test_centroid_win_errors_no_error():
@@ -2438,10 +2440,42 @@ def test_centroid_win_errors_scalar():
                         error=error, aperture_mask_method='none')
 
     single = cat[0]
+    # Private properties always keep the leading source axis
     errors = single._centroid_win_errors
-    assert errors.shape == (2,)
+    assert errors.shape == (1, 2)
     assert np.all(np.isfinite(errors))
     assert np.all(errors > 0)
+
+
+def test_centroid_win_errors_sliced():
+    """
+    Test that _centroid_win_errors works on a sliced catalog after
+    centroid_win was computed on the parent catalog (regression test
+    for a side-effect attribute that was not propagated by slicing).
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    m = g1 + g2
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = m(xx, yy)
+    noise = make_noise_image(data.shape, mean=0, stddev=65.0, seed=123)
+    data += noise
+
+    error = np.full(data.shape, 65.0)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    segment_map = finder(convolved_data, 107.9)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    # Compute centroid_win on the parent before slicing
+    _ = cat.centroid_win
+    errors = cat._centroid_win_errors
+    single = cat[0]
+    assert_allclose(single._centroid_win_errors, errors[0:1])
+    sub = cat[[1, 0]]
+    assert_allclose(sub._centroid_win_errors, errors[[1, 0]])
 
 
 def test_centroid_win_errors_singularity():

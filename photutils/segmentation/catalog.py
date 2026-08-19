@@ -1702,72 +1702,76 @@ class SourceCatalog:
 
         return np.transpose((xerr_arr, yerr_arr))
 
-    @staticmethod
-    def _normalize_win_errors(err_sum, err_var_x, err_var_y, err_cov_xy,
-                              weighted_flux):
+    def _normalize_win_errors(self, err_sum, err_var_x, err_var_y,
+                              err_cov_xy, weighted_flux):
         """
         Normalize the windowed centroid position-error variances.
 
-        Normalize by ``step_factor^2 / weighted_flux^2`` and apply the
-        singularity correction and pixel-size variance correction.
+        Normalize by ``step_factor^2 / weighted_flux^2``, add the
+        pixel-size (1/12) variance correction, and apply the singularity
+        correction for point-like sources. All inputs are arrays with
+        one element per source. Sources with non-positive or non-finite
+        ``weighted_flux`` have ``np.nan`` variances.
 
         Parameters
         ----------
-        err_sum : float
+        err_sum : `~numpy.ndarray`
             Sum of the weighted error variance over the aperture.
 
-        err_var_x : float
+        err_var_x : `~numpy.ndarray`
             Weighted error variance in ``x``.
 
-        err_var_y : float
+        err_var_y : `~numpy.ndarray`
             Weighted error variance in ``y``.
 
-        err_cov_xy : float
+        err_cov_xy : `~numpy.ndarray`
             Weighted error covariance in ``xy``.
 
-        weighted_flux : float
+        weighted_flux : `~numpy.ndarray`
             Total weighted flux from the last iteration.
 
         Returns
         -------
-        err_var_x : float
+        err_var_x : `~numpy.ndarray`
             Normalized error variance in ``x``.
 
-        err_var_y : float
+        err_var_y : `~numpy.ndarray`
             Normalized error variance in ``y``.
-
-        err_cov_xy : float
-            Normalized error covariance in ``xy``.
         """
-        if not (np.isfinite(weighted_flux) and weighted_flux > 0):
-            return np.nan, np.nan, np.nan
-
         step_factor = 2.0
-        norm = step_factor**2 / (weighted_flux**2)
-        err_var_x *= norm
-        err_var_y *= norm
-        err_cov_xy *= norm
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            norm = step_factor**2 / weighted_flux**2
 
-        # Handle fully correlated profiles that cause a singularity.
-        err_sum_norm = err_sum * (1.0 / 12) * norm
-        if (err_var_x * err_var_y
-                - err_cov_xy**2) < err_sum_norm**2:
-            err_var_x += err_sum_norm
-            err_var_y += err_sum_norm
+            # Add the pixel-size variance correction (1/12).
+            # The finite-pixel term is added per pixel.
+            err_sum_norm = err_sum * (1.0 / 12) * norm
+            err_var_x = err_var_x * norm + err_sum_norm
+            err_var_y = err_var_y * norm + err_sum_norm
+            err_cov_xy = err_cov_xy * norm
 
-        # Add pixel-size variance correction (1/12).
-        err_var_x += err_sum_norm
-        err_var_y += err_sum_norm
+            # Handle fully correlated profiles of point-like sources
+            # that cause a singularity. The determinant check
+            # includes the pixel-size correction in the variances
+            # but not in the covariance.
+            singular = (self._singular_covariance_mask
+                        & ((err_var_x * err_var_y - err_cov_xy**2)
+                           < err_sum_norm**2))
+            err_var_x[singular] += err_sum_norm[singular]
+            err_var_y[singular] += err_sum_norm[singular]
 
-        return err_var_x, err_var_y, err_cov_xy
+            bad = ~np.isfinite(weighted_flux) | (weighted_flux <= 0)
+            err_var_x[bad] = np.nan
+            err_var_y[bad] = np.nan
+
+        return err_var_x, err_var_y
 
     def _apply_centroid_win_fallback(self, xcen_win, ycen_win,
                                      win_weighted_flux,
                                      win_cen_mom_xx, win_cen_mom_yy,
                                      win_cen_mom_xy,
                                      win_err_var_x, win_err_var_y,
-                                     win_err_cov_xy, nan_hl,
-                                     x_centroid, y_centroid):
+                                     nan_hl, x_centroid, y_centroid):
         """
         Apply the fallback conditions for the windowed centroid.
 
@@ -1776,9 +1780,8 @@ class SourceCatalog:
         isophotal centroid and lies outside the 1-sigma ellipse, the
         total weighted flux is non-positive, the windowed 2nd-order
         moments are negative, or the windowed covariance determinant
-        is negative. Sources with NaN half-light radius keep NaN.
-
-        Store the 1-sigma position errors as a side effect.
+        is negative. Fallback sources also use the isophotal centroid
+        errors. Sources with NaN half-light radius keep NaN.
 
         Parameters
         ----------
@@ -1806,9 +1809,6 @@ class SourceCatalog:
         win_err_var_y : `~numpy.ndarray`
             Error variance in y.
 
-        win_err_cov_xy : `~numpy.ndarray`
-            Error covariance in xy.
-
         nan_hl : `~numpy.ndarray`
             Boolean mask indicating sources with NaN half-light radius.
 
@@ -1821,9 +1821,16 @@ class SourceCatalog:
         Returns
         -------
         result : `~numpy.ndarray`
-            The ``(x, y)`` windowed centroid coordinates, shape
-            ``(n_sources, 2)``.
+            The windowed centroid coordinates and their 1-sigma
+            errors as columns ``(x, y, xerr, yerr)``, shape
+            ``(n_sources, 4)``.
         """
+        # Convert variance to 1-sigma error
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            xerr = np.sqrt(win_err_var_x)
+            yerr = np.sqrt(win_err_var_y)
+
         dx = x_centroid - xcen_win
         dy = y_centroid - ycen_win
         cxx = self._array('ellipse_cxx').value
@@ -1842,19 +1849,13 @@ class SourceCatalog:
         if np.any(reset):
             xcen_win[reset] = x_centroid[reset]
             ycen_win[reset] = y_centroid[reset]
-            # Errors are not meaningful for fallback sources
-            win_err_var_x[reset] = np.nan
-            win_err_var_y[reset] = np.nan
-            win_err_cov_xy[reset] = np.nan
+            # Fallback sources use the isophotal centroid, so also
+            # use the isophotal centroid errors
+            iso_errors = self._centroid_errors
+            xerr[reset] = iso_errors[reset, 0]
+            yerr[reset] = iso_errors[reset, 1]
 
-        # Store the 1-sigma position errors.
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            xerr = np.sqrt(win_err_var_x)
-            yerr = np.sqrt(win_err_var_y)
-        self._centroid_win_poserr = np.transpose((xerr, yerr))
-
-        return np.transpose((xcen_win, ycen_win))
+        return np.transpose((xcen_win, ycen_win, xerr, yerr))
 
     def _centroid_win_iter(self, label, xcen, ycen, rad_hl, nan_hl_,
                            *, data_arr, mask_arr, error_arr, segm_data,
@@ -1911,11 +1912,13 @@ class SourceCatalog:
         -------
         result : tuple of float
             Tuple of (xcen, ycen, weighted_flux, cen_mom_xx,
-            cen_mom_yy, cen_mom_xy, err_var_x, err_var_y,
-            err_cov_xy).
+            cen_mom_yy, cen_mom_xy, err_sum, err_var_x, err_var_y,
+            err_cov_xy). The error terms are the raw (unnormalized)
+            weighted sums from the last iteration (see
+            ``_normalize_win_errors``).
         """
         nan_result = (np.nan, np.nan, 0.0, 0.0, 0.0, 0.0,
-                      np.nan, np.nan, np.nan)
+                      np.nan, np.nan, np.nan, np.nan)
         if nan_hl_ or math.isnan(xcen) or math.isnan(ycen):
             return nan_result
 
@@ -1937,7 +1940,7 @@ class SourceCatalog:
 
         # Cache for cutout data when the integer bbox doesn't change
         prev_ixcen = prev_iycen = None
-        cached_data = cached_mask = cached_error = None
+        cached_data = cached_mask = cached_var = None
 
         max_iters = 16
         centroid_threshold = 0.0001
@@ -1945,8 +1948,6 @@ class SourceCatalog:
         dcen = 1.0
         weighted_flux = 0.0
         dx_mom = dy_mom = 0.0
-        raw_mx2 = raw_my2 = raw_mxy = 0.0
-        err_sum = err_var_x = err_var_y = err_cov_xy = 0.0
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
             while iter_ < max_iters and dcen > centroid_threshold:
@@ -1999,8 +2000,15 @@ class SourceCatalog:
                     cached_mask = data_mask
 
                     if compute_err:
-                        cached_error = (error_arr[slc_y, slc_x]
-                                        .astype(float))
+                        var = error_arr[slc_y, slc_x].astype(float)**2
+                        if do_correct:
+                            # Pixels replaced by mirrored data values
+                            # also use the mirrored pixel's variance
+                            var = _mask_to_mirrored_value(
+                                var, segm_mask, cutout_xycen,
+                                mask=data_mask)
+                        var[data_mask] = 0.0
+                        cached_var = var
 
                 # Centroid position in cutout coordinates
                 cx = xcen - max(0, ixmin)
@@ -2023,29 +2031,14 @@ class SourceCatalog:
                 # Inline Gaussian weight
                 gweight = np.exp(rr2 * inv_2sigma2)
 
-                # Accumulate error variance terms
-                if compute_err:
-                    var = cached_error**2
-                    var[cached_mask] = 0.0
-                    combined_weight = aper_weights * gweight
-                    weighted_var = combined_weight**2 * var
-                    err_sum = np.sum(weighted_var)
-                    err_var_x = np.sum(weighted_var * xx * xx)
-                    err_var_y = np.sum(weighted_var * yy * yy)
-                    err_cov_xy = np.sum(weighted_var * xx * yy)
-
                 # Apply weights and mask
                 weighted = (cached_data * aper_weights * gweight)
                 weighted[cached_mask] = 0.0
 
-                # Inline moment computation (including 2nd order
-                # for the fallback checks)
+                # Inline moment computation
                 weighted_flux = np.sum(weighted)
                 dx_mom = np.sum(weighted * xx) / weighted_flux
                 dy_mom = np.sum(weighted * yy) / weighted_flux
-                raw_mx2 = np.sum(weighted * xx * xx)
-                raw_my2 = np.sum(weighted * yy * yy)
-                raw_mxy = np.sum(weighted * xx * yy)
 
                 dcen = math.sqrt(dx_mom * dx_mom
                                  + dy_mom * dy_mom)
@@ -2053,60 +2046,43 @@ class SourceCatalog:
                 ycen += dy_mom * 2.0
                 iter_ += 1
 
-        # Compute windowed central 2nd moments from last
-        # iteration for the fallback checks.
-        if np.isfinite(weighted_flux) and weighted_flux > 0:
-            cen_mom_xx = (raw_mx2 / weighted_flux
-                          - dx_mom * dx_mom)
-            cen_mom_yy = (raw_my2 / weighted_flux
-                          - dy_mom * dy_mom)
-            cen_mom_xy = (raw_mxy / weighted_flux
-                          - dx_mom * dy_mom)
-        else:
+            # Compute the windowed central 2nd-order moments (for
+            # the fallback checks) and the raw error
+            # sums from the last iteration, relative to
+            # the pre-update center.
             cen_mom_xx = cen_mom_yy = cen_mom_xy = 0.0
+            err_sum = err_var_x = err_var_y = err_cov_xy = np.nan
+            if np.isfinite(weighted_flux) and weighted_flux > 0:
+                cen_mom_xx = (np.sum(weighted * xx * xx)
+                              / weighted_flux - dx_mom * dx_mom)
+                cen_mom_yy = (np.sum(weighted * yy * yy)
+                              / weighted_flux - dy_mom * dy_mom)
+                cen_mom_xy = (np.sum(weighted * xx * yy)
+                              / weighted_flux - dx_mom * dy_mom)
 
-        # Normalize error terms by step_factor^2 / weighted_flux^2
-        if compute_err:
-            err_var_x, err_var_y, err_cov_xy = (
-                self._normalize_win_errors(
-                    err_sum, err_var_x, err_var_y, err_cov_xy,
-                    weighted_flux))
-        else:
-            err_var_x = err_var_y = err_cov_xy = np.nan
+                if compute_err:
+                    weighted_var = ((aper_weights * gweight)**2
+                                    * cached_var)
+                    err_sum = np.sum(weighted_var)
+                    err_var_x = np.sum(weighted_var * xx * xx)
+                    err_var_y = np.sum(weighted_var * yy * yy)
+                    err_cov_xy = np.sum(weighted_var * xx * yy)
 
         return (xcen, ycen, weighted_flux, cen_mom_xx,
                 cen_mom_yy, cen_mom_xy,
-                err_var_x, err_var_y, err_cov_xy)
+                err_sum, err_var_x, err_var_y, err_cov_xy)
 
     @cached_property
     @use_detcat
-    def centroid_win(self):
+    def _centroid_win_results(self):
         """
-        The ``(x, y)`` coordinate of the "windowed" centroid.
+        The "windowed" centroid coordinates and their 1-sigma errors
+        as a 2D array with columns ``(x, y, xerr, yerr)`` and shape
+        ``(n_labels, 4)``.
 
-        The window centroid is computed using an iterative algorithm
-        to derive a more accurate centroid. It is equivalent to
-        `SourceExtractor`_'s XWIN_IMAGE and YWIN_IMAGE parameters.
-
-        Notes
-        -----
-        During each iteration, the centroid is calculated using all
-        pixels within a circular aperture of ``4 * sigma`` from the
-        current position, weighting pixel values with a 2D Gaussian with
-        a standard deviation of ``sigma``. ``sigma`` is the half-light
-        radius (i.e., ``flux_radius(0.5)``) times (2.0 / 2.35). A
-        minimum half-light radius of 0.5 pixels is used. Iteration stops
-        when the change in centroid position falls below a pre-defined
-        threshold or a maximum number of iterations is reached.
-
-        The windowed centroid is reset to the isophotal `centroid`
-        if any of the following conditions hold: the centroid diverged
-        far from the isophotal centroid and lies outside the 1-sigma
-        ellipse, the total weighted flux is non-positive, the windowed
-        2nd-order moments are negative, or the windowed covariance
-        determinant is negative. If the half-light radius is not finite
-        (e.g., due to a non-finite Kron radius), then ``np.nan`` will be
-        returned.
+        This is the single computation behind `centroid_win` and
+        ``_centroid_win_errors``. See `centroid_win` for the
+        algorithm details.
         """
         # Use .copy() to avoid mutating the cached flux_radius value
         radius_hl = self.flux_radius(0.5).value.copy()
@@ -2166,15 +2142,53 @@ class SourceCatalog:
 
         (xcen_win, ycen_win, win_weighted_flux,
          win_cen_mom_xx, win_cen_mom_yy, win_cen_mom_xy,
-         win_err_var_x, win_err_var_y,
+         win_err_sum, win_err_var_x, win_err_var_y,
          win_err_cov_xy) = (np.array(col)
                             for col in zip(*results, strict=True))
+
+        # Normalize error terms by step_factor^2 / weighted_flux^2
+        if compute_err:
+            win_err_var_x, win_err_var_y = self._normalize_win_errors(
+                win_err_sum, win_err_var_x, win_err_var_y,
+                win_err_cov_xy, win_weighted_flux)
 
         return self._apply_centroid_win_fallback(
             xcen_win, ycen_win, win_weighted_flux,
             win_cen_mom_xx, win_cen_mom_yy, win_cen_mom_xy,
-            win_err_var_x, win_err_var_y, win_err_cov_xy, nan_hl,
+            win_err_var_x, win_err_var_y, nan_hl,
             x_centroid, y_centroid)
+
+    @cached_property
+    @use_detcat
+    def centroid_win(self):
+        """
+        The ``(x, y)`` coordinate of the "windowed" centroid.
+
+        The window centroid is computed using an iterative algorithm
+        to derive a more accurate centroid. It is equivalent to
+        `SourceExtractor`_'s XWIN_IMAGE and YWIN_IMAGE parameters.
+
+        Notes
+        -----
+        During each iteration, the centroid is calculated using all
+        pixels within a circular aperture of ``4 * sigma`` from the
+        current position, weighting pixel values with a 2D Gaussian with
+        a standard deviation of ``sigma``. ``sigma`` is the half-light
+        radius (i.e., ``flux_radius(0.5)``) times (2.0 / 2.35). A
+        minimum half-light radius of 0.5 pixels is used. Iteration stops
+        when the change in centroid position falls below a pre-defined
+        threshold or a maximum number of iterations is reached.
+
+        The windowed centroid is reset to the isophotal `centroid`
+        if any of the following conditions hold: the centroid diverged
+        far from the isophotal centroid and lies outside the 1-sigma
+        ellipse, the total weighted flux is non-positive, the windowed
+        2nd-order moments are negative, or the windowed covariance
+        determinant is negative. If the half-light radius is not finite
+        (e.g., due to a non-finite Kron radius), then ``np.nan`` will be
+        returned.
+        """
+        return self._centroid_win_results[:, 0:2].copy()
 
     @cached_property
     @use_detcat
@@ -2207,24 +2221,19 @@ class SourceCatalog:
     def _centroid_win_errors(self):
         """
         The 1-sigma errors on the ``(x, y)`` windowed centroid
-        position.
+        position as a 2D array with a leading source axis.
 
         The errors are computed by propagating the error array
         passed to `SourceCatalog` through the windowed centroid
         computation. If no error array was provided, the errors are
         ``np.nan``.
 
-        Errors are also ``np.nan`` for sources where the windowed
-        centroid fell back to the isophotal centroid, or where the
+        Sources where the windowed centroid fell back to the
+        isophotal centroid have the isophotal centroid errors (see
+        ``_centroid_errors``). Errors are ``np.nan`` where the
         half-light radius is non-finite.
         """
-        # Trigger centroid_win computation (which stores
-        # _centroid_win_poserr as a side effect).
-        _ = self.centroid_win  # noqa: F841
-        result = self._centroid_win_poserr
-        if self.isscalar:
-            return result[0]
-        return result
+        return self._centroid_win_results[:, 2:4].copy()
 
     @cached_property
     @use_detcat
