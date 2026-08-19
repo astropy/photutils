@@ -215,6 +215,12 @@ New Features
     KD-tree instead of building a dense pairwise distance matrix.
     [#2389]
 
+  - Added an analytic Jacobian (``fit_deriv``) to ``ImagePSF`` and
+    ``GriddedPSFModel``, which allows the fitter to skip the
+    finite-difference Jacobian during PSF fitting. This removes
+    roughly 60% of the model evaluations performed during fitting.
+    [#2393]
+
 - ``photutils.segmentation``
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``

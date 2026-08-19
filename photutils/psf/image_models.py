@@ -10,6 +10,7 @@ import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from scipy.interpolate import RectBivariateSpline
 
+from photutils.psf.utils import _out_of_grid_mask
 from photutils.utils._parameters import as_pair
 
 __all__ = ['ImagePSF']
@@ -250,8 +251,10 @@ class ImagePSF(Fittable2DModel):
         """
         self._validate_data(value)
         self._data = value
-        # Discard the cached interpolator, which is tied to the old data
+        # Discard the cached interpolators, which are tied to the old
+        # data
         self.__dict__.pop('interpolator', None)
+        self.__dict__.pop('_deriv_interpolators', None)
 
     @property
     def shape(self):
@@ -339,13 +342,32 @@ class ImagePSF(Fittable2DModel):
 
         Notes
         -----
-        This property can be overridden in a subclass to define custom
-        interpolators.
+        This property can be overridden in a subclass to define
+        custom interpolators. A custom interpolator must provide
+        a `~scipy.interpolate.RectBivariateSpline`-compatible
+        ``partial_derivative`` method to support `fit_deriv`. Otherwise,
+        the subclass should also set ``fit_deriv = None`` to fall back
+        to the fitter's finite-difference Jacobian.
         """
         x = np.arange(self.data.shape[1])
         y = np.arange(self.data.shape[0])
         # RectBivariateSpline expects the data to be in (x, y) axis order
         return RectBivariateSpline(x, y, self.data.T, kx=3, ky=3, s=0)
+
+    @cached_property
+    def _deriv_interpolators(self):
+        """
+        The spline partial-derivative interpolators.
+
+        The interpolators evaluate the partial derivatives of
+        `interpolator` with respect to its first (x) and second (y)
+        variables. They are precomputed here because evaluating them
+        is faster than passing ``dx=1`` or ``dy=1`` to `interpolator`,
+        which computes the derivative on the fly. They are used by
+        `fit_deriv`.
+        """
+        return (self.interpolator.partial_derivative(1, 0),
+                self.interpolator.partial_derivative(0, 1))
 
     def _calc_bounding_box(self):
         """
@@ -429,10 +451,67 @@ class ImagePSF(Fittable2DModel):
 
         if self.fill_value is not None:
             # Set pixels that are outside the input pixel grid to the
-            # fill_value to avoid extrapolation. These bounds match the
-            # RegularGridInterpolator bounds.
-            ny, nx = self.data.shape
-            invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
+            # fill_value to avoid extrapolation
+            invalid = _out_of_grid_mask(xi, yi, self.data.shape)
             evaluated_model[invalid] = self.fill_value
 
         return evaluated_model
+
+    def fit_deriv(self, x, y, flux, x_0, y_0):
+        """
+        Calculate the partial derivatives of the image model with
+        respect to the model parameters.
+
+        Providing this analytic Jacobian allows the fitter to avoid the
+        finite-difference approximation, which requires additional model
+        evaluations.
+
+        Parameters
+        ----------
+        x, y : float or array_like
+            The x and y coordinates at which to evaluate the model.
+
+        flux : float
+            The total flux of the source, assuming the input image
+            was properly normalized.
+
+        x_0, y_0 : float
+            The x and y positions of the feature in the image in the
+            output coordinate grid on which the model is evaluated.
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to the
+            ``flux``, ``x_0``, and ``y_0`` parameters.
+        """
+        # Promote scalar inputs to 1D arrays so that the interpolator
+        # returns an array that supports masked assignment below,
+        # regardless of the scipy version
+        x = np.atleast_1d(np.asarray(x, dtype=float))
+        y = np.atleast_1d(np.asarray(y, dtype=float))
+        xi = self.oversampling[1] * (x - x_0)
+        yi = self.oversampling[0] * (y - y_0)
+        xi += self._origin[0]
+        yi += self._origin[1]
+
+        # The spline interpolation is linear in flux, and the chain rule
+        # gives the x_0 and y_0 derivatives from the spline partial
+        # derivatives (dxi/dx_0 = -oversampling[1], dyi/dy_0 =
+        # -oversampling[0])
+        dx_interp, dy_interp = self._deriv_interpolators
+        d_flux = self.interpolator(xi, yi, grid=False)
+        d_x_0 = (-flux * self.oversampling[1]
+                 * dx_interp(xi, yi, grid=False))
+        d_y_0 = (-flux * self.oversampling[0]
+                 * dy_interp(xi, yi, grid=False))
+
+        if self.fill_value is not None:
+            # Outside the input pixel grid the model is constant
+            # (fill_value), so all derivatives are zero there
+            invalid = _out_of_grid_mask(xi, yi, self.data.shape)
+            d_flux[invalid] = 0.0
+            d_x_0[invalid] = 0.0
+            d_y_0[invalid] = 0.0
+
+        return [d_flux, d_x_0, d_y_0]

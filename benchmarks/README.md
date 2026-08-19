@@ -125,6 +125,8 @@ Benchmarks for the `photutils.psf` subpackage:
   `new` and `all` modes
 - `PSFPhotometry` versus the PSF model type (each scene is rendered
   and fit with the same model)
+- the `ImagePSF` analytic Jacobian (`fit_deriv`) versus the fitter's
+  finite-difference approximation, with speedups
 - `SourceGrouper` versus the number of sources and the minimum
   separation
 - ePSF building (`extract_stars` and `EPSFBuilder`) versus the number
