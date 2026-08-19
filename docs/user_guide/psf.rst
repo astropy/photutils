@@ -702,11 +702,8 @@ sources in each group were simultaneously fit::
 
 Care should be taken in defining the source groups. Simultaneously
 fitting very large source groups is computationally expensive and
-error-prone. Internally, source grouping requires the creation of a
-compound Astropy model. Due to the way compound Astropy models are
-currently constructed, large groups also require excessively large
-amounts of memory. This will hopefully be fixed in a future Astropy
-version. A warning will be raised if the number of sources in a group
+error-prone, because the number of fitted parameters grows with the
+group size. A warning will be raised if the number of sources in a group
 exceeds a threshold defined by the ``group_warning_threshold`` keyword.
 
 

@@ -225,12 +225,9 @@ class IterativePSFPhotometry:
 
     Care should be taken in defining the source groups. Simultaneously
     fitting very large source groups is computationally expensive and
-    error-prone. Internally, source grouping requires the creation of
-    a compound Astropy model. Due to the way compound Astropy models
-    are currently constructed, large groups also require excessively
-    large amounts of memory; this will hopefully be fixed in a future
-    Astropy version. A warning will be raised if the number of sources
-    in a group exceeds the ``group_warning_threshold`` value.
+    error-prone, because the number of fitted parameters grows with the
+    group size. A warning will be raised if the number of sources in a
+    group exceeds the ``group_warning_threshold`` value.
 
     This class stores per-call state on the instance (e.g., ``results``
     and ``fit_info``), so a single instance must not be called
