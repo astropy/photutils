@@ -8,12 +8,12 @@ import numpy as np
 import pytest
 from astropy.modeling.fitting import LevMarLSQFitter, TRFLSQFitter
 from astropy.table import QTable, Table
-from numpy.testing import assert_equal
+from numpy.testing import assert_allclose, assert_equal
 
 from photutils.detection import DAOStarFinder
 from photutils.psf import CircularGaussianPRF
 from photutils.psf._components import (PSFDataProcessor, PSFFitter,
-                                       PSFResultsAssembler)
+                                       PSFResultsAssembler, _ModelImageMaker)
 from photutils.psf.photometry import _PSFParameterMapper
 
 
@@ -92,7 +92,6 @@ class TestPSFDataProcessor:
         assert processor.data_unit is None
         assert processor.finder_results is None
         assert processor._cached_offsets is None
-        assert processor._cache_key is None
 
     def test_validate_array_valid_input(self, param_mapper):
         """
@@ -682,7 +681,39 @@ class TestComponentIntegration:
         fitter = PSFFitter(psf_model, param_mapper)
         psf_model_fit = fitter.make_psf_model(sources_with_id)
 
-        # Model parameters should be unitless for fitting
-        assert not hasattr(psf_model_fit.x_0.value, 'unit')
-        assert not hasattr(psf_model_fit.y_0.value, 'unit')
-        assert not hasattr(psf_model_fit.flux.value, 'unit')
+        # Model parameters should be unitless values for fitting
+        assert psf_model_fit.x_0.value == 12.0
+        assert psf_model_fit.y_0.value == 12.0
+        assert psf_model_fit.flux.value == 100.0
+
+
+class TestModelImageMaker:
+    """
+    Tests for the _ModelImageMaker class.
+    """
+
+    def test_local_bkg_none(self, psf_model):
+        """
+        Test that include_local_bkg=True with local_bkg=None treats
+        the local background as zero.
+        """
+        params = QTable({'x_0': [12.0], 'y_0': [12.0], 'flux': [100.0]})
+        maker = _ModelImageMaker(psf_model, params)
+        image = maker.make_model_image((25, 25), psf_shape=(9, 9))
+        image_bkg = maker.make_model_image((25, 25), psf_shape=(9, 9),
+                                           include_local_bkg=True)
+        assert_allclose(image_bkg, image)
+
+    def test_local_bkg_nonfinite(self, psf_model):
+        """
+        Test that non-finite local background values are treated as
+        zero.
+        """
+        params = QTable({'x_0': [8.0, 17.0], 'y_0': [8.0, 17.0],
+                         'flux': [100.0, 50.0]})
+        maker = _ModelImageMaker(psf_model, params,
+                                 local_bkg=np.array([np.nan, 0.0]))
+        image = maker.make_model_image((25, 25), psf_shape=(9, 9))
+        image_bkg = maker.make_model_image((25, 25), psf_shape=(9, 9),
+                                           include_local_bkg=True)
+        assert_allclose(image_bkg, image)

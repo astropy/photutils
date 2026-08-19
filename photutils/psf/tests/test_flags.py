@@ -420,17 +420,13 @@ def test_psf_flags_integration_with_decode():
     assert set(decoded_combined) == {'no_convergence', 'fully_masked'}
 
     # Test all constants work with decode
-    for const_name in ['N_PIXELS_FIT_PARTIAL', 'OUTSIDE_BOUNDS',
-                       'NEGATIVE_FLUX',
-                       'NO_CONVERGENCE', 'NO_COVARIANCE', 'NEAR_BOUND',
-                       'NO_OVERLAP', 'FULLY_MASKED', 'TOO_FEW_PIXELS']:
-        const_value = getattr(PSF_FLAGS, const_name)
+    for flag_name in PSF_FLAGS.names:
+        const_value = getattr(PSF_FLAGS, flag_name.upper())
         decoded_const = decode_psf_flags(const_value)
         assert len(decoded_const) == 1
 
         # The decoded name should match the constant name (lowercase)
-        expected_name = const_name.lower()
-        assert decoded_const[0] == expected_name
+        assert decoded_const[0] == flag_name
 
 
 def test_psf_flags_completeness():
