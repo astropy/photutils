@@ -82,9 +82,10 @@ class GriddedPSFModel(Fittable2DModel):
         The ``(x, y)`` coordinates of the ePSF peak in the output
         coordinate grid where the model is evaluated.
 
-    fill_value : float, optional
+    fill_value : float or `None`, optional
         The value used for points outside the input pixel grid. The
-        default is 0.0.
+        default is 0.0. If `None`, values outside the input pixel grid
+        are extrapolated from the spline fit.
 
     Methods
     -------
@@ -121,6 +122,11 @@ class GriddedPSFModel(Fittable2DModel):
     Internally, the ePSF grid is reordered so that the reference ePSFs
     are sorted first by their y detector coordinate and then by their x
     detector coordinate.
+
+    One `~scipy.interpolate.RectBivariateSpline` interpolator per
+    evaluated grid plane is cached on the model and shared across copies
+    made with the `copy` method. The cache roughly doubles the model's
+    memory footprint when every grid plane has been evaluated.
     """
 
     flux = Parameter(description='Intensity scaling factor for the ePSF '
@@ -137,6 +143,9 @@ class GriddedPSFModel(Fittable2DModel):
 
         self._data, self._grid_xypos = self._define_grid(nddata)
         self._meta = nddata.meta.copy()  # _meta to avoid the meta descriptor
+        # Drop a stale user-supplied key; the grid shape is derived
+        # from grid_xypos
+        self._meta.pop('grid_shape', None)
         # The setter also stores the normalized (y, x) pair in meta
         self.oversampling = nddata.meta['oversampling']
         self.fill_value = fill_value
@@ -258,6 +267,10 @@ class GriddedPSFModel(Fittable2DModel):
                    'input ePSFs')
             raise ValueError(msg)
 
+        if len({tuple(pos) for pos in grid_xypos}) != len(grid_xypos):
+            msg = 'grid_xypos must not contain duplicate positions'
+            raise ValueError(msg)
+
         if len(grid_xypos) != 1 and not self._is_rectangular_grid(grid_xypos):
             msg = ('grid_xypos must form a rectangular grid, i.e., there '
                    'must be at least two unique x and y positions and '
@@ -302,13 +315,14 @@ class GriddedPSFModel(Fittable2DModel):
 
         keywords.extend([('Number of PSFs', len(self.grid_xypos)),
                          ('Grid shape', self.grid_shape),
-                         ('Grid positions', self.grid_xypos.tolist()),
+                         ('Grid positions', self.grid_xypos),
                          ('PSF shape (oversampled pixels)',
                           self.data.shape[1:]),
                          ('Oversampling', oversampling),
                          ('Fill Value', self.fill_value)])
 
-        return self._format_str(keywords=keywords)
+        with np.printoptions(threshold=25, edgeitems=5):
+            return self._format_str(keywords=keywords)
 
     def __repr__(self):
         kwargs = {'oversampling': self.oversampling.tolist(),
@@ -367,11 +381,17 @@ class GriddedPSFModel(Fittable2DModel):
         """
         newcls = object.__new__(self.__class__)
 
-        for key, val in self.__dict__.items():
+        # Snapshot so concurrent cached_property fills cannot resize
+        # the dict during iteration
+        for key, val in dict(self.__dict__).items():
             if key in self.param_names:  # copy only the parameter values
                 newcls.__dict__[key] = copy.copy(val)
             else:
                 newcls.__dict__[key] = val
+
+        # Give the copy its own meta dictionary so that setting the
+        # oversampling on the copy does not mutate the original meta
+        newcls._meta = dict(self._meta)
 
         return newcls
 
@@ -417,7 +437,7 @@ class GriddedPSFModel(Fittable2DModel):
 
     def _calc_bounding_box(self):
         """
-        Set a bounding box defining the limits of the model.
+        Return a bounding box defining the limits of the model.
 
         Returns
         -------
@@ -468,8 +488,8 @@ class GriddedPSFModel(Fittable2DModel):
     @cached_property
     def origin(self):
         """
-        A 1D `~numpy.ndarray` (x, y) pixel coordinates within the
-        model's 2D image of the origin of the coordinate system.
+        The (x, y) pixel coordinates, as a 1D `~numpy.ndarray`, of the
+        origin of the coordinate system within the model image.
         """
         # data.shape is (N_psf, ePSF_ny, ePSF_nx); the leading axis is
         # excluded so that the result is the (x, y) image center
@@ -689,7 +709,7 @@ class GriddedPSFModel(Fittable2DModel):
         x_0, y_0 : float
             The (x, y) position of the model.
 
-        xi, yi : float
+        xi, yi : float or `~numpy.ndarray`
             The input (x, y) coordinates at which the model is
             evaluated.
 
@@ -736,6 +756,11 @@ class GriddedPSFModel(Fittable2DModel):
         evaluated_model : `~numpy.ndarray`
             The evaluated model.
         """
+        # Promote scalar inputs to 1D arrays so that the interpolator
+        # returns an array that supports masked assignment below,
+        # regardless of the scipy version
+        x = np.atleast_1d(x)
+        y = np.atleast_1d(y)
         if x.ndim > 2:
             msg = 'x and y must be 1D or 2D'
             raise ValueError(msg)

@@ -110,7 +110,7 @@ class _ModelGridPlotter:
         import matplotlib.pyplot as plt
         from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-        data = self.model.data.copy()
+        data = self.model.data.astype(float)
         if deltas:
             # Compute mean ignoring any blank (all zeros) ePSFs.
             # This is the case for MIRI with its non-square FOV.
@@ -118,8 +118,15 @@ class _ModelGridPlotter:
             for i, arr in enumerate(data):
                 if np.count_nonzero(arr) == 0:
                     mask[i] = True
-            data -= np.mean(data[~mask], axis=0)
+            mean_epsf = np.mean(data[~mask], axis=0)
+            data -= mean_epsf
             data[mask] = 0.0
+            # For peak normalization, use the peak of the mean ePSF so
+            # that the differences are relative to the average ePSF
+            # peak
+            peak = mean_epsf.max()
+        else:
+            peak = data.max()
 
         data = self._reshape_grid(data)
 
@@ -131,9 +138,9 @@ class _ModelGridPlotter:
         else:
             fig = ax.get_figure()
 
-        if peak_norm and data.max() != 0:
+        if peak_norm and peak != 0:
             # Normalize relative to peak
-            data /= data.max()
+            data /= peak
 
         if deltas:
             if vmax_scale is None:

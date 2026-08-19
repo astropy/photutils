@@ -497,6 +497,59 @@ Bug Fixes
     validation now also rejects non-numeric and boolean inputs.
     [#2387]
 
+  - Fixed a bug where the ``GaussianPSF`` and ``GaussianPRF`` bounding
+    boxes treated a float ``theta`` value (in degrees) as radians,
+    producing incorrect bounding-box extents for rotated models.
+    [#2388]
+
+  - Fixed a bug where ``AiryDiskPSF`` returned the peak value instead
+    of NaN for NaN input coordinates. [#2388]
+
+  - Fixed the default lower bound of the ``MoffatPSF`` ``beta``
+    parameter, which rounded to exactly 1.0 instead of being strictly
+    greater than 1. [#2388]
+
+  - ``CircularGaussianPSF`` and ``CircularGaussianPRF`` now raise a
+    ``UnitsError`` during fitting when the x and y inputs have
+    different units, consistent with the other Gaussian models.
+    [#2388]
+
+  - Fixed the normalization prefactor shown in the ``AiryDiskPSF``
+    docstring and documented that the rotated ``GaussianPRF`` pixel
+    integration is performed along the rotated principal axes of the
+    Gaussian. [#2388]
+
+  - Fixed ``stdpsf_reader`` and ``STDPSFGrid`` to accept an
+    already-open ``astropy.io.fits.HDUList`` or file object. Such
+    inputs were previously accepted by the low-level reader but then
+    raised a ``TypeError`` when parsing the metadata. [#2388]
+
+  - Fixed ``webbpsf_reader`` to correctly read files containing a
+    single 2D PSF. The data was previously reshaped with the new axis
+    in the wrong position, raising a ``ValueError``. [#2388]
+
+  - ``GriddedPSFModel`` now raises a ``ValueError`` if ``grid_xypos``
+    contains duplicate positions. Previously, duplicate positions
+    could silently produce an invalid grid. [#2388]
+
+  - Fixed ``GriddedPSFModel.copy`` so that the copy has its own
+    ``meta`` dictionary. Previously, setting the ``oversampling`` on a
+    copy also changed the ``meta`` dictionary of the original model.
+    [#2388]
+
+  - Fixed ``plot_grid`` for integer-dtype ePSF grids, which raised a
+    casting error with ``deltas=True`` or ``peak_norm=True``. Also,
+    with both ``deltas=True`` and ``peak_norm=True``, the differences
+    are now normalized by the average ePSF peak, as documented, instead
+    of the maximum difference value. [#2388]
+
+  - Fixed ``GriddedPSFModel.evaluate`` and ``ImagePSF.evaluate`` to
+    accept scalar coordinates when called directly. [#2388]
+
+  - Fixed ``GriddedPSFModel.read`` to raise the standard format
+    identification error for a corrupt file with a FITS extension
+    instead of an ``OSError``. [#2388]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range

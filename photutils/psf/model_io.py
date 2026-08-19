@@ -129,8 +129,13 @@ def _read_stdpsf(filename):
         filename = os.fspath(filename)
 
     is_hdulist = isinstance(filename, fits.HDUList)
-    is_fileobj = (isinstance(filename, io.FileIO)
-                  and filename.name.lower().endswith(_FITS_EXTENSIONS))
+    if isinstance(filename, io.IOBase):
+        # A file object created from a file descriptor has an int name
+        name = getattr(filename, 'name', None)
+        is_fileobj = (isinstance(name, str)
+                      and name.lower().endswith(_FITS_EXTENSIONS))
+    else:
+        is_fileobj = False
     is_fits_ext = (isinstance(filename, str)
                    and filename.lower().endswith(_FITS_EXTENSIONS))
     if is_hdulist or is_fileobj or is_fits_ext:
@@ -316,7 +321,9 @@ def _split_wfc_uvis(grid_data, detector_id):
     ygrid = grid_data['ygrid']
     ygrid = ygrid.reshape((2, ygrid.shape[0] // 2))[detector_id - 1]
     if detector_id == 2:
-        ygrid -= 2048
+        # Avoid writing through the reshape view into the input grid
+        # data
+        ygrid = ygrid - 2048
 
     n_psfs = grid_data['n_psfs']
     data = grid_data['data']
@@ -430,8 +437,9 @@ def _get_metadata(filename, detector_id):
 
     Parameters
     ----------
-    filename : str or path-like
-        The name of the STDPSF FITS file.
+    filename : str, path-like, file-like, or `~astropy.io.fits.HDUList`
+        The name of the STDPSF FITS file, an open file object, or an
+        already-open `~astropy.io.fits.HDUList`.
 
     detector_id : int
         The detector ID.
@@ -439,12 +447,18 @@ def _get_metadata(filename, detector_id):
     Returns
     -------
     meta : dict or `None`
-        A dictionary containing the metadata.
+        A dictionary containing the metadata. `None` is returned if a
+        filename string cannot be determined from the input.
     """
-    if isinstance(filename, io.FileIO):
-        filename = filename.name
+    if isinstance(filename, fits.HDUList):
+        filename = filename.filename()
+    elif isinstance(filename, io.IOBase):
+        filename = getattr(filename, 'name', None)
     elif isinstance(filename, os.PathLike):
         filename = os.fspath(filename)
+
+    if not isinstance(filename, str):
+        return None
 
     # Strip the file extension (e.g., '.fits' or '.fits.gz') before
     # splitting the filename into its underscore-separated fields.
@@ -505,8 +519,10 @@ def stdpsf_reader(filename, detector_id=None):
 
     Parameters
     ----------
-    filename : str or path-like
-        The name of the STDPSF FITS file. A URL can also be used.
+    filename : str, path-like, file-like, or `~astropy.io.fits.HDUList`
+        The name of the STDPSF FITS file, an open file object, or an
+        already-open `~astropy.io.fits.HDUList`. A URL can also be
+        used.
 
     detector_id : `None` or int, optional
         For STDPSF files that contain ePSF grids for multiple detectors,
@@ -610,7 +626,8 @@ def webbpsf_reader(filename):
             data = hdulist[0].data
 
     # Handle the case of only one 2D PSF
-    data = np.atleast_3d(data)
+    if data.ndim == 2:
+        data = data[np.newaxis, :]
 
     if not any('DET_YX' in key for key in header):
         msg = 'Invalid WebbPSF FITS file; missing "DET_YX{}" header keys'
@@ -625,7 +642,7 @@ def webbpsf_reader(filename):
     header.pop('COMMENT', None)
     header.pop('', None)
     meta = dict(header)
-    meta = {key.lower(): meta[key] for key in meta}  # user lower-case keys
+    meta = {key.lower(): meta[key] for key in meta}  # use lower-case keys
 
     # Define grid_xypos from the DET_YX{i} FITS header keywords. The
     # keywords are sorted by their numeric index so that the positions
@@ -652,7 +669,7 @@ def webbpsf_reader(filename):
     return GriddedPSFModel(ndd)
 
 
-def _has_fits_header_keys(filepath, keys):
+def _has_fits_header_keys(filepath, keys, *, fileobj=None):
     """
     Determine whether a file is a FITS file whose primary header
     contains all of the given keywords.
@@ -665,21 +682,40 @@ def _has_fits_header_keys(filepath, keys):
     keys : tuple of str
         The FITS header keywords that must all be present.
 
+    fileobj : file-like object or `None`, optional
+        An open file object to read the file's contents. If given, the
+        header is read from it instead of reopening ``filepath``.
+
     Returns
     -------
     result : bool
         Returns `True` if the file is a FITS file containing all of the
         input keywords.
     """
+    if fileobj is not None:
+        try:
+            fileobj.seek(0)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', VerifyWarning)
+                header = fits.getheader(fileobj)
+        except OSError:
+            # A corrupt file is not a FITS file
+            return False
+        return all(key in header for key in keys)
+
     if isinstance(filepath, os.PathLike):
         filepath = os.fspath(filepath)
 
     if filepath is None or not filepath.lower().endswith(_FITS_EXTENSIONS):
         return False
 
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', VerifyWarning)
-        header = fits.getheader(filepath)
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', VerifyWarning)
+            header = fits.getheader(filepath)
+    except OSError:
+        # A corrupt file with a FITS extension is not a FITS file
+        return False
 
     return all(key in header for key in keys)
 
@@ -710,7 +746,8 @@ def is_stdpsf(origin, filepath, fileobj, *args, **kwargs):
     result : bool
         Returns `True` if the given file is a STDPSF FITS file.
     """
-    return _has_fits_header_keys(filepath, ('NAXIS3', 'NXPSFS', 'NYPSFS'))
+    return _has_fits_header_keys(filepath, ('NAXIS3', 'NXPSFS', 'NYPSFS'),
+                                 fileobj=fileobj)
 
 
 def is_webbpsf(origin, filepath, fileobj, *args, **kwargs):
@@ -739,4 +776,5 @@ def is_webbpsf(origin, filepath, fileobj, *args, **kwargs):
     result : bool
         Returns `True` if the given file is a WebbPSF FITS file.
     """
-    return _has_fits_header_keys(filepath, ('NAXIS3', 'OVERSAMP', 'DET_YX0'))
+    return _has_fits_header_keys(filepath, ('NAXIS3', 'OVERSAMP', 'DET_YX0'),
+                                 fileobj=fileobj)

@@ -93,8 +93,8 @@ class GaussianPSF(Fittable2DModel):
 
     where :math:`F` denotes the total integrated flux, :math:`(x_{0},
     y_{0})` denotes the position of the peak, and :math:`\sigma_{x}` and
-    :math:`\sigma_{y}` denote are the standard deviations along the x
-    and y axes, respectively.
+    :math:`\sigma_{y}` denote the standard deviations along the x and y
+    axes, respectively.
 
     .. math::
 
@@ -133,8 +133,10 @@ class GaussianPSF(Fittable2DModel):
         >>> model.y_fwhm.fixed = False
         >>> model.theta.fixed = False
 
-    By default, the ``x_fwhm`` and ``y_fwhm`` parameters are bounded to
-    be strictly positive.
+    By default, the ``x_fwhm`` and ``y_fwhm`` parameters are bounded
+    to be strictly positive. These bounds apply only during fitting.
+    Directly setting a non-positive width produces unphysical model
+    values.
 
     References
     ----------
@@ -226,7 +228,12 @@ class GaussianPSF(Fittable2DModel):
         """
         a = factor * self.x_sigma
         b = factor * self.y_sigma
-        dx, dy = ellipse_extent(a, b, self.theta)
+        # A float theta is in degrees, but ellipse_extent expect radians
+        if self.theta.unit is None:
+            theta = np.deg2rad(self.theta.value)
+        else:
+            theta = self.theta.quantity
+        dx, dy = ellipse_extent(a, b, theta)
         return ((self.y_0 - dy, self.y_0 + dy), (self.x_0 - dx, self.x_0 + dx))
 
     @property
@@ -340,7 +347,9 @@ class GaussianPSF(Fittable2DModel):
         -------
         result : list of `~numpy.ndarray`
             The list of partial derivatives with respect to each
-            parameter.
+            parameter. The derivative with respect to ``theta`` is
+            always per degree, even when ``theta`` is input as an
+            angular `~astropy.units.Quantity`.
         """
         if not isinstance(theta, u.Quantity):
             theta = np.deg2rad(theta)
@@ -367,7 +376,10 @@ class GaussianPSF(Fittable2DModel):
 
         amplitude = flux / (2 * np.pi * xstd * ystd)
         exp = np.exp(-(a * xdiff2) - (b * xdiff * ydiff) - (c * ydiff2))
-        g = amplitude * exp
+        # Compute the flux derivative directly from the exponential
+        # term so that it is finite even at flux = 0
+        dg_dflux = exp / (2 * np.pi * xstd * ystd)
+        g = flux * dg_dflux
 
         da_dtheta = sint * cost * ((1.0 / ystd2) - (1.0 / xstd2))
         db_dtheta = (cos2t / xstd2) - (cos2t / ystd2)
@@ -381,7 +393,6 @@ class GaussianPSF(Fittable2DModel):
         db_dystd = sin2t / ystd3
         dc_dystd = -cost2 / ystd3
 
-        dg_dflux = g / flux
         dg_dx_0 = g * ((2.0 * a * xdiff) + (b * ydiff))
         dg_dy_0 = g * ((b * xdiff) + (2.0 * c * ydiff))
 
@@ -507,7 +518,8 @@ class CircularGaussianPSF(Fittable2DModel):
         >>> model.fwhm.fixed = False
 
     By default, the ``fwhm`` parameter is bounded to be strictly
-    positive.
+    positive. This bound applies only during fitting. Directly setting a
+    non-positive width produces unphysical model values.
 
     References
     ----------
@@ -695,6 +707,11 @@ class CircularGaussianPSF(Fittable2DModel):
         return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
 
     def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
+        # The radial distance requires x and y to have the same unit.
+        if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
+            msg = "Units of 'x' and 'y' inputs should match"
+            raise UnitsError(msg)
+
         return {'x_0': inputs_unit[self.inputs[0]],
                 'y_0': inputs_unit[self.inputs[0]],
                 'fwhm': inputs_unit[self.inputs[0]],
@@ -705,10 +722,11 @@ class GaussianPRF(Fittable2DModel):
     r"""
     A 2D Gaussian PSF model integrated over pixels.
 
-    This model is evaluated by integrating the 2D Gaussian over the
-    input coordinate pixels, and is equivalent to assuming the PSF is
-    2D Gaussian at a *sub-pixel* level. Because it is integrated over
-    pixels, this model is considered a PRF instead of a PSF.
+    This model is evaluated by integrating the 2D Gaussian over pixels
+    along the rotated principal axes of the Gaussian (see Notes),
+    and is equivalent to assuming the PSF is a 2D Gaussian at a
+    *sub-pixel* level. Because it is integrated over pixels, this model
+    is considered a PRF instead of a PSF.
 
     The Gaussian is normalized such that the analytical integral over
     the entire 2D plane is equal to the total flux.
@@ -737,7 +755,7 @@ class GaussianPRF(Fittable2DModel):
 
     bbox_factor : float, optional
         The multiple of the x and y standard deviations (sigma) used to
-        define the bounding_box limits.
+        define the bounding box limits.
 
     **kwargs : dict, optional
         Additional optional keyword arguments to be passed to the
@@ -783,6 +801,11 @@ class GaussianPRF(Fittable2DModel):
     where :math:`(x_{0}, y_{0})` is the position of the peak and
     :math:`\theta` is the rotation angle of the Gaussian.
 
+    The pixel integration is performed along the rotated principal
+    axes of the Gaussian. For ``theta != 0`` the value is therefore an
+    approximation to the integral over the axis-aligned detector pixel,
+    exact only for ``theta = 0``.
+
     The FWHMs of the Gaussian along the x and y axes are given by:
 
     .. math::
@@ -807,8 +830,10 @@ class GaussianPRF(Fittable2DModel):
         >>> model.y_fwhm.fixed = False
         >>> model.theta.fixed = False
 
-    By default, the ``x_fwhm`` and ``y_fwhm`` parameters are bounded to
-    be strictly positive.
+    By default, the ``x_fwhm`` and ``y_fwhm`` parameters are bounded
+    to be strictly positive. These bounds apply only during fitting.
+    Directly setting a non-positive width produces unphysical model
+    values.
 
     References
     ----------
@@ -900,7 +925,12 @@ class GaussianPRF(Fittable2DModel):
         """
         a = factor * self.x_sigma
         b = factor * self.y_sigma
-        dx, dy = ellipse_extent(a, b, self.theta)
+        # A float theta is in degrees, but ellipse_extent expect radians
+        if self.theta.unit is None:
+            theta = np.deg2rad(self.theta.value)
+        else:
+            theta = self.theta.quantity
+        dx, dy = ellipse_extent(a, b, theta)
         return ((self.y_0 - dy, self.y_0 + dy), (self.x_0 - dx, self.x_0 + dx))
 
     @property
@@ -1017,7 +1047,7 @@ class CircularGaussianPRF(Fittable2DModel):
     A circular 2D Gaussian PSF model integrated over pixels.
 
     This model is evaluated by integrating the 2D Gaussian over the
-    input coordinate pixels, and is equivalent to assuming the PSF is
+    input coordinate pixels, and is equivalent to assuming the PSF is a
     2D Gaussian at a *sub-pixel* level. Because it is integrated over
     pixels, this model is considered a PRF instead of a PSF.
 
@@ -1097,7 +1127,8 @@ class CircularGaussianPRF(Fittable2DModel):
         >>> model.fwhm.fixed = False
 
     By default, the ``fwhm`` parameter is bounded to be strictly
-    positive.
+    positive. This bound applies only during fitting. Directly setting a
+    non-positive width produces unphysical model values.
 
     References
     ----------
@@ -1252,6 +1283,11 @@ class CircularGaussianPRF(Fittable2DModel):
         return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
 
     def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
+        # The radial distance requires x and y to have the same unit.
+        if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
+            msg = "Units of 'x' and 'y' inputs should match"
+            raise UnitsError(msg)
+
         return {'x_0': inputs_unit[self.inputs[0]],
                 'y_0': inputs_unit[self.inputs[0]],
                 'fwhm': inputs_unit[self.inputs[0]],
@@ -1263,7 +1299,7 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
     A circular 2D Gaussian PSF model integrated over pixels.
 
     This model is evaluated by integrating the 2D Gaussian over the
-    input coordinate pixels, and is equivalent to assuming the PSF is
+    input coordinate pixels, and is equivalent to assuming the PSF is a
     2D Gaussian at a *sub-pixel* level. Because it is integrated over
     pixels, this model is considered a PRF instead of a PSF.
 
@@ -1280,13 +1316,13 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         Total integrated flux over the entire PSF.
 
     x_0 : float, optional
-        Position of the peak in x direction.
+        Position of the peak along the x-axis.
 
     y_0 : float, optional
-        Position of the peak in y direction.
+        Position of the peak along the y-axis.
 
     sigma : float, optional
-        Width of the Gaussian PSF.
+        The standard deviation of the Gaussian.
 
     bbox_factor : float, optional
         The multiple of the standard deviation (sigma) used to define
@@ -1341,7 +1377,8 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         >>> model.sigma.fixed = False
 
     By default, the ``sigma`` parameter is bounded to be strictly
-    positive.
+    positive. This bound applies only during fitting. Directly setting a
+    non-positive width produces unphysical model values.
 
     References
     ----------
@@ -1454,21 +1491,21 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         Parameters
         ----------
         x, y : float or array_like
-            The coordinates at which to evaluate the model.
+            The x and y coordinates at which to evaluate the model.
 
         flux : float
-            The total flux of the star.
+            Total integrated flux over the entire PSF.
 
         x_0, y_0 : float
-            The position of the star.
+            Position of the peak along the x and y axes.
 
         sigma : float
-            The width of the Gaussian PRF.
+            The standard deviation of the Gaussian.
 
         Returns
         -------
-        evaluated_model : `~numpy.ndarray`
-            The evaluated model.
+        result : `~numpy.ndarray`
+            The value of the model evaluated at the input coordinates.
         """
         x0 = x - x_0
         y0 = y - y_0
@@ -1496,9 +1533,7 @@ class CircularGaussianSigmaPRF(Fittable2DModel):
         return {self.inputs[0]: x_unit, self.inputs[1]: y_unit}
 
     def _parameter_units_for_data_units(self, inputs_unit, outputs_unit):
-        # We need to make sure that x and y are in the same units
-        # otherwise this can lead to issues since rotation is not well
-        # defined.
+        # The radial distance requires x and y to have the same unit.
         if inputs_unit[self.inputs[0]] != inputs_unit[self.inputs[1]]:
             msg = "Units of 'x' and 'y' inputs should match"
             raise UnitsError(msg)
@@ -1629,7 +1664,7 @@ class MoffatPSF(Fittable2DModel):
         description='Characteristic radius of the Moffat profile')
     beta = Parameter(
         default=2,
-        bounds=(1.0 + _FLOAT_TINY, None),
+        bounds=(np.nextafter(1.0, np.inf), None),
         fixed=True,
         description='Power-law index of the Moffat profile')
 
@@ -1713,10 +1748,10 @@ class MoffatPSF(Fittable2DModel):
         x_0, y_0 : float
             Position of the peak along the x and y axes.
 
-        alpha : float, optional
+        alpha : float
             The characteristic radius of the Moffat profile.
 
-        beta : float, optional
+        beta : float
             The asymptotic power-law slope of the Moffat profile wings
             at large radial distances. Larger values provide less flux
             in the profile wings. For large ``beta``, this profile
@@ -1800,7 +1835,7 @@ class AiryDiskPSF(Fittable2DModel):
 
     .. math::
 
-        f(r) = \frac{F}{4 \pi (R / R_z)^2}
+        f(r) = \frac{\pi F}{4 (R / R_z)^{2}}
                \left[ \frac{2 J_1\left(\frac{\pi r}{R / R_z}\right)}
                       {\frac{\pi r}{R / R_z}} \right]^2
 
@@ -1969,7 +2004,7 @@ class AiryDiskPSF(Fittable2DModel):
         x_0, y_0 : float
             Position of the peak along the x and y axes.
 
-        radius : float, optional
+        radius : float
             The radius of the Airy disk at the first zero.
 
         Returns
@@ -1993,6 +2028,7 @@ class AiryDiskPSF(Fittable2DModel):
         z = np.ones(rt.shape)
         nonzero = rt > 0
         z[nonzero] = (2.0 * j1(rt[nonzero]) / rt[nonzero]) ** 2
+        z[np.isnan(rt)] = np.nan
         z = z.reshape(r.shape)
 
         if isinstance(flux, u.Quantity):

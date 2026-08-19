@@ -66,9 +66,10 @@ class ImagePSF(Fittable2DModel):
         scalar is provided, it is applied to both axes. If two values are
         provided, they must be in ``(y, x)`` order.
 
-    fill_value : float, optional
+    fill_value : float or `None`, optional
         The value used for points outside the input pixel grid. The default
-        is 0.0.
+        is 0.0. If `None`, values outside the input pixel grid are
+        extrapolated from the spline fit.
 
     **kwargs : dict, optional
         Additional keyword arguments passed to the
@@ -204,7 +205,9 @@ class ImagePSF(Fittable2DModel):
         """
         newcls = object.__new__(self.__class__)
 
-        for key, val in self.__dict__.items():
+        # Snapshot so concurrent cached_property fills cannot resize
+        # the dict during iteration
+        for key, val in dict(self.__dict__).items():
             if key in self.param_names:  # copy only the parameter values
                 newcls.__dict__[key] = copy.copy(val)
             else:
@@ -292,8 +295,8 @@ class ImagePSF(Fittable2DModel):
     @property
     def origin(self):
         """
-        A 1D `~numpy.ndarray` (x, y) pixel coordinates within the
-        model's 2D image of the origin of the coordinate system.
+        The (x, y) pixel coordinates, as a 1D `~numpy.ndarray`, of the
+        origin of the coordinate system within the model image.
 
         The reference ``origin`` pixel will be placed at the model
         ``x_0`` and ``y_0`` coordinates in the output coordinate system
@@ -346,7 +349,7 @@ class ImagePSF(Fittable2DModel):
 
     def _calc_bounding_box(self):
         """
-        Set a bounding box defining the limits of the model.
+        Return a bounding box defining the limits of the model.
 
         Returns
         -------
@@ -412,8 +415,13 @@ class ImagePSF(Fittable2DModel):
         result : `~numpy.ndarray`
             The value of the model evaluated at the input coordinates.
         """
-        xi = self.oversampling[1] * (np.asarray(x, dtype=float) - x_0)
-        yi = self.oversampling[0] * (np.asarray(y, dtype=float) - y_0)
+        # Promote scalar inputs to 1D arrays so that the interpolator
+        # returns an array that supports masked assignment below,
+        # regardless of the scipy version
+        x = np.atleast_1d(np.asarray(x, dtype=float))
+        y = np.atleast_1d(np.asarray(y, dtype=float))
+        xi = self.oversampling[1] * (x - x_0)
+        yi = self.oversampling[0] * (y - y_0)
         xi += self._origin[0]
         yi += self._origin[1]
 
