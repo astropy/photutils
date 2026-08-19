@@ -160,7 +160,6 @@ inheritance_graph_attrs = {'size': '""'}
 # start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [('index', project + '.tex', project + ' Documentation',
                     author, 'manual')]
-# latex_logo = '_static/photutils_banner.pdf'
 
 # -- Options for manual page output -------------------------------------------
 # One entry per manual page. List of tuples (source start file, name,

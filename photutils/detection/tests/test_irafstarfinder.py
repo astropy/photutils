@@ -330,8 +330,9 @@ class TestIRAFStarFinder:
     def test_interval_ends_included(self):
         """
         Test that filter interval endpoints are inclusive.
+
+        See issue: https://github.com/astropy/photutils/issues/1977
         """
-        # https://github.com/astropy/photutils/issues/1977
         data = np.zeros((46, 64))
 
         x = 33

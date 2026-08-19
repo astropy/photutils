@@ -49,7 +49,7 @@ class _ApertureConverter(Converter):
     def to_yaml_tree(self, obj, tag, ctx):  # noqa: ARG002
         positions = obj.positions
         if not isinstance(positions, SkyCoord) and positions.shape == (2,):
-            # store a single pixel position as a plain (x, y) pair
+            # Store a single pixel position as a plain (x, y) pair
             positions = positions.tolist()
 
         node = {'positions': positions}

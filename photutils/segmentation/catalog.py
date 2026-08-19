@@ -837,7 +837,7 @@ class SourceCatalog:
                 value = value[0]
 
             if hasattr(value, 'isscalar'):
-                # e.g., Quantity, SkyCoord, Time
+                # E.g., Quantity, SkyCoord, Time
                 if not value.isscalar:
                     property_error = True
             elif not np.isscalar(value):

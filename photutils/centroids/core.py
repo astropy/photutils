@@ -663,8 +663,8 @@ def centroid_sources(data, xpos, ypos, box_size=11, footprint=None,
         msg = 'mask and data must have the same shape'
         raise ValueError(msg)
 
-    # error=None is equivalent to no error array, so allow it even for
-    # centroid functions that do not accept an error keyword
+    # Setting error to None is equivalent to no error array, so allow it
+    # even for centroid functions that do not accept an error keyword
     if kwargs.get('error') is None:
         kwargs.pop('error', None)
 

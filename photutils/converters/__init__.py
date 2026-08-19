@@ -11,7 +11,7 @@ from importlib.util import find_spec
 
 _ASDF_INSTALLED = find_spec('asdf') is not None
 
-# asdf-astropy imports asdf, so it is unusable without it.
+# Because asdf-astropy imports asdf, it is unusable without it.
 _ASDF_ASTROPY_INSTALLED = (_ASDF_INSTALLED
                            and find_spec('asdf_astropy') is not None)
 

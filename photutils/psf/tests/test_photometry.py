@@ -822,7 +822,7 @@ def test_grouped_fit_two_image_psfs():
 
     init = Table({'x': [20.0, 24.0], 'y': [20.0, 22.0],
                   'flux': [450.0, 280.0], 'group_id': [1, 1]})
-    # disable garbage collection so that a stale cached flat-model
+    # Disable garbage collection so that a stale cached flat-model
     # class cannot be silently evicted between the fits
     gc.disable()
     try:

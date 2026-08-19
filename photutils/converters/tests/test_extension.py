@@ -104,7 +104,7 @@ def test_manifest_tags_all_have_converters():
     Test that every tag defined by a manifest has a converter.
     """
     if not _ASDF_ASTROPY_INSTALLED:
-        # the PSF tags are intentionally left without a converter
+        # The PSF tags are intentionally left without a converter
         return
 
     prefixes = _converter_tag_prefixes(PHOTUTILS_CONVERTERS)
