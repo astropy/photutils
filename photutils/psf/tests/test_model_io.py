@@ -4,19 +4,21 @@ Tests for the model_io module.
 """
 
 import io
+import os
 import os.path as op
 from itertools import product
 from pathlib import Path
 
 import numpy as np
 import pytest
-from astropy.io import fits
+from astropy.io import fits, registry
+from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose, assert_equal
 
-from photutils.psf import GriddedPSFModel
+from photutils.psf import GriddedPSFModel, STDPSFGrid
 from photutils.psf.model_io import (_get_metadata, _has_fits_header_keys,
-                                    _read_stdpsf, is_stdpsf, is_webbpsf,
-                                    stdpsf_reader)
+                                    _read_stdpsf, _split_wfc_uvis, is_stdpsf,
+                                    is_webbpsf, stdpsf_reader)
 
 # The first file has a single detector, the rest have multiple detectors
 STDPSF_FILENAMES = ('STDPSF_NRCA1_F150W_mock.fits',
@@ -69,7 +71,7 @@ def encode_position(x, y):
 
 
 def make_webbpsf_file(filename, xgrid, ygrid, psf_shape=(8, 8),
-                      oversampling=4, keys_to_remove=()):
+                      oversampling=4, keys_to_remove=(), data_2d=False):
     """
     Write a mock WebbPSF gridded-ePSF FITS file.
 
@@ -95,6 +97,10 @@ def make_webbpsf_file(filename, xgrid, ygrid, psf_shape=(8, 8),
     keys_to_remove : tuple of str, optional
         FITS header keywords to omit from the output file. This is used
         to create invalid files.
+
+    data_2d : bool, optional
+        Whether to write the data as a single 2D array instead of a 3D
+        array. This requires a single grid position.
     """
     header = fits.Header()
     header['OVERSAMP'] = oversampling
@@ -112,7 +118,8 @@ def make_webbpsf_file(filename, xgrid, ygrid, psf_shape=(8, 8),
     for key in keys_to_remove:
         del header[key]
 
-    hdu = fits.PrimaryHDU(np.array(planes), header=header)
+    data = planes[0] if data_2d else np.array(planes)
+    hdu = fits.PrimaryHDU(data, header=header)
     hdu.writeto(filename, overwrite=True)
 
 
@@ -192,12 +199,67 @@ class TestSTDPSFReader:
             grid_data = _read_stdpsf(fileobj)
         assert grid_data['data'].shape[0] == grid_data['n_psfs']
 
+    def test_stdpsf_reader_hdulist(self):
+        """
+        Test that the full STDPSF readers accept an open HDUList.
+        """
+        filename = get_data_filename('STDPSF_NRCA1_F150W_mock.fits')
+        with fits.open(filename) as hdulist:
+            model = stdpsf_reader(hdulist)
+        assert isinstance(model, GriddedPSFModel)
+        assert model.meta['detector'] == 'NRCA1'
+
+        with fits.open(filename) as hdulist:
+            grid = STDPSFGrid(hdulist)
+        assert grid.data.ndim == 3
+
+    def test_read_stdpsf_buffered_reader(self):
+        """
+        Test that a buffered binary file object is accepted.
+        """
+        filename = get_data_filename('STDPSF_NRCA1_F150W_mock.fits')
+        with open(filename, 'rb') as fileobj:
+            grid_data = _read_stdpsf(fileobj)
+        assert grid_data['data'].shape[0] == grid_data['n_psfs']
+
+    def test_read_corrupt_fits(self, tmp_path):
+        """
+        Test that a corrupt file with a FITS extension yields the clean
+        registry identification error, not an OSError.
+        """
+        filename = str(tmp_path / 'bad.fits')
+        with open(filename, 'w') as f:
+            f.write('This is not a FITS file.')
+        match = 'Format could not be identified'
+        with pytest.raises(registry.IORegistryError, match=match):
+            GriddedPSFModel.read(filename)
+
     def test_read_stdpsf_not_fits(self):
         match = 'This interface supports only FITS files'
         with pytest.raises(TypeError, match=match):
             _read_stdpsf('filename.txt')
         with pytest.raises(TypeError, match=match):
             _read_stdpsf(42)
+
+    def test_stdpsf_reader_positional_deprecation(self):
+        """
+        Test that passing detector_id positionally warns.
+        """
+        filename = get_data_filename('STDPSF_WFPC2_F814W_mock.fits')
+        match = "'detector_id'"
+        with pytest.warns(AstropyDeprecationWarning, match=match):
+            model = stdpsf_reader(filename, 1)
+        assert isinstance(model, GriddedPSFModel)
+
+    def test_split_wfc_uvis_no_mutation(self):
+        """
+        Test that repeated detector splits do not mutate the grid data.
+        """
+        filename = get_data_filename('STDPSF_ACSWFC_F814W_mock.fits')
+        grid_data = _read_stdpsf(filename)
+        ygrid_orig = grid_data['ygrid'].copy()
+        _split_wfc_uvis(grid_data, 2)
+        assert_equal(grid_data['ygrid'], ygrid_orig)
 
     def test_read_stdpsf_missing_keys(self, tmp_path):
         filename = str(tmp_path / 'bad_stdpsf.fits')
@@ -275,6 +337,17 @@ class TestWebbPSFReader:
                                  strict=True):
             assert_allclose(plane, encode_position(x, y))
 
+    def test_read_webbpsf_2d(self, tmp_path):
+        """
+        Test that a WebbPSF file containing a single 2D PSF is read as
+        a (1, ny, nx) grid.
+        """
+        filename = str(tmp_path / 'webbpsf_2d_mock.fits')
+        make_webbpsf_file(filename, (100.0,), (200.0,), data_2d=True)
+        psfmodel = GriddedPSFModel.read(filename, format='webbpsf')
+        assert psfmodel.data.shape == (1, 8, 8)
+        assert_equal(psfmodel.grid_xypos, [(100.0, 200.0)])
+
     def test_read_webbpsf_missing_det_yx(self, tmp_path):
         filename = str(tmp_path / 'webbpsf_no_det_yx.fits')
         make_webbpsf_file(filename, (0.0, 10.0), (0.0, 10.0),
@@ -325,6 +398,16 @@ class TestGetMetadata:
     def test_unparsable_filename(self, filename):
         # Test a cache filename from astropy download_file
         assert _get_metadata(filename, None) is None
+
+    def test_fd_fileobj(self):
+        """
+        Test a file object created from a file descriptor, whose name
+        attribute is an int instead of a string.
+        """
+        filename = get_data_filename('STDPSF_NRCA1_F150W_mock.fits')
+        fd = os.open(filename, os.O_RDONLY)
+        with io.FileIO(fd) as fileobj:
+            assert _get_metadata(fileobj, None) is None
 
     @pytest.mark.parametrize(('detector_id', 'detector'),
                              [(1, 'PC'), (2, 'WF2'), (3, 'WF3'), (4, 'WF4')])
@@ -392,3 +475,18 @@ class TestFormatIdentifiers:
         filename = get_data_filename('STDPSF_NRCA1_F150W_mock.fits')
         assert _has_fits_header_keys(filename, ('NAXIS3',))
         assert not _has_fits_header_keys(filename, ('NAXIS3', 'NOSUCHKEY'))
+
+    def test_fileobj_identify(self):
+        """
+        Test that the format identifiers use the open file object when
+        no file path is available.
+        """
+        filename = get_data_filename('STDPSF_NRCA1_F150W_mock.fits')
+        with open(filename, 'rb') as fileobj:
+            assert is_stdpsf('read', None, fileobj)
+            assert not is_webbpsf('read', None, fileobj)
+
+        filename = get_data_filename(WEBBPSF_FILENAMES[0])
+        with open(filename, 'rb') as fileobj:
+            assert is_webbpsf('read', None, fileobj)
+            assert not is_stdpsf('read', None, fileobj)

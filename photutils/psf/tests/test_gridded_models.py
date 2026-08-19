@@ -16,15 +16,8 @@ from numpy.testing import assert_allclose, assert_equal
 
 from photutils.datasets import make_model_image
 from photutils.psf import GriddedPSFModel, STDPSFGrid
+from photutils.psf.tests.test_model_io import STDPSF_FILENAMES
 from photutils.segmentation import SourceCatalog, detect_sources
-from photutils.utils._optional_deps import HAS_MATPLOTLIB
-
-# The first file has a single detector, the rest have multiple detectors
-STDPSF_FILENAMES = ('STDPSF_NRCA1_F150W_mock.fits',
-                    'STDPSF_ACSWFC_F814W_mock.fits',
-                    'STDPSF_NRCSW_F150W_mock.fits',
-                    'STDPSF_WFC3UV_F814W_mock.fits',
-                    'STDPSF_WFPC2_F814W_mock.fits')
 
 
 def _reference_find_bounding_points(model, x, y):
@@ -173,6 +166,33 @@ class TestGriddedPSFModel:
         assert 'Oversampling: (4, 4)' in str_str
         assert 'Fill Value: 0.0' in str_str
 
+    def test_evaluate_scalar_coords(self, psfmodel):
+        """
+        Test that evaluate accepts scalar coordinates when called
+        directly.
+        """
+        value = psfmodel.evaluate(0.5, 0.5, 1.0, 0.0, 0.0)
+        assert np.isfinite(value)
+
+    def test_stale_grid_shape_meta(self, psfmodel):
+        """
+        Test that a stale user-supplied grid_shape key is dropped from
+        the meta dictionary.
+        """
+        meta = dict(psfmodel.meta)
+        meta['grid_shape'] = (999, 999)
+        model = GriddedPSFModel(NDData(psfmodel.data, meta=meta))
+        assert 'grid_shape' not in model.meta
+
+    def test_str_grid_positions_truncated(self, psfmodel):
+        """
+        Test that the grid positions are summarized in the string
+        representation instead of being printed in full.
+        """
+        model_str = str(psfmodel)
+        assert 'Grid positions' in model_str
+        assert '...' in model_str
+
     def test_gridded_psf_model_basic_eval(self, psfmodel):
         assert psfmodel(0, 0) == 1
         assert psfmodel(100, 100) == 0
@@ -187,21 +207,26 @@ class TestGriddedPSFModel:
         with pytest.raises(ValueError, match=match):
             psfmodel.evaluate(x=x2, y=y2, flux=100, x_0=40, y_0=60)
 
-    def test_gridded_psf_model_single_psf(self, psfmodel):
-        psfmodel = psfmodel.copy()
-        psfmodel._data = psfmodel.data[0:1, :, :]
-        assert psfmodel(0, 0) == 1
-        assert psfmodel(100, 100) == 0
-        assert_allclose(psfmodel([0, 100], [0, 100]), [1, 0])
+    def test_gridded_psf_model_single_psf(self):
+        """
+        Test a grid containing a single ePSF built via the public
+        constructor.
+        """
+        meta = {'grid_xypos': [(100, 100)], 'oversampling': 1}
+        model = GriddedPSFModel(NDData(np.ones((1, 5, 5)), meta=meta))
+        assert model.grid_shape == (1, 1)
+        assert model(0, 0) == 1
+        assert model(100, 100) == 0
+        assert_allclose(model([0, 100], [0, 100]), [1, 0])
 
-        y, x = np.mgrid[0:100, 0:100]
-        psf = psfmodel.evaluate(x=x, y=y, flux=100, x_0=40, y_0=60)
-        assert psf.shape == (100, 100)
+        y, x = np.mgrid[0:10, 0:10]
+        psf = model.evaluate(x=x, y=y, flux=100, x_0=4, y_0=6)
+        assert psf.shape == (10, 10)
 
-        _, y2, x2 = np.mgrid[0:100, 0:100, 0:100]
+        _, y2, x2 = np.mgrid[0:10, 0:10, 0:10]
         match = 'x and y must be 1D or 2D'
         with pytest.raises(ValueError, match=match):
-            psfmodel.evaluate(x=x2, y=y2, flux=100, x_0=40, y_0=60)
+            model.evaluate(x=x2, y=y2, flux=100, x_0=4, y_0=6)
 
     def test_gridded_psf_model_eval_outside_grid(self, psfmodel):
         y, x = np.mgrid[-50:50, -50:50]
@@ -377,7 +402,7 @@ class TestGriddedPSFModel:
             GriddedPSFModel(nddata)
 
         # Check if grid_xypos is a regular grid
-        meta = {'grid_xypos': [[0, 0], [1, 0], [1, 0], [3, 4]],
+        meta = {'grid_xypos': [[0, 0], [1, 0], [0, 1], [3, 4]],
                 'oversampling': 4}
         nddata = NDData(data, meta=meta)
         match = 'grid_xypos must form a rectangular grid'
@@ -395,6 +420,14 @@ class TestGriddedPSFModel:
         meta = {'grid_xypos': [], 'oversampling': 4}
         nddata = NDData(np.ones((0, 5, 5)), meta=meta)
         match = 'grid_xypos must form a rectangular grid'
+        with pytest.raises(ValueError, match=match):
+            GriddedPSFModel(nddata)
+
+        # Check that duplicate grid positions are rejected
+        meta = {'grid_xypos': [(0, 0), (0, 1), (1, 0), (1, 1), (1, 1)],
+                'oversampling': 4}
+        nddata = NDData(np.ones((5, 5, 5)), meta=meta)
+        match = 'grid_xypos must not contain duplicate positions'
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel(nddata)
 
@@ -508,6 +541,20 @@ class TestGriddedPSFModel:
         assert_equal(model.oversampling, [5, 5])
         assert model.meta['oversampling'] == (5, 5)
 
+        # The original model must not be affected by the copy
+        assert psfmodel.meta['oversampling'] == (4, 4)
+        assert_equal(psfmodel.oversampling, [4, 4])
+
+    def test_copy_meta_isolated(self, psfmodel):
+        """
+        Test that changing the oversampling of a copy does not change
+        the meta dictionary of the original model.
+        """
+        model_copy = psfmodel.copy()
+        model_copy.oversampling = 2
+        assert psfmodel.meta['oversampling'] == (4, 4)
+        assert model_copy.meta['oversampling'] == (2, 2)
+
     def test_bounding_box(self, psfmodel):
         # Oversampling is 4
         bbox = psfmodel.bounding_box.bounding_box()
@@ -518,20 +565,10 @@ class TestGriddedPSFModel:
         bbox = model.bounding_box.bounding_box()
         assert_equal(bbox, ((-50.5, 50.5), (-50.5, 50.5)))
 
-    @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
-    def test_plot(self, psfmodel):
-        psfmodel.plot_grid()
-        psfmodel.plot_grid(peak_norm=True, cmap='Blues', vmax_scale=0.9)
-        psfmodel.plot_grid(deltas=True)
-        psfmodel.plot_grid(deltas=True, peak_norm=True)
-
-        # Simulate a grid where one or more ePSFS are blank (all zeros)
-        model = psfmodel.deepcopy()
-        model.data[0] = 0.0
-        model.plot_grid(deltas=True)
+        # The original model must not be affected by the copy
+        assert psfmodel.meta['oversampling'] == (4, 4)
 
 
-@pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
 @pytest.mark.parametrize('filename', STDPSF_FILENAMES)
 def test_stdpsfgrid(filename):
     filename = op.join(op.dirname(op.abspath(__file__)), 'data', filename)

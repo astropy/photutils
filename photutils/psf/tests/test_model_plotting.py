@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData
+from numpy.testing import assert_allclose
 
 from photutils.psf import GriddedPSFModel, STDPSFGrid
 from photutils.psf.tests.test_model_io import (STDPSF_FILENAMES,
@@ -68,6 +69,30 @@ class TestPlotGrid:
         model = psfmodel.deepcopy()
         model._data[0] = 0.0
         model.plot_grid(deltas=True)
+
+    def test_plot_grid_int_dtype(self):
+        """
+        Test plotting a grid with integer-dtype ePSF data.
+        """
+        data = np.ones((4, 8, 8), dtype=int)
+        data[:, 4, 4] = 10
+        meta = {'grid_xypos': [(0, 0), (0, 10), (10, 0), (10, 10)],
+                'oversampling': 4}
+        model = GriddedPSFModel(NDData(data, meta=meta))
+        model.plot_grid(deltas=True)
+        model.plot_grid(peak_norm=True)
+
+    def test_plot_grid_deltas_peak_norm(self, psfmodel):
+        """
+        Test that deltas with peak_norm normalizes by the mean-ePSF
+        peak instead of the maximum delta value.
+        """
+        fig = psfmodel.plot_grid(deltas=True, peak_norm=True)
+        image = fig.axes[0].images[0].get_array()
+        data = psfmodel.data.astype(float)
+        mean_epsf = data.mean(axis=0)
+        expected_max = (data - mean_epsf).max() / mean_epsf.max()
+        assert_allclose(image.max(), expected_max)
 
     def test_plot_grid_input_axes(self, psfmodel):
         """
