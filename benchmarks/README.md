@@ -111,6 +111,34 @@ python benchmarks/bench_profiles.py
 python benchmarks/bench_profiles.py --which radii-scaling --n-radii-list 100,400,1600
 ```
 
+## PSF photometry (`bench_psf.py`)
+
+Benchmarks for the `photutils.psf` subpackage:
+
+- the per-call evaluation cost of each PSF model (the functional
+  models, `ImagePSF`, and `GriddedPSFModel`) on small and large
+  coordinate grids
+- `PSFPhotometry` versus the number of sources (with the source
+  positions and fluxes given via `init_params`), with an error array
+  and with a `SourceGrouper`
+- finder-based `PSFPhotometry` and `IterativePSFPhotometry` in the
+  `new` and `all` modes
+- `PSFPhotometry` versus the PSF model type (each scene is rendered
+  and fit with the same model)
+- `SourceGrouper` versus the number of sources and the minimum
+  separation
+- ePSF building (`extract_stars` and `EPSFBuilder`) versus the number
+  of stars
+- the Gaussian fitting helpers (`fit_2dgaussian` and `fit_fwhm`) on a
+  single-source cutout and at many positions
+- `make_psf_model_image` versus the number of sources and the model
+  cutout size
+
+```bash
+python benchmarks/bench_psf.py
+python benchmarks/bench_psf.py --which photometry --n-sources-list 500,5000
+```
+
 ## PSF matching (`bench_psf_matching.py`)
 
 Benchmarks for the `photutils.psf_matching` subpackage:
