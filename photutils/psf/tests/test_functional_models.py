@@ -9,6 +9,7 @@ import pytest
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.stats import gaussian_fwhm_to_sigma
 from numpy.testing import assert_allclose
+from scipy.special import erf
 
 from photutils.psf import (AiryDiskPSF, CircularGaussianPRF,
                            CircularGaussianPSF, CircularGaussianSigmaPRF,
@@ -82,18 +83,19 @@ def gaussian_tests(name, use_units):
                 tparam = getattr(model, param)
                 tparam <<= unit
                 setattr(model, param, tparam)
+        if 'theta' in model.param_names:
+            model.theta = model.theta.value * u.deg
+
+    elliptical = 'x_fwhm' in model.param_names
 
     data = model(xx, yy)
     if use_units:
         data = data.value
     assert_allclose(data.sum(), model.flux.value)
-    try:
+    if elliptical:
         assert_allclose(model.x_sigma, model.x_fwhm * gaussian_fwhm_to_sigma)
         assert_allclose(model.y_sigma, model.y_fwhm * gaussian_fwhm_to_sigma)
-    except AttributeError:
-        assert_allclose(model.sigma, model.fwhm * gaussian_fwhm_to_sigma)
 
-    try:
         xsigma = model.x_sigma
         ysigma = model.y_sigma
         if isinstance(xsigma, u.Quantity):
@@ -101,7 +103,9 @@ def gaussian_tests(name, use_units):
             ysigma = ysigma.value
         assert_allclose(model.amplitude * (2 * np.pi * xsigma * ysigma),
                         model.flux)
-    except AttributeError:
+    else:
+        assert_allclose(model.sigma, model.fwhm * gaussian_fwhm_to_sigma)
+
         sigma = model.sigma
         if isinstance(sigma, u.Quantity):
             sigma = sigma.value
@@ -111,25 +115,24 @@ def gaussian_tests(name, use_units):
     fit_model = fitter(model_init, xx, yy, data)
     assert_allclose(fit_model.x_0.value, model.x_0.value, rtol=1e-5)
     assert_allclose(fit_model.y_0.value, model.y_0.value, rtol=1e-5)
-    try:
+    if elliptical:
         assert_allclose(fit_model.x_fwhm.value, model.x_fwhm.value)
         assert_allclose(fit_model.y_fwhm.value, model.y_fwhm.value)
         assert_allclose(fit_model.theta.value, model.theta.value)
-    except AttributeError:
-        if name == 'CircularGaussianSigmaPRF':
-            assert_allclose(fit_model.sigma.value, model.sigma.value)
-        else:
-            assert_allclose(fit_model.fwhm.value, model.fwhm.value)
+    elif name == 'CircularGaussianSigmaPRF':
+        assert_allclose(fit_model.sigma.value, model.sigma.value)
+    else:
+        assert_allclose(fit_model.fwhm.value, model.fwhm.value)
 
     # Test the model derivatives
     fit_model2 = fitter(model_init, xx, yy, data, estimate_jacobian=True)
     assert_allclose(fit_model2.x_0, fit_model.x_0)
     assert_allclose(fit_model2.y_0, fit_model.y_0)
-    try:
+    if elliptical:
         assert_allclose(fit_model2.x_fwhm, fit_model.x_fwhm)
         assert_allclose(fit_model2.y_fwhm, fit_model.y_fwhm)
         assert_allclose(fit_model2.theta, fit_model.theta)
-    except AttributeError:
+    else:
         assert_allclose(fit_model2.fwhm, fit_model.fwhm)
 
     if use_units and 'Circular' not in name:
@@ -223,6 +226,14 @@ class TestFitDeriv:
                                            fwhm, fwhm, 0.0)
         assert_allclose(circular[3], elliptical[3] + elliptical[4])
 
+    def test_gaussian_fit_deriv_zero_flux(self):
+        """
+        Test that the flux derivative is finite when the flux is zero.
+        """
+        derivs = GaussianPSF.fit_deriv(1.0, 1.0, 0.0, 0.0, 0.0, 2.0,
+                                       3.0, 10.0)
+        assert np.isfinite(derivs[0])
+
     def test_circular_fit_free_fwhm(self):
         """
         Test fitting a circular Gaussian with a free FWHM using the
@@ -239,6 +250,53 @@ class TestFitDeriv:
         fit_model = fitter(model_init, xx, yy, data)
         assert_allclose(fit_model.flux.value, model.flux.value, rtol=1e-6)
         assert_allclose(fit_model.fwhm.value, model.fwhm.value, rtol=1e-6)
+
+
+def test_gaussian_prf_theta_quantity():
+    """
+    Test that a float theta (degrees) and an equivalent Quantity theta
+    give the same model values.
+    """
+    assert_allclose(GaussianPRF(theta=30.0)(1.0, 2.0),
+                    GaussianPRF(theta=30 * u.deg)(1.0, 2.0))
+
+
+def test_circular_prf_fwhm_sigma_equivalence():
+    """
+    Test that CircularGaussianPRF and CircularGaussianSigmaPRF give
+    identical values for equivalent widths.
+    """
+    fwhm = 2.7
+    model1 = CircularGaussianPRF(fwhm=fwhm)
+    model2 = CircularGaussianSigmaPRF(sigma=fwhm * gaussian_fwhm_to_sigma)
+    yy, xx = np.mgrid[-5:6, -5:6]
+    assert_allclose(model1(xx, yy), model2(xx, yy))
+
+
+def test_gaussian_prf_matches_analytic_integral():
+    """
+    Test that GaussianPRF at theta=0 equals the erf-based analytic
+    pixel integral of GaussianPSF.
+    """
+    flux = 71.4
+    x_0 = 0.3
+    y_0 = -0.6
+    x_fwhm = 2.0
+    y_fwhm = 3.0
+    model = GaussianPRF(flux=flux, x_0=x_0, y_0=y_0, x_fwhm=x_fwhm,
+                        y_fwhm=y_fwhm)
+    yy, xx = np.mgrid[-5:6, -5:6]
+
+    x_sigma = x_fwhm * gaussian_fwhm_to_sigma
+    y_sigma = y_fwhm * gaussian_fwhm_to_sigma
+    dx = xx - x_0
+    dy = yy - y_0
+    expected = (flux / 4.0
+                * ((erf((dx + 0.5) / (np.sqrt(2) * x_sigma))
+                    - erf((dx - 0.5) / (np.sqrt(2) * x_sigma)))
+                   * (erf((dy + 0.5) / (np.sqrt(2) * y_sigma))
+                      - erf((dy - 0.5) / (np.sqrt(2) * y_sigma)))))
+    assert_allclose(model(xx, yy), expected)
 
 
 def test_gaussian_prf_sums():
@@ -269,6 +327,36 @@ def test_gaussian_bounding_boxes():
 
     model5 = CircularGaussianSigmaPRF(x_0=0, y_0=0, sigma=2)
     assert_allclose(model5.bounding_box, ((-11, 11), (-11, 11)))
+
+
+@pytest.mark.parametrize('model_cls', [GaussianPSF, GaussianPRF])
+def test_gaussian_bounding_box_theta_units(model_cls):
+    """
+    Regression test that float theta (degrees) and Quantity theta
+    give identical bounding boxes.
+    """
+    m_float = model_cls(x_0=0, y_0=0, x_fwhm=2, y_fwhm=3, theta=90)
+    m_quant = model_cls(x_0=0, y_0=0, x_fwhm=2, y_fwhm=3,
+                        theta=90 * u.deg)
+    bbf = m_float.bounding_box
+    bbq = m_quant.bounding_box
+    for axis in ('x', 'y'):
+        assert_allclose(bbf[axis].lower, bbq[axis].lower)
+        assert_allclose(bbf[axis].upper, bbq[axis].upper)
+
+
+@pytest.mark.parametrize('model_cls', [GaussianPSF, GaussianPRF])
+def test_gaussian_bounding_box_theta90_swaps(model_cls):
+    """
+    Test that a 90 degree rotation swaps the x and y bounding box
+    extents.
+    """
+    m0 = model_cls(x_0=0, y_0=0, x_fwhm=2, y_fwhm=3)
+    m90 = model_cls(x_0=0, y_0=0, x_fwhm=2, y_fwhm=3, theta=90)
+    bb0 = m0.bounding_box
+    bb90 = m90.bounding_box
+    assert_allclose(bb90['x'].upper, bb0['y'].upper)
+    assert_allclose(bb90['y'].upper, bb0['x'].upper)
 
 
 @pytest.mark.parametrize('use_units', [False, True])
@@ -304,6 +392,14 @@ def test_moffat_psf_model(use_units):
     model = MoffatPSF(x_0=0, y_0=0, alpha=1.0, beta=2.0)
     bbox = 12.871885058111655
     assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))
+
+
+def test_moffat_psf_beta_bound():
+    """
+    Test that the default lower bound of beta is strictly greater
+    than 1.
+    """
+    assert MoffatPSF().beta.bounds[0] > 1.0
 
 
 def test_airydisk_psf_quantity_flux():
@@ -342,8 +438,25 @@ def test_moffat_psf_scalar_coords():
     assert_allclose(value, model(1.0, 2.0))
 
 
-def test_circular_gaussian_sigma_prf_unit_mismatch():
-    model = CircularGaussianSigmaPRF(flux=1.0, x_0=0.0, y_0=0.0, sigma=2.0)
+@pytest.mark.parametrize('model', [
+    GaussianPSF(), CircularGaussianPSF(), GaussianPRF(),
+    CircularGaussianPRF(), CircularGaussianSigmaPRF(),
+    MoffatPSF(), AiryDiskPSF()])
+def test_nan_propagation(model):
+    """
+    Test that NaN input coordinates propagate to NaN output values.
+    """
+    assert np.isnan(model(np.nan, 0.0))
+    result = model(np.array([np.nan, 0.0]), np.array([0.0, 0.0]))
+    assert np.isnan(result[0])
+    assert np.isfinite(result[1])
+
+
+@pytest.mark.parametrize('model', [
+    CircularGaussianPSF(),
+    CircularGaussianPRF(),
+    CircularGaussianSigmaPRF()])
+def test_circular_gaussian_unit_mismatch(model):
     inputs_unit = {'x': u.m, 'y': u.s}
     outputs_unit = {'z': u.Jy}
     match = "Units of 'x' and 'y' inputs should match"

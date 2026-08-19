@@ -497,6 +497,28 @@ Bug Fixes
     validation now also rejects non-numeric and boolean inputs.
     [#2387]
 
+  - Fixed a bug where the ``GaussianPSF`` and ``GaussianPRF`` bounding
+    boxes treated a float ``theta`` value (in degrees) as radians,
+    producing incorrect bounding-box extents for rotated models.
+    [#2388]
+
+  - Fixed a bug where ``AiryDiskPSF`` returned the peak value instead
+    of NaN for NaN input coordinates. [#2388]
+
+  - Fixed the default lower bound of the ``MoffatPSF`` ``beta``
+    parameter, which rounded to exactly 1.0 instead of being strictly
+    greater than 1. [#2388]
+
+  - ``CircularGaussianPSF`` and ``CircularGaussianPRF`` now raise a
+    ``UnitsError`` during fitting when the x and y inputs have
+    different units, consistent with the other Gaussian models.
+    [#2388]
+
+  - Fixed the normalization prefactor shown in the ``AiryDiskPSF``
+    docstring and documented that the rotated ``GaussianPRF`` pixel
+    integration is performed along the rotated principal axes of the
+    Gaussian. [#2388]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range
