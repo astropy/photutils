@@ -510,17 +510,22 @@ Centroid Position Errors
 ========================
 
 `~photutils.segmentation.SourceCatalog` now provides 1-sigma errors
-on the isophotal and windowed centroid positions, propagated from the
-input ``error`` array. The new properties are
+on the isophotal, windowed, and quadratic centroid positions,
+propagated from the input ``error`` array. The new properties are
 `~photutils.segmentation.SourceCatalog.centroid_err`,
 `~photutils.segmentation.SourceCatalog.x_centroid_err`, and
 `~photutils.segmentation.SourceCatalog.y_centroid_err` for the
-isophotal `~photutils.segmentation.SourceCatalog.centroid`, and
+isophotal `~photutils.segmentation.SourceCatalog.centroid`,
 `~photutils.segmentation.SourceCatalog.centroid_win_err`,
 `~photutils.segmentation.SourceCatalog.x_centroid_win_err`, and
 `~photutils.segmentation.SourceCatalog.y_centroid_win_err` for the
 "windowed" centroid
-(`~photutils.segmentation.SourceCatalog.centroid_win`)::
+(`~photutils.segmentation.SourceCatalog.centroid_win`), and
+`~photutils.segmentation.SourceCatalog.centroid_quad_err`,
+`~photutils.segmentation.SourceCatalog.x_centroid_quad_err`, and
+`~photutils.segmentation.SourceCatalog.y_centroid_quad_err` for the
+quadratic-fit centroid
+(`~photutils.segmentation.SourceCatalog.centroid_quad`)::
 
     >>> import numpy as np
     >>> from astropy.convolution import convolve

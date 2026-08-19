@@ -2702,3 +2702,143 @@ def test_centroid_err_columns():
     assert tbl.colnames == columns
     assert_allclose(tbl['x_centroid_err'], cat.x_centroid_err)
     assert_allclose(tbl['y_centroid_win_err'], cat.y_centroid_win_err)
+
+
+def _quad_peak(box):
+    """
+    Solve for the peak of a quadratic fit to a 3x3 box.
+
+    This is an independent implementation (via lstsq) used to
+    numerically validate the centroid_quad error propagation.
+    """
+    yy, xx = np.mgrid[0:3, 0:3]
+    design = np.column_stack([np.ones(9), xx.ravel(), yy.ravel(),
+                              (xx * yy).ravel(), (xx**2).ravel(),
+                              (yy**2).ravel()])
+    c = np.linalg.lstsq(design, box.ravel(), rcond=None)[0]
+    det = 4.0 * c[4] * c[5] - c[3]**2
+    xm = (c[2] * c[3] - 2.0 * c[5] * c[1]) / det
+    ym = (c[1] * c[3] - 2.0 * c[4] * c[2]) / det
+    return np.array([xm, ym])
+
+
+def test_centroid_quad_err():
+    """
+    Test that centroid_quad_err matches a numerical-Jacobian error
+    propagation through the quadratic peak fit.
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = Gaussian2D(100.0, 12.2, 12.6, 2.0, 1.5, 0.5)(xx, yy)
+    rng = np.random.default_rng(42)
+    error = rng.uniform(1.0, 3.0, data.shape)
+
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[6:20, 6:20] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    # The peak pixel is at (12, 13) and the 3x3 fit box lies fully
+    # within the segment, so no masked pixels are involved
+    yidx, xidx = 13, 12
+    box = data[yidx - 1:yidx + 2, xidx - 1:xidx + 2].copy()
+    box_err = error[yidx - 1:yidx + 2, xidx - 1:xidx + 2].ravel()
+
+    eps = 1e-6
+    jacobian = np.zeros((2, 9))
+    for i in range(9):
+        box_p = box.ravel().copy()
+        box_p[i] += eps
+        box_m = box.ravel().copy()
+        box_m[i] -= eps
+        jacobian[:, i] = (_quad_peak(box_p) - _quad_peak(box_m)) / (2 * eps)
+    var_expected = np.sum(jacobian**2 * box_err**2, axis=1)
+
+    errors = cat.centroid_quad_err
+    assert errors.shape == (1, 2)
+    assert_allclose(errors[0], np.sqrt(var_expected), rtol=1e-6)
+    assert_allclose(cat.x_centroid_quad_err, errors[:, 0])
+    assert_allclose(cat.y_centroid_quad_err, errors[:, 1])
+
+
+def test_centroid_quad_err_no_error():
+    """
+    Test that centroid_quad_err is NaN when no error array is input.
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = Gaussian2D(100.0, 12.2, 12.6, 2.0, 2.0)(xx, yy)
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[6:20, 6:20] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        aperture_mask_method='none')
+    assert np.all(np.isfinite(cat.centroid_quad))
+    assert np.all(np.isnan(cat.centroid_quad_err))
+
+
+def test_centroid_quad_err_fallback():
+    """
+    Test that sources where the quadratic centroid fell back to the
+    isophotal centroid have the isophotal centroid errors.
+    """
+    # A 2x2 segment is too small for the 3x3 quadratic fit, so the
+    # centroid falls back to the isophotal centroid
+    data = np.ones((11, 11))
+    data[5, 5] = 10.0
+    error = np.full(data.shape, 1.0)
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[5:7, 5:7] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    assert_allclose(cat.centroid_quad, cat.centroid)
+    assert_allclose(cat.centroid_quad_err, cat.centroid_err)
+
+
+def test_centroid_quad_err_peak_at_edge():
+    """
+    Test that sources whose maximum value is at the edge of the
+    cutout return the peak-pixel position with NaN errors.
+    """
+    # Monotonic gradient: the maximum is at the segment cutout edge
+    yy, xx = np.mgrid[0:11, 0:11]
+    data = (xx + yy).astype(float)
+    error = np.full(data.shape, 1.0)
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[3:8, 3:8] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    assert np.all(np.isfinite(cat.centroid_quad))
+    assert np.all(np.isnan(cat.centroid_quad_err))
+
+
+def test_centroid_quad_err_columns():
+    """
+    Test the quadratic centroid error properties as to_table columns
+    and the scalar-catalog collapse.
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = (g1 + g2)(xx, yy)
+    error = np.full(data.shape, 65.0)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    segment_map = finder(convolved_data, 107.9)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    columns = ['label', 'x_centroid_quad_err', 'y_centroid_quad_err']
+    tbl = cat.to_table(columns=columns)
+    assert tbl.colnames == columns
+    assert_allclose(tbl['x_centroid_quad_err'], cat.x_centroid_quad_err)
+
+    single = cat[0]
+    errors = single.centroid_quad_err
+    assert errors.shape == (2,)
+    assert single.x_centroid_quad_err == errors[0]
+    assert single.y_centroid_quad_err == errors[1]

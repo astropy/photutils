@@ -747,13 +747,16 @@ instrumental flux and propagated flux error within the source segments:
 
 The 1-sigma centroid position errors are also calculated
 when a total ``error`` is input, via the
-`~photutils.segmentation.SourceCatalog.centroid_err` and
-`~photutils.segmentation.SourceCatalog.centroid_win_err`
+`~photutils.segmentation.SourceCatalog.centroid_err`,
+`~photutils.segmentation.SourceCatalog.centroid_win_err`, and
+`~photutils.segmentation.SourceCatalog.centroid_quad_err`
 properties and their per-axis
 `~photutils.segmentation.SourceCatalog.x_centroid_err`,
 `~photutils.segmentation.SourceCatalog.y_centroid_err`,
-`~photutils.segmentation.SourceCatalog.x_centroid_win_err`, and
-`~photutils.segmentation.SourceCatalog.y_centroid_win_err`
+`~photutils.segmentation.SourceCatalog.x_centroid_win_err`,
+`~photutils.segmentation.SourceCatalog.y_centroid_win_err`,
+`~photutils.segmentation.SourceCatalog.x_centroid_quad_err`, and
+`~photutils.segmentation.SourceCatalog.y_centroid_quad_err`
 equivalents:
 
 .. doctest-requires:: skimage

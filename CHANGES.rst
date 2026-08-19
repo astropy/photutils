@@ -240,9 +240,11 @@ New Features
 
   - Added ``SourceCatalog`` ``centroid_err``, ``x_centroid_err``,
     ``y_centroid_err``, ``centroid_win_err``, ``x_centroid_win_err``,
-    and ``y_centroid_win_err`` properties providing the 1-sigma errors
-    on the isophotal and windowed centroid positions, propagated from
-    the input ``error`` array. [#2397]
+    ``y_centroid_win_err``, ``centroid_quad_err``,
+    ``x_centroid_quad_err``, and ``y_centroid_quad_err`` properties
+    providing the 1-sigma errors on the isophotal, windowed, and
+    quadratic centroid positions, propagated from the input ``error``
+    array. [#2397]
 
 - ``photutils.utils``
 

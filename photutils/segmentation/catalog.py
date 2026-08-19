@@ -2293,6 +2293,178 @@ class SourceCatalog:
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.centroid_win - origin
 
+    @staticmethod
+    def _centroid_quad_var(coeffs, xm_rel, ym_rel, pinv, box_var):
+        """
+        Propagate pixel variances through the quadratic peak solution.
+
+        The quadratic-fit coefficients are linear in the pixel values
+        (``c = pinv @ pixels``) and the peak position is a rational
+        function of the coefficients, so the position variances follow
+        from the delta method.
+
+        Parameters
+        ----------
+        coeffs : `~numpy.ndarray`
+            The six quadratic-fit coefficients for the terms
+            ``[1, x, y, xy, x^2, y^2]``.
+
+        xm_rel, ym_rel : float
+            The peak position in the relative (3x3 box) coordinates.
+
+        pinv : `~numpy.ndarray`
+            The (6, 9) pseudo-inverse of the design matrix.
+
+        box_var : `~numpy.ndarray`
+            The 9 pixel variances of the 3x3 fit box, with masked
+            pixels set to zero.
+
+        Returns
+        -------
+        var_x, var_y : float
+            The variances of the peak ``x`` and ``y`` positions.
+        """
+        c10, c01, c11, c20, c02 = coeffs[1:]
+        det = 4.0 * c20 * c02 - c11 * c11
+        grad_x = np.array(
+            [0.0,
+             -2.0 * c02 / det,
+             c11 / det,
+             (c01 + 2.0 * c11 * xm_rel) / det,
+             -4.0 * c02 * xm_rel / det,
+             (-2.0 * c10 - 4.0 * c20 * xm_rel) / det])
+        grad_y = np.array(
+            [0.0,
+             c11 / det,
+             -2.0 * c20 / det,
+             (c10 + 2.0 * c11 * ym_rel) / det,
+             (-2.0 * c01 - 4.0 * c02 * ym_rel) / det,
+             -4.0 * c20 * ym_rel / det])
+        var_x = np.sum((grad_x @ pinv)**2 * box_var)
+        var_y = np.sum((grad_y @ pinv)**2 * box_var)
+        return var_x, var_y
+
+    @cached_property
+    @use_detcat
+    def _centroid_quad_results(self):
+        """
+        The quadratic centroid coordinates, relative to the cutout
+        data, and their 1-sigma errors as a 2D array with columns
+        ``(x, y, xerr, yerr)`` and shape ``(n_labels, 4)``.
+
+        This is the single computation behind `cutout_centroid_quad`,
+        `centroid_quad`, and `centroid_quad_err`. See
+        `cutout_centroid_quad` for the algorithm details.
+        """
+        # Precompute the pseudo-inverse for the 3x3 relative coordinate
+        # design matrix [1, x, y, xy, x^2, y^2]. This is constant for
+        # all sources and avoids per-source lstsq calls.
+        xi = np.arange(3)
+        x, y = np.meshgrid(xi, xi)
+        x = x.ravel()
+        y = y.ravel()
+        coeff_matrix = np.empty((9, 6), dtype=float)
+        coeff_matrix[:, 0] = 1
+        coeff_matrix[:, 1] = x
+        coeff_matrix[:, 2] = y
+        coeff_matrix[:, 3] = x * y
+        coeff_matrix[:, 4] = x * x
+        coeff_matrix[:, 5] = y * y
+        pinv = np.linalg.pinv(coeff_matrix)
+
+        compute_err = self._error is not None
+
+        _nan = np.nan
+        nan_result = (_nan, _nan, _nan, _nan)
+        results = []
+
+        cutouts = self._data_cutouts
+        if self.progress_bar:
+            desc = 'centroid_quad'
+            cutouts = add_progress_bar(cutouts, desc=desc)
+
+        for cutout, error_cutout, mask in zip(cutouts,
+                                              self._error_cutouts,
+                                              self._cutout_total_masks,
+                                              strict=True):
+            ny, nx = cutout.shape
+
+            # Cutout must be at least 3x3 for the quadratic fit
+            if ny < 3 or nx < 3:
+                results.append(nan_result)
+                continue
+
+            # Apply mask: _cutout_total_masks already includes
+            # non-finite data values, so cutout[mask] = 0.0 handles both
+            # masked pixels and non-finite values.
+            cutout = np.array(cutout, dtype=float)
+            cutout[mask] = 0.0
+
+            # Find peak pixel
+            yidx, xidx = np.unravel_index(np.argmax(cutout), cutout.shape)
+
+            # If peak at edge of cutout, return peak position. No fit
+            # is performed, so no errors can be propagated.
+            if xidx == 0 or xidx == nx - 1 or yidx == 0 or yidx == ny - 1:
+                results.append((float(xidx), float(yidx), _nan, _nan))
+                continue
+
+            # Extract 3x3 box centered on peak (guaranteed to fit
+            # since peak is not at edge)
+            xidx0 = xidx - 1
+            yidx0 = yidx - 1
+            cutout_flat = cutout[yidx0:yidx0 + 3, xidx0:xidx0 + 3].ravel()
+
+            # Compute polynomial coefficients via precomputed
+            # pseudo-inverse
+            c = pinv @ cutout_flat
+            c10, c01, c11, c20, c02 = c[1], c[2], c[3], c[4], c[5]
+
+            det = 4.0 * c20 * c02 - c11 * c11
+            if det <= 0 or c20 > 0:
+                results.append(nan_result)
+                continue
+
+            # Maximum in relative coords, then convert to cutout coords
+            xm_rel = (c01 * c11 - 2.0 * c02 * c10) / det
+            ym_rel = (c10 * c11 - 2.0 * c20 * c01) / det
+            xm = xm_rel + xidx0
+            ym = ym_rel + yidx0
+
+            if not (0.0 < xm < (nx - 1.0) and 0.0 < ym < (ny - 1.0)):
+                results.append(nan_result)
+                continue
+
+            var_x = var_y = _nan
+            if compute_err:
+                # Pixel variances of the fit box; masked pixels have
+                # a fixed (zeroed) data value, so they contribute no
+                # variance
+                box_var = (error_cutout[yidx0:yidx0 + 3, xidx0:xidx0 + 3]
+                           .astype(float).ravel()**2)
+                box_var[mask[yidx0:yidx0 + 3,
+                             xidx0:xidx0 + 3].ravel()] = 0.0
+                var_x, var_y = self._centroid_quad_var(c, xm_rel, ym_rel,
+                                                       pinv, box_var)
+
+            results.append((xm, ym, var_x, var_y))
+
+        results = np.array(results)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            results[:, 2:4] = np.sqrt(results[:, 2:4])
+
+        # Use the segment barycenter if the fit returned NaN. Fallback
+        # sources use the isophotal centroid, so also use the isophotal
+        # centroid errors.
+        nan_mask = (np.isnan(results[:, 0]) | np.isnan(results[:, 1]))
+        if np.any(nan_mask):
+            cutout_centroid = self._array('cutout_centroid')
+            results[nan_mask, 0:2] = cutout_centroid[nan_mask]
+            results[nan_mask, 2:4] = self._array('centroid_err')[nan_mask]
+
+        return results
+
     @cached_property
     @use_detcat
     def cutout_centroid_quad(self):
@@ -2321,87 +2493,7 @@ class SourceCatalog:
         is at the edge of the source segment. In this case, the position
         of the maximum pixel will be returned.
         """
-        # Precompute the pseudo-inverse for the 3x3 relative coordinate
-        # design matrix [1, x, y, xy, x^2, y^2]. This is constant for
-        # all sources and avoids per-source lstsq calls.
-        xi = np.arange(3)
-        x, y = np.meshgrid(xi, xi)
-        x = x.ravel()
-        y = y.ravel()
-        coeff_matrix = np.empty((9, 6), dtype=float)
-        coeff_matrix[:, 0] = 1
-        coeff_matrix[:, 1] = x
-        coeff_matrix[:, 2] = y
-        coeff_matrix[:, 3] = x * y
-        coeff_matrix[:, 4] = x * x
-        coeff_matrix[:, 5] = y * y
-        pinv = np.linalg.pinv(coeff_matrix)
-
-        _nan = np.nan
-        centroid_quad = []
-
-        cutouts = self._data_cutouts
-        if self.progress_bar:
-            desc = 'centroid_quad'
-            cutouts = add_progress_bar(cutouts, desc=desc)
-
-        for cutout, mask in zip(cutouts, self._cutout_total_masks,
-                                strict=True):
-            ny, nx = cutout.shape
-
-            # Cutout must be at least 3x3 for the quadratic fit
-            if ny < 3 or nx < 3:
-                centroid_quad.append((_nan, _nan))
-                continue
-
-            # Apply mask: _cutout_total_masks already includes
-            # non-finite data values, so cutout[mask] = 0.0 handles both
-            # masked pixels and non-finite values.
-            cutout = np.array(cutout, dtype=float)
-            cutout[mask] = 0.0
-
-            # Find peak pixel
-            yidx, xidx = np.unravel_index(np.argmax(cutout), cutout.shape)
-
-            # If peak at edge of cutout, return peak position
-            if xidx == 0 or xidx == nx - 1 or yidx == 0 or yidx == ny - 1:
-                centroid_quad.append((float(xidx), float(yidx)))
-                continue
-
-            # Extract 3x3 box centered on peak (guaranteed to fit
-            # since peak is not at edge)
-            xidx0 = xidx - 1
-            yidx0 = yidx - 1
-            cutout_flat = cutout[yidx0:yidx0 + 3, xidx0:xidx0 + 3].ravel()
-
-            # Compute polynomial coefficients via precomputed
-            # pseudo-inverse
-            c = pinv @ cutout_flat
-            c10, c01, c11, c20, c02 = c[1], c[2], c[3], c[4], c[5]
-
-            det = 4.0 * c20 * c02 - c11 * c11
-            if det <= 0 or c20 > 0:
-                centroid_quad.append((_nan, _nan))
-                continue
-
-            # Maximum in relative coords, then convert to cutout coords
-            xm = (c01 * c11 - 2.0 * c02 * c10) / det + xidx0
-            ym = (c10 * c11 - 2.0 * c20 * c01) / det + yidx0
-
-            if 0.0 < xm < (nx - 1.0) and 0.0 < ym < (ny - 1.0):
-                centroid_quad.append((xm, ym))
-            else:
-                centroid_quad.append((_nan, _nan))
-
-        centroid_quad = np.array(centroid_quad)
-
-        # Use the segment barycenter if fit returned NaN
-        nan_mask = (np.isnan(centroid_quad[:, 0])
-                    | np.isnan(centroid_quad[:, 1]))
-        if np.any(nan_mask):
-            centroid_quad[nan_mask] = self.cutout_centroid[nan_mask]
-
-        return centroid_quad
+        return self._centroid_quad_results[:, 0:2].copy()
 
     @cached_property
     @use_detcat
@@ -2450,6 +2542,50 @@ class SourceCatalog:
         pixels in the source segment.
         """
         return self._array('centroid_quad')[:, 1]
+
+    @cached_property
+    @use_detcat
+    def centroid_quad_err(self):
+        """
+        The ``(x, y)`` 1-sigma errors on the quadratic centroid
+        (`centroid_quad`) position.
+
+        The errors are computed by propagating the input ``error`` array
+        through the least-squares quadratic fit and its peak solution
+        using the delta method. If ``error`` was not input, then the
+        errors are NaN.
+
+        Sources where the quadratic centroid fell back to the
+        isophotal `centroid` have the isophotal centroid errors (see
+        `centroid_err`). The errors are NaN for sources where the
+        maximum data value is at the edge of the source segment (where
+        the position of the maximum pixel is returned instead of a fit).
+        """
+        return self._centroid_quad_results[:, 2:4].copy()
+
+    @cached_property
+    @use_detcat
+    def x_centroid_quad_err(self):
+        """
+        The 1-sigma error on the ``x`` coordinate of the quadratic
+        centroid (`centroid_quad`).
+
+        See `centroid_quad_err` for details. If ``error`` was not input,
+        then the errors are NaN.
+        """
+        return self._array('centroid_quad_err')[:, 0]
+
+    @cached_property
+    @use_detcat
+    def y_centroid_quad_err(self):
+        """
+        The 1-sigma error on the ``y`` coordinate of the quadratic
+        centroid (`centroid_quad`).
+
+        See `centroid_quad_err` for details. If ``error`` was not input,
+        then the errors are NaN.
+        """
+        return self._array('centroid_quad_err')[:, 1]
 
     @cached_property
     @use_detcat
