@@ -126,7 +126,9 @@ class GriddedPSFModel(Fittable2DModel):
     One `~scipy.interpolate.RectBivariateSpline` interpolator per
     evaluated grid plane is cached on the model and shared across copies
     made with the `copy` method. The cache roughly doubles the model's
-    memory footprint when every grid plane has been evaluated.
+    memory footprint when every grid plane has been evaluated. Two
+    partial-derivative interpolators per grid plane used by `fit_deriv`
+    are cached in the same way.
     """
 
     flux = Parameter(description='Intensity scaling factor for the ePSF '
@@ -158,6 +160,7 @@ class GriddedPSFModel(Fittable2DModel):
         self.meta['grid_xypos'] = self.grid_xypos
 
         self._interpolator = {}
+        self._deriv_interpolator = {}
 
         super().__init__(flux, x_0, y_0)
 
@@ -538,6 +541,45 @@ class GriddedPSFModel(Fittable2DModel):
 
         return interp
 
+    def _calc_deriv_interpolators(self, grid_idx):
+        """
+        Calculate the spline partial-derivative interpolators for an
+        input ePSF image at the given reference (x, y) position.
+
+        The interpolators evaluate the partial derivatives of the
+        `_calc_interpolator` spline with respect to its first (x)
+        and second (y) variables. They are precomputed here because
+        evaluating them is faster than passing ``dx=1`` or ``dy=1`` to
+        the interpolator, which computes the derivative on the fly. They
+        are used by `fit_deriv`.
+
+        The resulting interpolators are cached in the
+        `_deriv_interpolator` dictionary for reuse.
+
+        Parameters
+        ----------
+        grid_idx : int
+            The index of the ePSF image in the reference grid.
+
+        Returns
+        -------
+        interps : tuple of `~scipy.interpolate.RectBivariateSpline`
+            The x and y partial-derivative interpolators for the input
+            ePSF image.
+        """
+        # Check if the interpolators are already cached
+        if grid_idx in self._deriv_interpolator:
+            return self._deriv_interpolator[grid_idx]
+
+        interp = self._calc_interpolator(grid_idx)
+        derivs = (interp.partial_derivative(1, 0),
+                  interp.partial_derivative(0, 1))
+
+        # Cache the interpolators for reuse
+        self._deriv_interpolator[grid_idx] = derivs
+
+        return derivs
+
     @cached_property
     def _xgrid_list(self):
         """
@@ -699,6 +741,59 @@ class GriddedPSFModel(Fittable2DModel):
         ur = (xi - x0) * (yi - y0) * inv_norm
         return np.array((ll, lr, ul, ur))
 
+    def _calc_bilinear_weight_derivs(self, xi, yi, grid_xy):
+        """
+        Calculate the partial derivatives of the bilinear interpolation
+        weights with respect to the (xi, yi) coordinate.
+
+        This method is a scalar-only fast path: ``xi`` and ``yi`` must
+        be scalar values (the model ``x_0`` and ``y_0`` positions).
+
+        `_calc_bilinear_weights` clamps the coordinates to the grid
+        cell, so the weights are constant outside the cell and the
+        corresponding derivatives are zero there.
+
+        Parameters
+        ----------
+        xi, yi : float
+            The scalar (x_0, y_0) position of the model.
+
+        grid_xy : `~numpy.ndarray`
+            The x and y coordinates of the four bounding points. The
+            order is left, right, bottom, top.
+
+        Returns
+        -------
+        dw_dx, dw_dy : `~numpy.ndarray`
+            The partial derivatives of the bilinear weights for the four
+            bounding points with respect to ``xi`` and ``yi``. The order
+            is lower-left, lower-right, upper-left, upper-right.
+        """
+        x0, x1, y0, y1 = grid_xy
+        xi = float(xi)
+        yi = float(yi)
+        inv_norm = 1.0 / ((x1 - x0) * (y1 - y0))
+
+        # Clamp the coordinates as in _calc_bilinear_weights. The
+        # clamped values are used in the derivatives along the other
+        # axis.
+        x_inside = x0 <= xi <= x1
+        y_inside = y0 <= yi <= y1
+        xc = min(max(xi, x0), x1)
+        yc = min(max(yi, y0), y1)
+
+        if x_inside:
+            dw_dx = np.array((-(y1 - yc), (y1 - yc),
+                              -(yc - y0), (yc - y0))) * inv_norm
+        else:
+            dw_dx = np.zeros(4)
+        if y_inside:
+            dw_dy = np.array((-(x1 - xc), -(xc - x0),
+                              (x1 - xc), (xc - x0))) * inv_norm
+        else:
+            dw_dy = np.zeros(4)
+        return dw_dx, dw_dy
+
     def _calc_model_values(self, x_0, y_0, xi, yi):
         """
         Calculate the ePSF model at a given (x_0, y_0) model coordinate
@@ -797,6 +892,113 @@ class GriddedPSFModel(Fittable2DModel):
             evaluated_model[invalid] = self.fill_value
 
         return evaluated_model
+
+    def fit_deriv(self, x, y, flux, x_0, y_0):
+        """
+        Calculate the partial derivatives of the ePSF model with respect
+        to the model parameters.
+
+        Providing this analytic Jacobian allows the fitter to avoid the
+        finite-difference approximation, which requires additional model
+        evaluations.
+
+        The position derivatives include both the shift of the ePSF with
+        the model position and the change of the bilinearly interpolated
+        ePSF itself with the model position across the reference grid.
+
+        Parameters
+        ----------
+        x, y : float or `~numpy.ndarray`
+            The x and y positions at which to evaluate the model.
+
+        flux : float
+            The flux scaling factor for the model.
+
+        x_0, y_0 : float
+            The (x, y) position of the model.
+
+        Returns
+        -------
+        result : list of `~numpy.ndarray`
+            The list of partial derivatives with respect to the
+            ``flux``, ``x_0``, and ``y_0`` parameters.
+        """
+        # Promote scalar inputs to 1D arrays so that the interpolator
+        # returns an array that supports masked assignment below,
+        # regardless of the scipy version
+        x = np.atleast_1d(x)
+        y = np.atleast_1d(y)
+        if x.ndim > 2:
+            msg = 'x and y must be 1D or 2D'
+            raise ValueError(msg)
+
+        # The fitting machinery may pass the parameters as size-1
+        # arrays, but we need scalar values for the interpolator.
+        if not np.isscalar(x_0):
+            x_0 = x_0[0]
+        if not np.isscalar(y_0):
+            y_0 = y_0[0]
+
+        xi = self.oversampling[1] * (np.asarray(x, dtype=float) - x_0)
+        yi = self.oversampling[0] * (np.asarray(y, dtype=float) - y_0)
+        xi += self.origin[0]
+        yi += self.origin[1]
+
+        if self.data.shape[0] == 1:
+            # If there is only one ePSF, the model has no dependence
+            # on the (x_0, y_0) position through the bilinear weights
+            dx_interp, dy_interp = self._calc_deriv_interpolators(0)
+            d_flux = self._calc_interpolator(0)(xi, yi, grid=False)
+            deriv_x = -self.oversampling[1] * dx_interp(xi, yi, grid=False)
+            deriv_y = -self.oversampling[0] * dy_interp(xi, yi, grid=False)
+        else:
+            grid_idx, grid_xy = self._find_bounding_points(x_0, y_0)
+            weights = self._calc_bilinear_weights(x_0, y_0, grid_xy)
+            dw_dx, dw_dy = self._calc_bilinear_weight_derivs(x_0, y_0,
+                                                             grid_xy)
+
+            d_flux = 0.0
+            deriv_x = 0.0
+            deriv_y = 0.0
+            for gidx, weight, dwx, dwy in zip(grid_idx, weights, dw_dx,
+                                              dw_dy, strict=True):
+                if weight == 0.0 and dwx == 0.0 and dwy == 0.0:
+                    continue
+                gidx = int(gidx)
+                value = self._calc_interpolator(gidx)(xi, yi, grid=False)
+
+                # The ePSF value contributes to the flux derivative
+                # through its weight and to the position derivatives
+                # through the weight derivatives
+                d_flux += weight * value
+                deriv_x += dwx * value
+                deriv_y += dwy * value
+
+                # The chain rule gives the shift terms of the position
+                # derivatives from the spline partial derivatives
+                # (dxi/dx_0 = -oversampling[1], dyi/dy_0 =
+                # -oversampling[0])
+                if weight != 0.0:
+                    dx_interp, dy_interp = self._calc_deriv_interpolators(
+                        gidx)
+                    deriv_x -= (weight * self.oversampling[1]
+                                * dx_interp(xi, yi, grid=False))
+                    deriv_y -= (weight * self.oversampling[0]
+                                * dy_interp(xi, yi, grid=False))
+
+        d_x_0 = flux * deriv_x
+        d_y_0 = flux * deriv_y
+
+        if self.fill_value is not None:
+            # Outside the input pixel grid the model is constant
+            # (fill_value), so all derivatives are zero there
+            ny, nx = self.data.shape[1:]
+            invalid = (xi < 0) | (xi > nx - 1) | (yi < 0) | (yi > ny - 1)
+            d_flux[invalid] = 0.0
+            d_x_0[invalid] = 0.0
+            d_y_0[invalid] = 0.0
+
+        return [d_flux, d_x_0, d_y_0]
 
     @_plot_grid_docstring
     def plot_grid(self, *, ax=None, vmax_scale=None, peak_norm=False,
