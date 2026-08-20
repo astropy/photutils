@@ -34,6 +34,7 @@ from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 from photutils.utils.cutouts import CutoutImage
 
 __all__ = ['SourceCatalog']
@@ -1702,6 +1703,44 @@ class SourceCatalog:
         cov[:, 0, 1] = var_arr[:, 2]
         cov[:, 1, 0] = var_arr[:, 2]
         return cov
+
+    def _sky_err_from_cov(self, pix_cov, xycen):
+        """
+        Transport pixel error covariances to sky position errors.
+
+        The pixel covariance of each source is mapped to the local
+        tangent plane with the forward WCS Jacobian ``F`` evaluated at
+        the source position (``sky_cov = F pix_cov F^T``). The returned
+        errors are the square roots of the tangent-plane variances along
+        East and North.
+
+        Parameters
+        ----------
+        pix_cov : `~numpy.ndarray`
+            The ``(N, 2, 2)`` pixel error covariance matrices.
+
+        xycen : `~numpy.ndarray`
+            The ``(N, 2)`` pixel ``(x, y)`` centroid positions at which
+            to evaluate the WCS Jacobians.
+
+        Returns
+        -------
+        sky_err : `~astropy.units.Quantity`
+            The ``(N, 2)`` array of 1-sigma errors in arcsec, with
+            columns ``(east_err, north_err)``. Rows are NaN where the
+            position or covariance is not finite.
+        """
+        sky_err = np.full(xycen.shape, np.nan)
+        good = (np.all(np.isfinite(xycen), axis=1)
+                & np.all(np.isfinite(pix_cov), axis=(1, 2)))
+        if np.any(good):
+            jac = compute_pixel_to_sky_jacobians(xycen[good, 0],
+                                                 xycen[good, 1],
+                                                 self.wcs)
+            sky_cov = np.einsum('nij,njk,nlk->nil', jac, pix_cov[good], jac)
+            sky_err[good, 0] = np.sqrt(sky_cov[:, 0, 0])
+            sky_err[good, 1] = np.sqrt(sky_cov[:, 1, 1])
+        return sky_err << u.arcsec
 
     @cached_property
     @use_detcat

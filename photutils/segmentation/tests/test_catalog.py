@@ -16,6 +16,7 @@ from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
 from astropy.utils.exceptions import AstropyDeprecationWarning
+from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_equal
 from scipy.optimize import root_scalar
 
@@ -31,6 +32,7 @@ from photutils.segmentation.finder import SourceFinder
 from photutils.segmentation.utils import make_2dgaussian_kernel
 from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,
                                             HAS_SKIMAGE)
+from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 from photutils.utils.cutouts import CutoutImage
 
 
@@ -3003,6 +3005,48 @@ def test_centroid_quad_err_cov_fallback():
     assert_allclose(cat.centroid_quad, cat.centroid)
     assert_allclose(cat._centroid_quad_err_cov,
                     cat._centroid_err_cov)
+
+
+def test_sky_err_from_cov():
+    """
+    Test the pixel-to-sky error covariance transport against a
+    hand-rotated covariance for a rotated TAN WCS.
+    """
+    theta_deg = 30.0
+    scale = 0.25  # arcsec / pixel
+    wcs = WCS(naxis=2)
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    wcs.wcs.crpix = [10.0, 10.0]
+    wcs.wcs.crval = [150.0, 30.0]
+    theta = np.deg2rad(theta_deg)
+    cd = (scale / 3600.0) * np.array([[-np.cos(theta), np.sin(theta)],
+                                      [np.sin(theta), np.cos(theta)]])
+    wcs.wcs.cd = cd
+
+    data = np.zeros((21, 21))
+    data[9:12, 9:12] = 10.0
+    segment_map = SegmentationImage((data > 0).astype(int))
+    cat = SourceCatalog(data, segment_map, wcs=wcs)
+
+    pix_cov = np.array([[[0.04, 0.01], [0.01, 0.09]]])
+    xycen = np.array([[10.0, 10.0]])
+    sky_err = cat._sky_err_from_cov(pix_cov, xycen)
+
+    # Reference: compare against the vectorized Jacobian helper
+    # directly (transport identity), and check the isotropic invariant
+    # trace(sky_cov) = scale^2 * trace(pix_cov)
+    jac = compute_pixel_to_sky_jacobians(xycen[:, 0], xycen[:, 1],
+                                         wcs)
+    sky_cov = jac[0] @ pix_cov[0] @ jac[0].T
+    assert_allclose(sky_err.to_value('arcsec')[0],
+                    np.sqrt(np.diag(sky_cov)))
+    assert_allclose(np.trace(sky_cov),
+                    scale**2 * np.trace(pix_cov[0]), rtol=1e-3)
+
+    # NaN positions give NaN errors
+    xycen_nan = np.array([[np.nan, np.nan]])
+    sky_err_nan = cat._sky_err_from_cov(pix_cov, xycen_nan)
+    assert np.all(np.isnan(sky_err_nan.value))
 
 
 class TestPartialPixelErrorWeights:
