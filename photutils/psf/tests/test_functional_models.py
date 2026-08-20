@@ -495,3 +495,17 @@ def test_airydisk_psf_model(use_units):
     model = AiryDiskPSF(x_0=0, y_0=0, radius=5)
     bbox = 42.18329801081182
     assert_allclose(model.bounding_box, ((-bbox, bbox), (-bbox, bbox)))
+
+
+def test_airydisk_infinite_radial_distance():
+    """
+    Regression test that AiryDiskPSF evaluates to zero at infinite
+    radial distance, matching the other models, while NaN inputs
+    still propagate.
+    """
+    model = AiryDiskPSF(flux=1, radius=2)
+    assert model(np.inf, 0.0) == 0.0
+    assert np.isnan(model(np.nan, 0.0))
+    result = model(np.array([np.inf, 0.0]), np.array([0.0, 0.0]))
+    assert result[0] == 0.0
+    assert result[1] > 0.0

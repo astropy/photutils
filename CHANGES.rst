@@ -621,6 +621,10 @@ Bug Fixes
     set when any fitted parameter is very close to its bounds,
     including bounds set directly on the PSF model. [#2395]
 
+  - ``AiryDiskPSF`` now evaluates to zero at infinite radial
+    distance, matching the other PSF models. Previously, it returned
+    NaN. [#2395]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range

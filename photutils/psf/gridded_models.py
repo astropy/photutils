@@ -161,7 +161,7 @@ class GriddedPSFModel(Fittable2DModel):
         self.meta['grid_xypos'] = self.grid_xypos
 
         self._interpolator = {}
-        self._deriv_interpolator = {}
+        self._deriv_interpolators = {}
 
         super().__init__(flux, x_0, y_0)
 
@@ -555,7 +555,7 @@ class GriddedPSFModel(Fittable2DModel):
         are used by `fit_deriv`.
 
         The resulting interpolators are cached in the
-        `_deriv_interpolator` dictionary for reuse.
+        `_deriv_interpolators` dictionary for reuse.
 
         Parameters
         ----------
@@ -569,15 +569,15 @@ class GriddedPSFModel(Fittable2DModel):
             ePSF image.
         """
         # Check if the interpolators are already cached
-        if grid_idx in self._deriv_interpolator:
-            return self._deriv_interpolator[grid_idx]
+        if grid_idx in self._deriv_interpolators:
+            return self._deriv_interpolators[grid_idx]
 
         interp = self._calc_interpolator(grid_idx)
         derivs = (interp.partial_derivative(1, 0),
                   interp.partial_derivative(0, 1))
 
         # Cache the interpolators for reuse
-        self._deriv_interpolator[grid_idx] = derivs
+        self._deriv_interpolators[grid_idx] = derivs
 
         return derivs
 

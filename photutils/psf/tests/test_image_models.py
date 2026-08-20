@@ -92,12 +92,6 @@ class TestImagePSF:
         # Include positions that map outside the input pixel grid
         x = np.array([5.0, -50.0, 100.0])
         y = np.array([5.0, 5.0, 5.0])
-        d_flux, d_x_0, d_y_0 = model.fit_deriv(x, y, 1.0, 5.0, 5.0)
-
-        # Derivatives must be zero outside the input pixel grid
-        assert d_flux[1] == 0.0
-        assert d_x_0[1] == 0.0
-        assert d_y_0[2] == 0.0
         derivs = model.fit_deriv(x, y, 1.0, 5.0, 5.0)
 
         # All derivatives must be zero outside the input pixel grid

@@ -184,3 +184,17 @@ class TestPlotGrid:
             fig = psfmodel.plot_grid(deltas=deltas, peak_norm=peak_norm)
             # The colorbar is the second axes
             assert fig.axes[1].get_ylabel() != ''
+
+
+def test_plot_grid_deltas_all_blank():
+    """
+    Regression test that deltas=True raises a clear error when every
+    ePSF in the grid is blank instead of rendering a NaN image.
+    """
+    data = np.zeros((4, 5, 5))
+    meta = {'grid_xypos': [(0, 0), (0, 10), (10, 0), (10, 10)],
+            'oversampling': 1}
+    model = GriddedPSFModel(NDData(data, meta=meta))
+    match = 'all ePSFs in the grid are blank'
+    with pytest.raises(ValueError, match=match):
+        model.plot_grid(deltas=True)

@@ -2028,6 +2028,9 @@ class AiryDiskPSF(Fittable2DModel):
         z = np.ones(rt.shape)
         nonzero = rt > 0
         z[nonzero] = (2.0 * j1(rt[nonzero]) / rt[nonzero]) ** 2
+        # The model tends to zero at infinite radial distance, but
+        # j1(inf) is NaN, so set the limit explicitly
+        z[np.isinf(rt)] = 0.0
         z[np.isnan(rt)] = np.nan
         z = z.reshape(r.shape)
 
