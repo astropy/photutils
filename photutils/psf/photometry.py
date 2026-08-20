@@ -407,6 +407,10 @@ class PSFPhotometry:
     # Default value for parameter initialization (invalid sources)
     _DEFAULT_PARAM_VALUE = np.nan
 
+    # Results columns ending in '_fit' that are not fitted model
+    # parameters
+    _NON_PARAM_FIT_COLS = ('n_pixels_fit',)
+
     @deprecated_renamed_argument('localbkg_estimator',
                                  'local_bkg_estimator', '3.0',
                                  until='4.0')
@@ -598,7 +602,7 @@ class PSFPhotometry:
         table = QTable(param_data)
 
         # Set id column to match init_params for clean merging
-        if hasattr(self, 'init_params') and self.init_params is not None:
+        if self.init_params is not None:
             ids = self.init_params['id']
             table['id'] = ids
 
@@ -739,8 +743,8 @@ class PSFPhotometry:
             scalar.
         """
         if radius is not None:
-            if (np.ndim(radius) != 0 or radius <= 0
-                    or not np.isfinite(radius)):
+            if (isinstance(radius, bool) or np.ndim(radius) != 0
+                    or radius <= 0 or not np.isfinite(radius)):
                 msg = 'aperture_radius must be a strictly-positive scalar'
                 raise ValueError(msg)
             radius = float(radius)
@@ -813,7 +817,19 @@ class PSFPhotometry:
         maxiters : int or None
             The validated maxiters value, or None if the fitter doesn't
             support this parameter.
+
+        Raises
+        ------
+        ValueError
+            If maxiters is not a strictly-positive integer.
         """
+        if (isinstance(maxiters, bool)
+                or not isinstance(maxiters, (int, np.integer))
+                or maxiters <= 0):
+            msg = 'fitter_maxiters must be a strictly-positive integer'
+            raise ValueError(msg)
+        maxiters = int(maxiters)
+
         spec = inspect.signature(self.fitter.__call__)
         if 'maxiter' not in spec.parameters:
             msg = ("'fitter_maxiters' will be ignored because the "
@@ -1410,7 +1426,6 @@ class PSFPhotometry:
         # Store results in state for other methods that need them
         self._state['fit_error_indices'] = fit_error_indices
         self._state['fitted_models_table'] = fitted_models_table
-        self._state['fit_params'] = fit_params
 
         return fit_params
 
@@ -1546,6 +1561,30 @@ class PSFPhotometry:
 
         return data_array, mask, error
 
+    @staticmethod
+    def _check_nddata_kwargs(*, mask, error):
+        """
+        Reject explicit mask/error keywords for NDData inputs.
+
+        Parameters
+        ----------
+        mask : 2D `~numpy.ndarray` or `None`
+            The mask keyword value passed to ``__call__``.
+
+        error : 2D `~numpy.ndarray` or `None`
+            The error keyword value passed to ``__call__``.
+
+        Raises
+        ------
+        ValueError
+            If mask or error is not None.
+        """
+        if mask is not None or error is not None:
+            msg = ('The mask and error keywords must be None when '
+                   'data is an NDData instance. Define the mask and '
+                   'uncertainty in the NDData object instead.')
+            raise ValueError(msg)
+
     @_create_call_docstring(iterative=False)
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         # Reset state from previous runs
@@ -1554,6 +1593,7 @@ class PSFPhotometry:
         try:
             # Handle NDData input
             if isinstance(data, NDData):
+                self._check_nddata_kwargs(mask=mask, error=error)
                 data, mask, error = self._coerce_nddata(data)
 
             # Prepare all inputs for sources to be fit
@@ -1623,10 +1663,6 @@ class PSFPhotometry:
                 tbl[col_name] = self.results[col_name]
 
         return tbl
-
-    # Results columns ending in '_fit' that are not fitted model
-    # parameters
-    _NON_PARAM_FIT_COLS = ('n_pixels_fit',)
 
     @staticmethod
     def _iter_fit_param_cols(results_tbl):

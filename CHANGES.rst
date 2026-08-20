@@ -858,6 +858,13 @@ API Changes
     clipping when stacking the ePSF residuals, as its docstring
     already documented. [#2390]
 
+  - The ``mask`` and ``error`` keywords of ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` now raise a ``ValueError`` when the
+    input data is an ``NDData`` instance. Previously, they were
+    silently ignored in favor of the ``NDData`` attributes. NDData
+    input is now also documented in the ``__call__`` docstrings.
+    [#2395]
+
 - ``photutils.segmentation``
 
   - The ``deblend_sources`` "too many markers" warning key stored in

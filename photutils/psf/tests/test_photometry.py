@@ -2461,3 +2461,64 @@ def test_decode_flags():
     # decode_psf_flags directly
     direct_decoded = decode_psf_flags(results['flags'])
     assert decoded_flags == direct_decoded
+
+
+def test_int_mask_matches_bool_mask():
+    """
+    Regression test that an integer 0/1 mask array behaves identically
+    to the equivalent boolean mask.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image((35, 35), model, 1,
+                                        model_shape=(9, 9),
+                                        flux=(500, 500),
+                                        min_separation=10, seed=0)
+    init = Table({'x': params['x_0'], 'y': params['y_0']})
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[int(params['y_0'][0]), int(params['x_0'][0])] = True
+
+    psfphot = PSFPhotometry(model, (5, 5), aperture_radius=4)
+    phot_bool = psfphot(data, init_params=init, mask=mask)
+    phot_int = psfphot(data, init_params=init, mask=mask.astype(int))
+    assert_equal(phot_int['n_pixels_fit'], phot_bool['n_pixels_fit'])
+    assert_equal(phot_int['flags'], phot_bool['flags'])
+    assert_allclose(phot_int['flux_fit'], phot_bool['flux_fit'])
+
+
+@pytest.mark.parametrize('maxiters', [-5, 0, 3.7, 'abc', True])
+def test_invalid_fitter_maxiters(maxiters):
+    model = CircularGaussianPRF(fwhm=2.7)
+    match = 'fitter_maxiters must be a strictly-positive integer'
+    with pytest.raises(ValueError, match=match):
+        PSFPhotometry(model, (5, 5), fitter_maxiters=maxiters)
+
+
+def test_valid_fitter_maxiters():
+    model = CircularGaussianPRF(fwhm=2.7)
+    psfphot = PSFPhotometry(model, (5, 5), fitter_maxiters=np.int64(50))
+    assert psfphot.fitter_maxiters == 50
+
+
+def test_nddata_with_explicit_mask_or_error():
+    """
+    Regression test that explicit mask/error keywords are rejected
+    (not silently ignored) when data is an NDData instance.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data = np.ones((25, 25))
+    init = Table({'x': [12.0], 'y': [12.0], 'flux': [1.0]})
+    psfphot = PSFPhotometry(model, (5, 5))
+    match = 'must be None when data is an NDData instance'
+    with pytest.raises(ValueError, match=match):
+        psfphot(NDData(data), error=np.ones(data.shape),
+                init_params=init)
+    with pytest.raises(ValueError, match=match):
+        psfphot(NDData(data), mask=np.zeros(data.shape, dtype=bool),
+                init_params=init)
+
+
+def test_aperture_radius_bool():
+    model = CircularGaussianPRF(fwhm=2.7)
+    match = 'aperture_radius must be a strictly-positive scalar'
+    with pytest.raises(ValueError, match=match):
+        PSFPhotometry(model, (5, 5), aperture_radius=True)

@@ -361,6 +361,10 @@ class PSFDataProcessor:
             if data_shape is not None and array.shape != data_shape:
                 msg = f'data and {name} must have the same shape'
                 raise ValueError(msg)
+            if name == 'mask':
+                # Coerce to bool so integer masks (e.g., 0/1 DQ
+                # arrays) cannot be misused as fancy indices
+                array = array.astype(bool)
         return array
 
     def normalize_init_units(self, init_params, colname):

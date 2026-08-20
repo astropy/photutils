@@ -506,6 +506,7 @@ class IterativePSFPhotometry:
     @_create_call_docstring(iterative=True)
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         if isinstance(data, NDData):
+            PSFPhotometry._check_nddata_kwargs(mask=mask, error=error)
             data_, mask, error = PSFPhotometry._coerce_nddata(data)
             return self.__call__(data_, mask=mask, error=error,
                                  init_params=init_params)
