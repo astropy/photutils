@@ -24,12 +24,14 @@ from photutils.background import SExtractorBackground
 from photutils.geometry import circular_overlap_grid, elliptical_overlap_grid
 from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
+from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _mask_to_mirrored_value
 from photutils.utils._deprecation import (_get_future_column_names,
                                           create_empty_deprecated_qtable,
                                           deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
+from photutils.utils._flags import update_flag_docstring
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._progress_bars import add_progress_bar
@@ -124,6 +126,27 @@ def use_detcat(method):
         return getattr(self._detection_catalog, method.__name__)
 
     return _use_detcat
+
+
+def _update_flags_docstring(func):
+    """
+    Decorator to insert the segmentation flag descriptions into a
+    docstring.
+
+    The ``<flag_descriptions>`` placeholder in the function docstring is
+    replaced with a bullet list generated from ``SEGMENTATION_FLAGS``.
+
+    Parameters
+    ----------
+    func : function
+        The function to decorate.
+
+    Returns
+    -------
+    func : function
+        The decorated function with an updated docstring.
+    """
+    return update_flag_docstring(func, SEGMENTATION_FLAGS, indent=8)
 
 
 class SourceCatalog:
@@ -420,7 +443,7 @@ class SourceCatalog:
                                 'orientation', 'eccentricity', 'min_value',
                                 'max_value', 'segment_flux',
                                 'segment_flux_err', 'kron_flux',
-                                'kron_flux_err']
+                                'kron_flux_err', 'flags']
 
         self._custom_properties = []
         self._flux_radius_cache = {}
@@ -1451,6 +1474,70 @@ class SourceCatalog:
         True if all pixels over the source segment are masked.
         """
         return np.array([np.all(mask) for mask in self._cutout_total_masks])
+
+    @cached_property
+    @_update_flags_docstring
+    def flags(self):
+        # numpydoc ignore: RT01
+        """
+        The per-source bitwise quality flags.
+
+        The flags combine deblending-provenance flags carried
+        by the input segmentation image with measurement-time
+        flags computed from this catalog's ``data``,
+        ``mask``, ``error``, and segmentation image. Use
+        `~photutils.segmentation.decode_segmentation_flags` to decode
+        the values.
+
+        The flags are:
+
+        <flag_descriptions>
+        """
+        flags = np.zeros(len(self.labels), dtype=int)
+
+        # Deblending provenance flags from the segmentation image
+        flags_map = self._segmentation_image._flags_map
+        if flags_map:
+            flags |= np.array([flags_map.get(int(label), 0)
+                               for label in self.labels])
+
+        # Source segment touches an image boundary
+        ny, nx = self._data.shape
+        edge = np.array([(slc[0].start == 0 or slc[1].start == 0
+                          or slc[0].stop == ny or slc[1].stop == nx)
+                         for slc in self._slices_iter])
+        flags[edge] |= SEGMENTATION_FLAGS.EDGE_TOUCH
+
+        # Input-masked pixels within the source segment
+        if self._mask is not None:
+            masked = np.array(
+                [np.any(mask_cut & ~segm_mask)
+                 for mask_cut, segm_mask in zip(
+                     self._mask_cutouts,
+                     self._cutout_segment_masks, strict=True)])
+            flags[masked] |= SEGMENTATION_FLAGS.MASKED_PIXELS
+
+        # Non-finite data values within the source segment
+        nonfinite = np.array(
+            [np.any(~np.isfinite(data_cut) & ~segm_mask)
+             for data_cut, segm_mask in zip(
+                 self._data_cutouts, self._cutout_segment_masks,
+                 strict=True)])
+        flags[nonfinite] |= SEGMENTATION_FLAGS.NON_FINITE_DATA
+
+        # Non-finite error values within the source segment
+        if self._error is not None:
+            nonfinite_err = np.array(
+                [np.any(~np.isfinite(err_cut) & ~segm_mask)
+                 for err_cut, segm_mask in zip(
+                     self._error_cutouts,
+                     self._cutout_segment_masks, strict=True)])
+            flags[nonfinite_err] |= SEGMENTATION_FLAGS.NON_FINITE_ERROR
+
+        # All pixels within the source segment are masked
+        flags[self._all_masked] |= SEGMENTATION_FLAGS.ALL_MASKED
+
+        return flags
 
     def _get_values(self, array):
         """

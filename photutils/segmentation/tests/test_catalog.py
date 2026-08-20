@@ -27,8 +27,10 @@ from photutils.datasets import (make_100gaussians_image, make_gwcs,
                                 make_noise_image, make_wcs)
 from photutils.segmentation.catalog import SourceCatalog
 from photutils.segmentation.core import SegmentationImage
+from photutils.segmentation.deblend import deblend_sources
 from photutils.segmentation.detect import detect_sources
 from photutils.segmentation.finder import SourceFinder
+from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import make_2dgaussian_kernel
 from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,
                                             HAS_SKIMAGE)
@@ -1412,6 +1414,121 @@ class TestSourceCatalog:
         assert_allclose(cat[1].covariance,
                         [(np.nan, np.nan), (np.nan, np.nan)] * u.pix**2)
         assert_allclose(cat.fwhm, [0.67977799, np.nan] * u.pix)
+
+
+class TestSourceCatalogFlags:
+    """
+    Tests for the SourceCatalog flags property.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        yy, xx = np.mgrid[0:51, 0:51]
+        # Interior source and edge-touching source
+        interior = Gaussian2D(100, 25, 25, 3, 3)(xx, yy)
+        edge = Gaussian2D(100, 2, 40, 3, 3)(xx, yy)
+        self.data = interior + edge
+        self.segm = detect_sources(self.data, 10, 5)
+        assert self.segm.n_labels == 2
+
+    def test_flags_zero(self):
+        """
+        Test that flags are zero for clean interior sources.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        interior_idx = np.argmax(cat.bbox_xmin > 0)
+        assert cat.flags[interior_idx] == 0
+
+    def test_edge_touch(self):
+        """
+        Test the edge_touch flag for a source segment touching the image
+        boundary.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        edge_bits = cat.flags & SEGMENTATION_FLAGS.EDGE_TOUCH
+        assert np.count_nonzero(edge_bits) == 1
+
+    def test_masked_pixels(self):
+        """
+        Test the masked_pixels flag for input-masked pixels within the
+        source segment.
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[25, 25] = True  # inside the interior source
+        cat = SourceCatalog(self.data, self.segm, mask=mask)
+        idx = np.argmax(cat.bbox_xmin > 0)
+        assert cat.flags[idx] & SEGMENTATION_FLAGS.MASKED_PIXELS
+        other = 1 - idx
+        assert not (cat.flags[other]
+                    & SEGMENTATION_FLAGS.MASKED_PIXELS)
+
+    def test_non_finite_data(self):
+        """
+        Test the non_finite_data flag.
+        """
+        data = self.data.copy()
+        data[25, 25] = np.nan
+        cat = SourceCatalog(data, self.segm)
+        idx = np.argmax(cat.bbox_xmin > 0)
+        assert cat.flags[idx] & SEGMENTATION_FLAGS.NON_FINITE_DATA
+
+    def test_non_finite_error(self):
+        """
+        Test the non_finite_error flag.
+        """
+        error = np.ones(self.data.shape)
+        error[25, 25] = np.inf
+        cat = SourceCatalog(self.data, self.segm, error=error)
+        idx = np.argmax(cat.bbox_xmin > 0)
+        assert cat.flags[idx] & SEGMENTATION_FLAGS.NON_FINITE_ERROR
+
+    def test_all_masked(self):
+        """
+        Test the all_masked flag when every segment pixel is masked.
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[self.segm.data == self.segm.labels[0]] = True
+        cat = SourceCatalog(self.data, self.segm, mask=mask)
+        assert cat.flags[0] & SEGMENTATION_FLAGS.ALL_MASKED
+
+    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+    def test_provenance_from_deblending(self):
+        """
+        Test that deblending provenance flags propagate into the catalog
+        flags.
+        """
+        yy, xx = np.mgrid[0:101, 0:101]
+        data = (Gaussian2D(100, 50, 50, 5, 5)(xx, yy)
+                + Gaussian2D(100, 35, 50, 5, 5)(xx, yy))
+        segm = detect_sources(data, 10, 5)
+        segm2 = deblend_sources(data, segm, 5, progress_bar=False)
+        cat = SourceCatalog(data, segm2)
+        assert np.all(cat.flags & SEGMENTATION_FLAGS.DEBLENDED)
+
+    def test_flags_in_table(self):
+        """
+        Test that flags is a default table column with int values.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        tbl = cat.to_table()
+        assert 'flags' in tbl.colnames
+        assert np.issubdtype(tbl['flags'].dtype, np.integer)
+
+    def test_flags_slicing(self):
+        """
+        Test that flags slice consistently with the catalog.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        flags = cat.flags
+        assert cat[1:].flags[0] == flags[1]
+
+    def test_flags_docstring_lists_all_flags(self):
+        """
+        Test that the flags docstring documents every flag name.
+        """
+        doc = SourceCatalog.flags.func.__doc__
+        for name in SEGMENTATION_FLAGS.names:
+            assert name in doc
 
 
 class TestThreadSafety:
