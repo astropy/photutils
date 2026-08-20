@@ -1522,6 +1522,26 @@ class TestSourceCatalogFlags:
         cat = SourceCatalog(data, SegmentationImage(segm_data))
         assert cat.flags[0] & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
 
+    def test_singular_covariance_elongated(self):
+        """
+        Test the singular_covariance flag for an elongated source that
+        is unresolved along only its minor axis.
+
+        The covariance determinant of such a source exceeds
+        ``(1/12)**2``, so it is flagged only by the minor-axis variance
+        test.
+        """
+        data = np.zeros((11, 11))
+        data[4, 2:9] = 0.04
+        data[5, 2:9] = 1.0
+        data[6, 2:9] = 0.04
+        segm_data = np.zeros((11, 11), dtype=int)
+        segm_data[4:7, 2:9] = 1
+        cat = SourceCatalog(data, SegmentationImage(segm_data))
+        # the minor-axis variance is below the 1/12 single-pixel floor
+        assert cat.semiminor_axis.value[0] < np.sqrt(1 / 12)
+        assert cat.flags[0] & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
+
     def test_singular_covariance_not_set(self):
         """
         Test that singular_covariance is not set for a well-resolved
@@ -1533,8 +1553,20 @@ class TestSourceCatalogFlags:
 
     def test_centroid_flags_fully_masked(self):
         """
-        Test that a fully-masked compact source flags both centroid
-        failures (windowed centroid NaN, quadratic fit NaN).
+        Test that a fully-masked source flags both centroid failures
+        (windowed centroid NaN, quadratic fit NaN).
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[self.segm.data == self.segm.labels[0]] = True
+        cat = SourceCatalog(self.data, self.segm, mask=mask)
+        assert np.all(np.isnan(cat.centroid_quad[0]))
+        assert cat.flags[0] & SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
+        assert cat.flags[0] & SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED
+
+    def test_centroid_flags_fully_masked_small(self):
+        """
+        Test that a fully-masked source smaller than the 3x3 quadratic
+        fit box flags both centroid failures.
         """
         data = np.zeros((21, 21))
         data[5:7, 5:7] = 10.0
@@ -1548,8 +1580,7 @@ class TestSourceCatalogFlags:
 
     def test_centroid_flags_not_set(self):
         """
-        Test that centroid flags are not set for clean resolved
-        sources.
+        Test that centroid flags are not set for clean resolved sources.
         """
         cat = SourceCatalog(self.data, self.segm)
         bits = (SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK

@@ -1550,9 +1550,10 @@ class SourceCatalog:
         m00 = self._array('moments')[:, 0, 0]
         flags[~(m00 > 0)] |= SEGMENTATION_FLAGS.UNDEFINED_SHAPE
 
-        # Singular or nearly singular source covariance, evaluated on
-        # the raw (unregularized) covariance matrix
-        flags[self._singular_covariance_mask] |= (
+        # Singular, nearly singular, or rank-1 degenerate source
+        # covariance, evaluated on the raw (unregularized) covariance
+        # matrix
+        flags[self._singular_covariance_flag_mask] |= (
             SEGMENTATION_FLAGS.SINGULAR_COVARIANCE)
 
         # Windowed centroid is NaN or fell back to the isophotal
@@ -2629,6 +2630,13 @@ class SourceCatalog:
                 results.append(nan_result)
                 continue
 
+            # A source with no unmasked pixels has no peak; without this
+            # guard the masked (zeroed) cutout below would return the
+            # position of its first pixel as the "peak"
+            if np.all(mask):
+                results.append(nan_result)
+                continue
+
             # Apply mask: _cutout_total_masks already includes
             # non-finite data values, so cutout[mask] = 0.0 handles both
             # masked pixels and non-finite values.
@@ -2721,6 +2729,7 @@ class SourceCatalog:
         * quadratic fit does not have a maximum
         * quadratic fit maximum falls outside image
         * not enough unmasked data points (6 are required)
+        * no unmasked pixels within the source segment
 
         In these cases, then the isophotal `centroid` will be used
         instead.
@@ -2751,6 +2760,7 @@ class SourceCatalog:
         * quadratic fit does not have a maximum
         * quadratic fit maximum falls outside image
         * not enough unmasked data points (6 are required)
+        * no unmasked pixels within the source segment
 
         Also note that a fit is not performed if the maximum data value
         is at the edge of the source segment. In this case, the position
@@ -3618,11 +3628,51 @@ class SourceCatalog:
         the squared variance of a uniform distribution across a single
         pixel. Sources with non-finite covariance are not flagged.
         """
+        return self._raw_covariance_det < (1.0 / 12.0)**2
+
+    @cached_property
+    def _singular_covariance_flag_mask(self):
+        """
+        A boolean mask with a leading source axis that is `True` for
+        sources whose raw covariance matrix is singular or nearly
+        singular, including rank-1 degenerate sources.
+
+        This is the mask used for the ``'singular_covariance'``
+        flag. It matches the equivalent aperture flag (see
+        `~photutils.aperture.decode_aperture_flags`): in addition to
+        the determinant test used by ``_singular_covariance_mask``, a
+        source is flagged when its minor-axis variance (the smaller
+        eigenvalue of the raw covariance matrix) is less than ``1 /
+        12``. The determinant test alone misses elongated sources that
+        are unresolved along only one axis. Sources with non-finite
+        covariance are not flagged.
+        """
+        covar = self._raw_covariance
         # Ignore RuntimeWarning from NaN values in the covariance
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            covar_det = np.linalg.det(self._raw_covariance)
-        return covar_det < (1.0 / 12.0)**2
+            # Smaller eigenvalue (the minor-axis variance) of each
+            # 2x2 symmetric covariance matrix, via the closed form
+            # lambda = tr/2 -/+ sqrt((tr/2)**2 - det). The discriminant
+            # is non-negative for a real symmetric matrix. Clip tiny
+            # negative rounding to zero.
+            half_trace = 0.5 * (covar[:, 0, 0] + covar[:, 1, 1])
+            disc = np.maximum(half_trace**2 - self._raw_covariance_det,
+                              0.0)
+            min_eigval = half_trace - np.sqrt(disc)
+            degenerate = (np.isfinite(min_eigval)
+                          & (min_eigval < 1.0 / 12.0))
+        return self._singular_covariance_mask | degenerate
+
+    @cached_property
+    def _raw_covariance_det(self):
+        """
+        The determinant of the raw ``(N, 2, 2)`` covariance matrix.
+        """
+        # Ignore RuntimeWarning from NaN values in the covariance
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return np.linalg.det(self._raw_covariance)
 
     @cached_property
     def _raw_covariance(self):
@@ -3631,10 +3681,12 @@ class SourceCatalog:
         function that has the same normalized second-order moments as
         the source, before any regularization.
 
-        This unregularized matrix is shared by `_covariance` (which
-        regularizes a copy) and `_singular_covariance_mask` (which tests
-        it for singularity). Callers that modify the matrix in place
-        must operate on a copy so the cached value is not corrupted.
+        This unregularized matrix is shared by `_covariance`
+        (which regularizes a copy) and by the masks that test
+        it for singularity (``_singular_covariance_mask`` and
+        ``_singular_covariance_flag_mask``). Callers that modify the
+        matrix in place must operate on a copy so the cached value is
+        not corrupted.
         """
         moments = self._array('moments_central')
         # Ignore divide-by-zero RuntimeWarning
