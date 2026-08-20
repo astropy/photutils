@@ -7,12 +7,15 @@ The centroid functions hold no shared mutable state. There are no
 module-level caches, each call creates its own fitter instance,
 and fit non-convergence is detected from the fitter's ``fit_info``
 rather than by capturing warnings (``warnings.catch_warnings``
-mutates process-global state). Because the test suite turns warnings
-into errors, any spurious warning raised in a worker thread (e.g.,
-a cross-thread "fit may not have converged" injection) fails the
+mutates process-global state). The convergence-warning test turns
+warnings into errors itself (rather than relying on the pytest
+``filterwarnings`` configuration, which is absent when pytest runs with
+``-p no:warnings``), so any spurious warning raised in a worker thread
+(e.g., a cross-thread "fit may not have converged" injection) fails the
 corresponding future.
 """
 
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
@@ -106,8 +109,11 @@ def test_concurrent_convergence_warning_isolation():
     With the previous warning-capture convergence detection, a
     non-converging fit in one thread could inject its warning into
     a converging fit in another thread (or have its own warning
-    suppressed). Warnings are errors in the test suite, so an injected
-    warning would fail the converging futures below.
+    suppressed). Warnings are turned into errors for the duration of
+    the thread pool (in the main thread, so that all worker threads see
+    the same filter), so an injected warning would fail the converging
+    futures below and a missing warning would fail the non-converging
+    futures.
     """
     good_data = make_gaussian_source((51, 51), 10.0, 24.7, 25.2, 3.0,
                                      3.0, 0)
@@ -126,7 +132,9 @@ def test_concurrent_convergence_warning_isolation():
         return 'no warning'
 
     expected = good_task()
-    with ThreadPoolExecutor(max_workers=N_THREADS) as executor:
+    with (warnings.catch_warnings(),
+          ThreadPoolExecutor(max_workers=N_THREADS) as executor):
+        warnings.simplefilter('error')
         good_futures = [executor.submit(good_task)
                         for _ in range(N_THREADS * N_CALLS_PER_THREAD)]
         bad_futures = [executor.submit(bad_task)
