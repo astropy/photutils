@@ -1718,6 +1718,21 @@ class TestSourceCatalogFlags:
         cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
         assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
 
+    def test_kron_no_overlap_zero_weights(self):
+        """
+        Test the kron_no_overlap flag when the Kron aperture bounding
+        box overlaps the data, but no pixel within the data has a
+        nonzero aperture weight.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        _ = cat.kron_aperture  # cache the apertures
+        aperture = CircularAperture((-10.5, -10.5), r=10)
+        cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
+        assert np.all(np.isnan(cat.kron_flux))
+        assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
+        assert not np.any(cat.flags
+                          & SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP)
+
     def test_kron_minimum_radius(self):
         """
         Test the kron_minimum_radius flag when the measured Kron radius
@@ -1747,6 +1762,36 @@ class TestSourceCatalogFlags:
                             kron_params=(2.5, 1.4, 50.0))
         assert_equal(cat.kron_radius.value, np.zeros(2))
         assert np.all(cat.flags
+                      & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
+
+    def test_kron_minimum_radius_detection_catalog(self):
+        """
+        Test that the kron_minimum_radius flag follows the kron_params
+        of the detection catalog, which measures the Kron radii.
+
+        A detection catalog overrides the input ``kron_params``, so
+        the minimum radius of the detection catalog is the one that is
+        applied.
+        """
+        # The detection catalog does not apply its minimum, even though
+        # the measured radii are below the requested minimum.
+        detcat = SourceCatalog(self.data, self.segm,
+                               kron_params=(2.5, 1.4))
+        cat = SourceCatalog(self.data, self.segm,
+                            kron_params=(2.5, 5.9),
+                            detection_catalog=detcat)
+        assert cat.kron_params == detcat.kron_params
+        assert not np.any(cat.flags
+                          & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
+
+        # The detection catalog applies its minimum to every source
+        detcat2 = SourceCatalog(self.data, self.segm,
+                                kron_params=(2.5, 5.9))
+        cat2 = SourceCatalog(self.data, self.segm,
+                             kron_params=(2.5, 1.4),
+                             detection_catalog=detcat2)
+        assert cat2.kron_params == detcat2.kron_params
+        assert np.all(cat2.flags
                       & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
 
     def test_kron_minimum_radius_two_element_params(self):

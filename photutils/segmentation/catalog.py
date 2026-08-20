@@ -1578,10 +1578,14 @@ class SourceCatalog:
         # _measured_kron_radius returns exactly kron_params[1] when the
         # Kron numerator or denominator is not positive. NaN comparisons
         # are False, so sources with an undefined Kron radius are not
-        # flagged here (they are flagged as kron_undefined instead).
+        # flagged here (they are flagged as kron_undefined instead). The
+        # Kron radii are measured by the detection catalog, if input, so
+        # its kron_params define the applied minimum.
+        detcat = (self if self._detection_catalog is None
+                  else self._detection_catalog)
         measured = self._measured_kron_radius
         kron_radius = self._array('kron_radius').value
-        min_applied = ((measured <= self.kron_params[1])
+        min_applied = ((measured <= detcat.kron_params[1])
                        | (kron_radius == 0))
         flags[min_applied] |= SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS
 
@@ -5028,15 +5032,19 @@ class SourceCatalog:
             pixel_mask = in_aperture & ~mask
 
             kron_flag = 0
-            # Flag an aperture bounding box that extends beyond the data
-            # array. The box corners can have zero aperture weight,
-            # so also require that a pixel with nonzero weight falls
-            # outside the data.
-            if ((ixmin < 0 or iymin < 0 or ixmax > nx_img
-                 or iymax > ny_img)
-                    and (np.count_nonzero(in_aperture)
-                         != np.count_nonzero(mask_data))):
-                kron_flag |= SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP
+            # The aperture bounding box extends beyond the data array.
+            # The box corners can have zero aperture weight, so compare
+            # the number of nonzero-weight pixels within the data to the
+            # total number in the aperture. The overlap is partial only
+            # if at least one nonzero-weight pixel falls both inside and
+            # outside of the data.
+            if (ixmin < 0 or iymin < 0 or ixmax > nx_img
+                    or iymax > ny_img):
+                n_inside = np.count_nonzero(in_aperture)
+                if n_inside == 0:
+                    kron_flag |= SEGMENTATION_FLAGS.KRON_NO_OVERLAP
+                elif n_inside != np.count_nonzero(mask_data):
+                    kron_flag |= SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP
 
             if np.any(flag_masks['data_mask'] & in_aperture):
                 kron_flag |= SEGMENTATION_FLAGS.KRON_MASKED_PIXELS
