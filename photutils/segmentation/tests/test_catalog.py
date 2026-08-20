@@ -2708,6 +2708,54 @@ def test_centroid_err_columns():
     assert_allclose(tbl['y_centroid_win_err'], cat.y_centroid_win_err)
 
 
+def test_centroid_err_cov():
+    """
+    Test that the isophotal pixel error covariance matches the analytic
+    formulas, including the off-diagonal term cov = sum(sigma^2 * (x -
+    xc) * (y - yc)) / F^2.
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = Gaussian2D(100.0, 12.2, 12.6, 2.5, 1.5, 0.7)(xx, yy)
+    error = np.full(data.shape, 3.0)
+
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[4:22, 4:22] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    cov = cat._centroid_err_cov
+    assert cov.shape == (1, 2, 2)
+    assert_allclose(cov[0, 0, 1], cov[0, 1, 0])
+
+    mask = segment_data == 1
+    flux = np.sum(data[mask])
+    xcen = np.sum(data[mask] * xx[mask]) / flux
+    ycen = np.sum(data[mask] * yy[mask]) / flux
+    var_x = np.sum(error[mask]**2 * (xx[mask] - xcen)**2) / flux**2
+    var_y = np.sum(error[mask]**2 * (yy[mask] - ycen)**2) / flux**2
+    cov_xy = np.sum(error[mask]**2 * (xx[mask] - xcen)
+                    * (yy[mask] - ycen)) / flux**2
+    assert_allclose(cov[0], [[var_x, cov_xy], [cov_xy, var_y]])
+
+    # The public property is the sqrt of the diagonal
+    assert_allclose(cat.centroid_err[0], np.sqrt((var_x, var_y)))
+
+
+def test_centroid_err_cov_no_error():
+    """
+    Test that the covariance is NaN when error is not input.
+    """
+    data = np.ones((11, 11))
+    data[5, 5] = 10.0
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[4:7, 4:7] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        aperture_mask_method='none')
+    assert np.all(np.isnan(cat._centroid_err_cov))
+
+
 def _quad_peak(box):
     """
     Solve for the peak of a quadratic fit to a 3x3 box.

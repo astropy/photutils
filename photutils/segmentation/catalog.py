@@ -1634,6 +1634,77 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
+    def _centroid_err_cov(self):
+        """
+        The ``(n_labels, 2, 2)`` pixel error covariance matrices of the
+        isophotal centroid, ``[[var_x, cov_xy], [cov_xy, var_y]]``.
+
+        The matrices are all-NaN where the errors cannot be computed (no
+        ``error`` input or non-positive total flux). See `centroid_err`
+        for the propagation details.
+        """
+        if self._error is None:
+            return np.full((self.n_labels, 2, 2), np.nan)
+
+        cutout_centroid = self._array('cutout_centroid')
+        is_singular = self._singular_covariance_mask
+
+        var_arr = []
+        pixel_var = 1.0 / 12.0
+        for (moment_data, error_cutout, total_mask, xcen, ycen,
+             singular) in zip(
+                self._moment_data_cutouts, self._error_cutouts,
+                self._cutout_total_masks, cutout_centroid[:, 0],
+                cutout_centroid[:, 1], is_singular, strict=True):
+
+            total_flux = np.sum(moment_data)
+            if not np.isfinite(total_flux) or total_flux <= 0:
+                var_arr.append((np.nan, np.nan, np.nan))
+                continue
+
+            err_sq = error_cutout.astype(float)**2
+            # Zero the variance at masked pixels and at pixels that
+            # were excluded from the moment data (e.g., non-finite or
+            # negative convolved values), so that pixels that do not
+            # contribute flux weight also do not contribute error
+            # variance.
+            err_sq[total_mask | (moment_data == 0)] = 0.0
+
+            yy, xx = np.mgrid[0:err_sq.shape[0], 0:err_sq.shape[1]]
+            dx = xx - xcen
+            dy = yy - ycen
+
+            # Propagate the error through the centroid formula.
+            norm = 1.0 / (total_flux**2)
+            err_var_x = np.sum(err_sq * dx**2) * norm
+            err_var_y = np.sum(err_sq * dy**2) * norm
+            err_cov_xy = np.sum(err_sq * dx * dy) * norm
+
+            # Singularity correction for point-like sources. If the
+            # error covariance matrix is nearly singular, add the
+            # variance of a uniform
+            # distribution across a single pixel (1/12) scaled by the
+            # summed pixel variance. The correction is added to the
+            # variances only, never to the covariance.
+            if singular:
+                err_sum_norm = np.sum(err_sq) * pixel_var * norm
+                if (err_var_x * err_var_y
+                        - err_cov_xy**2) < err_sum_norm**2:
+                    err_var_x += err_sum_norm
+                    err_var_y += err_sum_norm
+
+            var_arr.append((err_var_x, err_var_y, err_cov_xy))
+
+        var_arr = np.array(var_arr)
+        cov = np.empty((len(var_arr), 2, 2))
+        cov[:, 0, 0] = var_arr[:, 0]
+        cov[:, 1, 1] = var_arr[:, 1]
+        cov[:, 0, 1] = var_arr[:, 2]
+        cov[:, 1, 0] = var_arr[:, 2]
+        return cov
+
+    @cached_property
+    @use_detcat
     def centroid_err(self):
         """
         The ``(x, y)`` 1-sigma errors on the `centroid` position.
@@ -1655,60 +1726,8 @@ class SourceCatalog:
         :math:`\\sum_i \\sigma_i^2 / (12 F^2)` is added to the variances
         if the error covariance matrix is itself nearly singular.
         """
-        if self._error is None:
-            return np.full((self.n_labels, 2), np.nan)
-
-        cutout_centroid = self._array('cutout_centroid')
-        is_singular = self._singular_covariance_mask
-
-        xerr_arr = []
-        yerr_arr = []
-        pixel_var = 1.0 / 12.0
-        for (moment_data, error_cutout, total_mask, xcen, ycen,
-             singular) in zip(
-                self._moment_data_cutouts, self._error_cutouts,
-                self._cutout_total_masks, cutout_centroid[:, 0],
-                cutout_centroid[:, 1], is_singular, strict=True):
-
-            total_flux = np.sum(moment_data)
-            if not np.isfinite(total_flux) or total_flux <= 0:
-                xerr_arr.append(np.nan)
-                yerr_arr.append(np.nan)
-                continue
-
-            err_sq = error_cutout.astype(float)**2
-            # Zero the variance at masked pixels and at pixels that
-            # were excluded from the moment data (e.g., non-finite or
-            # negative convolved values), so that pixels that do not
-            # contribute flux weight also do not contribute error
-            # variance.
-            err_sq[total_mask | (moment_data == 0)] = 0.0
-
-            yy, xx = np.mgrid[0:err_sq.shape[0], 0:err_sq.shape[1]]
-            dx = xx - xcen
-            dy = yy - ycen
-
-            # Propagate the error through the centroid formula.
-            norm = 1.0 / (total_flux**2)
-            err_var_x = np.sum(err_sq * dx**2) * norm
-            err_var_y = np.sum(err_sq * dy**2) * norm
-
-            # Singularity correction for point-like sources. If the
-            # error covariance matrix is nearly singular, add the
-            # variance of a uniform distribution across a single
-            # pixel (1/12) scaled by the summed pixel variance.
-            if singular:
-                err_sum_norm = np.sum(err_sq) * pixel_var * norm
-                err_cov_xy = np.sum(err_sq * dx * dy) * norm
-                if (err_var_x * err_var_y
-                        - err_cov_xy**2) < err_sum_norm**2:
-                    err_var_x += err_sum_norm
-                    err_var_y += err_sum_norm
-
-            xerr_arr.append(np.sqrt(err_var_x))
-            yerr_arr.append(np.sqrt(err_var_y))
-
-        return np.transpose((xerr_arr, yerr_arr))
+        cov = self._centroid_err_cov
+        return np.sqrt(np.stack((cov[:, 0, 0], cov[:, 1, 1]), axis=1))
 
     @cached_property
     @use_detcat
