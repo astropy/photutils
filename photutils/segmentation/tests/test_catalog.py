@@ -2847,3 +2847,51 @@ def test_centroid_quad_err_columns():
     assert errors.shape == (2,)
     assert single.x_centroid_quad_err == errors[0]
     assert single.y_centroid_quad_err == errors[1]
+
+
+class TestPartialPixelErrorWeights:
+    """
+    Tests that aperture flux errors weight the pixel variances by the
+    squared overlap fractions.
+
+    The reported flux is sum(w * data) over the aperture pixels, where
+    ``w`` is the pixel overlap fraction. With independent pixel errors,
+    its variance is sum(w**2 * sigma**2), so boundary pixels must
+    contribute their variance weighted by the squared fraction.
+    """
+
+    @staticmethod
+    def _expected_error(aperture, error):
+        """
+        Compute sqrt(sum(w**2 * sigma**2)) from the exact aperture mask.
+        """
+        apermask = aperture.to_mask(method='exact')
+        slc_large, slc_small = apermask.get_overlap_slices(error.shape)
+        weights = apermask.data[slc_small]
+        return np.sqrt(np.sum(weights**2 * error[slc_large] ** 2))
+
+    @pytest.fixture(name='catalog')
+    def fixture_catalog(self):
+        """
+        A single-source catalog with a non-uniform error array.
+        """
+        yy, xx = np.mgrid[0:41, 0:41]
+        gmodel = Gaussian2D(100.0, 20.0, 20.0, 2.5, 2.5)
+        data = gmodel(xx, yy)
+        segm_data = (data > 1.0).astype(int)
+        segm = SegmentationImage(segm_data)
+        rng = np.random.default_rng(seed=789)
+        error = rng.uniform(0.5, 1.5, data.shape)
+        return SourceCatalog(data, segm, error=error)
+
+    def test_circular_photometry_error(self, catalog):
+        radius = 5.0
+        _, flux_err = catalog.circular_photometry(radius)
+        aperture = catalog.make_circular_apertures(radius)[0]
+        expected = self._expected_error(aperture, catalog._error)
+        assert_allclose(flux_err, expected)
+
+    def test_kron_flux_err(self, catalog):
+        aperture = catalog.kron_aperture[0]
+        expected = self._expected_error(aperture, catalog._error)
+        assert_allclose(catalog.kron_flux_err, expected)

@@ -1673,3 +1673,84 @@ class TestCenterCutoutParity:
         # cutout (they are replaced by their mirrored values)
         cutout = stats.data_cutout[0]
         assert np.ma.getdata(cutout).max() <= 10.0
+
+
+class TestSumErrPartialPixelWeights:
+    """
+    Tests that ``sum_err`` weights the pixel variances by the squared
+    overlap fractions.
+
+    The reported sum is sum(w * data) over the aperture pixels, where
+    ``w`` is the pixel overlap fraction. With independent pixel errors,
+    its variance is sum(w**2 * sigma**2), so boundary pixels must
+    contribute their variance weighted by the squared fraction.
+    """
+
+    position = (12.2, 11.7)
+    radius = 3.3
+
+    @staticmethod
+    def _expected_error(aperture, error):
+        """
+        Compute sqrt(sum(w**2 * sigma**2)) from the exact aperture mask.
+        """
+        apermask = aperture.to_mask(method='exact')
+        slc_large, slc_small = apermask.get_overlap_slices(error.shape)
+        weights = apermask.data[slc_small]
+        return np.sqrt(np.sum(weights**2 * error[slc_large] ** 2))
+
+    @pytest.fixture(name='scene')
+    def fixture_scene(self):
+        """
+        A deterministic uniform image and non-uniform error array.
+
+        The data are uniform so that sigma clipping never rejects a
+        pixel, keeping the expected error identical for the clipped and
+        unclipped code paths.
+        """
+        rng = np.random.default_rng(seed=456)
+        data = np.ones((25, 25))
+        error = rng.uniform(0.5, 1.5, (25, 25))
+        return data, error
+
+    def test_batch_path(self, scene):
+        data, error = scene
+        aperture = CircularAperture(self.position, self.radius)
+        apstats = ApertureStats(data, aperture, error=error)
+        expected = self._expected_error(aperture, error)
+        assert_allclose(apstats.sum_err, expected)
+
+    def test_mask_path(self, scene):
+        data, error = scene
+        aperture = NoBatchCircularAperture(self.position, self.radius)
+        apstats = ApertureStats(data, aperture, error=error)
+        expected = self._expected_error(aperture, error)
+        assert_allclose(apstats.sum_err, expected)
+
+    def test_sigma_clip_batch_path(self, scene):
+        data, error = scene
+        aperture = CircularAperture(self.position, self.radius)
+        sigma_clip = SigmaClip(sigma=3.0, maxiters=10)
+        apstats = ApertureStats(data, aperture, error=error,
+                                sigma_clip=sigma_clip)
+        expected = self._expected_error(aperture, error)
+        assert_allclose(apstats.sum_err, expected)
+
+    def test_error_sum_cutout(self, scene):
+        """
+        The ``error_sum_cutout`` values are the pixel errors weighted by
+        the overlap fractions, so that the quadrature sum of the cutout
+        equals ``sum_err``.
+        """
+        data, error = scene
+        aperture = CircularAperture(self.position, self.radius)
+        apstats = ApertureStats(data, aperture, error=error)
+
+        apermask = aperture.to_mask(method='exact')
+        slc_large, slc_small = apermask.get_overlap_slices(error.shape)
+        expected = apermask.data[slc_small] * error[slc_large]
+
+        cutout = apstats.error_sum_cutout
+        assert_allclose(cutout.filled(0.0), expected)
+        assert_allclose(np.sqrt(np.sum(cutout.filled(0.0) ** 2)),
+                        apstats.sum_err)

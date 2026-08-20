@@ -22,6 +22,7 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
                                           RectangularAperture,
                                           SkyRectangularAnnulus,
                                           SkyRectangularAperture)
+from photutils.aperture.tests.conftest import NoBatchCircularAperture
 from photutils.datasets import make_wcs
 from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_REGIONS
 
@@ -46,6 +47,30 @@ TEST_APERTURES = list(zip(APERTURE_CL,
 # The aperture position(s) used by the shape-specific photometry tests
 POSITION = (20.0, 20.0)
 POSITIONS = ((20.0, 20.0), (25.0, 25.0))
+
+
+def expected_sum_err(aperture, error, *, method='exact', subpixels=5,
+                     mask=None):
+    """
+    Compute the expected flux error ``sqrt(sum(w**2 * sigma**2))`` from
+    the aperture mask, where ``w`` is the pixel overlap fraction.
+
+    Pixels masked by ``mask`` do not contribute. A scalar is returned
+    for a scalar aperture, otherwise an array.
+    """
+    apermasks = aperture.to_mask(method=method, subpixels=subpixels)
+    if aperture.isscalar:
+        apermasks = [apermasks]
+    errors = []
+    for apermask in apermasks:
+        slc_large, slc_small = apermask.get_overlap_slices(error.shape)
+        weights = apermask.data[slc_small].copy()
+        if mask is not None:
+            weights[mask[slc_large]] = 0.0
+        errors.append(np.sqrt(np.sum(weights**2 * error[slc_large] ** 2)))
+    if aperture.isscalar:
+        return errors[0]
+    return np.array(errors)
 
 
 @pytest.fixture(name='ones_data')
@@ -115,7 +140,6 @@ class TestShapePhotometry:
         """
         error = np.ones(data.shape, dtype=float)
         true_flux = area - n_masked
-        true_error = np.sqrt(area - n_masked)
 
         table1 = aperture_photometry(data, aperture, method='center',
                                      mask=mask, error=error)
@@ -131,12 +155,18 @@ class TestShapePhotometry:
                             atol=0.1)
         assert np.all(table1['aperture_sum'] < table3['aperture_sum'])
 
-        if not isinstance(aperture, (RectangularAperture,
-                                     RectangularAnnulus)):
-            assert_allclose(table3['aperture_sum_err'], true_error)
-            assert_allclose(table2['aperture_sum_err'],
-                            table3['aperture_sum_err'], atol=0.1)
-        assert np.all(table1['aperture_sum_err'] < table3['aperture_sum_err'])
+        for table, method, subpixels in ((table1, 'center', 5),
+                                         (table2, 'subpixel', 12),
+                                         (table3, 'exact', 5)):
+            expected = expected_sum_err(aperture, error, method=method,
+                                        subpixels=subpixels, mask=mask)
+            assert_allclose(table['aperture_sum_err'], expected)
+
+        # The partial boundary pixels contribute their variance weighted
+        # by the squared overlap fraction, so the exact-method error is
+        # strictly smaller than the sqrt of the aperture area.
+        assert np.all(table3['aperture_sum_err']
+                      < np.sqrt(area - n_masked))
 
     @pytest.mark.parametrize(('aperture', 'area'), _shape_aperture_specs())
     def test_array_error(self, ones_data, aperture, area):
@@ -659,10 +689,11 @@ class TestUnitsAndMasking:
         true_flux = np.pi * radius * radius
         unit = u.adu
         position = (20, 20)
-        table1 = aperture_photometry(data2, CircularAperture(position, radius),
-                                     error=error)
+        aperture = CircularAperture(position, radius)
+        table1 = aperture_photometry(data2, aperture, error=error)
         assert_allclose(table1['aperture_sum'].value, true_flux)
-        assert_allclose(table1['aperture_sum_err'].value, np.sqrt(true_flux))
+        assert_allclose(table1['aperture_sum_err'].value,
+                        expected_sum_err(aperture, data1))
         assert table1['aperture_sum'].unit == unit
         assert table1['aperture_sum_err'].unit == unit
 
@@ -1030,3 +1061,47 @@ class TestApertureMetadata:
         assert tbl.meta['aperture_a_out'] == saper.a_out
         assert tbl.meta['aperture_b_out'] == saper.b_out
         assert tbl.meta['aperture_theta'] == saper.theta
+
+
+class TestPartialPixelErrorWeights:
+    """
+    Tests that flux errors weight the pixel variances by the squared
+    overlap fractions.
+
+    The reported flux is sum(w * data) over the aperture pixels, where
+    ``w`` is the pixel overlap fraction. With independent pixel errors,
+    its variance is sum(w**2 * sigma**2), so boundary pixels must
+    contribute their variance weighted by the squared fraction.
+    """
+
+    @pytest.fixture(name='scene')
+    def fixture_scene(self):
+        """
+        A deterministic image and non-uniform error array.
+        """
+        rng = np.random.default_rng(seed=123)
+        data = rng.normal(10.0, 1.0, (25, 25))
+        error = rng.uniform(0.5, 1.5, (25, 25))
+        return data, error
+
+    @pytest.mark.parametrize(('method', 'subpixels'),
+                             [('exact', 5), ('subpixel', 3)])
+    def test_batch_path(self, scene, method, subpixels):
+        data, error = scene
+        aperture = CircularAperture((12.2, 11.7), 3.3)
+        table = aperture_photometry(data, aperture, error=error,
+                                    method=method, subpixels=subpixels)
+        expected = expected_sum_err(aperture, error, method=method,
+                                    subpixels=subpixels)
+        assert_allclose(table['aperture_sum_err'][0], expected)
+
+    @pytest.mark.parametrize(('method', 'subpixels'),
+                             [('exact', 5), ('subpixel', 3)])
+    def test_mask_path(self, scene, method, subpixels):
+        data, error = scene
+        aperture = NoBatchCircularAperture((12.2, 11.7), 3.3)
+        table = aperture_photometry(data, aperture, error=error,
+                                    method=method, subpixels=subpixels)
+        expected = expected_sum_err(aperture, error, method=method,
+                                    subpixels=subpixels)
+        assert_allclose(table['aperture_sum_err'][0], expected)

@@ -4412,7 +4412,7 @@ class SourceCatalog:
                 if error is None:
                     flux_err_ = np.nan
                 else:
-                    values = (aperture_weights * error**2)[pixel_mask]
+                    values = (aperture_weights**2 * error**2)[pixel_mask]
                     if values.shape == (0,):
                         flux_err_ = np.nan
                     else:
@@ -4533,7 +4533,7 @@ class SourceCatalog:
                 if error is None:
                     flux_err_ = np.nan
                 else:
-                    values = (aperture_weights * error ** 2)[pixel_mask]
+                    values = (aperture_weights**2 * error**2)[pixel_mask]
                     if values.shape == (0,):
                         flux_err_ = np.nan
                     else:

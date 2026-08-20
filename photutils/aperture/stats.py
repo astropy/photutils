@@ -1605,7 +1605,7 @@ class ApertureStats:
                     # Apply the exact weights and total mask;
                     # error_cutout will have zeros where mask_cutout is True
                     variance = error_cutout**2
-                    variance_cutout = (variance * aperweight_cutout
+                    variance_cutout = (variance * aperweight_cutout**2
                                        * ~mask_cutout)
 
             data_cutouts.append(data_cutout)

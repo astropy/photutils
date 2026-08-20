@@ -545,7 +545,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                     if has_error:
                         err_val = error[siy, six]
                         errsq = err_val * err_val
-                        var_val += errsq * frac
+                        var_val += errsq * frac * frac
                     if emit_sum:
                         sum_values[spos] = val
                         sum_fracs[spos] = frac
