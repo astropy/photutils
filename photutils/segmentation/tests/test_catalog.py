@@ -1883,15 +1883,19 @@ class TestSourceCatalogFlags:
 
     def test_decode_flags(self):
         """
-        Test that decode_flags returns the active flag names for each
-        source.
+        Test that decode_flags returns a dictionary mapping each
+        source label to its active flag names.
         """
         cat = SourceCatalog(self.data, self.segm)
         decoded = cat.decode_flags()
         interior_idx = np.argmax(cat.bbox_xmin > 0)
-        assert decoded[interior_idx] == []
-        assert decoded[1 - interior_idx] == ['edge_touch',
-                                             'kron_partial_overlap']
+        interior_label = cat.labels[interior_idx]
+        edge_label = cat.labels[1 - interior_idx]
+        assert list(decoded) == list(cat.labels)
+        assert all(type(key) is int for key in decoded)
+        assert decoded[interior_label] == []
+        assert decoded[edge_label] == ['edge_touch',
+                                       'kron_partial_overlap']
 
     def test_decode_flags_bit_values(self):
         """
@@ -1900,21 +1904,24 @@ class TestSourceCatalogFlags:
         cat = SourceCatalog(self.data, self.segm)
         decoded = cat.decode_flags(return_bit_values=True)
         interior_idx = np.argmax(cat.bbox_xmin > 0)
-        assert decoded[interior_idx] == []
-        assert decoded[1 - interior_idx] == [
+        interior_label = cat.labels[interior_idx]
+        edge_label = cat.labels[1 - interior_idx]
+        assert decoded[interior_label] == []
+        assert decoded[edge_label] == [
             SEGMENTATION_FLAGS.EDGE_TOUCH,
             SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP]
 
     def test_decode_flags_scalar(self):
         """
-        Test that decode_flags on a scalar catalog returns a length-1
-        list of lists.
+        Test that decode_flags on a scalar catalog returns a
+        single-entry dictionary keyed by the source label.
         """
         cat = SourceCatalog(self.data, self.segm)
         interior_idx = int(np.argmax(cat.bbox_xmin > 0))
         scalar_cat = cat[1 - interior_idx]
-        assert scalar_cat.decode_flags() == [['edge_touch',
-                                              'kron_partial_overlap']]
+        edge_label = int(cat.labels[1 - interior_idx])
+        assert scalar_cat.decode_flags() == {
+            edge_label: ['edge_touch', 'kron_partial_overlap']}
 
     def test_decode_flags_keyword_only(self):
         """

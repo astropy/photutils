@@ -875,7 +875,8 @@ source segment as the region, use the same flag name. However, the
 bit values are package-specific, so always decode flag values with
 :func:`~photutils.segmentation.decode_segmentation_flags`. The
 :meth:`~photutils.segmentation.SourceCatalog.decode_flags` convenience
-method decodes the catalog's own flag values::
+method decodes the catalog's own flag values into a dictionary keyed by
+source label::
 
     >>> import numpy as np
     >>> from astropy.modeling.models import Gaussian2D
@@ -885,10 +886,10 @@ method decodes the catalog's own flag values::
     ...         + Gaussian2D(100, 2, 40, 3, 3)(xx, yy))
     >>> segm = detect_sources(data, 10, 5)
     >>> cat = SourceCatalog(data, segm)
-    >>> for names in cat.decode_flags():
-    ...     print(names)
-    []
-    ['edge_touch', 'kron_partial_overlap']
+    >>> for label, names in cat.decode_flags().items():
+    ...     print(label, names)
+    1 []
+    2 ['edge_touch', 'kron_partial_overlap']
 
 
 API Reference

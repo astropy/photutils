@@ -1621,9 +1621,10 @@ class SourceCatalog:
 
         Returns
         -------
-        decoded : list of list of str or list of list of int
-            A list of the active flag names (or bit values) for each
-            source.
+        decoded : dict
+            A dictionary mapping each source label to the list of its
+            active flag names (or bit values). The entries follow the
+            catalog order.
 
         See Also
         --------
@@ -1639,13 +1640,15 @@ class SourceCatalog:
         ...         + Gaussian2D(100, 2, 40, 3, 3)(xx, yy))
         >>> segm = detect_sources(data, 10, 5)
         >>> cat = SourceCatalog(data, segm)
-        >>> for names in cat.decode_flags():
-        ...     print(names)
-        []
-        ['edge_touch', 'kron_partial_overlap']
+        >>> for label, names in cat.decode_flags().items():
+        ...     print(label, names)
+        1 []
+        2 ['edge_touch', 'kron_partial_overlap']
         """
-        return decode_segmentation_flags(
+        decoded = decode_segmentation_flags(
             self._array('flags'), return_bit_values=return_bit_values)
+        return {int(label): flags
+                for label, flags in zip(self.labels, decoded, strict=True)}
 
     def _get_values(self, array):
         """
