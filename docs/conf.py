@@ -202,6 +202,7 @@ linkcheck_retry = 5
 linkcheck_ignore = [
     'http://data.astropy.org',
     r'https://github\.com/astropy/photutils/(?:issues|pull)/\d+',
+    r'https://ui\.adsabs\.harvard\.edu/.*',  # 405 Client Error
     # Zenodo/doi: 403 Client Error: Forbidden for url
     r'https://zenodo.org/records/*',
     r'https://doi.org/*',
