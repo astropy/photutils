@@ -37,11 +37,12 @@ Getting Started
 ---------------
 
 To group sources, Photutils includes a tool called
-:class:`~photutils.psf.SourceGrouper`. This class organizes sources
-into groups by applying a technique known as hierarchical agglomerative
-clustering, which uses a distance-based criterion. This functionality is
-implemented using the `scipy.cluster.hierarchy.fclusterdata` function
-from the SciPy library.
+:class:`~photutils.psf.SourceGrouper`. This class finds the groups as
+the connected components of the graph linking pairs of sources separated
+by less than or equal to the minimum separation distance. The result is
+identical to single-linkage hierarchical agglomerative clustering with a
+distance criterion, but it is computed using a KD-tree so that it scales
+to large numbers of sources.
 
 Typically, to group sources during PSF fitting, one would provide a
 :class:`~photutils.psf.SourceGrouper` object, configured with a minimum

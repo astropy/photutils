@@ -73,13 +73,14 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
         Keyword arguments are accepted for additional model parameters.
         The values should be 2-tuples of the lower and upper bounds for
         the parameter range. The parameter values will be uniformly
-        distributed between the lower and upper bounds, inclusively.
-        A ``flux`` keyword is mapped to the model's flux parameter
-        name (e.g., for models output from `make_psf_model`). If the
-        parameter is not in the input ``psf_model`` parameter names, it
-        will be ignored. Keywords matching the model's x and y position
-        parameter names are also ignored because the source positions
-        are randomly generated.
+        sampled over the half-open interval defined by the lower
+        and upper bounds (i.e., the lower bound is inclusive and
+        the upper bound is exclusive). A ``flux`` keyword is mapped
+        to the model's flux parameter name (e.g., for models output
+        from `make_psf_model`). If the parameter is not in the input
+        ``psf_model`` parameter names, it will be ignored. Keywords
+        matching the model's x and y position parameter names are also
+        ignored because the source positions are randomly generated.
 
     Returns
     -------
@@ -131,7 +132,7 @@ def make_psf_model_image(shape, psf_model, n_sources, *, model_shape=None,
         data, params = make_psf_model_image(shape, psf_model, n_sources,
                                             flux=(100, 250),
                                             min_separation=10,
-                                            seed=0, sigma=(1, 2))
+                                            seed=0)
         fig, ax = plt.subplots()
         ax.imshow(data, origin='lower')
     """

@@ -297,6 +297,29 @@ caches), so a single instance is safe to share across threads and
 independent images can be processed concurrently.
 
 
+Faster PSF Fitting via Analytic Jacobians
+=========================================
+
+The image-based PSF models `~photutils.psf.ImagePSF` and
+`~photutils.psf.GriddedPSFModel` now provide analytic Jacobians through
+their ``fit_deriv`` methods, computed from the derivatives of their
+interpolating splines. Astropy fitters use the Jacobian automatically
+during PSF photometry, removing the need for finite-difference
+approximations of the parameter derivatives. This eliminates roughly
+60% of the model evaluations performed during fitting, speeding up PSF
+photometry with these models with no change in the fitted results.
+
+
+Scalable Source Grouping
+========================
+
+`~photutils.psf.SourceGrouper` now computes groups using a KD-tree
+connected-components algorithm instead of building a dense pairwise
+distance matrix. The resulting groups are identical to the previous
+single-linkage clustering, but grouping now scales to very large source
+lists in both runtime and memory.
+
+
 Polygon Apertures
 =================
 
