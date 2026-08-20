@@ -132,3 +132,48 @@ def test_mask_to_mirrored_value_mask_keyword():
     mask[4, 2] = True
     result = _mask_to_mirrored_value(data, replace_mask, center, mask=mask)
     assert result[0, 2] == 0
+
+
+def test_mask_to_mirrored_value_return_uncorrected():
+    """
+    Test that return_uncorrected reports pixels whose mirror was outside
+    the image.
+    """
+    center = (2.0, 2.0)
+    data = np.arange(16.0).reshape(4, 4)
+    replace_mask = np.zeros(data.shape, dtype=bool)
+    replace_mask[0, 0] = True  # mirror at (4, 4) is outside the image
+    replace_mask[1, 2] = True  # mirror at (3, 2) is available
+    result, uncorrected = _mask_to_mirrored_value(
+        data, replace_mask, center, return_uncorrected=True)
+    assert uncorrected[0, 0]
+    assert not uncorrected[1, 2]
+    assert np.count_nonzero(uncorrected) == 1
+    assert result[0, 0] == 0
+    assert result[1, 2] == data[3, 2]
+
+    # The two-value return preserves the corrected data
+    result_only = _mask_to_mirrored_value(data, replace_mask, center)
+    assert_equal(result, result_only)
+
+
+def test_mask_to_mirrored_value_return_uncorrected_masked():
+    """
+    Test that return_uncorrected reports pixels whose mirror is excluded
+    by the ``mask`` keyword or is itself in ``replace_mask``.
+    """
+    center = (2.0, 2.0)
+    data = np.arange(25.0).reshape(5, 5)
+    replace_mask = np.zeros(data.shape, dtype=bool)
+    mask = np.zeros(data.shape, dtype=bool)
+    replace_mask[0, 2] = True  # mirror at (4, 2) is in mask
+    replace_mask[1, 1] = True  # mirror at (3, 3) is in replace_mask
+    replace_mask[3, 3] = True
+    mask[4, 2] = True
+    result, uncorrected = _mask_to_mirrored_value(
+        data, replace_mask, center, mask=mask, return_uncorrected=True)
+    assert_equal(np.nonzero(uncorrected),
+                 (np.array([0, 1, 3]), np.array([2, 1, 3])))
+    assert result[0, 2] == 0
+    assert result[1, 1] == 0
+    assert result[3, 3] == 0

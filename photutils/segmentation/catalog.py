@@ -1489,9 +1489,10 @@ class SourceCatalog:
         `~photutils.segmentation.decode_segmentation_flags` to decode
         the values.
 
-        Accessing ``flags`` computes the moment, covariance, and
-        centroid properties if they have not already been computed (the
-        results are cached and reused by those properties).
+        Accessing ``flags`` computes the moment, covariance, centroid,
+        and Kron-aperture properties if they have not already
+        been computed (the results are cached and reused by those
+        properties).
 
         The flags are:
 
@@ -1565,6 +1566,24 @@ class SourceCatalog:
         quad = self._array('centroid_quad')
         quad_failed = ~np.all(np.isfinite(quad), axis=1)
         flags[quad_failed] |= SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED
+
+        # Kron-aperture flags
+        flags |= self._kron_flags
+
+        # Minimum Kron radius or minimum circular radius applied.
+        # _measured_kron_radius is the unscaled measured value, which
+        # _calc_kron_radius clips to kron_params[1] and sets to zero
+        # when the minimum circular aperture is used instead. A
+        # measured value equal to the minimum is also flagged because
+        # _measured_kron_radius returns exactly kron_params[1] when the
+        # Kron numerator or denominator is not positive. NaN comparisons
+        # are False, so sources with an undefined Kron radius are not
+        # flagged here (they are flagged as kron_undefined instead).
+        measured = self._measured_kron_radius
+        kron_radius = self._array('kron_radius').value
+        min_applied = ((measured <= self.kron_params[1])
+                       | (kron_radius == 0))
+        flags[min_applied] |= SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS
 
         return flags
 
@@ -4141,11 +4160,17 @@ class SourceCatalog:
 
         Neighboring sources can be included, masked, or corrected based
         on the ``aperture_mask_method`` keyword.
+
+        The last returned value is a dictionary of the cutout masks
+        needed to compute the aperture quality flags. Its ``segm_mask``
+        and ``uncorrected_mask`` values are `None` where they do not
+        apply (i.e., for an ``aperture_mask_method`` of "none" and for a
+        method other than "correct", respectively).
         """
         # Make cutouts of the data based on the aperture bbox
         slc_lg, slc_sm = aperture_bbox.get_overlap_slices(self._data.shape)
         if slc_lg is None:
-            return (None,) * 5
+            return (None,) * 6
 
         data = self._data[slc_lg].astype(float) - local_background
 
@@ -4162,6 +4187,8 @@ class SourceCatalog:
                         y_centroid - max(0, aperture_bbox.iymin))
 
         # Mask or correct neighboring sources
+        segm_mask = None
+        uncorrected_mask = None
         if self.aperture_mask_method == 'none':
             mask = data_mask
         else:
@@ -4174,13 +4201,18 @@ class SourceCatalog:
                 mask = data_mask
 
         if self.aperture_mask_method == 'correct':
-            data = _mask_to_mirrored_value(data, segm_mask, cutout_xycen,
-                                           mask=mask)
+            data, uncorrected_mask = _mask_to_mirrored_value(
+                data, segm_mask, cutout_xycen, mask=mask,
+                return_uncorrected=True)
             if error is not None:
                 error = _mask_to_mirrored_value(error, segm_mask, cutout_xycen,
                                                 mask=mask)
 
-        return data, error, mask, cutout_xycen, slc_sm
+        flag_masks = {'data_mask': data_mask,
+                      'segm_mask': segm_mask,
+                      'uncorrected_mask': uncorrected_mask}
+
+        return data, error, mask, cutout_xycen, slc_sm, flag_masks
 
     def _make_circular_apertures(self, radius):
         """
@@ -4858,7 +4890,7 @@ class SourceCatalog:
                 continue
 
             # Prepare cutouts of the data based on the aperture size
-            data, error, mask, _, slc_sm = self._make_aperture_data(
+            data, error, mask, _, slc_sm, _ = self._make_aperture_data(
                 label, xcen, ycen, aperture_mask.bbox, bkg)
 
             aperture_weights = aperture_mask.data[slc_sm]
@@ -4901,8 +4933,9 @@ class SourceCatalog:
 
         Returns
         -------
-        kron_flux, kron_flux_err : tuple of `~numpy.ndarray`
-            The Kron flux and flux error.
+        kron_flux, kron_flux_err, kron_flags : tuple of `~numpy.ndarray`
+            The Kron flux, flux error, and bitwise quality flags (see
+            `~photutils.segmentation.decode_segmentation_flags`).
         """
         if kron_params is None:
             kron_aperture = self._array('kron_aperture')
@@ -4916,14 +4949,17 @@ class SourceCatalog:
 
         _floor = math.floor
         max_size = max(self._data.size, 1_000_000)
+        ny_img, nx_img = self._data.shape
 
         flux = []
         flux_err = []
+        kron_flags = []
         for label, aperture, bkg in zip(labels, kron_aperture,
                                         self._local_background, strict=True):
             if aperture is None:
                 flux.append(np.nan)
                 flux_err.append(np.nan)
+                kron_flags.append(SEGMENTATION_FLAGS.KRON_UNDEFINED)
                 continue
 
             xcen, ycen = aperture.positions
@@ -4942,6 +4978,7 @@ class SourceCatalog:
                 if nx * ny > max_size:
                     flux.append(np.nan)
                     flux_err.append(np.nan)
+                    kron_flags.append(SEGMENTATION_FLAGS.KRON_UNDEFINED)
                     continue
                 edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
                          iymin - 0.5 - ycen, iymax - 0.5 - ycen)
@@ -4968,6 +5005,7 @@ class SourceCatalog:
                 if nx * ny > max_size:
                     flux.append(np.nan)
                     flux_err.append(np.nan)
+                    kron_flags.append(SEGMENTATION_FLAGS.KRON_UNDEFINED)
                     continue
                 edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
                          iymin - 0.5 - ycen, iymax - 0.5 - ycen)
@@ -4976,15 +5014,44 @@ class SourceCatalog:
                     nx, ny, a, b, theta_rad, 1, 1)
 
             bbox = BoundingBox(ixmin, ixmax, iymin, iymax)
-            data, error, mask, _, slc_sm = self._make_aperture_data(
-                label, xcen, ycen, bbox, bkg)
+            (data, error, mask, _, slc_sm,
+             flag_masks) = self._make_aperture_data(label, xcen, ycen, bbox,
+                                                    bkg)
             if data is None:
                 flux.append(np.nan)
                 flux_err.append(np.nan)
+                kron_flags.append(SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
                 continue
 
             aperture_weights = mask_data[slc_sm]
-            pixel_mask = (aperture_weights > 0) & ~mask
+            in_aperture = aperture_weights > 0
+            pixel_mask = in_aperture & ~mask
+
+            kron_flag = 0
+            # Flag an aperture bounding box that extends beyond the data
+            # array. The box corners can have zero aperture weight,
+            # so also require that a pixel with nonzero weight falls
+            # outside the data.
+            if ((ixmin < 0 or iymin < 0 or ixmax > nx_img
+                 or iymax > ny_img)
+                    and (np.count_nonzero(in_aperture)
+                         != np.count_nonzero(mask_data))):
+                kron_flag |= SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP
+
+            if np.any(flag_masks['data_mask'] & in_aperture):
+                kron_flag |= SEGMENTATION_FLAGS.KRON_MASKED_PIXELS
+
+            segm_mask = flag_masks['segm_mask']
+            if segm_mask is not None and np.any(segm_mask & in_aperture):
+                kron_flag |= SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS
+
+            uncorrected_mask = flag_masks['uncorrected_mask']
+            if (uncorrected_mask is not None
+                    and np.any(uncorrected_mask & in_aperture)):
+                kron_flag |= SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS
+
+            kron_flags.append(kron_flag)
+
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', RuntimeWarning)
                 values = (aperture_weights * data)[pixel_mask]
@@ -5003,8 +5070,9 @@ class SourceCatalog:
 
         flux = np.array(flux)
         flux_err = np.array(flux_err)
+        kron_flags = np.array(kron_flags, dtype=int)
 
-        return flux, flux_err
+        return flux, flux_err, kron_flags
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def kron_photometry(self, kron_params, name=None, overwrite=False):
@@ -5051,7 +5119,7 @@ class SourceCatalog:
             `centroid` position or elliptical shape parameters are not
             finite or where the source is completely masked).
         """
-        kron_flux, kron_flux_err = self._calc_kron_photometry(
+        kron_flux, kron_flux_err, _ = self._calc_kron_photometry(
             kron_params=kron_params)
         if self._data_unit is not None:
             kron_flux <<= self._data_unit
@@ -5073,17 +5141,31 @@ class SourceCatalog:
     @cached_property
     def _kron_photometry(self):
         """
-        The flux and flux error in the Kron aperture (without units).
+        The flux, flux error, and bitwise quality flags of the Kron
+        aperture (without units) as a 2D array with columns ``(flux,
+        flux_err, flags)`` and shape ``(n_labels, 3)``.
+
+        The flags are stored as floats so that all three values can be
+        kept in a single array that slices along the source axis. All of
+        the flag bit values are exactly representable as floats.
 
         See the `SourceCatalog` ``aperture_mask_method`` keyword for
         options to mask neighboring sources.
 
-        If the Kron aperture is `None`, then ``np.nan`` will be
-        returned. This will occur where the source `centroid` position
-        or elliptical shape parameters are not finite or where the
-        source is completely masked.
+        If the Kron aperture is `None`, then ``np.nan`` will be returned
+        for the flux and flux error. This will occur where the source
+        `centroid` position or elliptical shape parameters are not
+        finite or where the source is completely masked.
         """
         return np.transpose(self._calc_kron_photometry(kron_params=None))
+
+    @cached_property
+    def _kron_flags(self):
+        """
+        The per-source bitwise quality flags from the Kron-aperture
+        photometry.
+        """
+        return self._kron_photometry[:, 2].astype(int)
 
     @cached_property
     def kron_flux(self):

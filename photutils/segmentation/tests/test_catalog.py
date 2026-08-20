@@ -1587,6 +1587,178 @@ class TestSourceCatalogFlags:
                 | SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED)
         assert not np.any(cat.flags & bits)
 
+    def test_kron_partial_overlap(self):
+        """
+        Test the kron_partial_overlap flag when the Kron aperture
+        extends beyond the image while the segment does not.
+        """
+        yy, xx = np.mgrid[0:41, 0:41]
+        data = Gaussian2D(100, 6, 20, 3, 3)(xx, yy)
+        segm = detect_sources(data, 25, 5)  # compact segment
+        cat = SourceCatalog(data, segm)
+        assert not (cat.flags[0] & SEGMENTATION_FLAGS.EDGE_TOUCH)
+        assert (cat.flags[0]
+                & SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP)
+
+    def test_kron_partial_overlap_not_set(self):
+        """
+        Test that kron_partial_overlap is not set for a source whose
+        Kron aperture is completely inside the image.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        idx = np.argmax(cat.bbox_xmin > 0)
+        assert not (cat.flags[idx]
+                    & SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP)
+
+    @staticmethod
+    def _make_deblended_pair():
+        """
+        Make the data and deblended segmentation image for a pair of
+        overlapping sources.
+        """
+        yy, xx = np.mgrid[0:61, 0:61]
+        data = (Gaussian2D(100, 25, 30, 4, 4)(xx, yy)
+                + Gaussian2D(100, 38, 30, 4, 4)(xx, yy))
+        segm = detect_sources(data, 10, 5)
+        return data, deblend_sources(data, segm, 5, progress_bar=False)
+
+    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+    def test_kron_neighbor_pixels(self):
+        """
+        Test the kron_neighbor_pixels flag when a neighbor segment falls
+        within the Kron aperture.
+        """
+        data, segm = self._make_deblended_pair()
+        cat = SourceCatalog(data, segm, aperture_mask_method='correct')
+        assert np.all(cat.flags
+                      & SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS)
+
+    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+    def test_kron_uncorrected_pixels(self):
+        """
+        Test the kron_uncorrected_pixels flag for neighbor pixels within
+        the Kron aperture that could not be replaced by a mirrored
+        value.
+        """
+        data, segm = self._make_deblended_pair()
+        cat = SourceCatalog(data, segm, aperture_mask_method='correct')
+        assert np.all(cat.flags
+                      & SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS)
+
+        # Neighboring sources are neither masked nor corrected
+        cat2 = SourceCatalog(data, segm, aperture_mask_method='none')
+        bits = (SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS
+                | SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS)
+        assert not np.any(cat2.flags & bits)
+
+    def test_kron_neighbor_pixels_not_set(self):
+        """
+        Test that kron_neighbor_pixels is not set when the Kron aperture
+        contains no neighboring source pixels.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        assert not np.any(cat.flags
+                          & SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS)
+
+    def test_kron_masked_pixels(self):
+        """
+        Test the kron_masked_pixels flag for a masked pixel inside the
+        Kron aperture but outside the segment.
+        """
+        cat0 = SourceCatalog(self.data, self.segm)
+        interior_idx = np.argmax(cat0.bbox_xmin > 0)
+        # Mask a pixel just outside the segment bbox, inside the
+        # Kron aperture of the interior source
+        x_out = int(cat0.bbox_xmax[interior_idx]) + 1
+        y_cen = int(cat0.bbox_ymin[interior_idx]
+                    + cat0.bbox_ymax[interior_idx]) // 2
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[y_cen, x_out] = True
+        cat = SourceCatalog(self.data, self.segm, mask=mask)
+        assert (cat.flags[interior_idx]
+                & SEGMENTATION_FLAGS.KRON_MASKED_PIXELS)
+        assert not (cat.flags[interior_idx]
+                    & SEGMENTATION_FLAGS.MASKED_PIXELS)
+
+    def test_kron_undefined(self):
+        """
+        Test the kron_undefined flag for a fully-masked source (whose
+        Kron aperture is undefined).
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[self.segm.data == self.segm.labels[0]] = True
+        cat = SourceCatalog(self.data, self.segm, mask=mask)
+        assert cat.kron_aperture[0] is None
+        assert cat.flags[0] & SEGMENTATION_FLAGS.KRON_UNDEFINED
+
+    @pytest.mark.parametrize('circular', [False, True])
+    def test_kron_undefined_oversized(self, circular):
+        """
+        Test the kron_undefined flag when the Kron photometry is skipped
+        because the aperture is too large.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        _ = cat.kron_aperture  # cache the apertures
+        if circular:
+            aperture = CircularAperture((25, 25), r=2000)
+        else:
+            aperture = EllipticalAperture((25, 25), 2000, 2000,
+                                          theta=0.0)
+        cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
+        assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_UNDEFINED)
+
+    def test_kron_no_overlap(self):
+        """
+        Test the kron_no_overlap flag when the Kron aperture is
+        completely outside the data array.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        _ = cat.kron_aperture  # cache the apertures
+        aperture = EllipticalAperture((-1000, -1000), 5, 3, theta=0.0)
+        cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
+        assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
+
+    def test_kron_minimum_radius(self):
+        """
+        Test the kron_minimum_radius flag when the measured Kron radius
+        is clipped to the kron_params minimum.
+        """
+        # A large minimum unscaled Kron radius forces clipping for
+        # every source
+        cat = SourceCatalog(self.data, self.segm,
+                            kron_params=(2.5, 5.9, 0.0))
+        assert np.all(cat.flags
+                      & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
+
+        # The default minimum is not triggered by these resolved
+        # sources
+        cat2 = SourceCatalog(self.data, self.segm)
+        assert not np.any(cat2.flags
+                          & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
+
+    def test_kron_minimum_circular_radius(self):
+        """
+        Test the kron_minimum_radius flag when the minimum circular
+        aperture is used (kron_radius set to zero).
+        """
+        # A large minimum circular radius forces the circular fallback
+        # for every source
+        cat = SourceCatalog(self.data, self.segm,
+                            kron_params=(2.5, 1.4, 50.0))
+        assert_equal(cat.kron_radius.value, np.zeros(2))
+        assert np.all(cat.flags
+                      & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
+
+    def test_kron_minimum_radius_two_element_params(self):
+        """
+        Test the kron_minimum_radius flag with a two-element kron_params
+        (no minimum circular radius).
+        """
+        cat = SourceCatalog(self.data, self.segm,
+                            kron_params=(2.5, 5.9))
+        assert np.all(cat.flags
+                      & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
+
     @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_provenance_from_deblending(self):
         """
@@ -2310,7 +2482,7 @@ def test_kron_photometry_oom_guard(gauss_101_catalog):
         if result[0] is not None:
             # Set mask to all True (all pixels masked)
             return (result[0], result[1], np.ones_like(result[2]),
-                    result[3], result[4])
+                    result[3], result[4], result[5])
         return result
 
     with patch.object(type(cat4), '_make_aperture_data', _make_all_masked):
@@ -2436,7 +2608,7 @@ def test_centroid_win_aperture_mask_mask(centroid_win_data):
 
 def test_make_aperture_data_outside_image(gauss_101_catalog):
     """
-    Test that _make_aperture_data returns (None,) * 5 when the aperture
+    Test that _make_aperture_data returns (None,) * 6 when the aperture
     bbox does not overlap the data.
     """
     _data, _segm, cat = gauss_101_catalog
@@ -2445,7 +2617,7 @@ def test_make_aperture_data_outside_image(gauss_101_catalog):
     offimage_bbox = BoundingBox(ixmin=200, ixmax=210,
                                 iymin=200, iymax=210)
     result = cat._make_aperture_data(1, 205.0, 205.0, offimage_bbox, 0.0)
-    assert result == (None,) * 5
+    assert result == (None,) * 6
 
 
 def test_flux_radius_optimizer_args_oom_guard(gauss_101_catalog):
