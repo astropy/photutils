@@ -1979,3 +1979,29 @@ def test_container_getattr_private_and_empty():
     empty = EPSFStars([])
     with pytest.raises(AttributeError, match='empty'):
         empty.cutout_center  # noqa: B018
+
+
+def test_epsfstars_array_conversion():
+    """
+    Regression test that a single-star EPSFStars container (e.g., from
+    indexing) converts to the 2D star cutout, so that it can be passed
+    directly to matplotlib's imshow, and that a multi-star container
+    stacks the cutouts along the first axis.
+    """
+    data1 = np.arange(25.0).reshape(5, 5)
+    data2 = data1 * 2.0
+    stars = EPSFStars([EPSFStar(data1), EPSFStar(data2)])
+
+    single = np.asarray(stars[0])
+    assert single.shape == (5, 5)
+    assert_array_equal(single, data1)
+
+    stacked = np.asarray(stars)
+    assert stacked.shape == (2, 5, 5)
+    assert_array_equal(stacked[1], data2)
+
+    # dtype and copy keywords are honored
+    assert np.asarray(stars[0], dtype=np.float32).dtype == np.float32
+    arr = np.array(stars[0], copy=True)
+    arr[0, 0] = -99.0
+    assert stars[0].data[0, 0] == 0.0

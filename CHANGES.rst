@@ -885,6 +885,12 @@ API Changes
     values within a fit region now includes the location of the fit
     region. [#2395]
 
+  - ``EPSFStars`` now explicitly supports array conversion (e.g.,
+    ``np.asarray`` or passing it to matplotlib's ``imshow``). A
+    container holding a single star (e.g., from indexing) converts to
+    that star's 2D cutout, and a container holding multiple stars
+    converts to a 3D stack of the cutouts. [#2395]
+
 - ``photutils.segmentation``
 
   - The ``deblend_sources`` "too many markers" warning key stored in

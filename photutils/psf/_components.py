@@ -1413,17 +1413,13 @@ class PSFResultsAssembler:
             for param in param_names:
                 if row[f'{param}_fixed']:
                     continue
-                bnds = row[f'{param}_bounds']
-                if bnds is None:
-                    continue
-                bounds = np.array([i for i in bnds if i is not None])
+                bounds = np.array([i for i in row[f'{param}_bounds']
+                                   if i is not None])
                 if bounds.size == 0:
                     continue
                 value = row[param]
                 if isinstance(value, u.Quantity):
                     value = value.value
-                if not np.isfinite(value):
-                    continue
                 if np.any(np.abs(bounds - value) <= bound_tol):
                     flags[index] |= PSF_FLAGS.NEAR_BOUND
                     break

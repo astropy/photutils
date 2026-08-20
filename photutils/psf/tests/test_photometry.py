@@ -2562,6 +2562,40 @@ def test_near_bound_flag_model_bounds():
     assert phot['flags'][0] & 32
 
 
+def test_near_bound_flag_flux_bounds_units():
+    """
+    Regression test that the near_bound flag (bit 32) is evaluated for
+    a flux parameter with bounds when the data has units (the fitted
+    flux is then a Quantity).
+    """
+    unit = u.Jy
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image((35, 35), model, 1,
+                                        model_shape=(9, 9),
+                                        flux=(500, 500),
+                                        min_separation=10, seed=0)
+    data <<= unit
+    init = Table({'x': params['x_0'], 'y': params['y_0'],
+                  'flux': [650.0 * unit]})
+
+    # Bounds that pin the fitted flux at the lower bound
+    fit_model = CircularGaussianPRF(fwhm=2.7)
+    fit_model.flux.bounds = (600.0, 700.0)
+    psfphot = PSFPhotometry(fit_model, (5, 5))
+    phot = psfphot(data, init_params=init)
+    assert phot['flux_fit'].unit == unit
+    assert_allclose(phot['flux_fit'][0].value, 600.0, atol=0.02)
+    assert phot['flags'][0] & 32
+
+    # Bounds that do not constrain the fit
+    fit_model = CircularGaussianPRF(fwhm=2.7)
+    fit_model.flux.bounds = (0.0, 1000.0)
+    psfphot = PSFPhotometry(fit_model, (5, 5))
+    phot = psfphot(data, init_params=init)
+    assert_allclose(phot['flux_fit'][0].value, 500.0, rtol=0.01)
+    assert not phot['flags'][0] & 32
+
+
 def test_error_weights_message_has_source_context():
     """
     Regression test that the invalid-error-value message names the

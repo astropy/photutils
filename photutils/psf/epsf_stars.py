@@ -428,6 +428,18 @@ class EPSFStars:
         """
         yield from self._data
 
+    def __array__(self, dtype=None, copy=None):
+        """
+        Array representation of the star cutout data (e.g., for
+        matplotlib).
+
+        A container holding a single star returns the 2D cutout of that
+        star. Otherwise, the cutouts of all stars are stacked along the
+        first axis (which requires that they have the same shape).
+        """
+        data = self._data[0] if len(self._data) == 1 else self._data
+        return np.array(data, dtype=dtype, copy=copy)
+
     def __getstate__(self):
         """
         Return state for pickling (avoids __getattr__ recursion).
