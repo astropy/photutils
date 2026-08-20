@@ -2541,6 +2541,7 @@ def test_centroid_win_err_cov():
                     np.sqrt((cov[0, 0, 0], cov[0, 1, 1])))
 
 
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_err_cov_fallback():
     """
     Test that fallback sources use the full isophotal covariance.
@@ -2567,6 +2568,7 @@ def test_centroid_win_err_cov_fallback():
                     cat._centroid_err_cov[1])
 
 
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_err():
     """
     Test that centroid_err returns finite 1-sigma position errors
