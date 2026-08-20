@@ -2434,33 +2434,42 @@ def test_decode_flags():
     # Test decode_flags method
     decoded_flags = psfphot.decode_flags()
 
-    # Check that we get a list of lists
-    assert isinstance(decoded_flags, list)
+    # Check that we get a dictionary keyed by source id
+    assert isinstance(decoded_flags, dict)
     assert len(decoded_flags) == len(results)
+    assert list(decoded_flags) == list(results['id'])
+    assert all(type(key) is int for key in decoded_flags)
 
-    # Each element should be a list of strings
-    for decoded in decoded_flags:
+    # Each value should be a list of strings
+    for decoded in decoded_flags.values():
         assert isinstance(decoded, list)
         for flag_name in decoded:
             assert isinstance(flag_name, str)
 
     # Check that the first source has no flags or minimal flags
     # (depending on fitting success)
-    assert isinstance(decoded_flags[0], list)
+    assert isinstance(decoded_flags[1], list)
 
     # Check that the second source has the negative_flux flag
-    assert 'negative_flux' in decoded_flags[1]
+    assert 'negative_flux' in decoded_flags[2]
 
     # Check that the third source has flags (it's outside the image
     # bounds). It should have 'no_overlap' since it's completely
     # outside.
-    assert len(decoded_flags[2]) > 0
-    assert 'no_overlap' in decoded_flags[2]
+    assert len(decoded_flags[3]) > 0
+    assert 'no_overlap' in decoded_flags[3]
 
     # Verify that decode_flags gives the same result as calling
     # decode_psf_flags directly
     direct_decoded = decode_psf_flags(results['flags'])
-    assert decoded_flags == direct_decoded
+    assert list(decoded_flags.values()) == direct_decoded
+
+    # Custom, non-sequential ids key the decoded dictionary
+    init_params['id'] = [7, 3, 11]
+    results2 = psfphot(data, init_params=init_params)
+    decoded2 = psfphot.decode_flags()
+    assert list(decoded2) == list(results2['id'])
+    assert 'negative_flux' in decoded2[3]
 
 
 def test_int_mask_matches_bool_mask():

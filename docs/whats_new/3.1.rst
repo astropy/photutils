@@ -652,6 +652,22 @@ Removed Deprecations
 Breaking Changes
 ----------------
 
+PSF ``decode_flags`` Methods Return a Dictionary
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :meth:`~photutils.psf.PSFPhotometry.decode_flags` and
+:meth:`~photutils.psf.IterativePSFPhotometry.decode_flags` methods
+now return a dictionary mapping each source id from the results
+table to its list of active flag names (or bit values), instead of a
+positional list of lists. Decoded flags can now be looked up directly
+by source id, which may not be sequential when custom ids are input via
+``init_params``, and the result is consistent with the new aperture
+and segmentation ``decode_flags`` methods. Code that iterated over
+the previous list should iterate over the dictionary's ``.values()``
+(or ``.items()`` to also get the source ids). The module-level
+:func:`~photutils.psf.decode_psf_flags` function is unchanged and still
+returns lists.
+
 WebbPSF ePSF Grid Positions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

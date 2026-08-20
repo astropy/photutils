@@ -860,6 +860,17 @@ API Changes
 
 - ``photutils.psf``
 
+  - The ``PSFPhotometry.decode_flags`` and
+    ``IterativePSFPhotometry.decode_flags`` methods now return a
+    dictionary mapping each source id from the results table to its
+    list of active flag names (or bit values), instead of a positional
+    list of lists. This is a backward-incompatible change, made so that
+    decoded flags can be looked up directly by source id (which may not
+    be sequential when custom ids are input) and for consistency with
+    the new aperture and segmentation ``decode_flags`` methods. The
+    module-level ``decode_psf_flags`` function is unchanged and still
+    returns lists. [#2400]
+
   - The ``EPSFBuildResult`` class returned by ``EPSFBuilder`` has been
     renamed to ``EPSFBuildResults``. The old ``EPSFBuildResult`` name is
     deprecated and will be removed in a future version. [#2326]
