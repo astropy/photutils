@@ -408,17 +408,26 @@ been calculated and stored in the array ``error``::
      id x_center y_center    flux    flux_err     area   flags
                                                   pix2
     --- -------- -------- --------- ---------- --------- -----
-      1     71.4     23.9 28.274334 0.53173616 28.274334     0
-      2     42.1     41.7 28.274334 0.53173616 28.274334     0
-      3     54.6     68.2 28.274334 0.53173616 28.274334     0
+      1     71.4     23.9 28.274334 0.50201964 28.274334     0
+      2     42.1     41.7 28.274334  0.5002027 28.274334     0
+      3     54.6     68.2 28.274334 0.50259927 28.274334     0
 
-The ``'flux_err'`` values are calculated as:
+The flux is the sum of the pixel values weighted by their aperture
+overlap fractions, :math:`F = \sum_{i \in A} w_i f_i`, so the
+``'flux_err'`` values are calculated by standard error propagation as:
 
-.. math:: \Delta F = \sqrt{\sum_{i \in A} \sigma_{\mathrm{tot}, i}^2}
+.. math:: \Delta F = \sqrt{\sum_{i \in A} w_i^2
+          \sigma_{\mathrm{tot}, i}^2}
 
-where :math:`A` denotes the unmasked pixels within the aperture and
-:math:`\sigma_{\mathrm{tot}, i}` is the corresponding value from the
-input ``error`` array.
+where :math:`A` denotes the unmasked pixels within the aperture,
+:math:`w_i` is the aperture overlap fraction of pixel :math:`i` (1 for
+pixels entirely within the aperture), and :math:`\sigma_{\mathrm{tot},
+i}` is the corresponding value from the input ``error`` array.
+
+Because the variance of each boundary pixel is weighted by its squared
+overlap fraction, the flux error depends on the sub-pixel placement of
+the aperture (note the slightly different ``'flux_err'`` values in the
+example above).
 
 In the example above, the ``error`` keyword is assumed to specify the
 *total* uncertainty. That is, it either includes the Poisson noise from
@@ -445,9 +454,9 @@ units of electrons/s, we use the exposure time as the effective gain::
      id x_center y_center    flux    flux_err     area   flags
                                                   pix2
     --- -------- -------- --------- ---------- --------- -----
-      1     71.4     23.9 28.274334 0.58248777 28.274334     0
-      2     42.1     41.7 28.274334 0.58248777 28.274334     0
-      3     54.6     68.2 28.274334 0.58248777 28.274334     0
+      1     71.4     23.9 28.274334 0.54993497 28.274334     0
+      2     42.1     41.7 28.274334  0.5479446 28.274334     0
+      3     54.6     68.2 28.274334 0.55056991 28.274334     0
 
 Note that the ``'flux_err'`` values are now larger than in the
 previous example because they include the additional Poisson noise from
@@ -484,9 +493,9 @@ that the ``'flux_err'`` columns are populated::
      id x_center y_center   flux_0    flux_1    flux_2  flux_err_0 flux_err_1 flux_err_2   area_0    area_1    area_2  flags_0 flags_1 flags_2
                                                                                             pix2      pix2      pix2
     --- -------- -------- --------- --------- --------- ---------- ---------- ---------- --------- --------- --------- ------- ------- -------
-      1     71.4     23.9 28.274334 50.265482 78.539816 0.58248777 0.77665037 0.97081296 28.274334 50.265482 78.539816       0       0       0
-      2     42.1     41.7 28.274334 50.265482 78.539816 0.58248777 0.77665037 0.97081296 28.274334 50.265482 78.539816       0       0       0
-      3     54.6     68.2 28.274334 50.265482 78.539816 0.58248777 0.77665037 0.97081296 28.274334 50.265482 78.539816       0       0       0
+      1     71.4     23.9 28.274334 50.265482 78.539816 0.54993497 0.74349857 0.93847179 28.274334 50.265482 78.539816       0       0       0
+      2     42.1     41.7 28.274334 50.265482 78.539816  0.5479446 0.74220043 0.93687955 28.274334 50.265482 78.539816       0       0       0
+      3     54.6     68.2 28.274334 50.265482 78.539816 0.55056991 0.74457671  0.9390589 28.274334 50.265482 78.539816       0       0       0
 
 When a list of aperture objects is provided, the output table column
 names are appended with the index of the aperture within the input
@@ -511,9 +520,9 @@ size and orientation. For example, an elliptical aperture requires
      id x_center y_center   flux    flux_err    area   flags
                                                 pix2
     --- -------- -------- -------- ---------- -------- -----
-      1     71.4     23.9 47.12389 0.75198848 47.12389     0
-      2     42.1     41.7 47.12389 0.75198848 47.12389     0
-      3     54.6     68.2 47.12389 0.75198848 47.12389     0
+      1     71.4     23.9 47.12389 0.71829412 47.12389     0
+      2     42.1     41.7 47.12389 0.71591942 47.12389     0
+      3     54.6     68.2 47.12389 0.71923666 47.12389     0
 
 To measure photometry using multiple elliptical apertures, provide a
 list of aperture objects with identical positions, but with different
@@ -532,9 +541,9 @@ list of aperture objects with identical positions, but with different
      id x_center y_center  flux_0    flux_1    flux_2  flux_err_0 flux_err_1 flux_err_2  area_0    area_1    area_2  flags_0 flags_1 flags_2
                                                                                           pix2      pix2      pix2
     --- -------- -------- -------- --------- --------- ---------- ---------- ---------- -------- --------- --------- ------- ------- -------
-      1     71.4     23.9 47.12389 75.398224 109.95574 0.75198848 0.95119855  1.1486814 47.12389 75.398224 109.95574       0       0       0
-      2     42.1     41.7 47.12389 75.398224 109.95574 0.75198848 0.95119855  1.1486814 47.12389 75.398224 109.95574       0       0       0
-      3     54.6     68.2 47.12389 75.398224 109.95574 0.75198848 0.95119855  1.1486814 47.12389 75.398224 109.95574       0       0       0
+      1     71.4     23.9 47.12389 75.398224 109.95574 0.71829412   0.917401  1.1158155 47.12389 75.398224 109.95574       0       0       0
+      2     42.1     41.7 47.12389 75.398224 109.95574 0.71591942 0.91551562  1.1140582 47.12389 75.398224 109.95574       0       0       0
+      3     54.6     68.2 47.12389 75.398224 109.95574 0.71923666 0.91843047  1.1165584 47.12389 75.398224 109.95574       0       0       0
 
 
 Aperture Photometry on a 3D Data Cube
@@ -566,7 +575,7 @@ read as many attributes as needed::
     >>> print(flux)
     [ 78.53981634 117.80972451 157.07963268 141.37166941  94.24777961]
     >>> print(flux_err)
-    [0.88622693 0.88622693 0.88622693 0.88622693 0.88622693]
+    [0.85273022 0.85273022 0.85273022 0.85273022 0.85273022]
 
 Each element of ``flux`` and ``flux_err`` corresponds to one image in
 the cube, together giving the source's light curve and its uncertainty.
@@ -1006,9 +1015,9 @@ the source fluxes in the circular apertures::
      id x_center y_center    flux    flux_err     area   flags
                                                   pix2
     --- -------- -------- --------- ---------- --------- -----
-      1    145.1    168.3 1128.1245 0.88622693 78.539816     0
-      2     84.5    224.1   735.739 0.88622693 78.539816     0
-      3     48.3    200.3 1299.6341 0.88622693 78.539816     0
+      1    145.1    168.3 1128.1245  0.8552501 78.539816     0
+      2     84.5    224.1   735.739 0.85778957 78.539816     0
+      3     48.3    200.3 1299.6341 0.85681906 78.539816     0
 
 The total background within each source aperture is the mean background
 per pixel multiplied by the aperture area. Rather than the analytical
@@ -1042,9 +1051,9 @@ output table::
      id x_center y_center    flux    flux_err     area   flags total_bkg flux_bkgsub
                                                   pix2
     --- -------- -------- --------- ---------- --------- ----- --------- -----------
-      1    145.1    168.3 1128.1245 0.88622693 78.539816     0 392.23708   735.88739
-      2     84.5    224.1   735.739 0.88622693 78.539816     0  403.2968   332.44219
-      3     48.3    200.3 1299.6341 0.88622693 78.539816     0 382.40618   917.22792
+      1    145.1    168.3 1128.1245  0.8552501 78.539816     0 392.23708   735.88739
+      2     84.5    224.1   735.739 0.85778957 78.539816     0  403.2968   332.44219
+      3     48.3    200.3 1299.6341 0.85681906 78.539816     0 382.40618   917.22792
 
 
 Sigma-clipped median within a circular annulus

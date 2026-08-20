@@ -196,6 +196,31 @@ apertures with fewer than two unmasked pixels::
     0.27447881801886487
 
 
+Corrected Flux Errors for Partial Pixels
+========================================
+
+The propagated flux errors are now mathematically consistent with
+the reported fluxes. An aperture flux is the sum of the pixel
+values weighted by their aperture overlap fractions, :math:`F =
+\sum_i w_i f_i`, so its variance with independent pixel errors is
+:math:`\sum_i w_i^2 \sigma_i^2`. Previously, the pixel variances on the
+aperture boundary were weighted by the linear overlap fraction, which
+overestimates the flux error by a few percent for small and compact
+apertures (Monte Carlo simulations confirm that the new errors match the
+actual scatter of the measured fluxes).
+
+The corrected error propagation applies everywhere fractional
+pixel weights are combined with an input ``error`` array,
+including `~photutils.aperture.AperturePhotometry`,
+:func:`~photutils.aperture.aperture_photometry`,
+`~photutils.aperture.ApertureStats` (``sum_err`` and
+``error_sum_cutout``), the `~photutils.segmentation.SourceCatalog`
+``kron_flux_err`` and ``circular_photometry`` errors, and
+the ``profile_error`` values of the profile classes. The
+`~photutils.segmentation.SourceCatalog` ``segment_flux_err`` values are
+unchanged because source segments contain only whole pixels.
+
+
 Sample Variance and Standard Deviation
 ======================================
 

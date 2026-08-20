@@ -189,9 +189,10 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
     sum_vars : 1D ndarray of float64
         The aperture error variances (the quadrature sum of the pixel
-        variances weighted by the overlap fractions). NaN where
-        ``error`` is `None` or the aperture bounding box does not overlap
-        the data. The caller takes the square root to obtain the error.
+        variances weighted by the squared overlap fractions). NaN where
+        ``error`` is `None` or the aperture bounding box does not
+        overlap the data. The caller takes the square root to obtain the
+        error.
 
     areas : 1D ndarray of float64
         The total unmasked overlap area of the aperture (the sum of the
