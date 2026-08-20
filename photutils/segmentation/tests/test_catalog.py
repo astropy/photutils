@@ -1881,6 +1881,49 @@ class TestSourceCatalogFlags:
         for name in SEGMENTATION_FLAGS.names:
             assert name in doc
 
+    def test_decode_flags(self):
+        """
+        Test that decode_flags returns the active flag names for each
+        source.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        decoded = cat.decode_flags()
+        interior_idx = np.argmax(cat.bbox_xmin > 0)
+        assert decoded[interior_idx] == []
+        assert decoded[1 - interior_idx] == ['edge_touch',
+                                             'kron_partial_overlap']
+
+    def test_decode_flags_bit_values(self):
+        """
+        Test that decode_flags returns bit values when requested.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        decoded = cat.decode_flags(return_bit_values=True)
+        interior_idx = np.argmax(cat.bbox_xmin > 0)
+        assert decoded[interior_idx] == []
+        assert decoded[1 - interior_idx] == [
+            SEGMENTATION_FLAGS.EDGE_TOUCH,
+            SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP]
+
+    def test_decode_flags_scalar(self):
+        """
+        Test that decode_flags on a scalar catalog returns a length-1
+        list of lists.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        interior_idx = int(np.argmax(cat.bbox_xmin > 0))
+        scalar_cat = cat[1 - interior_idx]
+        assert scalar_cat.decode_flags() == [['edge_touch',
+                                              'kron_partial_overlap']]
+
+    def test_decode_flags_keyword_only(self):
+        """
+        Test that return_bit_values must be passed as a keyword.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        with pytest.raises(TypeError, match='positional'):
+            cat.decode_flags(1)
+
 
 class TestThreadSafety:
     """

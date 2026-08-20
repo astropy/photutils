@@ -24,7 +24,8 @@ from photutils.background import SExtractorBackground
 from photutils.geometry import circular_overlap_grid, elliptical_overlap_grid
 from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
-from photutils.segmentation.flags import SEGMENTATION_FLAGS
+from photutils.segmentation.flags import (SEGMENTATION_FLAGS,
+                                          decode_segmentation_flags)
 from photutils.segmentation.utils import _mask_to_mirrored_value
 from photutils.utils._deprecation import (_get_future_column_names,
                                           create_empty_deprecated_qtable,
@@ -1603,6 +1604,48 @@ class SourceCatalog:
         flags[min_applied] |= SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS
 
         return flags
+
+    def decode_flags(self, *, return_bit_values=False):
+        """
+        Decode the source quality flags into individual components.
+
+        This is a convenience method that calls
+        `~photutils.segmentation.decode_segmentation_flags` with the
+        `flags` property.
+
+        Parameters
+        ----------
+        return_bit_values : bool, optional
+            If `True`, return the decoded bit flags (integers) instead
+            of the flag names (strings).
+
+        Returns
+        -------
+        decoded : list of list of str or list of list of int
+            A list of the active flag names (or bit values) for each
+            source.
+
+        See Also
+        --------
+        photutils.segmentation.decode_segmentation_flags
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from astropy.modeling.models import Gaussian2D
+        >>> from photutils.segmentation import SourceCatalog, detect_sources
+        >>> yy, xx = np.mgrid[0:51, 0:51]
+        >>> data = (Gaussian2D(100, 25, 25, 3, 3)(xx, yy)
+        ...         + Gaussian2D(100, 2, 40, 3, 3)(xx, yy))
+        >>> segm = detect_sources(data, 10, 5)
+        >>> cat = SourceCatalog(data, segm)
+        >>> for names in cat.decode_flags():
+        ...     print(names)
+        []
+        ['edge_touch', 'kron_partial_overlap']
+        """
+        return decode_segmentation_flags(
+            self._array('flags'), return_bit_values=return_bit_values)
 
     def _get_values(self, array):
         """

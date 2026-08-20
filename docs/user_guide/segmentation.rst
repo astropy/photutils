@@ -867,13 +867,28 @@ an image boundary, masked or non-finite pixels within the segment,
 undefined or degenerate shape properties, windowed or quadratic
 centroid failures, and Kron-aperture issues (``kron_``-prefixed
 flags). Accessing ``flags`` computes the flagged quantities (moments,
-windowed and quadratic centroids, and Kron photometry) if they
-have not already been computed; the results are cached and shared
-with the corresponding source properties. Flags that describe the same
+windowed and quadratic centroids, and Kron photometry) if they have
+not already been computed; the results are cached and shared with
+the corresponding source properties. Flags that describe the same
 condition as an `~photutils.aperture.ApertureStats` flag, with the
 source segment as the region, use the same flag name. However, the
 bit values are package-specific, so always decode flag values with
-:func:`~photutils.segmentation.decode_segmentation_flags`.
+:func:`~photutils.segmentation.decode_segmentation_flags`. The
+:meth:`~photutils.segmentation.SourceCatalog.decode_flags` convenience
+method decodes the catalog's own flag values::
+
+    >>> import numpy as np
+    >>> from astropy.modeling.models import Gaussian2D
+    >>> from photutils.segmentation import SourceCatalog, detect_sources
+    >>> yy, xx = np.mgrid[0:51, 0:51]
+    >>> data = (Gaussian2D(100, 25, 25, 3, 3)(xx, yy)
+    ...         + Gaussian2D(100, 2, 40, 3, 3)(xx, yy))
+    >>> segm = detect_sources(data, 10, 5)
+    >>> cat = SourceCatalog(data, segm)
+    >>> for names in cat.decode_flags():
+    ...     print(names)
+    []
+    ['edge_touch', 'kron_partial_overlap']
 
 
 API Reference

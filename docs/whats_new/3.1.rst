@@ -599,16 +599,18 @@ The segmentation package now provides bitwise quality flags.
 `~photutils.segmentation.SourceCatalog` has a new ``flags``
 attribute and default table column that records, per source,
 deblending provenance (``deblended``, deblending-mode fallbacks) and
-measurement conditions (source touches an image boundary, masked or
-non-finite pixels within the segment, undefined or degenerate shape
-properties, windowed or quadratic centroid failures, and Kron-aperture
-issues). `~photutils.segmentation.SegmentationImage` exposes the
-per-label provenance flags via a new ``flags`` attribute, and a new
-:func:`~photutils.segmentation.decode_segmentation_flags` function
-decodes flag values into names. Flags describing the same condition as
-an aperture flag share the aperture flag's name. However, the bit values
-are package-specific, so always decode a flag column with the decoder of
-the package that produced it.
+measurement conditions (source touches an image boundary, masked
+or non-finite pixels within the segment, undefined or degenerate
+shape properties, windowed or quadratic centroid failures, and
+Kron-aperture issues). `~photutils.segmentation.SegmentationImage`
+exposes the per-label provenance flags via a new ``flags`` attribute,
+and a new :func:`~photutils.segmentation.decode_segmentation_flags`
+function decodes flag values into names.
+:meth:`~photutils.segmentation.SourceCatalog.decode_flags` is a
+convenience method that decodes the catalog's own flag values. Flags
+describing the same condition as an aperture flag share the aperture
+flag's name. However, the bit values are package-specific, so always
+decode a flag column with the decoder of the package that produced it.
 
 
 ``GriddedPSFModel`` Performance Improvements

@@ -263,9 +263,10 @@ New Features
     ``flags`` attribute with per-label flags, ``deblend_sources``
     records per-source deblending provenance flags, and
     ``SourceCatalog`` has a new ``flags`` attribute and default table
-    column combining provenance and measurement flags. Flags describing
-    the same condition as an aperture flag share the aperture flag's
-    name, but bit values are package-specific. [#2402]
+    column combining provenance and measurement flags, along with a
+    ``decode_flags`` convenience method. Flags describing the same
+    condition as an aperture flag share the aperture flag's name, but
+    bit values are package-specific. [#2402]
 
 - ``photutils.utils``
 
