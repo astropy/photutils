@@ -508,8 +508,9 @@ The overlap flags are precise. They are based on the pixels with
 nonzero aperture weight, not simply the aperture bounding box. The
 new :func:`~photutils.aperture.decode_aperture_flags` function and
 the :meth:`photutils.aperture.AperturePhotometry.decode_flags` and
-:meth:`photutils.aperture.ApertureStats.decode_flags` methods decode
-flag values into human-readable names::
+:meth:`photutils.aperture.ApertureStats.decode_flags` methods (which
+return a dictionary keyed by aperture position id) decode flag values
+into human-readable names::
 
     >>> import numpy as np
     >>> from photutils.aperture import (AperturePhotometry,

@@ -101,7 +101,9 @@ New Features
     conditions from both the "center"-method footprint used by the
     value statistics and the ``sum_method`` footprint used by the sum
     properties. A new ``decode_aperture_flags`` function decodes the
-    flag values into human-readable names. [#2327, #2328, #2362, #2379]
+    flag values into human-readable names, and both classes have a
+    ``decode_flags`` convenience method that returns a dictionary keyed
+    by aperture position id. [#2327, #2328, #2362, #2379, #2400]
 
   - Added validation of the ``ApertureStats.to_table()`` ``columns``
     keyword. [#2329]

@@ -404,15 +404,16 @@ class TestFlagsAPI:
         aper = CircularAperture([(12.0, 12.0), (0.0, 12.0)], r=3.0)
         stats = ApertureStats(data, aper, mask=mask)
         decoded = stats.decode_flags()
-        assert decoded == [['masked_pixels'], ['partial_overlap']]
+        assert decoded == {1: ['masked_pixels'], 2: ['partial_overlap']}
+        assert all(type(key) is int for key in decoded)
 
         decoded = stats.decode_flags(return_bit_values=True)
-        assert decoded == [[APERTURE_FLAGS.MASKED_PIXELS],
-                           [APERTURE_FLAGS.PARTIAL_OVERLAP]]
+        assert decoded == {1: [APERTURE_FLAGS.MASKED_PIXELS],
+                           2: [APERTURE_FLAGS.PARTIAL_OVERLAP]}
 
-        # Scalar ApertureStats also returns a list of lists
+        # Scalar ApertureStats also returns a dictionary
         stats = ApertureStats(data, CircularAperture((0.0, 12.0), r=3.0))
-        assert stats.decode_flags() == [['partial_overlap']]
+        assert stats.decode_flags() == {1: ['partial_overlap']}
 
     def test_decode_flags_no_column_keyword(self, unit_data):
         """
@@ -424,7 +425,7 @@ class TestFlagsAPI:
         match = 'unexpected keyword'
         with pytest.raises(TypeError, match=match):
             stats.decode_flags(column='flags')
-        assert stats.decode_flags() == [[]]
+        assert stats.decode_flags() == {1: []}
 
     def test_flags_docstring(self):
         """
@@ -451,7 +452,7 @@ class TestSingularCovariance:
         aper = CircularAperture((12.0, 12.0), r=5.0)
         stats = ApertureStats(data, aper)
         assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
-        assert 'singular_covariance' in stats.decode_flags()[0]
+        assert 'singular_covariance' in stats.decode_flags()[1]
 
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_array_and_guards(self):
@@ -585,7 +586,7 @@ class TestUndefinedShape:
         aper = CircularAperture((12.0, 12.0), r=5.0)
         stats = ApertureStats(data, aper)
         assert (stats.flags & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
-        assert 'undefined_shape' in stats.decode_flags()[0]
+        assert 'undefined_shape' in stats.decode_flags()[1]
         assert np.all(np.isnan(stats.centroid))
 
     @pytest.mark.usefixtures('maybe_mask_path')
