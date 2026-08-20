@@ -10,4 +10,5 @@ from .core import *  # noqa: F401, F403
 from .deblend import *  # noqa: F401, F403
 from .detect import *  # noqa: F401, F403
 from .finder import *  # noqa: F401, F403
+from .flags import *  # noqa: F401, F403
 from .utils import *  # noqa: F401, F403
