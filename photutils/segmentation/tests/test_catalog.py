@@ -2368,6 +2368,7 @@ def test_measured_kron_radius_circular_no_min_radius(gauss_101_data):
         assert np.all(np.isnan(kr))
 
 
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_err():
     """
     Test that centroid_win_err returns finite 1-sigma position
@@ -2450,6 +2451,7 @@ def test_centroid_win_err_scalar():
     assert single.y_centroid_win_err == errors[1]
 
 
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_err_sliced():
     """
     Test that centroid_win_err works on a sliced catalog after
@@ -2512,6 +2514,7 @@ def test_centroid_win_err_singularity():
     assert np.all(errors > 0)
 
 
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_err():
     """
     Test that centroid_err returns finite 1-sigma position errors
@@ -2672,6 +2675,7 @@ def test_centroid_err_zero_flux():
     assert np.all(np.isnan(errors))
 
 
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_err_columns():
     """
     Test the x/y centroid error properties and their use as to_table
@@ -2815,6 +2819,7 @@ def test_centroid_quad_err_peak_at_edge():
     assert np.all(np.isnan(cat.centroid_quad_err))
 
 
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_quad_err_columns():
     """
     Test the quadratic centroid error properties as to_table columns
