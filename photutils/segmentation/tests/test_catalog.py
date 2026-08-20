@@ -2366,3 +2366,484 @@ def test_measured_kron_radius_circular_no_min_radius(gauss_101_data):
                        new_callable=lambda: property(lambda _self: cxy_val))):
         kr = cat._measured_kron_radius
         assert np.all(np.isnan(kr))
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_centroid_win_err():
+    """
+    Test that centroid_win_err returns finite 1-sigma position
+    errors when an error array is provided.
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    m = g1 + g2
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = m(xx, yy)
+    noise = make_noise_image(data.shape, mean=0, stddev=65.0, seed=123)
+    data += noise
+
+    error = np.full(data.shape, 65.0)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    n_pixels = 10
+    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    threshold = 107.9
+    segment_map = finder(convolved_data, threshold)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    errors = cat.centroid_win_err
+    assert errors.shape == (cat.n_labels, 2)
+    # Source 0 converged; errors should be finite and positive
+    assert np.all(np.isfinite(errors[0]))
+    assert np.all(errors[0] > 0)
+    # Source 1 fell back to the isophotal centroid, so its errors
+    # are the isophotal centroid errors
+    assert_allclose(cat.centroid_win[1], cat.centroid[1])
+    assert_allclose(errors[1], cat.centroid_err[1])
+
+
+def test_centroid_win_err_no_error():
+    """
+    Test that centroid_win_err returns NaN when no error array is
+    provided.
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = g1(xx, yy)
+
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    n_pixels = 10
+    segment_map = detect_sources(convolved_data, 50.0, n_pixels)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        aperture_mask_method='none')
+
+    errors = cat.centroid_win_err
+    # No error array provided, so errors should be NaN
+    assert np.all(np.isnan(errors))
+
+
+def test_centroid_win_err_scalar():
+    """
+    Test that centroid_win_err works for scalar (single-source) case.
+    """
+    g1 = Gaussian2D(1621, 10.0, 10.0, 2.0, 2.0)
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = g1(xx, yy)
+    error = np.full(data.shape, 50.0)
+
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    n_pixels = 10
+    segment_map = detect_sources(convolved_data, 50.0, n_pixels)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    single = cat[0]
+    # Public properties collapse to a single (x, y) pair for a
+    # scalar catalog
+    errors = single.centroid_win_err
+    assert errors.shape == (2,)
+    assert np.all(np.isfinite(errors))
+    assert np.all(errors > 0)
+    assert single.x_centroid_win_err == errors[0]
+    assert single.y_centroid_win_err == errors[1]
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_centroid_win_err_sliced():
+    """
+    Test that centroid_win_err works on a sliced catalog after
+    centroid_win was computed on the parent catalog (regression test
+    for a side-effect attribute that was not propagated by slicing).
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    m = g1 + g2
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = m(xx, yy)
+    noise = make_noise_image(data.shape, mean=0, stddev=65.0, seed=123)
+    data += noise
+
+    error = np.full(data.shape, 65.0)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    segment_map = finder(convolved_data, 107.9)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    # Compute centroid_win on the parent before slicing
+    _ = cat.centroid_win
+    errors = cat.centroid_win_err
+    single = cat[0]
+    assert_allclose(single.centroid_win_err, errors[0])
+    sub = cat[[1, 0]]
+    assert_allclose(sub.centroid_win_err, errors[[1, 0]])
+
+
+def test_centroid_win_err_singularity():
+    """
+    Test that the singularity correction in centroid_win_err is
+    applied for a source where non-zero error is limited to a single
+    pixel, causing a nearly singular error covariance.
+    """
+    data = np.zeros((21, 21))
+    data[10, 10] = 10000.0
+    data[10, 11] = 50.0
+    data[11, 10] = 50.0
+    data[10, 9] = 50.0
+    data[9, 10] = 50.0
+
+    # Non-zero error only at center pixel: error covariance
+    # will be concentrated there, triggering the singularity check
+    error = np.zeros(data.shape)
+    error[10, 10] = 10000.0
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[9:12, 9:12] = 1
+    segment_map = SegmentationImage(segment_data)
+
+    convolved_data = data.copy()
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    errors = cat.centroid_win_err
+    # Errors should be finite (singularity correction applied)
+    assert np.all(np.isfinite(errors))
+    assert np.all(errors > 0)
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_centroid_err():
+    """
+    Test that centroid_err returns finite 1-sigma position errors
+    when an error array is provided.
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    m = g1 + g2
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = m(xx, yy)
+
+    error = np.full(data.shape, 65.0)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    n_pixels = 10
+    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    threshold = 107.9
+    segment_map = finder(convolved_data, threshold)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    errors = cat.centroid_err
+    assert errors.shape == (cat.n_labels, 2)
+    # Both sources should have finite, positive errors
+    assert np.all(np.isfinite(errors))
+    assert np.all(errors > 0)
+    # Errors should be small relative to pixel scale for bright sources
+    assert np.all(errors < 1.0)
+
+
+def test_centroid_err_no_error():
+    """
+    Test that centroid_err returns NaN when no error array is
+    provided.
+    """
+    g1 = Gaussian2D(1621, 10.0, 10.0, 2.0, 2.0)
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = g1(xx, yy)
+
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    n_pixels = 10
+    segment_map = detect_sources(convolved_data, 50.0, n_pixels)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        aperture_mask_method='none')
+
+    errors = cat.centroid_err
+    assert np.all(np.isnan(errors))
+
+
+def test_centroid_err_scalar():
+    """
+    Test that centroid_err works for a scalar (single-source) case.
+    """
+    g1 = Gaussian2D(1621, 10.0, 10.0, 2.0, 2.0)
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = g1(xx, yy)
+    error = np.full(data.shape, 50.0)
+
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    n_pixels = 10
+    segment_map = detect_sources(convolved_data, 50.0, n_pixels)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    single = cat[0]
+    # Public properties collapse to a single (x, y) pair for a
+    # scalar catalog
+    errors = single.centroid_err
+    assert errors.shape == (2,)
+    assert np.all(np.isfinite(errors))
+    assert np.all(errors > 0)
+    assert single.x_centroid_err == errors[0]
+    assert single.y_centroid_err == errors[1]
+
+
+def test_centroid_err_singularity():
+    """
+    Test that the singularity correction in centroid_err is applied
+    for a source where the error covariance matrix is nearly singular.
+    This happens when error is concentrated at only the centroid pixel,
+    making det == esn^2 exactly, so we use <= in a modified check or
+    construct a case where floating-point rounding makes det < esn^2.
+    """
+    # A source with flux concentrated at the centroid pixel, and
+    # error only at the centroid pixel. With this setup,
+    # err_var_x * err_var_y - err_cov_xy^2 == err_sum_norm^2 exactly
+    # for a perfectly centered source. By adding a tiny asymmetric
+    # flux offset, the centroid shifts slightly, breaking the exact
+    # equality and making det < esn^2 due to floating-point effects.
+    data = np.zeros((11, 11))
+    data[5, 5] = 10000.0
+    data[5, 6] = 1e-10  # tiny asymmetry to shift centroid
+
+    error = np.zeros(data.shape)
+    error[5, 5] = 10000.0
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[4:7, 4:7] = 1
+    segment_map = SegmentationImage(segment_data)
+
+    convolved_data = data.copy()
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    errors = cat.centroid_err
+    assert np.all(np.isfinite(errors))
+    assert np.all(errors > 0)
+
+
+def test_centroid_err_formula():
+    """
+    Test that centroid_err matches the analytic error-propagation
+    formula, Var(x_c) = sum(sigma_i^2 * (x_i - x_c)^2) / F^2, for a
+    non-singular source (this is also the SourceExtractor and SEP
+    formula).
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = Gaussian2D(100.0, 12.2, 12.6, 2.5, 2.5)(xx, yy)
+    error = np.full(data.shape, 3.0)
+
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[6:20, 6:20] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    mask = segment_data == 1
+    flux = np.sum(data[mask])
+    xcen = np.sum(data[mask] * xx[mask]) / flux
+    ycen = np.sum(data[mask] * yy[mask]) / flux
+    var_x = np.sum(error[mask]**2 * (xx[mask] - xcen)**2) / flux**2
+    var_y = np.sum(error[mask]**2 * (yy[mask] - ycen)**2) / flux**2
+
+    errors = cat.centroid_err
+    assert_allclose(cat.centroid[0], (xcen, ycen))
+    assert_allclose(errors[0], np.sqrt((var_x, var_y)))
+
+
+def test_centroid_err_zero_flux():
+    """
+    Test that centroid_err returns NaN when the convolved data
+    total flux is zero within the segment (total_flux <= 0 branch).
+    """
+    data = np.ones((11, 11))
+    # convolved_data has zero flux in the segment region
+    convolved_data = np.zeros((11, 11))
+    error = np.full(data.shape, 10.0)
+
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[4:7, 4:7] = 1
+    segment_map = SegmentationImage(segment_data)
+
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    errors = cat.centroid_err
+    assert np.all(np.isnan(errors))
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_centroid_err_columns():
+    """
+    Test the x/y centroid error properties and their use as to_table
+    columns.
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    m = g1 + g2
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = m(xx, yy)
+
+    error = np.full(data.shape, 65.0)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    segment_map = finder(convolved_data, 107.9)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    assert_allclose(cat.x_centroid_err, cat.centroid_err[:, 0])
+    assert_allclose(cat.y_centroid_err, cat.centroid_err[:, 1])
+    assert_allclose(cat.x_centroid_win_err, cat.centroid_win_err[:, 0])
+    assert_allclose(cat.y_centroid_win_err, cat.centroid_win_err[:, 1])
+
+    columns = ['label', 'x_centroid_err', 'y_centroid_err',
+               'x_centroid_win_err', 'y_centroid_win_err']
+    tbl = cat.to_table(columns=columns)
+    assert tbl.colnames == columns
+    assert_allclose(tbl['x_centroid_err'], cat.x_centroid_err)
+    assert_allclose(tbl['y_centroid_win_err'], cat.y_centroid_win_err)
+
+
+def _quad_peak(box):
+    """
+    Solve for the peak of a quadratic fit to a 3x3 box.
+
+    This is an independent implementation (via lstsq) used to
+    numerically validate the centroid_quad error propagation.
+    """
+    yy, xx = np.mgrid[0:3, 0:3]
+    design = np.column_stack([np.ones(9), xx.ravel(), yy.ravel(),
+                              (xx * yy).ravel(), (xx**2).ravel(),
+                              (yy**2).ravel()])
+    c = np.linalg.lstsq(design, box.ravel(), rcond=None)[0]
+    det = 4.0 * c[4] * c[5] - c[3]**2
+    xm = (c[2] * c[3] - 2.0 * c[5] * c[1]) / det
+    ym = (c[1] * c[3] - 2.0 * c[4] * c[2]) / det
+    return np.array([xm, ym])
+
+
+def test_centroid_quad_err():
+    """
+    Test that centroid_quad_err matches a numerical-Jacobian error
+    propagation through the quadratic peak fit.
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = Gaussian2D(100.0, 12.2, 12.6, 2.0, 1.5, 0.5)(xx, yy)
+    rng = np.random.default_rng(42)
+    error = rng.uniform(1.0, 3.0, data.shape)
+
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[6:20, 6:20] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    # The peak pixel is at (12, 13) and the 3x3 fit box lies fully
+    # within the segment, so no masked pixels are involved
+    yidx, xidx = 13, 12
+    box = data[yidx - 1:yidx + 2, xidx - 1:xidx + 2].copy()
+    box_err = error[yidx - 1:yidx + 2, xidx - 1:xidx + 2].ravel()
+
+    eps = 1e-6
+    jacobian = np.zeros((2, 9))
+    for i in range(9):
+        box_p = box.ravel().copy()
+        box_p[i] += eps
+        box_m = box.ravel().copy()
+        box_m[i] -= eps
+        jacobian[:, i] = (_quad_peak(box_p) - _quad_peak(box_m)) / (2 * eps)
+    var_expected = np.sum(jacobian**2 * box_err**2, axis=1)
+
+    errors = cat.centroid_quad_err
+    assert errors.shape == (1, 2)
+    assert_allclose(errors[0], np.sqrt(var_expected), rtol=1e-6)
+    assert_allclose(cat.x_centroid_quad_err, errors[:, 0])
+    assert_allclose(cat.y_centroid_quad_err, errors[:, 1])
+
+
+def test_centroid_quad_err_no_error():
+    """
+    Test that centroid_quad_err is NaN when no error array is input.
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = Gaussian2D(100.0, 12.2, 12.6, 2.0, 2.0)(xx, yy)
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[6:20, 6:20] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        aperture_mask_method='none')
+    assert np.all(np.isfinite(cat.centroid_quad))
+    assert np.all(np.isnan(cat.centroid_quad_err))
+
+
+def test_centroid_quad_err_fallback():
+    """
+    Test that sources where the quadratic centroid fell back to the
+    isophotal centroid have the isophotal centroid errors.
+    """
+    # A 2x2 segment is too small for the 3x3 quadratic fit, so the
+    # centroid falls back to the isophotal centroid
+    data = np.ones((11, 11))
+    data[5, 5] = 10.0
+    error = np.full(data.shape, 1.0)
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[5:7, 5:7] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    assert_allclose(cat.centroid_quad, cat.centroid)
+    assert_allclose(cat.centroid_quad_err, cat.centroid_err)
+
+
+def test_centroid_quad_err_peak_at_edge():
+    """
+    Test that sources whose maximum value is at the edge of the
+    cutout return the peak-pixel position with NaN errors.
+    """
+    # Monotonic gradient: the maximum is at the segment cutout edge
+    yy, xx = np.mgrid[0:11, 0:11]
+    data = (xx + yy).astype(float)
+    error = np.full(data.shape, 1.0)
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[3:8, 3:8] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    assert np.all(np.isfinite(cat.centroid_quad))
+    assert np.all(np.isnan(cat.centroid_quad_err))
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_centroid_quad_err_columns():
+    """
+    Test the quadratic centroid error properties as to_table columns
+    and the scalar-catalog collapse.
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = (g1 + g2)(xx, yy)
+    error = np.full(data.shape, 65.0)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    segment_map = finder(convolved_data, 107.9)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, aperture_mask_method='none')
+
+    columns = ['label', 'x_centroid_quad_err', 'y_centroid_quad_err']
+    tbl = cat.to_table(columns=columns)
+    assert tbl.colnames == columns
+    assert_allclose(tbl['x_centroid_quad_err'], cat.x_centroid_quad_err)
+
+    single = cat[0]
+    errors = single.centroid_quad_err
+    assert errors.shape == (2,)
+    assert single.x_centroid_quad_err == errors[0]
+    assert single.y_centroid_quad_err == errors[1]

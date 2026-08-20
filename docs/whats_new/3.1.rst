@@ -506,6 +506,55 @@ flag values into human-readable names::
 See :ref:`aperture_flags` for more details.
 
 
+Centroid Position Errors
+========================
+
+`~photutils.segmentation.SourceCatalog` now provides 1-sigma errors
+on the isophotal, windowed, and quadratic centroid positions,
+propagated from the input ``error`` array. The new properties are
+`~photutils.segmentation.SourceCatalog.centroid_err`,
+`~photutils.segmentation.SourceCatalog.x_centroid_err`, and
+`~photutils.segmentation.SourceCatalog.y_centroid_err` for the
+isophotal `~photutils.segmentation.SourceCatalog.centroid`,
+`~photutils.segmentation.SourceCatalog.centroid_win_err`,
+`~photutils.segmentation.SourceCatalog.x_centroid_win_err`, and
+`~photutils.segmentation.SourceCatalog.y_centroid_win_err` for the
+"windowed" centroid
+(`~photutils.segmentation.SourceCatalog.centroid_win`), and
+`~photutils.segmentation.SourceCatalog.centroid_quad_err`,
+`~photutils.segmentation.SourceCatalog.x_centroid_quad_err`, and
+`~photutils.segmentation.SourceCatalog.y_centroid_quad_err` for the
+quadratic-fit centroid
+(`~photutils.segmentation.SourceCatalog.centroid_quad`)::
+
+    >>> import numpy as np
+    >>> from astropy.convolution import convolve
+    >>> from photutils.datasets import make_100gaussians_image
+    >>> from photutils.segmentation import (SourceCatalog, SourceFinder,
+    ...                                     make_2dgaussian_kernel)
+    >>> data = make_100gaussians_image() - 5.0  # subtract background
+    >>> error = np.full(data.shape, 2.0)
+    >>> kernel = make_2dgaussian_kernel(3.0, size=5)
+    >>> convolved_data = convolve(data, kernel)
+    >>> finder = SourceFinder(n_pixels=10, progress_bar=False)
+    >>> segment_map = finder(convolved_data, 4.5)
+    >>> cat = SourceCatalog(data, segment_map,
+    ...                     convolved_data=convolved_data, error=error)
+    >>> columns = ['label', 'x_centroid_err', 'y_centroid_err',
+    ...            'x_centroid_win_err', 'y_centroid_win_err']
+    >>> tbl = cat.to_table(columns=columns)[:5]
+    >>> for col in tbl.colnames[1:]:
+    ...     tbl[col].info.format = '%.6f'
+    >>> print(tbl)
+    label x_centroid_err y_centroid_err x_centroid_win_err y_centroid_win_err
+    ----- -------------- -------------- ------------------ ------------------
+        1       0.107193       0.040633           0.096188           0.081614
+        2       0.115570       0.069543           0.145871           0.146489
+        3       0.083684       0.087086           0.144631           0.144630
+        4       0.078204       0.104136           0.158468           0.158468
+        5       0.081175       0.098188           0.181951           0.181947
+
+
 ``GriddedPSFModel`` Performance Improvements
 ============================================
 

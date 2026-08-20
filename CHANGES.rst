@@ -238,6 +238,14 @@ New Features
     deblended (child) labels between segmentation images made before
     and after deblending. [#2382]
 
+  - Added ``SourceCatalog`` ``centroid_err``, ``x_centroid_err``,
+    ``y_centroid_err``, ``centroid_win_err``, ``x_centroid_win_err``,
+    ``y_centroid_win_err``, ``centroid_quad_err``,
+    ``x_centroid_quad_err``, and ``y_centroid_quad_err`` properties
+    providing the 1-sigma errors on the isophotal, windowed, and
+    quadratic centroid positions, propagated from the input ``error``
+    array. [#2397]
+
 - ``photutils.utils``
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's
@@ -910,6 +918,14 @@ API Changes
 
   - ``SegmentationImage`` now raises a ``TypeError`` for masked array
     input. [#2381]
+
+  - The conditions for the ``SourceCatalog`` ``centroid_win`` fallback
+    to the isophotal centroid have been expanded. The windowed centroid
+    is reset when it diverged far from the isophotal centroid and
+    lies outside the 1-sigma ellipse, the total weighted flux is
+    non-positive, the windowed second-order moments are negative, or the
+    windowed covariance determinant is negative. Previously, only the
+    ellipse condition was applied. [#2397]
 
 - ``photutils.utils``
 
