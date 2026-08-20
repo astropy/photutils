@@ -776,6 +776,15 @@ equivalents:
        75  74.413068    0.051327718  259.76066    0.045532249
        80  14.920217    0.069001032  60.024006    0.093764369
 
+When a ``wcs`` is also input, the corresponding sky
+position errors are available in arcsec via the
+`~photutils.segmentation.SourceCatalog.sky_centroid_err`,
+`~photutils.segmentation.SourceCatalog.sky_centroid_ra_err`, and
+`~photutils.segmentation.SourceCatalog.sky_centroid_dec_err` properties
+(and their ``_win`` and ``_quad`` variants). The RA errors are expressed
+as great-circle angles along the East direction (i.e., they include the
+cos(dec) factor).
+
 
 Pixel Masking
 ^^^^^^^^^^^^^
