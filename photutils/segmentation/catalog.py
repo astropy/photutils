@@ -1489,6 +1489,17 @@ class SourceCatalog:
         `~photutils.segmentation.decode_segmentation_flags` to decode
         the values.
 
+        If a ``detection_catalog`` was input, the shape
+        (``undefined_shape``, ``singular_covariance``), centroid
+        (``centroid_win_fallback``, ``centroid_quad_failed``),
+        and Kron aperture geometry (``kron_undefined``,
+        ``kron_minimum_radius``) flags derive from the detection
+        catalog. The Kron photometry-loop flags (``kron_no_overlap``,
+        ``kron_partial_overlap``, ``kron_masked_pixels``,
+        ``kron_neighbor_pixels``, ``kron_uncorrected_pixels``), like the
+        segment-level edge, mask, non-finite, and ``all_masked`` flags,
+        are evaluated on this catalog's own inputs.
+
         Accessing ``flags`` computes the moment, covariance, centroid,
         and Kron-aperture properties if they have not already
         been computed (the results are cached and reused by those

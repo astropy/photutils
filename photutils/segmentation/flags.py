@@ -158,13 +158,21 @@ class _SegmentationFlags(FlagRegistry):
             name='centroid_win_fallback',
             description=('windowed centroid failed or fell back to '
                          'the isophotal centroid'),
-            detailed_description=('The windowed centroid could not '
-                                  'be computed (NaN; the half-light '
-                                  'radius was not finite) or fell '
+            detailed_description=('The windowed centroid fell '
                                   'outside the 1-sigma moment '
-                                  'ellipse, in which case the '
-                                  'isophotal ``centroid`` value was '
-                                  'used instead.'),
+                                  'ellipse; the windowed flux was '
+                                  'non-positive; the windowed '
+                                  '2nd-order moments or covariance '
+                                  'determinant were negative; or '
+                                  'the iterated centroid was NaN. '
+                                  'In each of these cases, the '
+                                  'isophotal ``centroid`` value '
+                                  'was used instead. If the '
+                                  'half-light radius was not '
+                                  'finite, the windowed centroid '
+                                  'could not be computed and is '
+                                  'NaN. See ``centroid_win`` for '
+                                  'algorithm details.'),
         ),
         FlagDefinition(
             bit_value=2048,
@@ -183,9 +191,17 @@ class _SegmentationFlags(FlagRegistry):
                                   'fully masked) or the Kron '
                                   'photometry was skipped (e.g., the '
                                   'aperture was too large), so the '
-                                  'Kron flux is NaN and no other '
-                                  'Kron-aperture flags were '
-                                  'evaluated.'),
+                                  'Kron flux is NaN. The '
+                                  'photometry-loop flags '
+                                  '(``kron_no_overlap``, '
+                                  '``kron_partial_overlap``, '
+                                  '``kron_masked_pixels``, '
+                                  '``kron_neighbor_pixels``, '
+                                  '``kron_uncorrected_pixels``) are '
+                                  'not evaluated for these sources, '
+                                  'but ``kron_minimum_radius`` is '
+                                  'computed independently from the '
+                                  'radii and can still be set.'),
         ),
         FlagDefinition(
             bit_value=8192,
@@ -251,7 +267,7 @@ class _SegmentationFlags(FlagRegistry):
                                   'pixels within the Kron aperture '
                                   'could not be corrected (the '
                                   'mirror pixel was unavailable) and '
-                                  'were excluded instead.'),
+                                  'were set to zero instead.'),
         ),
     ]
 
