@@ -2380,6 +2380,9 @@ class SourceCatalog:
         -------
         var_x, var_y : float
             The variances of the peak ``x`` and ``y`` positions.
+
+        cov_xy : float
+            The covariance of the peak ``x`` and ``y`` positions.
         """
         c10, c01, c11, c20, c02 = coeffs[1:]
         det = 4.0 * c20 * c02 - c11 * c11
@@ -2397,17 +2400,21 @@ class SourceCatalog:
              (c10 + 2.0 * c11 * ym_rel) / det,
              (-2.0 * c01 - 4.0 * c02 * ym_rel) / det,
              -4.0 * c20 * ym_rel / det])
-        var_x = np.sum((grad_x @ pinv)**2 * box_var)
-        var_y = np.sum((grad_y @ pinv)**2 * box_var)
-        return var_x, var_y
+        u_x = grad_x @ pinv
+        u_y = grad_y @ pinv
+        var_x = np.sum(u_x**2 * box_var)
+        var_y = np.sum(u_y**2 * box_var)
+        cov_xy = np.sum(u_x * u_y * box_var)
+        return var_x, var_y, cov_xy
 
     @cached_property
     @use_detcat
     def _centroid_quad_results(self):
         """
-        The quadratic centroid coordinates, relative to the cutout
-        data, and their 1-sigma errors as a 2D array with columns
-        ``(x, y, xerr, yerr)`` and shape ``(n_labels, 4)``.
+        The quadratic centroid coordinates, relative to the cutout data,
+        and their error variances and covariance as a 2D array with
+        columns ``(x, y, var_x, var_y, cov_xy)`` and shape ``(n_labels,
+        5)``.
 
         This is the single computation behind `cutout_centroid_quad`,
         `centroid_quad`, and `centroid_quad_err`. See
@@ -2432,7 +2439,7 @@ class SourceCatalog:
         compute_err = self._error is not None
 
         _nan = np.nan
-        nan_result = (_nan, _nan, _nan, _nan)
+        nan_result = (_nan, _nan, _nan, _nan, _nan)
         results = []
 
         cutouts = self._data_cutouts
@@ -2463,7 +2470,8 @@ class SourceCatalog:
             # If peak at edge of cutout, return peak position. No fit
             # is performed, so no errors can be propagated.
             if xidx == 0 or xidx == nx - 1 or yidx == 0 or yidx == ny - 1:
-                results.append((float(xidx), float(yidx), _nan, _nan))
+                results.append((float(xidx), float(yidx), _nan, _nan,
+                                _nan))
                 continue
 
             # Extract 3x3 box centered on peak (guaranteed to fit
@@ -2492,7 +2500,7 @@ class SourceCatalog:
                 results.append(nan_result)
                 continue
 
-            var_x = var_y = _nan
+            var_x = var_y = cov_xy = _nan
             if compute_err:
                 # Pixel variances of the fit box; masked pixels have
                 # a fixed (zeroed) data value, so they contribute no
@@ -2501,24 +2509,24 @@ class SourceCatalog:
                            .astype(float).ravel()**2)
                 box_var[mask[yidx0:yidx0 + 3,
                              xidx0:xidx0 + 3].ravel()] = 0.0
-                var_x, var_y = self._centroid_quad_var(c, xm_rel, ym_rel,
-                                                       pinv, box_var)
+                var_x, var_y, cov_xy = self._centroid_quad_var(
+                    c, xm_rel, ym_rel, pinv, box_var)
 
-            results.append((xm, ym, var_x, var_y))
+            results.append((xm, ym, var_x, var_y, cov_xy))
 
         results = np.array(results)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            results[:, 2:4] = np.sqrt(results[:, 2:4])
 
         # Use the segment barycenter if the fit returned NaN. Fallback
         # sources use the isophotal centroid, so also use the isophotal
-        # centroid errors.
+        # centroid error covariance.
         nan_mask = (np.isnan(results[:, 0]) | np.isnan(results[:, 1]))
         if np.any(nan_mask):
             cutout_centroid = self._array('cutout_centroid')
             results[nan_mask, 0:2] = cutout_centroid[nan_mask]
-            results[nan_mask, 2:4] = self._array('centroid_err')[nan_mask]
+            iso_cov = self._centroid_err_cov
+            results[nan_mask, 2] = iso_cov[nan_mask, 0, 0]
+            results[nan_mask, 3] = iso_cov[nan_mask, 1, 1]
+            results[nan_mask, 4] = iso_cov[nan_mask, 0, 1]
 
         return results
 
@@ -2618,7 +2626,29 @@ class SourceCatalog:
         maximum data value is at the edge of the source segment (where
         the position of the maximum pixel is returned instead of a fit).
         """
-        return self._centroid_quad_results[:, 2:4].copy()
+        results = self._centroid_quad_results
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return np.sqrt(results[:, 2:4])
+
+    @cached_property
+    @use_detcat
+    def _centroid_quad_err_cov(self):
+        """
+        The ``(n_labels, 2, 2)`` pixel error covariance matrices of the
+        quadratic centroid, ``[[var_x, cov_xy], [cov_xy, var_y]]``.
+
+        Fallback sources hold the isophotal covariance (see
+        ``_centroid_err_cov``); matrices are all-NaN where errors are
+        unavailable.
+        """
+        results = self._centroid_quad_results
+        cov = np.empty((len(results), 2, 2))
+        cov[:, 0, 0] = results[:, 2]
+        cov[:, 1, 1] = results[:, 3]
+        cov[:, 0, 1] = results[:, 4]
+        cov[:, 1, 0] = results[:, 4]
+        return cov
 
     @cached_property
     @use_detcat

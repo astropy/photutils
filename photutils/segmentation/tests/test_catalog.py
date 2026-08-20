@@ -2947,6 +2947,64 @@ def test_centroid_quad_err_columns():
     assert single.y_centroid_quad_err == errors[1]
 
 
+def test_centroid_quad_err_cov():
+    """
+    Test the quadratic-centroid error covariance against a
+    numerical-Jacobian propagation (cov = sum(Jx * Jy * sigma^2)).
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = Gaussian2D(100.0, 12.2, 12.6, 2.0, 1.5, 0.5)(xx, yy)
+    rng = np.random.default_rng(42)
+    error = rng.uniform(1.0, 3.0, data.shape)
+
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[6:20, 6:20] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    cov = cat._centroid_quad_err_cov
+    assert cov.shape == (1, 2, 2)
+    assert_allclose(cov[0, 0, 1], cov[0, 1, 0])
+
+    # Numerical Jacobian over the 3x3 box around the peak pixel
+    # (12, 13), reusing the independent _quad_peak helper defined
+    # earlier in this test module
+    yidx, xidx = 13, 12
+    box = data[yidx - 1:yidx + 2, xidx - 1:xidx + 2]
+    box_err = error[yidx - 1:yidx + 2, xidx - 1:xidx + 2].ravel()
+    eps = 1e-6
+    jacobian = np.zeros((2, 9))
+    for i in range(9):
+        bp = box.ravel().copy()
+        bp[i] += eps
+        bm = box.ravel().copy()
+        bm[i] -= eps
+        jacobian[:, i] = (_quad_peak(bp) - _quad_peak(bm)) / (2 * eps)
+    var_expected = np.sum(jacobian**2 * box_err**2, axis=1)
+    cov_expected = np.sum(jacobian[0] * jacobian[1] * box_err**2)
+    assert_allclose(cov[0],
+                    [[var_expected[0], cov_expected],
+                     [cov_expected, var_expected[1]]], rtol=1e-6)
+
+
+def test_centroid_quad_err_cov_fallback():
+    """
+    Test that quad fallback sources use the isophotal covariance.
+    """
+    data = np.ones((11, 11))
+    data[5, 5] = 10.0
+    error = np.full(data.shape, 1.0)
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[5:7, 5:7] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+    assert_allclose(cat.centroid_quad, cat.centroid)
+    assert_allclose(cat._centroid_quad_err_cov,
+                    cat._centroid_err_cov)
+
+
 class TestPartialPixelErrorWeights:
     """
     Tests that aperture flux errors weight the pixel variances by the
