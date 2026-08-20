@@ -607,6 +607,15 @@ Bug Fixes
     ``include_local_bkg=True`` when no local background values were
     available. The local background is now treated as zero. [#2391]
 
+  - Fixed a bug where the initial flux estimates in
+    ``fit_2dgaussian`` and ``fit_fwhm`` included pixels masked by the
+    ``mask`` keyword, corrupting the fit starting point. [#2395]
+
+  - Fixed a bug where interpolating missing data during ePSF
+    building raised a ``QhullError`` when fewer than three valid
+    pixels remained or all valid pixels were collinear.
+    Nearest-neighbor interpolation is now used as a fallback. [#2395]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range
