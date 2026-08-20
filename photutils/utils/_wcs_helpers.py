@@ -375,6 +375,57 @@ def compute_local_wcs_jacobian(skycoord, wcs):
     return np.linalg.inv(forward)
 
 
+def compute_pixel_to_sky_jacobians(x, y, wcs):
+    """
+    Compute local forward WCS Jacobians for an array of pixel positions
+    using 1-pixel finite differences.
+
+    Each 2x2 Jacobian ``F`` maps pixel-coordinate offsets to
+    tangent-plane offsets in arcsec::
+
+        [d_xi, d_eta]^T ~ F @ [dx, dy]^T
+
+    where ``xi`` is the offset along East (the Right Ascension
+    direction, as a great-circle angle) and ``eta`` is the offset along
+    North (the Declination direction). The offsets are computed from the
+    great-circle separation and position angle between the center and
+    each offset point, so the formula is well-defined at the celestial
+    poles and across the longitude wraparound (RA = 0 / 360).
+
+    Parameters
+    ----------
+    x, y : `~numpy.ndarray`
+        The 1D arrays of pixel coordinates.
+
+    wcs : WCS object
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+
+    Returns
+    -------
+    jacobians : `~numpy.ndarray`
+        The (N, 2, 2) array of forward Jacobians in arcsec / pixel, with
+        rows ``(xi, eta)`` and columns ``(x, y)``.
+    """
+    x = np.atleast_1d(x).astype(float)
+    y = np.atleast_1d(y).astype(float)
+
+    sky0 = wcs.pixel_to_world(x, y)
+    sky_x = wcs.pixel_to_world(x + 1.0, y)
+    sky_y = wcs.pixel_to_world(x, y + 1.0)
+
+    arcsec_per_rad = 3600.0 * np.degrees(1)
+    jacobians = np.empty((x.size, 2, 2))
+    for col, sky_offset in enumerate((sky_x, sky_y)):
+        sep = np.atleast_1d(sky0.separation(sky_offset).rad)
+        pa = np.atleast_1d(sky0.position_angle(sky_offset).rad)
+        jacobians[:, 0, col] = sep * np.sin(pa) * arcsec_per_rad
+        jacobians[:, 1, col] = sep * np.cos(pa) * arcsec_per_rad
+    return jacobians
+
+
 def sky_to_pixel_mean_scale(skycoord, wcs):
     """
     Convert a sky region center to pixel coordinates with an isotropic

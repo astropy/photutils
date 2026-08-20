@@ -16,6 +16,7 @@ from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
 from astropy.utils.exceptions import AstropyDeprecationWarning
+from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_equal
 from scipy.optimize import root_scalar
 
@@ -31,6 +32,7 @@ from photutils.segmentation.finder import SourceFinder
 from photutils.segmentation.utils import make_2dgaussian_kernel
 from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,
                                             HAS_SKIMAGE)
+from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 from photutils.utils.cutouts import CutoutImage
 
 
@@ -2515,6 +2517,58 @@ def test_centroid_win_err_singularity():
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_centroid_win_err_cov():
+    """
+    Test the windowed pixel error covariance: symmetric for every
+    source, near-zero off-diagonal for a circular source with uniform
+    errors, and consistent with centroid_win_err.
+    """
+    yy, xx = np.mgrid[0:31, 0:31]
+    data = Gaussian2D(500.0, 15.2, 15.6, 2.5, 2.5)(xx, yy)
+    error = np.full(data.shape, 5.0)
+    segment_map = detect_sources(data, 10.0, n_pixels=10)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    cov = cat._centroid_win_err_cov
+    assert cov.shape == (1, 2, 2)
+    assert_allclose(cov[0, 0, 1], cov[0, 1, 0])
+    # Circular source, uniform errors: negligible x-y covariance
+    assert abs(cov[0, 0, 1]) < 1e-3 * np.sqrt(cov[0, 0, 0]
+                                              * cov[0, 1, 1])
+    # Errors are the sqrt of the diagonal
+    assert_allclose(cat.centroid_win_err[0],
+                    np.sqrt((cov[0, 0, 0], cov[0, 1, 1])))
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_centroid_win_err_cov_fallback():
+    """
+    Test that fallback sources use the full isophotal covariance.
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = (g1 + g2)(xx, yy)
+    data += make_noise_image(data.shape, mean=0, stddev=65.0,
+                             seed=123)
+    error = np.full(data.shape, 65.0)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    segment_map = finder(convolved_data, 107.9)
+    cat = SourceCatalog(data, segment_map,
+                        convolved_data=convolved_data, error=error,
+                        aperture_mask_method='none')
+
+    # Source 1 falls back to the isophotal centroid (pinned by the
+    # existing test_centroid_win_err test)
+    assert_allclose(cat.centroid_win[1], cat.centroid[1])
+    assert_allclose(cat._centroid_win_err_cov[1],
+                    cat._centroid_err_cov[1])
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_err():
     """
     Test that centroid_err returns finite 1-sigma position errors
@@ -2708,6 +2762,54 @@ def test_centroid_err_columns():
     assert_allclose(tbl['y_centroid_win_err'], cat.y_centroid_win_err)
 
 
+def test_centroid_err_cov():
+    """
+    Test that the isophotal pixel error covariance matches the analytic
+    formulas, including the off-diagonal term cov = sum(sigma^2 * (x -
+    xc) * (y - yc)) / F^2.
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = Gaussian2D(100.0, 12.2, 12.6, 2.5, 1.5, 0.7)(xx, yy)
+    error = np.full(data.shape, 3.0)
+
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[4:22, 4:22] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    cov = cat._centroid_err_cov
+    assert cov.shape == (1, 2, 2)
+    assert_allclose(cov[0, 0, 1], cov[0, 1, 0])
+
+    mask = segment_data == 1
+    flux = np.sum(data[mask])
+    xcen = np.sum(data[mask] * xx[mask]) / flux
+    ycen = np.sum(data[mask] * yy[mask]) / flux
+    var_x = np.sum(error[mask]**2 * (xx[mask] - xcen)**2) / flux**2
+    var_y = np.sum(error[mask]**2 * (yy[mask] - ycen)**2) / flux**2
+    cov_xy = np.sum(error[mask]**2 * (xx[mask] - xcen)
+                    * (yy[mask] - ycen)) / flux**2
+    assert_allclose(cov[0], [[var_x, cov_xy], [cov_xy, var_y]])
+
+    # The public property is the sqrt of the diagonal
+    assert_allclose(cat.centroid_err[0], np.sqrt((var_x, var_y)))
+
+
+def test_centroid_err_cov_no_error():
+    """
+    Test that the covariance is NaN when error is not input.
+    """
+    data = np.ones((11, 11))
+    data[5, 5] = 10.0
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[4:7, 4:7] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        aperture_mask_method='none')
+    assert np.all(np.isnan(cat._centroid_err_cov))
+
+
 def _quad_peak(box):
     """
     Solve for the peak of a quadratic fit to a 3x3 box.
@@ -2847,6 +2949,198 @@ def test_centroid_quad_err_columns():
     assert errors.shape == (2,)
     assert single.x_centroid_quad_err == errors[0]
     assert single.y_centroid_quad_err == errors[1]
+
+
+def test_centroid_quad_err_cov():
+    """
+    Test the quadratic-centroid error covariance against a
+    numerical-Jacobian propagation (cov = sum(Jx * Jy * sigma^2)).
+    """
+    yy, xx = np.mgrid[0:25, 0:25]
+    data = Gaussian2D(100.0, 12.2, 12.6, 2.0, 1.5, 0.5)(xx, yy)
+    rng = np.random.default_rng(42)
+    error = rng.uniform(1.0, 3.0, data.shape)
+
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[6:20, 6:20] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    cov = cat._centroid_quad_err_cov
+    assert cov.shape == (1, 2, 2)
+    assert_allclose(cov[0, 0, 1], cov[0, 1, 0])
+
+    # Numerical Jacobian over the 3x3 box around the peak pixel
+    # (12, 13), reusing the independent _quad_peak helper defined
+    # earlier in this test module
+    yidx, xidx = 13, 12
+    box = data[yidx - 1:yidx + 2, xidx - 1:xidx + 2]
+    box_err = error[yidx - 1:yidx + 2, xidx - 1:xidx + 2].ravel()
+    eps = 1e-6
+    jacobian = np.zeros((2, 9))
+    for i in range(9):
+        bp = box.ravel().copy()
+        bp[i] += eps
+        bm = box.ravel().copy()
+        bm[i] -= eps
+        jacobian[:, i] = (_quad_peak(bp) - _quad_peak(bm)) / (2 * eps)
+    var_expected = np.sum(jacobian**2 * box_err**2, axis=1)
+    cov_expected = np.sum(jacobian[0] * jacobian[1] * box_err**2)
+    assert_allclose(cov[0],
+                    [[var_expected[0], cov_expected],
+                     [cov_expected, var_expected[1]]], rtol=1e-6)
+
+
+def test_centroid_quad_err_cov_fallback():
+    """
+    Test that quad fallback sources use the isophotal covariance.
+    """
+    data = np.ones((11, 11))
+    data[5, 5] = 10.0
+    error = np.full(data.shape, 1.0)
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[5:7, 5:7] = 1
+    segment_map = SegmentationImage(segment_data)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+    assert_allclose(cat.centroid_quad, cat.centroid)
+    assert_allclose(cat._centroid_quad_err_cov,
+                    cat._centroid_err_cov)
+
+
+def test_sky_err_from_cov():
+    """
+    Test the pixel-to-sky error covariance transport against a
+    hand-rotated covariance for a rotated TAN WCS.
+    """
+    theta_deg = 30.0
+    scale = 0.25  # arcsec / pixel
+    wcs = WCS(naxis=2)
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    wcs.wcs.crpix = [10.0, 10.0]
+    wcs.wcs.crval = [150.0, 30.0]
+    theta = np.deg2rad(theta_deg)
+    cd = (scale / 3600.0) * np.array([[-np.cos(theta), np.sin(theta)],
+                                      [np.sin(theta), np.cos(theta)]])
+    wcs.wcs.cd = cd
+
+    data = np.zeros((21, 21))
+    data[9:12, 9:12] = 10.0
+    segment_map = SegmentationImage((data > 0).astype(int))
+    cat = SourceCatalog(data, segment_map, wcs=wcs)
+
+    pix_cov = np.array([[[0.04, 0.01], [0.01, 0.09]]])
+    xycen = np.array([[10.0, 10.0]])
+    sky_err = cat._sky_err_from_cov(pix_cov, xycen)
+
+    # Reference: compare against the vectorized Jacobian helper
+    # directly (transport identity), and check the isotropic invariant
+    # trace(sky_cov) = scale^2 * trace(pix_cov)
+    jac = compute_pixel_to_sky_jacobians(xycen[:, 0], xycen[:, 1],
+                                         wcs)
+    sky_cov = jac[0] @ pix_cov[0] @ jac[0].T
+    assert_allclose(sky_err.to_value('arcsec')[0],
+                    np.sqrt(np.diag(sky_cov)))
+    assert_allclose(np.trace(sky_cov),
+                    scale**2 * np.trace(pix_cov[0]), rtol=1e-3)
+
+    # NaN positions give NaN errors
+    xycen_nan = np.array([[np.nan, np.nan]])
+    sky_err_nan = cat._sky_err_from_cov(pix_cov, xycen_nan)
+    assert np.all(np.isnan(sky_err_nan.value))
+
+
+def test_sky_centroid_err():
+    """
+    Test the sky centroid error properties for all three centroid
+    flavors: shapes, units, axis views, and consistency with the pixel
+    errors for an axis-aligned WCS at dec=0.
+    """
+    scale = 0.5  # arcsec / pixel
+    wcs = WCS(naxis=2)
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    wcs.wcs.crpix = [15.0, 15.0]
+    wcs.wcs.crval = [150.0, 0.0]
+    wcs.wcs.cd = (scale / 3600.0) * np.array([[-1.0, 0.0],
+                                              [0.0, 1.0]])
+
+    yy, xx = np.mgrid[0:31, 0:31]
+    data = Gaussian2D(500.0, 15.2, 15.6, 2.5, 2.0, 0.3)(xx, yy)
+    error = np.full(data.shape, 5.0)
+    segment_map = detect_sources(data, 10.0, n_pixels=10)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, wcs=wcs,
+                        aperture_mask_method='none')
+
+    for prefix, pix_err in (('sky_centroid', cat.centroid_err),
+                            ('sky_centroid_win',
+                             cat.centroid_win_err),
+                            ('sky_centroid_quad',
+                             cat.centroid_quad_err)):
+        sky_err = getattr(cat, f'{prefix}_err')
+        assert sky_err.unit == u.arcsec
+        assert sky_err.shape == (1, 2)
+        # Axis-aligned WCS at dec=0: sky error = scale * pixel error
+        assert_allclose(sky_err.to_value('arcsec')[0],
+                        scale * pix_err[0], rtol=1e-3)
+        assert_allclose(getattr(cat, f'{prefix}_ra_err'),
+                        sky_err[:, 0])
+        assert_allclose(getattr(cat, f'{prefix}_dec_err'),
+                        sky_err[:, 1])
+
+
+def test_sky_centroid_err_no_wcs():
+    """
+    Test that the sky error properties are None without a wcs.
+    """
+    data = np.zeros((11, 11))
+    data[4:7, 4:7] = 10.0
+    segment_map = SegmentationImage((data > 0).astype(int))
+    error = np.ones(data.shape)
+    cat = SourceCatalog(data, segment_map, error=error)
+
+    names = []
+    for prefix in ('sky_centroid', 'sky_centroid_win',
+                   'sky_centroid_quad'):
+        names.extend([f'{prefix}_err', f'{prefix}_ra_err',
+                      f'{prefix}_dec_err'])
+    for name in names:
+        # A length-1 (non-scalar) catalog returns an array of None
+        value = getattr(cat, name)
+        assert np.all(value == np.array(None))
+        # A scalar catalog collapses to a single None
+        assert getattr(cat[0], name) is None
+
+
+def test_sky_centroid_err_columns():
+    """
+    Test sky error columns in to_table and the scalar collapse.
+    """
+    wcs = WCS(naxis=2)
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    wcs.wcs.crpix = [15.0, 15.0]
+    wcs.wcs.crval = [150.0, 20.0]
+    wcs.wcs.cd = (0.5 / 3600.0) * np.array([[-1.0, 0.0],
+                                            [0.0, 1.0]])
+
+    yy, xx = np.mgrid[0:31, 0:31]
+    data = Gaussian2D(500.0, 15.2, 15.6, 2.5, 2.5)(xx, yy)
+    error = np.full(data.shape, 5.0)
+    segment_map = detect_sources(data, 10.0, n_pixels=10)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, wcs=wcs,
+                        aperture_mask_method='none')
+
+    columns = ['label', 'sky_centroid_ra_err', 'sky_centroid_dec_err']
+    tbl = cat.to_table(columns=columns)
+    assert tbl.colnames == columns
+    assert tbl['sky_centroid_ra_err'].unit == u.arcsec
+
+    single = cat[0]
+    sky_err = single.sky_centroid_err
+    assert sky_err.shape == (2,)
+    assert single.sky_centroid_ra_err == sky_err[0]
 
 
 class TestPartialPixelErrorWeights:

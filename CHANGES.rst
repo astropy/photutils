@@ -246,6 +246,13 @@ New Features
     quadratic centroid positions, propagated from the input ``error``
     array. [#2397]
 
+  - Added ``SourceCatalog`` ``sky_centroid_err``,
+    ``sky_centroid_ra_err``, ``sky_centroid_dec_err``, and the
+    corresponding ``sky_centroid_win_*`` and ``sky_centroid_quad_*``
+    properties providing the 1-sigma sky position errors in arcsec,
+    computed by transporting the pixel centroid error covariance through
+    the local WCS Jacobian. [#2399]
+
 - ``photutils.utils``
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's

@@ -34,6 +34,7 @@ from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
+from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 from photutils.utils.cutouts import CutoutImage
 
 __all__ = ['SourceCatalog']
@@ -1634,6 +1635,115 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
+    def _centroid_err_cov(self):
+        """
+        The ``(n_labels, 2, 2)`` pixel error covariance matrices of the
+        isophotal centroid, ``[[var_x, cov_xy], [cov_xy, var_y]]``.
+
+        The matrices are all-NaN where the errors cannot be computed (no
+        ``error`` input or non-positive total flux). See `centroid_err`
+        for the propagation details.
+        """
+        if self._error is None:
+            return np.full((self.n_labels, 2, 2), np.nan)
+
+        cutout_centroid = self._array('cutout_centroid')
+        is_singular = self._singular_covariance_mask
+
+        var_arr = []
+        pixel_var = 1.0 / 12.0
+        for (moment_data, error_cutout, total_mask, xcen, ycen,
+             singular) in zip(
+                self._moment_data_cutouts, self._error_cutouts,
+                self._cutout_total_masks, cutout_centroid[:, 0],
+                cutout_centroid[:, 1], is_singular, strict=True):
+
+            total_flux = np.sum(moment_data)
+            if not np.isfinite(total_flux) or total_flux <= 0:
+                var_arr.append((np.nan, np.nan, np.nan))
+                continue
+
+            err_sq = error_cutout.astype(float)**2
+            # Zero the variance at masked pixels and at pixels that
+            # were excluded from the moment data (e.g., non-finite or
+            # negative convolved values), so that pixels that do not
+            # contribute flux weight also do not contribute error
+            # variance.
+            err_sq[total_mask | (moment_data == 0)] = 0.0
+
+            yy, xx = np.mgrid[0:err_sq.shape[0], 0:err_sq.shape[1]]
+            dx = xx - xcen
+            dy = yy - ycen
+
+            # Propagate the error through the centroid formula.
+            norm = 1.0 / (total_flux**2)
+            err_var_x = np.sum(err_sq * dx**2) * norm
+            err_var_y = np.sum(err_sq * dy**2) * norm
+            err_cov_xy = np.sum(err_sq * dx * dy) * norm
+
+            # Singularity correction for point-like sources. If the
+            # error covariance matrix is nearly singular, add the
+            # variance of a uniform
+            # distribution across a single pixel (1/12) scaled by the
+            # summed pixel variance. The correction is added to the
+            # variances only, never to the covariance.
+            if singular:
+                err_sum_norm = np.sum(err_sq) * pixel_var * norm
+                if (err_var_x * err_var_y
+                        - err_cov_xy**2) < err_sum_norm**2:
+                    err_var_x += err_sum_norm
+                    err_var_y += err_sum_norm
+
+            var_arr.append((err_var_x, err_var_y, err_cov_xy))
+
+        var_arr = np.array(var_arr)
+        cov = np.empty((len(var_arr), 2, 2))
+        cov[:, 0, 0] = var_arr[:, 0]
+        cov[:, 1, 1] = var_arr[:, 1]
+        cov[:, 0, 1] = var_arr[:, 2]
+        cov[:, 1, 0] = var_arr[:, 2]
+        return cov
+
+    def _sky_err_from_cov(self, pix_cov, xycen):
+        """
+        Transport pixel error covariances to sky position errors.
+
+        The pixel covariance of each source is mapped to the local
+        tangent plane with the forward WCS Jacobian ``F`` evaluated at
+        the source position (``sky_cov = F pix_cov F^T``). The returned
+        errors are the square roots of the tangent-plane variances along
+        East and North.
+
+        Parameters
+        ----------
+        pix_cov : `~numpy.ndarray`
+            The ``(N, 2, 2)`` pixel error covariance matrices.
+
+        xycen : `~numpy.ndarray`
+            The ``(N, 2)`` pixel ``(x, y)`` centroid positions at which
+            to evaluate the WCS Jacobians.
+
+        Returns
+        -------
+        sky_err : `~astropy.units.Quantity`
+            The ``(N, 2)`` array of 1-sigma errors in arcsec, with
+            columns ``(east_err, north_err)``. Rows are NaN where the
+            position or covariance is not finite.
+        """
+        sky_err = np.full(xycen.shape, np.nan)
+        good = (np.all(np.isfinite(xycen), axis=1)
+                & np.all(np.isfinite(pix_cov), axis=(1, 2)))
+        if np.any(good):
+            jac = compute_pixel_to_sky_jacobians(xycen[good, 0],
+                                                 xycen[good, 1],
+                                                 self.wcs)
+            sky_cov = np.einsum('nij,njk,nlk->nil', jac, pix_cov[good], jac)
+            sky_err[good, 0] = np.sqrt(sky_cov[:, 0, 0])
+            sky_err[good, 1] = np.sqrt(sky_cov[:, 1, 1])
+        return sky_err << u.arcsec
+
+    @cached_property
+    @use_detcat
     def centroid_err(self):
         """
         The ``(x, y)`` 1-sigma errors on the `centroid` position.
@@ -1655,60 +1765,8 @@ class SourceCatalog:
         :math:`\\sum_i \\sigma_i^2 / (12 F^2)` is added to the variances
         if the error covariance matrix is itself nearly singular.
         """
-        if self._error is None:
-            return np.full((self.n_labels, 2), np.nan)
-
-        cutout_centroid = self._array('cutout_centroid')
-        is_singular = self._singular_covariance_mask
-
-        xerr_arr = []
-        yerr_arr = []
-        pixel_var = 1.0 / 12.0
-        for (moment_data, error_cutout, total_mask, xcen, ycen,
-             singular) in zip(
-                self._moment_data_cutouts, self._error_cutouts,
-                self._cutout_total_masks, cutout_centroid[:, 0],
-                cutout_centroid[:, 1], is_singular, strict=True):
-
-            total_flux = np.sum(moment_data)
-            if not np.isfinite(total_flux) or total_flux <= 0:
-                xerr_arr.append(np.nan)
-                yerr_arr.append(np.nan)
-                continue
-
-            err_sq = error_cutout.astype(float)**2
-            # Zero the variance at masked pixels and at pixels that
-            # were excluded from the moment data (e.g., non-finite or
-            # negative convolved values), so that pixels that do not
-            # contribute flux weight also do not contribute error
-            # variance.
-            err_sq[total_mask | (moment_data == 0)] = 0.0
-
-            yy, xx = np.mgrid[0:err_sq.shape[0], 0:err_sq.shape[1]]
-            dx = xx - xcen
-            dy = yy - ycen
-
-            # Propagate the error through the centroid formula.
-            norm = 1.0 / (total_flux**2)
-            err_var_x = np.sum(err_sq * dx**2) * norm
-            err_var_y = np.sum(err_sq * dy**2) * norm
-
-            # Singularity correction for point-like sources. If the
-            # error covariance matrix is nearly singular, add the
-            # variance of a uniform distribution across a single
-            # pixel (1/12) scaled by the summed pixel variance.
-            if singular:
-                err_sum_norm = np.sum(err_sq) * pixel_var * norm
-                err_cov_xy = np.sum(err_sq * dx * dy) * norm
-                if (err_var_x * err_var_y
-                        - err_cov_xy**2) < err_sum_norm**2:
-                    err_var_x += err_sum_norm
-                    err_var_y += err_sum_norm
-
-            xerr_arr.append(np.sqrt(err_var_x))
-            yerr_arr.append(np.sqrt(err_var_y))
-
-        return np.transpose((xerr_arr, yerr_arr))
+        cov = self._centroid_err_cov
+        return np.sqrt(np.stack((cov[:, 0, 0], cov[:, 1, 1]), axis=1))
 
     @cached_property
     @use_detcat
@@ -1767,6 +1825,10 @@ class SourceCatalog:
 
         err_var_y : `~numpy.ndarray`
             Normalized error variance in ``y``.
+
+        err_cov_xy : `~numpy.ndarray`
+            Normalized error covariance in ``xy``. The pixel-size and
+            singularity corrections are not applied to the covariance.
         """
         step_factor = 2.0
         with warnings.catch_warnings():
@@ -1793,14 +1855,16 @@ class SourceCatalog:
             bad = ~np.isfinite(weighted_flux) | (weighted_flux <= 0)
             err_var_x[bad] = np.nan
             err_var_y[bad] = np.nan
+            err_cov_xy[bad] = np.nan
 
-        return err_var_x, err_var_y
+        return err_var_x, err_var_y, err_cov_xy
 
     def _apply_centroid_win_fallback(self, xcen_win, ycen_win,
                                      win_weighted_flux,
                                      win_cen_mom_xx, win_cen_mom_yy,
                                      win_cen_mom_xy,
                                      win_err_var_x, win_err_var_y,
+                                     win_err_cov_xy,
                                      nan_hl, x_centroid, y_centroid):
         """
         Apply the fallback conditions for the windowed centroid.
@@ -1839,6 +1903,9 @@ class SourceCatalog:
         win_err_var_y : `~numpy.ndarray`
             Error variance in y.
 
+        win_err_cov_xy : `~numpy.ndarray`
+            Error covariance in xy.
+
         nan_hl : `~numpy.ndarray`
             Boolean mask indicating sources with NaN half-light radius.
 
@@ -1851,16 +1918,10 @@ class SourceCatalog:
         Returns
         -------
         result : `~numpy.ndarray`
-            The windowed centroid coordinates and their 1-sigma
-            errors as columns ``(x, y, xerr, yerr)``, shape
-            ``(n_sources, 4)``.
+            The windowed centroid coordinates and their error variances
+            and covariance as columns ``(x, y, var_x, var_y, cov_xy)``,
+            shape ``(n_sources, 5)``.
         """
-        # Convert variance to 1-sigma error
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            xerr = np.sqrt(win_err_var_x)
-            yerr = np.sqrt(win_err_var_y)
-
         dx = x_centroid - xcen_win
         dy = y_centroid - ycen_win
         cxx = self._array('ellipse_cxx').value
@@ -1880,12 +1941,14 @@ class SourceCatalog:
             xcen_win[reset] = x_centroid[reset]
             ycen_win[reset] = y_centroid[reset]
             # Fallback sources use the isophotal centroid, so also
-            # use the isophotal centroid errors
-            iso_errors = self._array('centroid_err')
-            xerr[reset] = iso_errors[reset, 0]
-            yerr[reset] = iso_errors[reset, 1]
+            # use the isophotal centroid error covariance
+            iso_cov = self._centroid_err_cov
+            win_err_var_x[reset] = iso_cov[reset, 0, 0]
+            win_err_var_y[reset] = iso_cov[reset, 1, 1]
+            win_err_cov_xy[reset] = iso_cov[reset, 0, 1]
 
-        return np.transpose((xcen_win, ycen_win, xerr, yerr))
+        return np.transpose((xcen_win, ycen_win, win_err_var_x,
+                             win_err_var_y, win_err_cov_xy))
 
     def _iterate_centroid_win(self, label, xcen, ycen, rad_hl,
                               nan_hl_source, *, data_arr, mask_arr,
@@ -2107,9 +2170,9 @@ class SourceCatalog:
     @use_detcat
     def _centroid_win_results(self):
         """
-        The "windowed" centroid coordinates and their 1-sigma errors
-        as a 2D array with columns ``(x, y, xerr, yerr)`` and shape
-        ``(n_labels, 4)``.
+        The "windowed" centroid coordinates and their error variances
+        and covariance as a 2D array with columns ``(x, y, var_x, var_y,
+        cov_xy)`` and shape ``(n_labels, 5)``.
 
         This is the single computation behind `centroid_win` and
         `centroid_win_err`. See `centroid_win` for the algorithm
@@ -2179,14 +2242,15 @@ class SourceCatalog:
 
         # Normalize error terms by step_factor^2 / weighted_flux^2
         if compute_err:
-            win_err_var_x, win_err_var_y = self._normalize_centroid_win_err(
+            (win_err_var_x, win_err_var_y,
+             win_err_cov_xy) = self._normalize_centroid_win_err(
                 win_err_sum, win_err_var_x, win_err_var_y,
                 win_err_cov_xy, win_weighted_flux)
 
         return self._apply_centroid_win_fallback(
             xcen_win, ycen_win, win_weighted_flux,
             win_cen_mom_xx, win_cen_mom_yy, win_cen_mom_xy,
-            win_err_var_x, win_err_var_y, nan_hl,
+            win_err_var_x, win_err_var_y, win_err_cov_xy, nan_hl,
             x_centroid, y_centroid)
 
     @cached_property
@@ -2263,7 +2327,29 @@ class SourceCatalog:
         `centroid_err`). The errors are NaN where the half-light radius
         is not finite.
         """
-        return self._centroid_win_results[:, 2:4].copy()
+        results = self._centroid_win_results
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return np.sqrt(results[:, 2:4])
+
+    @cached_property
+    @use_detcat
+    def _centroid_win_err_cov(self):
+        """
+        The ``(n_labels, 2, 2)`` pixel error covariance matrices of the
+        windowed centroid, ``[[var_x, cov_xy], [cov_xy, var_y]]``.
+
+        Fallback sources hold the isophotal covariance (see
+        ``_centroid_err_cov``); matrices are all-NaN where errors are
+        unavailable.
+        """
+        results = self._centroid_win_results
+        cov = np.empty((len(results), 2, 2))
+        cov[:, 0, 0] = results[:, 2]
+        cov[:, 1, 1] = results[:, 3]
+        cov[:, 0, 1] = results[:, 4]
+        cov[:, 1, 0] = results[:, 4]
+        return cov
 
     @cached_property
     @use_detcat
@@ -2333,6 +2419,9 @@ class SourceCatalog:
         -------
         var_x, var_y : float
             The variances of the peak ``x`` and ``y`` positions.
+
+        cov_xy : float
+            The covariance of the peak ``x`` and ``y`` positions.
         """
         c10, c01, c11, c20, c02 = coeffs[1:]
         det = 4.0 * c20 * c02 - c11 * c11
@@ -2350,17 +2439,21 @@ class SourceCatalog:
              (c10 + 2.0 * c11 * ym_rel) / det,
              (-2.0 * c01 - 4.0 * c02 * ym_rel) / det,
              -4.0 * c20 * ym_rel / det])
-        var_x = np.sum((grad_x @ pinv)**2 * box_var)
-        var_y = np.sum((grad_y @ pinv)**2 * box_var)
-        return var_x, var_y
+        u_x = grad_x @ pinv
+        u_y = grad_y @ pinv
+        var_x = np.sum(u_x**2 * box_var)
+        var_y = np.sum(u_y**2 * box_var)
+        cov_xy = np.sum(u_x * u_y * box_var)
+        return var_x, var_y, cov_xy
 
     @cached_property
     @use_detcat
     def _centroid_quad_results(self):
         """
-        The quadratic centroid coordinates, relative to the cutout
-        data, and their 1-sigma errors as a 2D array with columns
-        ``(x, y, xerr, yerr)`` and shape ``(n_labels, 4)``.
+        The quadratic centroid coordinates, relative to the cutout data,
+        and their error variances and covariance as a 2D array with
+        columns ``(x, y, var_x, var_y, cov_xy)`` and shape ``(n_labels,
+        5)``.
 
         This is the single computation behind `cutout_centroid_quad`,
         `centroid_quad`, and `centroid_quad_err`. See
@@ -2385,7 +2478,7 @@ class SourceCatalog:
         compute_err = self._error is not None
 
         _nan = np.nan
-        nan_result = (_nan, _nan, _nan, _nan)
+        nan_result = (_nan, _nan, _nan, _nan, _nan)
         results = []
 
         cutouts = self._data_cutouts
@@ -2416,7 +2509,8 @@ class SourceCatalog:
             # If peak at edge of cutout, return peak position. No fit
             # is performed, so no errors can be propagated.
             if xidx == 0 or xidx == nx - 1 or yidx == 0 or yidx == ny - 1:
-                results.append((float(xidx), float(yidx), _nan, _nan))
+                results.append((float(xidx), float(yidx), _nan, _nan,
+                                _nan))
                 continue
 
             # Extract 3x3 box centered on peak (guaranteed to fit
@@ -2445,7 +2539,7 @@ class SourceCatalog:
                 results.append(nan_result)
                 continue
 
-            var_x = var_y = _nan
+            var_x = var_y = cov_xy = _nan
             if compute_err:
                 # Pixel variances of the fit box; masked pixels have
                 # a fixed (zeroed) data value, so they contribute no
@@ -2454,24 +2548,24 @@ class SourceCatalog:
                            .astype(float).ravel()**2)
                 box_var[mask[yidx0:yidx0 + 3,
                              xidx0:xidx0 + 3].ravel()] = 0.0
-                var_x, var_y = self._centroid_quad_var(c, xm_rel, ym_rel,
-                                                       pinv, box_var)
+                var_x, var_y, cov_xy = self._centroid_quad_var(
+                    c, xm_rel, ym_rel, pinv, box_var)
 
-            results.append((xm, ym, var_x, var_y))
+            results.append((xm, ym, var_x, var_y, cov_xy))
 
         results = np.array(results)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            results[:, 2:4] = np.sqrt(results[:, 2:4])
 
         # Use the segment barycenter if the fit returned NaN. Fallback
         # sources use the isophotal centroid, so also use the isophotal
-        # centroid errors.
+        # centroid error covariance.
         nan_mask = (np.isnan(results[:, 0]) | np.isnan(results[:, 1]))
         if np.any(nan_mask):
             cutout_centroid = self._array('cutout_centroid')
             results[nan_mask, 0:2] = cutout_centroid[nan_mask]
-            results[nan_mask, 2:4] = self._array('centroid_err')[nan_mask]
+            iso_cov = self._centroid_err_cov
+            results[nan_mask, 2] = iso_cov[nan_mask, 0, 0]
+            results[nan_mask, 3] = iso_cov[nan_mask, 1, 1]
+            results[nan_mask, 4] = iso_cov[nan_mask, 0, 1]
 
         return results
 
@@ -2571,7 +2665,29 @@ class SourceCatalog:
         maximum data value is at the edge of the source segment (where
         the position of the maximum pixel is returned instead of a fit).
         """
-        return self._centroid_quad_results[:, 2:4].copy()
+        results = self._centroid_quad_results
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return np.sqrt(results[:, 2:4])
+
+    @cached_property
+    @use_detcat
+    def _centroid_quad_err_cov(self):
+        """
+        The ``(n_labels, 2, 2)`` pixel error covariance matrices of the
+        quadratic centroid, ``[[var_x, cov_xy], [cov_xy, var_y]]``.
+
+        Fallback sources hold the isophotal covariance (see
+        ``_centroid_err_cov``); matrices are all-NaN where errors are
+        unavailable.
+        """
+        results = self._centroid_quad_results
+        cov = np.empty((len(results), 2, 2))
+        cov[:, 0, 0] = results[:, 2]
+        cov[:, 1, 1] = results[:, 3]
+        cov[:, 0, 1] = results[:, 4]
+        cov[:, 1, 0] = results[:, 4]
+        return cov
 
     @cached_property
     @use_detcat
@@ -2614,6 +2730,55 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
+    def sky_centroid_err(self):
+        """
+        The 1-sigma errors on the `sky_centroid` position as a ``(east,
+        north)`` `~astropy.units.Quantity` in arcsec.
+
+        The pixel error covariance of the `centroid` is transported
+        to the local tangent plane with the WCS Jacobian evaluated
+        at each source position. The first column is the error
+        along East (the Right Ascension direction as a great-circle
+        angle, i.e., including the cos(dec) factor) and the second
+        is along North (Declination).
+
+        `None` if ``wcs`` is not input. NaN where the pixel errors are
+        unavailable (e.g., no ``error`` input).
+        """
+        if self.wcs is None:
+            return self._null_objects
+        xycen = self._array('centroid')
+        return self._sky_err_from_cov(self._centroid_err_cov, xycen)
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_ra_err(self):
+        """
+        The 1-sigma error on the `sky_centroid` position along the Right
+        Ascension direction, as a great-circle angle in arcsec (i.e.,
+        including the cos(dec) factor).
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self._array('sky_centroid_err')[:, 0]
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_dec_err(self):
+        """
+        The 1-sigma error on the `sky_centroid` position along the
+        Declination direction, in arcsec.
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self._array('sky_centroid_err')[:, 1]
+
+    @cached_property
+    @use_detcat
     def sky_centroid_icrs(self):
         """
         The sky coordinate in the International Celestial Reference
@@ -2645,6 +2810,57 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
+    def sky_centroid_win_err(self):
+        """
+        The 1-sigma errors on the `sky_centroid_win` position as a
+        ``(east, north)`` `~astropy.units.Quantity` in arcsec.
+
+        The pixel error covariance of the `centroid_win` is transported
+        to the local tangent plane with the WCS Jacobian evaluated at
+        each source position. The first column is the error along East
+        (the Right Ascension direction as a great-circle angle, i.e.,
+        including the cos(dec) factor) and the second is along North
+        (Declination). Fallback sources use the isophotal centroid error
+        covariance.
+
+        `None` if ``wcs`` is not input. NaN where the pixel errors are
+        unavailable (e.g., no ``error`` input).
+        """
+        if self.wcs is None:
+            return self._null_objects
+        xycen = self._array('centroid_win')
+        return self._sky_err_from_cov(self._centroid_win_err_cov,
+                                      xycen)
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_win_ra_err(self):
+        """
+        The 1-sigma error on the `sky_centroid_win` position along the
+        Right Ascension direction, as a great-circle angle in arcsec
+        (i.e., including the cos(dec) factor).
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self._array('sky_centroid_win_err')[:, 0]
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_win_dec_err(self):
+        """
+        The 1-sigma error on the `sky_centroid_win` position along the
+        Declination direction, in arcsec.
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self._array('sky_centroid_win_err')[:, 1]
+
+    @cached_property
+    @use_detcat
     def sky_centroid_quad(self):
         """
         The sky coordinate of the centroid (`centroid_quad`), calculated
@@ -2659,6 +2875,57 @@ class SourceCatalog:
             return self._null_objects
         return self.wcs.pixel_to_world(self.x_centroid_quad,
                                        self.y_centroid_quad)
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_quad_err(self):
+        """
+        The 1-sigma errors on the `sky_centroid_quad` position as a
+        ``(east, north)`` `~astropy.units.Quantity` in arcsec.
+
+        The pixel error covariance of the `centroid_quad` is transported
+        to the local tangent plane with the WCS Jacobian evaluated at
+        each source position. The first column is the error along East
+        (the Right Ascension direction as a great-circle angle, i.e.,
+        including the cos(dec) factor) and the second is along North
+        (Declination). Fallback sources use the isophotal centroid error
+        covariance.
+
+        `None` if ``wcs`` is not input. NaN where the pixel errors are
+        unavailable (e.g., no ``error`` input).
+        """
+        if self.wcs is None:
+            return self._null_objects
+        xycen = self._array('centroid_quad')
+        return self._sky_err_from_cov(self._centroid_quad_err_cov,
+                                      xycen)
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_quad_ra_err(self):
+        """
+        The 1-sigma error on the `sky_centroid_quad` position along the
+        Right Ascension direction, as a great-circle angle in arcsec
+        (i.e., including the cos(dec) factor).
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self._array('sky_centroid_quad_err')[:, 0]
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_quad_dec_err(self):
+        """
+        The 1-sigma error on the `sky_centroid_quad` position along the
+        Declination direction, in arcsec.
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self._array('sky_centroid_quad_err')[:, 1]
 
     @cached_property
     @use_detcat

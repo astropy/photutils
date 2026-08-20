@@ -12,6 +12,7 @@ from astropy.wcs import WCS as APWCS
 from numpy.testing import assert_allclose
 
 from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
+                                          compute_pixel_to_sky_jacobians,
                                           jacobian_pixel_to_sky_mean_scale,
                                           jacobian_sky_to_pixel_mean_scale,
                                           pixel_shape_to_sky_svd,
@@ -166,6 +167,50 @@ class TestComputeLocalWCSJacobian:
         skycoord = SkyCoord(center_ra * u.deg, center_dec * u.deg)
         jac = compute_local_wcs_jacobian(skycoord, wcs)
         assert np.linalg.det(jac) < 0
+
+
+def _make_rotated_wcs(rotation_deg, scale_arcsec=0.25,
+                      crval=(150.0, 30.0)):
+    wcs = APWCS(naxis=2)
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    wcs.wcs.crpix = [50.0, 50.0]
+    wcs.wcs.crval = list(crval)
+    theta = np.deg2rad(rotation_deg)
+    scale = scale_arcsec / 3600.0
+    wcs.wcs.cd = scale * np.array(
+        [[-np.cos(theta), np.sin(theta)],
+         [np.sin(theta), np.cos(theta)]])
+    return wcs
+
+
+def test_compute_pixel_to_sky_jacobians():
+    """
+    Test the vectorized forward Jacobians against the inverse of the
+    scalar compute_local_wcs_jacobian at several positions.
+    """
+    wcs = _make_rotated_wcs(30.0)
+    x = np.array([10.0, 50.0, 80.3])
+    y = np.array([20.0, 50.0, 61.7])
+
+    jacs = compute_pixel_to_sky_jacobians(x, y, wcs)
+    assert jacs.shape == (3, 2, 2)
+
+    for i in range(x.size):
+        skycoord = wcs.pixel_to_world(x[i], y[i])
+        jac_inv = compute_local_wcs_jacobian(skycoord, wcs)
+        assert_allclose(jacs[i], np.linalg.inv(jac_inv), rtol=1e-4)
+
+
+def test_compute_pixel_to_sky_jacobians_scale():
+    """
+    Test that an axis-aligned WCS gives |F| entries equal to the pixel
+    scale in arcsec.
+    """
+    wcs = _make_rotated_wcs(0.0, scale_arcsec=0.5, crval=(150.0, 0.0))
+    jacs = compute_pixel_to_sky_jacobians(np.array([50.0]),
+                                          np.array([50.0]), wcs)
+    assert_allclose(np.abs(jacs[0]),
+                    [[0.5, 0.0], [0.0, 0.5]], atol=1e-4)
 
 
 class TestWcsPixelScaleAngle:
