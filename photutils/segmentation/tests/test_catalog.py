@@ -1471,6 +1471,9 @@ class TestSourceCatalogFlags:
         cat = SourceCatalog(data, self.segm)
         idx = np.argmax(cat.bbox_xmin > 0)
         assert cat.flags[idx] & SEGMENTATION_FLAGS.NON_FINITE_DATA
+        other = 1 - idx
+        assert not (cat.flags[other]
+                    & SEGMENTATION_FLAGS.NON_FINITE_DATA)
 
     def test_non_finite_error(self):
         """
@@ -1481,6 +1484,9 @@ class TestSourceCatalogFlags:
         cat = SourceCatalog(self.data, self.segm, error=error)
         idx = np.argmax(cat.bbox_xmin > 0)
         assert cat.flags[idx] & SEGMENTATION_FLAGS.NON_FINITE_ERROR
+        other = 1 - idx
+        assert not (cat.flags[other]
+                    & SEGMENTATION_FLAGS.NON_FINITE_ERROR)
 
     def test_all_masked(self):
         """
@@ -1651,6 +1657,14 @@ class TestSourceCatalogFlags:
                 | SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS)
         assert not np.any(cat2.flags & bits)
 
+        # Neighboring sources are masked, not corrected, so no pixels
+        # are left uncorrected
+        cat3 = SourceCatalog(data, segm, aperture_mask_method='mask')
+        assert np.all(cat3.flags
+                      & SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS)
+        assert not np.any(cat3.flags
+                          & SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS)
+
     def test_kron_neighbor_pixels_not_set(self):
         """
         Test that kron_neighbor_pixels is not set when the Kron aperture
@@ -1746,7 +1760,11 @@ class TestSourceCatalogFlags:
                       & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
 
         # The default minimum is not triggered by these resolved
-        # sources
+        # sources. The measured unscaled Kron radii are approximately
+        # [1.4318, 1.4058] against the default minimum of 1.4, a margin
+        # of about 0.006 for the smaller value. A future failure here
+        # likely indicates a fixture-tolerance drift rather than a flag
+        # regression.
         cat2 = SourceCatalog(self.data, self.segm)
         assert not np.any(cat2.flags
                           & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
@@ -1834,6 +1852,26 @@ class TestSourceCatalogFlags:
         cat = SourceCatalog(self.data, self.segm)
         flags = cat.flags
         assert cat[1:].flags[0] == flags[1]
+
+    def test_flags_scalar_fresh(self):
+        """
+        Test that a scalar catalog sliced before the parent catalog's
+        flags are cached computes a flags value that matches the parent
+        catalog's flags.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        scalar_cat = cat[0]  # slice before flags is accessed/cached
+        assert scalar_cat.flags == cat.flags[0]
+
+    def test_flags_scalar_cached(self):
+        """
+        Test that a scalar catalog sliced after the parent catalog's
+        flags are already cached carries the matching flags value.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        flags = cat.flags  # cache flags on the parent catalog
+        scalar_cat = cat[0]  # slice after flags is cached
+        assert scalar_cat.flags == flags[0]
 
     def test_flags_docstring_lists_all_flags(self):
         """
@@ -2032,6 +2070,9 @@ def test_centroid_win_migrate():
     indices = (0, 3, 14, 30)
     for idx in indices:
         assert_equal(cat.centroid_win[idx], cat.centroid[idx])
+        # The windowed centroid diverged off the image (a non-ellipse
+        # fallback condition), so the fallback flag is set.
+        assert cat.flags[idx] & SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
 
 
 def test_background_centroid_coordinate_order():
