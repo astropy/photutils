@@ -545,7 +545,7 @@ class PSFDataProcessor:
             sources = self.finder(data, mask=mask)
 
         self.finder_results = sources
-        if sources is None:
+        if sources is None or len(sources) == 0:
             return None
 
         return self._convert_finder_to_init(sources)
@@ -855,21 +855,15 @@ class PSFFitter:
         Bounds for x and y position parameters as (x_bound, y_bound).
         If provided, fitting positions will be constrained to within
         these bounds of the initial values.
-
-    group_warning_threshold : int, optional
-        Threshold for issuing warnings about large group sizes.
-        Default is 25.
     """
 
     def __init__(self, psf_model, param_mapper, *, fitter=None,
-                 fitter_maxiters=100, xy_bounds=None,
-                 group_warning_threshold=25):
+                 fitter_maxiters=100, xy_bounds=None):
         self.psf_model = psf_model
         self.param_mapper = param_mapper
         self.fitter = fitter if fitter is not None else TRFLSQFitter()
         self.fitter_maxiters = fitter_maxiters
         self.xy_bounds = xy_bounds
-        self.group_warning_threshold = group_warning_threshold
 
         # Cache of flat model classes keyed on the number of sources.
         # The cache is per-instance because the cached classes capture
@@ -1003,7 +997,9 @@ class PSFFitter:
             err = error[yi, xi]
             if np.any(err <= 0) or np.any(~np.isfinite(err)):
                 msg = ('Error array contains non-positive or non-finite '
-                       'values. Cannot compute fit weights.')
+                       'values within the fit region centered near '
+                       f'x={np.mean(xi):.1f}, y={np.mean(yi):.1f}. '
+                       'Cannot compute fit weights.')
                 raise ValueError(msg)
             weights = 1.0 / err
 
@@ -1367,7 +1363,7 @@ class PSFResultsAssembler:
             - 4: non-positive flux
             - 8: possible non-convergence
             - 16: missing parameter covariance
-            - 32: near a positional bound
+            - 32: near a fitted-parameter bound
             - 64: no overlap with data
             - 128: fully masked source
             - 256: too few pixels for fitting
@@ -1406,32 +1402,31 @@ class PSFResultsAssembler:
                                      for info in fit_info])
         flags[missing_cov_mask] |= PSF_FLAGS.NO_COVARIANCE
 
-        # Flag=32: near a positional bound
+        # Flag=32: near a fitted-parameter bound. Bounds may come from
+        # the xy_bounds keyword or be set directly on the PSF model.
         bound_tol = 0.01
-        if self.xy_bounds is not None:
-            alias_to_model = self.param_mapper.alias_to_model_param
-            x_param = alias_to_model['x']
-            y_param = alias_to_model['y']
-
-            # Extract all parameter values and bounds into arrays
-            x_vals = np.array([row[x_param] for row in fitted_models_table])
-            y_vals = np.array([row[y_param] for row in fitted_models_table])
-
-            # Create masks for valid sources and finite positions
-            finite_mask = (np.isfinite(x_vals) & np.isfinite(y_vals)
-                           & valid_mask)
-
-            # Check bounds for valid sources
-            for index in np.where(finite_mask)[0]:
-                row = fitted_models_table[index]
-                for param in (x_param, y_param):
-                    bnds = row[f'{param}_bounds']
-                    bounds = np.array([i for i in bnds if i is not None])
-                    if bounds.size == 0:
-                        continue
-                    if np.any(np.abs(bounds - row[param]) <= bound_tol):
-                        flags[index] |= PSF_FLAGS.NEAR_BOUND
-                        break
+        param_names = [col for col in fitted_models_table.colnames
+                       if col != 'id'
+                       and not col.endswith(('_fixed', '_bounds'))]
+        for index in np.where(valid_mask)[0]:
+            row = fitted_models_table[index]
+            for param in param_names:
+                if row[f'{param}_fixed']:
+                    continue
+                bnds = row[f'{param}_bounds']
+                if bnds is None:
+                    continue
+                bounds = np.array([i for i in bnds if i is not None])
+                if bounds.size == 0:
+                    continue
+                value = row[param]
+                if isinstance(value, u.Quantity):
+                    value = value.value
+                if not np.isfinite(value):
+                    continue
+                if np.any(np.abs(bounds - value) <= bound_tol):
+                    flags[index] |= PSF_FLAGS.NEAR_BOUND
+                    break
 
         # Flag=64, 128, 256: invalid source reasons. Sources invalid
         # because of a non-finite input flux get bit 1024 below from

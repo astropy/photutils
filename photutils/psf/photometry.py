@@ -447,7 +447,6 @@ class PSFPhotometry:
         self._psf_fitter = PSFFitter(
             self.psf_model, self._param_mapper, fitter=self.fitter,
             fitter_maxiters=self.fitter_maxiters, xy_bounds=self.xy_bounds,
-            group_warning_threshold=self.group_warning_threshold,
         )
 
         self._results_assembler = PSFResultsAssembler(

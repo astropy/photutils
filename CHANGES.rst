@@ -616,6 +616,11 @@ Bug Fixes
     pixels remained or all valid pixels were collinear.
     Nearest-neighbor interpolation is now used as a fallback. [#2395]
 
+  - Fixed a bug where the ``near_bound`` flag (bit 32) was only set
+    for bounds applied via the ``xy_bounds`` keyword. The flag is now
+    set when any fitted parameter is very close to its bounds,
+    including bounds set directly on the PSF model. [#2395]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range
@@ -873,6 +878,10 @@ API Changes
     silently ignored in favor of the ``NDData`` attributes. NDData
     input is now also documented in the ``__call__`` docstrings.
     [#2395]
+
+  - The error message raised for non-positive or non-finite ``error``
+    values within a fit region now includes the location of the fit
+    region. [#2395]
 
 - ``photutils.segmentation``
 

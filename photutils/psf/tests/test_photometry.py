@@ -2522,3 +2522,61 @@ def test_aperture_radius_bool():
     match = 'aperture_radius must be a strictly-positive scalar'
     with pytest.raises(ValueError, match=match):
         PSFPhotometry(model, (5, 5), aperture_radius=True)
+
+
+def test_finder_empty_table():
+    """
+    Regression test that a finder returning a zero-row table is
+    treated like no sources found instead of raising an aperture
+    error.
+    """
+    def finder(data, *, mask=None):  # noqa: ARG001
+        return Table({'x': np.array([]), 'y': np.array([])})
+
+    model = CircularGaussianPRF(fwhm=2.7)
+    psfphot = PSFPhotometry(model, (5, 5), finder=finder,
+                            aperture_radius=4)
+    phot = psfphot(np.ones((25, 25)))
+    assert phot is None
+
+
+def test_near_bound_flag_model_bounds():
+    """
+    Regression test that the near_bound flag (bit 32) is set when the
+    fit is pinned at a bound set on the PSF model itself, without the
+    xy_bounds keyword.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image((35, 35), model, 1,
+                                        model_shape=(9, 9),
+                                        flux=(500, 500),
+                                        min_separation=10, seed=0)
+    xpos = params['x_0'][0]
+    fit_model = CircularGaussianPRF(fwhm=2.7)
+    fit_model.x_0.bounds = (xpos - 0.6, xpos - 0.3)
+    init = Table({'x': [xpos - 0.5], 'y': params['y_0'],
+                  'flux': [500.0]})
+    psfphot = PSFPhotometry(fit_model, (5, 5))
+    phot = psfphot(data, init_params=init)
+    assert_allclose(phot['x_fit'][0], xpos - 0.3, atol=0.02)
+    assert phot['flags'][0] & 32
+
+
+def test_error_weights_message_has_source_context():
+    """
+    Regression test that the invalid-error-value message names the
+    fit region location.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image((35, 35), model, 1,
+                                        model_shape=(9, 9),
+                                        flux=(500, 500),
+                                        min_separation=10, seed=0)
+    init = Table({'x': params['x_0'], 'y': params['y_0'],
+                  'flux': [500.0]})
+    error = np.ones(data.shape)
+    error[int(params['y_0'][0]), int(params['x_0'][0])] = 0.0
+    psfphot = PSFPhotometry(model, (5, 5))
+    match = 'centered near'
+    with pytest.raises(ValueError, match=match):
+        psfphot(data, error=error, init_params=init)
