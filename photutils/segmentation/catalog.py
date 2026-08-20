@@ -1489,6 +1489,10 @@ class SourceCatalog:
         `~photutils.segmentation.decode_segmentation_flags` to decode
         the values.
 
+        Accessing ``flags`` computes the moment, covariance, and
+        centroid properties if they have not already been computed (the
+        results are cached and reused by those properties).
+
         The flags are:
 
         <flag_descriptions>
@@ -1536,6 +1540,30 @@ class SourceCatalog:
 
         # All pixels within the source segment are masked
         flags[self._all_masked] |= SEGMENTATION_FLAGS.ALL_MASKED
+
+        # Non-positive net flux (the zeroth image moment over the
+        # source segment). The moment-derived shape properties are
+        # undefined. Fully-masked sources and sources with no positive
+        # (convolved) data values have a zero net flux, so they are also
+        # flagged here. The ``~(m00 > 0)`` form additionally catches a
+        # non-finite net flux.
+        m00 = self._array('moments')[:, 0, 0]
+        flags[~(m00 > 0)] |= SEGMENTATION_FLAGS.UNDEFINED_SHAPE
+
+        # Singular or nearly singular source covariance, evaluated on
+        # the raw (unregularized) covariance matrix
+        flags[self._singular_covariance_mask] |= (
+            SEGMENTATION_FLAGS.SINGULAR_COVARIANCE)
+
+        # Windowed centroid is NaN or fell back to the isophotal
+        # centroid
+        flags[self._centroid_win_fallback] |= (
+            SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK)
+
+        # Quadratic-fit centroid is non-finite
+        quad = self._array('centroid_quad')
+        quad_failed = ~np.all(np.isfinite(quad), axis=1)
+        flags[quad_failed] |= SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED
 
         return flags
 
@@ -2005,9 +2033,12 @@ class SourceCatalog:
         Returns
         -------
         result : `~numpy.ndarray`
-            The windowed centroid coordinates and their error variances
-            and covariance as columns ``(x, y, var_x, var_y, cov_xy)``,
-            shape ``(n_sources, 5)``.
+            The windowed centroid coordinates, their error variances and
+            covariance, and the fallback indicator as columns ``(x, y,
+            var_x, var_y, cov_xy, fallback)``, shape ``(n_sources, 6)``.
+            The ``fallback`` column is 1.0 for sources whose windowed
+            centroid was reset to the isophotal centroid or is NaN
+            (non-finite half-light radius), and 0.0 otherwise.
         """
         dx = x_centroid - xcen_win
         dy = y_centroid - ycen_win
@@ -2034,8 +2065,9 @@ class SourceCatalog:
             win_err_var_y[reset] = iso_cov[reset, 1, 1]
             win_err_cov_xy[reset] = iso_cov[reset, 0, 1]
 
+        fallback = (reset | nan_hl).astype(float)
         return np.transpose((xcen_win, ycen_win, win_err_var_x,
-                             win_err_var_y, win_err_cov_xy))
+                             win_err_var_y, win_err_cov_xy, fallback))
 
     def _iterate_centroid_win(self, label, xcen, ycen, rad_hl,
                               nan_hl_source, *, data_arr, mask_arr,
@@ -2257,13 +2289,18 @@ class SourceCatalog:
     @use_detcat
     def _centroid_win_results(self):
         """
-        The "windowed" centroid coordinates and their error variances
-        and covariance as a 2D array with columns ``(x, y, var_x, var_y,
-        cov_xy)`` and shape ``(n_labels, 5)``.
+        The "windowed" centroid coordinates, their error variances
+        and covariance, and the fallback indicator as a 2D array with
+        columns ``(x, y, var_x, var_y, cov_xy, fallback)`` and shape
+        ``(n_labels, 6)``.
 
-        This is the single computation behind `centroid_win` and
-        `centroid_win_err`. See `centroid_win` for the algorithm
-        details.
+        The ``fallback`` column is 1.0 for sources whose windowed
+        centroid was reset to the isophotal centroid or is NaN, and 0.0
+        otherwise.
+
+        This is the single computation behind `centroid_win`,
+        `centroid_win_err`, and ``_centroid_win_fallback``. See
+        `centroid_win` for the algorithm details.
         """
         # Use .copy() to avoid mutating the cached flux_radius value
         radius_hl = self.flux_radius(0.5).value.copy()
@@ -2339,6 +2376,14 @@ class SourceCatalog:
             win_cen_mom_xx, win_cen_mom_yy, win_cen_mom_xy,
             win_err_var_x, win_err_var_y, win_err_cov_xy, nan_hl,
             x_centroid, y_centroid)
+
+    @cached_property
+    def _centroid_win_fallback(self):
+        """
+        A boolean array that is `True` where the windowed centroid is
+        NaN or fell back to the isophotal centroid.
+        """
+        return self._centroid_win_results[:, 5].astype(bool)
 
     @cached_property
     @use_detcat

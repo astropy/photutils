@@ -1491,6 +1491,71 @@ class TestSourceCatalogFlags:
         cat = SourceCatalog(self.data, self.segm, mask=mask)
         assert cat.flags[0] & SEGMENTATION_FLAGS.ALL_MASKED
 
+    def test_undefined_shape(self):
+        """
+        Test the undefined_shape flag for a source with non-positive
+        net flux.
+        """
+        data = np.zeros((11, 11))
+        data[3:8, 3:8] = -1.0
+        segm_data = np.zeros((11, 11), dtype=int)
+        segm_data[3:8, 3:8] = 1
+        cat = SourceCatalog(data, SegmentationImage(segm_data))
+        assert cat.flags[0] & SEGMENTATION_FLAGS.UNDEFINED_SHAPE
+
+    def test_undefined_shape_not_set(self):
+        """
+        Test that undefined_shape is not set for a normal source.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        assert not np.any(cat.flags
+                          & SEGMENTATION_FLAGS.UNDEFINED_SHAPE)
+
+    def test_singular_covariance(self):
+        """
+        Test the singular_covariance flag for a one-pixel-wide source.
+        """
+        data = np.zeros((11, 11))
+        data[5, 2:9] = 10.0
+        segm_data = np.zeros((11, 11), dtype=int)
+        segm_data[5, 2:9] = 1
+        cat = SourceCatalog(data, SegmentationImage(segm_data))
+        assert cat.flags[0] & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
+
+    def test_singular_covariance_not_set(self):
+        """
+        Test that singular_covariance is not set for a well-resolved
+        source.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        assert not np.any(cat.flags
+                          & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE)
+
+    def test_centroid_flags_fully_masked(self):
+        """
+        Test that a fully-masked compact source flags both centroid
+        failures (windowed centroid NaN, quadratic fit NaN).
+        """
+        data = np.zeros((21, 21))
+        data[5:7, 5:7] = 10.0
+        segm_data = np.zeros((21, 21), dtype=int)
+        segm_data[5:7, 5:7] = 1
+        mask = segm_data.astype(bool)
+        cat = SourceCatalog(data, SegmentationImage(segm_data),
+                            mask=mask)
+        assert cat.flags[0] & SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
+        assert cat.flags[0] & SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED
+
+    def test_centroid_flags_not_set(self):
+        """
+        Test that centroid flags are not set for clean resolved
+        sources.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        bits = (SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
+                | SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED)
+        assert not np.any(cat.flags & bits)
+
     @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_provenance_from_deblending(self):
         """
@@ -1694,6 +1759,11 @@ def test_centroid_win(centroid_win_data):
     # isophotal centroid
     assert cat.x_centroid[1] == cat.x_centroid_win[1]
     assert cat.y_centroid[1] == cat.y_centroid_win[1]
+
+    # Only the reset source is flagged
+    win_flags = cat.flags & SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
+    assert not win_flags[0]
+    assert win_flags[1]
 
 
 def test_centroid_win_migrate():
