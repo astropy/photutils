@@ -1298,7 +1298,7 @@ def batch_sigma_clip_sum(const double[::1] sum_values,
                     s_sum += v * frac
                     s_area += frac
                     if has_error:
-                        s_var += sum_errsq[start + i] * frac
+                        s_var += sum_errsq[start + i] * frac * frac
             sum_aper[k] = s_sum
             sum_area[k] = s_area
             if has_error:

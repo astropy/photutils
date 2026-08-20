@@ -313,6 +313,16 @@ class SourceCatalog:
     :math:`S` are the unmasked pixels in the source segment, and
     :math:`\\sigma_{\\mathrm{tot}, i}` is the input ``error`` array.
 
+    For the aperture-based fluxes (e.g.,
+    `~photutils.segmentation.SourceCatalog.kron_flux` and
+    `~photutils.segmentation.SourceCatalog.circular_photometry`), the
+    flux is the sum of the pixel values weighted by their aperture
+    overlap fractions. The flux error therefore weights each pixel
+    variance by the squared overlap fraction: :math:`\\Delta F =
+    \\sqrt{\\sum_{i \\in A} w_i^2 \\sigma_{\\mathrm{tot}, i}^2}`, where
+    :math:`w_i` are the aperture overlap fractions and :math:`A` are the
+    unmasked pixels within the aperture.
+
     Custom errors for source segments can be calculated using the
     `~photutils.segmentation.SourceCatalog.error_cutout_masked` and
     `~photutils.segmentation.SourceCatalog.background_cutout_masked`
@@ -4412,7 +4422,7 @@ class SourceCatalog:
                 if error is None:
                     flux_err_ = np.nan
                 else:
-                    values = (aperture_weights * error**2)[pixel_mask]
+                    values = (aperture_weights**2 * error**2)[pixel_mask]
                     if values.shape == (0,):
                         flux_err_ = np.nan
                     else:
@@ -4533,7 +4543,7 @@ class SourceCatalog:
                 if error is None:
                     flux_err_ = np.nan
                 else:
-                    values = (aperture_weights * error ** 2)[pixel_mask]
+                    values = (aperture_weights**2 * error**2)[pixel_mask]
                     if values.shape == (0,):
                         flux_err_ = np.nan
                     else:

@@ -312,6 +312,16 @@ Bug Fixes
   - Fixed a thread-safety issue in ``ApertureStats`` by using a copy of
     the user's SigmaClip instance. [#2364]
 
+  - Fixed the aperture photometry flux error propagation so that each
+    pixel variance is weighted by the squared aperture overlap
+    fraction. Previously, the linear overlap fraction was used,
+    which overestimated the flux errors by a few percent for small
+    apertures. This affects the flux errors from ``AperturePhotometry``,
+    ``aperture_photometry``, and ``ApertureStats.sum_err``. The
+    ``ApertureStats.error_sum_cutout`` values are now the pixel errors
+    multiplied by the aperture mask weights, so their quadrature sum
+    equals ``sum_err``. [#2398]
+
 - ``photutils.background``
 
   - Fixed the ``exclude_percentile`` box-exclusion criterion in
@@ -418,6 +428,11 @@ Bug Fixes
   - A ``Quantity`` ``radii`` (or ``half_sizes``) input to the profile
     classes now raises a ``TypeError``. Previously, the units were
     silently dropped. [#2371]
+
+  - The ``profile_error`` values of the profile classes are now
+    slightly smaller because the aperture photometry flux error
+    propagation now weights each pixel variance by the squared aperture
+    overlap fraction. [#2398]
 
 - ``photutils.psf``
 
@@ -725,6 +740,10 @@ Bug Fixes
 
   - ``SourceCatalog.add_property`` now raises a ``ValueError`` for
     names of built-in methods (e.g., ``to_table``). [#2378]
+
+  - Fixed the ``SourceCatalog`` ``kron_flux_err`` and
+    ``circular_photometry`` flux errors so that each pixel variance is
+    weighted by the squared aperture overlap fraction. [#2398]
 
 - ``photutils.utils``
 

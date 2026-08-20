@@ -1605,7 +1605,7 @@ class ApertureStats:
                     # Apply the exact weights and total mask;
                     # error_cutout will have zeros where mask_cutout is True
                     variance = error_cutout**2
-                    variance_cutout = (variance * aperweight_cutout
+                    variance_cutout = (variance * aperweight_cutout**2
                                        * ~mask_cutout)
 
             data_cutouts.append(data_cutout)
@@ -1754,7 +1754,9 @@ class ApertureStats:
             else:
                 # Multiplying the full variance cutout by the weights
                 # replicates the mask-based arithmetic exactly,
-                # including NaN for masked non-finite error values.
+                # including NaN for masked non-finite error values. The
+                # center-method weights are 0 or 1, so squaring them is
+                # not needed.
                 variance_cutout = error[slc] ** 2 * weight_cutout
 
             data_cutouts.append(data_cutout)
@@ -1827,8 +1829,9 @@ class ApertureStats:
     @cached_property
     def _variance_cutout_center(self):
         """
-        A 2D aperture-weighted variance cutout using the aperture mask
-        with the input "center" method as a `~numpy.ma.MaskedArray`.
+        A 2D variance cutout weighted by the squared aperture mask
+        weights, using the aperture mask with the input "center" method,
+        as a `~numpy.ma.MaskedArray`.
 
         The cutout does not have units due to current limitations of
         masked quantity arrays.
@@ -1849,9 +1852,9 @@ class ApertureStats:
     @cached_property
     def _variance_cutout(self):
         """
-        A 2D aperture-weighted variance cutout using the aperture mask
-        with the input ``sum_method`` method as a
-        `~numpy.ma.MaskedArray`.
+        A 2D variance cutout weighted by the squared aperture mask
+        weights, using the aperture mask with the input ``sum_method``
+        method, as a `~numpy.ma.MaskedArray`.
 
         The cutout does not have units due to current limitations of
         masked quantity arrays.
@@ -1871,6 +1874,10 @@ class ApertureStats:
         """
         A 2D aperture-weighted error cutout using the aperture mask with
         the input ``sum_method`` method as a `~numpy.ma.MaskedArray`.
+
+        The cutout values are the pixel errors multiplied by the
+        aperture mask weights, so the quadrature sum of the unmasked
+        cutout values equals `sum_err`.
 
         The cutout does not have units due to current limitations of
         masked quantity arrays.
@@ -2531,17 +2538,22 @@ class ApertureStats:
         The uncertainty of `sum`, propagated from the input ``error``
         array.
 
-        ``sum_err`` is the quadrature sum of the total errors over the
-        unmasked pixels within the aperture:
+        Because `sum` is the sum of the pixel values weighted by their
+        aperture overlap fractions, ``sum_err`` is the quadrature
+        sum of the total errors over the unmasked pixels within the
+        aperture, with each pixel variance weighted by the squared
+        overlap fraction:
 
         .. math::
 
-            \Delta F = \sqrt{\sum_{i \in A} \sigma_{\mathrm{tot}, i}^2}
+            \Delta F = \sqrt{\sum_{i \in A} w_i^2
+                \sigma_{\mathrm{tot}, i}^2}
 
-        where :math:`\Delta F` is the `sum_err`,
-        :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise total errors
-        (``error``), and :math:`A` are the unmasked pixels in the
-        aperture.
+        where :math:`\Delta F` is the `sum_err`, :math:`w_i` are the
+        aperture overlap fractions (1 for pixels entirely within the
+        aperture), :math:`\sigma_{\mathrm{tot, i}}` are the pixel-wise
+        total errors (``error``), and :math:`A` are the unmasked pixels
+        in the aperture.
 
         Pixel values that are masked in the input ``data``, including
         any non-finite pixel values (NaN and inf) that are automatically

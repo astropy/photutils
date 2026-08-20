@@ -919,7 +919,7 @@ class PixelAperture(Aperture):
                 areas.append(aper_weights[pixel_mask].sum())
 
                 if error is not None:
-                    variance = (error_cutout**2 * aper_weights)[pixel_mask]
+                    variance = (error_cutout**2 * aper_weights**2)[pixel_mask]
                     aperture_sum_errs.append(np.sqrt(variance.sum()))
                 else:
                     aperture_sum_errs.append(np.nan)
