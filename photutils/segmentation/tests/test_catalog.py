@@ -2515,6 +2515,56 @@ def test_centroid_win_err_singularity():
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_centroid_win_err_cov():
+    """
+    Test the windowed pixel error covariance: symmetric for every
+    source, near-zero off-diagonal for a circular source with uniform
+    errors, and consistent with centroid_win_err.
+    """
+    yy, xx = np.mgrid[0:31, 0:31]
+    data = Gaussian2D(500.0, 15.2, 15.6, 2.5, 2.5)(xx, yy)
+    error = np.full(data.shape, 5.0)
+    segment_map = detect_sources(data, 10.0, n_pixels=10)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, aperture_mask_method='none')
+
+    cov = cat._centroid_win_err_cov
+    assert cov.shape == (1, 2, 2)
+    assert_allclose(cov[0, 0, 1], cov[0, 1, 0])
+    # Circular source, uniform errors: negligible x-y covariance
+    assert abs(cov[0, 0, 1]) < 1e-3 * np.sqrt(cov[0, 0, 0]
+                                              * cov[0, 1, 1])
+    # Errors are the sqrt of the diagonal
+    assert_allclose(cat.centroid_win_err[0],
+                    np.sqrt((cov[0, 0, 0], cov[0, 1, 1])))
+
+
+def test_centroid_win_err_cov_fallback():
+    """
+    Test that fallback sources use the full isophotal covariance.
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = (g1 + g2)(xx, yy)
+    data += make_noise_image(data.shape, mean=0, stddev=65.0,
+                             seed=123)
+    error = np.full(data.shape, 65.0)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    segment_map = finder(convolved_data, 107.9)
+    cat = SourceCatalog(data, segment_map,
+                        convolved_data=convolved_data, error=error,
+                        aperture_mask_method='none')
+
+    # Source 1 falls back to the isophotal centroid (pinned by the
+    # existing test_centroid_win_err test)
+    assert_allclose(cat.centroid_win[1], cat.centroid[1])
+    assert_allclose(cat._centroid_win_err_cov[1],
+                    cat._centroid_err_cov[1])
+
+
 def test_centroid_err():
     """
     Test that centroid_err returns finite 1-sigma position errors

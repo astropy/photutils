@@ -1786,6 +1786,10 @@ class SourceCatalog:
 
         err_var_y : `~numpy.ndarray`
             Normalized error variance in ``y``.
+
+        err_cov_xy : `~numpy.ndarray`
+            Normalized error covariance in ``xy``. The pixel-size and
+            singularity corrections are not applied to the covariance.
         """
         step_factor = 2.0
         with warnings.catch_warnings():
@@ -1812,14 +1816,16 @@ class SourceCatalog:
             bad = ~np.isfinite(weighted_flux) | (weighted_flux <= 0)
             err_var_x[bad] = np.nan
             err_var_y[bad] = np.nan
+            err_cov_xy[bad] = np.nan
 
-        return err_var_x, err_var_y
+        return err_var_x, err_var_y, err_cov_xy
 
     def _apply_centroid_win_fallback(self, xcen_win, ycen_win,
                                      win_weighted_flux,
                                      win_cen_mom_xx, win_cen_mom_yy,
                                      win_cen_mom_xy,
                                      win_err_var_x, win_err_var_y,
+                                     win_err_cov_xy,
                                      nan_hl, x_centroid, y_centroid):
         """
         Apply the fallback conditions for the windowed centroid.
@@ -1858,6 +1864,9 @@ class SourceCatalog:
         win_err_var_y : `~numpy.ndarray`
             Error variance in y.
 
+        win_err_cov_xy : `~numpy.ndarray`
+            Error covariance in xy.
+
         nan_hl : `~numpy.ndarray`
             Boolean mask indicating sources with NaN half-light radius.
 
@@ -1870,16 +1879,10 @@ class SourceCatalog:
         Returns
         -------
         result : `~numpy.ndarray`
-            The windowed centroid coordinates and their 1-sigma
-            errors as columns ``(x, y, xerr, yerr)``, shape
-            ``(n_sources, 4)``.
+            The windowed centroid coordinates and their error variances
+            and covariance as columns ``(x, y, var_x, var_y, cov_xy)``,
+            shape ``(n_sources, 5)``.
         """
-        # Convert variance to 1-sigma error
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            xerr = np.sqrt(win_err_var_x)
-            yerr = np.sqrt(win_err_var_y)
-
         dx = x_centroid - xcen_win
         dy = y_centroid - ycen_win
         cxx = self._array('ellipse_cxx').value
@@ -1899,12 +1902,14 @@ class SourceCatalog:
             xcen_win[reset] = x_centroid[reset]
             ycen_win[reset] = y_centroid[reset]
             # Fallback sources use the isophotal centroid, so also
-            # use the isophotal centroid errors
-            iso_errors = self._array('centroid_err')
-            xerr[reset] = iso_errors[reset, 0]
-            yerr[reset] = iso_errors[reset, 1]
+            # use the isophotal centroid error covariance
+            iso_cov = self._centroid_err_cov
+            win_err_var_x[reset] = iso_cov[reset, 0, 0]
+            win_err_var_y[reset] = iso_cov[reset, 1, 1]
+            win_err_cov_xy[reset] = iso_cov[reset, 0, 1]
 
-        return np.transpose((xcen_win, ycen_win, xerr, yerr))
+        return np.transpose((xcen_win, ycen_win, win_err_var_x,
+                             win_err_var_y, win_err_cov_xy))
 
     def _iterate_centroid_win(self, label, xcen, ycen, rad_hl,
                               nan_hl_source, *, data_arr, mask_arr,
@@ -2126,9 +2131,9 @@ class SourceCatalog:
     @use_detcat
     def _centroid_win_results(self):
         """
-        The "windowed" centroid coordinates and their 1-sigma errors
-        as a 2D array with columns ``(x, y, xerr, yerr)`` and shape
-        ``(n_labels, 4)``.
+        The "windowed" centroid coordinates and their error variances
+        and covariance as a 2D array with columns ``(x, y, var_x, var_y,
+        cov_xy)`` and shape ``(n_labels, 5)``.
 
         This is the single computation behind `centroid_win` and
         `centroid_win_err`. See `centroid_win` for the algorithm
@@ -2198,14 +2203,15 @@ class SourceCatalog:
 
         # Normalize error terms by step_factor^2 / weighted_flux^2
         if compute_err:
-            win_err_var_x, win_err_var_y = self._normalize_centroid_win_err(
+            (win_err_var_x, win_err_var_y,
+             win_err_cov_xy) = self._normalize_centroid_win_err(
                 win_err_sum, win_err_var_x, win_err_var_y,
                 win_err_cov_xy, win_weighted_flux)
 
         return self._apply_centroid_win_fallback(
             xcen_win, ycen_win, win_weighted_flux,
             win_cen_mom_xx, win_cen_mom_yy, win_cen_mom_xy,
-            win_err_var_x, win_err_var_y, nan_hl,
+            win_err_var_x, win_err_var_y, win_err_cov_xy, nan_hl,
             x_centroid, y_centroid)
 
     @cached_property
@@ -2282,7 +2288,29 @@ class SourceCatalog:
         `centroid_err`). The errors are NaN where the half-light radius
         is not finite.
         """
-        return self._centroid_win_results[:, 2:4].copy()
+        results = self._centroid_win_results
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return np.sqrt(results[:, 2:4])
+
+    @cached_property
+    @use_detcat
+    def _centroid_win_err_cov(self):
+        """
+        The ``(n_labels, 2, 2)`` pixel error covariance matrices of the
+        windowed centroid, ``[[var_x, cov_xy], [cov_xy, var_y]]``.
+
+        Fallback sources hold the isophotal covariance (see
+        ``_centroid_err_cov``); matrices are all-NaN where errors are
+        unavailable.
+        """
+        results = self._centroid_win_results
+        cov = np.empty((len(results), 2, 2))
+        cov[:, 0, 0] = results[:, 2]
+        cov[:, 1, 1] = results[:, 3]
+        cov[:, 0, 1] = results[:, 4]
+        cov[:, 1, 0] = results[:, 4]
+        return cov
 
     @cached_property
     @use_detcat
