@@ -12,6 +12,7 @@ from astropy.table import QTable
 from astropy.units import Quantity
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy import interpolate
+from scipy.spatial import QhullError
 
 from photutils.centroids import centroid_com
 from photutils.psf.functional_models import CircularGaussianPRF
@@ -74,10 +75,10 @@ def _out_of_grid_mask(xi, yi, shape):
     """
     Compute a mask of positions outside an ePSF pixel grid.
 
-    The bounds match the `~scipy.interpolate.RegularGridInterpolator`
-    bounds. This helper defines the pixel-grid bounds used by both the
-    image-based PSF model evaluations and their analytic Jacobians
-    (``fit_deriv``), which must agree.
+    The bounds are the pixel-index domain of the ePSF image, ``[0, nx -
+    1] x [0, ny - 1]``. This helper defines the pixel-grid bounds used
+    by both the image-based PSF model evaluations and their analytic
+    Jacobians (``fit_deriv``), which must agree.
 
     Parameters
     ----------
@@ -263,8 +264,11 @@ def fit_2dgaussian(data, *, xypos=None, fwhm=None, fix_fwhm=True,
     flux_init = []
     for yxpos in xypos[:, ::-1]:
         cutout = CutoutImage(data, yxpos, tuple(fit_shape))
-        cutout = cutout.data[np.isfinite(cutout.data)]
-        flux_init.append(np.nansum(cutout))
+        good = np.isfinite(cutout.data)
+        if mask is not None:
+            mask_cutout = CutoutImage(mask, yxpos, tuple(fit_shape))
+            good &= ~mask_cutout.data
+        flux_init.append(np.sum(cutout.data[good]))
 
     if isinstance(data, Quantity):
         flux_init <<= data.unit
@@ -396,15 +400,22 @@ def fit_fwhm(data, *, xypos=None, fwhm=None, fit_shape=None, mask=None,
         phot = fit_2dgaussian(data, xypos=xypos, fwhm=fwhm, fix_fwhm=False,
                               fit_shape=fit_shape, mask=mask, error=error)
 
-    # Re-emit fit_shape warnings and check for other warnings
-    other_warnings = False
+    # Re-emit the captured warnings, mapping fitter convergence warnings
+    # to a single actionable message and passing all others through
+    # verbatim
+    convergence_warning = False
     for warning in fit_warnings:
-        if 'fit_shape is None' in str(warning.message):
-            warnings.warn(str(warning.message), warning.category)
+        wmsg = str(warning.message)
+        if 'fit_shape is None' in wmsg:
+            warnings.warn(wmsg, warning.category)
+        elif ('may not have converged' in wmsg
+                or 'fit may be unsuccessful' in wmsg):
+            convergence_warning = True
         else:
-            other_warnings = True
+            warnings.warn_explicit(warning.message, warning.category,
+                                   warning.filename, warning.lineno)
 
-    if other_warnings:
+    if convergence_warning:
         msg = ('One or more fit(s) may not have converged. Please '
                'carefully check your results. You may need to change '
                'the input "xypos" and "fit_shape" parameters.')
@@ -473,7 +484,11 @@ def _interpolate_missing_data(data, mask, *, method='cubic'):
     if method == 'nearest':
         interpol = interpolate.NearestNDInterpolator(xy, z)
     elif method == 'cubic':
-        interpol = interpolate.CloughTocher2DInterpolator(xy, z)
+        try:
+            interpol = interpolate.CloughTocher2DInterpolator(xy, z)
+        except QhullError:
+            # Too few or collinear valid pixels for triangulation
+            interpol = interpolate.NearestNDInterpolator(xy, z)
     else:
         msg = 'Unsupported interpolation method'
         raise ValueError(msg)
@@ -607,14 +622,19 @@ def _create_call_docstring(*, iterative=False):
 
         Parameters
         ----------
-        data : 2D `~numpy.ndarray`
+        data : 2D `~numpy.ndarray` or `~astropy.nddata.NDData`
             The 2D array on which to perform photometry. Invalid data
-            values (i.e., NaN or inf) are automatically masked.
+            values (i.e., NaN or inf) are automatically masked. If an
+            `~astropy.nddata.NDData` object is input, its ``data``,
+            ``mask``, ``uncertainty``, and ``unit`` attributes are used,
+            and the ``mask`` and ``error`` keywords must not be set.
 
         mask : 2D bool `~numpy.ndarray`, optional
-            A boolean mask with the same shape as ``data``, where a
-            `True` value indicates the corresponding element of ``data``
-            is masked.
+            A boolean mask with the same shape as ``data``, where
+            a `True` value indicates the corresponding element of
+            ``data`` is masked. Non-boolean mask arrays are coerced with
+            `~numpy.ndarray.astype`, so any nonzero value is treated as
+            masked.
 
         error : 2D `~numpy.ndarray`, optional
             The pixel-wise 1-sigma errors of the input ``data``.

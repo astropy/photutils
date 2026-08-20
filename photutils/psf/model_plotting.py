@@ -118,6 +118,10 @@ class _ModelGridPlotter:
             for i, arr in enumerate(data):
                 if np.count_nonzero(arr) == 0:
                     mask[i] = True
+            if mask.all():
+                msg = ('deltas cannot be computed because all ePSFs '
+                       'in the grid are blank (all pixels are zero)')
+                raise ValueError(msg)
             mean_epsf = np.mean(data[~mask], axis=0)
             data -= mean_epsf
             data[mask] = 0.0

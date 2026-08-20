@@ -6,8 +6,9 @@ Benchmarks for the photutils.psf subpackage.
 The benchmarks cover the per-call evaluation cost of the PSF models
 (the functional models, ImagePSF, and GriddedPSFModel), PSFPhotometry
 versus the number of sources and versus the PSF model type,
-IterativePSFPhotometry, the ImagePSF analytic Jacobian versus the
-finite-difference approximation, SourceGrouper scaling, ePSF building
+IterativePSFPhotometry, the ImagePSF and GriddedPSFModel analytic
+Jacobians versus the finite-difference approximation, SourceGrouper
+scaling, ePSF building
 (extract_stars and EPSFBuilder), the Gaussian fitting helpers
 (fit_2dgaussian and fit_fwhm), and make_psf_model_image.
 

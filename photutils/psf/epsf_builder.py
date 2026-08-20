@@ -1115,10 +1115,20 @@ class EPSFBuilder:
         self.shape = shape
 
         self.recentering_func = recentering_func
-        self.recentering_maxiters = recentering_maxiters
+        if (isinstance(recentering_maxiters, bool)
+                or not isinstance(recentering_maxiters, numbers.Integral)
+                or recentering_maxiters <= 0):
+            msg = ('recentering_maxiters must be a strictly-positive '
+                   'integer')
+            raise ValueError(msg)
+        self.recentering_maxiters = int(recentering_maxiters)
         self.recentering_boxsize = as_pair('recentering_boxsize',
                                            recentering_boxsize,
                                            lower_bound=(3, 1), check_odd=True)
+        if smoothing_kernel is not None:
+            # Validate early so bad kernels fail at construction
+            # instead of in the middle of a build
+            _SmoothingKernel.get_kernel(smoothing_kernel)
         self.smoothing_kernel = smoothing_kernel
 
         # Handle fitter parameter - accept both astropy Fitter and
@@ -1593,10 +1603,8 @@ class EPSFBuilder:
         # Smooth the ePSF
         smoothed_data = self._smooth_epsf(new_epsf)
 
-        # Recenter the ePSF
-        # Create an intermediate ePSF for recentering operations.
-        # Use the current epsf's origin if it exists, otherwise compute
-        # center.
+        # Recenter the ePSF using an intermediate ePSF that keeps the
+        # current epsf's origin
         temp_epsf = ImagePSF(data=smoothed_data,
                              origin=epsf.origin,
                              oversampling=self.oversampling,
@@ -1704,16 +1712,22 @@ class EPSFBuilder:
                     fitted_star = self._fit_star(epsf, star)
 
             elif isinstance(star, LinkedEPSFStar):
-                fitted_star = []
-                for linked_star in star:
-                    if linked_star._excluded_from_fit:
-                        fitted_star.append(linked_star)
-                    else:
-                        fitted_star.append(self._fit_star(epsf,
-                                                          linked_star))
+                if star.all_excluded:
+                    # Pass through unchanged to prevent
+                    # constrain_centers from warning on every iteration
+                    # for a fully excluded linked star.
+                    fitted_star = star
+                else:
+                    fitted_star = []
+                    for linked_star in star:
+                        if linked_star._excluded_from_fit:
+                            fitted_star.append(linked_star)
+                        else:
+                            fitted_star.append(self._fit_star(epsf,
+                                                              linked_star))
 
-                fitted_star = LinkedEPSFStar(fitted_star)
-                fitted_star.constrain_centers()
+                    fitted_star = LinkedEPSFStar(fitted_star)
+                    fitted_star.constrain_centers()
 
             else:
                 msg = ('stars must contain only EPSFStar and/or '
@@ -1992,12 +2006,18 @@ class EPSFBuilder:
         - n_excluded_stars: Number of stars excluded due to fit failures
         - excluded_star_indices: Indices of excluded stars
         """
-        if epsf is not None and not np.array_equal(epsf.oversampling,
-                                                   self.oversampling):
-            msg = (f'The input epsf oversampling '
-                   f'{tuple(epsf.oversampling)} does not match the '
-                   f'builder oversampling {tuple(self.oversampling)}')
-            raise ValueError(msg)
+        if epsf is not None:
+            if not np.array_equal(epsf.oversampling, self.oversampling):
+                msg = (f'The input epsf oversampling '
+                       f'{tuple(epsf.oversampling)} does not match the '
+                       f'builder oversampling '
+                       f'{tuple(self.oversampling)}')
+                raise ValueError(msg)
+
+            # An undersized initial ePSF would silently truncate the
+            # result, so validate its shape like a requested shape
+            _EPSFValidator.validate_shape_compatibility(
+                stars, self.oversampling, shape=epsf.data.shape)
 
         _EPSFValidator.validate_stars(stars, context='ePSF building')
         _EPSFValidator.validate_shape_compatibility(stars, self.oversampling,
@@ -2016,9 +2036,10 @@ class EPSFBuilder:
         converged = False
         center_dist_sq = np.array([self.center_accuracy_sq + 1.0])
 
-        # Main iteration loop
-        while (iter_num < self.maxiters and not np.all(fit_failed)
-               and not converged):
+        # Main iteration loop. Note that an all-failed iteration
+        # raises inside _process_iteration, so no fit_failed exit
+        # condition is needed here.
+        while iter_num < self.maxiters and not converged:
 
             iter_num += 1
 

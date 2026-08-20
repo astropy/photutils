@@ -74,6 +74,11 @@ class EPSFStar:
             msg = ('data must be a plain ndarray; Quantity inputs are '
                    'not supported')
             raise TypeError(msg)
+        if isinstance(data, np.ma.MaskedArray):
+            msg = ('data must be a plain ndarray. MaskedArray inputs '
+                   'are not supported. Use the weights keyword to mask '
+                   'pixels')
+            raise TypeError(msg)
 
         self._data = np.asanyarray(data)
 
@@ -126,6 +131,9 @@ class EPSFStar:
             raise ValueError(msg)
         if not np.all(np.isfinite(origin)):
             msg = 'Origin coordinates must be finite'
+            raise ValueError(msg)
+        if np.any(np.mod(origin, 1) != 0):
+            msg = 'origin must have integer values'
             raise ValueError(msg)
         self.origin = origin.astype(int)
 
@@ -207,7 +215,11 @@ class EPSFStar:
         value : float
             The total flux of the star.
         """
-        self._flux = float(value)
+        value = float(value)
+        if not np.isfinite(value):
+            msg = 'flux must be a finite value'
+            raise ValueError(msg)
+        self._flux = value
         # The cached normalized data values depend on the flux
         self.__dict__.pop('_data_values_normalized', None)
 
@@ -358,8 +370,13 @@ class EPSFStar:
         """
         1D array of unmasked cutout data values, normalized by the
         star's total flux.
+
+        For a star with zero flux (allowed for all-zero cutout data),
+        the values are all NaN and the star contributes nothing to an
+        ePSF build.
         """
-        return self.data[~self.mask].ravel() / self.flux
+        with np.errstate(divide='ignore', invalid='ignore'):
+            return self.data[~self.mask].ravel() / self.flux
 
 
 class EPSFStars:
@@ -411,6 +428,18 @@ class EPSFStars:
         """
         yield from self._data
 
+    def __array__(self, dtype=None, copy=None):
+        """
+        Array representation of the star cutout data (e.g., for
+        matplotlib).
+
+        A container holding a single star returns the 2D cutout of that
+        star. Otherwise, the cutouts of all stars are stacked along the
+        first axis (which requires that they have the same shape).
+        """
+        data = self._data[0] if len(self._data) == 1 else self._data
+        return np.array(data, dtype=dtype, copy=copy)
+
     def __getstate__(self):
         """
         Return state for pickling (avoids __getattr__ recursion).
@@ -429,11 +458,21 @@ class EPSFStars:
 
         This allows accessing star attributes (like ``cutout_center``,
         ``center``, ``flux``) directly on the EPSFStars container,
-        returning an array of values from all contained stars. If the
-        per-star values have inconsistent shapes (e.g., for a mix of
-        `EPSFStar` and multi-star `LinkedEPSFStar` objects), an object
-        array is returned.
+        returning an array of values from all contained stars. If
+        the per-star values have inconsistent shapes (e.g., for a
+        mix of `EPSFStar` and multi-star `LinkedEPSFStar` objects),
+        an object array is returned. Private attributes (other than
+        ``_excluded_from_fit``) are not delegated, and empty containers
+        raise `AttributeError`.
         """
+        if attr != '_excluded_from_fit' and attr.startswith('_'):
+            msg = (f"'{type(self).__name__}' object has no attribute "
+                   f"'{attr}'")
+            raise AttributeError(msg)
+        if not self._data:
+            msg = (f"'{type(self).__name__}' object is empty and has "
+                   f"no attribute '{attr}'")
+            raise AttributeError(msg)
         result = [getattr(star, attr) for star in self._data]
         if attr in ['cutout_center', 'center', 'flux', '_excluded_from_fit']:
             try:
@@ -957,9 +996,11 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
 
     catalogs : `~astropy.table.Table`, list of `~astropy.table.Table`
         A catalog or list of catalogs of sources to be extracted from
-        the input ``data``. To link stars in multiple images as a single
-        source, you must use a single source catalog where the positions
-        defined in sky coordinates.
+        the input ``data``. To link stars in multiple images as a
+        single source, you must use a single source catalog where the
+        positions are defined in sky coordinates. If a linked star can
+        be extracted from only one of the input images, it is returned
+        as a plain `EPSFStar` instead of a `LinkedEPSFStar`.
 
         If a list of catalogs is input (or a single catalog with a
         single `~astropy.nddata.NDData` object), they are assumed to
@@ -1015,7 +1056,7 @@ def extract_stars(data, catalogs, *, size=(11, 11)):
             data, catalogs, size)
 
     if n_overlap_failed > 0:
-        msg = (f'{n_overlap_failed} star(s) were not extracted '
+        msg = (f'{n_overlap_failed} star cutout(s) were not extracted '
                'because their cutout region extended beyond the '
                'input image.')
         warnings.warn(msg, AstropyUserWarning)
@@ -1053,7 +1094,8 @@ def _extract_linked_stars(data, catalog, size):
         containing the extracted stars. Stars that are linked across
         multiple images will be represented as a single `LinkedEPSFStar`
         instance containing the corresponding `EPSFStar` instances from
-        each image. Failed extractions are represented as `None`.
+        each image. Stars that could not be extracted from any image
+        are omitted.
 
     n_overlap_failed : int
         The number of stars that failed extraction because their cutout
@@ -1117,7 +1159,7 @@ def _extract_unlinked_stars(data, catalogs, size):
     -------
     stars : list of `EPSFStar` objects
         A list of `EPSFStar` instances containing the extracted stars.
-        Failed extractions are represented as `None`.
+        Failed extractions are omitted.
 
     n_overlap_failed : int
         The number of stars that failed extraction because their cutout
@@ -1203,6 +1245,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     stars = []
     n_nonfinite_weights = 0
     n_nonfinite_positions = 0
+    n_nonfinite_fluxes = 0
     n_overlap_failed = 0
     flux_failures = []  # Collect flux estimation failures
     all_zero_stars = []  # Collect stars with all-zero data
@@ -1211,6 +1254,11 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
         if not (np.isfinite(xcenter) and np.isfinite(ycenter)):
             stars.append(None)
             n_nonfinite_positions += 1
+            continue
+
+        if (fluxes is not None and not np.isfinite(fluxes[i])):
+            stars.append(None)
+            n_nonfinite_fluxes += 1
             continue
 
         try:
@@ -1260,6 +1308,12 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
     if n_nonfinite_positions > 0:
         msg = (f'{n_nonfinite_positions} star(s) were not extracted '
                'because their (x, y) positions were not finite.')
+        warnings.warn(msg, AstropyUserWarning)
+
+    # Emit consolidated warning for non-finite catalog fluxes
+    if n_nonfinite_fluxes > 0:
+        msg = (f'{n_nonfinite_fluxes} star(s) were not extracted '
+               'because their catalog flux values were not finite.')
         warnings.warn(msg, AstropyUserWarning)
 
     # Emit consolidated warning for non-finite weights

@@ -364,6 +364,19 @@ Bug Fixes
     kernel must contain only finite values and have a positive
     maximum. [#2377]
 
+- ``photutils.isophote``
+
+  - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a
+    compilation issue with Cython 3.1.x. [#2260]
+
+  - Fixed spurious NumPy "Mean of empty slice" and related warnings
+    raised during isophote fitting when a trial or failed isophote has
+    an elliptical path that falls entirely (or largely) outside the
+    image. [#2283]
+
+  - Fixed ``EllipseSample`` not resetting ``EllipseGeometry`` cached
+    attributes when overriding ``sma``. [#2280]
+
 - ``photutils.morphology``
 
   - Fixed ``data_properties`` so that a ``background`` input with
@@ -607,6 +620,73 @@ Bug Fixes
     ``include_local_bkg=True`` when no local background values were
     available. The local background is now treated as zero. [#2391]
 
+  - Fixed a bug where the initial flux estimates in
+    ``fit_2dgaussian`` and ``fit_fwhm`` included pixels masked by the
+    ``mask`` keyword, corrupting the fit starting point. [#2395]
+
+  - Fixed a bug where interpolating missing data during ePSF
+    building raised a ``QhullError`` when fewer than three valid
+    pixels remained or all valid pixels were collinear.
+    Nearest-neighbor interpolation is now used as a fallback. [#2395]
+
+  - Fixed a bug where the ``near_bound`` flag (bit 32) was only set
+    for bounds applied via the ``xy_bounds`` keyword. The flag is now
+    set when any fitted parameter is very close to its bounds,
+    including bounds set directly on the PSF model. [#2395]
+
+  - ``AiryDiskPSF`` now evaluates to zero at infinite radial
+    distance, matching the other PSF models. Previously, it returned
+    NaN. [#2395]
+
+  - Fixed the ``CircularGaussianPSF.fit_deriv`` partial derivative with
+    respect to ``fwhm``. This affected only fits in which the ``fwhm``
+    parameter was unfixed. [#2347]
+
+  - Fixed ``ImagePSF`` to discard its cached interpolator when the
+    ``data`` attribute is set. Previously, assigning a new image to an
+    existing model silently continued to evaluate the old image. The
+    ``data`` and ``oversampling`` attributes are now also validated
+    when set, not only when the model is created. [#2347]
+
+  - Fixed the ``GriddedPSFModel.origin`` attribute, which returned a
+    three-element array instead of the documented ``(x, y)`` pair. The
+    spurious third element was derived from the number of ePSFs in the
+    grid. Model evaluation was unaffected because it used only the first
+    two elements. [#2347]
+
+  - Fixed the ``filter`` metadata parsed from the filename when reading
+    a gzipped STDPSF file (e.g., ``.fits.gz``). The file extension was
+    not removed, so the filter name included the extension. [#2346]
+
+  - Fixed ``webbpsf_reader`` to swap the ``DET_YX{i}`` FITS header
+    values when defining ``grid_xypos``. The reference ePSFs were
+    previously swapped to the wrong detector positions for any grid whose
+    x and y positions differ. [#2347]
+
+  - Fixed ``SourceGroups.plot`` to sample a user-supplied colormap over
+    its full range. Previously the colormap was indexed by the group
+    number, which gave nearly identical colors for every group (and
+    raised an ``IndexError`` for more than 256 groups). [#2347]
+
+  - Fixed reading a STDPSF file from an already-open
+    ``astropy.io.fits.HDUList``. Such input was accepted but then
+    raised a ``TypeError``. [#2347]
+
+  - Fixed the ``plot_grid`` title when the instrument, detector, or
+    filter metadata is missing. The missing values left stray spaces in
+    the title. [#2347]
+
+- ``photutils.psf_matching``
+
+  - ``make_wiener_kernel`` now validates a custom ``penalty`` array.
+    It must be 2D with odd dimensions in both axes, contain only finite
+    values, and not be all zeros. [#2372]
+
+  - ``make_kernel`` and ``make_wiener_kernel`` now raise a
+    ``ValueError`` if the computed kernel contains non-finite values,
+    which can occur when the Fourier-space denominator is zero at
+    frequencies where the numerator is also zero. [#2372]
+
 - ``photutils.segmentation``
 
   - Fixed ``SourceCatalog.orientation`` to return a value in the range
@@ -637,70 +717,6 @@ Bug Fixes
 
   - ``SourceCatalog.add_property`` now raises a ``ValueError`` for
     names of built-in methods (e.g., ``to_table``). [#2378]
-
-- ``photutils.psf``
-
-  - Fixed the ``CircularGaussianPSF.fit_deriv`` partial derivative with
-    respect to ``fwhm``. This affected only fits in which the ``fwhm``
-    parameter was unfixed. [#2347]
-
-  - Fixed ``ImagePSF`` to discard its cached interpolator when the
-    ``data`` attribute is set. Previously, assigning a new image to an
-    existing model silently continued to evaluate the old image. The
-    ``data`` and ``oversampling`` attributes are now also validated
-    when set, not only when the model is created. [#2347]
-
-  - Fixed the ``GriddedPSFModel.origin`` attribute, which returned a
-    three-element array instead of the documented ``(x, y)`` pair. The
-    spurious third element was derived from the number of ePSFs in the
-    grid. Model evaluation was unaffected because it used only the first
-    two elements. [#2347]
-
-  - Fixed the ``filter`` metadata parsed from the filename when reading
-    a gzipped STDPSF file (e.g., ``.fits.gz``). The file extension was
-    not removed, so the filter name included the extension. [#2346]
-
-  - Fixed ``webbpsf_reader`` to swap the ``DET_YX{i}`` FITS header
-    values when defining ``grid_xypos``. The reference ePSFs were
-    previous swapped to the wrong detector positions for any grid whose
-    x and y positions differ. [#2347]
-
-  - Fixed ``SourceGroups.plot`` to sample a user-supplied colormap over
-    its full range. Previously the colormap was indexed by the group
-    number, which gave nearly identical colors for every group (and
-    raised an ``IndexError`` for more than 256 groups). [#2347]
-
-  - Fixed reading a STDPSF file from an already-open
-    ``astropy.io.fits.HDUList``. Such input was accepted but then
-    raised a ``TypeError``. [#2347]
-
-  - Fixed the ``plot_grid`` title when the instrument, detector, or
-    filter metadata is missing. The missing values left stray spaces in
-    the title. [#2347]
-
-- ``photutils.psf_matching``
-
-  - ``make_wiener_kernel`` now validates a custom ``penalty`` array.
-    It must be 2D with odd dimensions in both axes, contain only finite
-    values, and not be all zeros. [#2372]
-
-  - ``make_kernel`` and ``make_wiener_kernel`` now raise a
-    ``ValueError`` if the computed kernel contains non-finite values,
-    which can occur when the Fourier-space denominator is zero at
-    frequencies where the numerator is also zero. [#2372]
-
-- ``photutils.isophote``
-
-  - Changed ``bool`` to ``bint`` in ``ellipse_model.pyx`` to fix a
-    compilation issue with Cython 3.1.x. [#2260]
-
-  - Fixed spurious NumPy "Mean of empty slice" and related warnings
-    raised during isophote fitting when a trial or failed isophote has
-    an elliptical path that falls entirely (or largely) outside the
-    image. [#2283]
-
-  - Fixed ``EllipseSample`` not resetting ``EllipseGeometry`` cached
-    attributes when overriding ``sma``. [#2280]
 
 - ``photutils.utils``
 
@@ -857,6 +873,23 @@ API Changes
   - ``EPSFBuilder`` now supports ``sigma_clip=None`` to disable sigma
     clipping when stacking the ePSF residuals, as its docstring
     already documented. [#2390]
+
+  - The ``mask`` and ``error`` keywords of ``PSFPhotometry`` and
+    ``IterativePSFPhotometry`` now raise a ``ValueError`` when the
+    input data is an ``NDData`` instance. Previously, they were
+    silently ignored in favor of the ``NDData`` attributes. NDData
+    input is now also documented in the ``__call__`` docstrings.
+    [#2395]
+
+  - The error message raised for non-positive or non-finite ``error``
+    values within a fit region now includes the location of the fit
+    region. [#2395]
+
+  - ``EPSFStars`` now explicitly supports array conversion (e.g.,
+    ``np.asarray`` or passing it to matplotlib's ``imshow``). A
+    container holding a single star (e.g., from indexing) converts to
+    that star's 2D cutout, and a container holding multiple stars
+    converts to a 3D stack of the cutouts. [#2395]
 
 - ``photutils.segmentation``
 

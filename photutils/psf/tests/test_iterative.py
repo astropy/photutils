@@ -36,7 +36,7 @@ def fixture_test_data():
                                              min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
-    error = np.abs(noise)
+    error = np.ones(data.shape)
 
     return data, error, true_params
 
@@ -83,7 +83,7 @@ def test_iterative_psf_photometry_compound(mode):
                                              min_separation=10, seed=0)
     noise = make_noise_image(data.shape, mean=0, stddev=1, seed=0)
     data += noise
-    error = np.abs(noise)
+    error = np.ones(data.shape)
 
     init_params = QTable()
     init_params['x'] = [54, 29, 80]

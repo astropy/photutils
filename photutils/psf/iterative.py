@@ -53,10 +53,10 @@ class IterativePSFPhotometry:
         will be used to define the PSF-fitting data. If ``fit_shape``
         is a scalar then a square shape of size ``fit_shape`` will be
         used. If ``fit_shape`` has two elements, they must be in ``(ny,
-        nx)`` order. Each element of ``fit_shape`` must be an odd number
-        greater than or equal to 3. In general, ``fit_shape`` should be
-        set to a small size (e.g., ``(5, 5)``) that covers the region
-        with the highest flux signal-to-noise.
+        nx)`` order. Each element of ``fit_shape`` must be a positive
+        odd number. In general, ``fit_shape`` should be set to a small
+        size (e.g., ``(5, 5)``) that covers the region with the highest
+        flux signal-to-noise.
 
     finder : callable or `~photutils.detection.StarFinderBase`
         A callable used to identify sources in an image. This is a
@@ -222,6 +222,12 @@ class IterativePSFPhotometry:
     mode) to combine close sources to be fit simultaneously, improving
     the fit. Again, the process is repeated until no new sources are
     detected or a maximum number of iterations is reached.
+
+    In the 'all' mode, sources whose fitted parameters are non-finite in
+    one iteration are excluded from subsequent iterations. Such sources
+    therefore appear in the final ``results`` table (as NaN rows) only
+    if they became invalid in the last iteration. In the 'new' mode,
+    invalid sources are always kept as NaN rows.
 
     Care should be taken in defining the source groups. Simultaneously
     fitting very large source groups is computationally expensive and
@@ -506,6 +512,7 @@ class IterativePSFPhotometry:
     @_create_call_docstring(iterative=True)
     def __call__(self, data, *, mask=None, error=None, init_params=None):
         if isinstance(data, NDData):
+            PSFPhotometry._check_nddata_kwargs(mask=mask, error=error)
             data_, mask, error = PSFPhotometry._coerce_nddata(data)
             return self.__call__(data_, mask=mask, error=error,
                                  init_params=init_params)

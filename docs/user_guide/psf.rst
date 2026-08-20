@@ -112,11 +112,15 @@ The size of the annulus and the statistic function can be configured in
 The next step is to fit the sources and/or groups. This
 task is performed using an Astropy fitter, for example
 `~astropy.modeling.fitting.TRFLSQFitter`, input via the ``fitter``
-keyword. The shape of the region to be fitted can be configured using
-the ``fit_shape`` parameter. In general, ``fit_shape`` should be set to
-a small size (e.g., (5, 5)) that covers the central part of the source
-with the highest flux signal-to-noise. The initial positions are derived
-from the ``finder`` algorithm. The initial flux values for the fit are
+keyword. The image-based PSF models (`~photutils.psf.ImagePSF` and
+`~photutils.psf.GriddedPSFModel`) provide analytic Jacobians that the
+fitters use automatically, avoiding finite-difference approximations
+of the parameter derivatives and speeding up the fits. The shape of
+the region to be fitted can be configured using the ``fit_shape``
+parameter. In general, ``fit_shape`` should be set to a small size
+(e.g., (5, 5)) that covers the central part of the source with the
+highest flux signal-to-noise. The initial positions are derived from
+the ``finder`` algorithm. The initial flux values for the fit are
 derived from measuring the flux in a circular aperture with radius
 ``aperture_radius``. Alternatively, the initial positions and fluxes can
 be input in a table via the ``init_params`` keyword when calling the
@@ -257,10 +261,8 @@ to create an image-based PSF model.
 
 Note that the non-circular Gaussian and Moffat models above have
 additional parameters beyond the standard PSF model parameters of
-position and flux (``x_0``, ``y_0``, and ``flux``). By default, these
-other parameters are "fixed" (i.e., not varied during the fitting
-process). The user can choose to also vary these parameters by setting
-the ``fixed`` attribute on the model parameter to `False`.
+position and flux (``x_0``, ``y_0``, and ``flux``), which are fixed by
+default as described above.
 
 Photutils also provides a convenience function called
 :func:`~photutils.psf.make_psf_model` that creates a PSF model from an
@@ -301,7 +303,8 @@ PSF Photometry Examples
 
 Let's start with a simple example using simulated stars whose PSF is
 assumed to be Gaussian. We'll create a synthetic image using tools
-provided by the :ref:`photutils.datasets <datasets>` module::
+provided by the `photutils.psf` and :ref:`photutils.datasets <datasets>`
+modules::
 
     >>> import numpy as np
     >>> from photutils.datasets import make_noise_image
@@ -499,12 +502,12 @@ Astropy table)::
 Fitting a single source
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-In some cases, one may want to fit only a single source (or few sources)
-in an image. We can do that by defining a table of the sources that we
-want to fit. For this example, let's fit the single source at ``(x,
-y) = (63, 49)``. We first define a table with this position and then
-pass that table into the ``init_params`` keyword when calling the PSF
-photometry class on the data::
+In some cases, one may want to fit only a single source (or a few
+sources) in an image. We can do that by defining a table of the sources
+that we want to fit. For this example, let's fit the single source at
+``(x, y) = (63, 49)``. We first define a table with this position and
+then pass that table into the ``init_params`` keyword when calling the
+PSF photometry class on the data::
 
     >>> from astropy.table import QTable
     >>> init_params = QTable()

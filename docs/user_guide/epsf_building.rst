@@ -437,6 +437,8 @@ own `~astropy.stats.SigmaClip` instance to customize this behavior::
     ...                            sigma_clip=sigclip,
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
+Setting ``sigma_clip=None`` disables sigma clipping entirely.
+
 
 Including Weights
 -----------------

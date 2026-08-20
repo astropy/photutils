@@ -357,7 +357,6 @@ class TestPSFFitter:
             fitter=None,
             fitter_maxiters=100,
             xy_bounds=None,
-            group_warning_threshold=25,
         )
 
         assert fitter.psf_model is psf_model
@@ -365,7 +364,6 @@ class TestPSFFitter:
         assert isinstance(fitter.fitter, TRFLSQFitter)  # Default fitter
         assert fitter.fitter_maxiters == 100
         assert fitter.xy_bounds is None
-        assert fitter.group_warning_threshold == 25
 
     def test_init_custom_fitter(self, psf_model, param_mapper):
         """

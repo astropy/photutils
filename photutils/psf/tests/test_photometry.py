@@ -2461,3 +2461,156 @@ def test_decode_flags():
     # decode_psf_flags directly
     direct_decoded = decode_psf_flags(results['flags'])
     assert decoded_flags == direct_decoded
+
+
+def test_int_mask_matches_bool_mask():
+    """
+    Regression test that an integer 0/1 mask array behaves identically
+    to the equivalent boolean mask.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image((35, 35), model, 1,
+                                        model_shape=(9, 9),
+                                        flux=(500, 500),
+                                        min_separation=10, seed=0)
+    init = Table({'x': params['x_0'], 'y': params['y_0']})
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[int(params['y_0'][0]), int(params['x_0'][0])] = True
+
+    psfphot = PSFPhotometry(model, (5, 5), aperture_radius=4)
+    phot_bool = psfphot(data, init_params=init, mask=mask)
+    phot_int = psfphot(data, init_params=init, mask=mask.astype(int))
+    assert_equal(phot_int['n_pixels_fit'], phot_bool['n_pixels_fit'])
+    assert_equal(phot_int['flags'], phot_bool['flags'])
+    assert_allclose(phot_int['flux_fit'], phot_bool['flux_fit'])
+
+
+@pytest.mark.parametrize('maxiters', [-5, 0, 3.7, 'abc', True])
+def test_invalid_fitter_maxiters(maxiters):
+    model = CircularGaussianPRF(fwhm=2.7)
+    match = 'fitter_maxiters must be a strictly-positive integer'
+    with pytest.raises(ValueError, match=match):
+        PSFPhotometry(model, (5, 5), fitter_maxiters=maxiters)
+
+
+def test_valid_fitter_maxiters():
+    model = CircularGaussianPRF(fwhm=2.7)
+    psfphot = PSFPhotometry(model, (5, 5), fitter_maxiters=np.int64(50))
+    assert psfphot.fitter_maxiters == 50
+
+
+def test_nddata_with_explicit_mask_or_error():
+    """
+    Regression test that explicit mask/error keywords are rejected
+    (not silently ignored) when data is an NDData instance.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data = np.ones((25, 25))
+    init = Table({'x': [12.0], 'y': [12.0], 'flux': [1.0]})
+    psfphot = PSFPhotometry(model, (5, 5))
+    match = 'must be None when data is an NDData instance'
+    with pytest.raises(ValueError, match=match):
+        psfphot(NDData(data), error=np.ones(data.shape),
+                init_params=init)
+    with pytest.raises(ValueError, match=match):
+        psfphot(NDData(data), mask=np.zeros(data.shape, dtype=bool),
+                init_params=init)
+
+
+def test_aperture_radius_bool():
+    model = CircularGaussianPRF(fwhm=2.7)
+    match = 'aperture_radius must be a strictly-positive scalar'
+    with pytest.raises(ValueError, match=match):
+        PSFPhotometry(model, (5, 5), aperture_radius=True)
+
+
+def test_finder_empty_table():
+    """
+    Regression test that a finder returning a zero-row table is
+    treated like no sources found instead of raising an aperture
+    error.
+    """
+    def finder(data, *, mask=None):  # noqa: ARG001
+        return Table({'x': np.array([]), 'y': np.array([])})
+
+    model = CircularGaussianPRF(fwhm=2.7)
+    psfphot = PSFPhotometry(model, (5, 5), finder=finder,
+                            aperture_radius=4)
+    phot = psfphot(np.ones((25, 25)))
+    assert phot is None
+
+
+def test_near_bound_flag_model_bounds():
+    """
+    Regression test that the near_bound flag (bit 32) is set when the
+    fit is pinned at a bound set on the PSF model itself, without the
+    xy_bounds keyword.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image((35, 35), model, 1,
+                                        model_shape=(9, 9),
+                                        flux=(500, 500),
+                                        min_separation=10, seed=0)
+    xpos = params['x_0'][0]
+    fit_model = CircularGaussianPRF(fwhm=2.7)
+    fit_model.x_0.bounds = (xpos - 0.6, xpos - 0.3)
+    init = Table({'x': [xpos - 0.5], 'y': params['y_0'],
+                  'flux': [500.0]})
+    psfphot = PSFPhotometry(fit_model, (5, 5))
+    phot = psfphot(data, init_params=init)
+    assert_allclose(phot['x_fit'][0], xpos - 0.3, atol=0.02)
+    assert phot['flags'][0] & 32
+
+
+def test_near_bound_flag_flux_bounds_units():
+    """
+    Regression test that the near_bound flag (bit 32) is evaluated for
+    a flux parameter with bounds when the data has units (the fitted
+    flux is then a Quantity).
+    """
+    unit = u.Jy
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image((35, 35), model, 1,
+                                        model_shape=(9, 9),
+                                        flux=(500, 500),
+                                        min_separation=10, seed=0)
+    data <<= unit
+    init = Table({'x': params['x_0'], 'y': params['y_0'],
+                  'flux': [650.0 * unit]})
+
+    # Bounds that pin the fitted flux at the lower bound
+    fit_model = CircularGaussianPRF(fwhm=2.7)
+    fit_model.flux.bounds = (600.0, 700.0)
+    psfphot = PSFPhotometry(fit_model, (5, 5))
+    phot = psfphot(data, init_params=init)
+    assert phot['flux_fit'].unit == unit
+    assert_allclose(phot['flux_fit'][0].value, 600.0, atol=0.02)
+    assert phot['flags'][0] & 32
+
+    # Bounds that do not constrain the fit
+    fit_model = CircularGaussianPRF(fwhm=2.7)
+    fit_model.flux.bounds = (0.0, 1000.0)
+    psfphot = PSFPhotometry(fit_model, (5, 5))
+    phot = psfphot(data, init_params=init)
+    assert_allclose(phot['flux_fit'][0].value, 500.0, rtol=0.01)
+    assert not phot['flags'][0] & 32
+
+
+def test_error_weights_message_has_source_context():
+    """
+    Regression test that the invalid-error-value message names the
+    fit region location.
+    """
+    model = CircularGaussianPRF(fwhm=2.7)
+    data, params = make_psf_model_image((35, 35), model, 1,
+                                        model_shape=(9, 9),
+                                        flux=(500, 500),
+                                        min_separation=10, seed=0)
+    init = Table({'x': params['x_0'], 'y': params['y_0'],
+                  'flux': [500.0]})
+    error = np.ones(data.shape)
+    error[int(params['y_0'][0]), int(params['x_0'][0])] = 0.0
+    psfphot = PSFPhotometry(model, (5, 5))
+    match = 'centered near'
+    with pytest.raises(ValueError, match=match):
+        psfphot(data, error=error, init_params=init)

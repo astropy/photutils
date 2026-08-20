@@ -1318,7 +1318,7 @@ class TestExtractStars:
         table['x'] = [-10, 100]  # Outside image bounds
         table['y'] = [25, 25]
 
-        match = '2 star\\(s\\) were not extracted'
+        match = '2 star cutout\\(s\\) were not extracted'
         with pytest.warns(AstropyUserWarning, match=match):
             stars = extract_stars(simple_nddata, table, size=11)
         assert len(stars) == 0
@@ -1553,7 +1553,7 @@ class TestExtractStars:
         table = Table()
         table['skycoord'] = [SkyCoord(0, 0, unit='deg')]  # Center
 
-        match = '1 star\\(s\\) were not extracted'
+        match = '1 star cutout\\(s\\) were not extracted'
         with pytest.warns(AstropyUserWarning, match=match):
             stars = extract_stars([nddata1, nddata2], table, size=11)
 
@@ -1906,3 +1906,102 @@ class TestExtractStars:
 
         # All stars should fail (None) because they are completely masked
         assert len(stars) == 0
+
+
+def test_star_nonfinite_flux_raises():
+    """
+    Regression test that a non-finite flux raises a clear error
+    instead of crashing later deep inside the ePSF fitter.
+    """
+    match = 'flux must be a finite value'
+    with pytest.raises(ValueError, match=match):
+        EPSFStar(np.ones((5, 5)), flux=np.nan)
+    star = EPSFStar(np.ones((5, 5)))
+    with pytest.raises(ValueError, match=match):
+        star.flux = np.inf
+
+
+def test_extract_stars_nonfinite_flux_column():
+    """
+    Regression test that non-finite catalog flux values are skipped
+    with a warning, like non-finite positions.
+    """
+    data = np.ones((50, 50))
+    catalog = Table({'x': [25.0, 10.0], 'y': [25.0, 10.0],
+                     'flux': [100.0, np.nan]})
+    match = 'flux values were not finite'
+    with pytest.warns(AstropyUserWarning, match=match):
+        stars = extract_stars(NDData(data), catalog, size=11)
+    assert len(stars) == 1
+    assert stars[0].flux == 100.0
+
+
+def test_zero_flux_star_normalization_no_warning():
+    """
+    Regression test that normalizing a zero-flux star does not leak a
+    RuntimeWarning during ePSF building.
+    """
+    with pytest.warns(AstropyUserWarning, match='are zero'):
+        star = EPSFStar(np.zeros((5, 5)))
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        values = star._data_values_normalized
+    assert np.all(np.isnan(values))
+
+
+def test_masked_array_data_raises():
+    data = np.ma.MaskedArray(np.ones((5, 5)),
+                             mask=np.zeros((5, 5), dtype=bool))
+    match = 'MaskedArray inputs are not supported'
+    with pytest.raises(TypeError, match=match):
+        EPSFStar(data)
+
+
+def test_non_integral_origin_raises():
+    match = 'origin must have integer values'
+    with pytest.raises(ValueError, match=match):
+        EPSFStar(np.ones((5, 5)), origin=(1.7, 2.3))
+    star = EPSFStar(np.ones((5, 5)), origin=(1.0, 2.0))
+    assert_array_equal(star.origin, [1, 2])
+
+
+def test_container_getattr_private_and_empty():
+    """
+    Regression test that EPSFStars matches LinkedEPSFStar in not
+    delegating private attributes (except _excluded_from_fit) and
+    that empty containers raise AttributeError.
+    """
+    star = EPSFStar(np.ones((5, 5)))
+    stars = EPSFStars([star])
+    assert_array_equal(stars._excluded_from_fit, [False])
+    with pytest.raises(AttributeError):
+        stars._fit_error_status  # noqa: B018
+    empty = EPSFStars([])
+    with pytest.raises(AttributeError, match='empty'):
+        empty.cutout_center  # noqa: B018
+
+
+def test_epsfstars_array_conversion():
+    """
+    Regression test that a single-star EPSFStars container (e.g., from
+    indexing) converts to the 2D star cutout, so that it can be passed
+    directly to matplotlib's imshow, and that a multi-star container
+    stacks the cutouts along the first axis.
+    """
+    data1 = np.arange(25.0).reshape(5, 5)
+    data2 = data1 * 2.0
+    stars = EPSFStars([EPSFStar(data1), EPSFStar(data2)])
+
+    single = np.asarray(stars[0])
+    assert single.shape == (5, 5)
+    assert_array_equal(single, data1)
+
+    stacked = np.asarray(stars)
+    assert stacked.shape == (2, 5, 5)
+    assert_array_equal(stacked[1], data2)
+
+    # dtype and copy keywords are honored
+    assert np.asarray(stars[0], dtype=np.float32).dtype == np.float32
+    arr = np.array(stars[0], copy=True)
+    arr[0, 0] = -99.0
+    assert stars[0].data[0, 0] == 0.0

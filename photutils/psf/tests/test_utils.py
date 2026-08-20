@@ -405,3 +405,53 @@ def test_get_psf_model_main_params():
     params = _get_psf_model_main_params(model)
     assert len(params) == 3
     assert params == set_params
+
+
+def test_fit_2dgaussian_flux_init_excludes_masked_pixels():
+    """
+    Regression test that the initial flux estimate excludes pixels
+    masked by the user mask.
+    """
+    yy, xx = np.mgrid[0:31, 0:31]
+    data = CircularGaussianPRF(flux=50, x_0=15, y_0=15, fwhm=3.1)(xx, yy)
+    data[15, 14] = 1e7
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[15, 14] = True
+    fit = fit_2dgaussian(data, xypos=(15, 15), fit_shape=7, mask=mask,
+                         fix_fwhm=False)
+    assert fit.results['flux_init'][0] < 100.0
+    assert_allclose(fit.results['flux_fit'][0], 50.0, rtol=0.01)
+    assert_allclose(fit.results['fwhm_fit'][0], 3.1, atol=0.01)
+
+
+def test_fit_fwhm_reemits_other_warnings():
+    """
+    Regression test that fit_fwhm re-emits non-convergence warnings
+    verbatim instead of replacing them with a false convergence
+    warning.
+    """
+    yy, xx = np.mgrid[0:31, 0:31]
+    data = CircularGaussianPRF(flux=50, x_0=15, y_0=15, fwhm=3.1)(xx, yy)
+    data[0, 0] = np.nan
+    match = 'Input data contains unmasked non-finite values'
+    with pytest.warns(AstropyUserWarning, match=match) as record:
+        fwhm = fit_fwhm(data, xypos=(15, 15), fit_shape=7)
+    assert_allclose(fwhm[0], 3.1, atol=0.01)
+    messages = [str(w.message) for w in record]
+    assert not any('may not have converged' in msg for msg in messages)
+
+
+@pytest.mark.parametrize('bad_geometry', ['two_pixels', 'collinear'])
+def test_interpolate_missing_data_degenerate_geometry(bad_geometry):
+    """
+    Regression test that cubic interpolation falls back to nearest
+    neighbor when too few or collinear valid pixels remain.
+    """
+    data = np.ones((5, 5))
+    mask = np.ones(data.shape, dtype=bool)
+    if bad_geometry == 'two_pixels':
+        mask[0, 0] = mask[4, 4] = False
+    else:
+        mask[2, :] = False
+    result = _interpolate_missing_data(data, mask, method='cubic')
+    assert np.all(np.isfinite(result))

@@ -1887,28 +1887,6 @@ class TestEPSFBuilder:
         assert all(type(idx) is int
                    for idx in result.excluded_star_indices)
 
-    def test_build_step_origin_is_none_branch(self, epsf_test_data):
-        """
-        Test _build_epsf_step else branch when origin is None.
-        """
-        builder = EPSFBuilder(maxiters=1, progress_bar=False)
-
-        stars = extract_stars(epsf_test_data['nddata'],
-                              epsf_test_data['init_stars'][:3], size=11)
-
-        # Create ePSF and verify origin condition
-        epsf = builder._create_initial_epsf(stars)
-
-        # Verify the branch condition logic
-        has_valid_origin = hasattr(epsf, 'origin') and epsf.origin is not None
-        assert has_valid_origin  # Normal case, origin exists
-
-        # The else branch is only reached when origin is None
-        # This line calculates origin from shape
-        expected_origin_y = (epsf.data.shape[0] - 1) / 2.0
-        expected_origin_x = (epsf.data.shape[1] - 1) / 2.0
-        assert_allclose(epsf.origin, (expected_origin_x, expected_origin_y))
-
     @pytest.mark.skipif(not HAS_TQDM, reason='tqdm is required')
     def test_with_progress_bar(self, epsf_test_data):
         """
@@ -2686,3 +2664,66 @@ class TestEPSFBuilder:
         assert fit_failed[0]
         assert stars_new.all_stars[0]._fit_error_status == 3
         assert stars_new.all_stars[0]._excluded_from_fit
+
+
+def _make_gaussian_star_data():
+    yy, xx = np.indices((11, 11))
+    sig = 2.5 / 2.3548
+    return np.exp(-((xx - 5.0)**2 + (yy - 5.0)**2) / (2 * sig**2))
+
+
+def test_build_epsf_initial_epsf_too_small():
+    """
+    Regression test that build_epsf validates the shape of a provided
+    initial ePSF instead of silently truncating the result.
+    """
+    star_data = _make_gaussian_star_data()
+    stars = EPSFStars([EPSFStar(star_data.copy(),
+                                cutout_center=(5.0, 5.0))
+                       for _ in range(2)])
+    builder = EPSFBuilder(oversampling=1, maxiters=2,
+                          progress_bar=False)
+    epsf = ImagePSF(np.zeros((5, 5)), oversampling=1)
+    match = 'incompatible with'
+    with pytest.raises(ValueError, match=match):
+        builder.build_epsf(stars, epsf=epsf)
+
+
+def test_build_epsf_fully_excluded_linked_star():
+    """
+    Regression test that a fully excluded LinkedEPSFStar does not
+    emit a constrain-centers warning on every build iteration.
+    """
+    star_data = _make_gaussian_star_data()
+    good_stars = [EPSFStar(star_data.copy(), cutout_center=(5.0, 5.0))
+                  for _ in range(2)]
+    linked_members = [EPSFStar(star_data.copy(),
+                               cutout_center=(5.0, 5.0),
+                               origin=(0, 0), wcs_large=_MockWCS())
+                      for _ in range(2)]
+    linked = LinkedEPSFStar(linked_members)
+    for member in linked:
+        member._excluded_from_fit = True
+    stars = EPSFStars([*good_stars, linked])
+    builder = EPSFBuilder(oversampling=1, maxiters=3,
+                          progress_bar=False)
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter('always')
+        result = builder.build_epsf(stars)
+    messages = [str(w.message) for w in recorded]
+    assert not any('Cannot constrain centers' in msg
+                   for msg in messages)
+    assert result.epsf is not None
+
+
+def test_invalid_smoothing_kernel_at_init():
+    match = 'Unsupported kernel type'
+    with pytest.raises(TypeError, match=match):
+        EPSFBuilder(smoothing_kernel='bogus')
+
+
+@pytest.mark.parametrize('value', [-3, 0, 2.5, True])
+def test_invalid_recentering_maxiters(value):
+    match = 'recentering_maxiters must be a strictly-positive integer'
+    with pytest.raises(ValueError, match=match):
+        EPSFBuilder(recentering_maxiters=value)
