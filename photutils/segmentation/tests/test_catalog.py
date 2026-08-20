@@ -3049,6 +3049,98 @@ def test_sky_err_from_cov():
     assert np.all(np.isnan(sky_err_nan.value))
 
 
+def test_sky_centroid_err():
+    """
+    Test the sky centroid error properties for all three centroid
+    flavors: shapes, units, axis views, and consistency with the pixel
+    errors for an axis-aligned WCS at dec=0.
+    """
+    scale = 0.5  # arcsec / pixel
+    wcs = WCS(naxis=2)
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    wcs.wcs.crpix = [15.0, 15.0]
+    wcs.wcs.crval = [150.0, 0.0]
+    wcs.wcs.cd = (scale / 3600.0) * np.array([[-1.0, 0.0],
+                                              [0.0, 1.0]])
+
+    yy, xx = np.mgrid[0:31, 0:31]
+    data = Gaussian2D(500.0, 15.2, 15.6, 2.5, 2.0, 0.3)(xx, yy)
+    error = np.full(data.shape, 5.0)
+    segment_map = detect_sources(data, 10.0, n_pixels=10)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, wcs=wcs,
+                        aperture_mask_method='none')
+
+    for prefix, pix_err in (('sky_centroid', cat.centroid_err),
+                            ('sky_centroid_win',
+                             cat.centroid_win_err),
+                            ('sky_centroid_quad',
+                             cat.centroid_quad_err)):
+        sky_err = getattr(cat, f'{prefix}_err')
+        assert sky_err.unit == u.arcsec
+        assert sky_err.shape == (1, 2)
+        # Axis-aligned WCS at dec=0: sky error = scale * pixel error
+        assert_allclose(sky_err.to_value('arcsec')[0],
+                        scale * pix_err[0], rtol=1e-3)
+        assert_allclose(getattr(cat, f'{prefix}_ra_err'),
+                        sky_err[:, 0])
+        assert_allclose(getattr(cat, f'{prefix}_dec_err'),
+                        sky_err[:, 1])
+
+
+def test_sky_centroid_err_no_wcs():
+    """
+    Test that the sky error properties are None without a wcs.
+    """
+    data = np.zeros((11, 11))
+    data[4:7, 4:7] = 10.0
+    segment_map = SegmentationImage((data > 0).astype(int))
+    error = np.ones(data.shape)
+    cat = SourceCatalog(data, segment_map, error=error)
+
+    names = []
+    for prefix in ('sky_centroid', 'sky_centroid_win',
+                   'sky_centroid_quad'):
+        names.extend([f'{prefix}_err', f'{prefix}_ra_err',
+                      f'{prefix}_dec_err'])
+    for name in names:
+        # A length-1 (non-scalar) catalog returns an array of None
+        value = getattr(cat, name)
+        assert np.all(value == np.array(None))
+        # A scalar catalog collapses to a single None
+        assert getattr(cat[0], name) is None
+
+
+def test_sky_centroid_err_columns():
+    """
+    Test sky error columns in to_table and the scalar collapse.
+    """
+    wcs = WCS(naxis=2)
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    wcs.wcs.crpix = [15.0, 15.0]
+    wcs.wcs.crval = [150.0, 20.0]
+    wcs.wcs.cd = (0.5 / 3600.0) * np.array([[-1.0, 0.0],
+                                            [0.0, 1.0]])
+
+    yy, xx = np.mgrid[0:31, 0:31]
+    data = Gaussian2D(500.0, 15.2, 15.6, 2.5, 2.5)(xx, yy)
+    error = np.full(data.shape, 5.0)
+    segment_map = detect_sources(data, 10.0, n_pixels=10)
+    cat = SourceCatalog(data, segment_map, convolved_data=data,
+                        error=error, wcs=wcs,
+                        aperture_mask_method='none')
+
+    columns = ['label', 'sky_centroid_ra_err', 'sky_centroid_dec_err']
+    tbl = cat.to_table(columns=columns)
+    assert tbl.colnames == columns
+    assert tbl['sky_centroid_ra_err'].unit == u.arcsec
+
+    single = cat[0]
+    sky_err = single.sky_centroid_err
+    assert sky_err.shape == (2,)
+    assert single.sky_centroid_ra_err == sky_err[0]
+
+
 class TestPartialPixelErrorWeights:
     """
     Tests that aperture flux errors weight the pixel variances by the

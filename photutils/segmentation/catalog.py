@@ -2730,6 +2730,55 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
+    def sky_centroid_err(self):
+        """
+        The 1-sigma errors on the `sky_centroid` position as a ``(east,
+        north)`` `~astropy.units.Quantity` in arcsec.
+
+        The pixel error covariance of the `centroid` is transported
+        to the local tangent plane with the WCS Jacobian evaluated
+        at each source position. The first column is the error
+        along East (the Right Ascension direction as a great-circle
+        angle, i.e., including the cos(dec) factor) and the second
+        is along North (Declination).
+
+        `None` if ``wcs`` is not input. NaN where the pixel errors are
+        unavailable (e.g., no ``error`` input).
+        """
+        if self.wcs is None:
+            return self._null_objects
+        xycen = self._array('centroid')
+        return self._sky_err_from_cov(self._centroid_err_cov, xycen)
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_ra_err(self):
+        """
+        The 1-sigma error on the `sky_centroid` position along the Right
+        Ascension direction, as a great-circle angle in arcsec (i.e.,
+        including the cos(dec) factor).
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self._array('sky_centroid_err')[:, 0]
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_dec_err(self):
+        """
+        The 1-sigma error on the `sky_centroid` position along the
+        Declination direction, in arcsec.
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self._array('sky_centroid_err')[:, 1]
+
+    @cached_property
+    @use_detcat
     def sky_centroid_icrs(self):
         """
         The sky coordinate in the International Celestial Reference
@@ -2761,6 +2810,57 @@ class SourceCatalog:
 
     @cached_property
     @use_detcat
+    def sky_centroid_win_err(self):
+        """
+        The 1-sigma errors on the `sky_centroid_win` position as a
+        ``(east, north)`` `~astropy.units.Quantity` in arcsec.
+
+        The pixel error covariance of the `centroid_win` is transported
+        to the local tangent plane with the WCS Jacobian evaluated at
+        each source position. The first column is the error along East
+        (the Right Ascension direction as a great-circle angle, i.e.,
+        including the cos(dec) factor) and the second is along North
+        (Declination). Fallback sources use the isophotal centroid error
+        covariance.
+
+        `None` if ``wcs`` is not input. NaN where the pixel errors are
+        unavailable (e.g., no ``error`` input).
+        """
+        if self.wcs is None:
+            return self._null_objects
+        xycen = self._array('centroid_win')
+        return self._sky_err_from_cov(self._centroid_win_err_cov,
+                                      xycen)
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_win_ra_err(self):
+        """
+        The 1-sigma error on the `sky_centroid_win` position along the
+        Right Ascension direction, as a great-circle angle in arcsec
+        (i.e., including the cos(dec) factor).
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self._array('sky_centroid_win_err')[:, 0]
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_win_dec_err(self):
+        """
+        The 1-sigma error on the `sky_centroid_win` position along the
+        Declination direction, in arcsec.
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self._array('sky_centroid_win_err')[:, 1]
+
+    @cached_property
+    @use_detcat
     def sky_centroid_quad(self):
         """
         The sky coordinate of the centroid (`centroid_quad`), calculated
@@ -2775,6 +2875,57 @@ class SourceCatalog:
             return self._null_objects
         return self.wcs.pixel_to_world(self.x_centroid_quad,
                                        self.y_centroid_quad)
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_quad_err(self):
+        """
+        The 1-sigma errors on the `sky_centroid_quad` position as a
+        ``(east, north)`` `~astropy.units.Quantity` in arcsec.
+
+        The pixel error covariance of the `centroid_quad` is transported
+        to the local tangent plane with the WCS Jacobian evaluated at
+        each source position. The first column is the error along East
+        (the Right Ascension direction as a great-circle angle, i.e.,
+        including the cos(dec) factor) and the second is along North
+        (Declination). Fallback sources use the isophotal centroid error
+        covariance.
+
+        `None` if ``wcs`` is not input. NaN where the pixel errors are
+        unavailable (e.g., no ``error`` input).
+        """
+        if self.wcs is None:
+            return self._null_objects
+        xycen = self._array('centroid_quad')
+        return self._sky_err_from_cov(self._centroid_quad_err_cov,
+                                      xycen)
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_quad_ra_err(self):
+        """
+        The 1-sigma error on the `sky_centroid_quad` position along the
+        Right Ascension direction, as a great-circle angle in arcsec
+        (i.e., including the cos(dec) factor).
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self._array('sky_centroid_quad_err')[:, 0]
+
+    @cached_property
+    @use_detcat
+    def sky_centroid_quad_dec_err(self):
+        """
+        The 1-sigma error on the `sky_centroid_quad` position along the
+        Declination direction, in arcsec.
+
+        `None` if ``wcs`` is not input.
+        """
+        if self.wcs is None:
+            return self._null_objects
+        return self._array('sky_centroid_quad_err')[:, 1]
 
     @cached_property
     @use_detcat
