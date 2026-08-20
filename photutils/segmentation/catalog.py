@@ -1623,6 +1623,111 @@ class SourceCatalog:
         """
         return self._array('centroid')[:, 1]
 
+    @cached_property
+    @use_detcat
+    def _centroid_errors(self):
+        """
+        The 1-sigma errors on the ``(x, y)`` isophotal centroid
+        position.
+
+        The errors are computed by propagating the input ``error``
+        array through the center-of-mass centroid formula. If no
+        error array was provided, the errors are ``np.nan``.
+
+        For a centroid defined as :math:`x_c = \\sum f_i x_i / F`,
+        the variance is:
+
+        .. math::
+
+            \\text{Var}(x_c) = \\frac{\\sum_i (x_i - x_c)^2
+            \\sigma_i^2}{F^2}
+
+        A 1/12 correction is added for finite pixel size, and a
+        singularity correction is applied for point-like sources whose
+        shape covariance determinant is below :math:`(1/12)^2`.
+        """
+        if self._error is None:
+            result = np.full((self.nlabels, 2), np.nan)
+            if self.isscalar:
+                return result[0]
+            return result
+
+        cutout_centroid = self.cutout_centroid
+        if self.isscalar:
+            cutout_centroid = cutout_centroid[np.newaxis, :]
+
+        # Use the raw (uncorrected) shape covariance determinant to
+        # determine which sources are point-like (singularity
+        # flag): the flag is set when the covariance determinant
+        # < (1/12)^2 BEFORE the diagonal correction is applied.
+        # We compute from central moments directly.
+        moments_cen = self.moments_central
+        if self.isscalar:
+            moments_cen = moments_cen[np.newaxis, :]
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            mu00 = moments_cen[:, 0, 0]
+            raw_var_xx = moments_cen[:, 0, 2] / mu00
+            raw_var_yy = moments_cen[:, 2, 0] / mu00
+            raw_var_xy = moments_cen[:, 1, 1] / mu00
+        raw_det = raw_var_xx * raw_var_yy - raw_var_xy**2
+        is_singular = raw_det < (1.0 / 12)**2
+
+        xerr_arr = []
+        yerr_arr = []
+        pixel_var = 1.0 / 12.0
+        for (moment_data, error_cutout, total_mask, xcen, ycen,
+             singular) in zip(
+                self._moment_data_cutouts, self._error_cutouts,
+                self._cutout_total_masks, cutout_centroid[:, 0],
+                cutout_centroid[:, 1], is_singular, strict=True):
+
+            total_flux = np.sum(moment_data)
+            if not np.isfinite(total_flux) or total_flux <= 0:
+                xerr_arr.append(np.nan)
+                yerr_arr.append(np.nan)
+                continue
+
+            err_sq = error_cutout.astype(float)**2
+            err_sq[total_mask] = 0.0
+
+            yy, xx = np.mgrid[0:err_sq.shape[0], 0:err_sq.shape[1]]
+            dx = xx - xcen
+            dy = yy - ycen
+
+            # Compute raw error variances without the pixel-size
+            # correction.
+            err_var_x = np.sum(err_sq * dx**2)
+            err_var_y = np.sum(err_sq * dy**2)
+            err_sum = np.sum(err_sq)
+
+            norm = 1.0 / (total_flux**2)
+            err_var_x *= norm
+            err_var_y *= norm
+            err_sum_norm = err_sum * pixel_var * norm
+
+            # Singularity correction for point-like sources. The
+            # check is performed on the raw error matrix (without
+            # the 1/12 pixel-size correction).
+            if singular:
+                err_cov_xy = np.sum(err_sq * dx * dy) * norm
+                if (err_var_x * err_var_y
+                        - err_cov_xy**2) < err_sum_norm**2:
+                    err_var_x += err_sum_norm
+                    err_var_y += err_sum_norm
+
+            # Add the pixel-size variance correction (1/12).
+            err_var_x += err_sum_norm
+            err_var_y += err_sum_norm
+
+            xerr_arr.append(np.sqrt(err_var_x))
+            yerr_arr.append(np.sqrt(err_var_y))
+
+        result = np.transpose((xerr_arr, yerr_arr))
+        if self.isscalar:
+            return result[0]
+        return result
+
     def _centroid_win_single(self, label, xcen, ycen, rad_hl,
                              nan_hl_, kwargs, compute_err):
         """
@@ -1694,11 +1799,10 @@ class SourceCatalog:
                     combined_weight = aperture_weights * gweight
                     weighted_var = combined_weight**2 * var
                     err_sum = np.sum(weighted_var)
-                    # 1/12 accounts for finite pixel size
-                    err_var_x = np.sum(
-                        weighted_var * (xx**2 + 1.0 / 12))
-                    err_var_y = np.sum(
-                        weighted_var * (yy**2 + 1.0 / 12))
+                    # Compute raw error variances without the
+                    # pixel-size correction.
+                    err_var_x = np.sum(weighted_var * xx**2)
+                    err_var_y = np.sum(weighted_var * yy**2)
                     err_cov_xy = np.sum(weighted_var * xx * yy)
 
                 data = data * aperture_weights * gweight
@@ -1743,6 +1847,10 @@ class SourceCatalog:
             if (err_var_x * err_var_y - err_cov_xy**2) < err_sum_norm**2:
                 err_var_x += err_sum_norm
                 err_var_y += err_sum_norm
+
+            # Add pixel-size variance correction (1/12).
+            err_var_x += err_sum_norm
+            err_var_y += err_sum_norm
         else:
             err_var_x = err_var_y = err_cov_xy = np.nan
 

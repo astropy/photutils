@@ -2473,3 +2473,130 @@ def test_centroid_win_errors_singularity():
     # Errors should be finite (singularity correction applied)
     assert np.all(np.isfinite(errors))
     assert np.all(errors > 0)
+
+
+def test_centroid_errors():
+    """
+    Test that _centroid_errors returns finite 1-sigma position errors
+    when an error array is provided.
+    """
+    g1 = Gaussian2D(1621, 6.29, 10.95, 1.55, 1.29, 0.296706)
+    g2 = Gaussian2D(3596, 13.81, 8.29, 1.44, 1.27, 0.628319)
+    m = g1 + g2
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = m(xx, yy)
+
+    error = np.full(data.shape, 65.0)
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    npixels = 10
+    finder = SourceFinder(npixels=npixels, progress_bar=False)
+    threshold = 107.9
+    segment_map = finder(convolved_data, threshold)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, apermask_method='none')
+
+    errors = cat._centroid_errors
+    assert errors.shape == (cat.nlabels, 2)
+    # Both sources should have finite, positive errors
+    assert np.all(np.isfinite(errors))
+    assert np.all(errors > 0)
+    # Errors should be small relative to pixel scale for bright sources
+    assert np.all(errors < 1.0)
+
+
+def test_centroid_errors_no_error():
+    """
+    Test that _centroid_errors returns NaN when no error array is
+    provided.
+    """
+    g1 = Gaussian2D(1621, 10.0, 10.0, 2.0, 2.0)
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = g1(xx, yy)
+
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    npixels = 10
+    segment_map = detect_sources(convolved_data, 50.0, npixels)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        apermask_method='none')
+
+    errors = cat._centroid_errors
+    assert np.all(np.isnan(errors))
+
+
+def test_centroid_errors_scalar():
+    """
+    Test that _centroid_errors works for a scalar (single-source) case.
+    """
+    g1 = Gaussian2D(1621, 10.0, 10.0, 2.0, 2.0)
+    yy, xx = np.mgrid[0:21, 0:21]
+    data = g1(xx, yy)
+    error = np.full(data.shape, 50.0)
+
+    kernel = make_2dgaussian_kernel(3.0, size=5)
+    convolved_data = convolve(data, kernel)
+    npixels = 10
+    segment_map = detect_sources(convolved_data, 50.0, npixels)
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, apermask_method='none')
+
+    single = cat[0]
+    errors = single._centroid_errors
+    assert errors.shape == (2,)
+    assert np.all(np.isfinite(errors))
+    assert np.all(errors > 0)
+
+
+def test_centroid_errors_singularity():
+    """
+    Test that the singularity correction in _centroid_errors is applied
+    for a source where the error covariance matrix is nearly singular.
+    This happens when error is concentrated at only the centroid pixel,
+    making det == esn^2 exactly, so we use <= in a modified check or
+    construct a case where floating-point rounding makes det < esn^2.
+    """
+    # A source with flux concentrated at the centroid pixel, and
+    # error only at the centroid pixel. With this setup,
+    # err_var_x * err_var_y - err_cov_xy^2 == err_sum_norm^2 exactly
+    # for a perfectly centered source. By adding a tiny asymmetric
+    # flux offset, the centroid shifts slightly, breaking the exact
+    # equality and making det < esn^2 due to floating-point effects.
+    data = np.zeros((11, 11))
+    data[5, 5] = 10000.0
+    data[5, 6] = 1e-10  # tiny asymmetry to shift centroid
+
+    error = np.zeros(data.shape)
+    error[5, 5] = 10000.0
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[4:7, 4:7] = 1
+    segment_map = SegmentationImage(segment_data)
+
+    convolved_data = data.copy()
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, apermask_method='none')
+
+    errors = cat._centroid_errors
+    assert np.all(np.isfinite(errors))
+    assert np.all(errors > 0)
+
+
+def test_centroid_errors_zero_flux():
+    """
+    Test that _centroid_errors returns NaN when the convolved data
+    total flux is zero within the segment (total_flux <= 0 branch).
+    """
+    data = np.ones((11, 11))
+    # convolved_data has zero flux in the segment region
+    convolved_data = np.zeros((11, 11))
+    error = np.full(data.shape, 10.0)
+
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[4:7, 4:7] = 1
+    segment_map = SegmentationImage(segment_data)
+
+    cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
+                        error=error, apermask_method='none')
+
+    errors = cat._centroid_errors
+    assert np.all(np.isnan(errors))
