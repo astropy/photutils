@@ -15,6 +15,7 @@ from photutils.segmentation import (SegmentationImage, deblend_sources,
                                     detect_sources)
 from photutils.segmentation.deblend import (_DeblendParams,
                                             _SingleSourceDeblender)
+from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.utils._optional_deps import HAS_SKIMAGE
 from photutils.utils.exceptions import DeblendWarning
 
@@ -352,6 +353,42 @@ class TestDeblendSources:
         assert list(segm.info) == ['nonposmin_labels']
         assert_equal(segm.info['nonposmin_labels'], [1])
 
+    def test_flags_deblended(self):
+        """
+        Test that deblended children carry the deblended flag and
+        nothing else when no mode fallback occurred.
+        """
+        result = deblend_sources(self.data, self.segm, self.n_pixels,
+                                 progress_bar=False)
+        assert_equal(result.flags,
+                     np.full(result.n_labels,
+                             SEGMENTATION_FLAGS.DEBLENDED))
+
+    def test_flags_nonposmin_children(self):
+        """
+        Test that children of a parent whose mode fell back due to
+        non-positive minimum data values carry both the deblended and
+        fallback flags.
+        """
+        data = self.data.copy()
+        data -= 20
+        match = 'The deblending mode of one or more source labels'
+        with pytest.warns(DeblendWarning, match=match):
+            segm = deblend_sources(data, self.segm, self.n_pixels,
+                                   progress_bar=False)
+        expected = (SEGMENTATION_FLAGS.DEBLENDED
+                    | SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN)
+        for label in segm.parent_to_deblended_labels[1]:
+            idx = segm.get_index(label)
+            assert segm.flags[idx] == expected
+
+    def test_flags_detect_sources_zero(self):
+        """
+        Test that detect_sources output has all-zero flags.
+        """
+        assert_equal(self.segm.flags,
+                     np.zeros(self.segm.n_labels, dtype=int))
+
     def test_source_zero_min(self):
         """
         Test source zero min.
@@ -515,6 +552,78 @@ def test_n_markers_fallback():
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_flags_n_markers_fallback():
+    """
+    Test that the n_markers fallback flag is set on the output
+    sources produced from the affected input label.
+    """
+    size = 51
+    data1 = np.resize([0, 0, 1, 1], size)
+    data1 = np.abs(data1 - np.atleast_2d(data1).T) + 2
+
+    for i in range(size):
+        if i % 2 == 0:
+            data1[i, :] = 1
+            data1[:, i] = 1
+
+    data = np.zeros((101, 101))
+    data[25:25 + size, 25:25 + size] = data1
+    data[50:60, 50:60] = 10.0
+
+    segm = detect_sources(data, 0.01, 10)
+    match = 'The deblending mode of one or more source labels'
+    with pytest.warns(DeblendWarning, match=match):
+        segm2 = deblend_sources(data, segm, 1, mode='exponential')
+
+    bit = SEGMENTATION_FLAGS.DEBLEND_N_MARKERS
+    flagged = segm2.labels[(segm2.flags & bit) > 0]
+    assert len(flagged) > 0
+    # Every flagged label traces back to input label 1
+    if 1 in segm2.parent_to_deblended_labels:
+        assert_equal(np.sort(flagged),
+                     np.sort(segm2.parent_to_deblended_labels[1]))
+    else:
+        assert_equal(flagged, [1])
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+@pytest.mark.parametrize('relabel', [True, False])
+def test_flags_fallback_without_deblending(relabel):
+    """
+    Test that a fallback parent that did not split still gets the
+    fallback flag on its output label, with and without relabeling.
+    """
+    # Three well-separated, non-deblendable sources with a negative
+    # minimum (to trigger the nonposmin fallback). The middle label is
+    # removed after detection so the remaining input labels (1 and 3)
+    # are non-consecutive, exercising the relabel-map translation path
+    # when relabel=True.
+    g1 = Gaussian2D(100, 25, 25, 3, 3)
+    g2 = Gaussian2D(100, 50, 50, 3, 3)
+    g3 = Gaussian2D(100, 75, 75, 3, 3)
+    yy, xx = np.mgrid[0:101, 0:101]
+    data = g1(xx, yy) + g2(xx, yy) + g3(xx, yy) - 20.0
+
+    segm = detect_sources(data + 20.0, 10, 5)
+    assert_equal(segm.labels, [1, 2, 3])
+    segm.remove_label(2, relabel=False)
+    assert_equal(segm.labels, [1, 3])
+
+    match = 'The deblending mode of one or more source labels'
+    with pytest.warns(DeblendWarning, match=match):
+        segm2 = deblend_sources(data, segm, 5, progress_bar=False,
+                                relabel=relabel)
+
+    bit = SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN
+    # Both remaining sources fell back (both have negative minima);
+    # neither splits, so each output label carries the fallback bit
+    # but not the deblended bit
+    assert_equal(segm2.flags & bit, [bit] * segm2.n_labels)
+    assert_equal(segm2.flags & SEGMENTATION_FLAGS.DEBLENDED,
+                 [0] * segm2.n_labels)
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_n_markers_fallback_multiproc():
     """
     Test the n_markers fallback warning via multiprocessing
@@ -563,6 +672,7 @@ def test_nonposmin_multiproc():
         segm2 = deblend_sources(data, segm, 5, progress_bar=False,
                                 n_processes=2)
     assert 'nonposmin_labels' in segm2.info
+    assert np.all(segm2.flags & SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN)
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
