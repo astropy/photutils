@@ -14,7 +14,9 @@ the semantics match the previous cutout-based code paths.
 The moment kernels accumulate the raw and central spatial moments (and
 the raw centroid error sums) over each source's segment bounding box,
 using cutout-frame coordinates, so that the moment-based properties
-never need per-source cutout arrays.
+never need per-source cutout arrays. The segment gather packs the
+unmasked segment pixel values of all sources into a single array for
+the pixel-statistics properties (e.g., ``segment_flux``).
 
 The fractional-flux radius solver additionally runs its bracketed
 root-find entirely in C, using the ``brentq`` implementation exported
@@ -36,7 +38,7 @@ from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
 __all__ = ['batch_central_moments', 'batch_centroid_win',
            'batch_flux_radius_prepare', 'batch_flux_radius_solve',
            'batch_kron_radius', 'batch_moment_err', 'batch_quad_boxes',
-           'batch_raw_moments']
+           'batch_raw_moments', 'batch_segment_gather']
 
 
 cdef extern from "math.h" nogil:
@@ -1265,6 +1267,130 @@ def batch_quad_boxes(const double[:, ::1] data, *,
                             box_var[i, k] = e * e
                     k += 1
     return status_arr, peak_arr, boxes_arr, box_var_arr
+
+
+def batch_segment_gather(const double[:, ::1] values, *,
+                         const unsigned char[:, ::1] mask,
+                         const Py_ssize_t[:, ::1] segm,
+                         const Py_ssize_t[::1] labels,
+                         const Py_ssize_t[::1] bbox_iymin,
+                         const Py_ssize_t[::1] bbox_iymax,
+                         const Py_ssize_t[::1] bbox_ixmin,
+                         const Py_ssize_t[::1] bbox_ixmax):
+    """
+    Pack the unmasked segment pixel values of many sources into one
+    array.
+
+    For each source, the values of the pixels within its segment
+    bounding box that belong to the source segment and are unmasked
+    are copied, in row-major order, into a packed array. A source
+    with no such pixels contributes a single NaN, replicating the
+    previous per-source masked-array ``compressed()`` values (with a
+    single NaN for completely masked sources).
+
+    Parameters
+    ----------
+    values : 2D ndarray of float64 (C-contiguous)
+        The array to gather from (e.g., the data, error, or background
+        array).
+
+    mask : 2D ndarray of uint8 (C-contiguous)
+        A mask array where nonzero values indicate masked (excluded)
+        pixels. Must have the same shape as ``values``. Bit 1 (value
+        1) marks input-masked pixels and bit 2 (value 2) marks
+        non-finite data pixels folded into the mask by the caller.
+
+    segm : 2D ndarray of intp (C-contiguous)
+        The segmentation array where background pixels are zero and
+        sources have positive integer labels. Must have the same shape
+        as ``values``.
+
+    labels : 1D ndarray of intp (C-contiguous)
+        The source label for each source, with shape ``(n_sources,)``.
+
+    bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
+        The segment bounding box of each source, with shape
+        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
+        values).
+
+    Returns
+    -------
+    packed : 1D ndarray of float64
+        The packed pixel values of all sources.
+
+    offsets : 1D ndarray of intp
+        The start offset of each source in ``packed``, with shape
+        ``(n_sources + 1,)``; the values of source ``i`` are
+        ``packed[offsets[i]:offsets[i + 1]]``.
+
+    counts : 1D ndarray of intp
+        The number of unmasked segment pixels of each source, with
+        shape ``(n_sources,)``. A source with a zero count occupies a
+        single NaN in ``packed``.
+
+    Raises
+    ------
+    ValueError
+        If a per-source array does not have the same length as
+        ``labels``, or if a 2D array does not have the same shape as
+        ``values``.
+    """
+    cdef Py_ssize_t n_src = labels.shape[0]
+    cdef Py_ssize_t ny_data = values.shape[0]
+    cdef Py_ssize_t nx_data = values.shape[1]
+
+    _check_length(bbox_iymin.shape[0], n_src, 'bbox_iymin')
+    _check_length(bbox_iymax.shape[0], n_src, 'bbox_iymax')
+    _check_length(bbox_ixmin.shape[0], n_src, 'bbox_ixmin')
+    _check_length(bbox_ixmax.shape[0], n_src, 'bbox_ixmax')
+    _check_shape(mask.shape[0], mask.shape[1], ny_data, nx_data,
+                 'mask', 'values')
+    _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
+                 'segm', 'values')
+
+    offsets_arr = np.zeros(n_src + 1, dtype=np.intp)
+    counts_arr = np.zeros(n_src, dtype=np.intp)
+    cdef Py_ssize_t[::1] offsets = offsets_arr
+    cdef Py_ssize_t[::1] counts = counts_arr
+    cdef Py_ssize_t i, ix, iy, y0, y1, x0, x1, lbl, n, pos
+
+    # First pass: count the contributing pixels of each source
+    with nogil:
+        for i in range(n_src):
+            lbl = labels[i]
+            y0 = bbox_iymin[i]
+            y1 = bbox_iymax[i]
+            x0 = bbox_ixmin[i]
+            x1 = bbox_ixmax[i]
+            n = 0
+            for iy in range(y0, y1):
+                for ix in range(x0, x1):
+                    if segm[iy, ix] == lbl and mask[iy, ix] == 0:
+                        n += 1
+            counts[i] = n
+            offsets[i + 1] = offsets[i] + (n if n > 0 else 1)
+
+    packed_arr = np.empty(offsets[n_src])
+    cdef double[::1] packed = packed_arr
+
+    # Second pass: copy the values
+    with nogil:
+        for i in range(n_src):
+            lbl = labels[i]
+            y0 = bbox_iymin[i]
+            y1 = bbox_iymax[i]
+            x0 = bbox_ixmin[i]
+            x1 = bbox_ixmax[i]
+            pos = offsets[i]
+            if counts[i] == 0:
+                packed[pos] = NAN
+                continue
+            for iy in range(y0, y1):
+                for ix in range(x0, x1):
+                    if segm[iy, ix] == lbl and mask[iy, ix] == 0:
+                        packed[pos] = values[iy, ix]
+                        pos += 1
+    return packed_arr, offsets_arr, counts_arr
 
 
 def batch_raw_moments(const double[:, ::1] convdata, *,

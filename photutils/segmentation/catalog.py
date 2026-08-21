@@ -38,7 +38,8 @@ from photutils.segmentation._batch_catalog import (batch_central_moments,
                                                    batch_kron_radius,
                                                    batch_moment_err,
                                                    batch_quad_boxes,
-                                                   batch_raw_moments)
+                                                   batch_raw_moments,
+                                                   batch_segment_gather)
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.flags import (SEGMENTATION_FLAGS,
                                           decode_segmentation_flags)
@@ -816,8 +817,9 @@ class SourceCatalog:
         result : dict
             A dict with keys ``'data'``, ``'error'``, ``'mask'``, and
             ``'segm'``. The ``'error'`` value is `None` if no error
-            array was input. A ``'convdata'`` key is added lazily by
-            ``_get_batch_convdata``.
+            array was input. The ``'convdata'`` and ``'background'``
+            keys are added lazily by ``_get_batch_convdata`` and
+            ``_get_batch_background``.
         """
         if self._batch_arrays_cache is None:
             data = np.ascontiguousarray(self._data, dtype=np.float64)
@@ -845,6 +847,17 @@ class SourceCatalog:
             arrays['convdata'] = np.ascontiguousarray(
                 self._convolved_data, dtype=np.float64)
         return arrays['convdata']
+
+    def _get_batch_background(self):
+        """
+        Return the cached C-contiguous float64 background array used by
+        the batch segment gather.
+        """
+        arrays = self._get_batch_arrays()
+        if 'background' not in arrays:
+            arrays['background'] = np.ascontiguousarray(
+                self._background, dtype=np.float64)
+        return arrays['background']
 
     def _get_batch_bboxes(self):
         """
@@ -1521,7 +1534,13 @@ class SourceCatalog:
         """
         True if all pixels over the source segment are masked.
         """
-        return np.array([np.all(mask) for mask in self._cutout_total_masks])
+        # The gathered data values hold a single NaN for a completely
+        # masked source, and a non-finite data value is always masked,
+        # so no other source has a NaN value
+        values = self._data_values
+        sizes = np.array([arr.size for arr in values])
+        first = np.array([arr[0] for arr in values])
+        return (sizes == 1) & np.isnan(first)
 
     @cached_property
     @_update_flags_docstring
@@ -1697,21 +1716,33 @@ class SourceCatalog:
         return {int(label): flags
                 for label, flags in zip(self.labels, decoded, strict=True)}
 
-    def _get_values(self, array):
+    def _segment_values(self, array):
         """
-        Get a 1D array of unmasked values from the input array within
-        the source segment.
+        Get a list of 1D arrays of the unmasked values of ``array``
+        within each source segment.
 
         An array with a single NaN is returned for completely-masked
         sources.
+
+        Parameters
+        ----------
+        array : 2D `~numpy.ndarray`
+            The C-contiguous float64 full-image array to gather from.
+
+        Returns
+        -------
+        result : list of 1D `~numpy.ndarray`
+            The per-source values, in row-major pixel order.
         """
-        values = []
-        for arr in array:
-            compressed = arr.compressed()
-            if len(compressed) == 0:
-                compressed = np.array([np.nan])
-            values.append(compressed)
-        return values
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        packed, offsets, _ = batch_segment_gather(
+            array, mask=arrays['mask'], segm=arrays['segm'],
+            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
+                                        dtype=np.intp),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax)
+        return np.split(packed, offsets[1:-1])
 
     @staticmethod
     def _reduceat(values, ufunc, *, transform=None):
@@ -1755,36 +1786,39 @@ class SourceCatalog:
     @cached_property
     def _data_values(self):
         """
-        A 1D array of unmasked data values.
+        A list of 1D arrays of the unmasked data values within each
+        source segment.
 
         An array with a single NaN is returned for completely-masked
         sources.
         """
-        return self._get_values(self._array('data_cutout_masked'))
+        return self._segment_values(self._get_batch_arrays()['data'])
 
     @cached_property
     def _error_values(self):
         """
-        A 1D array of unmasked error values.
+        A list of 1D arrays of the unmasked error values within each
+        source segment.
 
         An array with a single NaN is returned for completely-masked
         sources.
         """
         if self._error is None:
             return self._null_objects
-        return self._get_values(self._array('error_cutout_masked'))
+        return self._segment_values(self._get_batch_arrays()['error'])
 
     @cached_property
     def _background_values(self):
         """
-        A 1D array of unmasked background values.
+        A list of 1D arrays of the unmasked background values within
+        each source segment.
 
         An array with a single NaN is returned for completely-masked
         sources.
         """
         if self._background is None:
             return self._null_objects
-        return self._get_values(self._array('background_cutout_masked'))
+        return self._segment_values(self._get_batch_background())
 
     @cached_property
     @use_detcat
