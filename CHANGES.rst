@@ -272,14 +272,15 @@ New Features
     by source label. [#2402]
 
   - Significantly improved the performance of the ``SourceCatalog``
-    windowed centroids, Kron photometry, ``flux_radius``, and image
-    moments, typically by factors of ~2-18 depending on the property,
-    by computing all sources in a single call into compiled code.
-    The moment-based properties (e.g., ``covariance``, ``fwhm``,
-    ``orientation``, and the centroid errors) are about 10 times faster,
-    and the ``flags`` attribute and the default ``to_table()`` output
-    are about 3 times faster for large catalogs. Progress bars are no
-    longer displayed for these calculations. [#2406]
+    windowed centroids, quadratic centroids, Kron radii and photometry,
+    ``flux_radius``, ``circular_photometry``, image moments, and
+    segment pixel statistics (e.g., ``segment_flux``, ``area``, and
+    ``min_value``), typically by factors of ~3-20 depending on the
+    property, by computing all sources in a single call into compiled
+    code. The ``flags`` attribute and the default ``to_table()`` output
+    are about 5 times faster for large catalogs. No property displays a
+    progress bar any more; the ``progress_bar`` keyword is retained for
+    backwards compatibility. [#2406]
 
 - ``photutils.utils``
 
