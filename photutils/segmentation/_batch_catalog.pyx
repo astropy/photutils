@@ -45,6 +45,75 @@ cdef extern from "math.h" nogil:
     double NAN
 
 
+cdef int _check_length(Py_ssize_t n, Py_ssize_t n_src,
+                       str name) except -1:
+    """
+    Validate the length of a per-source input array.
+
+    This is kept out of the drivers so that their error handling stays
+    out of the per-pixel loops. The drivers compile with
+    ``boundscheck=False``, so a short per-source array would otherwise
+    read out of bounds.
+
+    Parameters
+    ----------
+    n : Py_ssize_t
+        The length of the per-source array.
+
+    n_src : Py_ssize_t
+        The number of sources (the length of ``labels``).
+
+    name : str
+        The name of the per-source array, used in the error message.
+
+    Returns
+    -------
+    result : int
+        Zero. A `ValueError` is raised if the length is invalid.
+    """
+    if n != n_src:
+        msg = f'{name} must have the same length as labels'
+        raise ValueError(msg)
+    return 0
+
+
+cdef int _check_shape(Py_ssize_t ny, Py_ssize_t nx, Py_ssize_t ny_ref,
+                      Py_ssize_t nx_ref, str name,
+                      str ref_name) except -1:
+    """
+    Validate the shape of a 2D image-sized input array.
+
+    This is kept out of the drivers so that their error handling stays
+    out of the per-pixel loops. The drivers compile with
+    ``boundscheck=False``, so a smaller array would otherwise read out
+    of bounds.
+
+    Parameters
+    ----------
+    ny, nx : Py_ssize_t
+        The shape of the array being checked.
+
+    ny_ref, nx_ref : Py_ssize_t
+        The shape of the reference array.
+
+    name : str
+        The name of the array being checked, used in the error
+        message.
+
+    ref_name : str
+        The name of the reference array, used in the error message.
+
+    Returns
+    -------
+    result : int
+        Zero. A `ValueError` is raised if the shape is invalid.
+    """
+    if ny != ny_ref or nx != nx_ref:
+        msg = f'{name} must have the same shape as {ref_name}'
+        raise ValueError(msg)
+    return 0
+
+
 cdef void _centroid_win_source(const double *data, const double *error,
                                const unsigned char *mask,
                                const Py_ssize_t *segm,
@@ -57,10 +126,10 @@ cdef void _centroid_win_source(const double *data, const double *error,
     """
     Compute the raw windowed-centroid quantities for a single source.
 
-    Replicates ``SourceCatalog._iterate_centroid_win``: an iterative
-    Gaussian-weighted centroid within a binary circular window of
-    radius ``4 * sigma``, with masked pixels contributing zero
-    and neighbor-source pixels excluded or mirror-corrected per
+    Replicates the previous per-source Python implementation: an
+    iterative Gaussian-weighted centroid within a binary circular
+    window of radius ``4 * sigma``, with masked pixels contributing
+    zero and neighbor-source pixels excluded or mirror-corrected per
     ``seg_method``. Writes the 10 output columns ``(xcen, ycen,
     weighted_flux, cen_mom_xx, cen_mom_yy, cen_mom_xy, err_sum,
     err_var_x, err_var_y, err_cov_xy)`` into ``out``.
@@ -94,6 +163,9 @@ cdef void _centroid_win_source(const double *data, const double *error,
     cdef Py_ssize_t iter_ = 0
     cdef Py_ssize_t ixmin, ixmax, iymin, iymax, x0, x1, y0, y1
     cdef Py_ssize_t ccx, ccy, ix, iy, six, siy
+    # Write-only sinks required by the ``_resolve_seg_pixel``
+    # signature; they accumulate across all iterations and the final
+    # pass, so they are not a per-window count and are never read
     cdef Py_ssize_t n_seg = 0, n_unc = 0
     cdef double dx, dy, rr2, w, v, e, wv, wsq
     cdef double sumw, sumwx, sumwy
@@ -325,7 +397,9 @@ def batch_centroid_win(const double[:, ::1] data, *,
     Raises
     ------
     ValueError
-        If ``compute_err`` is nonzero and ``error`` is `None`.
+        If ``compute_err`` is nonzero and ``error`` is `None`, if a
+        per-source array does not have the same length as ``labels``,
+        or if a 2D array does not have the same shape as ``data``.
     """
     cdef Py_ssize_t n_src = labels.shape[0]
     cdef Py_ssize_t ny_data = data.shape[0]
@@ -335,6 +409,18 @@ def batch_centroid_win(const double[:, ::1] data, *,
     if compute_err and not has_error:
         msg = 'error must be provided when compute_err is set'
         raise ValueError(msg)
+
+    _check_length(xcen0.shape[0], n_src, 'xcen0')
+    _check_length(ycen0.shape[0], n_src, 'ycen0')
+    _check_length(sigma.shape[0], n_src, 'sigma')
+    _check_length(skip.shape[0], n_src, 'skip')
+    _check_shape(mask.shape[0], mask.shape[1], ny_data, nx_data,
+                 'mask', 'data')
+    _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
+                 'segm', 'data')
+    if has_error:
+        _check_shape(error.shape[0], error.shape[1], ny_data, nx_data,
+                     'error', 'data')
 
     results_arr = np.empty((n_src, 10))
     cdef double[:, ::1] results = results_arr
@@ -564,8 +650,27 @@ def batch_raw_moments(const double[:, ::1] convdata, *,
         included pixels of source ``i``, where ``v`` is the convolved
         data value and ``(cx, cy)`` are the cutout-frame pixel
         coordinates.
+
+    Raises
+    ------
+    ValueError
+        If a per-source array does not have the same length as
+        ``labels``, or if a 2D array does not have the same shape as
+        ``convdata``.
     """
     cdef Py_ssize_t n_src = labels.shape[0]
+    cdef Py_ssize_t ny_data = convdata.shape[0]
+    cdef Py_ssize_t nx_data = convdata.shape[1]
+
+    _check_length(bbox_iymin.shape[0], n_src, 'bbox_iymin')
+    _check_length(bbox_iymax.shape[0], n_src, 'bbox_iymax')
+    _check_length(bbox_ixmin.shape[0], n_src, 'bbox_ixmin')
+    _check_length(bbox_ixmax.shape[0], n_src, 'bbox_ixmax')
+    _check_shape(mask.shape[0], mask.shape[1], ny_data, nx_data,
+                 'mask', 'convdata')
+    _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
+                 'segm', 'convdata')
+
     result_arr = np.zeros((n_src, 4, 4))
     cdef double[:, :, ::1] result = result_arr
     cdef Py_ssize_t i, ix, iy, p, q, y0, y1, x0, x1, lbl
@@ -667,8 +772,29 @@ def batch_central_moments(const double[:, ::1] convdata, *,
         source centroid is not finite, every element except
         ``[i, 0, 0]``, which is the plain sum of the included values,
         is NaN.
+
+    Raises
+    ------
+    ValueError
+        If a per-source array does not have the same length as
+        ``labels``, or if a 2D array does not have the same shape as
+        ``convdata``.
     """
     cdef Py_ssize_t n_src = labels.shape[0]
+    cdef Py_ssize_t ny_data = convdata.shape[0]
+    cdef Py_ssize_t nx_data = convdata.shape[1]
+
+    _check_length(bbox_iymin.shape[0], n_src, 'bbox_iymin')
+    _check_length(bbox_iymax.shape[0], n_src, 'bbox_iymax')
+    _check_length(bbox_ixmin.shape[0], n_src, 'bbox_ixmin')
+    _check_length(bbox_ixmax.shape[0], n_src, 'bbox_ixmax')
+    _check_length(xcen.shape[0], n_src, 'xcen')
+    _check_length(ycen.shape[0], n_src, 'ycen')
+    _check_shape(mask.shape[0], mask.shape[1], ny_data, nx_data,
+                 'mask', 'convdata')
+    _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
+                 'segm', 'convdata')
+
     result_arr = np.zeros((n_src, 4, 4))
     cdef double[:, :, ::1] result = result_arr
     cdef Py_ssize_t i, ix, iy, p, q, y0, y1, x0, x1, lbl
@@ -786,8 +912,31 @@ def batch_moment_err(const double[:, ::1] error, *,
         ``e2`` is the pixel error variance and ``(dx, dy)`` are the
         cutout-frame pixel coordinates relative to the source
         centroid.
+
+    Raises
+    ------
+    ValueError
+        If a per-source array does not have the same length as
+        ``labels``, or if a 2D array does not have the same shape as
+        ``error``.
     """
     cdef Py_ssize_t n_src = labels.shape[0]
+    cdef Py_ssize_t ny_data = error.shape[0]
+    cdef Py_ssize_t nx_data = error.shape[1]
+
+    _check_length(bbox_iymin.shape[0], n_src, 'bbox_iymin')
+    _check_length(bbox_iymax.shape[0], n_src, 'bbox_iymax')
+    _check_length(bbox_ixmin.shape[0], n_src, 'bbox_ixmin')
+    _check_length(bbox_ixmax.shape[0], n_src, 'bbox_ixmax')
+    _check_length(xcen.shape[0], n_src, 'xcen')
+    _check_length(ycen.shape[0], n_src, 'ycen')
+    _check_shape(convdata.shape[0], convdata.shape[1], ny_data,
+                 nx_data, 'convdata', 'error')
+    _check_shape(mask.shape[0], mask.shape[1], ny_data, nx_data,
+                 'mask', 'error')
+    _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
+                 'segm', 'error')
+
     result_arr = np.zeros((n_src, 4))
     cdef double[:, ::1] result = result_arr
     cdef Py_ssize_t i, ix, iy, y0, y1, x0, x1, lbl

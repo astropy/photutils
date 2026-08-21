@@ -313,6 +313,34 @@ def test_compute_err_without_error(scene):
             compute_err=1, max_aper_size=scene['data'].size)
 
 
+def _call_driver(inp):
+    return batch_centroid_win(
+        inp['data'], error=inp['error'], mask=inp['mask'],
+        segm=inp['segm'], labels=inp['labels'], xcen0=inp['xcen0'],
+        ycen0=inp['ycen0'], sigma=inp['sigma'], skip=inp['skip'],
+        seg_method=3, compute_err=1, max_aper_size=inp['data'].size)
+
+
+@pytest.mark.parametrize('name', ['xcen0', 'ycen0', 'sigma', 'skip'])
+def test_length_guard(scene, name):
+    cat = make_catalog(scene)
+    inp = _driver_inputs(cat, scene)
+    inp[name] = np.ascontiguousarray(inp[name][:-1])
+    match = f'{name} must have the same length as labels'
+    with pytest.raises(ValueError, match=match):
+        _call_driver(inp)
+
+
+@pytest.mark.parametrize('name', ['mask', 'segm', 'error'])
+def test_shape_guard(scene, name):
+    cat = make_catalog(scene)
+    inp = _driver_inputs(cat, scene)
+    inp[name] = np.ascontiguousarray(inp[name][:-1])
+    match = f'{name} must have the same shape as data'
+    with pytest.raises(ValueError, match=match):
+        _call_driver(inp)
+
+
 def test_thread_safety(scene):
     cat = make_catalog(scene)
     inp = _driver_inputs(cat, scene)

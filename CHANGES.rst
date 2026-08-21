@@ -24,6 +24,10 @@ General
 
 - The ``asdf-astropy`` package is now an optional dependency. [#2211]
 
+- SciPy is now also a build-time dependency. Its Cython interface to
+  the Brent root finder is used by the compiled code that computes the
+  ``SourceCatalog`` flux radii. [#2406]
+
 - Added serialization to ASDF for all PSF models. [#2335]
 
 - Added serialization to ASDF for all apertures. [#2341]
@@ -266,6 +270,16 @@ New Features
     column combining provenance and measurement flags, along with a
     ``decode_flags`` convenience method that returns a dictionary keyed
     by source label. [#2402]
+
+  - Significantly improved the performance of the ``SourceCatalog``
+    windowed centroids, Kron photometry, ``flux_radius``, and image
+    moments, typically by factors of ~2-18 depending on the property,
+    by computing all sources in a single call into compiled code.
+    The moment-based properties (e.g., ``covariance``, ``fwhm``,
+    ``orientation``, and the centroid errors) are about 10 times faster,
+    and the ``flags`` attribute and the default ``to_table()`` output
+    are about 3 times faster for large catalogs. Progress bars are no
+    longer displayed for these calculations. [#2406]
 
 - ``photutils.utils``
 

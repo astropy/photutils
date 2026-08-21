@@ -87,12 +87,15 @@ cdef inline bint _resolve_seg_pixel(const Py_ssize_t *segmentation,
                                     Py_ssize_t *n_seg_px,
                                     Py_ssize_t *n_uncorr) noexcept nogil:
     """
-    Apply the segmentation masking method to a single unmasked pixel.
+    Apply the segmentation masking method to a single pixel.
 
     This is the segmentation-masking step shared by the per-pixel
     loops of ``_batch_photometry.batch_aperture_sums`` and
     ``_batch_stats.batch_aperture_gather``. The caller must invoke it
     only when a segmentation array is present and ``label`` is nonzero.
+    It is normally called on unmasked pixels, but a caller may also call
+    it on a masked pixel purely for its counter side effects, in which
+    case its return value is ignored.
 
     Parameters
     ----------

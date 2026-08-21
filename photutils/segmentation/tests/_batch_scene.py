@@ -7,7 +7,7 @@ import numpy as np
 
 from photutils.segmentation import SourceCatalog, detect_sources
 
-__all__ = ['make_batch_scene']
+__all__ = ['make_batch_scene', 'make_catalog']
 
 
 def make_batch_scene(*, seed=0):

@@ -16,9 +16,8 @@ from photutils.segmentation.tests._batch_scene import (make_batch_scene,
 
 
 def _reference_solve(args_list, fraction):
-    # Verbatim port of the pre-change flux_radius solve loop
-    # (catalog.py:5465-5507) and _flux_radius_fcn (catalog.py:
-    # 5289-5302), operating on the optimizer-args entries
+    # Verbatim port of the pre-change ``flux_radius`` solve loop and
+    # ``_flux_radius_fcn``, operating on the optimizer-args entries
     def fcn(radius, clean_data, grid_params, normflux):
         xmin_e, xmax_e, ymin_e, ymax_e, nx, ny, exact, subpx = \
             grid_params
@@ -124,7 +123,7 @@ def test_catalog_flux_radius(scene):
     assert_allclose(result.value, expected, rtol=1e-12,
                     equal_nan=True)
 
-    # Cache round-trip and named property
+    # Named property
     cat.flux_radius(0.3, name='r30')
     assert_allclose(cat.r30.value,
                     _reference_solve(

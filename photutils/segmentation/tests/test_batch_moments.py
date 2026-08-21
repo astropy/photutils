@@ -337,6 +337,96 @@ def test_catalog_centroid_err(scene):
                         rtol=1e-12, atol=1e-10)
 
 
+BBOX_NAMES = ['bbox_iymin', 'bbox_iymax', 'bbox_ixmin', 'bbox_ixmax']
+
+
+def _guard_inputs(scene):
+    """
+    Build the driver inputs for the input-validation tests, including
+    the centroid and error arrays.
+    """
+    cat = make_catalog(scene)
+    inp = _driver_inputs(cat)
+    xcen, ycen = _cutout_centroids(_reference_raw(cat))
+    inp['xcen'] = xcen
+    inp['ycen'] = ycen
+    inp['error'] = np.ascontiguousarray(scene['error'],
+                                        dtype=np.float64)
+    return inp
+
+
+def _call_central(inp):
+    return batch_central_moments(
+        inp['convdata'], mask=inp['mask'], segm=inp['segm'],
+        labels=inp['labels'], bbox_iymin=inp['bbox_iymin'],
+        bbox_iymax=inp['bbox_iymax'], bbox_ixmin=inp['bbox_ixmin'],
+        bbox_ixmax=inp['bbox_ixmax'], xcen=inp['xcen'],
+        ycen=inp['ycen'])
+
+
+def _call_err(inp):
+    return batch_moment_err(
+        inp['error'], convdata=inp['convdata'], mask=inp['mask'],
+        segm=inp['segm'], labels=inp['labels'],
+        bbox_iymin=inp['bbox_iymin'], bbox_iymax=inp['bbox_iymax'],
+        bbox_ixmin=inp['bbox_ixmin'], bbox_ixmax=inp['bbox_ixmax'],
+        xcen=inp['xcen'], ycen=inp['ycen'])
+
+
+@pytest.mark.parametrize('name', BBOX_NAMES)
+def test_raw_moments_length_guard(scene, name):
+    inp = _guard_inputs(scene)
+    inp[name] = np.ascontiguousarray(inp[name][:-1])
+    match = f'{name} must have the same length as labels'
+    with pytest.raises(ValueError, match=match):
+        _call_raw(inp)
+
+
+@pytest.mark.parametrize('name', ['mask', 'segm'])
+def test_raw_moments_shape_guard(scene, name):
+    inp = _guard_inputs(scene)
+    inp[name] = np.ascontiguousarray(inp[name][:-1])
+    match = f'{name} must have the same shape as convdata'
+    with pytest.raises(ValueError, match=match):
+        _call_raw(inp)
+
+
+@pytest.mark.parametrize('name', [*BBOX_NAMES, 'xcen', 'ycen'])
+def test_central_moments_length_guard(scene, name):
+    inp = _guard_inputs(scene)
+    inp[name] = np.ascontiguousarray(inp[name][:-1])
+    match = f'{name} must have the same length as labels'
+    with pytest.raises(ValueError, match=match):
+        _call_central(inp)
+
+
+@pytest.mark.parametrize('name', ['mask', 'segm'])
+def test_central_moments_shape_guard(scene, name):
+    inp = _guard_inputs(scene)
+    inp[name] = np.ascontiguousarray(inp[name][:-1])
+    match = f'{name} must have the same shape as convdata'
+    with pytest.raises(ValueError, match=match):
+        _call_central(inp)
+
+
+@pytest.mark.parametrize('name', [*BBOX_NAMES, 'xcen', 'ycen'])
+def test_moment_err_length_guard(scene, name):
+    inp = _guard_inputs(scene)
+    inp[name] = np.ascontiguousarray(inp[name][:-1])
+    match = f'{name} must have the same length as labels'
+    with pytest.raises(ValueError, match=match):
+        _call_err(inp)
+
+
+@pytest.mark.parametrize('name', ['convdata', 'mask', 'segm'])
+def test_moment_err_shape_guard(scene, name):
+    inp = _guard_inputs(scene)
+    inp[name] = np.ascontiguousarray(inp[name][:-1])
+    match = f'{name} must have the same shape as error'
+    with pytest.raises(ValueError, match=match):
+        _call_err(inp)
+
+
 def test_thread_safety(scene):
     cat = make_catalog(scene)
     inp = _driver_inputs(cat)
