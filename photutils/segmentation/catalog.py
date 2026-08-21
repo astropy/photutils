@@ -35,6 +35,7 @@ from photutils.morphology import gini as gini_func
 from photutils.segmentation._batch_catalog import (batch_central_moments,
                                                    batch_centroid_win,
                                                    batch_flux_radius_solve,
+                                                   batch_kron_radius,
                                                    batch_moment_err,
                                                    batch_raw_moments)
 from photutils.segmentation.core import SegmentationImage
@@ -4248,148 +4249,60 @@ class SourceCatalog:
         any minimum Kron or circular radius.
         """
         scale = 6.0
+        xcen = np.ascontiguousarray(self._array('x_centroid'),
+                                    dtype=np.float64)
+        ycen = np.ascontiguousarray(self._array('y_centroid'),
+                                    dtype=np.float64)
+        semimajor = np.ascontiguousarray(
+            self._array('semimajor_axis').value, dtype=np.float64)
+        semiminor = np.ascontiguousarray(
+            self._array('semiminor_axis').value, dtype=np.float64)
+        theta = np.ascontiguousarray(
+            self._array('orientation').to_value(u.radian),
+            dtype=np.float64)
+        cxx = np.ascontiguousarray(self._array('ellipse_cxx').value,
+                                   dtype=np.float64)
+        cxy = np.ascontiguousarray(self._array('ellipse_cxy').value,
+                                   dtype=np.float64)
+        cyy = np.ascontiguousarray(self._array('ellipse_cyy').value,
+                                   dtype=np.float64)
 
-        xcen_arr = self._array('x_centroid')
-        ycen_arr = self._array('y_centroid')
-        a_arr = self._array('semimajor_axis').value * scale
-        b_arr = self._array('semiminor_axis').value * scale
-        theta_arr = self._array('orientation').to_value(u.radian)
-        cxx_arr = self._array('ellipse_cxx').value
-        cxy_arr = self._array('ellipse_cxy').value
-        cyy_arr = self._array('ellipse_cyy').value
-        all_masked = self._all_masked
+        # Completely masked sources and sources with a non-finite
+        # centroid or shape have no measured Kron radius (NaN)
+        skip = (self._all_masked | ~np.isfinite(xcen) | ~np.isfinite(ycen)
+                | ~np.isfinite(semimajor * scale)
+                | ~np.isfinite(semiminor * scale)
+                | ~np.isfinite(theta)).astype(np.uint8)
 
-        data_full = self._data
-        data_shape = data_full.shape
-        mask_full = self._mask
-        segm_data = self._segmentation_image.data
-        max_size = max(data_full.size, 1_000_000)
         kron_min = self.kron_params[1]
         min_circ_radius = (self.kron_params[2]
                            if len(self.kron_params) == 3 else 0.0)
-        aperture_mask_method = self.aperture_mask_method
 
-        labels = self.labels
-        if self.progress_bar:
-            desc = 'kron_radius'
-            labels = add_progress_bar(labels, desc=desc)
+        arrays = self._get_batch_arrays()
+        sums = batch_kron_radius(
+            arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
+            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
+                                        dtype=np.intp),
+            xcen=xcen, ycen=ycen, semimajor=semimajor,
+            semiminor=semiminor, theta=theta, cxx=cxx, cxy=cxy, cyy=cyy,
+            skip=skip,
+            seg_method=_SEG_METHOD_CODES[self.aperture_mask_method],
+            scale=scale, min_circ_radius=min_circ_radius,
+            max_aper_size=max(self._data.size, 1_000_000))
+        flux_numer = sums[:, 0]
+        flux_denom = sums[:, 1]
 
-        kron_radius = []
-        for (label, xc, yc, a, b, theta, cxx_, cxy_, cyy_,
-             masked) in zip(labels, xcen_arr, ycen_arr, a_arr, b_arr,
-                            theta_arr, cxx_arr, cxy_arr, cyy_arr,
-                            all_masked, strict=True):
-            if masked or not (math.isfinite(xc) and math.isfinite(yc)
-                              and math.isfinite(a) and math.isfinite(b)
-                              and math.isfinite(theta)):
-                kron_radius.append(np.nan)
-                continue
+        # Ignore RuntimeWarning from undefined (NaN) sums and from a
+        # zero denominator
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            kron_radius = flux_numer / flux_denom
+            # Set the Kron radius to the minimum Kron radius if the
+            # numerator or denominator is not positive (NaN comparisons
+            # are False, so undefined sources stay NaN)
+            kron_radius[(flux_numer <= 0) | (flux_denom <= 0)] = kron_min
 
-            # Circular aperture fallback when semimajor/semiminor are
-            # zero (matching _make_elliptical_apertures behavior)
-            use_circular = (a == 0 and b == 0)
-            if use_circular:
-                if min_circ_radius <= 0:
-                    kron_radius.append(np.nan)
-                    continue
-                half_w = min_circ_radius
-                half_h = min_circ_radius
-            else:
-                cos_theta = math.cos(theta)
-                sin_theta = math.sin(theta)
-                half_w = math.sqrt(a * a * cos_theta * cos_theta
-                                   + b * b * sin_theta * sin_theta)
-                half_h = math.sqrt(a * a * sin_theta * sin_theta
-                                   + b * b * cos_theta * cos_theta)
-
-            # Compute bounding box from ellipse/circle parameters
-            ixmin = math.floor(xc - half_w + 0.5)
-            ixmax = math.floor(xc + half_w + 0.5) + 1
-            iymin = math.floor(yc - half_h + 0.5)
-            iymax = math.floor(yc + half_h + 0.5) + 1
-
-            # OOM guard
-            if (ixmax - ixmin) * (iymax - iymin) > max_size:
-                kron_radius.append(np.nan)
-                continue
-
-            # Compute overlap slices with data boundaries
-            dx_min = max(0, -ixmin)
-            dy_min = max(0, -iymin)
-            dx_max = max(0, ixmax - data_shape[1])
-            dy_max = max(0, iymax - data_shape[0])
-            lg_xmin = ixmin + dx_min
-            lg_xmax = ixmax - dx_max
-            lg_ymin = iymin + dy_min
-            lg_ymax = iymax - dy_max
-            if lg_xmin >= lg_xmax or lg_ymin >= lg_ymax:
-                kron_radius.append(np.nan)
-                continue
-
-            slc_lg = (slice(lg_ymin, lg_ymax), slice(lg_xmin, lg_xmax))
-
-            # Cutout data (local background explicitly zero for SE
-            # agreement)
-            data = data_full[slc_lg].astype(float)
-
-            # Build data mask (non-finite + input mask)
-            data_mask = ~np.isfinite(data)
-            if mask_full is not None:
-                data_mask |= mask_full[slc_lg]
-
-            # Mask or correct neighboring sources
-            if aperture_mask_method != 'none':
-                seg_cut = segm_data[slc_lg]
-                segm_mask = (seg_cut != label) & (seg_cut != 0)
-                if aperture_mask_method == 'mask':
-                    mask = data_mask | segm_mask
-                else:
-                    mask = data_mask
-                if aperture_mask_method == 'correct':
-                    cutout_xycen = (xc - max(0, ixmin), yc - max(0, iymin))
-                    data = _mask_to_mirrored_value(data, segm_mask,
-                                                   cutout_xycen,
-                                                   mask=mask)
-            else:
-                mask = data_mask
-
-            # Coordinate arrays (ogrid-style broadcasting avoids
-            # allocating full 2D meshgrid arrays)
-            ny, nx = data.shape
-            xval = np.arange(nx) - (xc - lg_xmin)
-            yval = np.arange(ny) - (yc - lg_ymin)
-            yy = yval[:, np.newaxis]
-            xx = xval[np.newaxis, :]
-
-            # Elliptical radius
-            rr_sq = cxx_ * xx * xx + cxy_ * xx * yy + cyy_ * yy * yy
-            rr = np.sqrt(np.maximum(rr_sq, 0.0))
-
-            # Aperture mask: for method='center', pixels whose center
-            # falls inside the ellipse (rr <= scale) or circle
-            if use_circular:
-                dx = xx
-                dy = yy
-                pixel_mask = ((dx * dx + dy * dy)
-                              <= min_circ_radius * min_circ_radius) & ~mask
-            else:
-                pixel_mask = (rr <= scale) & ~mask
-
-            # Ignore RuntimeWarning for invalid data values
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                flux_numer = np.sum(data[pixel_mask] * rr[pixel_mask])
-                flux_denom = np.sum(data[pixel_mask])
-
-            # Set Kron radius to the minimum Kron radius if numerator or
-            # denominator is negative
-            if flux_numer <= 0 or flux_denom <= 0:
-                kron_radius.append(kron_min)
-                continue
-
-            kron_radius.append(flux_numer / flux_denom)
-
-        return np.array(kron_radius)
+        return kron_radius
 
     def _calc_kron_radius(self, kron_params):
         """

@@ -34,13 +34,17 @@ from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
                                                 _resolve_seg_pixel)
 
 __all__ = ['batch_central_moments', 'batch_centroid_win',
-           'batch_flux_radius_solve', 'batch_moment_err',
-           'batch_raw_moments']
+           'batch_flux_radius_solve', 'batch_kron_radius',
+           'batch_moment_err', 'batch_raw_moments']
 
 
 cdef extern from "math.h" nogil:
     double exp(double x)
     double sqrt(double x)
+    double sin(double x)
+    double cos(double x)
+    double floor(double x)
+    double fmax(double x, double y)
     bint isfinite(double x)
     double NAN
 
@@ -448,6 +452,268 @@ def batch_centroid_win(const double[:, ::1] data, *,
                                  labels[i], xcen0[i], ycen0[i],
                                  sigma[i], seg_method, compute_err,
                                  max_aper_size, &results[i, 0])
+    return results_arr
+
+
+cdef void _kron_radius_source(const double *data,
+                              const unsigned char *mask,
+                              const Py_ssize_t *segm,
+                              Py_ssize_t nx_data, Py_ssize_t ny_data,
+                              Py_ssize_t label, double xc, double yc,
+                              double a, double b, double theta,
+                              double cxx, double cxy, double cyy,
+                              int seg_method, double scale,
+                              double min_circ_radius,
+                              Py_ssize_t max_aper_size,
+                              double *out) noexcept nogil:
+    """
+    Accumulate the Kron radius numerator and denominator for a single
+    source.
+
+    Replicates the previous per-source Python implementation: the
+    sums of ``data * r`` and ``data`` over the pixels whose centers
+    fall inside the ellipse of elliptical radius ``scale`` (or the
+    circle of radius ``min_circ_radius`` when both axes are zero),
+    excluding masked pixels and handling neighbor-source pixels per
+    ``seg_method``. Writes ``(numerator, denominator)`` into ``out``,
+    or NaN for an undefined measurement (no minimum circular radius
+    for a degenerate ellipse, an unreasonably large bounding box, or
+    no overlap with the data).
+    """
+    out[0] = NAN
+    out[1] = NAN
+
+    cdef bint use_circular = (a == 0 and b == 0)
+    cdef double half_w, half_h, cos_theta, sin_theta
+    if use_circular:
+        if min_circ_radius <= 0:
+            return
+        half_w = min_circ_radius
+        half_h = min_circ_radius
+    else:
+        cos_theta = cos(theta)
+        sin_theta = sin(theta)
+        half_w = sqrt(a * a * cos_theta * cos_theta
+                      + b * b * sin_theta * sin_theta)
+        half_h = sqrt(a * a * sin_theta * sin_theta
+                      + b * b * cos_theta * cos_theta)
+
+    # The bounding box is kept as integral doubles until it is
+    # clipped, to avoid integer overflow for apertures far outside
+    # the image
+    cdef double ixmin_d = floor(xc - half_w + 0.5)
+    cdef double ixmax_d = floor(xc + half_w + 0.5) + 1.0
+    cdef double iymin_d = floor(yc - half_h + 0.5)
+    cdef double iymax_d = floor(yc + half_h + 0.5) + 1.0
+    if (ixmax_d - ixmin_d) * (iymax_d - iymin_d) > max_aper_size:
+        return
+
+    # Clip to the data
+    cdef double x0_d = ixmin_d if ixmin_d > 0.0 else 0.0
+    cdef double x1_d = ixmax_d if ixmax_d < nx_data else nx_data
+    cdef double y0_d = iymin_d if iymin_d > 0.0 else 0.0
+    cdef double y1_d = iymax_d if iymax_d < ny_data else ny_data
+    if x0_d >= x1_d or y0_d >= y1_d:
+        return
+    cdef Py_ssize_t x0 = <Py_ssize_t>x0_d
+    cdef Py_ssize_t x1 = <Py_ssize_t>x1_d
+    cdef Py_ssize_t y0 = <Py_ssize_t>y0_d
+    cdef Py_ssize_t y1 = <Py_ssize_t>y1_d
+
+    # The cutout-frame center offsets and the mirror center of the
+    # 'correct' method (truncation of the cutout center + 0.5
+    # replicates the Python int() call)
+    cdef double xoff = xc - <double>x0
+    cdef double yoff = yc - <double>y0
+    cdef Py_ssize_t ccx = <Py_ssize_t>(xoff + 0.5) + x0
+    cdef Py_ssize_t ccy = <Py_ssize_t>(yoff + 0.5) + y0
+    cdef double r_circ2 = min_circ_radius * min_circ_radius
+
+    cdef double numerator = 0.0
+    cdef double denominator = 0.0
+    cdef Py_ssize_t ix, iy, six, siy
+    # Write-only sinks required by the ``_resolve_seg_pixel``
+    # signature
+    cdef Py_ssize_t n_seg = 0, n_unc = 0
+    cdef double xx, yy, rr_sq, rr, v
+    for iy in range(y0, y1):
+        yy = <double>(iy - y0) - yoff
+        for ix in range(x0, x1):
+            xx = <double>(ix - x0) - xoff
+            rr_sq = cxx * xx * xx + cxy * xx * yy + cyy * yy * yy
+            rr = sqrt(fmax(rr_sq, 0.0))
+            if use_circular:
+                if xx * xx + yy * yy > r_circ2:
+                    continue
+            elif rr > scale:
+                continue
+            if mask[iy * nx_data + ix] != 0:
+                continue
+            six = ix
+            siy = iy
+            if (seg_method != 0
+                    and not _resolve_seg_pixel(
+                        segm, mask, nx_data, seg_method, label,
+                        ix, iy, x0, x1, y0, y1, ccx, ccy,
+                        &six, &siy, &n_seg, &n_unc)):
+                continue
+            v = data[siy * nx_data + six]
+            numerator += v * rr
+            denominator += v
+
+    out[0] = numerator
+    out[1] = denominator
+
+
+def batch_kron_radius(const double[:, ::1] data, *,
+                      const unsigned char[:, ::1] mask,
+                      const Py_ssize_t[:, ::1] segm,
+                      const Py_ssize_t[::1] labels,
+                      const double[::1] xcen,
+                      const double[::1] ycen,
+                      const double[::1] semimajor,
+                      const double[::1] semiminor,
+                      const double[::1] theta,
+                      const double[::1] cxx,
+                      const double[::1] cxy,
+                      const double[::1] cyy,
+                      const unsigned char[::1] skip,
+                      int seg_method, double scale,
+                      double min_circ_radius,
+                      Py_ssize_t max_aper_size):
+    """
+    Compute the Kron radius numerator and denominator for many sources
+    in one call.
+
+    For each source, the sums of ``data * r`` and ``data`` are
+    accumulated over the pixels whose centers fall inside the ellipse
+    of elliptical radius ``scale`` (in units of the isophotal
+    ellipse), where ``r`` is the elliptical radius of each pixel, or
+    inside the circle of radius ``min_circ_radius`` for a source whose
+    elliptical axes are both zero. The bounding-box arithmetic, the
+    per-pixel masking, and the neighbor handling replicate the
+    previous per-source Python implementation exactly. The caller
+    forms the Kron radius from the two sums.
+
+    Parameters
+    ----------
+    data : 2D ndarray of float64 (C-contiguous)
+        The data array.
+
+    mask : 2D ndarray of uint8 (C-contiguous)
+        A mask array where nonzero values indicate masked (excluded)
+        pixels. Must have the same shape as ``data``. Bit 1 (value 1)
+        marks input-masked pixels and bit 2 (value 2) marks non-finite
+        data pixels folded into the mask by the caller. Any nonzero
+        value excludes the pixel and prevents it from being used as a
+        mirror pixel.
+
+    segm : 2D ndarray of intp (C-contiguous)
+        The segmentation array where background pixels are zero and
+        sources have positive integer labels. Must have the same shape
+        as ``data``.
+
+    labels : 1D ndarray of intp (C-contiguous)
+        The source label for each source, with shape ``(n_sources,)``.
+
+    xcen, ycen : 1D ndarray of float64 (C-contiguous)
+        The source centroids, with shape ``(n_sources,)``.
+
+    semimajor, semiminor : 1D ndarray of float64 (C-contiguous)
+        The isophotal semimajor and semiminor axes (1-sigma), with
+        shape ``(n_sources,)``. They are multiplied by ``scale`` to
+        form the measurement ellipse.
+
+    theta : 1D ndarray of float64 (C-contiguous)
+        The ellipse orientation in radians, with shape
+        ``(n_sources,)``.
+
+    cxx, cxy, cyy : 1D ndarray of float64 (C-contiguous)
+        The isophotal ellipse coefficients, with shape
+        ``(n_sources,)``.
+
+    skip : 1D ndarray of uint8 (C-contiguous)
+        Nonzero for sources that cannot have a measured Kron radius
+        (e.g., a completely masked source or a non-finite centroid or
+        shape), with shape ``(n_sources,)``.
+
+    seg_method : int
+        The segmentation masking method:
+
+        * 0: disables masking
+        * 1: excludes neighbor-source pixels
+             (``(seg > 0) & (seg != label)``)
+        * 3: replaces neighbor-source pixels with the values mirrored
+             across the (rounded) aperture center (the symmetric
+             ``'correct'`` method). A neighbor pixel whose mirror falls
+             outside the clipped bounding box, is itself a neighbor,
+             or is masked contributes zero instead.
+
+    scale : float
+        The elliptical radius of the measurement ellipse, in units of
+        the isophotal ellipse.
+
+    min_circ_radius : float
+        The radius of the measurement circle for sources whose
+        elliptical axes are both zero. Such sources are undefined if
+        it is not positive.
+
+    max_aper_size : Py_ssize_t
+        The maximum number of pixels in the (unclipped) bounding box.
+        Sources with a larger bounding box are undefined
+        (out-of-memory guard).
+
+    Returns
+    -------
+    result : 2D ndarray of float64
+        The per-source sums with shape ``(n_sources, 2)`` and columns
+        ``(numerator, denominator)``. Skipped and undefined sources
+        (including those rejected by ``max_aper_size`` and those whose
+        bounding box does not overlap the data) get the row
+        ``(nan, nan)``.
+
+    Raises
+    ------
+    ValueError
+        If a per-source array does not have the same length as
+        ``labels``, or if a 2D array does not have the same shape as
+        ``data``.
+    """
+    cdef Py_ssize_t n_src = labels.shape[0]
+    cdef Py_ssize_t ny_data = data.shape[0]
+    cdef Py_ssize_t nx_data = data.shape[1]
+
+    _check_length(xcen.shape[0], n_src, 'xcen')
+    _check_length(ycen.shape[0], n_src, 'ycen')
+    _check_length(semimajor.shape[0], n_src, 'semimajor')
+    _check_length(semiminor.shape[0], n_src, 'semiminor')
+    _check_length(theta.shape[0], n_src, 'theta')
+    _check_length(cxx.shape[0], n_src, 'cxx')
+    _check_length(cxy.shape[0], n_src, 'cxy')
+    _check_length(cyy.shape[0], n_src, 'cyy')
+    _check_length(skip.shape[0], n_src, 'skip')
+    _check_shape(mask.shape[0], mask.shape[1], ny_data, nx_data,
+                 'mask', 'data')
+    _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
+                 'segm', 'data')
+
+    results_arr = np.empty((n_src, 2))
+    cdef double[:, ::1] results = results_arr
+
+    cdef Py_ssize_t i
+    with nogil:
+        for i in range(n_src):
+            if skip[i]:
+                results[i, 0] = NAN
+                results[i, 1] = NAN
+                continue
+            _kron_radius_source(&data[0, 0], &mask[0, 0], &segm[0, 0],
+                                nx_data, ny_data, labels[i], xcen[i],
+                                ycen[i], semimajor[i] * scale,
+                                semiminor[i] * scale, theta[i], cxx[i],
+                                cxy[i], cyy[i], seg_method, scale,
+                                min_circ_radius, max_aper_size,
+                                &results[i, 0])
     return results_arr
 
 
