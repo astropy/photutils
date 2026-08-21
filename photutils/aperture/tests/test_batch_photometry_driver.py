@@ -10,6 +10,7 @@ import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
+                                                  FLAG_COL_N_PIXELS,
                                                   SHAPE_CIRCLE,
                                                   SHAPE_CIRCULAR_ANNULUS,
                                                   SHAPE_ELLIPSE,
@@ -257,3 +258,30 @@ def test_weights_out_clipped_bbox_zero_weight():
         data, None, None, positions, SHAPE_CIRCLE, params, 2.0, 2.0,
         0.0, 0.0, 1, 1)
     assert result[10][0] == 1
+
+
+@pytest.mark.parametrize('radius', [2000.0, 8000.0, 20000.0])
+def test_weights_out_large_aperture(radius):
+    """
+    Test an aperture whose bounding box is far larger than the data.
+
+    Once a nonzero-fraction pixel outside the data has been found, the
+    remaining outside pixels cannot change the outside-weight result,
+    so the pixel loop narrows back to the part of the bounding box
+    inside the data. Without that, the cost of these apertures would
+    grow with the (enormous) bounding-box area rather than with the
+    data area.
+    """
+    data = np.ones((200, 200))
+    positions = np.array([[100.0, 100.0]])
+    result = batch_aperture_sums(
+        data, None, None, positions, SHAPE_CIRCLE, np.array([radius]),
+        radius, radius, 0.0, 0.0, 1, 5)
+
+    assert result[10][0] == 1
+    assert result[9][0, FLAG_COL_BBOX_CLIPPED] == 1
+    # Every data pixel is well inside the aperture, so the sums are
+    # unaffected by the outside-weight scan
+    assert result[9][0, FLAG_COL_N_PIXELS] == data.size
+    assert_allclose(result[0][0], data.sum())
+    assert_allclose(result[2][0], data.size)

@@ -501,6 +501,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
     cdef Py_ssize_t k, ix, iy, ix0, ix1, iy0, iy1
     cdef Py_ssize_t sx0, sx1, sy0, sy1
+    cdef bint outside, found_out
     cdef Py_ssize_t ixmin, iymin
     cdef Py_ssize_t six, siy, ccx = 0, ccy = 0
     cdef double cx, cy, lbk = 0.0
@@ -611,9 +612,29 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             n_unc_masked = 0
             n_valid = 0
             spos = starts[k]
+            found_out = 0
             for iy in range(sy0, sy1):
+                # Once the outside-weight test has been answered, the
+                # pixels outside the data can no longer change any
+                # result, so the remaining rows are narrowed (or
+                # skipped entirely) back to the part of the bounding
+                # box that lies inside the data.
+                if clipped and found_out:
+                    if iy < iy0 or iy >= iy1:
+                        continue
+                    sx0 = ix0
+                    sx1 = ix1
+
                 pymin = gymin + (iy - iymin) * dy
                 for ix in range(sx0, sx1):
+                    # A pixel outside the data contributes to nothing
+                    # but the outside-weight test, so it costs only
+                    # this test once that test has been answered.
+                    outside = clipped and not (iy0 <= iy < iy1
+                                               and ix0 <= ix < ix1)
+                    if outside and found_out:
+                        continue
+
                     pxmin = gxmin + (ix - ixmin) * dx
 
                     if shape_code == _CIRCLE:
@@ -657,6 +678,18 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                             pbuf_b_x, pbuf_b_y, poly_buf_size, use_exact,
                             subpixels)
 
+                    # A nonzero fraction outside the data answers the
+                    # precise outside-weight test. A clipped bounding
+                    # box does not by itself imply nonzero outside
+                    # weights, because the aperture may not reach into
+                    # the clipped-away rows or columns. The pixel is
+                    # then skipped: its (out-of-range) coordinates must
+                    # never reach the data accesses below.
+                    if outside:
+                        if frac > 0.0:
+                            found_out = 1
+                        continue
+
                     # Annulus fractions are a difference of two shapes,
                     # so floating-point noise can leave a boundary
                     # pixel's fraction a tiny negative value. Both the
@@ -666,17 +699,6 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                     if frac <= 0.0:
                         continue
 
-                    # For a clipped bounding box, the pixel loop
-                    # also covers the pixels outside the data. Such
-                    # a pixel with a nonzero fraction is the precise
-                    # outside-weight test; it contributes to nothing
-                    # else. A clipped bounding box does not by itself
-                    # imply nonzero outside weights, because the
-                    # aperture may not reach into the clipped-away rows
-                    # or columns.
-                    if clipped and not (iy0 <= iy < iy1 and ix0 <= ix < ix1):
-                        weights_out[k] = 1
-                        continue
                     n_pix += 1
 
                     if has_mask:
@@ -738,6 +760,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             if has_error and not isfinite(var_val):
                 n_nonfin_err += 1
 
+            weights_out[k] = found_out
             sums[k] = sum_val
             areas[k] = area_val
             if has_error:
