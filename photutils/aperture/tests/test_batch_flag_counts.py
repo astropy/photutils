@@ -14,8 +14,11 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_NONFINITE_DATA,
                                                   FLAG_COL_NONFINITE_ERROR,
                                                   FLAG_COL_SEG,
+                                                  FLAG_COL_SEG_MASKED,
                                                   FLAG_COL_UNCORRECTED,
-                                                  FLAG_COL_VALID, SHAPE_CIRCLE,
+                                                  FLAG_COL_UNCORRECTED_MASKED,
+                                                  FLAG_COL_VALID, N_FLAG_COLS,
+                                                  SHAPE_CIRCLE,
                                                   batch_aperture_sums)
 from photutils.aperture._batch_stats import batch_aperture_gather
 from photutils.aperture.tests.conftest import UNIT_SHAPE
@@ -301,3 +304,62 @@ class TestSegmentationCounts:
                            segmentation=segm, labels=labels, seg_method=3)[0]
         assert fc[FLAG_COL_SEG] == 1
         assert fc[FLAG_COL_UNCORRECTED] == 1
+
+
+class TestSegMaskedCounts:
+    """
+    Tests for the masked neighbor-segment pixel counts.
+
+    Masked pixels never reach the segmentation branch of the per-pixel
+    loop, so they are counted in separate columns for callers that
+    treat the mask and neighbor overlays independently.
+    """
+
+    @staticmethod
+    def _inputs():
+        """
+        Return the data, mask, segmentation, and labels of a source with
+        one unmasked and one masked neighbor-segment pixel.
+        """
+        data = np.ones((11, 11))
+        segm = np.zeros((11, 11), dtype=np.intp)
+        segm[4:7, 4:7] = 1
+        segm[5, 8] = 2  # neighbor pixel, unmasked
+        # Neighbor pixel that is masked. Its mirror across the center is
+        # (5, 8), which is also a neighbor, so neither pixel can be
+        # corrected by the 'correct' method.
+        segm[5, 2] = 2
+        mask = np.zeros((11, 11), dtype=np.uint8)
+        mask[5, 2] = 1
+        labels = np.array([1], dtype=np.intp)
+        return data, mask, segm, labels
+
+    def test_n_flag_cols(self):
+        """
+        Test the flag-count column layout.
+        """
+        assert FLAG_COL_SEG_MASKED == 8
+        assert FLAG_COL_UNCORRECTED_MASKED == 9
+        assert N_FLAG_COLS == 10
+
+    @pytest.mark.parametrize('func', [_sums_fcounts, _gather_fcounts])
+    @pytest.mark.parametrize(('seg_method', 'n_seg', 'n_uncorr',
+                              'n_seg_masked', 'n_uncorr_masked'),
+                             [(3, 1, 1, 1, 1),
+                              (1, 1, 0, 1, 0),
+                              (0, 0, 0, 0, 0)])
+    def test_seg_masked_columns(self, func, seg_method, n_seg, n_uncorr,
+                                n_seg_masked, n_uncorr_masked):
+        """
+        Test that masked neighbor-segment pixels are counted separately
+        from the unmasked ones by both batch drivers.
+        """
+        data, mask, segm, labels = self._inputs()
+        fc = func(data, (5.0, 5.0), 4.0, mask=mask, segmentation=segm,
+                  labels=labels, seg_method=seg_method)[0]
+        assert fc.shape == (N_FLAG_COLS,)
+        assert fc[FLAG_COL_MASKED] == 1
+        assert fc[FLAG_COL_SEG] == n_seg
+        assert fc[FLAG_COL_UNCORRECTED] == n_uncorr
+        assert fc[FLAG_COL_SEG_MASKED] == n_seg_masked
+        assert fc[FLAG_COL_UNCORRECTED_MASKED] == n_uncorr_masked

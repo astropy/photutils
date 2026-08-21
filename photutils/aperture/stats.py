@@ -24,7 +24,7 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_NONFINITE_ERROR,
                                                   FLAG_COL_SEG,
                                                   FLAG_COL_UNCORRECTED,
-                                                  FLAG_COL_VALID,
+                                                  FLAG_COL_VALID, N_FLAG_COLS,
                                                   batch_aperture_sums)
 from photutils.aperture._batch_stats import (batch_aperture_gather,
                                              batch_biweight, batch_gini,
@@ -1496,7 +1496,7 @@ class ApertureStats:
                 zip(self._data_cutouts, aperture_masks,
                     self._overlap_slices, strict=True)):
 
-            fc_row = np.zeros(8, dtype=np.intp)
+            fc_row = np.zeros(N_FLAG_COLS, dtype=np.intp)
             n_clipped_ = 0
 
             slc_large, slc_small = slices

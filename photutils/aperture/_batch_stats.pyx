@@ -357,14 +357,18 @@ def batch_aperture_gather(const double[:, ::1] data,
           are non-finite in the data (masked or unmasked)
         * ``FLAG_COL_NONFINITE_ERROR``: always zero (this function does
           not read error values)
-        * ``FLAG_COL_SEG``: the number of those pixels that were
-          excluded or corrected by the segmentation masking
-        * ``FLAG_COL_UNCORRECTED``: the number of those pixels that
-          could not be corrected by the segmentation masking
+        * ``FLAG_COL_SEG``: the number of those unmasked pixels that
+          were excluded or corrected by the segmentation masking
+        * ``FLAG_COL_UNCORRECTED``: the number of those unmasked pixels
+          that could not be corrected by the segmentation masking
         * ``FLAG_COL_VALID``: the number of contributing pixels
           (unmasked, finite, and not excluded by segmentation)
         * ``FLAG_COL_BBOX_CLIPPED``: a 0/1 indicator of whether the
           bounding box is clipped by a data edge
+        * ``FLAG_COL_SEG_MASKED``: the number of those masked pixels
+          that lie on a neighboring source
+        * ``FLAG_COL_UNCORRECTED_MASKED``: the number of those masked
+          pixels whose mirror pixel was also unavailable
         Rows are all zero where the aperture bounding box does not
         overlap the data.
     """
@@ -503,6 +507,7 @@ def batch_aperture_gather(const double[:, ::1] data,
     cdef double pxmin, pymin, cfrac
     cdef Py_ssize_t total = 0, pos
     cdef Py_ssize_t n_pix, n_masked, n_nonfin, n_seg_px, n_uncorr, w_out
+    cdef Py_ssize_t n_seg_masked, n_unc_masked
     cdef Py_ssize_t ixmax_full, iymax_full
     cdef unsigned char mbits
 
@@ -555,6 +560,8 @@ def batch_aperture_gather(const double[:, ::1] data,
             n_nonfin = 0
             n_seg_px = 0
             n_uncorr = 0
+            n_seg_masked = 0
+            n_unc_masked = 0
             pos = starts[k]
             for iy in range(iy0, iy1):
                 pymin = gymin + (iy - iymin) * dy
@@ -602,11 +609,28 @@ def batch_aperture_gather(const double[:, ::1] data,
 
                     if has_mask:
                         mbits = mask[iy, ix]
-                        if mbits & 1:
-                            n_masked += 1
-                            continue
-                        if mbits & 2:
-                            n_nonfin += 1
+                        if mbits != 0:
+                            if mbits & 1:
+                                n_masked += 1
+                            elif mbits & 2:
+                                n_nonfin += 1
+                            # Masked pixels never reach the
+                            # segmentation branch below, so count
+                            # masked neighbor-segment pixels (and their
+                            # mirror availability) here for callers
+                            # that treat the mask and neighbor overlays
+                            # independently. The helper is called only
+                            # for its counter side effects. Its return
+                            # value and resolved coordinates are unused.
+                            if (has_seg and lbl != 0 and seg_method != 0):
+                                six = ix
+                                siy = iy
+                                _resolve_seg_pixel(
+                                    seg_ptr, mask_ptr, nx_data,
+                                    seg_method, lbl, ix, iy, ix0,
+                                    ix1, iy0, iy1, ccx, ccy, &six,
+                                    &siy, &n_seg_masked,
+                                    &n_unc_masked)
                             continue
                     six = ix
                     siy = iy
@@ -642,6 +666,8 @@ def batch_aperture_gather(const double[:, ::1] data,
             fcounts[k, 5] = n_uncorr
             fcounts[k, 6] = counts[k]
             fcounts[k, 7] = w_out
+            fcounts[k, 8] = n_seg_masked
+            fcounts[k, 9] = n_unc_masked
 
     return (values_arr, lx_arr, ly_arr, starts_arr, counts_arr,
             overlap_arr.view(bool), fcounts_arr)

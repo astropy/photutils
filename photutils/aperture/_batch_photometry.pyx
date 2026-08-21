@@ -62,10 +62,12 @@ FLAG_COL_SEG = 4
 FLAG_COL_UNCORRECTED = 5
 FLAG_COL_VALID = 6
 FLAG_COL_BBOX_CLIPPED = 7
+FLAG_COL_SEG_MASKED = 8
+FLAG_COL_UNCORRECTED_MASKED = 9
 
 # The total number of ``flag_counts`` columns. Every producer of a
 # per-source flag-count array must allocate this many columns
-N_FLAG_COLS = 8
+N_FLAG_COLS = 10
 
 
 def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
@@ -235,14 +237,25 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
           are non-finite in the data (masked or unmasked)
         * ``FLAG_COL_NONFINITE_ERROR``: the number of those pixels that
           are non-finite in the error (masked or unmasked)
-        * ``FLAG_COL_SEG``: the number of those pixels that were
-          excluded or corrected by the segmentation masking
-        * ``FLAG_COL_UNCORRECTED``: the number of those pixels that
-          could not be corrected by the segmentation masking
+        * ``FLAG_COL_SEG``: the number of those unmasked pixels that
+          were excluded or corrected by the segmentation masking
+        * ``FLAG_COL_UNCORRECTED``: the number of those unmasked pixels
+          that could not be corrected by the segmentation masking
         * ``FLAG_COL_VALID``: the number of contributing pixels
           (unmasked, finite, and not excluded by segmentation)
         * ``FLAG_COL_BBOX_CLIPPED``: a 0/1 indicator of whether the
           bounding box is clipped by a data edge
+        * ``FLAG_COL_SEG_MASKED``: the number of those masked pixels
+          that lie on a neighboring source
+        * ``FLAG_COL_UNCORRECTED_MASKED``: the number of those masked
+          pixels whose mirror pixel was also unavailable
+
+        Masked pixels are excluded before the segmentation masking is
+        applied, so they are counted in the ``FLAG_COL_SEG_MASKED``
+        and ``FLAG_COL_UNCORRECTED_MASKED`` columns instead of the
+        ``FLAG_COL_SEG`` and ``FLAG_COL_UNCORRECTED`` columns. This lets
+        callers that treat the mask and neighbor overlays independently
+        recover the full neighbor-pixel counts.
 
         The ``FLAG_COL_NONFINITE_DATA`` and ``FLAG_COL_NONFINITE_ERROR``
         columns are nonzero when non-finite data or error values
@@ -409,6 +422,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     cdef Py_ssize_t total = 0, spos = 0
     cdef Py_ssize_t n_pix, n_masked, n_nonfin, n_nonfin_err
     cdef Py_ssize_t n_seg_px, n_uncorr, n_valid, w_out
+    cdef Py_ssize_t n_seg_masked, n_unc_masked
     cdef Py_ssize_t ixmax_full, iymax_full
     cdef unsigned char mbits
 
@@ -464,6 +478,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             n_nonfin_err = 0
             n_seg_px = 0
             n_uncorr = 0
+            n_seg_masked = 0
+            n_unc_masked = 0
             n_valid = 0
             spos = starts[k]
             for iy in range(iy0, iy1):
@@ -524,11 +540,29 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
                     if has_mask:
                         mbits = mask[iy, ix]
-                        if mbits & 1:
-                            n_masked += 1
-                            continue
-                        if mbits & 2:
-                            n_nonfin += 1
+                        if mbits != 0:
+                            if mbits & 1:
+                                n_masked += 1
+                            elif mbits & 2:
+                                n_nonfin += 1
+                            # Masked pixels never reach the
+                            # segmentation branch below, so count
+                            # masked neighbor-segment pixels (and their
+                            # mirror availability) here for callers
+                            # that treat the mask and neighbor overlays
+                            # independently. The helper is called only
+                            # for its counter side effects. Its return
+                            # value and resolved coordinates are unused.
+                            if (has_seg and lbl != 0
+                                    and seg_method != 0):
+                                six = ix
+                                siy = iy
+                                _resolve_seg_pixel(
+                                    seg_ptr, mask_ptr, nx_data,
+                                    seg_method, lbl, ix, iy, ix0,
+                                    ix1, iy0, iy1, ccx, ccy, &six,
+                                    &siy, &n_seg_masked,
+                                    &n_unc_masked)
                             continue
                     six = ix
                     siy = iy
@@ -589,6 +623,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             fcounts[k, 5] = n_uncorr
             fcounts[k, 6] = n_valid
             fcounts[k, 7] = w_out
+            fcounts[k, 8] = n_seg_masked
+            fcounts[k, 9] = n_unc_masked
 
     return (sums_arr, vars_arr, areas_arr, overlap_arr.view(bool),
             starts_arr, sum_values_arr, sum_fracs_arr, sum_errsq_arr,
