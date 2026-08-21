@@ -37,6 +37,7 @@ from photutils.segmentation._batch_catalog import (batch_central_moments,
                                                    batch_flux_radius_solve,
                                                    batch_kron_radius,
                                                    batch_moment_err,
+                                                   batch_quad_boxes,
                                                    batch_raw_moments)
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.flags import (SEGMENTATION_FLAGS,
@@ -49,7 +50,6 @@ from photutils.utils._deprecation import (_get_future_column_names,
 from photutils.utils._flags import update_flag_docstring
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import validate_table_columns
-from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 from photutils.utils.cutouts import CutoutImage
@@ -304,11 +304,10 @@ class SourceCatalog:
         the Kron flux).
 
     progress_bar : bool, optional
-        Whether to display a progress bar when calculating
-        some properties (e.g., ``kron_radius``, ``flux_radius``,
-        ``circular_photometry``, ``centroid_quad``). The progress bar
-        requires that the `tqdm <https://tqdm.github.io/>`_ optional
-        dependency be installed.
+        Whether to display a progress bar when calculating properties.
+        All property calculations are now computed for all sources at
+        once in compiled code, so no progress bar is displayed. This
+        keyword is retained for backwards compatibility.
 
     Notes
     -----
@@ -2423,63 +2422,6 @@ class SourceCatalog:
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.centroid_win - origin
 
-    @staticmethod
-    def _centroid_quad_var(coeffs, xm_rel, ym_rel, pinv, box_var):
-        """
-        Propagate pixel variances through the quadratic peak solution.
-
-        The quadratic-fit coefficients are linear in the pixel values
-        (``c = pinv @ pixels``) and the peak position is a rational
-        function of the coefficients, so the position variances follow
-        from the delta method.
-
-        Parameters
-        ----------
-        coeffs : `~numpy.ndarray`
-            The six quadratic-fit coefficients for the terms
-            ``[1, x, y, xy, x^2, y^2]``.
-
-        xm_rel, ym_rel : float
-            The peak position in the relative (3x3 box) coordinates.
-
-        pinv : `~numpy.ndarray`
-            The (6, 9) pseudo-inverse of the design matrix.
-
-        box_var : `~numpy.ndarray`
-            The 9 pixel variances of the 3x3 fit box, with masked
-            pixels set to zero.
-
-        Returns
-        -------
-        var_x, var_y : float
-            The variances of the peak ``x`` and ``y`` positions.
-
-        cov_xy : float
-            The covariance of the peak ``x`` and ``y`` positions.
-        """
-        c10, c01, c11, c20, c02 = coeffs[1:]
-        det = 4.0 * c20 * c02 - c11 * c11
-        grad_x = np.array(
-            [0.0,
-             -2.0 * c02 / det,
-             c11 / det,
-             (c01 + 2.0 * c11 * xm_rel) / det,
-             -4.0 * c02 * xm_rel / det,
-             (-2.0 * c10 - 4.0 * c20 * xm_rel) / det])
-        grad_y = np.array(
-            [0.0,
-             c11 / det,
-             -2.0 * c20 / det,
-             (c10 + 2.0 * c11 * ym_rel) / det,
-             (-2.0 * c01 - 4.0 * c02 * ym_rel) / det,
-             -4.0 * c20 * ym_rel / det])
-        u_x = grad_x @ pinv
-        u_y = grad_y @ pinv
-        var_x = np.sum(u_x**2 * box_var)
-        var_y = np.sum(u_y**2 * box_var)
-        cov_xy = np.sum(u_x * u_y * box_var)
-        return var_x, var_y, cov_xy
-
     @cached_property
     @use_detcat
     def _centroid_quad_results(self):
@@ -2495,7 +2437,7 @@ class SourceCatalog:
         """
         # Precompute the pseudo-inverse for the 3x3 relative coordinate
         # design matrix [1, x, y, xy, x^2, y^2]. This is constant for
-        # all sources and avoids per-source lstsq calls.
+        # all sources.
         xi = np.arange(3)
         x, y = np.meshgrid(xi, xi)
         x = x.ravel()
@@ -2511,90 +2453,86 @@ class SourceCatalog:
 
         compute_err = self._error is not None
 
-        _nan = np.nan
-        nan_result = (_nan, _nan, _nan, _nan, _nan)
-        results = []
+        # Gather the 3x3 box around the peak pixel of each masked
+        # (zero-filled) cutout
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        status, peak, boxes, box_var = batch_quad_boxes(
+            arrays['data'], error=arrays['error'], mask=arrays['mask'],
+            segm=arrays['segm'],
+            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
+                                        dtype=np.intp),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax, compute_err=int(compute_err))
+        nx = ixmax - ixmin
+        ny = iymax - iymin
+        n_src = len(status)
 
-        cutouts = self._data_cutouts
-        if self.progress_bar:
-            desc = 'centroid_quad'
-            cutouts = add_progress_bar(cutouts, desc=desc)
+        results = np.full((n_src, 5), np.nan)
 
-        for cutout, error_cutout, mask in zip(cutouts,
-                                              self._error_cutouts,
-                                              self._cutout_total_masks,
-                                              strict=True):
-            ny, nx = cutout.shape
+        # If the peak is at the edge of the cutout, return the peak
+        # position. No fit is performed, so no errors can be
+        # propagated.
+        edge = status == 3
+        results[edge, 0] = peak[edge, 0]
+        results[edge, 1] = peak[edge, 1]
 
-            # Cutout must be at least 3x3 for the quadratic fit
-            if ny < 3 or nx < 3:
-                results.append(nan_result)
-                continue
-
-            # A source with no unmasked pixels has no peak; without this
-            # guard the masked (zeroed) cutout below would return the
-            # position of its first pixel as the "peak"
-            if np.all(mask):
-                results.append(nan_result)
-                continue
-
-            # Apply mask: _cutout_total_masks already includes
-            # non-finite data values, so cutout[mask] = 0.0 handles both
-            # masked pixels and non-finite values.
-            cutout = np.array(cutout, dtype=float)
-            cutout[mask] = 0.0
-
-            # Find peak pixel
-            yidx, xidx = np.unravel_index(np.argmax(cutout), cutout.shape)
-
-            # If peak at edge of cutout, return peak position. No fit
-            # is performed, so no errors can be propagated.
-            if xidx == 0 or xidx == nx - 1 or yidx == 0 or yidx == ny - 1:
-                results.append((float(xidx), float(yidx), _nan, _nan,
-                                _nan))
-                continue
-
-            # Extract 3x3 box centered on peak (guaranteed to fit
-            # since peak is not at edge)
-            xidx0 = xidx - 1
-            yidx0 = yidx - 1
-            cutout_flat = cutout[yidx0:yidx0 + 3, xidx0:xidx0 + 3].ravel()
-
-            # Compute polynomial coefficients via precomputed
-            # pseudo-inverse
-            c = pinv @ cutout_flat
-            c10, c01, c11, c20, c02 = c[1], c[2], c[3], c[4], c[5]
-
-            det = 4.0 * c20 * c02 - c11 * c11
-            if det <= 0 or c20 > 0:
-                results.append(nan_result)
-                continue
-
+        # Fit the quadratic to the 3x3 box of the remaining sources
+        fit = status == 0
+        xidx0 = peak[:, 0] - 1
+        yidx0 = peak[:, 1] - 1
+        # einsum (rather than a BLAS matmul) keeps the per-source
+        # arithmetic independent of the number of sources, so a sliced
+        # catalog reproduces the parent catalog values exactly
+        coeffs = np.einsum('ij,nj->ni', pinv, boxes)
+        c10 = coeffs[:, 1]
+        c01 = coeffs[:, 2]
+        c11 = coeffs[:, 3]
+        c20 = coeffs[:, 4]
+        c02 = coeffs[:, 5]
+        det = 4.0 * c20 * c02 - c11 * c11
+        fit &= ~((det <= 0) | (c20 > 0))
+        # Ignore RuntimeWarning from the sources without a fit
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
             # Maximum in relative coords, then convert to cutout coords
             xm_rel = (c01 * c11 - 2.0 * c02 * c10) / det
             ym_rel = (c10 * c11 - 2.0 * c20 * c01) / det
             xm = xm_rel + xidx0
             ym = ym_rel + yidx0
+            fit &= ((xm > 0.0) & (xm < (nx - 1.0))
+                    & (ym > 0.0) & (ym < (ny - 1.0)))
+            results[fit, 0] = xm[fit]
+            results[fit, 1] = ym[fit]
 
-            if not (0.0 < xm < (nx - 1.0) and 0.0 < ym < (ny - 1.0)):
-                results.append(nan_result)
-                continue
-
-            var_x = var_y = cov_xy = _nan
             if compute_err:
-                # Pixel variances of the fit box; masked pixels have
-                # a fixed (zeroed) data value, so they contribute no
-                # variance
-                box_var = (error_cutout[yidx0:yidx0 + 3, xidx0:xidx0 + 3]
-                           .astype(float).ravel()**2)
-                box_var[mask[yidx0:yidx0 + 3,
-                             xidx0:xidx0 + 3].ravel()] = 0.0
-                var_x, var_y, cov_xy = self._centroid_quad_var(
-                    c, xm_rel, ym_rel, pinv, box_var)
-
-            results.append((xm, ym, var_x, var_y, cov_xy))
-
-        results = np.array(results)
+                # Propagate the pixel variances through the quadratic
+                # peak solution. The fit coefficients are linear in the
+                # pixel values (``c = pinv @ pixels``) and the peak
+                # position is a rational function of the coefficients,
+                # so the position variances follow from the delta
+                # method. Masked pixels have a fixed (zeroed) data
+                # value, so they contribute no variance.
+                zeros = np.zeros(n_src)
+                grad_x = np.column_stack(
+                    [zeros,
+                     -2.0 * c02 / det,
+                     c11 / det,
+                     (c01 + 2.0 * c11 * xm_rel) / det,
+                     -4.0 * c02 * xm_rel / det,
+                     (-2.0 * c10 - 4.0 * c20 * xm_rel) / det])
+                grad_y = np.column_stack(
+                    [zeros,
+                     c11 / det,
+                     -2.0 * c20 / det,
+                     (c10 + 2.0 * c11 * ym_rel) / det,
+                     (-2.0 * c01 - 4.0 * c02 * ym_rel) / det,
+                     -4.0 * c20 * ym_rel / det])
+                u_x = np.einsum('ni,ij->nj', grad_x, pinv)
+                u_y = np.einsum('ni,ij->nj', grad_y, pinv)
+                results[fit, 2] = np.sum(u_x**2 * box_var, axis=1)[fit]
+                results[fit, 3] = np.sum(u_y**2 * box_var, axis=1)[fit]
+                results[fit, 4] = np.sum(u_x * u_y * box_var, axis=1)[fit]
 
         # Use the segment barycenter if the fit returned NaN. Fallback
         # sources use the isophotal centroid, so also use the isophotal

@@ -35,7 +35,8 @@ from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
 
 __all__ = ['batch_central_moments', 'batch_centroid_win',
            'batch_flux_radius_prepare', 'batch_flux_radius_solve',
-           'batch_kron_radius', 'batch_moment_err', 'batch_raw_moments']
+           'batch_kron_radius', 'batch_moment_err', 'batch_quad_boxes',
+           'batch_raw_moments']
 
 
 cdef extern from "math.h" nogil:
@@ -1093,6 +1094,177 @@ def batch_flux_radius_solve(args_list, *, double fraction):
                 result = NAN
         radius[i] = result
     return radius_arr
+
+
+def batch_quad_boxes(const double[:, ::1] data, *,
+                     const double[:, ::1] error,
+                     const unsigned char[:, ::1] mask,
+                     const Py_ssize_t[:, ::1] segm,
+                     const Py_ssize_t[::1] labels,
+                     const Py_ssize_t[::1] bbox_iymin,
+                     const Py_ssize_t[::1] bbox_iymax,
+                     const Py_ssize_t[::1] bbox_ixmin,
+                     const Py_ssize_t[::1] bbox_ixmax,
+                     int compute_err):
+    """
+    Gather the 3x3 peak-pixel boxes of the quadratic centroid fit for
+    many sources in one call.
+
+    For each source, the data within its segment bounding box is
+    treated as a cutout whose pixels outside the source segment,
+    input-masked, or non-finite are zero, and the first (row-major)
+    maximum of that cutout is the peak pixel. The 3x3 box centered on
+    the peak is returned together with the pixel variances of the box
+    (zero for masked pixels), replicating the previous per-source
+    Python implementation exactly.
+
+    Parameters
+    ----------
+    data : 2D ndarray of float64 (C-contiguous)
+        The data array.
+
+    error : 2D ndarray of float64 (C-contiguous) or `None`
+        The pixel-wise 1-sigma errors. Must have the same shape as
+        ``data``. Required (not `None`) if ``compute_err`` is nonzero.
+
+    mask : 2D ndarray of uint8 (C-contiguous)
+        A mask array where nonzero values indicate masked (zeroed)
+        pixels. Must have the same shape as ``data``. Bit 1 (value 1)
+        marks input-masked pixels and bit 2 (value 2) marks non-finite
+        data pixels folded into the mask by the caller.
+
+    segm : 2D ndarray of intp (C-contiguous)
+        The segmentation array where background pixels are zero and
+        sources have positive integer labels. Must have the same shape
+        as ``data``.
+
+    labels : 1D ndarray of intp (C-contiguous)
+        The source label for each source, with shape ``(n_sources,)``.
+
+    bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
+        The segment bounding box of each source, with shape
+        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
+        values).
+
+    compute_err : int
+        If nonzero, also gather the pixel variances of the boxes.
+
+    Returns
+    -------
+    status : 1D ndarray of intp
+        The per-source status: 0 if the 3x3 box was gathered, 1 if the
+        cutout is smaller than 3x3, 2 if every cutout pixel is masked,
+        and 3 if the peak pixel lies on the cutout edge (so no box
+        fits). Only status 0 rows have valid boxes.
+
+    peak : 2D ndarray of intp
+        The cutout-frame ``(x, y)`` index of the peak pixel, with shape
+        ``(n_sources, 2)``. Valid for status 0 and 3; ``(-1, -1)``
+        otherwise.
+
+    boxes : 2D ndarray of float64
+        The zero-filled cutout values of the 3x3 box around the peak in
+        row-major order, with shape ``(n_sources, 9)``. Zero for
+        statuses other than 0.
+
+    box_var : 2D ndarray of float64
+        The pixel variances of the box, zero for masked pixels, with
+        shape ``(n_sources, 9)``. All zero unless ``compute_err`` is
+        nonzero.
+
+    Raises
+    ------
+    ValueError
+        If ``compute_err`` is nonzero and ``error`` is `None`, if a
+        per-source array does not have the same length as ``labels``,
+        or if a 2D array does not have the same shape as ``data``.
+    """
+    cdef Py_ssize_t n_src = labels.shape[0]
+    cdef Py_ssize_t ny_data = data.shape[0]
+    cdef Py_ssize_t nx_data = data.shape[1]
+    cdef bint has_error = error is not None
+
+    if compute_err and not has_error:
+        msg = 'error must be provided when compute_err is set'
+        raise ValueError(msg)
+
+    _check_length(bbox_iymin.shape[0], n_src, 'bbox_iymin')
+    _check_length(bbox_iymax.shape[0], n_src, 'bbox_iymax')
+    _check_length(bbox_ixmin.shape[0], n_src, 'bbox_ixmin')
+    _check_length(bbox_ixmax.shape[0], n_src, 'bbox_ixmax')
+    _check_shape(mask.shape[0], mask.shape[1], ny_data, nx_data,
+                 'mask', 'data')
+    _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
+                 'segm', 'data')
+    if has_error:
+        _check_shape(error.shape[0], error.shape[1], ny_data, nx_data,
+                     'error', 'data')
+
+    status_arr = np.zeros(n_src, dtype=np.intp)
+    peak_arr = np.full((n_src, 2), -1, dtype=np.intp)
+    boxes_arr = np.zeros((n_src, 9))
+    box_var_arr = np.zeros((n_src, 9))
+    cdef Py_ssize_t[::1] status = status_arr
+    cdef Py_ssize_t[:, ::1] peak = peak_arr
+    cdef double[:, ::1] boxes = boxes_arr
+    cdef double[:, ::1] box_var = box_var_arr
+    cdef const double *err_ptr = NULL
+    if has_error:
+        err_ptr = &error[0, 0]
+
+    cdef Py_ssize_t i, ix, iy, y0, y1, x0, x1, lbl, k
+    cdef Py_ssize_t xpeak, ypeak, bx, by
+    cdef double v, vmax, e
+    cdef bint found, masked
+    with nogil:
+        for i in range(n_src):
+            lbl = labels[i]
+            y0 = bbox_iymin[i]
+            y1 = bbox_iymax[i]
+            x0 = bbox_ixmin[i]
+            x1 = bbox_ixmax[i]
+            if y1 - y0 < 3 or x1 - x0 < 3:
+                status[i] = 1
+                continue
+
+            # First (row-major) maximum of the zero-filled cutout
+            found = False
+            vmax = 0.0
+            xpeak = 0
+            ypeak = 0
+            for iy in range(y0, y1):
+                for ix in range(x0, x1):
+                    if segm[iy, ix] != lbl or mask[iy, ix] != 0:
+                        v = 0.0
+                    else:
+                        v = data[iy, ix]
+                        found = True
+                    if (iy == y0 and ix == x0) or v > vmax:
+                        vmax = v
+                        xpeak = ix
+                        ypeak = iy
+            if not found:
+                status[i] = 2
+                continue
+
+            peak[i, 0] = xpeak - x0
+            peak[i, 1] = ypeak - y0
+            if (xpeak == x0 or xpeak == x1 - 1 or ypeak == y0
+                    or ypeak == y1 - 1):
+                status[i] = 3
+                continue
+
+            k = 0
+            for by in range(ypeak - 1, ypeak + 2):
+                for bx in range(xpeak - 1, xpeak + 2):
+                    masked = (segm[by, bx] != lbl or mask[by, bx] != 0)
+                    if not masked:
+                        boxes[i, k] = data[by, bx]
+                        if compute_err:
+                            e = err_ptr[by * nx_data + bx]
+                            box_var[i, k] = e * e
+                    k += 1
+    return status_arr, peak_arr, boxes_arr, box_var_arr
 
 
 def batch_raw_moments(const double[:, ::1] convdata, *,
