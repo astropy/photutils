@@ -11,6 +11,11 @@ per-source Python calls. The per-pixel segmentation masking (mask or
 mirror-correct) uses the same helper as the aperture batch drivers, so
 the semantics match the previous cutout-based code paths.
 
+The moment kernels accumulate the raw and central spatial moments (and
+the raw centroid error sums) over each source's segment bounding box,
+using cutout-frame coordinates, so that the moment-based properties
+never need per-source cutout arrays.
+
 The fractional-flux radius solver additionally runs its bracketed
 root-find entirely in C, using the ``brentq`` implementation exported
 by ``scipy.optimize.cython_optimize``, so that no Python call is made
@@ -28,7 +33,9 @@ from scipy.optimize.cython_optimize cimport brentq, zeros_full_output
 from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
                                                 _resolve_seg_pixel)
 
-__all__ = ['batch_centroid_win', 'batch_flux_radius_solve']
+__all__ = ['batch_central_moments', 'batch_centroid_win',
+           'batch_flux_radius_solve', 'batch_moment_err',
+           'batch_raw_moments']
 
 
 cdef extern from "math.h" nogil:
@@ -502,3 +509,312 @@ def batch_flux_radius_solve(args_list, *, double fraction):
                 result = NAN
         radius[i] = result
     return radius_arr
+
+
+def batch_raw_moments(const double[:, ::1] convdata, *,
+                      const unsigned char[:, ::1] mask,
+                      const Py_ssize_t[:, ::1] segm,
+                      const Py_ssize_t[::1] labels,
+                      const Py_ssize_t[::1] bbox_iymin,
+                      const Py_ssize_t[::1] bbox_iymax,
+                      const Py_ssize_t[::1] bbox_ixmin,
+                      const Py_ssize_t[::1] bbox_ixmax):
+    """
+    Compute the raw spatial moments for many sources in one call.
+
+    The moments are computed up to 3rd order along each axis over the
+    segment bounding box of each source, using coordinates relative
+    to the bounding-box origin (i.e., the cutout frame). Pixels
+    outside the source segment, input-masked pixels, non-finite
+    values, and negative values contribute zero, which replicates the
+    zeroed moment cutouts of the previous per-source implementation.
+
+    Parameters
+    ----------
+    convdata : 2D ndarray of float64 (C-contiguous)
+        The convolved data array (or the data array itself if no
+        convolved data was input).
+
+    mask : 2D ndarray of uint8 (C-contiguous)
+        A mask array where bit 1 (value 1) marks input-masked pixels
+        and bit 2 (value 2) marks non-finite data pixels folded into
+        the mask by the caller. Only bit 1 excludes a pixel here;
+        non-finite convolved values are excluded by their own test.
+        Must have the same shape as ``convdata``.
+
+    segm : 2D ndarray of intp (C-contiguous)
+        The segmentation array where background pixels are zero and
+        sources have positive integer labels. Must have the same
+        shape as ``convdata``.
+
+    labels : 1D ndarray of intp (C-contiguous)
+        The source label for each source, with shape
+        ``(n_sources,)``.
+
+    bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
+        The segment bounding box of each source, with shape
+        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
+        values).
+
+    Returns
+    -------
+    result : 3D `~numpy.ndarray`
+        The raw moments with shape ``(n_sources, 4, 4)``. The element
+        ``[i, p, q]`` is the sum of ``v * cy**p * cx**q`` over the
+        included pixels of source ``i``, where ``v`` is the convolved
+        data value and ``(cx, cy)`` are the cutout-frame pixel
+        coordinates.
+    """
+    cdef Py_ssize_t n_src = labels.shape[0]
+    result_arr = np.zeros((n_src, 4, 4))
+    cdef double[:, :, ::1] result = result_arr
+    cdef Py_ssize_t i, ix, iy, p, q, y0, y1, x0, x1, lbl
+    cdef double v, cx, cy
+    cdef double xpow[4]
+    cdef double ypow[4]
+
+    with nogil:
+        for i in range(n_src):
+            lbl = labels[i]
+            y0 = bbox_iymin[i]
+            y1 = bbox_iymax[i]
+            x0 = bbox_ixmin[i]
+            x1 = bbox_ixmax[i]
+            for iy in range(y0, y1):
+                cy = <double>(iy - y0)
+                ypow[0] = 1.0
+                ypow[1] = cy
+                ypow[2] = cy * cy
+                ypow[3] = cy * cy * cy
+                for ix in range(x0, x1):
+                    if segm[iy, ix] != lbl:
+                        continue
+                    if mask[iy, ix] & 1:
+                        continue
+                    v = convdata[iy, ix]
+                    if not isfinite(v) or v < 0.0:
+                        continue
+                    cx = <double>(ix - x0)
+                    xpow[0] = 1.0
+                    xpow[1] = cx
+                    xpow[2] = cx * cx
+                    xpow[3] = cx * cx * cx
+                    for p in range(4):
+                        for q in range(4):
+                            result[i, p, q] += (v * ypow[p]
+                                                * xpow[q])
+    return result_arr
+
+
+def batch_central_moments(const double[:, ::1] convdata, *,
+                          const unsigned char[:, ::1] mask,
+                          const Py_ssize_t[:, ::1] segm,
+                          const Py_ssize_t[::1] labels,
+                          const Py_ssize_t[::1] bbox_iymin,
+                          const Py_ssize_t[::1] bbox_iymax,
+                          const Py_ssize_t[::1] bbox_ixmin,
+                          const Py_ssize_t[::1] bbox_ixmax,
+                          const double[::1] xcen,
+                          const double[::1] ycen):
+    """
+    Compute the central spatial moments for many sources in one call.
+
+    These are the translation-invariant moments up to 3rd order along
+    each axis, i.e., the raw moments of `batch_raw_moments` computed
+    with coordinates measured from the given cutout-frame centroid.
+    The pixel-inclusion rules are identical to those of
+    `batch_raw_moments`.
+
+    Parameters
+    ----------
+    convdata : 2D ndarray of float64 (C-contiguous)
+        The convolved data array (or the data array itself if no
+        convolved data was input).
+
+    mask : 2D ndarray of uint8 (C-contiguous)
+        A mask array where bit 1 (value 1) marks input-masked pixels
+        and bit 2 (value 2) marks non-finite data pixels folded into
+        the mask by the caller. Only bit 1 excludes a pixel here;
+        non-finite convolved values are excluded by their own test.
+        Must have the same shape as ``convdata``.
+
+    segm : 2D ndarray of intp (C-contiguous)
+        The segmentation array where background pixels are zero and
+        sources have positive integer labels. Must have the same
+        shape as ``convdata``.
+
+    labels : 1D ndarray of intp (C-contiguous)
+        The source label for each source, with shape
+        ``(n_sources,)``.
+
+    bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
+        The segment bounding box of each source, with shape
+        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
+        values).
+
+    xcen, ycen : 1D ndarray of float64 (C-contiguous)
+        The cutout-frame centroid of each source, with shape
+        ``(n_sources,)``.
+
+    Returns
+    -------
+    result : 3D `~numpy.ndarray`
+        The central moments with shape ``(n_sources, 4, 4)``. The
+        element ``[i, p, q]`` is the sum of ``v * dy**p * dx**q``
+        over the included pixels of source ``i``, where ``v`` is the
+        convolved data value and ``(dx, dy)`` are the cutout-frame
+        pixel coordinates relative to the source centroid. If a
+        source centroid is not finite, every element except
+        ``[i, 0, 0]``, which is the plain sum of the included values,
+        is NaN.
+    """
+    cdef Py_ssize_t n_src = labels.shape[0]
+    result_arr = np.zeros((n_src, 4, 4))
+    cdef double[:, :, ::1] result = result_arr
+    cdef Py_ssize_t i, ix, iy, p, q, y0, y1, x0, x1, lbl
+    cdef double v, cx, cy
+    cdef double xpow[4]
+    cdef double ypow[4]
+
+    with nogil:
+        for i in range(n_src):
+            lbl = labels[i]
+            y0 = bbox_iymin[i]
+            y1 = bbox_iymax[i]
+            x0 = bbox_ixmin[i]
+            x1 = bbox_ixmax[i]
+            for iy in range(y0, y1):
+                cy = <double>(iy - y0) - ycen[i]
+                ypow[0] = 1.0
+                ypow[1] = cy
+                ypow[2] = cy * cy
+                ypow[3] = cy * cy * cy
+                for ix in range(x0, x1):
+                    if segm[iy, ix] != lbl:
+                        continue
+                    if mask[iy, ix] & 1:
+                        continue
+                    v = convdata[iy, ix]
+                    if not isfinite(v) or v < 0.0:
+                        continue
+                    cx = <double>(ix - x0) - xcen[i]
+                    xpow[0] = 1.0
+                    xpow[1] = cx
+                    xpow[2] = cx * cx
+                    xpow[3] = cx * cx * cx
+                    for p in range(4):
+                        for q in range(4):
+                            result[i, p, q] += (v * ypow[p]
+                                                * xpow[q])
+
+            if not (isfinite(xcen[i]) and isfinite(ycen[i])):
+                # A non-finite centroid poisons every coordinate
+                # power, so all elements except [0, 0] (the plain
+                # flux sum) are NaN, as in the previous NumPy
+                # implementation. The sums above are NaN only where
+                # a source has at least one included pixel, so set
+                # them explicitly.
+                for p in range(4):
+                    for q in range(4):
+                        if p != 0 or q != 0:
+                            result[i, p, q] = NAN
+    return result_arr
+
+
+def batch_moment_err(const double[:, ::1] error, *,
+                     const double[:, ::1] convdata,
+                     const unsigned char[:, ::1] mask,
+                     const Py_ssize_t[:, ::1] segm,
+                     const Py_ssize_t[::1] labels,
+                     const Py_ssize_t[::1] bbox_iymin,
+                     const Py_ssize_t[::1] bbox_iymax,
+                     const Py_ssize_t[::1] bbox_ixmin,
+                     const Py_ssize_t[::1] bbox_ixmax,
+                     const double[::1] xcen,
+                     const double[::1] ycen):
+    """
+    Compute the raw centroid error sums for many sources in one call.
+
+    These are the unnormalized sums that the isophotal centroid error
+    covariance is built from. A pixel contributes its error variance
+    only if it is inside the source segment, is unmasked (neither
+    input-masked nor non-finite data), and contributes nonzero flux
+    weight to the moments (a finite, strictly positive convolved
+    value). This replicates the zeroing of the previous per-source
+    implementation, which set the error variance to zero wherever the
+    total mask was set or the moment data were zero.
+
+    Parameters
+    ----------
+    error : 2D ndarray of float64 (C-contiguous)
+        The pixel-wise 1-sigma errors. Must have the same shape as
+        ``convdata``.
+
+    convdata : 2D ndarray of float64 (C-contiguous)
+        The convolved data array (or the data array itself if no
+        convolved data was input).
+
+    mask : 2D ndarray of uint8 (C-contiguous)
+        A mask array where bit 1 (value 1) marks input-masked pixels
+        and bit 2 (value 2) marks non-finite data pixels folded into
+        the mask by the caller. Any nonzero value excludes the pixel.
+        Must have the same shape as ``convdata``.
+
+    segm : 2D ndarray of intp (C-contiguous)
+        The segmentation array where background pixels are zero and
+        sources have positive integer labels. Must have the same
+        shape as ``convdata``.
+
+    labels : 1D ndarray of intp (C-contiguous)
+        The source label for each source, with shape
+        ``(n_sources,)``.
+
+    bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
+        The segment bounding box of each source, with shape
+        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
+        values).
+
+    xcen, ycen : 1D ndarray of float64 (C-contiguous)
+        The cutout-frame centroid of each source, with shape
+        ``(n_sources,)``.
+
+    Returns
+    -------
+    result : 2D `~numpy.ndarray`
+        The raw error sums with shape ``(n_sources, 4)`` and columns
+        ``(sum_e2, sum_e2_dx2, sum_e2_dy2, sum_e2_dxdy)``, where
+        ``e2`` is the pixel error variance and ``(dx, dy)`` are the
+        cutout-frame pixel coordinates relative to the source
+        centroid.
+    """
+    cdef Py_ssize_t n_src = labels.shape[0]
+    result_arr = np.zeros((n_src, 4))
+    cdef double[:, ::1] result = result_arr
+    cdef Py_ssize_t i, ix, iy, y0, y1, x0, x1, lbl
+    cdef double v, e, e2, dx, dy
+
+    with nogil:
+        for i in range(n_src):
+            lbl = labels[i]
+            y0 = bbox_iymin[i]
+            y1 = bbox_iymax[i]
+            x0 = bbox_ixmin[i]
+            x1 = bbox_ixmax[i]
+            for iy in range(y0, y1):
+                dy = <double>(iy - y0) - ycen[i]
+                for ix in range(x0, x1):
+                    if segm[iy, ix] != lbl:
+                        continue
+                    if mask[iy, ix] != 0:
+                        continue
+                    v = convdata[iy, ix]
+                    if not isfinite(v) or v <= 0.0:
+                        continue
+                    dx = <double>(ix - x0) - xcen[i]
+                    e = error[iy, ix]
+                    e2 = e * e
+                    result[i, 0] += e2
+                    result[i, 1] += e2 * dx * dx
+                    result[i, 2] += e2 * dy * dy
+                    result[i, 3] += e2 * dx * dy
+    return result_arr
