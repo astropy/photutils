@@ -47,6 +47,34 @@ python benchmarks/bench_aperture_sep.py
 python benchmarks/bench_aperture_sep.py --which threads --n-threads 1,4,12
 ```
 
+## SourceCatalog versus SEP (`bench_catalog_sep.py`)
+
+Benchmark and validation of `SourceCatalog` against the SEP package,
+using the same blended Gaussian-pair image, convolved image, and
+segmentation image as the `SourceCatalog` benchmarks in
+`bench_segmentation.py`. For each `aperture_mask_method` with a SEP
+analogue (`'none'` and `'mask'`), the script:
+
+- validates the isophotal properties (centroid and its error,
+  covariance, shape parameters, ellipse coefficients, segment flux
+  and area, peak, and bounding box) against `sep.extract` run on the
+  existing segmentation map, and `kron_radius`, `kron_flux`,
+  `flux_radius`, `centroid_win`, and `circular_photometry` against
+  the corresponding SEP functions (the module docstring lists the
+  conventions that make the two packages comparable)
+- benchmarks each of these measurements as a single step (on a
+  catalog whose prerequisite properties are already computed) against
+  the SEP function with its inputs precomputed, plus the full chain of
+  measurements from a cold catalog, reporting the photutils/SEP
+  runtime ratio
+
+Requires the optional `sep` package.
+
+```bash
+python benchmarks/bench_catalog_sep.py
+python benchmarks/bench_catalog_sep.py --which benchmark --n-sources 4000
+```
+
 ## Centroids (`bench_centroids.py`)
 
 Benchmarks for the `photutils.centroids` subpackage:
