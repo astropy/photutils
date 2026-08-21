@@ -23,6 +23,7 @@ from photutils.aperture import (BoundingBox, CircularAperture,
 from photutils.background import SExtractorBackground
 from photutils.geometry import circular_overlap_grid, elliptical_overlap_grid
 from photutils.morphology import gini as gini_func
+from photutils.segmentation._batch_catalog import batch_centroid_win
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.flags import (SEGMENTATION_FLAGS,
                                           decode_segmentation_flags)
@@ -41,6 +42,10 @@ from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 from photutils.utils.cutouts import CutoutImage
 
 __all__ = ['SourceCatalog']
+
+
+# Segmentation masking codes used by the batch Cython drivers
+_SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'correct': 3}
 
 
 # Remove in 4.0
@@ -288,7 +293,7 @@ class SourceCatalog:
     progress_bar : bool, optional
         Whether to display a progress bar when calculating
         some properties (e.g., ``kron_radius``, ``kron_flux``,
-        ``flux_radius``, ``circular_photometry``, ``centroid_win``,
+        ``flux_radius``, ``circular_photometry``,
         ``centroid_quad``). The progress bar requires that the `tqdm
         <https://tqdm.github.io/>`_ optional dependency be installed.
 
@@ -448,6 +453,7 @@ class SourceCatalog:
 
         self._custom_properties = []
         self._flux_radius_cache = {}
+        self._batch_arrays_cache = None
         self.meta = _get_meta()
         self._update_meta()
 
@@ -627,7 +633,7 @@ class SourceCatalog:
         init_attr = ('_data', '_segmentation_image', '_error', '_mask',
                      '_background', 'wcs', '_data_unit', '_convolved_data',
                      'local_bkg_width', 'aperture_mask_method',
-                     'kron_params', 'progress_bar')
+                     'kron_params', 'progress_bar', '_batch_arrays_cache')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -782,6 +788,39 @@ class SourceCatalog:
         if isinstance(value, np.ndarray):
             return value[np.newaxis, ...]
         return [value]
+
+    def _get_batch_arrays(self):
+        """
+        Return the cached C-contiguous full-image arrays used by the
+        batch Cython drivers.
+
+        The dict holds float64 ``data`` and ``error`` arrays, a uint8
+        ``mask`` plane (bit 1 = input mask, bit 2 = non-finite data),
+        and an intp ``segm`` array. The arrays are read-only inputs
+        shared by reference with sliced catalogs (see ``__getitem__``).
+
+        Returns
+        -------
+        result : dict
+            A dict with keys ``'data'``, ``'error'``, ``'mask'``, and
+            ``'segm'``. The ``'error'`` value is `None` if no error
+            array was input.
+        """
+        if self._batch_arrays_cache is None:
+            data = np.ascontiguousarray(self._data, dtype=np.float64)
+            error = None
+            if self._error is not None:
+                error = np.ascontiguousarray(self._error, dtype=np.float64)
+            mask_plane = np.zeros(data.shape, dtype=np.uint8)
+            if self._mask is not None:
+                mask_plane[self._mask] |= 1
+            mask_plane[~np.isfinite(data)] |= 2
+            segm = np.ascontiguousarray(
+                self._segmentation_image.data, dtype=np.intp)
+            self._batch_arrays_cache = {'data': data, 'error': error,
+                                        'mask': mask_plane,
+                                        'segm': segm}
+        return self._batch_arrays_cache
 
     @cached_property
     def isscalar(self):
@@ -2152,222 +2191,6 @@ class SourceCatalog:
         return np.transpose((xcen_win, ycen_win, win_err_var_x,
                              win_err_var_y, win_err_cov_xy, fallback))
 
-    def _iterate_centroid_win(self, label, xcen, ycen, rad_hl,
-                              nan_hl_source, *, data_arr, mask_arr,
-                              error_arr, segm_data, data_shape,
-                              do_correct, do_segm_mask, compute_err,
-                              max_aper_size):
-        """
-        Compute the windowed centroid for a single source.
-
-        Parameters
-        ----------
-        label : int
-            The source label.
-
-        xcen : float
-            Initial x centroid (isophotal).
-
-        ycen : float
-            Initial y centroid (isophotal).
-
-        rad_hl : float
-            Half-light radius for this source.
-
-        nan_hl_source : bool
-            Whether the half-light radius is NaN.
-
-        data_arr : `~numpy.ndarray`
-            The 2D data array.
-
-        mask_arr : `~numpy.ndarray` or `None`
-            The 2D boolean mask array.
-
-        error_arr : `~numpy.ndarray` or `None`
-            The 2D error array.
-
-        segm_data : `~numpy.ndarray`
-            The segmentation image data array.
-
-        data_shape : tuple of int
-            Shape of the data array.
-
-        do_correct : bool
-            Whether to apply mirror correction for masked pixels.
-
-        do_segm_mask : bool
-            Whether to mask pixels outside the source segment.
-
-        compute_err : bool
-            Whether to compute position errors.
-
-        max_aper_size : int
-            Maximum aperture size (OOM guard).
-
-        Returns
-        -------
-        result : tuple of float
-            Tuple of (xcen, ycen, weighted_flux, cen_mom_xx,
-            cen_mom_yy, cen_mom_xy, err_sum, err_var_x, err_var_y,
-            err_cov_xy). The error terms are the raw (unnormalized)
-            weighted sums from the last iteration (see
-            ``_normalize_centroid_win_err``).
-        """
-        nan_result = (np.nan, np.nan, 0.0, 0.0, 0.0, 0.0,
-                      np.nan, np.nan, np.nan, np.nan)
-        if nan_hl_source or math.isnan(xcen) or math.isnan(ycen):
-            return nan_result
-
-        sigma = 2.0 * rad_hl * gaussian_fwhm_to_sigma
-        inv_2sigma2 = -1.0 / (2.0 * sigma * sigma)
-        radius = 4.0 * sigma
-        radius_sq = radius * radius
-
-        # Compute the full (unclipped) bounding box for the aperture
-        # using the initial centroid. The radius is fixed, so the
-        # bbox size stays the same across iterations even if the
-        # center shifts slightly.
-        bbox_halfsize = int(radius + 1.5)
-        full_ny = full_nx = 2 * bbox_halfsize + 1
-
-        # OOM guard
-        if full_ny * full_nx > max_aper_size:
-            return nan_result
-
-        # Cache for cutout data when the integer bbox doesn't change
-        prev_ixcen = prev_iycen = None
-        cached_data = cached_mask = cached_var = None
-
-        max_iters = 16
-        centroid_threshold = 0.0001
-        iter_ = 0
-        dcen = 1.0
-        weighted_flux = 0.0
-        dx_mom = dy_mom = 0.0
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            while iter_ < max_iters and dcen > centroid_threshold:
-                # Compute integer bounding box
-                ixmin = int(xcen + 0.5) - bbox_halfsize
-                ixmax = ixmin + full_nx
-                iymin = int(ycen + 0.5) - bbox_halfsize
-                iymax = iymin + full_ny
-
-                # Clip to data boundaries
-                slc_y = slice(max(0, iymin), min(data_shape[0], iymax))
-                slc_x = slice(max(0, ixmin), min(data_shape[1], ixmax))
-                if (slc_y.start >= slc_y.stop
-                        or slc_x.start >= slc_x.stop):
-                    xcen = np.nan
-                    ycen = np.nan
-                    break
-
-                cur_ixcen = int(xcen + 0.5)
-                cur_iycen = int(ycen + 0.5)
-
-                # Recompute cutout data only when the integer center
-                # changes to avoid redundant _mask_to_mirrored_value
-                # calls
-                if cur_ixcen != prev_ixcen or cur_iycen != prev_iycen:
-                    prev_ixcen = cur_ixcen
-                    prev_iycen = cur_iycen
-
-                    data = data_arr[slc_y, slc_x].astype(float)
-                    data_mask = ~np.isfinite(data)
-                    if mask_arr is not None:
-                        data_mask |= mask_arr[slc_y, slc_x]
-
-                    cutout_xycen = (xcen - max(0, ixmin),
-                                    ycen - max(0, iymin))
-
-                    if do_segm_mask:
-                        seg_cut = segm_data[slc_y, slc_x]
-                        segm_mask = ((seg_cut != label)
-                                     & (seg_cut != 0))
-                        if self.aperture_mask_method == 'mask':
-                            data_mask = data_mask | segm_mask
-
-                    if do_correct:
-                        data = _mask_to_mirrored_value(
-                            data, segm_mask, cutout_xycen,
-                            mask=data_mask)
-
-                    cached_data = data
-                    cached_mask = data_mask
-
-                    if compute_err:
-                        var = error_arr[slc_y, slc_x].astype(float)**2
-                        if do_correct:
-                            # Pixels replaced by mirrored data values
-                            # also use the mirrored pixel's variance
-                            var = _mask_to_mirrored_value(
-                                var, segm_mask, cutout_xycen,
-                                mask=data_mask)
-                        var[data_mask] = 0.0
-                        cached_var = var
-
-                # Centroid position in cutout coordinates
-                cx = xcen - max(0, ixmin)
-                cy = ycen - max(0, iymin)
-
-                ny = slc_y.stop - slc_y.start
-                nx = slc_x.stop - slc_x.start
-
-                # Build coordinate grids relative to centroid
-                # (reused for circle mask, Gaussian, and moments)
-                xvals = np.arange(nx) - cx
-                yvals = np.arange(ny) - cy
-                xx = xvals[np.newaxis, :]
-                yy = yvals[:, np.newaxis]
-
-                # Inline binary circle mask
-                rr2 = xx * xx + yy * yy
-                aper_weights = (rr2 <= radius_sq).astype(float)
-
-                # Inline Gaussian weight
-                gweight = np.exp(rr2 * inv_2sigma2)
-
-                # Apply weights and mask
-                weighted = (cached_data * aper_weights * gweight)
-                weighted[cached_mask] = 0.0
-
-                # Inline moment computation
-                weighted_flux = np.sum(weighted)
-                dx_mom = np.sum(weighted * xx) / weighted_flux
-                dy_mom = np.sum(weighted * yy) / weighted_flux
-
-                dcen = math.sqrt(dx_mom * dx_mom
-                                 + dy_mom * dy_mom)
-                xcen += dx_mom * 2.0
-                ycen += dy_mom * 2.0
-                iter_ += 1
-
-            # Compute the windowed central 2nd-order moments (for
-            # the fallback checks) and the raw error
-            # sums from the last iteration, relative to
-            # the pre-update center.
-            cen_mom_xx = cen_mom_yy = cen_mom_xy = 0.0
-            err_sum = err_var_x = err_var_y = err_cov_xy = np.nan
-            if np.isfinite(weighted_flux) and weighted_flux > 0:
-                cen_mom_xx = (np.sum(weighted * xx * xx)
-                              / weighted_flux - dx_mom * dx_mom)
-                cen_mom_yy = (np.sum(weighted * yy * yy)
-                              / weighted_flux - dy_mom * dy_mom)
-                cen_mom_xy = (np.sum(weighted * xx * yy)
-                              / weighted_flux - dx_mom * dy_mom)
-
-                if compute_err:
-                    weighted_var = ((aper_weights * gweight)**2
-                                    * cached_var)
-                    err_sum = np.sum(weighted_var)
-                    err_var_x = np.sum(weighted_var * xx * xx)
-                    err_var_y = np.sum(weighted_var * yy * yy)
-                    err_cov_xy = np.sum(weighted_var * xx * yy)
-
-        return (xcen, ycen, weighted_flux, cen_mom_xx,
-                cen_mom_yy, cen_mom_xy,
-                err_sum, err_var_x, err_var_y, err_cov_xy)
-
     @cached_property
     @use_detcat
     def _centroid_win_results(self):
@@ -2403,49 +2226,31 @@ class SourceCatalog:
 
         compute_err = self._error is not None
 
-        labels = self.labels
-        if self.progress_bar:
-            desc = 'centroid_win'
-            labels = add_progress_bar(labels, desc=desc)
-
         # Centroids as iterable arrays regardless of scalar state
-        x_centroid = np.atleast_1d(self.x_centroid)
-        y_centroid = np.atleast_1d(self.y_centroid)
+        x_centroid = np.atleast_1d(self.x_centroid).astype(float)
+        y_centroid = np.atleast_1d(self.y_centroid).astype(float)
 
-        # Pre-fetch arrays used in the inner loop
-        data_arr = self._data
-        mask_arr = self._mask
-        error_arr = self._error
-        segm_data = self._segmentation_image.data
-        data_shape = data_arr.shape
-        do_correct = self.aperture_mask_method == 'correct'
-        do_segm_mask = self.aperture_mask_method != 'none'
-        max_aper_size = max(data_arr.size, 1_000_000)
-
-        iter_kwargs = {
-            'data_arr': data_arr,
-            'mask_arr': mask_arr,
-            'error_arr': error_arr,
-            'segm_data': segm_data,
-            'data_shape': data_shape,
-            'do_correct': do_correct,
-            'do_segm_mask': do_segm_mask,
-            'compute_err': compute_err,
-            'max_aper_size': max_aper_size,
-        }
-
-        results = []
-        for label, xcen, ycen, rad_hl, nan_hl_source in zip(
-                labels, x_centroid, y_centroid, radius_hl, nan_hl,
-                strict=True):
-            results.append(self._iterate_centroid_win(
-                label, xcen, ycen, rad_hl, nan_hl_source, **iter_kwargs))
+        sigma = 2.0 * radius_hl * gaussian_fwhm_to_sigma
+        # np.isnan (not ~np.isfinite) for parity with the previous
+        # per-source math.isnan checks
+        skip = (nan_hl | np.isnan(x_centroid)
+                | np.isnan(y_centroid)).astype(np.uint8)
+        arrays = self._get_batch_arrays()
+        results = batch_centroid_win(
+            arrays['data'], error=arrays['error'],
+            mask=arrays['mask'], segm=arrays['segm'],
+            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
+                                        dtype=np.intp),
+            xcen0=x_centroid, ycen0=y_centroid, sigma=sigma,
+            skip=skip,
+            seg_method=_SEG_METHOD_CODES[self.aperture_mask_method],
+            compute_err=int(compute_err),
+            max_aper_size=max(self._data.size, 1_000_000))
 
         (xcen_win, ycen_win, win_weighted_flux,
          win_cen_mom_xx, win_cen_mom_yy, win_cen_mom_xy,
          win_err_sum, win_err_var_x, win_err_var_y,
-         win_err_cov_xy) = (np.array(col)
-                            for col in zip(*results, strict=True))
+         win_err_cov_xy) = results.T.copy()
 
         # Normalize error terms by step_factor^2 / weighted_flux^2
         if compute_err:

@@ -12,6 +12,7 @@ import pytest
 from astropy.stats import gaussian_fwhm_to_sigma
 from numpy.testing import assert_allclose
 
+from photutils.segmentation import SourceCatalog
 from photutils.segmentation._batch_catalog import batch_centroid_win
 from photutils.segmentation.tests._batch_scene import (make_batch_scene,
                                                        make_catalog)
@@ -330,3 +331,53 @@ def test_thread_safety(scene):
         results = list(executor.map(lambda _: run(), range(16)))
     for res in results:
         assert_allclose(res, expected, rtol=0, atol=0, equal_nan=True)
+
+
+def test_catalog_centroid_win(scene):
+    """
+    Test the SourceCatalog.centroid_win property against the batch driver.
+    """
+    cat = make_catalog(scene)
+    results = cat._centroid_win_results
+    assert results.shape == (cat.n_labels, 6)
+
+    # Slicing: cached values slice along the source axis
+    sub = cat[2:5]
+    assert_allclose(sub.centroid_win, cat.centroid_win[2:5],
+                    rtol=0, atol=0, equal_nan=True)
+
+    # Scalar catalog
+    scalar = cat[3]
+    assert scalar.isscalar
+    assert_allclose(np.atleast_2d(scalar.centroid_win),
+                    cat.centroid_win[3:4], rtol=0, atol=0,
+                    equal_nan=True)
+
+    # The full-image cast bundle is shared by reference with slices
+    cat._get_batch_arrays()
+    assert cat[1:3]._batch_arrays_cache is cat._batch_arrays_cache
+
+
+def test_detection_catalog(scene):
+    """
+    Test that the detection catalog is used when requested.
+    """
+    cat_det = make_catalog(scene)
+    cat = SourceCatalog(scene['data'] * 1.5, scene['segm'],
+                        error=scene['error'], mask=scene['mask'],
+                        detection_catalog=cat_det)
+    assert_allclose(cat.centroid_win, cat_det.centroid_win,
+                    rtol=0, atol=0, equal_nan=True)
+
+
+def test_catalog_centroid_win_precomputed_slice(scene):
+    """
+    Test that slicing a catalog after computing centroid_win is
+    equivalent to computing centroid_win after slicing the catalog.
+    """
+    cat1 = make_catalog(scene)
+    _ = cat1.centroid_win  # trigger cache, then slice
+    cat2 = make_catalog(scene)
+    sub2 = cat2[1:4]  # slice, then compute
+    assert_allclose(cat1[1:4].centroid_win, sub2.centroid_win,
+                    rtol=0, atol=0, equal_nan=True)
