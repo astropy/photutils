@@ -4013,89 +4013,6 @@ class SourceCatalog:
             bkg <<= self._data_unit
         return bkg
 
-    def _aperture_to_mask(self, aperture, **kwargs):
-        """
-        Call ``aperture.to_mask()``, but first check that the aperture
-        bounding box is not larger than the input data to prevent
-        out-of-memory errors from pathologically large apertures.
-
-        The aperture mask is allocated at the full (unclipped) bounding
-        box size by ``to_mask()``, before ``get_overlap_slices`` clips
-        it to the data shape. For pathological apertures (e.g., from
-        huge Kron radii), this allocation can cause out-of-memory
-        issues.
-
-        Returns `None` if the aperture mask would be unreasonably large.
-        """
-        bbox = aperture.bbox
-        # Limit the aperture mask size to prevent OOM errors
-        max_size = max(self._data.size, 1_000_000)
-        if bbox.shape[0] * bbox.shape[1] > max_size:
-            return None
-        return aperture.to_mask(**kwargs)
-
-    def _make_aperture_data(self, label, x_centroid, y_centroid, aperture_bbox,
-                            local_background, *, make_error=True):
-        """
-        Make cutouts of data, error, and mask arrays for aperture
-        photometry (e.g., circular or Kron).
-
-        Neighboring sources can be included, masked, or corrected based
-        on the ``aperture_mask_method`` keyword.
-
-        The last returned value is a dictionary of the cutout masks
-        needed to compute the aperture quality flags. Its ``segm_mask``
-        and ``uncorrected_mask`` values are `None` where they do not
-        apply (i.e., for an ``aperture_mask_method`` of "none" and for a
-        method other than "correct", respectively).
-        """
-        # Make cutouts of the data based on the aperture bbox
-        slc_lg, slc_sm = aperture_bbox.get_overlap_slices(self._data.shape)
-        if slc_lg is None:
-            return (None,) * 6
-
-        data = self._data[slc_lg].astype(float) - local_background
-
-        mask_cutout = None if self._mask is None else self._mask[slc_lg]
-        data_mask = self._make_cutout_data_mask(data, mask_cutout)
-
-        if make_error and self._error is not None:
-            error = self._error[slc_lg]
-        else:
-            error = None
-
-        # Calculate cutout centroid position
-        cutout_xycen = (x_centroid - max(0, aperture_bbox.ixmin),
-                        y_centroid - max(0, aperture_bbox.iymin))
-
-        # Mask or correct neighboring sources
-        segm_mask = None
-        uncorrected_mask = None
-        if self.aperture_mask_method == 'none':
-            mask = data_mask
-        else:
-            segment_img = self._segmentation_image.data[slc_lg]
-            segm_mask = np.logical_and(segment_img != label,
-                                       segment_img != 0)
-            if self.aperture_mask_method == 'mask':
-                mask = data_mask | segm_mask
-            else:
-                mask = data_mask
-
-        if self.aperture_mask_method == 'correct':
-            data, uncorrected_mask = _mask_to_mirrored_value(
-                data, segm_mask, cutout_xycen, mask=mask,
-                return_uncorrected=True)
-            if error is not None:
-                error = _mask_to_mirrored_value(error, segm_mask, cutout_xycen,
-                                                mask=mask)
-
-        flag_masks = {'data_mask': data_mask,
-                      'segm_mask': segm_mask,
-                      'uncorrected_mask': uncorrected_mask}
-
-        return data, error, mask, cutout_xycen, slc_sm, flag_masks
-
     def _make_circular_apertures(self, radius):
         """
         Make circular aperture for each source.
@@ -4248,11 +4165,7 @@ class SourceCatalog:
             msg = 'radius must be > 0'
             raise ValueError(msg)
 
-        apertures = self._make_circular_apertures(radius)
-        kwargs = self._aperture_mask_kwargs['circ']
-        flux, flux_err = self._aperture_photometry(apertures,
-                                                   desc='circular_photometry',
-                                                   **kwargs)
+        flux, flux_err = self._calc_circular_photometry(radius)
 
         if self._data_unit is not None:
             flux <<= self._data_unit
@@ -4724,78 +4637,110 @@ class SourceCatalog:
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
         return self._make_scalar(patches)
 
-    def _aperture_photometry(self, apertures, *, desc='', **kwargs):
+    @staticmethod
+    def _overlap_params(kwargs):
         """
-        Perform aperture photometry on cutouts of the data and optional
-        error arrays.
-
-        The appropriate ``aperture_mask_method`` is applied to the
-        cutouts to handle neighboring sources.
+        Translate aperture ``to_mask`` keyword arguments to the
+        ``(use_exact, subpixels)`` overlap parameters of the batch
+        drivers.
 
         Parameters
         ----------
-        apertures : list of `PixelAperture`
-            A list of the apertures.
-
-        desc : str, optional
-            The description displayed before the progress bar.
-
-        **kwargs : dict, optional
-            Additional keyword arguments passed to the aperture
-            ``to_mask`` method.
+        kwargs : dict
+            The ``to_mask`` keyword arguments (``method`` and, for the
+            subpixel method, ``subpixels``).
 
         Returns
         -------
-        flux, flux_err : 1D `~numpy.ndaray`
-            The flux and flux error arrays.
+        use_exact, subpixels : int
+            The overlap parameters.
         """
-        labels = self.labels
-        if self.progress_bar:
-            labels = add_progress_bar(labels, desc=desc)
+        method = kwargs.get('method', 'exact')
+        if method == 'exact':
+            return 1, 1
+        if method == 'center':
+            return 0, 1
+        return 0, kwargs.get('subpixels', 5)
 
-        flux = []
-        flux_err = []
-        for label, aperture, bkg in zip(labels, apertures,
-                                        self._local_background, strict=True):
-            # Return NaN for completely masked sources or sources where
-            # the centroid is not finite
-            if aperture is None:
-                flux.append(np.nan)
-                flux_err.append(np.nan)
-                continue
+    def _calc_circular_photometry(self, radius):
+        """
+        Calculate the flux and flux error (without units) in a circular
+        aperture of the given radius centered on each source centroid.
 
-            xcen, ycen = aperture.positions
-            aperture_mask = self._aperture_to_mask(aperture, **kwargs)
-            if aperture_mask is None:
-                flux.append(np.nan)
-                flux_err.append(np.nan)
-                continue
+        See the `SourceCatalog` ``aperture_mask_method`` keyword for
+        options to mask neighboring sources.
 
-            # Prepare cutouts of the data based on the aperture size
-            data, error, mask, _, slc_sm, _ = self._make_aperture_data(
-                label, xcen, ycen, aperture_mask.bbox, bkg)
+        If ``detection_catalog`` is input, then its `centroid` values
+        will be used.
 
-            aperture_weights = aperture_mask.data[slc_sm]
-            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
-            # Ignore RuntimeWarning for invalid data or error values
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                values = (aperture_weights * data)[pixel_mask]
-                flux_ = np.nan if values.shape == (0,) else np.sum(values)
-                flux.append(flux_)
+        Parameters
+        ----------
+        radius : float
+            The radius of the circle in pixels.
 
-                if error is None:
-                    flux_err_ = np.nan
-                else:
-                    values = (aperture_weights**2 * error**2)[pixel_mask]
-                    if values.shape == (0,):
-                        flux_err_ = np.nan
-                    else:
-                        flux_err_ = np.sqrt(np.sum(values))
-                flux_err.append(flux_err_)
+        Returns
+        -------
+        flux, flux_err : 1D `~numpy.ndarray`
+            The aperture flux and flux error arrays. NaN where the
+            source is completely masked, its centroid is not finite, the
+            aperture does not overlap the data or has no contributing
+            pixels, or the aperture is unreasonably large.
+        """
+        xcen = np.atleast_1d(self.x_centroid).astype(float)
+        ycen = np.atleast_1d(self.y_centroid).astype(float)
+        n_src = len(xcen)
+        flux = np.full(n_src, np.nan)
+        flux_err = np.full(n_src, np.nan)
 
-        flux = np.array(flux)
-        flux_err = np.array(flux_err)
+        # Exclude undefined apertures (completely masked sources and
+        # non-finite centroids) and apertures whose bounding box would
+        # be unreasonably large (out-of-memory guard)
+        max_size = max(self._data.size, 1_000_000)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            nx = (np.floor(xcen + radius + 1.5)
+                  - np.floor(xcen - radius + 0.5))
+            ny = (np.floor(ycen + radius + 1.5)
+                  - np.floor(ycen - radius + 0.5))
+            valid = (~self._all_masked & np.isfinite(xcen)
+                     & np.isfinite(ycen) & np.isfinite(radius)
+                     & (nx * ny <= max_size))
+        idx = np.flatnonzero(valid)
+        if idx.size == 0:
+            return flux, flux_err
+
+        arrays = self._get_batch_arrays()
+        seg_code = _SEG_METHOD_CODES[self.aperture_mask_method]
+        seg_arr = None
+        seg_labels = None
+        if seg_code != 0:
+            seg_arr = arrays['segm']
+            seg_labels = np.ascontiguousarray(
+                np.atleast_1d(self.labels), dtype=np.intp)[idx]
+        positions = np.ascontiguousarray(
+            np.column_stack((xcen[idx], ycen[idx])))
+        local_bkg = np.ascontiguousarray(self._local_background,
+                                         dtype=np.float64)[idx]
+        use_exact, subpixels = self._overlap_params(
+            self._aperture_mask_kwargs['circ'])
+
+        (sums, sum_vars, _, overlap, _, _, _, _, _, fcounts,
+         _) = batch_aperture_sums(
+            arrays['data'], arrays['error'], arrays['mask'], positions,
+            SHAPE_CIRCLE, np.array([radius], dtype=np.float64), radius,
+            radius, 0.0, 0.0, use_exact, subpixels, seg_arr, seg_labels,
+            seg_code, local_bkg, 0)
+
+        # Membership matches the previous cutout-based
+        # ``in_aperture & ~mask`` rule: under 'correct', uncorrectable
+        # neighbor pixels stay members (with value zero)
+        members = fcounts[:, FLAG_COL_VALID].copy()
+        if seg_code == 3:
+            members += fcounts[:, FLAG_COL_UNCORRECTED]
+        good = overlap & (members > 0)
+        flux[idx] = np.where(good, sums, np.nan)
+        if self._error is not None:
+            flux_err[idx] = np.where(good, np.sqrt(sum_vars), np.nan)
 
         return flux, flux_err
 

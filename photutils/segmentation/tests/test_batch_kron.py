@@ -19,7 +19,8 @@ from photutils.geometry import circular_overlap_grid, elliptical_overlap_grid
 from photutils.segmentation import SegmentationImage, SourceCatalog
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.tests._batch_scene import (make_batch_scene,
-                                                       make_catalog)
+                                                       make_catalog,
+                                                       reference_aperture_data)
 
 
 def _reference_kron_photometry(cat, kron_aperture):
@@ -105,8 +106,8 @@ def _reference_kron_photometry(cat, kron_aperture):
 
         bbox = BoundingBox(ixmin, ixmax, iymin, iymax)
         (data, error, mask, _, slc_sm,
-         flag_masks) = cat._make_aperture_data(label, xcen, ycen, bbox,
-                                               bkg)
+         flag_masks) = reference_aperture_data(cat, label, xcen, ycen,
+                                               bbox, bkg)
         if data is None:
             flux.append(np.nan)
             flux_err.append(np.nan)

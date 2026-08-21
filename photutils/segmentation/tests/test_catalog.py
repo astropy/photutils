@@ -2467,59 +2467,6 @@ def test_kron_radius_max(gauss_101_catalog):
         assert np.isnan(cat2.flux_radius(0.5).value[0])
 
 
-def test_aperture_to_mask_size_check():
-    """
-    Test that _aperture_to_mask returns None when the aperture bounding
-    box exceeds the allowed size, preventing out-of-memory errors from
-    pathologically large apertures (e.g., from huge Kron radii).
-
-    The check happens before to_mask() allocates the mask array.
-    """
-    data = np.zeros((11, 11))
-    data[4:7, 4:7] = 100.0
-    segm_data = np.zeros((11, 11), dtype=int)
-    segm_data[4:7, 4:7] = 1
-    segm = SegmentationImage(segm_data)
-    cat = SourceCatalog(data, segm)
-
-    # A small aperture is fine
-    small_aper = CircularAperture((5, 5), r=3)
-    result = cat._aperture_to_mask(small_aper, method='center')
-    assert result is not None
-
-    # An aperture larger than data.size but within the 1M floor is fine
-    big_aper = CircularAperture((5, 5), r=100)
-    assert big_aper.bbox.shape[0] * big_aper.bbox.shape[1] > data.size
-    result = cat._aperture_to_mask(big_aper, method='center')
-    assert result is not None
-
-    # An aperture whose bbox exceeds 1_000_000 pixels returns None
-    huge_aper = CircularAperture((5, 5), r=600)
-    bbox_size = huge_aper.bbox.shape[0] * huge_aper.bbox.shape[1]
-    assert bbox_size > 1_000_000
-    result = cat._aperture_to_mask(huge_aper, method='center')
-    assert result is None
-
-
-def test_aperture_to_mask_none_branches(gauss_101_catalog):
-    """
-    Test that _aperture_photometry gracefully returns NaN when
-    _aperture_to_mask returns None (i.e., aperture too large to
-    allocate).
-
-    This covers the None-guard branch in _aperture_photometry (used by
-    the general circle photometry path).
-    """
-    _, _, cat = gauss_101_catalog
-
-    # _aperture_photometry (general path) with _aperture_to_mask
-    # returning None
-    with patch.object(type(cat), '_aperture_to_mask', return_value=None):
-        circ_aper = [CircularAperture((50, 50), r=10)] * cat.n_labels
-        flux, _ = cat._aperture_photometry(circ_aper, method='exact')
-        assert np.all(np.isnan(flux))
-
-
 def test_kron_photometry_oom_guard(gauss_101_catalog):
     """
     Test that _calc_kron_photometry returns NaN when the Kron aperture
@@ -2617,34 +2564,6 @@ def test_centroid_win_nan_when_flux_radius_nan(gauss_101_data):
         assert np.all(np.isnan(cwin))
 
 
-def test_centroid_win_aperture_mask_none_in_loop(gauss_101_catalog):
-    """
-    Test that centroid_win falls back to the isophotal centroid when
-    _aperture_to_mask returns None during the iteration loop (e.g.,
-    because the circular aperture exceeds the size threshold).
-    """
-    _data, _segm, cat = gauss_101_catalog
-
-    # Pre-compute flux_radius before mocking, since it also uses
-    # CircularAperture internally
-    hl_val = cat.flux_radius(0.5)
-    original_method = cat._aperture_to_mask
-
-    def mock_aperture_to_mask(aperture, **kwargs):
-        if isinstance(aperture, CircularAperture):
-            return None
-        return original_method(aperture, **kwargs)
-
-    with (patch.object(cat, '_aperture_to_mask',
-                       side_effect=mock_aperture_to_mask),
-          patch.object(type(cat), 'flux_radius', return_value=hl_val)):
-        cwin = cat.centroid_win
-        # NaN from the loop resets to isophotal centroid
-        # because nan_hl is False (flux_radius was valid)
-        assert_allclose(cwin[:, 0], cat.x_centroid)
-        assert_allclose(cwin[:, 1], cat.y_centroid)
-
-
 def test_centroid_win_oom_guard(gauss_101_catalog):
     """
     Test that centroid_win returns NaN for sources whose half-light
@@ -2678,20 +2597,6 @@ def test_centroid_win_aperture_mask_mask(centroid_win_data):
     cwin = cat.centroid_win
     assert cwin.shape == (len(cat), 2)
     assert np.isfinite(cwin[0, 0])
-
-
-def test_make_aperture_data_outside_image(gauss_101_catalog):
-    """
-    Test that _make_aperture_data returns (None,) * 6 when the aperture
-    bbox does not overlap the data.
-    """
-    _data, _segm, cat = gauss_101_catalog
-
-    # BoundingBox completely outside the 101x101 data
-    offimage_bbox = BoundingBox(ixmin=200, ixmax=210,
-                                iymin=200, iymax=210)
-    result = cat._make_aperture_data(1, 205.0, 205.0, offimage_bbox, 0.0)
-    assert result == (None,) * 6
 
 
 def test_flux_radius_optimizer_args_oom_guard(gauss_101_catalog):

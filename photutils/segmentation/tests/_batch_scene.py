@@ -6,8 +6,9 @@ Shared synthetic scene for the batch-driver comparator tests.
 import numpy as np
 
 from photutils.segmentation import SourceCatalog, detect_sources
+from photutils.segmentation.utils import _mask_to_mirrored_value
 
-__all__ = ['make_batch_scene', 'make_catalog']
+__all__ = ['make_batch_scene', 'make_catalog', 'reference_aperture_data']
 
 
 def make_batch_scene(*, seed=0):
@@ -85,3 +86,88 @@ def make_catalog(scene, *, aperture_mask_method='correct',
         error=scene['error'] if with_error else None,
         mask=scene['mask'] if with_mask else None,
         aperture_mask_method=aperture_mask_method)
+
+
+def reference_aperture_data(cat, label, x_centroid, y_centroid,
+                            aperture_bbox, local_background, *,
+                            make_error=True):
+    """
+    Make cutouts of the data, error, and mask arrays for aperture
+    photometry.
+
+    This is a verbatim port of the per-source ``_make_aperture_data``
+    method that the batch Cython drivers replaced. It is the
+    numerical reference for the neighbor handling of the drivers.
+
+    Parameters
+    ----------
+    cat : `~photutils.segmentation.SourceCatalog`
+        The source catalog.
+
+    label : int
+        The source label.
+
+    x_centroid, y_centroid : float
+        The aperture center.
+
+    aperture_bbox : `~photutils.aperture.BoundingBox`
+        The aperture bounding box.
+
+    local_background : float
+        The local background to subtract.
+
+    make_error : bool, optional
+        Whether to return the error cutout.
+
+    Returns
+    -------
+    result : tuple
+        The ``(data, error, mask, cutout_xycen, slc_sm, flag_masks)``
+        values, or ``(None,) * 6`` if the bounding box does not overlap
+        the data.
+    """
+    slc_lg, slc_sm = aperture_bbox.get_overlap_slices(cat._data.shape)
+    if slc_lg is None:
+        return (None,) * 6
+
+    data = cat._data[slc_lg].astype(float) - local_background
+
+    mask_cutout = None if cat._mask is None else cat._mask[slc_lg]
+    data_mask = ~np.isfinite(data)
+    if mask_cutout is not None:
+        data_mask |= mask_cutout
+
+    if make_error and cat._error is not None:
+        error = cat._error[slc_lg]
+    else:
+        error = None
+
+    cutout_xycen = (x_centroid - max(0, aperture_bbox.ixmin),
+                    y_centroid - max(0, aperture_bbox.iymin))
+
+    segm_mask = None
+    uncorrected_mask = None
+    if cat.aperture_mask_method == 'none':
+        mask = data_mask
+    else:
+        segment_img = cat._segmentation_image.data[slc_lg]
+        segm_mask = np.logical_and(segment_img != label,
+                                   segment_img != 0)
+        if cat.aperture_mask_method == 'mask':
+            mask = data_mask | segm_mask
+        else:
+            mask = data_mask
+
+    if cat.aperture_mask_method == 'correct':
+        data, uncorrected_mask = _mask_to_mirrored_value(
+            data, segm_mask, cutout_xycen, mask=mask,
+            return_uncorrected=True)
+        if error is not None:
+            error = _mask_to_mirrored_value(error, segm_mask, cutout_xycen,
+                                            mask=mask)
+
+    flag_masks = {'data_mask': data_mask,
+                  'segm_mask': segm_mask,
+                  'uncorrected_mask': uncorrected_mask}
+
+    return data, error, mask, cutout_xycen, slc_sm, flag_masks
