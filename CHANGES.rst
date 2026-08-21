@@ -6,13 +6,15 @@ General
 
 - The minimum required Python is now 3.12. [#2366]
 
-- The minimum required astropy is now 6.1.7. [#2211]
+- The minimum required astropy is now 7.0. [#2401]
 
-- The minimum required SciPy is now 1.15.0. [#2365]
+- The minimum required SciPy is now 1.15. [#2365]
 
 - The minimum required regions is now 0.10. [#2266]
 
-- The minimum required scikit-image is now 0.24. [#2266]
+- The minimum required scikit-image is now 0.25. [#2401]
+
+- The minimum required Matplotlib is now 3.10. [#2401]
 
 - The minimum required gwcs is now 0.22. [#2266]
 

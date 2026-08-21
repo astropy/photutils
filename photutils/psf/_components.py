@@ -10,14 +10,12 @@ import contextlib
 import warnings
 from copy import deepcopy
 
-import astropy
 import astropy.units as u
 import numpy as np
 from astropy.modeling import Fittable2DModel, Parameter
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NDData, NoOverlapError, overlap_slices
 from astropy.table import QTable, Table, hstack, join
-from astropy.utils import minversion
 from astropy.utils.exceptions import AstropyUserWarning
 
 from photutils.aperture import AperturePhotometry, CircularAperture
@@ -28,8 +26,6 @@ from photutils.utils._misc import _get_meta
 from .flags import PSF_FLAGS
 
 __all__ = ['PSFDataProcessor', 'PSFFitter', 'PSFResultsAssembler']
-
-_ASTROPY_GE_7 = minversion(astropy, '7.0')
 
 
 def _apply_bounds_to_param(model, param_name, param_value, bound_value):
@@ -977,7 +973,7 @@ class PSFFitter:
         ValueError
             If error array contains non-positive or non-finite values.
         """
-        kwargs = {'inplace': True} if _ASTROPY_GE_7 else {}
+        kwargs = {'inplace': True}
 
         if self.fitter_maxiters is not None:
             kwargs.update({'maxiter': self.fitter_maxiters})
