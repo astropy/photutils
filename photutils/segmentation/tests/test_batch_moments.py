@@ -281,6 +281,62 @@ def test_edge_case_inclusion_rules():
                     equal_nan=True)
 
 
+def test_catalog_moments(scene):
+    cat = make_catalog(scene)
+    assert_allclose(cat.moments, _reference_raw(cat), rtol=1e-12,
+                    atol=1e-10)
+    raw = cat._array('moments')
+    with np.errstate(invalid='ignore'):
+        xcen = raw[:, 0, 1] / raw[:, 0, 0]
+        ycen = raw[:, 1, 0] / raw[:, 0, 0]
+    assert_allclose(cat.moments_central,
+                    _reference_central(cat, xcen, ycen), rtol=1e-12,
+                    atol=1e-10, equal_nan=True)
+    # Downstream shape properties still finite where expected
+    assert np.all(np.isfinite(np.atleast_1d(
+        cat.semimajor_axis.value)[~np.isnan(
+            np.atleast_1d(cat.semimajor_axis.value))]))
+
+
+def test_catalog_centroid_err(scene):
+    # _centroid_err_cov = normalized batch_moment_err accumulators;
+    # rebuild it from the reference accumulation of test_moment_err
+    cat = make_catalog(scene)
+    cov = cat._centroid_err_cov
+    assert cov.shape == (cat.n_labels, 2, 2)
+    raw = _reference_raw(cat)
+    m00 = raw[:, 0, 0]
+    with np.errstate(invalid='ignore'):
+        xcen = raw[:, 0, 1] / m00
+        ycen = raw[:, 1, 0] / m00
+    for i in range(cat.n_labels):
+        if not np.isfinite(m00[i]) or m00[i] <= 0:
+            assert np.all(np.isnan(cov[i]))
+            continue
+        slc = cat._slices_iter[i]
+        moment_data = _moment_cutout(cat, i)
+        err_sq = scene['error'][slc].astype(float) ** 2
+        total_mask = ((cat._segmentation_image.data[slc]
+                       != cat.labels[i])
+                      | ~np.isfinite(scene['data'][slc])
+                      | scene['mask'][slc])
+        err_sq[total_mask | (moment_data == 0)] = 0.0
+        yy, xx = np.mgrid[0:err_sq.shape[0], 0:err_sq.shape[1]]
+        dx = xx - xcen[i]
+        dy = yy - ycen[i]
+        norm = 1.0 / m00[i] ** 2
+        var_x = np.sum(err_sq * dx ** 2) * norm
+        var_y = np.sum(err_sq * dy ** 2) * norm
+        cov_xy = np.sum(err_sq * dx * dy) * norm
+        if np.atleast_1d(cat._singular_covariance_mask)[i]:
+            corr = np.sum(err_sq) * (1.0 / 12.0) * norm
+            if var_x * var_y - cov_xy ** 2 < corr ** 2:
+                var_x += corr
+                var_y += corr
+        assert_allclose(cov[i], [[var_x, cov_xy], [cov_xy, var_y]],
+                        rtol=1e-12, atol=1e-10)
+
+
 def test_thread_safety(scene):
     cat = make_catalog(scene)
     inp = _driver_inputs(cat)

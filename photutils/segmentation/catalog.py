@@ -32,8 +32,11 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   batch_aperture_sums)
 from photutils.background import SExtractorBackground
 from photutils.morphology import gini as gini_func
-from photutils.segmentation._batch_catalog import (batch_centroid_win,
-                                                   batch_flux_radius_solve)
+from photutils.segmentation._batch_catalog import (batch_central_moments,
+                                                   batch_centroid_win,
+                                                   batch_flux_radius_solve,
+                                                   batch_moment_err,
+                                                   batch_raw_moments)
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.flags import (SEGMENTATION_FLAGS,
                                           decode_segmentation_flags)
@@ -814,7 +817,8 @@ class SourceCatalog:
         result : dict
             A dict with keys ``'data'``, ``'error'``, ``'mask'``, and
             ``'segm'``. The ``'error'`` value is `None` if no error
-            array was input.
+            array was input. A ``'convdata'`` key is added lazily by
+            ``_get_batch_convdata``.
         """
         if self._batch_arrays_cache is None:
             data = np.ascontiguousarray(self._data, dtype=np.float64)
@@ -831,6 +835,33 @@ class SourceCatalog:
                                         'mask': mask_plane,
                                         'segm': segm}
         return self._batch_arrays_cache
+
+    def _get_batch_convdata(self):
+        """
+        Return the cached C-contiguous float64 convolved-data array
+        used by the batch moment kernels.
+        """
+        arrays = self._get_batch_arrays()
+        if 'convdata' not in arrays:
+            arrays['convdata'] = np.ascontiguousarray(
+                self._convolved_data, dtype=np.float64)
+        return arrays['convdata']
+
+    def _get_batch_bboxes(self):
+        """
+        Return the per-source segment bounding boxes as
+        ``(iymin, iymax, ixmin, ixmax)`` intp arrays.
+        """
+        slices = self._slices_iter
+        iymin = np.array([slc[0].start for slc in slices],
+                         dtype=np.intp)
+        iymax = np.array([slc[0].stop for slc in slices],
+                         dtype=np.intp)
+        ixmin = np.array([slc[1].start for slc in slices],
+                         dtype=np.intp)
+        ixmax = np.array([slc[1].stop for slc in slices],
+                         dtype=np.intp)
+        return iymin, iymax, ixmin, ixmax
 
     @cached_property
     def isscalar(self):
@@ -1145,38 +1176,6 @@ class SourceCatalog:
                                 self._cutout_data_masks, strict=True):
             masks.append(mask1 | mask2)
         return masks
-
-    @cached_property
-    def _moment_data_cutouts(self):
-        """
-        A list of 2D `~numpy.ndarray` cutouts from the (convolved) data.
-
-        The following pixels are set to zero in these arrays:
-
-        * pixels outside the source segment
-        * any masked pixels from the input ``mask``
-        * invalid convolved data values (NaN and inf)
-        * negative convolved data values; negative pixels (especially
-          at large radii) can give image moments that have negative
-          variances.
-
-        These arrays are used to derive moment-based properties.
-        """
-        cutouts = []
-        for convdata_cutout, mask_cutout, segmmask_cutout in zip(
-                self._convdata_cutouts, self._mask_cutouts,
-                self._cutout_segment_masks, strict=True):
-
-            convdata_mask = (~np.isfinite(convdata_cutout)
-                             | (convdata_cutout < 0) | segmmask_cutout)
-
-            if self._mask is not None:
-                convdata_mask |= mask_cutout
-
-            cutout = convdata_cutout.copy()
-            cutout[convdata_mask] = 0.0
-            cutouts.append(cutout)
-        return cutouts
 
     def _prepare_cutouts(self, arrays, *, units=True, masked=False,
                          dtype=None):
@@ -1794,15 +1793,15 @@ class SourceCatalog:
         """
         Spatial moments up to 3rd order of the source.
         """
-        result = []
-        for arr in self._moment_data_cutouts:
-            ny, nx = arr.shape
-            y = np.arange(ny, dtype=float)
-            x = np.arange(nx, dtype=float)
-            yp = np.column_stack([np.ones(ny), y, y * y, y ** 3])
-            xp = np.column_stack([np.ones(nx), x, x * x, x ** 3])
-            result.append(yp.T @ arr @ xp)
-        return np.array(result)
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        return batch_raw_moments(
+            self._get_batch_convdata(), mask=arrays['mask'],
+            segm=arrays['segm'],
+            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
+                                        dtype=np.intp),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax)
 
     @cached_property
     @use_detcat
@@ -1811,18 +1810,18 @@ class SourceCatalog:
         Central moments (translation invariant) of the source up to 3rd
         order.
         """
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
         cutout_centroid = self._array('cutout_centroid')
-        result = []
-        for arr, xcen, ycen in zip(self._moment_data_cutouts,
-                                   cutout_centroid[:, 0],
-                                   cutout_centroid[:, 1], strict=True):
-            ny, nx = arr.shape
-            yc = np.arange(ny, dtype=float) - ycen
-            xc = np.arange(nx, dtype=float) - xcen
-            yp = np.column_stack([np.ones(ny), yc, yc * yc, yc ** 3])
-            xp = np.column_stack([np.ones(nx), xc, xc * xc, xc ** 3])
-            result.append(yp.T @ arr @ xp)
-        return np.array(result)
+        return batch_central_moments(
+            self._get_batch_convdata(), mask=arrays['mask'],
+            segm=arrays['segm'],
+            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
+                                        dtype=np.intp),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax,
+            xcen=np.ascontiguousarray(cutout_centroid[:, 0]),
+            ycen=np.ascontiguousarray(cutout_centroid[:, 1]))
 
     @cached_property
     @use_detcat
@@ -1894,61 +1893,65 @@ class SourceCatalog:
         if self._error is None:
             return np.full((self.n_labels, 2, 2), np.nan)
 
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
         cutout_centroid = self._array('cutout_centroid')
-        is_singular = self._singular_covariance_mask
 
-        var_arr = []
+        # The accumulators are the summed pixel variance and its
+        # dx**2, dy**2, and dx*dy weighted sums. The variance is zeroed
+        # at masked pixels and at pixels that were excluded from the
+        # moment data (e.g., non-finite or negative convolved values),
+        # so that pixels that do not contribute flux weight also do not
+        # contribute error variance.
+        acc = batch_moment_err(
+            arrays['error'], convdata=self._get_batch_convdata(),
+            mask=arrays['mask'], segm=arrays['segm'],
+            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
+                                        dtype=np.intp),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax,
+            xcen=np.ascontiguousarray(cutout_centroid[:, 0]),
+            ycen=np.ascontiguousarray(cutout_centroid[:, 1]))
+
+        # The total flux is the zeroth raw moment of the moment data.
+        total_flux = self._array('moments')[:, 0, 0]
+        is_singular = np.atleast_1d(self._singular_covariance_mask)
         pixel_var = 1.0 / 12.0
-        for (moment_data, error_cutout, total_mask, xcen, ycen,
-             singular) in zip(
-                self._moment_data_cutouts, self._error_cutouts,
-                self._cutout_total_masks, cutout_centroid[:, 0],
-                cutout_centroid[:, 1], is_singular, strict=True):
 
-            total_flux = np.sum(moment_data)
-            if not np.isfinite(total_flux) or total_flux <= 0:
-                var_arr.append((np.nan, np.nan, np.nan))
-                continue
-
-            err_sq = error_cutout.astype(float)**2
-            # Zero the variance at masked pixels and at pixels that
-            # were excluded from the moment data (e.g., non-finite or
-            # negative convolved values), so that pixels that do not
-            # contribute flux weight also do not contribute error
-            # variance.
-            err_sq[total_mask | (moment_data == 0)] = 0.0
-
-            yy, xx = np.mgrid[0:err_sq.shape[0], 0:err_sq.shape[1]]
-            dx = xx - xcen
-            dy = yy - ycen
-
+        # Ignore divide-by-zero and invalid-value RuntimeWarnings for
+        # sources with non-positive or non-finite total flux; those
+        # values are replaced by NaN below.
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
             # Propagate the error through the centroid formula.
-            norm = 1.0 / (total_flux**2)
-            err_var_x = np.sum(err_sq * dx**2) * norm
-            err_var_y = np.sum(err_sq * dy**2) * norm
-            err_cov_xy = np.sum(err_sq * dx * dy) * norm
+            norm = 1.0 / total_flux**2
+            err_var_x = acc[:, 1] * norm
+            err_var_y = acc[:, 2] * norm
+            err_cov_xy = acc[:, 3] * norm
 
             # Singularity correction for point-like sources. If the
             # error covariance matrix is nearly singular, add the
-            # variance of a uniform
-            # distribution across a single pixel (1/12) scaled by the
-            # summed pixel variance. The correction is added to the
-            # variances only, never to the covariance.
-            if singular:
-                err_sum_norm = np.sum(err_sq) * pixel_var * norm
-                if (err_var_x * err_var_y
-                        - err_cov_xy**2) < err_sum_norm**2:
-                    err_var_x += err_sum_norm
-                    err_var_y += err_sum_norm
+            # variance of a uniform distribution across a single pixel
+            # (1/12) scaled by the summed pixel variance. The
+            # correction is added to the variances only, never to the
+            # covariance.
+            err_sum_norm = acc[:, 0] * pixel_var * norm
+            singular = (is_singular
+                        & ((err_var_x * err_var_y - err_cov_xy**2)
+                           < err_sum_norm**2))
+            err_var_x[singular] += err_sum_norm[singular]
+            err_var_y[singular] += err_sum_norm[singular]
 
-            var_arr.append((err_var_x, err_var_y, err_cov_xy))
+            bad = ~np.isfinite(total_flux) | (total_flux <= 0)
+            err_var_x[bad] = np.nan
+            err_var_y[bad] = np.nan
+            err_cov_xy[bad] = np.nan
 
-        var_arr = np.array(var_arr)
-        cov = np.empty((len(var_arr), 2, 2))
-        cov[:, 0, 0] = var_arr[:, 0]
-        cov[:, 1, 1] = var_arr[:, 1]
-        cov[:, 0, 1] = var_arr[:, 2]
-        cov[:, 1, 0] = var_arr[:, 2]
+        cov = np.empty((len(err_var_x), 2, 2))
+        cov[:, 0, 0] = err_var_x
+        cov[:, 1, 1] = err_var_y
+        cov[:, 0, 1] = err_cov_xy
+        cov[:, 1, 0] = err_cov_xy
         return cov
 
     def _sky_err_from_cov(self, pix_cov, xycen):
