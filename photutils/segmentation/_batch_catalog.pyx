@@ -37,8 +37,9 @@ from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
 
 __all__ = ['batch_central_moments', 'batch_centroid_win',
            'batch_flux_radius_prepare', 'batch_flux_radius_solve',
-           'batch_kron_radius', 'batch_moment_err', 'batch_quad_boxes',
-           'batch_raw_moments', 'batch_segment_gather']
+           'batch_kron_radius', 'batch_moment_err', 'batch_perimeter',
+           'batch_quad_boxes', 'batch_raw_moments',
+           'batch_segment_gather']
 
 
 cdef extern from "math.h" nogil:
@@ -1096,6 +1097,146 @@ def batch_flux_radius_solve(args_list, *, double fraction):
                 result = NAN
         radius[i] = result
     return radius_arr
+
+
+cdef inline bint _is_source_pixel(const unsigned char *mask,
+                                  const Py_ssize_t *segm,
+                                  Py_ssize_t nx_data, Py_ssize_t label,
+                                  Py_ssize_t ix, Py_ssize_t iy,
+                                  Py_ssize_t x0, Py_ssize_t x1,
+                                  Py_ssize_t y0, Py_ssize_t y1) noexcept nogil:
+    """
+    Whether a pixel is an unmasked pixel of the source segment, with
+    pixels outside the clipped bounding box treated as background.
+    """
+    if ix < x0 or ix >= x1 or iy < y0 or iy >= y1:
+        return False
+    return (segm[iy * nx_data + ix] == label
+            and mask[iy * nx_data + ix] == 0)
+
+
+cdef inline bint _is_border_pixel(const unsigned char *mask,
+                                  const Py_ssize_t *segm,
+                                  Py_ssize_t nx_data, Py_ssize_t label,
+                                  Py_ssize_t ix, Py_ssize_t iy,
+                                  Py_ssize_t x0, Py_ssize_t x1,
+                                  Py_ssize_t y0, Py_ssize_t y1) noexcept nogil:
+    """
+    Whether a pixel is a source pixel with at least one 4-connected
+    neighbor that is not a source pixel (i.e., a source pixel removed
+    by a binary erosion with a cross footprint).
+    """
+    if not _is_source_pixel(mask, segm, nx_data, label, ix, iy, x0, x1,
+                            y0, y1):
+        return False
+    return not (_is_source_pixel(mask, segm, nx_data, label, ix - 1, iy,
+                                 x0, x1, y0, y1)
+                and _is_source_pixel(mask, segm, nx_data, label, ix + 1,
+                                     iy, x0, x1, y0, y1)
+                and _is_source_pixel(mask, segm, nx_data, label, ix,
+                                     iy - 1, x0, x1, y0, y1)
+                and _is_source_pixel(mask, segm, nx_data, label, ix,
+                                     iy + 1, x0, x1, y0, y1))
+
+
+def batch_perimeter(const unsigned char[:, ::1] mask, *,
+                    const Py_ssize_t[:, ::1] segm,
+                    const Py_ssize_t[::1] labels,
+                    const Py_ssize_t[::1] bbox_iymin,
+                    const Py_ssize_t[::1] bbox_iymax,
+                    const Py_ssize_t[::1] bbox_ixmin,
+                    const Py_ssize_t[::1] bbox_ixmax):
+    """
+    Compute the border-pixel pattern histograms of the perimeter
+    estimator for many sources in one call.
+
+    For each source, the unmasked segment pixels form a binary image
+    (zero outside the segment bounding box). Its border pixels are
+    the source pixels removed by a binary erosion with a 4-connected
+    cross footprint, and the border image is convolved with the
+    ``[[10, 2, 10], [2, 1, 2], [10, 2, 10]]`` kernel at every
+    bounding-box pixel. The histogram of the convolved values below 34
+    is returned; the caller applies the perimeter weights of the
+    estimator of Benkrid et al. (2000) to it. This replicates the
+    previous per-source implementation exactly.
+
+    Parameters
+    ----------
+    mask : 2D ndarray of uint8 (C-contiguous)
+        A mask array where nonzero values indicate masked (excluded)
+        pixels. Bit 1 (value 1) marks input-masked pixels and bit 2
+        (value 2) marks non-finite data pixels folded into the mask by
+        the caller.
+
+    segm : 2D ndarray of intp (C-contiguous)
+        The segmentation array where background pixels are zero and
+        sources have positive integer labels. Must have the same shape
+        as ``mask``.
+
+    labels : 1D ndarray of intp (C-contiguous)
+        The source label for each source, with shape ``(n_sources,)``.
+
+    bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
+        The segment bounding box of each source, with shape
+        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
+        values).
+
+    Returns
+    -------
+    hist : 2D ndarray of intp
+        The histogram of the convolved border values of each source,
+        with shape ``(n_sources, 34)``.
+
+    Raises
+    ------
+    ValueError
+        If a per-source array does not have the same length as
+        ``labels``, or if ``segm`` does not have the same shape as
+        ``mask``.
+    """
+    cdef Py_ssize_t n_src = labels.shape[0]
+    cdef Py_ssize_t ny_data = mask.shape[0]
+    cdef Py_ssize_t nx_data = mask.shape[1]
+
+    _check_length(bbox_iymin.shape[0], n_src, 'bbox_iymin')
+    _check_length(bbox_iymax.shape[0], n_src, 'bbox_iymax')
+    _check_length(bbox_ixmin.shape[0], n_src, 'bbox_ixmin')
+    _check_length(bbox_ixmax.shape[0], n_src, 'bbox_ixmax')
+    _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
+                 'segm', 'mask')
+
+    hist_arr = np.zeros((n_src, 34), dtype=np.intp)
+    cdef Py_ssize_t[:, ::1] hist = hist_arr
+    cdef const unsigned char *mask_ptr = &mask[0, 0]
+    cdef const Py_ssize_t *segm_ptr = &segm[0, 0]
+    cdef Py_ssize_t i, ix, iy, y0, y1, x0, x1, lbl, value
+    cdef Py_ssize_t dx, dy, weight
+
+    with nogil:
+        for i in range(n_src):
+            lbl = labels[i]
+            y0 = bbox_iymin[i]
+            y1 = bbox_iymax[i]
+            x0 = bbox_ixmin[i]
+            x1 = bbox_ixmax[i]
+            for iy in range(y0, y1):
+                for ix in range(x0, x1):
+                    value = 0
+                    for dy in range(-1, 2):
+                        for dx in range(-1, 2):
+                            if dx == 0 and dy == 0:
+                                weight = 1
+                            elif dx == 0 or dy == 0:
+                                weight = 2
+                            else:
+                                weight = 10
+                            if _is_border_pixel(mask_ptr, segm_ptr,
+                                                nx_data, lbl, ix + dx,
+                                                iy + dy, x0, x1, y0, y1):
+                                value += weight
+                    if value < 34:
+                        hist[i, value] += 1
+    return hist_arr
 
 
 def batch_quad_boxes(const double[:, ::1] data, *,

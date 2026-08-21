@@ -5,11 +5,13 @@ Tests for the batch segment pixel gather.
 
 from concurrent.futures import ThreadPoolExecutor
 
+import astropy.units as u
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.segmentation import SourceCatalog
+from photutils.morphology import gini as gini_func
+from photutils.segmentation import SegmentationImage, SourceCatalog
 from photutils.segmentation._batch_catalog import batch_segment_gather
 from photutils.segmentation.tests._batch_scene import (make_batch_scene,
                                                        make_catalog)
@@ -152,6 +154,70 @@ def test_sliced_catalog_equals_parent(scene):
     assert_array_equal(child._all_masked, parent._all_masked[[0, 3, 5]])
     fresh = make_catalog(scene)[[0, 3, 5]]
     _assert_values_equal(fresh._data_values, child._data_values)
+
+
+def _reference_gini(cat):
+    # The previous per-source gini implementation
+    return np.array([gini_func(arr) for arr in cat._data_values])
+
+
+def _reference_segment_area(cat):
+    # The previous per-source segment_area implementation
+    areas = []
+    for label, slices in zip(cat.labels, cat._slices_iter, strict=True):
+        areas.append(np.count_nonzero(
+            cat._segmentation_image[slices] == label))
+    return np.array(areas)
+
+
+@pytest.mark.parametrize('with_mask', [True, False])
+def test_gini_matches_reference(scene, with_mask):
+    cat = make_catalog(scene, with_mask=with_mask)
+    expected = _reference_gini(cat)
+    assert np.all(np.isfinite(expected))
+    assert_allclose(cat.gini, expected, rtol=1e-12)
+
+
+def test_gini_edge_cases():
+    # A completely masked source (NaN), a single-pixel source (0), a
+    # zero-valued source (0), a source with negative values (absolute
+    # values are used), and a normal source
+    data = np.zeros((30, 30))
+    yy, xx = np.mgrid[0:30, 0:30]
+    segm_data = np.zeros(data.shape, dtype=int)
+    mask = np.zeros(data.shape, dtype=bool)
+    data[2:5, 2:5] = 3.0
+    segm_data[2:5, 2:5] = 1
+    mask[2:5, 2:5] = True
+    data[8, 8] = 5.0
+    segm_data[8, 8] = 2
+    segm_data[12:15, 12:15] = 3
+    data[18:24, 18:24] = -np.exp(-((xx[18:24, 18:24] - 20.5) ** 2
+                                   + (yy[18:24, 18:24] - 20.5) ** 2) / 3.0)
+    segm_data[18:24, 18:24] = 4
+    data[2:9, 20:27] = np.exp(-((xx[2:9, 20:27] - 23) ** 2
+                                + (yy[2:9, 20:27] - 5) ** 2) / 4.0)
+    segm_data[2:9, 20:27] = 5
+    cat = SourceCatalog(data, SegmentationImage(segm_data), mask=mask)
+    expected = _reference_gini(cat)
+    assert np.isnan(expected[0])
+    assert expected[1] == 0.0
+    assert expected[2] == 0.0
+    assert 0 < expected[3] < 1
+    assert_allclose(cat.gini, expected, rtol=1e-12, equal_nan=True)
+
+
+def test_segment_area_matches_reference(scene):
+    cat = make_catalog(scene)
+    expected = _reference_segment_area(cat)
+    assert_array_equal(cat.segment_area.value, expected)
+    assert cat.segment_area.unit == u.pix**2
+    # Unaffected by the mask, unlike area
+    assert np.all(cat.segment_area.value >= cat.area.value)
+    child = cat[[2, 0, 5]]
+    assert_array_equal(child.segment_area.value, expected[[2, 0, 5]])
+    scalar = make_catalog(scene)[4]
+    assert scalar.segment_area.value == expected[4]
 
 
 def _driver_inputs(cat):

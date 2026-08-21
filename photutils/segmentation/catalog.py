@@ -30,13 +30,13 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   SHAPE_ELLIPSE,
                                                   batch_aperture_sums)
 from photutils.background import SExtractorBackground
-from photutils.morphology import gini as gini_func
 from photutils.segmentation._batch_catalog import (batch_central_moments,
                                                    batch_centroid_win,
                                                    batch_flux_radius_prepare,
                                                    batch_flux_radius_solve,
                                                    batch_kron_radius,
                                                    batch_moment_err,
+                                                   batch_perimeter,
                                                    batch_quad_boxes,
                                                    batch_raw_moments,
                                                    batch_segment_gather)
@@ -60,6 +60,61 @@ __all__ = ['SourceCatalog']
 
 # Segmentation masking codes used by the batch Cython drivers
 _SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'correct': 3}
+
+
+def _batch_gini(packed, offsets, counts):
+    """
+    Compute the Gini coefficient of the packed pixel values of many
+    sources.
+
+    This is the vectorized form of `photutils.morphology.gini` applied
+    to each source's unmasked (finite) absolute pixel values: NaN for a
+    source with no pixels, 0.0 for a single pixel or a zero mean, and
+    otherwise the Lotz et al. (2004) sum over the sorted values.
+
+    Parameters
+    ----------
+    packed : 1D `~numpy.ndarray`
+        The packed pixel values of all sources (see
+        ``batch_segment_gather``), with a single placeholder value for
+        a source with no pixels.
+
+    offsets : 1D `~numpy.ndarray`
+        The start offset of each source in ``packed`` (length
+        ``n_sources + 1``).
+
+    counts : 1D `~numpy.ndarray`
+        The number of pixels of each source.
+
+    Returns
+    -------
+    result : 1D `~numpy.ndarray`
+        The Gini coefficient of each source.
+    """
+    sizes = np.diff(offsets)
+    starts = offsets[:-1]
+    # Sort the absolute values within each source in place (a single
+    # sort per source is much cheaper than one lexsort over all of the
+    # values); the placeholder values of empty sources are harmless
+    # because their results are set to NaN below
+    values = np.abs(np.nan_to_num(packed))
+    for start, stop in zip(starts, offsets[1:], strict=True):
+        values[start:stop].sort()
+    # 1-based rank of each value within its source
+    rank = np.arange(len(values)) - np.repeat(starts, sizes) + 1
+    n_pixels = np.repeat(counts, sizes)
+    kernel = (2.0 * rank - n_pixels - 1) * values
+
+    # Ignore RuntimeWarning from the empty and single-pixel sources
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        mean = np.add.reduceat(values, starts) / counts
+        normalization = mean * counts * (counts - 1)
+        result = np.add.reduceat(kernel, starts) / normalization
+    result[normalization == 0.0] = 0.0
+    result[counts == 1] = 0.0
+    result[counts == 0] = np.nan
+    return result
 
 
 # Remove in 4.0
@@ -1720,6 +1775,38 @@ class SourceCatalog:
         return {int(label): flags
                 for label, flags in zip(self.labels, decoded, strict=True)}
 
+    def _segment_gather(self, array):
+        """
+        Pack the unmasked values of ``array`` within each source
+        segment into one array (see ``batch_segment_gather``).
+
+        Parameters
+        ----------
+        array : 2D `~numpy.ndarray`
+            The C-contiguous float64 full-image array to gather from.
+
+        Returns
+        -------
+        packed : 1D `~numpy.ndarray`
+            The packed values of all sources, in row-major pixel order,
+            with a single NaN for a completely-masked source.
+
+        offsets : 1D `~numpy.ndarray`
+            The start offset of each source in ``packed`` (length
+            ``n_labels + 1``).
+
+        counts : 1D `~numpy.ndarray`
+            The number of unmasked segment pixels of each source.
+        """
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        return batch_segment_gather(
+            array, mask=arrays['mask'], segm=arrays['segm'],
+            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
+                                        dtype=np.intp),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax)
+
     def _segment_values(self, array):
         """
         Get a list of 1D arrays of the unmasked values of ``array``
@@ -1738,14 +1825,7 @@ class SourceCatalog:
         result : list of 1D `~numpy.ndarray`
             The per-source values, in row-major pixel order.
         """
-        arrays = self._get_batch_arrays()
-        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
-        packed, offsets, _ = batch_segment_gather(
-            array, mask=arrays['mask'], segm=arrays['segm'],
-            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
-                                        dtype=np.intp),
-            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
-            bbox_ixmax=ixmax)
+        packed, offsets, _ = self._segment_gather(array)
         return np.split(packed, offsets[1:-1])
 
     @staticmethod
@@ -3389,12 +3469,9 @@ class SourceCatalog:
         any data masking (i.e., a ``mask`` input to `SourceCatalog` or
         invalid ``data`` values).
         """
-        areas = []
-        for label, slices in zip(self.labels, self._slices_iter,
-                                 strict=True):
-            areas.append(np.count_nonzero(
-                self._segmentation_image[slices] == label))
-        return np.array(areas) << (u.pix**2)
+        segm = self._segmentation_image
+        areas = segm.areas[segm.get_indices(np.atleast_1d(self.labels))]
+        return np.asarray(areas, dtype=int) << (u.pix**2)
 
     @cached_property
     @use_detcat
@@ -3444,39 +3521,20 @@ class SourceCatalog:
         weights[[21, 33]] = np.sqrt(2.0)
         weights[[13, 23]] = (1 + np.sqrt(2.0)) / 2.0
 
-        perimeter = []
-        for mask in self._cutout_total_masks:
-            if np.all(mask):
-                perimeter.append(np.nan)
-                continue
-
-            ny, nx = mask.shape
-
-            # Pad source array with zeros (border_value=0)
-            padded = np.zeros((ny + 2, nx + 2), dtype=np.int8)
-            padded[1:-1, 1:-1] = ~mask
-
-            # Binary erosion with cross footprint (4-connectivity):
-            # a pixel is eroded if any 4-connected neighbor is 0
-            p = padded
-            eroded = (p[1:-1, 1:-1] & p[:-2, 1:-1] & p[2:, 1:-1]
-                      & p[1:-1, :-2] & p[1:-1, 2:])
-
-            # Border pixels are source pixels that were eroded away
-            border = np.zeros((ny + 2, nx + 2), dtype=np.int8)
-            border[1:-1, 1:-1] = padded[1:-1, 1:-1] & ~eroded
-
-            # Convolution with kernel [[10,2,10], [2,1,2], [10,2,10]]
-            b = border
-            conv = (10 * b[:-2, :-2] + 2 * b[:-2, 1:-1]
-                    + 10 * b[:-2, 2:] + 2 * b[1:-1, :-2]
-                    + b[1:-1, 1:-1] + 2 * b[1:-1, 2:]
-                    + 10 * b[2:, :-2] + 2 * b[2:, 1:-1]
-                    + 10 * b[2:, 2:])
-
-            hist = np.bincount(conv.ravel(), minlength=size)
-            perimeter.append(hist[:size] @ weights)
-
+        # Histogram of the convolved border-pixel patterns of each
+        # source (see batch_perimeter); the weights are applied with
+        # einsum so the per-source arithmetic is independent of the
+        # number of sources
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        hist = batch_perimeter(
+            arrays['mask'], segm=arrays['segm'],
+            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
+                                        dtype=np.intp),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax)
+        perimeter = np.einsum('nk,k->n', hist.astype(float), weights)
+        perimeter[self._all_masked] = np.nan
         return np.array(perimeter) * u.pix
 
     @cached_property
@@ -3888,7 +3946,9 @@ class SourceCatalog:
         from the calculation. If only a single finite pixel remains
         after filtering, the Gini coefficient is 0.0.
         """
-        return np.array([gini_func(arr) for arr in self._data_values])
+        packed, offsets, counts = self._segment_gather(
+            self._get_batch_arrays()['data'])
+        return _batch_gini(packed, offsets, counts)
 
     @cached_property
     def _local_background_apertures(self):
