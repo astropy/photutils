@@ -1046,6 +1046,11 @@ class PixelAperture(Aperture):
                 float(ext_x), float(ext_y), float(off_x), float(off_y),
                 use_exact, subpixels, seg_arr, src_labels, seg_code)
 
+        # The driver results are indexed by position: index 9 is the
+        # per-source flag counts. The per-source outside-weight
+        # indicator (index 10) is not used here, because the aperture
+        # flags resolve the clipped bounding boxes with
+        # ``_resolve_outside_weights``.
         n_chunks = min(n_threads, positions.shape[0])
         if n_chunks > 1:
             # Row slices of the C-contiguous positions and labels
@@ -1063,10 +1068,11 @@ class PixelAperture(Aperture):
             sum_var = np.concatenate([result[1] for result in results])
             area = np.concatenate([result[2] for result in results])
             overlap = np.concatenate([result[3] for result in results])
-            fcounts = np.concatenate([result[-1] for result in results])
+            fcounts = np.concatenate([result[9] for result in results])
         else:
-            sums, sum_var, area, overlap, *_, fcounts = run_sums(
-                positions, labels_arr)
+            result = run_sums(positions, labels_arr)
+            sums, sum_var, area, overlap = result[:4]
+            fcounts = result[9]
 
         if error is None:
             # Match the mask-based path, which returns an all-NaN error

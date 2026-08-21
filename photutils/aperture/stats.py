@@ -1010,8 +1010,10 @@ class ApertureStats:
         emit_sum = 1 if clip_spec is not None else 0
 
         def sum_chunk(pos, bkg, labels):
+            # The gather path derives its outside-weight flag elsewhere,
+            # so the driver's per-source indicator is discarded here.
             (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
-             sum_errsq, scounts, flag_counts) = batch_aperture_sums(
+             sum_errsq, scounts, flag_counts, _) = batch_aperture_sums(
                 data, error, mask, pos, shape_code, params, ext_x, ext_y,
                 off_x, off_y, sum_use_exact, sum_subpixels, seg_arr,
                 labels, seg_code, bkg, emit_sum)

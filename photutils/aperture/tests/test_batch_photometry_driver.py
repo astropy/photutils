@@ -7,9 +7,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.aperture._batch_photometry import (SHAPE_CIRCLE,
+from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
+                                                  SHAPE_CIRCLE,
                                                   SHAPE_CIRCULAR_ANNULUS,
                                                   SHAPE_ELLIPSE,
                                                   SHAPE_ELLIPTICAL_ANNULUS,
@@ -129,3 +130,130 @@ class TestBatchApertureSums:
                 for res_arr, exp_arr in zip(result, expected[shape_code],
                                             strict=True):
                     assert_array_equal(res_arr, exp_arr)
+
+
+def test_params_per_source_circle():
+    rng = np.random.default_rng(0)
+    data = rng.normal(size=(40, 40))
+    positions = np.array([[10.0, 10.0], [25.0, 25.0], [30.0, 12.0]])
+    radii = np.array([2.0, 3.5, 5.0])
+    psrc = radii[:, None].copy()
+    batch = batch_aperture_sums(
+        data, None, None, positions, SHAPE_CIRCLE, None, 0.0, 0.0,
+        0.0, 0.0, 1, 1, params_per_source=psrc)
+    for i, r in enumerate(radii):
+        single = batch_aperture_sums(
+            data, None, None, positions[i:i + 1], SHAPE_CIRCLE,
+            np.array([r]), r, r, 0.0, 0.0, 1, 1)
+        assert_allclose(batch[0][i], single[0][0], rtol=1e-12)
+
+
+def test_params_per_source_ellipse():
+    rng = np.random.default_rng(0)
+    data = rng.normal(size=(40, 40))
+    positions = np.array([[10.0, 10.0], [25.0, 25.0], [30.0, 12.0]])
+    psrc = np.array([[3.0, 2.0, 0.5],
+                     [4.0, 1.0, -0.3],
+                     [2.5, 2.5, 1.2]])
+    batch = batch_aperture_sums(
+        data, None, None, positions, SHAPE_ELLIPSE, None, 0.0, 0.0,
+        0.0, 0.0, 1, 1, params_per_source=psrc)
+    for i, (semi_a, semi_b, theta) in enumerate(psrc):
+        cos_theta = np.cos(theta)
+        sin_theta = np.sin(theta)
+        ext_x = np.sqrt((semi_a * cos_theta)**2 + (semi_b * sin_theta)**2)
+        ext_y = np.sqrt((semi_a * sin_theta)**2 + (semi_b * cos_theta)**2)
+        single = batch_aperture_sums(
+            data, None, None, positions[i:i + 1], SHAPE_ELLIPSE,
+            np.array([semi_a, semi_b, theta]), ext_x, ext_y, 0.0, 0.0,
+            1, 1)
+        assert_allclose(batch[0][i], single[0][0], rtol=1e-12)
+
+
+def test_params_per_source_invalid():
+    data = np.ones((20, 20))
+    positions = np.array([[10.0, 10.0], [12.0, 12.0]])
+    psrc = np.array([[2.0], [3.0]])
+    params = np.array([2.0])
+
+    match = 'params must be given when params_per_source is None'
+    with pytest.raises(ValueError, match=match):
+        batch_aperture_sums(data, None, None, positions, SHAPE_CIRCLE,
+                            None, 2.0, 2.0, 0.0, 0.0, 1, 1)
+
+    match = 'give params or params_per_source, not both'
+    with pytest.raises(ValueError, match=match):
+        batch_aperture_sums(data, None, None, positions, SHAPE_CIRCLE,
+                            params, 2.0, 2.0, 0.0, 0.0, 1, 1,
+                            params_per_source=psrc)
+
+    match = 'params_per_source supports only circle and ellipse shapes'
+    with pytest.raises(ValueError, match=match):
+        batch_aperture_sums(data, None, None, positions,
+                            SHAPE_CIRCULAR_ANNULUS, None, 2.0, 2.0,
+                            0.0, 0.0, 1, 1, params_per_source=psrc)
+
+    match = 'params_per_source does not support emit_sum'
+    with pytest.raises(ValueError, match=match):
+        batch_aperture_sums(data, None, None, positions, SHAPE_CIRCLE,
+                            None, 2.0, 2.0, 0.0, 0.0, 1, 1, None, None,
+                            0, None, 1, params_per_source=psrc)
+
+    match = 'params_per_source must have one row per position'
+    with pytest.raises(ValueError, match=match):
+        batch_aperture_sums(data, None, None, positions, SHAPE_CIRCLE,
+                            None, 2.0, 2.0, 0.0, 0.0, 1, 1,
+                            params_per_source=psrc[:1])
+
+    match = 'params_per_source has the wrong column count'
+    with pytest.raises(ValueError, match=match):
+        batch_aperture_sums(data, None, None, positions, SHAPE_CIRCLE,
+                            None, 2.0, 2.0, 0.0, 0.0, 1, 1,
+                            params_per_source=np.zeros((2, 3)))
+    with pytest.raises(ValueError, match=match):
+        batch_aperture_sums(data, None, None, positions, SHAPE_ELLIPSE,
+                            None, 2.0, 2.0, 0.0, 0.0, 1, 1,
+                            params_per_source=np.zeros((2, 1)))
+
+
+def test_weights_out():
+    data = np.ones((20, 20))
+    positions = np.array([[10.0, 10.0],   # interior
+                          [1.0, 10.0],    # aperture off left edge
+                          [19.4, 10.0]])  # aperture off right edge
+    params = np.array([3.0])
+    result = batch_aperture_sums(
+        data, None, None, positions, SHAPE_CIRCLE, params, 3.0, 3.0,
+        0.0, 0.0, 1, 1)
+    weights_out = result[10]
+    assert list(weights_out) == [0, 1, 1]
+
+
+def test_weights_out_clipped_bbox_zero_weight():
+    """
+    Test that a bbox row can poke off-image while every off-image pixel
+    has zero aperture fraction.
+
+    ``weights_out`` must then be 0 even though ``FLAG_COL_BBOX_CLIPPED``
+    is 1. With method='center' (``use_exact=0``, ``subpixels=1``), a
+    circle of r=2.0 at y=1.4 has iymin = floor(1.4 - 2 + 0.5) = -1
+    (clipped), but the off-image pixel centers at y=-1 lie 2.4 > r from
+    the center, so their center-method fraction is zero.
+    """
+    data = np.ones((20, 20))
+    positions = np.array([[10.0, 1.4]])
+    params = np.array([2.0])
+    result = batch_aperture_sums(
+        data, None, None, positions, SHAPE_CIRCLE, params, 2.0, 2.0,
+        0.0, 0.0, 0, 1)
+    fcounts = result[9]
+    weights_out = result[10]
+    assert fcounts[0, FLAG_COL_BBOX_CLIPPED] == 1
+    assert weights_out[0] == 0
+
+    # The same aperture with the exact method has positive area
+    # off-image
+    result = batch_aperture_sums(
+        data, None, None, positions, SHAPE_CIRCLE, params, 2.0, 2.0,
+        0.0, 0.0, 1, 1)
+    assert result[10][0] == 1
