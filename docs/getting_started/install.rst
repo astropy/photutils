@@ -11,19 +11,19 @@ Photutils has the following strict requirements:
 
 * `NumPy <https://numpy.org/>`_ 2.0 or later
 
-* `SciPy <https://scipy.org/>`_ 1.15.0 or later
+* `SciPy <https://scipy.org/>`_ 1.15 or later
 
-* `Astropy`_ 6.1.7 or later
+* `Astropy`_ 7.0 or later
 
 Photutils also optionally depends on other packages for some features:
 
-* `Matplotlib <https://matplotlib.org/>`_ 3.9 or later: Used to power a
+* `Matplotlib <https://matplotlib.org/>`_ 3.10 or later: Used to power a
   variety of plotting features (e.g., plotting apertures).
 
 * `Regions <https://astropy-regions.readthedocs.io/>`_ 0.10 or
   later: Required to perform aperture photometry using region objects.
 
-* `scikit-image <https://scikit-image.org/>`_ 0.24 or later: Required
+* `scikit-image <https://scikit-image.org/>`_ 0.25 or later: Required
   to deblend segmented sources.
 
 * `GWCS <https://gwcs.readthedocs.io/en/stable/>`_ 0.22 or later:
@@ -143,7 +143,7 @@ Testing an installed Photutils
 
 To test your installed version of Photutils, you can run the test suite
 using the `pytest`_ command. Running the test suite requires installing
-the `pytest-astropy <https://github.com/astropy/pytest-astropy>`_ (0.11
+the `pytest-astropy <https://github.com/astropy/pytest-astropy>`_ (0.12
 or later) package.
 
 To run the test suite, use the following command::

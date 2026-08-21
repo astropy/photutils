@@ -25,10 +25,11 @@ features and performance improvements. The minimum required versions
 are now:
 
 - Python: 3.12
-- Astropy: 6.1.7
+- Astropy: 7.0
 - SciPy: 1.15
+- Matplotlib: 3.10
 - Regions: 0.10
-- scikit-image: 0.24
+- scikit-image: 0.25
 - gwcs: 0.22
 - Shapely: 2.1
 - tqdm: 4.67

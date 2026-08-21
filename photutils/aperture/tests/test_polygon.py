@@ -21,7 +21,7 @@ from photutils.aperture.polygon import (PolygonAperture, SkyPolygonAperture,
                                         _vertices_centroid)
 from photutils.aperture.rectangle import RectangularAperture
 from photutils.aperture.tests.test_aperture_common import BaseTestAperture
-from photutils.utils._optional_deps import HAS_MATPLOTLIB
+from photutils.utils._optional_deps import HAS_MATPLOTLIB, HAS_REGIONS
 
 POSITIONS = [(10.0, 20.0), (30.0, 40.0), (50.0, 60.0), (70.0, 80.0)]
 RA, DEC = np.transpose(POSITIONS)
@@ -879,8 +879,7 @@ class TestRegularPolygon:
             np.array([[0.0, 0.0], [4.0, 0.0], [4.0, 3.0]]))
         assert aper.n_vertices == 3
 
-    @pytest.mark.skipif(not pytest.importorskip('regions', minversion='0.11'),
-                        reason='requires regions')
+    @pytest.mark.skipif(not HAS_REGIONS, reason='regions is required')
     def test_matches_regions(self):
         from regions import PixCoord, RegularPolygonPixelRegion
 
