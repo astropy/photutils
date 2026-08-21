@@ -4744,6 +4744,58 @@ class SourceCatalog:
 
         return flux, flux_err
 
+    def _kron_aperture_params(self, kron_params):
+        """
+        Return the Kron aperture geometry of each source as arrays.
+
+        This is the array form of the apertures made by
+        ``_make_kron_apertures`` (see `kron_aperture`), without
+        constructing aperture objects.
+
+        Parameters
+        ----------
+        kron_params : tuple
+            The validated Kron parameters.
+
+        Returns
+        -------
+        xcen, ycen : 1D `~numpy.ndarray`
+            The aperture centers.
+
+        major, minor : 1D `~numpy.ndarray`
+            The semimajor and semiminor axes of the elliptical
+            apertures (the scaled Kron radius times the isophotal
+            axes).
+
+        theta : 1D `~numpy.ndarray`
+            The ellipse orientation in radians.
+
+        circular : 1D `~numpy.ndarray` (bool)
+            `True` where the aperture is instead the circle with the
+            minimum circular radius ``kron_params[2]`` (i.e., where the
+            Kron radius is zero).
+
+        defined : 1D `~numpy.ndarray` (bool)
+            `False` where the aperture is undefined (`None` in
+            `kron_aperture`): where the source is completely masked or
+            its centroid or elliptical shape parameters are not finite.
+        """
+        # NOTE: if kron_radius = NaN, scale = NaN and the aperture is
+        # undefined
+        kron_radius = self._calc_kron_radius(kron_params)
+        scale = kron_radius.value * kron_params[0]
+        xcen = np.atleast_1d(self.x_centroid)
+        ycen = np.atleast_1d(self.y_centroid)
+        major = np.atleast_1d(self.semimajor_axis.value) * scale
+        minor = np.atleast_1d(self.semiminor_axis.value) * scale
+        theta = np.atleast_1d(self.orientation.to_value(u.radian))
+        defined = (~self._all_masked & np.isfinite(xcen) & np.isfinite(ycen)
+                   & np.isfinite(major) & np.isfinite(minor)
+                   & np.isfinite(theta))
+        # kron_radius = 0 -> scale = 0 -> major/minor = 0
+        circular = defined & (major == 0) & (minor == 0)
+        return xcen, ycen, major, minor, theta, circular, defined
+
     def _calc_kron_photometry(self, *, kron_params=None):
         """
         Calculate the flux and flux error in the Kron aperture (without
@@ -4752,11 +4804,17 @@ class SourceCatalog:
         See the `SourceCatalog` ``aperture_mask_method`` keyword for
         options to mask neighboring sources.
 
-        If the Kron aperture is `None`, then ``np.nan`` will be
-        returned.
+        If the Kron aperture is undefined (`None` in `kron_aperture`),
+        then ``np.nan`` will be returned.
 
         If ``detection_catalog`` is input, then its `centroid` values
         will be used.
+
+        Parameters
+        ----------
+        kron_params : tuple or `None`, optional
+            The Kron parameters. If `None`, the apertures are those
+            of `kron_aperture` (from the detection catalog, if input).
 
         Returns
         -------
@@ -4765,61 +4823,51 @@ class SourceCatalog:
             `~photutils.segmentation.decode_segmentation_flags`).
         """
         if kron_params is None:
-            kron_aperture = self._array('kron_aperture')
+            # The geometry of the kron_aperture property, which is
+            # taken from the detection catalog if input
+            source = (self if self._detection_catalog is None
+                      else self._detection_catalog)
+            kron_params = source.kron_params
         else:
+            source = self
             kron_params = self._validate_kron_params(kron_params)
-            kron_aperture = self._make_kron_apertures(kron_params)
+        (xcen, ycen, major, minor, theta, circular,
+         defined) = source._kron_aperture_params(kron_params)
 
-        n_src = len(kron_aperture)
+        n_src = len(xcen)
         flux = np.full(n_src, np.nan)
         flux_err = np.full(n_src, np.nan)
         kron_flags = np.zeros(n_src, dtype=int)
+        kron_flags[~defined] = SEGMENTATION_FLAGS.KRON_UNDEFINED
 
+        # Exclude apertures whose bounding box would be unreasonably
+        # large (out-of-memory guard)
         max_size = max(self._data.size, 1_000_000)
-        _floor = math.floor
+        circ_radius = kron_params[2] if len(kron_params) == 3 else 0.0
+        # Ignore RuntimeWarning from non-finite values of undefined
+        # apertures
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            cos_t = np.cos(theta)
+            sin_t = np.sin(theta)
+            x_ext = np.sqrt((major * cos_t) ** 2 + (minor * sin_t) ** 2)
+            y_ext = np.sqrt((major * sin_t) ** 2 + (minor * cos_t) ** 2)
+            x_ext = np.where(circular, circ_radius, x_ext)
+            y_ext = np.where(circular, circ_radius, y_ext)
+            nx = (np.floor(xcen + x_ext + 1.5)
+                  - np.floor(xcen - x_ext + 0.5))
+            ny = (np.floor(ycen + y_ext + 1.5)
+                  - np.floor(ycen - y_ext + 0.5))
+            oversized = defined & (nx * ny > max_size)
+        kron_flags[oversized] = SEGMENTATION_FLAGS.KRON_UNDEFINED
+        usable = defined & ~oversized
 
-        # Pre-filter undefined and oversized apertures, and group the
-        # rest by aperture shape for the batch driver
-        circ_idx = []
-        circ_params = []
-        ell_idx = []
-        ell_params = []
-        positions = np.zeros((n_src, 2))
-        for i, aperture in enumerate(kron_aperture):
-            if aperture is None:
-                kron_flags[i] = SEGMENTATION_FLAGS.KRON_UNDEFINED
-                continue
-            xcen, ycen = aperture.positions
-            positions[i] = (xcen, ycen)
-            if isinstance(aperture, CircularAperture):
-                r = aperture.r
-                nx = _floor(xcen + r + 1.5) - _floor(xcen - r + 0.5)
-                ny = _floor(ycen + r + 1.5) - _floor(ycen - r + 0.5)
-                if nx * ny > max_size:
-                    kron_flags[i] = SEGMENTATION_FLAGS.KRON_UNDEFINED
-                    continue
-                circ_idx.append(i)
-                circ_params.append((r,))
-            else:
-                a = aperture.a
-                b = aperture.b
-                theta_val = aperture.theta
-                theta = (theta_val.to_value(u.radian)
-                         if hasattr(theta_val, 'to')
-                         else float(theta_val))
-                cos_t = math.cos(theta)
-                sin_t = math.sin(theta)
-                x_ext = math.sqrt((a * cos_t) ** 2 + (b * sin_t) ** 2)
-                y_ext = math.sqrt((a * sin_t) ** 2 + (b * cos_t) ** 2)
-                nx = (_floor(xcen + x_ext + 1.5)
-                      - _floor(xcen - x_ext + 0.5))
-                ny = (_floor(ycen + y_ext + 1.5)
-                      - _floor(ycen - y_ext + 0.5))
-                if nx * ny > max_size:
-                    kron_flags[i] = SEGMENTATION_FLAGS.KRON_UNDEFINED
-                    continue
-                ell_idx.append(i)
-                ell_params.append((a, b, theta))
+        # Group the apertures by shape for the batch driver
+        circ_idx = np.flatnonzero(usable & circular)
+        ell_idx = np.flatnonzero(usable & ~circular)
+        circ_params = np.full((len(circ_idx), 1), circ_radius)
+        ell_params = np.column_stack((major, minor, theta))[ell_idx]
+        positions = np.column_stack((xcen, ycen)).astype(float)
 
         arrays = self._get_batch_arrays()
         seg_code = _SEG_METHOD_CODES[self.aperture_mask_method]
@@ -4830,13 +4878,12 @@ class SourceCatalog:
                                          dtype=np.float64)
         has_error = self._error is not None
 
-        for idx, params_list, shape_code in (
+        for idx, psrc, shape_code in (
                 (circ_idx, circ_params, SHAPE_CIRCLE),
                 (ell_idx, ell_params, SHAPE_ELLIPSE)):
-            if not idx:
+            if idx.size == 0:
                 continue
-            idx = np.array(idx)
-            psrc = np.ascontiguousarray(params_list, dtype=np.float64)
+            psrc = np.ascontiguousarray(psrc, dtype=np.float64)
             pos = np.ascontiguousarray(positions[idx])
             seg_labels = labels_arr[idx] if seg_code != 0 else None
             (sums, sum_vars, _, overlap, _, _, _, _, _, fcounts,

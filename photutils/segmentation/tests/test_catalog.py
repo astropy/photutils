@@ -1673,15 +1673,30 @@ class TestSourceCatalogFlags:
         Test the kron_undefined flag when the Kron photometry is skipped
         because the aperture is too large.
         """
-        cat = SourceCatalog(self.data, self.segm)
-        _ = cat.kron_aperture  # cache the apertures
         if circular:
-            aperture = CircularAperture((25, 25), r=2000)
+            # A huge minimum circular radius makes every Kron aperture
+            # the circle of that radius
+            cat = SourceCatalog(self.data, self.segm,
+                                kron_params=(2.5, 1.4, 2000.0))
+            assert np.all(cat.kron_radius.value == 0)
+            assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_UNDEFINED)
         else:
-            aperture = EllipticalAperture((25, 25), 2000, 2000,
-                                          theta=0.0)
-        cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
-        assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_UNDEFINED)
+            # A huge semimajor axis with a normal Kron radius makes a
+            # huge Kron ellipse
+            cat = SourceCatalog(self.data, self.segm)
+            huge = np.full(cat.n_labels, 2000.0) << u.pix
+            kron_radius = np.full(cat.n_labels, 1.5)
+            with (patch.object(type(cat), 'semimajor_axis',
+                               new_callable=lambda: property(
+                                   lambda _self: huge)),
+                  patch.object(type(cat), 'semiminor_axis',
+                               new_callable=lambda: property(
+                                   lambda _self: huge)),
+                  patch.object(type(cat), '_measured_kron_radius',
+                               new_callable=lambda: property(
+                                   lambda _self: kron_radius))):
+                assert np.all(cat.flags
+                              & SEGMENTATION_FLAGS.KRON_UNDEFINED)
 
     def test_kron_no_overlap(self):
         """
@@ -1689,9 +1704,9 @@ class TestSourceCatalogFlags:
         completely outside the data array.
         """
         cat = SourceCatalog(self.data, self.segm)
-        _ = cat.kron_aperture  # cache the apertures
-        aperture = EllipticalAperture((-1000, -1000), 5, 3, theta=0.0)
-        cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
+        _ = cat.kron_radius  # measure the Kron radii before moving
+        cat.__dict__['x_centroid'] = np.full(cat.n_labels, -1000.0)
+        cat.__dict__['y_centroid'] = np.full(cat.n_labels, -1000.0)
         assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
 
     def test_kron_no_overlap_zero_weights(self):
@@ -1700,10 +1715,15 @@ class TestSourceCatalogFlags:
         box overlaps the data, but no pixel within the data has a
         nonzero aperture weight.
         """
-        cat = SourceCatalog(self.data, self.segm)
-        _ = cat.kron_aperture  # cache the apertures
-        aperture = CircularAperture((-10.5, -10.5), r=10)
-        cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
+        # A minimum circular radius of 11 makes every Kron aperture a
+        # circle of that radius, then centered at (-11.5, -11.5) its
+        # bounding box reaches the first data column, but no pixel
+        # center lies within the circle
+        cat = SourceCatalog(self.data, self.segm,
+                            kron_params=(2.5, 1.4, 11.0))
+        assert np.all(cat.kron_radius.value == 0)
+        cat.__dict__['x_centroid'] = np.full(cat.n_labels, -11.5)
+        cat.__dict__['y_centroid'] = np.full(cat.n_labels, -11.5)
         assert np.all(np.isnan(cat.kron_flux))
         assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
         assert not np.any(cat.flags
@@ -2470,43 +2490,46 @@ def test_kron_radius_max(gauss_101_catalog):
 def test_kron_photometry_oom_guard(gauss_101_catalog):
     """
     Test that _calc_kron_photometry returns NaN when the Kron aperture
-    is too large (OOM guard).
+    is too large (OOM guard), does not overlap the data, or has no
+    contributing pixels.
     """
     data, segm, cat = gauss_101_catalog
-    _ = cat.kron_aperture  # cache
 
-    # Create huge elliptical apertures that exceed the max_size check
-    huge_aper = [EllipticalAperture((50, 50), 2000, 2000, theta=0.0)
-                 for _ in range(cat.n_labels)]
-    cat.__dict__['kron_aperture'] = huge_aper
-    assert np.all(np.isnan(cat.kron_flux))
+    # A huge semimajor axis with a normal Kron radius makes a huge
+    # Kron ellipse that exceeds the max_size check
+    huge = np.array([2000.0]) << u.pix
+    kron_radius = np.array([1.5])
+    with (patch.object(type(cat), 'semimajor_axis',
+                       new_callable=lambda: property(lambda _self: huge)),
+          patch.object(type(cat), 'semiminor_axis',
+                       new_callable=lambda: property(lambda _self: huge)),
+          patch.object(type(cat), '_measured_kron_radius',
+                       new_callable=lambda: property(
+                           lambda _self: kron_radius))):
+        assert np.all(np.isnan(cat.kron_flux))
 
-    # Create huge circular apertures that exceed the max_size check
-    cat2 = SourceCatalog(data, segm)
-    _ = cat2.kron_aperture
-    huge_circ = [CircularAperture((50, 50), r=2000)
-                 for _ in range(cat2.n_labels)]
-    cat2.__dict__['kron_aperture'] = huge_circ
+    # A huge minimum circular radius makes a huge circular aperture
+    # that exceeds the max_size check
+    cat2 = SourceCatalog(data, segm, kron_params=(2.5, 1.4, 2000.0))
+    assert np.all(cat2.kron_radius.value == 0)
     assert np.all(np.isnan(cat2.kron_flux))
 
-    # Aperture completely off-image triggers data=None guard
+    # An aperture completely off-image has no overlap
     cat3 = SourceCatalog(data, segm)
-    _ = cat3.kron_aperture
-    off_aper = [EllipticalAperture((-1000, -1000), 5, 3, theta=0.0)
-                for _ in range(cat3.n_labels)]
-    cat3.__dict__['kron_aperture'] = off_aper
+    _ = cat3.kron_radius  # measure the Kron radius before moving
+    cat3.__dict__['x_centroid'] = np.array([-1000.0])
+    cat3.__dict__['y_centroid'] = np.array([-1000.0])
     assert np.all(np.isnan(cat3.kron_flux))
 
     # An aperture whose pixels are all masked has no contributing
     # pixels, giving NaN flux and flux error
     error = np.ones_like(data)
     mask = np.zeros(data.shape, dtype=bool)
-    mask[:20, :20] = True
+    mask[:40, :40] = True
     cat4 = SourceCatalog(data, segm, error=error, mask=mask)
-    _ = cat4.kron_aperture  # cache
-    masked_aper = [CircularAperture((10, 10), r=3)
-                   for _ in range(cat4.n_labels)]
-    cat4.__dict__['kron_aperture'] = masked_aper
+    _ = cat4.kron_radius  # measure the Kron radius before moving
+    cat4.__dict__['x_centroid'] = np.array([10.0])
+    cat4.__dict__['y_centroid'] = np.array([10.0])
     assert np.all(np.isnan(cat4.kron_flux))
     assert np.all(np.isnan(cat4.kron_flux_err))
 
