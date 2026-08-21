@@ -306,9 +306,12 @@ class SourceCatalog:
 
     progress_bar : bool, optional
         Whether to display a progress bar when calculating properties.
-        All property calculations are now computed for all sources at
-        once in compiled code, so no progress bar is displayed. This
-        keyword is retained for backwards compatibility.
+
+        .. deprecated:: 3.1
+           This keyword argument is deprecated and will be removed in a
+           future version. All property calculations are now computed
+           for all sources at once in compiled code, so no progress bar
+           is displayed and this keyword has no effect.
 
     Notes
     -----
@@ -399,6 +402,7 @@ class SourceCatalog:
                                  '3.0', until='4.0')
     @deprecated_renamed_argument('detection_cat', 'detection_catalog', '3.0',
                                  until='4.0')
+    @deprecated_renamed_argument('progress_bar', None, '3.1', until='4.0')
     def __init__(self, data, segmentation_image, *, convolved_data=None,
                  error=None, mask=None, background=None, wcs=None,
                  local_bkg_width=0, aperture_mask_method='correct',

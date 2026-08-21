@@ -38,19 +38,6 @@ from photutils.utils.cutouts import CutoutImage
 
 
 @pytest.fixture
-def progress_bar_catalog():
-    """
-    A two-source SourceCatalog on a 101x101 grid with progress_bar=True.
-    """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    g2 = Gaussian2D(80, 30, 30, 4, 4)
-    data = g1(xx, yy) + g2(xx, yy)
-    segm = detect_sources(data, 10.0, n_pixels=5)
-    return SourceCatalog(data, segm, progress_bar=True)
-
-
-@pytest.fixture
 def single_source_catalog():
     """
     A single-source SourceCatalog from a Gaussian on a 51x51 grid.
@@ -2254,61 +2241,21 @@ def test_make_cutouts_trim_mode():
     assert any(s == shape for s in shapes)
 
 
-def test_progress_bar_centroid_win(progress_bar_catalog):
+def test_progress_bar_deprecated():
     """
-    Test that centroid_win works with progress_bar=True.
+    Test that the progress_bar keyword is deprecated and has no effect.
     """
-    cat = progress_bar_catalog
-    cwin = cat.centroid_win
-    assert cwin.shape == (cat.n_labels, 2)
-    assert np.all(np.isfinite(cwin))
-
-
-def test_progress_bar_centroid_quad(progress_bar_catalog):
-    """
-    Test that centroid_quad works with progress_bar=True.
-    """
-    cat = progress_bar_catalog
-    cquad = cat.centroid_quad
-    assert cquad.shape == (cat.n_labels, 2)
-    assert np.all(np.isfinite(cquad))
-
-
-def test_progress_bar_kron_radius(progress_bar_catalog):
-    """
-    Test that kron_radius works with progress_bar=True.
-    """
-    cat = progress_bar_catalog
-    kr = cat.kron_radius
-    assert len(kr) == cat.n_labels
-
-
-def test_progress_bar_kron_photometry(progress_bar_catalog):
-    """
-    Test that kron_photometry (aperture photometry) works with
-    progress_bar=True.
-    """
-    cat = progress_bar_catalog
-    flux, _flux_err = cat.kron_photometry((2.5, 1.4))
-    assert len(flux) == cat.n_labels
-
-
-def test_progress_bar_flux_radius(progress_bar_catalog):
-    """
-    Test that flux_radius and its prep work with progress_bar=True.
-    """
-    cat = progress_bar_catalog
-    r = cat.flux_radius(0.5)
-    assert len(r) == cat.n_labels
-
-
-def test_progress_bar_circular_photometry(progress_bar_catalog):
-    """
-    Test that circular_photometry works with progress_bar=True.
-    """
-    cat = progress_bar_catalog
-    flux, _fluxerr = cat.circular_photometry(5.0)
-    assert len(flux) == cat.n_labels
+    yy, xx = np.mgrid[0:101, 0:101]
+    data = Gaussian2D(100, 50, 50, 5, 5)(xx, yy)
+    segm = detect_sources(data, 10.0, n_pixels=5)
+    match = "'progress_bar' was deprecated"
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        cat = SourceCatalog(data, segm, progress_bar=True)
+    assert cat.progress_bar
+    cat2 = SourceCatalog(data, segm)
+    assert not cat2.progress_bar
+    assert_allclose(cat.centroid_win, cat2.centroid_win)
+    assert_allclose(cat.flux_radius(0.5), cat2.flux_radius(0.5))
 
 
 def test_negative_covariance_eigvals(single_source_catalog):

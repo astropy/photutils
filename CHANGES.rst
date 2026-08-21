@@ -279,8 +279,8 @@ New Features
     property, by computing all sources in a single call into compiled
     code. The ``flags`` attribute and the default ``to_table()`` output
     are about 5 times faster for large catalogs. No property displays a
-    progress bar any more; the ``progress_bar`` keyword is retained for
-    backwards compatibility. [#2406]
+    progress bar any more, but the ``progress_bar`` keyword is retained
+    for backwards compatibility. [#2406]
 
 - ``photutils.utils``
 
@@ -1001,6 +1001,11 @@ API Changes
     non-positive, the windowed second-order moments are negative, or the
     windowed covariance determinant is negative. Previously, only the
     ellipse condition was applied. [#2397]
+
+  - The ``SourceCatalog`` ``progress_bar`` keyword is now deprecated
+    and will be removed in version 4.0. All property calculations are
+    now computed for all sources at once in compiled code, so no
+    progress bar is displayed and the keyword has no effect. [#2406]
 
 - ``photutils.utils``
 
