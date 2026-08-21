@@ -24,12 +24,15 @@ from photutils.background import SExtractorBackground
 from photutils.geometry import circular_overlap_grid, elliptical_overlap_grid
 from photutils.morphology import gini as gini_func
 from photutils.segmentation.core import SegmentationImage
+from photutils.segmentation.flags import (SEGMENTATION_FLAGS,
+                                          decode_segmentation_flags)
 from photutils.segmentation.utils import _mask_to_mirrored_value
 from photutils.utils._deprecation import (_get_future_column_names,
                                           create_empty_deprecated_qtable,
                                           deprecated_getattr,
                                           deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
+from photutils.utils._flags import update_flag_docstring
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._progress_bars import add_progress_bar
@@ -124,6 +127,27 @@ def use_detcat(method):
         return getattr(self._detection_catalog, method.__name__)
 
     return _use_detcat
+
+
+def _update_flags_docstring(func):
+    """
+    Decorator to insert the segmentation flag descriptions into a
+    docstring.
+
+    The ``<flag_descriptions>`` placeholder in the function docstring is
+    replaced with a bullet list generated from ``SEGMENTATION_FLAGS``.
+
+    Parameters
+    ----------
+    func : function
+        The function to decorate.
+
+    Returns
+    -------
+    func : function
+        The decorated function with an updated docstring.
+    """
+    return update_flag_docstring(func, SEGMENTATION_FLAGS, indent=8)
 
 
 class SourceCatalog:
@@ -420,7 +444,7 @@ class SourceCatalog:
                                 'orientation', 'eccentricity', 'min_value',
                                 'max_value', 'segment_flux',
                                 'segment_flux_err', 'kron_flux',
-                                'kron_flux_err']
+                                'kron_flux_err', 'flags']
 
         self._custom_properties = []
         self._flux_radius_cache = {}
@@ -1452,6 +1476,180 @@ class SourceCatalog:
         """
         return np.array([np.all(mask) for mask in self._cutout_total_masks])
 
+    @cached_property
+    @_update_flags_docstring
+    def flags(self):
+        # numpydoc ignore: RT01
+        """
+        The per-source bitwise quality flags.
+
+        The flags combine deblending-provenance flags carried
+        by the input segmentation image with measurement-time
+        flags computed from this catalog's ``data``,
+        ``mask``, ``error``, and segmentation image. Use
+        `~photutils.segmentation.decode_segmentation_flags` to decode
+        the values.
+
+        If a ``detection_catalog`` was input, the shape
+        (``undefined_shape``, ``singular_covariance``), centroid
+        (``centroid_win_fallback``, ``centroid_quad_failed``),
+        and Kron aperture geometry (``kron_undefined``,
+        ``kron_minimum_radius``) flags derive from the detection
+        catalog. The Kron photometry-loop flags (``kron_no_overlap``,
+        ``kron_partial_overlap``, ``kron_masked_pixels``,
+        ``kron_neighbor_pixels``, ``kron_uncorrected_pixels``), like the
+        segment-level edge, mask, non-finite, and ``all_masked`` flags,
+        are evaluated on this catalog's own inputs.
+
+        Accessing ``flags`` computes the moment, covariance, centroid,
+        and Kron-aperture properties if they have not already
+        been computed (the results are cached and reused by those
+        properties).
+
+        The flags are:
+
+        <flag_descriptions>
+        """
+        flags = np.zeros(len(self.labels), dtype=int)
+
+        # Deblending provenance flags from the segmentation image
+        flags_map = self._segmentation_image._flags_map
+        if flags_map:
+            flags |= np.array([flags_map.get(int(label), 0)
+                               for label in self.labels])
+
+        # Source segment touches an image boundary
+        ny, nx = self._data.shape
+        edge = np.array([(slc[0].start == 0 or slc[1].start == 0
+                          or slc[0].stop == ny or slc[1].stop == nx)
+                         for slc in self._slices_iter])
+        flags[edge] |= SEGMENTATION_FLAGS.EDGE_TOUCH
+
+        # Input-masked pixels within the source segment
+        if self._mask is not None:
+            masked = np.array(
+                [np.any(mask_cut & ~segm_mask)
+                 for mask_cut, segm_mask in zip(
+                     self._mask_cutouts,
+                     self._cutout_segment_masks, strict=True)])
+            flags[masked] |= SEGMENTATION_FLAGS.MASKED_PIXELS
+
+        # Non-finite data values within the source segment
+        nonfinite = np.array(
+            [np.any(~np.isfinite(data_cut) & ~segm_mask)
+             for data_cut, segm_mask in zip(
+                 self._data_cutouts, self._cutout_segment_masks,
+                 strict=True)])
+        flags[nonfinite] |= SEGMENTATION_FLAGS.NON_FINITE_DATA
+
+        # Non-finite error values within the source segment
+        if self._error is not None:
+            nonfinite_err = np.array(
+                [np.any(~np.isfinite(err_cut) & ~segm_mask)
+                 for err_cut, segm_mask in zip(
+                     self._error_cutouts,
+                     self._cutout_segment_masks, strict=True)])
+            flags[nonfinite_err] |= SEGMENTATION_FLAGS.NON_FINITE_ERROR
+
+        # All pixels within the source segment are masked
+        flags[self._all_masked] |= SEGMENTATION_FLAGS.ALL_MASKED
+
+        # Non-positive net flux (the zeroth image moment over the
+        # source segment). The moment-derived shape properties are
+        # undefined. Fully-masked sources and sources with no positive
+        # (convolved) data values have a zero net flux, so they are also
+        # flagged here. The ``~(m00 > 0)`` form is defensive against
+        # a non-finite net flux, which cannot currently occur because
+        # the moment cutouts are zero-filled for masked and non-finite
+        # pixels, but the form would still catch it.
+        m00 = self._array('moments')[:, 0, 0]
+        flags[~(m00 > 0)] |= SEGMENTATION_FLAGS.UNDEFINED_SHAPE
+
+        # Singular, nearly singular, or rank-1 degenerate source
+        # covariance, evaluated on the raw (unregularized) covariance
+        # matrix
+        flags[self._singular_covariance_flag_mask] |= (
+            SEGMENTATION_FLAGS.SINGULAR_COVARIANCE)
+
+        # Windowed centroid is NaN or fell back to the isophotal
+        # centroid
+        flags[self._centroid_win_fallback] |= (
+            SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK)
+
+        # Quadratic-fit centroid is non-finite
+        quad = self._array('centroid_quad')
+        quad_failed = ~np.all(np.isfinite(quad), axis=1)
+        flags[quad_failed] |= SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED
+
+        # Kron-aperture flags
+        flags |= self._kron_flags
+
+        # Minimum Kron radius or minimum circular radius applied.
+        # _measured_kron_radius is the unscaled measured value, which
+        # _calc_kron_radius clips to kron_params[1] and sets to zero
+        # when the minimum circular aperture is used instead. A
+        # measured value equal to the minimum is also flagged because
+        # _measured_kron_radius returns exactly kron_params[1] when the
+        # Kron numerator or denominator is not positive. NaN comparisons
+        # are False, so sources with an undefined Kron radius are not
+        # flagged here (they are flagged as kron_undefined instead). The
+        # Kron radii are measured by the detection catalog, if input, so
+        # its kron_params define the applied minimum.
+        detcat = (self if self._detection_catalog is None
+                  else self._detection_catalog)
+        measured = self._measured_kron_radius
+        kron_radius = self._array('kron_radius').value
+        min_applied = ((measured <= detcat.kron_params[1])
+                       | (kron_radius == 0))
+        flags[min_applied] |= SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS
+
+        return flags
+
+    def decode_flags(self, *, return_bit_values=False):
+        """
+        Decode the source quality flags into individual components.
+
+        This is a convenience method that calls
+        `~photutils.segmentation.decode_segmentation_flags` with the
+        `flags` property.
+
+        Parameters
+        ----------
+        return_bit_values : bool, optional
+            If `True`, return the decoded bit flags (integers) instead
+            of the flag names (strings).
+
+        Returns
+        -------
+        decoded : dict
+            A dictionary mapping each source label to the list of its
+            active flag names (or bit values). The entries follow the
+            catalog order.
+
+        See Also
+        --------
+        photutils.segmentation.decode_segmentation_flags
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from astropy.modeling.models import Gaussian2D
+        >>> from photutils.segmentation import SourceCatalog, detect_sources
+        >>> yy, xx = np.mgrid[0:51, 0:51]
+        >>> data = (Gaussian2D(100, 25, 25, 3, 3)(xx, yy)
+        ...         + Gaussian2D(100, 2, 40, 3, 3)(xx, yy))
+        >>> segm = detect_sources(data, 10, 5)
+        >>> cat = SourceCatalog(data, segm)
+        >>> for label, names in cat.decode_flags().items():
+        ...     print(label, names)
+        1 []
+        2 ['edge_touch', 'kron_partial_overlap']
+        """
+        decoded = decode_segmentation_flags(
+            self._array('flags'), return_bit_values=return_bit_values)
+        return {int(label): flags
+                for label, flags in zip(self.labels, decoded, strict=True)}
+
     def _get_values(self, array):
         """
         Get a 1D array of unmasked values from the input array within
@@ -1918,9 +2116,12 @@ class SourceCatalog:
         Returns
         -------
         result : `~numpy.ndarray`
-            The windowed centroid coordinates and their error variances
-            and covariance as columns ``(x, y, var_x, var_y, cov_xy)``,
-            shape ``(n_sources, 5)``.
+            The windowed centroid coordinates, their error variances and
+            covariance, and the fallback indicator as columns ``(x, y,
+            var_x, var_y, cov_xy, fallback)``, shape ``(n_sources, 6)``.
+            The ``fallback`` column is 1.0 for sources whose windowed
+            centroid was reset to the isophotal centroid or is NaN
+            (non-finite half-light radius), and 0.0 otherwise.
         """
         dx = x_centroid - xcen_win
         dy = y_centroid - ycen_win
@@ -1947,8 +2148,9 @@ class SourceCatalog:
             win_err_var_y[reset] = iso_cov[reset, 1, 1]
             win_err_cov_xy[reset] = iso_cov[reset, 0, 1]
 
+        fallback = (reset | nan_hl).astype(float)
         return np.transpose((xcen_win, ycen_win, win_err_var_x,
-                             win_err_var_y, win_err_cov_xy))
+                             win_err_var_y, win_err_cov_xy, fallback))
 
     def _iterate_centroid_win(self, label, xcen, ycen, rad_hl,
                               nan_hl_source, *, data_arr, mask_arr,
@@ -2170,13 +2372,18 @@ class SourceCatalog:
     @use_detcat
     def _centroid_win_results(self):
         """
-        The "windowed" centroid coordinates and their error variances
-        and covariance as a 2D array with columns ``(x, y, var_x, var_y,
-        cov_xy)`` and shape ``(n_labels, 5)``.
+        The "windowed" centroid coordinates, their error variances
+        and covariance, and the fallback indicator as a 2D array with
+        columns ``(x, y, var_x, var_y, cov_xy, fallback)`` and shape
+        ``(n_labels, 6)``.
 
-        This is the single computation behind `centroid_win` and
-        `centroid_win_err`. See `centroid_win` for the algorithm
-        details.
+        The ``fallback`` column is 1.0 for sources whose windowed
+        centroid was reset to the isophotal centroid or is NaN, and 0.0
+        otherwise.
+
+        This is the single computation behind `centroid_win`,
+        `centroid_win_err`, and ``_centroid_win_fallback``. See
+        `centroid_win` for the algorithm details.
         """
         # Use .copy() to avoid mutating the cached flux_radius value
         radius_hl = self.flux_radius(0.5).value.copy()
@@ -2252,6 +2459,15 @@ class SourceCatalog:
             win_cen_mom_xx, win_cen_mom_yy, win_cen_mom_xy,
             win_err_var_x, win_err_var_y, win_err_cov_xy, nan_hl,
             x_centroid, y_centroid)
+
+    @cached_property
+    @use_detcat
+    def _centroid_win_fallback(self):
+        """
+        A boolean array that is `True` where the windowed centroid is
+        NaN or fell back to the isophotal centroid.
+        """
+        return self._centroid_win_results[:, 5].astype(bool)
 
     @cached_property
     @use_detcat
@@ -2497,6 +2713,13 @@ class SourceCatalog:
                 results.append(nan_result)
                 continue
 
+            # A source with no unmasked pixels has no peak; without this
+            # guard the masked (zeroed) cutout below would return the
+            # position of its first pixel as the "peak"
+            if np.all(mask):
+                results.append(nan_result)
+                continue
+
             # Apply mask: _cutout_total_masks already includes
             # non-finite data values, so cutout[mask] = 0.0 handles both
             # masked pixels and non-finite values.
@@ -2589,6 +2812,7 @@ class SourceCatalog:
         * quadratic fit does not have a maximum
         * quadratic fit maximum falls outside image
         * not enough unmasked data points (6 are required)
+        * no unmasked pixels within the source segment
 
         In these cases, then the isophotal `centroid` will be used
         instead.
@@ -2619,6 +2843,7 @@ class SourceCatalog:
         * quadratic fit does not have a maximum
         * quadratic fit maximum falls outside image
         * not enough unmasked data points (6 are required)
+        * no unmasked pixels within the source segment
 
         Also note that a fit is not performed if the maximum data value
         is at the edge of the source segment. In this case, the position
@@ -3486,11 +3711,51 @@ class SourceCatalog:
         the squared variance of a uniform distribution across a single
         pixel. Sources with non-finite covariance are not flagged.
         """
+        return self._raw_covariance_det < (1.0 / 12.0)**2
+
+    @cached_property
+    def _singular_covariance_flag_mask(self):
+        """
+        A boolean mask with a leading source axis that is `True` for
+        sources whose raw covariance matrix is singular or nearly
+        singular, including rank-1 degenerate sources.
+
+        This is the mask used for the ``'singular_covariance'``
+        flag. It matches the equivalent aperture flag (see
+        `~photutils.aperture.decode_aperture_flags`): in addition to
+        the determinant test used by ``_singular_covariance_mask``, a
+        source is flagged when its minor-axis variance (the smaller
+        eigenvalue of the raw covariance matrix) is less than ``1 /
+        12``. The determinant test alone misses elongated sources that
+        are unresolved along only one axis. Sources with non-finite
+        covariance are not flagged.
+        """
+        covar = self._raw_covariance
         # Ignore RuntimeWarning from NaN values in the covariance
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
-            covar_det = np.linalg.det(self._raw_covariance)
-        return covar_det < (1.0 / 12.0)**2
+            # Smaller eigenvalue (the minor-axis variance) of each
+            # 2x2 symmetric covariance matrix, via the closed form
+            # lambda = tr/2 -/+ sqrt((tr/2)**2 - det). The discriminant
+            # is non-negative for a real symmetric matrix. Clip tiny
+            # negative rounding to zero.
+            half_trace = 0.5 * (covar[:, 0, 0] + covar[:, 1, 1])
+            disc = np.maximum(half_trace**2 - self._raw_covariance_det,
+                              0.0)
+            min_eigval = half_trace - np.sqrt(disc)
+            degenerate = (np.isfinite(min_eigval)
+                          & (min_eigval < 1.0 / 12.0))
+        return self._singular_covariance_mask | degenerate
+
+    @cached_property
+    def _raw_covariance_det(self):
+        """
+        The determinant of the raw ``(N, 2, 2)`` covariance matrix.
+        """
+        # Ignore RuntimeWarning from NaN values in the covariance
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            return np.linalg.det(self._raw_covariance)
 
     @cached_property
     def _raw_covariance(self):
@@ -3499,10 +3764,12 @@ class SourceCatalog:
         function that has the same normalized second-order moments as
         the source, before any regularization.
 
-        This unregularized matrix is shared by `_covariance` (which
-        regularizes a copy) and `_singular_covariance_mask` (which tests
-        it for singularity). Callers that modify the matrix in place
-        must operate on a copy so the cached value is not corrupted.
+        This unregularized matrix is shared by `_covariance`
+        (which regularizes a copy) and by the masks that test
+        it for singularity (``_singular_covariance_mask`` and
+        ``_singular_covariance_flag_mask``). Callers that modify the
+        matrix in place must operate on a copy so the cached value is
+        not corrupted.
         """
         moments = self._array('moments_central')
         # Ignore divide-by-zero RuntimeWarning
@@ -3957,11 +4224,17 @@ class SourceCatalog:
 
         Neighboring sources can be included, masked, or corrected based
         on the ``aperture_mask_method`` keyword.
+
+        The last returned value is a dictionary of the cutout masks
+        needed to compute the aperture quality flags. Its ``segm_mask``
+        and ``uncorrected_mask`` values are `None` where they do not
+        apply (i.e., for an ``aperture_mask_method`` of "none" and for a
+        method other than "correct", respectively).
         """
         # Make cutouts of the data based on the aperture bbox
         slc_lg, slc_sm = aperture_bbox.get_overlap_slices(self._data.shape)
         if slc_lg is None:
-            return (None,) * 5
+            return (None,) * 6
 
         data = self._data[slc_lg].astype(float) - local_background
 
@@ -3978,6 +4251,8 @@ class SourceCatalog:
                         y_centroid - max(0, aperture_bbox.iymin))
 
         # Mask or correct neighboring sources
+        segm_mask = None
+        uncorrected_mask = None
         if self.aperture_mask_method == 'none':
             mask = data_mask
         else:
@@ -3990,13 +4265,18 @@ class SourceCatalog:
                 mask = data_mask
 
         if self.aperture_mask_method == 'correct':
-            data = _mask_to_mirrored_value(data, segm_mask, cutout_xycen,
-                                           mask=mask)
+            data, uncorrected_mask = _mask_to_mirrored_value(
+                data, segm_mask, cutout_xycen, mask=mask,
+                return_uncorrected=True)
             if error is not None:
                 error = _mask_to_mirrored_value(error, segm_mask, cutout_xycen,
                                                 mask=mask)
 
-        return data, error, mask, cutout_xycen, slc_sm
+        flag_masks = {'data_mask': data_mask,
+                      'segm_mask': segm_mask,
+                      'uncorrected_mask': uncorrected_mask}
+
+        return data, error, mask, cutout_xycen, slc_sm, flag_masks
 
     def _make_circular_apertures(self, radius):
         """
@@ -4674,7 +4954,7 @@ class SourceCatalog:
                 continue
 
             # Prepare cutouts of the data based on the aperture size
-            data, error, mask, _, slc_sm = self._make_aperture_data(
+            data, error, mask, _, slc_sm, _ = self._make_aperture_data(
                 label, xcen, ycen, aperture_mask.bbox, bkg)
 
             aperture_weights = aperture_mask.data[slc_sm]
@@ -4717,8 +4997,9 @@ class SourceCatalog:
 
         Returns
         -------
-        kron_flux, kron_flux_err : tuple of `~numpy.ndarray`
-            The Kron flux and flux error.
+        kron_flux, kron_flux_err, kron_flags : tuple of `~numpy.ndarray`
+            The Kron flux, flux error, and bitwise quality flags (see
+            `~photutils.segmentation.decode_segmentation_flags`).
         """
         if kron_params is None:
             kron_aperture = self._array('kron_aperture')
@@ -4732,14 +5013,17 @@ class SourceCatalog:
 
         _floor = math.floor
         max_size = max(self._data.size, 1_000_000)
+        ny_img, nx_img = self._data.shape
 
         flux = []
         flux_err = []
+        kron_flags = []
         for label, aperture, bkg in zip(labels, kron_aperture,
                                         self._local_background, strict=True):
             if aperture is None:
                 flux.append(np.nan)
                 flux_err.append(np.nan)
+                kron_flags.append(SEGMENTATION_FLAGS.KRON_UNDEFINED)
                 continue
 
             xcen, ycen = aperture.positions
@@ -4758,6 +5042,7 @@ class SourceCatalog:
                 if nx * ny > max_size:
                     flux.append(np.nan)
                     flux_err.append(np.nan)
+                    kron_flags.append(SEGMENTATION_FLAGS.KRON_UNDEFINED)
                     continue
                 edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
                          iymin - 0.5 - ycen, iymax - 0.5 - ycen)
@@ -4784,6 +5069,7 @@ class SourceCatalog:
                 if nx * ny > max_size:
                     flux.append(np.nan)
                     flux_err.append(np.nan)
+                    kron_flags.append(SEGMENTATION_FLAGS.KRON_UNDEFINED)
                     continue
                 edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
                          iymin - 0.5 - ycen, iymax - 0.5 - ycen)
@@ -4792,15 +5078,48 @@ class SourceCatalog:
                     nx, ny, a, b, theta_rad, 1, 1)
 
             bbox = BoundingBox(ixmin, ixmax, iymin, iymax)
-            data, error, mask, _, slc_sm = self._make_aperture_data(
-                label, xcen, ycen, bbox, bkg)
+            (data, error, mask, _, slc_sm,
+             flag_masks) = self._make_aperture_data(label, xcen, ycen, bbox,
+                                                    bkg)
             if data is None:
                 flux.append(np.nan)
                 flux_err.append(np.nan)
+                kron_flags.append(SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
                 continue
 
             aperture_weights = mask_data[slc_sm]
-            pixel_mask = (aperture_weights > 0) & ~mask
+            in_aperture = aperture_weights > 0
+            pixel_mask = in_aperture & ~mask
+
+            kron_flag = 0
+            # The aperture bounding box extends beyond the data array.
+            # The box corners can have zero aperture weight, so compare
+            # the number of nonzero-weight pixels within the data to the
+            # total number in the aperture. The overlap is partial only
+            # if at least one nonzero-weight pixel falls both inside and
+            # outside of the data.
+            if (ixmin < 0 or iymin < 0 or ixmax > nx_img
+                    or iymax > ny_img):
+                n_inside = np.count_nonzero(in_aperture)
+                if n_inside == 0:
+                    kron_flag |= SEGMENTATION_FLAGS.KRON_NO_OVERLAP
+                elif n_inside != np.count_nonzero(mask_data):
+                    kron_flag |= SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP
+
+            if np.any(flag_masks['data_mask'] & in_aperture):
+                kron_flag |= SEGMENTATION_FLAGS.KRON_MASKED_PIXELS
+
+            segm_mask = flag_masks['segm_mask']
+            if segm_mask is not None and np.any(segm_mask & in_aperture):
+                kron_flag |= SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS
+
+            uncorrected_mask = flag_masks['uncorrected_mask']
+            if (uncorrected_mask is not None
+                    and np.any(uncorrected_mask & in_aperture)):
+                kron_flag |= SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS
+
+            kron_flags.append(kron_flag)
+
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', RuntimeWarning)
                 values = (aperture_weights * data)[pixel_mask]
@@ -4819,8 +5138,9 @@ class SourceCatalog:
 
         flux = np.array(flux)
         flux_err = np.array(flux_err)
+        kron_flags = np.array(kron_flags, dtype=int)
 
-        return flux, flux_err
+        return flux, flux_err, kron_flags
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def kron_photometry(self, kron_params, name=None, overwrite=False):
@@ -4867,7 +5187,7 @@ class SourceCatalog:
             `centroid` position or elliptical shape parameters are not
             finite or where the source is completely masked).
         """
-        kron_flux, kron_flux_err = self._calc_kron_photometry(
+        kron_flux, kron_flux_err, _ = self._calc_kron_photometry(
             kron_params=kron_params)
         if self._data_unit is not None:
             kron_flux <<= self._data_unit
@@ -4889,17 +5209,31 @@ class SourceCatalog:
     @cached_property
     def _kron_photometry(self):
         """
-        The flux and flux error in the Kron aperture (without units).
+        The flux, flux error, and bitwise quality flags of the Kron
+        aperture (without units) as a 2D array with columns ``(flux,
+        flux_err, flags)`` and shape ``(n_labels, 3)``.
+
+        The flags are stored as floats so that all three values can be
+        kept in a single array that slices along the source axis. All of
+        the flag bit values are exactly representable as floats.
 
         See the `SourceCatalog` ``aperture_mask_method`` keyword for
         options to mask neighboring sources.
 
-        If the Kron aperture is `None`, then ``np.nan`` will be
-        returned. This will occur where the source `centroid` position
-        or elliptical shape parameters are not finite or where the
-        source is completely masked.
+        If the Kron aperture is `None`, then ``np.nan`` will be returned
+        for the flux and flux error. This will occur where the source
+        `centroid` position or elliptical shape parameters are not
+        finite or where the source is completely masked.
         """
         return np.transpose(self._calc_kron_photometry(kron_params=None))
+
+    @cached_property
+    def _kron_flags(self):
+        """
+        The per-source bitwise quality flags from the Kron-aperture
+        photometry.
+        """
+        return self._kron_photometry[:, 2].astype(int)
 
     @cached_property
     def kron_flux(self):

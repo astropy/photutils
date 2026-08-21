@@ -18,6 +18,7 @@ from scipy.ndimage import sum_labels
 from photutils.segmentation.core import (SegmentationImage, _get_labels,
                                          _remap_deblend_label_map)
 from photutils.segmentation.detect import _detect_sources
+from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._deprecation import deprecated_renamed_argument
 from photutils.utils._progress_bars import add_progress_bar, tqdm
@@ -138,14 +139,16 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     -------
     segment_image : `~photutils.segmentation.SegmentationImage`
         A segmentation image, with the same shape as ``data``, where
-        sources are marked by different positive integer values. A
-        value of zero is reserved for the background. The ``info``
-        attribute of the returned segmentation image is a dictionary
-        that stores the input labels for which the deblending mode was
-        changed to "linear" as arrays under ``'nonposmin_labels'``
-        (non-positive minimum data values) and ``'n_markers_labels'``
-        (too many potential deblended sources) keys. The dictionary is
-        empty if no mode fallbacks occurred.
+        sources are marked by different positive integer values. A value
+        of zero is reserved for the background. The ``info`` attribute
+        of the returned segmentation image is a dictionary that stores
+        the input labels for which the deblending mode was changed to
+        "linear" as arrays under ``'nonposmin_labels'`` (non-positive
+        minimum data values) and ``'n_markers_labels'`` (too many
+        potential deblended sources) keys. The dictionary is empty if no
+        mode fallbacks occurred. The ``flags`` attribute of the returned
+        segmentation image records per-source deblending provenance. See
+        `~photutils.segmentation.decode_segmentation_flags`.
 
     Warns
     -----
@@ -328,6 +331,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                'segmentation image for the affected input labels.')
         warnings.warn(msg, DeblendWarning)
 
+    relabel_map = None
     if relabel:
         relabel_map = _create_relabel_map(segm_deblended, start_label=1)
         if relabel_map is not None:
@@ -344,6 +348,9 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         segm_img.info['nonposmin_labels'] = np.array(nonposmin_labels)
     if n_markers_labels:
         segm_img.info['n_markers_labels'] = np.array(n_markers_labels)
+
+    segm_img._flags_map = _make_flags_map(
+        deblend_label_map, nonposmin_labels, n_markers_labels, relabel_map)
 
     return segm_img
 
@@ -657,6 +664,65 @@ class _SingleSourceDeblender:
         if relabel_map is not None:
             markers = relabel_map[markers]
         return markers
+
+
+def _make_flags_map(deblend_label_map, nonposmin_labels, n_markers_labels,
+                    relabel_map):
+    """
+    Build the per-label flags mapping for a deblended segmentation
+    image.
+
+    Deblended children get the "deblended" flag. Mode-fallback flags
+    are set on the children of affected parents, or on the parent's own
+    (possibly relabeled) output label if it did not split.
+
+    Parameters
+    ----------
+    deblend_label_map : dict
+        Mapping of input parent labels to arrays of output child labels,
+        in the final (post-relabel) label frame.
+
+    nonposmin_labels, n_markers_labels : list of int
+        Input parent labels affected by each mode fallback.
+
+    relabel_map : `~numpy.ndarray` or `None`
+        The relabeling map applied to the deblended image, or `None` if
+        no relabeling was applied.
+
+    Returns
+    -------
+    flags_map : dict
+        Mapping of output labels to bitwise flag values.
+    """
+    flags_map = {}
+    for children in deblend_label_map.values():
+        for child in children:
+            child = int(child)
+            flags_map[child] = (flags_map.get(child, 0)
+                                | SEGMENTATION_FLAGS.DEBLENDED)
+
+    fallbacks = [
+        (nonposmin_labels, SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN),
+        (n_markers_labels, SEGMENTATION_FLAGS.DEBLEND_N_MARKERS),
+    ]
+    for input_labels, bit in fallbacks:
+        for label in input_labels:
+            label = int(label)
+            if label in deblend_label_map:
+                targets = [
+                    int(child) for child in deblend_label_map[label]
+                ]
+            else:
+                # The source did not split. Translate its input label to
+                # the output label frame.
+                if relabel_map is None:
+                    out_label = label
+                else:
+                    out_label = int(relabel_map[label])
+                targets = [out_label]
+            for target in targets:
+                flags_map[target] = flags_map.get(target, 0) | bit
+    return flags_map
 
 
 def _create_relabel_map(array, *, start_label=1):

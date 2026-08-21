@@ -27,8 +27,10 @@ from photutils.datasets import (make_100gaussians_image, make_gwcs,
                                 make_noise_image, make_wcs)
 from photutils.segmentation.catalog import SourceCatalog
 from photutils.segmentation.core import SegmentationImage
+from photutils.segmentation.deblend import deblend_sources
 from photutils.segmentation.detect import detect_sources
 from photutils.segmentation.finder import SourceFinder
+from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import make_2dgaussian_kernel
 from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,
                                             HAS_SKIMAGE)
@@ -1414,6 +1416,522 @@ class TestSourceCatalog:
         assert_allclose(cat.fwhm, [0.67977799, np.nan] * u.pix)
 
 
+class TestSourceCatalogFlags:
+    """
+    Tests for the SourceCatalog flags property.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        yy, xx = np.mgrid[0:51, 0:51]
+        # Interior source and edge-touching source
+        interior = Gaussian2D(100, 25, 25, 3, 3)(xx, yy)
+        edge = Gaussian2D(100, 2, 40, 3, 3)(xx, yy)
+        self.data = interior + edge
+        self.segm = detect_sources(self.data, 10, 5)
+        assert self.segm.n_labels == 2
+
+    def test_flags_zero(self):
+        """
+        Test that flags are zero for clean interior sources.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        interior_idx = np.argmax(cat.bbox_xmin > 0)
+        assert cat.flags[interior_idx] == 0
+
+    def test_edge_touch(self):
+        """
+        Test the edge_touch flag for a source segment touching the image
+        boundary.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        edge_bits = cat.flags & SEGMENTATION_FLAGS.EDGE_TOUCH
+        assert np.count_nonzero(edge_bits) == 1
+
+    def test_masked_pixels(self):
+        """
+        Test the masked_pixels flag for input-masked pixels within the
+        source segment.
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[25, 25] = True  # inside the interior source
+        cat = SourceCatalog(self.data, self.segm, mask=mask)
+        idx = np.argmax(cat.bbox_xmin > 0)
+        assert cat.flags[idx] & SEGMENTATION_FLAGS.MASKED_PIXELS
+        other = 1 - idx
+        assert not (cat.flags[other]
+                    & SEGMENTATION_FLAGS.MASKED_PIXELS)
+
+    def test_non_finite_data(self):
+        """
+        Test the non_finite_data flag.
+        """
+        data = self.data.copy()
+        data[25, 25] = np.nan
+        cat = SourceCatalog(data, self.segm)
+        idx = np.argmax(cat.bbox_xmin > 0)
+        assert cat.flags[idx] & SEGMENTATION_FLAGS.NON_FINITE_DATA
+        other = 1 - idx
+        assert not (cat.flags[other]
+                    & SEGMENTATION_FLAGS.NON_FINITE_DATA)
+
+    def test_non_finite_error(self):
+        """
+        Test the non_finite_error flag.
+        """
+        error = np.ones(self.data.shape)
+        error[25, 25] = np.inf
+        cat = SourceCatalog(self.data, self.segm, error=error)
+        idx = np.argmax(cat.bbox_xmin > 0)
+        assert cat.flags[idx] & SEGMENTATION_FLAGS.NON_FINITE_ERROR
+        other = 1 - idx
+        assert not (cat.flags[other]
+                    & SEGMENTATION_FLAGS.NON_FINITE_ERROR)
+
+    def test_all_masked(self):
+        """
+        Test the all_masked flag when every segment pixel is masked.
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[self.segm.data == self.segm.labels[0]] = True
+        cat = SourceCatalog(self.data, self.segm, mask=mask)
+        assert cat.flags[0] & SEGMENTATION_FLAGS.ALL_MASKED
+
+    def test_undefined_shape(self):
+        """
+        Test the undefined_shape flag for a source with non-positive
+        net flux.
+        """
+        data = np.zeros((11, 11))
+        data[3:8, 3:8] = -1.0
+        segm_data = np.zeros((11, 11), dtype=int)
+        segm_data[3:8, 3:8] = 1
+        cat = SourceCatalog(data, SegmentationImage(segm_data))
+        assert cat.flags[0] & SEGMENTATION_FLAGS.UNDEFINED_SHAPE
+
+    def test_undefined_shape_not_set(self):
+        """
+        Test that undefined_shape is not set for a normal source.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        assert not np.any(cat.flags
+                          & SEGMENTATION_FLAGS.UNDEFINED_SHAPE)
+
+    def test_singular_covariance(self):
+        """
+        Test the singular_covariance flag for a one-pixel-wide source.
+        """
+        data = np.zeros((11, 11))
+        data[5, 2:9] = 10.0
+        segm_data = np.zeros((11, 11), dtype=int)
+        segm_data[5, 2:9] = 1
+        cat = SourceCatalog(data, SegmentationImage(segm_data))
+        assert cat.flags[0] & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
+
+    def test_singular_covariance_elongated(self):
+        """
+        Test the singular_covariance flag for an elongated source that
+        is unresolved along only its minor axis.
+
+        The covariance determinant of such a source exceeds
+        ``(1/12)**2``, so it is flagged only by the minor-axis variance
+        test.
+        """
+        data = np.zeros((11, 11))
+        data[4, 2:9] = 0.04
+        data[5, 2:9] = 1.0
+        data[6, 2:9] = 0.04
+        segm_data = np.zeros((11, 11), dtype=int)
+        segm_data[4:7, 2:9] = 1
+        cat = SourceCatalog(data, SegmentationImage(segm_data))
+        # the minor-axis variance is below the 1/12 single-pixel floor
+        assert cat.semiminor_axis.value[0] < np.sqrt(1 / 12)
+        assert cat.flags[0] & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
+
+    def test_singular_covariance_not_set(self):
+        """
+        Test that singular_covariance is not set for a well-resolved
+        source.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        assert not np.any(cat.flags
+                          & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE)
+
+    def test_centroid_flags_fully_masked(self):
+        """
+        Test that a fully-masked source flags both centroid failures
+        (windowed centroid NaN, quadratic fit NaN).
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[self.segm.data == self.segm.labels[0]] = True
+        cat = SourceCatalog(self.data, self.segm, mask=mask)
+        assert np.all(np.isnan(cat.centroid_quad[0]))
+        assert cat.flags[0] & SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
+        assert cat.flags[0] & SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED
+
+    def test_centroid_flags_fully_masked_small(self):
+        """
+        Test that a fully-masked source smaller than the 3x3 quadratic
+        fit box flags both centroid failures.
+        """
+        data = np.zeros((21, 21))
+        data[5:7, 5:7] = 10.0
+        segm_data = np.zeros((21, 21), dtype=int)
+        segm_data[5:7, 5:7] = 1
+        mask = segm_data.astype(bool)
+        cat = SourceCatalog(data, SegmentationImage(segm_data),
+                            mask=mask)
+        assert cat.flags[0] & SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
+        assert cat.flags[0] & SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED
+
+    def test_centroid_flags_not_set(self):
+        """
+        Test that centroid flags are not set for clean resolved sources.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        bits = (SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
+                | SEGMENTATION_FLAGS.CENTROID_QUAD_FAILED)
+        assert not np.any(cat.flags & bits)
+
+    def test_kron_partial_overlap(self):
+        """
+        Test the kron_partial_overlap flag when the Kron aperture
+        extends beyond the image while the segment does not.
+        """
+        yy, xx = np.mgrid[0:41, 0:41]
+        data = Gaussian2D(100, 6, 20, 3, 3)(xx, yy)
+        segm = detect_sources(data, 25, 5)  # compact segment
+        cat = SourceCatalog(data, segm)
+        assert not (cat.flags[0] & SEGMENTATION_FLAGS.EDGE_TOUCH)
+        assert (cat.flags[0]
+                & SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP)
+
+    def test_kron_partial_overlap_not_set(self):
+        """
+        Test that kron_partial_overlap is not set for a source whose
+        Kron aperture is completely inside the image.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        idx = np.argmax(cat.bbox_xmin > 0)
+        assert not (cat.flags[idx]
+                    & SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP)
+
+    @staticmethod
+    def _make_deblended_pair():
+        """
+        Make the data and deblended segmentation image for a pair of
+        overlapping sources.
+        """
+        yy, xx = np.mgrid[0:61, 0:61]
+        data = (Gaussian2D(100, 25, 30, 4, 4)(xx, yy)
+                + Gaussian2D(100, 38, 30, 4, 4)(xx, yy))
+        segm = detect_sources(data, 10, 5)
+        return data, deblend_sources(data, segm, 5, progress_bar=False)
+
+    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+    def test_kron_neighbor_pixels(self):
+        """
+        Test the kron_neighbor_pixels flag when a neighbor segment falls
+        within the Kron aperture.
+        """
+        data, segm = self._make_deblended_pair()
+        cat = SourceCatalog(data, segm, aperture_mask_method='correct')
+        assert np.all(cat.flags
+                      & SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS)
+
+    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+    def test_kron_uncorrected_pixels(self):
+        """
+        Test the kron_uncorrected_pixels flag for neighbor pixels within
+        the Kron aperture that could not be replaced by a mirrored
+        value.
+        """
+        data, segm = self._make_deblended_pair()
+        cat = SourceCatalog(data, segm, aperture_mask_method='correct')
+        assert np.all(cat.flags
+                      & SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS)
+
+        # Neighboring sources are neither masked nor corrected
+        cat2 = SourceCatalog(data, segm, aperture_mask_method='none')
+        bits = (SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS
+                | SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS)
+        assert not np.any(cat2.flags & bits)
+
+        # Neighboring sources are masked, not corrected, so no pixels
+        # are left uncorrected
+        cat3 = SourceCatalog(data, segm, aperture_mask_method='mask')
+        assert np.all(cat3.flags
+                      & SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS)
+        assert not np.any(cat3.flags
+                          & SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS)
+
+    def test_kron_neighbor_pixels_not_set(self):
+        """
+        Test that kron_neighbor_pixels is not set when the Kron aperture
+        contains no neighboring source pixels.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        assert not np.any(cat.flags
+                          & SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS)
+
+    def test_kron_masked_pixels(self):
+        """
+        Test the kron_masked_pixels flag for a masked pixel inside the
+        Kron aperture but outside the segment.
+        """
+        cat0 = SourceCatalog(self.data, self.segm)
+        interior_idx = np.argmax(cat0.bbox_xmin > 0)
+        # Mask a pixel just outside the segment bbox, inside the
+        # Kron aperture of the interior source
+        x_out = int(cat0.bbox_xmax[interior_idx]) + 1
+        y_cen = int(cat0.bbox_ymin[interior_idx]
+                    + cat0.bbox_ymax[interior_idx]) // 2
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[y_cen, x_out] = True
+        cat = SourceCatalog(self.data, self.segm, mask=mask)
+        assert (cat.flags[interior_idx]
+                & SEGMENTATION_FLAGS.KRON_MASKED_PIXELS)
+        assert not (cat.flags[interior_idx]
+                    & SEGMENTATION_FLAGS.MASKED_PIXELS)
+
+    def test_kron_undefined(self):
+        """
+        Test the kron_undefined flag for a fully-masked source (whose
+        Kron aperture is undefined).
+        """
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[self.segm.data == self.segm.labels[0]] = True
+        cat = SourceCatalog(self.data, self.segm, mask=mask)
+        assert cat.kron_aperture[0] is None
+        assert cat.flags[0] & SEGMENTATION_FLAGS.KRON_UNDEFINED
+
+    @pytest.mark.parametrize('circular', [False, True])
+    def test_kron_undefined_oversized(self, circular):
+        """
+        Test the kron_undefined flag when the Kron photometry is skipped
+        because the aperture is too large.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        _ = cat.kron_aperture  # cache the apertures
+        if circular:
+            aperture = CircularAperture((25, 25), r=2000)
+        else:
+            aperture = EllipticalAperture((25, 25), 2000, 2000,
+                                          theta=0.0)
+        cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
+        assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_UNDEFINED)
+
+    def test_kron_no_overlap(self):
+        """
+        Test the kron_no_overlap flag when the Kron aperture is
+        completely outside the data array.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        _ = cat.kron_aperture  # cache the apertures
+        aperture = EllipticalAperture((-1000, -1000), 5, 3, theta=0.0)
+        cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
+        assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
+
+    def test_kron_no_overlap_zero_weights(self):
+        """
+        Test the kron_no_overlap flag when the Kron aperture bounding
+        box overlaps the data, but no pixel within the data has a
+        nonzero aperture weight.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        _ = cat.kron_aperture  # cache the apertures
+        aperture = CircularAperture((-10.5, -10.5), r=10)
+        cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
+        assert np.all(np.isnan(cat.kron_flux))
+        assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
+        assert not np.any(cat.flags
+                          & SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP)
+
+    def test_kron_minimum_radius(self):
+        """
+        Test the kron_minimum_radius flag when the measured Kron radius
+        is clipped to the kron_params minimum.
+        """
+        # A large minimum unscaled Kron radius forces clipping for
+        # every source
+        cat = SourceCatalog(self.data, self.segm,
+                            kron_params=(2.5, 5.9, 0.0))
+        assert np.all(cat.flags
+                      & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
+
+        # The default minimum is not triggered by these resolved
+        # sources. The measured unscaled Kron radii are approximately
+        # [1.4318, 1.4058] against the default minimum of 1.4, a margin
+        # of about 0.006 for the smaller value. A future failure here
+        # likely indicates a fixture-tolerance drift rather than a flag
+        # regression.
+        cat2 = SourceCatalog(self.data, self.segm)
+        assert not np.any(cat2.flags
+                          & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
+
+    def test_kron_minimum_circular_radius(self):
+        """
+        Test the kron_minimum_radius flag when the minimum circular
+        aperture is used (kron_radius set to zero).
+        """
+        # A large minimum circular radius forces the circular fallback
+        # for every source
+        cat = SourceCatalog(self.data, self.segm,
+                            kron_params=(2.5, 1.4, 50.0))
+        assert_equal(cat.kron_radius.value, np.zeros(2))
+        assert np.all(cat.flags
+                      & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
+
+    def test_kron_minimum_radius_detection_catalog(self):
+        """
+        Test that the kron_minimum_radius flag follows the kron_params
+        of the detection catalog, which measures the Kron radii.
+
+        A detection catalog overrides the input ``kron_params``, so
+        the minimum radius of the detection catalog is the one that is
+        applied.
+        """
+        # The detection catalog does not apply its minimum, even though
+        # the measured radii are below the requested minimum.
+        detcat = SourceCatalog(self.data, self.segm,
+                               kron_params=(2.5, 1.4))
+        cat = SourceCatalog(self.data, self.segm,
+                            kron_params=(2.5, 5.9),
+                            detection_catalog=detcat)
+        assert cat.kron_params == detcat.kron_params
+        assert not np.any(cat.flags
+                          & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
+
+        # The detection catalog applies its minimum to every source
+        detcat2 = SourceCatalog(self.data, self.segm,
+                                kron_params=(2.5, 5.9))
+        cat2 = SourceCatalog(self.data, self.segm,
+                             kron_params=(2.5, 1.4),
+                             detection_catalog=detcat2)
+        assert cat2.kron_params == detcat2.kron_params
+        assert np.all(cat2.flags
+                      & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
+
+    def test_kron_minimum_radius_two_element_params(self):
+        """
+        Test the kron_minimum_radius flag with a two-element kron_params
+        (no minimum circular radius).
+        """
+        cat = SourceCatalog(self.data, self.segm,
+                            kron_params=(2.5, 5.9))
+        assert np.all(cat.flags
+                      & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
+
+    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+    def test_provenance_from_deblending(self):
+        """
+        Test that deblending provenance flags propagate into the catalog
+        flags.
+        """
+        yy, xx = np.mgrid[0:101, 0:101]
+        data = (Gaussian2D(100, 50, 50, 5, 5)(xx, yy)
+                + Gaussian2D(100, 35, 50, 5, 5)(xx, yy))
+        segm = detect_sources(data, 10, 5)
+        segm2 = deblend_sources(data, segm, 5, progress_bar=False)
+        cat = SourceCatalog(data, segm2)
+        assert np.all(cat.flags & SEGMENTATION_FLAGS.DEBLENDED)
+
+    def test_flags_in_table(self):
+        """
+        Test that flags is a default table column with int values.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        tbl = cat.to_table()
+        assert 'flags' in tbl.colnames
+        assert np.issubdtype(tbl['flags'].dtype, np.integer)
+
+    def test_flags_slicing(self):
+        """
+        Test that flags slice consistently with the catalog.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        flags = cat.flags
+        assert cat[1:].flags[0] == flags[1]
+
+    def test_flags_scalar_fresh(self):
+        """
+        Test that a scalar catalog sliced before the parent catalog's
+        flags are cached computes a flags value that matches the parent
+        catalog's flags.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        scalar_cat = cat[0]  # slice before flags is accessed/cached
+        assert scalar_cat.flags == cat.flags[0]
+
+    def test_flags_scalar_cached(self):
+        """
+        Test that a scalar catalog sliced after the parent catalog's
+        flags are already cached carries the matching flags value.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        flags = cat.flags  # cache flags on the parent catalog
+        scalar_cat = cat[0]  # slice after flags is cached
+        assert scalar_cat.flags == flags[0]
+
+    def test_flags_docstring_lists_all_flags(self):
+        """
+        Test that the flags docstring documents every flag name.
+        """
+        doc = SourceCatalog.flags.func.__doc__
+        for name in SEGMENTATION_FLAGS.names:
+            assert name in doc
+
+    def test_decode_flags(self):
+        """
+        Test that decode_flags returns a dictionary mapping each
+        source label to its active flag names.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        decoded = cat.decode_flags()
+        interior_idx = np.argmax(cat.bbox_xmin > 0)
+        interior_label = cat.labels[interior_idx]
+        edge_label = cat.labels[1 - interior_idx]
+        assert list(decoded) == list(cat.labels)
+        assert all(type(key) is int for key in decoded)
+        assert decoded[interior_label] == []
+        assert decoded[edge_label] == ['edge_touch',
+                                       'kron_partial_overlap']
+
+    def test_decode_flags_bit_values(self):
+        """
+        Test that decode_flags returns bit values when requested.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        decoded = cat.decode_flags(return_bit_values=True)
+        interior_idx = np.argmax(cat.bbox_xmin > 0)
+        interior_label = cat.labels[interior_idx]
+        edge_label = cat.labels[1 - interior_idx]
+        assert decoded[interior_label] == []
+        assert decoded[edge_label] == [
+            SEGMENTATION_FLAGS.EDGE_TOUCH,
+            SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP]
+
+    def test_decode_flags_scalar(self):
+        """
+        Test that decode_flags on a scalar catalog returns a
+        single-entry dictionary keyed by the source label.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        interior_idx = int(np.argmax(cat.bbox_xmin > 0))
+        scalar_cat = cat[1 - interior_idx]
+        edge_label = int(cat.labels[1 - interior_idx])
+        assert scalar_cat.decode_flags() == {
+            edge_label: ['edge_touch', 'kron_partial_overlap']}
+
+    def test_decode_flags_keyword_only(self):
+        """
+        Test that return_bit_values must be passed as a keyword.
+        """
+        cat = SourceCatalog(self.data, self.segm)
+        with pytest.raises(TypeError, match='positional'):
+            cat.decode_flags(1)
+
+
 class TestThreadSafety:
     """
     Thread-safety tests for the SourceCatalog class.
@@ -1578,6 +2096,11 @@ def test_centroid_win(centroid_win_data):
     assert cat.x_centroid[1] == cat.x_centroid_win[1]
     assert cat.y_centroid[1] == cat.y_centroid_win[1]
 
+    # Only the reset source is flagged
+    win_flags = cat.flags & SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
+    assert not win_flags[0]
+    assert win_flags[1]
+
 
 def test_centroid_win_migrate():
     """
@@ -1597,6 +2120,9 @@ def test_centroid_win_migrate():
     indices = (0, 3, 14, 30)
     for idx in indices:
         assert_equal(cat.centroid_win[idx], cat.centroid[idx])
+        # The windowed centroid diverged off the image (a non-ellipse
+        # fallback condition), so the fallback flag is set.
+        assert cat.flags[idx] & SEGMENTATION_FLAGS.CENTROID_WIN_FALLBACK
 
 
 def test_background_centroid_coordinate_order():
@@ -2092,7 +2618,7 @@ def test_kron_photometry_oom_guard(gauss_101_catalog):
         if result[0] is not None:
             # Set mask to all True (all pixels masked)
             return (result[0], result[1], np.ones_like(result[2]),
-                    result[3], result[4])
+                    result[3], result[4], result[5])
         return result
 
     with patch.object(type(cat4), '_make_aperture_data', _make_all_masked):
@@ -2218,7 +2744,7 @@ def test_centroid_win_aperture_mask_mask(centroid_win_data):
 
 def test_make_aperture_data_outside_image(gauss_101_catalog):
     """
-    Test that _make_aperture_data returns (None,) * 5 when the aperture
+    Test that _make_aperture_data returns (None,) * 6 when the aperture
     bbox does not overlap the data.
     """
     _data, _segm, cat = gauss_101_catalog
@@ -2227,7 +2753,7 @@ def test_make_aperture_data_outside_image(gauss_101_catalog):
     offimage_bbox = BoundingBox(ixmin=200, ixmax=210,
                                 iymin=200, iymax=210)
     result = cat._make_aperture_data(1, 205.0, 205.0, offimage_bbox, 0.0)
-    assert result == (None,) * 5
+    assert result == (None,) * 6
 
 
 def test_flux_radius_optimizer_args_oom_guard(gauss_101_catalog):

@@ -12,6 +12,7 @@ from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.datasets import make_100gaussians_image
 from photutils.segmentation.finder import SourceFinder
+from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import make_2dgaussian_kernel
 from photutils.utils._optional_deps import HAS_SKIMAGE
 from photutils.utils.exceptions import NoDetectionsWarning
@@ -107,3 +108,17 @@ def test_finder_deprecations():
         _ = finder.npixels
     with pytest.warns(AstropyDeprecationWarning, match=match):
         _ = finder.nlevels
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_finder_flags_passthrough():
+    """
+    Test that deblending provenance flags survive the SourceFinder
+    pipeline.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    data = (Gaussian2D(100, 50, 50, 5, 5)(xx, yy)
+            + Gaussian2D(100, 35, 50, 5, 5)(xx, yy))
+    finder = SourceFinder(n_pixels=5, progress_bar=False)
+    segm = finder(data, 10)
+    assert np.any(segm.flags & SEGMENTATION_FLAGS.DEBLENDED)

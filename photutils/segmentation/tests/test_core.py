@@ -337,6 +337,99 @@ class TestSegmentationImage:
         segm.data = self.data[0:3, :].copy()
         assert segm.info == {}
 
+    def test_flags_default(self):
+        """
+        Test that the flags property exists and is all zeros for a
+        user-constructed segmentation image.
+        """
+        segm = SegmentationImage(self.data.copy())
+        assert_equal(segm.flags, np.zeros(segm.n_labels, dtype=int))
+
+    def test_flags_reset_on_data_reassignment(self):
+        """
+        Test that per-label flags are reset when the data attribute is
+        reassigned.
+        """
+        segm = SegmentationImage(self.data.copy())
+        segm._flags_map = {1: 3}
+        segm.data = self.data.copy()
+        assert segm._flags_map == {}
+        assert_equal(segm.flags, np.zeros(segm.n_labels, dtype=int))
+
+    def test_flags_order_matches_labels(self):
+        """
+        Test that the flags array is aligned with the labels array.
+        """
+        segm = SegmentationImage(self.data.copy())
+        segm._flags_map = {3: 8, 1: 2}
+        expected = [2 if label == 1 else 8 if label == 3 else 0
+                    for label in segm.labels]
+        assert_equal(segm.flags, expected)
+
+    def test_flags_relabel_consecutive(self):
+        """
+        Test that per-label flags follow their labels through
+        consecutive relabeling.
+        """
+        segm = SegmentationImage(self.data.copy())
+        old_labels = segm.labels.copy()
+        segm._flags_map = {int(old_labels[-1]): 4}
+        segm.relabel_consecutive()
+        assert segm._flags_map == {segm.n_labels: 4}
+
+    def test_flags_reassign_labels_merge(self):
+        """
+        Test that merging labels combines their flags with bitwise OR
+        and that removed labels drop their flags.
+        """
+        segm = SegmentationImage(self.data.copy())
+        labels = segm.labels
+        segm._flags_map = {int(labels[0]): 1, int(labels[1]): 2}
+        segm.reassign_labels(labels[:2], int(labels[1]))
+        assert segm._flags_map == {int(labels[1]): 3}
+
+    def test_flags_remove_labels(self):
+        """
+        Test that removing a label drops its flags entry.
+        """
+        segm = SegmentationImage(self.data.copy())
+        labels = segm.labels
+        segm._flags_map = {int(labels[0]): 1, int(labels[1]): 2}
+        segm.remove_labels(labels[0])
+        assert segm._flags_map == {int(labels[1]): 2}
+
+    def test_flags_copy(self):
+        """
+        Test that copying a segmentation image copies the flags mapping
+        without sharing state.
+        """
+        segm = SegmentationImage(self.data.copy())
+        segm._flags_map = {1: 1}
+        segm2 = segm.copy()
+        assert segm2._flags_map == {1: 1}
+        segm2._flags_map[1] = 2
+        assert segm._flags_map == {1: 1}
+
+    def test_flags_not_settable(self):
+        """
+        Test that the flags property cannot be assigned.
+        """
+        segm = SegmentationImage(self.data.copy())
+        match = 'has no setter|can.t set attribute|object attribute'
+        with pytest.raises(AttributeError, match=match):
+            segm.flags = np.zeros(segm.n_labels, dtype=int)
+
+    def test_flags_empty_labels(self):
+        """
+        Test that the flags array has an integer dtype and zero length
+        for a segmentation image with no labels.
+        """
+        segm = SegmentationImage(self.data.copy())
+        segm.remove_labels(segm.labels)
+        assert segm.n_labels == 0
+        assert segm.flags.dtype.kind == 'i'
+        assert len(segm.flags) == 0
+
     def test_invalid_data(self):
         """
         Test invalid data.
@@ -1246,8 +1339,9 @@ def test_subclass(segm_data):
                       [70, 70, 0, 0],
                       [70, 70, 0, 1]])
     segm.data = data2
-    # Only _data, labels, areas, _deblend_label_map, and info remain
-    assert len(segm.__dict__) == 5
+    # Only _data, labels, areas, _deblend_label_map, _flags_map, and
+    # info remain
+    assert len(segm.__dict__) == 6
     assert_equal(segm.areas, [1, 2, 2, 4])
 
 

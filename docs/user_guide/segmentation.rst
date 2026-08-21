@@ -525,20 +525,29 @@ properties are shown below:
     >>> tbl['y_centroid'].info.format = '.2f'
     >>> tbl['kron_flux'].info.format = '.2f'
     >>> print(tbl)
-    label x_centroid y_centroid ... segment_flux_err kron_flux kron_flux_err
-                                ...
-    ----- ---------- ---------- ... ---------------- --------- -------------
-        1     235.38       1.44 ...              nan    490.35           nan
-        2     493.78       5.84 ...              nan    489.37           nan
-        3     207.29      10.26 ...              nan    694.24           nan
-        4     364.87      11.13 ...              nan    681.20           nan
-        5     257.85      12.18 ...              nan    748.18           nan
-      ...        ...        ... ...              ...       ...           ...
-       89     292.77     244.93 ...              nan    792.63           nan
-       90      32.66     241.24 ...              nan    930.77           nan
-       91      42.60     249.43 ...              nan    580.54           nan
-       92     433.80     280.74 ...              nan    663.44           nan
-       93     434.03     288.88 ...              nan    879.64           nan
+    label x_centroid y_centroid sky_centroid ... kron_flux kron_flux_err flags
+                                              ...
+    ----- ---------- ---------- ------------ ... --------- ------------- ------
+        1     235.38       1.44         None ...    490.35           nan  40976
+        2     493.78       5.84         None ...    489.37           nan  40976
+        3     207.29      10.26         None ...    694.24           nan      0
+        4     364.87      11.13         None ...    681.20           nan  32768
+        5     257.85      12.18         None ...    748.18           nan      0
+        6     289.79      22.39         None ...    941.39           nan   8192
+        7     379.21      27.86         None ...    635.38           nan      0
+        8     441.42      31.26         None ...    742.80           nan   8192
+        9     358.54      36.08         None ...    449.14           nan   8192
+      ...        ...        ...          ... ...       ...           ...    ...
+       84     208.00     199.45         None ...   1008.23           nan 139296
+       85     220.83     198.24         None ...    546.55           nan 131104
+       86     426.56     211.19         None ...    876.52           nan 401440
+       87     419.52     216.55         None ...    814.66           nan 131104
+       88     302.52     238.92         None ...    505.42           nan 393248
+       89     292.77     244.93         None ...    792.63           nan 131104
+       90      32.66     241.24         None ...    930.77           nan 131104
+       91      42.60     249.43         None ...    580.54           nan 401440
+       92     433.80     280.74         None ...    663.44           nan 139296
+       93     434.03     288.88         None ...    879.64           nan 139296
     Length = 93 rows
 
 The error columns are NaN because we did not input an error array (see
@@ -613,15 +622,15 @@ label numbers in the segmentation image:
     >>> tbl2['y_centroid'].info.format = '.2f'
     >>> tbl2['kron_flux'].info.format = '.2f'
     >>> print(tbl2)
-    label x_centroid y_centroid ... segment_flux_err kron_flux kron_flux_err
-                                ...
-    ----- ---------- ---------- ... ---------------- --------- -------------
-        1     235.38       1.44 ...              nan    490.35           nan
-        5     257.85      12.18 ...              nan    748.18           nan
-       20     347.17      66.45 ...              nan    855.34           nan
-       50     381.02     174.67 ...              nan    438.55           nan
-       75      74.44     259.78 ...              nan    876.02           nan
-       80      14.93      60.06 ...              nan    878.52           nan
+    label x_centroid y_centroid sky_centroid ... kron_flux kron_flux_err flags
+                                              ...
+    ----- ---------- ---------- ------------ ... --------- ------------- ------
+        1     235.38       1.44         None ...    490.35           nan  40976
+        5     257.85      12.18         None ...    748.18           nan      0
+       20     347.17      66.45         None ...    855.34           nan   8192
+       50     381.02     174.67         None ...    438.55           nan      0
+       75      74.44     259.78         None ...    876.02           nan   8192
+       80      14.93      60.06         None ...    878.52           nan 131104
 
 By default, the :meth:`~photutils.segmentation.SourceCatalog.to_table`
 includes only a small subset of source properties. The output table
@@ -843,6 +852,44 @@ measurement catalog:
 In this example, ``measurement_cat`` uses the centroids and shape
 properties (and Kron apertures) from ``det_cat`` while measuring
 photometry on ``data``.
+
+
+Quality Flags
+-------------
+
+`~photutils.segmentation.SourceCatalog` provides per-source bitwise
+quality flags via its ``flags`` attribute (also included in the default
+table columns). The flags combine deblending provenance recorded by
+:func:`~photutils.segmentation.deblend_sources` (e.g., whether a source
+was produced by deblending, or whether its deblending mode fell back
+to "linear") with measurement-time conditions: the source touches
+an image boundary, masked or non-finite pixels within the segment,
+undefined or degenerate shape properties, windowed or quadratic
+centroid failures, and Kron-aperture issues (``kron_``-prefixed
+flags). Accessing ``flags`` computes the flagged quantities (moments,
+windowed and quadratic centroids, and Kron photometry) if they have
+not already been computed; the results are cached and shared with
+the corresponding source properties. Flags that describe the same
+condition as an `~photutils.aperture.ApertureStats` flag, with the
+source segment as the region, use the same flag name. However, the
+bit values are package-specific, so always decode flag values with
+:func:`~photutils.segmentation.decode_segmentation_flags`. The
+:meth:`~photutils.segmentation.SourceCatalog.decode_flags` convenience
+method decodes the catalog's own flag values into a dictionary keyed by
+source label::
+
+    >>> import numpy as np
+    >>> from astropy.modeling.models import Gaussian2D
+    >>> from photutils.segmentation import SourceCatalog, detect_sources
+    >>> yy, xx = np.mgrid[0:51, 0:51]
+    >>> data = (Gaussian2D(100, 25, 25, 3, 3)(xx, yy)
+    ...         + Gaussian2D(100, 2, 40, 3, 3)(xx, yy))
+    >>> segm = detect_sources(data, 10, 5)
+    >>> cat = SourceCatalog(data, segm)
+    >>> for label, names in cat.decode_flags().items():
+    ...     print(label, names)
+    1 []
+    2 ['edge_touch', 'kron_partial_overlap']
 
 
 API Reference

@@ -90,6 +90,37 @@ def _remap_deblend_label_map(deblend_label_map, relabel_map):
             for parent_label, child_labels in deblend_label_map.items()}
 
 
+def _remap_flags_map(flags_map, relabel_map):
+    """
+    Return a new per-label flags map with remapped labels.
+
+    Labels that map to zero are dropped. Labels that map to the same new
+    label have their flags combined with a bitwise OR.
+
+    Parameters
+    ----------
+    flags_map : dict
+        The mapping of label numbers to bitwise flag values.
+
+    relabel_map : 1D `~numpy.ndarray`
+        An array mapping the original label numbers to the new label
+        numbers.
+
+    Returns
+    -------
+    result : dict
+        A new mapping of the remapped label numbers to their combined
+        flag values.
+    """
+    new_map = {}
+    for label, flags in flags_map.items():
+        new_label = int(relabel_map[label])
+        if new_label == 0:
+            continue
+        new_map[new_label] = new_map.get(new_label, 0) | flags
+    return new_map
+
+
 class SegmentationImage:
     """
     Class for a segmentation image.
@@ -104,14 +135,24 @@ class SegmentationImage:
 
     Attributes
     ----------
+    flags : `~numpy.ndarray`
+        A 1D array of per-label bitwise quality flags, in the same
+        order as the ``labels`` attribute. The flags record deblending
+        provenance and are all zero for segmentation images not produced
+        by :func:`~photutils.segmentation.deblend_sources`. Use
+        :func:`~photutils.segmentation.decode_segmentation_flags` to
+        decode the values. The flags are reset to zero when the ``data``
+        attribute is reassigned, and slicing returns a new instance with
+        all flags reset to zero.
+
     info : dict
         A dictionary containing auxiliary information about the
         segmentation image. For example, segmentation images returned
-        by :func:`~photutils.segmentation.deblend_sources` store the
-        input labels affected by deblending warnings under
+        by :func:`~photutils.segmentation.deblend_sources` store
+        the input labels affected by deblending warnings under
         ``'nonposmin_labels'`` and ``'n_markers_labels'`` keys. The
-        dictionary is empty if there is no auxiliary information. It is
-        reset to an empty dictionary when the ``data`` attribute is
+        dictionary is empty if there is no auxiliary information. It
+        is reset to an empty dictionary when the ``data`` attribute is
         reassigned.
 
     Notes
@@ -303,6 +344,25 @@ class SegmentationImage:
         return self._deblend_label_map
 
     @property
+    def flags(self):
+        """
+        A 1D array of per-label bitwise quality flags, in the same order
+        as the ``labels`` attribute.
+
+        The flags are set by `~photutils.segmentation.deblend_sources`
+        to record deblending provenance. They are all zero for
+        directly-constructed segmentation images and for the
+        output of `~photutils.segmentation.detect_sources`. Use
+        `~photutils.segmentation.decode_segmentation_flags` to decode
+        the values. The flags are reset to zero when the ``data``
+        attribute is reassigned. Slicing the segmentation image (e.g.,
+        ``segm[10:50, 10:50]``) returns a new instance with all flags
+        reset to zero as well.
+        """
+        return np.array([self._flags_map.get(int(label), 0)
+                         for label in self.labels], dtype=int)
+
+    @property
     def data(self):
         """
         The segmentation array.
@@ -385,11 +445,12 @@ class SegmentationImage:
             if value is not None:
                 self.__dict__[name] = value
 
-        # Reset the deblended label map and auxiliary info explicitly
-        # since _deblend_label_map and info are regular attributes,
-        # not cached properties cleared by _reset_cached_properties
-        # above.
+        # Reset the deblended label map, per-label flags map, and
+        # auxiliary info explicitly since _deblend_label_map,
+        # _flags_map, and info are regular attributes, not cached
+        # properties cleared by _reset_cached_properties above.
         self.__dict__['_deblend_label_map'] = {}
+        self.__dict__['_flags_map'] = {}
         if not preserve_info:
             self.__dict__['info'] = {}
 
@@ -1111,13 +1172,16 @@ class SegmentationImage:
 
         data_new = relabel_map[self.data]
         # Relabeling is an in-place change, not a data reassignment,
-        # so the auxiliary info and the deblending provenance are
-        # kept. The local reference is needed because _set_data
-        # rebinds _deblend_label_map to a new empty dict.
+        # so the auxiliary info, the deblending provenance, and the
+        # per-label flags are kept. The local references are needed
+        # because _set_data rebinds _deblend_label_map and _flags_map to
+        # new empty dicts.
         deblend_label_map = self._deblend_label_map
+        flags_map = self._flags_map
         self._set_data(data_new, preserve_info=True)
         self._deblend_label_map = _remap_deblend_label_map(
             deblend_label_map, relabel_map)
+        self._flags_map = _remap_flags_map(flags_map, relabel_map)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def relabel_consecutive(self, start_label=1):
@@ -1172,16 +1236,19 @@ class SegmentationImage:
 
         data_new = new_label_map[self.data]
         # Relabeling is an in-place change, not a data reassignment,
-        # so the auxiliary info and the deblending provenance are
-        # kept. The local reference is needed because _set_data
-        # rebinds _deblend_label_map to a new empty dict.
+        # so the auxiliary info, the deblending provenance, and the
+        # per-label flags are kept. The local references are needed
+        # because _set_data rebinds _deblend_label_map and _flags_map to
+        # new empty dicts.
         deblend_label_map = self._deblend_label_map
+        flags_map = self._flags_map
         # Relabeling is order-preserving, so the areas and slices are
         # unchanged and carry over under the new label numbers
         self._set_data(data_new, labels=new_labels, areas=old_areas,
                        slices=old_slices, preserve_info=True)
         self._deblend_label_map = _remap_deblend_label_map(
             deblend_label_map, new_label_map)
+        self._flags_map = _remap_flags_map(flags_map, new_label_map)
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def keep_label(self, label, relabel=False):

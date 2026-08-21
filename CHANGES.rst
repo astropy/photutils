@@ -257,6 +257,16 @@ New Features
     computed by transporting the pixel centroid error covariance through
     the local WCS Jacobian. [#2399]
 
+  - Added a bitwise quality-flag system for segmentation. A new public
+    ``SEGMENTATION_FLAGS`` registry and ``decode_segmentation_flags``
+    function were added. ``SegmentationImage`` objects now have a
+    ``flags`` attribute with per-label flags, ``deblend_sources``
+    records per-source deblending provenance flags, and
+    ``SourceCatalog`` has a new ``flags`` attribute and default table
+    column combining provenance and measurement flags, along with a
+    ``decode_flags`` convenience method that returns a dictionary keyed
+    by source label. [#2402]
+
 - ``photutils.utils``
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's

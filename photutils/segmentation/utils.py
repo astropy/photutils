@@ -106,7 +106,8 @@ def _make_binary_structure(ndim, connectivity):
     return footprint
 
 
-def _mask_to_mirrored_value(data, replace_mask, xycenter, *, mask=None):
+def _mask_to_mirrored_value(data, replace_mask, xycenter, *, mask=None,
+                            return_uncorrected=False):
     """
     Replace masked pixels with the value of the pixel mirrored across a
     given center position.
@@ -136,12 +137,25 @@ def _mask_to_mirrored_value(data, replace_mask, xycenter, *, mask=None):
         mirrored value is set to zero. Using this keyword prevents
         potential spreading of known non-finite or bad pixel values.
 
+    return_uncorrected : bool, optional
+        If `True`, also return a boolean mask of the ``replace_mask``
+        pixels that could not be replaced by a mirrored value (i.e., the
+        mirror pixel was outside the image, in ``mask``, or itself in
+        ``replace_mask``) and were set to zero instead.
+
     Returns
     -------
     result : 2D `~numpy.ndarray`
-        A 2D array with replaced masked pixels.
+        A 2D array with replaced masked pixels. If
+        ``return_uncorrected`` is `True`, then a tuple of ``(result,
+        uncorrected)`` is returned instead, where ``uncorrected`` is a
+        2D bool `~numpy.ndarray` that is `True` for the ``replace_mask``
+        pixels that were set to zero because their mirrored value was
+        unavailable.
     """
     outdata = np.copy(data)
+    uncorrected = (np.zeros(data.shape, dtype=bool) if return_uncorrected
+                   else None)
 
     ymasked, xmasked = np.nonzero(replace_mask)
     xmirror = 2 * int(xycenter[0] + 0.5) - xmasked
@@ -154,7 +168,11 @@ def _mask_to_mirrored_value(data, replace_mask, xycenter, *, mask=None):
     # Remove them from the set of replace_mask pixels and set them to
     # zero
     if np.any(badmask):
-        outdata[ymasked[badmask], xmasked[badmask]] = 0.0
+        youtside = ymasked[badmask]
+        xoutside = xmasked[badmask]
+        outdata[youtside, xoutside] = 0.0
+        if return_uncorrected:
+            uncorrected[youtside, xoutside] = True
         # Remove the badmask pixels from pixels to be replaced
         goodmask = ~badmask
         ymasked = ymasked[goodmask]
@@ -172,5 +190,9 @@ def _mask_to_mirrored_value(data, replace_mask, xycenter, *, mask=None):
     xbad = xmasked[mirror_mask]
     ybad = ymasked[mirror_mask]
     outdata[ybad, xbad] = 0.0
+
+    if return_uncorrected:
+        uncorrected[ybad, xbad] = True
+        return outdata, uncorrected
 
     return outdata
