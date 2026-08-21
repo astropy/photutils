@@ -12,8 +12,11 @@ import pytest
 from numpy.testing import assert_allclose
 
 from photutils.aperture import BoundingBox, CircularAperture
+from photutils.aperture._batch_photometry import (FLAG_COL_UNCORRECTED,
+                                                  FLAG_COL_VALID, SHAPE_CIRCLE,
+                                                  batch_aperture_sums)
 from photutils.geometry import circular_overlap_grid, elliptical_overlap_grid
-from photutils.segmentation import SourceCatalog
+from photutils.segmentation import SegmentationImage, SourceCatalog
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.tests._batch_scene import (make_batch_scene,
                                                        make_catalog)
@@ -214,3 +217,80 @@ def test_mixed_aperture_types(scene):
         assert_allclose(np.asarray(got, dtype=float),
                         np.asarray(want, dtype=float), rtol=1e-12,
                         equal_nan=True)
+
+
+def _make_uncorrectable_catalog(method):
+    """
+    Make a catalog whose first source has a Kron aperture lying
+    entirely on a neighboring segment.
+
+    Every pixel of that aperture is on the neighboring segment and so
+    is its mirror across the aperture center, so under the 'correct'
+    method none of them can be corrected and the aperture has no valid
+    members.
+
+    Returns
+    -------
+    result : `~photutils.segmentation.SourceCatalog`
+        The source catalog.
+    """
+    yy, xx = np.mgrid[0:41, 0:41]
+    data = 0.5 + 20.0 * np.exp(-((xx - 6) ** 2 + (yy - 6) ** 2) / 8.0)
+    data += 30.0 * np.exp(-((xx - 25) ** 2 + (yy - 25) ** 2) / 50.0)
+    segm_data = np.zeros(data.shape, dtype=int)
+    segm_data[3:10, 3:10] = 1
+    segm_data[16:35, 16:35] = 2
+    cat = SourceCatalog(data, SegmentationImage(segm_data),
+                        error=np.full(data.shape, 0.5),
+                        aperture_mask_method=method)
+    _ = cat.kron_aperture  # cache before overriding
+    apertures = list(cat._array('kron_aperture'))
+    apertures[0] = CircularAperture((25.0, 25.0), r=3.0)
+    cat.__dict__['kron_aperture'] = apertures
+    return cat
+
+
+def test_uncorrectable_members_give_zero_flux():
+    cat = _make_uncorrectable_catalog('correct')
+
+    # Check that the construction gives an aperture whose only members
+    # are uncorrectable neighbor pixels
+    arrays = cat._get_batch_arrays()
+    fcounts = batch_aperture_sums(
+        arrays['data'], arrays['error'], arrays['mask'],
+        np.array([[25.0, 25.0]]), SHAPE_CIRCLE, None, 0.0, 0.0, 0.0,
+        0.0, 1, 1, arrays['segm'], np.array([1], dtype=np.intp), 3,
+        np.zeros(1), 0, params_per_source=np.array([[3.0]]))[9]
+    assert fcounts[0, FLAG_COL_VALID] == 0
+    assert fcounts[0, FLAG_COL_UNCORRECTED] > 0
+
+    flux, flux_err, kron_flags = cat._calc_kron_photometry()
+    ref_flux, ref_err, ref_flags = _reference_kron_photometry(
+        cat, cat._array('kron_aperture'))
+
+    # Uncorrectable neighbor pixels stay members with a value of zero,
+    # so the flux is 0.0 rather than NaN
+    assert flux[0] == 0.0
+    assert flux_err[0] == 0.0
+    assert (kron_flags[0]
+            & SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS) != 0
+    assert_allclose(flux, ref_flux, rtol=1e-12, equal_nan=True)
+    assert_allclose(flux_err, ref_err, rtol=1e-12, equal_nan=True)
+    assert np.array_equal(kron_flags, ref_flags)
+
+
+def test_uncorrectable_members_masked_give_nan_flux():
+    cat = _make_uncorrectable_catalog('mask')
+    flux, flux_err, kron_flags = cat._calc_kron_photometry()
+    ref_flux, ref_err, ref_flags = _reference_kron_photometry(
+        cat, cat._array('kron_aperture'))
+
+    # The 'mask' method excludes the neighbor pixels outright, leaving
+    # the aperture with no members at all
+    assert np.isnan(flux[0])
+    assert np.isnan(flux_err[0])
+    assert (kron_flags[0]
+            & SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS) == 0
+    assert_allclose(flux, ref_flux, rtol=1e-12, equal_nan=True)
+    assert_allclose(flux_err, ref_err, rtol=1e-12, equal_nan=True)
+    assert np.array_equal(kron_flags, ref_flags)
