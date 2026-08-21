@@ -20,8 +20,19 @@ from scipy.optimize import root_scalar
 
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture, RectangularAnnulus)
+from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
+                                                  FLAG_COL_MASKED,
+                                                  FLAG_COL_N_PIXELS,
+                                                  FLAG_COL_NONFINITE_DATA,
+                                                  FLAG_COL_SEG,
+                                                  FLAG_COL_SEG_MASKED,
+                                                  FLAG_COL_UNCORRECTED,
+                                                  FLAG_COL_UNCORRECTED_MASKED,
+                                                  FLAG_COL_VALID, SHAPE_CIRCLE,
+                                                  SHAPE_ELLIPSE,
+                                                  batch_aperture_sums)
 from photutils.background import SExtractorBackground
-from photutils.geometry import circular_overlap_grid, elliptical_overlap_grid
+from photutils.geometry import circular_overlap_grid
 from photutils.morphology import gini as gini_func
 from photutils.segmentation._batch_catalog import batch_centroid_win
 from photutils.segmentation.core import SegmentationImage
@@ -292,10 +303,10 @@ class SourceCatalog:
 
     progress_bar : bool, optional
         Whether to display a progress bar when calculating
-        some properties (e.g., ``kron_radius``, ``kron_flux``,
-        ``flux_radius``, ``circular_photometry``,
-        ``centroid_quad``). The progress bar requires that the `tqdm
-        <https://tqdm.github.io/>`_ optional dependency be installed.
+        some properties (e.g., ``kron_radius``, ``flux_radius``,
+        ``circular_photometry``, ``centroid_quad``). The progress bar
+        requires that the `tqdm <https://tqdm.github.io/>`_ optional
+        dependency be installed.
 
     Notes
     -----
@@ -4812,138 +4823,116 @@ class SourceCatalog:
             kron_params = self._validate_kron_params(kron_params)
             kron_aperture = self._make_kron_apertures(kron_params)
 
-        labels = self.labels
-        if self.progress_bar:
-            labels = add_progress_bar(labels, desc='kron_photometry')
+        n_src = len(kron_aperture)
+        flux = np.full(n_src, np.nan)
+        flux_err = np.full(n_src, np.nan)
+        kron_flags = np.zeros(n_src, dtype=int)
 
-        _floor = math.floor
         max_size = max(self._data.size, 1_000_000)
-        ny_img, nx_img = self._data.shape
+        _floor = math.floor
 
-        flux = []
-        flux_err = []
-        kron_flags = []
-        for label, aperture, bkg in zip(labels, kron_aperture,
-                                        self._local_background, strict=True):
+        # Pre-filter undefined and oversized apertures, and group the
+        # rest by aperture shape for the batch driver
+        circ_idx = []
+        circ_params = []
+        ell_idx = []
+        ell_params = []
+        positions = np.zeros((n_src, 2))
+        for i, aperture in enumerate(kron_aperture):
             if aperture is None:
-                flux.append(np.nan)
-                flux_err.append(np.nan)
-                kron_flags.append(SEGMENTATION_FLAGS.KRON_UNDEFINED)
+                kron_flags[i] = SEGMENTATION_FLAGS.KRON_UNDEFINED
                 continue
-
             xcen, ycen = aperture.positions
-
-            # Compute the aperture mask directly, bypassing the
-            # aperture's to_mask() method and ApertureMask/BoundingBox
-            # property overhead.
+            positions[i] = (xcen, ycen)
             if isinstance(aperture, CircularAperture):
                 r = aperture.r
-                ixmin = _floor(xcen - r + 0.5)
-                ixmax = _floor(xcen + r + 1.5)
-                iymin = _floor(ycen - r + 0.5)
-                iymax = _floor(ycen + r + 1.5)
-                nx = ixmax - ixmin
-                ny = iymax - iymin
+                nx = _floor(xcen + r + 1.5) - _floor(xcen - r + 0.5)
+                ny = _floor(ycen + r + 1.5) - _floor(ycen - r + 0.5)
                 if nx * ny > max_size:
-                    flux.append(np.nan)
-                    flux_err.append(np.nan)
-                    kron_flags.append(SEGMENTATION_FLAGS.KRON_UNDEFINED)
+                    kron_flags[i] = SEGMENTATION_FLAGS.KRON_UNDEFINED
                     continue
-                edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
-                         iymin - 0.5 - ycen, iymax - 0.5 - ycen)
-                mask_data = circular_overlap_grid(
-                    edges[0], edges[1], edges[2], edges[3],
-                    nx, ny, r, 1, 1)
+                circ_idx.append(i)
+                circ_params.append((r,))
             else:
                 a = aperture.a
                 b = aperture.b
                 theta_val = aperture.theta
-                theta_rad = (theta_val.to_value(u.radian)
-                             if hasattr(theta_val, 'to')
-                             else float(theta_val))
-                cos_t = math.cos(theta_rad)
-                sin_t = math.sin(theta_rad)
+                theta = (theta_val.to_value(u.radian)
+                         if hasattr(theta_val, 'to')
+                         else float(theta_val))
+                cos_t = math.cos(theta)
+                sin_t = math.sin(theta)
                 x_ext = math.sqrt((a * cos_t) ** 2 + (b * sin_t) ** 2)
                 y_ext = math.sqrt((a * sin_t) ** 2 + (b * cos_t) ** 2)
-                ixmin = _floor(xcen - x_ext + 0.5)
-                ixmax = _floor(xcen + x_ext + 1.5)
-                iymin = _floor(ycen - y_ext + 0.5)
-                iymax = _floor(ycen + y_ext + 1.5)
-                nx = ixmax - ixmin
-                ny = iymax - iymin
+                nx = (_floor(xcen + x_ext + 1.5)
+                      - _floor(xcen - x_ext + 0.5))
+                ny = (_floor(ycen + y_ext + 1.5)
+                      - _floor(ycen - y_ext + 0.5))
                 if nx * ny > max_size:
-                    flux.append(np.nan)
-                    flux_err.append(np.nan)
-                    kron_flags.append(SEGMENTATION_FLAGS.KRON_UNDEFINED)
+                    kron_flags[i] = SEGMENTATION_FLAGS.KRON_UNDEFINED
                     continue
-                edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
-                         iymin - 0.5 - ycen, iymax - 0.5 - ycen)
-                mask_data = elliptical_overlap_grid(
-                    edges[0], edges[1], edges[2], edges[3],
-                    nx, ny, a, b, theta_rad, 1, 1)
+                ell_idx.append(i)
+                ell_params.append((a, b, theta))
 
-            bbox = BoundingBox(ixmin, ixmax, iymin, iymax)
-            (data, error, mask, _, slc_sm,
-             flag_masks) = self._make_aperture_data(label, xcen, ycen, bbox,
-                                                    bkg)
-            if data is None:
-                flux.append(np.nan)
-                flux_err.append(np.nan)
-                kron_flags.append(SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
+        arrays = self._get_batch_arrays()
+        seg_code = _SEG_METHOD_CODES[self.aperture_mask_method]
+        seg_arr = arrays['segm'] if seg_code != 0 else None
+        labels_arr = np.ascontiguousarray(np.atleast_1d(self.labels),
+                                          dtype=np.intp)
+        local_bkg = np.ascontiguousarray(self._local_background,
+                                         dtype=np.float64)
+        has_error = self._error is not None
+
+        for idx, params_list, shape_code in (
+                (circ_idx, circ_params, SHAPE_CIRCLE),
+                (ell_idx, ell_params, SHAPE_ELLIPSE)):
+            if not idx:
                 continue
+            idx = np.array(idx)
+            psrc = np.ascontiguousarray(params_list, dtype=np.float64)
+            pos = np.ascontiguousarray(positions[idx])
+            seg_labels = labels_arr[idx] if seg_code != 0 else None
+            (sums, sum_vars, _, overlap, _, _, _, _, _, fcounts,
+             weights_out) = batch_aperture_sums(
+                arrays['data'], arrays['error'], arrays['mask'], pos,
+                shape_code, None, 0.0, 0.0, 0.0, 0.0, 1, 1, seg_arr,
+                seg_labels, seg_code, local_bkg[idx], 0,
+                params_per_source=psrc)
 
-            aperture_weights = mask_data[slc_sm]
-            in_aperture = aperture_weights > 0
-            pixel_mask = in_aperture & ~mask
+            n_pix = fcounts[:, FLAG_COL_N_PIXELS]
+            clipped = fcounts[:, FLAG_COL_BBOX_CLIPPED].astype(bool)
+            weights_out = weights_out.astype(bool)
+            # Membership matches the previous cutout-based
+            # ``in_aperture & ~mask`` rule: under 'correct',
+            # uncorrectable neighbor pixels stay members (with value
+            # zero), so they keep the flux at 0.0 rather than NaN
+            members = fcounts[:, FLAG_COL_VALID].copy()
+            if seg_code == 3:
+                members += fcounts[:, FLAG_COL_UNCORRECTED]
+            good = overlap & (members > 0)
+            flux[idx] = np.where(good, sums, np.nan)
+            if has_error:
+                flux_err[idx] = np.where(good, np.sqrt(sum_vars),
+                                         np.nan)
 
-            kron_flag = 0
-            # The aperture bounding box extends beyond the data array.
-            # The box corners can have zero aperture weight, so compare
-            # the number of nonzero-weight pixels within the data to the
-            # total number in the aperture. The overlap is partial only
-            # if at least one nonzero-weight pixel falls both inside and
-            # outside of the data.
-            if (ixmin < 0 or iymin < 0 or ixmax > nx_img
-                    or iymax > ny_img):
-                n_inside = np.count_nonzero(in_aperture)
-                if n_inside == 0:
-                    kron_flag |= SEGMENTATION_FLAGS.KRON_NO_OVERLAP
-                elif n_inside != np.count_nonzero(mask_data):
-                    kron_flag |= SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP
-
-            if np.any(flag_masks['data_mask'] & in_aperture):
-                kron_flag |= SEGMENTATION_FLAGS.KRON_MASKED_PIXELS
-
-            segm_mask = flag_masks['segm_mask']
-            if segm_mask is not None and np.any(segm_mask & in_aperture):
-                kron_flag |= SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS
-
-            uncorrected_mask = flag_masks['uncorrected_mask']
-            if (uncorrected_mask is not None
-                    and np.any(uncorrected_mask & in_aperture)):
-                kron_flag |= SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS
-
-            kron_flags.append(kron_flag)
-
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                values = (aperture_weights * data)[pixel_mask]
-                flux_ = np.nan if values.shape == (0,) else np.sum(values)
-                flux.append(flux_)
-
-                if error is None:
-                    flux_err_ = np.nan
-                else:
-                    values = (aperture_weights**2 * error**2)[pixel_mask]
-                    if values.shape == (0,):
-                        flux_err_ = np.nan
-                    else:
-                        flux_err_ = np.sqrt(np.sum(values))
-                flux_err.append(flux_err_)
-
-        flux = np.array(flux)
-        flux_err = np.array(flux_err)
-        kron_flags = np.array(kron_flags, dtype=int)
+            grp_flags = np.zeros(len(idx), dtype=int)
+            no_ovl = ~overlap | (clipped & (n_pix == 0))
+            grp_flags[no_ovl] |= SEGMENTATION_FLAGS.KRON_NO_OVERLAP
+            grp_flags[(n_pix > 0) & weights_out] |= (
+                SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP)
+            masked_any = (fcounts[:, FLAG_COL_MASKED]
+                          + fcounts[:, FLAG_COL_NONFINITE_DATA]) > 0
+            grp_flags[masked_any] |= (
+                SEGMENTATION_FLAGS.KRON_MASKED_PIXELS)
+            seg_any = (fcounts[:, FLAG_COL_SEG]
+                       + fcounts[:, FLAG_COL_SEG_MASKED]) > 0
+            grp_flags[seg_any] |= (
+                SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS)
+            unc_any = (fcounts[:, FLAG_COL_UNCORRECTED]
+                       + fcounts[:, FLAG_COL_UNCORRECTED_MASKED]) > 0
+            grp_flags[unc_any] |= (
+                SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS)
+            kron_flags[idx] |= grp_flags
 
         return flux, flux_err, kron_flags
 

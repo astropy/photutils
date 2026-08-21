@@ -2606,24 +2606,18 @@ def test_kron_photometry_oom_guard(gauss_101_catalog):
     cat3.__dict__['kron_aperture'] = off_aper
     assert np.all(np.isnan(cat3.kron_flux))
 
-    # All pixels masked in aperture overlap triggers empty values with
-    # error branch
+    # An aperture whose pixels are all masked has no contributing
+    # pixels, giving NaN flux and flux error
     error = np.ones_like(data)
-    cat4 = SourceCatalog(data, segm, error=error)
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[:20, :20] = True
+    cat4 = SourceCatalog(data, segm, error=error, mask=mask)
     _ = cat4.kron_aperture  # cache
-    original_make = type(cat4)._make_aperture_data
-
-    def _make_all_masked(self, label, xcen, ycen, bbox, bkg, **kwargs):
-        result = original_make(self, label, xcen, ycen, bbox, bkg, **kwargs)
-        if result[0] is not None:
-            # Set mask to all True (all pixels masked)
-            return (result[0], result[1], np.ones_like(result[2]),
-                    result[3], result[4], result[5])
-        return result
-
-    with patch.object(type(cat4), '_make_aperture_data', _make_all_masked):
-        assert np.all(np.isnan(cat4.kron_flux))
-        assert np.all(np.isnan(cat4.kron_flux_err))
+    masked_aper = [CircularAperture((10, 10), r=3)
+                   for _ in range(cat4.n_labels)]
+    cat4.__dict__['kron_aperture'] = masked_aper
+    assert np.all(np.isnan(cat4.kron_flux))
+    assert np.all(np.isnan(cat4.kron_flux_err))
 
 
 def test_flux_radius_cache_not_mutated_by_centroid_win(gauss_101_data):
