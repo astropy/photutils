@@ -34,8 +34,8 @@ from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
                                                 _resolve_seg_pixel)
 
 __all__ = ['batch_central_moments', 'batch_centroid_win',
-           'batch_flux_radius_solve', 'batch_kron_radius',
-           'batch_moment_err', 'batch_raw_moments']
+           'batch_flux_radius_prepare', 'batch_flux_radius_solve',
+           'batch_kron_radius', 'batch_moment_err', 'batch_raw_moments']
 
 
 cdef extern from "math.h" nogil:
@@ -44,6 +44,7 @@ cdef extern from "math.h" nogil:
     double sin(double x)
     double cos(double x)
     double floor(double x)
+    double ceil(double x)
     double fmax(double x, double y)
     bint isfinite(double x)
     double NAN
@@ -715,6 +716,237 @@ def batch_kron_radius(const double[:, ::1] data, *,
                                 min_circ_radius, max_aper_size,
                                 &results[i, 0])
     return results_arr
+
+
+cdef void _flux_radius_cutout(const double *data,
+                              const unsigned char *mask,
+                              const Py_ssize_t *segm,
+                              Py_ssize_t nx_data, Py_ssize_t label,
+                              Py_ssize_t x0, Py_ssize_t x1,
+                              Py_ssize_t y0, Py_ssize_t y1,
+                              Py_ssize_t ccx, Py_ssize_t ccy,
+                              double local_bkg, int seg_method,
+                              double *out) noexcept nogil:
+    """
+    Fill the cleaned, background-subtracted cutout of a single source
+    for the flux-radius root-find.
+
+    Replicates the previous per-source Python preparation: masked and
+    non-finite pixels are zero, neighbor-source pixels are zeroed or
+    mirror-corrected per ``seg_method`` (an uncorrectable neighbor
+    pixel is zero), and every other pixel is ``data - local_bkg``.
+    Writes the ``(y1 - y0, x1 - x0)`` cutout in row-major order into
+    ``out``.
+    """
+    cdef Py_ssize_t ix, iy, six, siy
+    cdef Py_ssize_t nx = x1 - x0
+    # Write-only sinks required by the ``_resolve_seg_pixel``
+    # signature
+    cdef Py_ssize_t n_seg = 0, n_unc = 0
+    cdef double value
+    for iy in range(y0, y1):
+        for ix in range(x0, x1):
+            value = 0.0
+            if mask[iy * nx_data + ix] == 0:
+                six = ix
+                siy = iy
+                if (seg_method == 0
+                        or _resolve_seg_pixel(
+                            segm, mask, nx_data, seg_method, label,
+                            ix, iy, x0, x1, y0, y1, ccx, ccy,
+                            &six, &siy, &n_seg, &n_unc)):
+                    value = data[siy * nx_data + six] - local_bkg
+            out[(iy - y0) * nx + (ix - x0)] = value
+
+
+def batch_flux_radius_prepare(const double[:, ::1] data, *,
+                              const unsigned char[:, ::1] mask,
+                              const Py_ssize_t[:, ::1] segm,
+                              const Py_ssize_t[::1] labels,
+                              const double[::1] xcen,
+                              const double[::1] ycen,
+                              const double[::1] local_bkg,
+                              const double[::1] kronflux,
+                              const double[::1] max_radius,
+                              const unsigned char[::1] skip,
+                              int seg_method, int use_exact,
+                              int subpixels, Py_ssize_t max_aper_size):
+    """
+    Prepare the per-source inputs of the flux-radius root-find for
+    many sources in one call.
+
+    For each source, the cutout of the data within the bounding box
+    of the circle of radius ``max_radius`` (clipped to the data) is
+    cleaned and background-subtracted (see ``_flux_radius_cutout``)
+    and the `~photutils.geometry.circular_overlap_grid` grid
+    parameters of that cutout, relative to the source centroid, are
+    computed. The bounding-box arithmetic, the per-pixel masking, and
+    the neighbor handling replicate the previous per-source Python
+    implementation exactly.
+
+    Parameters
+    ----------
+    data : 2D ndarray of float64 (C-contiguous)
+        The data array.
+
+    mask : 2D ndarray of uint8 (C-contiguous)
+        A mask array where nonzero values indicate masked (zeroed)
+        pixels. Must have the same shape as ``data``. Bit 1 (value 1)
+        marks input-masked pixels and bit 2 (value 2) marks non-finite
+        data pixels folded into the mask by the caller. Any nonzero
+        value zeroes the pixel and prevents it from being used as a
+        mirror pixel.
+
+    segm : 2D ndarray of intp (C-contiguous)
+        The segmentation array where background pixels are zero and
+        sources have positive integer labels. Must have the same shape
+        as ``data``.
+
+    labels : 1D ndarray of intp (C-contiguous)
+        The source label for each source, with shape ``(n_sources,)``.
+
+    xcen, ycen : 1D ndarray of float64 (C-contiguous)
+        The source centroids, with shape ``(n_sources,)``.
+
+    local_bkg : 1D ndarray of float64 (C-contiguous)
+        The per-source local background to subtract from each pixel
+        value, with shape ``(n_sources,)``.
+
+    kronflux : 1D ndarray of float64 (C-contiguous)
+        The Kron flux of each source, with shape ``(n_sources,)``.
+
+    max_radius : 1D ndarray of float64 (C-contiguous)
+        The maximum circular radius of each source (the initial upper
+        bracket of the root-find), with shape ``(n_sources,)``.
+
+    skip : 1D ndarray of uint8 (C-contiguous)
+        Nonzero for sources that cannot have a solution (e.g., a
+        non-finite centroid, Kron flux, or maximum radius, or a zero
+        Kron flux), with shape ``(n_sources,)``.
+
+    seg_method : int
+        The segmentation masking method:
+
+        * 0: disables masking
+        * 1: zeroes neighbor-source pixels
+             (``(seg > 0) & (seg != label)``)
+        * 3: replaces neighbor-source pixels with the values mirrored
+             across the (rounded) cutout center (the symmetric
+             ``'correct'`` method). A neighbor pixel whose mirror falls
+             outside the clipped cutout, is itself a neighbor, or is
+             masked is zeroed instead.
+
+    use_exact : int
+        Whether the root-find computes exact overlap fractions (1) or
+        uses subpixel sampling (0).
+
+    subpixels : int
+        The number of subpixels in each dimension when ``use_exact``
+        is 0.
+
+    max_aper_size : Py_ssize_t
+        The maximum number of pixels in the (unclipped) bounding box.
+        Sources with a larger bounding box are skipped (out-of-memory
+        guard).
+
+    Returns
+    -------
+    args : list
+        The prepared per-source arguments consumed by
+        ``batch_flux_radius_solve``, with one entry per source. Each
+        entry is either `None`, for a skipped source (including those
+        rejected by ``max_aper_size`` and those whose bounding box
+        does not overlap the data), or the list ``[clean_data,
+        grid_params, kronflux, max_radius]``, where ``clean_data`` is
+        the cleaned C-contiguous float64 cutout and ``grid_params`` is
+        the tuple ``(xmin_e, xmax_e, ymin_e, ymax_e, nx, ny,
+        use_exact, subpixels)`` of grid parameters whose edges are
+        relative to the source centroid.
+
+    Raises
+    ------
+    ValueError
+        If a per-source array does not have the same length as
+        ``labels``, or if a 2D array does not have the same shape as
+        ``data``.
+    """
+    cdef Py_ssize_t n_src = labels.shape[0]
+    cdef Py_ssize_t ny_data = data.shape[0]
+    cdef Py_ssize_t nx_data = data.shape[1]
+
+    _check_length(xcen.shape[0], n_src, 'xcen')
+    _check_length(ycen.shape[0], n_src, 'ycen')
+    _check_length(local_bkg.shape[0], n_src, 'local_bkg')
+    _check_length(kronflux.shape[0], n_src, 'kronflux')
+    _check_length(max_radius.shape[0], n_src, 'max_radius')
+    _check_length(skip.shape[0], n_src, 'skip')
+    _check_shape(mask.shape[0], mask.shape[1], ny_data, nx_data,
+                 'mask', 'data')
+    _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
+                 'segm', 'data')
+
+    cdef Py_ssize_t i, x0, x1, y0, y1, nx, ny, ccx, ccy
+    cdef double xc, yc, rmax, ixmin_d, ixmax_d, iymin_d, iymax_d
+    cdef double x0_d, x1_d, y0_d, y1_d, cutout_xcen, cutout_ycen
+    cdef double[:, ::1] cutout
+    args = []
+    for i in range(n_src):
+        if skip[i]:
+            args.append(None)
+            continue
+        xc = xcen[i]
+        yc = ycen[i]
+        rmax = max_radius[i]
+
+        # The bounding box of the maximum-radius circle, kept as
+        # integral doubles until it is clipped to avoid integer
+        # overflow for sources far outside the image
+        ixmin_d = floor(xc - rmax + 0.5)
+        ixmax_d = ceil(xc + rmax + 0.5)
+        iymin_d = floor(yc - rmax + 0.5)
+        iymax_d = ceil(yc + rmax + 0.5)
+        if (iymax_d - iymin_d) * (ixmax_d - ixmin_d) > max_aper_size:
+            args.append(None)
+            continue
+
+        # Clip to the data
+        x0_d = ixmin_d if ixmin_d > 0.0 else 0.0
+        x1_d = ixmax_d if ixmax_d < nx_data else nx_data
+        y0_d = iymin_d if iymin_d > 0.0 else 0.0
+        y1_d = iymax_d if iymax_d < ny_data else ny_data
+        if y0_d >= y1_d or x0_d >= x1_d:
+            args.append(None)
+            continue
+        x0 = <Py_ssize_t>x0_d
+        x1 = <Py_ssize_t>x1_d
+        y0 = <Py_ssize_t>y0_d
+        y1 = <Py_ssize_t>y1_d
+        nx = x1 - x0
+        ny = y1 - y0
+
+        # The cutout-frame centroid and the mirror center of the
+        # 'correct' method (truncation of the cutout centroid + 0.5
+        # replicates the Python int() call)
+        cutout_xcen = xc - <double>x0
+        cutout_ycen = yc - <double>y0
+        ccx = <Py_ssize_t>(cutout_xcen + 0.5) + x0
+        ccy = <Py_ssize_t>(cutout_ycen + 0.5) + y0
+
+        clean_data = np.empty((ny, nx))
+        cutout = clean_data
+        with nogil:
+            _flux_radius_cutout(&data[0, 0], &mask[0, 0], &segm[0, 0],
+                                nx_data, labels[i], x0, x1, y0, y1,
+                                ccx, ccy, local_bkg[i], seg_method,
+                                &cutout[0, 0])
+
+        grid_params = (-0.5 - cutout_xcen,
+                       (<double>nx - 0.5) - cutout_xcen,
+                       -0.5 - cutout_ycen,
+                       (<double>ny - 0.5) - cutout_ycen,
+                       nx, ny, use_exact, subpixels)
+        args.append([clean_data, grid_params, kronflux[i], rmax])
+    return args
 
 
 ctypedef struct _FluxRadiusArgs:

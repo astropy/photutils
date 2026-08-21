@@ -6,7 +6,6 @@ segmentation image.
 
 import functools
 import inspect
-import math
 import warnings
 from copy import deepcopy
 from functools import cached_property
@@ -34,6 +33,7 @@ from photutils.background import SExtractorBackground
 from photutils.morphology import gini as gini_func
 from photutils.segmentation._batch_catalog import (batch_central_moments,
                                                    batch_centroid_win,
+                                                   batch_flux_radius_prepare,
                                                    batch_flux_radius_solve,
                                                    batch_kron_radius,
                                                    batch_moment_err,
@@ -41,7 +41,6 @@ from photutils.segmentation._batch_catalog import (batch_central_moments,
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.flags import (SEGMENTATION_FLAGS,
                                           decode_segmentation_flags)
-from photutils.segmentation.utils import _mask_to_mirrored_value
 from photutils.utils._deprecation import (_get_future_column_names,
                                           create_empty_deprecated_qtable,
                                           deprecated_getattr,
@@ -4990,117 +4989,47 @@ class SourceCatalog:
     @cached_property
     @use_detcat
     def _flux_radius_optimizer_args(self):
-        # NOTE: this cached property snapshots the current
-        # _aperture_mask_kwargs['flux_radius'] settings. Changing them
-        # (e.g., via _set_semode) after the first flux_radius call has
-        # no effect.
-        kron_flux = self._kron_photometry[:, 0]  # unitless
-        max_radius = self._max_circular_kron_radius
-        kwargs = self._aperture_mask_kwargs['flux_radius']
+        """
+        The prepared per-source arguments of the flux-radius root-find
+        (see ``batch_flux_radius_prepare``), always as a list with one
+        entry per source.
 
-        # Translate mask method keywords to circular_overlap_grid
-        # parameters once
-        method = kwargs.get('method', 'exact')
-        if method == 'exact':
-            use_exact = 1
-            subpixels = 1
-        elif method == 'center':
-            use_exact = 0
-            subpixels = 1
-        else:  # 'subpixel'
-            use_exact = 0
-            subpixels = kwargs.get('subpixels', 5)
+        Each entry is `None` for a source that cannot have a solution
+        or the list ``[clean_data, grid_params, kronflux,
+        max_radius]``. This cached property snapshots the current
+        ``_aperture_mask_kwargs['flux_radius']`` settings. Changing
+        them (e.g., via ``_set_semode``) after the first flux_radius
+        call has no effect.
+        """
+        kron_flux = np.ascontiguousarray(self._kron_photometry[:, 0],
+                                         dtype=np.float64)  # unitless
+        max_radius = np.ascontiguousarray(self._max_circular_kron_radius,
+                                          dtype=np.float64)
+        x_centroid = np.ascontiguousarray(np.atleast_1d(self.x_centroid),
+                                          dtype=np.float64)
+        y_centroid = np.ascontiguousarray(np.atleast_1d(self.y_centroid),
+                                          dtype=np.float64)
+        local_bkg = np.ascontiguousarray(self._local_background,
+                                         dtype=np.float64)
+        use_exact, subpixels = self._overlap_params(
+            self._aperture_mask_kwargs['flux_radius'])
 
-        # Pre-fetch arrays used inside the loop
-        data_arr = self._data
-        mask_arr = self._mask
-        segm_data = self._segmentation_image.data
-        data_shape = data_arr.shape
-        aperture_mask_method = self.aperture_mask_method
-        max_aper_size = max(data_arr.size, 1_000_000)
+        # Sources with a non-finite centroid, Kron flux, or maximum
+        # radius, or a zero Kron flux, have no solution
+        skip = (~np.isfinite(x_centroid) | ~np.isfinite(y_centroid)
+                | ~np.isfinite(kron_flux) | ~np.isfinite(max_radius)
+                | (kron_flux == 0)).astype(np.uint8)
 
-        labels = self.labels
-        if self.progress_bar:
-            desc = 'flux_radius prep'
-            labels = add_progress_bar(labels, desc=desc)
-
-        x_centroid = np.atleast_1d(self.x_centroid)
-        y_centroid = np.atleast_1d(self.y_centroid)
-
-        args = []
-        for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
-                labels, x_centroid, y_centroid,
-                kron_flux, self._local_background, max_radius, strict=True):
-
-            if (np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_)))
-                    or kronflux == 0):
-                args.append(None)
-                continue
-
-            # Compute the bounding box for the max-radius aperture
-            # inline, replacing CircularAperture + _aperture_to_mask +
-            # _make_aperture_data
-            ixmin = math.floor(xcen - max_radius_ + 0.5)
-            ixmax = math.ceil(xcen + max_radius_ + 0.5)
-            iymin = math.floor(ycen - max_radius_ + 0.5)
-            iymax = math.ceil(ycen + max_radius_ + 0.5)
-
-            # OOM guard (same logic as _aperture_to_mask)
-            bbox_ny = iymax - iymin
-            bbox_nx = ixmax - ixmin
-            if bbox_ny * bbox_nx > max_aper_size:
-                args.append(None)
-                continue
-
-            # Clip to data boundaries
-            data_ymin = max(0, iymin)
-            data_ymax = min(data_shape[0], iymax)
-            data_xmin = max(0, ixmin)
-            data_xmax = min(data_shape[1], ixmax)
-            if data_ymin >= data_ymax or data_xmin >= data_xmax:
-                args.append(None)
-                continue
-
-            slc_lg = (slice(data_ymin, data_ymax), slice(data_xmin, data_xmax))
-            cutout_data = data_arr[slc_lg].astype(float) - bkg
-
-            # Build data mask (non-finite + user mask)
-            data_mask = ~np.isfinite(cutout_data)
-            if mask_arr is not None:
-                data_mask |= mask_arr[slc_lg]
-
-            # Cutout centroid position
-            cutout_xcen = xcen - data_xmin
-            cutout_ycen = ycen - data_ymin
-
-            # Handle neighboring sources
-            if aperture_mask_method != 'none':
-                seg_cut = segm_data[slc_lg]
-                segm_mask = (seg_cut != label) & (seg_cut != 0)
-                if aperture_mask_method == 'mask':
-                    data_mask = data_mask | segm_mask
-                elif aperture_mask_method == 'correct':
-                    cutout_data = _mask_to_mirrored_value(
-                        cutout_data, segm_mask,
-                        (cutout_xcen, cutout_ycen), mask=data_mask)
-
-            # Pre-zero masked pixels so the root-finding function can
-            # use a simple sum without masking
-            clean_data = cutout_data.copy()
-            clean_data[data_mask] = 0.0
-
-            # Pre-compute grid parameters for circular_overlap_grid
-            ny, nx = clean_data.shape
-            xmin_edge = -0.5 - cutout_xcen
-            xmax_edge = nx - 0.5 - cutout_xcen
-            ymin_edge = -0.5 - cutout_ycen
-            ymax_edge = ny - 0.5 - cutout_ycen
-            grid_params = (xmin_edge, xmax_edge, ymin_edge, ymax_edge,
-                           nx, ny, use_exact, subpixels)
-
-            args.append([clean_data, grid_params, kronflux, max_radius_])
-
-        return args
+        arrays = self._get_batch_arrays()
+        return batch_flux_radius_prepare(
+            arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
+            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
+                                        dtype=np.intp),
+            xcen=x_centroid, ycen=y_centroid, local_bkg=local_bkg,
+            kronflux=kron_flux, max_radius=max_radius, skip=skip,
+            seg_method=_SEG_METHOD_CODES[self.aperture_mask_method],
+            use_exact=use_exact, subpixels=subpixels,
+            max_aper_size=max(self._data.size, 1_000_000))
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def flux_radius(self, fraction, name=None, overwrite=False):
