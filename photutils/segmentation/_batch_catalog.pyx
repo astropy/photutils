@@ -11,6 +11,11 @@ per-source Python calls. The per-pixel segmentation masking (mask or
 mirror-correct) uses the same helper as the aperture batch drivers, so
 the semantics match the previous cutout-based code paths.
 
+The fractional-flux radius solver additionally runs its bracketed
+root-find entirely in C, using the ``brentq`` implementation exported
+by ``scipy.optimize.cython_optimize``, so that no Python call is made
+per root-finder iteration.
+
 The source loops run without the GIL and use no global mutable state,
 so this module is safe to use from multiple threads, including on
 free-threaded Python builds.
@@ -18,9 +23,12 @@ free-threaded Python builds.
 
 import numpy as np
 
-from photutils.aperture._batch_overlap cimport _resolve_seg_pixel
+from scipy.optimize.cython_optimize cimport brentq, zeros_full_output
 
-__all__ = ['batch_centroid_win']
+from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
+                                                _resolve_seg_pixel)
+
+__all__ = ['batch_centroid_win', 'batch_flux_radius_solve']
 
 
 cdef extern from "math.h" nogil:
@@ -348,3 +356,149 @@ def batch_centroid_win(const double[:, ::1] data, *,
                                  sigma[i], seg_method, compute_err,
                                  max_aper_size, &results[i, 0])
     return results_arr
+
+
+ctypedef struct _FluxRadiusArgs:
+    const double *data
+    Py_ssize_t nx
+    Py_ssize_t ny
+    double xmin_e
+    double ymin_e
+    double dx
+    double dy
+    double pixel_radius
+    int use_exact
+    int subpixels
+    double normflux
+
+
+cdef double _flux_radius_objective(double r,
+                                   void *args) noexcept nogil:
+    """
+    Fraction-of-flux residual ``1 - flux(r) / normflux`` for the
+    brentq root-find, accumulating ``data * overlap`` with the same
+    per-pixel arithmetic as ``circular_overlap_grid`` (grid edges
+    relative to the source centroid).
+    """
+    cdef _FluxRadiusArgs *p = <_FluxRadiusArgs *>args
+    cdef Py_ssize_t ix, iy
+    cdef double flux = 0.0
+    cdef double pymin, pxmin, frac
+
+    for iy in range(p.ny):
+        pymin = p.ymin_e + iy * p.dy
+        for ix in range(p.nx):
+            pxmin = p.xmin_e + ix * p.dx
+            frac = _circle_pixel_frac(pxmin, pymin, p.dx, p.dy,
+                                      p.pixel_radius, r, p.use_exact,
+                                      p.subpixels)
+            if frac > 0.0:
+                flux += p.data[iy * p.nx + ix] * frac
+    return 1.0 - flux / p.normflux
+
+
+def batch_flux_radius_solve(args_list, *, double fraction):
+    """
+    Solve the fractional-flux radius for many prepared sources in one
+    call.
+
+    For each source, the circular radius enclosing ``fraction`` of the
+    Kron flux is the root of ``1 - flux(r) / (kronflux * fraction)``,
+    found by a bracketed Brent root-find over ``[0.1, max_radius]``.
+    The per-pixel circular overlap, the bracket, and the root-finder
+    tolerances replicate the previous per-source
+    `scipy.optimize.root_scalar` implementation exactly.
+
+    A bracket whose endpoints have the same sign has no (or multiple)
+    solutions. As in the previous implementation, the maximum radius
+    is then reduced by 10% of its original value and the root-find is
+    retried, until either a root is found or the maximum radius drops
+    to the minimum radius (0.1), in which case NaN is returned.
+
+    Parameters
+    ----------
+    args_list : list
+        The prepared per-source arguments, as built by
+        ``SourceCatalog._flux_radius_optimizer_args``. Each entry is
+        either `None`, for a source that cannot have a solution (NaN
+        is returned), or the list ``[clean_data, grid_params,
+        kronflux, max_radius]``. ``clean_data`` is the C-contiguous
+        float64 source cutout with masked pixels zeroed,
+        ``grid_params`` is the tuple ``(xmin_e, xmax_e, ymin_e,
+        ymax_e, nx, ny, use_exact, subpixels)`` of
+        `~photutils.geometry.circular_overlap_grid` parameters whose
+        grid edges are relative to the source centroid, ``kronflux``
+        is the source Kron flux, and ``max_radius`` is the initial
+        upper bracket radius.
+
+    fraction : float
+        The fraction of the Kron flux at which to find the circular
+        radius.
+
+    Returns
+    -------
+    radius : 1D `~numpy.ndarray`
+        The circular radius enclosing the specified fraction of the
+        Kron flux for each source, with shape ``(n_sources,)``. NaN is
+        returned for `None` entries and where no solution was found.
+    """
+    cdef Py_ssize_t n_src = len(args_list)
+    radius_arr = np.full(n_src, np.nan)
+    cdef double[::1] radius = radius_arr
+    cdef const double[:, ::1] cdata
+    cdef _FluxRadiusArgs p
+    cdef zeros_full_output full_output
+    cdef double xmax_e, ymax_e
+    cdef double max_radius, delta, result
+    cdef bint found
+    cdef Py_ssize_t i
+
+    for i, entry in enumerate(args_list):
+        if entry is None:
+            continue
+        clean_data, grid_params, kronflux, max_radius_py = entry
+        cdata = clean_data
+        p.data = &cdata[0, 0]
+        p.xmin_e = grid_params[0]
+        xmax_e = grid_params[1]
+        p.ymin_e = grid_params[2]
+        ymax_e = grid_params[3]
+        p.nx = grid_params[4]
+        p.ny = grid_params[5]
+        # The pixel size and pixel radius are derived from the grid
+        # extent exactly as in ``circular_overlap_grid``
+        p.dx = (xmax_e - p.xmin_e) / p.nx
+        p.dy = (ymax_e - p.ymin_e) / p.ny
+        p.pixel_radius = 0.5 * sqrt(p.dx * p.dx + p.dy * p.dy)
+        p.use_exact = grid_params[6]
+        p.subpixels = grid_params[7]
+        p.normflux = kronflux * fraction
+        max_radius = max_radius_py
+
+        with nogil:
+            found = False
+            result = NAN
+            delta = 0.1 * max_radius
+            while max_radius > 0.1 and not found:
+                # xtol, rtol (4 * float64 eps), and maxiter are the
+                # root_scalar(method='brentq') defaults, so the same
+                # underlying C algorithm follows the identical
+                # iteration sequence
+                result = brentq(_flux_radius_objective, 0.1,
+                                max_radius, &p, 2e-12,
+                                8.881784197001252e-16, 100,
+                                &full_output)
+                if full_output.error_num == -1:
+                    # Sign error (same-sign bracket): shrink and
+                    # retry, matching the ValueError path of
+                    # root_scalar
+                    max_radius -= delta
+                else:
+                    # Success or non-convergence: root_scalar does
+                    # not raise on non-convergence, so accept the
+                    # root either way
+                    found = True
+            if not found:
+                result = NAN
+        radius[i] = result
+    return radius_arr
