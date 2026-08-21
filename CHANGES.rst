@@ -101,7 +101,9 @@ New Features
     conditions from both the "center"-method footprint used by the
     value statistics and the ``sum_method`` footprint used by the sum
     properties. A new ``decode_aperture_flags`` function decodes the
-    flag values into human-readable names. [#2327, #2328, #2362, #2379]
+    flag values into human-readable names, and both classes have a
+    ``decode_flags`` convenience method that returns a dictionary keyed
+    by aperture position id. [#2327, #2328, #2362, #2379, #2400]
 
   - Added validation of the ``ApertureStats.to_table()`` ``columns``
     keyword. [#2329]
@@ -857,6 +859,17 @@ API Changes
     for values outside the documented ranges. [#2369]
 
 - ``photutils.psf``
+
+  - The ``PSFPhotometry.decode_flags`` and
+    ``IterativePSFPhotometry.decode_flags`` methods now return a
+    dictionary mapping each source id from the results table to its
+    list of active flag names (or bit values), instead of a positional
+    list of lists. This is a backward-incompatible change, made so that
+    decoded flags can be looked up directly by source id (which may not
+    be sequential when custom ids are input) and for consistency with
+    the new aperture and segmentation ``decode_flags`` methods. The
+    module-level ``decode_psf_flags`` function is unchanged and still
+    returns lists. [#2400]
 
   - The ``EPSFBuildResult`` class returned by ``EPSFBuilder`` has been
     renamed to ``EPSFBuildResults``. The old ``EPSFBuildResult`` name is

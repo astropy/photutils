@@ -702,11 +702,15 @@ class IterativePSFPhotometry:
 
         Returns
         -------
-        decoded : list of list of str or list of list of int
-            List of lists where each inner list contains the active flag
-            names (or bit values) for the corresponding source in the
-            results table. If no flags are set for a source, an empty
-            list is returned for that source.
+        decoded : dict
+            A dictionary mapping each source id from the results table
+            to the list of its active flag names (or bit values). If no
+            flags are set for a source, its value is an empty list. The
+            entries follow the results-table order.
+
+            .. versionchanged:: 3.1
+                The result is now a dictionary keyed by source id.
+                Previously, a positional list of lists was returned.
 
         Raises
         ------
@@ -741,9 +745,8 @@ class IterativePSFPhotometry:
         ...                                     aperture_radius=4,
         ...                                     maxiters=1)
         >>> results = photometry(data, init_params=init_params)
-        >>> decoded_flags = photometry.decode_flags()
-        >>> for i, flags in enumerate(decoded_flags):
-        ...     print(f'Source {i+1}: {flags}')  # doctest: +SKIP
+        >>> for source_id, flags in photometry.decode_flags().items():
+        ...     print(f'Source {source_id}: {flags}')  # doctest: +SKIP
         Source 1: []
         Source 2: ['negative_flux']
         """
@@ -752,8 +755,11 @@ class IterativePSFPhotometry:
                    'IterativePSFPhotometry instance first.')
             raise ValueError(msg)
 
-        return decode_psf_flags(self.results['flags'],
-                                return_bit_values=return_bit_values)
+        decoded = decode_psf_flags(self.results['flags'],
+                                   return_bit_values=return_bit_values)
+        return {int(id_): flags
+                for id_, flags in zip(self.results['id'], decoded,
+                                      strict=True)}
 
     def _get_model_image_params(self):
         # Convert fitted parameters to model parameter names without

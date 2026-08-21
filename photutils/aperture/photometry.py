@@ -543,19 +543,25 @@ class AperturePhotometry:
 
         Returns
         -------
-        decoded : list of list of str or list of list of int
-            A list of the active flag names (or bit values) for each
-            aperture. If a list of apertures was input (2D `flags`),
-            the result is a nested list with the same ``(n_positions,
-            n_apertures)`` shape as `flags`, so ``decoded[i][j]`` gives
-            the active flags for position ``i`` and aperture ``j``.
+        decoded : dict
+            A dictionary mapping each aperture position `id` to its
+            decoded flags. For a single input aperture, each value is
+            the list of active flag names (or bit values) for that
+            position. If a list of apertures was input (2D `flags`),
+            each value is a list with one entry per aperture, so
+            ``decoded[id][j]`` gives the active flags for position
+            ``id`` and aperture ``j``. The entries follow the position
+            order.
 
         See Also
         --------
         photutils.aperture.decode_aperture_flags
         """
-        return decode_aperture_flags(self._array('flags'),
-                                     return_bit_values=return_bit_values)
+        decoded = decode_aperture_flags(self._array('flags'),
+                                        return_bit_values=return_bit_values)
+        return {int(id_): flags
+                for id_, flags in zip(self._array('id'), decoded,
+                                      strict=True)}
 
 
 @_update_method_subpixels_docstring

@@ -728,9 +728,9 @@ For example::
 
 The flag values can be decoded into human-readable names using the
 :meth:`~photutils.aperture.AperturePhotometry.decode_flags` convenience
-method::
+method, which returns a dictionary keyed by aperture position id::
 
-    >>> for source_id, names in zip(phot.id, phot.decode_flags(), strict=True):
+    >>> for source_id, names in phot.decode_flags().items():
     ...     print(source_id, names)
     1 ['masked_pixels']
     2 ['partial_overlap']
@@ -756,11 +756,11 @@ method::
     >>> aperstats = ApertureStats(data, aperture, mask=mask)
     >>> print(aperstats.flags)
     [8 2 5]
-    >>> for names in aperstats.decode_flags():
-    ...     print(names)
-    ['masked_pixels']
-    ['partial_overlap']
-    ['no_overlap', 'no_pixels']
+    >>> for source_id, names in aperstats.decode_flags().items():
+    ...     print(source_id, names)
+    1 ['masked_pixels']
+    2 ['partial_overlap']
+    3 ['no_overlap', 'no_pixels']
 
 For `~photutils.aperture.ApertureStats`, the value statistics and
 the sum properties are measured on two different footprints, and

@@ -381,8 +381,10 @@ class TestFlagsAndArea:
         aper = CircularAperture([(12.0, 12.0), (0.0, 12.0)], r=3.0)
         phot = AperturePhotometry(data, aper, mask=mask)
         decoded = phot.decode_flags()
-        assert decoded[0] == ['masked_pixels']
-        assert decoded[1] == ['partial_overlap']
+        assert list(decoded) == [1, 2]
+        assert all(type(key) is int for key in decoded)
+        assert decoded[1] == ['masked_pixels']
+        assert decoded[2] == ['partial_overlap']
 
     def test_decode_flags_bit_values(self):
         data = np.ones((25, 25))
@@ -391,7 +393,20 @@ class TestFlagsAndArea:
         aper = CircularAperture([(12.0, 12.0)], r=3.0)
         phot = AperturePhotometry(data, aper, mask=mask)
         decoded = phot.decode_flags(return_bit_values=True)
-        assert decoded[0] == [8]
+        assert decoded == {1: [8]}
+
+    def test_decode_flags_multiple_apertures(self):
+        data = np.ones((25, 25))
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[12, 12] = True
+        positions = [(12.0, 12.0), (0.0, 12.0)]
+        apers = [CircularAperture(positions, r=3.0),
+                 CircularAperture(positions, r=5.0)]
+        phot = AperturePhotometry(data, apers, mask=mask)
+        decoded = phot.decode_flags()
+        assert list(decoded) == [1, 2]
+        assert decoded[1] == [['masked_pixels'], ['masked_pixels']]
+        assert decoded[2] == [['partial_overlap'], ['partial_overlap']]
 
 
 class TestScalarBehavior:
@@ -497,7 +512,7 @@ class TestScalarBehavior:
         mask[12, 12] = True
         aper = CircularAperture((12, 12), r=3)
         phot = AperturePhotometry(data, aper, mask=mask)
-        assert phot.decode_flags() == [['masked_pixels']]
+        assert phot.decode_flags() == {1: ['masked_pixels']}
 
     @pytest.mark.parametrize('use_segm_obj', [True, False])
     def test_scalar_input_attributes_not_collapsed(self, use_segm_obj):
@@ -548,7 +563,7 @@ class TestNonFiniteData:
         assert_allclose(phot.flux, aper.area_overlap(data) - 2)
         assert_allclose(phot.area.value, phot.flux)
         assert phot.flags == 32
-        assert phot.decode_flags()[0] == ['non_finite_data']
+        assert phot.decode_flags()[1] == ['non_finite_data']
 
     def test_mask_path_masks_nonfinite(self):
         # Disable the batch Cython driver to exercise the slower
@@ -562,7 +577,7 @@ class TestNonFiniteData:
             phot = AperturePhotometry(data, aper)
             flux = phot.flux
             flags = phot.flags
-            decoded = phot.decode_flags()[0]
+            decoded = phot.decode_flags()[1]
         assert np.isfinite(flux)
         assert_allclose(flux, aper.area_overlap(data) - 2)
         assert flags == 32
@@ -602,7 +617,7 @@ class TestNonFiniteData:
         assert np.isfinite(phot.flux)
         # Both masked_pixels (8) and non_finite_data (32) are set.
         assert phot.flags == 8 | 32
-        assert set(phot.decode_flags()[0]) == {'masked_pixels',
+        assert set(phot.decode_flags()[1]) == {'masked_pixels',
                                                'non_finite_data'}
 
     def test_nonfinite_at_masked_pixel_counts_as_masked(self):

@@ -2167,9 +2167,10 @@ class ApertureStats:
 
         Returns
         -------
-        decoded : list of list of str or list of list of int
-            A list of the active flag names (or bit values) for each
-            source.
+        decoded : dict
+            A dictionary mapping each aperture position `id` to the list
+            of its active flag names (or bit values). The entries follow
+            the position order.
 
         See Also
         --------
@@ -2184,13 +2185,16 @@ class ApertureStats:
         >>> mask[12, 12] = True
         >>> aper = CircularAperture([(12.0, 12.0), (0.0, 12.0)], r=3.0)
         >>> aperstats = ApertureStats(data, aper, mask=mask)
-        >>> for names in aperstats.decode_flags():
-        ...     print(names)
-        ['masked_pixels']
-        ['partial_overlap']
+        >>> for source_id, names in aperstats.decode_flags().items():
+        ...     print(source_id, names)
+        1 ['masked_pixels']
+        2 ['partial_overlap']
         """
-        return decode_aperture_flags(self._array('flags'),
-                                     return_bit_values=return_bit_values)
+        decoded = decode_aperture_flags(self._array('flags'),
+                                        return_bit_values=return_bit_values)
+        return {int(id_): flags
+                for id_, flags in zip(self._array('id'), decoded,
+                                      strict=True)}
 
     def _get_values(self, array):
         """
