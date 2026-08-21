@@ -1,0 +1,332 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the batch centroid_win Cython driver.
+"""
+
+import math
+import warnings
+from concurrent.futures import ThreadPoolExecutor
+
+import numpy as np
+import pytest
+from astropy.stats import gaussian_fwhm_to_sigma
+from numpy.testing import assert_allclose
+
+from photutils.segmentation._batch_catalog import batch_centroid_win
+from photutils.segmentation.tests._batch_scene import (make_batch_scene,
+                                                       make_catalog)
+from photutils.segmentation.utils import _mask_to_mirrored_value
+
+SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'correct': 3}
+
+
+def _reference_iterate_centroid_win(label, xcen, ycen, rad_hl,
+                                    nan_hl_source, *, data_arr,
+                                    mask_arr, error_arr, segm_data,
+                                    data_shape, do_correct,
+                                    do_segm_mask, compute_err,
+                                    max_aper_size,
+                                    aperture_mask_method):
+    """
+    Compute the windowed centroid for a single source.
+
+    This is a verbatim port of the per-source Python implementation that
+    the batch Cython driver replaces. It is the numerical reference for
+    the driver.
+
+    Returns
+    -------
+    result : tuple of float
+        Tuple of (xcen, ycen, weighted_flux, cen_mom_xx, cen_mom_yy,
+        cen_mom_xy, err_sum, err_var_x, err_var_y, err_cov_xy).
+    """
+    nan_result = (np.nan, np.nan, 0.0, 0.0, 0.0, 0.0,
+                  np.nan, np.nan, np.nan, np.nan)
+    if nan_hl_source or math.isnan(xcen) or math.isnan(ycen):
+        return nan_result
+
+    sigma = 2.0 * rad_hl * gaussian_fwhm_to_sigma
+    inv_2sigma2 = -1.0 / (2.0 * sigma * sigma)
+    radius = 4.0 * sigma
+    radius_sq = radius * radius
+
+    # Compute the full (unclipped) bounding box for the aperture
+    # using the initial centroid. The radius is fixed, so the
+    # bbox size stays the same across iterations even if the
+    # center shifts slightly.
+    bbox_halfsize = int(radius + 1.5)
+    full_ny = full_nx = 2 * bbox_halfsize + 1
+
+    # OOM guard
+    if full_ny * full_nx > max_aper_size:
+        return nan_result
+
+    # Cache for cutout data when the integer bbox doesn't change
+    prev_ixcen = prev_iycen = None
+    cached_data = cached_mask = cached_var = None
+
+    max_iters = 16
+    centroid_threshold = 0.0001
+    iter_ = 0
+    dcen = 1.0
+    weighted_flux = 0.0
+    dx_mom = dy_mom = 0.0
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        while iter_ < max_iters and dcen > centroid_threshold:
+            # Compute integer bounding box
+            ixmin = int(xcen + 0.5) - bbox_halfsize
+            ixmax = ixmin + full_nx
+            iymin = int(ycen + 0.5) - bbox_halfsize
+            iymax = iymin + full_ny
+
+            # Clip to data boundaries
+            slc_y = slice(max(0, iymin), min(data_shape[0], iymax))
+            slc_x = slice(max(0, ixmin), min(data_shape[1], ixmax))
+            if (slc_y.start >= slc_y.stop
+                    or slc_x.start >= slc_x.stop):
+                xcen = np.nan
+                ycen = np.nan
+                break
+
+            cur_ixcen = int(xcen + 0.5)
+            cur_iycen = int(ycen + 0.5)
+
+            # Recompute cutout data only when the integer center
+            # changes to avoid redundant _mask_to_mirrored_value
+            # calls
+            if cur_ixcen != prev_ixcen or cur_iycen != prev_iycen:
+                prev_ixcen = cur_ixcen
+                prev_iycen = cur_iycen
+
+                data = data_arr[slc_y, slc_x].astype(float)
+                data_mask = ~np.isfinite(data)
+                if mask_arr is not None:
+                    data_mask |= mask_arr[slc_y, slc_x]
+
+                cutout_xycen = (xcen - max(0, ixmin),
+                                ycen - max(0, iymin))
+
+                if do_segm_mask:
+                    seg_cut = segm_data[slc_y, slc_x]
+                    segm_mask = ((seg_cut != label)
+                                 & (seg_cut != 0))
+                    if aperture_mask_method == 'mask':
+                        data_mask = data_mask | segm_mask
+
+                if do_correct:
+                    data = _mask_to_mirrored_value(
+                        data, segm_mask, cutout_xycen,
+                        mask=data_mask)
+
+                cached_data = data
+                cached_mask = data_mask
+
+                if compute_err:
+                    var = error_arr[slc_y, slc_x].astype(float)**2
+                    if do_correct:
+                        # Pixels replaced by mirrored data values
+                        # also use the mirrored pixel's variance
+                        var = _mask_to_mirrored_value(
+                            var, segm_mask, cutout_xycen,
+                            mask=data_mask)
+                    var[data_mask] = 0.0
+                    cached_var = var
+
+            # Centroid position in cutout coordinates
+            cx = xcen - max(0, ixmin)
+            cy = ycen - max(0, iymin)
+
+            ny = slc_y.stop - slc_y.start
+            nx = slc_x.stop - slc_x.start
+
+            # Build coordinate grids relative to centroid
+            # (reused for circle mask, Gaussian, and moments)
+            xvals = np.arange(nx) - cx
+            yvals = np.arange(ny) - cy
+            xx = xvals[np.newaxis, :]
+            yy = yvals[:, np.newaxis]
+
+            # Inline binary circle mask
+            rr2 = xx * xx + yy * yy
+            aper_weights = (rr2 <= radius_sq).astype(float)
+
+            # Inline Gaussian weight
+            gweight = np.exp(rr2 * inv_2sigma2)
+
+            # Apply weights and mask
+            weighted = (cached_data * aper_weights * gweight)
+            weighted[cached_mask] = 0.0
+
+            # Inline moment computation
+            weighted_flux = np.sum(weighted)
+            dx_mom = np.sum(weighted * xx) / weighted_flux
+            dy_mom = np.sum(weighted * yy) / weighted_flux
+
+            dcen = math.sqrt(dx_mom * dx_mom
+                             + dy_mom * dy_mom)
+            xcen += dx_mom * 2.0
+            ycen += dy_mom * 2.0
+            iter_ += 1
+
+        # Compute the windowed central 2nd-order moments (for
+        # the fallback checks) and the raw error
+        # sums from the last iteration, relative to
+        # the pre-update center.
+        cen_mom_xx = cen_mom_yy = cen_mom_xy = 0.0
+        err_sum = err_var_x = err_var_y = err_cov_xy = np.nan
+        if np.isfinite(weighted_flux) and weighted_flux > 0:
+            cen_mom_xx = (np.sum(weighted * xx * xx)
+                          / weighted_flux - dx_mom * dx_mom)
+            cen_mom_yy = (np.sum(weighted * yy * yy)
+                          / weighted_flux - dy_mom * dy_mom)
+            cen_mom_xy = (np.sum(weighted * xx * yy)
+                          / weighted_flux - dx_mom * dy_mom)
+
+            if compute_err:
+                weighted_var = ((aper_weights * gweight)**2
+                                * cached_var)
+                err_sum = np.sum(weighted_var)
+                err_var_x = np.sum(weighted_var * xx * xx)
+                err_var_y = np.sum(weighted_var * yy * yy)
+                err_cov_xy = np.sum(weighted_var * xx * yy)
+
+    return (xcen, ycen, weighted_flux, cen_mom_xx,
+            cen_mom_yy, cen_mom_xy,
+            err_sum, err_var_x, err_var_y, err_cov_xy)
+
+
+@pytest.fixture(scope='module')
+def scene():
+    return make_batch_scene()
+
+
+def _driver_inputs(cat, scene):
+    """
+    Build the batch_centroid_win inputs for a catalog, mirroring the
+    wiring in SourceCatalog._centroid_win_results.
+    """
+    data = np.ascontiguousarray(scene['data'], dtype=np.float64)
+    mask_plane = np.zeros(data.shape, dtype=np.uint8)
+    if cat._mask is not None:
+        mask_plane[cat._mask] |= 1
+    mask_plane[~np.isfinite(data)] |= 2
+    error = None
+    if cat._error is not None:
+        error = np.ascontiguousarray(scene['error'], dtype=np.float64)
+    segm = np.ascontiguousarray(scene['segm'].data, dtype=np.intp)
+
+    radius_hl = cat.flux_radius(0.5).value.copy()
+    nan_hl = ~np.isfinite(radius_hl)
+    small = np.isfinite(radius_hl) & (radius_hl < 0.5)
+    radius_hl[small] = 0.5
+    sigma = 2.0 * radius_hl * gaussian_fwhm_to_sigma
+    xcen0 = np.atleast_1d(cat.x_centroid).astype(np.float64)
+    ycen0 = np.atleast_1d(cat.y_centroid).astype(np.float64)
+    # np.isnan (not ~np.isfinite) for parity with the previous
+    # per-source math.isnan checks
+    skip = (nan_hl | np.isnan(xcen0) | np.isnan(ycen0)).astype(np.uint8)
+    return {'data': data, 'error': error, 'mask': mask_plane,
+            'segm': segm,
+            'labels': np.ascontiguousarray(cat.labels, dtype=np.intp),
+            'xcen0': xcen0, 'ycen0': ycen0, 'sigma': sigma,
+            'skip': skip, 'radius_hl': radius_hl, 'nan_hl': nan_hl}
+
+
+@pytest.mark.parametrize('method', ['correct', 'mask', 'none'])
+@pytest.mark.parametrize('with_error', [True, False])
+@pytest.mark.parametrize('with_mask', [True, False])
+def test_matches_reference(scene, method, with_error, with_mask):
+    cat = make_catalog(scene, aperture_mask_method=method,
+                       with_error=with_error, with_mask=with_mask)
+    inp = _driver_inputs(cat, scene)
+    max_aper_size = max(scene['data'].size, 1_000_000)
+    result = batch_centroid_win(
+        inp['data'], error=inp['error'], mask=inp['mask'],
+        segm=inp['segm'], labels=inp['labels'], xcen0=inp['xcen0'],
+        ycen0=inp['ycen0'], sigma=inp['sigma'], skip=inp['skip'],
+        seg_method=SEG_METHOD_CODES[method],
+        compute_err=int(with_error), max_aper_size=max_aper_size)
+
+    assert result.shape == (len(inp['labels']), 10)
+    ref_kwargs = {
+        'data_arr': scene['data'],
+        'mask_arr': scene['mask'] if with_mask else None,
+        'error_arr': scene['error'] if with_error else None,
+        'segm_data': scene['segm'].data,
+        'data_shape': scene['data'].shape,
+        'do_correct': method == 'correct',
+        'do_segm_mask': method != 'none',
+        'compute_err': with_error,
+        'max_aper_size': max_aper_size,
+        'aperture_mask_method': method,
+    }
+    for i, label in enumerate(inp['labels']):
+        ref = _reference_iterate_centroid_win(
+            label, inp['xcen0'][i], inp['ycen0'][i],
+            inp['radius_hl'][i], inp['nan_hl'][i], **ref_kwargs)
+        # atol covers cancellation-limited near-zero central moments;
+        # positions and flux are far from zero and are effectively
+        # checked at rtol
+        assert_allclose(result[i], np.array(ref), rtol=1e-12,
+                        atol=1e-10, equal_nan=True)
+
+
+def test_skip_rows(scene):
+    cat = make_catalog(scene)
+    inp = _driver_inputs(cat, scene)
+    skip = np.ones_like(inp['skip'])
+    result = batch_centroid_win(
+        inp['data'], error=inp['error'], mask=inp['mask'],
+        segm=inp['segm'], labels=inp['labels'], xcen0=inp['xcen0'],
+        ycen0=inp['ycen0'], sigma=inp['sigma'], skip=skip,
+        seg_method=3, compute_err=1,
+        max_aper_size=scene['data'].size)
+    expected = np.array([np.nan, np.nan, 0.0, 0.0, 0.0, 0.0,
+                         np.nan, np.nan, np.nan, np.nan])
+    for row in result:
+        assert_allclose(row, expected, equal_nan=True)
+
+
+def test_oom_guard(scene):
+    cat = make_catalog(scene)
+    inp = _driver_inputs(cat, scene)
+    result = batch_centroid_win(
+        inp['data'], error=inp['error'], mask=inp['mask'],
+        segm=inp['segm'], labels=inp['labels'], xcen0=inp['xcen0'],
+        ycen0=inp['ycen0'], sigma=inp['sigma'], skip=inp['skip'],
+        seg_method=3, compute_err=1, max_aper_size=4)
+    assert np.all(np.isnan(result[:, 0]))
+
+
+def test_compute_err_without_error(scene):
+    cat = make_catalog(scene, with_error=False)
+    inp = _driver_inputs(cat, scene)
+    match = 'error must be provided when compute_err is set'
+    with pytest.raises(ValueError, match=match):
+        batch_centroid_win(
+            inp['data'], error=None, mask=inp['mask'],
+            segm=inp['segm'], labels=inp['labels'],
+            xcen0=inp['xcen0'], ycen0=inp['ycen0'],
+            sigma=inp['sigma'], skip=inp['skip'], seg_method=3,
+            compute_err=1, max_aper_size=scene['data'].size)
+
+
+def test_thread_safety(scene):
+    cat = make_catalog(scene)
+    inp = _driver_inputs(cat, scene)
+    max_aper_size = max(scene['data'].size, 1_000_000)
+
+    def run():
+        return batch_centroid_win(
+            inp['data'], error=inp['error'], mask=inp['mask'],
+            segm=inp['segm'], labels=inp['labels'],
+            xcen0=inp['xcen0'], ycen0=inp['ycen0'],
+            sigma=inp['sigma'], skip=inp['skip'], seg_method=3,
+            compute_err=1, max_aper_size=max_aper_size)
+
+    expected = run()
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(lambda _: run(), range(16)))
+    for res in results:
+        assert_allclose(res, expected, rtol=0, atol=0, equal_nan=True)
