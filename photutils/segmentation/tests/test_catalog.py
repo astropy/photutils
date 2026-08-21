@@ -18,7 +18,6 @@ from astropy.table import QTable
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_equal
-from scipy.optimize import root_scalar
 
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture)
@@ -974,43 +973,6 @@ class TestSourceCatalog:
         # Modifying the parent cache does not affect the sliced cache
         cat.flux_radius(0.7)
         assert 0.7 not in obj._flux_radius_cache
-
-    def test_flux_radius_max_radius_delta(self):
-        """
-        Test that the max_radius_delta fallback loop reduces max_radius
-        by 10 percent on each failed bracketing attempt and still
-        returns a valid result when the second (reduced) bracket
-        succeeds.
-        """
-        # Use a single-source scalar catalog to keep the mock simple
-        cat = SourceCatalog(self.data, self.segm)[1]
-        assert cat.isscalar
-
-        brackets_seen = []
-        call_count = [0]
-
-        def mock_root_scalar(fcn, args, bracket, method):
-            call_count[0] += 1
-            brackets_seen.append(list(bracket))
-            if call_count[0] == 1:
-                # Simulate a bracket with no sign change
-                msg = 'no sign change in bracket'
-                raise ValueError(msg)
-            return root_scalar(fcn, args=args, bracket=bracket, method=method)
-
-        with patch('photutils.segmentation.catalog.root_scalar',
-                   mock_root_scalar):
-            r = cat.flux_radius(0.5)
-
-        # Fallback triggered once then succeeded
-        assert call_count[0] == 2
-
-        # Second bracket max_radius must be 10% smaller than the first
-        assert_allclose(brackets_seen[1][1], 0.9 * brackets_seen[0][1],
-                        rtol=1e-10)
-
-        # Result is a valid radius (not NaN)
-        assert np.isfinite(r.value)
 
     def test_flux_radius(self):
         """
@@ -2475,24 +2437,6 @@ def test_centroid_quad_edge_cases():
     cat4 = SourceCatalog(data4, segm4)
     cquad4 = cat4.cutout_centroid_quad
     assert np.all(np.isfinite(cquad4))
-
-
-def test_flux_radius_no_solution(single_source_catalog):
-    """
-    Test that flux_radius returns NaN when no solution is found
-    (root_scalar always raises ValueError).
-    """
-    _data, _segm, cat = single_source_catalog
-
-    # Make root_scalar always raise ValueError so no solution is found
-    def mock_root_scalar(*_args, **_kwargs):
-        msg = 'bracket signs'
-        raise ValueError(msg)
-
-    with patch('photutils.segmentation.catalog.root_scalar',
-               mock_root_scalar):
-        result = cat.flux_radius(0.5)
-    assert np.isnan(result.value[0])
 
 
 def test_kron_radius_max(gauss_101_catalog):

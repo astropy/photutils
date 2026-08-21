@@ -16,7 +16,6 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from scipy.ndimage import map_coordinates
-from scipy.optimize import root_scalar
 
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture, RectangularAnnulus)
@@ -32,9 +31,9 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   SHAPE_ELLIPSE,
                                                   batch_aperture_sums)
 from photutils.background import SExtractorBackground
-from photutils.geometry import circular_overlap_grid
 from photutils.morphology import gini as gini_func
-from photutils.segmentation._batch_catalog import batch_centroid_win
+from photutils.segmentation._batch_catalog import (batch_centroid_win,
+                                                   batch_flux_radius_solve)
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.flags import (SEGMENTATION_FLAGS,
                                           decode_segmentation_flags)
@@ -5080,21 +5079,6 @@ class SourceCatalog:
             radius[mask] = self.kron_params[2]
         return radius
 
-    @staticmethod
-    def _flux_radius_fcn(radius, clean_data, grid_params, normflux):
-        """
-        Function whose root is found to compute the flux_radius.
-
-        Uses ``circular_overlap_grid`` directly on pre-computed cutout
-        data (with masked pixels zeroed) to avoid per-call aperture
-        object overhead.
-        """
-        xmin_e, xmax_e, ymin_e, ymax_e, nx, ny, exact, subpx = grid_params
-        weights = circular_overlap_grid(xmin_e, xmax_e, ymin_e, ymax_e,
-                                        nx, ny, radius, exact, subpx)
-        flux = np.sum(clean_data * weights)
-        return 1.0 - (flux / normflux)
-
     @cached_property
     @use_detcat
     def _flux_radius_optimizer_args(self):
@@ -5252,55 +5236,8 @@ class SourceCatalog:
             return self._make_scalar(result)
 
         args = self._flux_radius_optimizer_args
-        if self.progress_bar:
-            desc = 'flux_radius'
-            args = add_progress_bar(args, desc=desc)
-
-        radius = []
-        for flux_radius_args in args:
-            if flux_radius_args is None:
-                radius.append(np.nan)
-                continue
-
-            clean_data, grid_params, kronflux, max_radius = flux_radius_args
-            normflux = kronflux * fraction
-            fcn_args = (clean_data, grid_params, normflux)
-
-            # Try to find the root of self._flux_radius_func, which
-            # is bracketed by a min and max radius. A ValueError is
-            # raised if the bracket points do not have different signs,
-            # indicating no solution or multiple solutions (e.g., a
-            # multi-valued function). This can happen when at some
-            # radius, flux starts decreasing with increasing radius (due
-            # to negative data values), resulting in multiple possible
-            # solutions. If no solution is found, we iteratively
-            # decrease the max radius to narrow the bracket range until
-            # the root is found. If max radius drops below the min
-            # radius (0.1), then no solution is possible and NaN will be
-            # returned as the result.
-            found = False
-            min_radius = 0.1
-            max_radius_delta = 0.1 * max_radius
-            while max_radius > min_radius and found is False:
-                try:
-                    bracket = [min_radius, max_radius]
-                    result = root_scalar(self._flux_radius_fcn,
-                                         args=fcn_args, bracket=bracket,
-                                         method='brentq')
-                    result = result.root
-                    found = True
-                except ValueError:
-                    # ValueError is raised if the bracket points do not
-                    # have different signs
-                    max_radius -= max_radius_delta
-
-            # No solution found between min_radius and max_radius
-            if found is False:
-                result = np.nan
-
-            radius.append(result)
-
-        result = np.array(radius) << u.pix
+        radius = batch_flux_radius_solve(args, fraction=fraction)
+        result = radius << u.pix
         self._flux_radius_cache[fraction] = result
 
         if name is not None:

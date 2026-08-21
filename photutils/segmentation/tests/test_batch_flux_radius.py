@@ -3,6 +3,7 @@
 Tests for the batch flux_radius solve driver.
 """
 
+import astropy.units as u
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -113,3 +114,19 @@ def test_bracket_shrink_and_no_solution(scene):
                  entry[1], entry[2], entry[3]]]
     assert np.isnan(batch_flux_radius_solve(hopeless,
                                             fraction=0.5)[0])
+
+
+def test_catalog_flux_radius(scene):
+    cat = make_catalog(scene)
+    expected = _reference_solve(cat._flux_radius_optimizer_args, 0.5)
+    result = cat.flux_radius(0.5)
+    assert result.unit == u.pix
+    assert_allclose(result.value, expected, rtol=1e-12,
+                    equal_nan=True)
+
+    # Cache round-trip and named property
+    cat.flux_radius(0.3, name='r30')
+    assert_allclose(cat.r30.value,
+                    _reference_solve(
+                        cat._flux_radius_optimizer_args, 0.3),
+                    rtol=1e-12, equal_nan=True)
