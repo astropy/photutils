@@ -31,7 +31,7 @@ class TestImageDepth:
 
         n_pixels = 10
         threshold = 3.2
-        finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+        finder = SourceFinder(n_pixels=n_pixels)
         segment_map = finder(convolved_data, threshold)
         self.data = data
         self.mask = segment_map.make_source_mask()
