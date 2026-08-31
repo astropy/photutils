@@ -201,10 +201,9 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
         is `False`, then a 2D `~numpy.ndarray` segmentation image is
         returned. If no sources are found then `None` is returned.
     """
-    # Ignore RuntimeWarning caused by > comparison when data contains NaNs
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', category=RuntimeWarning)
-        segment_img = data > threshold
+    # NaN values compare as False, so NaN pixels are never included
+    # in any source
+    segment_img = data > threshold
 
     if inverse_mask is not None:
         segment_img &= inverse_mask

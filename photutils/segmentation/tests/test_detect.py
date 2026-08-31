@@ -233,6 +233,19 @@ class TestDetectSources:
         with pytest.warns(NoDetectionsWarning, match=match):
             detect_sources(self.data, threshold=0.9, n_pixels=5)
 
+    def test_nan_data(self):
+        """
+        Test that NaN pixels are excluded from sources and that the
+        threshold comparison with NaN values does not emit warnings.
+        """
+        data = np.ones((5, 5))
+        data[2, 2] = np.nan
+        segm = detect_sources(data, threshold=0.5, n_pixels=5)
+        assert segm.n_labels == 1
+        expected = np.ones((5, 5), dtype=np.int32)
+        expected[2, 2] = 0
+        assert_equal(segm.data, expected)
+
     def test_n_pixels(self):
         """
         Test removal of sources whose size is less than n_pixels.
