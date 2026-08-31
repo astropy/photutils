@@ -670,6 +670,17 @@ concurrently, producing results identical to the single-threaded
 computation. The compiled kernels release the GIL, so multithreading can
 significantly speed up deblending, especially for large sources.
 
+A new ``contrast_method`` keyword selects the flux used by the
+deblending contrast criterion. The default ``'basin'`` preserves
+the existing behavior: the contrast fraction is the total flux
+in the source's watershed basin, and below-contrast basins are
+removed iteratively. The new ``'saddle'`` method instead measures
+the flux a source holds above the saddle level where it separates
+from its neighbors. It measures the significance of the peak itself,
+independently of how much envelope territory the source would inherit
+from the watershed, and requires only a single watershed pass, so it is
+also faster.
+
 
 ``GriddedPSFModel`` Performance Improvements
 ============================================

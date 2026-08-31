@@ -17,6 +17,7 @@ from scipy import ndimage as ndi
 from photutils.segmentation import SegmentationImage
 from photutils.segmentation import deblend as deblend_module
 from photutils.segmentation import deblend_sources, detect_sources
+from photutils.segmentation._deblend_markers import deblend_markers_chunk
 from photutils.segmentation._deblend_reference import _SingleSourceDeblender
 from photutils.segmentation._deblend_watershed import deblend_watershed
 from photutils.segmentation.deblend import (_compute_thresholds,
@@ -937,6 +938,231 @@ def test_compute_thresholds_matches_reference(dtype, mode, n_levels):
         assert_equal(thresholds[i].view(np.int64),
                      expected.view(np.int64))
         assert nonposmin[i] == ('nonposmin' in deblender.warnings)
+
+
+def raster_relabel(markers):
+    """
+    Relabel a marker image consecutively in raster-scan order of the
+    first pixel of each marker.
+
+    Parameters
+    ----------
+    markers : 2D int `~numpy.ndarray`
+        The marker image.
+
+    Returns
+    -------
+    result : 2D int `~numpy.ndarray`
+        The relabeled marker image.
+    """
+    flat = markers.ravel()
+    labels, first = np.unique(flat, return_index=True)
+    keep = labels > 0
+    labels = labels[keep]
+    order = np.argsort(first[keep])
+    lut = np.zeros(labels.max() + 1, dtype=np.int32)
+    lut[labels[order]] = np.arange(1, labels.size + 1)
+    return lut[markers]
+
+
+def python_saddle_markers(data, segment_mask, thresholds, n_pixels,
+                          limit, footprint):
+    """
+    Reference implementation of the saddle-criterion marker selection.
+
+    Builds the per-level component tree with per-level labeling and
+    selects the markers with a global junction scan. A junction splits
+    where at least two children with at least ``n_pixels`` pixels each
+    hold more flux above the junction level than ``limit``, and the
+    markers are the passing children of splitting junctions that contain
+    no deeper split.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The source cutout.
+
+    segment_mask : 2D bool `~numpy.ndarray`
+        The source segment mask.
+
+    thresholds : 1D `~numpy.ndarray`
+        The multithreshold levels.
+
+    n_pixels : int
+        The minimum number of connected pixels per component.
+
+    limit : float
+        The saddle flux limit (the contrast times the total source
+        flux).
+
+    footprint : 2D `~numpy.ndarray`
+        The connectivity footprint.
+
+    Returns
+    -------
+    markers : 2D int `~numpy.ndarray` or `None`
+        The marker image, or `None` if there are fewer than two
+        markers.
+    """
+    from scipy.ndimage import label as ndi_label
+
+    n_levels = len(thresholds)
+    level_labels = [ndi_label((data > threshold) & segment_mask,
+                              structure=footprint)[0]
+                    for threshold in thresholds]
+
+    passer = {}
+    children = {}
+    all_nodes = []
+    for level in range(n_levels):
+        labeled = level_labels[level]
+        for comp in np.unique(labeled[labeled > 0]):
+            node = (level, int(comp))
+            all_nodes.append(node)
+            region = labeled == comp
+            area = int(region.sum())
+            flux = float(np.sum(data[region], dtype=np.float64))
+            prominence = flux - thresholds[level] * area
+            passer[node] = area >= n_pixels and prominence > limit
+            children[node] = []
+            if level > 0:
+                parent_comp = int(level_labels[level - 1][region][0])
+                children[(level - 1, parent_comp)].append(node)
+
+    def is_splitting(kids):
+        return sum(passer[kid] for kid in kids) >= 2
+
+    has_split = {}
+    for node in reversed(all_nodes):  # children before parents
+        has_split[node] = (is_splitting(children[node])
+                           or any(has_split[kid]
+                                  for kid in children[node]))
+
+    root_children = [(0, int(comp))
+                     for comp in np.unique(level_labels[0]
+                                           [level_labels[0] > 0])]
+    junctions = [root_children] + [children[node]
+                                   for node in all_nodes]
+    markers = []
+    for kids in junctions:
+        if is_splitting(kids):
+            markers.extend(kid for kid in kids
+                           if passer[kid] and not has_split[kid])
+
+    if len(markers) < 2:
+        return None
+    out = np.zeros(data.shape, dtype=np.int32)
+    for index, (level, comp) in enumerate(markers):
+        out[level_labels[level] == comp] = index + 1
+    return out
+
+
+@pytest.mark.parametrize('dtype', ['float64', 'float32'])
+@pytest.mark.parametrize('connectivity', [8, 4])
+@pytest.mark.parametrize(
+    ('scene', 'contrast'),
+    [('multipeak', 0.0), ('multipeak', 0.001), ('multipeak', 0.01),
+     ('multipeak', 0.1), ('hierarchical', 0.001),
+     ('hierarchical', 0.05), ('negmin', 0.01)])
+def test_saddle_markers_match_reference(dtype, connectivity, scene,
+                                        contrast):
+    """
+    Test that the compiled saddle-criterion marker selection matches
+    the pure-Python reference implementation, including nested splits,
+    dissolving below-contrast siblings, the sinh fallback for negative
+    minima, both connectivities, and float32 data.
+    """
+    y, x = np.mgrid[0:101, 0:101]
+    if scene == 'hierarchical':
+        data = (Gaussian2D(1.0, 50, 50, 30, 30)(x, y)
+                + Gaussian2D(100, 35, 50, 3, 3)(x, y)
+                + Gaussian2D(80, 45, 50, 3, 3)(x, y)
+                + Gaussian2D(60, 70, 50, 3, 3)(x, y))
+    else:
+        data, _ = make_multipeak_source()
+    threshold = 0.5
+    if scene == 'negmin':
+        data = data - 5.0
+        threshold = -4.5
+    data = data.astype(dtype)
+
+    footprint = _make_binary_structure(2, connectivity)
+    segm = detect_sources(data, threshold, 5,
+                          connectivity=connectivity)
+    slc = segm.slices[0]
+    cutout = data[slc]
+    segment_mask = segm.data[slc] == 1
+    values = cutout[segment_mask]
+    limit = contrast * float(np.nansum(values))
+
+    params = _DeblendParams(5, footprint, 32, contrast, 'exponential')
+    deblender = _SingleSourceDeblender(cutout, segm.data[slc], 1,
+                                       params)
+    thresholds = deblender.compute_thresholds()
+
+    expected = python_saddle_markers(cutout, segment_mask, thresholds,
+                                     5, limit, footprint)
+
+    y0 = np.array([slc[0].start], dtype=np.int64)
+    y1 = np.array([slc[0].stop], dtype=np.int64)
+    x0 = np.array([slc[1].start], dtype=np.int64)
+    x1 = np.array([slc[1].stop], dtype=np.int64)
+    thresholds_2d = np.ascontiguousarray(thresholds[None, :],
+                                         dtype=np.float64)
+    markers_list, _ = deblend_markers_chunk(
+        np.ascontiguousarray(data), segm.data,
+        np.array([1], dtype=np.int64), y0, y1, x0, x1, thresholds_2d,
+        n_pixels=5, connectivity=connectivity, max_markers=-1,
+        saddle_limits=np.array([limit]))
+    result = markers_list[0]
+
+    if expected is None or result is None:
+        assert expected is None
+        assert result is None
+    else:
+        assert_equal(raster_relabel(result), raster_relabel(expected))
+
+
+def test_contrast_method_invalid():
+    """
+    Test that an invalid contrast_method raises a ValueError.
+    """
+    data, segm = make_multipeak_source()
+    match = "contrast_method must be 'basin' or 'saddle'"
+    with pytest.raises(ValueError, match=match):
+        deblend_sources(data, segm, 5, contrast_method='invalid')
+
+
+def test_saddle_deblend():
+    """
+    Test deblending with the saddle contrast criterion through the
+    public API, including a source that does not split, the parent
+    label map, the deblended flags, and thread-count invariance.
+    """
+    y, x = np.mgrid[0:101, 0:181]
+    data, _ = make_multipeak_source()
+    image = np.zeros((101, 181))
+    image[:, :101] = data
+    image += Gaussian2D(10, 150, 50, 4, 4)(x, y)  # lone source
+    segm = detect_sources(image, 0.5, 5)
+    assert segm.n_labels == 2
+
+    result = deblend_sources(image, segm, 5, contrast=0.001,
+                             contrast_method='saddle')
+    assert result.n_labels == 5
+    assert_equal(result.parent_to_deblended_labels, {1: [2, 3, 4, 5]})
+    assert np.count_nonzero(result.flags
+                            & SEGMENTATION_FLAGS.DEBLENDED) == 4
+
+    # Higher contrast drops the faint basins entirely (they cannot
+    # combine and survive, as there is no removal iteration).
+    result2 = deblend_sources(image, segm, 5, contrast=0.1,
+                              contrast_method='saddle')
+    assert result2.n_labels == 3
+
+    result3 = deblend_sources(image, segm, 5, contrast=0.001,
+                              contrast_method='saddle', n_threads=4)
+    assert_equal(result3.data, result.data)
 
 
 def test_nonposmin_fallback_sinh():

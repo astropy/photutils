@@ -134,6 +134,7 @@ def test_finder_n_threads():
     ({'n_levels': 0}, 'n_levels must be a positive integer'),
     ({'n_levels': 2.5}, 'n_levels must be a positive integer'),
     ({'contrast': 1.5}, 'contrast must be'),
+    ({'contrast_method': 'invalid'}, 'contrast_method must be'),
     ({'mode': 'invalid'}, 'mode must be'),
     ({'n_threads': 0}, 'n_threads must be a positive integer'),
     ({'n_threads': True}, 'n_threads must be a positive integer'),
