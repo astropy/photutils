@@ -526,6 +526,61 @@ class TestDeblendSources:
         assert result.n_labels == 2
 
 
+def make_multipeak_source():
+    """
+    Return the image and segmentation image for a single connected
+    source with peaks spanning a wide range of basin fluxes.
+
+    The watershed basin flux fractions are approximately 0.061, 0.062,
+    0.225, and 0.652, so the contrast keyword controls how many of the
+    faintest basins fail the contrast criterion.
+
+    Returns
+    -------
+    data : 2D `~numpy.ndarray`
+        The image.
+
+    segm : `~photutils.segmentation.SegmentationImage`
+        The segmentation image containing a single label.
+    """
+    y, x = np.mgrid[0:101, 0:101]
+    envelope = Gaussian2D(1.0, 50, 50, 30, 30)
+    g_bright = Gaussian2D(100, 40, 50, 3, 3)
+    g_medium = Gaussian2D(30, 68, 50, 3, 3)
+    g_faint1 = Gaussian2D(3.0, 50, 30, 3, 3)
+    g_faint2 = Gaussian2D(4.0, 50, 72, 3, 3)
+    data = (envelope(x, y) + g_bright(x, y) + g_medium(x, y)
+            + g_faint1(x, y) + g_faint2(x, y))
+    segm = detect_sources(data, 0.5, 5)
+    return data, segm
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+@pytest.mark.parametrize(('contrast', 'n_labels'),
+                         [(0.0, 4), (0.07, 2), (0.15, 2), (0.35, 1)])
+def test_contrast_removal(contrast, n_labels):
+    """
+    Test the below-contrast marker removal over a range of contrasts.
+
+    The contrast=0.15 case removes the two faintest basins together
+    (their total flux fraction is below both the contrast and the
+    next-faintest basin flux), the contrast=0.07 case removes the same
+    two basins one at a time (their total is above the contrast),
+    and the contrast=0.35 case removes all but one basin so that no
+    deblending occurs.
+    """
+    data, segm = make_multipeak_source()
+    result = deblend_sources(data, segm, 5, contrast=contrast,
+                             progress_bar=False)
+    assert result.n_labels == n_labels
+    assert_equal(np.nonzero(segm.data), np.nonzero(result.data))
+    if n_labels > 1:
+        assert_equal(result.parent_to_deblended_labels,
+                     {1: list(range(1, n_labels + 1))})
+    else:
+        assert_equal(result.parent_to_deblended_labels, {})
+
+
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_n_markers_fallback():
     """

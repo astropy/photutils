@@ -598,12 +598,13 @@ class _SingleSourceDeblender:
         """
         from skimage.segmentation import watershed
 
-        # Deblend using watershed. If any source does not meet the contrast
-        # criterion, then remove the faintest such source and repeat until
-        # all sources meet the contrast criterion.
+        # Deblend using watershed. If any source does not meet the
+        # contrast criterion, then remove the faintest such source(s)
+        # and repeat until all sources meet the contrast criterion.
+        data_neg = -self.data
         remove_marker = True
         while remove_marker:
-            markers = watershed(-self.data, markers, mask=self.segment_mask,
+            markers = watershed(data_neg, markers, mask=self.segment_mask,
                                 connectivity=self.footprint)
 
             labels = _get_labels(markers)
@@ -615,12 +616,60 @@ class _SingleSourceDeblender:
                 remove_marker = any(flux_frac < self.contrast)
 
                 if remove_marker:
-                    # Remove only the faintest source (one at a time)
-                    # because several faint sources could combine to meet
-                    # the contrast criterion
-                    markers[markers == labels[np.argmin(flux_frac)]] = 0.0
+                    self._remove_faint_markers(markers, labels, flux_frac)
 
         return markers
+
+    def _remove_faint_markers(self, markers, labels, flux_frac):
+        """
+        Remove the faintest below-contrast marker(s) in place.
+
+        The faintest marker is always removed. When the source data
+        values are all nonnegative, the largest batch of the faintest
+        markers is removed whose total flux fraction is below both
+        the contrast and the next-faintest marker flux fraction.
+        Removing such a batch in one step is equivalent to removing
+        its markers one at a time. Every batch member stays below the
+        contrast no matter how the flux of the other removed members is
+        redistributed (their total is below the contrast), and markers
+        outside the batch can only become brighter, so the faintest
+        below-contrast marker always lies inside the batch until the
+        batch is exhausted.
+
+        Faint markers that do not fit in such a batch are removed one at
+        a time because several faint sources could combine to meet the
+        contrast criterion.
+
+        Parameters
+        ----------
+        markers : 2D int `~numpy.ndarray`
+            The watershed-labeled marker image, modified in place.
+
+        labels : 1D `~numpy.ndarray`
+            The sorted marker labels.
+
+        flux_frac : 1D `~numpy.ndarray`
+            The flux fraction in each marker basin, in the same
+            order as ``labels``.
+        """
+        if self.source_min >= 0 and labels.size > 2:
+            order = np.argsort(flux_frac)
+            sorted_frac = flux_frac[order]
+            csum = np.cumsum(sorted_frac)
+            # A batch of the n faintest markers (2 <= n < N) is valid
+            # if its total flux fraction is below both the contrast
+            # and the next-faintest marker flux fraction.
+            batch_ok = ((csum[1:-1] < self.contrast)
+                        & (csum[1:-1] < sorted_frac[2:]))
+            valid = np.nonzero(batch_ok)[0]
+            if valid.size > 0:
+                n_remove = int(valid[-1]) + 2
+                remove_lut = np.zeros(int(labels[-1]) + 1, dtype=bool)
+                remove_lut[labels[order[:n_remove]]] = True
+                markers[remove_lut[markers]] = 0
+                return
+
+        markers[markers == labels[np.argmin(flux_frac)]] = 0
 
     def deblend_source(self):
         """
