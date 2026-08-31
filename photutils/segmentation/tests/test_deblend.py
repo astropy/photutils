@@ -1128,9 +1128,21 @@ def test_contrast_method_invalid():
     Test that an invalid contrast_method raises a ValueError.
     """
     data, segm = make_multipeak_source()
-    match = "contrast_method must be 'basin' or 'saddle'"
+    match = 'contrast_method must be None, .basin., or .saddle.'
     with pytest.raises(ValueError, match=match):
         deblend_sources(data, segm, 5, contrast_method='invalid')
+
+
+def test_contrast_method_default():
+    """
+    Test that the default contrast_method of None currently resolves
+    to the 'basin' method.
+    """
+    data, segm = make_multipeak_source()
+    result_default = deblend_sources(data, segm, 5, contrast=0.1)
+    result_basin = deblend_sources(data, segm, 5, contrast=0.1,
+                                   contrast_method='basin')
+    assert_equal(result_default.data, result_basin.data)
 
 
 def test_saddle_deblend():

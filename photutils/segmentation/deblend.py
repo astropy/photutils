@@ -54,8 +54,8 @@ def _validate_deblend_kwargs(*, n_levels, contrast, contrast_method, mode,
         msg = 'contrast must be >= 0 and <= 1'
         raise ValueError(msg)
 
-    if contrast_method not in ('basin', 'saddle'):
-        msg = "contrast_method must be 'basin' or 'saddle'"
+    if contrast_method not in (None, 'basin', 'saddle'):
+        msg = "contrast_method must be None, 'basin', or 'saddle'"
         raise ValueError(msg)
 
     if mode not in ('exponential', 'linear', 'sinh'):
@@ -92,7 +92,7 @@ class _DeblendParams:
 @deprecated_renamed_argument('progress_bar', None, '3.1', until='4.0')
 def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                     n_levels=32, contrast=0.001,
-                    contrast_method='basin', mode='exponential',
+                    contrast_method=None, mode='exponential',
                     connectivity=8, relabel=True, n_threads=1,
                     nproc=1,  # noqa: ARG001
                     n_processes=1,  # noqa: ARG001
@@ -145,20 +145,28 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         ``contrast_method`` keyword selects the flux to which the
         fraction refers.
 
-    contrast_method : {'basin', 'saddle'}, optional
-        The flux used by the contrast criterion. For ``'basin'``
-        (default), the fraction is the total flux in the source's
-        watershed basin, which includes the share of the surrounding
-        envelope territory assigned to the source. Basins below the
-        contrast are removed iteratively (faintest first, in batches
-        when provably equivalent) and their territory is re-flooded.
-        For ``'saddle'``, the fraction is the flux the source holds
-        above the saddle level where it separates from its neighbors,
-        evaluated once during marker construction with no iteration.
-        This is equivalent to the `SourceExtractor`_ ``DEBLEND_MINCONT``
-        criterion. It measures the significance of the peak itself
-        independently of how much envelope territory it would inherit,
-        and is faster because the watershed runs only once.
+    contrast_method : {`None`, 'basin', 'saddle'}, optional
+        The flux used by the contrast criterion. For ``'basin'``,
+        the fraction is the total flux in the source's watershed
+        basin, which includes the share of the surrounding envelope
+        territory assigned to the source. Basins below the contrast are
+        removed iteratively (faintest first, in batches when provably
+        equivalent) and their territory is re-flooded. For ``'saddle'``,
+        the fraction is the flux the source holds above the saddle
+        level where it separates from its neighbors, evaluated once
+        during marker construction with no iteration. This measures
+        the significance of the peak itself, independently of how much
+        envelope territory it would inherit. Because ``'saddle'``
+        needs only a single watershed pass, it is never slower than
+        ``'basin'`` and is substantially faster when many below-contrast
+        basins would otherwise be removed iteratively. Note that the
+        two methods measure different fluxes, so the same ``contrast``
+        value selects sources differently. The saddle flux excludes
+        all regions below the saddle and is therefore smaller than the
+        basin flux, making ``'saddle'`` stricter for faint peaks on
+        bright envelopes. If `None` (default), the ``'basin'`` method
+        is currently used. The default may change to ``'saddle'`` in
+        version 4.0.
 
     mode : {'exponential', 'linear', 'sinh'}, optional
         The mode used in defining the spacing between the
@@ -256,10 +264,6 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     --------
     :func:`photutils.segmentation.detect_sources`
     :class:`photutils.segmentation.SourceFinder`
-
-    References
-    ----------
-    .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
     if isinstance(data, Quantity):
         data = data.value
@@ -284,6 +288,11 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                              contrast_method=contrast_method, mode=mode,
                              connectivity=connectivity,
                              n_threads=n_threads)
+
+    if contrast_method is None:
+        # The default resolution is planned to change to 'saddle' in
+        # version 4.0
+        contrast_method = 'basin'
 
     if contrast == 1:  # no deblending
         segm_img = segmentation_image.copy()

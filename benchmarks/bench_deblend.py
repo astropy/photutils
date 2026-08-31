@@ -529,6 +529,63 @@ def bench_threads(*, n_sources=4000, size=1000, n_peaks=25,
         print(f'{name:>24}{cells}')
 
 
+def bench_contrast_method(*, n_sources=4000, size=1000, n_peaks=100,
+                          repeats=3, seed=0):
+    """
+    Benchmark the basin and saddle contrast criteria.
+
+    The saddle criterion selects the markers in the component tree
+    and floods once, while the basin criterion floods and then
+    iteratively removes below-contrast basins, so the interesting
+    comparisons are the removal-heavy large-segment cases.
+
+    Parameters
+    ----------
+    n_sources : int, optional
+        The total number of Gaussian sources for the many-source
+        scene.
+
+    size : int, optional
+        The image size for the large-segment scene.
+
+    n_peaks : int, optional
+        The number of compact peaks in the large segment.
+
+    repeats : int, optional
+        The number of repeats for each timing (best time is kept).
+
+    seed : int, optional
+        The random number generator seed.
+    """
+    _, data, segm = make_inputs(n_sources, seed=seed)
+    blend_data, blend_segm = make_blended_inputs(size, n_peaks,
+                                                 seed=seed)
+
+    print('\n== deblend_sources: contrast_method ==')
+    print(f'{"benchmark":>40}{"basin":>18}{"saddle":>18}')
+    cases = [
+        (f'{segm.n_labels} small segments, c=0.001', data, segm,
+         0.001),
+        (f'{n_peaks}-peak segment, c=0.001', blend_data, blend_segm,
+         0.001),
+        (f'{n_peaks}-peak segment, c=0.01', blend_data, blend_segm,
+         0.01),
+        (f'{n_peaks}-peak segment, c=0.03', blend_data, blend_segm,
+         0.03),
+    ]
+    for name, case_data, case_segm, contrast in cases:
+        cells = []
+        for method in ('basin', 'saddle'):
+            bench = partial(deblend_sources, case_data, case_segm,
+                            N_PIXELS, contrast=contrast,
+                            contrast_method=method)
+            result = bench()
+            t_best = time_best(bench, repeats=repeats)
+            cells.append(f'{t_best:.4f}s ({result.n_labels})')
+        row = ''.join(f'{cell:>18}' for cell in cells)
+        print(f'{name:>40}{row}')
+
+
 def main():
     """
     Run the source deblending benchmarks.
@@ -563,7 +620,7 @@ def main():
                              '(default: %(default)s)')
     parser.add_argument('--which', default='all',
                         choices=['all', 'many', 'large', 'peaks',
-                                 'stages', 'threads', 'profile'],
+                                 'stages', 'threads', 'criterion', 'profile'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
     args = parser.parse_args()
@@ -587,6 +644,8 @@ def main():
     if args.which in ('all', 'threads'):
         bench_threads(thread_counts=args.n_threads,
                       repeats=args.repeats, seed=args.seed)
+    if args.which in ('all', 'criterion'):
+        bench_contrast_method(repeats=args.repeats, seed=args.seed)
     if args.which == 'profile':
         bench_profile(seed=args.seed)
 

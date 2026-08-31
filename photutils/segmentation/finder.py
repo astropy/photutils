@@ -77,14 +77,15 @@ class SourceFinder:
         deblend sources with a 7.5 magnitude difference. This keyword is
         ignored unless ``deblend=True``.
 
-    contrast_method : {'basin', 'saddle'}, optional
-        The flux used by the contrast criterion. For ``'basin'``
-        (default), the fraction is the total flux in the source's
-        watershed basin. For ``'saddle'``, the fraction is the flux the
-        source holds above the saddle level where it separates from its
-        neighbors, equivalent to the SourceExtractor ``DEBLEND_MINCONT``
-        criterion. See :func:`~photutils.segmentation.deblend_sources`
-        for details. This keyword is ignored unless ``deblend=True``.
+    contrast_method : {`None`, 'basin', 'saddle'}, optional
+        The flux used by the contrast criterion. For ``'basin'``, the
+        fraction is the total flux in the source's watershed basin.
+        For ``'saddle'``, the fraction is the flux the source holds
+        above the saddle level where it separates from its neighbors.
+        If `None` (default), the ``'basin'`` method is currently used.
+        The default may change to ``'saddle'`` in version 4.0. See
+        :func:`~photutils.segmentation.deblend_sources` for details.
+        This keyword is ignored unless ``deblend=True``.
 
     mode : {'exponential', 'linear', 'sinh'}, optional
         The mode used in defining the spacing between the
@@ -192,7 +193,7 @@ class SourceFinder:
     @deprecated_renamed_argument('n_processes', None, '3.1', until='4.0')
     @deprecated_renamed_argument('progress_bar', None, '3.1', until='4.0')
     def __init__(self, n_pixels, *, connectivity=8, deblend=True, n_levels=32,
-                 contrast=0.001, contrast_method='basin',
+                 contrast=0.001, contrast_method=None,
                  mode='exponential', relabel=True,
                  n_threads=1,
                  nproc=1,  # noqa: ARG002
