@@ -368,7 +368,10 @@ def bench_stages(*, size=1000, n_peaks=25, mode='exponential',
     n_final = len(np.unique(final[final > 0]))
     n_watershed = n_markers - n_final + 1
 
-    from skimage.segmentation import watershed
+    from photutils.segmentation._deblend_watershed import deblend_watershed
+
+    data_neg = np.ascontiguousarray(-cutout, dtype=np.float64)
+    connectivity = 8 if footprint[0, 0] else 4
 
     def _run_constructor():
         _make_deblender()
@@ -380,8 +383,8 @@ def bench_stages(*, size=1000, n_peaks=25, mode='exponential',
         _make_deblender().make_markers()
 
     def _run_watershed():
-        watershed(-cutout, markers, mask=deblender.segment_mask,
-                  connectivity=footprint)
+        deblend_watershed(data_neg, markers, deblender.segment_mask,
+                          connectivity)
 
     def _run_apply_watershed():
         deblender.apply_watershed(markers)
