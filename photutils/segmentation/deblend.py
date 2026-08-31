@@ -552,22 +552,31 @@ class _SingleSourceDeblender:
         if segment_lower is None:
             return segment_upper
 
-        labels = _get_labels(segment_lower)
-        new_markers = False
-        markers = segment_lower.astype(bool)
-        for label in labels:
-            mask = (segment_lower == label)
-            # Find label mapping from the lower to upper level
-            upper_labels = _get_labels(segment_upper[mask])
-            if upper_labels.size >= 2:  # new child markers found
-                new_markers = True
-                markers[mask] = segment_upper[mask].astype(bool)
+        # Count the upper-level children of each lower-level label from
+        # the unique (lower, upper) label pairs, encoded as a combined
+        # integer key.
+        both = (segment_lower > 0) & (segment_upper > 0)
+        stride = np.int64(np.max(segment_upper)) + 1
+        keys = segment_lower[both].astype(np.int64) * stride
+        keys += segment_upper[both]
+        parents, n_children = np.unique(np.unique(keys) // stride,
+                                        return_counts=True)
+        multi_parents = parents[n_children >= 2]
+        if multi_parents.size == 0:
+            return segment_lower
 
-        if new_markers:
-            # Convert bool markers to integer labels
-            return ndi_label(markers, structure=self.footprint)[0]
+        # Replace each multi-child parent by its children. Pixels of
+        # the parent mask that are below the upper threshold are unset.
+        # Single-child parents are kept as is (maximizing the marker
+        # size).
+        replace_lut = np.zeros(np.max(segment_lower) + 1, dtype=bool)
+        replace_lut[multi_parents] = True
+        replace = replace_lut[segment_lower]
+        markers = segment_lower > 0
+        markers[replace] = segment_upper[replace] > 0
 
-        return segment_lower
+        # Convert bool markers to integer labels
+        return ndi_label(markers, structure=self.footprint)[0]
 
     def apply_watershed(self, markers):
         """
