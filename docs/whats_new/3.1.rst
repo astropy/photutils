@@ -649,6 +649,21 @@ sources in Python any more, no progress bar is displayed and the
 <whatsnew-3.1-deprecations>`).
 
 
+Source Deblending Performance Improvements
+==========================================
+
+Source deblending with :func:`~photutils.segmentation.deblend_sources`
+and `~photutils.segmentation.SourceFinder` is now typically 5--30 times
+faster, producing identical results. The whole watershed step now runs
+in compiled code. As an example, deblending a field of 2000 blended
+source pairs dropped from about 1.6 s to 0.05 s.
+
+The compiled watershed kernel produces results identical to
+``skimage.segmentation.watershed``, so scikit-image is no longer
+required for source deblending (it remains an optional dependency
+for `~photutils.utils.ImageDepth`).
+
+
 ``GriddedPSFModel`` Performance Improvements
 ============================================
 
@@ -674,6 +689,18 @@ New Deprecations
 The ``PixelAperture.do_photometry`` method is now deprecated
 and will be removed in a future version. Use the new
 `~photutils.aperture.AperturePhotometry` class instead.
+
+Deblending ``progress_bar`` and ``n_processes`` Deprecated
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``progress_bar`` and ``n_processes`` keywords of
+:func:`~photutils.segmentation.deblend_sources` and
+`~photutils.segmentation.SourceFinder` are deprecated and will be
+removed in version 4.0, and both keywords no longer have any effect.
+Deblending is now dominated by compiled code, so no progress bar is
+displayed, and the multiprocessing implementation has been removed
+because its process startup and data-pickling overheads made it slower
+than the serial implementation.
 
 ``EPSFBuildResult`` Renamed to ``EPSFBuildResults``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
