@@ -112,15 +112,15 @@ class EllipseSample:
         self.integrmode = integrmode
 
         if geometry:
-            # when the geometry is inherited from somewhere else,
-            # its sma attribute must be replaced by the value
-            # explicitly passed to the constructor.
+            # When the geometry is inherited from somewhere else, its
+            # sma attribute must be replaced by the value explicitly
+            # passed to the constructor.
             self.geometry = copy.deepcopy(geometry)
             self.geometry.sma = sma
             self.geometry._reset_sma_dependent_attributes()
         else:
-            # if no center was specified, assume it's roughly
-            # coincident with the image center
+            # If no center was specified, assume it's roughly coincident
+            # with the image center.
             _x0 = x0
             _y0 = y0
             if not _x0 or not _y0:
@@ -131,11 +131,11 @@ class EllipseSample:
                                             position_angle, astep=astep,
                                             linear_growth=linear_growth)
 
-        # sigma-clip parameters
+        # Sigma-clip parameters
         self.sclip = sclip
         self.n_clip = n_clip
 
-        # extracted values associated with this sample.
+        # Extracted values associated with this sample.
         self.values = None
         self.mean = None
         self.gradient = None
@@ -143,9 +143,9 @@ class EllipseSample:
         self.gradient_rel_err = None
         self.sector_area = None
 
-        # total_points reports the total number of pairs angle-radius that
-        # were attempted. actual_points reports the actual number of sampled
-        # pairs angle-radius that resulted in valid values.
+        # Total_points reports the total number of pairs angle-radius
+        # that were attempted. actual_points reports the actual number
+        # of sampled pairs angle-radius that resulted in valid values.
         self.total_points = 0
         self.actual_points = 0
 
@@ -166,7 +166,7 @@ class EllipseSample:
             The rows of the array contain the angles, radii, and
             extracted intensity values, respectively.
         """
-        # the sample values themselves are kept cached to prevent
+        # The sample values themselves are kept cached to prevent
         # multiple calls to the integrator code.
         if self.values is not None:
             return self.values
@@ -177,42 +177,41 @@ class EllipseSample:
 
     def _extract(self, *, phi_min=0.05):
         # Here the actual sampling takes place. This is called only once
-        # during the life of an EllipseSample instance, because it's an
-        # expensive calculation. This method should not be called from
-        # external code.
-        # To force it to rerun, set "sample.values = None" before
-        # calling sample.extract().
+        # during the life of an EllipseSample instance, because it's
+        # an expensive calculation. This method should not be called
+        # from external code. To force it to rerun, set "sample.values =
+        # None" before calling sample.extract().
 
-        # individual extracted sample points will be stored in here
+        # Individual extracted sample points will be stored in here
         angles = []
         radii = []
         intensities = []
         sector_areas = []
 
-        # reset counters
+        # Reset counters
         self.total_points = 0
         self.actual_points = 0
 
-        # build integrator
+        # Build integrator
         integrator = INTEGRATORS[self.integrmode](self.image, self.geometry,
                                                   angles, radii, intensities)
 
-        # initialize walk along elliptical path
+        # Initialize walk along elliptical path
         radius = self.geometry.initial_polar_radius
         phi = self.geometry.initial_polar_angle
 
-        # In case of an area integrator, ask the integrator to deliver a
-        # hint of how much area the sectors will have. In case of too
+        # In case of an area integrator, ask the integrator to deliver
+        # a hint of how much area the sectors will have. In case of too
         # small areas, tests showed that the area integrators (mean,
         # median) won't perform properly. In that case, we override the
         # caller's selection and use the bilinear integrator regardless.
         if integrator.is_area():
             integrator.integrate(radius, phi)
             area = integrator.get_sector_area()
-            # this integration that just took place messes up with the
-            # storage arrays and the constructors. We have to build a new
-            # integrator instance from scratch, even if it is the same
-            # kind as originally selected by the caller.
+            # This integration that just took place messes up with the
+            # storage arrays and the constructors. We have to build a
+            # new integrator instance from scratch, even if it is the
+            # same kind as originally selected by the caller.
             angles = []
             radii = []
             intensities = []
@@ -225,45 +224,45 @@ class EllipseSample:
                                                           angles, radii,
                                                           intensities)
 
-        # walk along elliptical path, integrating at specified
-        # places defined by polar vector. Need to go a bit beyond
-        # full circle to ensure full coverage.
+        # Walk along elliptical path, integrating at specified places
+        # defined by polar vector. Need to go a bit beyond full circle
+        # to ensure full coverage.
         while phi <= np.pi * 2.0 + phi_min:
-            # do the integration at phi-radius position, and append
+            # Do the integration at phi-radius position, and append
             # results to the angles, radii, and intensities lists.
             integrator.integrate(radius, phi)
 
-            # store sector area locally
+            # Store sector area locally
             sector_areas.append(integrator.get_sector_area())
 
-            # update total number of points
+            # Update total number of points
             self.total_points += 1
 
-            # update angle and radius to be used to define
-            # next polar vector along the elliptical path
+            # Update angle and radius to be used to define next polar
+            # vector along the elliptical path
             phistep_ = integrator.get_polar_angle_step()
             phi += min(phistep_, 0.5)
             radius = self.geometry.radius(phi)
 
-        # average sector area is calculated after the integrator had
+        # Average sector area is calculated after the integrator had
         # the opportunity to step over the entire elliptical path.
         self.sector_area = np.mean(np.array(sector_areas))
 
-        # apply sigma-clipping.
+        # Apply sigma-clipping
         angles, radii, intensities = self._sigma_clip(angles, radii,
                                                       intensities)
 
-        # actual number of sampled points, after sigma-clip removed outliers.
+        # Actual number of sampled points, after sigma-clip removed outliers
         self.actual_points = len(angles)
 
-        # pack results in 2-d array
+        # Pack results in 2D array
         return np.array([np.array(angles), np.array(radii),
                          np.array(intensities)])
 
     def _sigma_clip(self, angles, radii, intensities):
         if self.n_clip > 0:
             for _ in range(self.n_clip):
-                # do not use list.copy()! must be python2-compliant.
+                # Do not use list.copy() -- must be python2-compliant.
                 angles, radii, intensities = self._iter_sigma_clip(
                     angles[:], radii[:], intensities[:])
 
@@ -350,7 +349,13 @@ class EllipseSample:
         if not previous_gradient:
             previous_gradient = gradient + gradient_err
 
-        if gradient >= (previous_gradient / 3.0):  # gradient is negative!
+        # A meaningful gradient must also be negative (the isophote
+        # intensity decreases outward). A gradient of exactly zero can
+        # occur with the nearest-neighbor integrator when the samples at
+        # both radii extract identical pixel sets, and it would cause
+        # divisions by zero in the fitter's parameter correctors.
+        if (gradient >= (previous_gradient / 3.0)  # gradient is negative!
+                or gradient >= 0.0):
             gradient, gradient_err = self._get_gradient(2 * step)
 
         # If still no meaningful gradient can be measured, try with
@@ -359,7 +364,7 @@ class EllipseSample:
         # and a deVaucouleurs law or an exponential disk (at least at its
         # inner parts, r <~ 5 req). Gradient error is meaningless in this
         # case.
-        if gradient >= (previous_gradient / 3.0):
+        if gradient >= (previous_gradient / 3.0) or gradient >= 0.0:
             gradient = previous_gradient * 0.8
             gradient_err = None
 

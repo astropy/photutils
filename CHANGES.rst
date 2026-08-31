@@ -419,6 +419,12 @@ Bug Fixes
   - Fixed a compilation issue in ``_ellipse_model.pyx`` with Cython
     3.3, which no longer allows tuples of typed memoryviews. [#2404]
 
+  - Fixed an issue when fitting isophotes with the
+    ``'nearest_neighbor'`` integration mode. At small semimajor axes,
+    nearest-neighbor sampling could measure a local intensity gradient
+    of exactly zero, and the resulting division by zero corrupted the
+    ellipse geometry. [#2405]
+
 - ``photutils.morphology``
 
   - Fixed ``data_properties`` so that a ``background`` input with

@@ -89,6 +89,26 @@ class TestEllipse:
         assert isinstance(isophote, Isophote)
         assert isophote.valid
 
+    def test_nearest_neighbor_zero_gradient(self):
+        """
+        Regression test for a crash with the nearest_neighbor
+        integration mode.
+
+        At small semimajor axes, nearest-neighbor sampling can extract
+        identical pixel sets at two nearby radii, making the local
+        gradient exactly zero. The harmonic correctors would then
+        divide by zero, producing a non-finite geometry that crashed
+        the integrator with "ValueError: cannot convert float NaN to
+        integer".
+        """
+        g = EllipseGeometry(256.0, 256.0, 20.0, 0.2, 0.0)
+        ellipse = Ellipse(self.data, geometry=g)
+        isophote_list = ellipse.fit_image(integrmode='nearest_neighbor',
+                                          maxsma=30.0)
+
+        assert isinstance(isophote_list, IsophoteList)
+        assert len(isophote_list) > 1
+
     def test_offcenter_fail(self):
         # A first guess ellipse that is centered in the image frame.
         # This should result in failure since the real galaxy image is
