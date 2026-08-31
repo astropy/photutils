@@ -31,8 +31,7 @@ from photutils.segmentation.detect import detect_sources
 from photutils.segmentation.finder import SourceFinder
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import make_2dgaussian_kernel
-from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,
-                                            HAS_SKIMAGE)
+from photutils.utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB
 from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 from photutils.utils.cutouts import CutoutImage
 
@@ -1215,7 +1214,6 @@ class TestSourceCatalog:
         aper = obj.make_kron_apertures()
         assert isinstance(aper, EllipticalAperture)
 
-    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_make_cutouts(self):
         """
         Test make cutouts.
@@ -1609,7 +1607,6 @@ class TestSourceCatalogFlags:
         segm = detect_sources(data, 10, 5)
         return data, deblend_sources(data, segm, 5)
 
-    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_kron_neighbor_pixels(self):
         """
         Test the kron_neighbor_pixels flag when a neighbor segment falls
@@ -1620,7 +1617,6 @@ class TestSourceCatalogFlags:
         assert np.all(cat.flags
                       & SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS)
 
-    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_kron_uncorrected_pixels(self):
         """
         Test the kron_uncorrected_pixels flag for neighbor pixels within
@@ -1823,7 +1819,6 @@ class TestSourceCatalogFlags:
         assert np.all(cat.flags
                       & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
 
-    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_provenance_from_deblending(self):
         """
         Test that deblending provenance flags propagate into the catalog
@@ -2029,7 +2024,6 @@ class TestThreadSafety:
             assert getattr(obj, f'prop{index}') == float(index)
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_kron_params():
     """
     Test kron params.
@@ -2086,7 +2080,6 @@ def test_kron_params():
     assert isinstance(cat.kron_aperture[0], CircularAperture)
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win(centroid_win_data):
     """
     Test centroid win.
@@ -2576,7 +2569,6 @@ def test_centroid_win_oom_guard(gauss_101_catalog):
     assert_allclose(cwin[:, 1], cat.y_centroid)
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_aperture_mask_mask(centroid_win_data):
     """
     Test centroid_win with aperture_mask_method='mask' to cover the
@@ -2757,7 +2749,6 @@ def test_measured_kron_radius_circular_no_min_radius(gauss_101_data):
         assert np.all(np.isnan(kr))
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_err():
     """
     Test that centroid_win_err returns finite 1-sigma position
@@ -2840,7 +2831,6 @@ def test_centroid_win_err_scalar():
     assert single.y_centroid_win_err == errors[1]
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_err_sliced():
     """
     Test that centroid_win_err works on a sliced catalog after
@@ -2903,7 +2893,6 @@ def test_centroid_win_err_singularity():
     assert np.all(errors > 0)
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_err_cov():
     """
     Test the windowed pixel error covariance: symmetric for every
@@ -2928,7 +2917,6 @@ def test_centroid_win_err_cov():
                     np.sqrt((cov[0, 0, 0], cov[0, 1, 1])))
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_err_cov_fallback():
     """
     Test that fallback sources use the full isophotal covariance.
@@ -2955,7 +2943,6 @@ def test_centroid_win_err_cov_fallback():
                     cat._centroid_err_cov[1])
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_err():
     """
     Test that centroid_err returns finite 1-sigma position errors
@@ -3116,7 +3103,6 @@ def test_centroid_err_zero_flux():
     assert np.all(np.isnan(errors))
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_err_columns():
     """
     Test the x/y centroid error properties and their use as to_table
@@ -3308,7 +3294,6 @@ def test_centroid_quad_err_peak_at_edge():
     assert np.all(np.isnan(cat.centroid_quad_err))
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_quad_err_columns():
     """
     Test the quadratic centroid error properties as to_table columns

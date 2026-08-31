@@ -14,7 +14,6 @@ from photutils.datasets import make_100gaussians_image
 from photutils.segmentation.finder import SourceFinder
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import make_2dgaussian_kernel
-from photutils.utils._optional_deps import HAS_SKIMAGE
 from photutils.utils.exceptions import NoDetectionsWarning
 
 
@@ -25,7 +24,6 @@ class TestSourceFinder:
     threshold = 1.5 * 2.0
     n_pixels = 10
 
-    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_deblend(self):
         """
         Test deblend.
@@ -70,7 +68,6 @@ class TestSourceFinder:
             segm = finder(self.convolved_data, 1000)
         assert segm is None
 
-    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_n_pixels_tuple(self):
         """
         Test n_pixels tuple.
@@ -112,7 +109,6 @@ def test_finder_deprecations():
         SourceFinder(n_pixels=10, n_processes=2)
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_finder_flags_passthrough():
     """
     Test that deblending provenance flags survive the SourceFinder

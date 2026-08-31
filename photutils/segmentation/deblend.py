@@ -17,6 +17,7 @@ from photutils.segmentation._deblend_markers import (DEBLEND_FLAG_NMARKERS,
                                                      DEBLEND_FLAG_NONPOSMIN,
                                                      deblend_markers_chunk,
                                                      make_deblend_markers)
+from photutils.segmentation._deblend_watershed import deblend_watershed
 from photutils.segmentation.core import (SegmentationImage, _get_labels,
                                          _remap_deblend_label_map)
 from photutils.segmentation.detect import _detect_sources_deblend
@@ -612,16 +613,15 @@ class _SingleSourceDeblender:
             that the source labels may not be consecutive if a label was
             removed.
         """
-        from skimage.segmentation import watershed
-
         # Deblend using watershed. If any source does not meet the
         # contrast criterion, then remove the faintest such source(s)
         # and repeat until all sources meet the contrast criterion.
-        data_neg = -self.data
+        data_neg = np.ascontiguousarray(-self.data, dtype=np.float64)
+        connectivity = 8 if self.footprint[0, 0] else 4
         remove_marker = True
         while remove_marker:
-            markers = watershed(data_neg, markers, mask=self.segment_mask,
-                                connectivity=self.footprint)
+            markers = deblend_watershed(data_neg, markers,
+                                        self.segment_mask, connectivity)
 
             labels = _get_labels(markers)
             if labels.size == 1:  # only 1 source left

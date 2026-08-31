@@ -12,17 +12,19 @@ from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import (AstropyDeprecationWarning,
                                       AstropyUserWarning)
 from numpy.testing import assert_allclose, assert_equal
+from scipy import ndimage as ndi
 
 from photutils.segmentation import (SegmentationImage, deblend_sources,
                                     detect_sources)
+from photutils.segmentation._deblend_watershed import deblend_watershed
 from photutils.segmentation.deblend import (_DeblendParams,
                                             _SingleSourceDeblender)
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
+from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._optional_deps import HAS_SKIMAGE
 from photutils.utils.exceptions import DeblendWarning
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 class TestDeblendSources:
     @pytest.fixture(autouse=True)
     def setup(self):
@@ -555,7 +557,6 @@ def normalize_markers(markers):
     return markers
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 @pytest.mark.parametrize('kind', ['blend', 'quantized', 'plateau'])
 @pytest.mark.parametrize('mode', ['exponential', 'linear', 'sinh'])
 @pytest.mark.parametrize('connectivity', [8, 4])
@@ -596,6 +597,49 @@ def test_make_markers_matches_legacy(kind, mode, connectivity):
     assert n_seen >= 1
 
 
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+@pytest.mark.parametrize('connectivity', [8, 4])
+def test_watershed_matches_skimage(connectivity):
+    """
+    Test that the deblending watershed kernel produces results identical
+    to skimage.segmentation.watershed over randomized images, including
+    integer-valued and constant images whose plateaus exercise the
+    queue-age tie-breaking.
+    """
+    from skimage.segmentation import watershed
+
+    footprint = _make_binary_structure(2, connectivity)
+    rng = np.random.default_rng(987)
+    n_run = 0
+    for trial in range(150):
+        ny, nx = rng.integers(5, 35, 2)
+        kind = trial % 4
+        if kind == 0:
+            image = rng.normal(0.0, 1.0, (ny, nx))
+        elif kind == 1:
+            image = rng.integers(0, 4, (ny, nx)).astype(float)
+        elif kind == 2:
+            image = np.zeros((ny, nx))
+        else:
+            image = np.round(rng.normal(0.0, 1.0, (ny, nx)), 1)
+        mask = rng.random((ny, nx)) < 0.8
+        indices = np.flatnonzero(mask)
+        if indices.size < 4:
+            continue
+        seeds = np.zeros((ny, nx), dtype=bool)
+        pick = rng.choice(indices, size=min(6, indices.size),
+                          replace=False)
+        seeds.ravel()[pick] = True
+        markers = ndi.label(seeds,
+                            structure=footprint)[0].astype(np.int32)
+        expected = watershed(image, markers, mask=mask,
+                             connectivity=footprint)
+        result = deblend_watershed(image, markers, mask, connectivity)
+        assert_equal(result, expected)
+        n_run += 1
+    assert n_run > 100
+
+
 def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
                          driver_segm,  # noqa: ARG001
                          labels, slices, deblend_params):
@@ -633,7 +677,6 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
     return results
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 @pytest.mark.parametrize('dtype', ['float64', 'float32', 'int32'])
 @pytest.mark.parametrize('scene', ['blend', 'negmin', 'checkerboard',
                                    'gaussian', 'flat'])
@@ -695,7 +738,6 @@ def test_chunk_driver_matches_python_path(dtype, scene):
     assert result._flags_map == expected._flags_map
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_deblend_segm_dtype():
     """
     Test that deblending a segmentation image with a non-native
@@ -737,7 +779,6 @@ def make_multipeak_source():
     return data, segm
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 @pytest.mark.parametrize(('contrast', 'n_labels'),
                          [(0.0, 4), (0.07, 2), (0.15, 2), (0.35, 1)])
 def test_contrast_removal(contrast, n_labels):
@@ -762,7 +803,6 @@ def test_contrast_removal(contrast, n_labels):
         assert_equal(result.parent_to_deblended_labels, {})
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_n_markers_fallback():
     """
     Test that if there are too many markers, a warning is raised.
@@ -787,7 +827,6 @@ def test_n_markers_fallback():
     assert segm2.info['n_markers_labels'][0] == 1
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_flags_n_markers_fallback():
     """
     Test that the n_markers fallback flag is set on the output
@@ -822,7 +861,6 @@ def test_flags_n_markers_fallback():
         assert_equal(flagged, [1])
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 @pytest.mark.parametrize('relabel', [True, False])
 def test_flags_fallback_without_deblending(relabel):
     """
@@ -859,7 +897,6 @@ def test_flags_fallback_without_deblending(relabel):
                  [0] * segm2.n_labels)
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_nonposmin_astropy_user_warning():
     """
     Test that the nonposmin warning is caught as an
@@ -879,7 +916,6 @@ def test_nonposmin_astropy_user_warning():
     assert np.all(segm2.flags & SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN)
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_n_markers_fallback_returns_none():
     """
     Test that deblend_source returns None when make_markers returns
