@@ -526,6 +526,111 @@ class TestDeblendSources:
         assert result.n_labels == 2
 
 
+def make_marker_test_image(kind):
+    """
+    Return an image containing a single connected source for the
+    marker-path equivalence tests.
+
+    Parameters
+    ----------
+    kind : {'blend', 'quantized', 'plateau'}
+        The image type. 'blend' is a Gaussian envelope with compact
+        peaks spanning a wide amplitude range, 'quantized' is the
+        same image coarsely quantized (duplicate data values produce
+        empty multithreshold levels), and 'plateau' contains flat
+        stepped square annuli with two embedded peaks.
+
+    Returns
+    -------
+    data : 2D `~numpy.ndarray`
+        The image.
+    """
+    if kind == 'plateau':
+        data = np.zeros((101, 101))
+        data[10:90, 10:90] = 1.0
+        data[30:70, 30:70] = 2.0
+        data[35:45, 35:45] = 5.0
+        data[55:65, 55:65] = 4.0
+        return data
+
+    rng = np.random.default_rng(0)
+    y, x = np.mgrid[0:151, 0:151]
+    data = Gaussian2D(20, 75, 75, 40, 40)(x, y)
+    amplitudes = np.geomspace(3.0, 100.0, 12)
+    radii = 40 * np.sqrt(rng.uniform(0.0, 1.0, 12))
+    angles = rng.uniform(0.0, 2.0 * np.pi, 12)
+    for amplitude, radius, angle in zip(amplitudes, radii, angles,
+                                        strict=True):
+        xc = 75 + radius * np.cos(angle)
+        yc = 75 + radius * np.sin(angle)
+        data += Gaussian2D(amplitude, xc, yc, 2.5, 2.5)(x, y)
+    if kind == 'quantized':
+        data = np.round(data * 2.0) / 2.0
+    return data
+
+
+def normalize_markers(markers):
+    """
+    Relabel a marker image with consecutive raster-ordered labels.
+
+    Parameters
+    ----------
+    markers : 2D int `~numpy.ndarray`
+        The marker image.
+
+    Returns
+    -------
+    result : 2D int `~numpy.ndarray`
+        The relabeled marker image.
+    """
+    from photutils.segmentation.deblend import _create_relabel_map
+    relabel_map = _create_relabel_map(markers)
+    if relabel_map is not None:
+        markers = relabel_map[markers]
+    return markers
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+@pytest.mark.parametrize('kind', ['blend', 'quantized', 'plateau'])
+@pytest.mark.parametrize('mode', ['exponential', 'linear', 'sinh'])
+@pytest.mark.parametrize('connectivity', [8, 4])
+def test_make_markers_matches_legacy(kind, mode, connectivity):
+    """
+    Test that make_markers produces the same markers as the legacy
+    per-level path (the last image of the return_all=True chain).
+
+    The markers must contain the same regions with the same
+    raster-scan label ordering, since the ordering determines the
+    final deblended label assignment.
+    """
+    from photutils.segmentation.utils import _make_binary_structure
+
+    data = make_marker_test_image(kind)
+    segm = detect_sources(data, 0.5, 5, connectivity=connectivity)
+    footprint = _make_binary_structure(2, connectivity)
+    n_seen = 0
+    for label, slc in zip(segm.labels, segm.slices, strict=True):
+        params = _DeblendParams(5, footprint, 32, 0.001, mode)
+        deblender = _SingleSourceDeblender(data[slc], segm.data[slc],
+                                           label, params)
+        markers = deblender.make_markers()
+
+        params = _DeblendParams(5, footprint, 32, 0.001, mode)
+        deblender = _SingleSourceDeblender(data[slc], segm.data[slc],
+                                           label, params)
+        legacy = deblender.make_markers(return_all=True)
+        legacy = None if legacy is None else legacy[-1]
+
+        if markers is None or legacy is None:
+            assert markers is None
+            assert legacy is None
+        else:
+            n_seen += 1
+            assert_equal(normalize_markers(markers),
+                         normalize_markers(legacy))
+    assert n_seen >= 1
+
+
 def make_multipeak_source():
     """
     Return the image and segmentation image for a single connected

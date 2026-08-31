@@ -15,6 +15,7 @@ from astropy.units import Quantity
 from scipy.ndimage import label as ndi_label
 from scipy.ndimage import sum_labels
 
+from photutils.segmentation._deblend_markers import make_deblend_markers
 from photutils.segmentation.core import (SegmentationImage, _get_labels,
                                          _remap_deblend_label_map)
 from photutils.segmentation.detect import _detect_sources_deblend
@@ -482,12 +483,20 @@ class _SingleSourceDeblender:
         """
         Make markers (possible sources) for the watershed algorithm.
 
+        The markers are built from a single component-tree
+        pass over the level-quantized cutout (see
+        `~photutils.segmentation._deblend_markers.make_deblend_markers`)
+        , which produces markers identical to the per-level
+        multithreshold construction.
+
         Parameters
         ----------
         return_all : bool, optional
             If `False` then return only the final segmentation marker
-            image. If `True` then return all segmentation marker images.
-            This keyword is useful for debugging and testing.
+            image. If `True` then compute the markers with the per-level
+            reference implementation instead and return all segmentation
+            marker images. This keyword is useful for debugging and
+            testing.
 
         Returns
         -------
@@ -498,29 +507,37 @@ class _SingleSourceDeblender:
             if there is only one source at every threshold.
         """
         thresholds = self.compute_thresholds()
-        segm_lower = _detect_sources_deblend(
-            self.data, thresholds[0], self.n_pixels,
-            footprint=self.footprint, segment_mask=self.segment_mask)
 
         if return_all:
-            all_segms = [segm_lower]
-
-        for threshold in thresholds[1:]:
-            segm_upper = _detect_sources_deblend(
-                self.data, threshold, self.n_pixels,
+            segm_lower = _detect_sources_deblend(
+                self.data, thresholds[0], self.n_pixels,
                 footprint=self.footprint, segment_mask=self.segment_mask)
-            if segm_upper is None:  # 0 or 1 labels
-                continue
-
-            segm_lower = self.make_marker_segment(segm_lower, segm_upper)
-
-            if return_all:
+            all_segms = [segm_lower]
+            for threshold in thresholds[1:]:
+                segm_upper = _detect_sources_deblend(
+                    self.data, threshold, self.n_pixels,
+                    footprint=self.footprint,
+                    segment_mask=self.segment_mask)
+                if segm_upper is None:  # 0 or 1 labels
+                    continue
+                segm_lower = self.make_marker_segment(segm_lower,
+                                                      segm_upper)
                 all_segms.append(segm_lower)
-
-        if return_all:
             return all_segms
 
-        return segm_lower
+        # A pixel is above threshold level i if i < quantized; NaN
+        # pixels compare as False against every threshold.
+        quantized = np.searchsorted(thresholds, self.data.ravel(),
+                                    side='left')
+        quantized = quantized.reshape(self.data.shape).astype(np.int32)
+        quantized[~self.segment_mask | np.isnan(self.data)] = 0
+        connectivity = 8 if self.footprint[0, 0] else 4
+        markers, n_markers = make_deblend_markers(quantized,
+                                                  self.n_pixels,
+                                                  connectivity)
+        if n_markers == 0:
+            return None
+        return markers
 
     def make_marker_segment(self, segment_lower, segment_upper):
         """
