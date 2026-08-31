@@ -17,7 +17,8 @@ from photutils.segmentation._deblend_markers import (DEBLEND_FLAG_NMARKERS,
                                                      DEBLEND_FLAG_NONPOSMIN,
                                                      deblend_markers_chunk,
                                                      make_deblend_markers)
-from photutils.segmentation._deblend_watershed import deblend_watershed
+from photutils.segmentation._deblend_watershed import (deblend_source_contrast,
+                                                       deblend_watershed)
 from photutils.segmentation.core import (SegmentationImage, _get_labels,
                                          _remap_deblend_label_map)
 from photutils.segmentation.detect import _detect_sources_deblend
@@ -348,8 +349,8 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         mode=_MODE_CODES[deblend_params.mode])
 
     results = []
-    for label, slc, markers, flag in zip(labels, slices, markers_list,
-                                         flags, strict=True):
+    for index, (label, slc, markers, flag) in enumerate(
+            zip(labels, slices, markers_list, flags, strict=True)):
         warns = {}
         if flag & DEBLEND_FLAG_NONPOSMIN:
             warns['nonposmin'] = 'non-positive minimum'
@@ -358,9 +359,20 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         if markers is None:
             results.append((None, warns))
             continue
-        deblender = _SingleSourceDeblender(data[slc], segm_data[slc],
-                                           label, deblend_params)
-        results.append((deblender.deblend_from_markers(markers), warns))
+
+        # The total source flux and minimum are computed here, with the
+        # same reductions as the per-source Python path, and passed to
+        # the compiled contrast loop.
+        values = data[slc][segm_data[slc] == label]
+        source_deblended = deblend_source_contrast(
+            driver_data, driver_segm, int(label), int(y0[index]),
+            int(y1[index]), int(x0[index]), int(x1[index]), markers,
+            connectivity=connectivity,
+            contrast=float(deblend_params.contrast),
+            source_sum=float(nansum(values)),
+            source_min=float(nanmin(values)))
+        results.append((source_deblended, warns))
+
     return results
 
 

@@ -679,26 +679,42 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
 
 @pytest.mark.parametrize('dtype', ['float64', 'float32', 'int32'])
 @pytest.mark.parametrize('scene', ['blend', 'negmin', 'checkerboard',
-                                   'gaussian', 'flat'])
+                                   'gaussian', 'flat',
+                                   'contrast-batch', 'contrast-single',
+                                   'contrast-all', 'contrast-negmin'])
 def test_chunk_driver_matches_python_path(dtype, scene):
     """
-    Test that the compiled chunk driver produces results identical
-    to the pure-Python per-source path, including the threshold
-    computation, the mode fallbacks, and the recorded warnings, for
-    float64, float32, and integer data.
+    Test that the compiled chunk driver and contrast loop produce
+    results identical to the pure-Python per-source path, including
+    the threshold computation, the mode fallbacks, the below-contrast
+    marker removal, and the recorded warnings, for float64, float32, and
+    integer data.
 
-    The scenes cover deblending sources, the non-positive-minimum
-    and too-many-markers mode fallbacks, a source that does not
-    split, and a constant source.
+    The scenes cover deblending sources, the non-positive-minimum and
+    too-many-markers mode fallbacks, a source that does not split,
+    a constant source, and contrast values that trigger the batched
+    removal, the one-at-a-time removal, the removal of all but one
+    basin, and the removal path for sources with a negative minimum
+    (which always removes one marker at a time).
     """
     from photutils.segmentation import deblend as deblend_module
 
+    contrast = 0.001
     if scene == 'blend':
         data = make_marker_test_image('blend')
         threshold, n_pixels = 0.5, 5
     elif scene == 'negmin':
         data = make_marker_test_image('blend') - 15.0
         threshold, n_pixels = -14.5, 5
+    elif scene.startswith('contrast'):
+        data, _ = make_multipeak_source()
+        threshold, n_pixels = 0.5, 5
+        contrast = {'contrast-batch': 0.15, 'contrast-single': 0.07,
+                    'contrast-all': 0.35,
+                    'contrast-negmin': 0.15}[scene]
+        if scene == 'contrast-negmin':
+            data = data - 5.0
+            threshold = -4.5
     elif scene == 'gaussian':
         y, x = np.mgrid[0:51, 0:51]
         data = Gaussian2D(10, 25, 25, 5, 5)(x, y)
@@ -726,10 +742,12 @@ def test_chunk_driver_matches_python_path(dtype, scene):
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', DeblendWarning)
-        result = deblend_sources(data, segm, n_pixels)
+        result = deblend_sources(data, segm, n_pixels,
+                                 contrast=contrast)
         with patch.object(deblend_module, '_deblend_sources_chunk',
                           python_deblend_chunk):
-            expected = deblend_sources(data, segm, n_pixels)
+            expected = deblend_sources(data, segm, n_pixels,
+                                       contrast=contrast)
 
     assert_equal(result.data, expected.data)
     assert result.info.keys() == expected.info.keys()
@@ -748,6 +766,32 @@ def test_deblend_segm_dtype():
     segm16 = SegmentationImage(segm.data.astype(np.int16))
     result = deblend_sources(data, segm16, 5)
     assert_equal(result.data, expected.data)
+
+
+def test_python_path_connectivity_mismatch():
+    """
+    Test that the pure-Python reference path raises the same error
+    as the compiled contrast loop when the detection and deblending
+    connectivities differ.
+    """
+    from photutils.segmentation import deblend as deblend_module
+
+    data = np.zeros((51, 51))
+    data[15:36, 15:36] = 10.0
+    data[14, 36] = 1.0
+    data[13, 37] = 10
+    data[14, 14] = 5.0
+    data[13, 13] = 10.0
+    data[36, 14] = 10.0
+    data[37, 13] = 10.0
+    data[36, 36] = 10.0
+    data[37, 37] = 10.0
+    segm = detect_sources(data, 0.1, 1, connectivity=8)
+    match = 'Deblending failed for source'
+    with (patch.object(deblend_module, '_deblend_sources_chunk',
+                       python_deblend_chunk),
+          pytest.raises(ValueError, match=match)):
+        deblend_sources(data, segm, 1, mode='linear', connectivity=4)
 
 
 def make_multipeak_source():

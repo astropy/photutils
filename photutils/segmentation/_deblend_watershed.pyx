@@ -22,9 +22,18 @@ free-threaded Python builds.
 
 import numpy as np
 
+from libc.math cimport isnan
 from libc.stdlib cimport free, malloc
 
-__all__ = ['deblend_watershed']
+__all__ = ['deblend_source_contrast', 'deblend_watershed']
+
+ctypedef fused data_t:
+    float
+    double
+
+ctypedef fused segm_t:
+    int
+    long long
 
 
 cdef struct _Heap:
@@ -250,4 +259,293 @@ def deblend_watershed(image, markers, mask, connectivity):
     if status < 0:
         raise MemoryError
 
+    return output_arr
+
+
+cdef int _contrast_core(const double* posimg, const double* negimg,
+                        unsigned char* mask, int* output,
+                        Py_ssize_t ny, Py_ssize_t nx, bint conn8,
+                        double contrast, double source_sum,
+                        double source_min,
+                        Py_ssize_t n_max_labels) noexcept nogil:
+    """
+    Run the watershed contrast loop for one source in place.
+
+    ``output`` holds the markers on input and the final relabeled
+    (consecutive from 1) basins on output. Returns the number of
+    final labels, or -1 if a memory allocation failed, or -2 if the
+    flooded basins do not cover the segment mask (a connectivity
+    mismatch).
+
+    The loop replicates the NumPy implementation operation for
+    operation: the basin fluxes are accumulated in raster order in
+    float64 (as np.bincount does), the below-contrast markers are
+    removed one at a time or in the largest provably equivalent
+    batch of the faintest markers, and NaN basin fluxes compare
+    false against every threshold, with np.argmin's first-NaN
+    behavior for the single-marker removal. The only divergence is
+    the order of bitwise-equal basin fluxes in the batch sort (NumPy
+    uses an unstable sort there; this uses a stable one).
+    """
+    cdef Py_ssize_t n_tot = ny * nx
+    cdef Py_ssize_t n_cap = n_max_labels + 1
+    cdef long long* counts = <long long*>malloc(
+        n_cap * sizeof(long long))
+    cdef double* flux = <double*>malloc(n_cap * sizeof(double))
+    cdef int* lab = <int*>malloc(n_cap * sizeof(int))
+    cdef double* frac = <double*>malloc(n_cap * sizeof(double))
+    cdef Py_ssize_t* order = <Py_ssize_t*>malloc(
+        n_cap * sizeof(Py_ssize_t))
+    cdef double* csum = <double*>malloc(n_cap * sizeof(double))
+    cdef unsigned char* removed = <unsigned char*>malloc(
+        n_cap * sizeof(unsigned char))
+    cdef int* lut = <int*>malloc(n_cap * sizeof(int))
+
+    cdef Py_ssize_t p, i, j, k, n_labels, n_remove, min_idx, last_ok
+    cdef Py_ssize_t pos
+    cdef int status, current
+    cdef bint remove_marker, a_nan, b_nan
+    cdef double value_a, value_b
+
+    if (counts == NULL or flux == NULL or lab == NULL or frac == NULL
+            or order == NULL or csum == NULL or removed == NULL
+            or lut == NULL):
+        status = -1
+    else:
+        status = 0
+
+    n_labels = 0
+    while status == 0:
+        status = _watershed_core(negimg, mask, output, ny, nx, conn8)
+        if status != 0:
+            break
+
+        # Present labels (ascending) and their fluxes, accumulated
+        # in raster order in float64 as np.bincount does.
+        for i in range(n_cap):
+            counts[i] = 0
+            flux[i] = 0.0
+        for p in range(n_tot):
+            current = output[p]
+            if current != 0:
+                counts[current] += 1
+                flux[current] += posimg[p]
+        n_labels = 0
+        for i in range(1, n_cap):
+            if counts[i] > 0:
+                lab[n_labels] = <int>i
+                frac[n_labels] = flux[i] / source_sum
+                n_labels += 1
+
+        if n_labels == 1:  # only 1 source left
+            break
+
+        remove_marker = False
+        for i in range(n_labels):
+            if frac[i] < contrast:
+                remove_marker = True
+                break
+        if not remove_marker:
+            break
+
+        # Remove the faintest below-contrast marker(s). See
+        # _SingleSourceDeblender._remove_faint_markers.
+        n_remove = 1
+        if source_min >= 0 and n_labels > 2:
+            # Stable sort of the label positions by flux fraction,
+            # with NaN values sorting to the end.
+            for i in range(n_labels):
+                order[i] = i
+            for i in range(1, n_labels):
+                j = i
+                while j > 0:
+                    value_a = frac[order[j]]
+                    value_b = frac[order[j - 1]]
+                    a_nan = isnan(value_a)
+                    b_nan = isnan(value_b)
+                    if ((not a_nan and b_nan)
+                            or (not a_nan and value_a < value_b)):
+                        pos = order[j - 1]
+                        order[j - 1] = order[j]
+                        order[j] = pos
+                        j -= 1
+                    else:
+                        break
+            csum[0] = frac[order[0]]
+            for i in range(1, n_labels):
+                csum[i] = csum[i - 1] + frac[order[i]]
+            # A batch of the n faintest markers (2 <= n < N) is
+            # valid if its total flux fraction is below both the
+            # contrast and the next-faintest marker flux fraction.
+            last_ok = -1
+            for k in range(1, n_labels - 1):
+                if (csum[k] < contrast
+                        and csum[k] < frac[order[k + 1]]):
+                    last_ok = k
+            if last_ok >= 0:
+                n_remove = last_ok + 1
+
+        for i in range(n_cap):
+            removed[i] = 0
+        if n_remove == 1:
+            # np.argmin: the first NaN if any, else the first minimum
+            min_idx = -1
+            for i in range(n_labels):
+                if isnan(frac[i]):
+                    min_idx = i
+                    break
+            if min_idx == -1:
+                min_idx = 0
+                for i in range(1, n_labels):
+                    if frac[i] < frac[min_idx]:
+                        min_idx = i
+            removed[lab[min_idx]] = 1
+        else:
+            for j in range(n_remove):
+                removed[lab[order[j]]] = 1
+        for p in range(n_tot):
+            if output[p] != 0 and removed[output[p]]:
+                output[p] = 0
+
+    if status == 0:
+        # The flooded basins must cover the segment mask exactly
+        # (they cannot with mismatched detection and deblending
+        # connectivities).
+        for p in range(n_tot):
+            if mask[p] and output[p] == 0:
+                status = -2
+                break
+
+    if status == 0:
+        # Relabel the surviving labels consecutively from 1 in
+        # ascending label order.
+        for i in range(n_labels):
+            lut[lab[i]] = <int>(i + 1)
+        for p in range(n_tot):
+            if output[p] != 0:
+                output[p] = lut[output[p]]
+        status = <int>n_labels
+
+    free(counts)
+    free(flux)
+    free(lab)
+    free(frac)
+    free(order)
+    free(csum)
+    free(removed)
+    free(lut)
+
+    return status
+
+
+def deblend_source_contrast(const data_t[:, ::1] data,
+                            const segm_t[:, ::1] segm_data,
+                            long long label, Py_ssize_t y0,
+                            Py_ssize_t y1, Py_ssize_t x0,
+                            Py_ssize_t x1, markers, *,
+                            int connectivity, double contrast,
+                            double source_sum, double source_min):
+    """
+    Apply the watershed contrast loop to one source's markers.
+
+    The watershed flooding, the basin flux measurements, the
+    below-contrast marker removal (single or batched), and the final
+    consecutive relabeling all run in compiled code that releases
+    the GIL, producing results identical to the per-step NumPy
+    implementation in ``_SingleSourceDeblender``.
+
+    Parameters
+    ----------
+    data : 2D float `~numpy.ndarray`
+        The full data array.
+
+    segm_data : 2D int `~numpy.ndarray`
+        The full segmentation array.
+
+    label : int
+        The label of the source segment.
+
+    y0, y1, x0, x1 : int
+        The bounding-box slice bounds of the source.
+
+    markers : 2D int `~numpy.ndarray`
+        The marker image cutout, with markers labeled from 1. It is
+        not modified.
+
+    connectivity : {8, 4}
+        The pixel connectivity.
+
+    contrast : float
+        The contrast criterion (the minimum fraction of the total
+        source flux that a watershed basin must contain).
+
+    source_sum : float
+        The total flux of the source segment (NaN pixels excluded).
+
+    source_min : float
+        The minimum data value of the source segment (NaN pixels
+        excluded).
+
+    Returns
+    -------
+    output : 2D int `~numpy.ndarray` or `None`
+        The deblended cutout with consecutive labels starting from
+        1, or `None` if only one basin remains after applying the
+        contrast criterion.
+
+    Raises
+    ------
+    ValueError
+        If the flooded basins do not cover the segment mask, which
+        happens when the detection and deblending connectivities
+        differ.
+    """
+    cdef Py_ssize_t ny_c = y1 - y0
+    cdef Py_ssize_t nx_c = x1 - x0
+    cdef Py_ssize_t img_nx = data.shape[1]
+
+    posimg_arr = np.empty((ny_c, nx_c), dtype=np.float64)
+    negimg_arr = np.empty((ny_c, nx_c), dtype=np.float64)
+    mask_arr = np.empty((ny_c, nx_c), dtype=np.uint8)
+    output_arr = np.array(markers, dtype=np.int32, copy=True, order='C')
+
+    cdef double[:, ::1] posimg_mv = posimg_arr
+    cdef double[:, ::1] negimg_mv = negimg_arr
+    cdef unsigned char[:, ::1] mask_mv = mask_arr
+    cdef int[:, ::1] output_mv = output_arr
+    cdef double* posimg = &posimg_mv[0, 0]
+    cdef double* negimg = &negimg_mv[0, 0]
+    cdef unsigned char* mask = &mask_mv[0, 0]
+    cdef int* output = &output_mv[0, 0]
+    cdef const data_t* data_ptr = &data[0, 0]
+    cdef const segm_t* segm_ptr = &segm_data[0, 0]
+
+    cdef bint conn8 = connectivity == 8
+    cdef Py_ssize_t iy, ix, idx, p
+    cdef Py_ssize_t n_max_labels = 0
+    cdef int status
+
+    with nogil:
+        for iy in range(ny_c):
+            for ix in range(nx_c):
+                idx = (y0 + iy) * img_nx + x0 + ix
+                p = iy * nx_c + ix
+                posimg[p] = <double>data_ptr[idx]
+                negimg[p] = -posimg[p]
+                mask[p] = segm_ptr[idx] == label
+                if output[p] > n_max_labels:
+                    n_max_labels = output[p]
+        status = _contrast_core(posimg, negimg, mask, output, ny_c,
+                                nx_c, conn8, contrast, source_sum,
+                                source_min, n_max_labels)
+
+    if status == -1:
+        raise MemoryError
+    if status == -2:
+        msg = (f'Deblending failed for source {int(label)!r}. '
+               'Please ensure you used the same pixel connectivity '
+               'in detect_sources and deblend_sources.')
+        raise ValueError(msg)
+    if status == 1:  # no deblending
+        return None
     return output_arr
