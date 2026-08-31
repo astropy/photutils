@@ -17,7 +17,7 @@ from scipy.ndimage import sum_labels
 
 from photutils.segmentation.core import (SegmentationImage, _get_labels,
                                          _remap_deblend_label_map)
-from photutils.segmentation.detect import _detect_sources
+from photutils.segmentation.detect import _detect_sources_deblend
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._deprecation import deprecated_renamed_argument
@@ -471,9 +471,10 @@ class _SingleSourceDeblender:
         thresholds = self.compute_thresholds()
         segms = []
         for threshold in thresholds:
-            segm = _detect_sources(self.data, threshold, self.n_pixels,
-                                   self.footprint, self.segment_mask,
-                                   relabel=False, return_segmimg=False)
+            segm = _detect_sources_deblend(self.data, threshold,
+                                           self.n_pixels,
+                                           footprint=self.footprint,
+                                           segment_mask=self.segment_mask)
             segms.append(segm)
         return segms
 
@@ -497,17 +498,17 @@ class _SingleSourceDeblender:
             if there is only one source at every threshold.
         """
         thresholds = self.compute_thresholds()
-        segm_lower = _detect_sources(self.data, thresholds[0], self.n_pixels,
-                                     self.footprint, self.segment_mask,
-                                     relabel=False, return_segmimg=False)
+        segm_lower = _detect_sources_deblend(
+            self.data, thresholds[0], self.n_pixels,
+            footprint=self.footprint, segment_mask=self.segment_mask)
 
         if return_all:
             all_segms = [segm_lower]
 
         for threshold in thresholds[1:]:
-            segm_upper = _detect_sources(self.data, threshold, self.n_pixels,
-                                         self.footprint, self.segment_mask,
-                                         relabel=False, return_segmimg=False)
+            segm_upper = _detect_sources_deblend(
+                self.data, threshold, self.n_pixels,
+                footprint=self.footprint, segment_mask=self.segment_mask)
             if segm_upper is None:  # 0 or 1 labels
                 continue
 
