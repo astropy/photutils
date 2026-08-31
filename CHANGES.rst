@@ -294,6 +294,17 @@ New Features
     are divided into chunks that are processed concurrently, producing
     results identical to the single-threaded computation. [#2407]
 
+  - Significantly improved the performance of source deblending in
+    ``deblend_sources`` and ``SourceFinder``, producing identical
+    results. The multithreshold watershed markers are now built by
+    compiled code that computes the quantized component tree of each
+    source in a single pass, instead of one detection pass plus a
+    marker-merging pass per threshold level. In addition, below-contrast
+    markers are removed in batches when doing so is equivalent to the
+    one-at-a-time removal. Deblending is typically ~5 times faster, both
+    for fields of many small blended sources and for large segments with
+    many markers. [#2408]
+
 - ``photutils.utils``
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's
