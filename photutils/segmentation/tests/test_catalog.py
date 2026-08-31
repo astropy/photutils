@@ -96,7 +96,7 @@ def centroid_win_data():
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
     n_pixels = 10
-    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    finder = SourceFinder(n_pixels=n_pixels)
     threshold = 107.9
     segment_map = finder(convolved_data, threshold)
     return data, segment_map, convolved_data
@@ -1229,7 +1229,7 @@ class TestSourceCatalog:
         kernel = make_2dgaussian_kernel(3.0, size=5)
         convolved_data = convolve(data, kernel)
         n_pixels = 10
-        finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+        finder = SourceFinder(n_pixels=n_pixels)
         segment_map = finder(convolved_data, threshold)
         cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
 
@@ -1607,7 +1607,7 @@ class TestSourceCatalogFlags:
         data = (Gaussian2D(100, 25, 30, 4, 4)(xx, yy)
                 + Gaussian2D(100, 38, 30, 4, 4)(xx, yy))
         segm = detect_sources(data, 10, 5)
-        return data, deblend_sources(data, segm, 5, progress_bar=False)
+        return data, deblend_sources(data, segm, 5)
 
     @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_kron_neighbor_pixels(self):
@@ -1833,7 +1833,7 @@ class TestSourceCatalogFlags:
         data = (Gaussian2D(100, 50, 50, 5, 5)(xx, yy)
                 + Gaussian2D(100, 35, 50, 5, 5)(xx, yy))
         segm = detect_sources(data, 10, 5)
-        segm2 = deblend_sources(data, segm, 5, progress_bar=False)
+        segm2 = deblend_sources(data, segm, 5)
         cat = SourceCatalog(data, segm2)
         assert np.all(cat.flags & SEGMENTATION_FLAGS.DEBLENDED)
 
@@ -2046,7 +2046,7 @@ def test_kron_params():
     convolved_data = convolve(data, kernel)
 
     n_pixels = 10
-    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    finder = SourceFinder(n_pixels=n_pixels)
     segm = finder(convolved_data, threshold)
 
     minrad = 1.4
@@ -2775,7 +2775,7 @@ def test_centroid_win_err():
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
     n_pixels = 10
-    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    finder = SourceFinder(n_pixels=n_pixels)
     threshold = 107.9
     segment_map = finder(convolved_data, threshold)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
@@ -2858,7 +2858,7 @@ def test_centroid_win_err_sliced():
     error = np.full(data.shape, 65.0)
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
-    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    finder = SourceFinder(n_pixels=10)
     segment_map = finder(convolved_data, 107.9)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')
@@ -2942,7 +2942,7 @@ def test_centroid_win_err_cov_fallback():
     error = np.full(data.shape, 65.0)
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
-    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    finder = SourceFinder(n_pixels=10)
     segment_map = finder(convolved_data, 107.9)
     cat = SourceCatalog(data, segment_map,
                         convolved_data=convolved_data, error=error,
@@ -2971,7 +2971,7 @@ def test_centroid_err():
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
     n_pixels = 10
-    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    finder = SourceFinder(n_pixels=n_pixels)
     threshold = 107.9
     segment_map = finder(convolved_data, threshold)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
@@ -3131,7 +3131,7 @@ def test_centroid_err_columns():
     error = np.full(data.shape, 65.0)
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
-    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    finder = SourceFinder(n_pixels=10)
     segment_map = finder(convolved_data, 107.9)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')
@@ -3321,7 +3321,7 @@ def test_centroid_quad_err_columns():
     error = np.full(data.shape, 65.0)
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
-    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    finder = SourceFinder(n_pixels=10)
     segment_map = finder(convolved_data, 107.9)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')

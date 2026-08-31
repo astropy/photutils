@@ -96,24 +96,20 @@ class SourceFinder:
         unless ``deblend=True``.
 
     n_processes : int, optional
-        The number of processes to use for source deblending. If set to
-        1, then a serial implementation is used instead of a parallel
-        one. If `None`, then the number of processes will be set to the
-        number of CPUs detected on the machine. Please note that due to
-        overheads, multiprocessing may be slower than serial processing
-        if only a small number of sources are to be deblended. The
-        benefits of multiprocessing require ~1000 or more sources to
-        deblend, with larger gains as the number of sources increase.
-        This keyword is ignored unless ``deblend=True``.
+        This keyword is deprecated and has no effect. Multiprocessing
+        no longer provides any benefit for source deblending.
+
+        .. deprecated:: 3.1
+            The ``n_processes`` keyword is deprecated and will be
+            removed in a future version.
 
     progress_bar : bool, optional
-        Whether to display a progress bar. If ``n_processes = 1``, then the
-        ID shown after the progress bar is the source label being
-        deblended. If multiprocessing is used (``n_processes > 1``), the
-        ID shown is the last source label that was deblended. The
-        progress bar requires that the `tqdm <https://tqdm.github.io/>`_
-        optional dependency be installed. This keyword is ignored unless
-        ``deblend=True``.
+        This keyword is deprecated and has no effect. Deblending no
+        longer displays a progress bar.
+
+        .. deprecated:: 3.1
+            The ``progress_bar`` keyword is deprecated and will be
+            removed in a future version.
 
     See Also
     --------
@@ -148,7 +144,7 @@ class SourceFinder:
 
         # Detect the sources
         threshold = 1.5 * bkg.background_rms  # per-pixel detection threshold
-        finder = SourceFinder(n_pixels=10, progress_bar=False)
+        finder = SourceFinder(n_pixels=10)
         segment_map = finder(convolved_data, threshold)
 
         # Plot the image and the segmentation image
@@ -162,6 +158,8 @@ class SourceFinder:
     @deprecated_renamed_argument('npixels', 'n_pixels', '3.0', until='4.0')
     @deprecated_renamed_argument('nlevels', 'n_levels', '3.0', until='4.0')
     @deprecated_renamed_argument('nproc', 'n_processes', '3.0', until='4.0')
+    @deprecated_renamed_argument('n_processes', None, '3.1', until='4.0')
+    @deprecated_renamed_argument('progress_bar', None, '3.1', until='4.0')
     def __init__(self, n_pixels, *, connectivity=8, deblend=True, n_levels=32,
                  contrast=0.001, mode='exponential', relabel=True,
                  n_processes=1, progress_bar=True):
@@ -232,8 +230,6 @@ class SourceFinder:
                                           contrast=self.contrast,
                                           mode=self.mode,
                                           connectivity=self.connectivity,
-                                          relabel=self.relabel,
-                                          n_processes=self.n_processes,
-                                          progress_bar=self.progress_bar)
+                                          relabel=self.relabel)
 
         return segment_img

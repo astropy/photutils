@@ -30,7 +30,7 @@ class TestSourceFinder:
         """
         Test deblend.
         """
-        finder = SourceFinder(n_pixels=self.n_pixels, progress_bar=False)
+        finder = SourceFinder(n_pixels=self.n_pixels)
         segm1 = finder(self.convolved_data, self.threshold)
         assert segm1.n_labels == 94
 
@@ -42,7 +42,7 @@ class TestSourceFinder:
         """
         Test invalid units.
         """
-        finder = SourceFinder(n_pixels=self.n_pixels, progress_bar=False)
+        finder = SourceFinder(n_pixels=self.n_pixels)
         match = 'must all have the same units'
         with pytest.raises(ValueError, match=match):
             finder(self.convolved_data << u.uJy, self.threshold)
@@ -55,8 +55,7 @@ class TestSourceFinder:
         """
         Test no deblend.
         """
-        finder = SourceFinder(n_pixels=self.n_pixels, deblend=False,
-                              progress_bar=False)
+        finder = SourceFinder(n_pixels=self.n_pixels, deblend=False)
         segm = finder(self.convolved_data, self.threshold)
         assert segm.n_labels == 87
 
@@ -64,8 +63,7 @@ class TestSourceFinder:
         """
         Test no sources.
         """
-        finder = SourceFinder(n_pixels=self.n_pixels, deblend=True,
-                              progress_bar=False)
+        finder = SourceFinder(n_pixels=self.n_pixels, deblend=True)
 
         match = 'No sources were found'
         with pytest.warns(NoDetectionsWarning, match=match):
@@ -95,19 +93,23 @@ class TestSourceFinder:
         """
         Test repr.
         """
-        finder = SourceFinder(n_pixels=self.n_pixels, deblend=False,
-                              progress_bar=False)
+        finder = SourceFinder(n_pixels=self.n_pixels, deblend=False)
         cls_repr = repr(finder)
         assert cls_repr.startswith(finder.__class__.__name__)
 
 
 def test_finder_deprecations():
-    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    finder = SourceFinder(n_pixels=10)
     match = 'attribute was deprecated'
     with pytest.warns(AstropyDeprecationWarning, match=match):
         _ = finder.npixels
     with pytest.warns(AstropyDeprecationWarning, match=match):
         _ = finder.nlevels
+
+    with pytest.warns(AstropyDeprecationWarning, match='progress_bar'):
+        SourceFinder(n_pixels=10, progress_bar=False)
+    with pytest.warns(AstropyDeprecationWarning, match='n_processes'):
+        SourceFinder(n_pixels=10, n_processes=2)
 
 
 @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
@@ -119,6 +121,6 @@ def test_finder_flags_passthrough():
     yy, xx = np.mgrid[0:101, 0:101]
     data = (Gaussian2D(100, 50, 50, 5, 5)(xx, yy)
             + Gaussian2D(100, 35, 50, 5, 5)(xx, yy))
-    finder = SourceFinder(n_pixels=5, progress_bar=False)
+    finder = SourceFinder(n_pixels=5)
     segm = finder(data, 10)
     assert np.any(segm.flags & SEGMENTATION_FLAGS.DEBLENDED)

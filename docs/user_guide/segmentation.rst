@@ -154,8 +154,7 @@ Here's a simple example of source deblending:
 
     >>> from photutils.segmentation import deblend_sources
     >>> segment_map2 = deblend_sources(convolved_data, segment_map,
-    ...                                n_pixels=10, n_levels=32, contrast=0.001,
-    ...                                progress_bar=False)
+    ...                                n_pixels=10, n_levels=32, contrast=0.001)
 
 where ``segment_map`` is the
 :class:`~photutils.segmentation.SegmentationImage` that was
@@ -190,8 +189,7 @@ deblended segmentation image:
     n_pixels = 10
     segment_map = detect_sources(convolved_data, threshold, n_pixels=n_pixels)
     deblended_segment_map = deblend_sources(convolved_data, segment_map,
-                                            n_pixels=n_pixels,
-                                            progress_bar=False)
+                                            n_pixels=n_pixels)
 
     fig, ax = plt.subplots(figsize=(10, 6.5))
     deblended_segment_map.imshow(ax=ax)
@@ -224,8 +222,7 @@ Let's plot one of the deblended sources:
     n_pixels = 10
     segment_map = detect_sources(convolved_data, threshold, n_pixels=n_pixels)
     deblended_segment_map = deblend_sources(convolved_data, segment_map,
-                                            n_pixels=n_pixels,
-                                            progress_bar=False)
+                                            n_pixels=n_pixels)
 
     fig, (ax1, ax2, ax3) = plt.subplots(ncols=3, figsize=(10, 4))
     slc = (slice(273, 297), slice(425, 444))
@@ -255,7 +252,7 @@ the background-subtracted (convolved) image and threshold:
 .. doctest-requires:: skimage
 
     >>> from photutils.segmentation import SourceFinder
-    >>> finder = SourceFinder(n_pixels=10, progress_bar=False)
+    >>> finder = SourceFinder(n_pixels=10)
     >>> segment_map = finder(convolved_data, threshold)
     >>> print(segment_map)
     <photutils.segmentation.core.SegmentationImage>
@@ -408,7 +405,7 @@ segmentation image and the science image:
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
 
-    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    finder = SourceFinder(n_pixels=10)
     segment_map = finder(convolved_data, threshold)
 
     fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(10, 12.5))
@@ -593,7 +590,7 @@ of each source) on the data:
     convolved_data = convolve(data, kernel)
 
     n_pixels = 10
-    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    finder = SourceFinder(n_pixels=n_pixels)
     segment_map = finder(convolved_data, threshold)
 
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)

@@ -578,7 +578,7 @@ quadratic-fit centroid
     >>> error = np.full(data.shape, 2.0)
     >>> kernel = make_2dgaussian_kernel(3.0, size=5)
     >>> convolved_data = convolve(data, kernel)
-    >>> finder = SourceFinder(n_pixels=10, progress_bar=False)
+    >>> finder = SourceFinder(n_pixels=10)
     >>> segment_map = finder(convolved_data, 4.5)
     >>> cat = SourceCatalog(data, segment_map,
     ...                     convolved_data=convolved_data, error=error)
