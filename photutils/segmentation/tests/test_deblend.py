@@ -3,6 +3,7 @@
 Tests for the deblend module.
 """
 
+import warnings
 from unittest.mock import patch
 
 import numpy as np
@@ -593,6 +594,118 @@ def test_make_markers_matches_legacy(kind, mode, connectivity):
             assert_equal(normalize_markers(markers),
                          normalize_markers(legacy))
     assert n_seen >= 1
+
+
+def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
+                         driver_segm,  # noqa: ARG001
+                         labels, slices, deblend_params):
+    """
+    Deblend a chunk of sources with the pure-Python reference path.
+
+    This mirrors the compiled chunk driver used by deblend_sources,
+    computing the markers and fallbacks per source in Python.
+
+    Parameters
+    ----------
+    data, segm_data, driver_data, driver_segm : 2D `~numpy.ndarray`
+        The (driver-compatible) data and segmentation arrays.
+
+    labels : 1D `~numpy.ndarray`
+        The labels of the sources in the chunk.
+
+    slices : list of tuple of slice
+        The bounding-box slices of the sources in the chunk.
+
+    deblend_params : `_DeblendParams`
+        The parameters for deblending the sources.
+
+    Returns
+    -------
+    results : list of (2D `~numpy.ndarray` or `None`, dict)
+        The deblended cutout and warnings for each source.
+    """
+    results = []
+    for label, slc in zip(labels, slices, strict=True):
+        deblender = _SingleSourceDeblender(data[slc], segm_data[slc],
+                                           label, deblend_params)
+        results.append((deblender.deblend_source(),
+                        deblender.warnings))
+    return results
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+@pytest.mark.parametrize('dtype', ['float64', 'float32', 'int32'])
+@pytest.mark.parametrize('scene', ['blend', 'negmin', 'checkerboard',
+                                   'gaussian', 'flat'])
+def test_chunk_driver_matches_python_path(dtype, scene):
+    """
+    Test that the compiled chunk driver produces results identical
+    to the pure-Python per-source path, including the threshold
+    computation, the mode fallbacks, and the recorded warnings, for
+    float64, float32, and integer data.
+
+    The scenes cover deblending sources, the non-positive-minimum
+    and too-many-markers mode fallbacks, a source that does not
+    split, and a constant source.
+    """
+    from photutils.segmentation import deblend as deblend_module
+
+    if scene == 'blend':
+        data = make_marker_test_image('blend')
+        threshold, n_pixels = 0.5, 5
+    elif scene == 'negmin':
+        data = make_marker_test_image('blend') - 15.0
+        threshold, n_pixels = -14.5, 5
+    elif scene == 'gaussian':
+        y, x = np.mgrid[0:51, 0:51]
+        data = Gaussian2D(10, 25, 25, 5, 5)(x, y)
+        threshold, n_pixels = 0.5, 5
+    elif scene == 'flat':
+        data = np.zeros((51, 51))
+        data[20:40, 20:40] = 5.0
+        threshold, n_pixels = 0.5, 5
+    else:
+        # The n_markers fallback checkerboard scene
+        size = 51
+        data1 = np.resize([0, 0, 1, 1], size)
+        data1 = np.abs(data1 - np.atleast_2d(data1).T) + 2.0
+        for i in range(size):
+            if i % 2 == 0:
+                data1[i, :] = 1
+                data1[:, i] = 1
+        data = np.zeros((101, 101))
+        data[25:25 + size, 25:25 + size] = data1
+        data[50:60, 50:60] = 10.0
+        threshold, n_pixels = 0.01, 1
+
+    data = data.astype(dtype)
+    segm = detect_sources(data, threshold, n_pixels)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', DeblendWarning)
+        result = deblend_sources(data, segm, n_pixels)
+        with patch.object(deblend_module, '_deblend_sources_chunk',
+                          python_deblend_chunk):
+            expected = deblend_sources(data, segm, n_pixels)
+
+    assert_equal(result.data, expected.data)
+    assert result.info.keys() == expected.info.keys()
+    for key in expected.info:
+        assert_equal(result.info[key], expected.info[key])
+    assert result._flags_map == expected._flags_map
+
+
+@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
+def test_deblend_segm_dtype():
+    """
+    Test that deblending a segmentation image with a non-native
+    integer dtype gives the same result as the int32 one.
+    """
+    data, segm = make_multipeak_source()
+    expected = deblend_sources(data, segm, 5)
+    segm16 = SegmentationImage(segm.data.astype(np.int16))
+    result = deblend_sources(data, segm16, 5)
+    assert_equal(result.data, expected.data)
 
 
 def make_multipeak_source():

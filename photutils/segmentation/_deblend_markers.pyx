@@ -31,9 +31,31 @@ free-threaded Python builds.
 
 import numpy as np
 
+from libc.math cimport isnan, pow, sinh
 from libc.stdlib cimport free, malloc, realloc
 
-__all__ = ['make_deblend_markers']
+__all__ = ['DEBLEND_FLAG_NMARKERS', 'DEBLEND_FLAG_NONPOSMIN',
+           'deblend_markers_chunk', 'make_deblend_markers']
+
+cdef enum:
+    # Per-source mode-fallback flag bits reported by the chunk driver
+    FLAG_NONPOSMIN = 1
+    FLAG_NMARKERS = 2
+    # Threshold-mode codes accepted by the chunk driver
+    MODE_LINEAR = 0
+    MODE_EXPONENTIAL = 1
+    MODE_SINH = 2
+
+DEBLEND_FLAG_NONPOSMIN = FLAG_NONPOSMIN
+DEBLEND_FLAG_NMARKERS = FLAG_NMARKERS
+
+ctypedef fused data_t:
+    float
+    double
+
+ctypedef fused segm_t:
+    int
+    long long
 
 
 cdef struct _Nodes:
@@ -507,3 +529,309 @@ def make_deblend_markers(const int[:, ::1] quantized, int n_pixels,
         raise MemoryError
 
     return markers_arr, int(n_markers)
+
+
+cdef void _compute_thresholds(double smin, double smax, double ratio,
+                              double delta_scale, int n_levels,
+                              int mode, double* thresholds) noexcept nogil:
+    """
+    Compute the multithreshold levels for one source.
+
+    This replicates, operation for operation, the NumPy arithmetic
+    of the _SingleSourceDeblender threshold computation: the interior
+    values of ``np.linspace(smin, smax, n_levels + 2)`` and the
+    linear, exponential, or sinh spacing applied to the normalized
+    thresholds. ``ratio`` and ``delta_scale`` are the ``smax / smin``
+    and ``smax - smin`` scalars, rounded in the data dtype exactly as
+    NumPy rounds them.
+    """
+    cdef double div = n_levels + 1
+    cdef double delta = smax - smin
+    cdef double step = delta / div
+    cdef double sinh_norm = sinh(1.0 / 0.25)
+    cdef double lin, norm
+    cdef int k
+
+    for k in range(1, n_levels + 1):
+        if step != 0:
+            lin = k * step + smin
+        else:
+            # np.linspace special case for subnormal steps
+            lin = (k / div) * delta + smin
+        if mode == MODE_LINEAR:
+            thresholds[k - 1] = lin
+        elif mode == MODE_EXPONENTIAL:
+            norm = (lin - smin) / delta_scale
+            thresholds[k - 1] = smin * pow(ratio, norm)
+        else:
+            norm = (lin - smin) / delta_scale
+            norm = sinh(norm / 0.25) / sinh_norm
+            norm = norm * delta_scale
+            thresholds[k - 1] = norm + smin
+
+
+cdef inline int _count_below(const double* thresholds, int n_levels,
+                             double value) noexcept nogil:
+    """
+    Return the number of thresholds strictly below ``value``.
+
+    This matches ``np.searchsorted(thresholds, value, side='left')``
+    for non-NaN values.
+    """
+    cdef int lo = 0
+    cdef int hi = n_levels
+    cdef int mid
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if thresholds[mid] < value:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo
+
+
+cdef Py_ssize_t _source_markers(const data_t* data, const segm_t* segm,
+                                Py_ssize_t img_nx, long long label,
+                                Py_ssize_t y0, Py_ssize_t y1,
+                                Py_ssize_t x0, Py_ssize_t x1,
+                                int n_pixels, bint conn8, int n_levels,
+                                int mode, int max_markers,
+                                double* thresholds, int* q,
+                                int* parent, int* size,
+                                unsigned char* added, int* stamp,
+                                int* node_of_root, int* order,
+                                int* flood, int* markers,
+                                unsigned char* flag) noexcept nogil:
+    """
+    Build the deblending markers for one source of a chunk.
+
+    Computes the source minimum and maximum over the segment (NaN
+    pixels excluded), applies the exponential-mode fallback for
+    non-positive minima and the too-many-markers fallback to linear
+    mode (recording both in ``flag``), quantizes the cutout, and runs
+    the component-tree core. Returns the number of markers (0 means
+    the source does not split) or -1 if a memory allocation failed.
+    """
+    cdef Py_ssize_t ny_c = y1 - y0
+    cdef Py_ssize_t nx_c = x1 - x0
+    cdef Py_ssize_t iy, ix, idx
+    cdef double value, smin, smax, ratio, delta_scale
+    cdef bint has_value = False
+    cdef int use_mode
+    cdef Py_ssize_t n_markers
+
+    flag[0] = 0
+    smin = 0.0
+    smax = 0.0
+    for iy in range(ny_c):
+        for ix in range(nx_c):
+            idx = (y0 + iy) * img_nx + x0 + ix
+            if segm[idx] != label:
+                continue
+            value = <double>data[idx]
+            if isnan(value):
+                continue
+            if not has_value:
+                smin = value
+                smax = value
+                has_value = True
+            elif value < smin:
+                smin = value
+            elif value > smax:
+                smax = value
+
+    # No deblending for constant (or all-NaN) sources
+    if not has_value or smin == smax:
+        return 0
+
+    use_mode = mode
+    if mode == MODE_EXPONENTIAL and smin <= 0:
+        # Fall back to linear mode for non-positive minima
+        flag[0] |= FLAG_NONPOSMIN
+        use_mode = MODE_LINEAR
+
+    # The maximum/minimum ratio and difference scalars are rounded
+    # in the data dtype, exactly as NumPy computes them from the
+    # dtype-preserving nanmin/nanmax reductions
+    if data_t is float:
+        delta_scale = <double>(<float>smax - <float>smin)
+        if smin != 0:
+            ratio = <double>(<float>smax / <float>smin)
+        else:
+            ratio = 0.0
+    else:
+        delta_scale = smax - smin
+        if smin != 0:
+            ratio = smax / smin
+        else:
+            ratio = 0.0
+
+    _compute_thresholds(smin, smax, ratio, delta_scale, n_levels,
+                        use_mode, thresholds)
+
+    # Quantize the cutout: the number of thresholds strictly below
+    # each pixel value; pixels outside the segment and NaN pixels
+    # are 0
+    for iy in range(ny_c):
+        for ix in range(nx_c):
+            idx = (y0 + iy) * img_nx + x0 + ix
+            if segm[idx] != label:
+                q[iy * nx_c + ix] = 0
+                continue
+            value = <double>data[idx]
+            if isnan(value):
+                q[iy * nx_c + ix] = 0
+                continue
+            q[iy * nx_c + ix] = _count_below(thresholds, n_levels,
+                                             value)
+
+    n_markers = _markers_core(q, ny_c, nx_c, n_pixels, conn8, parent,
+                              size, added, stamp, node_of_root, order,
+                              flood, markers)
+
+    # If there are too many markers, the watershed step would be very
+    # slow, so retry with linear mode (which has fewer levels at low
+    # thresholds)
+    if n_markers > max_markers and use_mode != MODE_LINEAR:
+        flag[0] |= FLAG_NMARKERS
+        _compute_thresholds(smin, smax, ratio, delta_scale, n_levels,
+                            MODE_LINEAR, thresholds)
+        for iy in range(ny_c):
+            for ix in range(nx_c):
+                idx = (y0 + iy) * img_nx + x0 + ix
+                if segm[idx] != label:
+                    q[iy * nx_c + ix] = 0
+                    continue
+                value = <double>data[idx]
+                if isnan(value):
+                    q[iy * nx_c + ix] = 0
+                    continue
+                q[iy * nx_c + ix] = _count_below(thresholds, n_levels,
+                                                 value)
+        n_markers = _markers_core(q, ny_c, nx_c, n_pixels, conn8,
+                                  parent, size, added, stamp,
+                                  node_of_root, order, flood, markers)
+
+    return n_markers
+
+
+def deblend_markers_chunk(const data_t[:, ::1] data,
+                          const segm_t[:, ::1] segm_data,
+                          const long long[::1] labels,
+                          const long long[::1] y0,
+                          const long long[::1] y1,
+                          const long long[::1] x0,
+                          const long long[::1] x1, *, int n_pixels,
+                          int connectivity, int n_levels, int mode,
+                          int max_markers=200):
+    """
+    Build the deblending watershed markers for a chunk of sources.
+
+    The multithreshold levels, the level quantization, the
+    component-tree marker construction, and the mode fallbacks
+    (non-positive minimum and too many markers) are all computed in
+    compiled code that releases the GIL, reusing one workspace sized
+    to the largest cutout in the chunk.
+
+    Parameters
+    ----------
+    data : 2D float `~numpy.ndarray`
+        The full data array.
+
+    segm_data : 2D int `~numpy.ndarray`
+        The full segmentation array.
+
+    labels : 1D int64 `~numpy.ndarray`
+        The label of each source in the chunk.
+
+    y0, y1, x0, x1 : 1D int64 `~numpy.ndarray`
+        The bounding-box slice bounds of each source.
+
+    n_pixels : int
+        The minimum number of connected pixels an above-threshold
+        component must have to be considered a source.
+
+    connectivity : {8, 4}
+        The pixel connectivity.
+
+    n_levels : int
+        The number of multithreshold levels.
+
+    mode : {0, 1, 2}
+        The threshold-spacing mode code: 0 (linear),
+        1 (exponential), or 2 (sinh).
+
+    max_markers : int, optional
+        The maximum number of markers before falling back to linear
+        mode.
+
+    Returns
+    -------
+    markers_list : list of 2D int `~numpy.ndarray` or `None`
+        The cutout marker image for each source that splits into two
+        or more markers, otherwise `None`.
+
+    flags : 1D uint8 `~numpy.ndarray`
+        The per-source mode-fallback flags
+        (``DEBLEND_FLAG_NONPOSMIN`` and ``DEBLEND_FLAG_NMARKERS``).
+    """
+    cdef Py_ssize_t n_src = labels.shape[0]
+    cdef Py_ssize_t img_nx = data.shape[1]
+    cdef Py_ssize_t isrc, n_tot, max_ntot, ny_c, nx_c
+    cdef Py_ssize_t n_markers
+
+    max_ntot = 1
+    for isrc in range(n_src):
+        n_tot = (y1[isrc] - y0[isrc]) * (x1[isrc] - x0[isrc])
+        if n_tot > max_ntot:
+            max_ntot = n_tot
+
+    thresholds_arr = np.empty(n_levels, dtype=np.float64)
+    q_arr = np.empty(max_ntot, dtype=np.int32)
+    parent_arr = np.empty(max_ntot, dtype=np.int32)
+    size_arr = np.zeros(max_ntot, dtype=np.int32)
+    added_arr = np.zeros(max_ntot, dtype=np.uint8)
+    stamp_arr = np.full(max_ntot, -1, dtype=np.int32)
+    node_of_root_arr = np.zeros(max_ntot, dtype=np.int32)
+    order_arr = np.empty(max_ntot, dtype=np.int32)
+    flood_arr = np.empty(max_ntot, dtype=np.int32)
+    markers_arr = np.zeros(max_ntot, dtype=np.int32)
+    flags_arr = np.zeros(n_src, dtype=np.uint8)
+
+    cdef double[::1] thresholds_mv = thresholds_arr
+    cdef int[::1] q_mv = q_arr
+    cdef int[::1] parent_mv = parent_arr
+    cdef int[::1] size_mv = size_arr
+    cdef unsigned char[::1] added_mv = added_arr
+    cdef int[::1] stamp_mv = stamp_arr
+    cdef int[::1] node_of_root_mv = node_of_root_arr
+    cdef int[::1] order_mv = order_arr
+    cdef int[::1] flood_mv = flood_arr
+    cdef int[::1] markers_mv = markers_arr
+    cdef unsigned char[::1] flags_mv = flags_arr
+
+    markers_list = []
+    for isrc in range(n_src):
+        ny_c = y1[isrc] - y0[isrc]
+        nx_c = x1[isrc] - x0[isrc]
+        with nogil:
+            n_markers = _source_markers(
+                &data[0, 0], &segm_data[0, 0], img_nx, labels[isrc],
+                y0[isrc], y1[isrc], x0[isrc], x1[isrc], n_pixels,
+                connectivity == 8, n_levels, mode, max_markers,
+                &thresholds_mv[0], &q_mv[0], &parent_mv[0],
+                &size_mv[0], &added_mv[0], &stamp_mv[0],
+                &node_of_root_mv[0], &order_mv[0], &flood_mv[0],
+                &markers_mv[0], &flags_mv[isrc])
+        if n_markers < 0:
+            raise MemoryError
+        if n_markers >= 2:
+            n_tot = ny_c * nx_c
+            quantized = q_arr[:n_tot].reshape(ny_c, nx_c)
+            markers = markers_arr[:n_tot].reshape(ny_c, nx_c)
+            markers_list.append(np.where(quantized > 0, markers,
+                                         np.int32(0)))
+        else:
+            markers_list.append(None)
+
+    return markers_list, flags_arr

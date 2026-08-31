@@ -13,7 +13,10 @@ from astropy.units import Quantity
 from scipy.ndimage import label as ndi_label
 from scipy.ndimage import sum_labels
 
-from photutils.segmentation._deblend_markers import make_deblend_markers
+from photutils.segmentation._deblend_markers import (DEBLEND_FLAG_NMARKERS,
+                                                     DEBLEND_FLAG_NONPOSMIN,
+                                                     deblend_markers_chunk,
+                                                     make_deblend_markers)
 from photutils.segmentation.core import (SegmentationImage, _get_labels,
                                          _remap_deblend_label_map)
 from photutils.segmentation.detect import _detect_sources_deblend
@@ -24,6 +27,9 @@ from photutils.utils._stats import nanmax, nanmin, nansum
 from photutils.utils.exceptions import DeblendWarning
 
 __all__ = ['deblend_sources']
+
+# Mode codes accepted by the compiled chunk driver
+_MODE_CODES = {'linear': 0, 'exponential': 1, 'sinh': 2}
 
 
 @dataclass
@@ -219,20 +225,31 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
 
     segm_deblended = segmentation_image.data.copy()
     label_indices = segmentation_image.get_indices(labels)
+    all_slices = [segmentation_image.slices[idx] for idx in label_indices]
+
+    # Contiguous, driver-compatible views of the inputs; casting the
+    # non-float data dtypes to float64 is exact for the threshold
+    # comparisons, matching the NumPy promotion rules
+    if data.dtype in (np.float32, np.float64):
+        driver_data = np.ascontiguousarray(data)
+    else:
+        driver_data = np.ascontiguousarray(data, dtype=np.float64)
+    segm_data = segmentation_image.data
+    if segm_data.dtype in (np.int32, np.int64):
+        driver_segm = np.ascontiguousarray(segm_data)
+    else:
+        driver_segm = np.ascontiguousarray(segm_data, dtype=np.int64)
+
+    results = _deblend_sources_chunk(data, segm_data, driver_data,
+                                     driver_segm, labels, all_slices,
+                                     deblend_params)
 
     deblend_label_map = {}
     max_label = segmentation_image.max_label
     nonposmin_labels = []
     n_markers_labels = []
-    for label, label_idx in zip(labels, label_indices, strict=True):
-        source_slice = segmentation_image.slices[label_idx]
-        source_data = data[source_slice]
-        source_segment = segmentation_image.data[source_slice]
-        source_deblended, warns = _deblend_source(source_data,
-                                                  source_segment,
-                                                  label,
-                                                  deblend_params)
-
+    for label, source_slice, (source_deblended, warns) in zip(
+            labels, all_slices, results, strict=True):
         if warns:
             if 'nonposmin' in warns:
                 nonposmin_labels.append(label)
@@ -279,13 +296,71 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     return segm_img
 
 
-def _deblend_source(data, segment_data, label, deblend_params):
+def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
+                           labels, slices, deblend_params):
     """
-    Convenience function to deblend a single labeled source.
+    Deblend a chunk of labeled sources.
+
+    The multithreshold markers of every source in the chunk are
+    built by the compiled chunk driver (which releases the GIL and
+    reuses one workspace across the chunk), and the watershed and
+    contrast steps then run for the sources that split into two or
+    more markers.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The data array.
+
+    segm_data : 2D int `~numpy.ndarray`
+        The segmentation array.
+
+    driver_data, driver_segm : 2D `~numpy.ndarray`
+        Contiguous views (or exact casts) of ``data`` and
+        ``segm_data`` with dtypes supported by the chunk driver.
+
+    labels : 1D `~numpy.ndarray`
+        The labels of the sources in the chunk.
+
+    slices : list of tuple of slice
+        The bounding-box slices of the sources in the chunk.
+
+    deblend_params : `_DeblendParams`
+        The parameters for deblending the sources.
+
+    Returns
+    -------
+    results : list of (2D `~numpy.ndarray` or `None`, dict)
+        For each source, the deblended cutout (`None` if the source
+        did not deblend) and the mode-fallback warnings dictionary.
     """
-    deblender = _SingleSourceDeblender(data, segment_data, label,
-                                       deblend_params)
-    return deblender.deblend_source(), deblender.warnings
+    y0 = np.array([slc[0].start for slc in slices], dtype=np.int64)
+    y1 = np.array([slc[0].stop for slc in slices], dtype=np.int64)
+    x0 = np.array([slc[1].start for slc in slices], dtype=np.int64)
+    x1 = np.array([slc[1].stop for slc in slices], dtype=np.int64)
+    connectivity = 8 if deblend_params.footprint[0, 0] else 4
+    markers_list, flags = deblend_markers_chunk(
+        driver_data, driver_segm, np.asarray(labels, dtype=np.int64),
+        y0, y1, x0, x1, n_pixels=int(deblend_params.n_pixels),
+        connectivity=connectivity,
+        n_levels=int(deblend_params.n_levels),
+        mode=_MODE_CODES[deblend_params.mode])
+
+    results = []
+    for label, slc, markers, flag in zip(labels, slices, markers_list,
+                                         flags, strict=True):
+        warns = {}
+        if flag & DEBLEND_FLAG_NONPOSMIN:
+            warns['nonposmin'] = 'non-positive minimum'
+        if flag & DEBLEND_FLAG_NMARKERS:
+            warns['n_markers'] = 'too many markers'
+        if markers is None:
+            results.append((None, warns))
+            continue
+        deblender = _SingleSourceDeblender(data[slc], segm_data[slc],
+                                           label, deblend_params)
+        results.append((deblender.deblend_from_markers(markers), warns))
+    return results
 
 
 class _SingleSourceDeblender:
@@ -612,13 +687,54 @@ class _SingleSourceDeblender:
 
         markers[markers == labels[np.argmin(flux_frac)]] = 0
 
+    def deblend_from_markers(self, markers):
+        """
+        Deblend the source given its precomputed watershed markers.
+
+        Parameters
+        ----------
+        markers : 2D int `~numpy.ndarray`
+            The marker image for the source.
+
+        Returns
+        -------
+        segment_data : 2D int `~numpy.ndarray` or `None`
+            A 2D int array containing the deblended source labels.
+            The source labels are consecutive starting at 1. `None`
+            is returned if only one source remains after applying
+            the contrast criterion.
+        """
+        # Deblend using the watershed algorithm using the markers as seeds
+        markers = self.apply_watershed(markers)
+
+        if not np.array_equal(self.segment_mask, markers.astype(bool)):
+            msg = (f'Deblending failed for source {self.label!r}. '
+                   'Please ensure you used the same pixel connectivity '
+                   'in detect_sources and deblend_sources.')
+            raise ValueError(msg)
+
+        if len(_get_labels(markers)) == 1:  # no deblending
+            return None
+
+        # Markers may not be consecutive if a label was removed due to
+        # the contrast criterion
+        relabel_map = _create_relabel_map(markers, start_label=1)
+        if relabel_map is not None:
+            markers = relabel_map[markers]
+        return markers
+
     def deblend_source(self):
         """
         Deblend a single labeled source.
 
+        This method computes the markers and the watershed steps
+        entirely in Python, mirroring what ``deblend_sources``
+        computes through the compiled chunk driver. It is useful for
+        debugging and testing.
+
         Returns
         -------
-        segment_data : 2D int `~numpy.ndarray`
+        segment_data : 2D int `~numpy.ndarray` or `None`
             A 2D int array containing the deblended source labels. The
             source labels are consecutive starting at 1.
         """
@@ -645,24 +761,7 @@ class _SingleSourceDeblender:
             if markers is None:
                 return None
 
-        # Deblend using the watershed algorithm using the markers as seeds
-        markers = self.apply_watershed(markers)
-
-        if not np.array_equal(self.segment_mask, markers.astype(bool)):
-            msg = (f'Deblending failed for source {self.label!r}. '
-                   'Please ensure you used the same pixel connectivity '
-                   'in detect_sources and deblend_sources.')
-            raise ValueError(msg)
-
-        if len(_get_labels(markers)) == 1:  # no deblending
-            return None
-
-        # Markers may not be consecutive if a label was removed due to
-        # the contrast criterion
-        relabel_map = _create_relabel_map(markers, start_label=1)
-        if relabel_map is not None:
-            markers = relabel_map[markers]
-        return markers
+        return self.deblend_from_markers(markers)
 
 
 def _make_flags_map(deblend_label_map, nonposmin_labels, n_markers_labels,
