@@ -148,8 +148,10 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         the ``'exponential'`` levels are dependent on the source
         maximum/minimum ratio (smaller ratios are more linear and
         larger ratios are more exponential), while the ``'sinh'`` levels
-        are not. Also, the ``'exponential'`` mode will be changed to
-        ``'linear'`` for sources with non-positive minimum data values.
+        are not. Unlike the ``'exponential'`` mode, the ``'sinh'``
+        and ``'linear'`` modes are well defined for sources with
+        non-positive minimum data values. For such sources, the
+        ``'exponential'`` mode will be changed to ``'sinh'``.
 
     connectivity : {8, 4}, optional
         The type of pixel connectivity used in determining how pixels
@@ -210,20 +212,22 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         sources are marked by different positive integer values. A value
         of zero is reserved for the background. The ``info`` attribute
         of the returned segmentation image is a dictionary that stores
-        the input labels for which the deblending mode was changed to
-        "linear" as arrays under ``'nonposmin_labels'`` (non-positive
-        minimum data values) and ``'n_markers_labels'`` (too many
-        potential deblended sources) keys. The dictionary is empty if no
-        mode fallbacks occurred. The ``flags`` attribute of the returned
+        the input labels for which the deblending mode was changed
+        to a fallback mode as arrays under ``'nonposmin_labels'``
+        (non-positive minimum data values, changed to "sinh") and
+        ``'n_markers_labels'`` (too many potential deblended sources,
+        changed to "linear") keys. The dictionary is empty if no mode
+        fallbacks occurred. The ``flags`` attribute of the returned
         segmentation image records per-source deblending provenance. See
         `~photutils.segmentation.decode_segmentation_flags`.
 
     Warns
     -----
     DeblendWarning
-        If the deblending mode for one or more sources was changed from
-        ``mode`` to "linear" due to non-positive minimum data values or
-        too many potential deblended sources.
+        If the deblending mode for one or more sources was changed
+        from ``mode`` to "sinh" due to non-positive minimum data
+        values or to "linear" due to too many potential deblended
+        sources.
 
     See Also
     --------
@@ -355,8 +359,10 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
 
     if nonposmin_labels or n_markers_labels:
         msg = ('The deblending mode of one or more source labels from the '
-               f'input segmentation image was changed from "{mode}" to '
-               '"linear". See the "info" attribute of the returned '
+               f'input segmentation image was changed from "{mode}" to a '
+               'fallback mode ("sinh" for non-positive minimum data '
+               'values, "linear" for too many potential deblended '
+               'sources). See the "info" attribute of the returned '
                'segmentation image for the affected input labels.')
         warnings.warn(msg, DeblendWarning)
 
@@ -445,7 +451,7 @@ def _compute_thresholds(source_min, source_max, n_levels, mode):
 
     mode : {'exponential', 'linear', 'sinh'}
         The level spacing. For the ``'exponential'`` mode, the sources
-        with a non-positive minimum use the ``'linear'`` spacing.
+        with a non-positive minimum use the ``'sinh'`` spacing.
 
     Returns
     -------
@@ -455,7 +461,7 @@ def _compute_thresholds(source_min, source_max, n_levels, mode):
         minimum and maximum are excluded.
 
     nonposmin : 1D bool `~numpy.ndarray`
-        Whether each source fell back to the ``'linear'`` spacing
+        Whether each source fell back to the ``'sinh'`` spacing
         because of a non-positive minimum.
     """
     source_min = np.asarray(source_min)
@@ -468,16 +474,25 @@ def _compute_thresholds(source_min, source_max, n_levels, mode):
     if mode != 'linear':
         delta = source_max - source_min
         normalized = (thresholds - source_min[:, None]) / delta[:, None]
-        if mode == 'sinh':
-            a = 0.25
-            thresholds = np.sinh(normalized / a) / np.sinh(1.0 / a)
-            thresholds *= delta[:, None]
-            thresholds += source_min[:, None]
-        else:
+        thresholds = thresholds.astype(np.float64)
+        if mode == 'exponential':
+            use_sinh = nonposmin
             keep = ~nonposmin
             ratio = source_max[keep] / source_min[keep]
             thresholds[keep] = (source_min[keep, None]
                                 * ratio[:, None] ** normalized[keep])
+        else:
+            use_sinh = np.ones(source_min.shape, dtype=bool)
+        if np.any(use_sinh):
+            # The exponential spacing is undefined for non-positive
+            # minima, so those sources use the sinh spacing, which
+            # keeps the levels concentrated near the source minimum and
+            # is defined for any data values
+            a = 0.25
+            levels = np.sinh(normalized[use_sinh] / a) / np.sinh(1.0 / a)
+            levels *= delta[use_sinh, None]
+            levels += source_min[use_sinh, None]
+            thresholds[use_sinh] = levels
 
     # Do not include the source minimum and maximum
     return (np.ascontiguousarray(thresholds[:, 1:-1], dtype=np.float64),
@@ -565,11 +580,9 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
             markers_list[index] = source_markers
 
         # Too many markers make the watershed step very slow, so such
-        # sources are deblended again with linearly spaced levels. A
-        # source that already fell back to the linear spacing keeps its
-        # markers
+        # sources are deblended again with linearly spaced levels
         if can_retry:
-            retry = np.flatnonzero((n_markers > _MAX_MARKERS) & ~fallback)
+            retry = np.flatnonzero(n_markers > _MAX_MARKERS)
             if retry.size > 0:
                 thresholds, _ = _compute_thresholds(
                     smin[retry], smax[retry], n_levels, 'linear')

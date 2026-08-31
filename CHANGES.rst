@@ -1044,6 +1044,17 @@ API Changes
     slower than the serial implementation at any number of sources.
     [#2408]
 
+  - The ``deblend_sources`` and ``SourceFinder`` deblending-mode
+    fallback for sources with non-positive minimum data values (used
+    with ``mode='exponential'``, for which such sources are
+    undefined) was changed from "linear" to "sinh". The sinh
+    spacing keeps the threshold levels concentrated near the source
+    minimum, recovering faint companions of bright sources that the
+    linear spacing misses, so deblending results can change for the
+    affected sources. The ``'nonposmin_labels'`` info key and the
+    ``deblend_nonposmin`` flag are unchanged and continue to record
+    the affected sources. [#2410]
+
 - ``photutils.utils``
 
   - The ``ShepardIDWInterpolator`` ``ncoords`` attribute has been

@@ -88,9 +88,11 @@ class SourceFinder:
         the ``'exponential'`` levels are dependent on the source
         maximum/minimum ratio (smaller ratios are more linear and
         larger ratios are more exponential), while the ``'sinh'`` levels
-        are not. Also, the ``'exponential'`` mode will be changed to
-        ``'linear'`` for sources with non-positive minimum data values.
-        This keyword is ignored unless ``deblend=True``.
+        are not. Unlike the ``'exponential'`` mode, the ``'sinh'``
+        and ``'linear'`` modes are well defined for sources with
+        non-positive minimum data values. For such sources, the
+        ``'exponential'`` mode will be changed to ``'sinh'``. This
+        keyword is ignored unless ``deblend=True``.
 
     relabel : bool, optional
         If `True` (default), then the segmentation image will be

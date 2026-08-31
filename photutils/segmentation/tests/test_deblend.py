@@ -932,6 +932,37 @@ def test_compute_thresholds_matches_reference(dtype, mode, n_levels):
         assert nonposmin[i] == ('nonposmin' in deblender.warnings)
 
 
+def test_nonposmin_fallback_sinh():
+    """
+    Test that the non-positive-minimum fallback uses sinh mode.
+
+    The sinh spacing keeps the threshold levels concentrated near the
+    source minimum, recovering a faint companion of a bright source that
+    the linear spacing misses.
+    """
+    y, x = np.mgrid[0:61, 0:81]
+    data = (Gaussian2D(1000, 36, 30, 1.7, 1.7)(x, y)
+            + Gaussian2D(20, 44, 30, 1.7, 1.7)(x, y) - 1.2)
+    segm = detect_sources(data, -0.2, 5)
+    assert segm.n_labels == 1
+
+    match = 'The deblending mode of one or more source labels'
+    with pytest.warns(DeblendWarning, match=match):
+        result = deblend_sources(data, segm, 5, mode='exponential',
+                                 contrast=1e-6)
+    assert result.n_labels == 2
+    assert_equal(result.info['nonposmin_labels'], [1])
+    bit = SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN
+    assert_equal(result.flags & bit, [bit, bit])
+
+    # The linear mode does not recover this companion, so the sinh
+    # fallback is a real sensitivity improvement over the previous
+    # linear fallback.
+    result_linear = deblend_sources(data, segm, 5, mode='linear',
+                                    contrast=1e-6)
+    assert result_linear.n_labels == 1
+
+
 def test_python_path_connectivity_mismatch():
     """
     Test that the pure-Python reference path raises the same error
