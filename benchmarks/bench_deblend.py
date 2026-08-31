@@ -267,12 +267,13 @@ def bench_many_peaks(*, size=1000, n_peaks_sweep=(10, 25, 50, 100),
 
     The contrast criterion applies to the flux in each watershed
     basin (which includes a share of the envelope flux), so larger
-    contrast values remove more markers. Each removal re-runs the
-    watershed over the full segment, so comparing the contrast=0 row
-    (a single watershed call) to the larger-contrast rows isolates
-    the cost of the iterative marker-removal loop. The number of
-    watershed calls is the difference between the contrast=0 n_labels
-    and the row's n_labels, plus one.
+    contrast values remove more markers. Each removal iteration
+    re-runs the watershed over the full segment, so comparing the
+    contrast=0 row (a single watershed call) to the larger-contrast
+    rows isolates the cost of the iterative marker-removal loop. The
+    number of watershed calls is at most the difference between the
+    contrast=0 n_labels and the row's n_labels, plus one (batched
+    removal may use fewer).
 
     Parameters
     ----------
@@ -393,7 +394,7 @@ def bench_stages(*, size=1000, n_peaks=25, mode='exponential',
           f'{n_peaks} peaks, mode={mode}, contrast={contrast}, '
           f'n_levels={n_levels}) ==')
     print(f'{n_markers} markers, {n_final} final labels, '
-          f'{n_watershed} watershed calls')
+          f'<={n_watershed} watershed calls')
     print(f'{"stage":>36}{"time":>12}')
 
     benchmarks = [
