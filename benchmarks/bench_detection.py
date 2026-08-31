@@ -363,7 +363,7 @@ def main():
                         help='number of concurrent find_stars calls for '
                              'the thread-scaling benchmark '
                              '(default: %(default)s)')
-    parser.add_argument('--threads', type=parse_thread_counts,
+    parser.add_argument('--n-threads', type=parse_thread_counts,
                         default=[1, 2, 4, 8],
                         help='comma-separated thread counts for the '
                              'thread-scaling benchmark (default: 1,2,4,8)')
@@ -393,7 +393,7 @@ def main():
                              repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'threads'):
         bench_finder_threads(n_sources=args.n_sources, n_calls=args.n_calls,
-                             thread_counts=args.threads,
+                             thread_counts=args.n_threads,
                              repeats=args.repeats, seed=args.seed)
 
 

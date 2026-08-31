@@ -32,7 +32,7 @@ from functools import partial
 import numpy as np
 from astropy.modeling.models import Gaussian2D
 from astropy.stats import gaussian_fwhm_to_sigma
-from bench_helpers import print_environment, time_best
+from bench_helpers import parse_thread_counts, print_environment, time_best
 from bench_segmentation import N_PIXELS, THRESHOLD, make_inputs
 
 from photutils.segmentation import detect_sources
@@ -572,6 +572,11 @@ def main():
                         help='comma-separated peak counts for the '
                              'many-peak benchmark '
                              '(default: 10,25,50,100)')
+    parser.add_argument('--n-threads', type=parse_thread_counts,
+                        default=[1, 2, 4, 8],
+                        help='comma-separated n_threads values for the '
+                             'thread-scaling benchmark '
+                             '(default: 1,2,4,8)')
     parser.add_argument('--repeats', type=int, default=3,
                         help='number of repeats per timing; the best '
                              'time is reported (default: %(default)s)')
@@ -602,7 +607,8 @@ def main():
         bench_stages(contrast=0.03, repeats=args.repeats,
                      seed=args.seed)
     if args.which in ('all', 'threads'):
-        bench_threads(repeats=args.repeats, seed=args.seed)
+        bench_threads(thread_counts=args.n_threads,
+                      repeats=args.repeats, seed=args.seed)
     if args.which == 'profile':
         bench_profile(seed=args.seed)
 

@@ -5,7 +5,7 @@ Benchmarks for the photutils.segmentation subpackage.
 
 The benchmarks cover source detection (detect_threshold and
 detect_sources), source deblending (deblend_sources) across the
-threshold modes and process counts, the combined SourceFinder class,
+threshold modes and thread counts, the combined SourceFinder class,
 SegmentationImage operations (relabeling, border-label removal,
 source masks, and polygons), SourceCatalog property calculations, the
 SourceCatalog n_threads keyword, and concurrent SourceCatalog runs
@@ -567,7 +567,7 @@ def main():
     parser.add_argument('--n-sources', type=int, default=1000,
                         help='total number of Gaussian sources in the '
                              'image (default: %(default)s)')
-    parser.add_argument('--deblend-threads', type=parse_int_list,
+    parser.add_argument('--deblend-n-threads', type=parse_int_list,
                         default=[1, 4],
                         help='comma-separated n_threads values for the '
                              'deblending benchmark (default: 1,4)')
@@ -575,7 +575,7 @@ def main():
                         help='number of concurrent catalog jobs for the '
                              'thread-scaling benchmark '
                              '(default: %(default)s)')
-    parser.add_argument('--threads', type=parse_thread_counts,
+    parser.add_argument('--n-threads', type=parse_thread_counts,
                         default=[1, 2, 4, 8],
                         help='comma-separated thread counts for the '
                              'thread-scaling and n_threads benchmarks '
@@ -601,7 +601,7 @@ def main():
                      seed=args.seed)
     if args.which in ('all', 'deblend'):
         bench_deblend(n_sources=args.n_sources,
-                      thread_counts=args.deblend_threads,
+                      thread_counts=args.deblend_n_threads,
                       repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'finder'):
         bench_finder(n_sources=args.n_sources, repeats=args.repeats,
@@ -614,12 +614,12 @@ def main():
                       seed=args.seed)
     if args.which in ('all', 'n-threads'):
         bench_catalog_n_threads(n_sources=args.n_sources,
-                                thread_counts=args.threads,
+                                thread_counts=args.n_threads,
                                 repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'threads'):
         bench_catalog_threads(n_sources=args.n_sources,
                               n_calls=args.n_calls,
-                              thread_counts=args.threads,
+                              thread_counts=args.n_threads,
                               repeats=args.repeats, seed=args.seed)
 
 
