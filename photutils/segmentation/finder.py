@@ -95,6 +95,14 @@ class SourceFinder:
         consecutive order starting from 1. This keyword is ignored
         unless ``deblend=True``.
 
+    n_threads : int, optional
+        The number of threads to use to deblend the sources. The
+        default is 1 (no multithreading). When ``n_threads`` > 1,
+        the sources are divided into chunks and processed
+        concurrently, producing results identical to the
+        single-threaded computation. This keyword is ignored unless
+        ``deblend=True``.
+
     nproc : int, optional
         This keyword is deprecated and has no effect. It was the name of
         the ``n_processes`` keyword before version 3.0.
@@ -105,7 +113,8 @@ class SourceFinder:
 
     n_processes : int, optional
         This keyword is deprecated and has no effect. Multiprocessing
-        no longer provides any benefit for source deblending.
+        no longer provides any benefit for source deblending. Use the
+        ``n_threads`` keyword instead.
 
         .. deprecated:: 3.1
             The ``n_processes`` keyword is deprecated and will be
@@ -170,6 +179,7 @@ class SourceFinder:
     @deprecated_renamed_argument('progress_bar', None, '3.1', until='4.0')
     def __init__(self, n_pixels, *, connectivity=8, deblend=True, n_levels=32,
                  contrast=0.001, mode='exponential', relabel=True,
+                 n_threads=1,
                  nproc=1,  # noqa: ARG002
                  n_processes=1, progress_bar=True):
         self.n_pixels = as_pair('n_pixels', n_pixels, check_odd=False)
@@ -179,13 +189,14 @@ class SourceFinder:
         self.contrast = contrast
         self.mode = mode
         self.relabel = relabel
+        self.n_threads = n_threads
         self.n_processes = n_processes
         self.progress_bar = progress_bar
 
     def __repr__(self):
         params = ('n_pixels', 'deblend', 'connectivity', 'n_levels',
-                  'contrast', 'mode', 'relabel', 'n_processes',
-                  'progress_bar')
+                  'contrast', 'mode', 'relabel', 'n_threads',
+                  'n_processes', 'progress_bar')
         return make_repr(self, params)
 
     # Remove in 4.0
@@ -238,6 +249,7 @@ class SourceFinder:
                                           contrast=self.contrast,
                                           mode=self.mode,
                                           connectivity=self.connectivity,
-                                          relabel=self.relabel)
+                                          relabel=self.relabel,
+                                          n_threads=self.n_threads)
 
         return segment_img

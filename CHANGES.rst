@@ -301,6 +301,15 @@ New Features
     small blended sources and for large segments with many markers.
     [#2408]
 
+  - Added an ``n_threads`` keyword to ``deblend_sources`` and
+    ``SourceFinder`` to deblend the sources using multiple threads.
+    The sources are divided into chunks and processed concurrently,
+    producing results identical to the single-threaded computation.
+    The marker-building kernels release the GIL, as do the
+    watershed and most of the array operations, so multithreading
+    can significantly speed up deblending, especially for large
+    sources. [#2409]
+
 - ``photutils.utils``
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's

@@ -471,6 +471,65 @@ def bench_profile(*, n_sources=2000, size=1000, n_peaks=25, seed=0):
         partial(deblend_sources, data, segm, N_PIXELS))
 
 
+def bench_threads(*, n_sources=4000, size=1000, n_peaks=25,
+                  thread_counts=(1, 2, 4, 8), repeats=3, seed=0):
+    """
+    Benchmark deblend_sources thread scaling.
+
+    Two regimes are timed: a field of many small blended pairs and a
+    2x2 grid of large blended sources (whose per-source work is
+    dominated by the GIL-releasing watershed and marker kernels).
+
+    Parameters
+    ----------
+    n_sources : int, optional
+        The total number of Gaussian sources for the many-source
+        scene.
+
+    size : int, optional
+        The tile size for the large-source grid scene.
+
+    n_peaks : int, optional
+        The number of compact peaks per large source.
+
+    thread_counts : tuple of int, optional
+        The n_threads values.
+
+    repeats : int, optional
+        The number of repeats for each timing (best time is kept).
+
+    seed : int, optional
+        The random number generator seed.
+    """
+    from bench_helpers import format_sweep_cells
+
+    _, data, segm = make_inputs(n_sources, seed=seed)
+    tile = make_blended_image(size, n_peaks, seed=seed)
+    grid = np.empty((2 * size, 2 * size))
+    for iy in range(2):
+        for ix in range(2):
+            grid[iy * size:(iy + 1) * size,
+                 ix * size:(ix + 1) * size] = tile
+    segm_grid = detect_sources(grid, BLEND_THRESHOLD, N_PIXELS)
+
+    scenes = [
+        (f'{segm.n_labels} small segments', data, segm),
+        (f'{segm_grid.n_labels} large segments', grid, segm_grid),
+    ]
+    print('\n== deblend_sources: thread scaling ==')
+    header = ''.join(f'{f"{n} thr":>18}' for n in thread_counts)
+    print(f'{"scene":>24}{header}')
+    for name, scene_data, scene_segm in scenes:
+        times = []
+        for n_threads in thread_counts:
+            bench = partial(deblend_sources, scene_data, scene_segm,
+                            N_PIXELS, n_threads=n_threads)
+            times.append(time_best(bench, repeats=repeats))
+        cells = ''.join(f'{cell:>18}'
+                        for cell in format_sweep_cells(times))
+        print(f'{name:>24}{cells}')
+
+
 def parse_int_list(text):
     """
     Parse a comma-separated list of positive integers.
@@ -521,7 +580,7 @@ def main():
                              '(default: %(default)s)')
     parser.add_argument('--which', default='all',
                         choices=['all', 'many', 'large', 'peaks',
-                                 'stages', 'profile'],
+                                 'stages', 'threads', 'profile'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
     args = parser.parse_args()
@@ -542,6 +601,8 @@ def main():
         bench_stages(repeats=args.repeats, seed=args.seed)
         bench_stages(contrast=0.03, repeats=args.repeats,
                      seed=args.seed)
+    if args.which in ('all', 'threads'):
+        bench_threads(repeats=args.repeats, seed=args.seed)
     if args.which == 'profile':
         bench_profile(seed=args.seed)
 

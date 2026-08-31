@@ -113,6 +113,21 @@ def test_finder_deprecations():
         assert len(record) == 1
 
 
+def test_finder_n_threads():
+    """
+    Test that SourceFinder n_threads produces results identical to
+    the single-threaded computation.
+    """
+    yy, xx = np.mgrid[0:101, 0:101]
+    data = (Gaussian2D(100, 50, 50, 5, 5)(xx, yy)
+            + Gaussian2D(100, 35, 50, 5, 5)(xx, yy))
+    expected = SourceFinder(n_pixels=5)(data, 10)
+    finder = SourceFinder(n_pixels=5, n_threads=4)
+    assert 'n_threads=4' in repr(finder)
+    segm = finder(data, 10)
+    np.testing.assert_array_equal(segm.data, expected.data)
+
+
 def test_finder_flags_passthrough():
     """
     Test that deblending provenance flags survive the SourceFinder

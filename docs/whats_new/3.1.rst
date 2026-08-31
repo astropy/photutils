@@ -662,6 +662,14 @@ The compiled watershed kernel produces results identical to
 required for source deblending (it remains an optional dependency
 for `~photutils.utils.ImageDepth`).
 
+A new ``n_threads`` keyword in
+:func:`~photutils.segmentation.deblend_sources` and
+`~photutils.segmentation.SourceFinder` deblends the sources using
+multiple threads. The sources are divided into chunks and processed
+concurrently, producing results identical to the single-threaded
+computation. The compiled kernels release the GIL, so multithreading can
+significantly speed up deblending, especially for large sources.
+
 
 ``GriddedPSFModel`` Performance Improvements
 ============================================
@@ -699,7 +707,8 @@ removed in version 4.0, and both keywords no longer have any effect.
 Deblending is now dominated by compiled code, so no progress bar is
 displayed, and the multiprocessing implementation has been removed
 because its process startup and data-pickling overheads made it slower
-than the serial implementation.
+than the serial implementation. Use the new ``n_threads`` keyword for
+multithreaded deblending instead.
 
 ``EPSFBuildResult`` Renamed to ``EPSFBuildResults``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

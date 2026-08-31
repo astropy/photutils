@@ -169,18 +169,18 @@ def bench_detect(*, n_sources=1000, repeats=3, seed=0):
         print(f'{name:>34}{f"{t_best:.4f}s":>12}{segm.n_labels:>10}')
 
 
-def bench_deblend(*, n_sources=1000, process_counts=(1, 4), repeats=3,
+def bench_deblend(*, n_sources=1000, thread_counts=(1, 4), repeats=3,
                   seed=0):
     """
-    Benchmark deblend_sources across modes and process counts.
+    Benchmark deblend_sources across modes and thread counts.
 
     Parameters
     ----------
     n_sources : int, optional
         The total number of Gaussian sources in the image.
 
-    process_counts : tuple of int, optional
-        The n_processes values (for mode='exponential').
+    thread_counts : tuple of int, optional
+        The n_threads values (for mode='exponential').
 
     repeats : int, optional
         The number of repeats for each timing (best time is kept).
@@ -205,13 +205,13 @@ def bench_deblend(*, n_sources=1000, process_counts=(1, 4), repeats=3,
         print(f'{name:>36}{f"{t_best:.4f}s":>12}'
               f'{segm_deblended.n_labels:>10}')
 
-    for n_processes in process_counts:
-        if n_processes == 1:
+    for n_threads in thread_counts:
+        if n_threads == 1:
             continue
         bench = partial(deblend_sources, convolved_data, segm, N_PIXELS,
-                        mode='exponential', n_processes=n_processes)
+                        mode='exponential', n_threads=n_threads)
         t_best = time_best(bench, repeats=repeats)
-        name = f'mode=exponential, n_processes={n_processes}'
+        name = f'mode=exponential, n_threads={n_threads}'
         print(f'{name:>36}{f"{t_best:.4f}s":>12}{"":>10}')
 
 
@@ -567,8 +567,9 @@ def main():
     parser.add_argument('--n-sources', type=int, default=1000,
                         help='total number of Gaussian sources in the '
                              'image (default: %(default)s)')
-    parser.add_argument('--n-processes', type=parse_int_list, default=[1, 4],
-                        help='comma-separated n_processes values for the '
+    parser.add_argument('--deblend-threads', type=parse_int_list,
+                        default=[1, 4],
+                        help='comma-separated n_threads values for the '
                              'deblending benchmark (default: 1,4)')
     parser.add_argument('--n-calls', type=int, default=8,
                         help='number of concurrent catalog jobs for the '
@@ -600,7 +601,7 @@ def main():
                      seed=args.seed)
     if args.which in ('all', 'deblend'):
         bench_deblend(n_sources=args.n_sources,
-                      process_counts=args.n_processes,
+                      thread_counts=args.deblend_threads,
                       repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'finder'):
         bench_finder(n_sources=args.n_sources, repeats=args.repeats,

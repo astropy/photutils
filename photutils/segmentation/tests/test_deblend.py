@@ -789,6 +789,42 @@ def test_chunk_driver_matches_python_path(dtype, scene):
     assert result._flags_map == expected._flags_map
 
 
+def test_n_threads_identical():
+    """
+    Test that multithreaded deblending produces results identical to
+    the single-threaded computation, including when there are more
+    threads than sources.
+    """
+    y, x = np.mgrid[0:101, 0:301]
+    data = (Gaussian2D(100, 50, 50, 5, 5)(x, y)
+            + Gaussian2D(100, 35, 50, 5, 5)(x, y)
+            + Gaussian2D(80, 150, 50, 5, 5)(x, y)
+            + Gaussian2D(60, 165, 50, 5, 5)(x, y)
+            + Gaussian2D(50, 250, 50, 5, 5)(x, y))
+    segm = detect_sources(data, 10, 5)
+    assert segm.n_labels == 3
+
+    expected = deblend_sources(data, segm, 5)
+    assert expected.n_labels == 5
+    for n_threads in (2, 3, 64):
+        result = deblend_sources(data, segm, 5, n_threads=n_threads)
+        assert_equal(result.data, expected.data)
+        assert result._flags_map == expected._flags_map
+        assert_equal(result.parent_to_deblended_labels,
+                     expected.parent_to_deblended_labels)
+
+
+@pytest.mark.parametrize('n_threads', [0, -1, 1.5])
+def test_n_threads_invalid(n_threads):
+    """
+    Test that invalid n_threads values raise a ValueError.
+    """
+    data, segm = make_multipeak_source()
+    match = 'n_threads must be a positive integer'
+    with pytest.raises(ValueError, match=match):
+        deblend_sources(data, segm, 5, n_threads=n_threads)
+
+
 def test_deblend_segm_dtype():
     """
     Test that deblending a segmentation image with a non-native
