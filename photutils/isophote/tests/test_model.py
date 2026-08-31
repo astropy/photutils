@@ -257,3 +257,48 @@ def test_build_ellipse_model_c_noncontiguous_arrays():
 
     assert_array_equal(result[0], expected[0])
     assert_array_equal(result[1], expected[1])
+
+
+@pytest.mark.parametrize('index', range(5))
+def test_build_ellipse_model_c_length_mismatch(index):
+    """
+    Test that a ValueError is raised if any of the main input arrays
+    does not have the same length as finely_spaced_sma.
+    """
+    n = 16
+    sma = np.linspace(0.5, 20.0, n)
+    arrays = [np.full(n, value) for value in (1.0, 0.3, 0.5, 50.0, 50.0)]
+    arrays[index] = arrays[index][:-1]
+    match = 'All input arrays must be same length'
+    with pytest.raises(ValueError, match=match):
+        build_ellipse_model_c(100, 100, sma, *arrays)
+
+
+@pytest.mark.parametrize('index', range(4))
+def test_build_ellipse_model_c_harmonic_length_mismatch(index):
+    """
+    Test that a ValueError is raised if any of the harmonic arrays
+    does not have the same length as finely_spaced_sma.
+    """
+    n = 16
+    sma = np.linspace(0.5, 20.0, n)
+    arrays = [np.full(n, value) for value in (1.0, 0.3, 0.5, 50.0, 50.0)]
+    harmonics = [np.full(n, 0.01) for _ in range(4)]
+    harmonics[index] = harmonics[index][:-1]
+    match = 'All input arrays must be same length'
+    with pytest.raises(ValueError, match=match):
+        build_ellipse_model_c(100, 100, sma, *arrays, *harmonics)
+
+
+def test_build_ellipse_model_c_partial_harmonics():
+    """
+    Test that a ValueError is raised if only some of the harmonic
+    arrays are input.
+    """
+    n = 16
+    sma = np.linspace(0.5, 20.0, n)
+    arrays = [np.full(n, value) for value in (1.0, 0.3, 0.5, 50.0, 50.0)]
+    match = 'Must supply all harmonic arrays if any is not None'
+    with pytest.raises(ValueError, match=match):
+        build_ellipse_model_c(100, 100, sma, *arrays,
+                              a3_array=np.full(n, 0.01))

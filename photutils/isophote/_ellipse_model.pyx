@@ -34,12 +34,18 @@ def build_ellipse_model_c(
 ):
     cdef Py_ssize_t len_sma
     len_sma = len(finely_spaced_sma)
-    for array in (intens_array, eps_array, pa_array, x0_array, y0_array):
-        if len(array) != len_sma:
-            msg = f"All input arrays must be same length={len_sma}"
-            raise ValueError(msg)
-    harmonic_arrays = (a3_array, b3_array, a4_array, b4_array)
-    harmonics_is_none = [array is None for array in harmonic_arrays]
+    # Do not place the memoryview arguments in a tuple. Cython infers
+    # a ctuple type for a tuple of memoryviews and rejects it as of
+    # Cython 3.3, so each array is checked explicitly.
+    if (len(intens_array) != len_sma
+            or len(eps_array) != len_sma
+            or len(pa_array) != len_sma
+            or len(x0_array) != len_sma
+            or len(y0_array) != len_sma):
+        msg = f"All input arrays must be same length={len_sma}"
+        raise ValueError(msg)
+    harmonics_is_none = [a3_array is None, b3_array is None,
+                         a4_array is None, b4_array is None]
 
     cdef double a3, b3, a4, b4
     cdef bint do_harmonics
@@ -54,10 +60,12 @@ def build_ellipse_model_c(
         if any(harmonics_is_none):
             msg = "Must supply all harmonic arrays if any is not None"
             raise ValueError(msg)
-        for array in harmonic_arrays:
-            if len(array) != len_sma:
-                msg = f"All input arrays must be same length={len_sma}"
-                raise ValueError(msg)
+        if (len(a3_array) != len_sma
+                or len(b3_array) != len_sma
+                or len(a4_array) != len_sma
+                or len(b4_array) != len_sma):
+            msg = f"All input arrays must be same length={len_sma}"
+            raise ValueError(msg)
         do_harmonics = True
 
     cdef double phi, fx, fy, x, y
