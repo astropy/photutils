@@ -924,21 +924,36 @@ class SourceCatalog:
                 self._background, dtype=np.float64)
         return arrays['background']
 
+    def _batch_labels(self):
+        """
+        Return the source labels as the C-contiguous intp array used by
+        the batch Cython drivers.
+        """
+        return np.ascontiguousarray(np.atleast_1d(self.labels),
+                                    dtype=np.intp)
+
+    @cached_property
+    def _batch_bboxes(self):
+        """
+        The per-source segment bounding boxes as an ``(n_labels, 4)``
+        intp array with columns ``(iymin, iymax, ixmin, ixmax)``, where
+        the maxima are exclusive.
+
+        A 2D array (rather than a tuple of arrays) so that the cached
+        value is sliced along the source axis by ``__getitem__``.
+        """
+        bboxes = np.empty((len(self._slices_iter), 4), dtype=np.intp)
+        for i, (slc_y, slc_x) in enumerate(self._slices_iter):
+            bboxes[i] = (slc_y.start, slc_y.stop, slc_x.start, slc_x.stop)
+        return bboxes
+
     def _get_batch_bboxes(self):
         """
         Return the per-source segment bounding boxes as
-        ``(iymin, iymax, ixmin, ixmax)`` intp arrays.
+        ``(iymin, iymax, ixmin, ixmax)`` C-contiguous intp arrays.
         """
-        slices = self._slices_iter
-        iymin = np.array([slc[0].start for slc in slices],
-                         dtype=np.intp)
-        iymax = np.array([slc[0].stop for slc in slices],
-                         dtype=np.intp)
-        ixmin = np.array([slc[1].start for slc in slices],
-                         dtype=np.intp)
-        ixmax = np.array([slc[1].stop for slc in slices],
-                         dtype=np.intp)
-        return iymin, iymax, ixmin, ixmax
+        return tuple(np.ascontiguousarray(col)
+                     for col in self._batch_bboxes.T)
 
     @cached_property
     def isscalar(self):
@@ -1808,8 +1823,7 @@ class SourceCatalog:
         iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
         return batch_segment_gather(
             array, mask=arrays['mask'], segm=arrays['segm'],
-            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
-                                        dtype=np.intp),
+            labels=self._batch_labels(),
             bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
             bbox_ixmax=ixmax)
 
@@ -1921,8 +1935,7 @@ class SourceCatalog:
         return batch_raw_moments(
             self._get_batch_convdata(), mask=arrays['mask'],
             segm=arrays['segm'],
-            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
-                                        dtype=np.intp),
+            labels=self._batch_labels(),
             bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
             bbox_ixmax=ixmax)
 
@@ -1939,8 +1952,7 @@ class SourceCatalog:
         return batch_central_moments(
             self._get_batch_convdata(), mask=arrays['mask'],
             segm=arrays['segm'],
-            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
-                                        dtype=np.intp),
+            labels=self._batch_labels(),
             bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
             bbox_ixmax=ixmax,
             xcen=np.ascontiguousarray(cutout_centroid[:, 0]),
@@ -2029,8 +2041,7 @@ class SourceCatalog:
         acc = batch_moment_err(
             arrays['error'], convdata=self._get_batch_convdata(),
             mask=arrays['mask'], segm=arrays['segm'],
-            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
-                                        dtype=np.intp),
+            labels=self._batch_labels(),
             bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
             bbox_ixmax=ixmax,
             xcen=np.ascontiguousarray(cutout_centroid[:, 0]),
@@ -2375,8 +2386,7 @@ class SourceCatalog:
         results = batch_centroid_win(
             arrays['data'], error=arrays['error'],
             mask=arrays['mask'], segm=arrays['segm'],
-            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
-                                        dtype=np.intp),
+            labels=self._batch_labels(),
             xcen0=x_centroid, ycen0=y_centroid, sigma=sigma,
             skip=skip,
             seg_method=_SEG_METHOD_CODES[self.aperture_mask_method],
@@ -2584,8 +2594,7 @@ class SourceCatalog:
         status, peak, boxes, box_var = batch_quad_boxes(
             arrays['data'], error=arrays['error'], mask=arrays['mask'],
             segm=arrays['segm'],
-            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
-                                        dtype=np.intp),
+            labels=self._batch_labels(),
             bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
             bbox_ixmax=ixmax, compute_err=int(compute_err))
         nx = ixmax - ixmin
@@ -3535,8 +3544,7 @@ class SourceCatalog:
         iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
         hist = batch_perimeter(
             arrays['mask'], segm=arrays['segm'],
-            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
-                                        dtype=np.intp),
+            labels=self._batch_labels(),
             bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
             bbox_ixmax=ixmax)
         perimeter = np.einsum('nk,k->n', hist.astype(float), weights)
@@ -4322,8 +4330,7 @@ class SourceCatalog:
         arrays = self._get_batch_arrays()
         sums = batch_kron_radius(
             arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
-            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
-                                        dtype=np.intp),
+            labels=self._batch_labels(),
             xcen=xcen, ycen=ycen, semimajor=semimajor,
             semiminor=semiminor, theta=theta, cxx=cxx, cxy=cxy, cyy=cyy,
             skip=skip,
@@ -4826,8 +4833,7 @@ class SourceCatalog:
         arrays = self._get_batch_arrays()
         seg_code = _SEG_METHOD_CODES[self.aperture_mask_method]
         seg_arr = arrays['segm'] if seg_code != 0 else None
-        labels_arr = np.ascontiguousarray(np.atleast_1d(self.labels),
-                                          dtype=np.intp)
+        labels_arr = self._batch_labels()
         local_bkg = np.ascontiguousarray(self._local_background,
                                          dtype=np.float64)
         has_error = self._error is not None
@@ -5065,8 +5071,7 @@ class SourceCatalog:
         arrays = self._get_batch_arrays()
         return batch_flux_radius_prepare(
             arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
-            labels=np.ascontiguousarray(np.atleast_1d(self.labels),
-                                        dtype=np.intp),
+            labels=self._batch_labels(),
             xcen=x_centroid, ycen=y_centroid, local_bkg=local_bkg,
             kronflux=kron_flux, max_radius=max_radius, skip=skip,
             seg_method=_SEG_METHOD_CODES[self.aperture_mask_method],

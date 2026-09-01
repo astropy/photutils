@@ -118,6 +118,33 @@ def test_scalar_and_sliced_catalog(scene):
     assert scalar.perimeter == parent.perimeter[3]
 
 
+def test_batch_bboxes_cached_and_sliced(scene):
+    """
+    Test that the cached bounding-box array is sliced along the source
+    axis, including for scalar catalogs, and matches a fresh catalog.
+    """
+    cat = make_catalog(scene)
+    bboxes = cat._batch_bboxes
+    assert bboxes.shape == (cat.n_labels, 4)
+    assert bboxes.dtype == np.intp
+    iymin, iymax, ixmin, ixmax = cat._get_batch_bboxes()
+    for col in (iymin, iymax, ixmin, ixmax):
+        assert col.flags.c_contiguous
+    assert_array_equal(np.column_stack((iymin, iymax, ixmin, ixmax)),
+                       bboxes)
+    slices = cat._slices_iter
+    assert_array_equal(iymin, [slc[0].start for slc in slices])
+    assert_array_equal(ixmax, [slc[1].stop for slc in slices])
+
+    child = cat[[1, 4, 6]]
+    assert_array_equal(child._batch_bboxes, bboxes[[1, 4, 6]])
+    scalar = cat[3]
+    assert scalar._batch_bboxes.shape == (1, 4)
+    assert_array_equal(scalar._batch_bboxes[0], bboxes[3])
+    fresh = make_catalog(scene)[3]
+    assert_array_equal(fresh._batch_bboxes, scalar._batch_bboxes)
+
+
 def _driver_inputs(cat):
     arrays = cat._get_batch_arrays()
     iymin, iymax, ixmin, ixmax = cat._get_batch_bboxes()
