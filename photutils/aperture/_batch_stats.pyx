@@ -50,24 +50,162 @@ cdef extern from "math.h" nogil:
     double ceil(double x)
     const double NAN
 
-cdef extern from "stdlib.h" nogil:
-    void qsort(void *base, size_t nmemb, size_t size,
-               int (*compar)(const void *, const void *))
-
 # Scale factor that converts the median absolute deviation to a robust
 # estimate of the standard deviation (1 / scipy.stats.norm.ppf(0.75)).
 # This must match ``astropy.stats.mad_std``.
 cdef double _MAD_STD_SCALE = 1.482602218505602
 
 
-cdef int _cmp_double(const void *a, const void *b) noexcept nogil:
-    cdef double da = (<const double *>a)[0]
-    cdef double db = (<const double *>b)[0]
-    if da < db:
-        return -1
-    if da > db:
-        return 1
-    return 0
+cdef inline void _insertion_sort(double *a, Py_ssize_t lo,
+                                 Py_ssize_t hi) noexcept nogil:
+    """
+    Sort ``a[lo:hi]`` ascending in place by insertion (for short
+    ranges).
+    """
+    cdef Py_ssize_t i, j
+    cdef double v
+    for i in range(lo + 1, hi):
+        v = a[i]
+        j = i
+        while j > lo and v < a[j - 1]:
+            a[j] = a[j - 1]
+            j -= 1
+        a[j] = v
+
+
+cdef void _heapsort(double *a, Py_ssize_t lo, Py_ssize_t hi) noexcept nogil:
+    """
+    Sort ``a[lo:hi]`` ascending in place by heapsort (the introsort
+    fallback that bounds the worst case at O(n log n)).
+    """
+    cdef Py_ssize_t n = hi - lo
+    cdef Py_ssize_t start, root, child, end
+    cdef double v
+    # Build the max-heap, then repeatedly move the maximum to the end
+    start = n // 2 - 1
+    end = n
+    while True:
+        if start >= 0:
+            root = start
+            start -= 1
+        else:
+            end -= 1
+            if end == 0:
+                return
+            v = a[lo + end]
+            a[lo + end] = a[lo]
+            a[lo] = v
+            root = 0
+        # Sift the root down within the heap [0, end)
+        while True:
+            child = 2 * root + 1
+            if child >= end:
+                break
+            if child + 1 < end and a[lo + child] < a[lo + child + 1]:
+                child += 1
+            if a[lo + root] < a[lo + child]:
+                v = a[lo + root]
+                a[lo + root] = a[lo + child]
+                a[lo + child] = v
+                root = child
+            else:
+                break
+
+
+cdef void _introsort(double *a, Py_ssize_t lo, Py_ssize_t hi,
+                     int depth) noexcept nogil:
+    """
+    Sort ``a[lo:hi]`` ascending in place by introsort: median-of-three
+    quicksort with Hoare partitioning, heapsort when the recursion
+    depth budget is exhausted, and insertion sort for short ranges.
+    The smaller partition is recursed into and the larger is looped
+    over, which bounds the recursion depth by log2(n).
+    """
+    cdef Py_ssize_t i, j, mid
+    cdef double pivot, v
+    while hi - lo > 16:
+        if depth == 0:
+            _heapsort(a, lo, hi)
+            return
+        depth -= 1
+
+        # Median of three, leaving a[lo] <= a[mid] <= a[hi - 1] so that
+        # the ends of the range are sentinels for the scans below
+        mid = lo + (hi - lo) // 2
+        if a[mid] < a[lo]:
+            v = a[mid]
+            a[mid] = a[lo]
+            a[lo] = v
+        if a[hi - 1] < a[lo]:
+            v = a[hi - 1]
+            a[hi - 1] = a[lo]
+            a[lo] = v
+        if a[hi - 1] < a[mid]:
+            v = a[hi - 1]
+            a[hi - 1] = a[mid]
+            a[mid] = v
+        pivot = a[mid]
+
+        # Hoare partition: afterwards a[lo:j + 1] <= pivot <= a[j + 1:hi]
+        i = lo
+        j = hi - 1
+        while True:
+            i += 1
+            while a[i] < pivot:
+                i += 1
+            j -= 1
+            while pivot < a[j]:
+                j -= 1
+            if i >= j:
+                break
+            v = a[i]
+            a[i] = a[j]
+            a[j] = v
+
+        if j + 1 - lo < hi - (j + 1):
+            _introsort(a, lo, j + 1, depth)
+            lo = j + 1
+        else:
+            _introsort(a, j + 1, hi, depth)
+            hi = j + 1
+    _insertion_sort(a, lo, hi)
+
+
+def _heapsort_values(double[::1] values):
+    """
+    Sort a 1D float64 array in place with the heapsort fallback of
+    ``_sort_doubles``.
+
+    The fallback runs only when the introsort recursion budget is
+    exhausted, which no ordinary input reaches, so this entry point
+    exists for the tests.
+
+    Parameters
+    ----------
+    values : 1D ndarray of float64 (C-contiguous, writeable)
+        The values to sort in place.
+    """
+    if values.shape[0] > 1:
+        _heapsort(&values[0], 0, values.shape[0])
+
+
+cdef inline void _sort_doubles(double *a, Py_ssize_t n) noexcept nogil:
+    """
+    Sort ``n`` finite doubles ascending in place.
+
+    This replaces the C library ``qsort`` (whose comparison callback
+    cannot be inlined and costs an indirect call per comparison) with
+    an introsort whose comparisons compile to plain branches. The
+    values must be finite: the ordering of NaN values is unspecified.
+    """
+    cdef int depth = 0
+    cdef Py_ssize_t m = n
+    if n < 2:
+        return
+    while m > 1:
+        m >>= 1
+        depth += 1
+    _introsort(a, 0, n, 2 * depth)
 
 
 cdef inline double _median_sorted(double *s, Py_ssize_t n) noexcept nogil:
@@ -179,7 +317,7 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
             med2 = _median_sorted(&s[lo], cnt)
             for i in range(lo, hi):
                 work[i] = fabs(s[i] - med2)
-            qsort(&work[lo], <size_t>cnt, sizeof(double), &_cmp_double)
+            _sort_doubles(&work[lo], cnt)
             mad2 = _median_sorted(&work[lo], cnt)
 
         # Center.
@@ -223,7 +361,7 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
             med2 = _median_sorted(&s[lo], cnt)
             for i in range(lo, hi):
                 work[i] = fabs(s[i] - med2)
-            qsort(&work[lo], <size_t>cnt, sizeof(double), &_cmp_double)
+            _sort_doubles(&work[lo], cnt)
             std = _median_sorted(&work[lo], cnt) * _MAD_STD_SCALE
 
         minv = cen - std * sigma_lower
@@ -797,7 +935,7 @@ def batch_sort_values(const double[::1] values,
             start = starts[k]
             for i in range(count):
                 out[start + i] = values[start + i]
-            qsort(&out[start], <size_t>count, sizeof(double), &_cmp_double)
+            _sort_doubles(&out[start], count)
 
     return out_arr
 
@@ -952,7 +1090,7 @@ def batch_mad(const double[::1] sorted_values,
             med = _median_sorted(&sorted_values[start], count)
             for i in range(count):
                 w[i] = fabs(sorted_values[start + i] - med)
-            qsort(&w[0], <size_t>count, sizeof(double), &_cmp_double)
+            _sort_doubles(&w[0], count)
             mad[k] = _median_sorted(&w[0], count)
 
     return mad_arr
@@ -1095,7 +1233,7 @@ def batch_gini(const double[::1] values,
 
             for i in range(count):
                 w[i] = fabs(values[start + i])
-            qsort(&w[0], <size_t>count, sizeof(double), &_cmp_double)
+            _sort_doubles(&w[0], count)
             gsum = 0.0
             for i in range(count):
                 gsum += w[i]
@@ -1204,7 +1342,7 @@ def batch_sigma_clip_center(const double[::1] values,
             start = starts[k]
             for i in range(count):
                 s[i] = values[start + i]
-            qsort(&s[0], <size_t>count, sizeof(double), &_cmp_double)
+            _sort_doubles(&s[0], count)
             _sigma_clip_bounds(&s[0], &w[0], count, sigma_lower, sigma_upper,
                                maxiters, cenfunc_code, stdfunc_code,
                                &minv, &maxv)
@@ -1313,7 +1451,7 @@ def batch_sigma_clip_sum(const double[::1] sum_values,
             start = starts[k]
             for i in range(count):
                 s[i] = sum_values[start + i]
-            qsort(&s[0], <size_t>count, sizeof(double), &_cmp_double)
+            _sort_doubles(&s[0], count)
             _sigma_clip_bounds(&s[0], &w[0], count, sigma_lower, sigma_upper,
                                maxiters, cenfunc_code, stdfunc_code,
                                &minv, &maxv)
@@ -1458,10 +1596,9 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
     (`astropy.stats.biweight_scale`) are also computed.
 
     Each row must be ascending-sorted with any NaN values placed last,
-    as done by `numpy.sort`. Sorting is delegated to the caller because
-    ``numpy.sort`` is much faster than a comparator-based C ``qsort``
-    for the large rows this function is designed for. The input array is
-    not modified.
+    as done by `numpy.sort`. Sorting is delegated to the caller, whose
+    ``numpy.sort`` places the NaN values last for the large rows this
+    function is designed for. The input array is not modified.
 
     The rows are typically the flattened pixels of the boxes of a
     regular grid (e.g., the `~photutils.background.Background2D`
@@ -1601,7 +1738,7 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
                 # Unscaled MAD about the median of the survivors
                 for i in range(lo, hi):
                     w[i - lo] = fabs(s[i] - med)
-                qsort(&w[0], <size_t>cnt, sizeof(double), &_cmp_double)
+                _sort_doubles(&w[0], cnt)
                 madk = _median_sorted(&w[0], cnt)
 
                 if compute_mad:

@@ -163,11 +163,12 @@ def _batch_gini(values):
 
     The values of each source are sorted with NumPy in a Python loop
     rather than with the compiled ``batch_gini`` kernel shared with
-    `~photutils.aperture.ApertureStats`, whose per-source ``qsort``
-    (with a comparison callback) is 2-2.5 times slower than NumPy's
-    sort for sources of ~50 or more pixels; the kernel is faster only
-    for very small sources (e.g., 3 versus 26 ms for 100k four-pixel
-    sources, but 43 versus 22 ms for 10k 144-pixel sources).
+    `~photutils.aperture.ApertureStats`. NumPy's vectorized sort beats
+    the kernel's scalar introsort for sources of more than ~50 pixels
+    (e.g., 23 versus 31 ms for 10k 144-pixel sources and 50 versus 86
+    ms for 1k 2500-pixel sources); the kernel is faster only for very
+    small sources (2.5 versus 27 ms for 100k four-pixel sources), where
+    the per-source Python overhead of this loop dominates.
 
     Parameters
     ----------
