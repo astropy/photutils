@@ -416,6 +416,9 @@ Bug Fixes
   - Fixed ``EllipseSample`` not resetting ``EllipseGeometry`` cached
     attributes when overriding ``sma``. [#2280]
 
+  - Fixed a compilation issue in ``_ellipse_model.pyx`` with Cython
+    3.3, which no longer allows tuples of typed memoryviews. [#2404]
+
 - ``photutils.morphology``
 
   - Fixed ``data_properties`` so that a ``background`` input with
