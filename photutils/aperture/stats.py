@@ -1301,18 +1301,16 @@ class ApertureStats:
         """
         The per-source ``(min, max)`` arrays, or `None`.
 
-        Reduced directly from the packed center buffer when no sorted
-        buffer exists yet, so that ``min`` and ``max`` alone do not
-        pay for the per-source sort. The sorted buffer is used when
-        it is already cached, or when sigma clipping is applied (the
-        clipping kernel produces the sorted surviving values, which
-        define the extremes). `None` when the fast path is unavailable.
+        Reduced directly from the packed center buffer, so that ``min``
+        and ``max`` do not pay for the per-source sort. When sigma
+        clipping is applied, the clipping kernel's sorted surviving
+        values define the extremes, so the order statistics are used
+        instead. `None` when the fast path is unavailable.
         """
         gather = self._fast_gather
         if gather is None:
             return None
-        if (gather.sorted_values is not None
-                or '_sorted_values' in self.__dict__):
+        if gather.sorted_values is not None:
             vmin, vmax, _ = self._order_stats
             return vmin, vmax
         return self._threaded_reduction(batch_minmax, (gather.values,),

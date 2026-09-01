@@ -100,9 +100,10 @@ def test_min_max_without_sort(stats_inputs, n_threads):
     assert_array_equal(vmax, stats.max)
 
 
-def test_min_max_reuse_cached_sort(stats_inputs):
+def test_min_max_after_sort(stats_inputs):
     """
-    Test that min and max reuse the sorted buffer once it exists.
+    Test that min and max agree with the sorted path (and the
+    reference) when the sorted buffer already exists.
     """
     data, aperture = stats_inputs
     stats = ApertureStats(data, aperture)

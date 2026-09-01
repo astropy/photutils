@@ -20,6 +20,11 @@ from photutils.segmentation.tests._batch_scene import (make_batch_scene,
                                                        make_catalog)
 from photutils.segmentation.utils import _mask_to_mirrored_value
 
+# The batch solver accumulates the flux in a different order from the
+# reference, which perturbs the Brent iteration path, so the roots can
+# differ by up to the solver's absolute tolerance (xtol = 2e-12 pixels)
+RADIUS_ATOL = 4e-12
+
 
 def _reference_optimizer_args(cat):
     """
@@ -184,7 +189,8 @@ def test_matches_reference(scene, method, fraction):
     args = cat._flux_radius_optimizer_args
     expected = _reference_solve(args, fraction)
     result = batch_flux_radius_solve(args, fraction=fraction)
-    assert_allclose(result, expected, rtol=1e-12, equal_nan=True)
+    assert_allclose(result, expected, rtol=1e-12, atol=RADIUS_ATOL,
+                    equal_nan=True)
 
 
 def test_none_entries(scene):
@@ -194,7 +200,7 @@ def test_none_entries(scene):
     result = batch_flux_radius_solve(args, fraction=0.5)
     assert np.isnan(result[0])
     assert_allclose(result, _reference_solve(args, 0.5), rtol=1e-12,
-                    equal_nan=True)
+                    atol=RADIUS_ATOL, equal_nan=True)
 
 
 def test_bracket_shrink_and_no_solution(scene):
@@ -214,7 +220,7 @@ def test_bracket_shrink_and_no_solution(scene):
                entry[3]]]
     assert_allclose(batch_flux_radius_solve(forced, fraction=0.5),
                     _reference_solve(forced, 0.5), rtol=1e-12,
-                    equal_nan=True)
+                    atol=RADIUS_ATOL, equal_nan=True)
 
     # A milder outer ring, where shrinking the bracket does reveal a
     # sign change and a root is found on a later retry
@@ -225,7 +231,7 @@ def test_bracket_shrink_and_no_solution(scene):
     expected = _reference_solve(shrink, 0.5)
     assert np.isfinite(expected[0])
     assert_allclose(batch_flux_radius_solve(shrink, fraction=0.5),
-                    expected, rtol=1e-12)
+                    expected, rtol=1e-12, atol=RADIUS_ATOL)
 
     # And a hopeless case that shrinks to no solution -> NaN
     hopeless = [[np.ascontiguousarray(np.full_like(clean_data,
@@ -254,7 +260,7 @@ def test_prepare_overlap_methods(scene, kwargs):
                        _reference_optimizer_args(cat))
     assert_allclose(cat.flux_radius(0.5).value,
                     _reference_solve(_reference_optimizer_args(cat), 0.5),
-                    rtol=1e-12, equal_nan=True)
+                    rtol=1e-12, atol=RADIUS_ATOL, equal_nan=True)
 
 
 def test_prepare_local_background(scene):
@@ -348,7 +354,7 @@ def test_catalog_flux_radius(scene):
     expected = _reference_solve(cat._flux_radius_optimizer_args, 0.5)
     result = cat.flux_radius(0.5)
     assert result.unit == u.pix
-    assert_allclose(result.value, expected, rtol=1e-12,
+    assert_allclose(result.value, expected, rtol=1e-12, atol=RADIUS_ATOL,
                     equal_nan=True)
 
     # Named property
@@ -356,4 +362,4 @@ def test_catalog_flux_radius(scene):
     assert_allclose(cat.r30.value,
                     _reference_solve(
                         cat._flux_radius_optimizer_args, 0.3),
-                    rtol=1e-12, equal_nan=True)
+                    rtol=1e-12, atol=RADIUS_ATOL, equal_nan=True)

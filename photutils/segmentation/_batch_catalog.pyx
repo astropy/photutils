@@ -1107,12 +1107,15 @@ def batch_flux_radius_solve(args_list, *, double fraction):
     The per-pixel circular overlap, the bracket, and the root-finder
     tolerances replicate the previous per-source
     `scipy.optimize.root_scalar` implementation (the same SciPy C
-    routine is used), so the roots agree to within floating-point
-    rounding of the flux sums. The cutout pixels are binned once per
-    source by their distance from the centroid, so that each
-    root-finder evaluation adds the fully enclosed pixels from prefix
-    sums and evaluates the overlap only for the pixels near the circle
-    boundary (see ``_flux_radius_objective``).
+    routine is used). The cutout pixels are binned once per source by
+    their distance from the centroid, so that each root-finder
+    evaluation adds the fully enclosed pixels from prefix sums and
+    evaluates the overlap only for the pixels near the circle boundary
+    (see ``_flux_radius_objective``). Every pixel receives the same
+    overlap fraction as before, but the flux is summed in a different
+    order, which perturbs the Brent iteration path: the roots agree
+    with the previous implementation to within the root-finder's
+    absolute tolerance (``xtol`` = 2e-12 pixels), not to rounding.
 
     A bracket whose endpoints have the same sign has no (or multiple)
     solutions. As in the previous implementation, the maximum radius
