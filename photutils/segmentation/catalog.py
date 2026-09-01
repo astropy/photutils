@@ -29,6 +29,7 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_VALID, SHAPE_CIRCLE,
                                                   SHAPE_ELLIPSE,
                                                   batch_aperture_sums)
+from photutils.aperture._segmentation import SEG_METHOD_CODES
 from photutils.background import SExtractorBackground
 from photutils.segmentation._batch_catalog import (batch_central_moments,
                                                    batch_centroid_win,
@@ -56,10 +57,6 @@ from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 from photutils.utils.cutouts import CutoutImage
 
 __all__ = ['SourceCatalog']
-
-
-# Segmentation masking codes used by the batch Cython drivers
-_SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'correct': 3}
 
 
 class _SegmentValues:
@@ -2430,7 +2427,7 @@ class SourceCatalog:
             labels=self._batch_labels(),
             xcen0=x_centroid, ycen0=y_centroid, sigma=sigma,
             skip=skip,
-            seg_method=_SEG_METHOD_CODES[self.aperture_mask_method],
+            seg_method=SEG_METHOD_CODES[self.aperture_mask_method],
             compute_err=int(compute_err),
             max_aper_size=max(self._data.size, 1_000_000))
 
@@ -4373,7 +4370,7 @@ class SourceCatalog:
             xcen=xcen, ycen=ycen, semimajor=semimajor,
             semiminor=semiminor, theta=theta, cxx=cxx, cxy=cxy, cyy=cyy,
             skip=skip,
-            seg_method=_SEG_METHOD_CODES[self.aperture_mask_method],
+            seg_method=SEG_METHOD_CODES[self.aperture_mask_method],
             scale=scale, min_circ_radius=min_circ_radius,
             max_aper_size=max(self._data.size, 1_000_000))
         flux_numer = sums[:, 0]
@@ -4710,7 +4707,7 @@ class SourceCatalog:
             return flux, flux_err
 
         arrays = self._get_batch_arrays()
-        seg_code = _SEG_METHOD_CODES[self.aperture_mask_method]
+        seg_code = SEG_METHOD_CODES[self.aperture_mask_method]
         seg_arr = None
         seg_labels = None
         if seg_code != 0:
@@ -4870,7 +4867,7 @@ class SourceCatalog:
         positions = np.column_stack((xcen, ycen)).astype(float)
 
         arrays = self._get_batch_arrays()
-        seg_code = _SEG_METHOD_CODES[self.aperture_mask_method]
+        seg_code = SEG_METHOD_CODES[self.aperture_mask_method]
         seg_arr = arrays['segm'] if seg_code != 0 else None
         labels_arr = self._batch_labels()
         local_bkg = np.ascontiguousarray(self._local_background,
@@ -5113,7 +5110,7 @@ class SourceCatalog:
             labels=self._batch_labels(),
             xcen=x_centroid, ycen=y_centroid, local_bkg=local_bkg,
             kronflux=kron_flux, max_radius=max_radius, skip=skip,
-            seg_method=_SEG_METHOD_CODES[self.aperture_mask_method],
+            seg_method=SEG_METHOD_CODES[self.aperture_mask_method],
             use_exact=use_exact, subpixels=subpixels,
             max_aper_size=max(self._data.size, 1_000_000))
 

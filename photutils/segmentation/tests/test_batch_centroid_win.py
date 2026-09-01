@@ -12,13 +12,12 @@ import pytest
 from astropy.stats import gaussian_fwhm_to_sigma
 from numpy.testing import assert_allclose
 
+from photutils.aperture._segmentation import SEG_METHOD_CODES
 from photutils.segmentation import SourceCatalog
 from photutils.segmentation._batch_catalog import batch_centroid_win
 from photutils.segmentation.tests._batch_scene import (make_batch_scene,
                                                        make_catalog)
 from photutils.segmentation.utils import _mask_to_mirrored_value
-
-SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'correct': 3}
 
 
 def _reference_iterate_centroid_win(label, xcen, ycen, rad_hl,
@@ -202,21 +201,12 @@ def scene():
     return make_batch_scene()
 
 
-def _driver_inputs(cat, scene):
+def _driver_inputs(cat):
     """
     Build the batch_centroid_win inputs for a catalog, mirroring the
     wiring in SourceCatalog._centroid_win_results.
     """
-    data = np.ascontiguousarray(scene['data'], dtype=np.float64)
-    mask_plane = np.zeros(data.shape, dtype=np.uint8)
-    if cat._mask is not None:
-        mask_plane[cat._mask] |= 1
-    mask_plane[~np.isfinite(data)] |= 2
-    error = None
-    if cat._error is not None:
-        error = np.ascontiguousarray(scene['error'], dtype=np.float64)
-    segm = np.ascontiguousarray(scene['segm'].data, dtype=np.intp)
-
+    arrays = cat._get_batch_arrays()
     radius_hl = cat.flux_radius(0.5).value.copy()
     nan_hl = ~np.isfinite(radius_hl)
     small = np.isfinite(radius_hl) & (radius_hl < 0.5)
@@ -227,8 +217,8 @@ def _driver_inputs(cat, scene):
     # np.isnan (not ~np.isfinite) for parity with the previous
     # per-source math.isnan checks
     skip = (nan_hl | np.isnan(xcen0) | np.isnan(ycen0)).astype(np.uint8)
-    return {'data': data, 'error': error, 'mask': mask_plane,
-            'segm': segm,
+    return {'data': arrays['data'], 'error': arrays['error'],
+            'mask': arrays['mask'], 'segm': arrays['segm'],
             'labels': np.ascontiguousarray(cat.labels, dtype=np.intp),
             'xcen0': xcen0, 'ycen0': ycen0, 'sigma': sigma,
             'skip': skip, 'radius_hl': radius_hl, 'nan_hl': nan_hl}
@@ -240,7 +230,7 @@ def _driver_inputs(cat, scene):
 def test_matches_reference(scene, method, with_error, with_mask):
     cat = make_catalog(scene, aperture_mask_method=method,
                        with_error=with_error, with_mask=with_mask)
-    inp = _driver_inputs(cat, scene)
+    inp = _driver_inputs(cat)
     max_aper_size = max(scene['data'].size, 1_000_000)
     result = batch_centroid_win(
         inp['data'], error=inp['error'], mask=inp['mask'],
@@ -275,7 +265,7 @@ def test_matches_reference(scene, method, with_error, with_mask):
 
 def test_skip_rows(scene):
     cat = make_catalog(scene)
-    inp = _driver_inputs(cat, scene)
+    inp = _driver_inputs(cat)
     skip = np.ones_like(inp['skip'])
     result = batch_centroid_win(
         inp['data'], error=inp['error'], mask=inp['mask'],
@@ -291,7 +281,7 @@ def test_skip_rows(scene):
 
 def test_oom_guard(scene):
     cat = make_catalog(scene)
-    inp = _driver_inputs(cat, scene)
+    inp = _driver_inputs(cat)
     result = batch_centroid_win(
         inp['data'], error=inp['error'], mask=inp['mask'],
         segm=inp['segm'], labels=inp['labels'], xcen0=inp['xcen0'],
@@ -302,7 +292,7 @@ def test_oom_guard(scene):
 
 def test_compute_err_without_error(scene):
     cat = make_catalog(scene, with_error=False)
-    inp = _driver_inputs(cat, scene)
+    inp = _driver_inputs(cat)
     match = 'error must be provided when compute_err is set'
     with pytest.raises(ValueError, match=match):
         batch_centroid_win(
@@ -324,7 +314,7 @@ def _call_driver(inp):
 @pytest.mark.parametrize('name', ['xcen0', 'ycen0', 'sigma', 'skip'])
 def test_length_guard(scene, name):
     cat = make_catalog(scene)
-    inp = _driver_inputs(cat, scene)
+    inp = _driver_inputs(cat)
     inp[name] = np.ascontiguousarray(inp[name][:-1])
     match = f'{name} must have the same length as labels'
     with pytest.raises(ValueError, match=match):
@@ -334,7 +324,7 @@ def test_length_guard(scene, name):
 @pytest.mark.parametrize('name', ['mask', 'segm', 'error'])
 def test_shape_guard(scene, name):
     cat = make_catalog(scene)
-    inp = _driver_inputs(cat, scene)
+    inp = _driver_inputs(cat)
     inp[name] = np.ascontiguousarray(inp[name][:-1])
     match = f'{name} must have the same shape as data'
     with pytest.raises(ValueError, match=match):
@@ -343,7 +333,7 @@ def test_shape_guard(scene, name):
 
 def test_thread_safety(scene):
     cat = make_catalog(scene)
-    inp = _driver_inputs(cat, scene)
+    inp = _driver_inputs(cat)
     max_aper_size = max(scene['data'].size, 1_000_000)
 
     def run():
