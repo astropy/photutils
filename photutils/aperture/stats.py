@@ -29,7 +29,8 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
 from photutils.aperture._batch_stats import (batch_aperture_gather,
                                              batch_biweight, batch_gini,
                                              batch_mad, batch_mean_var,
-                                             batch_moments, batch_order_stats,
+                                             batch_minmax, batch_moments,
+                                             batch_order_stats,
                                              batch_sigma_clip_center,
                                              batch_sigma_clip_sum,
                                              batch_sort_values)
@@ -346,8 +347,8 @@ class ApertureStats:
     # index the packed buffer per source and fail or corrupt it.
     _NON_SLICEABLE_CACHES = frozenset({
         '_batch_inputs', '_fast_gather', '_fast_sum', '_sorted_values',
-        '_order_stats', '_mean_var', '_mad', '_biweight', '_gini',
-        '_fast_cutouts_center'})
+        '_order_stats', '_minmax', '_mean_var', '_mad', '_biweight',
+        '_gini', '_fast_cutouts_center'})
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
                  sigma_clip=None, sum_method='exact', subpixels=5, ddof=0,
@@ -1294,6 +1295,28 @@ class ApertureStats:
         values, starts, counts = sorted_values
         return self._threaded_reduction(batch_order_stats, (values,),
                                         starts, counts)
+
+    @cached_property
+    def _minmax(self):
+        """
+        The per-source ``(min, max)`` arrays, or `None`.
+
+        Reduced directly from the packed center buffer when no sorted
+        buffer exists yet, so that ``min`` and ``max`` alone do not
+        pay for the per-source sort. The sorted buffer is used when
+        it is already cached, or when sigma clipping is applied (the
+        clipping kernel produces the sorted surviving values, which
+        define the extremes). `None` when the fast path is unavailable.
+        """
+        gather = self._fast_gather
+        if gather is None:
+            return None
+        if (gather.sorted_values is not None
+                or '_sorted_values' in self.__dict__):
+            vmin, vmax, _ = self._order_stats
+            return vmin, vmax
+        return self._threaded_reduction(batch_minmax, (gather.values,),
+                                        gather.starts, gather.counts)
 
     @cached_property
     def _mean_var(self):
@@ -2599,7 +2622,7 @@ class ApertureStats:
         """
         The minimum of the unmasked pixel values within the aperture.
         """
-        fast = None if self._order_stats is None else self._order_stats[0]
+        fast = None if self._minmax is None else self._minmax[0]
         return self._finalize_value_stat(fast, np.min)
 
     @cached_property
@@ -2607,7 +2630,7 @@ class ApertureStats:
         """
         The maximum of the unmasked pixel values within the aperture.
         """
-        fast = None if self._order_stats is None else self._order_stats[1]
+        fast = None if self._minmax is None else self._minmax[1]
         return self._finalize_value_stat(fast, np.max)
 
     @cached_property

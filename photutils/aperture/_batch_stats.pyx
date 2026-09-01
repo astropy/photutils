@@ -37,7 +37,7 @@ from photutils.geometry._polygon_overlap cimport (convex_edge_normals,
 from photutils.geometry.rectangle_overlap cimport rect_vertices
 
 __all__ = ['batch_aperture_gather', 'batch_moments', 'batch_sort_values',
-           'batch_order_stats', 'batch_mean_var', 'batch_mad',
+           'batch_order_stats', 'batch_minmax', 'batch_mean_var', 'batch_mad',
            'batch_biweight', 'batch_gini', 'batch_sigma_clip_center',
            'batch_sigma_clip_stats', 'batch_sigma_clip_sum']
 
@@ -1035,6 +1035,59 @@ def batch_order_stats(const double[::1] sorted_values,
             median[k] = _median_sorted(&sorted_values[start], count)
 
     return (vmin_arr, vmax_arr, median_arr)
+
+
+def batch_minmax(const double[::1] values,
+                 const Py_ssize_t[::1] starts,
+                 const Py_ssize_t[::1] counts):
+    """
+    Reduce a packed value buffer to the per-source minimum and maximum.
+
+    Unlike `batch_order_stats`, this does not need (or produce) the
+    sorted values, so it is the cheaper way to get only the extremes.
+    The conventions match `numpy.min` and `numpy.max`. Sources with no
+    pixels (``counts[k] == 0``) are set to NaN.
+
+    Parameters
+    ----------
+    values : 1D ndarray of float64
+        The packed pixel values (see ``batch_aperture_gather``). All
+        values are assumed finite.
+
+    starts, counts : 1D ndarray of intp
+        The per-source start offset and pixel count.
+
+    Returns
+    -------
+    vmin, vmax : 1D ndarray of float64
+        The per-source minimum and maximum, each of shape
+        ``(n_sources,)``.
+    """
+    cdef Py_ssize_t n_src = starts.shape[0]
+    vmin_arr = np.full(n_src, np.nan, dtype=np.float64)
+    vmax_arr = np.full(n_src, np.nan, dtype=np.float64)
+    cdef double[::1] vmin = vmin_arr
+    cdef double[::1] vmax = vmax_arr
+    cdef Py_ssize_t k, i, start, count
+    cdef double v, lo, hi
+
+    with nogil:
+        for k in range(n_src):
+            count = counts[k]
+            if count == 0:
+                continue
+            start = starts[k]
+            lo = values[start]
+            hi = lo
+            for i in range(start + 1, start + count):
+                v = values[i]
+                if v < lo:
+                    lo = v
+                elif v > hi:
+                    hi = v
+            vmin[k] = lo
+            vmax[k] = hi
+    return vmin_arr, vmax_arr
 
 
 def batch_mean_var(const double[::1] values,
