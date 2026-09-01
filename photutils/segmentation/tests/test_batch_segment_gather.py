@@ -13,6 +13,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 from photutils.morphology import gini as gini_func
 from photutils.segmentation import SegmentationImage, SourceCatalog
 from photutils.segmentation._batch_catalog import batch_segment_gather
+from photutils.segmentation.catalog import _SegmentValues
 from photutils.segmentation.tests._batch_scene import (make_batch_scene,
                                                        make_catalog)
 
@@ -37,7 +38,9 @@ def _reference_values(masked_cutouts):
 
 def _assert_values_equal(values, expected):
     assert len(values) == len(expected)
-    for got, want in zip(values, expected, strict=True):
+    assert values.offsets[-1] == values.packed.size
+    assert_array_equal(values.sizes, np.maximum(values.counts, 1))
+    for got, want in zip(values.values, expected, strict=True):
         assert got.dtype == np.float64
         assert_array_equal(got, want)
 
@@ -65,13 +68,13 @@ def test_matches_reference(scene, with_error, with_mask, with_background):
         _assert_values_equal(cat._error_values,
                              _reference_values(cat.error_cutout_masked))
     else:
-        assert all(value is None for value in cat._error_values)
+        assert cat._error_values is None
     if with_background:
         _assert_values_equal(
             cat._background_values,
             _reference_values(cat.background_cutout_masked))
     else:
-        assert all(value is None for value in cat._background_values)
+        assert cat._background_values is None
     assert_array_equal(cat._all_masked,
                        [np.all(mask) for mask in cat._cutout_total_masks])
 
@@ -150,7 +153,7 @@ def test_sliced_catalog_equals_parent(scene):
     _ = parent._all_masked
     child = parent[[0, 3, 5]]
     _assert_values_equal(child._data_values,
-                         [parent._data_values[i] for i in (0, 3, 5)])
+                         [parent._data_values.values[i] for i in (0, 3, 5)])
     assert_array_equal(child._all_masked, parent._all_masked[[0, 3, 5]])
     fresh = make_catalog(scene)[[0, 3, 5]]
     _assert_values_equal(fresh._data_values, child._data_values)
@@ -158,7 +161,7 @@ def test_sliced_catalog_equals_parent(scene):
 
 def _reference_gini(cat):
     # The previous per-source gini implementation
-    return np.array([gini_func(arr) for arr in cat._data_values])
+    return np.array([gini_func(arr) for arr in cat._data_values.values])
 
 
 def _reference_segment_area(cat):
@@ -218,6 +221,69 @@ def test_segment_area_matches_reference(scene):
     assert_array_equal(child.segment_area.value, expected[[2, 0, 5]])
     scalar = make_catalog(scene)[4]
     assert scalar.segment_area.value == expected[4]
+
+
+def _sample_values():
+    """
+    A container of four sources with 3, 0 (masked placeholder), 1, and
+    2 values.
+    """
+    packed = np.array([1.0, -2.0, 3.0, np.nan, 5.0, 6.0, 7.0])
+    offsets = np.array([0, 3, 4, 5, 7], dtype=np.intp)
+    counts = np.array([3, 0, 1, 2], dtype=np.intp)
+    return _SegmentValues(packed, offsets, counts)
+
+
+class TestSegmentValues:
+    """
+    Tests for the packed per-source value container.
+    """
+
+    def test_attributes(self):
+        values = _sample_values()
+        assert len(values) == 4
+        assert_array_equal(values.sizes, [3, 1, 1, 2])
+        arrays = values.values
+        assert len(arrays) == 4
+        assert_array_equal(arrays[0], [1.0, -2.0, 3.0])
+        assert np.isnan(arrays[1][0])
+        assert_array_equal(arrays[3], [6.0, 7.0])
+        # Iteration yields the per-source arrays
+        for got, want in zip(values, arrays, strict=True):
+            assert_array_equal(got, want)
+
+    def test_reduce(self):
+        values = _sample_values()
+        assert_allclose(values.reduce(np.add), [2.0, np.nan, 5.0, 13.0])
+        assert_allclose(values.reduce(np.add, transform=np.square),
+                        [14.0, np.nan, 25.0, 85.0])
+        assert_allclose(values.reduce(np.minimum),
+                        [-2.0, np.nan, 5.0, 6.0])
+
+    @pytest.mark.parametrize('index', [1, slice(1, 3), [3, 0],
+                                       np.array([2, 2]),
+                                       np.array([True, False, False,
+                                                 True])])
+    def test_getitem(self, index):
+        values = _sample_values()
+        expected = values.values
+        idx = np.atleast_1d(np.arange(4)[index])
+        result = values[index]
+        assert isinstance(result, _SegmentValues)
+        assert len(result) == len(idx)
+        assert_array_equal(result.counts, values.counts[idx])
+        assert result.offsets[0] == 0
+        assert result.offsets[-1] == result.packed.size
+        for got, i in zip(result.values, idx, strict=True):
+            assert_array_equal(got, expected[i])
+
+    def test_getitem_scalar_index_keeps_container(self):
+        values = _sample_values()
+        result = values[1]
+        assert len(result) == 1
+        assert result.counts[0] == 0
+        assert np.isnan(result.packed[0])
+        assert_allclose(result.reduce(np.add), [np.nan])
 
 
 def _driver_inputs(cat):

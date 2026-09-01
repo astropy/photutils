@@ -62,9 +62,101 @@ __all__ = ['SourceCatalog']
 _SEG_METHOD_CODES = {'none': 0, 'mask': 1, 'correct': 3}
 
 
-def _batch_gini(packed, offsets, counts):
+class _SegmentValues:
     """
-    Compute the Gini coefficient of the packed pixel values of many
+    The unmasked pixel values within the segments of many sources,
+    packed into one array.
+
+    This is the container form of the ``batch_segment_gather`` outputs.
+    Indexing it with an integer, slice, index array, or boolean mask
+    returns a new container holding the selected sources (always at
+    least one), which lets `SourceCatalog.__getitem__` slice the cached
+    values along the source axis. Iterating over it yields the 1D
+    array of each source.
+
+    Parameters
+    ----------
+    packed : 1D `~numpy.ndarray`
+        The packed values of all sources in row-major pixel order, with
+        a single NaN placeholder for a source with no unmasked pixels.
+
+    offsets : 1D `~numpy.ndarray`
+        The start offset of each source in ``packed``, with length
+        ``n_sources + 1``.
+
+    counts : 1D `~numpy.ndarray`
+        The number of unmasked pixels of each source (zero for a
+        completely masked source, which occupies one placeholder slot).
+    """
+
+    __slots__ = ('counts', 'offsets', 'packed')
+
+    def __init__(self, packed, offsets, counts):
+        self.packed = packed
+        self.offsets = offsets
+        self.counts = counts
+
+    def __len__(self):
+        return len(self.counts)
+
+    def __iter__(self):
+        return iter(self.values)
+
+    def __getitem__(self, index):
+        idx = np.atleast_1d(np.arange(len(self))[index])
+        sizes = self.sizes[idx]
+        offsets = np.zeros(len(idx) + 1, dtype=np.intp)
+        np.cumsum(sizes, out=offsets[1:])
+        # The position of each selected value in the parent packed array
+        pos = (np.repeat(self.offsets[idx] - offsets[:-1], sizes)
+               + np.arange(offsets[-1]))
+        return _SegmentValues(self.packed[pos], offsets, self.counts[idx])
+
+    @property
+    def sizes(self):
+        """
+        The number of packed slots of each source (one for a completely
+        masked source).
+        """
+        return np.diff(self.offsets)
+
+    @property
+    def values(self):
+        """
+        A list of the 1D value arrays of each source (a single NaN for
+        a completely masked source).
+        """
+        return np.split(self.packed, self.offsets[1:-1])
+
+    def reduce(self, ufunc, *, transform=None):
+        """
+        Reduce the values of each source with a ufunc.
+
+        Parameters
+        ----------
+        ufunc : `~numpy.ufunc`
+            The NumPy ufunc to apply (e.g., `~numpy.add`,
+            `~numpy.minimum`, `~numpy.maximum`).
+
+        transform : callable or `None`, optional
+            An optional transformation to apply to the packed values
+            before reducing (e.g., `~numpy.square`).
+
+        Returns
+        -------
+        result : 1D `~numpy.ndarray`
+            The per-source reduction (NaN for a completely masked
+            source).
+        """
+        packed = self.packed
+        if transform is not None:
+            packed = transform(packed)
+        return ufunc.reduceat(packed, self.offsets[:-1])
+
+
+def _batch_gini(values):
+    """
+    Compute the Gini coefficient of the segment pixel values of many
     sources.
 
     This is the vectorized form of `photutils.morphology.gini` applied
@@ -74,24 +166,18 @@ def _batch_gini(packed, offsets, counts):
 
     Parameters
     ----------
-    packed : 1D `~numpy.ndarray`
-        The packed pixel values of all sources (see
-        ``batch_segment_gather``), with a single placeholder value for
-        a source with no pixels.
-
-    offsets : 1D `~numpy.ndarray`
-        The start offset of each source in ``packed`` (length
-        ``n_sources + 1``).
-
-    counts : 1D `~numpy.ndarray`
-        The number of pixels of each source.
+    values : `_SegmentValues`
+        The packed segment pixel values of the sources.
 
     Returns
     -------
     result : 1D `~numpy.ndarray`
         The Gini coefficient of each source.
     """
-    sizes = np.diff(offsets)
+    packed = values.packed
+    offsets = values.offsets
+    counts = values.counts
+    sizes = values.sizes
     starts = offsets[:-1]
     # Sort the absolute values within each source in place (a single
     # sort per source is much cheaper than one lexsort over all of the
@@ -761,7 +847,10 @@ class SourceCatalog:
                 # iterables. Such properties are never collapsed by
                 # __getattribute__ and internal code relies on them
                 # always being iterable.
-                if newcls.isscalar and key.startswith('_'):
+                if isinstance(value, _SegmentValues):
+                    # Always a container of at least one source
+                    val = value[index]
+                elif newcls.isscalar and key.startswith('_'):
                     if isinstance(value, np.ndarray):
                         val = value[:, np.newaxis][index]
                     else:
@@ -1614,13 +1703,7 @@ class SourceCatalog:
         """
         True if all pixels over the source segment are masked.
         """
-        # The gathered data values hold a single NaN for a completely
-        # masked source, and a non-finite data value is always masked,
-        # so no other source has a NaN value
-        values = self._data_values
-        sizes = np.array([arr.size for arr in values])
-        first = np.array([arr[0] for arr in values])
-        return (sizes == 1) & np.isnan(first)
+        return self._data_values.counts == 0
 
     @cached_property
     @_update_flags_docstring
@@ -1829,11 +1912,10 @@ class SourceCatalog:
 
     def _segment_values(self, array):
         """
-        Get a list of 1D arrays of the unmasked values of ``array``
-        within each source segment.
+        Get the unmasked values of ``array`` within each source segment
+        as a packed `_SegmentValues` container.
 
-        An array with a single NaN is returned for completely-masked
-        sources.
+        A single NaN is held for completely-masked sources.
 
         Parameters
         ----------
@@ -1842,86 +1924,45 @@ class SourceCatalog:
 
         Returns
         -------
-        result : list of 1D `~numpy.ndarray`
+        result : `_SegmentValues`
             The per-source values, in row-major pixel order.
         """
-        packed, offsets, _ = self._segment_gather(array)
-        return np.split(packed, offsets[1:-1])
-
-    @staticmethod
-    def _reduceat(values, ufunc, *, transform=None):
-        """
-        Apply ``ufunc.reduceat`` to a list of arrays.
-
-        This is significantly faster than a list comprehension with
-        individual NumPy calls for each array.
-
-        Parameters
-        ----------
-        values : list of 1D `~numpy.ndarray`
-            A list of 1D arrays.
-
-        ufunc : `~numpy.ufunc`
-            The NumPy ufunc to apply (e.g., `~numpy.add`,
-            `~numpy.minimum`, `~numpy.maximum`).
-
-        transform : callable or None, optional
-            An optional transformation to apply to the concatenated
-            array before reducing (e.g., `~numpy.square`).
-
-        Returns
-        -------
-        result : `~numpy.ndarray`
-            The reduceat result.
-
-        sizes : `~numpy.ndarray`
-            The sizes of the input arrays.
-        """
-        if not values:
-            return np.array([]), np.array([], dtype=int)
-
-        sizes = np.array([len(arr) for arr in values])
-        splits = np.concatenate(([0], np.cumsum(sizes[:-1])))
-        concat = np.concatenate(values)
-        if transform is not None:
-            concat = transform(concat)
-        return ufunc.reduceat(concat, splits), sizes
+        return _SegmentValues(*self._segment_gather(array))
 
     @cached_property
     def _data_values(self):
         """
-        A list of 1D arrays of the unmasked data values within each
-        source segment.
+        The unmasked data values within each source segment, as a
+        packed `_SegmentValues` container.
 
-        An array with a single NaN is returned for completely-masked
-        sources.
+        A single NaN is held for completely-masked sources.
         """
         return self._segment_values(self._get_batch_arrays()['data'])
 
     @cached_property
     def _error_values(self):
         """
-        A list of 1D arrays of the unmasked error values within each
-        source segment.
+        The unmasked error values within each source segment, as a
+        packed `_SegmentValues` container, or `None` if no error array
+        was input.
 
-        An array with a single NaN is returned for completely-masked
-        sources.
+        A single NaN is held for completely-masked sources.
         """
         if self._error is None:
-            return self._null_objects
+            return None
         return self._segment_values(self._get_batch_arrays()['error'])
 
     @cached_property
     def _background_values(self):
         """
-        A list of 1D arrays of the unmasked background values within
-        each source segment.
+        The unmasked background values within each source segment, as
+        a packed `_SegmentValues` container, or `None` if no background
+        array was input.
 
-        An array with a single NaN is returned for completely-masked
-        sources.
+        A single NaN is held for completely-masked sources.
         """
         if self._background is None:
-            return self._null_objects
+            return None
         return self._segment_values(self._get_batch_background())
 
     @cached_property
@@ -3218,7 +3259,7 @@ class SourceCatalog:
         The minimum pixel value of the ``data`` within the source
         segment.
         """
-        values, _ = self._reduceat(self._data_values, np.minimum)
+        values = self._data_values.reduce(np.minimum)
         values -= self._local_background
         if self._data_unit is not None:
             values <<= self._data_unit
@@ -3230,7 +3271,7 @@ class SourceCatalog:
         The maximum pixel value of the ``data`` within the source
         segment.
         """
-        values, _ = self._reduceat(self._data_values, np.maximum)
+        values = self._data_values.reduce(np.maximum)
         values -= self._local_background
         if self._data_unit is not None:
             values <<= self._data_unit
@@ -3363,13 +3404,14 @@ class SourceCatalog:
         Non-finite pixel values (NaN and inf) are excluded
         (automatically masked).
         """
-        source_sum, sizes = self._reduceat(self._data_values, np.add)
+        values = self._data_values
+        source_sum = values.reduce(np.add)
         # Subtract the local background over the number of unmasked
         # pixels actually included in the sum. The "area" property is
         # not used here because it is taken from the detection catalog
         # (if input), whose pixel count can differ when the data masks
         # differ.
-        source_sum -= sizes * self._local_background
+        source_sum -= values.counts * self._local_background
         if self._data_unit is not None:
             source_sum <<= self._data_unit
         return source_sum
@@ -3399,8 +3441,7 @@ class SourceCatalog:
         if self._error is None:
             err = self._null_values
         else:
-            err_sq, _ = self._reduceat(self._error_values, np.add,
-                                       transform=np.square)
+            err_sq = self._error_values.reduce(np.add, transform=np.square)
             err = np.sqrt(err_sq)
 
         if self._data_unit is not None:
@@ -3419,8 +3460,7 @@ class SourceCatalog:
         if self._background is None:
             bkg_sum = self._null_values
         else:
-            bkg_sum, _ = self._reduceat(
-                self._background_values, np.add)
+            bkg_sum = self._background_values.reduce(np.add)
 
         if self._data_unit is not None:
             bkg_sum <<= self._data_unit
@@ -3438,9 +3478,10 @@ class SourceCatalog:
         if self._background is None:
             bkg_mean = self._null_values
         else:
-            bkg_sum, sizes = self._reduceat(
-                self._background_values, np.add)
-            bkg_mean = bkg_sum / sizes
+            values = self._background_values
+            # The placeholder slot of a completely masked source keeps
+            # its (NaN) mean free of a division by zero
+            bkg_mean = values.reduce(np.add) / values.sizes
 
         if self._data_unit is not None:
             bkg_mean <<= self._data_unit
@@ -3498,7 +3539,7 @@ class SourceCatalog:
         if a mask is input to `SourceCatalog` or if the ``data`` within
         the segment contains invalid values (NaN and inf).
         """
-        areas = np.array([arr.size for arr in self._data_values]).astype(float)
+        areas = self._data_values.counts.astype(float)
         areas[self._all_masked] = np.nan
         return areas << (u.pix**2)
 
@@ -3960,9 +4001,7 @@ class SourceCatalog:
         from the calculation. If only a single finite pixel remains
         after filtering, the Gini coefficient is 0.0.
         """
-        packed, offsets, counts = self._segment_gather(
-            self._get_batch_arrays()['data'])
-        return _batch_gini(packed, offsets, counts)
+        return _batch_gini(self._data_values)
 
     @cached_property
     def _local_background_apertures(self):

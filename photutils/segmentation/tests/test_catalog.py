@@ -705,11 +705,12 @@ class TestSourceCatalog:
                                  detection_catalog=det_cat)
 
         # The detection-catalog area includes the masked pixels
-        n_pixels = len(meas_cat._data_values[0])
+        values = meas_cat._data_values.values[0]
+        n_pixels = len(values)
         assert meas_cat.area.value[0] > n_pixels
 
         localbkg = meas_cat._local_background[0]
-        expected = np.sum(meas_cat._data_values[0]) - n_pixels * localbkg
+        expected = np.sum(values) - n_pixels * localbkg
         assert_allclose(meas_cat.segment_flux[0], expected)
 
     def test_kron_minradius(self):
@@ -2173,19 +2174,9 @@ def test_flux_radius_nan_fallback():
     assert np.isnan(radius.value)
 
 
-def test_reduceat_empty_input():
+def test_reduce_negative_data():
     """
-    Test that _reduceat returns empty arrays when given an empty list.
-    """
-    result, sizes = SourceCatalog._reduceat([], np.add)
-    assert len(result) == 0
-    assert len(sizes) == 0
-    assert sizes.dtype == int
-
-
-def test_reduceat_negative_data():
-    """
-    Test that the _reduceat optimization gives correct results for
+    Test that the packed per-source reductions give correct results for
     min_value, max_value, and segment_flux when data contains negative
     pixel values.
     """
@@ -2198,7 +2189,7 @@ def test_reduceat_negative_data():
     cat = SourceCatalog(data, segm)
     for i in range(cat.n_labels):
         obj = cat[i]
-        vals = obj._data_values[0]
+        vals = obj._data_values.values[0]
         expected_min = np.min(vals) - obj._local_background
         expected_max = np.max(vals) - obj._local_background
         expected_flux = np.sum(vals) - obj._local_background * len(vals)
@@ -2314,23 +2305,20 @@ def test_validate_kron_params_wrong_element_count():
         SourceCatalog._validate_kron_params([2.5])
 
 
-def test_error_values_with_error(single_source_catalog):
+def test_error_values_without_error(single_source_catalog):
     """
-    Test that _error_values returns null objects when error is None.
-    """
-    _data, _segm, cat = single_source_catalog
-    err_vals = cat._error_values
-    assert err_vals is cat._null_objects
-
-
-def test_background_values_with_background(single_source_catalog):
-    """
-    Test that _background_values returns null objects when background is
-    None.
+    Test that _error_values is None when error is None.
     """
     _data, _segm, cat = single_source_catalog
-    bkg_vals = cat._background_values
-    assert bkg_vals is cat._null_objects
+    assert cat._error_values is None
+
+
+def test_background_values_without_background(single_source_catalog):
+    """
+    Test that _background_values is None when background is None.
+    """
+    _data, _segm, cat = single_source_catalog
+    assert cat._background_values is None
 
 
 def test_sky_centroid_quad_with_wcs(single_source_catalog):
