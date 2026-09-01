@@ -672,20 +672,19 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         # summation order) and the source minimum comes from the
         # compiled extrema. Both are passed to the compiled contrast
         # loop. With the saddle criterion, the markers are already
-        # contrast-selected, so the basin removal is disabled by an
-        # unreachable contrast.
+        # contrast-selected, so the basin removal is disabled.
         if use_saddle:
             source_sum = source_sums[index]
-            contrast = -np.inf
         else:
             values = data[slc][segm_data[slc] == label]
             source_sum = float(nansum(values))
-            contrast = float(deblend_params.contrast)
         source_deblended = deblend_source_contrast(
             driver_data, driver_segm, int(label), int(y0[index]),
             int(y1[index]), int(x0[index]), int(x1[index]), markers,
-            connectivity=connectivity, contrast=contrast,
-            source_sum=source_sum, source_min=float(source_min[index]))
+            connectivity=connectivity,
+            contrast=float(deblend_params.contrast),
+            source_sum=source_sum, source_min=float(source_min[index]),
+            apply_contrast=not use_saddle)
         results.append((source_deblended, warns))
 
     return results
