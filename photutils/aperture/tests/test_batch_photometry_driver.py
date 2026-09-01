@@ -9,6 +9,10 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
+from photutils.aperture import (CircularAnnulus, CircularAperture,
+                                EllipticalAnnulus, EllipticalAperture,
+                                PolygonAperture, RectangularAnnulus,
+                                RectangularAperture)
 from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_N_PIXELS,
                                                   SHAPE_CIRCLE,
@@ -260,23 +264,133 @@ def test_weights_out_clipped_bbox_zero_weight():
     assert result.weights_out[0] == 1
 
 
+# Aperture factories (taking the positions) whose outside-weight
+# indicator is checked against the aperture's own mask at edge, corner,
+# interior, and off-image positions
+_OUTSIDE_WEIGHT_APERTURES = [
+    lambda pos: CircularAperture(pos, r=6.0),
+    lambda pos: CircularAnnulus(pos, r_in=3.0, r_out=6.0),
+    lambda pos: EllipticalAperture(pos, a=8.0, b=2.5, theta=0.7),
+    lambda pos: EllipticalAnnulus(pos, a_in=3.0, a_out=8.0, b_out=2.5,
+                                  theta=0.7),
+    lambda pos: RectangularAperture(pos, w=12.0, h=5.0, theta=0.5),
+    lambda pos: RectangularAnnulus(pos, w_in=5.0, w_out=12.0, h_out=5.0,
+                                   theta=0.5),
+    # A non-convex (L-shaped) polygon
+    lambda pos: PolygonAperture(pos, [(-6, -6), (6, -6), (6, -1),
+                                      (-1, -1), (-1, 6), (-6, 6)]),
+]
+
+
+def _outside_weight_positions():
+    """
+    Positions on and just beyond every edge and corner of the 40x40
+    test data, plus interior and far off-image positions.
+    """
+    rng = np.random.default_rng(7)
+    edge = np.array([-8.0, -3.0, -0.4, 0.3, 2.0, 5.0, 37.0, 39.2, 39.6,
+                     42.0, 47.0])
+    positions = [(x, 20.0) for x in edge] + [(20.0, y) for y in edge]
+    positions += [(x, y) for x in (-3.0, 1.0, 38.0, 42.0)
+                  for y in (-3.0, 1.0, 38.0, 42.0)]
+    positions += [(20.0, 20.0), (12.5, 27.5), (200.0, 200.0),
+                  (-100.0, 20.0)]
+    positions += [tuple(rng.uniform(-10, 50, 2)) for _ in range(20)]
+    return np.array(positions, dtype=np.float64)
+
+
+@pytest.mark.parametrize('make_aperture', _OUTSIDE_WEIGHT_APERTURES,
+                         ids=lambda fn: type(fn((0, 0))).__name__)
+@pytest.mark.parametrize(('method', 'use_exact', 'subpixels'),
+                         [('exact', 1, 1), ('center', 0, 1),
+                          ('subpixel', 0, 3)])
+def test_weights_out_matches_mask(make_aperture, method, use_exact,
+                                  subpixels):
+    """
+    Test the outside-weight indicator against the aperture mask.
+
+    The reference is the aperture's own unclipped ``to_mask`` array
+    with the part inside the data zeroed: the indicator must be set
+    exactly when a nonzero mask value remains.
+    """
+    data = np.ones((40, 40))
+    positions = _outside_weight_positions()
+    aperture = make_aperture(positions)
+    shape_code, params = aperture._batch_shape_params()
+    ext_x, ext_y = aperture._xy_extents
+    off_x, off_y = aperture._xy_bbox_offset
+    result = batch_aperture_sums(
+        data, None, None, positions, shape_code,
+        np.array(params, dtype=np.float64), float(ext_x), float(ext_y),
+        float(off_x), float(off_y), use_exact, subpixels)
+
+    expected = np.zeros(len(positions), dtype=np.uint8)
+    clipped = np.zeros(len(positions), dtype=bool)
+    masks = aperture.to_mask(method=method, subpixels=subpixels)
+    for i, mask in enumerate(masks):
+        slc_lg, slc_sm = mask.get_overlap_slices(data.shape)
+        if slc_lg is None:
+            continue
+        bbox = mask.bbox
+        clipped[i] = (bbox.ixmin < 0 or bbox.iymin < 0
+                      or bbox.ixmax > data.shape[1]
+                      or bbox.iymax > data.shape[0])
+        outside = mask.data.copy()
+        outside[slc_sm] = 0.0
+        expected[i] = np.any(outside > 0)
+
+    assert_array_equal(result.flag_counts[:, FLAG_COL_BBOX_CLIPPED],
+                       clipped)
+    assert_array_equal(result.weights_out, expected)
+    assert np.any(expected[clipped] == 1)
+
+
+def test_weights_out_aperture_entirely_outside():
+    """
+    Test an aperture that lies entirely in the clipped-away part of its
+    bounding box.
+
+    The L-shaped polygon centered at (-3, -3) has its bounding box
+    overlapping the data but no area inside it, so the exact-method
+    ring test (which assumes weight on both sides of the data edge)
+    does not apply and every outside pixel is scanned instead.
+    """
+    data = np.ones((40, 40))
+    aperture = PolygonAperture((-3.0, -3.0), [(-6, -6), (6, -6), (6, -1),
+                                              (-1, -1), (-1, 6), (-6, 6)])
+    shape_code, params = aperture._batch_shape_params()
+    ext_x, ext_y = aperture._xy_extents
+    off_x, off_y = aperture._xy_bbox_offset
+    for use_exact, subpixels in ((1, 1), (0, 1), (0, 3)):
+        result = batch_aperture_sums(
+            data, None, None, np.array([[-3.0, -3.0]]), shape_code,
+            np.array(params, dtype=np.float64), float(ext_x),
+            float(ext_y), float(off_x), float(off_y), use_exact,
+            subpixels)
+        assert result.overlap[0]
+        assert result.flag_counts[0, FLAG_COL_BBOX_CLIPPED] == 1
+        assert result.flag_counts[0, FLAG_COL_N_PIXELS] == 0
+        assert result.weights_out[0] == 1
+
+
+@pytest.mark.parametrize(('use_exact', 'subpixels'),
+                         [(1, 1), (0, 1), (0, 3)])
 @pytest.mark.parametrize('radius', [2000.0, 8000.0, 20000.0])
-def test_weights_out_large_aperture(radius):
+def test_weights_out_large_aperture(radius, use_exact, subpixels):
     """
     Test an aperture whose bounding box is far larger than the data.
 
-    Once a nonzero-fraction pixel outside the data has been found, the
-    remaining outside pixels cannot change the outside-weight result,
-    so the pixel loop narrows back to the part of the bounding box
-    inside the data. Without that, the cost of these apertures would
-    grow with the (enormous) bounding-box area rather than with the
-    data area.
+    The outside-weight test is separate from the accumulation loop and
+    stops at the first nonzero-fraction pixel outside the data (for the
+    exact method it tests only the ring of pixels just outside the data
+    edges), so the cost of these apertures does not grow with the
+    (enormous) bounding-box area.
     """
     data = np.ones((200, 200))
     positions = np.array([[100.0, 100.0]])
     result = batch_aperture_sums(
         data, None, None, positions, SHAPE_CIRCLE, np.array([radius]),
-        radius, radius, 0.0, 0.0, 1, 5)
+        radius, radius, 0.0, 0.0, use_exact, subpixels)
 
     assert result.weights_out[0] == 1
     assert result.flag_counts[0, FLAG_COL_BBOX_CLIPPED] == 1

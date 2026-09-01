@@ -21,6 +21,7 @@ import numpy as np
 
 from photutils.aperture._batch_results import BatchApertureSums
 
+from photutils.aperture._batch_outside cimport _ShapeSpec, outside_weight
 from photutils.aperture._batch_overlap cimport (
     _CIRCLE, _CIRCULAR_ANNULUS, _ELLIPSE, _ELLIPTICAL_ANNULUS, _POLYGON,
     _RECTANGLE, _RECTANGULAR_ANNULUS, _SEG_CORRECTED, _SEG_NEIGHBOR,
@@ -351,7 +352,11 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         sources whose bounding box is clipped by a data edge (the
         ``FLAG_COL_BBOX_CLIPPED`` column). It is exactly zero for
         unclipped sources and for sources whose bounding box does not
-        overlap the data at all.
+        overlap the data at all. For the exact overlap method, an
+        aperture with a nonzero-fraction pixel inside the data is
+        tested only on the ring of pixels just outside the data edges
+        (see ``_batch_outside.outside_weight``), which is equivalent
+        because every aperture shape is a connected region.
     """
     cdef Py_ssize_t n_src = positions.shape[0]
     cdef Py_ssize_t ny_data = data.shape[0]
@@ -505,9 +510,46 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             msg = f'Invalid shape_code: {shape_code}'
             raise ValueError(msg)
 
+    # The shape parameters and scratch buffers as seen by the
+    # outside-weight scan (off the hot path). The per-source shape
+    # parameters, if any, are copied in before each scan.
+    cdef _ShapeSpec sp
+    sp.shape_code = shape_code
+    sp.use_exact = use_exact
+    sp.subpixels = subpixels
+    sp.r_in = r_in
+    sp.rx_in = rx_in
+    sp.ry_in = ry_in
+    sp.half_width_in = half_width_in
+    sp.half_height_in = half_height_in
+    sp.half_width_out = half_width_out
+    sp.half_height_out = half_height_out
+    sp.bbox_dx_in = bbox_dx_in
+    sp.bbox_dy_in = bbox_dy_in
+    sp.bbox_dx_out = bbox_dx_out
+    sp.bbox_dy_out = bbox_dy_out
+    sp.poly_x_in = poly_x_in
+    sp.poly_y_in = poly_y_in
+    sp.poly_x_out = poly_x_out
+    sp.poly_y_out = poly_y_out
+    sp.buf_a_x = buf_a_x
+    sp.buf_a_y = buf_a_y
+    sp.buf_b_x = buf_b_x
+    sp.buf_b_y = buf_b_y
+    sp.poly_x = poly_x
+    sp.poly_y = poly_y
+    sp.n_poly = n_poly
+    sp.poly_buf_size = poly_buf_size
+    sp.is_poly_convex = is_poly_convex
+    sp.pedge_nx = pedge_nx
+    sp.pedge_ny = pedge_ny
+    sp.pedge_c = pedge_c
+    sp.pbuf_a_x = pbuf_a_x
+    sp.pbuf_a_y = pbuf_a_y
+    sp.pbuf_b_x = pbuf_b_x
+    sp.pbuf_b_y = pbuf_b_y
+
     cdef Py_ssize_t k, ix, iy, ix0, ix1, iy0, iy1
-    cdef Py_ssize_t sx0, sx1, sy0, sy1
-    cdef bint outside, found_out
     cdef Py_ssize_t ixmin, iymin
     cdef Py_ssize_t six, siy, ccx = 0, ccy = 0
     cdef double cx, cy, lbk = 0.0
@@ -588,23 +630,14 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
             # Whether the bounding box is clipped by a data edge. Only
             # these sources can have aperture weights outside the data,
-            # so only for them is the pixel loop widened below to the
-            # full (unclipped) bounding box.
+            # which is tested separately after the accumulation loop.
             ixmax_full = <Py_ssize_t>ceil(cx + off_x + ext_x + 0.5)
             iymax_full = <Py_ssize_t>ceil(cy + off_y + ext_y + 0.5)
             if (ixmin < ix0 or ixmax_full > ix1
                     or iymin < iy0 or iymax_full > iy1):
                 clipped = 1  # bounding box clipped by data edge
-                sx0 = ixmin
-                sx1 = ixmax_full
-                sy0 = iymin
-                sy1 = iymax_full
             else:
                 clipped = 0  # bounding box fully inside data
-                sx0 = ix0
-                sx1 = ix1
-                sy0 = iy0
-                sy1 = iy1
 
             sum_val = 0.0
             var_val = 0.0
@@ -619,31 +652,17 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             n_unc_masked = 0
             n_valid = 0
             spos = starts[k]
-            found_out = 0
-            for iy in range(sy0, sy1):
-                # Once the outside-weight test has been answered, the
-                # pixels outside the data can no longer change any
-                # result, so the remaining rows are narrowed (or
-                # skipped entirely) back to the part of the bounding
-                # box that lies inside the data.
-                if clipped and found_out:
-                    if iy < iy0 or iy >= iy1:
-                        continue
-                    sx0 = ix0
-                    sx1 = ix1
-
+            for iy in range(iy0, iy1):
                 pymin = gymin + (iy - iymin) * dy
-                for ix in range(sx0, sx1):
-                    # A pixel outside the data contributes to nothing
-                    # but the outside-weight test, so it costs only
-                    # this test once that test has been answered.
-                    outside = clipped and not (iy0 <= iy < iy1
-                                               and ix0 <= ix < ix1)
-                    if outside and found_out:
-                        continue
-
+                for ix in range(ix0, ix1):
                     pxmin = gxmin + (ix - ixmin) * dx
 
+                    # The shape dispatch is inlined over the local
+                    # variables here; the outside-weight scan carries
+                    # the same dispatch in ``_batch_outside``, kept in
+                    # a separate extension module so that each shape
+                    # helper has a single call site in this one (see
+                    # that module's docstring)
                     if shape_code == _CIRCLE:
                         frac = _circle_pixel_frac(
                             pxmin, pymin, dx, dy, pixel_radius, r_out,
@@ -684,18 +703,6 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                             pedge_c, is_poly_convex, pbuf_a_x, pbuf_a_y,
                             pbuf_b_x, pbuf_b_y, poly_buf_size, use_exact,
                             subpixels)
-
-                    # A nonzero fraction outside the data answers the
-                    # precise outside-weight test. A clipped bounding
-                    # box does not by itself imply nonzero outside
-                    # weights, because the aperture may not reach into
-                    # the clipped-away rows or columns. The pixel is
-                    # then skipped: its (out-of-range) coordinates must
-                    # never reach the data accesses below.
-                    if outside:
-                        if frac > 0.0:
-                            found_out = 1
-                        continue
 
                     # Annulus fractions are a difference of two shapes,
                     # so floating-point noise can leave a boundary
@@ -768,7 +775,17 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             if has_error and not isfinite(var_val):
                 n_nonfin_err += 1
 
-            weights_out[k] = found_out
+            if clipped:
+                # The shape parameters that can vary per source
+                sp.r_out = r_out
+                sp.rx_out = rx_out
+                sp.ry_out = ry_out
+                sp.cos_theta = cos_theta
+                sp.sin_theta = sin_theta
+                weights_out[k] = outside_weight(
+                    &sp, n_pix > 0, gxmin, gymin, dx, dy, pixel_radius,
+                    norm, ixmin, iymin, ixmax_full, iymax_full, ix0, ix1,
+                    iy0, iy1)
             sums[k] = sum_val
             areas[k] = area_val
             if has_error:
