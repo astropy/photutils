@@ -79,6 +79,7 @@ def print_environment():
     print(f'photutils {photutils.__version__}, numpy {np.__version__}, '
           f'scipy {scipy.__version__}, astropy {astropy.__version__}, '
           f'bottleneck: {HAS_BOTTLENECK}')
+    print(f'photutils path: {os.path.dirname(photutils.__file__)}')
 
 
 def parse_thread_counts(text):

@@ -79,6 +79,25 @@ python benchmarks/bench_geometry.py
 python benchmarks/bench_geometry.py --which polygon --n-vertices 8,64,512
 ```
 
+## Isophote (`bench_isophote.py`)
+
+Benchmarks for the `photutils.isophote` subpackage, using a simulated
+galaxy image:
+
+- full isophote fitting with `Ellipse.fit_image` for each integration
+  mode (a mode whose fit raises an error is reported as failed)
+- elliptical sample extraction (`EllipseSample.extract`) for each
+  integration mode at several semimajor axis lengths
+- model-image reconstruction with `build_ellipse_model`, with and
+  without the high-order harmonics
+- the scaling of the private `build_ellipse_model_c` Cython kernel
+  with image size
+
+```bash
+python benchmarks/bench_isophote.py
+python benchmarks/bench_isophote.py --which kernel --sizes 256,512,1024
+```
+
 ## Morphology (`bench_morphology.py`)
 
 Benchmarks for the `photutils.morphology` subpackage:

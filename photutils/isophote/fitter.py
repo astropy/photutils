@@ -130,11 +130,11 @@ class EllipseFitter:
         """
         sample = self._sample
 
-        # this flag signals that limiting gradient error (`maxgerr`)
+        # This flag signals that limiting gradient error (`maxgerr`)
         # wasn't exceeded yet.
         lexceed = False
 
-        # here we keep track of the sample that caused the minimum harmonic
+        # Here we keep track of the sample that caused the minimum harmonic
         # amplitude(in absolute value). This will eventually be used to
         # build the resulting Isophote in cases where iterations run to
         # the maximum allowed (maxit), or the maximum number of flagged
@@ -142,14 +142,14 @@ class EllipseFitter:
         minimum_amplitude_value = np.inf
         minimum_amplitude_sample = None
 
-        # these must be passed throughout the execution chain.
+        # These must be passed throughout the execution chain.
         fixed_parameters = self._sample.geometry.fix
 
         for i in range(maxit):
             # Force the sample to compute its gradient and associated values.
             sample.update(fixed_parameters=fixed_parameters)
 
-            # The extract() method returns sampled values as a 2-d numpy
+            # The extract() method returns sampled values as a 2D numpy
             # array with the following structure:
             # values[0] = 1-d array with angles
             # values[1] = 1-d array with radii
@@ -167,9 +167,9 @@ class EllipseFitter:
                 sample.geometry.fix = fixed_parameters
                 return Isophote(sample, i + 1, valid=False, stop_code=3)
 
-            # Fit harmonic coefficients. Failure in fitting is
-            # a fatal error; terminate immediately with sample
-            # marked as invalid.
+            # Fit harmonic coefficients. Failure in fitting is a fatal
+            # error, so terminate immediately with sample marked as
+            # invalid.
             try:
                 coeffs = fit_first_and_second_harmonics(values[0], values[2])
                 coeffs = coeffs[0]
@@ -186,13 +186,13 @@ class EllipseFitter:
             largest_harmonic_index = np.argmax(np.abs(free_coeffs))
             largest_harmonic = free_coeffs[largest_harmonic_index]
 
-            # see if the amplitude decreased; if yes, keep the
+            # See if the amplitude decreased; if yes, keep the
             # corresponding sample for eventual later use.
             if abs(largest_harmonic) < minimum_amplitude_value:
                 minimum_amplitude_value = abs(largest_harmonic)
                 minimum_amplitude_sample = sample
 
-            # check if converged
+            # Check if converged
             model = first_and_second_harmonic_function(values[0], coeffs)
             residual = values[2] - model
 
@@ -203,35 +203,46 @@ class EllipseFitter:
                 sample.update(fixed_parameters=fixed_parameters)
                 return Isophote(sample, i + 1, valid=True, stop_code=0)
 
-            # it may not have converged yet, but the sample contains too
-            # many invalid data points: return.
+            # It may not have converged yet, but the sample contains too
+            # many invalid data points, so return the best fit sample
+            # instead of the current one.
             if sample.actual_points < (sample.total_points * fflag):
-                # when too many data points were flagged, return the
+                # When too many data points were flagged, return the
                 # best fit sample instead of the current one.
                 minimum_amplitude_sample.update(
                     fixed_parameters=fixed_parameters)
                 return Isophote(minimum_amplitude_sample, i + 1, valid=True,
                                 stop_code=1)
 
-            # pick appropriate corrector code.
-            corrector = _CORRECTORS[largest_harmonic_index]
+            # The parameter correctors divide by the sample's local
+            # gradient. If the gradient is zero or non-finite (e.g.,
+            # from a degenerate sample where no gradient could be
+            # measured), no correction can be computed and iterations
+            # cannot proceed.
+            proceed = (sample.gradient != 0.0
+                       and np.isfinite(sample.gradient))
 
-            # generate *NEW* EllipseSample instance with corrected
-            # parameter. Note that this instance is still devoid of
-            # other information besides its geometry. It needs to be
-            # explicitly updated for computations to proceed. We have to
-            # build a new EllipseSample instance every time because of
-            # the lazy extraction process used by EllipseSample code. To
-            # minimize the number of calls to the area integrators, we
-            # pay a (hopefully smaller) price here, by having multiple
-            # calls to the EllipseSample constructor.
-            sample = corrector.correct(sample, largest_harmonic)
-            sample.update(fixed_parameters=fixed_parameters)
+            if proceed:
+                # Pick appropriate corrector code.
+                corrector = _CORRECTORS[largest_harmonic_index]
 
-            # see if any abnormal (or unusual) conditions warrant
-            # the change to non-iterative mode, or go-inwards mode.
-            proceed, lexceed = self._check_conditions(
-                sample, maxgerr, going_inwards, lexceed)
+                # Generate a new EllipseSample instance with corrected
+                # parameter. Note that this instance is still devoid of
+                # other information besides its geometry. It needs to
+                # be explicitly updated for computations to proceed.
+                # We have to build a new EllipseSample instance every
+                # time because of the lazy extraction process used
+                # by EllipseSample code. To minimize the number of
+                # calls to the area integrators, we pay a (hopefully
+                # smaller) price here, by having multiple calls to the
+                # EllipseSample constructor.
+                sample = corrector.correct(sample, largest_harmonic)
+                sample.update(fixed_parameters=fixed_parameters)
+
+                # See if any abnormal (or unusual) conditions warrant
+                # the change to non-iterative mode, or go-inwards mode.
+                proceed, lexceed = self._check_conditions(
+                    sample, maxgerr, going_inwards, lexceed)
 
             if not proceed:
                 sample.update(fixed_parameters=fixed_parameters)
@@ -248,7 +259,7 @@ class EllipseFitter:
     def _check_conditions(sample, maxgerr, going_inwards, lexceed):
         proceed = True
 
-        # check if an acceptable gradient value could be computed.
+        # Check if an acceptable gradient value could be computed.
         if sample.gradient_err and sample.gradient_rel_err:
             if not going_inwards and (
                     sample.gradient_rel_err > maxgerr
@@ -260,7 +271,7 @@ class EllipseFitter:
         else:
             proceed = False
 
-        # check if ellipse geometry diverged.
+        # Check if ellipse geometry diverged.
         if abs(sample.geometry.eps > MAX_EPS):
             proceed = False
         if (sample.geometry.x0 < 1.0
@@ -270,7 +281,7 @@ class EllipseFitter:
             proceed = False
 
         # See if eps == 0 (round isophote) was crossed.
-        # If so, fix it but still proceed
+        # If so, fix it but still proceed.
         if sample.geometry.eps < 0.0:
             sample.geometry.eps = min(-sample.geometry.eps, MAX_EPS)
             if sample.geometry.pa < PI2:
@@ -279,7 +290,7 @@ class EllipseFitter:
                 sample.geometry.pa -= PI2
 
         # If ellipse is an exact circle, computations will diverge.
-        # Make it slightly flat, but still proceed
+        # Make it slightly flat, but still proceed.
         if sample.geometry.eps == 0.0:
             sample.geometry.eps = MIN_EPS
 
@@ -335,7 +346,7 @@ class _AngleCorrector(_ParameterCorrector):
         correction = (harmonic * 2.0 * (1.0 - eps) / sma / gradient
                       / ((1.0 - eps)**2 - 1.0))
 
-        # '% np.pi' to make angle lie between 0 and np.pi radians
+        # Make the angle lie between 0 and np.pi radians
         new_pa = (sample.geometry.pa + correction) % np.pi
 
         return EllipseSample(sample.image, sample.geometry.sma,
@@ -366,7 +377,7 @@ class _EllipticityCorrector(_ParameterCorrector):
                              integrmode=sample.integrmode)
 
 
-# instances of corrector code live here:
+# Instances of corrector code
 _CORRECTORS = [_PositionCorrector0(), _PositionCorrector1(),
                _AngleCorrector(), _EllipticityCorrector()]
 
@@ -398,7 +409,7 @@ class CentralEllipseFitter(EllipseFitter):
             at the central position. Thus, most of its attributes are
             hardcoded to `None` or other default value when appropriate.
         """
-        # default values
+        # Default values
         fixed_parameters = np.array([False, False, False, False])
 
         self._sample.update(fixed_parameters=fixed_parameters)
