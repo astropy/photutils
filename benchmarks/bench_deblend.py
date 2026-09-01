@@ -36,9 +36,8 @@ from bench_helpers import print_environment, time_best
 from bench_segmentation import N_PIXELS, THRESHOLD, make_inputs
 
 from photutils.segmentation import detect_sources
-from photutils.segmentation.deblend import (_DeblendParams,
-                                            _SingleSourceDeblender,
-                                            deblend_sources)
+from photutils.segmentation._deblend_reference import _SingleSourceDeblender
+from photutils.segmentation.deblend import _DeblendParams, deblend_sources
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils.exceptions import DeblendWarning
 

@@ -16,9 +16,9 @@ from scipy import ndimage as ndi
 
 from photutils.segmentation import (SegmentationImage, deblend_sources,
                                     detect_sources)
+from photutils.segmentation._deblend_reference import _SingleSourceDeblender
 from photutils.segmentation._deblend_watershed import deblend_watershed
-from photutils.segmentation.deblend import (_DeblendParams,
-                                            _SingleSourceDeblender)
+from photutils.segmentation.deblend import _DeblendParams
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._optional_deps import HAS_SKIMAGE
