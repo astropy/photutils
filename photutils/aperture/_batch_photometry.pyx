@@ -23,11 +23,12 @@ from photutils.aperture._batch_results import BatchApertureSums
 
 from photutils.aperture._batch_overlap cimport (
     _CIRCLE, _CIRCULAR_ANNULUS, _ELLIPSE, _ELLIPTICAL_ANNULUS, _POLYGON,
-    _RECTANGLE, _RECTANGULAR_ANNULUS, _circle_pixel_frac,
-    _circular_annulus_pixel_frac, _ellipse_pixel_frac,
-    _elliptical_annulus_pixel_frac, _polygon_pixel_frac,
-    _presize_packed_offsets, _rect_pixel_frac, _rectangular_annulus_pixel_frac,
-    _resolve_seg_pixel, _round_half_away, _source_grid_setup)
+    _RECTANGLE, _RECTANGULAR_ANNULUS, _SEG_CORRECTED, _SEG_NEIGHBOR,
+    _SEG_UNCORRECTED, _circle_pixel_frac, _circular_annulus_pixel_frac,
+    _classify_seg_pixel, _ellipse_pixel_frac, _elliptical_annulus_pixel_frac,
+    _polygon_pixel_frac, _presize_packed_offsets, _rect_pixel_frac,
+    _rectangular_annulus_pixel_frac, _resolve_seg_pixel, _round_half_away,
+    _source_grid_setup)
 from photutils.geometry._polygon_overlap cimport (convex_edge_normals,
                                                   polygon_work_partition,
                                                   polygon_work_size)
@@ -520,6 +521,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     cdef Py_ssize_t n_seg_masked, n_unc_masked
     cdef Py_ssize_t ixmax_full, iymax_full
     cdef unsigned char mbits
+    cdef int pix_class
 
     # Pass 1 (only when emitting the packed member buffers): size and
     # offset the packed buffers from the per-source clipped bounding-box
@@ -718,19 +720,20 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                             # masked neighbor-segment pixels (and their
                             # mirror availability) here for callers
                             # that treat the mask and neighbor overlays
-                            # independently. The helper is called only
-                            # for its counter side effects. Its return
-                            # value and resolved coordinates are unused.
+                            # independently.
                             if (has_seg and lbl != 0
                                     and seg_method != 0):
-                                six = ix
-                                siy = iy
-                                _resolve_seg_pixel(
+                                pix_class = _classify_seg_pixel(
                                     seg_ptr, mask_ptr, nx_data,
                                     seg_method, lbl, ix, iy, ix0,
                                     ix1, iy0, iy1, ccx, ccy, &six,
-                                    &siy, &n_seg_masked,
-                                    &n_unc_masked)
+                                    &siy)
+                                if pix_class in (_SEG_NEIGHBOR,
+                                                 _SEG_CORRECTED,
+                                                 _SEG_UNCORRECTED):
+                                    n_seg_masked += 1
+                                    if pix_class == _SEG_UNCORRECTED:
+                                        n_unc_masked += 1
                             continue
                     six = ix
                     siy = iy

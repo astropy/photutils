@@ -33,7 +33,7 @@ import numpy as np
 from scipy.optimize.cython_optimize cimport brentq, zeros_full_output
 
 from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
-                                                _resolve_seg_pixel)
+                                                _seg_pixel_contributes)
 
 __all__ = ['batch_central_moments', 'batch_centroid_win',
            'batch_flux_radius_prepare', 'batch_flux_radius_solve',
@@ -172,10 +172,6 @@ cdef void _centroid_win_source(const double *data, const double *error,
     cdef Py_ssize_t iter_ = 0
     cdef Py_ssize_t ixmin, ixmax, iymin, iymax, x0, x1, y0, y1
     cdef Py_ssize_t ccx, ccy, ix, iy, six, siy
-    # Write-only sinks required by the ``_resolve_seg_pixel``
-    # signature; they accumulate across all iterations and the final
-    # pass, so they are not a per-window count and are never read
-    cdef Py_ssize_t n_seg = 0, n_unc = 0
     cdef double dx, dy, rr2, w, v, e, wv, wsq
     cdef double sumw, sumwx, sumwy
     # State of the last completed accumulation, for the final
@@ -222,10 +218,10 @@ cdef void _centroid_win_source(const double *data, const double *error,
                 six = ix
                 siy = iy
                 if (seg_method != 0
-                        and not _resolve_seg_pixel(
+                        and not _seg_pixel_contributes(
                             segm, mask, nx_data, seg_method, label,
                             ix, iy, x0, x1, y0, y1, ccx, ccy,
-                            &six, &siy, &n_seg, &n_unc)):
+                            &six, &siy)):
                     continue
                 v = data[siy * nx_data + six]
                 w = exp(rr2 * inv_2sigma2)
@@ -285,10 +281,10 @@ cdef void _centroid_win_source(const double *data, const double *error,
             six = ix
             siy = iy
             if (seg_method != 0
-                    and not _resolve_seg_pixel(
+                    and not _seg_pixel_contributes(
                         segm, mask, nx_data, seg_method, label,
                         ix, iy, lx0, lx1, ly0, ly1, lccx, lccy,
-                        &six, &siy, &n_seg, &n_unc)):
+                        &six, &siy)):
                 continue
             v = data[siy * nx_data + six]
             w = exp(rr2 * inv_2sigma2)
@@ -539,9 +535,6 @@ cdef void _kron_radius_source(const double *data,
     cdef double numerator = 0.0
     cdef double denominator = 0.0
     cdef Py_ssize_t ix, iy, six, siy
-    # Write-only sinks required by the ``_resolve_seg_pixel``
-    # signature
-    cdef Py_ssize_t n_seg = 0, n_unc = 0
     cdef double xx, yy, rr_sq, rr, v
     for iy in range(y0, y1):
         yy = <double>(iy - y0) - yoff
@@ -559,10 +552,10 @@ cdef void _kron_radius_source(const double *data,
             six = ix
             siy = iy
             if (seg_method != 0
-                    and not _resolve_seg_pixel(
+                    and not _seg_pixel_contributes(
                         segm, mask, nx_data, seg_method, label,
                         ix, iy, x0, x1, y0, y1, ccx, ccy,
-                        &six, &siy, &n_seg, &n_unc)):
+                        &six, &siy)):
                 continue
             v = data[siy * nx_data + six]
             numerator += v * rr
@@ -748,9 +741,6 @@ cdef void _flux_radius_cutout(const double *data,
     """
     cdef Py_ssize_t ix, iy, six, siy
     cdef Py_ssize_t nx = x1 - x0
-    # Write-only sinks required by the ``_resolve_seg_pixel``
-    # signature
-    cdef Py_ssize_t n_seg = 0, n_unc = 0
     cdef double value
     for iy in range(y0, y1):
         for ix in range(x0, x1):
@@ -759,10 +749,10 @@ cdef void _flux_radius_cutout(const double *data,
                 six = ix
                 siy = iy
                 if (seg_method == 0
-                        or _resolve_seg_pixel(
+                        or _seg_pixel_contributes(
                             segm, mask, nx_data, seg_method, label,
                             ix, iy, x0, x1, y0, y1, ccx, ccy,
-                            &six, &siy, &n_seg, &n_unc)):
+                            &six, &siy)):
                     value = data[siy * nx_data + six] - local_bkg
             out[(iy - y0) * nx + (ix - x0)] = value
 
