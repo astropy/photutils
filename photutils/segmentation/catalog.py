@@ -525,7 +525,11 @@ class SourceCatalog:
 
         self._custom_properties = []
         self._flux_radius_cache = {}
-        self._batch_arrays_cache = None
+        # The full-image arrays used by the batch Cython drivers, filled
+        # lazily by _get_batch_arrays. The dict is shared by reference
+        # with sliced catalogs (see __getitem__), so whichever catalog
+        # builds the arrays first populates it for all of them.
+        self._batch_arrays_cache = {}
         self.meta = _get_meta()
         self._update_meta()
 
@@ -868,8 +872,10 @@ class SourceCatalog:
 
         The dict holds float64 ``data`` and ``error`` arrays, a uint8
         ``mask`` plane (bit 1 = input mask, bit 2 = non-finite data),
-        and an intp ``segm`` array. The arrays are read-only inputs
-        shared by reference with sliced catalogs (see ``__getitem__``).
+        and an intp ``segm`` array. The dict itself is created in
+        ``__init__`` and shared by reference with sliced catalogs (see
+        ``__getitem__``), so the arrays are built once no matter which
+        of the parent or sliced catalogs first needs them.
 
         Returns
         -------
@@ -880,7 +886,8 @@ class SourceCatalog:
             keys are added lazily by ``_get_batch_convdata`` and
             ``_get_batch_background``.
         """
-        if self._batch_arrays_cache is None:
+        arrays = self._batch_arrays_cache
+        if 'data' not in arrays:
             data = np.ascontiguousarray(self._data, dtype=np.float64)
             error = None
             if self._error is not None:
@@ -891,10 +898,9 @@ class SourceCatalog:
             mask_plane[~np.isfinite(data)] |= 2
             segm = np.ascontiguousarray(
                 self._segmentation_image.data, dtype=np.intp)
-            self._batch_arrays_cache = {'data': data, 'error': error,
-                                        'mask': mask_plane,
-                                        'segm': segm}
-        return self._batch_arrays_cache
+            arrays.update(data=data, error=error, mask=mask_plane,
+                          segm=segm)
+        return arrays
 
     def _get_batch_convdata(self):
         """

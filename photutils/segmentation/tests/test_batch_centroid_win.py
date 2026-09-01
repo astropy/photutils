@@ -386,6 +386,29 @@ def test_catalog_centroid_win(scene):
     assert cat[1:3]._batch_arrays_cache is cat._batch_arrays_cache
 
 
+def test_batch_arrays_shared_before_build(scene):
+    """
+    Test that a catalog sliced before the batch arrays are built shares
+    them with its parent, whichever of the two builds them first.
+    """
+    cat = make_catalog(scene)
+    child = cat[1:4]
+    scalar = cat[2]
+    assert 'data' not in cat._batch_arrays_cache
+    assert child._batch_arrays_cache is cat._batch_arrays_cache
+    assert scalar._batch_arrays_cache is cat._batch_arrays_cache
+
+    # Building on a slice populates the parent (and other slices)
+    arrays = scalar._get_batch_arrays()
+    assert cat._batch_arrays_cache['data'] is arrays['data']
+    assert child._get_batch_arrays() is arrays
+    assert cat._get_batch_arrays() is arrays
+
+    # The lazily added arrays are shared the same way
+    convdata = child._get_batch_convdata()
+    assert cat._get_batch_convdata() is convdata
+
+
 def test_detection_catalog(scene):
     """
     Test that the detection catalog is used when requested.
