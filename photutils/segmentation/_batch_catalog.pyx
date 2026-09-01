@@ -959,30 +959,140 @@ ctypedef struct _FluxRadiusArgs:
     int use_exact
     int subpixels
     double normflux
+    # Radial binning of the cutout pixels (see ``_bin_flux_radius_pixels``)
+    double bin_width
+    Py_ssize_t n_bins
+    const Py_ssize_t *order
+    const Py_ssize_t *bin_starts
+    const double *bin_cumsum
+
+
+cdef void _bin_flux_radius_pixels(_FluxRadiusArgs *p, Py_ssize_t *order,
+                                  Py_ssize_t *bin_of,
+                                  Py_ssize_t *bin_starts,
+                                  double *bin_cumsum,
+                                  Py_ssize_t *work) noexcept nogil:
+    """
+    Bin the cutout pixels of a source by the distance of their centers
+    from the source centroid (a counting sort), and accumulate the
+    prefix sums of the data over the bins.
+
+    This lets ``_flux_radius_objective`` add the fully-enclosed pixels
+    of a circle in one step and evaluate the overlap fraction only for
+    the pixels in the bins that straddle the circle boundary, instead
+    of classifying every cutout pixel on every root-finder iteration.
+
+    Parameters
+    ----------
+    p : _FluxRadiusArgs *
+        The per-source arguments. On input the grid and data members
+        are set; on output the ``order``, ``bin_starts``, and
+        ``bin_cumsum`` members point at the filled arrays.
+
+    order : Py_ssize_t *
+        Output of length ``nx * ny``: the flat pixel indices grouped by
+        increasing distance bin.
+
+    bin_of : Py_ssize_t *
+        Scratch of length ``nx * ny`` (the bin of each pixel).
+
+    bin_starts : Py_ssize_t *
+        Output of length ``n_bins + 1``: the start of each bin in
+        ``order``.
+
+    bin_cumsum : double *
+        Output of length ``n_bins + 1``: ``bin_cumsum[b]`` is the sum of
+        the data over the pixels in the bins before ``b``.
+
+    work : Py_ssize_t *
+        Scratch of length ``n_bins`` (the per-bin fill positions).
+    """
+    cdef Py_ssize_t n_pix = p.nx * p.ny
+    cdef Py_ssize_t ix, iy, k, b, n_bins = p.n_bins
+    cdef double pxcen, pycen, d
+    cdef double inv_width = 1.0 / p.bin_width
+
+    for b in range(n_bins + 1):
+        bin_starts[b] = 0
+    # The bin of each pixel and the pixel count of each bin
+    k = 0
+    for iy in range(p.ny):
+        pycen = p.ymin_e + iy * p.dy + 0.5 * p.dy
+        for ix in range(p.nx):
+            pxcen = p.xmin_e + ix * p.dx + 0.5 * p.dx
+            d = sqrt(pxcen * pxcen + pycen * pycen)
+            b = <Py_ssize_t>(d * inv_width)
+            if b >= n_bins:
+                b = n_bins - 1
+            bin_of[k] = b
+            bin_starts[b + 1] += 1
+            k += 1
+    # Convert the counts to start offsets, then place the pixels
+    # (row-major within each bin)
+    for b in range(n_bins):
+        bin_starts[b + 1] += bin_starts[b]
+        work[b] = bin_starts[b]
+    for k in range(n_pix):
+        b = bin_of[k]
+        order[work[b]] = k
+        work[b] += 1
+    # Prefix sums of the data over the bins
+    bin_cumsum[0] = 0.0
+    for b in range(n_bins):
+        bin_cumsum[b + 1] = bin_cumsum[b]
+        for k in range(bin_starts[b], bin_starts[b + 1]):
+            bin_cumsum[b + 1] += p.data[order[k]]
+    p.order = order
+    p.bin_starts = bin_starts
+    p.bin_cumsum = bin_cumsum
 
 
 cdef double _flux_radius_objective(double r,
                                    void *args) noexcept nogil:
     """
     Fraction-of-flux residual ``1 - flux(r) / normflux`` for the
-    brentq root-find, accumulating ``data * overlap`` with the same
-    per-pixel arithmetic as ``circular_overlap_grid`` (grid edges
-    relative to the source centroid).
+    brentq root-find.
+
+    The flux is ``sum(data * overlap)`` with the same per-pixel
+    overlap arithmetic as ``circular_overlap_grid`` (grid edges
+    relative to the source centroid). The pixels are visited through
+    the radial bins of ``_bin_flux_radius_pixels``: bins whose pixels
+    all lie within ``r - pixel_radius`` of the centroid are fully
+    enclosed (overlap fraction exactly 1, as in the interior fast path
+    of ``circle_frac_from_d2``) and are added from the prefix sums;
+    bins beyond ``r + pixel_radius`` have zero overlap; the pixels of
+    the remaining bins are evaluated individually.
     """
     cdef _FluxRadiusArgs *p = <_FluxRadiusArgs *>args
-    cdef Py_ssize_t ix, iy
-    cdef double flux = 0.0
-    cdef double pymin, pxmin, frac
+    cdef Py_ssize_t b, b_lo, b_hi, k, idx
+    cdef double flux, pymin, pxmin, frac
+    cdef double r_inner = r - p.pixel_radius
+    cdef double r_outer = r + p.pixel_radius
 
-    for iy in range(p.ny):
-        pymin = p.ymin_e + iy * p.dy
-        for ix in range(p.nx):
-            pxmin = p.xmin_e + ix * p.dx
+    # Bins entirely inside: every pixel has d < (b + 1) * width, so
+    # d < r_inner when (b + 1) * width <= r_inner
+    b_lo = 0
+    if r_inner > 0.0:
+        b_lo = <Py_ssize_t>(r_inner / p.bin_width)
+        if b_lo > p.n_bins:
+            b_lo = p.n_bins
+    # Bins entirely outside: every pixel has d >= b * width, so
+    # d >= r_outer when b * width >= r_outer
+    b_hi = <Py_ssize_t>(r_outer / p.bin_width) + 1
+    if b_hi > p.n_bins:
+        b_hi = p.n_bins
+
+    flux = p.bin_cumsum[b_lo]
+    for b in range(b_lo, b_hi):
+        for k in range(p.bin_starts[b], p.bin_starts[b + 1]):
+            idx = p.order[k]
+            pymin = p.ymin_e + (idx // p.nx) * p.dy
+            pxmin = p.xmin_e + (idx % p.nx) * p.dx
             frac = _circle_pixel_frac(pxmin, pymin, p.dx, p.dy,
                                       p.pixel_radius, r, p.use_exact,
                                       p.subpixels)
             if frac > 0.0:
-                flux += p.data[iy * p.nx + ix] * frac
+                flux += p.data[idx] * frac
     return 1.0 - flux / p.normflux
 
 
@@ -998,7 +1108,11 @@ def batch_flux_radius_solve(args_list, *, double fraction):
     tolerances replicate the previous per-source
     `scipy.optimize.root_scalar` implementation (the same SciPy C
     routine is used), so the roots agree to within floating-point
-    rounding of the sequentially accumulated flux sums.
+    rounding of the flux sums. The cutout pixels are binned once per
+    source by their distance from the centroid, so that each
+    root-finder evaluation adds the fully enclosed pixels from prefix
+    sums and evaluates the overlap only for the pixels near the circle
+    boundary (see ``_flux_radius_objective``).
 
     A bracket whose endpoints have the same sign has no (or multiple)
     solutions. As in the previous implementation, the maximum radius
@@ -1039,10 +1153,29 @@ def batch_flux_radius_solve(args_list, *, double fraction):
     cdef const double[:, ::1] cdata
     cdef _FluxRadiusArgs p
     cdef zeros_full_output full_output
-    cdef double xmax_e, ymax_e
+    cdef double xmax_e, ymax_e, max_extent
     cdef double max_radius, delta, result
     cdef bint found
-    cdef Py_ssize_t i
+    cdef Py_ssize_t i, n_pix, n_bins, max_pix = 0, max_bins = 0
+
+    # Scratch buffers for the radial binning, sized for the largest
+    # cutout (local to this call, so the function is thread safe)
+    for entry in args_list:
+        if entry is None:
+            continue
+        n_pix = entry[1][4] * entry[1][5]
+        if n_pix > max_pix:
+            max_pix = n_pix
+    order_arr = np.empty(max(max_pix, 1), dtype=np.intp)
+    bin_of_arr = np.empty(max(max_pix, 1), dtype=np.intp)
+    cdef Py_ssize_t[::1] order = order_arr
+    cdef Py_ssize_t[::1] bin_of = bin_of_arr
+    bin_starts_arr = np.empty(1, dtype=np.intp)
+    bin_cumsum_arr = np.empty(1, dtype=np.float64)
+    work_arr = np.empty(1, dtype=np.intp)
+    cdef Py_ssize_t[::1] bin_starts = bin_starts_arr
+    cdef double[::1] bin_cumsum = bin_cumsum_arr
+    cdef Py_ssize_t[::1] work = work_arr
 
     for i, entry in enumerate(args_list):
         if entry is None:
@@ -1066,7 +1199,27 @@ def batch_flux_radius_solve(args_list, *, double fraction):
         p.normflux = kronflux * fraction
         max_radius = max_radius_py
 
+        # Radial bins of a quarter pixel diagonal out to the farthest
+        # cutout corner; the boundary band of a circle then spans the
+        # pixel diagonal plus two bins
+        p.bin_width = 0.5 * p.pixel_radius
+        max_extent = sqrt(max(p.xmin_e * p.xmin_e, xmax_e * xmax_e)
+                          + max(p.ymin_e * p.ymin_e, ymax_e * ymax_e))
+        n_bins = <Py_ssize_t>(max_extent / p.bin_width) + 1
+        p.n_bins = n_bins
+        if n_bins > max_bins:
+            max_bins = n_bins
+            bin_starts_arr = np.empty(max_bins + 1, dtype=np.intp)
+            bin_cumsum_arr = np.empty(max_bins + 1, dtype=np.float64)
+            work_arr = np.empty(max_bins, dtype=np.intp)
+            bin_starts = bin_starts_arr
+            bin_cumsum = bin_cumsum_arr
+            work = work_arr
+
         with nogil:
+            _bin_flux_radius_pixels(&p, &order[0], &bin_of[0],
+                                    &bin_starts[0], &bin_cumsum[0],
+                                    &work[0])
             found = False
             result = NAN
             delta = 0.1 * max_radius
