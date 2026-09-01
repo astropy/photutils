@@ -4731,12 +4731,15 @@ class SourceCatalog:
         use_exact, subpixels = self._overlap_params(
             self._aperture_mask_kwargs['circ'])
 
-        (sums, sum_vars, _, overlap, _, _, _, _, _, fcounts,
-         _) = batch_aperture_sums(
+        result = batch_aperture_sums(
             arrays['data'], arrays['error'], arrays['mask'], positions,
             SHAPE_CIRCLE, np.array([radius], dtype=np.float64), radius,
             radius, 0.0, 0.0, use_exact, subpixels, seg_arr, seg_labels,
             seg_code, local_bkg, 0)
+        sums = result.sums
+        sum_vars = result.sum_vars
+        overlap = result.overlap
+        fcounts = result.flag_counts
 
         # Membership matches the previous cutout-based
         # ``in_aperture & ~mask`` rule: under 'correct', uncorrectable
@@ -4892,12 +4895,16 @@ class SourceCatalog:
             psrc = np.ascontiguousarray(psrc, dtype=np.float64)
             pos = np.ascontiguousarray(positions[idx])
             seg_labels = labels_arr[idx] if seg_code != 0 else None
-            (sums, sum_vars, _, overlap, _, _, _, _, _, fcounts,
-             weights_out) = batch_aperture_sums(
+            result = batch_aperture_sums(
                 arrays['data'], arrays['error'], arrays['mask'], pos,
                 shape_code, None, 0.0, 0.0, 0.0, 0.0, 1, 1, seg_arr,
                 seg_labels, seg_code, local_bkg[idx], 0,
                 params_per_source=psrc)
+            sums = result.sums
+            sum_vars = result.sum_vars
+            overlap = result.overlap
+            fcounts = result.flag_counts
+            weights_out = result.weights_out
 
             n_pix = fcounts[:, FLAG_COL_N_PIXELS]
             clipped = fcounts[:, FLAG_COL_BBOX_CLIPPED].astype(bool)

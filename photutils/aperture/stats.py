@@ -1011,12 +1011,16 @@ class ApertureStats:
 
         def sum_chunk(pos, bkg, labels):
             # The gather path derives its outside-weight flag elsewhere,
-            # so the driver's per-source indicator is discarded here.
-            (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
-             sum_errsq, scounts, flag_counts, _) = batch_aperture_sums(
+            # so the driver's per-source indicator is not used here.
+            result = batch_aperture_sums(
                 data, error, mask, pos, shape_code, params, ext_x, ext_y,
                 off_x, off_y, sum_use_exact, sum_subpixels, seg_arr,
                 labels, seg_code, bkg, emit_sum)
+            (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
+             sum_errsq, scounts, flag_counts) = (
+                result.sums, result.sum_vars, result.areas, result.overlap,
+                result.starts, result.sum_values, result.sum_fracs,
+                result.sum_errsq, result.sum_counts, result.flag_counts)
             gather = _BatchGather(starts=starts, sum_aper=sums,
                                   var_aper=sum_var, sum_area=area,
                                   overlap=overlap, sum_values=sum_values,

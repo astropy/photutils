@@ -274,7 +274,8 @@ def test_uncorrectable_members_give_zero_flux():
         0.0, 1, 1, arrays['segm'], np.array([1], dtype=np.intp), 3,
         np.zeros(1), 0,
         params_per_source=np.array([[aperture.a, aperture.b,
-                                     aperture.theta.to_value(u.rad)]]))[9]
+                                     aperture.theta.to_value(u.rad)]]),
+    ).flag_counts
     assert fcounts[0, FLAG_COL_VALID] == 0
     assert fcounts[0, FLAG_COL_UNCORRECTED] > 0
 

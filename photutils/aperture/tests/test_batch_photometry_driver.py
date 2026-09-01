@@ -226,7 +226,7 @@ def test_weights_out():
     result = batch_aperture_sums(
         data, None, None, positions, SHAPE_CIRCLE, params, 3.0, 3.0,
         0.0, 0.0, 1, 1)
-    weights_out = result[10]
+    weights_out = result.weights_out
     assert list(weights_out) == [0, 1, 1]
 
 
@@ -247,8 +247,8 @@ def test_weights_out_clipped_bbox_zero_weight():
     result = batch_aperture_sums(
         data, None, None, positions, SHAPE_CIRCLE, params, 2.0, 2.0,
         0.0, 0.0, 0, 1)
-    fcounts = result[9]
-    weights_out = result[10]
+    fcounts = result.flag_counts
+    weights_out = result.weights_out
     assert fcounts[0, FLAG_COL_BBOX_CLIPPED] == 1
     assert weights_out[0] == 0
 
@@ -257,7 +257,7 @@ def test_weights_out_clipped_bbox_zero_weight():
     result = batch_aperture_sums(
         data, None, None, positions, SHAPE_CIRCLE, params, 2.0, 2.0,
         0.0, 0.0, 1, 1)
-    assert result[10][0] == 1
+    assert result.weights_out[0] == 1
 
 
 @pytest.mark.parametrize('radius', [2000.0, 8000.0, 20000.0])
@@ -278,10 +278,10 @@ def test_weights_out_large_aperture(radius):
         data, None, None, positions, SHAPE_CIRCLE, np.array([radius]),
         radius, radius, 0.0, 0.0, 1, 5)
 
-    assert result[10][0] == 1
-    assert result[9][0, FLAG_COL_BBOX_CLIPPED] == 1
+    assert result.weights_out[0] == 1
+    assert result.flag_counts[0, FLAG_COL_BBOX_CLIPPED] == 1
     # Every data pixel is well inside the aperture, so the sums are
     # unaffected by the outside-weight scan
-    assert result[9][0, FLAG_COL_N_PIXELS] == data.size
-    assert_allclose(result[0][0], data.sum())
-    assert_allclose(result[2][0], data.size)
+    assert result.flag_counts[0, FLAG_COL_N_PIXELS] == data.size
+    assert_allclose(result.sums[0], data.sum())
+    assert_allclose(result.areas[0], data.size)

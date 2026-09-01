@@ -37,7 +37,7 @@ def _sums_fcounts(data, positions, radius, *, error=None, mask=None,
         np.ascontiguousarray(data, dtype=np.float64), error, mask,
         positions, SHAPE_CIRCLE, params, radius, radius, 0.0, 0.0,
         use_exact, subpixels, segmentation, labels, seg_method)
-    return result[9]
+    return result.flag_counts
 
 
 def _gather_fcounts(data, positions, radius, *, mask=None,

@@ -19,6 +19,8 @@ free-threaded Python builds.
 
 import numpy as np
 
+from photutils.aperture._batch_results import BatchApertureSums
+
 from photutils.aperture._batch_overlap cimport (
     _CIRCLE, _CIRCULAR_ANNULUS, _ELLIPSE, _ELLIPTICAL_ANNULUS, _POLYGON,
     _RECTANGLE, _RECTANGULAR_ANNULUS, _circle_pixel_frac,
@@ -258,6 +260,9 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
     Returns
     -------
+    result : `~photutils.aperture._batch_results.BatchApertureSums`
+        A named tuple with the following fields (in order).
+
     sums : 1D ndarray of float64
         The aperture sums. NaN where the aperture bounding box does not
         overlap the data.
@@ -778,6 +783,9 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             fcounts[k, 8] = n_seg_masked
             fcounts[k, 9] = n_unc_masked
 
-    return (sums_arr, vars_arr, areas_arr, overlap_arr.view(bool),
-            starts_arr, sum_values_arr, sum_fracs_arr, sum_errsq_arr,
-            scounts_arr, fcounts_arr, wout_arr)
+    return BatchApertureSums(
+        sums=sums_arr, sum_vars=vars_arr, areas=areas_arr,
+        overlap=overlap_arr.view(bool), starts=starts_arr,
+        sum_values=sum_values_arr, sum_fracs=sum_fracs_arr,
+        sum_errsq=sum_errsq_arr, sum_counts=scounts_arr,
+        flag_counts=fcounts_arr, weights_out=wout_arr)
