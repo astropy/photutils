@@ -211,7 +211,7 @@ class _SingleSourceDeblender:
             segms.append(segm)
         return segms
 
-    def make_markers(self, *, return_all=False):
+    def make_markers(self):
         """
         Make markers (possible sources) for the watershed algorithm.
 
@@ -219,43 +219,16 @@ class _SingleSourceDeblender:
         the level-quantized cutout (see
         `~photutils.segmentation._deblend_markers.make_deblend_markers`),
         which produces markers identical to the per-level
-        multithreshold construction.
-
-        Parameters
-        ----------
-        return_all : bool, optional
-            If `False` then return only the final segmentation marker
-            image. If `True` then compute the markers with the
-            per-level reference implementation instead and return all
-            segmentation marker images. This keyword is useful for
-            debugging and testing.
+        multithreshold construction of ``make_markers_per_level``.
 
         Returns
         -------
-        markers : 2D `~numpy.ndarray` or list of 2D `~numpy.ndarray`
-            A segmentation image that contain markers for possible
-            sources. If ``return_all=True`` then a list of all
-            segmentation marker images is returned. `None` is returned
-            if there is only one source at every threshold.
+        markers : 2D `~numpy.ndarray` or `None`
+            A segmentation image that contains markers for possible
+            sources. `None` is returned if there is only one source
+            at every threshold.
         """
         thresholds = self.compute_thresholds()
-
-        if return_all:
-            segm_lower = _detect_sources_deblend(
-                self.data, thresholds[0], self.n_pixels,
-                footprint=self.footprint, segment_mask=self.segment_mask)
-            all_segms = [segm_lower]
-            for threshold in thresholds[1:]:
-                segm_upper = _detect_sources_deblend(
-                    self.data, threshold, self.n_pixels,
-                    footprint=self.footprint,
-                    segment_mask=self.segment_mask)
-                if segm_upper is None:  # 0 or 1 labels
-                    continue
-                segm_lower = self.make_marker_segment(segm_lower,
-                                                      segm_upper)
-                all_segms.append(segm_lower)
-            return all_segms
 
         # A pixel is above threshold level i if i < quantized; NaN
         # pixels compare as False against every threshold.
@@ -270,6 +243,40 @@ class _SingleSourceDeblender:
         if n_markers == 0:
             return None
         return markers
+
+    def make_markers_per_level(self):
+        """
+        Make markers with the per-level multithreshold construction.
+
+        The markers are refined level by level, replacing every
+        marker that splits at the next-higher threshold by its
+        children (see ``make_marker_segment``). The last list
+        element contains the final markers, identical to the
+        ``make_markers`` result. This method is useful for debugging
+        and testing.
+
+        Returns
+        -------
+        markers : list of (2D `~numpy.ndarray` or `None`)
+            The segmentation marker image after each threshold level
+            that had two or more segments.
+        """
+        thresholds = self.compute_thresholds()
+        segm_lower = _detect_sources_deblend(
+            self.data, thresholds[0], self.n_pixels,
+            footprint=self.footprint, segment_mask=self.segment_mask)
+        all_segms = [segm_lower]
+        for threshold in thresholds[1:]:
+            segm_upper = _detect_sources_deblend(
+                self.data, threshold, self.n_pixels,
+                footprint=self.footprint,
+                segment_mask=self.segment_mask)
+            if segm_upper is None:  # 0 or 1 labels
+                continue
+            segm_lower = self.make_marker_segment(segm_lower,
+                                                  segm_upper)
+            all_segms.append(segm_lower)
+        return all_segms
 
     def make_marker_segment(self, segment_lower, segment_upper):
         """

@@ -463,7 +463,7 @@ class TestDeblendSources:
         segms = single_debl.multithreshold()
         assert len(segms) == 32
 
-        markers = single_debl.make_markers(return_all=True)
+        markers = single_debl.make_markers_per_level()
         assert len(markers) == 19
 
     def test_info_empty_without_warnings(self):
@@ -563,7 +563,8 @@ def normalize_markers(markers):
 def test_make_markers_matches_legacy(kind, mode, connectivity):
     """
     Test that make_markers produces the same markers as the legacy
-    per-level path (the last image of the return_all=True chain).
+    per-level path (the last image of the make_markers_per_level
+    chain).
 
     The markers must contain the same regions with the same
     raster-scan label ordering, since the ordering determines the
@@ -584,7 +585,7 @@ def test_make_markers_matches_legacy(kind, mode, connectivity):
         params = _DeblendParams(5, footprint, 32, 0.001, mode)
         deblender = _SingleSourceDeblender(data[slc], segm.data[slc],
                                            label, params)
-        legacy = deblender.make_markers(return_all=True)
+        legacy = deblender.make_markers_per_level()
         legacy = None if legacy is None else legacy[-1]
 
         if markers is None or legacy is None:
@@ -980,7 +981,7 @@ def test_n_markers_fallback_returns_none():
 
     call_count = [0]
 
-    def mock_make_markers(*, _return_all=False):
+    def mock_make_markers():
         call_count[0] += 1
         if call_count[0] == 1:
             # First call: return markers with > 200 labels
