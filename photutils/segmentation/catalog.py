@@ -481,6 +481,16 @@ class SourceCatalog:
     `~photutils.segmentation.SourceCatalog.segment_flux` always includes
     the contribution of negative ``data`` values.
 
+    Most properties are computed for all sources at once in compiled
+    code that reads C-contiguous float64 copies of the ``data``,
+    ``error``, ``convolved_data``, and ``background`` arrays, a uint8
+    mask plane, and an intp copy of the segmentation array. These are
+    built on first use and kept for the lifetime of the catalog (they
+    are shared with sliced catalogs). Inputs that are already
+    C-contiguous float64 (or intp) arrays are used without a copy, so
+    for other input types (e.g., float32 or int32 arrays) the catalog
+    holds roughly twice the memory of its inputs.
+
     The input ``error`` array is assumed to include *all* sources
     of error, including the Poisson error of the sources.
     `~photutils.segmentation.SourceCatalog.segment_flux_err` is simply
