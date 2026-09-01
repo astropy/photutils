@@ -154,6 +154,13 @@ class _SingleSourceDeblender:
         """
         Compute the multi-level detection thresholds for the source.
 
+        Note that this method has side effects. When the mode is
+        "exponential" and the source minimum is non-positive, it
+        changes ``self.mode`` to "linear" and records the fallback in
+        ``self.warnings``. Later calls (e.g., from ``make_markers``)
+        therefore use the fallback mode, mirroring the sticky per-source
+        mode fallback in the compiled pipeline.
+
         Returns
         -------
         thresholds : 1D `~numpy.ndarray`
