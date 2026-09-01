@@ -116,12 +116,21 @@ cdef void _introsort(double *a, Py_ssize_t lo, Py_ssize_t hi,
                      int depth) noexcept nogil:
     """
     Sort ``a[lo:hi]`` ascending in place by introsort: median-of-three
-    quicksort with Hoare partitioning, heapsort when the recursion
-    depth budget is exhausted, and insertion sort for short ranges.
-    The smaller partition is recursed into and the larger is looped
-    over, which bounds the recursion depth by log2(n).
+    quicksort with Bentley-McIlroy three-way partitioning, heapsort
+    when the recursion depth budget is exhausted, and insertion sort
+    for short ranges.
+
+    The three-way partition keeps the two scanning indices of a Hoare
+    partition (so distinct keys sort as fast) but parks the elements
+    equal to the pivot at the ends of the range and swaps them into
+    the middle afterwards, so runs of equal values (e.g., quantized or
+    constant pixel values) are excluded from further sorting instead
+    of degrading to the quadratic-swap behavior of a two-way
+    partition. The smaller of the two remaining partitions is recursed
+    into and the larger is looped over, which bounds the recursion
+    depth by log2(n).
     """
-    cdef Py_ssize_t i, j, mid
+    cdef Py_ssize_t i, j, k, p, q, mid, last
     cdef double pivot, v
     while hi - lo > 16:
         if depth == 0:
@@ -129,44 +138,86 @@ cdef void _introsort(double *a, Py_ssize_t lo, Py_ssize_t hi,
             return
         depth -= 1
 
-        # Median of three, leaving a[lo] <= a[mid] <= a[hi - 1] so that
-        # the ends of the range are sentinels for the scans below
+        # Median of three, moved to a[lo] as the pivot
+        last = hi - 1
         mid = lo + (hi - lo) // 2
         if a[mid] < a[lo]:
             v = a[mid]
             a[mid] = a[lo]
             a[lo] = v
-        if a[hi - 1] < a[lo]:
-            v = a[hi - 1]
-            a[hi - 1] = a[lo]
+        if a[last] < a[lo]:
+            v = a[last]
+            a[last] = a[lo]
             a[lo] = v
-        if a[hi - 1] < a[mid]:
-            v = a[hi - 1]
-            a[hi - 1] = a[mid]
+        if a[last] < a[mid]:
+            v = a[last]
+            a[last] = a[mid]
             a[mid] = v
         pivot = a[mid]
+        a[mid] = a[lo]
+        a[lo] = pivot
 
-        # Hoare partition: afterwards a[lo:j + 1] <= pivot <= a[j + 1:hi]
+        # Bentley-McIlroy partition: a[lo + 1:p + 1] and a[q:hi] hold
+        # the elements equal to the pivot found so far
         i = lo
-        j = hi - 1
+        j = hi
+        p = lo
+        q = hi
         while True:
             i += 1
             while a[i] < pivot:
+                if i == last:
+                    break
                 i += 1
             j -= 1
             while pivot < a[j]:
+                if j == lo:
+                    break
                 j -= 1
+            if i == j and a[i] == pivot:
+                p += 1
+                v = a[p]
+                a[p] = a[i]
+                a[i] = v
             if i >= j:
                 break
             v = a[i]
             a[i] = a[j]
             a[j] = v
+            if a[i] == pivot:
+                p += 1
+                v = a[p]
+                a[p] = a[i]
+                a[i] = v
+            if a[j] == pivot:
+                q -= 1
+                v = a[q]
+                a[q] = a[j]
+                a[j] = v
 
-        if j + 1 - lo < hi - (j + 1):
+        # Swap the parked equal elements into the middle, giving
+        # a[lo:j + 1] < pivot, a[j + 1:i] == pivot, a[i:hi] > pivot
+        i = j + 1
+        k = lo
+        while k <= p:
+            v = a[k]
+            a[k] = a[j]
+            a[j] = v
+            k += 1
+            j -= 1
+        k = last
+        while k >= q:
+            v = a[k]
+            a[k] = a[i]
+            a[i] = v
+            k -= 1
+            i += 1
+
+        if j + 1 - lo < hi - i:
             _introsort(a, lo, j + 1, depth)
-            lo = j + 1
+            lo = i
         else:
-            _introsort(a, j + 1, hi, depth)
+            _introsort(a, i, hi, depth)
             hi = j + 1
     _insertion_sort(a, lo, hi)
 
