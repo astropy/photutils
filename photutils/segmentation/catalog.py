@@ -29,6 +29,7 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_VALID, SHAPE_CIRCLE,
                                                   SHAPE_ELLIPSE,
                                                   batch_aperture_sums)
+from photutils.aperture._batch_stats import batch_gini
 from photutils.aperture._segmentation import SEG_METHOD_CODES
 from photutils.background import SExtractorBackground
 from photutils.segmentation._batch_catalog import (batch_central_moments,
@@ -149,55 +150,6 @@ class _SegmentValues:
         if transform is not None:
             packed = transform(packed)
         return ufunc.reduceat(packed, self.offsets[:-1])
-
-
-def _batch_gini(values):
-    """
-    Compute the Gini coefficient of the segment pixel values of many
-    sources.
-
-    This is the vectorized form of `photutils.morphology.gini` applied
-    to each source's unmasked (finite) absolute pixel values: NaN for a
-    source with no pixels, 0.0 for a single pixel or a zero mean, and
-    otherwise the Lotz et al. (2004) sum over the sorted values.
-
-    Parameters
-    ----------
-    values : `_SegmentValues`
-        The packed segment pixel values of the sources.
-
-    Returns
-    -------
-    result : 1D `~numpy.ndarray`
-        The Gini coefficient of each source.
-    """
-    packed = values.packed
-    offsets = values.offsets
-    counts = values.counts
-    sizes = values.sizes
-    starts = offsets[:-1]
-    # Sort the absolute values within each source in place (a single
-    # sort per source is much cheaper than one lexsort over all of the
-    # values); the placeholder values of empty sources are harmless
-    # because their results are set to NaN below
-    values = np.abs(np.nan_to_num(packed))
-    for start, stop in zip(starts, offsets[1:], strict=True):
-        values[start:stop].sort()
-    # 1-based rank of each value within its source
-    rank = np.arange(len(values)) - np.repeat(starts, sizes) + 1
-    n_pixels = np.repeat(counts, sizes)
-    kernel = (2.0 * rank - n_pixels - 1) * values
-
-    # Ignore RuntimeWarning from the empty and single-pixel sources
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', RuntimeWarning)
-        mean = np.add.reduceat(values, starts) / counts
-        normalization = mean * counts * (counts - 1)
-        result = np.add.reduceat(kernel, starts) / normalization
-    result[normalization == 0.0] = 0.0
-    result[counts == 1] = 0.0
-    result[counts == 0] = np.nan
-    return result
 
 
 # Remove in 4.0
@@ -4008,7 +3960,11 @@ class SourceCatalog:
         from the calculation. If only a single finite pixel remains
         after filtering, the Gini coefficient is 0.0.
         """
-        return _batch_gini(self._data_values)
+        # The compiled kernel shared with ApertureStats takes the same
+        # packed layout (a completely masked source has a zero count and
+        # is set to NaN)
+        values = self._data_values
+        return batch_gini(values.packed, values.offsets[:-1], values.counts)
 
     @cached_property
     def _local_background_apertures(self):
