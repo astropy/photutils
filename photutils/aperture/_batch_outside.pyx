@@ -75,6 +75,66 @@ cdef inline double _shape_pixel_frac(const _ShapeSpec *sp, double pxmin,
         sp.pbuf_b_y, sp.poly_buf_size, sp.use_exact, sp.subpixels)
 
 
+cdef inline bint _ring_row(const _ShapeSpec *sp, Py_ssize_t iy,
+                           Py_ssize_t ix_start, Py_ssize_t ix_stop,
+                           Py_ssize_t ixc, double gxmin, double gymin,
+                           double dx, double dy, double pixel_radius,
+                           double norm, Py_ssize_t ixmin,
+                           Py_ssize_t iymin) noexcept nogil:
+    """
+    Whether a pixel of row ``iy`` in ``[ix_start, ix_stop)`` has a
+    nonzero fraction, testing outward from the column ``ixc`` nearest
+    the aperture center (where a crossing of the data edge is found
+    soonest).
+    """
+    cdef Py_ssize_t lo, hi
+    cdef double pymin = gymin + (iy - iymin) * dy
+    lo = ixc if ixc > ix_start else ix_start
+    lo = lo if lo < ix_stop else ix_stop - 1
+    hi = lo + 1
+    while lo >= ix_start or hi < ix_stop:
+        if lo >= ix_start:
+            if _shape_pixel_frac(sp, gxmin + (lo - ixmin) * dx, pymin,
+                                 dx, dy, pixel_radius, norm) > 0.0:
+                return True
+            lo -= 1
+        if hi < ix_stop:
+            if _shape_pixel_frac(sp, gxmin + (hi - ixmin) * dx, pymin,
+                                 dx, dy, pixel_radius, norm) > 0.0:
+                return True
+            hi += 1
+    return False
+
+
+cdef inline bint _ring_column(const _ShapeSpec *sp, Py_ssize_t ix,
+                              Py_ssize_t iy_start, Py_ssize_t iy_stop,
+                              Py_ssize_t iyc, double gxmin, double gymin,
+                              double dx, double dy, double pixel_radius,
+                              double norm, Py_ssize_t ixmin,
+                              Py_ssize_t iymin) noexcept nogil:
+    """
+    The ``_ring_row`` test for the column ``ix`` over the rows
+    ``[iy_start, iy_stop)``, testing outward from the row ``iyc``.
+    """
+    cdef Py_ssize_t lo, hi
+    cdef double pxmin = gxmin + (ix - ixmin) * dx
+    lo = iyc if iyc > iy_start else iy_start
+    lo = lo if lo < iy_stop else iy_stop - 1
+    hi = lo + 1
+    while lo >= iy_start or hi < iy_stop:
+        if lo >= iy_start:
+            if _shape_pixel_frac(sp, pxmin, gymin + (lo - iymin) * dy,
+                                 dx, dy, pixel_radius, norm) > 0.0:
+                return True
+            lo -= 1
+        if hi < iy_stop:
+            if _shape_pixel_frac(sp, pxmin, gymin + (hi - iymin) * dy,
+                                 dx, dy, pixel_radius, norm) > 0.0:
+                return True
+            hi += 1
+    return False
+
+
 cdef bint outside_weight(const _ShapeSpec *sp, bint inside_any,
                          double gxmin, double gymin, double dx, double dy,
                          double pixel_radius, double norm,
@@ -128,42 +188,34 @@ cdef bint outside_weight(const _ShapeSpec *sp, bint inside_any,
         `True` if a pixel outside the data has a nonzero overlap
         fraction.
     """
-    cdef Py_ssize_t ix, iy, cx0, cx1
+    cdef Py_ssize_t ix, iy, cx0, cx1, ixc, iyc
     cdef double pxmin, pymin
 
     if sp.use_exact and inside_any:
         # The columns of the rows just outside the top and bottom data
-        # edges include the corner pixels
+        # edges include the corner pixels. Each ring row or column is
+        # tested outward from the pixel nearest the aperture center,
+        # where the shape most likely crosses the data edge.
         cx0 = ixmin if ixmin > ix0 - 1 else ix0 - 1
         cx1 = ixmax_full if ixmax_full < ix1 + 1 else ix1 + 1
-        if iymin < iy0:
-            pymin = gymin + (iy0 - 1 - iymin) * dy
-            for ix in range(cx0, cx1):
-                pxmin = gxmin + (ix - ixmin) * dx
-                if _shape_pixel_frac(sp, pxmin, pymin, dx, dy,
-                                     pixel_radius, norm) > 0.0:
-                    return True
-        if iy1 < iymax_full:
-            pymin = gymin + (iy1 - iymin) * dy
-            for ix in range(cx0, cx1):
-                pxmin = gxmin + (ix - ixmin) * dx
-                if _shape_pixel_frac(sp, pxmin, pymin, dx, dy,
-                                     pixel_radius, norm) > 0.0:
-                    return True
-        if ixmin < ix0:
-            pxmin = gxmin + (ix0 - 1 - ixmin) * dx
-            for iy in range(iy0, iy1):
-                pymin = gymin + (iy - iymin) * dy
-                if _shape_pixel_frac(sp, pxmin, pymin, dx, dy,
-                                     pixel_radius, norm) > 0.0:
-                    return True
-        if ix1 < ixmax_full:
-            pxmin = gxmin + (ix1 - ixmin) * dx
-            for iy in range(iy0, iy1):
-                pymin = gymin + (iy - iymin) * dy
-                if _shape_pixel_frac(sp, pxmin, pymin, dx, dy,
-                                     pixel_radius, norm) > 0.0:
-                    return True
+        ixc = ixmin + <Py_ssize_t>(-gxmin / dx)
+        iyc = iymin + <Py_ssize_t>(-gymin / dy)
+        if iymin < iy0 and _ring_row(sp, iy0 - 1, cx0, cx1, ixc, gxmin,
+                                     gymin, dx, dy, pixel_radius, norm,
+                                     ixmin, iymin):
+            return True
+        if iy1 < iymax_full and _ring_row(sp, iy1, cx0, cx1, ixc, gxmin,
+                                          gymin, dx, dy, pixel_radius,
+                                          norm, ixmin, iymin):
+            return True
+        if ixmin < ix0 and _ring_column(sp, ix0 - 1, iy0, iy1, iyc, gxmin,
+                                        gymin, dx, dy, pixel_radius, norm,
+                                        ixmin, iymin):
+            return True
+        if ix1 < ixmax_full and _ring_column(sp, ix1, iy0, iy1, iyc, gxmin,
+                                             gymin, dx, dy, pixel_radius,
+                                             norm, ixmin, iymin):
+            return True
         return False
 
     # Sampled overlap: test every outside pixel of the unclipped
