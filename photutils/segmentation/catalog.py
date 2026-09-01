@@ -36,6 +36,7 @@ from photutils.segmentation._batch_catalog import (batch_central_moments,
                                                    batch_flux_radius_prepare,
                                                    batch_flux_radius_solve,
                                                    batch_kron_radius,
+                                                   batch_minmax_index,
                                                    batch_moment_err,
                                                    batch_perimeter,
                                                    batch_quad_boxes,
@@ -3294,6 +3295,53 @@ class SourceCatalog:
         return values
 
     @cached_property
+    def _cutout_minmax_index(self):
+        """
+        The cutout-frame ``(y_min, x_min, y_max, x_max)`` positions of
+        the first minimum and first maximum unmasked ``data`` value of
+        each source, as an ``(n_labels, 4)`` intp array with -1 for a
+        completely masked source (see ``batch_minmax_index``).
+        """
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        return batch_minmax_index(
+            arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
+            labels=self._batch_labels(), bbox_iymin=iymin,
+            bbox_iymax=iymax, bbox_ixmin=ixmin, bbox_ixmax=ixmax)
+
+    def _extreme_value_index(self, columns, *, origin):
+        """
+        Return the ``(y, x)`` positions of an extreme ``data`` value of
+        each source from ``_cutout_minmax_index``.
+
+        Parameters
+        ----------
+        columns : slice
+            The two columns of ``_cutout_minmax_index`` to return.
+
+        origin : bool
+            Whether to add the bounding-box origin, giving positions in
+            the full data array instead of the cutout frame.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The ``(n_labels, 2)`` positions, as integers, or as floats
+            with NaN rows for completely masked sources if there are
+            any.
+        """
+        # Private cached arrays keep their leading source axis for
+        # scalar catalogs, so they are read directly (not via _array)
+        index = self._cutout_minmax_index[:, columns]
+        if origin:
+            index = index + self._batch_bboxes[:, [0, 2]]
+        all_masked = self._all_masked
+        if np.any(all_masked):
+            index = index.astype(float)
+            index[all_masked] = np.nan
+        return index
+
+    @cached_property
     def cutout_min_value_index(self):
         """
         The ``(y, x)`` coordinate, relative to the cutout data, of the
@@ -3302,14 +3350,7 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        data = self._array('data_cutout_masked')
-        idx = []
-        for arr in data:
-            if np.all(arr.mask):
-                idx.append((np.nan, np.nan))
-            else:
-                idx.append(np.unravel_index(np.argmin(arr), arr.shape))
-        return np.array(idx)
+        return self._extreme_value_index(slice(0, 2), origin=False)
 
     @cached_property
     def cutout_max_value_index(self):
@@ -3320,14 +3361,7 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        data = self._array('data_cutout_masked')
-        idx = []
-        for arr in data:
-            if np.all(arr.mask):
-                idx.append((np.nan, np.nan))
-            else:
-                idx.append(np.unravel_index(np.argmax(arr), arr.shape))
-        return np.array(idx)
+        return self._extreme_value_index(slice(2, 4), origin=False)
 
     @cached_property
     def min_value_index(self):
@@ -3338,11 +3372,7 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        index = self._array('cutout_min_value_index')
-        out = []
-        for idx, slc in zip(index, self._slices_iter, strict=True):
-            out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
-        return np.array(out)
+        return self._extreme_value_index(slice(0, 2), origin=True)
 
     @cached_property
     def max_value_index(self):
@@ -3353,11 +3383,7 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        index = self._array('cutout_max_value_index')
-        out = []
-        for idx, slc in zip(index, self._slices_iter, strict=True):
-            out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
-        return np.array(out)
+        return self._extreme_value_index(slice(2, 4), origin=True)
 
     @cached_property
     def min_value_xindex(self):

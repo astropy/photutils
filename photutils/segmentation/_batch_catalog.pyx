@@ -37,8 +37,8 @@ from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
 
 __all__ = ['batch_central_moments', 'batch_centroid_win',
            'batch_flux_radius_prepare', 'batch_flux_radius_solve',
-           'batch_kron_radius', 'batch_moment_err', 'batch_perimeter',
-           'batch_quad_boxes', 'batch_raw_moments',
+           'batch_kron_radius', 'batch_minmax_index', 'batch_moment_err',
+           'batch_perimeter', 'batch_quad_boxes', 'batch_raw_moments',
            'batch_segment_gather']
 
 
@@ -1528,6 +1528,118 @@ def batch_segment_gather(const double[:, ::1] values, *,
                         packed[pos] = values[iy, ix]
                         pos += 1
     return packed_arr, offsets_arr, counts_arr
+
+
+def batch_minmax_index(const double[:, ::1] values, *,
+                       const unsigned char[:, ::1] mask,
+                       const Py_ssize_t[:, ::1] segm,
+                       const Py_ssize_t[::1] labels,
+                       const Py_ssize_t[::1] bbox_iymin,
+                       const Py_ssize_t[::1] bbox_iymax,
+                       const Py_ssize_t[::1] bbox_ixmin,
+                       const Py_ssize_t[::1] bbox_ixmax):
+    """
+    Find the positions of the minimum and maximum unmasked segment
+    pixel values of many sources in one call.
+
+    For each source, the unmasked pixels of its segment within its
+    bounding box are scanned in row-major order and the cutout-frame
+    ``(y, x)`` positions of the first minimum and the first maximum
+    value are returned, replicating ``numpy.argmin`` and
+    ``numpy.argmax`` on the previous per-source masked cutouts.
+
+    Parameters
+    ----------
+    values : 2D ndarray of float64 (C-contiguous)
+        The array to scan (e.g., the data array). Its unmasked segment
+        values are assumed finite.
+
+    mask : 2D ndarray of uint8 (C-contiguous)
+        A mask array where nonzero values indicate masked (excluded)
+        pixels. Must have the same shape as ``values``. Bit 1 (value
+        1) marks input-masked pixels and bit 2 (value 2) marks
+        non-finite data pixels folded into the mask by the caller.
+
+    segm : 2D ndarray of intp (C-contiguous)
+        The segmentation array where background pixels are zero and
+        sources have positive integer labels. Must have the same shape
+        as ``values``.
+
+    labels : 1D ndarray of intp (C-contiguous)
+        The source label for each source, with shape ``(n_sources,)``.
+
+    bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
+        The segment bounding box of each source, with shape
+        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
+        values).
+
+    Returns
+    -------
+    index : 2D ndarray of intp
+        The cutout-frame positions with shape ``(n_sources, 4)`` and
+        columns ``(y_min, x_min, y_max, x_max)`` of the first minimum
+        and the first maximum value of each source. All four columns
+        are -1 for a source with no unmasked segment pixels.
+
+    Raises
+    ------
+    ValueError
+        If a per-source array does not have the same length as
+        ``labels``, or if a 2D array does not have the same shape as
+        ``values``.
+    """
+    cdef Py_ssize_t n_src = labels.shape[0]
+    cdef Py_ssize_t ny_data = values.shape[0]
+    cdef Py_ssize_t nx_data = values.shape[1]
+
+    _check_length(bbox_iymin.shape[0], n_src, 'bbox_iymin')
+    _check_length(bbox_iymax.shape[0], n_src, 'bbox_iymax')
+    _check_length(bbox_ixmin.shape[0], n_src, 'bbox_ixmin')
+    _check_length(bbox_ixmax.shape[0], n_src, 'bbox_ixmax')
+    _check_shape(mask.shape[0], mask.shape[1], ny_data, nx_data,
+                 'mask', 'values')
+    _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
+                 'segm', 'values')
+
+    index_arr = np.full((n_src, 4), -1, dtype=np.intp)
+    cdef Py_ssize_t[:, ::1] index = index_arr
+    cdef Py_ssize_t i, ix, iy, y0, y1, x0, x1, lbl
+    cdef Py_ssize_t ymin_idx, xmin_idx, ymax_idx, xmax_idx
+    cdef double v, vmin, vmax
+    cdef bint found
+
+    with nogil:
+        for i in range(n_src):
+            lbl = labels[i]
+            y0 = bbox_iymin[i]
+            y1 = bbox_iymax[i]
+            x0 = bbox_ixmin[i]
+            x1 = bbox_ixmax[i]
+            found = False
+            vmin = 0.0
+            vmax = 0.0
+            ymin_idx = xmin_idx = ymax_idx = xmax_idx = -1
+            for iy in range(y0, y1):
+                for ix in range(x0, x1):
+                    if segm[iy, ix] != lbl or mask[iy, ix] != 0:
+                        continue
+                    v = values[iy, ix]
+                    # Strict comparisons keep the first occurrence of
+                    # a repeated extreme, as numpy.argmin/argmax do
+                    if not found or v < vmin:
+                        vmin = v
+                        ymin_idx = iy - y0
+                        xmin_idx = ix - x0
+                    if not found or v > vmax:
+                        vmax = v
+                        ymax_idx = iy - y0
+                        xmax_idx = ix - x0
+                    found = True
+            index[i, 0] = ymin_idx
+            index[i, 1] = xmin_idx
+            index[i, 2] = ymax_idx
+            index[i, 3] = xmax_idx
+    return index_arr
 
 
 def batch_raw_moments(const double[:, ::1] convdata, *,

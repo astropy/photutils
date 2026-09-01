@@ -620,8 +620,9 @@ Faster Source Catalog Measurements
 `~photutils.segmentation.SourceCatalog` is now significantly faster.
 The windowed and quadratic centroids, Kron radii and photometry,
 ``flux_radius``, ``circular_photometry``, image moments, ``perimeter``,
-``gini``, and the segment pixel statistics (e.g., ``segment_flux``,
-``area``, and ``min_value``) are each computed for all sources in a
+``gini``, the segment pixel statistics (e.g., ``segment_flux``,
+``area``, and ``min_value``), and the positions of the minimum and
+maximum pixel values are each computed for all sources in a
 single call into compiled code, replacing the per-source Python loops
 and cutouts. Typical speedups range from ~3x to ~20x depending on
 the property, and the ``flags`` attribute and the default

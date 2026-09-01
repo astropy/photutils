@@ -274,8 +274,10 @@ New Features
   - Significantly improved the performance of the ``SourceCatalog``
     windowed centroids, quadratic centroids, Kron radii and photometry,
     ``flux_radius``, ``circular_photometry``, image moments,
-    ``perimeter``, ``gini``, and segment pixel statistics (e.g.,
+    ``perimeter``, ``gini``, segment pixel statistics (e.g.,
     ``segment_flux``, ``segment_area``, ``area``, and ``min_value``),
+    and the positions of the minimum and maximum pixel values (e.g.,
+    ``min_value_index`` and ``max_value_xindex``),
     typically by factors of ~3-20 depending on the property, by
     computing all sources in a single call into compiled code. The
     ``flags`` attribute and the default ``to_table()`` output are about
