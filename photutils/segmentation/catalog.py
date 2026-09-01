@@ -446,10 +446,10 @@ class SourceCatalog:
         Whether to display a progress bar when calculating properties.
 
         .. deprecated:: 3.1
-           This keyword argument is deprecated and will be removed in a
-           future version. All property calculations are now computed
-           for all sources at once in compiled code, so no progress bar
-           is displayed and this keyword has no effect.
+           This keyword argument is deprecated and will be removed in
+           version 4.0. All property calculations are now computed for
+           all sources at once in compiled code, so no progress bar is
+           displayed and this keyword has no effect.
 
     Notes
     -----

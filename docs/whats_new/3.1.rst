@@ -614,6 +614,25 @@ are package-specific, so always decode a flag column with the decoder of
 the package that produced it.
 
 
+Faster Source Catalog Measurements
+==================================
+
+`~photutils.segmentation.SourceCatalog` is now significantly faster.
+The windowed and quadratic centroids, Kron radii and photometry,
+``flux_radius``, ``circular_photometry``, image moments, ``perimeter``,
+``gini``, and the segment pixel statistics (e.g., ``segment_flux``,
+``area``, and ``min_value``) are each computed for all sources in a
+single call into compiled code, replacing the per-source Python loops
+and cutouts. Typical speedups range from ~3x to ~20x depending on
+the property, and the ``flags`` attribute and the default
+:meth:`~photutils.segmentation.SourceCatalog.to_table` output are
+about 5x faster for large catalogs. The results are unchanged to
+within floating-point rounding. Because no property loops over the
+sources in Python any more, no progress bar is displayed and the
+``progress_bar`` keyword is deprecated (see :ref:`New Deprecations
+<whatsnew-3.1-deprecations>`).
+
+
 ``GriddedPSFModel`` Performance Improvements
 ============================================
 
@@ -664,6 +683,14 @@ attribute has been renamed to ``n_positions``, matching the
 `~photutils.aperture.AperturePhotometry` attribute of the same name
 (both count the aperture positions). The old ``n_apertures`` name is
 deprecated and will be removed in version 4.0.
+
+``SourceCatalog.progress_bar`` Deprecated
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The `~photutils.segmentation.SourceCatalog` ``progress_bar`` keyword
+is deprecated and will be removed in version 4.0. All property
+calculations are now computed for all sources at once in compiled
+code, so no progress bar is displayed and the keyword has no effect.
 
 
 Removed Deprecations

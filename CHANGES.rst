@@ -280,8 +280,8 @@ New Features
     computing all sources in a single call into compiled code. The
     ``flags`` attribute and the default ``to_table()`` output are about
     5 times faster for large catalogs. No property displays a progress
-    bar any more, but the ``progress_bar`` keyword is retained for
-    backwards compatibility. [#2406]
+    bar any more (see the ``progress_bar`` deprecation under API
+    Changes). [#2406]
 
 - ``photutils.utils``
 
