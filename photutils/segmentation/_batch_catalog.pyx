@@ -333,7 +333,9 @@ def batch_centroid_win(const double[:, ::1] data, *,
     on the current centroid estimate. The iteration, the integer
     bounding-box arithmetic, the per-pixel masking, and the final
     windowed second-order moments and raw error sums replicate the
-    previous per-source Python implementation exactly.
+    previous per-source Python implementation to within floating-point
+    rounding (the pixel sums are accumulated sequentially rather than
+    pairwise).
 
     Parameters
     ----------
@@ -597,8 +599,10 @@ def batch_kron_radius(const double[:, ::1] data, *,
     inside the circle of radius ``min_circ_radius`` for a source whose
     elliptical axes are both zero. The bounding-box arithmetic, the
     per-pixel masking, and the neighbor handling replicate the
-    previous per-source Python implementation exactly. The caller
-    forms the Kron radius from the two sums.
+    previous per-source Python implementation, with the sums agreeing
+    to within floating-point rounding (they are accumulated
+    sequentially rather than pairwise). The caller forms the Kron
+    radius from the two sums.
 
     Parameters
     ----------
@@ -1002,7 +1006,9 @@ def batch_flux_radius_solve(args_list, *, double fraction):
     found by a bracketed Brent root-find over ``[0.1, max_radius]``.
     The per-pixel circular overlap, the bracket, and the root-finder
     tolerances replicate the previous per-source
-    `scipy.optimize.root_scalar` implementation exactly.
+    `scipy.optimize.root_scalar` implementation (the same SciPy C
+    routine is used), so the roots agree to within floating-point
+    rounding of the sequentially accumulated flux sums.
 
     A bracket whose endpoints have the same sign has no (or multiple)
     solutions. As in the previous implementation, the maximum radius
