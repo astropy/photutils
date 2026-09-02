@@ -2278,10 +2278,15 @@ cdef double _select_kth(double *a, Py_ssize_t n,
     every value in ``a[0:k]`` is <= ``a[k]`` and every value in
     ``a[k+1:n]`` is >= ``a[k]``.
 
-    This is Hoare's selection with a median-of-three pivot: each
-    round partitions the current window about the pivot and keeps
-    only the side that holds index ``k``, so the expected cost is
-    linear in ``n``.
+    This is quickselect with a median-of-three pivot and a three-way
+    partition: each round moves the values below the pivot to the
+    front of the current window and the values equal to the pivot
+    behind them, then keeps only the part that holds rank ``k``, so
+    the expected cost is linear in ``n`` and repeated values do not
+    degrade it. The partition passes swap unconditionally and advance
+    their store index by the comparison result, so they contain no
+    data-dependent branch, which matters for the unordered pixel
+    values these windows hold.
 
     Parameters
     ----------
@@ -2294,12 +2299,11 @@ cdef double _select_kth(double *a, Py_ssize_t n,
     k : Py_ssize_t
         The rank to select, with ``0 <= k < n``.
     """
-    cdef Py_ssize_t lo = 0, hi = n - 1, i, j, mid
-    cdef double pivot
+    cdef Py_ssize_t lo = 0, hi = n - 1, i, j, mid, n_below, n_equal
+    cdef double pivot, x
 
     while lo < hi:
-        # Order a[lo] <= a[mid] <= a[hi] and use a[mid] as the pivot.
-        # The two outer values then bound the scans below.
+        # Median-of-three pivot, moved to a[hi] for the partition
         mid = lo + (hi - lo) // 2
         if a[mid] < a[lo]:
             _swap_doubles(a, mid, lo)
@@ -2307,28 +2311,34 @@ cdef double _select_kth(double *a, Py_ssize_t n,
             _swap_doubles(a, hi, lo)
         if a[hi] < a[mid]:
             _swap_doubles(a, hi, mid)
-        pivot = a[mid]
+        _swap_doubles(a, mid, hi)
+        pivot = a[hi]
 
+        # Move the values below the pivot to a[lo:i]
         i = lo
-        j = hi
-        while i <= j:
-            while a[i] < pivot:
-                i += 1
-            while a[j] > pivot:
-                j -= 1
-            if i <= j:
-                _swap_doubles(a, i, j)
-                i += 1
-                j -= 1
+        for j in range(lo, hi):
+            x = a[j]
+            a[j] = a[i]
+            a[i] = x
+            i += x < pivot
+        n_below = i - lo
+        if k < lo + n_below:
+            hi = lo + n_below - 1
+            continue
 
-        # Now a[lo:j+1] <= pivot <= a[i:hi+1], and the values strictly
-        # between j and i equal the pivot
-        if k <= j:
-            hi = j
-        elif k >= i:
-            lo = i
-        else:
-            return a[k]
+        # Move the values equal to the pivot to a[i:i+n_equal]; the
+        # pivot itself is counted from a[hi]
+        lo = i
+        for j in range(lo, hi):
+            x = a[j]
+            a[j] = a[i]
+            a[i] = x
+            i += x <= pivot
+        _swap_doubles(a, i, hi)
+        n_equal = i - lo + 1
+        if k < lo + n_equal:
+            return pivot
+        lo = lo + n_equal
 
     return a[lo]
 
@@ -2492,16 +2502,18 @@ cdef double _local_background_source(const real_t *data,
     cdef double half_h_out = 0.5 * ((iymax - iymin) * scale + 2 * width)
     cdef Py_ssize_t y0, y1, x0, x1, ix, iy, pos, i, j, n, n_kept
     cdef Py_ssize_t iteration, nchanged
-    cdef double dx, dy, v, center, mean, delta, ss, std, lower, upper
-    cdef double median, result
+    cdef double dx, dy, v, total, center, mean, delta, ss, std, lower
+    cdef double upper, median, result
 
     _local_background_bbox(iymin, iymax, ixmin, ixmax, width, scale,
                            nx_data, ny_data, &y0, &y1, &x0, &x1)
 
-    # Gather the usable annulus pixel values in row-major order. A
-    # pixel center is inside a rectangle when it is strictly within
-    # both half-extents, as for the 'center' aperture mask method.
+    # Gather the usable annulus pixel values in row-major order,
+    # accumulating their sum. A pixel center is inside a rectangle when
+    # it is strictly within both half-extents, as for the 'center'
+    # aperture mask method.
     n = 0
+    total = 0.0
     for iy in range(y0, y1):
         dy = fabs(iy - ypos)
         if dy >= half_h_out:
@@ -2515,7 +2527,9 @@ cdef double _local_background_source(const real_t *data,
             pos = iy * nx_data + ix
             if mask[pos] != 0 or segm[pos] != 0:
                 continue
-            values[n] = data[pos]
+            v = data[pos]
+            values[n] = v
+            total += v
             n += 1
 
     if n < min_pixels:
@@ -2523,8 +2537,9 @@ cdef double _local_background_source(const real_t *data,
 
     # Sigma clip. Each iteration centers on the median of the kept
     # values and clips outside center +/- sigma * std, keeping the
-    # survivors in their pixel order, until no value is clipped or
-    # maxiters is reached.
+    # survivors in their pixel order (and summing them for the next
+    # iteration's mean), until no value is clipped or maxiters is
+    # reached.
     n_kept = n
     nchanged = 1
     iteration = 0
@@ -2534,10 +2549,7 @@ cdef double _local_background_source(const real_t *data,
             work[i] = values[i]
         center = _median_select(work, n_kept)
 
-        mean = 0.0
-        for i in range(n_kept):
-            mean += values[i]
-        mean = mean / n_kept
+        mean = total / n_kept
         ss = 0.0
         for i in range(n_kept):
             delta = values[i] - mean
@@ -2547,10 +2559,12 @@ cdef double _local_background_source(const real_t *data,
         lower = center - std * sigma
         upper = center + std * sigma
         j = 0
+        total = 0.0
         for i in range(n_kept):
             v = values[i]
             if not (v < lower) and not (v > upper):
                 values[j] = v
+                total += v
                 j += 1
         nchanged = n_kept - j
         n_kept = j
@@ -2558,23 +2572,27 @@ cdef double _local_background_source(const real_t *data,
     if n_kept == 0:
         return NAN
 
+    if nchanged == 0:
+        # The last iteration clipped nothing, so its statistics are
+        # those of the survivors
+        median = center
+    else:
+        # maxiters was reached with values still being clipped, so
+        # compute the statistics of the final survivors
+        for i in range(n_kept):
+            work[i] = values[i]
+        median = _median_select(work, n_kept)
+        mean = total / n_kept
+        ss = 0.0
+        for i in range(n_kept):
+            delta = values[i] - mean
+            ss += delta * delta
+        std = sqrt(ss / n_kept)
+
     # SExtractor background mode of the survivors: the mean for a zero
     # standard deviation, the median when the mean is offset from the
     # median by at least 0.3 standard deviations, and otherwise
     # 2.5 * median - 1.5 * mean
-    for i in range(n_kept):
-        work[i] = values[i]
-    median = _median_select(work, n_kept)
-    mean = 0.0
-    for i in range(n_kept):
-        mean += values[i]
-    mean = mean / n_kept
-    ss = 0.0
-    for i in range(n_kept):
-        delta = values[i] - mean
-        ss += delta * delta
-    std = sqrt(ss / n_kept)
-
     result = (2.5 * median) - (1.5 * mean)
     if std == 0.0:
         result = mean
