@@ -24,12 +24,13 @@ from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
                                                   FLAG_COL_NONFINITE_ERROR,
                                                   FLAG_COL_SEG,
                                                   FLAG_COL_UNCORRECTED,
-                                                  FLAG_COL_VALID,
+                                                  FLAG_COL_VALID, N_FLAG_COLS,
                                                   batch_aperture_sums)
 from photutils.aperture._batch_stats import (batch_aperture_gather,
                                              batch_biweight, batch_gini,
                                              batch_mad, batch_mean_var,
-                                             batch_moments, batch_order_stats,
+                                             batch_minmax, batch_moments,
+                                             batch_order_stats,
                                              batch_sigma_clip_center,
                                              batch_sigma_clip_sum,
                                              batch_sort_values)
@@ -346,8 +347,8 @@ class ApertureStats:
     # index the packed buffer per source and fail or corrupt it.
     _NON_SLICEABLE_CACHES = frozenset({
         '_batch_inputs', '_fast_gather', '_fast_sum', '_sorted_values',
-        '_order_stats', '_mean_var', '_mad', '_biweight', '_gini',
-        '_fast_cutouts_center'})
+        '_order_stats', '_minmax', '_mean_var', '_mad', '_biweight',
+        '_gini', '_fast_cutouts_center'})
 
     def __init__(self, data, aperture, *, error=None, mask=None, wcs=None,
                  sigma_clip=None, sum_method='exact', subpixels=5, ddof=0,
@@ -1010,11 +1011,17 @@ class ApertureStats:
         emit_sum = 1 if clip_spec is not None else 0
 
         def sum_chunk(pos, bkg, labels):
-            (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
-             sum_errsq, scounts, flag_counts) = batch_aperture_sums(
+            # The gather path derives its outside-weight flag elsewhere,
+            # so the driver's per-source indicator is not used here.
+            result = batch_aperture_sums(
                 data, error, mask, pos, shape_code, params, ext_x, ext_y,
                 off_x, off_y, sum_use_exact, sum_subpixels, seg_arr,
                 labels, seg_code, bkg, emit_sum)
+            (sums, sum_var, area, overlap, starts, sum_values, sum_fracs,
+             sum_errsq, scounts, flag_counts) = (
+                result.sums, result.sum_vars, result.areas, result.overlap,
+                result.starts, result.sum_values, result.sum_fracs,
+                result.sum_errsq, result.sum_counts, result.flag_counts)
             gather = _BatchGather(starts=starts, sum_aper=sums,
                                   var_aper=sum_var, sum_area=area,
                                   overlap=overlap, sum_values=sum_values,
@@ -1290,6 +1297,26 @@ class ApertureStats:
                                         starts, counts)
 
     @cached_property
+    def _minmax(self):
+        """
+        The per-source ``(min, max)`` arrays, or `None`.
+
+        Reduced directly from the packed center buffer, so that ``min``
+        and ``max`` do not pay for the per-source sort. When sigma
+        clipping is applied, the clipping kernel's sorted surviving
+        values define the extremes, so the order statistics are used
+        instead. `None` when the fast path is unavailable.
+        """
+        gather = self._fast_gather
+        if gather is None:
+            return None
+        if gather.sorted_values is not None:
+            vmin, vmax, _ = self._order_stats
+            return vmin, vmax
+        return self._threaded_reduction(batch_minmax, (gather.values,),
+                                        gather.starts, gather.counts)
+
+    @cached_property
     def _mean_var(self):
         """
         The per-source ``(mean, var)`` arrays, or `None`.
@@ -1496,7 +1523,7 @@ class ApertureStats:
                 zip(self._data_cutouts, aperture_masks,
                     self._overlap_slices, strict=True)):
 
-            fc_row = np.zeros(8, dtype=np.intp)
+            fc_row = np.zeros(N_FLAG_COLS, dtype=np.intp)
             n_clipped_ = 0
 
             slc_large, slc_small = slices
@@ -2593,7 +2620,7 @@ class ApertureStats:
         """
         The minimum of the unmasked pixel values within the aperture.
         """
-        fast = None if self._order_stats is None else self._order_stats[0]
+        fast = None if self._minmax is None else self._minmax[0]
         return self._finalize_value_stat(fast, np.min)
 
     @cached_property
@@ -2601,7 +2628,7 @@ class ApertureStats:
         """
         The maximum of the unmasked pixel values within the aperture.
         """
-        fast = None if self._order_stats is None else self._order_stats[1]
+        fast = None if self._minmax is None else self._minmax[1]
         return self._finalize_value_stat(fast, np.max)
 
     @cached_property

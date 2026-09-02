@@ -75,7 +75,17 @@ cdef inline Py_ssize_t _round_half_away(double x) noexcept nogil:
     return <Py_ssize_t>ceil(x - 0.5)
 
 
-cdef inline bint _resolve_seg_pixel(const Py_ssize_t *segmentation,
+cdef enum:
+    # Outcomes of the segmentation masking method for a single pixel
+    # (see ``_classify_seg_pixel``)
+    _SEG_SOURCE = 0
+    _SEG_EXCLUDED = 1
+    _SEG_NEIGHBOR = 2
+    _SEG_CORRECTED = 3
+    _SEG_UNCORRECTED = 4
+
+
+cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
                                     const unsigned char *mask,
                                     Py_ssize_t nx_data, int seg_method,
                                     Py_ssize_t label,
@@ -83,15 +93,17 @@ cdef inline bint _resolve_seg_pixel(const Py_ssize_t *segmentation,
                                     Py_ssize_t ix0, Py_ssize_t ix1,
                                     Py_ssize_t iy0, Py_ssize_t iy1,
                                     Py_ssize_t ccx, Py_ssize_t ccy,
-                                    Py_ssize_t *six, Py_ssize_t *siy,
-                                    Py_ssize_t *n_seg_px,
-                                    Py_ssize_t *n_uncorr) noexcept nogil:
+                                    Py_ssize_t *six,
+                                    Py_ssize_t *siy) noexcept nogil:
     """
-    Apply the segmentation masking method to a single unmasked pixel.
+    Classify a single pixel under the segmentation masking method.
 
-    This is the segmentation-masking step shared by the per-pixel
-    loops of ``_batch_photometry.batch_aperture_sums`` and
-    ``_batch_stats.batch_aperture_gather``. The caller must invoke it
+    This is the segmentation-masking query shared by the per-pixel
+    loops of the aperture and segmentation batch drivers. It has no
+    side effects other than writing the mirror pixel coordinates of a
+    corrected pixel, so a caller counts or uses the outcome as it
+    needs (see the ``_resolve_seg_pixel`` and
+    ``_seg_pixel_contributes`` wrappers). The caller must invoke it
     only when a segmentation array is present and ``label`` is nonzero.
 
     Parameters
@@ -127,10 +139,108 @@ cdef inline bint _resolve_seg_pixel(const Py_ssize_t *segmentation,
         The rounded aperture center used by the method-3 mirror.
 
     six, siy : Py_ssize_t *
-        Output. The coordinates of the pixel whose value contributes.
-        Overwritten (with the mirror pixel) only by a successful
-        method-3 correction.
+        Output. Overwritten with the mirror pixel coordinates only for
+        a ``_SEG_CORRECTED`` outcome.
 
+    Returns
+    -------
+    code : int
+        One of the ``_SEG_*`` codes:
+
+        * ``_SEG_SOURCE``: not a neighbor-source pixel (or the method
+          is disabled); the pixel contributes its own value
+        * ``_SEG_EXCLUDED``: a background pixel excluded by method 2
+          (not a neighbor-source pixel)
+        * ``_SEG_NEIGHBOR``: a neighbor-source pixel excluded by method
+          1 or 2
+        * ``_SEG_CORRECTED``: a neighbor-source pixel replaced by the
+          mirror pixel written to ``(siy[0], six[0])`` (method 3)
+        * ``_SEG_UNCORRECTED``: a neighbor-source pixel whose mirror
+          pixel is unavailable (method 3); the pixel is excluded
+    """
+    cdef Py_ssize_t seg_val = segmentation[iy * nx_data + ix]
+    cdef Py_ssize_t xm, ym, mseg
+
+    if seg_method == 1:
+        if seg_val != 0 and seg_val != label:
+            return _SEG_NEIGHBOR
+    elif seg_method == 2:
+        if seg_val != label:
+            # Only neighbor-source pixels (not background pixels)
+            # count toward the neighbor-pixels flag.
+            return _SEG_NEIGHBOR if seg_val != 0 else _SEG_EXCLUDED
+    elif seg_method == 3:
+        if seg_val != 0 and seg_val != label:
+            # Neighbor pixel: replace its value with the pixel
+            # mirrored across the center, if that pixel is available.
+            xm = 2 * ccx - ix
+            ym = 2 * ccy - iy
+            if xm < ix0 or xm >= ix1 or ym < iy0 or ym >= iy1:
+                return _SEG_UNCORRECTED
+            mseg = segmentation[ym * nx_data + xm]
+            if mseg != 0 and mseg != label:
+                return _SEG_UNCORRECTED
+            if mask != NULL and mask[ym * nx_data + xm]:
+                return _SEG_UNCORRECTED
+            six[0] = xm
+            siy[0] = ym
+            return _SEG_CORRECTED
+    return _SEG_SOURCE
+
+
+cdef inline bint _seg_pixel_contributes(const Py_ssize_t *segmentation,
+                                        const unsigned char *mask,
+                                        Py_ssize_t nx_data,
+                                        int seg_method,
+                                        Py_ssize_t label,
+                                        Py_ssize_t ix, Py_ssize_t iy,
+                                        Py_ssize_t ix0, Py_ssize_t ix1,
+                                        Py_ssize_t iy0, Py_ssize_t iy1,
+                                        Py_ssize_t ccx, Py_ssize_t ccy,
+                                        Py_ssize_t *six,
+                                        Py_ssize_t *siy) noexcept nogil:
+    """
+    Whether a pixel contributes under the segmentation masking method.
+
+    This is the uncounted form of ``_resolve_seg_pixel`` for callers
+    that keep no neighbor-pixel flag counts. The parameters are those
+    of ``_classify_seg_pixel``.
+
+    Returns
+    -------
+    contributes : bint
+        `True` if the pixel contributes to the measurement (reading its
+        value from ``(siy[0], six[0])``); `False` if it is excluded.
+    """
+    cdef int code = _classify_seg_pixel(segmentation, mask, nx_data,
+                                        seg_method, label, ix, iy, ix0,
+                                        ix1, iy0, iy1, ccx, ccy, six, siy)
+    return code == _SEG_SOURCE or code == _SEG_CORRECTED
+
+
+cdef inline bint _resolve_seg_pixel(const Py_ssize_t *segmentation,
+                                    const unsigned char *mask,
+                                    Py_ssize_t nx_data, int seg_method,
+                                    Py_ssize_t label,
+                                    Py_ssize_t ix, Py_ssize_t iy,
+                                    Py_ssize_t ix0, Py_ssize_t ix1,
+                                    Py_ssize_t iy0, Py_ssize_t iy1,
+                                    Py_ssize_t ccx, Py_ssize_t ccy,
+                                    Py_ssize_t *six, Py_ssize_t *siy,
+                                    Py_ssize_t *n_seg_px,
+                                    Py_ssize_t *n_uncorr) noexcept nogil:
+    """
+    Apply the segmentation masking method to a single unmasked pixel,
+    counting the neighbor-pixel outcomes.
+
+    This is the counting form of ``_classify_seg_pixel`` used by the
+    per-pixel loops of ``_batch_photometry.batch_aperture_sums`` and
+    ``_batch_stats.batch_aperture_gather`` for their unmasked pixels.
+    The parameters are those of ``_classify_seg_pixel`` plus the two
+    counters.
+
+    Parameters
+    ----------
     n_seg_px : Py_ssize_t *
         In/out. Incremented when the pixel is excluded, restricted, or
         corrected due to a neighboring source.
@@ -145,40 +255,19 @@ cdef inline bint _resolve_seg_pixel(const Py_ssize_t *segmentation,
         `True` if the pixel contributes to the aperture (reading its
         value from ``(siy[0], six[0])``); `False` if it is excluded.
     """
-    cdef Py_ssize_t seg_val = segmentation[iy * nx_data + ix]
-    cdef Py_ssize_t xm, ym, mseg
-
-    if seg_method == 1:
-        if seg_val != 0 and seg_val != label:
-            n_seg_px[0] += 1
-            return False
-    elif seg_method == 2:
-        if seg_val != label:
-            # Only neighbor-source pixels (not background pixels)
-            # count toward the neighbor-pixels flag.
-            if seg_val != 0:
-                n_seg_px[0] += 1
-            return False
-    elif seg_method == 3:
-        if seg_val != 0 and seg_val != label:
-            # Neighbor pixel: replace its value with the pixel
-            # mirrored across the center.
-            n_seg_px[0] += 1
-            xm = 2 * ccx - ix
-            ym = 2 * ccy - iy
-            if xm < ix0 or xm >= ix1 or ym < iy0 or ym >= iy1:
-                n_uncorr[0] += 1
-                return False
-            mseg = segmentation[ym * nx_data + xm]
-            if mseg != 0 and mseg != label:
-                n_uncorr[0] += 1
-                return False
-            if mask != NULL and mask[ym * nx_data + xm]:
-                n_uncorr[0] += 1
-                return False
-            six[0] = xm
-            siy[0] = ym
-    return True
+    cdef int code = _classify_seg_pixel(segmentation, mask, nx_data,
+                                        seg_method, label, ix, iy, ix0,
+                                        ix1, iy0, iy1, ccx, ccy, six, siy)
+    if code == _SEG_SOURCE:
+        return True
+    if code == _SEG_EXCLUDED:
+        return False
+    n_seg_px[0] += 1
+    if code == _SEG_CORRECTED:
+        return True
+    if code == _SEG_UNCORRECTED:
+        n_uncorr[0] += 1
+    return False
 
 
 cdef inline bint _source_grid_setup(double cx, double cy,

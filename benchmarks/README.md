@@ -47,6 +47,54 @@ python benchmarks/bench_aperture_sep.py
 python benchmarks/bench_aperture_sep.py --which threads --n-threads 1,4,12
 ```
 
+## SourceCatalog versus SEP (`bench_catalog_sep.py`)
+
+Benchmark and validation of `SourceCatalog` against the SEP package,
+using the same blended Gaussian-pair image, convolved image, and
+segmentation image as the `SourceCatalog` benchmarks in
+`bench_segmentation.py`. For each `aperture_mask_method` with a SEP
+analogue (`'none'` and `'mask'`), the script:
+
+- validates the isophotal properties (centroid and its error,
+  covariance, shape parameters, ellipse coefficients, segment flux
+  and area, peak, and bounding box) against `sep.extract` run on the
+  existing segmentation map, and `kron_radius`, `kron_flux`,
+  `flux_radius`, `centroid_win`, and `circular_photometry` against
+  the corresponding SEP functions (the module docstring lists the
+  conventions that make the two packages comparable)
+- benchmarks each of these measurements as a single step (on a
+  catalog whose prerequisite properties are already computed) against
+  the SEP function with its inputs precomputed, plus the full chain of
+  measurements from a cold catalog, reporting the photutils/SEP
+  runtime ratio
+
+Requires the optional `sep` package.
+
+```bash
+python benchmarks/bench_catalog_sep.py
+python benchmarks/bench_catalog_sep.py --which benchmark --n-sources 4000
+```
+
+## SourceCatalog cross-version validation (`validate_catalog_versions.py`)
+
+Validation of `SourceCatalog` results across photutils versions. The
+`dump` command computes every array-valued property (plus the
+`flux_radius`, `circular_photometry`, `kron_photometry`, and default
+`to_table` outputs) for the benchmark scene and an edge-case scene
+across several catalog configurations, using whichever photutils is
+importable, and writes them to a file; the `compare` command reports
+every entry that differs between two such files, grouped by property,
+and the properties that exist in only one version. The `dump` command
+uses only APIs available in photutils 3.0.0, so run it once per
+installation (e.g., with `PYTHONPATH` pointing at an unpacked wheel,
+from a directory without a photutils checkout) and then compare.
+
+```bash
+python benchmarks/validate_catalog_versions.py dump old.pkl
+python benchmarks/validate_catalog_versions.py dump new.pkl
+python benchmarks/validate_catalog_versions.py compare old.pkl new.pkl
+```
+
 ## Centroids (`bench_centroids.py`)
 
 Benchmarks for the `photutils.centroids` subpackage:

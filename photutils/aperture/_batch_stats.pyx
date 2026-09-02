@@ -25,18 +25,19 @@ from photutils.aperture._batch_photometry import N_FLAG_COLS
 
 from photutils.aperture._batch_overlap cimport (
     _CIRCLE, _CIRCULAR_ANNULUS, _ELLIPSE, _ELLIPTICAL_ANNULUS, _POLYGON,
-    _RECTANGLE, _RECTANGULAR_ANNULUS, _circle_pixel_frac,
-    _circular_annulus_pixel_frac, _ellipse_pixel_frac,
-    _elliptical_annulus_pixel_frac, _polygon_pixel_frac,
-    _presize_packed_offsets, _rect_pixel_frac, _rectangular_annulus_pixel_frac,
-    _resolve_seg_pixel, _round_half_away, _source_grid_setup)
+    _RECTANGLE, _RECTANGULAR_ANNULUS, _SEG_CORRECTED, _SEG_NEIGHBOR,
+    _SEG_UNCORRECTED, _circle_pixel_frac, _circular_annulus_pixel_frac,
+    _classify_seg_pixel, _ellipse_pixel_frac, _elliptical_annulus_pixel_frac,
+    _polygon_pixel_frac, _presize_packed_offsets, _rect_pixel_frac,
+    _rectangular_annulus_pixel_frac, _resolve_seg_pixel, _round_half_away,
+    _source_grid_setup)
 from photutils.geometry._polygon_overlap cimport (convex_edge_normals,
                                                   polygon_work_partition,
                                                   polygon_work_size)
 from photutils.geometry.rectangle_overlap cimport rect_vertices
 
 __all__ = ['batch_aperture_gather', 'batch_moments', 'batch_sort_values',
-           'batch_order_stats', 'batch_mean_var', 'batch_mad',
+           'batch_order_stats', 'batch_minmax', 'batch_mean_var', 'batch_mad',
            'batch_biweight', 'batch_gini', 'batch_sigma_clip_center',
            'batch_sigma_clip_stats', 'batch_sigma_clip_sum']
 
@@ -49,24 +50,213 @@ cdef extern from "math.h" nogil:
     double ceil(double x)
     const double NAN
 
-cdef extern from "stdlib.h" nogil:
-    void qsort(void *base, size_t nmemb, size_t size,
-               int (*compar)(const void *, const void *))
-
 # Scale factor that converts the median absolute deviation to a robust
 # estimate of the standard deviation (1 / scipy.stats.norm.ppf(0.75)).
 # This must match ``astropy.stats.mad_std``.
 cdef double _MAD_STD_SCALE = 1.482602218505602
 
 
-cdef int _cmp_double(const void *a, const void *b) noexcept nogil:
-    cdef double da = (<const double *>a)[0]
-    cdef double db = (<const double *>b)[0]
-    if da < db:
-        return -1
-    if da > db:
-        return 1
-    return 0
+cdef inline void _insertion_sort(double *a, Py_ssize_t lo,
+                                 Py_ssize_t hi) noexcept nogil:
+    """
+    Sort ``a[lo:hi]`` ascending in place by insertion (for short
+    ranges).
+    """
+    cdef Py_ssize_t i, j
+    cdef double v
+    for i in range(lo + 1, hi):
+        v = a[i]
+        j = i
+        while j > lo and v < a[j - 1]:
+            a[j] = a[j - 1]
+            j -= 1
+        a[j] = v
+
+
+cdef void _heapsort(double *a, Py_ssize_t lo, Py_ssize_t hi) noexcept nogil:
+    """
+    Sort ``a[lo:hi]`` ascending in place by heapsort (the introsort
+    fallback that bounds the worst case at O(n log n)).
+    """
+    cdef Py_ssize_t n = hi - lo
+    cdef Py_ssize_t start, root, child, end
+    cdef double v
+    # Build the max-heap, then repeatedly move the maximum to the end
+    start = n // 2 - 1
+    end = n
+    while True:
+        if start >= 0:
+            root = start
+            start -= 1
+        else:
+            end -= 1
+            if end == 0:
+                return
+            v = a[lo + end]
+            a[lo + end] = a[lo]
+            a[lo] = v
+            root = 0
+        # Sift the root down within the heap [0, end)
+        while True:
+            child = 2 * root + 1
+            if child >= end:
+                break
+            if child + 1 < end and a[lo + child] < a[lo + child + 1]:
+                child += 1
+            if a[lo + root] < a[lo + child]:
+                v = a[lo + root]
+                a[lo + root] = a[lo + child]
+                a[lo + child] = v
+                root = child
+            else:
+                break
+
+
+cdef void _introsort(double *a, Py_ssize_t lo, Py_ssize_t hi,
+                     int depth) noexcept nogil:
+    """
+    Sort ``a[lo:hi]`` ascending in place by introsort: median-of-three
+    quicksort with Bentley-McIlroy three-way partitioning, heapsort
+    when the recursion depth budget is exhausted, and insertion sort
+    for short ranges.
+
+    The three-way partition keeps the two scanning indices of a Hoare
+    partition (so distinct keys sort as fast) but parks the elements
+    equal to the pivot at the ends of the range and swaps them into
+    the middle afterwards, so runs of equal values (e.g., quantized or
+    constant pixel values) are excluded from further sorting instead
+    of degrading to the quadratic-swap behavior of a two-way
+    partition. The smaller of the two remaining partitions is recursed
+    into and the larger is looped over, which bounds the recursion
+    depth by log2(n).
+    """
+    cdef Py_ssize_t i, j, k, p, q, mid, last
+    cdef double pivot, v
+    while hi - lo > 16:
+        if depth == 0:
+            _heapsort(a, lo, hi)
+            return
+        depth -= 1
+
+        # Median of three, moved to a[lo] as the pivot
+        last = hi - 1
+        mid = lo + (hi - lo) // 2
+        if a[mid] < a[lo]:
+            v = a[mid]
+            a[mid] = a[lo]
+            a[lo] = v
+        if a[last] < a[lo]:
+            v = a[last]
+            a[last] = a[lo]
+            a[lo] = v
+        if a[last] < a[mid]:
+            v = a[last]
+            a[last] = a[mid]
+            a[mid] = v
+        pivot = a[mid]
+        a[mid] = a[lo]
+        a[lo] = pivot
+
+        # Bentley-McIlroy partition: a[lo + 1:p + 1] and a[q:hi] hold
+        # the elements equal to the pivot found so far
+        i = lo
+        j = hi
+        p = lo
+        q = hi
+        while True:
+            i += 1
+            while a[i] < pivot:
+                if i == last:
+                    break
+                i += 1
+            j -= 1
+            while pivot < a[j]:
+                if j == lo:
+                    break
+                j -= 1
+            if i == j and a[i] == pivot:
+                p += 1
+                v = a[p]
+                a[p] = a[i]
+                a[i] = v
+            if i >= j:
+                break
+            v = a[i]
+            a[i] = a[j]
+            a[j] = v
+            if a[i] == pivot:
+                p += 1
+                v = a[p]
+                a[p] = a[i]
+                a[i] = v
+            if a[j] == pivot:
+                q -= 1
+                v = a[q]
+                a[q] = a[j]
+                a[j] = v
+
+        # Swap the parked equal elements into the middle, giving
+        # a[lo:j + 1] < pivot, a[j + 1:i] == pivot, a[i:hi] > pivot
+        i = j + 1
+        k = lo
+        while k <= p:
+            v = a[k]
+            a[k] = a[j]
+            a[j] = v
+            k += 1
+            j -= 1
+        k = last
+        while k >= q:
+            v = a[k]
+            a[k] = a[i]
+            a[i] = v
+            k -= 1
+            i += 1
+
+        if j + 1 - lo < hi - i:
+            _introsort(a, lo, j + 1, depth)
+            lo = i
+        else:
+            _introsort(a, i, hi, depth)
+            hi = j + 1
+    _insertion_sort(a, lo, hi)
+
+
+def _heapsort_values(double[::1] values):
+    """
+    Sort a 1D float64 array in place with the heapsort fallback of
+    ``_sort_doubles``.
+
+    The fallback runs only when the introsort recursion budget is
+    exhausted, which no ordinary input reaches, so this entry point
+    exists for the tests.
+
+    Parameters
+    ----------
+    values : 1D ndarray of float64 (C-contiguous, writeable)
+        The values to sort in place.
+    """
+    if values.shape[0] > 1:
+        _heapsort(&values[0], 0, values.shape[0])
+
+
+cdef inline void _sort_doubles(double *a, Py_ssize_t n) noexcept nogil:
+    """
+    Sort ``n`` finite doubles ascending in place.
+
+    This replaces the C library ``qsort`` (whose comparison callback
+    cannot be inlined and costs an indirect call per comparison) with
+    an introsort whose comparisons compile to plain branches. The
+    values must be finite: the ordering of NaN values is unspecified.
+    """
+    cdef int depth = 0
+    cdef Py_ssize_t m = n
+    if n < 2:
+        return
+    while m > 1:
+        m >>= 1
+        depth += 1
+    _introsort(a, 0, n, 2 * depth)
 
 
 cdef inline double _median_sorted(double *s, Py_ssize_t n) noexcept nogil:
@@ -178,7 +368,7 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
             med2 = _median_sorted(&s[lo], cnt)
             for i in range(lo, hi):
                 work[i] = fabs(s[i] - med2)
-            qsort(&work[lo], <size_t>cnt, sizeof(double), &_cmp_double)
+            _sort_doubles(&work[lo], cnt)
             mad2 = _median_sorted(&work[lo], cnt)
 
         # Center.
@@ -222,7 +412,7 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
             med2 = _median_sorted(&s[lo], cnt)
             for i in range(lo, hi):
                 work[i] = fabs(s[i] - med2)
-            qsort(&work[lo], <size_t>cnt, sizeof(double), &_cmp_double)
+            _sort_doubles(&work[lo], cnt)
             std = _median_sorted(&work[lo], cnt) * _MAD_STD_SCALE
 
         minv = cen - std * sigma_lower
@@ -357,14 +547,18 @@ def batch_aperture_gather(const double[:, ::1] data,
           are non-finite in the data (masked or unmasked)
         * ``FLAG_COL_NONFINITE_ERROR``: always zero (this function does
           not read error values)
-        * ``FLAG_COL_SEG``: the number of those pixels that were
-          excluded or corrected by the segmentation masking
-        * ``FLAG_COL_UNCORRECTED``: the number of those pixels that
-          could not be corrected by the segmentation masking
+        * ``FLAG_COL_SEG``: the number of those unmasked pixels that
+          were excluded or corrected by the segmentation masking
+        * ``FLAG_COL_UNCORRECTED``: the number of those unmasked pixels
+          that could not be corrected by the segmentation masking
         * ``FLAG_COL_VALID``: the number of contributing pixels
           (unmasked, finite, and not excluded by segmentation)
         * ``FLAG_COL_BBOX_CLIPPED``: a 0/1 indicator of whether the
           bounding box is clipped by a data edge
+        * ``FLAG_COL_SEG_MASKED``: the number of those masked pixels
+          that lie on a neighboring source
+        * ``FLAG_COL_UNCORRECTED_MASKED``: the number of those masked
+          pixels whose mirror pixel was also unavailable
         Rows are all zero where the aperture bounding box does not
         overlap the data.
     """
@@ -503,8 +697,10 @@ def batch_aperture_gather(const double[:, ::1] data,
     cdef double pxmin, pymin, cfrac
     cdef Py_ssize_t total = 0, pos
     cdef Py_ssize_t n_pix, n_masked, n_nonfin, n_seg_px, n_uncorr, w_out
+    cdef Py_ssize_t n_seg_masked, n_unc_masked
     cdef Py_ssize_t ixmax_full, iymax_full
     cdef unsigned char mbits
+    cdef int pix_class
 
     # Pass 1: size and offset the packed value buffer from the
     # per-source clipped bounding-box areas (an upper bound on the
@@ -555,6 +751,8 @@ def batch_aperture_gather(const double[:, ::1] data,
             n_nonfin = 0
             n_seg_px = 0
             n_uncorr = 0
+            n_seg_masked = 0
+            n_unc_masked = 0
             pos = starts[k]
             for iy in range(iy0, iy1):
                 pymin = gymin + (iy - iymin) * dy
@@ -602,11 +800,29 @@ def batch_aperture_gather(const double[:, ::1] data,
 
                     if has_mask:
                         mbits = mask[iy, ix]
-                        if mbits & 1:
-                            n_masked += 1
-                            continue
-                        if mbits & 2:
-                            n_nonfin += 1
+                        if mbits != 0:
+                            if mbits & 1:
+                                n_masked += 1
+                            elif mbits & 2:
+                                n_nonfin += 1
+                            # Masked pixels never reach the
+                            # segmentation branch below, so count
+                            # masked neighbor-segment pixels (and their
+                            # mirror availability) here for callers
+                            # that treat the mask and neighbor overlays
+                            # independently.
+                            if (has_seg and lbl != 0 and seg_method != 0):
+                                pix_class = _classify_seg_pixel(
+                                    seg_ptr, mask_ptr, nx_data,
+                                    seg_method, lbl, ix, iy, ix0,
+                                    ix1, iy0, iy1, ccx, ccy, &six,
+                                    &siy)
+                                if pix_class in (_SEG_NEIGHBOR,
+                                                 _SEG_CORRECTED,
+                                                 _SEG_UNCORRECTED):
+                                    n_seg_masked += 1
+                                    if pix_class == _SEG_UNCORRECTED:
+                                        n_unc_masked += 1
                             continue
                     six = ix
                     siy = iy
@@ -642,6 +858,8 @@ def batch_aperture_gather(const double[:, ::1] data,
             fcounts[k, 5] = n_uncorr
             fcounts[k, 6] = counts[k]
             fcounts[k, 7] = w_out
+            fcounts[k, 8] = n_seg_masked
+            fcounts[k, 9] = n_unc_masked
 
     return (values_arr, lx_arr, ly_arr, starts_arr, counts_arr,
             overlap_arr.view(bool), fcounts_arr)
@@ -768,7 +986,7 @@ def batch_sort_values(const double[::1] values,
             start = starts[k]
             for i in range(count):
                 out[start + i] = values[start + i]
-            qsort(&out[start], <size_t>count, sizeof(double), &_cmp_double)
+            _sort_doubles(&out[start], count)
 
     return out_arr
 
@@ -817,6 +1035,59 @@ def batch_order_stats(const double[::1] sorted_values,
             median[k] = _median_sorted(&sorted_values[start], count)
 
     return (vmin_arr, vmax_arr, median_arr)
+
+
+def batch_minmax(const double[::1] values,
+                 const Py_ssize_t[::1] starts,
+                 const Py_ssize_t[::1] counts):
+    """
+    Reduce a packed value buffer to the per-source minimum and maximum.
+
+    Unlike `batch_order_stats`, this does not need (or produce) the
+    sorted values, so it is the cheaper way to get only the extremes.
+    The conventions match `numpy.min` and `numpy.max`. Sources with no
+    pixels (``counts[k] == 0``) are set to NaN.
+
+    Parameters
+    ----------
+    values : 1D ndarray of float64
+        The packed pixel values (see ``batch_aperture_gather``). All
+        values are assumed finite.
+
+    starts, counts : 1D ndarray of intp
+        The per-source start offset and pixel count.
+
+    Returns
+    -------
+    vmin, vmax : 1D ndarray of float64
+        The per-source minimum and maximum, each of shape
+        ``(n_sources,)``.
+    """
+    cdef Py_ssize_t n_src = starts.shape[0]
+    vmin_arr = np.full(n_src, np.nan, dtype=np.float64)
+    vmax_arr = np.full(n_src, np.nan, dtype=np.float64)
+    cdef double[::1] vmin = vmin_arr
+    cdef double[::1] vmax = vmax_arr
+    cdef Py_ssize_t k, i, start, count
+    cdef double v, lo, hi
+
+    with nogil:
+        for k in range(n_src):
+            count = counts[k]
+            if count == 0:
+                continue
+            start = starts[k]
+            lo = values[start]
+            hi = lo
+            for i in range(start + 1, start + count):
+                v = values[i]
+                if v < lo:
+                    lo = v
+                elif v > hi:
+                    hi = v
+            vmin[k] = lo
+            vmax[k] = hi
+    return vmin_arr, vmax_arr
 
 
 def batch_mean_var(const double[::1] values,
@@ -923,7 +1194,7 @@ def batch_mad(const double[::1] sorted_values,
             med = _median_sorted(&sorted_values[start], count)
             for i in range(count):
                 w[i] = fabs(sorted_values[start + i] - med)
-            qsort(&w[0], <size_t>count, sizeof(double), &_cmp_double)
+            _sort_doubles(&w[0], count)
             mad[k] = _median_sorted(&w[0], count)
 
     return mad_arr
@@ -1066,7 +1337,7 @@ def batch_gini(const double[::1] values,
 
             for i in range(count):
                 w[i] = fabs(values[start + i])
-            qsort(&w[0], <size_t>count, sizeof(double), &_cmp_double)
+            _sort_doubles(&w[0], count)
             gsum = 0.0
             for i in range(count):
                 gsum += w[i]
@@ -1175,7 +1446,7 @@ def batch_sigma_clip_center(const double[::1] values,
             start = starts[k]
             for i in range(count):
                 s[i] = values[start + i]
-            qsort(&s[0], <size_t>count, sizeof(double), &_cmp_double)
+            _sort_doubles(&s[0], count)
             _sigma_clip_bounds(&s[0], &w[0], count, sigma_lower, sigma_upper,
                                maxiters, cenfunc_code, stdfunc_code,
                                &minv, &maxv)
@@ -1284,7 +1555,7 @@ def batch_sigma_clip_sum(const double[::1] sum_values,
             start = starts[k]
             for i in range(count):
                 s[i] = sum_values[start + i]
-            qsort(&s[0], <size_t>count, sizeof(double), &_cmp_double)
+            _sort_doubles(&s[0], count)
             _sigma_clip_bounds(&s[0], &w[0], count, sigma_lower, sigma_upper,
                                maxiters, cenfunc_code, stdfunc_code,
                                &minv, &maxv)
@@ -1429,10 +1700,9 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
     (`astropy.stats.biweight_scale`) are also computed.
 
     Each row must be ascending-sorted with any NaN values placed last,
-    as done by `numpy.sort`. Sorting is delegated to the caller because
-    ``numpy.sort`` is much faster than a comparator-based C ``qsort``
-    for the large rows this function is designed for. The input array is
-    not modified.
+    as done by `numpy.sort`. Sorting is delegated to the caller, whose
+    ``numpy.sort`` places the NaN values last for the large rows this
+    function is designed for. The input array is not modified.
 
     The rows are typically the flattened pixels of the boxes of a
     regular grid (e.g., the `~photutils.background.Background2D`
@@ -1572,7 +1842,7 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
                 # Unscaled MAD about the median of the survivors
                 for i in range(lo, hi):
                     w[i - lo] = fabs(s[i] - med)
-                qsort(&w[0], <size_t>cnt, sizeof(double), &_cmp_double)
+                _sort_doubles(&w[0], cnt)
                 madk = _median_sorted(&w[0], cnt)
 
                 if compute_mad:

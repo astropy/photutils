@@ -18,7 +18,6 @@ from astropy.table import QTable
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_equal
-from scipy.optimize import root_scalar
 
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture)
@@ -36,19 +35,6 @@ from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,
                                             HAS_SKIMAGE)
 from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 from photutils.utils.cutouts import CutoutImage
-
-
-@pytest.fixture
-def progress_bar_catalog():
-    """
-    A two-source SourceCatalog on a 101x101 grid with progress_bar=True.
-    """
-    yy, xx = np.mgrid[0:101, 0:101]
-    g1 = Gaussian2D(100, 50, 50, 5, 5)
-    g2 = Gaussian2D(80, 30, 30, 4, 4)
-    data = g1(xx, yy) + g2(xx, yy)
-    segm = detect_sources(data, 10.0, n_pixels=5)
-    return SourceCatalog(data, segm, progress_bar=True)
 
 
 @pytest.fixture
@@ -719,11 +705,12 @@ class TestSourceCatalog:
                                  detection_catalog=det_cat)
 
         # The detection-catalog area includes the masked pixels
-        n_pixels = len(meas_cat._data_values[0])
+        values = meas_cat._data_values.values[0]
+        n_pixels = len(values)
         assert meas_cat.area.value[0] > n_pixels
 
         localbkg = meas_cat._local_background[0]
-        expected = np.sum(meas_cat._data_values[0]) - n_pixels * localbkg
+        expected = np.sum(values) - n_pixels * localbkg
         assert_allclose(meas_cat.segment_flux[0], expected)
 
     def test_kron_minradius(self):
@@ -942,12 +929,19 @@ class TestSourceCatalog:
         assert 0.5 in cat._flux_radius_cache
         assert 0.3 in cat._flux_radius_cache
 
-        # Scalar slice preserves the cache
+        # Scalar slice preserves the cache, with the cached values kept
+        # as length-1 arrays (the same shape a scalar catalog stores
+        # when it computes flux_radius itself).
         obj = cat[1]
         assert 0.5 in obj._flux_radius_cache
         assert 0.3 in obj._flux_radius_cache
+        assert obj._flux_radius_cache[0.5].shape == (1,)
         r_sliced = obj.flux_radius(0.5)
+        assert r_sliced.isscalar
         assert_allclose(r_sliced.value, r_parent_05[1].value)
+        obj.flux_radius(0.5, name='r_hl')
+        assert obj.r_hl.isscalar
+        assert_allclose(obj.r_hl.value, r_parent_05[1].value)
         r_sliced_03 = obj.flux_radius(0.3)
         assert_allclose(r_sliced_03.value, r_parent_03[1].value)
 
@@ -974,43 +968,6 @@ class TestSourceCatalog:
         # Modifying the parent cache does not affect the sliced cache
         cat.flux_radius(0.7)
         assert 0.7 not in obj._flux_radius_cache
-
-    def test_flux_radius_max_radius_delta(self):
-        """
-        Test that the max_radius_delta fallback loop reduces max_radius
-        by 10 percent on each failed bracketing attempt and still
-        returns a valid result when the second (reduced) bracket
-        succeeds.
-        """
-        # Use a single-source scalar catalog to keep the mock simple
-        cat = SourceCatalog(self.data, self.segm)[1]
-        assert cat.isscalar
-
-        brackets_seen = []
-        call_count = [0]
-
-        def mock_root_scalar(fcn, args, bracket, method):
-            call_count[0] += 1
-            brackets_seen.append(list(bracket))
-            if call_count[0] == 1:
-                # Simulate a bracket with no sign change
-                msg = 'no sign change in bracket'
-                raise ValueError(msg)
-            return root_scalar(fcn, args=args, bracket=bracket, method=method)
-
-        with patch('photutils.segmentation.catalog.root_scalar',
-                   mock_root_scalar):
-            r = cat.flux_radius(0.5)
-
-        # Fallback triggered once then succeeded
-        assert call_count[0] == 2
-
-        # Second bracket max_radius must be 10% smaller than the first
-        assert_allclose(brackets_seen[1][1], 0.9 * brackets_seen[0][1],
-                        rtol=1e-10)
-
-        # Result is a valid radius (not NaN)
-        assert np.isfinite(r.value)
 
     def test_flux_radius(self):
         """
@@ -1488,6 +1445,30 @@ class TestSourceCatalogFlags:
         assert not (cat.flags[other]
                     & SEGMENTATION_FLAGS.NON_FINITE_ERROR)
 
+    def test_masked_non_finite_pixel(self):
+        """
+        Test that a pixel that is both input-masked and non-finite
+        sets the masked_pixels, non_finite_data, and non_finite_error
+        flags together.
+        """
+        data = self.data.copy()
+        data[25, 25] = np.nan
+        error = np.ones(self.data.shape)
+        error[25, 25] = np.nan
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[25, 25] = True
+        cat = SourceCatalog(data, self.segm, error=error, mask=mask)
+        idx = np.argmax(cat.bbox_xmin > 0)
+        expected = (SEGMENTATION_FLAGS.MASKED_PIXELS
+                    | SEGMENTATION_FLAGS.NON_FINITE_DATA
+                    | SEGMENTATION_FLAGS.NON_FINITE_ERROR)
+        assert cat.flags[idx] & expected == expected
+        other = 1 - idx
+        assert not (cat.flags[other] & expected)
+
+        # The flags are sliced with the catalog
+        assert cat[idx].flags & expected == expected
+
     def test_all_masked(self):
         """
         Test the all_masked flag when every segment pixel is masked.
@@ -1711,15 +1692,30 @@ class TestSourceCatalogFlags:
         Test the kron_undefined flag when the Kron photometry is skipped
         because the aperture is too large.
         """
-        cat = SourceCatalog(self.data, self.segm)
-        _ = cat.kron_aperture  # cache the apertures
         if circular:
-            aperture = CircularAperture((25, 25), r=2000)
+            # A huge minimum circular radius makes every Kron aperture
+            # the circle of that radius
+            cat = SourceCatalog(self.data, self.segm,
+                                kron_params=(2.5, 1.4, 2000.0))
+            assert np.all(cat.kron_radius.value == 0)
+            assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_UNDEFINED)
         else:
-            aperture = EllipticalAperture((25, 25), 2000, 2000,
-                                          theta=0.0)
-        cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
-        assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_UNDEFINED)
+            # A huge semimajor axis with a normal Kron radius makes a
+            # huge Kron ellipse
+            cat = SourceCatalog(self.data, self.segm)
+            huge = np.full(cat.n_labels, 2000.0) << u.pix
+            kron_radius = np.full(cat.n_labels, 1.5)
+            with (patch.object(type(cat), 'semimajor_axis',
+                               new_callable=lambda: property(
+                                   lambda _self: huge)),
+                  patch.object(type(cat), 'semiminor_axis',
+                               new_callable=lambda: property(
+                                   lambda _self: huge)),
+                  patch.object(type(cat), '_measured_kron_radius',
+                               new_callable=lambda: property(
+                                   lambda _self: kron_radius))):
+                assert np.all(cat.flags
+                              & SEGMENTATION_FLAGS.KRON_UNDEFINED)
 
     def test_kron_no_overlap(self):
         """
@@ -1727,9 +1723,9 @@ class TestSourceCatalogFlags:
         completely outside the data array.
         """
         cat = SourceCatalog(self.data, self.segm)
-        _ = cat.kron_aperture  # cache the apertures
-        aperture = EllipticalAperture((-1000, -1000), 5, 3, theta=0.0)
-        cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
+        _ = cat.kron_radius  # measure the Kron radii before moving
+        cat.__dict__['x_centroid'] = np.full(cat.n_labels, -1000.0)
+        cat.__dict__['y_centroid'] = np.full(cat.n_labels, -1000.0)
         assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
 
     def test_kron_no_overlap_zero_weights(self):
@@ -1738,10 +1734,15 @@ class TestSourceCatalogFlags:
         box overlaps the data, but no pixel within the data has a
         nonzero aperture weight.
         """
-        cat = SourceCatalog(self.data, self.segm)
-        _ = cat.kron_aperture  # cache the apertures
-        aperture = CircularAperture((-10.5, -10.5), r=10)
-        cat.__dict__['kron_aperture'] = [aperture] * cat.n_labels
+        # A minimum circular radius of 11 makes every Kron aperture a
+        # circle of that radius, then centered at (-11.5, -11.5) its
+        # bounding box reaches the first data column, but no pixel
+        # center lies within the circle
+        cat = SourceCatalog(self.data, self.segm,
+                            kron_params=(2.5, 1.4, 11.0))
+        assert np.all(cat.kron_radius.value == 0)
+        cat.__dict__['x_centroid'] = np.full(cat.n_labels, -11.5)
+        cat.__dict__['y_centroid'] = np.full(cat.n_labels, -11.5)
         assert np.all(np.isnan(cat.kron_flux))
         assert np.all(cat.flags & SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
         assert not np.any(cat.flags
@@ -2204,19 +2205,9 @@ def test_flux_radius_nan_fallback():
     assert np.isnan(radius.value)
 
 
-def test_reduceat_empty_input():
+def test_reduce_negative_data():
     """
-    Test that _reduceat returns empty arrays when given an empty list.
-    """
-    result, sizes = SourceCatalog._reduceat([], np.add)
-    assert len(result) == 0
-    assert len(sizes) == 0
-    assert sizes.dtype == int
-
-
-def test_reduceat_negative_data():
-    """
-    Test that the _reduceat optimization gives correct results for
+    Test that the packed per-source reductions give correct results for
     min_value, max_value, and segment_flux when data contains negative
     pixel values.
     """
@@ -2229,7 +2220,7 @@ def test_reduceat_negative_data():
     cat = SourceCatalog(data, segm)
     for i in range(cat.n_labels):
         obj = cat[i]
-        vals = obj._data_values[0]
+        vals = obj._data_values.values[0]
         expected_min = np.min(vals) - obj._local_background
         expected_max = np.max(vals) - obj._local_background
         expected_flux = np.sum(vals) - obj._local_background * len(vals)
@@ -2272,61 +2263,21 @@ def test_make_cutouts_trim_mode():
     assert any(s == shape for s in shapes)
 
 
-def test_progress_bar_centroid_win(progress_bar_catalog):
+def test_progress_bar_deprecated():
     """
-    Test that centroid_win works with progress_bar=True.
+    Test that the progress_bar keyword is deprecated and has no effect.
     """
-    cat = progress_bar_catalog
-    cwin = cat.centroid_win
-    assert cwin.shape == (cat.n_labels, 2)
-    assert np.all(np.isfinite(cwin))
-
-
-def test_progress_bar_centroid_quad(progress_bar_catalog):
-    """
-    Test that centroid_quad works with progress_bar=True.
-    """
-    cat = progress_bar_catalog
-    cquad = cat.centroid_quad
-    assert cquad.shape == (cat.n_labels, 2)
-    assert np.all(np.isfinite(cquad))
-
-
-def test_progress_bar_kron_radius(progress_bar_catalog):
-    """
-    Test that kron_radius works with progress_bar=True.
-    """
-    cat = progress_bar_catalog
-    kr = cat.kron_radius
-    assert len(kr) == cat.n_labels
-
-
-def test_progress_bar_kron_photometry(progress_bar_catalog):
-    """
-    Test that kron_photometry (aperture photometry) works with
-    progress_bar=True.
-    """
-    cat = progress_bar_catalog
-    flux, _flux_err = cat.kron_photometry((2.5, 1.4))
-    assert len(flux) == cat.n_labels
-
-
-def test_progress_bar_flux_radius(progress_bar_catalog):
-    """
-    Test that flux_radius and its prep work with progress_bar=True.
-    """
-    cat = progress_bar_catalog
-    r = cat.flux_radius(0.5)
-    assert len(r) == cat.n_labels
-
-
-def test_progress_bar_circular_photometry(progress_bar_catalog):
-    """
-    Test that circular_photometry works with progress_bar=True.
-    """
-    cat = progress_bar_catalog
-    flux, _fluxerr = cat.circular_photometry(5.0)
-    assert len(flux) == cat.n_labels
+    yy, xx = np.mgrid[0:101, 0:101]
+    data = Gaussian2D(100, 50, 50, 5, 5)(xx, yy)
+    segm = detect_sources(data, 10.0, n_pixels=5)
+    match = "'progress_bar' was deprecated"
+    with pytest.warns(AstropyDeprecationWarning, match=match):
+        cat = SourceCatalog(data, segm, progress_bar=True)
+    assert cat.progress_bar
+    cat2 = SourceCatalog(data, segm)
+    assert not cat2.progress_bar
+    assert_allclose(cat.centroid_win, cat2.centroid_win)
+    assert_allclose(cat.flux_radius(0.5), cat2.flux_radius(0.5))
 
 
 def test_negative_covariance_eigvals(single_source_catalog):
@@ -2385,23 +2336,20 @@ def test_validate_kron_params_wrong_element_count():
         SourceCatalog._validate_kron_params([2.5])
 
 
-def test_error_values_with_error(single_source_catalog):
+def test_error_values_without_error(single_source_catalog):
     """
-    Test that _error_values returns null objects when error is None.
-    """
-    _data, _segm, cat = single_source_catalog
-    err_vals = cat._error_values
-    assert err_vals is cat._null_objects
-
-
-def test_background_values_with_background(single_source_catalog):
-    """
-    Test that _background_values returns null objects when background is
-    None.
+    Test that _error_values is None when error is None.
     """
     _data, _segm, cat = single_source_catalog
-    bkg_vals = cat._background_values
-    assert bkg_vals is cat._null_objects
+    assert cat._error_values is None
+
+
+def test_background_values_without_background(single_source_catalog):
+    """
+    Test that _background_values is None when background is None.
+    """
+    _data, _segm, cat = single_source_catalog
+    assert cat._background_values is None
 
 
 def test_sky_centroid_quad_with_wcs(single_source_catalog):
@@ -2477,24 +2425,6 @@ def test_centroid_quad_edge_cases():
     assert np.all(np.isfinite(cquad4))
 
 
-def test_flux_radius_no_solution(single_source_catalog):
-    """
-    Test that flux_radius returns NaN when no solution is found
-    (root_scalar always raises ValueError).
-    """
-    _data, _segm, cat = single_source_catalog
-
-    # Make root_scalar always raise ValueError so no solution is found
-    def mock_root_scalar(*_args, **_kwargs):
-        msg = 'bracket signs'
-        raise ValueError(msg)
-
-    with patch('photutils.segmentation.catalog.root_scalar',
-               mock_root_scalar):
-        result = cat.flux_radius(0.5)
-    assert np.isnan(result.value[0])
-
-
 def test_kron_radius_max(gauss_101_catalog):
     """
     Test that measured kron_radius values exceeding the measurement
@@ -2523,107 +2453,51 @@ def test_kron_radius_max(gauss_101_catalog):
         assert np.isnan(cat2.flux_radius(0.5).value[0])
 
 
-def test_aperture_to_mask_size_check():
-    """
-    Test that _aperture_to_mask returns None when the aperture bounding
-    box exceeds the allowed size, preventing out-of-memory errors from
-    pathologically large apertures (e.g., from huge Kron radii).
-
-    The check happens before to_mask() allocates the mask array.
-    """
-    data = np.zeros((11, 11))
-    data[4:7, 4:7] = 100.0
-    segm_data = np.zeros((11, 11), dtype=int)
-    segm_data[4:7, 4:7] = 1
-    segm = SegmentationImage(segm_data)
-    cat = SourceCatalog(data, segm)
-
-    # A small aperture is fine
-    small_aper = CircularAperture((5, 5), r=3)
-    result = cat._aperture_to_mask(small_aper, method='center')
-    assert result is not None
-
-    # An aperture larger than data.size but within the 1M floor is fine
-    big_aper = CircularAperture((5, 5), r=100)
-    assert big_aper.bbox.shape[0] * big_aper.bbox.shape[1] > data.size
-    result = cat._aperture_to_mask(big_aper, method='center')
-    assert result is not None
-
-    # An aperture whose bbox exceeds 1_000_000 pixels returns None
-    huge_aper = CircularAperture((5, 5), r=600)
-    bbox_size = huge_aper.bbox.shape[0] * huge_aper.bbox.shape[1]
-    assert bbox_size > 1_000_000
-    result = cat._aperture_to_mask(huge_aper, method='center')
-    assert result is None
-
-
-def test_aperture_to_mask_none_branches(gauss_101_catalog):
-    """
-    Test that _aperture_photometry gracefully returns NaN when
-    _aperture_to_mask returns None (i.e., aperture too large to
-    allocate).
-
-    This covers the None-guard branch in _aperture_photometry (used by
-    the general circle photometry path).
-    """
-    _, _, cat = gauss_101_catalog
-
-    # _aperture_photometry (general path) with _aperture_to_mask
-    # returning None
-    with patch.object(type(cat), '_aperture_to_mask', return_value=None):
-        circ_aper = [CircularAperture((50, 50), r=10)] * cat.n_labels
-        flux, _ = cat._aperture_photometry(circ_aper, method='exact')
-        assert np.all(np.isnan(flux))
-
-
 def test_kron_photometry_oom_guard(gauss_101_catalog):
     """
     Test that _calc_kron_photometry returns NaN when the Kron aperture
-    is too large (OOM guard).
+    is too large (OOM guard), does not overlap the data, or has no
+    contributing pixels.
     """
     data, segm, cat = gauss_101_catalog
-    _ = cat.kron_aperture  # cache
 
-    # Create huge elliptical apertures that exceed the max_size check
-    huge_aper = [EllipticalAperture((50, 50), 2000, 2000, theta=0.0)
-                 for _ in range(cat.n_labels)]
-    cat.__dict__['kron_aperture'] = huge_aper
-    assert np.all(np.isnan(cat.kron_flux))
+    # A huge semimajor axis with a normal Kron radius makes a huge
+    # Kron ellipse that exceeds the max_size check
+    huge = np.array([2000.0]) << u.pix
+    kron_radius = np.array([1.5])
+    with (patch.object(type(cat), 'semimajor_axis',
+                       new_callable=lambda: property(lambda _self: huge)),
+          patch.object(type(cat), 'semiminor_axis',
+                       new_callable=lambda: property(lambda _self: huge)),
+          patch.object(type(cat), '_measured_kron_radius',
+                       new_callable=lambda: property(
+                           lambda _self: kron_radius))):
+        assert np.all(np.isnan(cat.kron_flux))
 
-    # Create huge circular apertures that exceed the max_size check
-    cat2 = SourceCatalog(data, segm)
-    _ = cat2.kron_aperture
-    huge_circ = [CircularAperture((50, 50), r=2000)
-                 for _ in range(cat2.n_labels)]
-    cat2.__dict__['kron_aperture'] = huge_circ
+    # A huge minimum circular radius makes a huge circular aperture
+    # that exceeds the max_size check
+    cat2 = SourceCatalog(data, segm, kron_params=(2.5, 1.4, 2000.0))
+    assert np.all(cat2.kron_radius.value == 0)
     assert np.all(np.isnan(cat2.kron_flux))
 
-    # Aperture completely off-image triggers data=None guard
+    # An aperture completely off-image has no overlap
     cat3 = SourceCatalog(data, segm)
-    _ = cat3.kron_aperture
-    off_aper = [EllipticalAperture((-1000, -1000), 5, 3, theta=0.0)
-                for _ in range(cat3.n_labels)]
-    cat3.__dict__['kron_aperture'] = off_aper
+    _ = cat3.kron_radius  # measure the Kron radius before moving
+    cat3.__dict__['x_centroid'] = np.array([-1000.0])
+    cat3.__dict__['y_centroid'] = np.array([-1000.0])
     assert np.all(np.isnan(cat3.kron_flux))
 
-    # All pixels masked in aperture overlap triggers empty values with
-    # error branch
+    # An aperture whose pixels are all masked has no contributing
+    # pixels, giving NaN flux and flux error
     error = np.ones_like(data)
-    cat4 = SourceCatalog(data, segm, error=error)
-    _ = cat4.kron_aperture  # cache
-    original_make = type(cat4)._make_aperture_data
-
-    def _make_all_masked(self, label, xcen, ycen, bbox, bkg, **kwargs):
-        result = original_make(self, label, xcen, ycen, bbox, bkg, **kwargs)
-        if result[0] is not None:
-            # Set mask to all True (all pixels masked)
-            return (result[0], result[1], np.ones_like(result[2]),
-                    result[3], result[4], result[5])
-        return result
-
-    with patch.object(type(cat4), '_make_aperture_data', _make_all_masked):
-        assert np.all(np.isnan(cat4.kron_flux))
-        assert np.all(np.isnan(cat4.kron_flux_err))
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[:40, :40] = True
+    cat4 = SourceCatalog(data, segm, error=error, mask=mask)
+    _ = cat4.kron_radius  # measure the Kron radius before moving
+    cat4.__dict__['x_centroid'] = np.array([10.0])
+    cat4.__dict__['y_centroid'] = np.array([10.0])
+    assert np.all(np.isnan(cat4.kron_flux))
+    assert np.all(np.isnan(cat4.kron_flux_err))
 
 
 def test_flux_radius_cache_not_mutated_by_centroid_win(gauss_101_data):
@@ -2679,34 +2553,6 @@ def test_centroid_win_nan_when_flux_radius_nan(gauss_101_data):
         assert np.all(np.isnan(cwin))
 
 
-def test_centroid_win_aperture_mask_none_in_loop(gauss_101_catalog):
-    """
-    Test that centroid_win falls back to the isophotal centroid when
-    _aperture_to_mask returns None during the iteration loop (e.g.,
-    because the circular aperture exceeds the size threshold).
-    """
-    _data, _segm, cat = gauss_101_catalog
-
-    # Pre-compute flux_radius before mocking, since it also uses
-    # CircularAperture internally
-    hl_val = cat.flux_radius(0.5)
-    original_method = cat._aperture_to_mask
-
-    def mock_aperture_to_mask(aperture, **kwargs):
-        if isinstance(aperture, CircularAperture):
-            return None
-        return original_method(aperture, **kwargs)
-
-    with (patch.object(cat, '_aperture_to_mask',
-                       side_effect=mock_aperture_to_mask),
-          patch.object(type(cat), 'flux_radius', return_value=hl_val)):
-        cwin = cat.centroid_win
-        # NaN from the loop resets to isophotal centroid
-        # because nan_hl is False (flux_radius was valid)
-        assert_allclose(cwin[:, 0], cat.x_centroid)
-        assert_allclose(cwin[:, 1], cat.y_centroid)
-
-
 def test_centroid_win_oom_guard(gauss_101_catalog):
     """
     Test that centroid_win returns NaN for sources whose half-light
@@ -2740,20 +2586,6 @@ def test_centroid_win_aperture_mask_mask(centroid_win_data):
     cwin = cat.centroid_win
     assert cwin.shape == (len(cat), 2)
     assert np.isfinite(cwin[0, 0])
-
-
-def test_make_aperture_data_outside_image(gauss_101_catalog):
-    """
-    Test that _make_aperture_data returns (None,) * 6 when the aperture
-    bbox does not overlap the data.
-    """
-    _data, _segm, cat = gauss_101_catalog
-
-    # BoundingBox completely outside the 101x101 data
-    offimage_bbox = BoundingBox(ixmin=200, ixmax=210,
-                                iymin=200, iymax=210)
-    result = cat._make_aperture_data(1, 205.0, 205.0, offimage_bbox, 0.0)
-    assert result == (None,) * 6
 
 
 def test_flux_radius_optimizer_args_oom_guard(gauss_101_catalog):

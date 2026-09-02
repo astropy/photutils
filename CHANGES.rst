@@ -24,6 +24,10 @@ General
 
 - The ``asdf-astropy`` package is now an optional dependency. [#2211]
 
+- SciPy is now also a build-time dependency. Its Cython interface to
+  the Brent root finder is used by the compiled code that computes the
+  ``SourceCatalog`` flux radii. [#2406]
+
 - Added serialization to ASDF for all PSF models. [#2335]
 
 - Added serialization to ASDF for all apertures. [#2341]
@@ -266,6 +270,20 @@ New Features
     column combining provenance and measurement flags, along with a
     ``decode_flags`` convenience method that returns a dictionary keyed
     by source label. [#2402]
+
+  - Significantly improved the performance of the ``SourceCatalog``
+    windowed centroids, quadratic centroids, Kron radii and photometry,
+    ``flux_radius``, ``circular_photometry``, image moments,
+    ``perimeter``, ``gini``, segment pixel statistics (e.g.,
+    ``segment_flux``, ``segment_area``, ``area``, and ``min_value``),
+    and the positions of the minimum and maximum pixel values (e.g.,
+    ``min_value_index`` and ``max_value_xindex``),
+    typically by factors of ~3-20 depending on the property, by
+    computing all sources in a single call into compiled code. The
+    ``flags`` attribute and the default ``to_table()`` output are about
+    5 times faster for large catalogs. No property displays a progress
+    bar any more (see the ``progress_bar`` deprecation under API
+    Changes). [#2406]
 
 - ``photutils.utils``
 
@@ -986,6 +1004,11 @@ API Changes
     non-positive, the windowed second-order moments are negative, or the
     windowed covariance determinant is negative. Previously, only the
     ellipse condition was applied. [#2397]
+
+  - The ``SourceCatalog`` ``progress_bar`` keyword is now deprecated
+    and will be removed in version 4.0. All property calculations
+    are now computed for all sources at once in compiled code, so no
+    progress bar is displayed and the keyword has no effect. [#2406]
 
 - ``photutils.utils``
 

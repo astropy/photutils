@@ -6,7 +6,6 @@ segmentation image.
 
 import functools
 import inspect
-import math
 import warnings
 from copy import deepcopy
 from functools import cached_property
@@ -16,17 +15,36 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.stats import SigmaClip, gaussian_fwhm_to_sigma
 from scipy.ndimage import map_coordinates
-from scipy.optimize import root_scalar
 
 from photutils.aperture import (BoundingBox, CircularAperture,
                                 EllipticalAperture, RectangularAnnulus)
+from photutils.aperture._batch_photometry import (FLAG_COL_BBOX_CLIPPED,
+                                                  FLAG_COL_MASKED,
+                                                  FLAG_COL_N_PIXELS,
+                                                  FLAG_COL_NONFINITE_DATA,
+                                                  FLAG_COL_SEG,
+                                                  FLAG_COL_SEG_MASKED,
+                                                  FLAG_COL_UNCORRECTED,
+                                                  FLAG_COL_UNCORRECTED_MASKED,
+                                                  FLAG_COL_VALID, SHAPE_CIRCLE,
+                                                  SHAPE_ELLIPSE,
+                                                  batch_aperture_sums)
+from photutils.aperture._segmentation import SEG_METHOD_CODES
 from photutils.background import SExtractorBackground
-from photutils.geometry import circular_overlap_grid, elliptical_overlap_grid
-from photutils.morphology import gini as gini_func
+from photutils.segmentation._batch_catalog import (batch_central_moments,
+                                                   batch_centroid_win,
+                                                   batch_flux_radius_prepare,
+                                                   batch_flux_radius_solve,
+                                                   batch_kron_radius,
+                                                   batch_minmax_index,
+                                                   batch_moment_err,
+                                                   batch_perimeter,
+                                                   batch_quad_boxes,
+                                                   batch_raw_moments,
+                                                   batch_segment_gather)
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.flags import (SEGMENTATION_FLAGS,
                                           decode_segmentation_flags)
-from photutils.segmentation.utils import _mask_to_mirrored_value
 from photutils.utils._deprecation import (_get_future_column_names,
                                           create_empty_deprecated_qtable,
                                           deprecated_getattr,
@@ -35,12 +53,159 @@ from photutils.utils._deprecation import (_get_future_column_names,
 from photutils.utils._flags import update_flag_docstring
 from photutils.utils._misc import _get_meta
 from photutils.utils._parameters import validate_table_columns
-from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 from photutils.utils.cutouts import CutoutImage
 
 __all__ = ['SourceCatalog']
+
+
+class _SegmentValues:
+    """
+    The unmasked pixel values within the segments of many sources,
+    packed into one array.
+
+    This is the container form of the ``batch_segment_gather`` outputs.
+    Indexing it with an integer, slice, index array, or boolean mask
+    returns a new container holding the selected sources (always at
+    least one), which lets `SourceCatalog.__getitem__` slice the cached
+    values along the source axis. Iterating over it yields the 1D
+    array of each source.
+
+    Parameters
+    ----------
+    packed : 1D `~numpy.ndarray`
+        The packed values of all sources in row-major pixel order, with
+        a single NaN placeholder for a source with no unmasked pixels.
+
+    offsets : 1D `~numpy.ndarray`
+        The start offset of each source in ``packed``, with length
+        ``n_sources + 1``.
+
+    counts : 1D `~numpy.ndarray`
+        The number of unmasked pixels of each source (zero for a
+        completely masked source, which occupies one placeholder slot).
+    """
+
+    __slots__ = ('counts', 'offsets', 'packed')
+
+    def __init__(self, packed, offsets, counts):
+        self.packed = packed
+        self.offsets = offsets
+        self.counts = counts
+
+    def __len__(self):
+        return len(self.counts)
+
+    def __iter__(self):
+        return iter(self.values)
+
+    def __getitem__(self, index):
+        idx = np.atleast_1d(np.arange(len(self))[index])
+        sizes = self.sizes[idx]
+        offsets = np.zeros(len(idx) + 1, dtype=np.intp)
+        np.cumsum(sizes, out=offsets[1:])
+        # The position of each selected value in the parent packed array
+        pos = (np.repeat(self.offsets[idx] - offsets[:-1], sizes)
+               + np.arange(offsets[-1]))
+        return _SegmentValues(self.packed[pos], offsets, self.counts[idx])
+
+    @property
+    def sizes(self):
+        """
+        The number of packed slots of each source (one for a completely
+        masked source).
+        """
+        return np.diff(self.offsets)
+
+    @property
+    def values(self):
+        """
+        A list of the 1D value arrays of each source (a single NaN for
+        a completely masked source).
+        """
+        return np.split(self.packed, self.offsets[1:-1])
+
+    def reduce(self, ufunc, *, transform=None):
+        """
+        Reduce the values of each source with a ufunc.
+
+        Parameters
+        ----------
+        ufunc : `~numpy.ufunc`
+            The NumPy ufunc to apply (e.g., `~numpy.add`,
+            `~numpy.minimum`, `~numpy.maximum`).
+
+        transform : callable or `None`, optional
+            An optional transformation to apply to the packed values
+            before reducing (e.g., `~numpy.square`).
+
+        Returns
+        -------
+        result : 1D `~numpy.ndarray`
+            The per-source reduction (NaN for a completely masked
+            source).
+        """
+        packed = self.packed
+        if transform is not None:
+            packed = transform(packed)
+        return ufunc.reduceat(packed, self.offsets[:-1])
+
+
+def _batch_gini(values):
+    """
+    Compute the Gini coefficient of the segment pixel values of many
+    sources.
+
+    This is the vectorized form of `photutils.morphology.gini` applied
+    to each source's unmasked (finite) absolute pixel values: NaN for a
+    source with no pixels, 0.0 for a single pixel or a zero mean, and
+    otherwise the Lotz et al. (2004) sum over the sorted values.
+
+    The values of each source are sorted with NumPy in a Python loop
+    rather than with the compiled ``batch_gini`` kernel shared with
+    `~photutils.aperture.ApertureStats`. NumPy's vectorized sort
+    beats the kernel's scalar introsort for sources of more than ~50
+    pixels. The kernel is faster only for very small sources, where the
+    per-source Python overhead of this loop dominates.
+
+    Parameters
+    ----------
+    values : `_SegmentValues`
+        The packed segment pixel values of the sources.
+
+    Returns
+    -------
+    result : 1D `~numpy.ndarray`
+        The Gini coefficient of each source.
+    """
+    packed = values.packed
+    offsets = values.offsets
+    counts = values.counts
+    sizes = values.sizes
+    starts = offsets[:-1]
+    # Sort the absolute values within each source in place (a single
+    # sort per source is much cheaper than one lexsort over all of the
+    # values). The placeholder values of empty sources are harmless
+    # because their results are set to NaN below.
+    values = np.abs(np.nan_to_num(packed))
+    for start, stop in zip(starts, offsets[1:], strict=True):
+        values[start:stop].sort()
+    # 1-based rank of each value within its source
+    rank = np.arange(len(values)) - np.repeat(starts, sizes) + 1
+    n_pixels = np.repeat(counts, sizes)
+    kernel = (2.0 * rank - n_pixels - 1) * values
+
+    # Ignore RuntimeWarning from the empty and single-pixel sources
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        mean = np.add.reduceat(values, starts) / counts
+        normalization = mean * counts * (counts - 1)
+        result = np.add.reduceat(kernel, starts) / normalization
+    result[normalization == 0.0] = 0.0
+    result[counts == 1] = 0.0
+    result[counts == 0] = np.nan
+    return result
 
 
 # Remove in 4.0
@@ -286,11 +451,13 @@ class SourceCatalog:
         the Kron flux).
 
     progress_bar : bool, optional
-        Whether to display a progress bar when calculating
-        some properties (e.g., ``kron_radius``, ``kron_flux``,
-        ``flux_radius``, ``circular_photometry``, ``centroid_win``,
-        ``centroid_quad``). The progress bar requires that the `tqdm
-        <https://tqdm.github.io/>`_ optional dependency be installed.
+        Whether to display a progress bar when calculating properties.
+
+        .. deprecated:: 3.1
+           This keyword argument is deprecated and will be removed in
+           version 4.0. All property calculations are now computed for
+           all sources at once in compiled code, so no progress bar is
+           displayed and this keyword has no effect.
 
     Notes
     -----
@@ -321,6 +488,16 @@ class SourceCatalog:
     bandpass) or if the background was oversubtracted. However,
     `~photutils.segmentation.SourceCatalog.segment_flux` always includes
     the contribution of negative ``data`` values.
+
+    Most properties are computed for all sources at once in compiled
+    code that reads C-contiguous float64 copies of the ``data``,
+    ``error``, ``convolved_data``, and ``background`` arrays, a uint8
+    mask plane, and an intp copy of the segmentation array. These are
+    built on first use and kept for the lifetime of the catalog (they
+    are shared with sliced catalogs). Inputs that are already
+    C-contiguous float64 (or intp) arrays are used without a copy, so
+    for other input types (e.g., float32 or int32 arrays) the catalog
+    holds roughly twice the memory of its inputs.
 
     The input ``error`` array is assumed to include *all* sources
     of error, including the Poisson error of the sources.
@@ -381,6 +558,7 @@ class SourceCatalog:
                                  '3.0', until='4.0')
     @deprecated_renamed_argument('detection_cat', 'detection_catalog', '3.0',
                                  until='4.0')
+    @deprecated_renamed_argument('progress_bar', None, '3.1', until='4.0')
     def __init__(self, data, segmentation_image, *, convolved_data=None,
                  error=None, mask=None, background=None, wcs=None,
                  local_bkg_width=0, aperture_mask_method='correct',
@@ -448,6 +626,13 @@ class SourceCatalog:
 
         self._custom_properties = []
         self._flux_radius_cache = {}
+
+        # The full-image arrays used by the batch Cython drivers, filled
+        # lazily by _get_batch_arrays. The dict is shared by reference
+        # with sliced catalogs (see __getitem__), so whichever catalog
+        # builds the arrays first populates it for all of them.
+        self._batch_arrays_cache = {}
+
         self.meta = _get_meta()
         self._update_meta()
 
@@ -627,7 +812,7 @@ class SourceCatalog:
         init_attr = ('_data', '_segmentation_image', '_error', '_mask',
                      '_background', 'wcs', '_data_unit', '_convolved_data',
                      'local_bkg_width', 'aperture_mask_method',
-                     'kron_params', 'progress_bar')
+                     'kron_params', 'progress_bar', '_batch_arrays_cache')
         for attr in init_attr:
             setattr(newcls, attr, getattr(self, attr))
 
@@ -652,12 +837,20 @@ class SourceCatalog:
         else:
             setattr(newcls, attr, getattr(self, attr)[index])
 
+        # _slices is always stored as a list (one tuple of slices per
+        # source), even for a scalar catalog. The public ``slices``
+        # property is collapsed by __getattribute__.
         attr = '_slices'
         value = self._index_object_list(getattr(self, attr), index)
+        if newcls.isscalar:
+            value = [value]
         setattr(newcls, attr, value)
 
-        # Slice the flux_radius cache values
-        newcls._flux_radius_cache = {key: value[index]
+        # Slice the flux_radius cache values. Like the other private
+        # per-source attributes, the cached arrays keep a length-1
+        # leading axis for a scalar catalog.
+        cache_index = [index] if newcls.isscalar else index
+        newcls._flux_radius_cache = {key: value[cache_index]
                                      for key, value
                                      in self._flux_radius_cache.items()}
 
@@ -679,7 +872,10 @@ class SourceCatalog:
                 # iterables. Such properties are never collapsed by
                 # __getattribute__ and internal code relies on them
                 # always being iterable.
-                if newcls.isscalar and key.startswith('_'):
+                if isinstance(value, _SegmentValues):
+                    # Always a container of at least one source
+                    val = value[index]
+                elif newcls.isscalar and key.startswith('_'):
                     if isinstance(value, np.ndarray):
                         val = value[:, np.newaxis][index]
                     else:
@@ -782,6 +978,95 @@ class SourceCatalog:
         if isinstance(value, np.ndarray):
             return value[np.newaxis, ...]
         return [value]
+
+    def _get_batch_arrays(self):
+        """
+        Return the cached C-contiguous full-image arrays used by the
+        batch Cython drivers.
+
+        The dict holds float64 ``data`` and ``error`` arrays, a uint8
+        ``mask`` plane (bit 1 = input mask, bit 2 = non-finite data),
+        and an intp ``segm`` array. The dict itself is created in
+        ``__init__`` and shared by reference with sliced catalogs (see
+        ``__getitem__``), so the arrays are built once no matter which
+        of the parent or sliced catalogs first needs them.
+
+        Returns
+        -------
+        result : dict
+            A dict with keys ``'data'``, ``'error'``, ``'mask'``, and
+            ``'segm'``. The ``'error'`` value is `None` if no error
+            array was input. The ``'convdata'`` and ``'background'``
+            keys are added lazily by ``_get_batch_convdata`` and
+            ``_get_batch_background``.
+        """
+        arrays = self._batch_arrays_cache
+        if 'data' not in arrays:
+            data = np.ascontiguousarray(self._data, dtype=np.float64)
+            error = None
+            if self._error is not None:
+                error = np.ascontiguousarray(self._error, dtype=np.float64)
+            mask_plane = np.zeros(data.shape, dtype=np.uint8)
+            if self._mask is not None:
+                mask_plane[self._mask] |= 1
+            mask_plane[~np.isfinite(data)] |= 2
+            segm = np.ascontiguousarray(
+                self._segmentation_image.data, dtype=np.intp)
+            arrays.update(data=data, error=error, mask=mask_plane,
+                          segm=segm)
+        return arrays
+
+    def _get_batch_convdata(self):
+        """
+        Return the cached C-contiguous float64 convolved-data array
+        used by the batch moment kernels.
+        """
+        arrays = self._get_batch_arrays()
+        if 'convdata' not in arrays:
+            arrays['convdata'] = np.ascontiguousarray(
+                self._convolved_data, dtype=np.float64)
+        return arrays['convdata']
+
+    def _get_batch_background(self):
+        """
+        Return the cached C-contiguous float64 background array used by
+        the batch segment gather.
+        """
+        arrays = self._get_batch_arrays()
+        if 'background' not in arrays:
+            arrays['background'] = np.ascontiguousarray(
+                self._background, dtype=np.float64)
+        return arrays['background']
+
+    def _batch_labels(self):
+        """
+        Return the source labels as the C-contiguous intp array used by
+        the batch Cython drivers.
+        """
+        return np.ascontiguousarray(np.atleast_1d(self.labels), dtype=np.intp)
+
+    @cached_property
+    def _batch_bboxes(self):
+        """
+        The per-source segment bounding boxes as an ``(n_labels, 4)``
+        intp array with columns ``(iymin, iymax, ixmin, ixmax)``, where
+        the maxima are exclusive.
+
+        A 2D array (rather than a tuple of arrays) so that the cached
+        value is sliced along the source axis by ``__getitem__``.
+        """
+        bboxes = np.empty((len(self._slices), 4), dtype=np.intp)
+        for i, (slc_y, slc_x) in enumerate(self._slices):
+            bboxes[i] = (slc_y.start, slc_y.stop, slc_x.start, slc_x.stop)
+        return bboxes
+
+    def _get_batch_bboxes(self):
+        """
+        Return the per-source segment bounding boxes as
+        ``(iymin, iymax, ixmin, ixmax)`` C-contiguous intp arrays.
+        """
+        return tuple(np.ascontiguousarray(col)
+                     for col in self._batch_bboxes.T)
 
     @cached_property
     def isscalar(self):
@@ -982,7 +1267,7 @@ class SourceCatalog:
         """
         A list of data cutouts using the segmentation image slices.
         """
-        return [self._data[slc] for slc in self._slices_iter]
+        return [self._data[slc] for slc in self._slices]
 
     @cached_property
     def _segmentation_image_cutouts(self):
@@ -991,7 +1276,7 @@ class SourceCatalog:
         image slices.
         """
         return [self._segmentation_image.data[slc]
-                for slc in self._slices_iter]
+                for slc in self._slices]
 
     @cached_property
     def _mask_cutouts(self):
@@ -1002,7 +1287,7 @@ class SourceCatalog:
         """
         if self._mask is None:
             return self._null_objects
-        return [self._mask[slc] for slc in self._slices_iter]
+        return [self._mask[slc] for slc in self._slices]
 
     @cached_property
     def _error_cutouts(self):
@@ -1013,7 +1298,7 @@ class SourceCatalog:
         """
         if self._error is None:
             return self._null_objects
-        return [self._error[slc] for slc in self._slices_iter]
+        return [self._error[slc] for slc in self._slices]
 
     @cached_property
     def _convdata_cutouts(self):
@@ -1021,7 +1306,7 @@ class SourceCatalog:
         A list of convolved data cutouts using the segmentation image
         slices.
         """
-        return [self._convolved_data[slc] for slc in self._slices_iter]
+        return [self._convolved_data[slc] for slc in self._slices]
 
     @cached_property
     def _background_cutouts(self):
@@ -1031,7 +1316,7 @@ class SourceCatalog:
         """
         if self._background is None:
             return self._null_objects
-        return [self._background[slc] for slc in self._slices_iter]
+        return [self._background[slc] for slc in self._slices]
 
     @staticmethod
     def _make_cutout_data_mask(data_cutout, mask_cutout):
@@ -1043,18 +1328,6 @@ class SourceCatalog:
         if mask_cutout is not None:
             data_mask |= mask_cutout
         return data_mask
-
-    def _make_cutout_data_masks(self, data_cutouts, mask_cutouts):
-        """
-        Make a list of cutout data masks, combining both the input
-        ``mask`` and non-finite ``data`` values for each source.
-        """
-        data_masks = []
-        for (data_cutout, mask_cutout) in zip(data_cutouts, mask_cutouts,
-                                              strict=True):
-            data_masks.append(self._make_cutout_data_mask(data_cutout,
-                                                          mask_cutout))
-        return data_masks
 
     @cached_property
     def _cutout_segment_masks(self):
@@ -1071,63 +1344,21 @@ class SourceCatalog:
                        strict=True)]
 
     @cached_property
-    def _cutout_data_masks(self):
-        """
-        Cutout boolean mask of non-finite ``data`` values combined with
-        the input ``mask`` array.
-
-        The mask is `True` for non-finite ``data`` values and where the
-        input ``mask`` is `True`.
-        """
-        return self._make_cutout_data_masks(self._data_cutouts,
-                                            self._mask_cutouts)
-
-    @cached_property
     def _cutout_total_masks(self):
         """
-        Boolean mask representing the combination of
-        ``_cutout_segment_masks`` and ``_cutout_data_masks``.
+        Cutout boolean masks combining the segment mask, non-finite
+        ``data`` values, and the input ``mask`` array.
 
-        This mask is applied to ``data``, ``error``, and ``background``
-        inputs when calculating properties.
+        Each mask is `True` for pixels outside the source segment, for
+        non-finite ``data`` values, and where the input ``mask`` is
+        `True`. These masks are applied to the masked cutout
+        properties.
         """
-        masks = []
-        for mask1, mask2 in zip(self._cutout_segment_masks,
-                                self._cutout_data_masks, strict=True):
-            masks.append(mask1 | mask2)
-        return masks
-
-    @cached_property
-    def _moment_data_cutouts(self):
-        """
-        A list of 2D `~numpy.ndarray` cutouts from the (convolved) data.
-
-        The following pixels are set to zero in these arrays:
-
-        * pixels outside the source segment
-        * any masked pixels from the input ``mask``
-        * invalid convolved data values (NaN and inf)
-        * negative convolved data values; negative pixels (especially
-          at large radii) can give image moments that have negative
-          variances.
-
-        These arrays are used to derive moment-based properties.
-        """
-        cutouts = []
-        for convdata_cutout, mask_cutout, segmmask_cutout in zip(
-                self._convdata_cutouts, self._mask_cutouts,
-                self._cutout_segment_masks, strict=True):
-
-            convdata_mask = (~np.isfinite(convdata_cutout)
-                             | (convdata_cutout < 0) | segmmask_cutout)
-
-            if self._mask is not None:
-                convdata_mask |= mask_cutout
-
-            cutout = convdata_cutout.copy()
-            cutout[convdata_mask] = 0.0
-            cutouts.append(cutout)
-        return cutouts
+        return [segm_mask
+                | self._make_cutout_data_mask(data_cutout, mask_cutout)
+                for segm_mask, data_cutout, mask_cutout
+                in zip(self._cutout_segment_masks, self._data_cutouts,
+                       self._mask_cutouts, strict=True)]
 
     def _prepare_cutouts(self, arrays, *, units=True, masked=False,
                          dtype=None):
@@ -1309,17 +1540,6 @@ class SourceCatalog:
         return self._slices
 
     @cached_property
-    def _slices_iter(self):
-        """
-        A tuple of slice objects defining the minimal bounding box of
-        the source, always as an iterable.
-        """
-        _slices = self.slices
-        if self.isscalar:
-            _slices = (_slices,)
-        return _slices
-
-    @cached_property
     def segment_cutout(self):
         """
         A 2D `~numpy.ndarray` cutout of the segmentation image using the
@@ -1470,11 +1690,46 @@ class SourceCatalog:
                                      masked=True)
 
     @cached_property
+    def _segment_pixel_flags(self):
+        """
+        The bitwise OR of the pixel condition bits over each source
+        segment, as a uint8 array.
+
+        Bit 1 (value 1) is set if any segment pixel is input-masked,
+        bit 2 (value 2) if any segment ``data`` value is non-finite,
+        and bit 3 (value 4) if any segment ``error`` value is
+        non-finite. The bits are evaluated on every segment pixel,
+        including input-masked pixels.
+        """
+        arrays = self._get_batch_arrays()
+        pixel_flags = arrays['mask'].copy()
+        if arrays['error'] is not None:
+            pixel_flags[~np.isfinite(arrays['error'])] |= 4
+
+        # Gather the pixel flags of every segment pixel (the all-zero
+        # mask excludes nothing) and reduce them per source
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        packed, offsets, counts = batch_segment_gather(
+            pixel_flags.astype(np.float64),
+            mask=np.zeros(pixel_flags.shape, dtype=np.uint8),
+            segm=arrays['segm'], labels=self._batch_labels(),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax)
+
+        # A source without segment pixels holds a single NaN
+        # placeholder, whose integer cast is undefined
+        with np.errstate(invalid='ignore'):
+            packed = packed.astype(np.uint8)
+        segment_flags = np.bitwise_or.reduceat(packed, offsets[:-1])
+        segment_flags[counts == 0] = 0
+        return segment_flags
+
+    @cached_property
     def _all_masked(self):
         """
         True if all pixels over the source segment are masked.
         """
-        return np.array([np.all(mask) for mask in self._cutout_total_masks])
+        return self._data_values.counts == 0
 
     @cached_property
     @_update_flags_docstring
@@ -1522,34 +1777,15 @@ class SourceCatalog:
         ny, nx = self._data.shape
         edge = np.array([(slc[0].start == 0 or slc[1].start == 0
                           or slc[0].stop == ny or slc[1].stop == nx)
-                         for slc in self._slices_iter])
+                         for slc in self._slices])
         flags[edge] |= SEGMENTATION_FLAGS.EDGE_TOUCH
 
-        # Input-masked pixels within the source segment
-        if self._mask is not None:
-            masked = np.array(
-                [np.any(mask_cut & ~segm_mask)
-                 for mask_cut, segm_mask in zip(
-                     self._mask_cutouts,
-                     self._cutout_segment_masks, strict=True)])
-            flags[masked] |= SEGMENTATION_FLAGS.MASKED_PIXELS
-
-        # Non-finite data values within the source segment
-        nonfinite = np.array(
-            [np.any(~np.isfinite(data_cut) & ~segm_mask)
-             for data_cut, segm_mask in zip(
-                 self._data_cutouts, self._cutout_segment_masks,
-                 strict=True)])
-        flags[nonfinite] |= SEGMENTATION_FLAGS.NON_FINITE_DATA
-
-        # Non-finite error values within the source segment
-        if self._error is not None:
-            nonfinite_err = np.array(
-                [np.any(~np.isfinite(err_cut) & ~segm_mask)
-                 for err_cut, segm_mask in zip(
-                     self._error_cutouts,
-                     self._cutout_segment_masks, strict=True)])
-            flags[nonfinite_err] |= SEGMENTATION_FLAGS.NON_FINITE_ERROR
+        # Input-masked, non-finite data, and non-finite error pixels
+        # within the source segment
+        pixel_flags = self._segment_pixel_flags
+        flags[(pixel_flags & 1) > 0] |= SEGMENTATION_FLAGS.MASKED_PIXELS
+        flags[(pixel_flags & 2) > 0] |= SEGMENTATION_FLAGS.NON_FINITE_DATA
+        flags[(pixel_flags & 4) > 0] |= SEGMENTATION_FLAGS.NON_FINITE_ERROR
 
         # All pixels within the source segment are masked
         flags[self._all_masked] |= SEGMENTATION_FLAGS.ALL_MASKED
@@ -1650,94 +1886,91 @@ class SourceCatalog:
         return {int(label): flags
                 for label, flags in zip(self.labels, decoded, strict=True)}
 
-    def _get_values(self, array):
+    def _segment_gather(self, array):
         """
-        Get a 1D array of unmasked values from the input array within
-        the source segment.
-
-        An array with a single NaN is returned for completely-masked
-        sources.
-        """
-        values = []
-        for arr in array:
-            compressed = arr.compressed()
-            if len(compressed) == 0:
-                compressed = np.array([np.nan])
-            values.append(compressed)
-        return values
-
-    @staticmethod
-    def _reduceat(values, ufunc, *, transform=None):
-        """
-        Apply ``ufunc.reduceat`` to a list of arrays.
-
-        This is significantly faster than a list comprehension with
-        individual NumPy calls for each array.
+        Pack the unmasked values of ``array`` within each source
+        segment into one array (see ``batch_segment_gather``).
 
         Parameters
         ----------
-        values : list of 1D `~numpy.ndarray`
-            A list of 1D arrays.
-
-        ufunc : `~numpy.ufunc`
-            The NumPy ufunc to apply (e.g., `~numpy.add`,
-            `~numpy.minimum`, `~numpy.maximum`).
-
-        transform : callable or None, optional
-            An optional transformation to apply to the concatenated
-            array before reducing (e.g., `~numpy.square`).
+        array : 2D `~numpy.ndarray`
+            The C-contiguous float64 full-image array to gather from.
 
         Returns
         -------
-        result : `~numpy.ndarray`
-            The reduceat result.
+        packed : 1D `~numpy.ndarray`
+            The packed values of all sources, in row-major pixel order,
+            with a single NaN for a completely-masked source.
 
-        sizes : `~numpy.ndarray`
-            The sizes of the input arrays.
+        offsets : 1D `~numpy.ndarray`
+            The start offset of each source in ``packed`` (length
+            ``n_labels + 1``).
+
+        counts : 1D `~numpy.ndarray`
+            The number of unmasked segment pixels of each source.
         """
-        if not values:
-            return np.array([]), np.array([], dtype=int)
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        return batch_segment_gather(
+            array, mask=arrays['mask'], segm=arrays['segm'],
+            labels=self._batch_labels(),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax)
 
-        sizes = np.array([len(arr) for arr in values])
-        splits = np.concatenate(([0], np.cumsum(sizes[:-1])))
-        concat = np.concatenate(values)
-        if transform is not None:
-            concat = transform(concat)
-        return ufunc.reduceat(concat, splits), sizes
+    def _segment_values(self, array):
+        """
+        Get the unmasked values of ``array`` within each source segment
+        as a packed `_SegmentValues` container.
+
+        A single NaN is held for completely-masked sources.
+
+        Parameters
+        ----------
+        array : 2D `~numpy.ndarray`
+            The C-contiguous float64 full-image array to gather from.
+
+        Returns
+        -------
+        result : `_SegmentValues`
+            The per-source values, in row-major pixel order.
+        """
+        return _SegmentValues(*self._segment_gather(array))
 
     @cached_property
     def _data_values(self):
         """
-        A 1D array of unmasked data values.
+        The unmasked data values within each source segment, as a
+        packed `_SegmentValues` container.
 
-        An array with a single NaN is returned for completely-masked
-        sources.
+        A single NaN is held for completely-masked sources.
         """
-        return self._get_values(self._array('data_cutout_masked'))
+        return self._segment_values(self._get_batch_arrays()['data'])
 
     @cached_property
     def _error_values(self):
         """
-        A 1D array of unmasked error values.
+        The unmasked error values within each source segment, as a
+        packed `_SegmentValues` container, or `None` if no error array
+        was input.
 
-        An array with a single NaN is returned for completely-masked
-        sources.
+        A single NaN is held for completely-masked sources.
         """
         if self._error is None:
-            return self._null_objects
-        return self._get_values(self._array('error_cutout_masked'))
+            return None
+        return self._segment_values(self._get_batch_arrays()['error'])
 
     @cached_property
     def _background_values(self):
         """
-        A 1D array of unmasked background values.
+        The unmasked background values within each source segment, as
+        a packed `_SegmentValues` container, or `None` if no background
+        array was input.
 
-        An array with a single NaN is returned for completely-masked
-        sources.
+        A single NaN is held for completely-masked sources.
         """
         if self._background is None:
-            return self._null_objects
-        return self._get_values(self._array('background_cutout_masked'))
+            return None
+        return self._segment_values(self._get_batch_background())
 
     @cached_property
     @use_detcat
@@ -1745,15 +1978,14 @@ class SourceCatalog:
         """
         Spatial moments up to 3rd order of the source.
         """
-        result = []
-        for arr in self._moment_data_cutouts:
-            ny, nx = arr.shape
-            y = np.arange(ny, dtype=float)
-            x = np.arange(nx, dtype=float)
-            yp = np.column_stack([np.ones(ny), y, y * y, y ** 3])
-            xp = np.column_stack([np.ones(nx), x, x * x, x ** 3])
-            result.append(yp.T @ arr @ xp)
-        return np.array(result)
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        return batch_raw_moments(
+            self._get_batch_convdata(), mask=arrays['mask'],
+            segm=arrays['segm'],
+            labels=self._batch_labels(),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax)
 
     @cached_property
     @use_detcat
@@ -1762,18 +1994,17 @@ class SourceCatalog:
         Central moments (translation invariant) of the source up to 3rd
         order.
         """
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
         cutout_centroid = self._array('cutout_centroid')
-        result = []
-        for arr, xcen, ycen in zip(self._moment_data_cutouts,
-                                   cutout_centroid[:, 0],
-                                   cutout_centroid[:, 1], strict=True):
-            ny, nx = arr.shape
-            yc = np.arange(ny, dtype=float) - ycen
-            xc = np.arange(nx, dtype=float) - xcen
-            yp = np.column_stack([np.ones(ny), yc, yc * yc, yc ** 3])
-            xp = np.column_stack([np.ones(nx), xc, xc * xc, xc ** 3])
-            result.append(yp.T @ arr @ xp)
-        return np.array(result)
+        return batch_central_moments(
+            self._get_batch_convdata(), mask=arrays['mask'],
+            segm=arrays['segm'],
+            labels=self._batch_labels(),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax,
+            xcen=np.ascontiguousarray(cutout_centroid[:, 0]),
+            ycen=np.ascontiguousarray(cutout_centroid[:, 1]))
 
     @cached_property
     @use_detcat
@@ -1845,61 +2076,64 @@ class SourceCatalog:
         if self._error is None:
             return np.full((self.n_labels, 2, 2), np.nan)
 
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
         cutout_centroid = self._array('cutout_centroid')
-        is_singular = self._singular_covariance_mask
 
-        var_arr = []
+        # The accumulators are the summed pixel variance and its
+        # dx**2, dy**2, and dx*dy weighted sums. The variance is zeroed
+        # at masked pixels and at pixels that were excluded from the
+        # moment data (e.g., non-finite or negative convolved values),
+        # so that pixels that do not contribute flux weight also do not
+        # contribute error variance.
+        acc = batch_moment_err(
+            arrays['error'], convdata=self._get_batch_convdata(),
+            mask=arrays['mask'], segm=arrays['segm'],
+            labels=self._batch_labels(),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax,
+            xcen=np.ascontiguousarray(cutout_centroid[:, 0]),
+            ycen=np.ascontiguousarray(cutout_centroid[:, 1]))
+
+        # The total flux is the zeroth raw moment of the moment data.
+        total_flux = self._array('moments')[:, 0, 0]
+        is_singular = np.atleast_1d(self._singular_covariance_mask)
         pixel_var = 1.0 / 12.0
-        for (moment_data, error_cutout, total_mask, xcen, ycen,
-             singular) in zip(
-                self._moment_data_cutouts, self._error_cutouts,
-                self._cutout_total_masks, cutout_centroid[:, 0],
-                cutout_centroid[:, 1], is_singular, strict=True):
 
-            total_flux = np.sum(moment_data)
-            if not np.isfinite(total_flux) or total_flux <= 0:
-                var_arr.append((np.nan, np.nan, np.nan))
-                continue
-
-            err_sq = error_cutout.astype(float)**2
-            # Zero the variance at masked pixels and at pixels that
-            # were excluded from the moment data (e.g., non-finite or
-            # negative convolved values), so that pixels that do not
-            # contribute flux weight also do not contribute error
-            # variance.
-            err_sq[total_mask | (moment_data == 0)] = 0.0
-
-            yy, xx = np.mgrid[0:err_sq.shape[0], 0:err_sq.shape[1]]
-            dx = xx - xcen
-            dy = yy - ycen
-
+        # Ignore divide-by-zero and invalid-value RuntimeWarnings for
+        # sources with non-positive or non-finite total flux; those
+        # values are replaced by NaN below.
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
             # Propagate the error through the centroid formula.
-            norm = 1.0 / (total_flux**2)
-            err_var_x = np.sum(err_sq * dx**2) * norm
-            err_var_y = np.sum(err_sq * dy**2) * norm
-            err_cov_xy = np.sum(err_sq * dx * dy) * norm
+            norm = 1.0 / total_flux**2
+            err_var_x = acc[:, 1] * norm
+            err_var_y = acc[:, 2] * norm
+            err_cov_xy = acc[:, 3] * norm
 
             # Singularity correction for point-like sources. If the
             # error covariance matrix is nearly singular, add the
-            # variance of a uniform
-            # distribution across a single pixel (1/12) scaled by the
-            # summed pixel variance. The correction is added to the
-            # variances only, never to the covariance.
-            if singular:
-                err_sum_norm = np.sum(err_sq) * pixel_var * norm
-                if (err_var_x * err_var_y
-                        - err_cov_xy**2) < err_sum_norm**2:
-                    err_var_x += err_sum_norm
-                    err_var_y += err_sum_norm
+            # variance of a uniform distribution across a single pixel
+            # (1/12) scaled by the summed pixel variance. The
+            # correction is added to the variances only, never to the
+            # covariance.
+            err_sum_norm = acc[:, 0] * pixel_var * norm
+            singular = (is_singular
+                        & ((err_var_x * err_var_y - err_cov_xy**2)
+                           < err_sum_norm**2))
+            err_var_x[singular] += err_sum_norm[singular]
+            err_var_y[singular] += err_sum_norm[singular]
 
-            var_arr.append((err_var_x, err_var_y, err_cov_xy))
+            bad = ~np.isfinite(total_flux) | (total_flux <= 0)
+            err_var_x[bad] = np.nan
+            err_var_y[bad] = np.nan
+            err_cov_xy[bad] = np.nan
 
-        var_arr = np.array(var_arr)
-        cov = np.empty((len(var_arr), 2, 2))
-        cov[:, 0, 0] = var_arr[:, 0]
-        cov[:, 1, 1] = var_arr[:, 1]
-        cov[:, 0, 1] = var_arr[:, 2]
-        cov[:, 1, 0] = var_arr[:, 2]
+        cov = np.empty((len(err_var_x), 2, 2))
+        cov[:, 0, 0] = err_var_x
+        cov[:, 1, 1] = err_var_y
+        cov[:, 0, 1] = err_cov_xy
+        cov[:, 1, 0] = err_cov_xy
         return cov
 
     def _sky_err_from_cov(self, pix_cov, xycen):
@@ -1935,6 +2169,10 @@ class SourceCatalog:
             jac = compute_pixel_to_sky_jacobians(xycen[good, 0],
                                                  xycen[good, 1],
                                                  self.wcs)
+            # The Einstein summation computes the matrix product of the
+            # Jacobian, the pixel covariance, and the Jacobian transpose
+            # for each source. The result is the sky covariance matrix
+            # in the local tangent plane.
             sky_cov = np.einsum('nij,njk,nlk->nil', jac, pix_cov[good], jac)
             sky_err[good, 0] = np.sqrt(sky_cov[:, 0, 0])
             sky_err[good, 1] = np.sqrt(sky_cov[:, 1, 1])
@@ -2041,9 +2279,9 @@ class SourceCatalog:
             err_cov_xy = err_cov_xy * norm
 
             # Handle fully correlated profiles of point-like sources
-            # that cause a singularity. The determinant check
-            # includes the pixel-size correction in the variances
-            # but not in the covariance.
+            # that cause a singularity. The determinant check includes
+            # the pixel-size correction in the variances but not in the
+            # covariance.
             singular = (self._singular_covariance_mask
                         & ((err_var_x * err_var_y - err_cov_xy**2)
                            < err_sum_norm**2))
@@ -2068,12 +2306,19 @@ class SourceCatalog:
         Apply the fallback conditions for the windowed centroid.
 
         Reset the centroid to the isophotal centroid when any of the
-        following conditions hold: the centroid diverged far from the
-        isophotal centroid and lies outside the 1-sigma ellipse, the
-        total weighted flux is non-positive, the windowed 2nd-order
-        moments are negative, or the windowed covariance determinant
-        is negative. Fallback sources also use the isophotal centroid
-        errors. Sources with NaN half-light radius keep NaN.
+        following conditions hold:
+
+        * The centroid diverged far from the isophotal centroid and lies
+          outside the 1-sigma ellipse
+
+        * The total weighted flux is non-positive
+
+        * The windowed 2nd-order moments are negative
+
+        * The windowed covariance determinant is negative.
+
+        Fallback sources also use the isophotal centroid errors. Sources
+        with NaN half-light radius keep NaN.
 
         Parameters
         ----------
@@ -2152,222 +2397,6 @@ class SourceCatalog:
         return np.transpose((xcen_win, ycen_win, win_err_var_x,
                              win_err_var_y, win_err_cov_xy, fallback))
 
-    def _iterate_centroid_win(self, label, xcen, ycen, rad_hl,
-                              nan_hl_source, *, data_arr, mask_arr,
-                              error_arr, segm_data, data_shape,
-                              do_correct, do_segm_mask, compute_err,
-                              max_aper_size):
-        """
-        Compute the windowed centroid for a single source.
-
-        Parameters
-        ----------
-        label : int
-            The source label.
-
-        xcen : float
-            Initial x centroid (isophotal).
-
-        ycen : float
-            Initial y centroid (isophotal).
-
-        rad_hl : float
-            Half-light radius for this source.
-
-        nan_hl_source : bool
-            Whether the half-light radius is NaN.
-
-        data_arr : `~numpy.ndarray`
-            The 2D data array.
-
-        mask_arr : `~numpy.ndarray` or `None`
-            The 2D boolean mask array.
-
-        error_arr : `~numpy.ndarray` or `None`
-            The 2D error array.
-
-        segm_data : `~numpy.ndarray`
-            The segmentation image data array.
-
-        data_shape : tuple of int
-            Shape of the data array.
-
-        do_correct : bool
-            Whether to apply mirror correction for masked pixels.
-
-        do_segm_mask : bool
-            Whether to mask pixels outside the source segment.
-
-        compute_err : bool
-            Whether to compute position errors.
-
-        max_aper_size : int
-            Maximum aperture size (OOM guard).
-
-        Returns
-        -------
-        result : tuple of float
-            Tuple of (xcen, ycen, weighted_flux, cen_mom_xx,
-            cen_mom_yy, cen_mom_xy, err_sum, err_var_x, err_var_y,
-            err_cov_xy). The error terms are the raw (unnormalized)
-            weighted sums from the last iteration (see
-            ``_normalize_centroid_win_err``).
-        """
-        nan_result = (np.nan, np.nan, 0.0, 0.0, 0.0, 0.0,
-                      np.nan, np.nan, np.nan, np.nan)
-        if nan_hl_source or math.isnan(xcen) or math.isnan(ycen):
-            return nan_result
-
-        sigma = 2.0 * rad_hl * gaussian_fwhm_to_sigma
-        inv_2sigma2 = -1.0 / (2.0 * sigma * sigma)
-        radius = 4.0 * sigma
-        radius_sq = radius * radius
-
-        # Compute the full (unclipped) bounding box for the aperture
-        # using the initial centroid. The radius is fixed, so the
-        # bbox size stays the same across iterations even if the
-        # center shifts slightly.
-        bbox_halfsize = int(radius + 1.5)
-        full_ny = full_nx = 2 * bbox_halfsize + 1
-
-        # OOM guard
-        if full_ny * full_nx > max_aper_size:
-            return nan_result
-
-        # Cache for cutout data when the integer bbox doesn't change
-        prev_ixcen = prev_iycen = None
-        cached_data = cached_mask = cached_var = None
-
-        max_iters = 16
-        centroid_threshold = 0.0001
-        iter_ = 0
-        dcen = 1.0
-        weighted_flux = 0.0
-        dx_mom = dy_mom = 0.0
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            while iter_ < max_iters and dcen > centroid_threshold:
-                # Compute integer bounding box
-                ixmin = int(xcen + 0.5) - bbox_halfsize
-                ixmax = ixmin + full_nx
-                iymin = int(ycen + 0.5) - bbox_halfsize
-                iymax = iymin + full_ny
-
-                # Clip to data boundaries
-                slc_y = slice(max(0, iymin), min(data_shape[0], iymax))
-                slc_x = slice(max(0, ixmin), min(data_shape[1], ixmax))
-                if (slc_y.start >= slc_y.stop
-                        or slc_x.start >= slc_x.stop):
-                    xcen = np.nan
-                    ycen = np.nan
-                    break
-
-                cur_ixcen = int(xcen + 0.5)
-                cur_iycen = int(ycen + 0.5)
-
-                # Recompute cutout data only when the integer center
-                # changes to avoid redundant _mask_to_mirrored_value
-                # calls
-                if cur_ixcen != prev_ixcen or cur_iycen != prev_iycen:
-                    prev_ixcen = cur_ixcen
-                    prev_iycen = cur_iycen
-
-                    data = data_arr[slc_y, slc_x].astype(float)
-                    data_mask = ~np.isfinite(data)
-                    if mask_arr is not None:
-                        data_mask |= mask_arr[slc_y, slc_x]
-
-                    cutout_xycen = (xcen - max(0, ixmin),
-                                    ycen - max(0, iymin))
-
-                    if do_segm_mask:
-                        seg_cut = segm_data[slc_y, slc_x]
-                        segm_mask = ((seg_cut != label)
-                                     & (seg_cut != 0))
-                        if self.aperture_mask_method == 'mask':
-                            data_mask = data_mask | segm_mask
-
-                    if do_correct:
-                        data = _mask_to_mirrored_value(
-                            data, segm_mask, cutout_xycen,
-                            mask=data_mask)
-
-                    cached_data = data
-                    cached_mask = data_mask
-
-                    if compute_err:
-                        var = error_arr[slc_y, slc_x].astype(float)**2
-                        if do_correct:
-                            # Pixels replaced by mirrored data values
-                            # also use the mirrored pixel's variance
-                            var = _mask_to_mirrored_value(
-                                var, segm_mask, cutout_xycen,
-                                mask=data_mask)
-                        var[data_mask] = 0.0
-                        cached_var = var
-
-                # Centroid position in cutout coordinates
-                cx = xcen - max(0, ixmin)
-                cy = ycen - max(0, iymin)
-
-                ny = slc_y.stop - slc_y.start
-                nx = slc_x.stop - slc_x.start
-
-                # Build coordinate grids relative to centroid
-                # (reused for circle mask, Gaussian, and moments)
-                xvals = np.arange(nx) - cx
-                yvals = np.arange(ny) - cy
-                xx = xvals[np.newaxis, :]
-                yy = yvals[:, np.newaxis]
-
-                # Inline binary circle mask
-                rr2 = xx * xx + yy * yy
-                aper_weights = (rr2 <= radius_sq).astype(float)
-
-                # Inline Gaussian weight
-                gweight = np.exp(rr2 * inv_2sigma2)
-
-                # Apply weights and mask
-                weighted = (cached_data * aper_weights * gweight)
-                weighted[cached_mask] = 0.0
-
-                # Inline moment computation
-                weighted_flux = np.sum(weighted)
-                dx_mom = np.sum(weighted * xx) / weighted_flux
-                dy_mom = np.sum(weighted * yy) / weighted_flux
-
-                dcen = math.sqrt(dx_mom * dx_mom
-                                 + dy_mom * dy_mom)
-                xcen += dx_mom * 2.0
-                ycen += dy_mom * 2.0
-                iter_ += 1
-
-            # Compute the windowed central 2nd-order moments (for
-            # the fallback checks) and the raw error
-            # sums from the last iteration, relative to
-            # the pre-update center.
-            cen_mom_xx = cen_mom_yy = cen_mom_xy = 0.0
-            err_sum = err_var_x = err_var_y = err_cov_xy = np.nan
-            if np.isfinite(weighted_flux) and weighted_flux > 0:
-                cen_mom_xx = (np.sum(weighted * xx * xx)
-                              / weighted_flux - dx_mom * dx_mom)
-                cen_mom_yy = (np.sum(weighted * yy * yy)
-                              / weighted_flux - dy_mom * dy_mom)
-                cen_mom_xy = (np.sum(weighted * xx * yy)
-                              / weighted_flux - dx_mom * dy_mom)
-
-                if compute_err:
-                    weighted_var = ((aper_weights * gweight)**2
-                                    * cached_var)
-                    err_sum = np.sum(weighted_var)
-                    err_var_x = np.sum(weighted_var * xx * xx)
-                    err_var_y = np.sum(weighted_var * yy * yy)
-                    err_cov_xy = np.sum(weighted_var * xx * yy)
-
-        return (xcen, ycen, weighted_flux, cen_mom_xx,
-                cen_mom_yy, cen_mom_xy,
-                err_sum, err_var_x, err_var_y, err_cov_xy)
-
     @cached_property
     @use_detcat
     def _centroid_win_results(self):
@@ -2395,57 +2424,36 @@ class SourceCatalog:
         # meaningful windowed centroid.
         nan_hl = ~np.isfinite(radius_hl)
 
-        # Apply a minimum half-light radius of 0.5 pixels (matching
-        # SourceExtractor) for valid but very small values
+        # Apply a minimum half-light radius of 0.5 pixels for valid but
+        # very small values.
         min_radius = 0.5
         small_mask = np.isfinite(radius_hl) & (radius_hl < min_radius)
         radius_hl[small_mask] = min_radius
 
         compute_err = self._error is not None
 
-        labels = self.labels
-        if self.progress_bar:
-            desc = 'centroid_win'
-            labels = add_progress_bar(labels, desc=desc)
-
         # Centroids as iterable arrays regardless of scalar state
-        x_centroid = np.atleast_1d(self.x_centroid)
-        y_centroid = np.atleast_1d(self.y_centroid)
+        x_centroid = np.atleast_1d(self.x_centroid).astype(float)
+        y_centroid = np.atleast_1d(self.y_centroid).astype(float)
 
-        # Pre-fetch arrays used in the inner loop
-        data_arr = self._data
-        mask_arr = self._mask
-        error_arr = self._error
-        segm_data = self._segmentation_image.data
-        data_shape = data_arr.shape
-        do_correct = self.aperture_mask_method == 'correct'
-        do_segm_mask = self.aperture_mask_method != 'none'
-        max_aper_size = max(data_arr.size, 1_000_000)
-
-        iter_kwargs = {
-            'data_arr': data_arr,
-            'mask_arr': mask_arr,
-            'error_arr': error_arr,
-            'segm_data': segm_data,
-            'data_shape': data_shape,
-            'do_correct': do_correct,
-            'do_segm_mask': do_segm_mask,
-            'compute_err': compute_err,
-            'max_aper_size': max_aper_size,
-        }
-
-        results = []
-        for label, xcen, ycen, rad_hl, nan_hl_source in zip(
-                labels, x_centroid, y_centroid, radius_hl, nan_hl,
-                strict=True):
-            results.append(self._iterate_centroid_win(
-                label, xcen, ycen, rad_hl, nan_hl_source, **iter_kwargs))
+        sigma = 2.0 * radius_hl * gaussian_fwhm_to_sigma
+        skip = (nan_hl | ~np.isfinite(x_centroid)
+                | ~np.isfinite(y_centroid)).astype(np.uint8)
+        arrays = self._get_batch_arrays()
+        results = batch_centroid_win(
+            arrays['data'], error=arrays['error'],
+            mask=arrays['mask'], segm=arrays['segm'],
+            labels=self._batch_labels(),
+            xcen0=x_centroid, ycen0=y_centroid, sigma=sigma,
+            skip=skip,
+            seg_method=SEG_METHOD_CODES[self.aperture_mask_method],
+            compute_err=int(compute_err),
+            max_aper_size=max(self._data.size, 1_000_000))
 
         (xcen_win, ycen_win, win_weighted_flux,
          win_cen_mom_xx, win_cen_mom_yy, win_cen_mom_xy,
          win_err_sum, win_err_var_x, win_err_var_y,
-         win_err_cov_xy) = (np.array(col)
-                            for col in zip(*results, strict=True))
+         win_err_cov_xy) = results.T.copy()
 
         # Normalize error terms by step_factor^2 / weighted_flux^2
         if compute_err:
@@ -2605,63 +2613,6 @@ class SourceCatalog:
         origin = np.transpose((self.bbox_xmin, self.bbox_ymin))
         return self.centroid_win - origin
 
-    @staticmethod
-    def _centroid_quad_var(coeffs, xm_rel, ym_rel, pinv, box_var):
-        """
-        Propagate pixel variances through the quadratic peak solution.
-
-        The quadratic-fit coefficients are linear in the pixel values
-        (``c = pinv @ pixels``) and the peak position is a rational
-        function of the coefficients, so the position variances follow
-        from the delta method.
-
-        Parameters
-        ----------
-        coeffs : `~numpy.ndarray`
-            The six quadratic-fit coefficients for the terms
-            ``[1, x, y, xy, x^2, y^2]``.
-
-        xm_rel, ym_rel : float
-            The peak position in the relative (3x3 box) coordinates.
-
-        pinv : `~numpy.ndarray`
-            The (6, 9) pseudo-inverse of the design matrix.
-
-        box_var : `~numpy.ndarray`
-            The 9 pixel variances of the 3x3 fit box, with masked
-            pixels set to zero.
-
-        Returns
-        -------
-        var_x, var_y : float
-            The variances of the peak ``x`` and ``y`` positions.
-
-        cov_xy : float
-            The covariance of the peak ``x`` and ``y`` positions.
-        """
-        c10, c01, c11, c20, c02 = coeffs[1:]
-        det = 4.0 * c20 * c02 - c11 * c11
-        grad_x = np.array(
-            [0.0,
-             -2.0 * c02 / det,
-             c11 / det,
-             (c01 + 2.0 * c11 * xm_rel) / det,
-             -4.0 * c02 * xm_rel / det,
-             (-2.0 * c10 - 4.0 * c20 * xm_rel) / det])
-        grad_y = np.array(
-            [0.0,
-             c11 / det,
-             -2.0 * c20 / det,
-             (c10 + 2.0 * c11 * ym_rel) / det,
-             (-2.0 * c01 - 4.0 * c02 * ym_rel) / det,
-             -4.0 * c20 * ym_rel / det])
-        u_x = grad_x @ pinv
-        u_y = grad_y @ pinv
-        var_x = np.sum(u_x**2 * box_var)
-        var_y = np.sum(u_y**2 * box_var)
-        cov_xy = np.sum(u_x * u_y * box_var)
-        return var_x, var_y, cov_xy
-
     @cached_property
     @use_detcat
     def _centroid_quad_results(self):
@@ -2677,7 +2628,7 @@ class SourceCatalog:
         """
         # Precompute the pseudo-inverse for the 3x3 relative coordinate
         # design matrix [1, x, y, xy, x^2, y^2]. This is constant for
-        # all sources and avoids per-source lstsq calls.
+        # all sources.
         xi = np.arange(3)
         x, y = np.meshgrid(xi, xi)
         x = x.ravel()
@@ -2693,90 +2644,84 @@ class SourceCatalog:
 
         compute_err = self._error is not None
 
-        _nan = np.nan
-        nan_result = (_nan, _nan, _nan, _nan, _nan)
-        results = []
+        # Gather the 3x3 box around the peak pixel of each masked
+        # (zero-filled) cutout.
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        status, peak, boxes, box_var = batch_quad_boxes(
+            arrays['data'], error=arrays['error'], mask=arrays['mask'],
+            segm=arrays['segm'],
+            labels=self._batch_labels(),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax, compute_err=int(compute_err))
+        nx = ixmax - ixmin
+        ny = iymax - iymin
+        n_src = len(status)
 
-        cutouts = self._data_cutouts
-        if self.progress_bar:
-            desc = 'centroid_quad'
-            cutouts = add_progress_bar(cutouts, desc=desc)
+        results = np.full((n_src, 5), np.nan)
 
-        for cutout, error_cutout, mask in zip(cutouts,
-                                              self._error_cutouts,
-                                              self._cutout_total_masks,
-                                              strict=True):
-            ny, nx = cutout.shape
+        # If the peak is at the edge of the cutout, return the peak
+        # position. No fit is performed, so no errors can be propagated.
+        edge = status == 3
+        results[edge, 0] = peak[edge, 0]
+        results[edge, 1] = peak[edge, 1]
 
-            # Cutout must be at least 3x3 for the quadratic fit
-            if ny < 3 or nx < 3:
-                results.append(nan_result)
-                continue
-
-            # A source with no unmasked pixels has no peak; without this
-            # guard the masked (zeroed) cutout below would return the
-            # position of its first pixel as the "peak"
-            if np.all(mask):
-                results.append(nan_result)
-                continue
-
-            # Apply mask: _cutout_total_masks already includes
-            # non-finite data values, so cutout[mask] = 0.0 handles both
-            # masked pixels and non-finite values.
-            cutout = np.array(cutout, dtype=float)
-            cutout[mask] = 0.0
-
-            # Find peak pixel
-            yidx, xidx = np.unravel_index(np.argmax(cutout), cutout.shape)
-
-            # If peak at edge of cutout, return peak position. No fit
-            # is performed, so no errors can be propagated.
-            if xidx == 0 or xidx == nx - 1 or yidx == 0 or yidx == ny - 1:
-                results.append((float(xidx), float(yidx), _nan, _nan,
-                                _nan))
-                continue
-
-            # Extract 3x3 box centered on peak (guaranteed to fit
-            # since peak is not at edge)
-            xidx0 = xidx - 1
-            yidx0 = yidx - 1
-            cutout_flat = cutout[yidx0:yidx0 + 3, xidx0:xidx0 + 3].ravel()
-
-            # Compute polynomial coefficients via precomputed
-            # pseudo-inverse
-            c = pinv @ cutout_flat
-            c10, c01, c11, c20, c02 = c[1], c[2], c[3], c[4], c[5]
-
-            det = 4.0 * c20 * c02 - c11 * c11
-            if det <= 0 or c20 > 0:
-                results.append(nan_result)
-                continue
-
+        # Fit the quadratic to the 3x3 box of the remaining sources.
+        fit = status == 0
+        xidx0 = peak[:, 0] - 1
+        yidx0 = peak[:, 1] - 1
+        # einsum (rather than a BLAS matmul) keeps the per-source
+        # arithmetic independent of the number of sources, so a sliced
+        # catalog reproduces the parent catalog values exactly.
+        coeffs = np.einsum('ij,nj->ni', pinv, boxes)
+        c10 = coeffs[:, 1]
+        c01 = coeffs[:, 2]
+        c11 = coeffs[:, 3]
+        c20 = coeffs[:, 4]
+        c02 = coeffs[:, 5]
+        det = 4.0 * c20 * c02 - c11 * c11
+        fit &= ~((det <= 0) | (c20 > 0))
+        # Ignore RuntimeWarning from the sources without a fit
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
             # Maximum in relative coords, then convert to cutout coords
             xm_rel = (c01 * c11 - 2.0 * c02 * c10) / det
             ym_rel = (c10 * c11 - 2.0 * c20 * c01) / det
             xm = xm_rel + xidx0
             ym = ym_rel + yidx0
+            fit &= ((xm > 0.0) & (xm < (nx - 1.0))
+                    & (ym > 0.0) & (ym < (ny - 1.0)))
+            results[fit, 0] = xm[fit]
+            results[fit, 1] = ym[fit]
 
-            if not (0.0 < xm < (nx - 1.0) and 0.0 < ym < (ny - 1.0)):
-                results.append(nan_result)
-                continue
-
-            var_x = var_y = cov_xy = _nan
             if compute_err:
-                # Pixel variances of the fit box; masked pixels have
-                # a fixed (zeroed) data value, so they contribute no
-                # variance
-                box_var = (error_cutout[yidx0:yidx0 + 3, xidx0:xidx0 + 3]
-                           .astype(float).ravel()**2)
-                box_var[mask[yidx0:yidx0 + 3,
-                             xidx0:xidx0 + 3].ravel()] = 0.0
-                var_x, var_y, cov_xy = self._centroid_quad_var(
-                    c, xm_rel, ym_rel, pinv, box_var)
-
-            results.append((xm, ym, var_x, var_y, cov_xy))
-
-        results = np.array(results)
+                # Propagate the pixel variances through the quadratic
+                # peak solution. The fit coefficients are linear in the
+                # pixel values (``c = pinv @ pixels``) and the peak
+                # position is a rational function of the coefficients,
+                # so the position variances follow from the delta
+                # method. Masked pixels have a fixed (zeroed) data
+                # value, so they contribute no variance.
+                zeros = np.zeros(n_src)
+                grad_x = np.column_stack(
+                    [zeros,
+                     -2.0 * c02 / det,
+                     c11 / det,
+                     (c01 + 2.0 * c11 * xm_rel) / det,
+                     -4.0 * c02 * xm_rel / det,
+                     (-2.0 * c10 - 4.0 * c20 * xm_rel) / det])
+                grad_y = np.column_stack(
+                    [zeros,
+                     c11 / det,
+                     -2.0 * c20 / det,
+                     (c10 + 2.0 * c11 * ym_rel) / det,
+                     (-2.0 * c01 - 4.0 * c02 * ym_rel) / det,
+                     -4.0 * c20 * ym_rel / det])
+                u_x = np.einsum('ni,ij->nj', grad_x, pinv)
+                u_y = np.einsum('ni,ij->nj', grad_y, pinv)
+                results[fit, 2] = np.sum(u_x**2 * box_var, axis=1)[fit]
+                results[fit, 3] = np.sum(u_y**2 * box_var, axis=1)[fit]
+                results[fit, 4] = np.sum(u_x * u_y * box_var, axis=1)[fit]
 
         # Use the segment barycenter if the fit returned NaN. Fallback
         # sources use the isophotal centroid, so also use the isophotal
@@ -2903,7 +2848,7 @@ class SourceCatalog:
         quadratic centroid, ``[[var_x, cov_xy], [cov_xy, var_y]]``.
 
         Fallback sources hold the isophotal covariance (see
-        ``_centroid_err_cov``); matrices are all-NaN where errors are
+        ``_centroid_err_cov``). Matrices are all-NaN where errors are
         unavailable.
         """
         results = self._centroid_quad_results
@@ -3161,7 +3106,7 @@ class SourceCatalog:
         """
         return [BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,
                             iymin=slc[0].start, iymax=slc[0].stop)
-                for slc in self._slices_iter]
+                for slc in self._slices]
 
     @cached_property
     @use_detcat
@@ -3182,7 +3127,7 @@ class SourceCatalog:
         The minimum ``x`` pixel index within the minimal bounding box
         containing the source segment.
         """
-        return np.array([slc[1].start for slc in self._slices_iter])
+        return np.array([slc[1].start for slc in self._slices])
 
     @cached_property
     @use_detcat
@@ -3193,7 +3138,7 @@ class SourceCatalog:
 
         Note that this value is inclusive, unlike numpy slice indices.
         """
-        return np.array([slc[1].stop - 1 for slc in self._slices_iter])
+        return np.array([slc[1].stop - 1 for slc in self._slices])
 
     @cached_property
     @use_detcat
@@ -3202,7 +3147,7 @@ class SourceCatalog:
         The minimum ``y`` pixel index within the minimal bounding box
         containing the source segment.
         """
-        return np.array([slc[0].start for slc in self._slices_iter])
+        return np.array([slc[0].start for slc in self._slices])
 
     @cached_property
     @use_detcat
@@ -3213,7 +3158,7 @@ class SourceCatalog:
 
         Note that this value is inclusive, unlike numpy slice indices.
         """
-        return np.array([slc[0].stop - 1 for slc in self._slices_iter])
+        return np.array([slc[0].stop - 1 for slc in self._slices])
 
     @cached_property
     @use_detcat
@@ -3329,7 +3274,7 @@ class SourceCatalog:
         The minimum pixel value of the ``data`` within the source
         segment.
         """
-        values, _ = self._reduceat(self._data_values, np.minimum)
+        values = self._data_values.reduce(np.minimum)
         values -= self._local_background
         if self._data_unit is not None:
             values <<= self._data_unit
@@ -3341,11 +3286,58 @@ class SourceCatalog:
         The maximum pixel value of the ``data`` within the source
         segment.
         """
-        values, _ = self._reduceat(self._data_values, np.maximum)
+        values = self._data_values.reduce(np.maximum)
         values -= self._local_background
         if self._data_unit is not None:
             values <<= self._data_unit
         return values
+
+    @cached_property
+    def _cutout_minmax_index(self):
+        """
+        The cutout-frame ``(y_min, x_min, y_max, x_max)`` positions of
+        the first minimum and first maximum unmasked ``data`` value of
+        each source, as an ``(n_labels, 4)`` intp array with -1 for a
+        completely masked source (see ``batch_minmax_index``).
+        """
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        return batch_minmax_index(
+            arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
+            labels=self._batch_labels(), bbox_iymin=iymin,
+            bbox_iymax=iymax, bbox_ixmin=ixmin, bbox_ixmax=ixmax)
+
+    def _extreme_value_index(self, columns, *, origin):
+        """
+        Return the ``(y, x)`` positions of an extreme ``data`` value of
+        each source from ``_cutout_minmax_index``.
+
+        Parameters
+        ----------
+        columns : slice
+            The two columns of ``_cutout_minmax_index`` to return.
+
+        origin : bool
+            Whether to add the bounding-box origin, giving positions in
+            the full data array instead of the cutout frame.
+
+        Returns
+        -------
+        result : 2D `~numpy.ndarray`
+            The ``(n_labels, 2)`` positions, as integers, or as floats
+            with NaN rows for completely masked sources if there are
+            any.
+        """
+        # Private cached arrays keep their leading source axis for
+        # scalar catalogs, so they are read directly (not via _array)
+        index = self._cutout_minmax_index[:, columns]
+        if origin:
+            index = index + self._batch_bboxes[:, [0, 2]]
+        all_masked = self._all_masked
+        if np.any(all_masked):
+            index = index.astype(float)
+            index[all_masked] = np.nan
+        return index
 
     @cached_property
     def cutout_min_value_index(self):
@@ -3356,14 +3348,7 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        data = self._array('data_cutout_masked')
-        idx = []
-        for arr in data:
-            if np.all(arr.mask):
-                idx.append((np.nan, np.nan))
-            else:
-                idx.append(np.unravel_index(np.argmin(arr), arr.shape))
-        return np.array(idx)
+        return self._extreme_value_index(slice(0, 2), origin=False)
 
     @cached_property
     def cutout_max_value_index(self):
@@ -3374,14 +3359,7 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        data = self._array('data_cutout_masked')
-        idx = []
-        for arr in data:
-            if np.all(arr.mask):
-                idx.append((np.nan, np.nan))
-            else:
-                idx.append(np.unravel_index(np.argmax(arr), arr.shape))
-        return np.array(idx)
+        return self._extreme_value_index(slice(2, 4), origin=False)
 
     @cached_property
     def min_value_index(self):
@@ -3392,11 +3370,7 @@ class SourceCatalog:
         If there are multiple occurrences of the minimum value, only the
         first occurrence is returned.
         """
-        index = self._array('cutout_min_value_index')
-        out = []
-        for idx, slc in zip(index, self._slices_iter, strict=True):
-            out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
-        return np.array(out)
+        return self._extreme_value_index(slice(0, 2), origin=True)
 
     @cached_property
     def max_value_index(self):
@@ -3407,11 +3381,7 @@ class SourceCatalog:
         If there are multiple occurrences of the maximum value, only the
         first occurrence is returned.
         """
-        index = self._array('cutout_max_value_index')
-        out = []
-        for idx, slc in zip(index, self._slices_iter, strict=True):
-            out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
-        return np.array(out)
+        return self._extreme_value_index(slice(2, 4), origin=True)
 
     @cached_property
     def min_value_xindex(self):
@@ -3474,13 +3444,14 @@ class SourceCatalog:
         Non-finite pixel values (NaN and inf) are excluded
         (automatically masked).
         """
-        source_sum, sizes = self._reduceat(self._data_values, np.add)
+        values = self._data_values
+        source_sum = values.reduce(np.add)
         # Subtract the local background over the number of unmasked
         # pixels actually included in the sum. The "area" property is
         # not used here because it is taken from the detection catalog
         # (if input), whose pixel count can differ when the data masks
         # differ.
-        source_sum -= sizes * self._local_background
+        source_sum -= values.counts * self._local_background
         if self._data_unit is not None:
             source_sum <<= self._data_unit
         return source_sum
@@ -3510,8 +3481,7 @@ class SourceCatalog:
         if self._error is None:
             err = self._null_values
         else:
-            err_sq, _ = self._reduceat(self._error_values, np.add,
-                                       transform=np.square)
+            err_sq = self._error_values.reduce(np.add, transform=np.square)
             err = np.sqrt(err_sq)
 
         if self._data_unit is not None:
@@ -3530,8 +3500,7 @@ class SourceCatalog:
         if self._background is None:
             bkg_sum = self._null_values
         else:
-            bkg_sum, _ = self._reduceat(
-                self._background_values, np.add)
+            bkg_sum = self._background_values.reduce(np.add)
 
         if self._data_unit is not None:
             bkg_sum <<= self._data_unit
@@ -3549,9 +3518,10 @@ class SourceCatalog:
         if self._background is None:
             bkg_mean = self._null_values
         else:
-            bkg_sum, sizes = self._reduceat(
-                self._background_values, np.add)
-            bkg_mean = bkg_sum / sizes
+            values = self._background_values
+            # The placeholder slot of a completely masked source keeps
+            # its (NaN) mean free of a division by zero
+            bkg_mean = values.reduce(np.add) / values.sizes
 
         if self._data_unit is not None:
             bkg_mean <<= self._data_unit
@@ -3595,12 +3565,9 @@ class SourceCatalog:
         any data masking (i.e., a ``mask`` input to `SourceCatalog` or
         invalid ``data`` values).
         """
-        areas = []
-        for label, slices in zip(self.labels, self._slices_iter,
-                                 strict=True):
-            areas.append(np.count_nonzero(
-                self._segmentation_image[slices] == label))
-        return np.array(areas) << (u.pix**2)
+        segm = self._segmentation_image
+        areas = segm.areas[segm.get_indices(np.atleast_1d(self.labels))]
+        return np.asarray(areas, dtype=int) << (u.pix**2)
 
     @cached_property
     @use_detcat
@@ -3612,7 +3579,7 @@ class SourceCatalog:
         if a mask is input to `SourceCatalog` or if the ``data`` within
         the segment contains invalid values (NaN and inf).
         """
-        areas = np.array([arr.size for arr in self._data_values]).astype(float)
+        areas = self._data_values.counts.astype(float)
         areas[self._all_masked] = np.nan
         return areas << (u.pix**2)
 
@@ -3650,39 +3617,19 @@ class SourceCatalog:
         weights[[21, 33]] = np.sqrt(2.0)
         weights[[13, 23]] = (1 + np.sqrt(2.0)) / 2.0
 
-        perimeter = []
-        for mask in self._cutout_total_masks:
-            if np.all(mask):
-                perimeter.append(np.nan)
-                continue
-
-            ny, nx = mask.shape
-
-            # Pad source array with zeros (border_value=0)
-            padded = np.zeros((ny + 2, nx + 2), dtype=np.int8)
-            padded[1:-1, 1:-1] = ~mask
-
-            # Binary erosion with cross footprint (4-connectivity):
-            # a pixel is eroded if any 4-connected neighbor is 0
-            p = padded
-            eroded = (p[1:-1, 1:-1] & p[:-2, 1:-1] & p[2:, 1:-1]
-                      & p[1:-1, :-2] & p[1:-1, 2:])
-
-            # Border pixels are source pixels that were eroded away
-            border = np.zeros((ny + 2, nx + 2), dtype=np.int8)
-            border[1:-1, 1:-1] = padded[1:-1, 1:-1] & ~eroded
-
-            # Convolution with kernel [[10,2,10], [2,1,2], [10,2,10]]
-            b = border
-            conv = (10 * b[:-2, :-2] + 2 * b[:-2, 1:-1]
-                    + 10 * b[:-2, 2:] + 2 * b[1:-1, :-2]
-                    + b[1:-1, 1:-1] + 2 * b[1:-1, 2:]
-                    + 10 * b[2:, :-2] + 2 * b[2:, 1:-1]
-                    + 10 * b[2:, 2:])
-
-            hist = np.bincount(conv.ravel(), minlength=size)
-            perimeter.append(hist[:size] @ weights)
-
+        # Histogram of the convolved border-pixel patterns of each
+        # source (see batch_perimeter). The weights are applied with
+        # einsum so the per-source arithmetic is independent of the
+        # number of sources.
+        arrays = self._get_batch_arrays()
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        hist = batch_perimeter(
+            arrays['mask'], segm=arrays['segm'],
+            labels=self._batch_labels(),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax)
+        perimeter = np.einsum('nk,k->n', hist.astype(float), weights)
+        perimeter[self._all_masked] = np.nan
         return np.array(perimeter) * u.pix
 
     @cached_property
@@ -3740,8 +3687,7 @@ class SourceCatalog:
             # is non-negative for a real symmetric matrix. Clip tiny
             # negative rounding to zero.
             half_trace = 0.5 * (covar[:, 0, 0] + covar[:, 1, 1])
-            disc = np.maximum(half_trace**2 - self._raw_covariance_det,
-                              0.0)
+            disc = np.maximum(half_trace**2 - self._raw_covariance_det, 0.0)
             min_eigval = half_trace - np.sqrt(disc)
             degenerate = (np.isfinite(min_eigval)
                           & (min_eigval < 1.0 / 12.0))
@@ -3846,13 +3792,13 @@ class SourceCatalog:
         idx = np.unique(np.where(np.isfinite(self._covariance))[0])
         eigvals[idx] = np.linalg.eigvalsh(self._covariance[idx])
 
-        # Check for negative variance
-        # (just in case covariance matrix is not positive semidefinite)
+        # Check for negative variance (in case covariance matrix is not
+        # positive semidefinite).
         idx2 = np.unique(np.where(eigvals < 0)[0])
         eigvals[idx2] = (np.nan, np.nan)
 
-        # Sort each eigenvalue pair in descending order
-        # (eigvalsh returns values in ascending order)
+        # Sort each eigenvalue pair in descending order (eigvalsh
+        # returns values in ascending order).
         eigvals = np.fliplr(eigvals)
 
         return eigvals * u.pix**2
@@ -4094,7 +4040,7 @@ class SourceCatalog:
         from the calculation. If only a single finite pixel remains
         after filtering, the Gini coefficient is 0.0.
         """
-        return np.array([gini_func(arr) for arr in self._data_values])
+        return _batch_gini(self._data_values)
 
     @cached_property
     def _local_background_apertures(self):
@@ -4194,89 +4140,6 @@ class SourceCatalog:
         if self._data_unit is not None:
             bkg <<= self._data_unit
         return bkg
-
-    def _aperture_to_mask(self, aperture, **kwargs):
-        """
-        Call ``aperture.to_mask()``, but first check that the aperture
-        bounding box is not larger than the input data to prevent
-        out-of-memory errors from pathologically large apertures.
-
-        The aperture mask is allocated at the full (unclipped) bounding
-        box size by ``to_mask()``, before ``get_overlap_slices`` clips
-        it to the data shape. For pathological apertures (e.g., from
-        huge Kron radii), this allocation can cause out-of-memory
-        issues.
-
-        Returns `None` if the aperture mask would be unreasonably large.
-        """
-        bbox = aperture.bbox
-        # Limit the aperture mask size to prevent OOM errors
-        max_size = max(self._data.size, 1_000_000)
-        if bbox.shape[0] * bbox.shape[1] > max_size:
-            return None
-        return aperture.to_mask(**kwargs)
-
-    def _make_aperture_data(self, label, x_centroid, y_centroid, aperture_bbox,
-                            local_background, *, make_error=True):
-        """
-        Make cutouts of data, error, and mask arrays for aperture
-        photometry (e.g., circular or Kron).
-
-        Neighboring sources can be included, masked, or corrected based
-        on the ``aperture_mask_method`` keyword.
-
-        The last returned value is a dictionary of the cutout masks
-        needed to compute the aperture quality flags. Its ``segm_mask``
-        and ``uncorrected_mask`` values are `None` where they do not
-        apply (i.e., for an ``aperture_mask_method`` of "none" and for a
-        method other than "correct", respectively).
-        """
-        # Make cutouts of the data based on the aperture bbox
-        slc_lg, slc_sm = aperture_bbox.get_overlap_slices(self._data.shape)
-        if slc_lg is None:
-            return (None,) * 6
-
-        data = self._data[slc_lg].astype(float) - local_background
-
-        mask_cutout = None if self._mask is None else self._mask[slc_lg]
-        data_mask = self._make_cutout_data_mask(data, mask_cutout)
-
-        if make_error and self._error is not None:
-            error = self._error[slc_lg]
-        else:
-            error = None
-
-        # Calculate cutout centroid position
-        cutout_xycen = (x_centroid - max(0, aperture_bbox.ixmin),
-                        y_centroid - max(0, aperture_bbox.iymin))
-
-        # Mask or correct neighboring sources
-        segm_mask = None
-        uncorrected_mask = None
-        if self.aperture_mask_method == 'none':
-            mask = data_mask
-        else:
-            segment_img = self._segmentation_image.data[slc_lg]
-            segm_mask = np.logical_and(segment_img != label,
-                                       segment_img != 0)
-            if self.aperture_mask_method == 'mask':
-                mask = data_mask | segm_mask
-            else:
-                mask = data_mask
-
-        if self.aperture_mask_method == 'correct':
-            data, uncorrected_mask = _mask_to_mirrored_value(
-                data, segm_mask, cutout_xycen, mask=mask,
-                return_uncorrected=True)
-            if error is not None:
-                error = _mask_to_mirrored_value(error, segm_mask, cutout_xycen,
-                                                mask=mask)
-
-        flag_masks = {'data_mask': data_mask,
-                      'segm_mask': segm_mask,
-                      'uncorrected_mask': uncorrected_mask}
-
-        return data, error, mask, cutout_xycen, slc_sm, flag_masks
 
     def _make_circular_apertures(self, radius):
         """
@@ -4430,11 +4293,7 @@ class SourceCatalog:
             msg = 'radius must be > 0'
             raise ValueError(msg)
 
-        apertures = self._make_circular_apertures(radius)
-        kwargs = self._aperture_mask_kwargs['circ']
-        flux, flux_err = self._aperture_photometry(apertures,
-                                                   desc='circular_photometry',
-                                                   **kwargs)
+        flux, flux_err = self._calc_circular_photometry(radius)
 
         if self._data_unit is not None:
             flux <<= self._data_unit
@@ -4517,148 +4376,59 @@ class SourceCatalog:
         any minimum Kron or circular radius.
         """
         scale = 6.0
+        xcen = np.ascontiguousarray(self._array('x_centroid'),
+                                    dtype=np.float64)
+        ycen = np.ascontiguousarray(self._array('y_centroid'),
+                                    dtype=np.float64)
+        semimajor = np.ascontiguousarray(
+            self._array('semimajor_axis').value, dtype=np.float64)
+        semiminor = np.ascontiguousarray(
+            self._array('semiminor_axis').value, dtype=np.float64)
+        theta = np.ascontiguousarray(
+            self._array('orientation').to_value(u.radian),
+            dtype=np.float64)
+        cxx = np.ascontiguousarray(self._array('ellipse_cxx').value,
+                                   dtype=np.float64)
+        cxy = np.ascontiguousarray(self._array('ellipse_cxy').value,
+                                   dtype=np.float64)
+        cyy = np.ascontiguousarray(self._array('ellipse_cyy').value,
+                                   dtype=np.float64)
 
-        xcen_arr = self._array('x_centroid')
-        ycen_arr = self._array('y_centroid')
-        a_arr = self._array('semimajor_axis').value * scale
-        b_arr = self._array('semiminor_axis').value * scale
-        theta_arr = self._array('orientation').to_value(u.radian)
-        cxx_arr = self._array('ellipse_cxx').value
-        cxy_arr = self._array('ellipse_cxy').value
-        cyy_arr = self._array('ellipse_cyy').value
-        all_masked = self._all_masked
+        # Completely masked sources and sources with a non-finite
+        # centroid or shape have no measured Kron radius (NaN)
+        skip = (self._all_masked | ~np.isfinite(xcen) | ~np.isfinite(ycen)
+                | ~np.isfinite(semimajor * scale)
+                | ~np.isfinite(semiminor * scale)
+                | ~np.isfinite(theta)).astype(np.uint8)
 
-        data_full = self._data
-        data_shape = data_full.shape
-        mask_full = self._mask
-        segm_data = self._segmentation_image.data
-        max_size = max(data_full.size, 1_000_000)
         kron_min = self.kron_params[1]
         min_circ_radius = (self.kron_params[2]
                            if len(self.kron_params) == 3 else 0.0)
-        aperture_mask_method = self.aperture_mask_method
 
-        labels = self.labels
-        if self.progress_bar:
-            desc = 'kron_radius'
-            labels = add_progress_bar(labels, desc=desc)
+        arrays = self._get_batch_arrays()
+        sums = batch_kron_radius(
+            arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
+            labels=self._batch_labels(),
+            xcen=xcen, ycen=ycen, semimajor=semimajor,
+            semiminor=semiminor, theta=theta, cxx=cxx, cxy=cxy, cyy=cyy,
+            skip=skip,
+            seg_method=SEG_METHOD_CODES[self.aperture_mask_method],
+            scale=scale, min_circ_radius=min_circ_radius,
+            max_aper_size=max(self._data.size, 1_000_000))
+        flux_numer = sums[:, 0]
+        flux_denom = sums[:, 1]
 
-        kron_radius = []
-        for (label, xc, yc, a, b, theta, cxx_, cxy_, cyy_,
-             masked) in zip(labels, xcen_arr, ycen_arr, a_arr, b_arr,
-                            theta_arr, cxx_arr, cxy_arr, cyy_arr,
-                            all_masked, strict=True):
-            if masked or not (math.isfinite(xc) and math.isfinite(yc)
-                              and math.isfinite(a) and math.isfinite(b)
-                              and math.isfinite(theta)):
-                kron_radius.append(np.nan)
-                continue
+        # Ignore RuntimeWarning from undefined (NaN) sums and from a
+        # zero denominator
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            kron_radius = flux_numer / flux_denom
+            # Set the Kron radius to the minimum Kron radius if the
+            # numerator or denominator is not positive (NaN comparisons
+            # are False, so undefined sources stay NaN)
+            kron_radius[(flux_numer <= 0) | (flux_denom <= 0)] = kron_min
 
-            # Circular aperture fallback when semimajor/semiminor are
-            # zero (matching _make_elliptical_apertures behavior)
-            use_circular = (a == 0 and b == 0)
-            if use_circular:
-                if min_circ_radius <= 0:
-                    kron_radius.append(np.nan)
-                    continue
-                half_w = min_circ_radius
-                half_h = min_circ_radius
-            else:
-                cos_theta = math.cos(theta)
-                sin_theta = math.sin(theta)
-                half_w = math.sqrt(a * a * cos_theta * cos_theta
-                                   + b * b * sin_theta * sin_theta)
-                half_h = math.sqrt(a * a * sin_theta * sin_theta
-                                   + b * b * cos_theta * cos_theta)
-
-            # Compute bounding box from ellipse/circle parameters
-            ixmin = math.floor(xc - half_w + 0.5)
-            ixmax = math.floor(xc + half_w + 0.5) + 1
-            iymin = math.floor(yc - half_h + 0.5)
-            iymax = math.floor(yc + half_h + 0.5) + 1
-
-            # OOM guard
-            if (ixmax - ixmin) * (iymax - iymin) > max_size:
-                kron_radius.append(np.nan)
-                continue
-
-            # Compute overlap slices with data boundaries
-            dx_min = max(0, -ixmin)
-            dy_min = max(0, -iymin)
-            dx_max = max(0, ixmax - data_shape[1])
-            dy_max = max(0, iymax - data_shape[0])
-            lg_xmin = ixmin + dx_min
-            lg_xmax = ixmax - dx_max
-            lg_ymin = iymin + dy_min
-            lg_ymax = iymax - dy_max
-            if lg_xmin >= lg_xmax or lg_ymin >= lg_ymax:
-                kron_radius.append(np.nan)
-                continue
-
-            slc_lg = (slice(lg_ymin, lg_ymax), slice(lg_xmin, lg_xmax))
-
-            # Cutout data (local background explicitly zero for SE
-            # agreement)
-            data = data_full[slc_lg].astype(float)
-
-            # Build data mask (non-finite + input mask)
-            data_mask = ~np.isfinite(data)
-            if mask_full is not None:
-                data_mask |= mask_full[slc_lg]
-
-            # Mask or correct neighboring sources
-            if aperture_mask_method != 'none':
-                seg_cut = segm_data[slc_lg]
-                segm_mask = (seg_cut != label) & (seg_cut != 0)
-                if aperture_mask_method == 'mask':
-                    mask = data_mask | segm_mask
-                else:
-                    mask = data_mask
-                if aperture_mask_method == 'correct':
-                    cutout_xycen = (xc - max(0, ixmin), yc - max(0, iymin))
-                    data = _mask_to_mirrored_value(data, segm_mask,
-                                                   cutout_xycen,
-                                                   mask=mask)
-            else:
-                mask = data_mask
-
-            # Coordinate arrays (ogrid-style broadcasting avoids
-            # allocating full 2D meshgrid arrays)
-            ny, nx = data.shape
-            xval = np.arange(nx) - (xc - lg_xmin)
-            yval = np.arange(ny) - (yc - lg_ymin)
-            yy = yval[:, np.newaxis]
-            xx = xval[np.newaxis, :]
-
-            # Elliptical radius
-            rr_sq = cxx_ * xx * xx + cxy_ * xx * yy + cyy_ * yy * yy
-            rr = np.sqrt(np.maximum(rr_sq, 0.0))
-
-            # Aperture mask: for method='center', pixels whose center
-            # falls inside the ellipse (rr <= scale) or circle
-            if use_circular:
-                dx = xx
-                dy = yy
-                pixel_mask = ((dx * dx + dy * dy)
-                              <= min_circ_radius * min_circ_radius) & ~mask
-            else:
-                pixel_mask = (rr <= scale) & ~mask
-
-            # Ignore RuntimeWarning for invalid data values
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                flux_numer = np.sum(data[pixel_mask] * rr[pixel_mask])
-                flux_denom = np.sum(data[pixel_mask])
-
-            # Set Kron radius to the minimum Kron radius if numerator or
-            # denominator is negative
-            if flux_numer <= 0 or flux_denom <= 0:
-                kron_radius.append(kron_min)
-                continue
-
-            kron_radius.append(flux_numer / flux_denom)
-
-        return np.array(kron_radius)
+        return kron_radius
 
     def _calc_kron_radius(self, kron_params):
         """
@@ -4906,80 +4676,167 @@ class SourceCatalog:
                 patches.append(aperture._to_patch(origin=origin, **kwargs))
         return self._make_scalar(patches)
 
-    def _aperture_photometry(self, apertures, *, desc='', **kwargs):
+    @staticmethod
+    def _overlap_params(kwargs):
         """
-        Perform aperture photometry on cutouts of the data and optional
-        error arrays.
-
-        The appropriate ``aperture_mask_method`` is applied to the
-        cutouts to handle neighboring sources.
+        Translate aperture ``to_mask`` keyword arguments to the
+        ``(use_exact, subpixels)`` overlap parameters of the batch
+        drivers.
 
         Parameters
         ----------
-        apertures : list of `PixelAperture`
-            A list of the apertures.
-
-        desc : str, optional
-            The description displayed before the progress bar.
-
-        **kwargs : dict, optional
-            Additional keyword arguments passed to the aperture
-            ``to_mask`` method.
+        kwargs : dict
+            The ``to_mask`` keyword arguments (``method`` and, for the
+            subpixel method, ``subpixels``).
 
         Returns
         -------
-        flux, flux_err : 1D `~numpy.ndaray`
-            The flux and flux error arrays.
+        use_exact, subpixels : int
+            The overlap parameters.
         """
-        labels = self.labels
-        if self.progress_bar:
-            labels = add_progress_bar(labels, desc=desc)
+        method = kwargs.get('method', 'exact')
+        if method == 'exact':
+            return 1, 1
+        if method == 'center':
+            return 0, 1
+        return 0, kwargs.get('subpixels', 5)
 
-        flux = []
-        flux_err = []
-        for label, aperture, bkg in zip(labels, apertures,
-                                        self._local_background, strict=True):
-            # Return NaN for completely masked sources or sources where
-            # the centroid is not finite
-            if aperture is None:
-                flux.append(np.nan)
-                flux_err.append(np.nan)
-                continue
+    def _calc_circular_photometry(self, radius):
+        """
+        Calculate the flux and flux error (without units) in a circular
+        aperture of the given radius centered on each source centroid.
 
-            xcen, ycen = aperture.positions
-            aperture_mask = self._aperture_to_mask(aperture, **kwargs)
-            if aperture_mask is None:
-                flux.append(np.nan)
-                flux_err.append(np.nan)
-                continue
+        See the `SourceCatalog` ``aperture_mask_method`` keyword for
+        options to mask neighboring sources.
 
-            # Prepare cutouts of the data based on the aperture size
-            data, error, mask, _, slc_sm, _ = self._make_aperture_data(
-                label, xcen, ycen, aperture_mask.bbox, bkg)
+        If ``detection_catalog`` is input, then its `centroid` values
+        will be used.
 
-            aperture_weights = aperture_mask.data[slc_sm]
-            pixel_mask = (aperture_weights > 0) & ~mask  # good pixels
-            # Ignore RuntimeWarning for invalid data or error values
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                values = (aperture_weights * data)[pixel_mask]
-                flux_ = np.nan if values.shape == (0,) else np.sum(values)
-                flux.append(flux_)
+        Parameters
+        ----------
+        radius : float
+            The radius of the circle in pixels.
 
-                if error is None:
-                    flux_err_ = np.nan
-                else:
-                    values = (aperture_weights**2 * error**2)[pixel_mask]
-                    if values.shape == (0,):
-                        flux_err_ = np.nan
-                    else:
-                        flux_err_ = np.sqrt(np.sum(values))
-                flux_err.append(flux_err_)
+        Returns
+        -------
+        flux, flux_err : 1D `~numpy.ndarray`
+            The aperture flux and flux error arrays. NaN where the
+            source is completely masked, its centroid is not finite, the
+            aperture does not overlap the data or has no contributing
+            pixels, or the aperture is unreasonably large.
+        """
+        xcen = np.atleast_1d(self.x_centroid).astype(float)
+        ycen = np.atleast_1d(self.y_centroid).astype(float)
+        n_src = len(xcen)
+        flux = np.full(n_src, np.nan)
+        flux_err = np.full(n_src, np.nan)
 
-        flux = np.array(flux)
-        flux_err = np.array(flux_err)
+        # Exclude undefined apertures (completely masked sources and
+        # non-finite centroids) and apertures whose bounding box would
+        # be unreasonably large (out-of-memory guard)
+        max_size = max(self._data.size, 1_000_000)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            nx = (np.floor(xcen + radius + 1.5)
+                  - np.floor(xcen - radius + 0.5))
+            ny = (np.floor(ycen + radius + 1.5)
+                  - np.floor(ycen - radius + 0.5))
+            valid = (~self._all_masked & np.isfinite(xcen)
+                     & np.isfinite(ycen) & np.isfinite(radius)
+                     & (nx * ny <= max_size))
+        idx = np.flatnonzero(valid)
+        if idx.size == 0:
+            return flux, flux_err
+
+        arrays = self._get_batch_arrays()
+        seg_code = SEG_METHOD_CODES[self.aperture_mask_method]
+        seg_arr = None
+        seg_labels = None
+        if seg_code != 0:
+            seg_arr = arrays['segm']
+            seg_labels = np.ascontiguousarray(
+                np.atleast_1d(self.labels), dtype=np.intp)[idx]
+        positions = np.ascontiguousarray(
+            np.column_stack((xcen[idx], ycen[idx])))
+        local_bkg = np.ascontiguousarray(self._local_background,
+                                         dtype=np.float64)[idx]
+        use_exact, subpixels = self._overlap_params(
+            self._aperture_mask_kwargs['circ'])
+
+        result = batch_aperture_sums(
+            arrays['data'], arrays['error'], arrays['mask'], positions,
+            SHAPE_CIRCLE, np.array([radius], dtype=np.float64), radius,
+            radius, 0.0, 0.0, use_exact, subpixels, seg_arr, seg_labels,
+            seg_code, local_bkg, 0)
+        sums = result.sums
+        sum_vars = result.sum_vars
+        overlap = result.overlap
+        fcounts = result.flag_counts
+
+        # Membership matches the previous cutout-based
+        # ``in_aperture & ~mask`` rule: under 'correct', uncorrectable
+        # neighbor pixels stay members (with value zero)
+        members = fcounts[:, FLAG_COL_VALID].copy()
+        if seg_code == 3:
+            members += fcounts[:, FLAG_COL_UNCORRECTED]
+        good = overlap & (members > 0)
+        flux[idx] = np.where(good, sums, np.nan)
+        if self._error is not None:
+            flux_err[idx] = np.where(good, np.sqrt(sum_vars), np.nan)
 
         return flux, flux_err
+
+    def _kron_aperture_params(self, kron_params):
+        """
+        Return the Kron aperture geometry of each source as arrays.
+
+        This is the array form of the apertures made by
+        ``_make_kron_apertures`` (see `kron_aperture`), without
+        constructing aperture objects.
+
+        Parameters
+        ----------
+        kron_params : tuple
+            The validated Kron parameters.
+
+        Returns
+        -------
+        xcen, ycen : 1D `~numpy.ndarray`
+            The aperture centers.
+
+        major, minor : 1D `~numpy.ndarray`
+            The semimajor and semiminor axes of the elliptical
+            apertures (the scaled Kron radius times the isophotal
+            axes).
+
+        theta : 1D `~numpy.ndarray`
+            The ellipse orientation in radians.
+
+        circular : 1D `~numpy.ndarray` (bool)
+            `True` where the aperture is instead the circle with the
+            minimum circular radius ``kron_params[2]`` (i.e., where the
+            Kron radius is zero).
+
+        defined : 1D `~numpy.ndarray` (bool)
+            `False` where the aperture is undefined (`None` in
+            `kron_aperture`): where the source is completely masked or
+            its centroid or elliptical shape parameters are not finite.
+        """
+        # NOTE: if kron_radius = NaN, scale = NaN and the aperture is
+        # undefined
+        kron_radius = self._calc_kron_radius(kron_params)
+        scale = kron_radius.value * kron_params[0]
+        xcen = np.atleast_1d(self.x_centroid)
+        ycen = np.atleast_1d(self.y_centroid)
+        major = np.atleast_1d(self.semimajor_axis.value) * scale
+        minor = np.atleast_1d(self.semiminor_axis.value) * scale
+        theta = np.atleast_1d(self.orientation.to_value(u.radian))
+        defined = (~self._all_masked & np.isfinite(xcen) & np.isfinite(ycen)
+                   & np.isfinite(major) & np.isfinite(minor)
+                   & np.isfinite(theta))
+        # kron_radius = 0 -> scale = 0 -> major/minor = 0
+        circular = defined & (major == 0) & (minor == 0)
+        return xcen, ycen, major, minor, theta, circular, defined
 
     def _calc_kron_photometry(self, *, kron_params=None):
         """
@@ -4989,11 +4846,17 @@ class SourceCatalog:
         See the `SourceCatalog` ``aperture_mask_method`` keyword for
         options to mask neighboring sources.
 
-        If the Kron aperture is `None`, then ``np.nan`` will be
-        returned.
+        If the Kron aperture is undefined (`None` in `kron_aperture`),
+        then ``np.nan`` will be returned.
 
         If ``detection_catalog`` is input, then its `centroid` values
         will be used.
+
+        Parameters
+        ----------
+        kron_params : tuple or `None`, optional
+            The Kron parameters. If `None`, the apertures are those
+            of `kron_aperture` (from the detection catalog, if input).
 
         Returns
         -------
@@ -5002,143 +4865,113 @@ class SourceCatalog:
             `~photutils.segmentation.decode_segmentation_flags`).
         """
         if kron_params is None:
-            kron_aperture = self._array('kron_aperture')
+            # The geometry of the kron_aperture property, which is
+            # taken from the detection catalog if input
+            source = (self if self._detection_catalog is None
+                      else self._detection_catalog)
+            kron_params = source.kron_params
         else:
+            source = self
             kron_params = self._validate_kron_params(kron_params)
-            kron_aperture = self._make_kron_apertures(kron_params)
+        (xcen, ycen, major, minor, theta, circular,
+         defined) = source._kron_aperture_params(kron_params)
 
-        labels = self.labels
-        if self.progress_bar:
-            labels = add_progress_bar(labels, desc='kron_photometry')
+        n_src = len(xcen)
+        flux = np.full(n_src, np.nan)
+        flux_err = np.full(n_src, np.nan)
+        kron_flags = np.zeros(n_src, dtype=int)
+        kron_flags[~defined] = SEGMENTATION_FLAGS.KRON_UNDEFINED
 
-        _floor = math.floor
+        # Exclude apertures whose bounding box would be unreasonably
+        # large (out-of-memory guard)
         max_size = max(self._data.size, 1_000_000)
-        ny_img, nx_img = self._data.shape
+        circ_radius = kron_params[2] if len(kron_params) == 3 else 0.0
+        # Ignore RuntimeWarning from non-finite values of undefined
+        # apertures
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            cos_t = np.cos(theta)
+            sin_t = np.sin(theta)
+            x_ext = np.sqrt((major * cos_t) ** 2 + (minor * sin_t) ** 2)
+            y_ext = np.sqrt((major * sin_t) ** 2 + (minor * cos_t) ** 2)
+            x_ext = np.where(circular, circ_radius, x_ext)
+            y_ext = np.where(circular, circ_radius, y_ext)
+            nx = (np.floor(xcen + x_ext + 1.5)
+                  - np.floor(xcen - x_ext + 0.5))
+            ny = (np.floor(ycen + y_ext + 1.5)
+                  - np.floor(ycen - y_ext + 0.5))
+            oversized = defined & (nx * ny > max_size)
+        kron_flags[oversized] = SEGMENTATION_FLAGS.KRON_UNDEFINED
+        usable = defined & ~oversized
 
-        flux = []
-        flux_err = []
-        kron_flags = []
-        for label, aperture, bkg in zip(labels, kron_aperture,
-                                        self._local_background, strict=True):
-            if aperture is None:
-                flux.append(np.nan)
-                flux_err.append(np.nan)
-                kron_flags.append(SEGMENTATION_FLAGS.KRON_UNDEFINED)
+        # Group the apertures by shape for the batch driver
+        circ_idx = np.flatnonzero(usable & circular)
+        ell_idx = np.flatnonzero(usable & ~circular)
+        circ_params = np.full((len(circ_idx), 1), circ_radius)
+        ell_params = np.column_stack((major, minor, theta))[ell_idx]
+        positions = np.column_stack((xcen, ycen)).astype(float)
+
+        arrays = self._get_batch_arrays()
+        seg_code = SEG_METHOD_CODES[self.aperture_mask_method]
+        seg_arr = arrays['segm'] if seg_code != 0 else None
+        labels_arr = self._batch_labels()
+        local_bkg = np.ascontiguousarray(self._local_background,
+                                         dtype=np.float64)
+        has_error = self._error is not None
+
+        for idx, psrc, shape_code in (
+                (circ_idx, circ_params, SHAPE_CIRCLE),
+                (ell_idx, ell_params, SHAPE_ELLIPSE)):
+            if idx.size == 0:
                 continue
+            psrc = np.ascontiguousarray(psrc, dtype=np.float64)
+            pos = np.ascontiguousarray(positions[idx])
+            seg_labels = labels_arr[idx] if seg_code != 0 else None
+            result = batch_aperture_sums(
+                arrays['data'], arrays['error'], arrays['mask'], pos,
+                shape_code, None, 0.0, 0.0, 0.0, 0.0, 1, 1, seg_arr,
+                seg_labels, seg_code, local_bkg[idx], 0,
+                params_per_source=psrc)
+            sums = result.sums
+            sum_vars = result.sum_vars
+            overlap = result.overlap
+            fcounts = result.flag_counts
+            weights_out = result.weights_out
 
-            xcen, ycen = aperture.positions
+            n_pix = fcounts[:, FLAG_COL_N_PIXELS]
+            clipped = fcounts[:, FLAG_COL_BBOX_CLIPPED].astype(bool)
+            weights_out = weights_out.astype(bool)
+            # Membership matches the previous cutout-based
+            # ``in_aperture & ~mask`` rule: under 'correct',
+            # uncorrectable neighbor pixels stay members (with value
+            # zero), so they keep the flux at 0.0 rather than NaN
+            members = fcounts[:, FLAG_COL_VALID].copy()
+            if seg_code == 3:
+                members += fcounts[:, FLAG_COL_UNCORRECTED]
+            good = overlap & (members > 0)
+            flux[idx] = np.where(good, sums, np.nan)
+            if has_error:
+                flux_err[idx] = np.where(good, np.sqrt(sum_vars),
+                                         np.nan)
 
-            # Compute the aperture mask directly, bypassing the
-            # aperture's to_mask() method and ApertureMask/BoundingBox
-            # property overhead.
-            if isinstance(aperture, CircularAperture):
-                r = aperture.r
-                ixmin = _floor(xcen - r + 0.5)
-                ixmax = _floor(xcen + r + 1.5)
-                iymin = _floor(ycen - r + 0.5)
-                iymax = _floor(ycen + r + 1.5)
-                nx = ixmax - ixmin
-                ny = iymax - iymin
-                if nx * ny > max_size:
-                    flux.append(np.nan)
-                    flux_err.append(np.nan)
-                    kron_flags.append(SEGMENTATION_FLAGS.KRON_UNDEFINED)
-                    continue
-                edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
-                         iymin - 0.5 - ycen, iymax - 0.5 - ycen)
-                mask_data = circular_overlap_grid(
-                    edges[0], edges[1], edges[2], edges[3],
-                    nx, ny, r, 1, 1)
-            else:
-                a = aperture.a
-                b = aperture.b
-                theta_val = aperture.theta
-                theta_rad = (theta_val.to_value(u.radian)
-                             if hasattr(theta_val, 'to')
-                             else float(theta_val))
-                cos_t = math.cos(theta_rad)
-                sin_t = math.sin(theta_rad)
-                x_ext = math.sqrt((a * cos_t) ** 2 + (b * sin_t) ** 2)
-                y_ext = math.sqrt((a * sin_t) ** 2 + (b * cos_t) ** 2)
-                ixmin = _floor(xcen - x_ext + 0.5)
-                ixmax = _floor(xcen + x_ext + 1.5)
-                iymin = _floor(ycen - y_ext + 0.5)
-                iymax = _floor(ycen + y_ext + 1.5)
-                nx = ixmax - ixmin
-                ny = iymax - iymin
-                if nx * ny > max_size:
-                    flux.append(np.nan)
-                    flux_err.append(np.nan)
-                    kron_flags.append(SEGMENTATION_FLAGS.KRON_UNDEFINED)
-                    continue
-                edges = (ixmin - 0.5 - xcen, ixmax - 0.5 - xcen,
-                         iymin - 0.5 - ycen, iymax - 0.5 - ycen)
-                mask_data = elliptical_overlap_grid(
-                    edges[0], edges[1], edges[2], edges[3],
-                    nx, ny, a, b, theta_rad, 1, 1)
-
-            bbox = BoundingBox(ixmin, ixmax, iymin, iymax)
-            (data, error, mask, _, slc_sm,
-             flag_masks) = self._make_aperture_data(label, xcen, ycen, bbox,
-                                                    bkg)
-            if data is None:
-                flux.append(np.nan)
-                flux_err.append(np.nan)
-                kron_flags.append(SEGMENTATION_FLAGS.KRON_NO_OVERLAP)
-                continue
-
-            aperture_weights = mask_data[slc_sm]
-            in_aperture = aperture_weights > 0
-            pixel_mask = in_aperture & ~mask
-
-            kron_flag = 0
-            # The aperture bounding box extends beyond the data array.
-            # The box corners can have zero aperture weight, so compare
-            # the number of nonzero-weight pixels within the data to the
-            # total number in the aperture. The overlap is partial only
-            # if at least one nonzero-weight pixel falls both inside and
-            # outside of the data.
-            if (ixmin < 0 or iymin < 0 or ixmax > nx_img
-                    or iymax > ny_img):
-                n_inside = np.count_nonzero(in_aperture)
-                if n_inside == 0:
-                    kron_flag |= SEGMENTATION_FLAGS.KRON_NO_OVERLAP
-                elif n_inside != np.count_nonzero(mask_data):
-                    kron_flag |= SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP
-
-            if np.any(flag_masks['data_mask'] & in_aperture):
-                kron_flag |= SEGMENTATION_FLAGS.KRON_MASKED_PIXELS
-
-            segm_mask = flag_masks['segm_mask']
-            if segm_mask is not None and np.any(segm_mask & in_aperture):
-                kron_flag |= SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS
-
-            uncorrected_mask = flag_masks['uncorrected_mask']
-            if (uncorrected_mask is not None
-                    and np.any(uncorrected_mask & in_aperture)):
-                kron_flag |= SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS
-
-            kron_flags.append(kron_flag)
-
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', RuntimeWarning)
-                values = (aperture_weights * data)[pixel_mask]
-                flux_ = np.nan if values.shape == (0,) else np.sum(values)
-                flux.append(flux_)
-
-                if error is None:
-                    flux_err_ = np.nan
-                else:
-                    values = (aperture_weights**2 * error**2)[pixel_mask]
-                    if values.shape == (0,):
-                        flux_err_ = np.nan
-                    else:
-                        flux_err_ = np.sqrt(np.sum(values))
-                flux_err.append(flux_err_)
-
-        flux = np.array(flux)
-        flux_err = np.array(flux_err)
-        kron_flags = np.array(kron_flags, dtype=int)
+            grp_flags = np.zeros(len(idx), dtype=int)
+            no_ovl = ~overlap | (clipped & (n_pix == 0))
+            grp_flags[no_ovl] |= SEGMENTATION_FLAGS.KRON_NO_OVERLAP
+            grp_flags[(n_pix > 0) & weights_out] |= (
+                SEGMENTATION_FLAGS.KRON_PARTIAL_OVERLAP)
+            masked_any = (fcounts[:, FLAG_COL_MASKED]
+                          + fcounts[:, FLAG_COL_NONFINITE_DATA]) > 0
+            grp_flags[masked_any] |= (
+                SEGMENTATION_FLAGS.KRON_MASKED_PIXELS)
+            seg_any = (fcounts[:, FLAG_COL_SEG]
+                       + fcounts[:, FLAG_COL_SEG_MASKED]) > 0
+            grp_flags[seg_any] |= (
+                SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS)
+            unc_any = (fcounts[:, FLAG_COL_UNCORRECTED]
+                       + fcounts[:, FLAG_COL_UNCORRECTED_MASKED]) > 0
+            grp_flags[unc_any] |= (
+                SEGMENTATION_FLAGS.KRON_UNCORRECTED_PIXELS)
+            kron_flags[idx] |= grp_flags
 
         return flux, flux_err, kron_flags
 
@@ -5286,135 +5119,49 @@ class SourceCatalog:
             radius[mask] = self.kron_params[2]
         return radius
 
-    @staticmethod
-    def _flux_radius_fcn(radius, clean_data, grid_params, normflux):
-        """
-        Function whose root is found to compute the flux_radius.
-
-        Uses ``circular_overlap_grid`` directly on pre-computed cutout
-        data (with masked pixels zeroed) to avoid per-call aperture
-        object overhead.
-        """
-        xmin_e, xmax_e, ymin_e, ymax_e, nx, ny, exact, subpx = grid_params
-        weights = circular_overlap_grid(xmin_e, xmax_e, ymin_e, ymax_e,
-                                        nx, ny, radius, exact, subpx)
-        flux = np.sum(clean_data * weights)
-        return 1.0 - (flux / normflux)
-
     @cached_property
     @use_detcat
     def _flux_radius_optimizer_args(self):
-        # NOTE: this cached property snapshots the current
-        # _aperture_mask_kwargs['flux_radius'] settings. Changing them
-        # (e.g., via _set_semode) after the first flux_radius call has
-        # no effect.
-        kron_flux = self._kron_photometry[:, 0]  # unitless
-        max_radius = self._max_circular_kron_radius
-        kwargs = self._aperture_mask_kwargs['flux_radius']
+        """
+        The prepared per-source arguments of the flux-radius root-find
+        (see ``batch_flux_radius_prepare``), always as a list with one
+        entry per source.
 
-        # Translate mask method keywords to circular_overlap_grid
-        # parameters once
-        method = kwargs.get('method', 'exact')
-        if method == 'exact':
-            use_exact = 1
-            subpixels = 1
-        elif method == 'center':
-            use_exact = 0
-            subpixels = 1
-        else:  # 'subpixel'
-            use_exact = 0
-            subpixels = kwargs.get('subpixels', 5)
+        Each entry is `None` for a source that cannot have a solution
+        or the list ``[clean_data, grid_params, kronflux,
+        max_radius]``. This cached property snapshots the current
+        ``_aperture_mask_kwargs['flux_radius']`` settings. Changing
+        them (e.g., via ``_set_semode``) after the first flux_radius
+        call has no effect.
+        """
+        kron_flux = np.ascontiguousarray(self._kron_photometry[:, 0],
+                                         dtype=np.float64)  # unitless
+        max_radius = np.ascontiguousarray(self._max_circular_kron_radius,
+                                          dtype=np.float64)
+        x_centroid = np.ascontiguousarray(np.atleast_1d(self.x_centroid),
+                                          dtype=np.float64)
+        y_centroid = np.ascontiguousarray(np.atleast_1d(self.y_centroid),
+                                          dtype=np.float64)
+        local_bkg = np.ascontiguousarray(self._local_background,
+                                         dtype=np.float64)
+        use_exact, subpixels = self._overlap_params(
+            self._aperture_mask_kwargs['flux_radius'])
 
-        # Pre-fetch arrays used inside the loop
-        data_arr = self._data
-        mask_arr = self._mask
-        segm_data = self._segmentation_image.data
-        data_shape = data_arr.shape
-        aperture_mask_method = self.aperture_mask_method
-        max_aper_size = max(data_arr.size, 1_000_000)
+        # Sources with a non-finite centroid, Kron flux, or maximum
+        # radius, or a zero Kron flux, have no solution
+        skip = (~np.isfinite(x_centroid) | ~np.isfinite(y_centroid)
+                | ~np.isfinite(kron_flux) | ~np.isfinite(max_radius)
+                | (kron_flux == 0)).astype(np.uint8)
 
-        labels = self.labels
-        if self.progress_bar:
-            desc = 'flux_radius prep'
-            labels = add_progress_bar(labels, desc=desc)
-
-        x_centroid = np.atleast_1d(self.x_centroid)
-        y_centroid = np.atleast_1d(self.y_centroid)
-
-        args = []
-        for label, xcen, ycen, kronflux, bkg, max_radius_ in zip(
-                labels, x_centroid, y_centroid,
-                kron_flux, self._local_background, max_radius, strict=True):
-
-            if (np.any(~np.isfinite((xcen, ycen, kronflux, max_radius_)))
-                    or kronflux == 0):
-                args.append(None)
-                continue
-
-            # Compute the bounding box for the max-radius aperture
-            # inline, replacing CircularAperture + _aperture_to_mask +
-            # _make_aperture_data
-            ixmin = math.floor(xcen - max_radius_ + 0.5)
-            ixmax = math.ceil(xcen + max_radius_ + 0.5)
-            iymin = math.floor(ycen - max_radius_ + 0.5)
-            iymax = math.ceil(ycen + max_radius_ + 0.5)
-
-            # OOM guard (same logic as _aperture_to_mask)
-            bbox_ny = iymax - iymin
-            bbox_nx = ixmax - ixmin
-            if bbox_ny * bbox_nx > max_aper_size:
-                args.append(None)
-                continue
-
-            # Clip to data boundaries
-            data_ymin = max(0, iymin)
-            data_ymax = min(data_shape[0], iymax)
-            data_xmin = max(0, ixmin)
-            data_xmax = min(data_shape[1], ixmax)
-            if data_ymin >= data_ymax or data_xmin >= data_xmax:
-                args.append(None)
-                continue
-
-            slc_lg = (slice(data_ymin, data_ymax), slice(data_xmin, data_xmax))
-            cutout_data = data_arr[slc_lg].astype(float) - bkg
-
-            # Build data mask (non-finite + user mask)
-            data_mask = ~np.isfinite(cutout_data)
-            if mask_arr is not None:
-                data_mask |= mask_arr[slc_lg]
-
-            # Cutout centroid position
-            cutout_xcen = xcen - data_xmin
-            cutout_ycen = ycen - data_ymin
-
-            # Handle neighboring sources
-            if aperture_mask_method != 'none':
-                seg_cut = segm_data[slc_lg]
-                segm_mask = (seg_cut != label) & (seg_cut != 0)
-                if aperture_mask_method == 'mask':
-                    data_mask = data_mask | segm_mask
-                elif aperture_mask_method == 'correct':
-                    cutout_data = _mask_to_mirrored_value(
-                        cutout_data, segm_mask,
-                        (cutout_xcen, cutout_ycen), mask=data_mask)
-
-            # Pre-zero masked pixels so the root-finding function can
-            # use a simple sum without masking
-            clean_data = cutout_data.copy()
-            clean_data[data_mask] = 0.0
-
-            # Pre-compute grid parameters for circular_overlap_grid
-            ny, nx = clean_data.shape
-            xmin_edge = -0.5 - cutout_xcen
-            xmax_edge = nx - 0.5 - cutout_xcen
-            ymin_edge = -0.5 - cutout_ycen
-            ymax_edge = ny - 0.5 - cutout_ycen
-            grid_params = (xmin_edge, xmax_edge, ymin_edge, ymax_edge,
-                           nx, ny, use_exact, subpixels)
-
-            args.append([clean_data, grid_params, kronflux, max_radius_])
-
-        return args
+        arrays = self._get_batch_arrays()
+        return batch_flux_radius_prepare(
+            arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
+            labels=self._batch_labels(),
+            xcen=x_centroid, ycen=y_centroid, local_bkg=local_bkg,
+            kronflux=kron_flux, max_radius=max_radius, skip=skip,
+            seg_method=SEG_METHOD_CODES[self.aperture_mask_method],
+            use_exact=use_exact, subpixels=subpixels,
+            max_aper_size=max(self._data.size, 1_000_000))
 
     @deprecated_positional_kwargs(since='3.0', until='4.0')
     def flux_radius(self, fraction, name=None, overwrite=False):
@@ -5458,55 +5205,8 @@ class SourceCatalog:
             return self._make_scalar(result)
 
         args = self._flux_radius_optimizer_args
-        if self.progress_bar:
-            desc = 'flux_radius'
-            args = add_progress_bar(args, desc=desc)
-
-        radius = []
-        for flux_radius_args in args:
-            if flux_radius_args is None:
-                radius.append(np.nan)
-                continue
-
-            clean_data, grid_params, kronflux, max_radius = flux_radius_args
-            normflux = kronflux * fraction
-            fcn_args = (clean_data, grid_params, normflux)
-
-            # Try to find the root of self._flux_radius_func, which
-            # is bracketed by a min and max radius. A ValueError is
-            # raised if the bracket points do not have different signs,
-            # indicating no solution or multiple solutions (e.g., a
-            # multi-valued function). This can happen when at some
-            # radius, flux starts decreasing with increasing radius (due
-            # to negative data values), resulting in multiple possible
-            # solutions. If no solution is found, we iteratively
-            # decrease the max radius to narrow the bracket range until
-            # the root is found. If max radius drops below the min
-            # radius (0.1), then no solution is possible and NaN will be
-            # returned as the result.
-            found = False
-            min_radius = 0.1
-            max_radius_delta = 0.1 * max_radius
-            while max_radius > min_radius and found is False:
-                try:
-                    bracket = [min_radius, max_radius]
-                    result = root_scalar(self._flux_radius_fcn,
-                                         args=fcn_args, bracket=bracket,
-                                         method='brentq')
-                    result = result.root
-                    found = True
-                except ValueError:
-                    # ValueError is raised if the bracket points do not
-                    # have different signs
-                    max_radius -= max_radius_delta
-
-            # No solution found between min_radius and max_radius
-            if found is False:
-                result = np.nan
-
-            radius.append(result)
-
-        result = np.array(radius) << u.pix
+        radius = batch_flux_radius_solve(args, fraction=fraction)
+        result = radius << u.pix
         self._flux_radius_cache[fraction] = result
 
         if name is not None:

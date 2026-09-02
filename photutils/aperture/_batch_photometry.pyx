@@ -19,13 +19,17 @@ free-threaded Python builds.
 
 import numpy as np
 
+from photutils.aperture._batch_results import BatchApertureSums
+
+from photutils.aperture._batch_outside cimport _ShapeSpec, outside_weight
 from photutils.aperture._batch_overlap cimport (
     _CIRCLE, _CIRCULAR_ANNULUS, _ELLIPSE, _ELLIPTICAL_ANNULUS, _POLYGON,
-    _RECTANGLE, _RECTANGULAR_ANNULUS, _circle_pixel_frac,
-    _circular_annulus_pixel_frac, _ellipse_pixel_frac,
-    _elliptical_annulus_pixel_frac, _polygon_pixel_frac,
-    _presize_packed_offsets, _rect_pixel_frac, _rectangular_annulus_pixel_frac,
-    _resolve_seg_pixel, _round_half_away, _source_grid_setup)
+    _RECTANGLE, _RECTANGULAR_ANNULUS, _SEG_CORRECTED, _SEG_NEIGHBOR,
+    _SEG_UNCORRECTED, _circle_pixel_frac, _circular_annulus_pixel_frac,
+    _classify_seg_pixel, _ellipse_pixel_frac, _elliptical_annulus_pixel_frac,
+    _polygon_pixel_frac, _presize_packed_offsets, _rect_pixel_frac,
+    _rectangular_annulus_pixel_frac, _resolve_seg_pixel, _round_half_away,
+    _source_grid_setup)
 from photutils.geometry._polygon_overlap cimport (convex_edge_normals,
                                                   polygon_work_partition,
                                                   polygon_work_size)
@@ -39,6 +43,7 @@ cdef extern from "math.h" nogil:
     double cos(double x)
     double fabs(double x)
     double ceil(double x)
+    double sqrt(double x)
     bint isfinite(double x)
 
 # Python-level aliases of the shape codes (the ``cdef enum`` is shared
@@ -62,10 +67,71 @@ FLAG_COL_SEG = 4
 FLAG_COL_UNCORRECTED = 5
 FLAG_COL_VALID = 6
 FLAG_COL_BBOX_CLIPPED = 7
+FLAG_COL_SEG_MASKED = 8
+FLAG_COL_UNCORRECTED_MASKED = 9
 
 # The total number of ``flag_counts`` columns. Every producer of a
 # per-source flag-count array must allocate this many columns
-N_FLAG_COLS = 8
+N_FLAG_COLS = 10
+
+
+cdef int _check_params(int shape_code, const double[::1] params,
+                       const double[:, ::1] params_per_source,
+                       Py_ssize_t n_src, int emit_sum) except -1:
+    """
+    Validate the shared and per-source aperture shape parameters.
+
+    Exactly one of ``params`` and ``params_per_source`` must be input.
+    This is kept out of ``batch_aperture_sums`` so that its error
+    handling stays out of that function's per-pixel loop.
+
+    Parameters
+    ----------
+    shape_code : int
+        The aperture shape code (see the module-level ``SHAPE_*``
+        constants).
+
+    params : const double[::1]
+        The shared aperture shape parameters, or `None`.
+
+    params_per_source : const double[:, ::1]
+        The per-source aperture shape parameters, or `None`.
+
+    n_src : Py_ssize_t
+        The number of source positions.
+
+    emit_sum : int
+        Whether the packed per-pixel member buffers are emitted.
+
+    Returns
+    -------
+    result : int
+        Zero. A `ValueError` is raised if the parameters are invalid.
+    """
+    if params_per_source is None:
+        if params is None:
+            msg = 'params must be given when params_per_source is None'
+            raise ValueError(msg)
+        return 0
+
+    if params is not None:
+        msg = 'give params or params_per_source, not both'
+        raise ValueError(msg)
+    if shape_code not in (_CIRCLE, _ELLIPSE):
+        msg = 'params_per_source supports only circle and ellipse shapes'
+        raise ValueError(msg)
+    if emit_sum:
+        msg = 'params_per_source does not support emit_sum'
+        raise ValueError(msg)
+    if params_per_source.shape[0] != n_src:
+        msg = 'params_per_source must have one row per position'
+        raise ValueError(msg)
+    if ((shape_code == _CIRCLE and params_per_source.shape[1] != 1)
+            or (shape_code == _ELLIPSE
+                and params_per_source.shape[1] != 3)):
+        msg = 'params_per_source has the wrong column count'
+        raise ValueError(msg)
+    return 0
 
 
 def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
@@ -76,7 +142,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                         int use_exact, int subpixels,
                         const Py_ssize_t[:, ::1] segmentation=None,
                         const Py_ssize_t[::1] labels=None, int seg_method=0,
-                        const double[::1] local_bkg=None, int emit_sum=0):
+                        const double[::1] local_bkg=None, int emit_sum=0,
+                        const double[:, ::1] params_per_source=None):
     """
     Compute aperture sums for many source positions in a single call.
 
@@ -114,8 +181,9 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         2=ellipse, 3=elliptical annulus, 4=rectangle, 5=rectangular
         annulus, 6=polygon (see the module-level ``SHAPE_*`` constants).
 
-    params : 1D ndarray of float64 (C-contiguous)
-        The aperture shape parameters:
+    params : 1D ndarray of float64 (C-contiguous) or `None`
+        The aperture shape parameters, shared by all source positions.
+        Must be `None` if ``params_per_source`` is input:
 
         * circle: ``(r,)``
         * circular annulus: ``(r_in, r_out)``
@@ -131,7 +199,9 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
     ext_x, ext_y : float
         The half-extents of the aperture minimal bounding box in the x
-        and y directions (i.e., ``Aperture._xy_extents``).
+        and y directions (i.e., ``Aperture._xy_extents``). These values
+        are ignored (and recomputed for each source) if
+        ``params_per_source`` is input.
 
     off_x, off_y : float
         The (x, y) offset of the bounding-box center from each source
@@ -181,8 +251,20 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         per-source sigma clipping. When zero (default), those four
         outputs are empty arrays.
 
+    params_per_source : 2D ndarray of float64 (C-contiguous) or `None`
+        The per-source aperture shape parameters with shape
+        ``(n_sources, k)``, used instead of the shared ``params``
+        vector (which must then be `None`). Only the circle (``k`` =
+        1, ``(r,)``) and ellipse (``k`` = 3, ``(a, b, theta)``) shapes
+        are supported, and ``emit_sum`` must be zero. The bounding-box
+        half-extents are computed from each source's own parameters, so
+        the ``ext_x`` and ``ext_y`` inputs are ignored.
+
     Returns
     -------
+    result : `~photutils.aperture._batch_results.BatchApertureSums`
+        A named tuple with the following fields (in order).
+
     sums : 1D ndarray of float64
         The aperture sums. NaN where the aperture bounding box does not
         overlap the data.
@@ -235,14 +317,25 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
           are non-finite in the data (masked or unmasked)
         * ``FLAG_COL_NONFINITE_ERROR``: the number of those pixels that
           are non-finite in the error (masked or unmasked)
-        * ``FLAG_COL_SEG``: the number of those pixels that were
-          excluded or corrected by the segmentation masking
-        * ``FLAG_COL_UNCORRECTED``: the number of those pixels that
-          could not be corrected by the segmentation masking
+        * ``FLAG_COL_SEG``: the number of those unmasked pixels that
+          were excluded or corrected by the segmentation masking
+        * ``FLAG_COL_UNCORRECTED``: the number of those unmasked pixels
+          that could not be corrected by the segmentation masking
         * ``FLAG_COL_VALID``: the number of contributing pixels
           (unmasked, finite, and not excluded by segmentation)
         * ``FLAG_COL_BBOX_CLIPPED``: a 0/1 indicator of whether the
           bounding box is clipped by a data edge
+        * ``FLAG_COL_SEG_MASKED``: the number of those masked pixels
+          that lie on a neighboring source
+        * ``FLAG_COL_UNCORRECTED_MASKED``: the number of those masked
+          pixels whose mirror pixel was also unavailable
+
+        Masked pixels are excluded before the segmentation masking is
+        applied, so they are counted in the ``FLAG_COL_SEG_MASKED``
+        and ``FLAG_COL_UNCORRECTED_MASKED`` columns instead of the
+        ``FLAG_COL_SEG`` and ``FLAG_COL_UNCORRECTED`` columns. This lets
+        callers that treat the mask and neighbor overlays independently
+        recover the full neighbor-pixel counts.
 
         The ``FLAG_COL_NONFINITE_DATA`` and ``FLAG_COL_NONFINITE_ERROR``
         columns are nonzero when non-finite data or error values
@@ -251,6 +344,19 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         contributions are detected from the accumulated sums as a 0/1
         indicator. Rows are all zero where the aperture bounding box
         does not overlap the data.
+
+    weights_out : 1D ndarray of uint8
+        A per-source 0/1 indicator of whether the aperture has one
+        or more nonzero-fraction pixels outside the data. This is
+        the precise outside-weight test, computed only for the
+        sources whose bounding box is clipped by a data edge (the
+        ``FLAG_COL_BBOX_CLIPPED`` column). It is exactly zero for
+        unclipped sources and for sources whose bounding box does not
+        overlap the data at all. For the exact overlap method, an
+        aperture with a nonzero-fraction pixel inside the data is
+        tested only on the ring of pixels just outside the data edges
+        (see ``_batch_outside.outside_weight``), which is equivalent
+        because every aperture shape is a connected region.
     """
     cdef Py_ssize_t n_src = positions.shape[0]
     cdef Py_ssize_t ny_data = data.shape[0]
@@ -262,12 +368,14 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     overlap_arr = np.zeros(n_src, dtype=np.uint8)
     starts_arr = np.zeros(n_src, dtype=np.intp)
     fcounts_arr = np.zeros((n_src, N_FLAG_COLS), dtype=np.intp)
+    wout_arr = np.zeros(n_src, dtype=np.uint8)
     cdef double[::1] sums = sums_arr
     cdef double[::1] sum_vars = vars_arr
     cdef double[::1] areas = areas_arr
     cdef unsigned char[::1] overlap = overlap_arr
     cdef Py_ssize_t[::1] starts = starts_arr
     cdef Py_ssize_t[:, ::1] fcounts = fcounts_arr
+    cdef unsigned char[::1] weights_out = wout_arr
 
     cdef bint has_error = error is not None
     cdef bint has_mask = mask is not None
@@ -322,81 +430,124 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     cdef double *pedge_ny = NULL
     cdef double *pedge_c = NULL
 
-    if shape_code == _CIRCLE:
-        r_out = params[0]
-    elif shape_code == _CIRCULAR_ANNULUS:
-        r_in = params[0]
-        r_out = params[1]
-    elif shape_code == _ELLIPSE:
-        rx_out = params[0]
-        ry_out = params[1]
-        theta = params[2]
-        cos_theta = cos(theta)
-        sin_theta = sin(theta)
-    elif shape_code == _ELLIPTICAL_ANNULUS:
-        rx_in = params[0]
-        ry_in = params[1]
-        rx_out = params[2]
-        ry_out = params[3]
-        theta = params[4]
-        cos_theta = cos(theta)
-        sin_theta = sin(theta)
-    elif shape_code == _RECTANGLE or shape_code == _RECTANGULAR_ANNULUS:
-        if shape_code == _RECTANGLE:
-            half_width_out = 0.5 * params[0]
-            half_height_out = 0.5 * params[1]
-            theta = params[2]
-        else:
-            half_width_in = 0.5 * params[0]
-            half_height_in = 0.5 * params[1]
-            half_width_out = 0.5 * params[2]
-            half_height_out = 0.5 * params[3]
-            theta = params[4]
+    cdef bint has_psrc = params_per_source is not None
+    _check_params(shape_code, params, params_per_source, n_src, emit_sum)
 
-        cos_theta = cos(theta)
-        sin_theta = sin(theta)
-        rect_vertices(half_width_out, half_height_out, cos_theta,
-                      sin_theta, poly_x_out, poly_y_out)
-        bbox_dx_out = (half_width_out * fabs(cos_theta)
-                       + half_height_out * fabs(sin_theta))
-        bbox_dy_out = (half_width_out * fabs(sin_theta)
-                       + half_height_out * fabs(cos_theta))
-        if shape_code == _RECTANGULAR_ANNULUS:
-            rect_vertices(half_width_in, half_height_in, cos_theta,
-                          sin_theta, poly_x_in, poly_y_in)
-            bbox_dx_in = (half_width_in * fabs(cos_theta)
-                          + half_height_in * fabs(sin_theta))
-            bbox_dy_in = (half_width_in * fabs(sin_theta)
-                          + half_height_in * fabs(cos_theta))
-    elif shape_code == _POLYGON:
-        # ``params`` holds the flattened counter-clockwise vertex
-        # offsets (x0, y0, x1, y1, ...).
-        n_poly = params.shape[0] // 2
-        if n_poly < 3 or 2 * n_poly != params.shape[0]:
-            msg = ('polygon params must be the flattened (x, y) offsets '
-                   'of at least 3 vertices')
+    if not has_psrc:
+        if shape_code == _CIRCLE:
+            r_out = params[0]
+        elif shape_code == _CIRCULAR_ANNULUS:
+            r_in = params[0]
+            r_out = params[1]
+        elif shape_code == _ELLIPSE:
+            rx_out = params[0]
+            ry_out = params[1]
+            theta = params[2]
+            cos_theta = cos(theta)
+            sin_theta = sin(theta)
+        elif shape_code == _ELLIPTICAL_ANNULUS:
+            rx_in = params[0]
+            ry_in = params[1]
+            rx_out = params[2]
+            ry_out = params[3]
+            theta = params[4]
+            cos_theta = cos(theta)
+            sin_theta = sin(theta)
+        elif shape_code == _RECTANGLE or shape_code == _RECTANGULAR_ANNULUS:
+            if shape_code == _RECTANGLE:
+                half_width_out = 0.5 * params[0]
+                half_height_out = 0.5 * params[1]
+                theta = params[2]
+            else:
+                half_width_in = 0.5 * params[0]
+                half_height_in = 0.5 * params[1]
+                half_width_out = 0.5 * params[2]
+                half_height_out = 0.5 * params[3]
+                theta = params[4]
+
+            cos_theta = cos(theta)
+            sin_theta = sin(theta)
+            rect_vertices(half_width_out, half_height_out, cos_theta,
+                          sin_theta, poly_x_out, poly_y_out)
+            bbox_dx_out = (half_width_out * fabs(cos_theta)
+                           + half_height_out * fabs(sin_theta))
+            bbox_dy_out = (half_width_out * fabs(sin_theta)
+                           + half_height_out * fabs(cos_theta))
+            if shape_code == _RECTANGULAR_ANNULUS:
+                rect_vertices(half_width_in, half_height_in, cos_theta,
+                              sin_theta, poly_x_in, poly_y_in)
+                bbox_dx_in = (half_width_in * fabs(cos_theta)
+                              + half_height_in * fabs(sin_theta))
+                bbox_dy_in = (half_width_in * fabs(sin_theta)
+                              + half_height_in * fabs(cos_theta))
+        elif shape_code == _POLYGON:
+            # ``params`` holds the flattened counter-clockwise vertex
+            # offsets (x0, y0, x1, y1, ...).
+            n_poly = params.shape[0] // 2
+            if n_poly < 3 or 2 * n_poly != params.shape[0]:
+                msg = ('polygon params must be the flattened (x, y) offsets '
+                       'of at least 3 vertices')
+                raise ValueError(msg)
+
+            # Single numpy block (kept alive by ``poly_work``) whose sizing
+            # and layout are shared with ``polygon_overlap_grid`` via
+            # ``polygon_work_size``/``polygon_work_partition``.
+            poly_work = np.empty(polygon_work_size(n_poly, &poly_buf_size),
+                                 dtype=np.float64)
+            polygon_work_partition(&poly_work[0], n_poly, poly_buf_size,
+                                   &poly_x, &poly_y, &pbuf_a_x, &pbuf_a_y,
+                                   &pbuf_b_x, &pbuf_b_y, &pedge_nx, &pedge_ny,
+                                   &pedge_c)
+            for pk in range(n_poly):
+                poly_x[pk] = params[2 * pk]
+                poly_y[pk] = params[2 * pk + 1]
+
+            # One-time convexity test; convex polygons use an
+            # interior/exterior fast path in ``_polygon_pixel_frac``.
+            is_poly_convex = convex_edge_normals(poly_x, poly_y, n_poly,
+                                                 pedge_nx, pedge_ny, pedge_c)
+        else:
+            msg = f'Invalid shape_code: {shape_code}'
             raise ValueError(msg)
 
-        # Single numpy block (kept alive by ``poly_work``) whose sizing
-        # and layout are shared with ``polygon_overlap_grid`` via
-        # ``polygon_work_size``/``polygon_work_partition``.
-        poly_work = np.empty(polygon_work_size(n_poly, &poly_buf_size),
-                             dtype=np.float64)
-        polygon_work_partition(&poly_work[0], n_poly, poly_buf_size,
-                               &poly_x, &poly_y, &pbuf_a_x, &pbuf_a_y,
-                               &pbuf_b_x, &pbuf_b_y, &pedge_nx, &pedge_ny,
-                               &pedge_c)
-        for pk in range(n_poly):
-            poly_x[pk] = params[2 * pk]
-            poly_y[pk] = params[2 * pk + 1]
-
-        # One-time convexity test; convex polygons use an
-        # interior/exterior fast path in ``_polygon_pixel_frac``.
-        is_poly_convex = convex_edge_normals(poly_x, poly_y, n_poly,
-                                             pedge_nx, pedge_ny, pedge_c)
-    else:
-        msg = f'Invalid shape_code: {shape_code}'
-        raise ValueError(msg)
+    # The shape parameters and scratch buffers as seen by the
+    # outside-weight scan (off the hot path). The per-source shape
+    # parameters, if any, are copied in before each scan.
+    cdef _ShapeSpec sp
+    sp.shape_code = shape_code
+    sp.use_exact = use_exact
+    sp.subpixels = subpixels
+    sp.r_in = r_in
+    sp.rx_in = rx_in
+    sp.ry_in = ry_in
+    sp.half_width_in = half_width_in
+    sp.half_height_in = half_height_in
+    sp.half_width_out = half_width_out
+    sp.half_height_out = half_height_out
+    sp.bbox_dx_in = bbox_dx_in
+    sp.bbox_dy_in = bbox_dy_in
+    sp.bbox_dx_out = bbox_dx_out
+    sp.bbox_dy_out = bbox_dy_out
+    sp.poly_x_in = poly_x_in
+    sp.poly_y_in = poly_y_in
+    sp.poly_x_out = poly_x_out
+    sp.poly_y_out = poly_y_out
+    sp.buf_a_x = buf_a_x
+    sp.buf_a_y = buf_a_y
+    sp.buf_b_x = buf_b_x
+    sp.buf_b_y = buf_b_y
+    sp.poly_x = poly_x
+    sp.poly_y = poly_y
+    sp.n_poly = n_poly
+    sp.poly_buf_size = poly_buf_size
+    sp.is_poly_convex = is_poly_convex
+    sp.pedge_nx = pedge_nx
+    sp.pedge_ny = pedge_ny
+    sp.pedge_c = pedge_c
+    sp.pbuf_a_x = pbuf_a_x
+    sp.pbuf_a_y = pbuf_a_y
+    sp.pbuf_b_x = pbuf_b_x
+    sp.pbuf_b_y = pbuf_b_y
 
     cdef Py_ssize_t k, ix, iy, ix0, ix1, iy0, iy1
     cdef Py_ssize_t ixmin, iymin
@@ -408,9 +559,11 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     cdef double errsq = 0.0
     cdef Py_ssize_t total = 0, spos = 0
     cdef Py_ssize_t n_pix, n_masked, n_nonfin, n_nonfin_err
-    cdef Py_ssize_t n_seg_px, n_uncorr, n_valid, w_out
+    cdef Py_ssize_t n_seg_px, n_uncorr, n_valid, clipped
+    cdef Py_ssize_t n_seg_masked, n_unc_masked
     cdef Py_ssize_t ixmax_full, iymax_full
     cdef unsigned char mbits
+    cdef int pix_class
 
     # Pass 1 (only when emitting the packed member buffers): size and
     # offset the packed buffers from the per-source clipped bounding-box
@@ -436,6 +589,26 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
         for k in range(n_src):
             cx = positions[k, 0]
             cy = positions[k, 1]
+
+            # Per-source shape parameters and bounding-box half-extents
+            if has_psrc:
+                if shape_code == _CIRCLE:
+                    r_out = params_per_source[k, 0]
+                    ext_x = r_out
+                    ext_y = r_out
+                else:
+                    rx_out = params_per_source[k, 0]
+                    ry_out = params_per_source[k, 1]
+                    theta = params_per_source[k, 2]
+                    cos_theta = cos(theta)
+                    sin_theta = sin(theta)
+                    ext_x = sqrt(rx_out * rx_out * cos_theta
+                                 * cos_theta + ry_out * ry_out
+                                 * sin_theta * sin_theta)
+                    ext_y = sqrt(rx_out * rx_out * sin_theta
+                                 * sin_theta + ry_out * ry_out
+                                 * cos_theta * cos_theta)
+
             if has_bkg:
                 lbk = local_bkg[k]
             if has_seg:
@@ -455,6 +628,17 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                 continue
             overlap[k] = 1
 
+            # Whether the bounding box is clipped by a data edge. Only
+            # these sources can have aperture weights outside the data,
+            # which is tested separately after the accumulation loop.
+            ixmax_full = <Py_ssize_t>ceil(cx + off_x + ext_x + 0.5)
+            iymax_full = <Py_ssize_t>ceil(cy + off_y + ext_y + 0.5)
+            if (ixmin < ix0 or ixmax_full > ix1
+                    or iymin < iy0 or iymax_full > iy1):
+                clipped = 1  # bounding box clipped by data edge
+            else:
+                clipped = 0  # bounding box fully inside data
+
             sum_val = 0.0
             var_val = 0.0
             area_val = 0.0
@@ -464,6 +648,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             n_nonfin_err = 0
             n_seg_px = 0
             n_uncorr = 0
+            n_seg_masked = 0
+            n_unc_masked = 0
             n_valid = 0
             spos = starts[k]
             for iy in range(iy0, iy1):
@@ -471,6 +657,12 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                 for ix in range(ix0, ix1):
                     pxmin = gxmin + (ix - ixmin) * dx
 
+                    # The shape dispatch is inlined over the local
+                    # variables here; the outside-weight scan carries
+                    # the same dispatch in ``_batch_outside``, kept in
+                    # a separate extension module so that each shape
+                    # helper has a single call site in this one (see
+                    # that module's docstring)
                     if shape_code == _CIRCLE:
                         frac = _circle_pixel_frac(
                             pxmin, pymin, dx, dy, pixel_radius, r_out,
@@ -520,15 +712,35 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                     # only strictly positive fractions contribute here.
                     if frac <= 0.0:
                         continue
+
                     n_pix += 1
 
                     if has_mask:
                         mbits = mask[iy, ix]
-                        if mbits & 1:
-                            n_masked += 1
-                            continue
-                        if mbits & 2:
-                            n_nonfin += 1
+                        if mbits != 0:
+                            if mbits & 1:
+                                n_masked += 1
+                            elif mbits & 2:
+                                n_nonfin += 1
+                            # Masked pixels never reach the
+                            # segmentation branch below, so count
+                            # masked neighbor-segment pixels (and their
+                            # mirror availability) here for callers
+                            # that treat the mask and neighbor overlays
+                            # independently.
+                            if (has_seg and lbl != 0
+                                    and seg_method != 0):
+                                pix_class = _classify_seg_pixel(
+                                    seg_ptr, mask_ptr, nx_data,
+                                    seg_method, lbl, ix, iy, ix0,
+                                    ix1, iy0, iy1, ccx, ccy, &six,
+                                    &siy)
+                                if pix_class in (_SEG_NEIGHBOR,
+                                                 _SEG_CORRECTED,
+                                                 _SEG_UNCORRECTED):
+                                    n_seg_masked += 1
+                                    if pix_class == _SEG_UNCORRECTED:
+                                        n_unc_masked += 1
                             continue
                     six = ix
                     siy = iy
@@ -563,18 +775,17 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             if has_error and not isfinite(var_val):
                 n_nonfin_err += 1
 
-            # Whether the bounding box is clipped by a data edge. The
-            # caller resolves this to the precise outside-weight test
-            # (nonzero aperture weights outside the data) only for
-            # these sources; unclipped interior sources are exactly 0.
-            ixmax_full = <Py_ssize_t>ceil(cx + off_x + ext_x + 0.5)
-            iymax_full = <Py_ssize_t>ceil(cy + off_y + ext_y + 0.5)
-            if (ixmin < ix0 or ixmax_full > ix1
-                    or iymin < iy0 or iymax_full > iy1):
-                w_out = 1  # bounding box clipped by data edge
-            else:
-                w_out = 0  # bounding box fully inside data
-
+            if clipped:
+                # The shape parameters that can vary per source
+                sp.r_out = r_out
+                sp.rx_out = rx_out
+                sp.ry_out = ry_out
+                sp.cos_theta = cos_theta
+                sp.sin_theta = sin_theta
+                weights_out[k] = outside_weight(
+                    &sp, n_pix > 0, gxmin, gymin, dx, dy, pixel_radius,
+                    norm, ixmin, iymin, ixmax_full, iymax_full, ix0, ix1,
+                    iy0, iy1)
             sums[k] = sum_val
             areas[k] = area_val
             if has_error:
@@ -588,8 +799,13 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
             fcounts[k, 4] = n_seg_px
             fcounts[k, 5] = n_uncorr
             fcounts[k, 6] = n_valid
-            fcounts[k, 7] = w_out
+            fcounts[k, 7] = clipped
+            fcounts[k, 8] = n_seg_masked
+            fcounts[k, 9] = n_unc_masked
 
-    return (sums_arr, vars_arr, areas_arr, overlap_arr.view(bool),
-            starts_arr, sum_values_arr, sum_fracs_arr, sum_errsq_arr,
-            scounts_arr, fcounts_arr)
+    return BatchApertureSums(
+        sums=sums_arr, sum_vars=vars_arr, areas=areas_arr,
+        overlap=overlap_arr.view(bool), starts=starts_arr,
+        sum_values=sum_values_arr, sum_fracs=sum_fracs_arr,
+        sum_errsq=sum_errsq_arr, sum_counts=scounts_arr,
+        flag_counts=fcounts_arr, weights_out=wout_arr)
