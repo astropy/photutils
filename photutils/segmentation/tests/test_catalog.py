@@ -1438,6 +1438,30 @@ class TestSourceCatalogFlags:
         assert not (cat.flags[other]
                     & SEGMENTATION_FLAGS.NON_FINITE_ERROR)
 
+    def test_masked_non_finite_pixel(self):
+        """
+        Test that a pixel that is both input-masked and non-finite
+        sets the masked_pixels, non_finite_data, and non_finite_error
+        flags together.
+        """
+        data = self.data.copy()
+        data[25, 25] = np.nan
+        error = np.ones(self.data.shape)
+        error[25, 25] = np.nan
+        mask = np.zeros(self.data.shape, dtype=bool)
+        mask[25, 25] = True
+        cat = SourceCatalog(data, self.segm, error=error, mask=mask)
+        idx = np.argmax(cat.bbox_xmin > 0)
+        expected = (SEGMENTATION_FLAGS.MASKED_PIXELS
+                    | SEGMENTATION_FLAGS.NON_FINITE_DATA
+                    | SEGMENTATION_FLAGS.NON_FINITE_ERROR)
+        assert cat.flags[idx] & expected == expected
+        other = 1 - idx
+        assert not (cat.flags[other] & expected)
+
+        # The flags are sliced with the catalog
+        assert cat[idx].flags & expected == expected
+
     def test_all_masked(self):
         """
         Test the all_masked flag when every segment pixel is masked.

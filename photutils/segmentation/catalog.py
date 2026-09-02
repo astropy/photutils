@@ -1693,6 +1693,41 @@ class SourceCatalog:
                                      masked=True)
 
     @cached_property
+    def _segment_pixel_flags(self):
+        """
+        The bitwise OR of the pixel condition bits over each source
+        segment, as a uint8 array.
+
+        Bit 1 (value 1) is set if any segment pixel is input-masked,
+        bit 2 (value 2) if any segment ``data`` value is non-finite,
+        and bit 3 (value 4) if any segment ``error`` value is
+        non-finite. The bits are evaluated on every segment pixel,
+        including input-masked pixels.
+        """
+        arrays = self._get_batch_arrays()
+        pixel_flags = arrays['mask'].copy()
+        if arrays['error'] is not None:
+            pixel_flags[~np.isfinite(arrays['error'])] |= 4
+
+        # Gather the pixel flags of every segment pixel (the all-zero
+        # mask excludes nothing) and reduce them per source
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        packed, offsets, counts = batch_segment_gather(
+            pixel_flags.astype(np.float64),
+            mask=np.zeros(pixel_flags.shape, dtype=np.uint8),
+            segm=arrays['segm'], labels=self._batch_labels(),
+            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+            bbox_ixmax=ixmax)
+
+        # A source without segment pixels holds a single NaN
+        # placeholder, whose integer cast is undefined
+        with np.errstate(invalid='ignore'):
+            packed = packed.astype(np.uint8)
+        segment_flags = np.bitwise_or.reduceat(packed, offsets[:-1])
+        segment_flags[counts == 0] = 0
+        return segment_flags
+
+    @cached_property
     def _all_masked(self):
         """
         True if all pixels over the source segment are masked.
@@ -1748,31 +1783,12 @@ class SourceCatalog:
                          for slc in self._slices_iter])
         flags[edge] |= SEGMENTATION_FLAGS.EDGE_TOUCH
 
-        # Input-masked pixels within the source segment
-        if self._mask is not None:
-            masked = np.array(
-                [np.any(mask_cut & ~segm_mask)
-                 for mask_cut, segm_mask in zip(
-                     self._mask_cutouts,
-                     self._cutout_segment_masks, strict=True)])
-            flags[masked] |= SEGMENTATION_FLAGS.MASKED_PIXELS
-
-        # Non-finite data values within the source segment
-        nonfinite = np.array(
-            [np.any(~np.isfinite(data_cut) & ~segm_mask)
-             for data_cut, segm_mask in zip(
-                 self._data_cutouts, self._cutout_segment_masks,
-                 strict=True)])
-        flags[nonfinite] |= SEGMENTATION_FLAGS.NON_FINITE_DATA
-
-        # Non-finite error values within the source segment
-        if self._error is not None:
-            nonfinite_err = np.array(
-                [np.any(~np.isfinite(err_cut) & ~segm_mask)
-                 for err_cut, segm_mask in zip(
-                     self._error_cutouts,
-                     self._cutout_segment_masks, strict=True)])
-            flags[nonfinite_err] |= SEGMENTATION_FLAGS.NON_FINITE_ERROR
+        # Input-masked, non-finite data, and non-finite error pixels
+        # within the source segment
+        pixel_flags = self._segment_pixel_flags
+        flags[(pixel_flags & 1) > 0] |= SEGMENTATION_FLAGS.MASKED_PIXELS
+        flags[(pixel_flags & 2) > 0] |= SEGMENTATION_FLAGS.NON_FINITE_DATA
+        flags[(pixel_flags & 4) > 0] |= SEGMENTATION_FLAGS.NON_FINITE_ERROR
 
         # All pixels within the source segment are masked
         flags[self._all_masked] |= SEGMENTATION_FLAGS.ALL_MASKED
