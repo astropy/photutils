@@ -1,0 +1,313 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+"""
+Tests for the batch local background kernel.
+"""
+
+from concurrent.futures import ThreadPoolExecutor
+
+import numpy as np
+import pytest
+from astropy.stats import SigmaClip
+from numpy.testing import assert_allclose, assert_array_equal
+
+from photutils.background import SExtractorBackground
+from photutils.segmentation import (SegmentationImage, SourceCatalog,
+                                    detect_sources)
+from photutils.segmentation._batch_catalog import batch_local_background
+from photutils.segmentation.tests._batch_scene import make_batch_scene
+
+
+def _reference_local_background(cat):
+    """
+    Compute the local background of each source with per-source
+    aperture masks.
+
+    This is a port of the previous per-source loop that the batch
+    kernel replaces, with the cutout data mask inlined and the aperture
+    weights applied to the usable pixels only (the previous in-place
+    multiplication of the whole cutout raised a warning for non-finite
+    data within the aperture). It is the reference for the kernel.
+    """
+    sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
+    bkg_func = SExtractorBackground(sigma_clip=sigma_clip)
+
+    local_bkgs = []
+    for aperture in cat._local_background_apertures:
+        aperture_mask = aperture.to_mask(method='center')
+        slc_lg, slc_sm = aperture_mask.get_overlap_slices(cat._data.shape)
+
+        data_cutout = cat._data[slc_lg].astype(float, copy=True)
+        segm_mask_cutout = cat._segmentation_image.data[slc_lg].astype(bool)
+        data_mask_cutout = ~np.isfinite(data_cutout)
+        if cat._mask is not None:
+            data_mask_cutout |= cat._mask[slc_lg]
+        data_mask_cutout |= segm_mask_cutout
+
+        aperweight_cutout = aperture_mask.data[slc_sm]
+        good_mask = (aperweight_cutout > 0) & ~data_mask_cutout
+        data_values = data_cutout[good_mask] * aperweight_cutout[good_mask]
+        if len(data_values) < 10:
+            local_bkgs.append(0.0)
+            continue
+        local_bkgs.append(bkg_func(data_values))
+
+    local_bkgs = np.array(local_bkgs)
+    local_bkgs[cat._all_masked] = np.nan
+    return local_bkgs
+
+
+def _kernel_local_background(cat, **kwargs):
+    """
+    Call the kernel directly with the catalog batch arrays.
+    """
+    arrays = cat._get_batch_arrays()
+    iymin, iymax, ixmin, ixmax = cat._get_batch_bboxes()
+    params = {'width': cat.local_bkg_width, 'scale': 1.5, 'sigma': 3.0,
+              'maxiters': 20, 'min_pixels': 10}
+    params.update(kwargs)
+    return batch_local_background(
+        arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
+        bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
+        bbox_ixmax=ixmax, **params)
+
+
+@pytest.fixture(scope='module')
+def scene():
+    return make_batch_scene()
+
+
+@pytest.mark.parametrize('width', [1, 3, 8, 24])
+@pytest.mark.parametrize('with_mask', [True, False])
+def test_matches_reference(scene, width, with_mask):
+    # The scene has sources touching every image edge, close pairs,
+    # masked pixels, and non-finite data values
+    cat = SourceCatalog(scene['data'], scene['segm'], error=scene['error'],
+                        mask=scene['mask'] if with_mask else None,
+                        local_bkg_width=width)
+    expected = _reference_local_background(cat)
+    assert np.all(np.isfinite(expected))
+    assert np.any(expected != 0)
+    # The kernel accumulates the survivors in the same pixel order as
+    # the reference, so the results agree to rounding
+    assert_allclose(cat._local_background, expected, rtol=1e-13, atol=0)
+    assert_allclose(_kernel_local_background(cat), expected, rtol=1e-13,
+                    atol=0)
+
+
+@pytest.mark.parametrize('seed', [1, 2, 3])
+def test_matches_reference_noise_scene(seed):
+    # Sources of varied sizes on a sloped background with outliers, so
+    # the clipping iterates and the estimator branches are exercised
+    rng = np.random.default_rng(seed)
+    ny = nx = 121
+    yy, xx = np.mgrid[0:ny, 0:nx]
+    data = rng.normal(0.0, 1.0, (ny, nx)) + 0.01 * xx + 0.02 * yy
+    data[rng.random((ny, nx)) < 0.01] += 20.0
+    for _ in range(12):
+        xc, yc = rng.uniform(5, nx - 5, 2)
+        sig = rng.uniform(1.0, 4.0)
+        amp = rng.uniform(20.0, 200.0)
+        data += amp * np.exp(-((xx - xc) ** 2 + (yy - yc) ** 2)
+                             / (2 * sig ** 2))
+    segm = detect_sources(data, 5.0, n_pixels=5)
+    mask = rng.random((ny, nx)) < 0.02
+    for width in (2, 6):
+        cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=width)
+        expected = _reference_local_background(cat)
+        assert_allclose(cat._local_background, expected, rtol=1e-13,
+                        atol=0)
+
+
+def test_zero_width(scene):
+    cat = SourceCatalog(scene['data'], scene['segm'], local_bkg_width=0)
+    assert_array_equal(cat._local_background, np.zeros(cat.n_labels))
+
+
+def test_all_masked_source(scene):
+    segm = scene['segm']
+    mask = scene['mask'].copy()
+    slc = segm.slices[0]
+    mask[slc] |= segm.data[slc] == segm.labels[0]
+    cat = SourceCatalog(scene['data'], segm, mask=mask, local_bkg_width=5)
+    result = cat._local_background
+    assert cat._all_masked[0]
+    assert np.isnan(result[0])
+    assert np.all(np.isfinite(result[1:]))
+    # The kernel itself still measures the annulus of the masked source
+    assert np.isfinite(_kernel_local_background(cat)[0])
+
+
+def test_few_pixels():
+    # Fewer than min_pixels usable annulus pixels gives zero
+    data = np.zeros((11, 11))
+    data[4:7, 4:7] = 100.0
+    segm_data = np.zeros((11, 11), dtype=int)
+    segm_data[4:7, 4:7] = 1
+    segm = SegmentationImage(segm_data)
+    mask = np.ones((11, 11), dtype=bool)
+    mask[3:8, 3:8] = False  # the inner rectangle only, no annulus pixel
+    cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=2)
+    assert cat._local_background[0] == 0.0
+    assert _reference_local_background(cat)[0] == 0.0
+    assert _kernel_local_background(cat, min_pixels=1)[0] == 0.0
+
+    # A single usable annulus pixel is measured only when min_pixels
+    # allows it
+    mask[2, 5] = False
+    data[2, 5] = 2.0
+    cat = SourceCatalog(data, segm, mask=mask, local_bkg_width=2)
+    assert cat._local_background[0] == 0.0
+    assert _reference_local_background(cat)[0] == 0.0
+    assert _kernel_local_background(cat, min_pixels=2)[0] == 0.0
+    assert _kernel_local_background(cat, min_pixels=1)[0] == 2.0
+
+
+def _annulus_pixels(ixmin, ixmax, iymin, iymax, width, shape, *, scale=1.5):
+    """
+    Return the (y, x) indices of the pixel centers within the local
+    background annulus of a segment bounding box, computed directly
+    from the annulus definition.
+    """
+    xpos = 0.5 * (ixmin + ixmax - 1)
+    ypos = 0.5 * (iymin + iymax - 1)
+    half_w_in = 0.5 * (ixmax - ixmin) * scale
+    half_h_in = 0.5 * (iymax - iymin) * scale
+    half_w_out = half_w_in + width
+    half_h_out = half_h_in + width
+    yy, xx = np.mgrid[0:shape[0], 0:shape[1]]
+    dx = np.abs(xx - xpos)
+    dy = np.abs(yy - ypos)
+    outer = (dx < half_w_out) & (dy < half_h_out)
+    inner = (dx < half_w_in) & (dy < half_h_in)
+    return outer & ~inner
+
+
+@pytest.mark.parametrize(('nx_src', 'ny_src', 'width'),
+                         [(3, 3, 1), (2, 3, 1), (4, 2, 2), (5, 5, 3)])
+def test_annulus_pixels_and_median(nx_src, ny_src, width):
+    # Small annuli with even and odd pixel counts, with the pixel
+    # membership checked against the annulus definition and the
+    # estimator against the SExtractor mode of the pixel values
+    shape = (21, 21)
+    ixmin, iymin = 8, 7
+    ixmax, iymax = ixmin + nx_src, iymin + ny_src
+    rng = np.random.default_rng(nx_src * 10 + ny_src)
+    data = rng.normal(10.0, 1.0, shape)
+    segm_data = np.zeros(shape, dtype=int)
+    segm_data[iymin:iymax, ixmin:ixmax] = 1
+    segm = SegmentationImage(segm_data)
+    cat = SourceCatalog(data, segm, local_bkg_width=width)
+
+    annulus = _annulus_pixels(ixmin, ixmax, iymin, iymax, width, shape)
+    values = data[annulus]
+    assert values.size >= 10
+    aperture_mask = cat._local_background_apertures[0].to_mask(
+        method='center')
+    assert_array_equal(aperture_mask.to_image(shape) > 0, annulus)
+
+    sigma_clip = SigmaClip(sigma=3.0, cenfunc='median', maxiters=20)
+    expected = SExtractorBackground(sigma_clip=sigma_clip)(values)
+    assert_allclose(cat._local_background[0], expected, rtol=1e-13,
+                    atol=0)
+
+
+def test_estimator_branches():
+    # A constant annulus (zero standard deviation) gives the mean, and
+    # a strongly skewed annulus gives the median; both are exact
+    shape = (31, 31)
+    segm_data = np.zeros(shape, dtype=int)
+    segm_data[13:18, 13:18] = 1
+    segm = SegmentationImage(segm_data)
+
+    data = np.full(shape, 3.0)
+    cat = SourceCatalog(data, segm, local_bkg_width=4)
+    assert cat._local_background[0] == 3.0
+
+    data = np.zeros(shape)
+    data[::2, ::2] = 1.5
+    cat = SourceCatalog(data, segm, local_bkg_width=4)
+    annulus = _annulus_pixels(13, 18, 13, 18, 4, shape)
+    values = data[annulus]
+    assert np.all(np.abs(values - np.median(values))
+                  <= 3 * np.std(values))
+    assert abs(np.mean(values) - np.median(values)) / np.std(values) >= 0.3
+    assert cat._local_background[0] == np.median(values)
+
+
+def test_clipping_removes_outliers():
+    # Outliers in the annulus are clipped and do not bias the result
+    shape = (41, 41)
+    segm_data = np.zeros(shape, dtype=int)
+    segm_data[18:23, 18:23] = 1
+    segm = SegmentationImage(segm_data)
+    rng = np.random.default_rng(0)
+    data = rng.normal(5.0, 0.1, shape)
+    data[10, 10] = 1000.0
+    data[30, 30] = -1000.0
+    cat = SourceCatalog(data, segm, local_bkg_width=8)
+    assert_allclose(cat._local_background[0], 5.0, atol=0.05)
+    expected = _reference_local_background(cat)
+    assert_allclose(cat._local_background, expected, rtol=1e-13, atol=0)
+
+
+def test_sliced_and_scalar_catalog(scene):
+    cat = SourceCatalog(scene['data'], scene['segm'], mask=scene['mask'],
+                        local_bkg_width=6)
+    expected = cat._local_background
+    assert_array_equal(cat[2:5]._local_background, expected[2:5])
+    assert_array_equal(cat[3]._local_background, expected[3:4])
+    assert cat[3].local_background == expected[3]
+
+
+def test_input_dtypes(scene):
+    # The kernel reads float32 data and int32 segmentation images
+    # directly, with the same results as the same values input as
+    # float64 and intp (to within rounding, because the compiler may
+    # fuse multiply-adds differently in the two specializations)
+    data32 = scene['data'].astype(np.float32)
+    segm32 = SegmentationImage(scene['segm'].data.astype(np.int32))
+    cat = SourceCatalog(data32, segm32, local_bkg_width=8)
+    arrays = cat._get_batch_arrays()
+    assert arrays['data'].dtype == np.float32
+    assert arrays['segm'].dtype == np.int32
+
+    segm_ref = SegmentationImage(scene['segm'].data.astype(np.intp))
+    cat_ref = SourceCatalog(data32.astype(np.float64), segm_ref,
+                            local_bkg_width=8)
+    assert_allclose(cat.local_background, cat_ref.local_background,
+                    rtol=1e-13, atol=0)
+    assert_allclose(_kernel_local_background(cat),
+                    _kernel_local_background(cat_ref), rtol=1e-13, atol=0)
+
+
+def test_invalid_inputs(scene):
+    cat = SourceCatalog(scene['data'], scene['segm'], local_bkg_width=3)
+    arrays = cat._get_batch_arrays()
+    iymin, iymax, ixmin, ixmax = cat._get_batch_bboxes()
+    kwargs = {'width': 3, 'scale': 1.5, 'sigma': 3.0, 'maxiters': 20,
+              'min_pixels': 10}
+
+    match = 'bbox_ixmax must have the same length as bbox_iymin'
+    with pytest.raises(ValueError, match=match):
+        batch_local_background(arrays['data'], mask=arrays['mask'],
+                               segm=arrays['segm'], bbox_iymin=iymin,
+                               bbox_iymax=iymax, bbox_ixmin=ixmin,
+                               bbox_ixmax=ixmax[:-1], **kwargs)
+
+    match = 'mask must have the same shape as data'
+    with pytest.raises(ValueError, match=match):
+        batch_local_background(arrays['data'], mask=arrays['mask'][1:],
+                               segm=arrays['segm'], bbox_iymin=iymin,
+                               bbox_iymax=iymax, bbox_ixmin=ixmin,
+                               bbox_ixmax=ixmax, **kwargs)
+
+
+def test_thread_safety(scene):
+    cat = SourceCatalog(scene['data'], scene['segm'], mask=scene['mask'],
+                        local_bkg_width=6)
+    expected = _kernel_local_background(cat)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(lambda _: _kernel_local_background(cat),
+                                range(8)))
+    for result in results:
+        assert_array_equal(result, expected)

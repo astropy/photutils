@@ -345,9 +345,10 @@ def bench_catalog(*, n_sources=1000, repeats=3, seed=0):
     background = np.full(data.shape, 0.1)
     wcs = make_wcs(data.shape)
 
-    def _make_catalog():
+    def _make_catalog(local_bkg_width=0):
         return SourceCatalog(data, segm, convolved_data=convolved_data,
-                             error=error, background=background, wcs=wcs)
+                             error=error, background=background, wcs=wcs,
+                             local_bkg_width=local_bkg_width)
 
     catalog = _make_catalog()  # warm up shared segmentation-image caches
 
@@ -371,6 +372,21 @@ def bench_catalog(*, n_sources=1000, repeats=3, seed=0):
     for name, func in benchmarks:
         def _bench(func=func):
             func(_make_catalog())
+
+        t_best = time_best(_bench, repeats=repeats)
+        print(f'{name:>32}{f"{t_best:.4f}s":>12}')
+
+    # The local background is measured only for a nonzero
+    # local_bkg_width, which the default catalog does not set
+    local_bkg_width = 24
+    benchmarks = [
+        (f'local_background (width {local_bkg_width})',
+         lambda cat: cat.local_background),
+        (f'to_table (width {local_bkg_width})', lambda cat: cat.to_table()),
+    ]
+    for name, func in benchmarks:
+        def _bench(func=func):
+            func(_make_catalog(local_bkg_width=local_bkg_width))
 
         t_best = time_best(_bench, repeats=repeats)
         print(f'{name:>32}{f"{t_best:.4f}s":>12}')

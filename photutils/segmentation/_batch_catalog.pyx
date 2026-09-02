@@ -50,9 +50,9 @@ from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
 
 __all__ = ['batch_central_moments', 'batch_centroid_win',
            'batch_flux_radius_prepare', 'batch_flux_radius_solve',
-           'batch_kron_radius', 'batch_minmax_index', 'batch_moment_err',
-           'batch_perimeter', 'batch_quad_boxes', 'batch_raw_moments',
-           'batch_segment_gather']
+           'batch_kron_radius', 'batch_local_background',
+           'batch_minmax_index', 'batch_moment_err', 'batch_perimeter',
+           'batch_quad_boxes', 'batch_raw_moments', 'batch_segment_gather']
 
 
 cdef extern from "math.h" nogil:
@@ -63,6 +63,7 @@ cdef extern from "math.h" nogil:
     double floor(double x)
     double ceil(double x)
     double fmax(double x, double y)
+    double fabs(double x)
     bint isfinite(double x)
     double NAN
 
@@ -2257,4 +2258,445 @@ def batch_moment_err(const real_t[:, ::1] error, *,
                     result[i, 1] += e2 * dx * dx
                     result[i, 2] += e2 * dy * dy
                     result[i, 3] += e2 * dx * dy
+    return result_arr
+
+
+cdef inline void _swap_doubles(double *a, Py_ssize_t i,
+                               Py_ssize_t j) noexcept nogil:
+    cdef double tmp = a[i]
+    a[i] = a[j]
+    a[j] = tmp
+
+
+cdef double _select_kth(double *a, Py_ssize_t n,
+                        Py_ssize_t k) noexcept nogil:
+    """
+    Return the k-th smallest value (0-based) of ``a[0:n]`` by
+    selection.
+
+    The array is partially reordered in place so that on return
+    every value in ``a[0:k]`` is <= ``a[k]`` and every value in
+    ``a[k+1:n]`` is >= ``a[k]``.
+
+    This is Hoare's selection with a median-of-three pivot: each
+    round partitions the current window about the pivot and keeps
+    only the side that holds index ``k``, so the expected cost is
+    linear in ``n``.
+
+    Parameters
+    ----------
+    a : double *
+        The values, as ``a[0:n]``. Reordered on return.
+
+    n : Py_ssize_t
+        The number of values.
+
+    k : Py_ssize_t
+        The rank to select, with ``0 <= k < n``.
+    """
+    cdef Py_ssize_t lo = 0, hi = n - 1, i, j, mid
+    cdef double pivot
+
+    while lo < hi:
+        # Order a[lo] <= a[mid] <= a[hi] and use a[mid] as the pivot.
+        # The two outer values then bound the scans below.
+        mid = lo + (hi - lo) // 2
+        if a[mid] < a[lo]:
+            _swap_doubles(a, mid, lo)
+        if a[hi] < a[lo]:
+            _swap_doubles(a, hi, lo)
+        if a[hi] < a[mid]:
+            _swap_doubles(a, hi, mid)
+        pivot = a[mid]
+
+        i = lo
+        j = hi
+        while i <= j:
+            while a[i] < pivot:
+                i += 1
+            while a[j] > pivot:
+                j -= 1
+            if i <= j:
+                _swap_doubles(a, i, j)
+                i += 1
+                j -= 1
+
+        # Now a[lo:j+1] <= pivot <= a[i:hi+1], and the values strictly
+        # between j and i equal the pivot
+        if k <= j:
+            hi = j
+        elif k >= i:
+            lo = i
+        else:
+            return a[k]
+
+    return a[lo]
+
+
+cdef double _median_select(double *a, Py_ssize_t n) noexcept nogil:
+    """
+    Return the median of ``a[0:n]`` by selection, reordering ``a``.
+
+    For an even count the median is the mean of the two middle
+    values, as for `numpy.median`.
+
+    Parameters
+    ----------
+    a : double *
+        The values, as ``a[0:n]``, with ``n >= 1``. Reordered on
+        return.
+
+    n : Py_ssize_t
+        The number of values.
+    """
+    cdef Py_ssize_t k = n // 2, i
+    cdef double upper, lower
+
+    upper = _select_kth(a, n, k)
+    if n % 2 == 1:
+        return upper
+
+    # The lower middle value is the largest of the values below rank
+    # k, which the selection left in a[0:k]
+    lower = a[0]
+    for i in range(1, k):
+        if a[i] > lower:
+            lower = a[i]
+    return 0.5 * (lower + upper)
+
+
+cdef inline void _local_background_bbox(Py_ssize_t iymin, Py_ssize_t iymax,
+                                        Py_ssize_t ixmin, Py_ssize_t ixmax,
+                                        Py_ssize_t width, double scale,
+                                        Py_ssize_t nx_data,
+                                        Py_ssize_t ny_data,
+                                        Py_ssize_t *y0, Py_ssize_t *y1,
+                                        Py_ssize_t *x0,
+                                        Py_ssize_t *x1) noexcept nogil:
+    """
+    Compute the image-clipped bounding box of the local background
+    annulus of one source.
+
+    The annulus is the rectangular annulus centered on the segment
+    bounding box, with an inner rectangle ``scale`` times the bounding
+    box size and an outer rectangle ``width`` pixels larger on every
+    side. The bounding box follows the pixel-index arithmetic of
+    `~photutils.aperture.BoundingBox.from_float` (upper bounds
+    exclusive), clipped to the image.
+
+    Parameters
+    ----------
+    iymin, iymax, ixmin, ixmax : Py_ssize_t
+        The segment bounding box (maxima exclusive).
+
+    width : Py_ssize_t
+        The annulus width in pixels.
+
+    scale : double
+        The inner rectangle size relative to the segment bounding box.
+
+    nx_data, ny_data : Py_ssize_t
+        The image shape.
+
+    y0, y1, x0, x1 : Py_ssize_t *
+        Output. The clipped annulus bounding box (maxima exclusive).
+    """
+    cdef double xpos = 0.5 * (ixmin + ixmax - 1)
+    cdef double ypos = 0.5 * (iymin + iymax - 1)
+    cdef double half_w_out = 0.5 * ((ixmax - ixmin) * scale + 2 * width)
+    cdef double half_h_out = 0.5 * ((iymax - iymin) * scale + 2 * width)
+
+    x0[0] = <Py_ssize_t>floor(xpos - half_w_out + 0.5)
+    x1[0] = <Py_ssize_t>ceil(xpos + half_w_out + 0.5)
+    y0[0] = <Py_ssize_t>floor(ypos - half_h_out + 0.5)
+    y1[0] = <Py_ssize_t>ceil(ypos + half_h_out + 0.5)
+    if x0[0] < 0:
+        x0[0] = 0
+    if y0[0] < 0:
+        y0[0] = 0
+    if x1[0] > nx_data:
+        x1[0] = nx_data
+    if y1[0] > ny_data:
+        y1[0] = ny_data
+
+
+cdef double _local_background_source(const real_t *data,
+                                     const unsigned char *mask,
+                                     const seg_t *segm,
+                                     Py_ssize_t nx_data, Py_ssize_t ny_data,
+                                     Py_ssize_t iymin, Py_ssize_t iymax,
+                                     Py_ssize_t ixmin, Py_ssize_t ixmax,
+                                     Py_ssize_t width, double scale,
+                                     double sigma, Py_ssize_t maxiters,
+                                     Py_ssize_t min_pixels, double *values,
+                                     double *work) noexcept nogil:
+    """
+    Compute the local background of one source.
+
+    The usable pixels are the pixels whose centers lie within the local
+    background annulus (see ``_local_background_bbox``), excluding
+    masked pixels and pixels within any source segment. Their values
+    are sigma-clipped about the median with the standard deviation as
+    the scale, following `astropy.stats.SigmaClip` (no-axis, no-grow
+    case), and the SExtractor background mode of the surviving values
+    is returned (see `~photutils.background.SExtractorBackground`).
+
+    Parameters
+    ----------
+    data : const real_t *
+        The C-contiguous image data.
+
+    mask : const unsigned char *
+        The image mask plane, nonzero for masked pixels.
+
+    segm : const seg_t *
+        The segmentation image.
+
+    nx_data, ny_data : Py_ssize_t
+        The image shape.
+
+    iymin, iymax, ixmin, ixmax : Py_ssize_t
+        The segment bounding box (maxima exclusive).
+
+    width : Py_ssize_t
+        The annulus width in pixels.
+
+    scale : double
+        The inner rectangle size relative to the segment bounding box.
+
+    sigma : double
+        The clipping limit in units of the standard deviation.
+
+    maxiters : Py_ssize_t
+        The maximum number of clipping iterations.
+
+    min_pixels : Py_ssize_t
+        The minimum number of usable pixels. Zero is returned for
+        fewer pixels.
+
+    values, work : double *
+        Scratch buffers of at least the annulus bounding-box area.
+
+    Returns
+    -------
+    result : double
+        The local background value, zero for fewer than
+        ``min_pixels`` usable pixels, or NaN if every pixel is
+        clipped.
+    """
+    cdef double xpos = 0.5 * (ixmin + ixmax - 1)
+    cdef double ypos = 0.5 * (iymin + iymax - 1)
+    cdef double half_w_in = 0.5 * ((ixmax - ixmin) * scale)
+    cdef double half_h_in = 0.5 * ((iymax - iymin) * scale)
+    cdef double half_w_out = 0.5 * ((ixmax - ixmin) * scale + 2 * width)
+    cdef double half_h_out = 0.5 * ((iymax - iymin) * scale + 2 * width)
+    cdef Py_ssize_t y0, y1, x0, x1, ix, iy, pos, i, j, n, n_kept
+    cdef Py_ssize_t iteration, nchanged
+    cdef double dx, dy, v, center, mean, delta, ss, std, lower, upper
+    cdef double median, result
+
+    _local_background_bbox(iymin, iymax, ixmin, ixmax, width, scale,
+                           nx_data, ny_data, &y0, &y1, &x0, &x1)
+
+    # Gather the usable annulus pixel values in row-major order. A
+    # pixel center is inside a rectangle when it is strictly within
+    # both half-extents, as for the 'center' aperture mask method.
+    n = 0
+    for iy in range(y0, y1):
+        dy = fabs(iy - ypos)
+        if dy >= half_h_out:
+            continue
+        for ix in range(x0, x1):
+            dx = fabs(ix - xpos)
+            if dx >= half_w_out:
+                continue
+            if dx < half_w_in and dy < half_h_in:
+                continue
+            pos = iy * nx_data + ix
+            if mask[pos] != 0 or segm[pos] != 0:
+                continue
+            values[n] = data[pos]
+            n += 1
+
+    if n < min_pixels:
+        return 0.0
+
+    # Sigma clip. Each iteration centers on the median of the kept
+    # values and clips outside center +/- sigma * std, keeping the
+    # survivors in their pixel order, until no value is clipped or
+    # maxiters is reached.
+    n_kept = n
+    nchanged = 1
+    iteration = 0
+    while nchanged != 0 and iteration < maxiters:
+        iteration += 1
+        for i in range(n_kept):
+            work[i] = values[i]
+        center = _median_select(work, n_kept)
+
+        mean = 0.0
+        for i in range(n_kept):
+            mean += values[i]
+        mean = mean / n_kept
+        ss = 0.0
+        for i in range(n_kept):
+            delta = values[i] - mean
+            ss += delta * delta
+        std = sqrt(ss / n_kept)
+
+        lower = center - std * sigma
+        upper = center + std * sigma
+        j = 0
+        for i in range(n_kept):
+            v = values[i]
+            if not (v < lower) and not (v > upper):
+                values[j] = v
+                j += 1
+        nchanged = n_kept - j
+        n_kept = j
+
+    if n_kept == 0:
+        return NAN
+
+    # SExtractor background mode of the survivors: the mean for a zero
+    # standard deviation, the median when the mean is offset from the
+    # median by at least 0.3 standard deviations, and otherwise
+    # 2.5 * median - 1.5 * mean
+    for i in range(n_kept):
+        work[i] = values[i]
+    median = _median_select(work, n_kept)
+    mean = 0.0
+    for i in range(n_kept):
+        mean += values[i]
+    mean = mean / n_kept
+    ss = 0.0
+    for i in range(n_kept):
+        delta = values[i] - mean
+        ss += delta * delta
+    std = sqrt(ss / n_kept)
+
+    result = (2.5 * median) - (1.5 * mean)
+    if std == 0.0:
+        result = mean
+    elif fabs(mean - median) / std >= 0.3:
+        result = median
+    return result
+
+
+def batch_local_background(const real_t[:, ::1] data, *,
+                           const unsigned char[:, ::1] mask,
+                           const seg_t[:, ::1] segm,
+                           const Py_ssize_t[::1] bbox_iymin,
+                           const Py_ssize_t[::1] bbox_iymax,
+                           const Py_ssize_t[::1] bbox_ixmin,
+                           const Py_ssize_t[::1] bbox_ixmax,
+                           Py_ssize_t width, double scale, double sigma,
+                           Py_ssize_t maxiters, Py_ssize_t min_pixels):
+    """
+    Compute the local background of many sources from rectangular
+    annuli around their segment bounding boxes.
+
+    For each source, the pixels whose centers lie within a
+    rectangular annulus centered on the segment bounding box are
+    gathered, excluding masked pixels and pixels within any source
+    segment. The inner rectangle is ``scale`` times the bounding box
+    size and the outer rectangle is ``width`` pixels larger on every
+    side, matching a `~photutils.aperture.RectangularAnnulus` with the
+    'center' mask method. The values are sigma-clipped about their
+    median, following `astropy.stats.SigmaClip` with the standard
+    deviation as the scale, and the SExtractor background mode of the
+    surviving values (see `~photutils.background.SExtractorBackground`)
+    is returned.
+
+    The median of each clipping iteration is found by selection
+    rather than by sorting the values.
+
+    Parameters
+    ----------
+    data : 2D ndarray of float32 or float64 (C-contiguous)
+        The image data.
+
+    mask : 2D ndarray of uint8 (C-contiguous)
+        A mask array where nonzero values indicate masked (excluded)
+        pixels. Must have the same shape as ``data``.
+
+    segm : 2D ndarray of int32 or intp (C-contiguous)
+        The segmentation array where background pixels are zero and
+        sources have positive integer labels. Must have the same shape
+        as ``data``. Every nonzero pixel is excluded.
+
+    bbox_iymin, bbox_iymax, bbox_ixmin, bbox_ixmax : 1D ndarray of intp
+        The segment bounding box of each source, with shape
+        ``(n_sources,)``. The maxima are exclusive (slice ``stop``
+        values).
+
+    width : int
+        The annulus width in pixels.
+
+    scale : float
+        The inner rectangle size relative to the segment bounding box.
+
+    sigma : float
+        The clipping limit in units of the standard deviation.
+
+    maxiters : int
+        The maximum number of clipping iterations.
+
+    min_pixels : int
+        The minimum number of usable annulus pixels. Sources with
+        fewer pixels have a zero local background.
+
+    Returns
+    -------
+    result : 1D ndarray of float64
+        The local background of each source, with shape
+        ``(n_sources,)``.
+
+    Raises
+    ------
+    ValueError
+        If a per-source array does not have the same length as
+        ``bbox_iymin``, or if a 2D array does not have the same shape
+        as ``data``.
+    """
+    cdef Py_ssize_t n_src = bbox_iymin.shape[0]
+    cdef Py_ssize_t ny_data = data.shape[0]
+    cdef Py_ssize_t nx_data = data.shape[1]
+
+    for name, arr in (('bbox_iymax', bbox_iymax), ('bbox_ixmin', bbox_ixmin),
+                      ('bbox_ixmax', bbox_ixmax)):
+        if arr.shape[0] != n_src:
+            msg = f'{name} must have the same length as bbox_iymin'
+            raise ValueError(msg)
+    _check_shape(mask.shape[0], mask.shape[1], ny_data, nx_data,
+                 'mask', 'data')
+    _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
+                 'segm', 'data')
+
+    result_arr = np.empty(n_src, dtype=np.float64)
+    cdef double[::1] result = result_arr
+    if n_src == 0:
+        return result_arr
+
+    # Scratch buffers sized to the largest annulus bounding box
+    cdef Py_ssize_t i, y0, y1, x0, x1, area, max_area = 1
+    for i in range(n_src):
+        _local_background_bbox(bbox_iymin[i], bbox_iymax[i], bbox_ixmin[i],
+                               bbox_ixmax[i], width, scale, nx_data,
+                               ny_data, &y0, &y1, &x0, &x1)
+        area = (y1 - y0) * (x1 - x0)
+        if area > max_area:
+            max_area = area
+    values_arr = np.empty(max_area, dtype=np.float64)
+    work_arr = np.empty(max_area, dtype=np.float64)
+    cdef double[::1] values = values_arr
+    cdef double[::1] work = work_arr
+
+    with nogil:
+        for i in range(n_src):
+            result[i] = _local_background_source(
+                &data[0, 0], &mask[0, 0], &segm[0, 0], nx_data, ny_data,
+                bbox_iymin[i], bbox_iymax[i], bbox_ixmin[i], bbox_ixmax[i],
+                width, scale, sigma, maxiters, min_pixels, &values[0],
+                &work[0])
     return result_arr
