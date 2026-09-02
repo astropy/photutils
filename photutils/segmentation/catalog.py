@@ -678,6 +678,11 @@ class SourceCatalog:
     .. _SourceExtractor: https://sextractor.readthedocs.io/en/latest/
     """
 
+    # Cached properties whose values are packed across sources and thus
+    # cannot be sliced per source. __getitem__ drops them from the
+    # sliced catalog, which recomputes them on demand.
+    _recompute_on_slice = ('_flux_radius_optimizer_args',)
+
     @deprecated_renamed_argument('segment_img', 'segmentation_image', '3.0',
                                  until='4.0')
     @deprecated_renamed_argument('localbkg_width', 'local_bkg_width',
@@ -994,10 +999,9 @@ class SourceCatalog:
         keys = (set(self.__dict__.keys())
                 & (set(self._cached_properties)
                    | set(self._custom_properties)))
-        # The packed flux-radius inputs cannot be sliced per source.
-        # The sliced catalog recomputes them on demand (its flux_radius
-        # cache is sliced above).
-        keys.discard('_flux_radius_optimizer_args')
+        # The packed caches are recomputed by the sliced catalog on
+        # demand (its flux_radius cache is sliced above).
+        keys.difference_update(self._recompute_on_slice)
         for key in keys:
             value = self.__dict__[key]
 
