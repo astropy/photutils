@@ -2588,6 +2588,30 @@ def test_centroid_win_aperture_mask_mask(centroid_win_data):
     assert np.isfinite(cwin[0, 0])
 
 
+def test_make_scalar(single_source_catalog):
+    """
+    Test the scalar collapse of method results: a length-1 sequence is
+    collapsed for a scalar catalog, a value without a length is returned
+    unchanged, and a multi-source catalog never collapses.
+    """
+    _data, _segm, cat = single_source_catalog
+    assert not cat.isscalar
+    obj = cat[0]
+    assert obj.isscalar
+
+    assert obj._make_scalar([7.0]) == 7.0
+    assert obj._make_scalar(np.array([3.0]) << u.pix) == 3.0 * u.pix
+
+    # Values without a length (e.g., a float or a 0-d Quantity) are
+    # returned unchanged.
+    assert obj._make_scalar(5.0) == 5.0
+    value = 2.0 * u.pix
+    assert obj._make_scalar(value) is value
+
+    # A multi-source catalog never collapses
+    assert cat._make_scalar([7.0]) == [7.0]
+
+
 def test_flux_radius_optimizer_args_oom_guard(gauss_101_catalog):
     """
     Test that _flux_radius_optimizer_args returns None for sources whose
