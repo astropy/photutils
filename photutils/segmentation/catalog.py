@@ -846,8 +846,11 @@ class SourceCatalog:
             value = [value]
         setattr(newcls, attr, value)
 
-        # Slice the flux_radius cache values
-        newcls._flux_radius_cache = {key: value[index]
+        # Slice the flux_radius cache values. Like the other private
+        # per-source attributes, the cached arrays keep a length-1
+        # leading axis for a scalar catalog.
+        cache_index = [index] if newcls.isscalar else index
+        newcls._flux_radius_cache = {key: value[cache_index]
                                      for key, value
                                      in self._flux_radius_cache.items()}
 

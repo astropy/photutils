@@ -929,12 +929,19 @@ class TestSourceCatalog:
         assert 0.5 in cat._flux_radius_cache
         assert 0.3 in cat._flux_radius_cache
 
-        # Scalar slice preserves the cache
+        # Scalar slice preserves the cache, with the cached values kept
+        # as length-1 arrays (the same shape a scalar catalog stores
+        # when it computes flux_radius itself).
         obj = cat[1]
         assert 0.5 in obj._flux_radius_cache
         assert 0.3 in obj._flux_radius_cache
+        assert obj._flux_radius_cache[0.5].shape == (1,)
         r_sliced = obj.flux_radius(0.5)
+        assert r_sliced.isscalar
         assert_allclose(r_sliced.value, r_parent_05[1].value)
+        obj.flux_radius(0.5, name='r_hl')
+        assert obj.r_hl.isscalar
+        assert_allclose(obj.r_hl.value, r_parent_05[1].value)
         r_sliced_03 = obj.flux_radius(0.3)
         assert_allclose(r_sliced_03.value, r_parent_03[1].value)
 
