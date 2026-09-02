@@ -2617,8 +2617,9 @@ def test_make_scalar(single_source_catalog):
 
 def test_flux_radius_optimizer_args_oom_guard(gauss_101_catalog):
     """
-    Test that _flux_radius_optimizer_args returns None for sources whose
-    max-radius aperture bbox exceeds max_aper_size.
+    Test that _flux_radius_optimizer_args gives a zero pixel count (and
+    thus a NaN flux radius) for sources whose max-radius aperture bbox
+    exceeds max_aper_size.
     """
     data, segm, cat = gauss_101_catalog
 
@@ -2637,8 +2638,9 @@ def test_flux_radius_optimizer_args_oom_guard(gauss_101_catalog):
 
 def test_flux_radius_optimizer_args_off_image(gauss_101_catalog):
     """
-    Test that _flux_radius_optimizer_args returns None for sources whose
-    max-radius aperture bbox doesn't overlap the data.
+    Test that _flux_radius_optimizer_args gives a zero pixel count (and
+    thus a NaN flux radius) for sources whose max-radius aperture bbox
+    doesn't overlap the data.
     """
     _data, _segm, cat = gauss_101_catalog
 
