@@ -174,13 +174,12 @@ def _concatenate_aperture_sums(results):
     result : `~photutils.aperture._batch_results.BatchApertureSums`
         The combined per-source results.
     """
+    packed = ('starts', 'sum_values', 'sum_fracs', 'sum_errsq',
+              'sum_counts')
     fields = {name: np.concatenate([getattr(result, name)
                                     for result in results])
-              for name in ('sums', 'sum_vars', 'areas', 'overlap',
-                           'flag_counts', 'weights_out')}
-    return BatchApertureSums(**fields, starts=None, sum_values=None,
-                             sum_fracs=None, sum_errsq=None,
-                             sum_counts=None)
+              for name in BatchApertureSums._fields if name not in packed}
+    return BatchApertureSums(**fields, **dict.fromkeys(packed))
 
 
 def _concatenate_arrays(results):
@@ -256,14 +255,15 @@ def _concatenate_flux_radius_args(results):
     """
     offsets = np.cumsum([0] + [len(result.values) for result in results])
     starts = np.concatenate([result.starts + offset for result, offset
-                             in zip(results, offsets, strict=False)])
+                             in zip(results, offsets[:-1], strict=True)])
+    scalars = ('use_exact', 'subpixels')
     fields = {name: np.concatenate([getattr(result, name)
                                     for result in results])
-              for name in ('values', 'counts', 'nx', 'ny', 'grid_edges',
-                           'kronflux', 'max_radius')}
+              for name in BatchFluxRadiusArgs._fields
+              if name not in ('starts', *scalars)}
     return BatchFluxRadiusArgs(**fields, starts=starts,
-                               use_exact=results[0].use_exact,
-                               subpixels=results[0].subpixels)
+                               **{name: getattr(results[0], name)
+                                  for name in scalars})
 
 
 def _batch_gini(values):
