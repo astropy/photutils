@@ -278,6 +278,34 @@ def test_solve_length_guard(scene):
             fraction=0.5, use_exact=1, subpixels=1)
 
 
+def test_solve_grid_edges_guard(scene):
+    cat = make_catalog(scene)
+    args = cat._flux_radius_optimizer_args
+    grid_edges = np.ascontiguousarray(args.grid_edges[:, :3])
+    with pytest.raises(ValueError, match='grid_edges must have 4 columns'):
+        _solve(args._replace(grid_edges=grid_edges), 0.5)
+
+
+def test_solve_buffer_guard(scene):
+    """
+    Test that a region that runs past the end of the packed buffer, a
+    negative start, and a negative count are each rejected
+    """
+    cat = make_catalog(scene)
+    args = cat._flux_radius_optimizer_args
+    match = 'must lie within the values buffer'
+    with pytest.raises(ValueError, match=match):
+        _solve(args._replace(values=args.values[:-1]), 0.5)
+    starts = args.starts.copy()
+    starts[0] = -1
+    with pytest.raises(ValueError, match=match):
+        _solve(args._replace(starts=starts), 0.5)
+    counts = args.counts.copy()
+    counts[0] = -1
+    with pytest.raises(ValueError, match=match):
+        _solve(args._replace(counts=counts), 0.5)
+
+
 def test_all_skipped(scene):
     cat = make_catalog(scene)
     n_src = cat.n_labels

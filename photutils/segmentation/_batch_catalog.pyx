@@ -1223,7 +1223,9 @@ def batch_flux_radius_solve(const double[::1] values, *,
     ------
     ValueError
         If a per-source array does not have the same length as
-        ``counts``.
+        ``counts``, if ``grid_edges`` does not have 4 columns, or if a
+        source's ``starts`` and ``counts`` region extends beyond the
+        ``values`` buffer.
     """
     cdef Py_ssize_t n_src = counts.shape[0]
     for name, length in (('starts', starts.shape[0]), ('nx', nx.shape[0]),
@@ -1234,6 +1236,19 @@ def batch_flux_radius_solve(const double[::1] values, *,
         if length != n_src:
             msg = f'{name} must have the same length as counts'
             raise ValueError(msg)
+    if grid_edges.shape[1] != 4:
+        msg = 'grid_edges must have 4 columns'
+        raise ValueError(msg)
+
+    # The source loops below index the packed buffer without bounds
+    # checks, so reject a region that does not fit in it.
+    cdef Py_ssize_t n_values = values.shape[0]
+    cdef Py_ssize_t i
+    for i in range(n_src):
+        if counts[i] < 0 or starts[i] < 0 or starts[i] + counts[i] > n_values:
+            msg = ('the starts and counts regions must lie within the '
+                   'values buffer')
+            raise ValueError(msg)
 
     radius_arr = np.full(n_src, np.nan)
     cdef double[::1] radius = radius_arr
@@ -1242,7 +1257,7 @@ def batch_flux_radius_solve(const double[::1] values, *,
     cdef double xmin_e, xmax_e, ymin_e, ymax_e, max_extent
     cdef double dx, dy, pixel_radius, bin_width, rmax, delta, result
     cdef bint found
-    cdef Py_ssize_t i, n_bins, max_pix = 0, max_bins = 0
+    cdef Py_ssize_t n_bins, max_pix = 0, max_bins = 0
 
     # Size the scratch buffers of the radial binning for the largest
     # cutout and bin count (local to this call, so the function is
