@@ -164,12 +164,10 @@ def _batch_gini(values):
 
     The values of each source are sorted with NumPy in a Python loop
     rather than with the compiled ``batch_gini`` kernel shared with
-    `~photutils.aperture.ApertureStats`. NumPy's vectorized sort beats
-    the kernel's scalar introsort for sources of more than ~50 pixels
-    (e.g., 23 versus 31 ms for 10k 144-pixel sources and 50 versus 86
-    ms for 1k 2500-pixel sources); the kernel is faster only for very
-    small sources (2.5 versus 27 ms for 100k four-pixel sources), where
-    the per-source Python overhead of this loop dominates.
+    `~photutils.aperture.ApertureStats`. NumPy's vectorized sort
+    beats the kernel's scalar introsort for sources of more than ~50
+    pixels. The kernel is faster only for very small sources, where the
+    per-source Python overhead of this loop dominates.
 
     Parameters
     ----------
@@ -188,8 +186,8 @@ def _batch_gini(values):
     starts = offsets[:-1]
     # Sort the absolute values within each source in place (a single
     # sort per source is much cheaper than one lexsort over all of the
-    # values); the placeholder values of empty sources are harmless
-    # because their results are set to NaN below
+    # values). The placeholder values of empty sources are harmless
+    # because their results are set to NaN below.
     values = np.abs(np.nan_to_num(packed))
     for start, stop in zip(starts, offsets[1:], strict=True):
         values[start:stop].sort()
@@ -628,11 +626,13 @@ class SourceCatalog:
 
         self._custom_properties = []
         self._flux_radius_cache = {}
+
         # The full-image arrays used by the batch Cython drivers, filled
         # lazily by _get_batch_arrays. The dict is shared by reference
         # with sliced catalogs (see __getitem__), so whichever catalog
         # builds the arrays first populates it for all of them.
         self._batch_arrays_cache = {}
+
         self.meta = _get_meta()
         self._update_meta()
 
@@ -1035,8 +1035,7 @@ class SourceCatalog:
         Return the source labels as the C-contiguous intp array used by
         the batch Cython drivers.
         """
-        return np.ascontiguousarray(np.atleast_1d(self.labels),
-                                    dtype=np.intp)
+        return np.ascontiguousarray(np.atleast_1d(self.labels), dtype=np.intp)
 
     @cached_property
     def _batch_bboxes(self):
@@ -1322,18 +1321,6 @@ class SourceCatalog:
             data_mask |= mask_cutout
         return data_mask
 
-    def _make_cutout_data_masks(self, data_cutouts, mask_cutouts):
-        """
-        Make a list of cutout data masks, combining both the input
-        ``mask`` and non-finite ``data`` values for each source.
-        """
-        data_masks = []
-        for (data_cutout, mask_cutout) in zip(data_cutouts, mask_cutouts,
-                                              strict=True):
-            data_masks.append(self._make_cutout_data_mask(data_cutout,
-                                                          mask_cutout))
-        return data_masks
-
     @cached_property
     def _cutout_segment_masks(self):
         """
@@ -1349,31 +1336,21 @@ class SourceCatalog:
                        strict=True)]
 
     @cached_property
-    def _cutout_data_masks(self):
-        """
-        Cutout boolean mask of non-finite ``data`` values combined with
-        the input ``mask`` array.
-
-        The mask is `True` for non-finite ``data`` values and where the
-        input ``mask`` is `True`.
-        """
-        return self._make_cutout_data_masks(self._data_cutouts,
-                                            self._mask_cutouts)
-
-    @cached_property
     def _cutout_total_masks(self):
         """
-        Boolean mask representing the combination of
-        ``_cutout_segment_masks`` and ``_cutout_data_masks``.
+        Cutout boolean masks combining the segment mask, non-finite
+        ``data`` values, and the input ``mask`` array.
 
-        This mask is applied to ``data``, ``error``, and ``background``
-        inputs when calculating properties.
+        Each mask is `True` for pixels outside the source segment, for
+        non-finite ``data`` values, and where the input ``mask`` is
+        `True`. These masks are applied to the masked cutout
+        properties.
         """
-        masks = []
-        for mask1, mask2 in zip(self._cutout_segment_masks,
-                                self._cutout_data_masks, strict=True):
-            masks.append(mask1 | mask2)
-        return masks
+        return [segm_mask
+                | self._make_cutout_data_mask(data_cutout, mask_cutout)
+                for segm_mask, data_cutout, mask_cutout
+                in zip(self._cutout_segment_masks, self._data_cutouts,
+                       self._mask_cutouts, strict=True)]
 
     def _prepare_cutouts(self, arrays, *, units=True, masked=False,
                          dtype=None):
@@ -2179,6 +2156,10 @@ class SourceCatalog:
             jac = compute_pixel_to_sky_jacobians(xycen[good, 0],
                                                  xycen[good, 1],
                                                  self.wcs)
+            # The Einstein summation computes the matrix product of the
+            # Jacobian, the pixel covariance, and the Jacobian transpose
+            # for each source. The result is the sky covariance matrix
+            # in the local tangent plane.
             sky_cov = np.einsum('nij,njk,nlk->nil', jac, pix_cov[good], jac)
             sky_err[good, 0] = np.sqrt(sky_cov[:, 0, 0])
             sky_err[good, 1] = np.sqrt(sky_cov[:, 1, 1])
@@ -2285,9 +2266,9 @@ class SourceCatalog:
             err_cov_xy = err_cov_xy * norm
 
             # Handle fully correlated profiles of point-like sources
-            # that cause a singularity. The determinant check
-            # includes the pixel-size correction in the variances
-            # but not in the covariance.
+            # that cause a singularity. The determinant check includes
+            # the pixel-size correction in the variances but not in the
+            # covariance.
             singular = (self._singular_covariance_mask
                         & ((err_var_x * err_var_y - err_cov_xy**2)
                            < err_sum_norm**2))
@@ -2312,12 +2293,19 @@ class SourceCatalog:
         Apply the fallback conditions for the windowed centroid.
 
         Reset the centroid to the isophotal centroid when any of the
-        following conditions hold: the centroid diverged far from the
-        isophotal centroid and lies outside the 1-sigma ellipse, the
-        total weighted flux is non-positive, the windowed 2nd-order
-        moments are negative, or the windowed covariance determinant
-        is negative. Fallback sources also use the isophotal centroid
-        errors. Sources with NaN half-light radius keep NaN.
+        following conditions hold:
+
+        * The centroid diverged far from the isophotal centroid and lies
+          outside the 1-sigma ellipse
+
+        * The total weighted flux is non-positive
+
+        * The windowed 2nd-order moments are negative
+
+        * The windowed covariance determinant is negative.
+
+        Fallback sources also use the isophotal centroid errors. Sources
+        with NaN half-light radius keep NaN.
 
         Parameters
         ----------
@@ -2423,8 +2411,8 @@ class SourceCatalog:
         # meaningful windowed centroid.
         nan_hl = ~np.isfinite(radius_hl)
 
-        # Apply a minimum half-light radius of 0.5 pixels (matching
-        # SourceExtractor) for valid but very small values
+        # Apply a minimum half-light radius of 0.5 pixels for valid but
+        # very small values.
         min_radius = 0.5
         small_mask = np.isfinite(radius_hl) & (radius_hl < min_radius)
         radius_hl[small_mask] = min_radius
@@ -2436,10 +2424,8 @@ class SourceCatalog:
         y_centroid = np.atleast_1d(self.y_centroid).astype(float)
 
         sigma = 2.0 * radius_hl * gaussian_fwhm_to_sigma
-        # np.isnan (not ~np.isfinite) for parity with the previous
-        # per-source math.isnan checks
-        skip = (nan_hl | np.isnan(x_centroid)
-                | np.isnan(y_centroid)).astype(np.uint8)
+        skip = (nan_hl | ~np.isfinite(x_centroid)
+                | ~np.isfinite(y_centroid)).astype(np.uint8)
         arrays = self._get_batch_arrays()
         results = batch_centroid_win(
             arrays['data'], error=arrays['error'],
@@ -2646,7 +2632,7 @@ class SourceCatalog:
         compute_err = self._error is not None
 
         # Gather the 3x3 box around the peak pixel of each masked
-        # (zero-filled) cutout
+        # (zero-filled) cutout.
         arrays = self._get_batch_arrays()
         iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
         status, peak, boxes, box_var = batch_quad_boxes(
@@ -2662,19 +2648,18 @@ class SourceCatalog:
         results = np.full((n_src, 5), np.nan)
 
         # If the peak is at the edge of the cutout, return the peak
-        # position. No fit is performed, so no errors can be
-        # propagated.
+        # position. No fit is performed, so no errors can be propagated.
         edge = status == 3
         results[edge, 0] = peak[edge, 0]
         results[edge, 1] = peak[edge, 1]
 
-        # Fit the quadratic to the 3x3 box of the remaining sources
+        # Fit the quadratic to the 3x3 box of the remaining sources.
         fit = status == 0
         xidx0 = peak[:, 0] - 1
         yidx0 = peak[:, 1] - 1
         # einsum (rather than a BLAS matmul) keeps the per-source
         # arithmetic independent of the number of sources, so a sliced
-        # catalog reproduces the parent catalog values exactly
+        # catalog reproduces the parent catalog values exactly.
         coeffs = np.einsum('ij,nj->ni', pinv, boxes)
         c10 = coeffs[:, 1]
         c01 = coeffs[:, 2]
@@ -2850,7 +2835,7 @@ class SourceCatalog:
         quadratic centroid, ``[[var_x, cov_xy], [cov_xy, var_y]]``.
 
         Fallback sources hold the isophotal covariance (see
-        ``_centroid_err_cov``); matrices are all-NaN where errors are
+        ``_centroid_err_cov``). Matrices are all-NaN where errors are
         unavailable.
         """
         results = self._centroid_quad_results
@@ -3620,9 +3605,9 @@ class SourceCatalog:
         weights[[13, 23]] = (1 + np.sqrt(2.0)) / 2.0
 
         # Histogram of the convolved border-pixel patterns of each
-        # source (see batch_perimeter); the weights are applied with
+        # source (see batch_perimeter). The weights are applied with
         # einsum so the per-source arithmetic is independent of the
-        # number of sources
+        # number of sources.
         arrays = self._get_batch_arrays()
         iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
         hist = batch_perimeter(
@@ -3689,8 +3674,7 @@ class SourceCatalog:
             # is non-negative for a real symmetric matrix. Clip tiny
             # negative rounding to zero.
             half_trace = 0.5 * (covar[:, 0, 0] + covar[:, 1, 1])
-            disc = np.maximum(half_trace**2 - self._raw_covariance_det,
-                              0.0)
+            disc = np.maximum(half_trace**2 - self._raw_covariance_det, 0.0)
             min_eigval = half_trace - np.sqrt(disc)
             degenerate = (np.isfinite(min_eigval)
                           & (min_eigval < 1.0 / 12.0))
@@ -3795,13 +3779,13 @@ class SourceCatalog:
         idx = np.unique(np.where(np.isfinite(self._covariance))[0])
         eigvals[idx] = np.linalg.eigvalsh(self._covariance[idx])
 
-        # Check for negative variance
-        # (just in case covariance matrix is not positive semidefinite)
+        # Check for negative variance (in case covariance matrix is not
+        # positive semidefinite).
         idx2 = np.unique(np.where(eigvals < 0)[0])
         eigvals[idx2] = (np.nan, np.nan)
 
-        # Sort each eigenvalue pair in descending order
-        # (eigvalsh returns values in ascending order)
+        # Sort each eigenvalue pair in descending order (eigvalsh
+        # returns values in ascending order).
         eigvals = np.fliplr(eigvals)
 
         return eigvals * u.pix**2
