@@ -132,7 +132,7 @@ def test_batch_bboxes_cached_and_sliced(scene):
         assert col.flags.c_contiguous
     assert_array_equal(np.column_stack((iymin, iymax, ixmin, ixmax)),
                        bboxes)
-    slices = cat._slices_iter
+    slices = cat.slices
     assert_array_equal(iymin, [slc[0].start for slc in slices])
     assert_array_equal(ixmax, [slc[1].stop for slc in slices])
 

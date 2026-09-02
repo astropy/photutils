@@ -837,8 +837,13 @@ class SourceCatalog:
         else:
             setattr(newcls, attr, getattr(self, attr)[index])
 
+        # _slices is always stored as a list (one tuple of slices per
+        # source), even for a scalar catalog. The public ``slices``
+        # property is collapsed by __getattribute__.
         attr = '_slices'
         value = self._index_object_list(getattr(self, attr), index)
+        if newcls.isscalar:
+            value = [value]
         setattr(newcls, attr, value)
 
         # Slice the flux_radius cache values
@@ -1047,8 +1052,8 @@ class SourceCatalog:
         A 2D array (rather than a tuple of arrays) so that the cached
         value is sliced along the source axis by ``__getitem__``.
         """
-        bboxes = np.empty((len(self._slices_iter), 4), dtype=np.intp)
-        for i, (slc_y, slc_x) in enumerate(self._slices_iter):
+        bboxes = np.empty((len(self._slices), 4), dtype=np.intp)
+        for i, (slc_y, slc_x) in enumerate(self._slices):
             bboxes[i] = (slc_y.start, slc_y.stop, slc_x.start, slc_x.stop)
         return bboxes
 
@@ -1259,7 +1264,7 @@ class SourceCatalog:
         """
         A list of data cutouts using the segmentation image slices.
         """
-        return [self._data[slc] for slc in self._slices_iter]
+        return [self._data[slc] for slc in self._slices]
 
     @cached_property
     def _segmentation_image_cutouts(self):
@@ -1268,7 +1273,7 @@ class SourceCatalog:
         image slices.
         """
         return [self._segmentation_image.data[slc]
-                for slc in self._slices_iter]
+                for slc in self._slices]
 
     @cached_property
     def _mask_cutouts(self):
@@ -1279,7 +1284,7 @@ class SourceCatalog:
         """
         if self._mask is None:
             return self._null_objects
-        return [self._mask[slc] for slc in self._slices_iter]
+        return [self._mask[slc] for slc in self._slices]
 
     @cached_property
     def _error_cutouts(self):
@@ -1290,7 +1295,7 @@ class SourceCatalog:
         """
         if self._error is None:
             return self._null_objects
-        return [self._error[slc] for slc in self._slices_iter]
+        return [self._error[slc] for slc in self._slices]
 
     @cached_property
     def _convdata_cutouts(self):
@@ -1298,7 +1303,7 @@ class SourceCatalog:
         A list of convolved data cutouts using the segmentation image
         slices.
         """
-        return [self._convolved_data[slc] for slc in self._slices_iter]
+        return [self._convolved_data[slc] for slc in self._slices]
 
     @cached_property
     def _background_cutouts(self):
@@ -1308,7 +1313,7 @@ class SourceCatalog:
         """
         if self._background is None:
             return self._null_objects
-        return [self._background[slc] for slc in self._slices_iter]
+        return [self._background[slc] for slc in self._slices]
 
     @staticmethod
     def _make_cutout_data_mask(data_cutout, mask_cutout):
@@ -1530,17 +1535,6 @@ class SourceCatalog:
         a single-source catalog.
         """
         return self._slices
-
-    @cached_property
-    def _slices_iter(self):
-        """
-        A tuple of slice objects defining the minimal bounding box of
-        the source, always as an iterable.
-        """
-        _slices = self.slices
-        if self.isscalar:
-            _slices = (_slices,)
-        return _slices
 
     @cached_property
     def segment_cutout(self):
@@ -1780,7 +1774,7 @@ class SourceCatalog:
         ny, nx = self._data.shape
         edge = np.array([(slc[0].start == 0 or slc[1].start == 0
                           or slc[0].stop == ny or slc[1].stop == nx)
-                         for slc in self._slices_iter])
+                         for slc in self._slices])
         flags[edge] |= SEGMENTATION_FLAGS.EDGE_TOUCH
 
         # Input-masked, non-finite data, and non-finite error pixels
@@ -3109,7 +3103,7 @@ class SourceCatalog:
         """
         return [BoundingBox(ixmin=slc[1].start, ixmax=slc[1].stop,
                             iymin=slc[0].start, iymax=slc[0].stop)
-                for slc in self._slices_iter]
+                for slc in self._slices]
 
     @cached_property
     @use_detcat
@@ -3130,7 +3124,7 @@ class SourceCatalog:
         The minimum ``x`` pixel index within the minimal bounding box
         containing the source segment.
         """
-        return np.array([slc[1].start for slc in self._slices_iter])
+        return np.array([slc[1].start for slc in self._slices])
 
     @cached_property
     @use_detcat
@@ -3141,7 +3135,7 @@ class SourceCatalog:
 
         Note that this value is inclusive, unlike numpy slice indices.
         """
-        return np.array([slc[1].stop - 1 for slc in self._slices_iter])
+        return np.array([slc[1].stop - 1 for slc in self._slices])
 
     @cached_property
     @use_detcat
@@ -3150,7 +3144,7 @@ class SourceCatalog:
         The minimum ``y`` pixel index within the minimal bounding box
         containing the source segment.
         """
-        return np.array([slc[0].start for slc in self._slices_iter])
+        return np.array([slc[0].start for slc in self._slices])
 
     @cached_property
     @use_detcat
@@ -3161,7 +3155,7 @@ class SourceCatalog:
 
         Note that this value is inclusive, unlike numpy slice indices.
         """
-        return np.array([slc[0].stop - 1 for slc in self._slices_iter])
+        return np.array([slc[0].stop - 1 for slc in self._slices])
 
     @cached_property
     @use_detcat

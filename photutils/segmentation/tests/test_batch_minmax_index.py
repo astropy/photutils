@@ -38,7 +38,7 @@ def _reference_index(cat, cutout_index):
     ``max_value_index`` loops, adding the bounding-box origin.
     """
     out = []
-    for idx, slc in zip(cutout_index, cat._slices_iter, strict=True):
+    for idx, slc in zip(cutout_index, cat.slices, strict=True):
         out.append((idx[0] + slc[0].start, idx[1] + slc[1].start))
     return np.array(out)
 

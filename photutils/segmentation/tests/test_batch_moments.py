@@ -19,7 +19,7 @@ from photutils.segmentation.tests._batch_scene import (make_batch_scene,
 
 def _moment_cutout(cat, i):
     # The _moment_data_cutouts zeroing rules, per source
-    slc = cat._slices_iter[i]
+    slc = cat.slices[i]
     conv = cat._convolved_data[slc]
     segm = cat._segmentation_image.data[slc]
     bad = (~np.isfinite(conv) | (conv < 0)
@@ -61,7 +61,7 @@ def _driver_inputs(cat):
     arrays = cat._get_batch_arrays()
     convdata = np.ascontiguousarray(cat._convolved_data,
                                     dtype=np.float64)
-    slices = cat._slices_iter
+    slices = cat.slices
     return {
         'convdata': convdata,
         'mask': arrays['mask'],
@@ -83,7 +83,7 @@ def _reference_moment_err(cat, xcen, ycen):
     # The _centroid_err_cov accumulation rules, per source
     result = []
     for i in range(cat.n_labels):
-        slc = cat._slices_iter[i]
+        slc = cat.slices[i]
         moment_data = _moment_cutout(cat, i)
         err_sq = cat._error[slc].astype(float) ** 2
         total_mask = ((cat._segmentation_image.data[slc]
@@ -222,7 +222,7 @@ def _reference_err_pixels(cat, i):
     """
     Boolean cutout mask of the pixels included in the error sums.
     """
-    slc = cat._slices_iter[i]
+    slc = cat.slices[i]
     moment_data = _moment_cutout(cat, i)
     included = np.isfinite(cat._data[slc])
     included &= cat._segmentation_image.data[slc] == cat.labels[i]
@@ -243,7 +243,7 @@ def test_edge_case_inclusion_rules():
     # The excluded pixels must actually change the result, otherwise
     # this test would not discriminate the inclusion rules
     for i in range(cat.n_labels):
-        slc = cat._slices_iter[i]
+        slc = cat.slices[i]
         in_segment = (cat._segmentation_image.data[slc]
                       == cat.labels[i])
         assert (np.count_nonzero(_moment_cutout(cat, i))
@@ -313,7 +313,7 @@ def test_catalog_centroid_err(scene):
         if not np.isfinite(m00[i]) or m00[i] <= 0:
             assert np.all(np.isnan(cov[i]))
             continue
-        slc = cat._slices_iter[i]
+        slc = cat.slices[i]
         moment_data = _moment_cutout(cat, i)
         err_sq = scene['error'][slc].astype(float) ** 2
         total_mask = ((cat._segmentation_image.data[slc]

@@ -167,7 +167,7 @@ def _reference_gini(cat):
 def _reference_segment_area(cat):
     # The previous per-source segment_area implementation
     areas = []
-    for label, slices in zip(cat.labels, cat._slices_iter, strict=True):
+    for label, slices in zip(cat.labels, cat.slices, strict=True):
         areas.append(np.count_nonzero(
             cat._segmentation_image[slices] == label))
     return np.array(areas)
