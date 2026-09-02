@@ -44,6 +44,7 @@ from photutils.segmentation._batch_catalog import (batch_central_moments,
                                                    batch_quad_boxes,
                                                    batch_raw_moments,
                                                    batch_segment_gather)
+from photutils.segmentation._batch_results import BatchFluxRadiusArgs
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.flags import (SEGMENTATION_FLAGS,
                                           decode_segmentation_flags)
@@ -180,6 +181,36 @@ def _concatenate_aperture_sums(results):
     return BatchApertureSums(**fields, starts=None, sum_values=None,
                              sum_fracs=None, sum_errsq=None,
                              sum_counts=None)
+
+
+def _concatenate_flux_radius_args(results):
+    """
+    Concatenate per-chunk ``batch_flux_radius_prepare`` results along
+    the source axis.
+
+    The packed ``values`` buffers are concatenated and the per-source
+    ``starts`` are rebased to the combined buffer.
+
+    Parameters
+    ----------
+    results : list of `BatchFluxRadiusArgs`
+        The per-chunk driver results, in source order.
+
+    Returns
+    -------
+    result : `~photutils.segmentation._batch_results.BatchFluxRadiusArgs`
+        The combined per-source inputs.
+    """
+    offsets = np.cumsum([0] + [len(result.values) for result in results])
+    starts = np.concatenate([result.starts + offset for result, offset
+                             in zip(results, offsets, strict=False)])
+    fields = {name: np.concatenate([getattr(result, name)
+                                    for result in results])
+              for name in ('values', 'counts', 'nx', 'ny', 'grid_edges',
+                           'kronflux', 'max_radius')}
+    return BatchFluxRadiusArgs(**fields, starts=starts,
+                               use_exact=results[0].use_exact,
+                               subpixels=results[0].subpixels)
 
 
 def _batch_gini(values):
@@ -481,13 +512,13 @@ class SourceCatalog:
         the Kron flux).
 
     n_threads : int, optional
-        The number of threads to use to compute the Kron radii and
-        Kron photometry (`kron_radius`, `kron_flux`, `kron_flux_err`,
-        and `kron_photometry`), and thus the measurements that depend
-        on them (e.g., `flux_radius` and `centroid_win`). The default
-        is 1 (no multithreading). When ``n_threads`` > 1, the sources
-        are divided into chunks that are processed concurrently. The
-        per-source results are independent, so they are identical to
+        The number of threads to use to compute the Kron radii, Kron
+        photometry, and flux radii (`kron_radius`, `kron_flux`,
+        `kron_flux_err`, `kron_photometry`, and `flux_radius`), and thus
+        the measurements that depend on them (e.g., `centroid_win`). The
+        default is 1 (no multithreading). When ``n_threads`` > 1, the
+        sources are divided into chunks that are processed concurrently.
+        The per-source results are independent, so they are identical to
         the single-threaded computation. The underlying kernels release
         the Python global interpreter lock (GIL), so multithreading can
         significantly speed up these measurements for many sources.
@@ -906,6 +937,10 @@ class SourceCatalog:
         keys = (set(self.__dict__.keys())
                 & (set(self._cached_properties)
                    | set(self._custom_properties)))
+        # The packed flux-radius inputs cannot be sliced per source.
+        # The sliced catalog recomputes them on demand (its flux_radius
+        # cache is sliced above).
+        keys.discard('_flux_radius_optimizer_args')
         for key in keys:
             value = self.__dict__[key]
 
@@ -1116,21 +1151,23 @@ class SourceCatalog:
         return tuple(np.ascontiguousarray(col)
                      for col in self._batch_bboxes.T)
 
-    def _threaded_batch(self, func, per_source, *, merge=np.concatenate,
-                        **fixed):
+    def _threaded_batch(self, func, per_source, *, packed=None,
+                        merge=np.concatenate, **fixed):
         """
         Call a per-source batch kernel over contiguous chunks of
         sources, concurrently when ``n_threads`` > 1.
 
-        The kernel is called as ``func(**per_source, **fixed)``. When
-        ``n_threads`` > 1, the sources are divided into ``min(n_threads,
-        n_sources)`` contiguous ranges. Each worker receives the
-        corresponding row slices of the ``per_source`` arrays (row
-        slices of C-contiguous arrays are themselves C-contiguous) and
-        the ``fixed`` arguments (e.g., the full-image arrays and scalar
-        options) unchanged, so the kernels run concurrently on disjoint
-        sources. The per-chunk outputs are combined with ``merge``, so
-        the result is identical to the single-chunk call.
+        The kernel is called as ``func(**per_source, **packed,
+        **fixed)``. When ``n_threads`` > 1, the sources are divided into
+        ``min(n_threads, n_sources)`` contiguous ranges. Each worker
+        receives the corresponding row slices of the ``per_source``
+        arrays (row slices of C-contiguous arrays are themselves
+        C-contiguous), the corresponding regions of the ``packed``
+        buffers, and the ``fixed`` arguments (e.g., the full-image
+        arrays and scalar options) unchanged, so the kernels run
+        concurrently on disjoint sources. The per-chunk outputs are
+        combined with ``merge``, so the result is identical to the
+        single-chunk call.
 
         Parameters
         ----------
@@ -1140,6 +1177,13 @@ class SourceCatalog:
         per_source : dict
             The per-source arrays (one row per source), keyed by the
             kernel keyword name. A `None` value is passed unchanged.
+
+        packed : dict, optional
+            Packed per-pixel buffers, keyed by the kernel keyword name.
+            Each source occupies the region given by the ``'starts'``
+            and ``'counts'`` entries of ``per_source``, which must then
+            be present. The chunk ``starts`` are rebased to the chunk
+            buffer region.
 
         merge : callable, optional
             The function that combines the list of per-chunk outputs.
@@ -1154,17 +1198,31 @@ class SourceCatalog:
         result : object
             The (merged) kernel output.
         """
+        packed = {} if packed is None else packed
         n_src = next(len(arr) for arr in per_source.values()
                      if arr is not None)
         n_chunks = min(self.n_threads, n_src)
         if n_chunks <= 1:  # 0 for no sources
-            return func(**per_source, **fixed)
+            return func(**per_source, **packed, **fixed)
 
         edges = np.arange(n_chunks + 1) * n_src // n_chunks
+        if packed:
+            starts = per_source['starts']
+            counts = per_source['counts']
+            buffer_ends = starts + counts
 
         def run_chunk(i0, i1):
             chunk = {key: None if arr is None else arr[i0:i1]
                      for key, arr in per_source.items()}
+            if packed:
+                # The chunk region spans from the first source start to
+                # the last source end (a skipped source may have a zero
+                # count).
+                buf0 = starts[i0]
+                buf1 = buffer_ends[i0:i1].max(initial=buf0)
+                chunk['starts'] = chunk['starts'] - buf0
+                chunk.update({key: buffer[buf0:buf1]
+                              for key, buffer in packed.items()})
             return func(**chunk, **fixed)
 
         with ThreadPoolExecutor(max_workers=n_chunks) as executor:
@@ -5232,16 +5290,17 @@ class SourceCatalog:
     @use_detcat
     def _flux_radius_optimizer_args(self):
         """
-        The prepared per-source arguments of the flux-radius root-find
-        (see ``batch_flux_radius_prepare``), always as a list with one
-        entry per source.
+        The prepared per-source inputs of the flux-radius
+        root-find (see ``batch_flux_radius_prepare``), as a
+        `~photutils.segmentation._batch_results.BatchFluxRadiusArgs`
+        with one entry per source.
 
-        Each entry is `None` for a source that cannot have a solution
-        or the list ``[clean_data, grid_params, kronflux,
-        max_radius]``. This cached property snapshots the current
+        A source that cannot have a solution has a zero pixel count.
+        This cached property snapshots the current
         ``_aperture_mask_kwargs['flux_radius']`` settings. Changing
         them (e.g., via ``_set_semode``) after the first flux_radius
-        call has no effect.
+        call has no effect. The preparation is multithreaded when
+        ``n_threads`` > 1.
         """
         kron_flux = np.ascontiguousarray(self._kron_photometry[:, 0],
                                          dtype=np.float64)  # unitless
@@ -5263,11 +5322,14 @@ class SourceCatalog:
                 | (kron_flux == 0)).astype(np.uint8)
 
         arrays = self._get_batch_arrays()
-        return batch_flux_radius_prepare(
-            arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
-            labels=self._batch_labels(),
-            xcen=x_centroid, ycen=y_centroid, local_bkg=local_bkg,
-            kronflux=kron_flux, max_radius=max_radius, skip=skip,
+        return self._threaded_batch(
+            batch_flux_radius_prepare,
+            {'labels': self._batch_labels(), 'xcen': x_centroid,
+             'ycen': y_centroid, 'local_bkg': local_bkg,
+             'kronflux': kron_flux, 'max_radius': max_radius,
+             'skip': skip},
+            merge=_concatenate_flux_radius_args,
+            data=arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
             seg_method=SEG_METHOD_CODES[self.aperture_mask_method],
             use_exact=use_exact, subpixels=subpixels,
             max_aper_size=max(self._data.size, 1_000_000))
@@ -5314,7 +5376,14 @@ class SourceCatalog:
             return self._make_scalar(result)
 
         args = self._flux_radius_optimizer_args
-        radius = batch_flux_radius_solve(args, fraction=fraction)
+        radius = self._threaded_batch(
+            batch_flux_radius_solve,
+            {'starts': args.starts, 'counts': args.counts, 'nx': args.nx,
+             'ny': args.ny, 'grid_edges': args.grid_edges,
+             'kronflux': args.kronflux, 'max_radius': args.max_radius},
+            packed={'values': args.values},
+            fraction=fraction, use_exact=args.use_exact,
+            subpixels=args.subpixels)
         result = radius << u.pix
         self._flux_radius_cache[fraction] = result
 

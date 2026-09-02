@@ -292,9 +292,9 @@ do:
   a fresh catalog (times include dependent properties, e.g.,
   `centroid_win` includes the Kron flux and `flux_radius` it depends
   on)
-- the `SourceCatalog` `n_threads` keyword for the Kron measurements
-  (`kron_radius`, `kron_flux`, `kron_photometry`, and the dependent
-  `flux_radius`) across thread counts, with the isophotal
+- the `SourceCatalog` `n_threads` keyword for the Kron and flux
+  radius measurements (`kron_radius`, `kron_flux`, `kron_photometry`,
+  and `flux_radius`) across thread counts, with the isophotal
   prerequisites precomputed (with speedups relative to the first
   thread count)
 - concurrent `SourceCatalog` measurement jobs across thread counts

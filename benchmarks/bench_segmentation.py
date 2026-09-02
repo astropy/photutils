@@ -471,8 +471,8 @@ def bench_catalog_kron_threads(*, n_sources=1000,
     coefficients) that every Kron measurement depends on. The Kron
     radius, the Kron flux (which includes the Kron radius), the Kron
     photometry with alternate parameters (on a catalog whose Kron
-    radius is already computed), and the flux radius (which runs
-    serial kernels on the threaded Kron flux) are then timed.
+    radius is already computed), and the flux radius (on a catalog
+    whose Kron flux is already computed) are then timed.
 
     Parameters
     ----------
