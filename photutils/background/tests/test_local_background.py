@@ -311,6 +311,6 @@ class TestFastLocalBackground:
         integer.
         """
         match = 'n_threads must be a positive integer'
-        for n_threads in (0, -1, 2.5):
+        for n_threads in (0, -1, 2.5, True):
             with pytest.raises(ValueError, match=match):
                 LocalBackground(5, 10, n_threads=n_threads)

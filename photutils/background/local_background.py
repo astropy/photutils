@@ -89,7 +89,9 @@ class LocalBackground:
             bkg_estimator = MedianBackground()
         self.bkg_estimator = bkg_estimator
 
-        if not isinstance(n_threads, (int, np.integer)) or n_threads < 1:
+        if (isinstance(n_threads, bool)
+                or not isinstance(n_threads, (int, np.integer))
+                or n_threads < 1):
             msg = 'n_threads must be a positive integer'
             raise ValueError(msg)
         self.n_threads = int(n_threads)

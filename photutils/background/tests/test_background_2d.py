@@ -317,7 +317,7 @@ class TestBackground2D:
         integer.
         """
         match = 'n_threads must be a positive integer'
-        for n_threads in (0, -1, 2.5):
+        for n_threads in (0, -1, 2.5, True):
             with pytest.raises(ValueError, match=match):
                 Background2D(test_data, (25, 25), n_threads=n_threads)
 

@@ -3731,6 +3731,6 @@ class TestNThreads:
         """
         data, segm, _, _ = many_source_inputs
         match = 'n_threads must be a positive integer'
-        for n_threads in (0, -1, 2.5):
+        for n_threads in (0, -1, 2.5, True):
             with pytest.raises(ValueError, match=match):
                 SourceCatalog(data, segm, n_threads=n_threads)

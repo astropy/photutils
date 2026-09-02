@@ -301,7 +301,9 @@ class Background2D:
                                    lower_bound=(0, 0), check_odd=True)
         self.filter_threshold = filter_threshold
 
-        if not isinstance(n_threads, (int, np.integer)) or n_threads < 1:
+        if (isinstance(n_threads, bool)
+                or not isinstance(n_threads, (int, np.integer))
+                or n_threads < 1):
             msg = 'n_threads must be a positive integer'
             raise ValueError(msg)
         self.n_threads = int(n_threads)
