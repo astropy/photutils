@@ -285,12 +285,13 @@ New Features
     bar any more (see the ``progress_bar`` deprecation under API
     Changes). [#2406]
 
-  - Added an ``n_threads`` keyword to ``SourceCatalog`` to compute the
-    Kron radii, Kron photometry, and flux radii (``kron_radius``,
-    ``kron_flux``, ``kron_flux_err``, ``kron_photometry``, and
-    ``flux_radius``), and thus the measurements that depend on them
-    (e.g., ``centroid_win``), using multiple threads. The sources are
-    divided into chunks that are processed concurrently, producing
+  - Added an ``n_threads`` keyword to ``SourceCatalog`` to compute
+    the compiled per-source measurements (the isophotal moments and
+    their errors, the segment pixel statistics, the windowed and
+    quadratic centroids, ``perimeter``, the Kron radii and photometry,
+    ``circular_photometry``, and ``flux_radius``), and thus every
+    property derived from them, using multiple threads. The sources
+    are divided into chunks that are processed concurrently, producing
     results identical to the single-threaded computation. [#2407]
 
 - ``photutils.utils``

@@ -8,8 +8,8 @@ detect_sources), source deblending (deblend_sources) across the
 threshold modes and process counts, the combined SourceFinder class,
 SegmentationImage operations (relabeling, border-label removal,
 source masks, and polygons), SourceCatalog property calculations, the
-SourceCatalog n_threads keyword for the Kron measurements, and
-concurrent SourceCatalog runs across thread counts.
+SourceCatalog n_threads keyword, and concurrent SourceCatalog runs
+across thread counts.
 
 Run ``python benchmarks/bench_segmentation.py --help`` to see the
 available options.
@@ -458,21 +458,18 @@ def bench_catalog_threads(*, n_sources=1000, n_calls=8,
     print(''.join(f'{cell:>18}' for cell in format_sweep_cells(times)))
 
 
-def bench_catalog_kron_threads(*, n_sources=1000,
-                               thread_counts=(1, 2, 4, 8), repeats=3,
-                               seed=0):
+def bench_catalog_n_threads(*, n_sources=1000, thread_counts=(1, 2, 4, 8),
+                            repeats=3, seed=0):
     """
-    Benchmark the SourceCatalog n_threads keyword for the Kron
-    measurements.
+    Benchmark the SourceCatalog n_threads keyword.
 
     Each timing constructs a fresh SourceCatalog with the given
     ``n_threads`` and, outside the timed region, computes the
-    isophotal prerequisites (centroid, shape parameters, and ellipse
-    coefficients) that every Kron measurement depends on. The Kron
-    radius, the Kron flux (which includes the Kron radius), the Kron
-    photometry with alternate parameters (on a catalog whose Kron
-    radius is already computed), and the flux radius (on a catalog
-    whose Kron flux is already computed) are then timed.
+    prerequisites of the measurement (e.g., the isophotal centroid
+    and shape parameters for the Kron radius, or the Kron flux for
+    the flux radius), so that only the measurement itself is timed.
+    The default ``to_table`` columns are timed from a cold catalog,
+    so that row shows the end-to-end effect.
 
     Parameters
     ----------
@@ -492,40 +489,54 @@ def bench_catalog_kron_threads(*, n_sources=1000,
     error = np.ones_like(data)
 
     def _make_catalog(n_threads):
-        cat = SourceCatalog(data, segm, convolved_data=convolved_data,
-                            error=error, n_threads=n_threads)
-        # Warm the isophotal prerequisites of the Kron measurements
-        for name in ('centroid', 'semimajor_axis', 'semiminor_axis',
-                     'orientation', 'ellipse_cxx', 'ellipse_cxy',
-                     'ellipse_cyy'):
-            getattr(cat, name)
-        return cat
+        return SourceCatalog(data, segm, convolved_data=convolved_data,
+                             error=error, n_threads=n_threads)
 
     def _time_measurement(func, n_threads, *, warm=()):
         best = np.inf
         for _ in range(repeats):
             cat = _make_catalog(n_threads)
-            for name in warm:
-                getattr(cat, name)
+            for item in warm:
+                if isinstance(item, str):
+                    getattr(cat, item)
+                else:
+                    item(cat)
             t0 = time.perf_counter()
             func(cat)
             best = min(best, time.perf_counter() - t0)
         return best
 
-    attrgetter('kron_flux')(_make_catalog(1))  # warm up
+    _make_catalog(1).to_table()  # warm up
 
+    shape = ('centroid', 'semimajor_axis', 'semiminor_axis',
+             'orientation', 'ellipse_cxx', 'ellipse_cxy', 'ellipse_cyy')
+    half_light = [lambda cat: cat.flux_radius(0.5)]
     benchmarks = [
-        ('kron_radius', attrgetter('kron_radius'), ()),
-        ('kron_flux (incl. kron_radius)', attrgetter('kron_flux'), ()),
+        ('moments', attrgetter('moments'), ('bbox_xmin',)),
+        ('moments_central', attrgetter('moments_central'),
+         ('cutout_centroid',)),
+        ('centroid_err', attrgetter('centroid_err'), ('covariance',)),
+        ('segment_flux (+ error)', attrgetter('segment_flux'),
+         ('bbox_xmin',)),
+        ('min_value_xindex', attrgetter('min_value_xindex'),
+         ('bbox_xmin',)),
+        ('perimeter', attrgetter('perimeter'), ('bbox_xmin',)),
+        ('centroid_quad', attrgetter('centroid_quad'), ('bbox_xmin',)),
+        ('circular_photometry(5)',
+         lambda cat: cat.circular_photometry(5.0), ('centroid',)),
+        ('kron_radius', attrgetter('kron_radius'), shape),
+        ('kron_flux (incl. kron_radius)', attrgetter('kron_flux'), shape),
         ('kron_photometry((2.5, 1.4))',
          lambda cat: cat.kron_photometry((2.5, 1.4)), ('kron_radius',)),
         ('flux_radius(0.5)', lambda cat: cat.flux_radius(0.5),
          ('kron_flux',)),
+        ('centroid_win', attrgetter('centroid_win'), half_light),
+        ('to_table (default columns)', lambda cat: cat.to_table(), ()),
     ]
 
     print(f'\n== SourceCatalog n_threads scaling ({segm.n_labels} '
-          f'segments, {data.shape[0]}x{data.shape[1]} image; isophotal '
-          'prerequisites precomputed) ==')
+          f'segments, {data.shape[0]}x{data.shape[1]} image; '
+          'prerequisites precomputed except for to_table) ==')
     header = f'{"measurement":>32}'
     header += ''.join(f'{f"n={n}":>18}' for n in thread_counts)
     print(header)
@@ -586,7 +597,7 @@ def main():
                              '(default: %(default)s)')
     parser.add_argument('--which', default='all',
                         choices=['all', 'detect', 'deblend', 'finder',
-                                 'segmimage', 'catalog', 'kron-threads',
+                                 'segmimage', 'catalog', 'n-threads',
                                  'threads'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
@@ -610,10 +621,10 @@ def main():
     if args.which in ('all', 'catalog'):
         bench_catalog(n_sources=args.n_sources, repeats=args.repeats,
                       seed=args.seed)
-    if args.which in ('all', 'kron-threads'):
-        bench_catalog_kron_threads(n_sources=args.n_sources,
-                                   thread_counts=args.threads,
-                                   repeats=args.repeats, seed=args.seed)
+    if args.which in ('all', 'n-threads'):
+        bench_catalog_n_threads(n_sources=args.n_sources,
+                                thread_counts=args.threads,
+                                repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'threads'):
         bench_catalog_threads(n_sources=args.n_sources,
                               n_calls=args.n_calls,

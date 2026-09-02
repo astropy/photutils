@@ -183,6 +183,59 @@ def _concatenate_aperture_sums(results):
                              sum_counts=None)
 
 
+def _concatenate_arrays(results):
+    """
+    Concatenate per-chunk tuples of per-source arrays, element by
+    element, along the source axis.
+
+    Parameters
+    ----------
+    results : list of tuple of `~numpy.ndarray`
+        The per-chunk kernel outputs, in source order.
+
+    Returns
+    -------
+    result : tuple of `~numpy.ndarray`
+        The combined per-source arrays.
+    """
+    return tuple(np.concatenate(parts)
+                 for parts in zip(*results, strict=True))
+
+
+def _concatenate_segment_gathers(results):
+    """
+    Concatenate per-chunk ``batch_segment_gather`` results along the
+    source axis.
+
+    The packed buffers are concatenated and the per-source offsets
+    (which have one more entry than the sources of a chunk) are
+    rebased to the combined buffer.
+
+    Parameters
+    ----------
+    results : list of tuple
+        The per-chunk ``(packed, offsets, counts)`` outputs, in
+        source order.
+
+    Returns
+    -------
+    packed, offsets, counts : tuple of `~numpy.ndarray`
+        The combined outputs.
+    """
+    packed = np.concatenate([result[0] for result in results])
+    counts = np.concatenate([result[2] for result in results])
+    offsets = np.empty(len(counts) + 1, dtype=np.intp)
+    start = 0
+    total = 0
+    for _packed, chunk_offsets, chunk_counts in results:
+        n_chunk = len(chunk_counts)
+        offsets[start:start + n_chunk] = chunk_offsets[:-1] + total
+        start += n_chunk
+        total += chunk_offsets[-1]
+    offsets[-1] = total
+    return packed, offsets, counts
+
+
 def _concatenate_flux_radius_args(results):
     """
     Concatenate per-chunk ``batch_flux_radius_prepare`` results along
@@ -512,13 +565,15 @@ class SourceCatalog:
         the Kron flux).
 
     n_threads : int, optional
-        The number of threads to use to compute the Kron radii, Kron
-        photometry, and flux radii (`kron_radius`, `kron_flux`,
-        `kron_flux_err`, `kron_photometry`, and `flux_radius`), and thus
-        the measurements that depend on them (e.g., `centroid_win`). The
-        default is 1 (no multithreading). When ``n_threads`` > 1, the
-        sources are divided into chunks that are processed concurrently.
-        The per-source results are independent, so they are identical to
+        The number of threads to use for the compiled per-source
+        measurements: the isophotal moments and their errors, the
+        segment pixel statistics (e.g., `segment_flux`), the windowed
+        and quadratic centroids, `perimeter`, the Kron radii and
+        photometry, `circular_photometry`, and `flux_radius`, and
+        thus every property derived from them. The default is 1 (no
+        multithreading). When ``n_threads`` > 1, the sources are
+        divided into chunks that are processed concurrently. The
+        per-source results are independent, so they are identical to
         the single-threaded computation. The underlying kernels release
         the Python global interpreter lock (GIL), so multithreading can
         significantly speed up these measurements for many sources.
@@ -1022,13 +1077,11 @@ class SourceCatalog:
         length-1 sequence, otherwise return ``value`` unchanged.
 
         This is the method-call analog of the scalar collapse performed
-        for attribute access by `__getattribute__`.
+        for attribute access by `__getattribute__`. Every caller passes
+        a sequence with one entry per source.
         """
-        try:
-            if self.isscalar and len(value) == 1:
-                return value[0]
-        except TypeError:  # value has no len
-            pass
+        if self.isscalar and len(value) == 1:
+            return value[0]
         return value
 
     def _array(self, name):
@@ -1150,6 +1203,17 @@ class SourceCatalog:
         """
         return tuple(np.ascontiguousarray(col)
                      for col in self._batch_bboxes.T)
+
+    def _batch_bbox_args(self):
+        """
+        The per-source labels and segment bounding boxes as the
+        ``per_source`` dict of `_threaded_batch` for the kernels that
+        walk each source's bounding box.
+        """
+        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
+        return {'labels': self._batch_labels(), 'bbox_iymin': iymin,
+                'bbox_iymax': iymax, 'bbox_ixmin': ixmin,
+                'bbox_ixmax': ixmax}
 
     def _threaded_batch(self, func, per_source, *, packed=None,
                         merge=np.concatenate, **fixed):
@@ -1869,13 +1933,12 @@ class SourceCatalog:
 
         # Gather the pixel flags of every segment pixel (the all-zero
         # mask excludes nothing) and reduce them per source
-        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
-        packed, offsets, counts = batch_segment_gather(
-            pixel_flags.astype(np.float64),
+        packed, offsets, counts = self._threaded_batch(
+            batch_segment_gather, self._batch_bbox_args(),
+            merge=_concatenate_segment_gathers,
+            values=pixel_flags.astype(np.float64),
             mask=np.zeros(pixel_flags.shape, dtype=np.uint8),
-            segm=arrays['segm'], labels=self._batch_labels(),
-            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
-            bbox_ixmax=ixmax)
+            segm=arrays['segm'])
 
         # A source without segment pixels holds a single NaN
         # placeholder, whose integer cast is undefined
@@ -2071,12 +2134,10 @@ class SourceCatalog:
             The number of unmasked segment pixels of each source.
         """
         arrays = self._get_batch_arrays()
-        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
-        return batch_segment_gather(
-            array, mask=arrays['mask'], segm=arrays['segm'],
-            labels=self._batch_labels(),
-            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
-            bbox_ixmax=ixmax)
+        return self._threaded_batch(
+            batch_segment_gather, self._batch_bbox_args(),
+            merge=_concatenate_segment_gathers,
+            values=array, mask=arrays['mask'], segm=arrays['segm'])
 
     def _segment_values(self, array):
         """
@@ -2140,13 +2201,10 @@ class SourceCatalog:
         Spatial moments up to 3rd order of the source.
         """
         arrays = self._get_batch_arrays()
-        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
-        return batch_raw_moments(
-            self._get_batch_convdata(), mask=arrays['mask'],
-            segm=arrays['segm'],
-            labels=self._batch_labels(),
-            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
-            bbox_ixmax=ixmax)
+        return self._threaded_batch(
+            batch_raw_moments, self._batch_bbox_args(),
+            convdata=self._get_batch_convdata(), mask=arrays['mask'],
+            segm=arrays['segm'])
 
     @cached_property
     @use_detcat
@@ -2156,16 +2214,14 @@ class SourceCatalog:
         order.
         """
         arrays = self._get_batch_arrays()
-        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
         cutout_centroid = self._array('cutout_centroid')
-        return batch_central_moments(
-            self._get_batch_convdata(), mask=arrays['mask'],
-            segm=arrays['segm'],
-            labels=self._batch_labels(),
-            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
-            bbox_ixmax=ixmax,
-            xcen=np.ascontiguousarray(cutout_centroid[:, 0]),
-            ycen=np.ascontiguousarray(cutout_centroid[:, 1]))
+        per_source = self._batch_bbox_args()
+        per_source['xcen'] = np.ascontiguousarray(cutout_centroid[:, 0])
+        per_source['ycen'] = np.ascontiguousarray(cutout_centroid[:, 1])
+        return self._threaded_batch(
+            batch_central_moments, per_source,
+            convdata=self._get_batch_convdata(), mask=arrays['mask'],
+            segm=arrays['segm'])
 
     @cached_property
     @use_detcat
@@ -2238,8 +2294,10 @@ class SourceCatalog:
             return np.full((self.n_labels, 2, 2), np.nan)
 
         arrays = self._get_batch_arrays()
-        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
         cutout_centroid = self._array('cutout_centroid')
+        per_source = self._batch_bbox_args()
+        per_source['xcen'] = np.ascontiguousarray(cutout_centroid[:, 0])
+        per_source['ycen'] = np.ascontiguousarray(cutout_centroid[:, 1])
 
         # The accumulators are the summed pixel variance and its
         # dx**2, dy**2, and dx*dy weighted sums. The variance is zeroed
@@ -2247,14 +2305,10 @@ class SourceCatalog:
         # moment data (e.g., non-finite or negative convolved values),
         # so that pixels that do not contribute flux weight also do not
         # contribute error variance.
-        acc = batch_moment_err(
-            arrays['error'], convdata=self._get_batch_convdata(),
-            mask=arrays['mask'], segm=arrays['segm'],
-            labels=self._batch_labels(),
-            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
-            bbox_ixmax=ixmax,
-            xcen=np.ascontiguousarray(cutout_centroid[:, 0]),
-            ycen=np.ascontiguousarray(cutout_centroid[:, 1]))
+        acc = self._threaded_batch(
+            batch_moment_err, per_source,
+            error=arrays['error'], convdata=self._get_batch_convdata(),
+            mask=arrays['mask'], segm=arrays['segm'])
 
         # The total flux is the zeroth raw moment of the moment data.
         total_flux = self._array('moments')[:, 0, 0]
@@ -2601,12 +2655,12 @@ class SourceCatalog:
         skip = (nan_hl | ~np.isfinite(x_centroid)
                 | ~np.isfinite(y_centroid)).astype(np.uint8)
         arrays = self._get_batch_arrays()
-        results = batch_centroid_win(
-            arrays['data'], error=arrays['error'],
+        results = self._threaded_batch(
+            batch_centroid_win,
+            {'labels': self._batch_labels(), 'xcen0': x_centroid,
+             'ycen0': y_centroid, 'sigma': sigma, 'skip': skip},
+            data=arrays['data'], error=arrays['error'],
             mask=arrays['mask'], segm=arrays['segm'],
-            labels=self._batch_labels(),
-            xcen0=x_centroid, ycen0=y_centroid, sigma=sigma,
-            skip=skip,
             seg_method=SEG_METHOD_CODES[self.aperture_mask_method],
             compute_err=int(compute_err),
             max_aper_size=max(self._data.size, 1_000_000))
@@ -2809,12 +2863,12 @@ class SourceCatalog:
         # (zero-filled) cutout.
         arrays = self._get_batch_arrays()
         iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
-        status, peak, boxes, box_var = batch_quad_boxes(
-            arrays['data'], error=arrays['error'], mask=arrays['mask'],
-            segm=arrays['segm'],
-            labels=self._batch_labels(),
-            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
-            bbox_ixmax=ixmax, compute_err=int(compute_err))
+        status, peak, boxes, box_var = self._threaded_batch(
+            batch_quad_boxes, self._batch_bbox_args(),
+            merge=_concatenate_arrays,
+            data=arrays['data'], error=arrays['error'],
+            mask=arrays['mask'], segm=arrays['segm'],
+            compute_err=int(compute_err))
         nx = ixmax - ixmin
         ny = iymax - iymin
         n_src = len(status)
@@ -3462,11 +3516,10 @@ class SourceCatalog:
         completely masked source (see ``batch_minmax_index``).
         """
         arrays = self._get_batch_arrays()
-        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
-        return batch_minmax_index(
-            arrays['data'], mask=arrays['mask'], segm=arrays['segm'],
-            labels=self._batch_labels(), bbox_iymin=iymin,
-            bbox_iymax=iymax, bbox_ixmin=ixmin, bbox_ixmax=ixmax)
+        return self._threaded_batch(
+            batch_minmax_index, self._batch_bbox_args(),
+            values=arrays['data'], mask=arrays['mask'],
+            segm=arrays['segm'])
 
     def _extreme_value_index(self, columns, *, origin):
         """
@@ -3783,12 +3836,9 @@ class SourceCatalog:
         # einsum so the per-source arithmetic is independent of the
         # number of sources.
         arrays = self._get_batch_arrays()
-        iymin, iymax, ixmin, ixmax = self._get_batch_bboxes()
-        hist = batch_perimeter(
-            arrays['mask'], segm=arrays['segm'],
-            labels=self._batch_labels(),
-            bbox_iymin=iymin, bbox_iymax=iymax, bbox_ixmin=ixmin,
-            bbox_ixmax=ixmax)
+        hist = self._threaded_batch(
+            batch_perimeter, self._batch_bbox_args(),
+            mask=arrays['mask'], segm=arrays['segm'])
         perimeter = np.einsum('nk,k->n', hist.astype(float), weights)
         perimeter[self._all_masked] = np.nan
         return np.array(perimeter) * u.pix
@@ -4925,11 +4975,17 @@ class SourceCatalog:
         use_exact, subpixels = self._overlap_params(
             self._aperture_mask_kwargs['circ'])
 
-        result = batch_aperture_sums(
-            arrays['data'], arrays['error'], arrays['mask'], positions,
-            SHAPE_CIRCLE, np.array([radius], dtype=np.float64), radius,
-            radius, 0.0, 0.0, use_exact, subpixels, seg_arr, seg_labels,
-            seg_code, local_bkg, 0)
+        result = self._threaded_batch(
+            batch_aperture_sums,
+            {'positions': positions, 'labels': seg_labels,
+             'local_bkg': local_bkg},
+            merge=_concatenate_aperture_sums,
+            data=arrays['data'], error=arrays['error'],
+            mask=arrays['mask'], shape_code=SHAPE_CIRCLE,
+            params=np.array([radius], dtype=np.float64), ext_x=radius,
+            ext_y=radius, off_x=0.0, off_y=0.0, use_exact=use_exact,
+            subpixels=subpixels, segmentation=seg_arr,
+            seg_method=seg_code, emit_sum=0)
         sums = result.sums
         sum_vars = result.sum_vars
         overlap = result.overlap

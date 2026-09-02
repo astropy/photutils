@@ -3565,6 +3565,25 @@ def many_source_inputs():
     return data, segm, error, mask
 
 
+def _assert_same_value(value, expected):
+    """
+    Assert that two catalog property values are identical, for arrays,
+    Quantity, SkyCoord, and lists of per-source arrays.
+    """
+    if isinstance(value, SkyCoord):
+        assert_equal(value.ra.deg, expected.ra.deg)
+        assert_equal(value.dec.deg, expected.dec.deg)
+    elif isinstance(value, u.Quantity):
+        assert value.unit == expected.unit
+        assert_equal(value.value, expected.value)
+    elif isinstance(value, list):
+        assert len(value) == len(expected)
+        for item, ref in zip(value, expected, strict=True):
+            assert_equal(item, ref)
+    else:
+        assert_equal(value, expected)
+
+
 class TestNThreads:
     """
     Tests for the n_threads keyword.
@@ -3573,16 +3592,22 @@ class TestNThreads:
     @pytest.mark.parametrize('n_threads', [2, 8])
     @pytest.mark.parametrize('aperture_mask_method',
                              ['correct', 'mask', 'none'])
+    @pytest.mark.parametrize('with_error', [True, False])
     def test_identical_results(self, many_source_inputs, n_threads,
-                               aperture_mask_method):
+                               aperture_mask_method, with_error):
         """
-        Test that the Kron measurements are identical for any number
-        of threads, for both circular and elliptical Kron apertures.
+        Test that every property and measurement is identical for any
+        number of threads, for both circular and elliptical Kron
+        apertures, with and without an error array.
         """
         data, segm, error, mask = many_source_inputs
-        kwargs = {'error': error, 'mask': mask, 'local_bkg_width': 10,
+        kwargs = {'mask': mask, 'local_bkg_width': 10,
                   'aperture_mask_method': aperture_mask_method,
-                  'kron_params': (2.5, 1.4, 5.0)}
+                  'kron_params': (2.5, 1.4, 5.0),
+                  'background': np.full(data.shape, 0.1),
+                  'wcs': make_wcs(data.shape)}
+        if with_error:
+            kwargs['error'] = error
         cat1 = SourceCatalog(data, segm, **kwargs)
         cat2 = SourceCatalog(data, segm, n_threads=n_threads, **kwargs)
         assert cat1.n_threads == 1
@@ -3594,12 +3619,15 @@ class TestNThreads:
                      for aper in cat1.kron_aperture)
         assert 0 < n_circ < segm.n_labels
 
-        for name in ('kron_radius', 'kron_flux', 'kron_flux_err', 'flags'):
-            assert_equal(getattr(cat2, name), getattr(cat1, name))
+        for name in cat1.properties:
+            _assert_same_value(getattr(cat2, name), getattr(cat1, name))
 
-        assert_equal(cat2.kron_photometry((2.0, 1.0)),
-                     cat1.kron_photometry((2.0, 1.0)))
-        assert_equal(cat2.flux_radius(0.5), cat1.flux_radius(0.5))
+        _assert_same_value(cat2.kron_photometry((2.0, 1.0)),
+                           cat1.kron_photometry((2.0, 1.0)))
+        _assert_same_value(cat2.circular_photometry(3.0),
+                           cat1.circular_photometry(3.0))
+        _assert_same_value(cat2.flux_radius(0.5), cat1.flux_radius(0.5))
+        _assert_same_value(cat2.flux_radius(0.9), cat1.flux_radius(0.9))
 
     def test_n_threads_exceeds_sources(self, many_source_inputs):
         """
