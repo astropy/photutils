@@ -292,6 +292,11 @@ do:
   a fresh catalog (times include dependent properties, e.g.,
   `centroid_win` includes the Kron flux and `flux_radius` it depends
   on)
+- the `SourceCatalog` `n_threads` keyword for the Kron measurements
+  (`kron_radius`, `kron_flux`, `kron_photometry`, and the dependent
+  `flux_radius`) across thread counts, with the isophotal
+  prerequisites precomputed (with speedups relative to the first
+  thread count)
 - concurrent `SourceCatalog` measurement jobs across thread counts
   (with speedups relative to the first thread count)
 
@@ -304,6 +309,10 @@ python benchmarks/bench_segmentation.py
 # Only the deblending benchmark with a larger image
 python benchmarks/bench_segmentation.py --which deblend \
     --n-sources 4000 --n-processes 1,4,8
+
+# Only the SourceCatalog n_threads benchmark for the Kron measurements
+python benchmarks/bench_segmentation.py --which kron-threads \
+    --n-sources 4000 --threads 1,4,8
 ```
 
 ## Background (`bench_background.py`)

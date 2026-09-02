@@ -284,6 +284,19 @@ measured speedups are ~2x with 2 threads and ~8-10x with 12 threads,
 for the aperture fluxes and sums as well as for statistics such as the
 median, MAD standard deviation, and the biweight estimators.
 
+`~photutils.segmentation.SourceCatalog` also accepts an ``n_threads``
+keyword. The Kron radii and Kron photometry, and thus the measurements
+that depend on them such as ``flux_radius`` and ``centroid_win``, are
+computed in chunks of sources processed concurrently, with results
+identical to the single-threaded computation::
+
+    >>> from photutils.datasets import make_100gaussians_image
+    >>> from photutils.segmentation import SourceCatalog, detect_sources
+    >>> image = make_100gaussians_image() - 5.0  # subtract background
+    >>> segm = detect_sources(image, 9.0, n_pixels=5)
+    >>> cat = SourceCatalog(image, segm, n_threads=8)
+    >>> kron_flux = cat.kron_flux
+
 For more advanced workflows, independent images can also be processed
 concurrently with a thread pool, one instance per frame::
 

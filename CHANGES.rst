@@ -285,6 +285,14 @@ New Features
     bar any more (see the ``progress_bar`` deprecation under API
     Changes). [#2406]
 
+  - Added an ``n_threads`` keyword to ``SourceCatalog`` to compute the
+    Kron radii and Kron photometry (``kron_radius``, ``kron_flux``,
+    ``kron_flux_err``, and ``kron_photometry``), and thus the
+    measurements that depend on them (e.g., ``flux_radius`` and
+    ``centroid_win``), using multiple threads. The sources are divided
+    into chunks that are processed concurrently, producing results
+    identical to the single-threaded computation. [#2407]
+
 - ``photutils.utils``
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's

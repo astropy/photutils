@@ -3547,3 +3547,105 @@ class TestPartialPixelErrorWeights:
         aperture = catalog.kron_aperture[0]
         expected = self._expected_error(aperture, catalog._error)
         assert_allclose(catalog.kron_flux_err, expected)
+
+
+@pytest.fixture
+def many_source_inputs():
+    """
+    Multi-source inputs for the n_threads tests.
+
+    Returns ``(data, segm, error, mask)``.
+    """
+    data = make_100gaussians_image() - 5.0  # subtract the background
+    segm = detect_sources(data, 9.0, n_pixels=5)
+    error = make_noise_image(data.shape, mean=0, stddev=2.0, seed=0)
+    error = np.abs(error) + 1.0
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[0:40, 0:60] = True
+    return data, segm, error, mask
+
+
+class TestNThreads:
+    """
+    Tests for the n_threads keyword.
+    """
+
+    @pytest.mark.parametrize('n_threads', [2, 8])
+    @pytest.mark.parametrize('aperture_mask_method',
+                             ['correct', 'mask', 'none'])
+    def test_identical_results(self, many_source_inputs, n_threads,
+                               aperture_mask_method):
+        """
+        Test that the Kron measurements are identical for any number
+        of threads, for both circular and elliptical Kron apertures.
+        """
+        data, segm, error, mask = many_source_inputs
+        kwargs = {'error': error, 'mask': mask, 'local_bkg_width': 10,
+                  'aperture_mask_method': aperture_mask_method,
+                  'kron_params': (2.5, 1.4, 5.0)}
+        cat1 = SourceCatalog(data, segm, **kwargs)
+        cat2 = SourceCatalog(data, segm, n_threads=n_threads, **kwargs)
+        assert cat1.n_threads == 1
+        assert cat2.n_threads == n_threads
+        assert segm.n_labels > n_threads
+
+        # The minimum circular radius makes some apertures circular
+        n_circ = sum(isinstance(aper, CircularAperture)
+                     for aper in cat1.kron_aperture)
+        assert 0 < n_circ < segm.n_labels
+
+        for name in ('kron_radius', 'kron_flux', 'kron_flux_err', 'flags'):
+            assert_equal(getattr(cat2, name), getattr(cat1, name))
+
+        assert_equal(cat2.kron_photometry((2.0, 1.0)),
+                     cat1.kron_photometry((2.0, 1.0)))
+        assert_equal(cat2.flux_radius(0.5), cat1.flux_radius(0.5))
+
+    def test_n_threads_exceeds_sources(self, many_source_inputs):
+        """
+        Test that n_threads larger than the number of sources gives
+        the same results.
+        """
+        data, segm, error, _ = many_source_inputs
+        cat1 = SourceCatalog(data, segm, error=error)
+        cat2 = SourceCatalog(data, segm, error=error,
+                             n_threads=10 * segm.n_labels)
+        assert_equal(cat2.kron_flux, cat1.kron_flux)
+        assert_equal(cat2.kron_flux_err, cat1.kron_flux_err)
+
+    def test_scalar_catalog(self, many_source_inputs):
+        """
+        Test that a scalar (single-source) catalog with n_threads > 1
+        gives the same results as the parent catalog.
+        """
+        data, segm, error, _ = many_source_inputs
+        cat = SourceCatalog(data, segm, error=error, n_threads=4)
+        obj = cat[3]
+        assert obj.n_threads == 4
+        assert obj.isscalar
+        assert_equal(obj.kron_radius, cat.kron_radius[3])
+        assert_equal(obj.kron_flux, cat.kron_flux[3])
+        assert_equal(obj.kron_photometry((2.0, 1.0))[0],
+                     cat.kron_photometry((2.0, 1.0))[0][3])
+
+    def test_indexing_preserves_n_threads(self, many_source_inputs):
+        """
+        Test that slicing and copying a catalog preserve n_threads.
+        """
+        data, segm, _, _ = many_source_inputs
+        cat = SourceCatalog(data, segm, n_threads=4)
+        assert cat[1:].n_threads == 4
+        assert cat[[0, 2]].n_threads == 4
+        assert cat[0].n_threads == 4
+        assert cat.copy().n_threads == 4
+
+    def test_invalid_n_threads(self, many_source_inputs):
+        """
+        Test that an error is raised if n_threads is not a positive
+        integer.
+        """
+        data, segm, _, _ = many_source_inputs
+        match = 'n_threads must be a positive integer'
+        for n_threads in (0, -1, 2.5):
+            with pytest.raises(ValueError, match=match):
+                SourceCatalog(data, segm, n_threads=n_threads)

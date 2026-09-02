@@ -7,7 +7,8 @@ The benchmarks cover source detection (detect_threshold and
 detect_sources), source deblending (deblend_sources) across the
 threshold modes and process counts, the combined SourceFinder class,
 SegmentationImage operations (relabeling, border-label removal,
-source masks, and polygons), SourceCatalog property calculations, and
+source masks, and polygons), SourceCatalog property calculations, the
+SourceCatalog n_threads keyword for the Kron measurements, and
 concurrent SourceCatalog runs across thread counts.
 
 Run ``python benchmarks/bench_segmentation.py --help`` to see the
@@ -15,6 +16,7 @@ available options.
 """
 
 import argparse
+import time
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from operator import attrgetter
@@ -456,6 +458,84 @@ def bench_catalog_threads(*, n_sources=1000, n_calls=8,
     print(''.join(f'{cell:>18}' for cell in format_sweep_cells(times)))
 
 
+def bench_catalog_kron_threads(*, n_sources=1000,
+                               thread_counts=(1, 2, 4, 8), repeats=3,
+                               seed=0):
+    """
+    Benchmark the SourceCatalog n_threads keyword for the Kron
+    measurements.
+
+    Each timing constructs a fresh SourceCatalog with the given
+    ``n_threads`` and, outside the timed region, computes the
+    isophotal prerequisites (centroid, shape parameters, and ellipse
+    coefficients) that every Kron measurement depends on. The Kron
+    radius, the Kron flux (which includes the Kron radius), the Kron
+    photometry with alternate parameters (on a catalog whose Kron
+    radius is already computed), and the flux radius (which runs
+    serial kernels on the threaded Kron flux) are then timed.
+
+    Parameters
+    ----------
+    n_sources : int, optional
+        The total number of Gaussian sources in the image.
+
+    thread_counts : tuple of int, optional
+        The ``n_threads`` values.
+
+    repeats : int, optional
+        The number of repeats for each timing (best time is kept).
+
+    seed : int, optional
+        The random number generator seed.
+    """
+    data, convolved_data, segm = make_inputs(n_sources, seed=seed)
+    error = np.ones_like(data)
+
+    def _make_catalog(n_threads):
+        cat = SourceCatalog(data, segm, convolved_data=convolved_data,
+                            error=error, n_threads=n_threads)
+        # Warm the isophotal prerequisites of the Kron measurements
+        for name in ('centroid', 'semimajor_axis', 'semiminor_axis',
+                     'orientation', 'ellipse_cxx', 'ellipse_cxy',
+                     'ellipse_cyy'):
+            getattr(cat, name)
+        return cat
+
+    def _time_measurement(func, n_threads, *, warm=()):
+        best = np.inf
+        for _ in range(repeats):
+            cat = _make_catalog(n_threads)
+            for name in warm:
+                getattr(cat, name)
+            t0 = time.perf_counter()
+            func(cat)
+            best = min(best, time.perf_counter() - t0)
+        return best
+
+    attrgetter('kron_flux')(_make_catalog(1))  # warm up
+
+    benchmarks = [
+        ('kron_radius', attrgetter('kron_radius'), ()),
+        ('kron_flux (incl. kron_radius)', attrgetter('kron_flux'), ()),
+        ('kron_photometry((2.5, 1.4))',
+         lambda cat: cat.kron_photometry((2.5, 1.4)), ('kron_radius',)),
+        ('flux_radius(0.5)', lambda cat: cat.flux_radius(0.5),
+         ('kron_flux',)),
+    ]
+
+    print(f'\n== SourceCatalog n_threads scaling ({segm.n_labels} '
+          f'segments, {data.shape[0]}x{data.shape[1]} image; isophotal '
+          'prerequisites precomputed) ==')
+    header = f'{"measurement":>32}'
+    header += ''.join(f'{f"n={n}":>18}' for n in thread_counts)
+    print(header)
+    for name, func, warm in benchmarks:
+        times = [_time_measurement(func, n_threads, warm=warm)
+                 for n_threads in thread_counts]
+        cells = ''.join(f'{cell:>18}' for cell in format_sweep_cells(times))
+        print(f'{name:>32}{cells}')
+
+
 def parse_int_list(text):
     """
     Parse a comma-separated list of positive integers.
@@ -496,7 +576,8 @@ def main():
     parser.add_argument('--threads', type=parse_thread_counts,
                         default=[1, 2, 4, 8],
                         help='comma-separated thread counts for the '
-                             'thread-scaling benchmark (default: 1,2,4,8)')
+                             'thread-scaling and n_threads benchmarks '
+                             '(default: 1,2,4,8)')
     parser.add_argument('--repeats', type=int, default=3,
                         help='number of repeats per timing; the best '
                              'time is reported (default: %(default)s)')
@@ -505,7 +586,8 @@ def main():
                              '(default: %(default)s)')
     parser.add_argument('--which', default='all',
                         choices=['all', 'detect', 'deblend', 'finder',
-                                 'segmimage', 'catalog', 'threads'],
+                                 'segmimage', 'catalog', 'kron-threads',
+                                 'threads'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
     args = parser.parse_args()
@@ -528,6 +610,10 @@ def main():
     if args.which in ('all', 'catalog'):
         bench_catalog(n_sources=args.n_sources, repeats=args.repeats,
                       seed=args.seed)
+    if args.which in ('all', 'kron-threads'):
+        bench_catalog_kron_threads(n_sources=args.n_sources,
+                                   thread_counts=args.threads,
+                                   repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'threads'):
         bench_catalog_threads(n_sources=args.n_sources,
                               n_calls=args.n_calls,
