@@ -1947,17 +1947,19 @@ class TestThreadSafety:
         self.data = g1(xx, yy) + g2(xx, yy) + g3(xx, yy)
         self.segm = detect_sources(self.data, 10.0, n_pixels=5)
 
-    def test_concurrent_cached_property_access(self):
+    @pytest.mark.parametrize('n_threads', [1, 4])
+    def test_concurrent_cached_property_access(self, n_threads):
         """
         Test concurrent first access of cached properties on a shared
-        catalog.
+        catalog, with and without the catalog's own n_threads chunking
+        (whose thread pools then run inside the caller's threads).
 
         cached_property does not lock, so concurrent first accesses may
         run a getter more than once, but every thread must see values
         identical to the serial computation.
         """
         expected = SourceCatalog(self.data, self.segm)
-        cat = SourceCatalog(self.data, self.segm)
+        cat = SourceCatalog(self.data, self.segm, n_threads=n_threads)
 
         n_threads = 8
         barrier = threading.Barrier(n_threads)
@@ -1974,16 +1976,19 @@ class TestThreadSafety:
             assert_equal(centroid, expected.centroid)
             assert_equal(kron_flux, expected.kron_flux)
 
-    def test_concurrent_flux_radius(self):
+    @pytest.mark.parametrize('n_threads', [1, 4])
+    def test_concurrent_flux_radius(self, n_threads):
         """
-        Test concurrent first flux_radius calls on a shared catalog.
+        Test concurrent first flux_radius calls on a shared catalog,
+        with and without the catalog's own n_threads chunking of the
+        preparation and the solve.
 
         The _flux_radius_cache dict uses an unlocked check-then-set, so
         concurrent first calls may compute more than once, but every
         thread must see values identical to the serial computation.
         """
         expected = SourceCatalog(self.data, self.segm).flux_radius(0.5)
-        cat = SourceCatalog(self.data, self.segm)
+        cat = SourceCatalog(self.data, self.segm, n_threads=n_threads)
 
         n_threads = 8
         barrier = threading.Barrier(n_threads)
@@ -3679,6 +3684,34 @@ class TestNThreads:
         assert_equal(obj.kron_flux, cat.kron_flux[3])
         assert_equal(obj.kron_photometry((2.0, 1.0))[0],
                      cat.kron_photometry((2.0, 1.0))[0][3])
+
+    def test_sliced_catalog_new_fraction(self, many_source_inputs):
+        """
+        Test that a multi-source slice of a threaded catalog computes
+        a flux radius for a new fraction identically to the parent.
+
+        Slicing drops the packed flux-radius inputs, so the slice
+        recomputes them (chunked over its own sources) on the first
+        call for a fraction that the parent had not cached, while the
+        parent's cached fractions are carried over.
+        """
+        data, segm, error, _ = many_source_inputs
+        cat1 = SourceCatalog(data, segm, error=error)
+        cat2 = SourceCatalog(data, segm, error=error, n_threads=4)
+        cat1.flux_radius(0.5)
+        cat2.flux_radius(0.5)
+
+        index = slice(2, segm.n_labels - 3)
+        sub1 = cat1[index]
+        sub2 = cat2[index]
+        assert '_flux_radius_optimizer_args' not in sub2.__dict__
+        assert_equal(sub2.flux_radius(0.5), cat1.flux_radius(0.5)[index])
+        assert '_flux_radius_optimizer_args' not in sub2.__dict__
+
+        # A new fraction recomputes the packed inputs on the slice
+        assert_equal(sub2.flux_radius(0.3), sub1.flux_radius(0.3))
+        assert_equal(sub2.flux_radius(0.3), cat1.flux_radius(0.3)[index])
+        assert '_flux_radius_optimizer_args' in sub2.__dict__
 
     def test_indexing_preserves_n_threads(self, many_source_inputs):
         """
