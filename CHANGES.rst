@@ -285,6 +285,15 @@ New Features
     bar any more (see the ``progress_bar`` deprecation under API
     Changes). [#2406]
 
+  - Added an ``n_threads`` keyword to ``SourceCatalog`` to compute
+    the compiled per-source measurements (the isophotal moments and
+    their errors, the segment pixel statistics, the windowed and
+    quadratic centroids, ``perimeter``, the Kron radii and photometry,
+    ``circular_photometry``, and ``flux_radius``), and thus every
+    property derived from them, using multiple threads. The sources
+    are divided into chunks that are processed concurrently, producing
+    results identical to the single-threaded computation. [#2407]
+
 - ``photutils.utils``
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's

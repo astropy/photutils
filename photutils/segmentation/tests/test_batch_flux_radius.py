@@ -16,6 +16,7 @@ from photutils.geometry import circular_overlap_grid
 from photutils.segmentation import SourceCatalog
 from photutils.segmentation._batch_catalog import (batch_flux_radius_prepare,
                                                    batch_flux_radius_solve)
+from photutils.segmentation._batch_results import BatchFluxRadiusArgs
 from photutils.segmentation.tests._batch_scene import (make_batch_scene,
                                                        make_catalog)
 from photutils.segmentation.utils import _mask_to_mirrored_value
@@ -125,9 +126,72 @@ def _reference_optimizer_args(cat):
     return args
 
 
+def _unpack_args(args):
+    """
+    Convert packed ``BatchFluxRadiusArgs`` to the per-source list of
+    ``[clean_data, grid_params, kronflux, max_radius]`` entries (or
+    `None`) of the reference implementation.
+    """
+    entries = []
+    for i, count in enumerate(args.counts):
+        if count == 0:
+            entries.append(None)
+            continue
+        nx = int(args.nx[i])
+        ny = int(args.ny[i])
+        start = args.starts[i]
+        clean_data = args.values[start:start + count].reshape(ny, nx)
+        grid_params = (*(float(edge) for edge in args.grid_edges[i]),
+                       nx, ny, args.use_exact, args.subpixels)
+        entries.append([clean_data, grid_params, float(args.kronflux[i]),
+                        float(args.max_radius[i])])
+    return entries
+
+
+def _pack_entries(entries, *, use_exact=1, subpixels=1):
+    """
+    Pack per-source reference entries (or `None`) into
+    ``BatchFluxRadiusArgs``.
+    """
+    n_src = len(entries)
+    counts = np.zeros(n_src, dtype=np.intp)
+    nx = np.zeros(n_src, dtype=np.intp)
+    ny = np.zeros(n_src, dtype=np.intp)
+    grid_edges = np.zeros((n_src, 4))
+    kronflux = np.zeros(n_src)
+    max_radius = np.zeros(n_src)
+    values = []
+    for i, entry in enumerate(entries):
+        if entry is None:
+            continue
+        clean_data, grid_params, kronflux[i], max_radius[i] = entry
+        counts[i] = clean_data.size
+        ny[i], nx[i] = clean_data.shape
+        grid_edges[i] = grid_params[:4]
+        values.append(clean_data.ravel())
+    starts = np.concatenate(([0], np.cumsum(counts)[:-1])).astype(np.intp)
+    values = (np.concatenate(values) if values
+              else np.zeros(0, dtype=np.float64))
+    return BatchFluxRadiusArgs(values=values, starts=starts, counts=counts,
+                               nx=nx, ny=ny, grid_edges=grid_edges,
+                               kronflux=kronflux, max_radius=max_radius,
+                               use_exact=use_exact, subpixels=subpixels)
+
+
+def _solve(args, fraction):
+    return batch_flux_radius_solve(
+        args.values, starts=args.starts, counts=args.counts, nx=args.nx,
+        ny=args.ny, grid_edges=args.grid_edges, kronflux=args.kronflux,
+        max_radius=args.max_radius, fraction=fraction,
+        use_exact=args.use_exact, subpixels=args.subpixels)
+
+
 def _assert_args_equal(args, expected):
-    assert len(args) == len(expected)
-    for entry, ref in zip(args, expected, strict=True):
+    assert args.values.dtype == np.float64
+    assert args.values.flags.c_contiguous
+    assert len(args.counts) == len(expected)
+    entries = _unpack_args(args)
+    for entry, ref in zip(entries, expected, strict=True):
         if ref is None:
             assert entry is None
             continue
@@ -187,20 +251,67 @@ def scene():
 def test_matches_reference(scene, method, fraction):
     cat = make_catalog(scene, aperture_mask_method=method)
     args = cat._flux_radius_optimizer_args
-    expected = _reference_solve(args, fraction)
-    result = batch_flux_radius_solve(args, fraction=fraction)
+    expected = _reference_solve(_unpack_args(args), fraction)
+    result = _solve(args, fraction)
     assert_allclose(result, expected, rtol=1e-12, atol=RADIUS_ATOL,
                     equal_nan=True)
 
 
 def test_none_entries(scene):
     cat = make_catalog(scene)
-    args = list(cat._flux_radius_optimizer_args)
-    args[0] = None
-    result = batch_flux_radius_solve(args, fraction=0.5)
+    entries = _unpack_args(cat._flux_radius_optimizer_args)
+    entries[0] = None
+    result = _solve(_pack_entries(entries), 0.5)
     assert np.isnan(result[0])
-    assert_allclose(result, _reference_solve(args, 0.5), rtol=1e-12,
+    assert_allclose(result, _reference_solve(entries, 0.5), rtol=1e-12,
                     atol=RADIUS_ATOL, equal_nan=True)
+
+
+def test_solve_length_guard(scene):
+    cat = make_catalog(scene)
+    args = cat._flux_radius_optimizer_args
+    with pytest.raises(ValueError, match='same length as counts'):
+        batch_flux_radius_solve(
+            args.values, starts=args.starts, counts=args.counts[:-1],
+            nx=args.nx, ny=args.ny, grid_edges=args.grid_edges,
+            kronflux=args.kronflux, max_radius=args.max_radius,
+            fraction=0.5, use_exact=1, subpixels=1)
+
+
+def test_solve_grid_edges_guard(scene):
+    cat = make_catalog(scene)
+    args = cat._flux_radius_optimizer_args
+    grid_edges = np.ascontiguousarray(args.grid_edges[:, :3])
+    with pytest.raises(ValueError, match='grid_edges must have 4 columns'):
+        _solve(args._replace(grid_edges=grid_edges), 0.5)
+
+
+def test_solve_buffer_guard(scene):
+    """
+    Test that a region that runs past the end of the packed buffer, a
+    negative start, and a negative count are each rejected
+    """
+    cat = make_catalog(scene)
+    args = cat._flux_radius_optimizer_args
+    match = 'must lie within the values buffer'
+    with pytest.raises(ValueError, match=match):
+        _solve(args._replace(values=args.values[:-1]), 0.5)
+    starts = args.starts.copy()
+    starts[0] = -1
+    with pytest.raises(ValueError, match=match):
+        _solve(args._replace(starts=starts), 0.5)
+    counts = args.counts.copy()
+    counts[0] = -1
+    with pytest.raises(ValueError, match=match):
+        _solve(args._replace(counts=counts), 0.5)
+
+
+def test_all_skipped(scene):
+    cat = make_catalog(scene)
+    n_src = cat.n_labels
+    args = _pack_entries([None] * n_src)
+    assert args.values.size == 0
+    assert np.all(np.isnan(_solve(args, 0.5)))
 
 
 def test_bracket_shrink_and_no_solution(scene):
@@ -208,7 +319,7 @@ def test_bracket_shrink_and_no_solution(scene):
     # enclosed flux non-monotonic, so the initial bracket has equal
     # signs at both ends
     cat = make_catalog(scene)
-    entry = [e for e in cat._flux_radius_optimizer_args
+    entry = [e for e in _unpack_args(cat._flux_radius_optimizer_args)
              if e is not None][0]
     clean_data = entry[0].copy()
     yc = entry[0].shape[0] / 2
@@ -218,7 +329,7 @@ def test_bracket_shrink_and_no_solution(scene):
     clean_data[rr > 3] = -np.abs(clean_data[rr > 3]) - 1.0
     forced = [[np.ascontiguousarray(clean_data), entry[1], entry[2],
                entry[3]]]
-    assert_allclose(batch_flux_radius_solve(forced, fraction=0.5),
+    assert_allclose(_solve(_pack_entries(forced), 0.5),
                     _reference_solve(forced, 0.5), rtol=1e-12,
                     atol=RADIUS_ATOL, equal_nan=True)
 
@@ -230,15 +341,14 @@ def test_bracket_shrink_and_no_solution(scene):
                entry[3]]]
     expected = _reference_solve(shrink, 0.5)
     assert np.isfinite(expected[0])
-    assert_allclose(batch_flux_radius_solve(shrink, fraction=0.5),
+    assert_allclose(_solve(_pack_entries(shrink), 0.5),
                     expected, rtol=1e-12, atol=RADIUS_ATOL)
 
     # And a hopeless case that shrinks to no solution -> NaN
     hopeless = [[np.ascontiguousarray(np.full_like(clean_data,
                                                    -1.0)),
                  entry[1], entry[2], entry[3]]]
-    assert np.isnan(batch_flux_radius_solve(hopeless,
-                                            fraction=0.5)[0])
+    assert np.isnan(_solve(_pack_entries(hopeless), 0.5)[0])
 
 
 @pytest.mark.parametrize('method', ['correct', 'mask', 'none'])
@@ -293,7 +403,38 @@ def test_prepare_skipped_sources(scene):
     _ = cat._kron_photometry
     cat.__dict__['_max_circular_kron_radius'] = np.full(cat.n_labels,
                                                         2000.0)
-    assert all(entry is None for entry in cat._flux_radius_optimizer_args)
+    assert np.all(cat._flux_radius_optimizer_args.counts == 0)
+    assert cat._flux_radius_optimizer_args.values.size == 0
+
+
+@pytest.mark.parametrize('n_threads', [2, 3, 8])
+def test_n_threads(scene, n_threads):
+    # The chunked preparation (whose packed buffers are merged with
+    # rebased starts) and the chunked solve give identical results
+    kwargs = {'error': scene['error'], 'mask': scene['mask']}
+    cat1 = SourceCatalog(scene['data'], scene['segm'], **kwargs)
+    cat2 = SourceCatalog(scene['data'], scene['segm'], n_threads=n_threads,
+                         **kwargs)
+    # Skip the first and last sources (non-finite centroid) so that
+    # zero-count sources fall at the chunk boundaries
+    for cat in (cat1, cat2):
+        _ = cat._kron_photometry
+        xcen = cat.x_centroid.copy()
+        xcen[0] = np.nan
+        xcen[-1] = np.nan
+        cat.__dict__['x_centroid'] = xcen
+    args1 = cat1._flux_radius_optimizer_args
+    args2 = cat2._flux_radius_optimizer_args
+    assert args1.counts[0] == 0
+    assert args1.counts[-1] == 0
+    assert np.any(args1.counts > 0)
+    for name in ('values', 'starts', 'counts', 'nx', 'ny', 'grid_edges',
+                 'kronflux', 'max_radius'):
+        assert_array_equal(getattr(args2, name), getattr(args1, name))
+    assert args2.use_exact == args1.use_exact
+    assert args2.subpixels == args1.subpixels
+    assert_array_equal(cat2.flux_radius(0.5), cat1.flux_radius(0.5))
+    assert_array_equal(cat2.flux_radius(0.9), cat1.flux_radius(0.9))
 
 
 def _prepare_inputs(cat):
@@ -346,12 +487,13 @@ def test_prepare_thread_safety(scene):
     with ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(run, range(8)))
     for result in results:
-        _assert_args_equal(result, expected)
+        _assert_args_equal(result, _unpack_args(expected))
 
 
 def test_catalog_flux_radius(scene):
     cat = make_catalog(scene)
-    expected = _reference_solve(cat._flux_radius_optimizer_args, 0.5)
+    expected = _reference_solve(
+        _unpack_args(cat._flux_radius_optimizer_args), 0.5)
     result = cat.flux_radius(0.5)
     assert result.unit == u.pix
     assert_allclose(result.value, expected, rtol=1e-12, atol=RADIUS_ATOL,
@@ -361,5 +503,6 @@ def test_catalog_flux_radius(scene):
     cat.flux_radius(0.3, name='r30')
     assert_allclose(cat.r30.value,
                     _reference_solve(
-                        cat._flux_radius_optimizer_args, 0.3),
+                        _unpack_args(cat._flux_radius_optimizer_args),
+                        0.3),
                     rtol=1e-12, atol=RADIUS_ATOL, equal_nan=True)

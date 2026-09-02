@@ -21,7 +21,9 @@ the pixel-statistics properties (e.g., ``segment_flux``).
 The fractional-flux radius solver additionally runs its bracketed
 root-find entirely in C, using the ``brentq`` implementation exported
 by ``scipy.optimize.cython_optimize``, so that no Python call is made
-per root-finder iteration.
+per root-finder iteration. Its prepared per-source inputs (the cleaned
+cutouts) are packed into one buffer, so the preparation and the solve
+each run as a single GIL-free loop over the sources.
 
 The source loops run without the GIL and use no global mutable state,
 so this module is safe to use from multiple threads, including on
@@ -31,6 +33,8 @@ free-threaded Python builds.
 import numpy as np
 
 from scipy.optimize.cython_optimize cimport brentq, zeros_full_output
+
+from photutils.segmentation._batch_results import BatchFluxRadiusArgs
 
 from photutils.aperture._batch_overlap cimport (_circle_pixel_frac,
                                                 _seg_pixel_contributes)
@@ -780,7 +784,8 @@ def batch_flux_radius_prepare(const double[:, ::1] data, *,
     parameters of that cutout, relative to the source centroid, are
     computed. The bounding-box arithmetic, the per-pixel masking, and
     the neighbor handling replicate the previous per-source Python
-    implementation exactly.
+    implementation exactly. The cutouts of all sources are packed
+    into one buffer, and the source loops run without the GIL.
 
     Parameters
     ----------
@@ -849,17 +854,16 @@ def batch_flux_radius_prepare(const double[:, ::1] data, *,
 
     Returns
     -------
-    args : list
-        The prepared per-source arguments consumed by
-        ``batch_flux_radius_solve``, with one entry per source. Each
-        entry is either `None`, for a skipped source (including those
+    args : `~photutils.segmentation._batch_results.BatchFluxRadiusArgs`
+        The prepared per-source inputs consumed by
+        ``batch_flux_radius_solve``. The cleaned cutouts are packed
+        into the ``values`` buffer, located by the per-source
+        ``starts`` and ``counts``. A skipped source (including those
         rejected by ``max_aper_size`` and those whose bounding box
-        does not overlap the data), or the list ``[clean_data,
-        grid_params, kronflux, max_radius]``, where ``clean_data`` is
-        the cleaned C-contiguous float64 cutout and ``grid_params`` is
-        the tuple ``(xmin_e, xmax_e, ymin_e, ymax_e, nx, ny,
-        use_exact, subpixels)`` of grid parameters whose edges are
-        relative to the source centroid.
+        does not overlap the data) has a zero count. The
+        ``grid_edges`` are the ``(xmin, xmax, ymin, ymax)`` cutout
+        grid edges relative to the source centroid, and ``kronflux``
+        and ``max_radius`` are copies of the inputs.
 
     Raises
     ------
@@ -871,7 +875,6 @@ def batch_flux_radius_prepare(const double[:, ::1] data, *,
     cdef Py_ssize_t n_src = labels.shape[0]
     cdef Py_ssize_t ny_data = data.shape[0]
     cdef Py_ssize_t nx_data = data.shape[1]
-
     _check_length(xcen.shape[0], n_src, 'xcen')
     _check_length(ycen.shape[0], n_src, 'ycen')
     _check_length(local_bkg.shape[0], n_src, 'local_bkg')
@@ -883,68 +886,98 @@ def batch_flux_radius_prepare(const double[:, ::1] data, *,
     _check_shape(segm.shape[0], segm.shape[1], ny_data, nx_data,
                  'segm', 'data')
 
-    cdef Py_ssize_t i, x0, x1, y0, y1, nx, ny, ccx, ccy
+    # The clipped cutout bounding box (x0, x1, y0, y1) and the mirror
+    # center (ccx, ccy) of each source
+    bbox_arr = np.zeros((n_src, 6), dtype=np.intp)
+    counts_arr = np.zeros(n_src, dtype=np.intp)
+    starts_arr = np.zeros(n_src, dtype=np.intp)
+    nx_arr = np.zeros(n_src, dtype=np.intp)
+    ny_arr = np.zeros(n_src, dtype=np.intp)
+    grid_edges_arr = np.zeros((n_src, 4))
+    cdef Py_ssize_t[:, ::1] bbox = bbox_arr
+    cdef Py_ssize_t[::1] counts = counts_arr
+    cdef Py_ssize_t[::1] starts = starts_arr
+    cdef Py_ssize_t[::1] nx_out = nx_arr
+    cdef Py_ssize_t[::1] ny_out = ny_arr
+    cdef double[:, ::1] grid_edges = grid_edges_arr
+
+    cdef Py_ssize_t i, x0, x1, y0, y1, nx, ny, total = 0
     cdef double xc, yc, rmax, ixmin_d, ixmax_d, iymin_d, iymax_d
     cdef double x0_d, x1_d, y0_d, y1_d, cutout_xcen, cutout_ycen
-    cdef double[:, ::1] cutout
-    args = []
-    for i in range(n_src):
-        if skip[i]:
-            args.append(None)
-            continue
-        xc = xcen[i]
-        yc = ycen[i]
-        rmax = max_radius[i]
+    with nogil:
+        for i in range(n_src):
+            if skip[i]:
+                continue
+            xc = xcen[i]
+            yc = ycen[i]
+            rmax = max_radius[i]
 
-        # The bounding box of the maximum-radius circle, kept as
-        # integral doubles until it is clipped to avoid integer
-        # overflow for sources far outside the image
-        ixmin_d = floor(xc - rmax + 0.5)
-        ixmax_d = ceil(xc + rmax + 0.5)
-        iymin_d = floor(yc - rmax + 0.5)
-        iymax_d = ceil(yc + rmax + 0.5)
-        if (iymax_d - iymin_d) * (ixmax_d - ixmin_d) > max_aper_size:
-            args.append(None)
-            continue
+            # The bounding box of the maximum-radius circle, kept as
+            # integral doubles until it is clipped to avoid integer
+            # overflow for sources far outside the image
+            ixmin_d = floor(xc - rmax + 0.5)
+            ixmax_d = ceil(xc + rmax + 0.5)
+            iymin_d = floor(yc - rmax + 0.5)
+            iymax_d = ceil(yc + rmax + 0.5)
+            if (iymax_d - iymin_d) * (ixmax_d - ixmin_d) > max_aper_size:
+                continue
 
-        # Clip to the data
-        x0_d = ixmin_d if ixmin_d > 0.0 else 0.0
-        x1_d = ixmax_d if ixmax_d < nx_data else nx_data
-        y0_d = iymin_d if iymin_d > 0.0 else 0.0
-        y1_d = iymax_d if iymax_d < ny_data else ny_data
-        if y0_d >= y1_d or x0_d >= x1_d:
-            args.append(None)
-            continue
-        x0 = <Py_ssize_t>x0_d
-        x1 = <Py_ssize_t>x1_d
-        y0 = <Py_ssize_t>y0_d
-        y1 = <Py_ssize_t>y1_d
-        nx = x1 - x0
-        ny = y1 - y0
+            # Clip to the data
+            x0_d = ixmin_d if ixmin_d > 0.0 else 0.0
+            x1_d = ixmax_d if ixmax_d < nx_data else nx_data
+            y0_d = iymin_d if iymin_d > 0.0 else 0.0
+            y1_d = iymax_d if iymax_d < ny_data else ny_data
+            if y0_d >= y1_d or x0_d >= x1_d:
+                continue
 
-        # The cutout-frame centroid and the mirror center of the
-        # 'correct' method (truncation of the cutout centroid + 0.5
-        # replicates the Python int() call)
-        cutout_xcen = xc - <double>x0
-        cutout_ycen = yc - <double>y0
-        ccx = <Py_ssize_t>(cutout_xcen + 0.5) + x0
-        ccy = <Py_ssize_t>(cutout_ycen + 0.5) + y0
+            x0 = <Py_ssize_t>x0_d
+            x1 = <Py_ssize_t>x1_d
+            y0 = <Py_ssize_t>y0_d
+            y1 = <Py_ssize_t>y1_d
+            nx = x1 - x0
+            ny = y1 - y0
 
-        clean_data = np.empty((ny, nx))
-        cutout = clean_data
-        with nogil:
+            # The cutout-frame centroid and the mirror center of the
+            # 'correct' method (truncation of the cutout centroid + 0.5
+            # replicates the Python int() call)
+            cutout_xcen = xc - <double>x0
+            cutout_ycen = yc - <double>y0
+            bbox[i, 0] = x0
+            bbox[i, 1] = x1
+            bbox[i, 2] = y0
+            bbox[i, 3] = y1
+            bbox[i, 4] = <Py_ssize_t>(cutout_xcen + 0.5) + x0
+            bbox[i, 5] = <Py_ssize_t>(cutout_ycen + 0.5) + y0
+            nx_out[i] = nx
+            ny_out[i] = ny
+            counts[i] = nx * ny
+            grid_edges[i, 0] = -0.5 - cutout_xcen
+            grid_edges[i, 1] = (<double>nx - 0.5) - cutout_xcen
+            grid_edges[i, 2] = -0.5 - cutout_ycen
+            grid_edges[i, 3] = (<double>ny - 0.5) - cutout_ycen
+
+        for i in range(n_src):
+            starts[i] = total
+            total += counts[i]
+
+    values_arr = np.empty(total)
+    cdef double[::1] values = values_arr
+    with nogil:
+        for i in range(n_src):
+            if counts[i] == 0:
+                continue
             _flux_radius_cutout(&data[0, 0], &mask[0, 0], &segm[0, 0],
-                                nx_data, labels[i], x0, x1, y0, y1,
-                                ccx, ccy, local_bkg[i], seg_method,
-                                &cutout[0, 0])
+                                nx_data, labels[i], bbox[i, 0], bbox[i, 1],
+                                bbox[i, 2], bbox[i, 3], bbox[i, 4],
+                                bbox[i, 5], local_bkg[i], seg_method,
+                                &values[starts[i]])
 
-        grid_params = (-0.5 - cutout_xcen,
-                       (<double>nx - 0.5) - cutout_xcen,
-                       -0.5 - cutout_ycen,
-                       (<double>ny - 0.5) - cutout_ycen,
-                       nx, ny, use_exact, subpixels)
-        args.append([clean_data, grid_params, kronflux[i], rmax])
-    return args
+    return BatchFluxRadiusArgs(
+        values=values_arr, starts=starts_arr, counts=counts_arr,
+        nx=nx_arr, ny=ny_arr, grid_edges=grid_edges_arr,
+        kronflux=np.array(kronflux, dtype=np.float64),
+        max_radius=np.array(max_radius, dtype=np.float64),
+        use_exact=use_exact, subpixels=subpixels)
 
 
 ctypedef struct _FluxRadiusArgs:
@@ -1096,7 +1129,15 @@ cdef double _flux_radius_objective(double r,
     return 1.0 - flux / p.normflux
 
 
-def batch_flux_radius_solve(args_list, *, double fraction):
+def batch_flux_radius_solve(const double[::1] values, *,
+                            const Py_ssize_t[::1] starts,
+                            const Py_ssize_t[::1] counts,
+                            const Py_ssize_t[::1] nx,
+                            const Py_ssize_t[::1] ny,
+                            const double[:, ::1] grid_edges,
+                            const double[::1] kronflux,
+                            const double[::1] max_radius,
+                            double fraction, int use_exact, int subpixels):
     """
     Solve the fractional-flux radius for many prepared sources in one
     call.
@@ -1123,123 +1164,181 @@ def batch_flux_radius_solve(args_list, *, double fraction):
     retried, until either a root is found or the maximum radius drops
     to the minimum radius (0.1), in which case NaN is returned.
 
+    The source loop runs without the GIL, and the scratch buffers are
+    local to the call, so disjoint source ranges can be solved
+    concurrently.
+
     Parameters
     ----------
-    args_list : list
-        The prepared per-source arguments, as built by
-        ``SourceCatalog._flux_radius_optimizer_args``. Each entry is
-        either `None`, for a source that cannot have a solution (NaN
-        is returned), or the list ``[clean_data, grid_params,
-        kronflux, max_radius]``. ``clean_data`` is the C-contiguous
-        float64 source cutout with masked pixels zeroed,
-        ``grid_params`` is the tuple ``(xmin_e, xmax_e, ymin_e,
-        ymax_e, nx, ny, use_exact, subpixels)`` of
-        `~photutils.geometry.circular_overlap_grid` parameters whose
-        grid edges are relative to the source centroid, ``kronflux``
-        is the source Kron flux, and ``max_radius`` is the initial
-        upper bracket radius.
+    values : 1D ndarray of float64 (C-contiguous)
+        The packed cleaned cutout values of all sources, each in
+        row-major order (see ``batch_flux_radius_prepare``).
+
+    starts, counts : 1D ndarray of intp (C-contiguous)
+        The start offset of each source in ``values`` and its number
+        of cutout pixels, with shape ``(n_sources,)``. A source with a
+        zero count has no solution (NaN is returned).
+
+    nx, ny : 1D ndarray of intp (C-contiguous)
+        The cutout width and height of each source, with shape
+        ``(n_sources,)``.
+
+    grid_edges : 2D ndarray of float64 (C-contiguous)
+        The ``(n_sources, 4)`` cutout grid edges ``(xmin, xmax, ymin,
+        ymax)`` of `~photutils.geometry.circular_overlap_grid`,
+        relative to the source centroid.
+
+    kronflux : 1D ndarray of float64 (C-contiguous)
+        The Kron flux of each source, with shape ``(n_sources,)``.
+
+    max_radius : 1D ndarray of float64 (C-contiguous)
+        The initial upper bracket radius of each source, with shape
+        ``(n_sources,)``.
 
     fraction : float
         The fraction of the Kron flux at which to find the circular
         radius.
+
+    use_exact : int
+        Whether to compute exact overlap fractions (1) or use subpixel
+        sampling (0).
+
+    subpixels : int
+        The number of subpixels in each dimension when ``use_exact``
+        is 0.
 
     Returns
     -------
     radius : 1D `~numpy.ndarray`
         The circular radius enclosing the specified fraction of the
         Kron flux for each source, with shape ``(n_sources,)``. NaN is
-        returned for `None` entries and where no solution was found.
+        returned for sources with a zero count and where no solution
+        was found.
+
+    Raises
+    ------
+    ValueError
+        If a per-source array does not have the same length as
+        ``counts``, if ``grid_edges`` does not have 4 columns, or if a
+        source's ``starts`` and ``counts`` region extends beyond the
+        ``values`` buffer.
     """
-    cdef Py_ssize_t n_src = len(args_list)
+    cdef Py_ssize_t n_src = counts.shape[0]
+    for name, length in (('starts', starts.shape[0]), ('nx', nx.shape[0]),
+                         ('ny', ny.shape[0]),
+                         ('grid_edges', grid_edges.shape[0]),
+                         ('kronflux', kronflux.shape[0]),
+                         ('max_radius', max_radius.shape[0])):
+        if length != n_src:
+            msg = f'{name} must have the same length as counts'
+            raise ValueError(msg)
+    if grid_edges.shape[1] != 4:
+        msg = 'grid_edges must have 4 columns'
+        raise ValueError(msg)
+
+    # The source loops below index the packed buffer without bounds
+    # checks, so reject a region that does not fit in it.
+    cdef Py_ssize_t n_values = values.shape[0]
+    cdef Py_ssize_t i
+    for i in range(n_src):
+        if counts[i] < 0 or starts[i] < 0 or starts[i] + counts[i] > n_values:
+            msg = ('the starts and counts regions must lie within the '
+                   'values buffer')
+            raise ValueError(msg)
+
     radius_arr = np.full(n_src, np.nan)
     cdef double[::1] radius = radius_arr
-    cdef const double[:, ::1] cdata
     cdef _FluxRadiusArgs p
     cdef zeros_full_output full_output
-    cdef double xmax_e, ymax_e, max_extent
-    cdef double max_radius, delta, result
+    cdef double xmin_e, xmax_e, ymin_e, ymax_e, max_extent
+    cdef double dx, dy, pixel_radius, bin_width, rmax, delta, result
     cdef bint found
-    cdef Py_ssize_t i, n_pix, n_bins, max_pix = 0, max_bins = 0
+    cdef Py_ssize_t n_bins, max_pix = 0, max_bins = 0
 
-    # Scratch buffers for the radial binning, sized for the largest
-    # cutout (local to this call, so the function is thread safe)
-    for entry in args_list:
-        if entry is None:
-            continue
-        n_pix = entry[1][4] * entry[1][5]
-        if n_pix > max_pix:
-            max_pix = n_pix
+    # Size the scratch buffers of the radial binning for the largest
+    # cutout and bin count (local to this call, so the function is
+    # thread safe). The bin count uses the same arithmetic as the
+    # source loop below.
+    with nogil:
+        for i in range(n_src):
+            if counts[i] == 0:
+                continue
+            if counts[i] > max_pix:
+                max_pix = counts[i]
+            xmin_e = grid_edges[i, 0]
+            xmax_e = grid_edges[i, 1]
+            ymin_e = grid_edges[i, 2]
+            ymax_e = grid_edges[i, 3]
+            dx = (xmax_e - xmin_e) / nx[i]
+            dy = (ymax_e - ymin_e) / ny[i]
+            pixel_radius = 0.5 * sqrt(dx * dx + dy * dy)
+            bin_width = 0.5 * pixel_radius
+            max_extent = sqrt(fmax(xmin_e * xmin_e, xmax_e * xmax_e)
+                              + fmax(ymin_e * ymin_e, ymax_e * ymax_e))
+            n_bins = <Py_ssize_t>(max_extent / bin_width) + 1
+            if n_bins > max_bins:
+                max_bins = n_bins
+
     order_arr = np.empty(max(max_pix, 1), dtype=np.intp)
     bin_of_arr = np.empty(max(max_pix, 1), dtype=np.intp)
+    bin_starts_arr = np.empty(max_bins + 1, dtype=np.intp)
+    bin_cumsum_arr = np.empty(max_bins + 1, dtype=np.float64)
+    work_arr = np.empty(max(max_bins, 1), dtype=np.intp)
     cdef Py_ssize_t[::1] order = order_arr
     cdef Py_ssize_t[::1] bin_of = bin_of_arr
-    bin_starts_arr = np.empty(1, dtype=np.intp)
-    bin_cumsum_arr = np.empty(1, dtype=np.float64)
-    work_arr = np.empty(1, dtype=np.intp)
     cdef Py_ssize_t[::1] bin_starts = bin_starts_arr
     cdef double[::1] bin_cumsum = bin_cumsum_arr
     cdef Py_ssize_t[::1] work = work_arr
 
-    for i, entry in enumerate(args_list):
-        if entry is None:
-            continue
-        clean_data, grid_params, kronflux, max_radius_py = entry
-        cdata = clean_data
-        p.data = &cdata[0, 0]
-        p.xmin_e = grid_params[0]
-        xmax_e = grid_params[1]
-        p.ymin_e = grid_params[2]
-        ymax_e = grid_params[3]
-        p.nx = grid_params[4]
-        p.ny = grid_params[5]
-        # The pixel size and pixel radius are derived from the grid
-        # extent exactly as in ``circular_overlap_grid``
-        p.dx = (xmax_e - p.xmin_e) / p.nx
-        p.dy = (ymax_e - p.ymin_e) / p.ny
-        p.pixel_radius = 0.5 * sqrt(p.dx * p.dx + p.dy * p.dy)
-        p.use_exact = grid_params[6]
-        p.subpixels = grid_params[7]
-        p.normflux = kronflux * fraction
-        max_radius = max_radius_py
+    p.use_exact = use_exact
+    p.subpixels = subpixels
+    with nogil:
+        for i in range(n_src):
+            if counts[i] == 0:
+                continue
+            p.data = &values[starts[i]]
+            p.xmin_e = grid_edges[i, 0]
+            xmax_e = grid_edges[i, 1]
+            p.ymin_e = grid_edges[i, 2]
+            ymax_e = grid_edges[i, 3]
+            p.nx = nx[i]
+            p.ny = ny[i]
 
-        # Radial bins of a quarter pixel diagonal out to the farthest
-        # cutout corner; the boundary band of a circle then spans the
-        # pixel diagonal plus two bins
-        p.bin_width = 0.5 * p.pixel_radius
-        max_extent = sqrt(max(p.xmin_e * p.xmin_e, xmax_e * xmax_e)
-                          + max(p.ymin_e * p.ymin_e, ymax_e * ymax_e))
-        n_bins = <Py_ssize_t>(max_extent / p.bin_width) + 1
-        p.n_bins = n_bins
-        if n_bins > max_bins:
-            max_bins = n_bins
-            bin_starts_arr = np.empty(max_bins + 1, dtype=np.intp)
-            bin_cumsum_arr = np.empty(max_bins + 1, dtype=np.float64)
-            work_arr = np.empty(max_bins, dtype=np.intp)
-            bin_starts = bin_starts_arr
-            bin_cumsum = bin_cumsum_arr
-            work = work_arr
+            # The pixel size and pixel radius are derived from the grid
+            # extent exactly as in ``circular_overlap_grid``
+            p.dx = (xmax_e - p.xmin_e) / p.nx
+            p.dy = (ymax_e - p.ymin_e) / p.ny
+            p.pixel_radius = 0.5 * sqrt(p.dx * p.dx + p.dy * p.dy)
+            p.normflux = kronflux[i] * fraction
+            rmax = max_radius[i]
 
-        with nogil:
+            # Radial bins of a quarter pixel diagonal out to the
+            # farthest cutout corner; the boundary band of a circle
+            # then spans the pixel diagonal plus two bins
+            p.bin_width = 0.5 * p.pixel_radius
+            max_extent = sqrt(fmax(p.xmin_e * p.xmin_e, xmax_e * xmax_e)
+                              + fmax(p.ymin_e * p.ymin_e, ymax_e * ymax_e))
+            p.n_bins = <Py_ssize_t>(max_extent / p.bin_width) + 1
             _bin_flux_radius_pixels(&p, &order[0], &bin_of[0],
                                     &bin_starts[0], &bin_cumsum[0],
                                     &work[0])
+
             found = False
             result = NAN
-            delta = 0.1 * max_radius
-            while max_radius > 0.1 and not found:
+            delta = 0.1 * rmax
+            while rmax > 0.1 and not found:
                 # xtol, rtol (4 * float64 eps), and maxiter are the
                 # root_scalar(method='brentq') defaults, so the same
                 # underlying C algorithm follows the identical
                 # iteration sequence
-                result = brentq(_flux_radius_objective, 0.1,
-                                max_radius, &p, 2e-12,
-                                8.881784197001252e-16, 100,
+                result = brentq(_flux_radius_objective, 0.1, rmax, &p,
+                                2e-12, 8.881784197001252e-16, 100,
                                 &full_output)
                 if full_output.error_num == -1:
                     # Sign error (same-sign bracket): shrink and
                     # retry, matching the ValueError path of
                     # root_scalar
-                    max_radius -= delta
+                    rmax -= delta
                 else:
                     # Success or non-convergence: root_scalar does
                     # not raise on non-convergence, so accept the
@@ -1247,7 +1346,7 @@ def batch_flux_radius_solve(args_list, *, double fraction):
                     found = True
             if not found:
                 result = NAN
-        radius[i] = result
+            radius[i] = result
     return radius_arr
 
 

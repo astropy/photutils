@@ -284,6 +284,21 @@ measured speedups are ~2x with 2 threads and ~8-10x with 12 threads,
 for the aperture fluxes and sums as well as for statistics such as the
 median, MAD standard deviation, and the biweight estimators.
 
+`~photutils.segmentation.SourceCatalog` also accepts an ``n_threads``
+keyword. Its compiled per-source measurements (the isophotal moments,
+segment pixel statistics, windowed and quadratic centroids, perimeter,
+Kron and circular photometry, and flux radii) are computed in chunks
+of sources processed concurrently, with results identical to the
+single-threaded computation, so the default ``to_table`` output of a
+large catalog is several times faster with several threads::
+
+    >>> from photutils.datasets import make_100gaussians_image
+    >>> from photutils.segmentation import SourceCatalog, detect_sources
+    >>> image = make_100gaussians_image() - 5.0  # subtract background
+    >>> segm = detect_sources(image, 9.0, n_pixels=5)
+    >>> cat = SourceCatalog(image, segm, n_threads=8)
+    >>> table = cat.to_table()
+
 For more advanced workflows, independent images can also be processed
 concurrently with a thread pool, one instance per frame::
 

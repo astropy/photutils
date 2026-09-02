@@ -1947,17 +1947,19 @@ class TestThreadSafety:
         self.data = g1(xx, yy) + g2(xx, yy) + g3(xx, yy)
         self.segm = detect_sources(self.data, 10.0, n_pixels=5)
 
-    def test_concurrent_cached_property_access(self):
+    @pytest.mark.parametrize('n_threads', [1, 4])
+    def test_concurrent_cached_property_access(self, n_threads):
         """
         Test concurrent first access of cached properties on a shared
-        catalog.
+        catalog, with and without the catalog's own n_threads chunking
+        (whose thread pools then run inside the caller's threads).
 
         cached_property does not lock, so concurrent first accesses may
         run a getter more than once, but every thread must see values
         identical to the serial computation.
         """
         expected = SourceCatalog(self.data, self.segm)
-        cat = SourceCatalog(self.data, self.segm)
+        cat = SourceCatalog(self.data, self.segm, n_threads=n_threads)
 
         n_threads = 8
         barrier = threading.Barrier(n_threads)
@@ -1974,16 +1976,19 @@ class TestThreadSafety:
             assert_equal(centroid, expected.centroid)
             assert_equal(kron_flux, expected.kron_flux)
 
-    def test_concurrent_flux_radius(self):
+    @pytest.mark.parametrize('n_threads', [1, 4])
+    def test_concurrent_flux_radius(self, n_threads):
         """
-        Test concurrent first flux_radius calls on a shared catalog.
+        Test concurrent first flux_radius calls on a shared catalog,
+        with and without the catalog's own n_threads chunking of the
+        preparation and the solve.
 
         The _flux_radius_cache dict uses an unlocked check-then-set, so
         concurrent first calls may compute more than once, but every
         thread must see values identical to the serial computation.
         """
         expected = SourceCatalog(self.data, self.segm).flux_radius(0.5)
-        cat = SourceCatalog(self.data, self.segm)
+        cat = SourceCatalog(self.data, self.segm, n_threads=n_threads)
 
         n_threads = 8
         barrier = threading.Barrier(n_threads)
@@ -2588,10 +2593,33 @@ def test_centroid_win_aperture_mask_mask(centroid_win_data):
     assert np.isfinite(cwin[0, 0])
 
 
+def test_make_scalar(single_source_catalog):
+    """
+    Test the scalar collapse of method results: a length-1 sequence
+    is collapsed for a scalar catalog, a longer sequence is returned
+    unchanged, and a multi-source catalog never collapses.
+    """
+    _data, _segm, cat = single_source_catalog
+    assert not cat.isscalar
+    obj = cat[0]
+    assert obj.isscalar
+
+    assert obj._make_scalar([7.0]) == 7.0
+    assert obj._make_scalar(np.array([3.0]) << u.pix) == 3.0 * u.pix
+
+    # A sequence that is not length-1 is returned unchanged
+    value = [5.0, 6.0]
+    assert obj._make_scalar(value) is value
+
+    # A multi-source catalog never collapses
+    assert cat._make_scalar([7.0]) == [7.0]
+
+
 def test_flux_radius_optimizer_args_oom_guard(gauss_101_catalog):
     """
-    Test that _flux_radius_optimizer_args returns None for sources whose
-    max-radius aperture bbox exceeds max_aper_size.
+    Test that _flux_radius_optimizer_args gives a zero pixel count (and
+    thus a NaN flux radius) for sources whose max-radius aperture bbox
+    exceeds max_aper_size.
     """
     data, segm, cat = gauss_101_catalog
 
@@ -2610,8 +2638,9 @@ def test_flux_radius_optimizer_args_oom_guard(gauss_101_catalog):
 
 def test_flux_radius_optimizer_args_off_image(gauss_101_catalog):
     """
-    Test that _flux_radius_optimizer_args returns None for sources whose
-    max-radius aperture bbox doesn't overlap the data.
+    Test that _flux_radius_optimizer_args gives a zero pixel count (and
+    thus a NaN flux radius) for sources whose max-radius aperture bbox
+    doesn't overlap the data.
     """
     _data, _segm, cat = gauss_101_catalog
 
@@ -3547,3 +3576,161 @@ class TestPartialPixelErrorWeights:
         aperture = catalog.kron_aperture[0]
         expected = self._expected_error(aperture, catalog._error)
         assert_allclose(catalog.kron_flux_err, expected)
+
+
+@pytest.fixture
+def many_source_inputs():
+    """
+    Multi-source inputs for the n_threads tests.
+
+    Returns ``(data, segm, error, mask)``.
+    """
+    data = make_100gaussians_image() - 5.0  # subtract the background
+    segm = detect_sources(data, 9.0, n_pixels=5)
+    error = make_noise_image(data.shape, mean=0, stddev=2.0, seed=0)
+    error = np.abs(error) + 1.0
+    mask = np.zeros(data.shape, dtype=bool)
+    mask[0:40, 0:60] = True
+    return data, segm, error, mask
+
+
+def _assert_same_value(value, expected):
+    """
+    Assert that two catalog property values are identical, for arrays,
+    Quantity, SkyCoord, and lists of per-source arrays.
+    """
+    if isinstance(value, SkyCoord):
+        assert_equal(value.ra.deg, expected.ra.deg)
+        assert_equal(value.dec.deg, expected.dec.deg)
+    elif isinstance(value, u.Quantity):
+        assert value.unit == expected.unit
+        assert_equal(value.value, expected.value)
+    elif isinstance(value, list):
+        assert len(value) == len(expected)
+        for item, ref in zip(value, expected, strict=True):
+            assert_equal(item, ref)
+    else:
+        assert_equal(value, expected)
+
+
+class TestNThreads:
+    """
+    Tests for the n_threads keyword.
+    """
+
+    @pytest.mark.parametrize('n_threads', [2, 8])
+    @pytest.mark.parametrize('aperture_mask_method',
+                             ['correct', 'mask', 'none'])
+    @pytest.mark.parametrize('with_error', [True, False])
+    def test_identical_results(self, many_source_inputs, n_threads,
+                               aperture_mask_method, with_error):
+        """
+        Test that every property and measurement is identical for any
+        number of threads, for both circular and elliptical Kron
+        apertures, with and without an error array.
+        """
+        data, segm, error, mask = many_source_inputs
+        kwargs = {'mask': mask, 'local_bkg_width': 10,
+                  'aperture_mask_method': aperture_mask_method,
+                  'kron_params': (2.5, 1.4, 5.0),
+                  'background': np.full(data.shape, 0.1),
+                  'wcs': make_wcs(data.shape)}
+        if with_error:
+            kwargs['error'] = error
+        cat1 = SourceCatalog(data, segm, **kwargs)
+        cat2 = SourceCatalog(data, segm, n_threads=n_threads, **kwargs)
+        assert cat1.n_threads == 1
+        assert cat2.n_threads == n_threads
+        assert segm.n_labels > n_threads
+
+        # The minimum circular radius makes some apertures circular
+        n_circ = sum(isinstance(aper, CircularAperture)
+                     for aper in cat1.kron_aperture)
+        assert 0 < n_circ < segm.n_labels
+
+        for name in cat1.properties:
+            _assert_same_value(getattr(cat2, name), getattr(cat1, name))
+
+        _assert_same_value(cat2.kron_photometry((2.0, 1.0)),
+                           cat1.kron_photometry((2.0, 1.0)))
+        _assert_same_value(cat2.circular_photometry(3.0),
+                           cat1.circular_photometry(3.0))
+        _assert_same_value(cat2.flux_radius(0.5), cat1.flux_radius(0.5))
+        _assert_same_value(cat2.flux_radius(0.9), cat1.flux_radius(0.9))
+
+    def test_n_threads_exceeds_sources(self, many_source_inputs):
+        """
+        Test that n_threads larger than the number of sources gives
+        the same results.
+        """
+        data, segm, error, _ = many_source_inputs
+        cat1 = SourceCatalog(data, segm, error=error)
+        cat2 = SourceCatalog(data, segm, error=error,
+                             n_threads=10 * segm.n_labels)
+        assert_equal(cat2.kron_flux, cat1.kron_flux)
+        assert_equal(cat2.kron_flux_err, cat1.kron_flux_err)
+
+    def test_scalar_catalog(self, many_source_inputs):
+        """
+        Test that a scalar (single-source) catalog with n_threads > 1
+        gives the same results as the parent catalog.
+        """
+        data, segm, error, _ = many_source_inputs
+        cat = SourceCatalog(data, segm, error=error, n_threads=4)
+        obj = cat[3]
+        assert obj.n_threads == 4
+        assert obj.isscalar
+        assert_equal(obj.kron_radius, cat.kron_radius[3])
+        assert_equal(obj.kron_flux, cat.kron_flux[3])
+        assert_equal(obj.kron_photometry((2.0, 1.0))[0],
+                     cat.kron_photometry((2.0, 1.0))[0][3])
+
+    def test_sliced_catalog_new_fraction(self, many_source_inputs):
+        """
+        Test that a multi-source slice of a threaded catalog computes
+        a flux radius for a new fraction identically to the parent.
+
+        Slicing drops the packed flux-radius inputs, so the slice
+        recomputes them (chunked over its own sources) on the first
+        call for a fraction that the parent had not cached, while the
+        parent's cached fractions are carried over.
+        """
+        data, segm, error, _ = many_source_inputs
+        cat1 = SourceCatalog(data, segm, error=error)
+        cat2 = SourceCatalog(data, segm, error=error, n_threads=4)
+        cat1.flux_radius(0.5)
+        cat2.flux_radius(0.5)
+
+        index = slice(2, segm.n_labels - 3)
+        sub1 = cat1[index]
+        sub2 = cat2[index]
+        assert '_flux_radius_optimizer_args' not in sub2.__dict__
+        assert_equal(sub2.flux_radius(0.5), cat1.flux_radius(0.5)[index])
+        assert '_flux_radius_optimizer_args' not in sub2.__dict__
+
+        # A new fraction recomputes the packed inputs on the slice
+        assert_equal(sub2.flux_radius(0.3), sub1.flux_radius(0.3))
+        assert_equal(sub2.flux_radius(0.3), cat1.flux_radius(0.3)[index])
+        assert '_flux_radius_optimizer_args' in sub2.__dict__
+
+    def test_indexing_preserves_n_threads(self, many_source_inputs):
+        """
+        Test that slicing and copying a catalog preserve n_threads.
+        """
+        data, segm, _, _ = many_source_inputs
+        cat = SourceCatalog(data, segm, n_threads=4)
+        assert cat[1:].n_threads == 4
+        assert cat[[0, 2]].n_threads == 4
+        assert cat[0].n_threads == 4
+        assert cat.copy().n_threads == 4
+
+    def test_invalid_n_threads(self, many_source_inputs):
+        """
+        Test that an error is raised if n_threads is not a positive
+        integer.
+        """
+        data, segm, _, _ = many_source_inputs
+        match = 'n_threads must be a positive integer'
+        for n_threads in (0, -1, 2.5, True):
+            with pytest.raises(ValueError, match=match):
+                SourceCatalog(data, segm, n_threads=n_threads)
