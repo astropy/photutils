@@ -761,10 +761,6 @@ cdef void _flux_radius_cutout(const double *data,
             out[(iy - y0) * nx + (ix - x0)] = value
 
 
-cdef inline double _dmax(double a, double b) noexcept nogil:
-    return a if a > b else b
-
-
 def batch_flux_radius_prepare(const double[:, ::1] data, *,
                               const unsigned char[:, ::1] mask,
                               const Py_ssize_t[:, ::1] segm,
@@ -1277,8 +1273,8 @@ def batch_flux_radius_solve(const double[::1] values, *,
             dy = (ymax_e - ymin_e) / ny[i]
             pixel_radius = 0.5 * sqrt(dx * dx + dy * dy)
             bin_width = 0.5 * pixel_radius
-            max_extent = sqrt(_dmax(xmin_e * xmin_e, xmax_e * xmax_e)
-                              + _dmax(ymin_e * ymin_e, ymax_e * ymax_e))
+            max_extent = sqrt(fmax(xmin_e * xmin_e, xmax_e * xmax_e)
+                              + fmax(ymin_e * ymin_e, ymax_e * ymax_e))
             n_bins = <Py_ssize_t>(max_extent / bin_width) + 1
             if n_bins > max_bins:
                 max_bins = n_bins
@@ -1320,9 +1316,8 @@ def batch_flux_radius_solve(const double[::1] values, *,
             # farthest cutout corner; the boundary band of a circle
             # then spans the pixel diagonal plus two bins
             p.bin_width = 0.5 * p.pixel_radius
-            max_extent = sqrt(_dmax(p.xmin_e * p.xmin_e, xmax_e * xmax_e)
-                              + _dmax(p.ymin_e * p.ymin_e,
-                                      ymax_e * ymax_e))
+            max_extent = sqrt(fmax(p.xmin_e * p.xmin_e, xmax_e * xmax_e)
+                              + fmax(p.ymin_e * p.ymin_e, ymax_e * ymax_e))
             p.n_bins = <Py_ssize_t>(max_extent / p.bin_width) + 1
             _bin_flux_radius_pixels(&p, &order[0], &bin_of[0],
                                     &bin_starts[0], &bin_cumsum[0],
