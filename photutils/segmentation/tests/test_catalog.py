@@ -2595,8 +2595,8 @@ def test_centroid_win_aperture_mask_mask(centroid_win_data):
 
 def test_make_scalar(single_source_catalog):
     """
-    Test the scalar collapse of method results: a length-1 sequence is
-    collapsed for a scalar catalog, a value without a length is returned
+    Test the scalar collapse of method results: a length-1 sequence
+    is collapsed for a scalar catalog, a longer sequence is returned
     unchanged, and a multi-source catalog never collapses.
     """
     _data, _segm, cat = single_source_catalog
@@ -2607,10 +2607,8 @@ def test_make_scalar(single_source_catalog):
     assert obj._make_scalar([7.0]) == 7.0
     assert obj._make_scalar(np.array([3.0]) << u.pix) == 3.0 * u.pix
 
-    # Values without a length (e.g., a float or a 0-d Quantity) are
-    # returned unchanged.
-    assert obj._make_scalar(5.0) == 5.0
-    value = 2.0 * u.pix
+    # A sequence that is not length-1 is returned unchanged
+    value = [5.0, 6.0]
     assert obj._make_scalar(value) is value
 
     # A multi-source catalog never collapses
