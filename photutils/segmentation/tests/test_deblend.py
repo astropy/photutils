@@ -17,10 +17,13 @@ from scipy import ndimage as ndi
 from photutils.segmentation import SegmentationImage
 from photutils.segmentation import deblend as deblend_module
 from photutils.segmentation import deblend_sources, detect_sources
-from photutils.segmentation._deblend_markers import deblend_markers_chunk
+from photutils.segmentation._deblend_markers import (deblend_markers_chunk,
+                                                     deblend_source_stats)
 from photutils.segmentation._deblend_reference import _SingleSourceDeblender
-from photutils.segmentation._deblend_watershed import deblend_watershed
-from photutils.segmentation.deblend import (_compute_thresholds,
+from photutils.segmentation._deblend_watershed import (deblend_contrast_chunk,
+                                                       deblend_watershed,
+                                                       write_deblended_labels)
+from photutils.segmentation.deblend import (_ChunkResult, _compute_thresholds,
                                             _create_relabel_map,
                                             _DeblendParams)
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
@@ -220,6 +223,8 @@ class TestDeblendSources:
         assert result.n_labels == 2
         assert_equal(result.labels, [2, 3])
         assert_equal(result.parent_to_deblended_labels, {1: [2, 3]})
+        assert (result.parent_to_deblended_labels[1].dtype
+                == result.data.dtype)
         assert len(result.slices) <= result.max_label
         assert len(result.slices) == result.n_labels
         assert_allclose(np.nonzero(self.segm), np.nonzero(result))
@@ -673,16 +678,35 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
 
     Returns
     -------
-    results : list of (2D `~numpy.ndarray` or `None`, dict)
-        The deblended cutout and warnings for each source.
+    result : `_ChunkResult`
+        The per-source deblended labels in the packed layout of the
+        compiled chunk driver.
     """
-    results = []
-    for label, slc in zip(labels, slices, strict=True):
+    y0 = np.array([slc[0].start for slc in slices], dtype=np.int64)
+    y1 = np.array([slc[0].stop for slc in slices], dtype=np.int64)
+    x0 = np.array([slc[1].start for slc in slices], dtype=np.int64)
+    x1 = np.array([slc[1].stop for slc in slices], dtype=np.int64)
+    sizes = (y1 - y0) * (x1 - x0)
+    offsets = np.zeros(len(labels) + 1, dtype=np.intp)
+    np.cumsum(sizes, out=offsets[1:])
+    packed = np.zeros(offsets[-1], dtype=np.int32)
+    n_labels = np.zeros(len(labels), dtype=np.intp)
+    nonposmin = np.zeros(len(labels), dtype=bool)
+    n_markers_fallback = np.zeros(len(labels), dtype=bool)
+    for index, (label, slc) in enumerate(zip(labels, slices,
+                                             strict=True)):
         deblender = _SingleSourceDeblender(data[slc], segm_data[slc],
                                            label, deblend_params)
-        results.append((deblender.deblend_source(),
-                        deblender.warnings))
-    return results
+        deblended = deblender.deblend_source()
+        nonposmin[index] = 'nonposmin' in deblender.warnings
+        n_markers_fallback[index] = 'n_markers' in deblender.warnings
+        if deblended is not None:
+            n_labels[index] = deblended.max()
+            packed[offsets[index]:offsets[index + 1]] = deblended.ravel()
+    return _ChunkResult(n_labels=n_labels, packed=packed,
+                        offsets=offsets, y0=y0, y1=y1, x0=x0, x1=x1,
+                        nonposmin=nonposmin,
+                        n_markers_fallback=n_markers_fallback)
 
 
 @pytest.mark.parametrize('contrast_method', ['basin', 'saddle'])
@@ -943,6 +967,265 @@ def test_compute_thresholds_matches_reference(dtype, mode, n_levels):
         assert nonposmin[i] == ('nonposmin' in deblender.warnings)
 
 
+@pytest.mark.parametrize('dtype', ['float64', 'float32', 'int32'])
+def test_source_stats_matches_reference(dtype):
+    """
+    Test that the compiled per-source minimum, maximum, and flux are
+    identical to the reference implementation, with NaN pixels
+    excluded, and that the flux agrees with np.nansum.
+    """
+    data, segm = make_multipeak_source()
+    data = data.astype(dtype)
+    if dtype != 'int32':
+        data[45:48, 40:43] = np.nan
+    driver_data = np.ascontiguousarray(data, dtype=np.float64)
+    labels = np.asarray(segm.labels, dtype=np.int64)
+    slc = segm.slices[0]
+    y0 = np.array([slc[0].start])
+    y1 = np.array([slc[0].stop])
+    x0 = np.array([slc[1].start])
+    x1 = np.array([slc[1].stop])
+    smin, smax, ssum = deblend_source_stats(driver_data, segm.data,
+                                            labels, y0, y1, x0, x1)
+
+    params = _DeblendParams(5, np.ones((3, 3)), 32, 0.001, 'linear')
+    deblender = _SingleSourceDeblender(data[slc], segm.data[slc], 1,
+                                       params)
+    assert smin[0] == deblender.source_min
+    assert smax[0] == deblender.source_max
+    assert ssum[0] == deblender.source_sum
+    values = data[segm.data == 1]
+    assert_allclose(ssum[0], np.nansum(values, dtype=np.float64),
+                    rtol=1e-12)
+
+
+def make_packed_pair():
+    """
+    Return a two-source scene in the packed chunk layout.
+
+    The first source is a blended pair that splits into two markers
+    and the second is a single Gaussian that does not split.
+
+    Returns
+    -------
+    data : 2D `~numpy.ndarray`
+        The image.
+
+    segm : `~photutils.segmentation.SegmentationImage`
+        The segmentation image.
+
+    bounds : tuple of 1D int64 `~numpy.ndarray`
+        The ``(labels, y0, y1, x0, x1)`` arrays of the two sources.
+
+    offsets : 1D intp `~numpy.ndarray`
+        The packed region offsets, with one more entry than sources.
+    """
+    y, x = np.mgrid[0:61, 0:141]
+    data = (Gaussian2D(100, 30, 30, 5, 5)(x, y)
+            + Gaussian2D(100, 45, 30, 5, 5)(x, y)
+            + Gaussian2D(50, 110, 30, 5, 5)(x, y))
+    segm = detect_sources(data, 10, 5)
+    assert segm.n_labels == 2
+    labels = np.asarray(segm.labels, dtype=np.int64)
+    y0 = np.array([slc[0].start for slc in segm.slices])
+    y1 = np.array([slc[0].stop for slc in segm.slices])
+    x0 = np.array([slc[1].start for slc in segm.slices])
+    x1 = np.array([slc[1].stop for slc in segm.slices])
+    sizes = (y1 - y0) * (x1 - x0)
+    offsets = np.concatenate(([0], np.cumsum(sizes))).astype(np.intp)
+    return data, segm, (labels, y0, y1, x0, x1), offsets
+
+
+def run_packed_markers(data, segm, bounds, offsets, *, max_markers=-1):
+    """
+    Build the markers of a packed two-source scene.
+
+    Returns
+    -------
+    packed : 1D int32 `~numpy.ndarray`
+        The packed marker buffer.
+
+    n_markers : 1D intp `~numpy.ndarray`
+        The marker count of each source.
+
+    stats : tuple of 1D float64 `~numpy.ndarray`
+        The ``(source_min, source_max, source_sum)`` arrays.
+    """
+    labels, y0, y1, x0, x1 = bounds
+    stats = deblend_source_stats(data, segm.data, labels, y0, y1, x0, x1)
+    thresholds, _ = _compute_thresholds(stats[0], stats[1], 32,
+                                        'exponential')
+    packed = np.zeros(offsets[-1], dtype=np.int32)
+    n_markers = deblend_markers_chunk(data, segm.data, labels, y0, y1, x0,
+                                      x1, thresholds, packed, offsets[:-1],
+                                      n_pixels=5, connectivity=8,
+                                      max_markers=max_markers)
+    return packed, n_markers, stats
+
+
+@pytest.mark.parametrize('contrast', [0.001, 0.6])
+def test_contrast_chunk_packed_buffer(contrast):
+    """
+    Test that the chunk contrast kernel relabels the packed region of a
+    source that deblends with consecutive labels covering its segment,
+    zeros the region of a source that collapses to one basin, and skips
+    the sources with fewer than two markers.
+    """
+    data, segm, bounds, offsets = make_packed_pair()
+    labels, y0, y1, x0, x1 = bounds
+    packed, n_markers, (smin, _, ssum) = run_packed_markers(
+        data, segm, bounds, offsets)
+    assert_equal(n_markers, [2, 0])
+    packed[offsets[1]:offsets[2]] = 7  # skipped regions are untouched
+
+    n_labels = deblend_contrast_chunk(data, segm.data, labels, y0, y1, x0,
+                                      x1, packed, offsets[:-1], n_markers,
+                                      connectivity=8, contrast=contrast,
+                                      source_sum=ssum, source_min=smin,
+                                      apply_contrast=True)
+    region0 = packed[offsets[0]:offsets[1]]
+    segment0 = (segm.data[y0[0]:y1[0], x0[0]:x1[0]] == labels[0]).ravel()
+    if contrast == 0.6:
+        # Both basins hold about half the flux, so the fainter one is
+        # removed and the source is left with a single basin
+        assert_equal(n_labels, [1, 0])
+        assert not region0.any()
+    else:
+        assert_equal(n_labels, [2, 0])
+        assert_equal(np.unique(region0), [0, 1, 2])
+        assert_equal(region0 > 0, segment0)
+    assert_equal(packed[offsets[1]:offsets[2]], 7)
+
+
+@pytest.mark.parametrize('dtype', [np.int32, np.int64])
+def test_write_deblended_labels(dtype):
+    """
+    Test that the write-out kernel adds the per-source offset to the
+    nonzero packed labels of the sources with two or more labels and
+    leaves every other pixel and source untouched.
+    """
+    segm_out = np.full((4, 6), 9, dtype=dtype)
+    y0 = np.array([0, 2], dtype=np.int64)
+    y1 = np.array([2, 4], dtype=np.int64)
+    x0 = np.array([1, 3], dtype=np.int64)
+    x1 = np.array([4, 6], dtype=np.int64)
+    region0 = np.array([[1, 0, 2],
+                        [1, 2, 0]], dtype=np.int32)
+    region1 = np.array([[1, 1, 1],
+                        [0, 0, 1]], dtype=np.int32)
+    packed = np.concatenate((region0.ravel(), region1.ravel()))
+    starts = np.array([0, region0.size], dtype=np.intp)
+    n_labels = np.array([2, 1], dtype=np.intp)
+    label_offsets = np.array([10, 20], dtype=np.int64)
+
+    write_deblended_labels(segm_out, packed, starts, y0, y1, x0, x1,
+                           n_labels, label_offsets)
+    expected = np.full((4, 6), 9, dtype=dtype)
+    expected[0, 1] = 11
+    expected[0, 3] = 12
+    expected[1, 1] = 11
+    expected[1, 2] = 12
+    assert_equal(segm_out, expected)
+    assert segm_out.dtype == dtype
+
+
+def test_chunk_kernels_validate_inputs():
+    """
+    Test that the chunk kernels reject per-source arrays with the wrong
+    length and a packed buffer that is too small for the regions.
+    """
+    data, segm, bounds, offsets = make_packed_pair()
+    labels, y0, y1, x0, x1 = bounds
+    packed, n_markers, (smin, smax, ssum) = run_packed_markers(
+        data, segm, bounds, offsets)
+    thresholds, _ = _compute_thresholds(smin, smax, 32, 'exponential')
+    starts = offsets[:-1]
+    short = starts[:1]
+    small = packed[:-1]
+    n_labels = np.array([2, 0], dtype=np.intp)
+    label_offsets = np.zeros(2, dtype=np.int64)
+    segm_out = segm.data.copy()
+
+    match_len = 'one entry per source'
+    match_size = 'packed is too small'
+    with pytest.raises(ValueError, match=match_len):
+        deblend_markers_chunk(data, segm.data, labels, y0, y1, x0, x1,
+                              thresholds, packed, short, n_pixels=5,
+                              connectivity=8, max_markers=-1)
+    with pytest.raises(ValueError, match=match_size):
+        deblend_markers_chunk(data, segm.data, labels, y0, y1, x0, x1,
+                              thresholds, small, starts, n_pixels=5,
+                              connectivity=8, max_markers=-1)
+    with pytest.raises(ValueError, match=match_len):
+        deblend_contrast_chunk(data, segm.data, labels, y0, y1, x0, x1,
+                               packed, short, n_markers, connectivity=8,
+                               contrast=0.001, source_sum=ssum,
+                               source_min=smin, apply_contrast=True)
+    with pytest.raises(ValueError, match=match_size):
+        deblend_contrast_chunk(data, segm.data, labels, y0, y1, x0, x1,
+                               small, starts, n_markers, connectivity=8,
+                               contrast=0.001, source_sum=ssum,
+                               source_min=smin, apply_contrast=True)
+    with pytest.raises(ValueError, match=match_len):
+        write_deblended_labels(segm_out, packed, short, y0, y1, x0, x1,
+                               n_labels, label_offsets)
+    with pytest.raises(ValueError, match=match_size):
+        write_deblended_labels(segm_out, small, starts, y0, y1, x0, x1,
+                               n_labels, label_offsets)
+
+
+def test_source_stats_all_nan():
+    """
+    Test that a segment without any finite pixel has NaN extrema and
+    zero flux in both the compiled stats kernel and the reference
+    implementation, and that deblend_sources leaves it unchanged.
+    """
+    data = np.full((3, 4), np.nan)
+    segment = np.ones((3, 4), dtype=np.int32)
+    labels = np.array([1], dtype=np.int64)
+    smin, smax, ssum = deblend_source_stats(data, segment, labels,
+                                            np.array([0]), np.array([3]),
+                                            np.array([0]), np.array([4]))
+    assert np.isnan(smin[0])
+    assert np.isnan(smax[0])
+    assert ssum[0] == 0.0
+
+    params = _DeblendParams(1, np.ones((3, 3)), 32, 0.001, 'linear')
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        deblender = _SingleSourceDeblender(data, segment, 1, params)
+    assert np.isnan(deblender.source_min)
+    assert np.isnan(deblender.source_max)
+    assert deblender.source_sum == 0.0
+
+    segm = SegmentationImage(segment)
+    result = deblend_sources(data, segm, 1)
+    assert_equal(result.data, segment)
+    assert result.parent_to_deblended_labels == {}
+
+
+def test_markers_chunk_packed_buffer():
+    """
+    Test that the marker kernel writes each source's markers into its
+    packed region, leaves the regions of sources that do not split or
+    that exceed max_markers at zero, and reports the marker counts.
+    """
+    data, segm, bounds, offsets = make_packed_pair()
+    packed, n_markers, _ = run_packed_markers(data, segm, bounds, offsets)
+    assert_equal(n_markers, [2, 0])
+    region0 = packed[offsets[0]:offsets[1]]
+    region1 = packed[offsets[1]:offsets[2]]
+    assert_equal(np.unique(region0), [0, 1, 2])
+    assert not region1.any()
+
+    # A limit below the marker count leaves the region zero but still
+    # reports the count
+    packed, n_markers, _ = run_packed_markers(data, segm, bounds, offsets,
+                                              max_markers=1)
+    assert_equal(n_markers, [2, 0])
+    assert not packed.any()
+
+
 @pytest.mark.parametrize('dtype', ['float64', 'float32'])
 @pytest.mark.parametrize('connectivity', [8, 4])
 @pytest.mark.parametrize(
@@ -1008,12 +1291,16 @@ def test_saddle_markers_match_reference(dtype, connectivity, scene,
     thresholds_2d = np.ascontiguousarray(thresholds[None, :],
                                          dtype=np.float64)
     limit = deblender.contrast * float(deblender.source_sum)
-    markers_list, _ = deblend_markers_chunk(
+    packed = np.zeros(cutout.size, dtype=np.int32)
+    starts = np.zeros(1, dtype=np.intp)
+    n_markers = deblend_markers_chunk(
         np.ascontiguousarray(data), segm.data,
         np.array([1], dtype=np.int64), y0, y1, x0, x1, thresholds_2d,
-        n_pixels=5, connectivity=connectivity, max_markers=-1,
-        saddle_limits=np.array([limit], dtype=np.float64))
-    result = markers_list[0]
+        packed, starts, n_pixels=5, connectivity=connectivity,
+        max_markers=-1, saddle_limits=np.array([limit], dtype=np.float64))
+    result = None
+    if n_markers[0] >= 2:
+        result = packed.reshape(cutout.shape)
 
     if expected is None or result is None:
         assert expected is None

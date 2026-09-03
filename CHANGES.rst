@@ -295,20 +295,19 @@ New Features
     results identical to the single-threaded computation. [#2407]
 
   - Significantly improved the performance of source deblending in
-    ``deblend_sources`` and ``SourceFinder``, producing identical results.
-    The multithreshold watershed markers are now built by compiled code.
-    Deblending is typically ~7-30 times faster, both for fields of many
-    small blended sources and for large segments with many markers.
-    [#2408]
+    ``deblend_sources`` and ``SourceFinder``, producing identical
+    results. The multithreshold watershed markers are now built by
+    compiled code. Deblending is typically ~7-30 times faster, both for
+    fields of many small blended sources and for large segments with
+    many markers. [#2408, #2413]
 
   - Added an ``n_threads`` keyword to ``deblend_sources`` and
     ``SourceFinder`` to deblend the sources using multiple threads.
     The sources are divided into chunks and processed concurrently,
-    producing results identical to the single-threaded computation.
-    The marker-building kernels release the GIL, as do the
-    watershed and most of the array operations, so multithreading
-    can significantly speed up deblending, especially for large
-    sources. [#2409]
+    producing results identical to the single-threaded computation. Each
+    chunk is deblended by a few compiled calls that release the GIL, so
+    multithreading speeds up deblending for fields of many small sources
+    as well as for large sources. [#2409, #2413]
 
   - Added a ``contrast_method`` keyword to ``deblend_sources`` and
     ``SourceFinder`` to select the flux used by the deblending contrast

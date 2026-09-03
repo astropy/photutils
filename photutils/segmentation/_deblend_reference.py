@@ -20,7 +20,7 @@ from photutils.segmentation._deblend_markers import make_deblend_markers
 from photutils.segmentation._deblend_watershed import deblend_watershed
 from photutils.segmentation.core import _get_labels
 from photutils.segmentation.deblend import _MAX_MARKERS, _create_relabel_map
-from photutils.utils._stats import nanmax, nanmin, nansum
+from photutils.utils._stats import nanmax, nanmin
 
 
 def _detect_sources_deblend(data, threshold, n_pixels, *, footprint,
@@ -153,7 +153,15 @@ class _SingleSourceDeblender:
         data_values = data[self.segment_mask]
         self.source_min = nanmin(data_values)
         self.source_max = nanmax(data_values)
-        self.source_sum = nansum(data_values)
+        # The flux is accumulated sequentially in float64 in raster
+        # order, exactly as the compiled stats kernel does. np.cumsum
+        # is a sequential accumulation, unlike the pairwise np.nansum
+        finite_values = data_values[~np.isnan(data_values)]
+        if finite_values.size > 0:
+            self.source_sum = float(np.cumsum(finite_values,
+                                              dtype=np.float64)[-1])
+        else:
+            self.source_sum = 0.0
         self.warnings = {}
 
     @cached_property

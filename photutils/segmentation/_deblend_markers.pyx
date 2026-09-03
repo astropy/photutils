@@ -28,9 +28,8 @@ The multithreshold levels themselves are computed by the caller
 (vectorized in NumPy over all the sources of a chunk, see
 ``photutils.segmentation.deblend``) and passed in, so that they are
 bitwise identical to the pure-Python reference implementation on every
-platform. The kernels here compute the per-source data extrema that the
-levels depend on, quantize each cutout against its levels, and build the
-markers.
+platform. The kernels here compute the per-source data extrema and
+flux, quantize each cutout against its levels, and build the markers.
 
 The kernels run without the GIL and use no global mutable state, so
 this module is safe to use from multiple threads, including on
@@ -42,7 +41,7 @@ import numpy as np
 from libc.math cimport NAN, isnan
 from libc.stdlib cimport free, malloc, realloc
 
-__all__ = ['deblend_markers_chunk', 'deblend_source_extrema',
+__all__ = ['deblend_markers_chunk', 'deblend_source_stats',
            'make_deblend_markers']
 
 ctypedef fused data_t:
@@ -708,16 +707,17 @@ cdef inline int _count_below(const double* thresholds, int n_levels,
     return lo
 
 
-cdef void _source_extrema(const data_t* data, const segm_t* segm,
-                          Py_ssize_t img_nx, long long label,
-                          Py_ssize_t y0, Py_ssize_t y1, Py_ssize_t x0,
-                          Py_ssize_t x1, double* smin,
-                          double* smax) noexcept nogil:
+cdef void _source_stats(const data_t* data, const segm_t* segm,
+                        Py_ssize_t img_nx, long long label,
+                        Py_ssize_t y0, Py_ssize_t y1, Py_ssize_t x0,
+                        Py_ssize_t x1, double* smin, double* smax,
+                        double* ssum) noexcept nogil:
     """
-    Compute the minimum and maximum data value of one source segment.
+    Compute the minimum, maximum, and flux of one source segment.
 
-    NaN pixels are excluded. Both outputs are NaN if the segment has no
-    finite pixel.
+    NaN pixels are excluded. The flux is accumulated sequentially in
+    float64 in raster order. The minimum and maximum are NaN, and the
+    flux is 0, if the segment has no finite pixel.
     """
     cdef Py_ssize_t iy, ix, idx
     cdef double value
@@ -725,6 +725,7 @@ cdef void _source_extrema(const data_t* data, const segm_t* segm,
 
     smin[0] = NAN
     smax[0] = NAN
+    ssum[0] = 0.0
     for iy in range(y1 - y0):
         for ix in range(x1 - x0):
             idx = (y0 + iy) * img_nx + x0 + ix
@@ -733,6 +734,7 @@ cdef void _source_extrema(const data_t* data, const segm_t* segm,
             value = <double>data[idx]
             if isnan(value):
                 continue
+            ssum[0] += value
             if not has_value:
                 smin[0] = value
                 smax[0] = value
@@ -743,18 +745,20 @@ cdef void _source_extrema(const data_t* data, const segm_t* segm,
                 smax[0] = value
 
 
-def deblend_source_extrema(const data_t[:, ::1] data,
-                           const segm_t[:, ::1] segm_data,
-                           const long long[::1] labels,
-                           const long long[::1] y0,
-                           const long long[::1] y1,
-                           const long long[::1] x0,
-                           const long long[::1] x1):
+def deblend_source_stats(const data_t[:, ::1] data,
+                         const segm_t[:, ::1] segm_data,
+                         const long long[::1] labels,
+                         const long long[::1] y0,
+                         const long long[::1] y1,
+                         const long long[::1] x0,
+                         const long long[::1] x1):
     """
-    Compute the minimum and maximum data value of each source segment.
+    Compute the minimum, maximum, and flux of each source segment.
 
-    NaN pixels are excluded, so the results are identical to the
-    ``nanmin`` and ``nanmax`` reductions over the segment pixels.
+    NaN pixels are excluded. The minimum and maximum are identical to
+    the ``nanmin`` and ``nanmax`` reductions over the segment pixels.
+    The flux is accumulated sequentially in float64 in raster order,
+    which is what ``np.cumsum(values, dtype=np.float64)[-1]`` computes.
 
     Parameters
     ----------
@@ -772,9 +776,10 @@ def deblend_source_extrema(const data_t[:, ::1] data,
 
     Returns
     -------
-    source_min, source_max : 1D float64 `~numpy.ndarray`
-        The minimum and maximum data value of each source segment. Both
-        are NaN for a segment without any finite pixel.
+    source_min, source_max, source_sum : 1D float64 `~numpy.ndarray`
+        The minimum, maximum, and flux of each source segment. The
+        minimum and maximum are NaN, and the flux is 0, for a segment
+        without any finite pixel.
     """
     cdef Py_ssize_t n_src = labels.shape[0]
     cdef Py_ssize_t img_nx = data.shape[1]
@@ -782,16 +787,19 @@ def deblend_source_extrema(const data_t[:, ::1] data,
 
     smin_arr = np.empty(n_src, dtype=np.float64)
     smax_arr = np.empty(n_src, dtype=np.float64)
+    ssum_arr = np.empty(n_src, dtype=np.float64)
     cdef double[::1] smin_mv = smin_arr
     cdef double[::1] smax_mv = smax_arr
+    cdef double[::1] ssum_mv = ssum_arr
 
     with nogil:
         for isrc in range(n_src):
-            _source_extrema(&data[0, 0], &segm_data[0, 0], img_nx,
-                            labels[isrc], y0[isrc], y1[isrc], x0[isrc],
-                            x1[isrc], &smin_mv[isrc], &smax_mv[isrc])
+            _source_stats(&data[0, 0], &segm_data[0, 0], img_nx,
+                          labels[isrc], y0[isrc], y1[isrc], x0[isrc],
+                          x1[isrc], &smin_mv[isrc], &smax_mv[isrc],
+                          &ssum_mv[isrc])
 
-    return smin_arr, smax_arr
+    return smin_arr, smax_arr, ssum_arr
 
 
 cdef Py_ssize_t _source_markers(const data_t* data, const segm_t* segm,
@@ -847,7 +855,9 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
                           const long long[::1] y1,
                           const long long[::1] x0,
                           const long long[::1] x1,
-                          const double[:, ::1] thresholds, *,
+                          const double[:, ::1] thresholds,
+                          int[::1] packed,
+                          const Py_ssize_t[::1] starts, *,
                           int n_pixels, int connectivity,
                           int max_markers, saddle_limits=None):
     """
@@ -876,6 +886,18 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
         The multithreshold levels of each source, with shape
         ``(n_sources, n_levels)`` and ascending along the second axis.
 
+    packed : 1D int32 `~numpy.ndarray`
+        The buffer that receives the marker image of every source. The
+        region of source ``i`` starts at ``starts[i]`` and holds its
+        ``(y1 - y0) * (x1 - x0)`` cutout pixels in raster order. Each
+        region is zeroed, and then the markers are written for the
+        sources that split into two or more markers (and no more than
+        ``max_markers`` when it is not negative). The other regions are
+        left at zero.
+
+    starts : 1D intp `~numpy.ndarray`
+        The start index of each source's region in ``packed``.
+
     n_pixels : int
         The minimum number of connected pixels an above-threshold
         component must have to be considered a source.
@@ -885,9 +907,9 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
 
     max_markers : int
         The number of markers above which the marker image of a source
-        is not built. Its marker count is still returned, so that the
-        caller can retry the source with other levels. A negative value
-        disables the limit.
+        is not kept (its region is left at zero). Its marker count is
+        still returned, so that the caller can retry the source with
+        other levels. A negative value disables the limit.
 
     saddle_limits : 1D float64 `~numpy.ndarray` or `None`, optional
         If given, the markers are selected with the saddle contrast
@@ -899,28 +921,31 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
 
     Returns
     -------
-    markers_list : list of 2D int `~numpy.ndarray` or `None`
-        The cutout marker image of each source that splits into two or
-        more markers (and no more than ``max_markers``), otherwise
-        `None`.
-
     n_markers : 1D intp `~numpy.ndarray`
         The number of markers found for each source.
     """
     cdef Py_ssize_t n_src = labels.shape[0]
     cdef Py_ssize_t img_nx = data.shape[1]
     cdef int n_levels = thresholds.shape[1]
-    cdef Py_ssize_t isrc, n_tot, max_ntot, ny_c, nx_c
+    cdef Py_ssize_t isrc, n_tot, max_ntot, ny_c, nx_c, start, p
     cdef Py_ssize_t n_markers
     cdef bint use_saddle = saddle_limits is not None
 
     if thresholds.shape[0] != n_src:
         msg = 'thresholds must have one row per source'
         raise ValueError(msg)
+    if (y0.shape[0] != n_src or y1.shape[0] != n_src
+            or x0.shape[0] != n_src or x1.shape[0] != n_src
+            or starts.shape[0] != n_src):
+        msg = 'every per-source array must have one entry per source'
+        raise ValueError(msg)
 
     max_ntot = 1
     for isrc in range(n_src):
         n_tot = (y1[isrc] - y0[isrc]) * (x1[isrc] - x0[isrc])
+        if starts[isrc] + n_tot > packed.shape[0]:
+            msg = 'packed is too small for the source regions'
+            raise ValueError(msg)
         if n_tot > max_ntot:
             max_ntot = n_tot
 
@@ -932,7 +957,6 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
     node_of_root_arr = np.zeros(max_ntot, dtype=np.int32)
     order_arr = np.empty(max_ntot, dtype=np.int32)
     flood_arr = np.empty(max_ntot, dtype=np.int32)
-    markers_arr = np.zeros(max_ntot, dtype=np.int32)
     n_markers_arr = np.zeros(n_src, dtype=np.intp)
 
     cdef int[::1] q_mv = q_arr
@@ -943,7 +967,6 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
     cdef int[::1] node_of_root_mv = node_of_root_arr
     cdef int[::1] order_mv = order_arr
     cdef int[::1] flood_mv = flood_arr
-    cdef int[::1] markers_mv = markers_arr
     cdef Py_ssize_t[::1] n_markers_mv = n_markers_arr
 
     # The saddle criterion inputs, with workspaces used only by it
@@ -965,14 +988,20 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
         saddle.posimg = &posimg_mv[0]
         saddle.fsum = &fsum_mv[0]
 
-    markers_list = []
-    for isrc in range(n_src):
-        ny_c = y1[isrc] - y0[isrc]
-        nx_c = x1[isrc] - x0[isrc]
-        if use_saddle:
-            saddle.limit = saddle_limits_mv[isrc]
-            saddle.thresholds = &thresholds[isrc, 0]
-        with nogil:
+    # The whole chunk runs without the GIL, so that the threads of a
+    # multithreaded deblend do not contend for it once per source.
+    cdef bint failed = False
+    with nogil:
+        for isrc in range(n_src):
+            ny_c = y1[isrc] - y0[isrc]
+            nx_c = x1[isrc] - x0[isrc]
+            n_tot = ny_c * nx_c
+            start = starts[isrc]
+            if use_saddle:
+                saddle.limit = saddle_limits_mv[isrc]
+                saddle.thresholds = &thresholds[isrc, 0]
+            for p in range(n_tot):
+                packed[start + p] = 0
             n_markers = _source_markers(
                 &data[0, 0], &segm_data[0, 0], img_nx, labels[isrc],
                 y0[isrc], y1[isrc], x0[isrc], x1[isrc], n_pixels,
@@ -980,18 +1009,16 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
                 &saddle, &q_mv[0],
                 &parent_mv[0], &size_mv[0], &added_mv[0],
                 &stamp_mv[0], &node_of_root_mv[0], &order_mv[0],
-                &flood_mv[0], &markers_mv[0])
-        if n_markers < 0:
-            raise MemoryError
-        n_markers_mv[isrc] = n_markers
-        if n_markers >= 2 and (max_markers < 0
-                               or n_markers <= max_markers):
-            n_tot = ny_c * nx_c
-            quantized = q_arr[:n_tot].reshape(ny_c, nx_c)
-            markers = markers_arr[:n_tot].reshape(ny_c, nx_c)
-            markers_list.append(np.where(quantized > 0, markers,
-                                         np.int32(0)))
-        else:
-            markers_list.append(None)
+                &flood_mv[0], &packed[start])
+            if n_markers < 0:
+                failed = True
+                break
+            if n_markers < 2 or (max_markers >= 0
+                                 and n_markers > max_markers):
+                for p in range(n_tot):
+                    packed[start + p] = 0
+            n_markers_mv[isrc] = n_markers
+    if failed:
+        raise MemoryError
 
-    return markers_list, n_markers_arr
+    return n_markers_arr

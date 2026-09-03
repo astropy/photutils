@@ -12,14 +12,14 @@ import numpy as np
 from astropy.units import Quantity
 
 from photutils.segmentation._deblend_markers import (deblend_markers_chunk,
-                                                     deblend_source_extrema)
-from photutils.segmentation._deblend_watershed import deblend_source_contrast
+                                                     deblend_source_stats)
+from photutils.segmentation._deblend_watershed import (deblend_contrast_chunk,
+                                                       write_deblended_labels)
 from photutils.segmentation.core import (SegmentationImage, _get_labels,
                                          _remap_deblend_label_map)
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._deprecation import deprecated_renamed_argument
-from photutils.utils._stats import nansum
 from photutils.utils.exceptions import DeblendWarning
 
 __all__ = ['deblend_sources']
@@ -81,6 +81,29 @@ class _DeblendParams:
     contrast: float
     mode: str
     contrast_method: str = 'basin'
+
+
+@dataclass
+class _ChunkResult:
+    """
+    The deblending results of a chunk of sources.
+
+    The deblended labels of every source are stored in the packed
+    cutout layout of the compiled kernels. The region of source ``i``
+    is ``packed[offsets[i]:offsets[i + 1]]``, its bounding-box cutout
+    in raster order. It holds consecutive labels from 1 if the source
+    deblended (``n_labels[i] >= 2``), and zeros otherwise.
+    """
+
+    n_labels: np.ndarray
+    packed: np.ndarray
+    offsets: np.ndarray
+    y0: np.ndarray
+    y1: np.ndarray
+    x0: np.ndarray
+    x1: np.ndarray
+    nonposmin: np.ndarray
+    n_markers_fallback: np.ndarray
 
 
 @deprecated_renamed_argument('segment_img', 'segmentation_image', '3.0',
@@ -203,10 +226,10 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         sources are divided into chunks and processed concurrently. The
         per-source results are independent and are assembled in the
         input-label order, so they are identical to the single-threaded
-        computation. The marker-building kernels release the Python
-        global interpreter lock (GIL), as do the watershed and most of
-        the array operations, so multithreading can significantly speed
-        up the deblending, especially for large sources.
+        computation. Each chunk is deblended by a few compiled calls
+        that release the Python global interpreter lock (GIL), so
+        multithreading speeds up the deblending of fields of many small
+        sources as well as of large sources.
 
     nproc : int, optional
         This keyword is deprecated and has no effect. It was the name of
@@ -318,7 +341,6 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     deblend_params = _DeblendParams(n_pixels, footprint, n_levels, contrast,
                                     mode, contrast_method)
 
-    segm_deblended = segmentation_image.data.copy()
     label_indices = segmentation_image.get_indices(labels)
     all_slices = [segmentation_image.slices[idx] for idx in label_indices]
 
@@ -344,7 +366,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         # their bounding-box area (the size of the cutouts the kernels
         # work on), so that the chunks carry similar amounts of work
         # regardless of the source ordering. The chunks are processed
-        # concurrently and the per-source results are scattered back
+        # concurrently and the per-source results are gathered back
         # into the input order, so they are identical to the
         # single-threaded computation.
         bbox_areas = np.array([(slc[0].stop - slc[0].start)
@@ -360,39 +382,54 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                                           driver_segm, labels[indices],
                                           chunk_slices, deblend_params)
 
-        results = [None] * len(labels)
         with ThreadPoolExecutor(max_workers=n_chunks) as executor:
-            for indices, chunk_results in zip(
-                    chunk_indices, executor.map(_run_chunk, chunk_indices),
-                    strict=True):
-                for index, result in zip(indices, chunk_results,
-                                         strict=True):
-                    results[index] = result
+            chunk_results = list(zip(chunk_indices,
+                                     executor.map(_run_chunk,
+                                                  chunk_indices),
+                                     strict=True))
     else:
-        results = _deblend_sources_chunk(data, segm_data, driver_data,
-                                         driver_segm, labels,
-                                         all_slices, deblend_params)
+        chunk_results = [(np.arange(len(labels)),
+                          _deblend_sources_chunk(data, segm_data,
+                                                 driver_data, driver_segm,
+                                                 labels, all_slices,
+                                                 deblend_params))]
 
-    deblend_label_map = {}
-    max_label = segmentation_image.max_label
-    nonposmin_labels = []
-    n_markers_labels = []
-    for label, source_slice, (source_deblended, warns) in zip(
-            labels, all_slices, results, strict=True):
-        if warns:
-            if 'nonposmin' in warns:
-                nonposmin_labels.append(label)
-            if 'n_markers' in warns:
-                n_markers_labels.append(label)
+    # Gather the per-source counts and fallback flags in the input
+    # order. The deblended labels of each source follow its
+    # predecessors, so the label offsets are a cumulative sum of the
+    # counts, starting after the largest input label
+    n_labels = np.zeros(len(labels), dtype=np.intp)
+    nonposmin = np.zeros(len(labels), dtype=bool)
+    n_markers_fallback = np.zeros(len(labels), dtype=bool)
+    for indices, result in chunk_results:
+        n_labels[indices] = result.n_labels
+        nonposmin[indices] = result.nonposmin
+        n_markers_fallback[indices] = result.n_markers_fallback
+    deblended = n_labels >= 2
+    counts = np.where(deblended, n_labels, 0)
+    label_offsets = np.zeros(len(labels), dtype=np.int64)
+    np.cumsum(counts[:-1], out=label_offsets[1:])
+    label_offsets += segmentation_image.max_label
 
-        if source_deblended is not None:
-            source_mask = source_deblended > 0
-            new_segm = source_deblended[source_mask]  # min label = 1
-            segm_deblended[source_slice][source_mask] = (
-                new_segm + max_label)
-            new_labels = _get_labels(new_segm) + max_label
-            deblend_label_map[label] = new_labels
-            max_label += len(new_labels)
+    segm_out = driver_segm.copy()
+    for indices, result in chunk_results:
+        write_deblended_labels(segm_out, result.packed,
+                               result.offsets[:-1], result.y0,
+                               result.y1, result.x0, result.x1,
+                               result.n_labels, label_offsets[indices])
+    segm_deblended = segm_out.astype(segm_data.dtype, copy=False)
+
+    # The child labels carry the dtype of the output segmentation
+    # image, as the image itself does
+    deblend_label_map = {
+        int(label): (np.arange(1, count + 1) + offset).astype(
+            segm_deblended.dtype)
+        for label, count, offset in zip(labels[deblended],
+                                        counts[deblended],
+                                        label_offsets[deblended],
+                                        strict=True)}
+    nonposmin_labels = list(labels[nonposmin])
+    n_markers_labels = list(labels[n_markers_fallback])
 
     if nonposmin_labels or n_markers_labels:
         msg = ('The deblending mode of one or more source labels from the '
@@ -538,10 +575,15 @@ def _compute_thresholds(source_min, source_max, n_levels, mode):
             nonposmin)
 
 
-def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
-                           labels, slices, deblend_params):
+def _deblend_sources_chunk(data, segm_data,  # noqa: ARG001
+                           driver_data, driver_segm, labels, slices,
+                           deblend_params):
     """
     Deblend a chunk of labeled sources.
+
+    The signature is shared with the pure-Python chunk function of the
+    cross-implementation tests, which needs ``segm_data`` even though
+    the compiled kernels read only ``driver_segm``.
 
     The data extrema of every source in the chunk are computed by a
     compiled kernel, the multithreshold levels and the mode fallbacks
@@ -549,7 +591,8 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
     quantization and the marker construction run in the compiled chunk
     driver (which releases the GIL and reuses one workspace across the
     chunk), and the watershed and contrast steps then run for the
-    sources that split into two or more markers.
+    sources that split into two or more markers, in one compiled call
+    over the chunk.
 
     Parameters
     ----------
@@ -574,9 +617,8 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
 
     Returns
     -------
-    results : list of (2D `~numpy.ndarray` or `None`, dict)
-        For each source, the deblended cutout (`None` if the source
-        did not deblend) and the mode-fallback warnings dictionary.
+    result : `_ChunkResult`
+        The per-source deblended labels and mode-fallback flags.
     """
     labels = np.asarray(labels, dtype=np.int64)
     y0 = np.array([slc[0].start for slc in slices], dtype=np.int64)
@@ -589,28 +631,28 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
     chunk_kwargs = {'n_pixels': int(deblend_params.n_pixels),
                     'connectivity': connectivity}
 
-    source_min, source_max = deblend_source_extrema(
+    source_min, source_max, source_sum = deblend_source_stats(
         driver_data, driver_segm, labels, y0, y1, x0, x1)
 
     # Constant (or all-NaN) sources do not deblend. The multithreshold
     # levels of the other sources are computed in the data dtype, as
     # the pure-Python reference implementation does
     active = np.flatnonzero(source_min < source_max)
-    markers_list = [None] * len(labels)
     nonposmin = np.zeros(len(labels), dtype=bool)
     n_markers_fallback = np.zeros(len(labels), dtype=bool)
+    n_markers = np.zeros(len(labels), dtype=np.intp)
 
-    # The saddle criterion selects the markers against the total source
-    # fluxes, so those are computed up front. The basin criterion needs
-    # them only for the sources that split.
+    # One packed buffer holds the bounding-box cutout of every source
+    # in the chunk, back to back. The kernels write the markers and
+    # then the deblended labels into it, so no per-source arrays are
+    # created in Python
+    sizes = (y1 - y0) * (x1 - x0)
+    offsets = np.zeros(len(labels) + 1, dtype=np.intp)
+    np.cumsum(sizes, out=offsets[1:])
+    packed = np.zeros(offsets[-1], dtype=np.int32)
+    starts = offsets[:-1]
+
     use_saddle = deblend_params.contrast_method == 'saddle'
-    source_sums = {}
-    if use_saddle:
-        for index in active:
-            slc = slices[index]
-            values = data[slc][segm_data[slc] == labels[index]]
-            source_sums[index] = float(nansum(values))
-
     if active.size > 0:
         values_dtype = data.dtype.newbyteorder('=')
         smin = source_min[active].astype(values_dtype)
@@ -620,9 +662,7 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         nonposmin[active] = fallback
         saddle_limits = None
         if use_saddle:
-            saddle_limits = np.array([deblend_params.contrast
-                                      * source_sums[index]
-                                      for index in active])
+            saddle_limits = deblend_params.contrast * source_sum[active]
         # Sources with too many markers are only retried with linearly
         # spaced levels (below), so only then may the kernel skip
         # building their markers. With the saddle criterion the markers
@@ -630,64 +670,35 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         # watershed, so no fallback is needed.
         can_retry = mode != 'linear' and not use_saddle
         max_markers = _MAX_MARKERS if can_retry else -1
-        markers, n_markers = deblend_markers_chunk(
+        n_markers[active] = deblend_markers_chunk(
             driver_data, driver_segm, labels[active], y0[active],
-            y1[active], x0[active], x1[active], thresholds,
-            max_markers=max_markers, saddle_limits=saddle_limits,
-            **chunk_kwargs)
-        for index, source_markers in zip(active, markers, strict=True):
-            markers_list[index] = source_markers
+            y1[active], x0[active], x1[active], thresholds, packed,
+            starts[active], max_markers=max_markers,
+            saddle_limits=saddle_limits, **chunk_kwargs)
 
         # Too many markers make the watershed step very slow, so such
         # sources are deblended again with linearly spaced levels
         if can_retry:
-            retry = np.flatnonzero(n_markers > _MAX_MARKERS)
+            retry = np.flatnonzero(n_markers[active] > _MAX_MARKERS)
             if retry.size > 0:
                 thresholds, _ = _compute_thresholds(
                     smin[retry], smax[retry], n_levels, 'linear')
                 retry = active[retry]
-                markers, _ = deblend_markers_chunk(
+                n_markers[retry] = deblend_markers_chunk(
                     driver_data, driver_segm, labels[retry], y0[retry],
-                    y1[retry], x0[retry], x1[retry], thresholds,
-                    max_markers=-1, **chunk_kwargs)
-                for index, source_markers in zip(retry, markers,
-                                                 strict=True):
-                    markers_list[index] = source_markers
+                    y1[retry], x0[retry], x1[retry], thresholds, packed,
+                    starts[retry], max_markers=-1, **chunk_kwargs)
                 n_markers_fallback[retry] = True
 
-    results = []
-    for index, (label, slc, markers) in enumerate(
-            zip(labels, slices, markers_list, strict=True)):
-        warns = {}
-        if nonposmin[index]:
-            warns['nonposmin'] = 'non-positive minimum'
-        if n_markers_fallback[index]:
-            warns['n_markers'] = 'too many markers'
-        if markers is None:
-            results.append((None, warns))
-            continue
+    n_labels = deblend_contrast_chunk(
+        driver_data, driver_segm, labels, y0, y1, x0, x1, packed, starts,
+        n_markers, connectivity=connectivity,
+        contrast=float(deblend_params.contrast), source_sum=source_sum,
+        source_min=source_min, apply_contrast=not use_saddle)
 
-        # The total source flux is computed with the same reduction as
-        # the per-source Python path (its rounding depends on the
-        # summation order) and the source minimum comes from the
-        # compiled extrema. Both are passed to the compiled contrast
-        # loop. With the saddle criterion, the markers are already
-        # contrast-selected, so the basin removal is disabled.
-        if use_saddle:
-            source_sum = source_sums[index]
-        else:
-            values = data[slc][segm_data[slc] == label]
-            source_sum = float(nansum(values))
-        source_deblended = deblend_source_contrast(
-            driver_data, driver_segm, int(label), int(y0[index]),
-            int(y1[index]), int(x0[index]), int(x1[index]), markers,
-            connectivity=connectivity,
-            contrast=float(deblend_params.contrast),
-            source_sum=source_sum, source_min=float(source_min[index]),
-            apply_contrast=not use_saddle)
-        results.append((source_deblended, warns))
-
-    return results
+    return _ChunkResult(n_labels=n_labels, packed=packed, offsets=offsets,
+                        y0=y0, y1=y1, x0=x0, x1=x1, nonposmin=nonposmin,
+                        n_markers_fallback=n_markers_fallback)
 
 
 def _make_flags_map(deblend_label_map, nonposmin_labels, n_markers_labels,
