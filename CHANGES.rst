@@ -314,8 +314,8 @@ New Features
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's
     ``AstropyUserWarning``, which is raised by ``deblend_sources``
-    when the deblending mode is changed to "linear" for one or more
-    sources. [#2378]
+    when the deblending mode is changed to a fallback mode for one or
+    more sources. [#2378]
 
 Bug Fixes
 ^^^^^^^^^
@@ -1043,6 +1043,17 @@ API Changes
     because its process startup and data-pickling overheads made it
     slower than the serial implementation at any number of sources.
     [#2408]
+
+  - The ``deblend_sources`` and ``SourceFinder`` deblending-mode
+    fallback for sources with non-positive minimum data values (used
+    with ``mode='exponential'``, for which such sources are
+    undefined) was changed from "linear" to "sinh". The sinh
+    spacing keeps the threshold levels concentrated near the source
+    minimum, recovering faint companions of bright sources that the
+    linear spacing misses, so deblending results can change for the
+    affected sources. The ``'nonposmin_labels'`` info key and the
+    ``deblend_nonposmin`` flag are unchanged and continue to record
+    the affected sources. [#2410]
 
 - ``photutils.utils``
 

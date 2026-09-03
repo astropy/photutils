@@ -690,7 +690,8 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
                                    'contrast-batch', 'contrast-single',
                                    'contrast-all', 'contrast-negmin',
                                    'neighbors', 'nan',
-                                   'checkerboard-linear'])
+                                   'checkerboard-linear',
+                                   'checkerboard-negmin'])
 def test_chunk_driver_matches_python_path(dtype, scene):
     """
     Test that the compiled chunk driver and contrast loop produce
@@ -706,8 +707,10 @@ def test_chunk_driver_matches_python_path(dtype, scene):
     basin, and the removal path for sources with a negative minimum
     (which always removes one marker at a time), a scene of several
     segments with overlapping bounding boxes, NaN pixels within a
-    segment, and the checkerboard deblended in linear mode, which keeps
-    all of its markers instead of falling back.
+    segment, the checkerboard deblended in linear mode, which keeps
+    all of its markers instead of falling back, and the checkerboard
+    with a non-positive minimum, which falls back to sinh and is then
+    retried with linear levels.
     """
     contrast = 0.001
     mode = 'linear' if scene == 'checkerboard-linear' else 'exponential'
@@ -766,6 +769,10 @@ def test_chunk_driver_matches_python_path(dtype, scene):
 
     data = data.astype(dtype)
     segm = detect_sources(data, threshold, n_pixels)
+    if scene == 'checkerboard-negmin':
+        # A non-positive minimum (sinh fallback) combined with too many
+        # markers (linear retry), applied after the detection
+        data = data - 2
     if scene == 'nan':
         # NaN pixels within the segment, set after the detection
         rng = np.random.default_rng(11)
@@ -930,6 +937,37 @@ def test_compute_thresholds_matches_reference(dtype, mode, n_levels):
         assert_equal(thresholds[i].view(np.int64),
                      expected.view(np.int64))
         assert nonposmin[i] == ('nonposmin' in deblender.warnings)
+
+
+def test_nonposmin_fallback_sinh():
+    """
+    Test that the non-positive-minimum fallback uses sinh mode.
+
+    The sinh spacing keeps the threshold levels concentrated near the
+    source minimum, recovering a faint companion of a bright source that
+    the linear spacing misses.
+    """
+    y, x = np.mgrid[0:61, 0:81]
+    data = (Gaussian2D(1000, 36, 30, 1.7, 1.7)(x, y)
+            + Gaussian2D(20, 44, 30, 1.7, 1.7)(x, y) - 1.2)
+    segm = detect_sources(data, -0.2, 5)
+    assert segm.n_labels == 1
+
+    match = 'The deblending mode of one or more source labels'
+    with pytest.warns(DeblendWarning, match=match):
+        result = deblend_sources(data, segm, 5, mode='exponential',
+                                 contrast=1e-6)
+    assert result.n_labels == 2
+    assert_equal(result.info['nonposmin_labels'], [1])
+    bit = SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN
+    assert_equal(result.flags & bit, [bit, bit])
+
+    # The linear mode does not recover this companion, so the sinh
+    # fallback is a real sensitivity improvement over the previous
+    # linear fallback.
+    result_linear = deblend_sources(data, segm, 5, mode='linear',
+                                    contrast=1e-6)
+    assert result_linear.n_labels == 1
 
 
 def test_python_path_connectivity_mismatch():

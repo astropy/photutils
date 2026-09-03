@@ -100,11 +100,11 @@ class _SegmentationFlags(FlagRegistry):
         FlagDefinition(
             bit_value=64,
             name='deblend_nonposmin',
-            description=('deblending mode changed to linear: '
+            description=('deblending mode changed to sinh: '
                          'non-positive minimum'),
             detailed_description=('The deblending mode for the '
                                   'parent source was changed to '
-                                  '"linear" because of a '
+                                  '"sinh" because of a '
                                   'non-positive minimum data value '
                                   'within the parent source '
                                   'segment.'),

@@ -156,7 +156,7 @@ class _SingleSourceDeblender:
 
         Note that this method has side effects. When the mode is
         "exponential" and the source minimum is non-positive, it
-        changes ``self.mode`` to "linear" and records the fallback in
+        changes ``self.mode`` to "sinh" and records the fallback in
         ``self.warnings``. Later calls (e.g., from ``make_markers``)
         therefore use the fallback mode, mirroring the sticky per-source
         mode fallback in the compiled pipeline.
@@ -167,8 +167,11 @@ class _SingleSourceDeblender:
             The multi-level detection thresholds for the source.
         """
         if self.mode == 'exponential' and self.source_min <= 0:
+            # The exponential spacing is undefined for non-positive
+            # minima. sinh keeps the levels concentrated near the
+            # source minimum and is defined for any data values.
             self.warnings['nonposmin'] = 'non-positive minimum'
-            self.mode = 'linear'
+            self.mode = 'sinh'
 
         if self.mode == 'linear':
             thresholds = self.linear_thresholds

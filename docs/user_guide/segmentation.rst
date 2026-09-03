@@ -833,7 +833,7 @@ quality flags via its ``flags`` attribute (also included in the default
 table columns). The flags combine deblending provenance recorded by
 :func:`~photutils.segmentation.deblend_sources` (e.g., whether a source
 was produced by deblending, or whether its deblending mode fell back
-to "linear") with measurement-time conditions: the source touches
+to another mode) with measurement-time conditions: the source touches
 an image boundary, masked or non-finite pixels within the segment,
 undefined or degenerate shape properties, windowed or quadratic
 centroid failures, and Kron-aperture issues (``kron_``-prefixed
