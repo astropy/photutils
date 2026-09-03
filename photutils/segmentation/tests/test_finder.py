@@ -103,10 +103,14 @@ def test_finder_deprecations():
     with pytest.warns(AstropyDeprecationWarning, match=match):
         _ = finder.nlevels
 
-    with pytest.warns(AstropyDeprecationWarning, match='progress_bar'):
-        SourceFinder(n_pixels=10, progress_bar=False)
-    with pytest.warns(AstropyDeprecationWarning, match='n_processes'):
-        SourceFinder(n_pixels=10, n_processes=2)
+    # Each deprecated keyword emits exactly one warning
+    for kwargs in ({'progress_bar': False}, {'n_processes': 2},
+                   {'nproc': 2}):
+        name = next(iter(kwargs))
+        with pytest.warns(AstropyDeprecationWarning,
+                          match=name) as record:
+            SourceFinder(n_pixels=10, **kwargs)
+        assert len(record) == 1
 
 
 def test_finder_flags_passthrough():

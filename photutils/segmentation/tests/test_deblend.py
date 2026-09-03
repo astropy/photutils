@@ -486,17 +486,19 @@ class TestDeblendSources:
         assert self.segm.info == {}
 
     @pytest.mark.parametrize('kwargs', [{'progress_bar': False},
-                                        {'n_processes': 2}])
+                                        {'n_processes': 2}, {'nproc': 2}])
     def test_deprecated_keywords(self, kwargs):
         """
-        Test that the progress_bar and n_processes keywords are
-        deprecated and have no effect on the results.
+        Test that the progress_bar, n_processes, and nproc keywords
+        each emit a single deprecation warning and have no effect on
+        the results.
         """
         name = next(iter(kwargs))
-        with pytest.warns(AstropyDeprecationWarning, match=name):
+        with pytest.warns(AstropyDeprecationWarning, match=name) as record:
             result = deblend_sources(self.data, self.segm,
                                      self.n_pixels, mode='linear',
                                      **kwargs)
+        assert len(record) == 1
         assert result.n_labels == 2
 
 

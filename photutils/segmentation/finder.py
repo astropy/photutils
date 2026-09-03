@@ -95,6 +95,14 @@ class SourceFinder:
         consecutive order starting from 1. This keyword is ignored
         unless ``deblend=True``.
 
+    nproc : int, optional
+        This keyword is deprecated and has no effect. It was the name of
+        the ``n_processes`` keyword before version 3.0.
+
+        .. deprecated:: 3.0
+            The ``nproc`` keyword is deprecated and will be removed in
+            version 4.0.
+
     n_processes : int, optional
         This keyword is deprecated and has no effect. Multiprocessing
         no longer provides any benefit for source deblending.
@@ -157,11 +165,12 @@ class SourceFinder:
 
     @deprecated_renamed_argument('npixels', 'n_pixels', '3.0', until='4.0')
     @deprecated_renamed_argument('nlevels', 'n_levels', '3.0', until='4.0')
-    @deprecated_renamed_argument('nproc', 'n_processes', '3.0', until='4.0')
+    @deprecated_renamed_argument('nproc', None, '3.0', until='4.0')
     @deprecated_renamed_argument('n_processes', None, '3.1', until='4.0')
     @deprecated_renamed_argument('progress_bar', None, '3.1', until='4.0')
     def __init__(self, n_pixels, *, connectivity=8, deblend=True, n_levels=32,
                  contrast=0.001, mode='exponential', relabel=True,
+                 nproc=1,  # noqa: ARG002
                  n_processes=1, progress_bar=True):
         self.n_pixels = as_pair('n_pixels', n_pixels, check_odd=False)
         self.deblend = deblend
