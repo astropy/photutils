@@ -503,7 +503,7 @@ def main():
     parser.add_argument('--size', type=int, default=1000,
                         help='image size for the ImageDepth and cutout '
                              'benchmarks (default: %(default)s)')
-    parser.add_argument('--threads', type=parse_thread_counts,
+    parser.add_argument('--n-threads', type=parse_thread_counts,
                         default=[1, 2, 4, 8],
                         help='comma-separated thread counts for the '
                              'ImageDepth thread-scaling benchmark '
@@ -524,7 +524,7 @@ def main():
     if args.which in ('all', 'image-depth'):
         bench_image_depth(size=args.size, repeats=args.repeats)
     if args.which in ('all', 'depth-threads'):
-        bench_depth_threads(thread_counts=args.threads,
+        bench_depth_threads(thread_counts=args.n_threads,
                             repeats=args.repeats)
     if args.which in ('all', 'idw'):
         bench_idw(repeats=args.repeats)

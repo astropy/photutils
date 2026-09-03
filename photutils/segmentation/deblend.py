@@ -5,6 +5,7 @@ image.
 """
 
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import numpy as np
@@ -29,6 +30,45 @@ __all__ = ['deblend_sources']
 _MAX_MARKERS = 200
 
 
+def _validate_deblend_kwargs(*, n_levels, contrast, mode, connectivity,
+                             n_threads):
+    """
+    Validate the deblending keywords shared by `deblend_sources` and
+    `~photutils.segmentation.SourceFinder`.
+
+    Parameters
+    ----------
+    n_levels, contrast, mode, connectivity, n_threads
+        The keyword values to validate. See `deblend_sources`.
+
+    Raises
+    ------
+    ValueError
+        If any of the values is invalid.
+    """
+    if (n_levels < 1) or (int(n_levels) != n_levels):
+        msg = f'n_levels must be a positive integer, got {n_levels!r}'
+        raise ValueError(msg)
+
+    if contrast < 0 or contrast > 1:
+        msg = 'contrast must be >= 0 and <= 1'
+        raise ValueError(msg)
+
+    if mode not in ('exponential', 'linear', 'sinh'):
+        msg = "mode must be 'exponential', 'linear', or 'sinh'"
+        raise ValueError(msg)
+
+    if connectivity not in (4, 8):
+        msg = f'Invalid connectivity={connectivity}. Options are 4 or 8'
+        raise ValueError(msg)
+
+    if (isinstance(n_threads, bool)
+            or not isinstance(n_threads, (int, np.integer))
+            or n_threads < 1):
+        msg = f'n_threads must be a positive integer, got {n_threads!r}'
+        raise ValueError(msg)
+
+
 @dataclass
 class _DeblendParams:
     n_pixels: int
@@ -47,7 +87,7 @@ class _DeblendParams:
 @deprecated_renamed_argument('progress_bar', None, '3.1', until='4.0')
 def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                     n_levels=32, contrast=0.001, mode='exponential',
-                    connectivity=8, relabel=True,
+                    connectivity=8, relabel=True, n_threads=1,
                     nproc=1,  # noqa: ARG001
                     n_processes=1,  # noqa: ARG001
                     progress_bar=True):  # noqa: ARG001
@@ -124,6 +164,17 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         relabeled such that the labels are in consecutive order starting
         from 1.
 
+    n_threads : int, optional
+        The number of threads to use to deblend the sources. The
+        default is 1 (no multithreading). When ``n_threads`` > 1, the
+        sources are divided into chunks and processed concurrently. The
+        per-source results are independent and are assembled in the
+        input-label order, so they are identical to the single-threaded
+        computation. The marker-building kernels release the Python
+        global interpreter lock (GIL), as do the watershed and most of
+        the array operations, so multithreading can significantly speed
+        up the deblending, especially for large sources.
+
     nproc : int, optional
         This keyword is deprecated and has no effect. It was the name of
         the ``n_processes`` keyword before version 3.0.
@@ -137,7 +188,8 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         no longer provides any benefit. The deblending computation is
         now dominated by compiled code, and the process startup and
         data-pickling overheads of multiprocessing made it slower than
-        the serial implementation.
+        the serial implementation. Use the ``n_threads`` keyword
+        instead.
 
         .. deprecated:: 3.1
             The ``n_processes`` keyword is deprecated and will be
@@ -197,16 +249,9 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         msg = f'n_pixels must be a positive integer, got {n_pixels!r}'
         raise ValueError(msg)
 
-    if (n_levels < 1) or (int(n_levels) != n_levels):
-        msg = f'n_levels must be a positive integer, got {n_levels!r}'
-        raise ValueError(msg)
-    if contrast < 0 or contrast > 1:
-        msg = 'contrast must be >= 0 and <= 1'
-        raise ValueError(msg)
-
-    if mode not in ('exponential', 'linear', 'sinh'):
-        msg = "mode must be 'exponential', 'linear', or 'sinh'"
-        raise ValueError(msg)
+    _validate_deblend_kwargs(n_levels=n_levels, contrast=contrast,
+                             mode=mode, connectivity=connectivity,
+                             n_threads=n_threads)
 
     if contrast == 1:  # no deblending
         segm_img = segmentation_image.copy()
@@ -252,9 +297,40 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         driver_dtype = np.int64
     driver_segm = np.ascontiguousarray(segm_data, dtype=driver_dtype)
 
-    results = _deblend_sources_chunk(data, segm_data, driver_data,
-                                     driver_segm, labels, all_slices,
-                                     deblend_params)
+    n_chunks = min(int(n_threads), len(labels))
+    if n_chunks > 1:
+        # The sources are dealt out to the chunks in decreasing order of
+        # their bounding-box area (the size of the cutouts the kernels
+        # work on), so that the chunks carry similar amounts of work
+        # regardless of the source ordering. The chunks are processed
+        # concurrently and the per-source results are scattered back
+        # into the input order, so they are identical to the
+        # single-threaded computation.
+        bbox_areas = np.array([(slc[0].stop - slc[0].start)
+                               * (slc[1].stop - slc[1].start)
+                               for slc in all_slices])
+        order = np.argsort(bbox_areas, kind='stable')[::-1]
+        chunk_indices = [np.sort(order[i::n_chunks])
+                         for i in range(n_chunks)]
+
+        def _run_chunk(indices):
+            chunk_slices = [all_slices[idx] for idx in indices]
+            return _deblend_sources_chunk(data, segm_data, driver_data,
+                                          driver_segm, labels[indices],
+                                          chunk_slices, deblend_params)
+
+        results = [None] * len(labels)
+        with ThreadPoolExecutor(max_workers=n_chunks) as executor:
+            for indices, chunk_results in zip(
+                    chunk_indices, executor.map(_run_chunk, chunk_indices),
+                    strict=True):
+                for index, result in zip(indices, chunk_results,
+                                         strict=True):
+                    results[index] = result
+    else:
+        results = _deblend_sources_chunk(data, segm_data, driver_data,
+                                         driver_segm, labels,
+                                         all_slices, deblend_params)
 
     deblend_label_map = {}
     max_label = segmentation_image.max_label
@@ -476,10 +552,15 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         thresholds, fallback = _compute_thresholds(smin, smax, n_levels,
                                                    mode)
         nonposmin[active] = fallback
+        # Sources with too many markers are only retried with linearly
+        # spaced levels (below), so only then may the kernel skip
+        # building their markers.
+        can_retry = mode != 'linear'
+        max_markers = _MAX_MARKERS if can_retry else -1
         markers, n_markers = deblend_markers_chunk(
             driver_data, driver_segm, labels[active], y0[active],
             y1[active], x0[active], x1[active], thresholds,
-            max_markers=_MAX_MARKERS, **chunk_kwargs)
+            max_markers=max_markers, **chunk_kwargs)
         for index, source_markers in zip(active, markers, strict=True):
             markers_list[index] = source_markers
 
@@ -487,7 +568,7 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         # sources are deblended again with linearly spaced levels. A
         # source that already fell back to the linear spacing keeps its
         # markers
-        if mode != 'linear':
+        if can_retry:
             retry = np.flatnonzero((n_markers > _MAX_MARKERS) & ~fallback)
             if retry.size > 0:
                 thresholds, _ = _compute_thresholds(

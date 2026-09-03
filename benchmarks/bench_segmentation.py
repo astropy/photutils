@@ -5,7 +5,7 @@ Benchmarks for the photutils.segmentation subpackage.
 
 The benchmarks cover source detection (detect_threshold and
 detect_sources), source deblending (deblend_sources) across the
-threshold modes and process counts, the combined SourceFinder class,
+threshold modes and thread counts, the combined SourceFinder class,
 SegmentationImage operations (relabeling, border-label removal,
 source masks, and polygons), SourceCatalog property calculations, the
 SourceCatalog n_threads keyword, and concurrent SourceCatalog runs
@@ -25,8 +25,8 @@ import numpy as np
 from astropy.convolution import convolve
 from astropy.modeling.models import Gaussian2D
 from astropy.stats import gaussian_fwhm_to_sigma
-from bench_helpers import (format_sweep_cells, parse_thread_counts,
-                           print_environment, time_best)
+from bench_helpers import (format_sweep_cells, parse_int_list,
+                           parse_thread_counts, print_environment, time_best)
 
 from photutils.datasets import make_wcs
 from photutils.segmentation import (SegmentationImage, SourceCatalog,
@@ -169,18 +169,18 @@ def bench_detect(*, n_sources=1000, repeats=3, seed=0):
         print(f'{name:>34}{f"{t_best:.4f}s":>12}{segm.n_labels:>10}')
 
 
-def bench_deblend(*, n_sources=1000, process_counts=(1, 4), repeats=3,
+def bench_deblend(*, n_sources=1000, thread_counts=(1, 4), repeats=3,
                   seed=0):
     """
-    Benchmark deblend_sources across modes and process counts.
+    Benchmark deblend_sources across modes and thread counts.
 
     Parameters
     ----------
     n_sources : int, optional
         The total number of Gaussian sources in the image.
 
-    process_counts : tuple of int, optional
-        The n_processes values (for mode='exponential').
+    thread_counts : tuple of int, optional
+        The n_threads values (for mode='exponential').
 
     repeats : int, optional
         The number of repeats for each timing (best time is kept).
@@ -205,13 +205,13 @@ def bench_deblend(*, n_sources=1000, process_counts=(1, 4), repeats=3,
         print(f'{name:>36}{f"{t_best:.4f}s":>12}'
               f'{segm_deblended.n_labels:>10}')
 
-    for n_processes in process_counts:
-        if n_processes == 1:
+    for n_threads in thread_counts:
+        if n_threads == 1:
             continue
         bench = partial(deblend_sources, convolved_data, segm, N_PIXELS,
-                        mode='exponential', n_processes=n_processes)
+                        mode='exponential', n_threads=n_threads)
         t_best = time_best(bench, repeats=repeats)
-        name = f'mode=exponential, n_processes={n_processes}'
+        name = f'mode=exponential, n_threads={n_threads}'
         print(f'{name:>36}{f"{t_best:.4f}s":>12}{"":>10}')
 
 
@@ -537,27 +537,6 @@ def bench_catalog_n_threads(*, n_sources=1000, thread_counts=(1, 2, 4, 8),
         print(f'{name:>32}{cells}')
 
 
-def parse_int_list(text):
-    """
-    Parse a comma-separated list of positive integers.
-
-    Parameters
-    ----------
-    text : str
-        The comma-separated integers (e.g., ``'1,4'``).
-
-    Returns
-    -------
-    result : list of int
-        The parsed integers.
-    """
-    values = [int(item) for item in text.split(',')]
-    if any(value < 1 for value in values):
-        msg = 'values must be positive integers'
-        raise ValueError(msg)
-    return values
-
-
 def main():
     """
     Run the photutils.segmentation benchmarks.
@@ -567,14 +546,15 @@ def main():
     parser.add_argument('--n-sources', type=int, default=1000,
                         help='total number of Gaussian sources in the '
                              'image (default: %(default)s)')
-    parser.add_argument('--n-processes', type=parse_int_list, default=[1, 4],
-                        help='comma-separated n_processes values for the '
+    parser.add_argument('--deblend-n-threads', type=parse_int_list,
+                        default=[1, 4],
+                        help='comma-separated n_threads values for the '
                              'deblending benchmark (default: 1,4)')
     parser.add_argument('--n-calls', type=int, default=8,
                         help='number of concurrent catalog jobs for the '
                              'thread-scaling benchmark '
                              '(default: %(default)s)')
-    parser.add_argument('--threads', type=parse_thread_counts,
+    parser.add_argument('--n-threads', type=parse_thread_counts,
                         default=[1, 2, 4, 8],
                         help='comma-separated thread counts for the '
                              'thread-scaling and n_threads benchmarks '
@@ -600,7 +580,7 @@ def main():
                      seed=args.seed)
     if args.which in ('all', 'deblend'):
         bench_deblend(n_sources=args.n_sources,
-                      process_counts=args.n_processes,
+                      thread_counts=args.deblend_n_threads,
                       repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'finder'):
         bench_finder(n_sources=args.n_sources, repeats=args.repeats,
@@ -613,12 +593,12 @@ def main():
                       seed=args.seed)
     if args.which in ('all', 'n-threads'):
         bench_catalog_n_threads(n_sources=args.n_sources,
-                                thread_counts=args.threads,
+                                thread_counts=args.n_threads,
                                 repeats=args.repeats, seed=args.seed)
     if args.which in ('all', 'threads'):
         bench_catalog_threads(n_sources=args.n_sources,
                               n_calls=args.n_calls,
-                              thread_counts=args.threads,
+                              thread_counts=args.n_threads,
                               repeats=args.repeats, seed=args.seed)
 
 
