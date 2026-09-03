@@ -214,8 +214,8 @@ def _driver_inputs(cat):
     sigma = 2.0 * radius_hl * gaussian_fwhm_to_sigma
     xcen0 = np.atleast_1d(cat.x_centroid).astype(np.float64)
     ycen0 = np.atleast_1d(cat.y_centroid).astype(np.float64)
-    # np.isnan (not ~np.isfinite) for parity with the previous
-    # per-source math.isnan checks
+    # np.isnan (not ~np.isfinite) matches the math.isnan checks of
+    # _reference_iterate_centroid_win
     skip = (nan_hl | np.isnan(xcen0) | np.isnan(ycen0)).astype(np.uint8)
     return {'data': arrays['data'], 'error': arrays['error'],
             'mask': arrays['mask'], 'segm': arrays['segm'],

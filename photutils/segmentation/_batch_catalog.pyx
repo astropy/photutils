@@ -9,7 +9,7 @@ Each driver accumulates per-pixel contributions directly into
 per-source outputs without generating per-source cutouts or making
 per-source Python calls. The per-pixel segmentation masking (mask or
 mirror-correct) uses the same helper as the aperture batch drivers, so
-the semantics match the previous cutout-based code paths.
+the two packages share the same masking semantics.
 
 The moment kernels accumulate the raw and central spatial moments (and
 the raw centroid error sums) over each source's segment bounding box,
@@ -139,18 +139,17 @@ cdef void _centroid_win_source(const double *data, const double *error,
     """
     Compute the raw windowed-centroid quantities for a single source.
 
-    Replicates the previous per-source Python implementation, an
-    iterative Gaussian-weighted centroid within a binary circular
-    window of radius ``4 * sigma``, with masked pixels contributing
-    zero and neighbor-source pixels excluded or mirror-corrected per
-    ``seg_method``. Writes the 10 output columns ``(xcen, ycen,
-    weighted_flux, cen_mom_xx, cen_mom_yy, cen_mom_xy, err_sum,
-    err_var_x, err_var_y, err_cov_xy)`` into ``out``.
+    The centroid is an iterative Gaussian-weighted centroid within a
+    binary circular window of radius ``4 * sigma``, with masked pixels
+    contributing zero and neighbor-source pixels excluded or
+    mirror-corrected per ``seg_method``. Writes the 10 output columns
+    ``(xcen, ycen, weighted_flux, cen_mom_xx, cen_mom_yy, cen_mom_xy,
+    err_sum, err_var_x, err_var_y, err_cov_xy)`` into ``out``.
     """
     cdef double inv_2sigma2 = -1.0 / (2.0 * sigma * sigma)
     cdef double radius = 4.0 * sigma
     cdef double radius_sq = radius * radius
-    # Truncation of (radius + 1.5) replicates the Python int() call
+    # The half size truncates (radius + 1.5) toward zero like int()
     cdef Py_ssize_t bbox_halfsize = <Py_ssize_t>(radius + 1.5)
     cdef Py_ssize_t full_n = 2 * bbox_halfsize + 1
 
@@ -180,8 +179,7 @@ cdef void _centroid_win_source(const double *data, const double *error,
     cdef double sumw, sumwx, sumwy
     # State of the last completed accumulation, for the final
     # moment/error pass (the window may go empty on a later iteration,
-    # in which case the previous iteration's window is what the Python
-    # implementation reused)
+    # in which case the last non-empty window is reused)
     cdef bint have_window = False
     cdef double xc_last = 0.0, yc_last = 0.0
     cdef double dxm_last = 0.0, dym_last = 0.0
@@ -190,8 +188,8 @@ cdef void _centroid_win_source(const double *data, const double *error,
     cdef double sxx, syy, sxy, esum, evx, evy, ecxy
 
     while iter_ < 16 and dcen > 0.0001:
-        # Truncation of (xcen + 0.5) replicates the Python int() call
-        # (including truncation toward zero for negative centers)
+        # The window origin truncates (xcen + 0.5) toward zero, as
+        # Python's int() does, including for negative centers
         ixmin = <Py_ssize_t>(xcen + 0.5) - bbox_halfsize
         ixmax = ixmin + full_n
         iymin = <Py_ssize_t>(ycen + 0.5) - bbox_halfsize
@@ -331,12 +329,10 @@ def batch_centroid_win(const double[:, ::1] data, *,
 
     For each source, an iterative Gaussian-weighted centroid is computed
     within a binary circular window of radius ``4 * sigma`` centered
-    on the current centroid estimate. The iteration, the integer
-    bounding-box arithmetic, the per-pixel masking, and the final
-    windowed second-order moments and raw error sums replicate the
-    previous per-source Python implementation to within floating-point
-    rounding (the pixel sums are accumulated sequentially rather than
-    pairwise).
+    on the current centroid estimate. The final windowed second-order
+    moments and raw error sums are computed over the last non-empty
+    window. The pixel sums are accumulated sequentially rather than
+    pairwise.
 
     Parameters
     ----------
@@ -478,15 +474,15 @@ cdef void _kron_radius_source(const double *data,
     Accumulate the Kron radius numerator and denominator for a single
     source.
 
-    Replicates the previous per-source Python implementation, the
-    sums of ``data * r`` and ``data`` over the pixels whose centers
-    fall inside the ellipse of elliptical radius ``scale`` (or the
-    circle of radius ``min_circ_radius`` when both axes are zero),
-    excluding masked pixels and handling neighbor-source pixels per
-    ``seg_method``. Writes ``(numerator, denominator)`` into ``out``,
-    or NaN for an undefined measurement (no minimum circular radius
-    for a degenerate ellipse, an unreasonably large bounding box, or
-    no overlap with the data).
+    The numerator and denominator are the sums of ``data * r`` and
+    ``data`` over the pixels whose centers fall inside the ellipse of
+    elliptical radius ``scale`` (or the circle of radius
+    ``min_circ_radius`` when both axes are zero), excluding masked
+    pixels and handling neighbor-source pixels per ``seg_method``.
+    Writes ``(numerator, denominator)`` into ``out``, or NaN for an
+    undefined measurement (no minimum circular radius for a degenerate
+    ellipse, an unreasonably large bounding box, or no overlap with
+    the data).
     """
     out[0] = NAN
     out[1] = NAN
@@ -529,8 +525,8 @@ cdef void _kron_radius_source(const double *data,
     cdef Py_ssize_t y1 = <Py_ssize_t>y1_d
 
     # The cutout-frame center offsets and the mirror center of the
-    # 'correct' method (truncation of the cutout center + 0.5
-    # replicates the Python int() call)
+    # 'correct' method (the cutout center + 0.5, truncated toward
+    # zero as Python's int() does)
     cdef double xoff = xc - <double>x0
     cdef double yoff = yc - <double>y0
     cdef Py_ssize_t ccx = <Py_ssize_t>(xoff + 0.5) + x0
@@ -595,11 +591,8 @@ def batch_kron_radius(const double[:, ::1] data, *,
     of elliptical radius ``scale`` (in units of the isophotal
     ellipse), where ``r`` is the elliptical radius of each pixel, or
     inside the circle of radius ``min_circ_radius`` for a source whose
-    elliptical axes are both zero. The bounding-box arithmetic, the
-    per-pixel masking, and the neighbor handling replicate the
-    previous per-source Python implementation, with the sums agreeing
-    to within floating-point rounding (they are accumulated
-    sequentially rather than pairwise). The caller forms the Kron
+    elliptical axes are both zero. The sums are accumulated
+    sequentially rather than pairwise. The caller forms the Kron
     radius from the two sums.
 
     Parameters
@@ -737,10 +730,10 @@ cdef void _flux_radius_cutout(const double *data,
     Fill the cleaned, background-subtracted cutout of a single source
     for the flux-radius root-find.
 
-    Replicates the previous per-source Python preparation. Masked and
-    non-finite pixels are zero, neighbor-source pixels are zeroed or
-    mirror-corrected per ``seg_method`` (an uncorrectable neighbor
-    pixel is zero), and every other pixel is ``data - local_bkg``.
+    Masked and non-finite pixels are zero, neighbor-source pixels are
+    zeroed or mirror-corrected per ``seg_method`` (an uncorrectable
+    neighbor pixel is zero), and every other pixel is
+    ``data - local_bkg``.
     Writes the ``(y1 - y0, x1 - x0)`` cutout in row-major order into
     ``out``.
     """
@@ -783,10 +776,8 @@ def batch_flux_radius_prepare(const double[:, ::1] data, *,
     cleaned and background-subtracted (see ``_flux_radius_cutout``)
     and the `~photutils.geometry.circular_overlap_grid` grid
     parameters of that cutout, relative to the source centroid, are
-    computed. The bounding-box arithmetic, the per-pixel masking, and
-    the neighbor handling replicate the previous per-source Python
-    implementation exactly. The cutouts of all sources are packed
-    into one buffer, and the source loops run without the GIL.
+    computed. The cutouts of all sources are packed into one buffer,
+    and the source loops run without the GIL.
 
     Parameters
     ----------
@@ -939,8 +930,8 @@ def batch_flux_radius_prepare(const double[:, ::1] data, *,
             ny = y1 - y0
 
             # The cutout-frame centroid and the mirror center of the
-            # 'correct' method (truncation of the cutout centroid + 0.5
-            # replicates the Python int() call)
+            # 'correct' method (the cutout centroid + 0.5, truncated
+            # toward zero as Python's int() does)
             cutout_xcen = xc - <double>x0
             cutout_ycen = yc - <double>y0
             bbox[i, 0] = x0
@@ -1146,24 +1137,22 @@ def batch_flux_radius_solve(const double[::1] values, *,
     For each source, the circular radius enclosing ``fraction`` of the
     Kron flux is the root of ``1 - flux(r) / (kronflux * fraction)``,
     found by a bracketed Brent root-find over ``[0.1, max_radius]``.
-    The per-pixel circular overlap, the bracket, and the root-finder
-    tolerances replicate the previous per-source
-    `scipy.optimize.root_scalar` implementation (the same SciPy C
-    routine is used). The cutout pixels are binned once per source by
-    their distance from the centroid, so that each root-finder
-    evaluation adds the fully enclosed pixels from prefix sums and
-    evaluates the overlap only for the pixels near the circle boundary
-    (see ``_flux_radius_objective``). Every pixel receives the same
-    overlap fraction as before, but the flux is summed in a different
-    order, which perturbs the Brent iteration path. The roots agree
-    with the previous implementation to within the root-finder's
-    absolute tolerance (``xtol`` = 2e-12 pixels), not to rounding.
+    The root-find uses the SciPy ``brentq`` C routine with the
+    `scipy.optimize.root_scalar` default tolerances (``xtol`` = 2e-12
+    pixels). The cutout pixels are binned once per source by their
+    distance from the centroid, so that each root-finder evaluation
+    adds the fully enclosed pixels from prefix sums and evaluates the
+    overlap only for the pixels near the circle boundary (see
+    ``_flux_radius_objective``). The enclosed flux is therefore
+    summed in distance-binned order rather than raster order, so the
+    root is reproducible across summation orders only to within
+    ``xtol``, not to rounding.
 
     A bracket whose endpoints have the same sign has no (or multiple)
-    solutions. As in the previous implementation, the maximum radius
-    is then reduced by 10% of its original value and the root-find is
-    retried, until either a root is found or the maximum radius drops
-    to the minimum radius (0.1), in which case NaN is returned.
+    solutions. The maximum radius is then reduced by 10% of its
+    original value and the root-find is retried, until either a root
+    is found or the maximum radius drops to the minimum radius (0.1),
+    in which case NaN is returned.
 
     The source loop runs without the GIL, and the scratch buffers are
     local to the call, so disjoint source ranges can be solved
@@ -1409,8 +1398,7 @@ def batch_perimeter(const unsigned char[:, ::1] mask, *,
     ``[[10, 2, 10], [2, 1, 2], [10, 2, 10]]`` kernel at every
     bounding-box pixel. The histogram of the convolved values below 34
     is returned. The caller applies the perimeter weights of the
-    estimator of Benkrid et al. (2000) to it. This replicates the
-    previous per-source implementation exactly.
+    estimator of Benkrid et al. (2000) to it.
 
     Parameters
     ----------
@@ -1510,8 +1498,7 @@ def batch_quad_boxes(const double[:, ::1] data, *,
     input-masked, or non-finite are zero, and the first (row-major)
     maximum of that cutout is the peak pixel. The 3x3 box centered on
     the peak is returned together with the pixel variances of the box
-    (zero for masked pixels), replicating the previous per-source
-    Python implementation exactly.
+    (zero for masked pixels).
 
     Parameters
     ----------
@@ -1677,9 +1664,7 @@ def batch_segment_gather(const double[:, ::1] values, *,
     For each source, the values of the pixels within its segment
     bounding box that belong to the source segment and are unmasked
     are copied, in row-major order, into a packed array. A source
-    with no such pixels contributes a single NaN, replicating the
-    previous per-source masked-array ``compressed()`` values (with a
-    single NaN for completely masked sources).
+    with no such pixels contributes a single NaN.
 
     Parameters
     ----------
@@ -1801,8 +1786,8 @@ def batch_minmax_index(const double[:, ::1] values, *,
     For each source, the unmasked pixels of its segment within its
     bounding box are scanned in row-major order and the cutout-frame
     ``(y, x)`` positions of the first minimum and the first maximum
-    value are returned, replicating ``numpy.argmin`` and
-    ``numpy.argmax`` on the previous per-source masked cutouts.
+    value are returned, matching the tie-breaking of ``numpy.argmin``
+    and ``numpy.argmax``.
 
     Parameters
     ----------
@@ -1913,8 +1898,7 @@ def batch_raw_moments(const double[:, ::1] convdata, *,
     segment bounding box of each source, using coordinates relative
     to the bounding-box origin (i.e., the cutout frame). Pixels
     outside the source segment, input-masked pixels, non-finite
-    values, and negative values contribute zero, which replicates the
-    zeroed moment cutouts of the previous per-source implementation.
+    values, and negative values contribute zero.
 
     Parameters
     ----------
@@ -2137,8 +2121,7 @@ def batch_central_moments(const double[:, ::1] convdata, *,
             if not (isfinite(xcen[i]) and isfinite(ycen[i])):
                 # A non-finite centroid poisons every coordinate
                 # power, so all elements except [0, 0] (the plain
-                # flux sum) are NaN, as in the previous NumPy
-                # implementation. The sums above are NaN only where
+                # flux sum) are NaN. The sums above are NaN only where
                 # a source has at least one included pixel, so set
                 # them explicitly.
                 for p in range(4):
@@ -2167,9 +2150,7 @@ def batch_moment_err(const double[:, ::1] error, *,
     only if it is inside the source segment, is unmasked (neither
     input-masked nor non-finite data), and contributes nonzero flux
     weight to the moments (a finite, strictly positive convolved
-    value). This replicates the zeroing of the previous per-source
-    implementation, which set the error variance to zero wherever the
-    total mask was set or the moment data were zero.
+    value). Every other pixel contributes zero error variance.
 
     Parameters
     ----------

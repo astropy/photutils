@@ -4998,9 +4998,9 @@ class SourceCatalog:
         overlap = result.overlap
         fcounts = result.flag_counts
 
-        # Membership matches the previous cutout-based
-        # ``in_aperture & ~mask`` rule. Under 'correct', uncorrectable
-        # neighbor pixels stay members (with value zero)
+        # A pixel is a member if it is inside the aperture and
+        # unmasked. Under 'correct', uncorrectable neighbor pixels
+        # stay members (with value zero).
         members = fcounts[:, FLAG_COL_VALID].copy()
         if seg_code == 3:
             members += fcounts[:, FLAG_COL_UNCORRECTED]
@@ -5172,10 +5172,10 @@ class SourceCatalog:
             n_pix = fcounts[:, FLAG_COL_N_PIXELS]
             clipped = fcounts[:, FLAG_COL_BBOX_CLIPPED].astype(bool)
             weights_out = weights_out.astype(bool)
-            # Membership matches the previous cutout-based
-            # ``in_aperture & ~mask`` rule. Under 'correct',
-            # uncorrectable neighbor pixels stay members (with value
-            # zero), so they keep the flux at 0.0 rather than NaN
+            # A pixel is a member if it is inside the aperture and
+            # unmasked. Under 'correct', uncorrectable neighbor pixels
+            # stay members (with value zero), so they keep the flux at
+            # 0.0 rather than NaN.
             members = fcounts[:, FLAG_COL_VALID].copy()
             if seg_code == 3:
                 members += fcounts[:, FLAG_COL_UNCORRECTED]
