@@ -90,6 +90,31 @@ def _detect_sources_deblend(data, threshold, n_pixels, *, footprint,
     return segment_img
 
 
+def _raster_relabel(markers):
+    """
+    Relabel a marker image consecutively in raster-scan order of the
+    first pixel of each marker.
+
+    Parameters
+    ----------
+    markers : 2D int `~numpy.ndarray`
+        The marker image.
+
+    Returns
+    -------
+    result : 2D int `~numpy.ndarray`
+        The relabeled marker image.
+    """
+    flat = markers.ravel()
+    labels, first = np.unique(flat, return_index=True)
+    keep = labels > 0
+    labels = labels[keep]
+    order = np.argsort(first[keep])
+    lut = np.zeros(labels.max() + 1, dtype=np.int32)
+    lut[labels[order]] = np.arange(1, labels.size + 1)
+    return lut[markers]
+
+
 class _SingleSourceDeblender:
     """
     Class to deblend a single labeled source.
@@ -121,6 +146,7 @@ class _SingleSourceDeblender:
         self.footprint = deblend_params.footprint
         self.n_levels = deblend_params.n_levels
         self.contrast = deblend_params.contrast
+        self.contrast_method = deblend_params.contrast_method
         self.mode = deblend_params.mode
 
         self.segment_mask = segment_data == label
@@ -218,11 +244,13 @@ class _SingleSourceDeblender:
         """
         Make markers (possible sources) for the watershed algorithm.
 
-        The markers are built from a single component-tree pass over
-        the level-quantized cutout (see
-        `~photutils.segmentation._deblend_markers.make_deblend_markers`),
+        With the basin contrast criterion, the markers are built from
+        a single component-tree pass over the level-quantized cutout
+        (see `~photutils.segmentation._deblend_markers.make_deblend_markers`),
         which produces markers identical to the per-level
         multithreshold construction of ``make_markers_per_level``.
+        With the saddle criterion, the markers are selected level by
+        level in Python by ``make_saddle_markers``.
 
         Returns
         -------
@@ -232,6 +260,8 @@ class _SingleSourceDeblender:
             at every threshold.
         """
         thresholds = self.compute_thresholds()
+        if self.contrast_method == 'saddle':
+            return self.make_saddle_markers(thresholds)
 
         # A pixel is above threshold level i if i < quantized. NaN
         # pixels compare as False against every threshold.
@@ -246,6 +276,89 @@ class _SingleSourceDeblender:
         if n_markers == 0:
             return None
         return markers
+
+    def make_saddle_markers(self, thresholds):
+        """
+        Make markers with the saddle contrast criterion, level by level.
+
+        The connected components above each threshold level form a
+        tree. A junction splits where at least two of its children
+        (the components at the next level) have at least ``n_pixels``
+        pixels and each hold more flux above their own level than the
+        saddle limit, the contrast times the total source flux. The
+        markers are the passing children of the splitting junctions
+        that contain no deeper split, labeled consecutively in
+        raster-scan order of their first pixel, as the compiled kernel
+        labels them.
+
+        This method labels the cutout once per level and scans it once
+        per component, so its cost grows with the number of levels
+        times the number of components times the cutout area. It is a
+        reference for testing, not meant for large cutouts.
+
+        Parameters
+        ----------
+        thresholds : 1D `~numpy.ndarray`
+            The multithreshold levels.
+
+        Returns
+        -------
+        markers : 2D int `~numpy.ndarray` or `None`
+            The marker image, or `None` if there are fewer than two
+            markers.
+        """
+        # A Python float, as the compiled chunk driver computes it
+        limit = self.contrast * float(self.source_sum)
+        level_labels = [
+            ndi_label((self.data > threshold) & self.segment_mask,
+                      structure=self.footprint)[0]
+            for threshold in thresholds]
+
+        passer = {}
+        children = {}
+        all_nodes = []
+        for level, labeled in enumerate(level_labels):
+            for comp in np.unique(labeled[labeled > 0]):
+                node = (level, int(comp))
+                all_nodes.append(node)
+                region = labeled == comp
+                area = int(region.sum())
+                flux = float(np.sum(self.data[region], dtype=np.float64))
+                prominence = flux - thresholds[level] * area
+                passer[node] = area >= self.n_pixels and prominence > limit
+                children[node] = []
+                if level > 0:
+                    parent_comp = int(level_labels[level - 1][region][0])
+                    children[(level - 1, parent_comp)].append(node)
+
+        def is_splitting(kids):
+            return sum(passer[kid] for kid in kids) >= 2
+
+        has_split = {}
+        for node in reversed(all_nodes):  # children before parents
+            has_split[node] = (is_splitting(children[node])
+                               or any(has_split[kid]
+                                      for kid in children[node]))
+
+        # The components at the first level form a virtual root
+        # junction
+        root_children = [(0, int(comp))
+                         for comp in np.unique(level_labels[0]
+                                               [level_labels[0] > 0])]
+        junctions = [root_children] + [children[node]
+                                       for node in all_nodes]
+        markers = []
+        for kids in junctions:
+            if is_splitting(kids):
+                markers.extend(kid for kid in kids
+                               if passer[kid] and not has_split[kid])
+
+        if len(markers) < 2:
+            return None
+        out = np.zeros(self.data.shape, dtype=np.int32)
+        for index, (level, comp) in enumerate(markers):
+            out[level_labels[level] == comp] = index + 1
+        return _raster_relabel(out)
 
     def make_markers_per_level(self):
         """
@@ -357,6 +470,8 @@ class _SingleSourceDeblender:
         # Deblend using watershed. If any source does not meet the
         # contrast criterion, then remove the faintest such source(s)
         # and repeat until all sources meet the contrast criterion.
+        # With the saddle criterion the markers are already
+        # contrast-selected, so a single pass is run.
         data_neg = np.ascontiguousarray(-self.data, dtype=np.float64)
         # NaN pixels are flooded after all finite pixels, as in the
         # compiled contrast loop
@@ -368,7 +483,7 @@ class _SingleSourceDeblender:
                                         self.segment_mask, connectivity)
 
             labels = _get_labels(markers)
-            if labels.size == 1:  # only 1 source left
+            if labels.size == 1 or self.contrast_method == 'saddle':
                 remove_marker = False
             else:
                 flux_frac = (sum_labels(self.data, markers, index=labels)
@@ -494,9 +609,12 @@ class _SingleSourceDeblender:
         # and/or small n_pixels), the watershed step can be very slow.
         # This mostly affects the "exponential" mode, where there are
         # many levels at low thresholds, so here we try again with
-        # "linear" mode.
+        # "linear" mode. The saddle criterion needs no retry because
+        # its markers are already contrast-selected and its watershed
+        # runs once.
         n_labels = len(_get_labels(markers))
-        if self.mode != 'linear' and n_labels > _MAX_MARKERS:
+        if (self.mode != 'linear' and self.contrast_method != 'saddle'
+                and n_labels > _MAX_MARKERS):
             del markers  # free memory
             self.warnings['n_markers'] = 'too many markers'
             self.mode = 'linear'

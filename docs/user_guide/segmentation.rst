@@ -148,6 +148,31 @@ and ``contrast``. ``n_levels`` is the number of multi-thresholding
 levels to use. ``contrast`` is the fraction of the total source flux
 that a local peak must have to be considered as a separate object.
 
+The ``contrast_method`` keyword selects the flux to which the
+``contrast`` fraction refers. With the ``'basin'`` method, it is the
+total flux in the source's watershed basin, i.e., everything the
+watershed assigns to the source, including its share of any surrounding
+envelope. Basins below the contrast are removed iteratively and their
+territory is re-flooded. With the ``'saddle'`` method, it is only
+the flux the source holds above the saddle level where it separates
+from its neighbors. This is the significance criterion that
+`SourceExtractor`_ applies with its ``DEBLEND_MINCONT`` parameter,
+although the two codes space their threshold levels differently
+(SourceExtractor between the detection threshold and the peak,
+photutils between the source minimum and maximum) and assign the
+remaining pixels differently (SourceExtractor with a profile model,
+photutils with a watershed). The saddle flux measures the significance
+of the peak itself, independently of how much envelope territory the
+source would inherit, which makes it stricter for faint peaks sitting
+on bright envelopes. Because it excludes the flux below the saddle, the
+same ``contrast`` value selects sources differently between the two
+methods. The saddle method is evaluated once during marker construction
+and needs only a single watershed pass, so it is never slower than
+the basin method and is substantially faster when many below-contrast
+basins would otherwise be removed one at a time. The default of
+`None` currently resolves to ``'basin'``. The default may change to
+``'saddle'`` in version 4.0.
+
 Here's a simple example of source deblending::
 
     >>> from photutils.segmentation import deblend_sources

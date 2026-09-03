@@ -30,15 +30,15 @@ __all__ = ['deblend_sources']
 _MAX_MARKERS = 200
 
 
-def _validate_deblend_kwargs(*, n_levels, contrast, mode, connectivity,
-                             n_threads):
+def _validate_deblend_kwargs(*, n_levels, contrast, contrast_method, mode,
+                             connectivity, n_threads):
     """
     Validate the deblending keywords shared by `deblend_sources` and
     `~photutils.segmentation.SourceFinder`.
 
     Parameters
     ----------
-    n_levels, contrast, mode, connectivity, n_threads
+    n_levels, contrast, contrast_method, mode, connectivity, n_threads
         The keyword values to validate. See `deblend_sources`.
 
     Raises
@@ -52,6 +52,10 @@ def _validate_deblend_kwargs(*, n_levels, contrast, mode, connectivity,
 
     if contrast < 0 or contrast > 1:
         msg = 'contrast must be >= 0 and <= 1'
+        raise ValueError(msg)
+
+    if contrast_method not in (None, 'basin', 'saddle'):
+        msg = "contrast_method must be None, 'basin', or 'saddle'"
         raise ValueError(msg)
 
     if mode not in ('exponential', 'linear', 'sinh'):
@@ -76,6 +80,7 @@ class _DeblendParams:
     n_levels: int
     contrast: float
     mode: str
+    contrast_method: str = 'basin'
 
 
 @deprecated_renamed_argument('segment_img', 'segmentation_image', '3.0',
@@ -86,7 +91,8 @@ class _DeblendParams:
 @deprecated_renamed_argument('n_processes', None, '3.1', until='4.0')
 @deprecated_renamed_argument('progress_bar', None, '3.1', until='4.0')
 def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
-                    n_levels=32, contrast=0.001, mode='exponential',
+                    n_levels=32, contrast=0.001,
+                    contrast_method=None, mode='exponential',
                     connectivity=8, relabel=True, n_threads=1,
                     nproc=1,  # noqa: ARG001
                     n_processes=1,  # noqa: ARG001
@@ -132,10 +138,35 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         The fraction of the total source flux that a local peak must
         have (at any one of the multi-thresholds) to be deblended
         as a separate object. ``contrast`` must be between 0 and 1,
-        inclusive. If ``contrast=0`` then every local peak will be made
-        a separate object (maximum deblending). If ``contrast=1`` then
-        no deblending will occur. The default is 0.001, which will
-        deblend sources with a 7.5 magnitude difference.
+        inclusive. If ``contrast=0`` then every local peak will be
+        made a separate object (maximum deblending). If ``contrast=1``
+        then no deblending will occur. The default is 0.001, which
+        will deblend sources with a 7.5 magnitude difference. The
+        ``contrast_method`` keyword selects the flux to which the
+        fraction refers.
+
+    contrast_method : {`None`, 'basin', 'saddle'}, optional
+        The flux used by the contrast criterion. For ``'basin'``,
+        the fraction is the total flux in the source's watershed
+        basin, which includes the share of the surrounding envelope
+        territory assigned to the source. Basins below the contrast are
+        removed iteratively (faintest first, in batches when provably
+        equivalent) and their territory is re-flooded. For ``'saddle'``,
+        the fraction is the flux the source holds above the saddle
+        level where it separates from its neighbors, evaluated once
+        during marker construction with no iteration. This measures
+        the significance of the peak itself, independently of how much
+        envelope territory it would inherit. Because ``'saddle'``
+        needs only a single watershed pass, it is never slower than
+        ``'basin'`` and is substantially faster when many below-contrast
+        basins would otherwise be removed iteratively. Note that the
+        two methods measure different fluxes, so the same ``contrast``
+        value selects sources differently. The saddle flux excludes
+        all regions below the saddle and is therefore smaller than the
+        basin flux, making ``'saddle'`` stricter for faint peaks on
+        bright envelopes. If `None` (default), the ``'basin'`` method
+        is currently used. The default may change to ``'saddle'`` in
+        version 4.0.
 
     mode : {'exponential', 'linear', 'sinh'}, optional
         The mode used in defining the spacing between the
@@ -254,8 +285,14 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         raise ValueError(msg)
 
     _validate_deblend_kwargs(n_levels=n_levels, contrast=contrast,
-                             mode=mode, connectivity=connectivity,
+                             contrast_method=contrast_method, mode=mode,
+                             connectivity=connectivity,
                              n_threads=n_threads)
+
+    if contrast_method is None:
+        # The default resolution is planned to change to 'saddle' in
+        # version 4.0
+        contrast_method = 'basin'
 
     if contrast == 1:  # no deblending
         segm_img = segmentation_image.copy()
@@ -279,7 +316,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
 
     footprint = _make_binary_structure(data.ndim, connectivity)
     deblend_params = _DeblendParams(n_pixels, footprint, n_levels, contrast,
-                                    mode)
+                                    mode, contrast_method)
 
     segm_deblended = segmentation_image.data.copy()
     label_indices = segmentation_image.get_indices(labels)
@@ -562,6 +599,18 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
     markers_list = [None] * len(labels)
     nonposmin = np.zeros(len(labels), dtype=bool)
     n_markers_fallback = np.zeros(len(labels), dtype=bool)
+
+    # The saddle criterion selects the markers against the total source
+    # fluxes, so those are computed up front. The basin criterion needs
+    # them only for the sources that split.
+    use_saddle = deblend_params.contrast_method == 'saddle'
+    source_sums = {}
+    if use_saddle:
+        for index in active:
+            slc = slices[index]
+            values = data[slc][segm_data[slc] == labels[index]]
+            source_sums[index] = float(nansum(values))
+
     if active.size > 0:
         values_dtype = data.dtype.newbyteorder('=')
         smin = source_min[active].astype(values_dtype)
@@ -569,15 +618,23 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         thresholds, fallback = _compute_thresholds(smin, smax, n_levels,
                                                    mode)
         nonposmin[active] = fallback
+        saddle_limits = None
+        if use_saddle:
+            saddle_limits = np.array([deblend_params.contrast
+                                      * source_sums[index]
+                                      for index in active])
         # Sources with too many markers are only retried with linearly
         # spaced levels (below), so only then may the kernel skip
-        # building their markers.
-        can_retry = mode != 'linear'
+        # building their markers. With the saddle criterion the markers
+        # are already contrast-selected and there is no iterative
+        # watershed, so no fallback is needed.
+        can_retry = mode != 'linear' and not use_saddle
         max_markers = _MAX_MARKERS if can_retry else -1
         markers, n_markers = deblend_markers_chunk(
             driver_data, driver_segm, labels[active], y0[active],
             y1[active], x0[active], x1[active], thresholds,
-            max_markers=max_markers, **chunk_kwargs)
+            max_markers=max_markers, saddle_limits=saddle_limits,
+            **chunk_kwargs)
         for index, source_markers in zip(active, markers, strict=True):
             markers_list[index] = source_markers
 
@@ -614,15 +671,20 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         # the per-source Python path (its rounding depends on the
         # summation order) and the source minimum comes from the
         # compiled extrema. Both are passed to the compiled contrast
-        # loop.
-        values = data[slc][segm_data[slc] == label]
+        # loop. With the saddle criterion, the markers are already
+        # contrast-selected, so the basin removal is disabled.
+        if use_saddle:
+            source_sum = source_sums[index]
+        else:
+            values = data[slc][segm_data[slc] == label]
+            source_sum = float(nansum(values))
         source_deblended = deblend_source_contrast(
             driver_data, driver_segm, int(label), int(y0[index]),
             int(y1[index]), int(x0[index]), int(x1[index]), markers,
             connectivity=connectivity,
             contrast=float(deblend_params.contrast),
-            source_sum=float(nansum(values)),
-            source_min=float(source_min[index]))
+            source_sum=source_sum, source_min=float(source_min[index]),
+            apply_contrast=not use_saddle)
         results.append((source_deblended, warns))
 
     return results

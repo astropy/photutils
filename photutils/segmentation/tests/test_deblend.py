@@ -17,6 +17,7 @@ from scipy import ndimage as ndi
 from photutils.segmentation import SegmentationImage
 from photutils.segmentation import deblend as deblend_module
 from photutils.segmentation import deblend_sources, detect_sources
+from photutils.segmentation._deblend_markers import deblend_markers_chunk
 from photutils.segmentation._deblend_reference import _SingleSourceDeblender
 from photutils.segmentation._deblend_watershed import deblend_watershed
 from photutils.segmentation.deblend import (_compute_thresholds,
@@ -684,6 +685,7 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
     return results
 
 
+@pytest.mark.parametrize('contrast_method', ['basin', 'saddle'])
 @pytest.mark.parametrize('dtype', ['float64', 'float32', '>f4', 'int32'])
 @pytest.mark.parametrize('scene', ['blend', 'negmin', 'checkerboard',
                                    'gaussian', 'flat',
@@ -692,7 +694,7 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
                                    'neighbors', 'nan',
                                    'checkerboard-linear',
                                    'checkerboard-negmin'])
-def test_chunk_driver_matches_python_path(dtype, scene):
+def test_chunk_driver_matches_python_path(dtype, scene, contrast_method):
     """
     Test that the compiled chunk driver and contrast loop produce
     results identical to the pure-Python per-source path, including
@@ -710,7 +712,7 @@ def test_chunk_driver_matches_python_path(dtype, scene):
     segment, the checkerboard deblended in linear mode, which keeps
     all of its markers instead of falling back, and the checkerboard
     with a non-positive minimum, which falls back to sinh and is then
-    retried with linear levels.
+    retried with linear levels, each with both contrast criteria.
     """
     contrast = 0.001
     mode = 'linear' if scene == 'checkerboard-linear' else 'exponential'
@@ -783,11 +785,13 @@ def test_chunk_driver_matches_python_path(dtype, scene):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', DeblendWarning)
         result = deblend_sources(data, segm, n_pixels,
-                                 contrast=contrast, mode=mode)
+                                 contrast=contrast, mode=mode,
+                                 contrast_method=contrast_method)
         with patch.object(deblend_module, '_deblend_sources_chunk',
                           python_deblend_chunk):
             expected = deblend_sources(data, segm, n_pixels,
-                                       contrast=contrast, mode=mode)
+                                       contrast=contrast, mode=mode,
+                                       contrast_method=contrast_method)
 
     assert_equal(result.data, expected.data)
     assert result.info.keys() == expected.info.keys()
@@ -937,6 +941,153 @@ def test_compute_thresholds_matches_reference(dtype, mode, n_levels):
         assert_equal(thresholds[i].view(np.int64),
                      expected.view(np.int64))
         assert nonposmin[i] == ('nonposmin' in deblender.warnings)
+
+
+@pytest.mark.parametrize('dtype', ['float64', 'float32'])
+@pytest.mark.parametrize('connectivity', [8, 4])
+@pytest.mark.parametrize(
+    ('scene', 'contrast'),
+    [('multipeak', 0.0), ('multipeak', 0.001), ('multipeak', 0.01),
+     ('multipeak', 0.1), ('hierarchical', 0.001),
+     ('hierarchical', 0.05), ('negmin', 0.01), ('discrete', 0.01),
+     ('discrete', 0.03), ('discrete', 0.05), ('quantized', 0.001),
+     ('quantized', 0.01)])
+def test_saddle_markers_match_reference(dtype, connectivity, scene,
+                                        contrast):
+    """
+    Test that the compiled saddle-criterion marker selection matches
+    the per-level reference implementation, including nested splits,
+    dissolving below-contrast siblings, the sinh fallback for negative
+    minima, both connectivities, float32 data, and data with empty
+    threshold levels (discrete values and coarse quantization), where
+    a branch must be evaluated at the level above its junction rather
+    than at the top of its unchanged range of levels.
+    """
+    y, x = np.mgrid[0:101, 0:101]
+    mode = 'exponential'
+    if scene == 'hierarchical':
+        data = (Gaussian2D(1.0, 50, 50, 30, 30)(x, y)
+                + Gaussian2D(100, 35, 50, 3, 3)(x, y)
+                + Gaussian2D(80, 45, 50, 3, 3)(x, y)
+                + Gaussian2D(60, 70, 50, 3, 3)(x, y))
+    elif scene == 'discrete':
+        # A pedestal with two stepped blocks. Most of the linear levels
+        # between the steps are empty
+        data = np.zeros((41, 41))
+        data[2:39, 2:39] = 1.0
+        for cy, cx in ((12, 12), (28, 28)):
+            data[cy - 2:cy + 3, cx - 2:cx + 3] = 6.0
+            data[cy - 1:cy + 2, cx - 1:cx + 2] = 10.0
+        mode = 'linear'
+    elif scene == 'quantized':
+        data = make_marker_test_image('quantized')
+    else:
+        data, _ = make_multipeak_source()
+    threshold = 0.5
+    if scene == 'negmin':
+        data = data - 5.0
+        threshold = -4.5
+    data = data.astype(dtype)
+
+    footprint = _make_binary_structure(2, connectivity)
+    segm = detect_sources(data, threshold, 5,
+                          connectivity=connectivity)
+    slc = segm.slices[0]
+    cutout = data[slc]
+
+    params = _DeblendParams(5, footprint, 32, contrast, mode, 'saddle')
+    deblender = _SingleSourceDeblender(cutout, segm.data[slc], 1,
+                                       params)
+    expected = deblender.make_markers()
+    thresholds = deblender.compute_thresholds()
+
+    y0 = np.array([slc[0].start], dtype=np.int64)
+    y1 = np.array([slc[0].stop], dtype=np.int64)
+    x0 = np.array([slc[1].start], dtype=np.int64)
+    x1 = np.array([slc[1].stop], dtype=np.int64)
+    thresholds_2d = np.ascontiguousarray(thresholds[None, :],
+                                         dtype=np.float64)
+    limit = deblender.contrast * float(deblender.source_sum)
+    markers_list, _ = deblend_markers_chunk(
+        np.ascontiguousarray(data), segm.data,
+        np.array([1], dtype=np.int64), y0, y1, x0, x1, thresholds_2d,
+        n_pixels=5, connectivity=connectivity, max_markers=-1,
+        saddle_limits=np.array([limit], dtype=np.float64))
+    result = markers_list[0]
+
+    if expected is None or result is None:
+        assert expected is None
+        assert result is None
+    else:
+        assert_equal(result, expected)
+
+
+def test_contrast_method_invalid():
+    """
+    Test that an invalid contrast_method raises a ValueError.
+    """
+    data, segm = make_multipeak_source()
+    match = 'contrast_method must be None, .basin., or .saddle.'
+    with pytest.raises(ValueError, match=match):
+        deblend_sources(data, segm, 5, contrast_method='invalid')
+
+
+def test_contrast_method_default():
+    """
+    Test that the default contrast_method of None currently resolves
+    to the 'basin' method.
+    """
+    data, segm = make_multipeak_source()
+    result_default = deblend_sources(data, segm, 5, contrast=0.1)
+    result_basin = deblend_sources(data, segm, 5, contrast=0.1,
+                                   contrast_method='basin')
+    assert_equal(result_default.data, result_basin.data)
+
+
+def test_saddle_deblend():
+    """
+    Test deblending with the saddle contrast criterion through the
+    public API, including a source that does not split, the parent
+    label map, the deblended flags, and thread-count invariance.
+
+    The label counts are regression pins for the multipeak scene (its
+    watershed basin flux fractions are about 0.061, 0.062, 0.225, and
+    0.652). The results are also compared with the pure-Python
+    reference path.
+    """
+    y, x = np.mgrid[0:101, 0:181]
+    data, _ = make_multipeak_source()
+    image = np.zeros((101, 181))
+    image[:, :101] = data
+    image += Gaussian2D(10, 150, 50, 4, 4)(x, y)  # lone source
+    segm = detect_sources(image, 0.5, 5)
+    assert segm.n_labels == 2
+
+    result = deblend_sources(image, segm, 5, contrast=0.001,
+                             contrast_method='saddle')
+    assert result.n_labels == 5
+    assert_equal(result.parent_to_deblended_labels, {1: [2, 3, 4, 5]})
+    assert np.count_nonzero(result.flags
+                            & SEGMENTATION_FLAGS.DEBLENDED) == 4
+
+    # Higher contrast drops the faint basins entirely (they cannot
+    # combine and survive, as there is no removal iteration).
+    result2 = deblend_sources(image, segm, 5, contrast=0.1,
+                              contrast_method='saddle')
+    assert result2.n_labels == 3
+
+    result3 = deblend_sources(image, segm, 5, contrast=0.001,
+                              contrast_method='saddle', n_threads=4)
+    assert_equal(result3.data, result.data)
+
+    with patch.object(deblend_module, '_deblend_sources_chunk',
+                      python_deblend_chunk):
+        expected = deblend_sources(image, segm, 5, contrast=0.001,
+                                   contrast_method='saddle')
+        expected2 = deblend_sources(image, segm, 5, contrast=0.1,
+                                    contrast_method='saddle')
+    assert_equal(result.data, expected.data)
+    assert_equal(result2.data, expected2.data)
 
 
 def test_nonposmin_fallback_sinh():

@@ -77,6 +77,16 @@ class SourceFinder:
         deblend sources with a 7.5 magnitude difference. This keyword is
         ignored unless ``deblend=True``.
 
+    contrast_method : {`None`, 'basin', 'saddle'}, optional
+        The flux used by the contrast criterion. For ``'basin'``, the
+        fraction is the total flux in the source's watershed basin.
+        For ``'saddle'``, the fraction is the flux the source holds
+        above the saddle level where it separates from its neighbors.
+        If `None` (default), the ``'basin'`` method is currently used.
+        The default may change to ``'saddle'`` in version 4.0. See
+        :func:`~photutils.segmentation.deblend_sources` for details.
+        This keyword is ignored unless ``deblend=True``.
+
     mode : {'exponential', 'linear', 'sinh'}, optional
         The mode used in defining the spacing between the
         multi-thresholding levels (see the ``n_levels`` keyword)
@@ -183,7 +193,8 @@ class SourceFinder:
     @deprecated_renamed_argument('n_processes', None, '3.1', until='4.0')
     @deprecated_renamed_argument('progress_bar', None, '3.1', until='4.0')
     def __init__(self, n_pixels, *, connectivity=8, deblend=True, n_levels=32,
-                 contrast=0.001, mode='exponential', relabel=True,
+                 contrast=0.001, contrast_method=None,
+                 mode='exponential', relabel=True,
                  n_threads=1,
                  nproc=1,  # noqa: ARG002
                  n_processes=1, progress_bar=True):
@@ -193,12 +204,14 @@ class SourceFinder:
                 msg = f'{name} must be a boolean, got {value!r}'
                 raise TypeError(msg)
         _validate_deblend_kwargs(n_levels=n_levels, contrast=contrast,
+                                 contrast_method=contrast_method,
                                  mode=mode, connectivity=connectivity,
                                  n_threads=n_threads)
         self.deblend = deblend
         self.connectivity = connectivity
         self.n_levels = n_levels
         self.contrast = contrast
+        self.contrast_method = contrast_method
         self.mode = mode
         self.relabel = relabel
         self.n_threads = n_threads
@@ -207,8 +220,8 @@ class SourceFinder:
 
     def __repr__(self):
         params = ('n_pixels', 'deblend', 'connectivity', 'n_levels',
-                  'contrast', 'mode', 'relabel', 'n_threads',
-                  'n_processes', 'progress_bar')
+                  'contrast', 'contrast_method', 'mode', 'relabel',
+                  'n_threads', 'n_processes', 'progress_bar')
         return make_repr(self, params)
 
     # Remove in 4.0
@@ -259,6 +272,8 @@ class SourceFinder:
             segment_img = deblend_sources(data, segment_img, self.n_pixels[1],
                                           n_levels=self.n_levels,
                                           contrast=self.contrast,
+                                          contrast_method=(
+                                              self.contrast_method),
                                           mode=self.mode,
                                           connectivity=self.connectivity,
                                           relabel=self.relabel,
