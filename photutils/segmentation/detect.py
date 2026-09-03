@@ -137,8 +137,7 @@ def detect_threshold(data, n_sigma, *, background=None, error=None, mask=None,
     return threshold
 
 
-def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
-                    relabel=True, return_segmimg=True):
+def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask):
     """
     Detect sources above a specified threshold value in an image.
 
@@ -150,8 +149,7 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
     `detect_sources` in that it does not perform any boilerplate checks,
     it accepts a ``footprint`` argument instead of a ``connectivity``
     argument, and it accepts an ``inverse_mask`` argument instead of a
-    ``mask`` argument. It is also used by the source deblending function
-    for multithresholding.
+    ``mask`` argument.
 
     Parameters
     ----------
@@ -180,31 +178,17 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
         `False` values indicate masked pixels (the inverse of usual
         pixel masks). Masked pixels will not be included in any source.
 
-    relabel : bool, optional
-        If `True`, relabel the segmentation image with consecutive
-        numbers.
-
-    return_segmimg : bool, optional
-        If `True`, return a `~photutils.segmentation.SegmentationImage`
-        object. If `False`, return a 2D `~numpy.ndarray` segmentation
-        image. The latter is used by the source deblending function.
-        In that case, if only one source is found, then `None` is
-        returned.
-
     Returns
     -------
-    segment_image : `~photutils.segmentation.SegmentationImage`, \
-            2D `~numpy.ndarray`, or `None`
+    segment_image : `~photutils.segmentation.SegmentationImage` or `None`
         A 2D segmentation image, with the same shape as ``data``, where
         sources are marked by different positive integer values. A value
-        of zero is reserved for the background. If ``return_segmimg``
-        is `False`, then a 2D `~numpy.ndarray` segmentation image is
-        returned. If no sources are found then `None` is returned.
+        of zero is reserved for the background. If no sources are found
+        then `None` is returned.
     """
-    # Ignore RuntimeWarning caused by > comparison when data contains NaNs
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', category=RuntimeWarning)
-        segment_img = data > threshold
+    # NaN values compare as False, so NaN pixels are never included
+    # in any source
+    segment_img = data > threshold
 
     if inverse_mask is not None:
         segment_img &= inverse_mask
@@ -239,35 +223,23 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask, *,
         segm_slices.append(slc)
         segm_areas.append(area)
 
-    if np.count_nonzero(segment_img) == 0:
+    if not segm_labels:
         return None
 
-    if relabel:
-        # Relabel the segmentation image with consecutive numbers;
-        # ndimage.label returns segment_img with dtype = np.int32
-        # unless the input array has more than 2**31 - 1 pixels
-        n_labels = len(segm_labels)
-        if len(labels) != n_labels:
-            label_map = np.zeros(np.max(labels) + 1,
-                                 dtype=segment_img.dtype)
-            labels = np.arange(n_labels, dtype=segment_img.dtype) + 1
-            label_map[segm_labels] = labels
-            segment_img = label_map[segment_img]
-    else:
-        # Use an ndarray so that seeded labels are always an array,
-        # matching the relabel path
-        labels = np.asarray(segm_labels)
+    # Relabel the segmentation image with consecutive numbers.
+    # ndimage.label returns segment_img with dtype = np.int32
+    # unless the input array has more than 2**31 - 1 pixels
+    n_labels = len(segm_labels)
+    if len(labels) != n_labels:
+        label_map = np.zeros(np.max(labels) + 1,
+                             dtype=segment_img.dtype)
+        labels = np.arange(n_labels, dtype=segment_img.dtype) + 1
+        label_map[segm_labels] = labels
+        segment_img = label_map[segment_img]
 
-    if return_segmimg:
-        return SegmentationImage._from_data(segment_img, labels=labels,
-                                            areas=np.array(segm_areas),
-                                            slices=segm_slices)
-
-    # This is used by deblend_sources
-    if len(labels) == 1:
-        return None
-
-    return segment_img
+    return SegmentationImage._from_data(segment_img, labels=labels,
+                                        areas=np.array(segm_areas),
+                                        slices=segm_slices)
 
 
 @deprecated_renamed_argument('npixels', 'n_pixels', '3.0', until='4.0')
@@ -390,7 +362,7 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
     footprint = _make_binary_structure(data.ndim, connectivity)
 
     segm = _detect_sources(data, threshold, n_pixels, footprint,
-                           inverse_mask, relabel=True, return_segmimg=True)
+                           inverse_mask)
 
     if segm is None:
         msg = ('No sources were found. Try lowering the threshold or '

@@ -83,8 +83,8 @@ class SourceFinder:
         the threshold levels between the source minimum and maximum.
         The ``'exponential'`` and ``'sinh'`` modes differ in that
         the ``'exponential'`` levels are dependent on the source
-        maximum/minimum ratio (smaller ratios are more linear; larger
-        ratios are more exponential), while the ``'sinh'`` levels
+        maximum/minimum ratio (smaller ratios are more linear and
+        larger ratios are more exponential), while the ``'sinh'`` levels
         are not. Also, the ``'exponential'`` mode will be changed to
         ``'linear'`` for sources with non-positive minimum data values.
         This keyword is ignored unless ``deblend=True``.
@@ -95,25 +95,29 @@ class SourceFinder:
         consecutive order starting from 1. This keyword is ignored
         unless ``deblend=True``.
 
+    nproc : int, optional
+        This keyword is deprecated and has no effect. It was the name of
+        the ``n_processes`` keyword before version 3.0.
+
+        .. deprecated:: 3.0
+            The ``nproc`` keyword is deprecated and will be removed in
+            version 4.0.
+
     n_processes : int, optional
-        The number of processes to use for source deblending. If set to
-        1, then a serial implementation is used instead of a parallel
-        one. If `None`, then the number of processes will be set to the
-        number of CPUs detected on the machine. Please note that due to
-        overheads, multiprocessing may be slower than serial processing
-        if only a small number of sources are to be deblended. The
-        benefits of multiprocessing require ~1000 or more sources to
-        deblend, with larger gains as the number of sources increase.
-        This keyword is ignored unless ``deblend=True``.
+        This keyword is deprecated and has no effect. Multiprocessing
+        no longer provides any benefit for source deblending.
+
+        .. deprecated:: 3.1
+            The ``n_processes`` keyword is deprecated and will be
+            removed in version 4.0.
 
     progress_bar : bool, optional
-        Whether to display a progress bar. If ``n_processes = 1``, then the
-        ID shown after the progress bar is the source label being
-        deblended. If multiprocessing is used (``n_processes > 1``), the
-        ID shown is the last source label that was deblended. The
-        progress bar requires that the `tqdm <https://tqdm.github.io/>`_
-        optional dependency be installed. This keyword is ignored unless
-        ``deblend=True``.
+        This keyword is deprecated and has no effect. Deblending no
+        longer displays a progress bar.
+
+        .. deprecated:: 3.1
+            The ``progress_bar`` keyword is deprecated and will be
+            removed in version 4.0.
 
     See Also
     --------
@@ -148,7 +152,7 @@ class SourceFinder:
 
         # Detect the sources
         threshold = 1.5 * bkg.background_rms  # per-pixel detection threshold
-        finder = SourceFinder(n_pixels=10, progress_bar=False)
+        finder = SourceFinder(n_pixels=10)
         segment_map = finder(convolved_data, threshold)
 
         # Plot the image and the segmentation image
@@ -161,9 +165,12 @@ class SourceFinder:
 
     @deprecated_renamed_argument('npixels', 'n_pixels', '3.0', until='4.0')
     @deprecated_renamed_argument('nlevels', 'n_levels', '3.0', until='4.0')
-    @deprecated_renamed_argument('nproc', 'n_processes', '3.0', until='4.0')
+    @deprecated_renamed_argument('nproc', None, '3.0', until='4.0')
+    @deprecated_renamed_argument('n_processes', None, '3.1', until='4.0')
+    @deprecated_renamed_argument('progress_bar', None, '3.1', until='4.0')
     def __init__(self, n_pixels, *, connectivity=8, deblend=True, n_levels=32,
                  contrast=0.001, mode='exponential', relabel=True,
+                 nproc=1,  # noqa: ARG002
                  n_processes=1, progress_bar=True):
         self.n_pixels = as_pair('n_pixels', n_pixels, check_odd=False)
         self.deblend = deblend
@@ -225,15 +232,12 @@ class SourceFinder:
         if segment_img is None:
             return None
 
-        # Source deblending requires scikit-image
         if self.deblend:
             segment_img = deblend_sources(data, segment_img, self.n_pixels[1],
                                           n_levels=self.n_levels,
                                           contrast=self.contrast,
                                           mode=self.mode,
                                           connectivity=self.connectivity,
-                                          relabel=self.relabel,
-                                          n_processes=self.n_processes,
-                                          progress_bar=self.progress_bar)
+                                          relabel=self.relabel)
 
         return segment_img

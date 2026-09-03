@@ -31,8 +31,7 @@ from photutils.segmentation.detect import detect_sources
 from photutils.segmentation.finder import SourceFinder
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import make_2dgaussian_kernel
-from photutils.utils._optional_deps import (HAS_GWCS, HAS_MATPLOTLIB,
-                                            HAS_SKIMAGE)
+from photutils.utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB
 from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 from photutils.utils.cutouts import CutoutImage
 
@@ -96,7 +95,7 @@ def centroid_win_data():
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
     n_pixels = 10
-    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    finder = SourceFinder(n_pixels=n_pixels)
     threshold = 107.9
     segment_map = finder(convolved_data, threshold)
     return data, segment_map, convolved_data
@@ -1035,7 +1034,7 @@ class TestSourceCatalog:
             # Built-in cached property
             cat.add_property('area', segment_snr)
         with pytest.raises(ValueError, match=match):
-            # Built-in method; must raise even with overwrite=True
+            # Built-in method, which must raise even with overwrite=True
             cat.add_property('to_table', segment_snr, overwrite=True)
 
         cat.add_property('segment_snr', segment_snr)
@@ -1215,7 +1214,6 @@ class TestSourceCatalog:
         aper = obj.make_kron_apertures()
         assert isinstance(aper, EllipticalAperture)
 
-    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_make_cutouts(self):
         """
         Test make cutouts.
@@ -1229,7 +1227,7 @@ class TestSourceCatalog:
         kernel = make_2dgaussian_kernel(3.0, size=5)
         convolved_data = convolve(data, kernel)
         n_pixels = 10
-        finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+        finder = SourceFinder(n_pixels=n_pixels)
         segment_map = finder(convolved_data, threshold)
         cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
 
@@ -1607,9 +1605,8 @@ class TestSourceCatalogFlags:
         data = (Gaussian2D(100, 25, 30, 4, 4)(xx, yy)
                 + Gaussian2D(100, 38, 30, 4, 4)(xx, yy))
         segm = detect_sources(data, 10, 5)
-        return data, deblend_sources(data, segm, 5, progress_bar=False)
+        return data, deblend_sources(data, segm, 5)
 
-    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_kron_neighbor_pixels(self):
         """
         Test the kron_neighbor_pixels flag when a neighbor segment falls
@@ -1620,7 +1617,6 @@ class TestSourceCatalogFlags:
         assert np.all(cat.flags
                       & SEGMENTATION_FLAGS.KRON_NEIGHBOR_PIXELS)
 
-    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_kron_uncorrected_pixels(self):
         """
         Test the kron_uncorrected_pixels flag for neighbor pixels within
@@ -1823,7 +1819,6 @@ class TestSourceCatalogFlags:
         assert np.all(cat.flags
                       & SEGMENTATION_FLAGS.KRON_MINIMUM_RADIUS)
 
-    @pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
     def test_provenance_from_deblending(self):
         """
         Test that deblending provenance flags propagate into the catalog
@@ -1833,7 +1828,7 @@ class TestSourceCatalogFlags:
         data = (Gaussian2D(100, 50, 50, 5, 5)(xx, yy)
                 + Gaussian2D(100, 35, 50, 5, 5)(xx, yy))
         segm = detect_sources(data, 10, 5)
-        segm2 = deblend_sources(data, segm, 5, progress_bar=False)
+        segm2 = deblend_sources(data, segm, 5)
         cat = SourceCatalog(data, segm2)
         assert np.all(cat.flags & SEGMENTATION_FLAGS.DEBLENDED)
 
@@ -2029,7 +2024,6 @@ class TestThreadSafety:
             assert getattr(obj, f'prop{index}') == float(index)
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_kron_params():
     """
     Test kron params.
@@ -2046,7 +2040,7 @@ def test_kron_params():
     convolved_data = convolve(data, kernel)
 
     n_pixels = 10
-    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    finder = SourceFinder(n_pixels=n_pixels)
     segm = finder(convolved_data, threshold)
 
     minrad = 1.4
@@ -2086,7 +2080,6 @@ def test_kron_params():
     assert isinstance(cat.kron_aperture[0], CircularAperture)
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win(centroid_win_data):
     """
     Test centroid win.
@@ -2576,7 +2569,6 @@ def test_centroid_win_oom_guard(gauss_101_catalog):
     assert_allclose(cwin[:, 1], cat.y_centroid)
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_aperture_mask_mask(centroid_win_data):
     """
     Test centroid_win with aperture_mask_method='mask' to cover the
@@ -2595,7 +2587,7 @@ def test_centroid_win_aperture_mask_mask(centroid_win_data):
 
 def test_make_scalar(single_source_catalog):
     """
-    Test the scalar collapse of method results: a length-1 sequence
+    Test the scalar collapse of method results. A length-1 sequence
     is collapsed for a scalar catalog, a longer sequence is returned
     unchanged, and a multi-source catalog never collapses.
     """
@@ -2757,7 +2749,6 @@ def test_measured_kron_radius_circular_no_min_radius(gauss_101_data):
         assert np.all(np.isnan(kr))
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_err():
     """
     Test that centroid_win_err returns finite 1-sigma position
@@ -2775,7 +2766,7 @@ def test_centroid_win_err():
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
     n_pixels = 10
-    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    finder = SourceFinder(n_pixels=n_pixels)
     threshold = 107.9
     segment_map = finder(convolved_data, threshold)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
@@ -2783,7 +2774,7 @@ def test_centroid_win_err():
 
     errors = cat.centroid_win_err
     assert errors.shape == (cat.n_labels, 2)
-    # Source 0 converged; errors should be finite and positive
+    # Source 0 converged, so errors should be finite and positive
     assert np.all(np.isfinite(errors[0]))
     assert np.all(errors[0] > 0)
     # Source 1 fell back to the isophotal centroid, so its errors
@@ -2840,7 +2831,6 @@ def test_centroid_win_err_scalar():
     assert single.y_centroid_win_err == errors[1]
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_err_sliced():
     """
     Test that centroid_win_err works on a sliced catalog after
@@ -2858,7 +2848,7 @@ def test_centroid_win_err_sliced():
     error = np.full(data.shape, 65.0)
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
-    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    finder = SourceFinder(n_pixels=10)
     segment_map = finder(convolved_data, 107.9)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')
@@ -2903,12 +2893,11 @@ def test_centroid_win_err_singularity():
     assert np.all(errors > 0)
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_err_cov():
     """
-    Test the windowed pixel error covariance: symmetric for every
-    source, near-zero off-diagonal for a circular source with uniform
-    errors, and consistent with centroid_win_err.
+    Test the windowed pixel error covariance. It is symmetric for
+    every source, near-zero off-diagonal for a circular source with
+    uniform errors, and consistent with centroid_win_err.
     """
     yy, xx = np.mgrid[0:31, 0:31]
     data = Gaussian2D(500.0, 15.2, 15.6, 2.5, 2.5)(xx, yy)
@@ -2928,7 +2917,6 @@ def test_centroid_win_err_cov():
                     np.sqrt((cov[0, 0, 0], cov[0, 1, 1])))
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_win_err_cov_fallback():
     """
     Test that fallback sources use the full isophotal covariance.
@@ -2942,7 +2930,7 @@ def test_centroid_win_err_cov_fallback():
     error = np.full(data.shape, 65.0)
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
-    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    finder = SourceFinder(n_pixels=10)
     segment_map = finder(convolved_data, 107.9)
     cat = SourceCatalog(data, segment_map,
                         convolved_data=convolved_data, error=error,
@@ -2955,7 +2943,6 @@ def test_centroid_win_err_cov_fallback():
                     cat._centroid_err_cov[1])
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_err():
     """
     Test that centroid_err returns finite 1-sigma position errors
@@ -2971,7 +2958,7 @@ def test_centroid_err():
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
     n_pixels = 10
-    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    finder = SourceFinder(n_pixels=n_pixels)
     threshold = 107.9
     segment_map = finder(convolved_data, threshold)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
@@ -3116,7 +3103,6 @@ def test_centroid_err_zero_flux():
     assert np.all(np.isnan(errors))
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_err_columns():
     """
     Test the x/y centroid error properties and their use as to_table
@@ -3131,7 +3117,7 @@ def test_centroid_err_columns():
     error = np.full(data.shape, 65.0)
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
-    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    finder = SourceFinder(n_pixels=10)
     segment_map = finder(convolved_data, 107.9)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')
@@ -3308,7 +3294,6 @@ def test_centroid_quad_err_peak_at_edge():
     assert np.all(np.isnan(cat.centroid_quad_err))
 
 
-@pytest.mark.skipif(not HAS_SKIMAGE, reason='skimage is required')
 def test_centroid_quad_err_columns():
     """
     Test the quadratic centroid error properties as to_table columns
@@ -3321,7 +3306,7 @@ def test_centroid_quad_err_columns():
     error = np.full(data.shape, 65.0)
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
-    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    finder = SourceFinder(n_pixels=10)
     segment_map = finder(convolved_data, 107.9)
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')

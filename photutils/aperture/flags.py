@@ -152,7 +152,7 @@ class _ApertureFlags(FlagRegistry):
         FlagDefinition(
             bit_value=4096,
             name='undefined_shape',
-            description='non-positive net flux; shape properties undefined',
+            description='non-positive net flux (shape properties undefined)',
             detailed_description=('The net flux within the aperture '
                                   '(the zeroth image moment of the '
                                   'unmasked "center"-method pixels) is '

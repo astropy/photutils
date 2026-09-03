@@ -139,7 +139,7 @@ cdef void _centroid_win_source(const double *data, const double *error,
     """
     Compute the raw windowed-centroid quantities for a single source.
 
-    Replicates the previous per-source Python implementation: an
+    Replicates the previous per-source Python implementation, an
     iterative Gaussian-weighted centroid within a binary circular
     window of radius ``4 * sigma``, with masked pixels contributing
     zero and neighbor-source pixels excluded or mirror-corrected per
@@ -236,7 +236,7 @@ cdef void _centroid_win_source(const double *data, const double *error,
 
         weighted_flux = sumw
         # 0/0 yields NaN (cdivision), matching the suppressed NumPy
-        # RuntimeWarning path; a NaN dcen ends the loop
+        # RuntimeWarning path. A NaN dcen ends the loop
         dx_mom = sumwx / sumw
         dy_mom = sumwy / sumw
         dcen = sqrt(dx_mom * dx_mom + dy_mom * dy_mom)
@@ -265,7 +265,8 @@ cdef void _centroid_win_source(const double *data, const double *error,
         return
 
     # Final pass over the last completed window using the pre-update
-    # center: windowed central 2nd-order moments and raw error sums.
+    # center, computing the windowed central 2nd-order moments and
+    # raw error sums.
     sxx = 0.0
     syy = 0.0
     sxy = 0.0
@@ -477,7 +478,7 @@ cdef void _kron_radius_source(const double *data,
     Accumulate the Kron radius numerator and denominator for a single
     source.
 
-    Replicates the previous per-source Python implementation: the
+    Replicates the previous per-source Python implementation, the
     sums of ``data * r`` and ``data`` over the pixels whose centers
     fall inside the ellipse of elliptical radius ``scale`` (or the
     circle of radius ``min_circ_radius`` when both axes are zero),
@@ -736,7 +737,7 @@ cdef void _flux_radius_cutout(const double *data,
     Fill the cleaned, background-subtracted cutout of a single source
     for the flux-radius root-find.
 
-    Replicates the previous per-source Python preparation: masked and
+    Replicates the previous per-source Python preparation. Masked and
     non-finite pixels are zero, neighbor-source pixels are zeroed or
     mirror-corrected per ``seg_method`` (an uncorrectable neighbor
     pixel is zero), and every other pixel is ``data - local_bkg``.
@@ -1019,7 +1020,7 @@ cdef void _bin_flux_radius_pixels(_FluxRadiusArgs *p, Py_ssize_t *order,
     ----------
     p : _FluxRadiusArgs *
         The per-source arguments. On input the grid and data members
-        are set; on output the ``order``, ``bin_starts``, and
+        are set. On output the ``order``, ``bin_starts``, and
         ``bin_cumsum`` members point at the filled arrays.
 
     order : Py_ssize_t *
@@ -1089,11 +1090,11 @@ cdef double _flux_radius_objective(double r,
     The flux is ``sum(data * overlap)`` with the same per-pixel
     overlap arithmetic as ``circular_overlap_grid`` (grid edges
     relative to the source centroid). The pixels are visited through
-    the radial bins of ``_bin_flux_radius_pixels``: bins whose pixels
+    the radial bins of ``_bin_flux_radius_pixels``. Bins whose pixels
     all lie within ``r - pixel_radius`` of the centroid are fully
     enclosed (overlap fraction exactly 1, as in the interior fast path
-    of ``circle_frac_from_d2``) and are added from the prefix sums;
-    bins beyond ``r + pixel_radius`` have zero overlap; the pixels of
+    of ``circle_frac_from_d2``) and are added from the prefix sums.
+    Bins beyond ``r + pixel_radius`` have zero overlap. The pixels of
     the remaining bins are evaluated individually.
     """
     cdef _FluxRadiusArgs *p = <_FluxRadiusArgs *>args
@@ -1154,7 +1155,7 @@ def batch_flux_radius_solve(const double[::1] values, *,
     evaluates the overlap only for the pixels near the circle boundary
     (see ``_flux_radius_objective``). Every pixel receives the same
     overlap fraction as before, but the flux is summed in a different
-    order, which perturbs the Brent iteration path: the roots agree
+    order, which perturbs the Brent iteration path. The roots agree
     with the previous implementation to within the root-finder's
     absolute tolerance (``xtol`` = 2e-12 pixels), not to rounding.
 
@@ -1313,7 +1314,7 @@ def batch_flux_radius_solve(const double[::1] values, *,
             rmax = max_radius[i]
 
             # Radial bins of a quarter pixel diagonal out to the
-            # farthest cutout corner; the boundary band of a circle
+            # farthest cutout corner. The boundary band of a circle
             # then spans the pixel diagonal plus two bins
             p.bin_width = 0.5 * p.pixel_radius
             max_extent = sqrt(fmax(p.xmin_e * p.xmin_e, xmax_e * xmax_e)
@@ -1407,7 +1408,7 @@ def batch_perimeter(const unsigned char[:, ::1] mask, *,
     cross footprint, and the border image is convolved with the
     ``[[10, 2, 10], [2, 1, 2], [10, 2, 10]]`` kernel at every
     bounding-box pixel. The histogram of the convolved values below 34
-    is returned; the caller applies the perimeter weights of the
+    is returned. The caller applies the perimeter weights of the
     estimator of Benkrid et al. (2000) to it. This replicates the
     previous per-source implementation exactly.
 
@@ -1553,7 +1554,7 @@ def batch_quad_boxes(const double[:, ::1] data, *,
 
     peak : 2D ndarray of intp
         The cutout-frame ``(x, y)`` index of the peak pixel, with shape
-        ``(n_sources, 2)``. Valid for status 0 and 3; ``(-1, -1)``
+        ``(n_sources, 2)``. Valid for status 0 and 3 and ``(-1, -1)``
         otherwise.
 
     boxes : 2D ndarray of float64
@@ -1712,7 +1713,7 @@ def batch_segment_gather(const double[:, ::1] values, *,
 
     offsets : 1D ndarray of intp
         The start offset of each source in ``packed``, with shape
-        ``(n_sources + 1,)``; the values of source ``i`` are
+        ``(n_sources + 1,)``. The values of source ``i`` are
         ``packed[offsets[i]:offsets[i + 1]]``.
 
     counts : 1D ndarray of intp
@@ -1924,8 +1925,8 @@ def batch_raw_moments(const double[:, ::1] convdata, *,
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where bit 1 (value 1) marks input-masked pixels
         and bit 2 (value 2) marks non-finite data pixels folded into
-        the mask by the caller. Only bit 1 excludes a pixel here;
-        non-finite convolved values are excluded by their own test.
+        the mask by the caller. Only bit 1 excludes a pixel here.
+        Non-finite convolved values are excluded by their own test.
         Must have the same shape as ``convdata``.
 
     segm : 2D ndarray of intp (C-contiguous)
@@ -2039,8 +2040,8 @@ def batch_central_moments(const double[:, ::1] convdata, *,
     mask : 2D ndarray of uint8 (C-contiguous)
         A mask array where bit 1 (value 1) marks input-masked pixels
         and bit 2 (value 2) marks non-finite data pixels folded into
-        the mask by the caller. Only bit 1 excludes a pixel here;
-        non-finite convolved values are excluded by their own test.
+        the mask by the caller. Only bit 1 excludes a pixel here.
+        Non-finite convolved values are excluded by their own test.
         Must have the same shape as ``convdata``.
 
     segm : 2D ndarray of intp (C-contiguous)

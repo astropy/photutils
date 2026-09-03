@@ -272,9 +272,10 @@ def _batch_gini(values):
     sources.
 
     This is the vectorized form of `photutils.morphology.gini` applied
-    to each source's unmasked (finite) absolute pixel values: NaN for a
-    source with no pixels, 0.0 for a single pixel or a zero mean, and
-    otherwise the Lotz et al. (2004) sum over the sorted values.
+    to each source's unmasked (finite) absolute pixel values. The
+    result is NaN for a source with no pixels, 0.0 for a single pixel
+    or a zero mean, and otherwise the Lotz et al. (2004) sum over the
+    sorted values.
 
     The values of each source are sorted with NumPy in a Python loop
     rather than with the compiled ``batch_gini`` kernel shared with
@@ -664,9 +665,9 @@ class SourceCatalog:
     **Scalar vs. Multi-source Catalogs**
 
     A `SourceCatalog` can represent a single source or multiple
-    sources. Most properties adapt their return type accordingly: for
+    sources. Most properties adapt their return type accordingly. For
     a multi-source catalog, properties return arrays or lists (one
-    element per source); for a single-source (scalar) catalog, the
+    element per source). For a single-source (scalar) catalog, the
     same properties return a scalar value or a single object. For
     example, `kron_aperture` returns a list of aperture objects for a
     multi-source catalog, but a single aperture object for a scalar
@@ -790,7 +791,7 @@ class SourceCatalog:
             array = None
         if array is not None:
             # UFuncTypeError is raised when subtracting float
-            # local_background from int data; convert to float
+            # local_background from int data, so convert to float
             array = np.asanyarray(array)
             if array.ndim != 2:
                 msg = f'{name} must be a 2D array'
@@ -1059,7 +1060,7 @@ class SourceCatalog:
                                   since='3.0', until='4.0')
 
     def __getattribute__(self, name):
-        # Centralized scalar collapse: for a scalar (single-source)
+        # Centralized scalar collapse. For a scalar (single-source)
         # catalog, public properties that return a length-1
         # array/list/tuple (or a scalar SkyCoord) are returned as a
         # scalar value. Private ('_'-prefixed) attributes are always
@@ -2322,7 +2323,7 @@ class SourceCatalog:
         pixel_var = 1.0 / 12.0
 
         # Ignore divide-by-zero and invalid-value RuntimeWarnings for
-        # sources with non-positive or non-finite total flux; those
+        # sources with non-positive or non-finite total flux. Those
         # values are replaced by NaN below.
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', RuntimeWarning)
@@ -2785,8 +2786,8 @@ class SourceCatalog:
         windowed centroid, ``[[var_x, cov_xy], [cov_xy, var_y]]``.
 
         Fallback sources hold the isophotal covariance (see
-        ``_centroid_err_cov``); matrices are all-NaN where errors are
-        unavailable.
+        ``_centroid_err_cov``). The matrices are all-NaN where errors
+        are unavailable.
         """
         results = self._centroid_win_results
         cov = np.empty((len(results), 2, 2))
@@ -3886,7 +3887,7 @@ class SourceCatalog:
 
         This is the mask used for the ``'singular_covariance'``
         flag. It matches the equivalent aperture flag (see
-        `~photutils.aperture.decode_aperture_flags`): in addition to
+        `~photutils.aperture.decode_aperture_flags`). In addition to
         the determinant test used by ``_singular_covariance_mask``, a
         source is flagged when its minor-axis variance (the smaller
         eigenvalue of the raw covariance matrix) is less than ``1 /
@@ -4998,7 +4999,7 @@ class SourceCatalog:
         fcounts = result.flag_counts
 
         # Membership matches the previous cutout-based
-        # ``in_aperture & ~mask`` rule: under 'correct', uncorrectable
+        # ``in_aperture & ~mask`` rule. Under 'correct', uncorrectable
         # neighbor pixels stay members (with value zero)
         members = fcounts[:, FLAG_COL_VALID].copy()
         if seg_code == 3:
@@ -5043,8 +5044,9 @@ class SourceCatalog:
 
         defined : 1D `~numpy.ndarray` (bool)
             `False` where the aperture is undefined (`None` in
-            `kron_aperture`): where the source is completely masked or
-            its centroid or elliptical shape parameters are not finite.
+            `kron_aperture`). The aperture is undefined where the
+            source is completely masked or its centroid or elliptical
+            shape parameters are not finite.
         """
         # NOTE: if kron_radius = NaN, scale = NaN and the aperture is
         # undefined
@@ -5171,7 +5173,7 @@ class SourceCatalog:
             clipped = fcounts[:, FLAG_COL_BBOX_CLIPPED].astype(bool)
             weights_out = weights_out.astype(bool)
             # Membership matches the previous cutout-based
-            # ``in_aperture & ~mask`` rule: under 'correct',
+            # ``in_aperture & ~mask`` rule. Under 'correct',
             # uncorrectable neighbor pixels stay members (with value
             # zero), so they keep the flux at 0.0 rather than NaN
             members = fcounts[:, FLAG_COL_VALID].copy()

@@ -148,14 +148,11 @@ and ``contrast``. ``n_levels`` is the number of multi-thresholding
 levels to use. ``contrast`` is the fraction of the total source flux
 that a local peak must have to be considered as a separate object.
 
-Here's a simple example of source deblending:
-
-.. doctest-requires:: skimage
+Here's a simple example of source deblending::
 
     >>> from photutils.segmentation import deblend_sources
     >>> segment_map2 = deblend_sources(convolved_data, segment_map,
-    ...                                n_pixels=10, n_levels=32, contrast=0.001,
-    ...                                progress_bar=False)
+    ...                                n_pixels=10, n_levels=32, contrast=0.001)
 
 where ``segment_map`` is the
 :class:`~photutils.segmentation.SegmentationImage` that was
@@ -190,8 +187,7 @@ deblended segmentation image:
     n_pixels = 10
     segment_map = detect_sources(convolved_data, threshold, n_pixels=n_pixels)
     deblended_segment_map = deblend_sources(convolved_data, segment_map,
-                                            n_pixels=n_pixels,
-                                            progress_bar=False)
+                                            n_pixels=n_pixels)
 
     fig, ax = plt.subplots(figsize=(10, 6.5))
     deblended_segment_map.imshow(ax=ax)
@@ -224,8 +220,7 @@ Let's plot one of the deblended sources:
     n_pixels = 10
     segment_map = detect_sources(convolved_data, threshold, n_pixels=n_pixels)
     deblended_segment_map = deblend_sources(convolved_data, segment_map,
-                                            n_pixels=n_pixels,
-                                            progress_bar=False)
+                                            n_pixels=n_pixels)
 
     fig, (ax1, ax2, ax3) = plt.subplots(ncols=3, figsize=(10, 4))
     slc = (slice(273, 297), slice(425, 444))
@@ -250,12 +245,10 @@ is a convenience class that combines the functionality
 of `~photutils.segmentation.detect_sources` and
 `~photutils.segmentation.deblend_sources`. After defining the object
 with the desired detection and deblending parameters, you call it with
-the background-subtracted (convolved) image and threshold:
-
-.. doctest-requires:: skimage
+the background-subtracted (convolved) image and threshold::
 
     >>> from photutils.segmentation import SourceFinder
-    >>> finder = SourceFinder(n_pixels=10, progress_bar=False)
+    >>> finder = SourceFinder(n_pixels=10)
     >>> segment_map = finder(convolved_data, threshold)
     >>> print(segment_map)
     <photutils.segmentation.core.SegmentationImage>
@@ -292,9 +285,7 @@ measuring source photometry and other source properties, including:
   Remove labeled segments located within a masked region.
 
 Here's a simple example of removing border labels and relabeling the
-result:
-
-.. doctest-requires:: skimage
+result::
 
     >>> segment_map3 = segment_map.copy()
     >>> segment_map3.remove_border_labels(border_width=10, relabel=True)
@@ -314,16 +305,12 @@ image. The source mask can be used, for example, to mask sources
 when estimating the background level. The source mask can optionally
 be dilated using the ``size`` or ``footprint`` keyword to mask a
 larger area around each source. Dilating the source mask is useful for
-excluding the faint wings of sources when estimating the background:
-
-.. doctest-requires:: skimage
+excluding the faint wings of sources when estimating the background::
 
     >>> mask = segment_map.make_source_mask()
     >>> dilated_mask = segment_map.make_source_mask(size=11)
 
-A circular footprint can also be used to dilate the source mask:
-
-.. doctest-requires:: skimage
+A circular footprint can also be used to dilate the source mask::
 
     >>> from photutils.utils import circular_footprint
     >>> footprint = circular_footprint(radius=5)
@@ -408,7 +395,7 @@ segmentation image and the science image:
     kernel = make_2dgaussian_kernel(3.0, size=5)
     convolved_data = convolve(data, kernel)
 
-    finder = SourceFinder(n_pixels=10, progress_bar=False)
+    finder = SourceFinder(n_pixels=10)
     segment_map = finder(convolved_data, threshold)
 
     fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(10, 12.5))
@@ -491,9 +478,7 @@ from which the source centroids and shape/morphological properties are
 measured (if not input, the unconvolved image is used instead).
 
 Let's continue our example from above and measure the properties of the
-detected sources:
-
-.. doctest-requires:: skimage
+detected sources::
 
     >>> from photutils.segmentation import SourceCatalog
     >>> cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
@@ -516,9 +501,7 @@ generate a `~astropy.table.QTable` of source properties. Each row in the
 table represents a source. The columns represent the calculated source
 properties. The ``label`` column corresponds to the label value in the
 input segmentation image. Note that only a small subset of the source
-properties are shown below:
-
-.. doctest-requires:: skimage
+properties are shown below::
 
     >>> tbl = cat.to_table()
     >>> tbl['x_centroid'].info.format = '.2f'  # optional format
@@ -593,7 +576,7 @@ of each source) on the data:
     convolved_data = convolve(data, kernel)
 
     n_pixels = 10
-    finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    finder = SourceFinder(n_pixels=n_pixels)
     segment_map = finder(convolved_data, threshold)
 
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
@@ -610,9 +593,7 @@ of each source) on the data:
 
 We can also create a `~photutils.segmentation.SourceCatalog` object
 containing only a specific subset of sources, defined by their
-label numbers in the segmentation image:
-
-.. doctest-requires:: skimage
+label numbers in the segmentation image::
 
     >>> cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
     >>> labels = [1, 5, 20, 50, 75, 80]
@@ -635,9 +616,7 @@ label numbers in the segmentation image:
 By default, the :meth:`~photutils.segmentation.SourceCatalog.to_table`
 includes only a small subset of source properties. The output table
 properties can be customized in the `~astropy.table.QTable` using the
-``columns`` keyword:
-
-.. doctest-requires:: skimage
+``columns`` keyword::
 
     >>> cat = SourceCatalog(data, segment_map, convolved_data=convolved_data)
     >>> labels = [1, 5, 20, 50, 75, 80]
@@ -672,9 +651,7 @@ array that is input to :class:`~photutils.segmentation.SourceCatalog`
 should be background subtracted. If you input the background image
 that was subtracted from the data into the ``background`` keyword
 of :class:`~photutils.segmentation.SourceCatalog`, the background
-properties for each source will also be calculated:
-
-.. doctest-requires:: skimage
+properties for each source will also be calculated::
 
     >>> cat = SourceCatalog(data, segment_map, background=bkg.background)
     >>> labels = [1, 5, 20, 50, 75, 80]
@@ -725,9 +702,7 @@ class. When a total ``error`` is input, the
 `~photutils.segmentation.SourceCatalog.kron_flux_err` properties are
 calculated. `~photutils.segmentation.SourceCatalog.segment_flux`
 and `~photutils.segmentation.SourceCatalog.segment_flux_err` are the
-instrumental flux and propagated flux error within the source segments:
-
-.. doctest-requires:: skimage
+instrumental flux and propagated flux error within the source segments::
 
     >>> from photutils.utils import calc_total_error
     >>> effective_gain = 500.0
@@ -766,9 +741,7 @@ properties and their per-axis
 `~photutils.segmentation.SourceCatalog.y_centroid_win_err`,
 `~photutils.segmentation.SourceCatalog.x_centroid_quad_err`, and
 `~photutils.segmentation.SourceCatalog.y_centroid_quad_err`
-equivalents:
-
-.. doctest-requires:: skimage
+equivalents::
 
     >>> columns = ['label', 'x_centroid', 'x_centroid_err', 'y_centroid',
     ...            'y_centroid_err']
@@ -840,9 +813,7 @@ The ``wcs``, ``aperture_mask_method``, and ``kron_params`` keywords
 are inherited from the ``detection_catalog`` and are therefore ignored
 when ``detection_catalog`` is input. Note that the segmentation image
 used to create the detection catalog must be the same one input to the
-measurement catalog:
-
-.. doctest-requires:: skimage
+measurement catalog::
 
     >>> det_cat = SourceCatalog(data, segment_map,
     ...                         convolved_data=convolved_data)
@@ -868,7 +839,7 @@ undefined or degenerate shape properties, windowed or quadratic
 centroid failures, and Kron-aperture issues (``kron_``-prefixed
 flags). Accessing ``flags`` computes the flagged quantities (moments,
 windowed and quadratic centroids, and Kron photometry) if they have
-not already been computed; the results are cached and shared with
+not already been computed. The results are cached and shared with
 the corresponding source properties. Flags that describe the same
 condition as an `~photutils.aperture.ApertureStats` flag, with the
 source segment as the region, use the same flag name. However, the

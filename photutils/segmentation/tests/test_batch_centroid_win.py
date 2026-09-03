@@ -256,8 +256,8 @@ def test_matches_reference(scene, method, with_error, with_mask):
         ref = _reference_iterate_centroid_win(
             label, inp['xcen0'][i], inp['ycen0'][i],
             inp['radius_hl'][i], inp['nan_hl'][i], **ref_kwargs)
-        # atol covers cancellation-limited near-zero central moments;
-        # positions and flux are far from zero and are effectively
+        # atol covers cancellation-limited near-zero central moments.
+        # Positions and flux are far from zero and are effectively
         # checked at rtol
         assert_allclose(result[i], np.array(ref), rtol=1e-12,
                         atol=1e-10, equal_nan=True)

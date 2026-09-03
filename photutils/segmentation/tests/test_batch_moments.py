@@ -149,7 +149,7 @@ def test_central_moments(scene):
 
 
 def test_central_moments_nan_centroid(scene):
-    # A fully-masked source has zero total flux -> NaN centroid; the
+    # A fully-masked source has zero total flux -> NaN centroid. The
     # previous implementation then produced NaN everywhere except
     # [0, 0], which holds the (zero) flux sum
     cat = make_catalog(scene)
@@ -204,8 +204,8 @@ def _edge_catalog():
     convdata[4, 4] = np.nan  # non-finite convolved value
     convdata[8, 8] = np.inf
     convdata[9, 9] = 0.0  # zero flux weight, excluded from the errors
-    # Non-finite data with a finite convolved value: included in the
-    # moments, excluded from the errors
+    # Non-finite data with a finite convolved value is included in
+    # the moments and excluded from the errors
     data[5, 5] = np.nan
     data[9, 7] = np.nan
     mask = np.zeros((ny, nx), dtype=bool)
@@ -299,8 +299,8 @@ def test_catalog_moments(scene):
 
 
 def test_catalog_centroid_err(scene):
-    # _centroid_err_cov = normalized batch_moment_err accumulators;
-    # rebuild it from the reference accumulation of test_moment_err
+    # _centroid_err_cov = normalized batch_moment_err accumulators.
+    # Rebuild it from the reference accumulation of test_moment_err
     cat = make_catalog(scene)
     cov = cat._centroid_err_cov
     assert cov.shape == (cat.n_labels, 2, 2)

@@ -178,7 +178,7 @@ class ImageDepth:
     >>> convolved_data = convolve(data, kernel)
     >>> n_pixels = 10
     >>> threshold = 3.2
-    >>> finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+    >>> finder = SourceFinder(n_pixels=n_pixels)
     >>> segment_map = finder(convolved_data, threshold)
     >>> mask = segment_map.make_source_mask()
     >>> radius = 4
@@ -208,7 +208,7 @@ class ImageDepth:
         convolved_data = convolve(data, kernel)
         n_pixels = 10
         threshold = 3.2
-        finder = SourceFinder(n_pixels=n_pixels, progress_bar=False)
+        finder = SourceFinder(n_pixels=n_pixels)
         segment_map = finder(convolved_data, threshold)
         mask = segment_map.make_source_mask()
         radius = 4
