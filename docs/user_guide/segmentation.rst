@@ -839,7 +839,7 @@ undefined or degenerate shape properties, windowed or quadratic
 centroid failures, and Kron-aperture issues (``kron_``-prefixed
 flags). Accessing ``flags`` computes the flagged quantities (moments,
 windowed and quadratic centroids, and Kron photometry) if they have
-not already been computed; the results are cached and shared with
+not already been computed. The results are cached and shared with
 the corresponding source properties. Flags that describe the same
 condition as an `~photutils.aperture.ApertureStats` flag, with the
 source segment as the region, use the same flag name. However, the

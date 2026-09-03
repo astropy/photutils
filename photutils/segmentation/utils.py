@@ -98,7 +98,7 @@ def _make_binary_structure(ndim, connectivity):
         elif connectivity == 8:
             footprint = np.ones((3, 3), dtype=int)
         else:
-            msg = f'Invalid connectivity={connectivity} -- options are 4 or 8'
+            msg = f'Invalid connectivity={connectivity}. Options are 4 or 8'
             raise ValueError(msg)
     else:
         footprint = generate_binary_structure(ndim, 1)

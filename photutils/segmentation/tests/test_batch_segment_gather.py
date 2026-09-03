@@ -81,7 +81,7 @@ def test_matches_reference(scene, with_error, with_mask, with_background):
 
 def test_all_masked_source(scene):
     # A completely masked source gathers a single NaN and is flagged as
-    # all masked; a source with a single unmasked pixel is not
+    # all masked. A source with a single unmasked pixel is not
     mask = scene['mask'].copy()
     segm = scene['segm']
     slc = segm.slices[0]

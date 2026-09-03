@@ -603,7 +603,7 @@ class TestSegmentationImage:
         assert segment._segment_data_cutout.shape == (10, 10)
         assert segment._segment_data_shape == (1000, 1000)
 
-        # Delete the SegmentationImage; the segment should not keep
+        # Delete the SegmentationImage. The segment should not keep
         # the full array alive
         full_refcount = sys.getrefcount(large)
         del segm
@@ -1240,8 +1240,8 @@ class TestSegmentationImage:
             assert isinstance(region, (Regions, PolygonPixelRegion))
         assert isinstance(regions[2], Regions)
 
-        # Combine all segments into a single segment;
-        # now have multipolygon objects, some with holes
+        # Combine all segments into a single segment.
+        # Now have multipolygon objects, some with holes
         segm.reassign_labels(segm.labels, new_label=4)
         polygons = segm.polygons
         assert len(polygons) == 1
@@ -1570,7 +1570,7 @@ class TestGetLabelMapping:
     def setup(self, segm_data):
         self.parent = SegmentationImage(segm_data)
         # A deblend-like version of segm_data with the identical
-        # non-zero footprint: label 5 is split into labels 8 and 9,
+        # non-zero footprint. Label 5 is split into labels 8 and 9,
         # and label 7 is split into labels 10 and 11
         child_data = np.array([[1, 1, 0, 0, 4, 4],
                                [0, 0, 0, 0, 0, 4],
@@ -2231,7 +2231,7 @@ class TestThreadSafety:
         Test concurrent first access of the class-level
         _cached_properties introspection cache on a fresh subclass.
 
-        The lazy class-level cache is written without a lock; the race
+        The lazy class-level cache is written without a lock. The race
         is benign because the computed list is identical for every
         thread.
         """

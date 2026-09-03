@@ -226,7 +226,7 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask):
     if not segm_labels:
         return None
 
-    # Relabel the segmentation image with consecutive numbers;
+    # Relabel the segmentation image with consecutive numbers.
     # ndimage.label returns segment_img with dtype = np.int32
     # unless the input array has more than 2**31 - 1 pixels
     n_labels = len(segm_labels)

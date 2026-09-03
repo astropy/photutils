@@ -204,7 +204,7 @@ def test_custom_kron_params(scene):
 def test_mixed_aperture_types(scene):
     # A minimum circular radius makes the sources whose scaled Kron
     # ellipse is smaller than that radius circular, while the larger
-    # sources stay elliptical; then both driver groups run in one
+    # sources stay elliptical. Both driver groups then run in one
     # _calc_kron_photometry call
     cat = SourceCatalog(scene['data'], scene['segm'],
                         error=scene['error'], mask=scene['mask'],

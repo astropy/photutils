@@ -230,7 +230,7 @@ class _SingleSourceDeblender:
         """
         thresholds = self.compute_thresholds()
 
-        # A pixel is above threshold level i if i < quantized; NaN
+        # A pixel is above threshold level i if i < quantized. NaN
         # pixels compare as False against every threshold.
         quantized = np.searchsorted(thresholds, self.data.ravel(),
                                     side='left')

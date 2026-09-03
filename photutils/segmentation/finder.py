@@ -83,8 +83,8 @@ class SourceFinder:
         the threshold levels between the source minimum and maximum.
         The ``'exponential'`` and ``'sinh'`` modes differ in that
         the ``'exponential'`` levels are dependent on the source
-        maximum/minimum ratio (smaller ratios are more linear; larger
-        ratios are more exponential), while the ``'sinh'`` levels
+        maximum/minimum ratio (smaller ratios are more linear and
+        larger ratios are more exponential), while the ``'sinh'`` levels
         are not. Also, the ``'exponential'`` mode will be changed to
         ``'linear'`` for sources with non-positive minimum data values.
         This keyword is ignored unless ``deblend=True``.

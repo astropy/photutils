@@ -5,8 +5,8 @@
 Cython kernel that builds the deblending watershed markers from a
 level-quantized source cutout in a single component-tree pass.
 
-The multithreshold marker construction is defined level by level:
-at each threshold level, the connected components (with fewer than
+The multithreshold marker construction is defined level by level.
+At each threshold level, the connected components (with fewer than
 ``n_pixels`` pixels removed) of the pixels above the threshold are the
 candidate sources, and a marker is replaced by its components at a
 higher level whenever it contains at least two of them. Computing this
@@ -17,7 +17,7 @@ adding pixels in decreasing level order to a union-find structure and
 snapshotting the components at each populated level (levels between
 populated values have identical components and are provably no-ops in
 the per-level construction, so they need no snapshots). The marker set
-is then derived by descending the tree: starting from the components
+is then derived by descending the tree. Starting from the components
 of the lowest level that has at least two components with ``n_pixels``
 or more pixels, each marker is replaced by its sufficiently large
 components at the first higher level that contains at least two of them.
@@ -71,7 +71,7 @@ cdef struct _Nodes:
 
 cdef inline bint _nodes_grow(_Nodes* nodes) noexcept nogil:
     """
-    Double the node storage capacity; return False on failure.
+    Double the node storage capacity and return False on failure.
     """
     cdef Py_ssize_t cap = nodes.cap * 2
     cdef int* level = <int*>realloc(nodes.level, cap * sizeof(int))
@@ -143,7 +143,7 @@ cdef Py_ssize_t _markers_core(const int* qflat, Py_ssize_t ny,
     Build the deblending markers for one level-quantized cutout.
 
     The caller must provide the pixel-sized workspace arrays with
-    ``added`` all zero and ``stamp`` all -1; both invariants are
+    ``added`` all zero and ``stamp`` all -1. Both invariants are
     restored before returning. The marker labels are written into
     ``markers`` at the pixels of the cutout that have a nonzero
     quantized level (the caller is responsible for treating the
@@ -209,7 +209,7 @@ cdef Py_ssize_t _markers_core(const int* qflat, Py_ssize_t ny,
 
     if result == 0:
         # Sort the active pixels by decreasing level with a counting
-        # sort; pixels within a level stay in raster order
+        # sort. Pixels within a level stay in raster order
         for v in range(qmax + 1):
             counts[v] = 0
         for p in range(n_tot):
@@ -263,7 +263,7 @@ cdef Py_ssize_t _markers_core(const int* qflat, Py_ssize_t ny,
                 i += 1
 
             # Snapshot the components of the level set with threshold
-            # index v - 1; attach the previous (higher) level
+            # index v - 1 and attach the previous (higher) level
             # components as children
             kept_cnt = 0
             for nid in range(prev_lo, prev_hi):
@@ -413,9 +413,9 @@ cdef Py_ssize_t _markers_core(const int* qflat, Py_ssize_t ny,
                     min_pix[m] = mn
 
                 # Relabel the markers in raster-scan order of their
-                # first pixels (an insertion sort; the first pixels
-                # are distinct), matching the ordering that
-                # per-level labeling would produce
+                # first pixels (an insertion sort, as the first pixels
+                # are distinct), matching the ordering that per-level
+                # labeling would produce
                 for m in range(n_final):
                     order_rank[m] = m
                 for m in range(1, n_final):
@@ -669,8 +669,8 @@ cdef Py_ssize_t _source_markers(const data_t* data, const segm_t* segm,
     _compute_thresholds(smin, smax, ratio, delta_scale, n_levels,
                         use_mode, thresholds)
 
-    # Quantize the cutout: the number of thresholds strictly below
-    # each pixel value; pixels outside the segment and NaN pixels
+    # Quantize the cutout as the number of thresholds strictly below
+    # each pixel value. Pixels outside the segment and NaN pixels
     # are 0
     for iy in range(ny_c):
         for ix in range(nx_c):

@@ -123,7 +123,7 @@ class _SegmentationFlags(FlagRegistry):
         FlagDefinition(
             bit_value=256,
             name='undefined_shape',
-            description=('non-positive net flux; shape properties '
+            description=('non-positive net flux, shape properties '
                          'undefined'),
             detailed_description=('The net source flux (the zeroth '
                                   'image moment over the source '
@@ -160,10 +160,10 @@ class _SegmentationFlags(FlagRegistry):
                          'the isophotal centroid'),
             detailed_description=('The windowed centroid fell '
                                   'outside the 1-sigma moment '
-                                  'ellipse; the windowed flux was '
-                                  'non-positive; the windowed '
+                                  'ellipse, the windowed flux was '
+                                  'non-positive, the windowed '
                                   '2nd-order moments or covariance '
-                                  'determinant were negative; or '
+                                  'determinant were negative, or '
                                   'the iterated centroid was NaN. '
                                   'In each of these cases, the '
                                   'isophotal ``centroid`` value '

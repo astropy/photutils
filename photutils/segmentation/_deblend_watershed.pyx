@@ -5,7 +5,7 @@
 Cython marker-based watershed kernel for source deblending.
 
 This implements the classic priority-flood watershed (Soille 1990)
-used for deblending: pixels are flooded from the markers in order of
+used for deblending. Pixels are flooded from the markers in order of
 increasing image value, with the queue-entry age breaking ties so
 that plateaus are split between the markers that reach them first.
 The algorithm, the neighbor ordering (orthogonal neighbors before
@@ -278,14 +278,14 @@ cdef int _contrast_core(const double* posimg, const double* negimg,
     mismatch).
 
     The loop replicates the NumPy implementation operation for
-    operation: the basin fluxes are accumulated in raster order in
+    operation. The basin fluxes are accumulated in raster order in
     float64 (as np.bincount does), the below-contrast markers are
     removed one at a time or in the largest provably equivalent
     batch of the faintest markers, and NaN basin fluxes compare
     false against every threshold, with np.argmin's first-NaN
     behavior for the single-marker removal. The only divergence is
     the order of bitwise-equal basin fluxes in the batch sort (NumPy
-    uses an unstable sort there; this uses a stable one).
+    uses an unstable sort there, while this uses a stable one).
     """
     cdef Py_ssize_t n_tot = ny * nx
     cdef Py_ssize_t n_cap = n_max_labels + 1

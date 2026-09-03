@@ -315,7 +315,7 @@ def test_all_skipped(scene):
 
 
 def test_bracket_shrink_and_no_solution(scene):
-    # Force the shrink path: negative data beyond a ring makes the
+    # Force the shrink path. Negative data beyond a ring makes the
     # enclosed flux non-monotonic, so the initial bracket has equal
     # signs at both ends
     cat = make_catalog(scene)

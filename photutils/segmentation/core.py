@@ -240,7 +240,7 @@ class SegmentationImage:
                 and all(isinstance(key[i], slice) for i in (0, 1))):
             result = self.data[key]
             if result.size == 0:
-                msg = ('The sliced result is empty; cannot create '
+                msg = ('The sliced result is empty. Cannot create '
                        'a SegmentationImage with zero size')
                 raise ValueError(msg)
             return SegmentationImage(result)
@@ -1800,7 +1800,7 @@ class SegmentationImage:
             polygon_dict[int(label)].append(polygon)
 
         # Check that the polygon labels match the segmentation image
-        # labels; this is a sanity check to ensure that the rasterio
+        # labels. This is a sanity check to ensure that the rasterio
         # library is working correctly.
         # Note that polygons have been sorted by label.
         if not np.all(np.array(list(polygon_dict.keys())) == self.labels):

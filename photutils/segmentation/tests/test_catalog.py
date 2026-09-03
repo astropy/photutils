@@ -1034,7 +1034,7 @@ class TestSourceCatalog:
             # Built-in cached property
             cat.add_property('area', segment_snr)
         with pytest.raises(ValueError, match=match):
-            # Built-in method; must raise even with overwrite=True
+            # Built-in method, which must raise even with overwrite=True
             cat.add_property('to_table', segment_snr, overwrite=True)
 
         cat.add_property('segment_snr', segment_snr)
@@ -2587,7 +2587,7 @@ def test_centroid_win_aperture_mask_mask(centroid_win_data):
 
 def test_make_scalar(single_source_catalog):
     """
-    Test the scalar collapse of method results: a length-1 sequence
+    Test the scalar collapse of method results. A length-1 sequence
     is collapsed for a scalar catalog, a longer sequence is returned
     unchanged, and a multi-source catalog never collapses.
     """
@@ -2774,7 +2774,7 @@ def test_centroid_win_err():
 
     errors = cat.centroid_win_err
     assert errors.shape == (cat.n_labels, 2)
-    # Source 0 converged; errors should be finite and positive
+    # Source 0 converged, so errors should be finite and positive
     assert np.all(np.isfinite(errors[0]))
     assert np.all(errors[0] > 0)
     # Source 1 fell back to the isophotal centroid, so its errors
@@ -2895,9 +2895,9 @@ def test_centroid_win_err_singularity():
 
 def test_centroid_win_err_cov():
     """
-    Test the windowed pixel error covariance: symmetric for every
-    source, near-zero off-diagonal for a circular source with uniform
-    errors, and consistent with centroid_win_err.
+    Test the windowed pixel error covariance. It is symmetric for
+    every source, near-zero off-diagonal for a circular source with
+    uniform errors, and consistent with centroid_win_err.
     """
     yy, xx = np.mgrid[0:31, 0:31]
     data = Gaussian2D(500.0, 15.2, 15.6, 2.5, 2.5)(xx, yy)

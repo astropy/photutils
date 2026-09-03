@@ -934,8 +934,8 @@ def test_flags_fallback_without_deblending(relabel):
                                 relabel=relabel)
 
     bit = SEGMENTATION_FLAGS.DEBLEND_NONPOSMIN
-    # Both remaining sources fell back (both have negative minima);
-    # neither splits, so each output label carries the fallback bit
+    # Both remaining sources fell back (both have negative minima).
+    # Neither splits, so each output label carries the fallback bit
     # but not the deblended bit
     assert_equal(segm2.flags & bit, [bit] * segm2.n_labels)
     assert_equal(segm2.flags & SEGMENTATION_FLAGS.DEBLENDED,
