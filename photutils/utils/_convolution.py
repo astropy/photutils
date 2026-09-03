@@ -38,7 +38,7 @@ def _filter_data(data, kernel, *, mode='constant', fill_value=0.0,
     fill_value : scalar, optional
         Value to fill data values beyond the array borders if ``mode``
         is ``'constant'``. The default is ``0.0``. When ``data`` is a
-        `~astropy.units.Quantity`, the result has the same unit; the
+        `~astropy.units.Quantity`, the result has the same unit. The
         numerical value of ``fill_value`` is used as-is (it is not
         converted to the data unit).
 
@@ -50,7 +50,7 @@ def _filter_data(data, kernel, *, mode='constant', fill_value=0.0,
     -------
     result : `~numpy.ndarray` or `~astropy.units.Quantity`
         The convolved image. A `~astropy.units.Quantity` is returned if
-        ``data`` has units; otherwise a `~numpy.ndarray`.
+        ``data`` has units, otherwise a `~numpy.ndarray`.
     """
     if kernel is None:
         return data

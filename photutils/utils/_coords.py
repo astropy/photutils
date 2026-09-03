@@ -41,7 +41,7 @@ def apply_separation(xycoords, min_separation):
 
     # Group pairs by first index for vectorized neighbor removal. Each
     # pair has i < j (guaranteed by KDTree). Process groups in ascending
-    # first-index order (greedy independent set algorithm): for each
+    # first-index order (greedy independent set algorithm). For each
     # kept point, discard all its higher-index neighbors.
     sorted_idx = pairs[:, 0].argsort(kind='stable')
     pairs_sorted = pairs[sorted_idx]

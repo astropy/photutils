@@ -71,7 +71,7 @@ class EPSFStar:
                  origin=(0, 0), wcs_large=None, id_label=None):
 
         if isinstance(data, u.Quantity):
-            msg = ('data must be a plain ndarray; Quantity inputs are '
+            msg = ('data must be a plain ndarray. Quantity inputs are '
                    'not supported')
             raise TypeError(msg)
         if isinstance(data, np.ma.MaskedArray):
@@ -157,7 +157,7 @@ class EPSFStar:
         else:
             # Check if completely masked before attempting flux estimation
             if np.all(self.mask):
-                msg = ('Star cutout is completely masked; no valid data '
+                msg = ('Star cutout is completely masked. No valid data '
                        'available')
                 raise ValueError(msg)
 
@@ -1300,7 +1300,7 @@ def _extract_stars(data, catalog, *, size=(11, 11), use_xy=True):
             if star._has_all_zero_data:
                 all_zero_stars.append((xcenter, ycenter))
         except ValueError as exc:
-            # Collect flux estimation failures; emit warnings later
+            # Collect flux estimation failures and emit warnings later
             flux_failures.append((xcenter, ycenter, exc))
             stars.append(None)
 

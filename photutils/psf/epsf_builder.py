@@ -853,7 +853,7 @@ class EPSFFitter:
         fitted_stars = []
         for star in stars:
             if isinstance(star, EPSFStar):
-                # Skip fitting stars that have been excluded; return
+                # Skip fitting stars that have been excluded. Return
                 # directly since no modification is needed
                 if star._excluded_from_fit:
                     fitted_star = star
@@ -866,7 +866,7 @@ class EPSFFitter:
             elif isinstance(star, LinkedEPSFStar):
                 fitted_star = []
                 for linked_star in star:
-                    # Skip fitting stars that have been excluded; return
+                    # Skip fitting stars that have been excluded. Return
                     # directly since no modification is needed
                     if linked_star._excluded_from_fit:
                         fitted_star.append(linked_star)
@@ -896,7 +896,7 @@ class EPSFFitter:
         """
         # Create a shallow copy to avoid mutating the input star. This
         # is a shallow copy, so the large numpy arrays (_data, weights,
-        # mask) are shared and not duplicated; only the object wrapper
+        # mask) are shared and not duplicated. Only the object wrapper
         # and small scalar attributes are new.
         star = copy.copy(star)
 
@@ -1022,7 +1022,7 @@ class EPSFBuilder:
     recentering_boxsize : int or tuple of two ints, optional
         The size (in pixels) of the box used to calculate the centroid
         of the ePSF during each build iteration. The size is in
-        the input star (i.e., undersampled) pixel space; it is
+        the input star (i.e., undersampled) pixel space. It is
         automatically scaled by the oversampling factor when applied
         to the oversampled ePSF grid. If a single integer number
         is provided, then a square box will be used. If two values
@@ -1047,7 +1047,7 @@ class EPSFBuilder:
         `~astropy.modeling.fitting.TRFLSQFitter` will be used.
 
         .. deprecated:: 3.0
-            Passing an `EPSFFitter` instance is deprecated; use
+            Passing an `EPSFFitter` instance is deprecated. Use
             the ``fitter``, ``fit_shape``, and ``fitter_maxiters``
             parameters instead.
 
@@ -1108,7 +1108,7 @@ class EPSFBuilder:
             if np.any(even):
                 new_shape = shape + even.astype(int)
                 msg = (f'The input shape {tuple(shape)} has even '
-                       f'values; using {tuple(new_shape)} instead '
+                       f'values. Using {tuple(new_shape)} instead '
                        'for proper ePSF centering.')
                 warnings.warn(msg, AstropyUserWarning)
                 shape = new_shape
@@ -1762,7 +1762,7 @@ class EPSFBuilder:
 
         # Create a shallow copy to avoid mutating the input star. This
         # is a shallow copy, so the large numpy arrays (_data, weights,
-        # mask) are shared and not duplicated; only the object wrapper
+        # mask) are shared and not duplicated. Only the object wrapper
         # and small scalar attributes are new.
         star = copy.copy(star)
 

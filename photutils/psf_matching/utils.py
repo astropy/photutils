@@ -98,7 +98,7 @@ def _validate_psf(psf, name):
         raise ValueError(msg)
 
     if np.sum(psf) == 0:
-        msg = f'{name} must have a non-zero sum; it cannot be normalized.'
+        msg = f'{name} must have a non-zero sum. It cannot be normalized.'
         raise ValueError(msg)
 
 
@@ -319,7 +319,7 @@ def resize_psf(psf, input_pixel_scale, output_pixel_scale, *, order=3):
         any axis whose size is even. This guarantees the output is
         centered and usable for PSF matching. When the output size is
         adjusted, the effective pixel scale will be slightly smaller
-        than ``output_pixel_scale``; the exact value per axis is
+        than ``output_pixel_scale``. The exact value per axis is
         ``input_pixel_scale * input_size / output_size``.
 
     Raises

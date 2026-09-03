@@ -63,8 +63,8 @@ class FlagRegistry:
     FLAG_DEFINITIONS: ClassVar = []
     domain: ClassVar = ''
 
-    # Mappings of deprecated flag/constant names to their new names;
-    # subclasses may override these along with the deprecation
+    # Mappings of deprecated flag/constant names to their new names.
+    # Subclasses may override these along with the deprecation
     # versions used in the warning messages.
     _DEPRECATED_FLAG_NAMES: ClassVar = {}
     _DEPRECATED_CONSTANT_NAMES: ClassVar = {}

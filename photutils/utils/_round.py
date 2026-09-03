@@ -27,8 +27,8 @@ def round_half_away(a):
     Notes
     -----
     NaN and infinity values are preserved in the output. Arrays
-    containing any non-finite value are returned as float arrays;
-    all-finite arrays are returned as integer arrays.
+    containing any non-finite value are returned as float arrays.
+    All-finite arrays are returned as integer arrays.
     """
     data = np.atleast_1d(np.asarray(a, dtype=float))
     rounded = np.where(data >= 0, np.floor(data + 0.5),

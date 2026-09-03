@@ -280,7 +280,7 @@ def test_interpolate_missing_data():
     mask[5, 5] = True
 
     data_int = _interpolate_missing_data(data, mask, method='nearest')
-    # The 4 nearest unmasked neighbors are all equidistant (distance=1);
+    # The 4 nearest unmasked neighbors are all equidistant (distance=1).
     # KD-tree tie-breaking is platform-dependent (e.g., win_arm64 picks
     # 45).
     assert data_int[5, 5] in (45, 54, 56, 65)

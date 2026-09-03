@@ -150,7 +150,7 @@ def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
         out_height = 2 * s_vals[1]
         angle_col = u_mat[:, 0]
     else:
-        # Major axis aligns with height; swap
+        # Major axis aligns with height, so swap
         out_width = 2 * s_vals[1]
         out_height = 2 * s_vals[0]
         angle_col = u_mat[:, 1]
@@ -161,7 +161,7 @@ def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
         angle_col = -angle_col
 
     # When the input ellipse is circular (width == height), the SVD's
-    # principal direction has no physical meaning: any rotation of a
+    # principal direction has no physical meaning. Any rotation of a
     # circle yields an identical shape, so the SVD picks an arbitrary
     # principal axis derived from the Jacobian. To preserve the input
     # rotation angle, fall back to the mapped width semi-axis direction
@@ -514,7 +514,7 @@ def pixel_shape_to_sky_svd(pixcoord, wcs, width, height, pixel_angle_rad):
     ``J^{-1}`` is the local inverse Jacobian. The SVD of ``M_sky`` gives
     the exact sky ellipse semi-axes and orientation.
 
-    This handles WCS shear correctly: the sky image of a pixel ellipse
+    This handles WCS shear correctly. The sky image of a pixel ellipse
     is always an ellipse, and SVD extracts its true principal axes,
     regardless of whether the Jacobian's mapped width and height
     directions are orthogonal.
@@ -588,7 +588,7 @@ def sky_shape_to_pixel_svd(skycoord, wcs, width_arcsec, height_arcsec,
     is the local Jacobian. The SVD of ``M_pix`` gives the exact pixel
     ellipse semi-axes and orientation.
 
-    This handles WCS shear correctly: the pixel image of a sky ellipse
+    This handles WCS shear correctly. The pixel image of a sky ellipse
     is always an ellipse, and SVD extracts its true principal axes,
     regardless of whether the Jacobian's mapped width and height
     directions are orthogonal.
@@ -636,7 +636,7 @@ def sky_shape_to_pixel_svd(skycoord, wcs, width_arcsec, height_arcsec,
     # Build M_sky: columns are sky semi-axis vectors in tangent-plane
     # coordinates (xi=East, eta=North). The width axis is at the given
     # PA from North (toward East), so its tangent-plane components are
-    # (sin(PA), cos(PA)); the height axis is perpendicular, at PA+90.
+    # (sin(PA), cos(PA)). The height axis is perpendicular, at PA+90.
     # The local Jacobian already encodes the WCS parity, so no manual
     # parity factor is applied here.
     cos_pa = np.cos(sky_angle_rad)

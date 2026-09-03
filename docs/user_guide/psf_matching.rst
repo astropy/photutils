@@ -10,12 +10,12 @@ The `photutils.psf_matching` subpackage contains tools to generate
 kernels for matching point spread functions (PSFs). It provides two
 functions for computing PSF-matching kernels in the Fourier domain:
 
-* :func:`~photutils.psf_matching.make_kernel` — Uses the ratio of
+* :func:`~photutils.psf_matching.make_kernel` uses the ratio of
   Fourier transforms with a hard amplitude threshold to regularize
-  the division (see e.g., `Gordon et al. 2008`_; `Aniano et al.
+  the division (see e.g., `Gordon et al. 2008`_ and `Aniano et al.
   2011`_).
 
-* :func:`~photutils.psf_matching.make_wiener_kernel` — Uses Wiener
+* :func:`~photutils.psf_matching.make_wiener_kernel` uses Wiener
   regularization, which smoothly suppresses noise amplification at
   spatial frequencies where the source response is weak.
 
@@ -307,8 +307,8 @@ The `Tukey window
 cosine taper. The ``alpha`` parameter controls the fraction of the array
 that is tapered: smaller ``alpha`` preserves more data but provides less
 artifact suppression, while larger ``alpha`` tapers more aggressively.
-When ``alpha=0`` it becomes a `~photutils.psf_matching.TopHatWindow`;
-when ``alpha=1`` it becomes a `~photutils.psf_matching.HanningWindow`.
+When ``alpha=0`` it becomes a `~photutils.psf_matching.TopHatWindow`.
+When ``alpha=1`` it becomes a `~photutils.psf_matching.HanningWindow`.
 This window provides a good balance and is a solid general-purpose
 choice.
 

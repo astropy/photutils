@@ -89,7 +89,7 @@ def process_quantities(values, names):
     """
     units = check_units(values, names)
 
-    # When all values are None, the units set is empty; return unchanged
+    # When all values are None, the units set is empty, so return unchanged
     # with unit=None
     if len(units) == 0:
         return values, None

@@ -676,7 +676,7 @@ def test_psf_photometry_init_params(test_data):
     colnames = ('x_fit', 'y_fit', 'flux_fit', 'x_err', 'y_err', 'flux_err',
                 'qfit', 'cfit', 'reduced_chi2')
 
-    # No-overlap source should return NaNs and not raise; also test
+    # No-overlap source should return NaNs and not raise. Also test
     # too-few-pixels
     init_params = QTable()
     init_params['x'] = [-63]
@@ -1548,7 +1548,7 @@ def test_flag256_too_few_pixels():
     phot = psfphot(data, init_params=init_params, mask=mask)
     assert len(phot) == 1
     assert phot['n_pixels_fit'][0] == 1
-    # Ensure 256 bit set (too few pixels); not fully masked (no 128).
+    # Ensure 256 bit set (too few pixels) and not fully masked (no 128).
     assert (phot['flags'][0] & 256) == 256
 
 

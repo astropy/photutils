@@ -416,7 +416,7 @@ class GaussianPSF(Fittable2DModel):
         dg_dtheta = g * (-(da_dtheta * xdiff2 + db_dtheta * xdiff * ydiff
                            + dc_dtheta * ydiff2))
         # Chain rule for unit change
-        # theta[rad] => theta[deg] * pi / 180; drad/dtheta = pi / 180
+        # theta[rad] => theta[deg] * pi / 180, so drad/dtheta = pi / 180
         dg_dtheta *= np.pi / 180.0
 
         return [dg_dflux, dg_dx_0, dg_dy_0, dg_dxfwhm, dg_dyfwhm, dg_dtheta]

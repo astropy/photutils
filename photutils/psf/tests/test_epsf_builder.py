@@ -1042,7 +1042,7 @@ class TestEPSFFitter:
         fitted_stars = fitter(epsf, stars_with_linked)
 
         assert len(fitted_stars) == 1
-        # fitted_stars is an EPSFStars; the first item wraps LinkedEPSFStar
+        # fitted_stars is an EPSFStars. The first item wraps LinkedEPSFStar
         assert len(fitted_stars.all_stars) == 2  # 2 stars in the linked star
 
     def test_fit_boxsize_none_with_excluded_star(self, epsf_fitter_data):
