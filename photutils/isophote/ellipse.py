@@ -27,7 +27,7 @@ class Ellipse:
     Class to fit elliptical isophotes to a galaxy image.
 
     The isophotes in the image are measured using an iterative method
-    described by `Jedrzejewski (1987; MNRAS  226, 747)
+    described by `Jedrzejewski (1987, MNRAS  226, 747)
     <https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_.
     See the **Notes** section below for details about the algorithm.
 
@@ -58,7 +58,7 @@ class Ellipse:
     Notes
     -----
     The image is measured using an iterative method
-    described by `Jedrzejewski (1987; MNRAS 226, 747)
+    described by `Jedrzejewski (1987, MNRAS 226, 747)
     <https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_.
     Each isophote is fitted at a predefined, fixed semimajor axis
     length. The algorithm starts from a first-guess elliptical isophote
@@ -127,7 +127,7 @@ class Ellipse:
     harmonic fit. Third and fourth harmonic amplitude errors
     are obtained in the same way, but only after the first and
     second harmonics are subtracted from the raw data. For more
-    details, see the error analysis in `Busko (1996; ASPC 101, 139)
+    details, see the error analysis in `Busko (1996, ASPC 101, 139)
     <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_.
 
     After fitting the ellipse that corresponds to a given value of the
@@ -308,7 +308,7 @@ class Ellipse:
             for preventing ellipses to grow to regions of too
             low signal-to-noise ratio. It specifies the maximum
             acceptable relative error in the local radial
-            intensity gradient. `Busko (1996; ASPC 101, 139)
+            intensity gradient. `Busko (1996, ASPC 101, 139)
             <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstr
             act>`_ showed that the fitting precision relates to that
             relative error. The usual behavior of the gradient relative
@@ -508,8 +508,8 @@ class Ellipse:
             # `isophote` instance may no longer be OK.
             isophote = isophote_list[-1]
 
-            # figure out next sma; if exceeded user-defined
-            # minimum, or too small, bail out from this loop
+            # figure out next sma. If it exceeded the user-defined
+            # minimum, or is too small, bail out from this loop
             sma = isophote.sample.geometry.update_sma(step)
             if sma <= max(minsma, 0.5):
                 break
@@ -709,7 +709,7 @@ class Ellipse:
         if isophote_list:
             isophote = isophote_list.pop()
 
-            # check if isophote is bad; if so, fix its geometry
+            # check if isophote is bad. If so, fix its geometry
             # to be like the geometry of the index-th isophote
             # in list.
             isophote.fix_geometry(isophote_list[index])

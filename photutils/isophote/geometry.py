@@ -216,7 +216,7 @@ class EllipseGeometry:
         looking where a quantity akin to a signal-to-noise ratio is
         maximized within the 10x10 window. The centerer can thus be shut
         off entirely by setting the threshold to a large value (i.e.,
-        >> 1; meaning no location inside the search window will achieve
+        >> 1, meaning no location inside the search window will achieve
         that signal-to-noise ratio).
         """
         self._centerer_mask_half_size = len(IN_MASK) / 2
@@ -287,7 +287,7 @@ class EllipseGeometry:
                 log.info(f'Found center at x0 = {self.x0:5.1f}, '
                          f'y0 = {self.y0:5.1f}')
         elif verbose:
-            log.info('Result is below the threshold -- keeping the '
+            log.info('Result is below the threshold. Keeping the '
                      'original coordinates.')
 
     def radius(self, angle):
@@ -449,7 +449,7 @@ class EllipseGeometry:
         # that is incurred when using vectorized code.
 
         # The split in two separate functions helps in
-        # the profiling analysis: most of the time is
+        # the profiling analysis. Most of the time is
         # spent in the scalar function.
         if isinstance(x, (int, float)):
             return self._to_polar_scalar(x, y)

@@ -419,8 +419,8 @@ class TestFindPeaks:
         size = 10 * box_size
         img = np.zeros((size, size))
 
-        # Place two peaks one pixel closer than the minimum separation;
-        # only the brighter peak should survive
+        # Place two peaks one pixel closer than the minimum separation.
+        # Only the brighter peak should survive
         cy = size // 2
         cx1 = size // 2
         cx2 = cx1 + min_sep - 1
@@ -457,7 +457,7 @@ class TestFindPeaks:
         data[50, 30] = 10.0
         data[50, 50] = 8.0
 
-        # Separation is 20 pixels; min_separation=15 should keep both
+        # Separation is 20 pixels, so min_separation=15 should keep both
         tbl = find_peaks(data, 1.0, box_size=3, min_separation=15)
         assert len(tbl) == 2
 
@@ -511,8 +511,8 @@ class TestFindPeaks:
         data[60, 20] = 6.0
         data[60, 60] = 4.0
 
-        # All peaks are well-separated;
-        # n_peaks=2 should keep brightest 2
+        # All peaks are well-separated, so n_peaks=2 should keep the
+        # brightest 2.
         tbl = find_peaks(data, 1.0, min_separation=5, n_peaks=2)
         assert len(tbl) == 2
         assert tbl['peak_value'][0] == 10.0

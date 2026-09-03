@@ -84,11 +84,11 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
     subpixels : int
         The number of subpixels to use in each dimension when using
         the sub-pixel sampling method. Each pixel is resampled by this
-        factor in each dimension; thus, each pixel is divided into
+        factor in each dimension, so each pixel is divided into
         ``subpixels ** 2`` subpixels.
 
         A subpixel is included only if its center lies strictly inside
-        the rectangle; subpixel centers lying exactly on the rectangle
+        the rectangle. Subpixel centers lying exactly on the rectangle
         boundary are excluded (weight 0).
 
     Returns
@@ -196,7 +196,7 @@ def rectangular_overlap_grid(double xmin, double xmax, double ymin,
                     ayrot = fabs(yrot)
 
                     if axrot >= w_out or ayrot >= h_out:
-                        continue  # wholly outside; frac stays 0
+                        continue  # wholly outside, frac stays 0
                     if axrot <= w_in and ayrot <= h_in:
                         frac_view[j, i] = 1.0  # wholly inside
                         continue

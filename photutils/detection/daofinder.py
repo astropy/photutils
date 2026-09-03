@@ -31,7 +31,7 @@ class DAOStarFinder(StarFinderBase):
     algorithm.
 
     DAOFIND searches images for local density maxima that have a peak
-    amplitude greater than ``threshold`` (approximately; ``threshold``
+    amplitude greater than ``threshold`` (approximately, since ``threshold``
     is applied to a convolved image) and have a size and shape similar
     to the defined 2D Gaussian kernel. The Gaussian kernel is defined
     by the ``fwhm``, ``ratio``, ``theta``, and ``sigma_radius`` input
@@ -43,10 +43,10 @@ class DAOStarFinder(StarFinderBase):
 
     ``DAOStarFinder`` calculates the object roundness using two methods.
     The ``roundness_range`` bounds are applied to both measures
-    of roundness. The first method (``roundness1``; called ``SROUND``
+    of roundness. The first method (``roundness1``, called ``SROUND``
     in DAOFIND) is based on the source symmetry and is the ratio of a
     measure of the object's bilateral (2-fold) to four-fold symmetry.
-    The second roundness statistic (``roundness2``; called ``GROUND``
+    The second roundness statistic (``roundness2``, called ``GROUND``
     in DAOFIND) measures the ratio of the difference in the height of
     the best fitting Gaussian function in x minus the best fitting
     Gaussian function in y, divided by the average of the best fitting
@@ -201,7 +201,7 @@ class DAOStarFinder(StarFinderBase):
 
     References
     ----------
-    .. [1] Stetson, P. 1987; PASP 99, 191
+    .. [1] Stetson, P. 1987, PASP 99, 191
            (https://ui.adsabs.harvard.edu/abs/1987PASP...99..191S/abstract)
     """
 

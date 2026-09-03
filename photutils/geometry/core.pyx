@@ -78,7 +78,7 @@ cdef double distance(double x1, double y1, double x2,
 cdef double area_arc(double x1, double y1, double x2, double y2,
                      double r) noexcept nogil:
     """
-    Area of a circular segment: the region between the chord
+    Area of a circular segment, the region between the chord
     connecting (x1, y1) and (x2, y2) and the circular arc of radius
     ``r`` spanning the same two points.
 
@@ -133,7 +133,7 @@ cdef double area_triangle(double x1, double y1, double x2, double y2,
 cdef double area_arc_unit(double x1, double y1, double x2,
                           double y2) noexcept nogil:
     """
-    Area of a circular segment of the unit circle (radius 1): the
+    Area of a circular segment of the unit circle (radius 1), the
     region between the chord connecting (x1, y1) and (x2, y2) and the
     circular arc spanning the same two points.
 
@@ -402,7 +402,7 @@ cdef double overlap_area_triangle_unit_circle(double x1, double y1, double x2,
                 x3, y3, d3, x2, y2, d2, x1, y1, d1)
 
     if d1 > d2 or d2 > d3 or d1 > d3:
-        # This should never happen; return NaN to signal an internal
+        # This should never happen. Return NaN to signal an internal
         # logic error without requiring the GIL to raise an exception.
         return NAN
 

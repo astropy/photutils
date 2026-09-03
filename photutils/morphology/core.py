@@ -32,7 +32,7 @@ def data_properties(data, mask=None, background=None, wcs=None):
         shape as ``data``. If ``data`` is a `~astropy.units.Quantity`,
         then ``background`` must have the same units. The input
         ``background`` is not subtracted from ``data``, which should
-        already be background-subtracted; providing it only enables
+        already be background-subtracted. Providing it only enables
         background-related properties to be measured.
 
     wcs : WCS object or `None`, optional

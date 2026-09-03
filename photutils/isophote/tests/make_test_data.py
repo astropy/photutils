@@ -68,7 +68,7 @@ def make_test_image(*, nx=512, ny=512, x0=None, y0=None,
 
     image = i0 * np.exp(-7.669 * (tmp_image**0.25 - 1.0)) + background
 
-    # central pixel is messed up; replace it with interpolated value
+    # Central pixel is messed up, so replace it with interpolated value
     image[int(xcen), int(ycen)] = (image[int(xcen - 1), int(ycen)]
                                    + image[int(xcen + 1), int(ycen)]
                                    + image[int(xcen), int(ycen - 1)]

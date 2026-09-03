@@ -381,15 +381,15 @@ class RadialProfile(ProfileBase):
         radius = self.radius[self._profile_nanmask]
 
         if len(profile) == 0:
-            msg = ('The radial profile is entirely non-finite or masked; '
-                   'cannot fit a Gaussian.')
+            msg = ('The radial profile is entirely non-finite or masked. '
+                   'Cannot fit a Gaussian.')
             warnings.warn(msg, AstropyUserWarning)
             return None
 
         amplitude = np.max(profile)
         sum_profile = np.sum(profile)
         if sum_profile == 0:
-            msg = ('The profile sum is zero; the Gaussian fit initial '
+            msg = ('The profile sum is zero, so the Gaussian fit initial '
                    'guess may be inaccurate.')
             warnings.warn(msg, AstropyUserWarning)
             std = 1.0  # fallback to avoid zero initial guess
@@ -479,15 +479,15 @@ class RadialProfile(ProfileBase):
         radius = self.radius[self._profile_nanmask]
 
         if len(profile) == 0:
-            msg = ('The radial profile is entirely non-finite or masked; '
-                   'cannot fit a Moffat.')
+            msg = ('The radial profile is entirely non-finite or masked. '
+                   'Cannot fit a Moffat.')
             warnings.warn(msg, AstropyUserWarning)
             return None
 
         amplitude = np.max(profile)
         sum_profile = np.sum(profile)
         if sum_profile == 0:
-            msg = ('The profile sum is zero; the Moffat fit initial '
+            msg = ('The profile sum is zero, so the Moffat fit initial '
                    'guess may be inaccurate.')
             warnings.warn(msg, AstropyUserWarning)
             gamma = 1.0  # fallback to avoid zero initial guess

@@ -19,16 +19,15 @@ from photutils.isophote.tests.make_test_data import make_test_image
 
 
 def test_harmonics_1():
-    # this is an almost as-is example taken from stackoverflow
     npts = 100  # number of data points
     theta = np.linspace(0, 4 * np.pi, npts)
 
-    # create artificial data with noise:
+    # Create artificial data with noise:
     # mean = 0.5, amplitude = 3.0, phase = 0.1, noise-std = 0.01
     rng = np.random.default_rng(0)
     data = 3.0 * np.sin(theta + 0.1) + 0.5 + 0.01 * rng.standard_normal(npts)
 
-    # first guesses for harmonic parameters
+    # First guesses for harmonic parameters
     guess_mean = np.mean(data)
     guess_std = 3 * np.std(data) / 2**0.5
     guess_phase = 0
@@ -41,7 +40,7 @@ def test_harmonics_1():
     est_std, est_phase, est_mean = leastsq(
         optimize_func, [guess_std, guess_phase, guess_mean])[0]
 
-    # recreate the fitted curve using the optimized parameters
+    # Recreate the fitted curve using the optimized parameters
     data_fit = est_std * np.sin(theta + est_phase) + est_mean
     residual = data - data_fit
 
@@ -50,7 +49,7 @@ def test_harmonics_1():
 
 
 def test_harmonics_2():
-    # this uses the actual functional form used for fitting ellipses
+    # This uses the actual functional form used for fitting ellipses
     npts = 100
     theta = np.linspace(0, 4 * np.pi, npts)
 
@@ -102,10 +101,10 @@ def test_harmonics_3():
 
 class TestFitEllipseSamples:
     def setup_class(self):
-        # major axis parallel to X image axis
+        # Major axis parallel to X image axis
         self.data1 = make_test_image(seed=0)
 
-        # major axis tilted 45 deg wrt X image axis
+        # Major axis tilted 45 deg wrt X image axis
         self.data2 = make_test_image(pa=np.pi / 4, seed=0)
 
     def test_fit_ellipsesample_1(self):
@@ -121,7 +120,7 @@ class TestFitEllipseSamples:
         assert_allclose(np.mean(a2), -5.658e-05, atol=0.001)
         assert_allclose(np.mean(b2), -0.00911, atol=0.001)
 
-        # check that harmonics subtract nicely
+        # Check that harmonics subtract nicely
         model = first_and_second_harmonic_function(
             s[0], np.array([y0, a1, b1, a2, b2]))
         residual = s[2] - model
@@ -130,7 +129,7 @@ class TestFitEllipseSamples:
         assert_allclose(np.std(residual), 0.015, atol=0.01)
 
     def test_fit_ellipsesample_2(self):
-        # initial guess is rounder than actual image
+        # Initial guess is rounder than actual image
         sample = EllipseSample(self.data1, 40.0, eps=0.1)
         s = sample.extract()
 
@@ -144,7 +143,7 @@ class TestFitEllipseSamples:
         assert_allclose(np.mean(b2), 10.153, atol=0.001)
 
     def test_fit_ellipsesample_3(self):
-        # initial guess for center is offset
+        # Initial guess for center is offset
         sample = EllipseSample(self.data1, x0=220.0, y0=210.0, sma=40.0)
         s = sample.extract()
 
@@ -202,8 +201,8 @@ def test_upper_harmonics_sign():
     ellipse = Ellipse(data, geometry=geometry)
     isolist = ellipse.fit_image()
 
-    # test image is "disky: disky isophotes have b4 > 0
-    # (boxy isophotes have b4 < 0)
+    # Test image is "disky" and disky isophotes have b4 > 0 (boxy
+    # isophotes have b4 < 0).
     assert np.all(isolist.b4[30:] > 0)
 
     # Check the sign of the upper harmonics at the outermost

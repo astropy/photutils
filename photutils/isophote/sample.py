@@ -262,7 +262,7 @@ class EllipseSample:
     def _sigma_clip(self, angles, radii, intensities):
         if self.n_clip > 0:
             for _ in range(self.n_clip):
-                # Do not use list.copy() -- must be python2-compliant.
+                # Pass slice copies so that the inputs are not mutated.
                 angles, radii, intensities = self._iter_sigma_clip(
                     angles[:], radii[:], intensities[:])
 

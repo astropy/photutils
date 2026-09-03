@@ -100,7 +100,7 @@ def test_gini_invalid_values_filtered():
     # All inf returns nan (no finite values)
     assert np.isnan(gini(np.full((5, 5), np.inf)))
 
-    # Mix: one valid pixel, rest NaN - Gini of single value is 0
+    # Mix: one valid pixel, rest NaN. Gini of a single value is 0
     data_one = np.full((5, 5), np.nan)
     data_one[2, 2] = 1.0
     assert gini(data_one) == 0.0

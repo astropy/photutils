@@ -8,7 +8,7 @@ pixel grid.
 The functions here are written so that they can be reused by any
 aperture whose footprint is a simple polygon (e.g., rotated rectangles,
 regular polygons, or arbitrary user-supplied polygons). Convexity is not
-required: the subject is the aperture polygon and the clip polygon is
+required. The subject is the aperture polygon and the clip polygon is
 the (always-convex, axis-aligned) pixel rectangle.
 
 The cdef functions are not intended to be called from Python code.
@@ -47,7 +47,7 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
 
     The polygon vertices must define a simple polygon (no
     self-intersections). The polygon may be convex or non-convex. The
-    vertex order may be either clockwise or counter-clockwise; clockwise
+    vertex order may be either clockwise or counter-clockwise. Clockwise
     input is reversed internally.
 
     Parameters
@@ -80,7 +80,7 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     subpixels : int
         The number of subpixels to use in each dimension when using
         the sub-pixel sampling method. Each pixel is resampled by this
-        factor in each dimension; thus, each pixel is divided into
+        factor in each dimension, so each pixel is divided into
         ``subpixels ** 2`` subpixels.
 
         With ``subpixels == 1`` (the ``center`` method) a pixel is
@@ -91,7 +91,7 @@ def polygon_overlap_grid(double xmin, double xmax, double ymin, double ymax,
 
         For ``subpixels > 1`` the same convention applies to each
         subpixel: a subpixel is included only if its center lies
-        strictly inside the polygon; subpixel centers lying exactly on a
+        strictly inside the polygon. Subpixel centers lying exactly on a
         polygon edge are excluded (weight 0).
 
     Returns
@@ -240,7 +240,7 @@ cdef double polygon_pixel_overlap(double pxmin, double pymin,
     buf_a_x, buf_a_y, buf_b_x, buf_b_y : double *
         Caller-allocated scratch buffers, each holding at least
         ``buf_size`` doubles. The caller is responsible for ensuring
-        ``buf_size`` is large enough: each clip can roughly double the
+        ``buf_size`` is large enough. Each clip can roughly double the
         vertex count of a non-convex polygon, so 16 times the maximum
         input polygon size is a safe choice, while for convex input
         polygons each clip adds at most one vertex, so input size plus
@@ -353,7 +353,7 @@ cdef int convex_edge_normals(double *poly_x, double *poly_y, int n_poly,
         ey2 = poly_y[k2] - poly_y[k1]
 
         # Cross product of consecutive edges. For a counter-clockwise
-        # convex polygon every turn is a left turn (cross >= 0); a
+        # convex polygon every turn is a left turn (cross >= 0). A
         # negative value marks a reflex vertex (non-convex), and a
         # uniformly negative sign marks a clockwise polygon.
         cross = ex * ey2 - ey * ex2
@@ -578,7 +578,7 @@ cdef int point_in_polygon(double x, double y, double *poly_x,
     standard ray-casting algorithm.
 
     The polygon may be convex or non-convex. The on-edge test is
-    performed first: if ``(x, y)`` lies on any edge (within the closed
+    performed first. If ``(x, y)`` lies on any edge (within the closed
     bounding box of that edge and collinear with it), the point is
     reported as outside. Otherwise the standard ray-casting parity test
     is applied for strictly interior/exterior points.
@@ -672,7 +672,7 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
     consistent with the circular, elliptical, and rectangular apertures.
 
     For ``subpixels > 1`` the samples are classified with a scanline
-    parity fill: for each subpixel row, the polygon boundary restricted
+    parity fill. For each subpixel row, the polygon boundary restricted
     to the horizontal line at ``y`` is fully characterized once
     (``O(n_poly)``) as a set of crossing points (from sloped and
     vertical edges) plus a set of closed x-intervals (from any
@@ -681,7 +681,7 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
     monotonic sweep instead of re-testing every edge for every sample.
     This reduces the per-pixel cost from ``O(subpixels ** 2 * n_poly)``
     to roughly ``O(subpixels * n_poly + subpixels ** 2)`` while matching
-    the classification of `point_in_polygon`: interior samples are
+    the classification of `point_in_polygon`. Interior samples are
     classified by the identical ``x < xint`` parity rule, and every
     on-boundary sample is excluded (classified as outside). A sample
     is on the boundary when its x coincides exactly with a crossing (a
@@ -786,7 +786,7 @@ cdef double polygon_overlap_single_subpixel(double x0, double y0,
         # sample is inside when an odd number of crossings lie strictly
         # to its right (the ``x < xint`` parity rule), unless it lies
         # on the boundary. On-boundary samples are excluded (classified
-        # as outside), consistent with ``point_in_polygon``: a sample
+        # as outside), consistent with ``point_in_polygon``. A sample
         # whose x coincides exactly with a crossing lies on a sloped or
         # vertical edge, and a sample within a horizontal edge's closed
         # x-span lies on that edge.

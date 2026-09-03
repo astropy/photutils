@@ -50,7 +50,7 @@ def build_ellipse_model(
 
     high_harmonics : bool, optional
         Whether to add the higher-order harmonics (i.e., ``a3``, ``b3``,
-        ``a4``, and ``b4``; see `~photutils.isophote.Isophote` for
+        ``a4``, and ``b4``, see `~photutils.isophote.Isophote` for
         details) to the result.
 
     sma_interval : optional, float

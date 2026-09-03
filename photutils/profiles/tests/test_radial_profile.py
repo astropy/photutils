@@ -447,7 +447,7 @@ class TestRadialProfile:
         """
         xycen, data, _, _ = profile_data
 
-        # Create a near-delta-function: all zero except one pixel at the
+        # Create a near-delta-function, all zero except one pixel at the
         # center so the weighted mean radius is nearly zero.
         delta = np.zeros_like(data)
         cy, cx = round(xycen[1]), round(xycen[0])
