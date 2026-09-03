@@ -28,9 +28,8 @@ The multithreshold levels themselves are computed by the caller
 (vectorized in NumPy over all the sources of a chunk, see
 ``photutils.segmentation.deblend``) and passed in, so that they are
 bitwise identical to the pure-Python reference implementation on every
-platform. The kernels here compute the per-source data extrema that the
-levels depend on, quantize each cutout against its levels, and build the
-markers.
+platform. The kernels here compute the per-source data extrema and
+flux, quantize each cutout against its levels, and build the markers.
 
 The kernels run without the GIL and use no global mutable state, so
 this module is safe to use from multiple threads, including on
@@ -42,7 +41,7 @@ import numpy as np
 from libc.math cimport NAN, isnan
 from libc.stdlib cimport free, malloc, realloc
 
-__all__ = ['deblend_markers_chunk', 'deblend_source_extrema',
+__all__ = ['deblend_markers_chunk', 'deblend_source_stats',
            'make_deblend_markers']
 
 ctypedef fused data_t:
@@ -708,16 +707,17 @@ cdef inline int _count_below(const double* thresholds, int n_levels,
     return lo
 
 
-cdef void _source_extrema(const data_t* data, const segm_t* segm,
-                          Py_ssize_t img_nx, long long label,
-                          Py_ssize_t y0, Py_ssize_t y1, Py_ssize_t x0,
-                          Py_ssize_t x1, double* smin,
-                          double* smax) noexcept nogil:
+cdef void _source_stats(const data_t* data, const segm_t* segm,
+                        Py_ssize_t img_nx, long long label,
+                        Py_ssize_t y0, Py_ssize_t y1, Py_ssize_t x0,
+                        Py_ssize_t x1, double* smin, double* smax,
+                        double* ssum) noexcept nogil:
     """
-    Compute the minimum and maximum data value of one source segment.
+    Compute the minimum, maximum, and flux of one source segment.
 
-    NaN pixels are excluded. Both outputs are NaN if the segment has no
-    finite pixel.
+    NaN pixels are excluded. The flux is accumulated sequentially in
+    float64 in raster order. The minimum and maximum are NaN, and the
+    flux is 0, if the segment has no finite pixel.
     """
     cdef Py_ssize_t iy, ix, idx
     cdef double value
@@ -725,6 +725,7 @@ cdef void _source_extrema(const data_t* data, const segm_t* segm,
 
     smin[0] = NAN
     smax[0] = NAN
+    ssum[0] = 0.0
     for iy in range(y1 - y0):
         for ix in range(x1 - x0):
             idx = (y0 + iy) * img_nx + x0 + ix
@@ -733,6 +734,7 @@ cdef void _source_extrema(const data_t* data, const segm_t* segm,
             value = <double>data[idx]
             if isnan(value):
                 continue
+            ssum[0] += value
             if not has_value:
                 smin[0] = value
                 smax[0] = value
@@ -743,18 +745,20 @@ cdef void _source_extrema(const data_t* data, const segm_t* segm,
                 smax[0] = value
 
 
-def deblend_source_extrema(const data_t[:, ::1] data,
-                           const segm_t[:, ::1] segm_data,
-                           const long long[::1] labels,
-                           const long long[::1] y0,
-                           const long long[::1] y1,
-                           const long long[::1] x0,
-                           const long long[::1] x1):
+def deblend_source_stats(const data_t[:, ::1] data,
+                         const segm_t[:, ::1] segm_data,
+                         const long long[::1] labels,
+                         const long long[::1] y0,
+                         const long long[::1] y1,
+                         const long long[::1] x0,
+                         const long long[::1] x1):
     """
-    Compute the minimum and maximum data value of each source segment.
+    Compute the minimum, maximum, and flux of each source segment.
 
-    NaN pixels are excluded, so the results are identical to the
-    ``nanmin`` and ``nanmax`` reductions over the segment pixels.
+    NaN pixels are excluded. The minimum and maximum are identical to
+    the ``nanmin`` and ``nanmax`` reductions over the segment pixels.
+    The flux is accumulated sequentially in float64 in raster order,
+    which is what ``np.cumsum(values, dtype=np.float64)[-1]`` computes.
 
     Parameters
     ----------
@@ -772,9 +776,10 @@ def deblend_source_extrema(const data_t[:, ::1] data,
 
     Returns
     -------
-    source_min, source_max : 1D float64 `~numpy.ndarray`
-        The minimum and maximum data value of each source segment. Both
-        are NaN for a segment without any finite pixel.
+    source_min, source_max, source_sum : 1D float64 `~numpy.ndarray`
+        The minimum, maximum, and flux of each source segment. The
+        minimum and maximum are NaN, and the flux is 0, for a segment
+        without any finite pixel.
     """
     cdef Py_ssize_t n_src = labels.shape[0]
     cdef Py_ssize_t img_nx = data.shape[1]
@@ -782,16 +787,19 @@ def deblend_source_extrema(const data_t[:, ::1] data,
 
     smin_arr = np.empty(n_src, dtype=np.float64)
     smax_arr = np.empty(n_src, dtype=np.float64)
+    ssum_arr = np.empty(n_src, dtype=np.float64)
     cdef double[::1] smin_mv = smin_arr
     cdef double[::1] smax_mv = smax_arr
+    cdef double[::1] ssum_mv = ssum_arr
 
     with nogil:
         for isrc in range(n_src):
-            _source_extrema(&data[0, 0], &segm_data[0, 0], img_nx,
-                            labels[isrc], y0[isrc], y1[isrc], x0[isrc],
-                            x1[isrc], &smin_mv[isrc], &smax_mv[isrc])
+            _source_stats(&data[0, 0], &segm_data[0, 0], img_nx,
+                          labels[isrc], y0[isrc], y1[isrc], x0[isrc],
+                          x1[isrc], &smin_mv[isrc], &smax_mv[isrc],
+                          &ssum_mv[isrc])
 
-    return smin_arr, smax_arr
+    return smin_arr, smax_arr, ssum_arr
 
 
 cdef Py_ssize_t _source_markers(const data_t* data, const segm_t* segm,

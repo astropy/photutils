@@ -12,14 +12,13 @@ import numpy as np
 from astropy.units import Quantity
 
 from photutils.segmentation._deblend_markers import (deblend_markers_chunk,
-                                                     deblend_source_extrema)
+                                                     deblend_source_stats)
 from photutils.segmentation._deblend_watershed import deblend_source_contrast
 from photutils.segmentation.core import (SegmentationImage, _get_labels,
                                          _remap_deblend_label_map)
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._deprecation import deprecated_renamed_argument
-from photutils.utils._stats import nansum
 from photutils.utils.exceptions import DeblendWarning
 
 __all__ = ['deblend_sources']
@@ -538,8 +537,9 @@ def _compute_thresholds(source_min, source_max, n_levels, mode):
             nonposmin)
 
 
-def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
-                           labels, slices, deblend_params):
+def _deblend_sources_chunk(data, segm_data,  # noqa: ARG001
+                           driver_data, driver_segm, labels, slices,
+                           deblend_params):
     """
     Deblend a chunk of labeled sources.
 
@@ -589,7 +589,7 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
     chunk_kwargs = {'n_pixels': int(deblend_params.n_pixels),
                     'connectivity': connectivity}
 
-    source_min, source_max = deblend_source_extrema(
+    source_min, source_max, source_sum = deblend_source_stats(
         driver_data, driver_segm, labels, y0, y1, x0, x1)
 
     # Constant (or all-NaN) sources do not deblend. The multithreshold
@@ -600,17 +600,7 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
     nonposmin = np.zeros(len(labels), dtype=bool)
     n_markers_fallback = np.zeros(len(labels), dtype=bool)
 
-    # The saddle criterion selects the markers against the total source
-    # fluxes, so those are computed up front. The basin criterion needs
-    # them only for the sources that split.
     use_saddle = deblend_params.contrast_method == 'saddle'
-    source_sums = {}
-    if use_saddle:
-        for index in active:
-            slc = slices[index]
-            values = data[slc][segm_data[slc] == labels[index]]
-            source_sums[index] = float(nansum(values))
-
     if active.size > 0:
         values_dtype = data.dtype.newbyteorder('=')
         smin = source_min[active].astype(values_dtype)
@@ -620,9 +610,7 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         nonposmin[active] = fallback
         saddle_limits = None
         if use_saddle:
-            saddle_limits = np.array([deblend_params.contrast
-                                      * source_sums[index]
-                                      for index in active])
+            saddle_limits = deblend_params.contrast * source_sum[active]
         # Sources with too many markers are only retried with linearly
         # spaced levels (below), so only then may the kernel skip
         # building their markers. With the saddle criterion the markers
@@ -656,8 +644,8 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
                 n_markers_fallback[retry] = True
 
     results = []
-    for index, (label, slc, markers) in enumerate(
-            zip(labels, slices, markers_list, strict=True)):
+    for index, (label, markers) in enumerate(
+            zip(labels, markers_list, strict=True)):
         warns = {}
         if nonposmin[index]:
             warns['nonposmin'] = 'non-positive minimum'
@@ -667,23 +655,16 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
             results.append((None, warns))
             continue
 
-        # The total source flux is computed with the same reduction as
-        # the per-source Python path (its rounding depends on the
-        # summation order) and the source minimum comes from the
-        # compiled extrema. Both are passed to the compiled contrast
-        # loop. With the saddle criterion, the markers are already
+        # The source flux and minimum come from the compiled stats
+        # kernel. With the saddle criterion, the markers are already
         # contrast-selected, so the basin removal is disabled.
-        if use_saddle:
-            source_sum = source_sums[index]
-        else:
-            values = data[slc][segm_data[slc] == label]
-            source_sum = float(nansum(values))
         source_deblended = deblend_source_contrast(
             driver_data, driver_segm, int(label), int(y0[index]),
             int(y1[index]), int(x0[index]), int(x1[index]), markers,
             connectivity=connectivity,
             contrast=float(deblend_params.contrast),
-            source_sum=source_sum, source_min=float(source_min[index]),
+            source_sum=float(source_sum[index]),
+            source_min=float(source_min[index]),
             apply_contrast=not use_saddle)
         results.append((source_deblended, warns))
 

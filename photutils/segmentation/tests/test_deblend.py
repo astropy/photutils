@@ -17,7 +17,8 @@ from scipy import ndimage as ndi
 from photutils.segmentation import SegmentationImage
 from photutils.segmentation import deblend as deblend_module
 from photutils.segmentation import deblend_sources, detect_sources
-from photutils.segmentation._deblend_markers import deblend_markers_chunk
+from photutils.segmentation._deblend_markers import (deblend_markers_chunk,
+                                                     deblend_source_stats)
 from photutils.segmentation._deblend_reference import _SingleSourceDeblender
 from photutils.segmentation._deblend_watershed import deblend_watershed
 from photutils.segmentation.deblend import (_compute_thresholds,
@@ -941,6 +942,38 @@ def test_compute_thresholds_matches_reference(dtype, mode, n_levels):
         assert_equal(thresholds[i].view(np.int64),
                      expected.view(np.int64))
         assert nonposmin[i] == ('nonposmin' in deblender.warnings)
+
+
+@pytest.mark.parametrize('dtype', ['float64', 'float32', 'int32'])
+def test_source_stats_matches_reference(dtype):
+    """
+    Test that the compiled per-source minimum, maximum, and flux are
+    identical to the reference implementation, with NaN pixels
+    excluded, and that the flux agrees with np.nansum.
+    """
+    data, segm = make_multipeak_source()
+    data = data.astype(dtype)
+    if dtype != 'int32':
+        data[45:48, 40:43] = np.nan
+    driver_data = np.ascontiguousarray(data, dtype=np.float64)
+    labels = np.asarray(segm.labels, dtype=np.int64)
+    slc = segm.slices[0]
+    y0 = np.array([slc[0].start])
+    y1 = np.array([slc[0].stop])
+    x0 = np.array([slc[1].start])
+    x1 = np.array([slc[1].stop])
+    smin, smax, ssum = deblend_source_stats(driver_data, segm.data,
+                                            labels, y0, y1, x0, x1)
+
+    params = _DeblendParams(5, np.ones((3, 3)), 32, 0.001, 'linear')
+    deblender = _SingleSourceDeblender(data[slc], segm.data[slc], 1,
+                                       params)
+    assert smin[0] == deblender.source_min
+    assert smax[0] == deblender.source_max
+    assert ssum[0] == deblender.source_sum
+    values = data[segm.data == 1]
+    assert_allclose(ssum[0], np.nansum(values, dtype=np.float64),
+                    rtol=1e-12)
 
 
 @pytest.mark.parametrize('dtype', ['float64', 'float32'])
