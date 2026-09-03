@@ -316,6 +316,33 @@ python benchmarks/bench_segmentation.py --which n-threads \
     --n-sources 4000 --threads 1,4,8
 ```
 
+## Deblending (`bench_deblend.py`)
+
+Benchmarks for `deblend_sources`:
+
+- many small sources (a grid of blended Gaussian-source pairs) versus
+  the number of sources, for each threshold mode
+- a single large segment (a broad Gaussian envelope with superposed
+  peaks) versus the segment size and the number of peaks, including
+  the cost of the iterative contrast loop
+- the stages of the single-source deblending pipeline
+  (multithresholding, marker building, watershed, and the contrast
+  loop)
+- the `n_threads` keyword across thread counts
+- the basin and saddle contrast criteria
+- a cProfile mode (`--which profile`)
+- an optional comparison against the SEP package (`--which sep`,
+  which requires `sep` and is not part of `all`): photutils
+  detection and deblending (with both contrast criteria) against
+  `sep.extract` with and without deblending on the same scenes,
+  using the SEP deblending defaults for both packages, with the
+  SEP / photutils time ratios
+
+```bash
+python benchmarks/bench_deblend.py
+python benchmarks/bench_deblend.py --which sep --n-sources 1000,4000 --sizes 500,1000
+```
+
 ## Background (`bench_background.py`)
 
 Benchmarks for the `photutils.background` subpackage:

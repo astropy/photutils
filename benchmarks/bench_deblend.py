@@ -19,6 +19,12 @@ A per-stage breakdown of the single-source deblending pipeline
 (multithresholding, marker building, watershed, contrast loop) and a
 cProfile mode are also provided for bottleneck analysis.
 
+An optional comparison against the SEP package (``--which sep``,
+which requires ``sep``) times ``sep.extract`` on the same scenes. SEP
+fuses detection and deblending in one call and cannot deblend an
+existing segmentation map, so the comparison is end to end, with a
+detect-only reference row for each package.
+
 Run ``python benchmarks/bench_deblend.py --help`` to see the
 available options.
 """
@@ -26,6 +32,7 @@ available options.
 import argparse
 import cProfile
 import pstats
+import sys
 import warnings
 from functools import partial
 
@@ -36,15 +43,28 @@ from bench_helpers import (format_sweep_cells, parse_int_list,
                            parse_thread_counts, print_environment, time_best)
 from bench_segmentation import N_PIXELS, THRESHOLD, make_inputs
 
-from photutils.segmentation import detect_sources
+from photutils.segmentation import detect_sources, make_2dgaussian_kernel
 from photutils.segmentation._deblend_reference import _SingleSourceDeblender
 from photutils.segmentation.deblend import _DeblendParams, deblend_sources
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils.exceptions import DeblendWarning
 
+try:
+    import sep
+    HAS_SEP = True
+    SEP_IMPORT_ERROR = None
+except ImportError as exc:
+    HAS_SEP = False
+    SEP_IMPORT_ERROR = str(exc)
+
 BLEND_THRESHOLD = 0.5
 ENVELOPE_AMPLITUDE = 5.0
 PEAK_FWHM = 8.0
+
+# The SEP deblending defaults, applied to both packages in the SEP
+# comparison
+SEP_N_LEVELS = 32
+SEP_CONTRAST = 0.005
 
 
 def make_blended_image(size, n_peaks, *, amp_range=(3.0, 100.0), seed=0):
@@ -586,6 +606,214 @@ def bench_contrast_method(*, n_sources=4000, size=1000, n_peaks=100,
         print(f'{name:>40}{row}')
 
 
+def run_sep_extract(data, threshold, *, kernel=None, deblend=True):
+    """
+    Run sep.extract with the SEP deblending defaults and return the
+    segmentation map.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The unfiltered image.
+
+    threshold : float
+        The detection threshold, applied to the filtered image when
+        ``kernel`` is given.
+
+    kernel : 2D `~numpy.ndarray` or `None`, optional
+        The convolution kernel. If `None`, the image is not filtered.
+
+    deblend : bool, optional
+        Whether to deblend. SEP runs its multithreshold level loop
+        whenever ``deblend_nthresh`` is larger than 1, regardless of
+        ``deblend_cont``, so deblending is disabled by using a single
+        level.
+
+    Returns
+    -------
+    segmap : 2D `~numpy.ndarray`
+        The SEP segmentation map.
+    """
+    n_levels = SEP_N_LEVELS if deblend else 1
+    _, segmap = sep.extract(data, threshold, minarea=N_PIXELS,
+                            filter_kernel=kernel, filter_type='conv',
+                            deblend_nthresh=n_levels,
+                            deblend_cont=SEP_CONTRAST, clean=False,
+                            segmentation_map=True)
+    return segmap
+
+
+def time_and_count(func, *, repeats=3):
+    """
+    Time a detection or deblending callable and count its labels.
+
+    Parameters
+    ----------
+    func : callable
+        The zero-argument callable, returning either a
+        `~photutils.segmentation.SegmentationImage` or a SEP
+        segmentation map array.
+
+    repeats : int, optional
+        The number of repeats for the timing (best time is kept).
+
+    Returns
+    -------
+    t_best : float
+        The best wall-clock time in seconds.
+
+    n_labels : int
+        The number of labels in the result.
+    """
+    result = func()
+    n_labels = getattr(result, 'n_labels', None)
+    if n_labels is None:
+        n_labels = int(result.max())
+    return time_best(func, repeats=repeats), n_labels
+
+
+def bench_sep_scene(name, data, detect_data, segm, threshold, *,
+                    kernel=None, repeats=3):
+    """
+    Benchmark photutils detection and deblending against sep.extract
+    on one scene.
+
+    Each row pairs a photutils measurement with its SEP counterpart.
+    The SEP deblend-only time is the difference between its runs with
+    and without deblending, and the photutils detect-plus-deblend time
+    is the sum of its two measured steps. The photutils cell shows
+    the SEP / photutils time ratio in parentheses, and the n_labels
+    column lists the photutils and SEP label counts.
+
+    Parameters
+    ----------
+    name : str
+        The scene description printed in the section header.
+
+    data : 2D `~numpy.ndarray`
+        The unfiltered image, given to SEP.
+
+    detect_data : 2D `~numpy.ndarray`
+        The image detected and deblended by photutils. This is the
+        image convolved with ``kernel``, or ``data`` itself when
+        ``kernel`` is `None`.
+
+    segm : `~photutils.segmentation.SegmentationImage`
+        The photutils segmentation image of ``detect_data``.
+
+    threshold : float
+        The detection threshold.
+
+    kernel : 2D `~numpy.ndarray` or `None`, optional
+        The convolution kernel given to SEP.
+
+    repeats : int, optional
+        The number of repeats for each timing (best time is kept).
+    """
+    # SEP needs room for every segment pixel on its pixel stack
+    sep.set_extract_pixstack(max(sep.get_extract_pixstack(), data.size))
+
+    sep_segmap = run_sep_extract(data, threshold, kernel=kernel,
+                                 deblend=False)
+    if not np.array_equal(sep_segmap > 0, segm.data > 0):
+        msg = 'SEP and photutils detected different segments'
+        raise ValueError(msg)
+
+    deblend = partial(deblend_sources, detect_data, segm, N_PIXELS,
+                      n_levels=SEP_N_LEVELS, contrast=SEP_CONTRAST,
+                      mode='exponential')
+    sep_extract = partial(run_sep_extract, data, threshold, kernel=kernel)
+
+    t_detect, n_detect = time_and_count(
+        partial(detect_sources, detect_data, threshold, N_PIXELS),
+        repeats=repeats)
+    t_basin, n_basin = time_and_count(
+        partial(deblend, contrast_method='basin'), repeats=repeats)
+    t_saddle, n_saddle = time_and_count(
+        partial(deblend, contrast_method='saddle'), repeats=repeats)
+    t_sep_detect, n_sep_detect = time_and_count(
+        partial(sep_extract, deblend=False), repeats=repeats)
+    t_sep_total, n_sep_deblend = time_and_count(
+        partial(sep_extract, deblend=True), repeats=repeats)
+    # SEP's deblending cost is the extra time over its detect-only run
+    t_sep_deblend = t_sep_total - t_sep_detect
+
+    rows = [
+        ('detect', t_detect, t_sep_detect, n_detect, n_sep_detect),
+        ('deblend (basin)', t_basin, t_sep_deblend, n_basin,
+         n_sep_deblend),
+        ('deblend (saddle)', t_saddle, t_sep_deblend, n_saddle,
+         n_sep_deblend),
+        ('detect + deblend (basin)', t_detect + t_basin, t_sep_total,
+         n_basin, n_sep_deblend),
+        ('detect + deblend (saddle)', t_detect + t_saddle, t_sep_total,
+         n_saddle, n_sep_deblend),
+    ]
+
+    print(f'\n-- {name} --')
+    print(f'{"benchmark":>26}{"photutils":>18}{"SEP":>12}'
+          f'{"n_labels":>14}')
+    for row_name, t_phot, t_sep, n_phot, n_sep in rows:
+        ratio = f' ({t_sep / t_phot:.1f}x)' if t_sep > 0 else ''
+        print(f'{row_name:>26}{f"{t_phot:.4f}s{ratio}":>18}'
+              f'{f"{t_sep:.4f}s":>12}{f"{n_phot}/{n_sep}":>14}')
+
+
+def bench_sep(*, n_sources_sweep=(500, 1000, 2000, 4000),
+              size_sweep=(250, 500, 1000, 2000), n_peaks=8, repeats=3,
+              seed=0):
+    """
+    Benchmark photutils detection and deblending against sep.extract.
+
+    Both packages use the SEP deblending defaults (32 exponentially
+    spaced levels and a contrast of 0.005), and SEP cleaning is
+    disabled because photutils has no equivalent. For the many-source
+    scenes, SEP is given the detection kernel with plain convolution
+    and photutils deblends the convolved image, which is the image
+    SEP deblends. The large-segment scenes use no kernel. Each scene
+    checks that SEP detects the same segments as photutils before
+    timing.
+
+    Parameters
+    ----------
+    n_sources_sweep : tuple of int, optional
+        The numbers of Gaussian sources for the many-source scenes.
+
+    size_sweep : tuple of int, optional
+        The image sizes for the large-segment scenes.
+
+    n_peaks : int, optional
+        The number of compact peaks in each large segment.
+
+    repeats : int, optional
+        The number of repeats for each timing (best time is kept).
+
+    seed : int, optional
+        The random number generator seed.
+    """
+    print(f'\n== deblend_sources versus sep.extract ({SEP_N_LEVELS} '
+          f'levels, mode=exponential, contrast={SEP_CONTRAST}) ==')
+    print('(Nx) = SEP / photutils time, n_labels = photutils/SEP')
+
+    kernel = make_2dgaussian_kernel(3.0, size=5)  # as in make_inputs
+    kernel = np.asarray(kernel.array, dtype=np.float32)
+    for n_sources in n_sources_sweep:
+        data, convolved_data, segm = make_inputs(n_sources, seed=seed)
+        name = (f'{n_sources} sources, {segm.n_labels} segments, '
+                f'{data.shape[0]}x{data.shape[1]} image')
+        bench_sep_scene(name, data, convolved_data, segm, THRESHOLD,
+                        kernel=kernel, repeats=repeats)
+
+    for size in size_sweep:
+        data, segm = make_blended_inputs(size, n_peaks,
+                                         amp_range=(50.0, 100.0),
+                                         seed=seed)
+        name = (f'{size}x{size} image, {n_peaks} peaks, segment area '
+                f'{int(segm.areas[0])}')
+        bench_sep_scene(name, data, data, segm, BLEND_THRESHOLD,
+                        repeats=repeats)
+
+
 def main():
     """
     Run the source deblending benchmarks.
@@ -620,13 +848,25 @@ def main():
                              '(default: %(default)s)')
     parser.add_argument('--which', default='all',
                         choices=['all', 'many', 'large', 'peaks',
-                                 'stages', 'threads', 'criterion', 'profile'],
-                        help='which benchmark to run '
-                             '(default: %(default)s)')
+                                 'stages', 'threads', 'criterion', 'profile',
+                                 'sep'],
+                        help='which benchmark to run (default: '
+                             '%(default)s). The profile and sep '
+                             'benchmarks run only when selected.')
     args = parser.parse_args()
 
     warnings.filterwarnings('ignore', category=DeblendWarning)
     print_environment()
+
+    if args.which == 'sep':
+        if not HAS_SEP:
+            print(f'sep is not available ({SEP_IMPORT_ERROR}). Nothing '
+                  'to compare')
+            sys.exit(1)
+        print(f'sep {sep.__version__}')
+        bench_sep(n_sources_sweep=args.n_sources, size_sweep=args.sizes,
+                  repeats=args.repeats, seed=args.seed)
+        return
 
     if args.which in ('all', 'many'):
         bench_many_sources(n_sources_sweep=args.n_sources,
