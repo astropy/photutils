@@ -291,6 +291,11 @@ class _SingleSourceDeblender:
         raster-scan order of their first pixel, as the compiled kernel
         labels them.
 
+        This method labels the cutout once per level and scans it once
+        per component, so its cost grows with the number of levels
+        times the number of components times the cutout area. It is a
+        reference for testing, not meant for large cutouts.
+
         Parameters
         ----------
         thresholds : 1D `~numpy.ndarray`

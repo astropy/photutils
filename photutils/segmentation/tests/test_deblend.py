@@ -1049,6 +1049,11 @@ def test_saddle_deblend():
     Test deblending with the saddle contrast criterion through the
     public API, including a source that does not split, the parent
     label map, the deblended flags, and thread-count invariance.
+
+    The label counts are regression pins for the multipeak scene (its
+    watershed basin flux fractions are about 0.061, 0.062, 0.225, and
+    0.652). The results are also compared with the pure-Python
+    reference path.
     """
     y, x = np.mgrid[0:101, 0:181]
     data, _ = make_multipeak_source()
@@ -1074,6 +1079,15 @@ def test_saddle_deblend():
     result3 = deblend_sources(image, segm, 5, contrast=0.001,
                               contrast_method='saddle', n_threads=4)
     assert_equal(result3.data, result.data)
+
+    with patch.object(deblend_module, '_deblend_sources_chunk',
+                      python_deblend_chunk):
+        expected = deblend_sources(image, segm, 5, contrast=0.001,
+                                   contrast_method='saddle')
+        expected2 = deblend_sources(image, segm, 5, contrast=0.1,
+                                    contrast_method='saddle')
+    assert_equal(result.data, expected.data)
+    assert_equal(result2.data, expected2.data)
 
 
 def test_nonposmin_fallback_sinh():

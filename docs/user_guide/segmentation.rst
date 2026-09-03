@@ -155,8 +155,13 @@ watershed assigns to the source, including its share of any surrounding
 envelope. Basins below the contrast are removed iteratively and their
 territory is re-flooded. With the ``'saddle'`` method, it is only
 the flux the source holds above the saddle level where it separates
-from its neighbors, which is equivalent to the `SourceExtractor`_
-``DEBLEND_MINCONT`` criterion. The saddle flux measures the significance
+from its neighbors. This is the significance criterion that
+`SourceExtractor`_ applies with its ``DEBLEND_MINCONT`` parameter,
+although the two codes space their threshold levels differently
+(SourceExtractor between the detection threshold and the peak,
+photutils between the source minimum and maximum) and assign the
+remaining pixels differently (SourceExtractor with a profile model,
+photutils with a watershed). The saddle flux measures the significance
 of the peak itself, independently of how much envelope territory the
 source would inherit, which makes it stricter for faint peaks sitting
 on bright envelopes. Because it excludes the flux below the saddle, the

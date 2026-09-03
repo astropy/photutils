@@ -311,14 +311,14 @@ New Features
     sources. [#2409]
 
   - Added a ``contrast_method`` keyword to ``deblend_sources`` and
-    ``SourceFinder`` to select the flux used by the deblending
-    contrast criterion. The default of `None` currently resolves
-    to ``'basin'``, which preserves the existing behavior (the
-    fraction is the total flux in the source's watershed basin, with
-    iterative removal of below-contrast basins), and may change to
-    ``'saddle'`` in version 4.0. The new
-    ``'saddle'`` method instead measures the flux a source holds above
-    the saddle level where it separates from its neighbors. [#2411]
+    ``SourceFinder`` to select the flux used by the deblending contrast
+    criterion. The default of `None` currently resolves to ``'basin'``,
+    which preserves the existing behavior (the fraction is the total
+    flux in the source's watershed basin, with iterative removal of
+    below-contrast basins), and may change to ``'saddle'`` in version
+    4.0. The new ``'saddle'`` method instead measures the flux a source
+    holds above the saddle level where it separates from its neighbors.
+    [#2411]
 
 - ``photutils.utils``
 
