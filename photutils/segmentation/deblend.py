@@ -226,10 +226,10 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         sources are divided into chunks and processed concurrently. The
         per-source results are independent and are assembled in the
         input-label order, so they are identical to the single-threaded
-        computation. The marker-building kernels release the Python
-        global interpreter lock (GIL), as do the watershed and most of
-        the array operations, so multithreading can significantly speed
-        up the deblending, especially for large sources.
+        computation. Each chunk is deblended by a few compiled calls
+        that release the Python global interpreter lock (GIL), so
+        multithreading speeds up the deblending of fields of many small
+        sources as well as of large sources.
 
     nproc : int, optional
         This keyword is deprecated and has no effect. It was the name of

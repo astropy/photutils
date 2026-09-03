@@ -995,6 +995,36 @@ def test_source_stats_matches_reference(dtype):
                     rtol=1e-12)
 
 
+def test_source_stats_all_nan():
+    """
+    Test that a segment without any finite pixel has NaN extrema and
+    zero flux in both the compiled stats kernel and the reference
+    implementation, and that deblend_sources leaves it unchanged.
+    """
+    data = np.full((3, 4), np.nan)
+    segment = np.ones((3, 4), dtype=np.int32)
+    labels = np.array([1], dtype=np.int64)
+    smin, smax, ssum = deblend_source_stats(data, segment, labels,
+                                            np.array([0]), np.array([3]),
+                                            np.array([0]), np.array([4]))
+    assert np.isnan(smin[0])
+    assert np.isnan(smax[0])
+    assert ssum[0] == 0.0
+
+    params = _DeblendParams(1, np.ones((3, 3)), 32, 0.001, 'linear')
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        deblender = _SingleSourceDeblender(data, segment, 1, params)
+    assert np.isnan(deblender.source_min)
+    assert np.isnan(deblender.source_max)
+    assert deblender.source_sum == 0.0
+
+    segm = SegmentationImage(segment)
+    result = deblend_sources(data, segm, 1)
+    assert_equal(result.data, segment)
+    assert result.parent_to_deblended_labels == {}
+
+
 def test_markers_chunk_packed_buffer():
     """
     Test that the marker kernel writes each source's markers into its

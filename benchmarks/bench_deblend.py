@@ -324,8 +324,8 @@ def bench_stages(*, size=1000, n_peaks=25, mode='exponential',
     * make_markers: the multithreshold levels, the level quantization,
       and the compiled component-tree kernel
     * watershed: a single watershed call over the cutout
-    * apply_watershed: the watershed contrast loop (one watershed
-      call per removed marker)
+    * apply_watershed: the reference watershed contrast loop (one
+      watershed call per removed marker)
     * deblend_source: the full pipeline
 
     Parameters

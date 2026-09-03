@@ -653,7 +653,7 @@ Source Deblending Performance Improvements
 ==========================================
 
 Source deblending with :func:`~photutils.segmentation.deblend_sources`
-and `~photutils.segmentation.SourceFinder` is now typically 7--30 times
+and `~photutils.segmentation.SourceFinder` is now typically 7--50 times
 faster, producing identical results. The whole watershed step now runs
 in compiled code.
 
@@ -667,8 +667,9 @@ A new ``n_threads`` keyword in
 `~photutils.segmentation.SourceFinder` deblends the sources using
 multiple threads. The sources are divided into chunks and processed
 concurrently, producing results identical to the single-threaded
-computation. The compiled kernels release the GIL, so multithreading can
-significantly speed up deblending, especially for large sources.
+computation. Each chunk of sources is deblended by a few compiled calls
+that release the GIL, so multithreading also speeds up fields of many
+small sources.
 
 A new ``contrast_method`` keyword selects the flux used by the
 deblending contrast criterion. The ``'basin'`` method preserves the
