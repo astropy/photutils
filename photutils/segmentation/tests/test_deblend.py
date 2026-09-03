@@ -689,7 +689,8 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
                                    'gaussian', 'flat',
                                    'contrast-batch', 'contrast-single',
                                    'contrast-all', 'contrast-negmin',
-                                   'neighbors', 'nan'])
+                                   'neighbors', 'nan',
+                                   'checkerboard-linear'])
 def test_chunk_driver_matches_python_path(dtype, scene):
     """
     Test that the compiled chunk driver and contrast loop produce
@@ -704,10 +705,12 @@ def test_chunk_driver_matches_python_path(dtype, scene):
     removal, the one-at-a-time removal, the removal of all but one
     basin, and the removal path for sources with a negative minimum
     (which always removes one marker at a time), a scene of several
-    segments with overlapping bounding boxes, and NaN pixels within a
-    segment.
+    segments with overlapping bounding boxes, NaN pixels within a
+    segment, and the checkerboard deblended in linear mode, which keeps
+    all of its markers instead of falling back.
     """
     contrast = 0.001
+    mode = 'linear' if scene == 'checkerboard-linear' else 'exponential'
     if scene == 'blend':
         data = make_marker_test_image('blend')
         threshold, n_pixels = 0.5, 5
@@ -773,11 +776,11 @@ def test_chunk_driver_matches_python_path(dtype, scene):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', DeblendWarning)
         result = deblend_sources(data, segm, n_pixels,
-                                 contrast=contrast)
+                                 contrast=contrast, mode=mode)
         with patch.object(deblend_module, '_deblend_sources_chunk',
                           python_deblend_chunk):
             expected = deblend_sources(data, segm, n_pixels,
-                                       contrast=contrast)
+                                       contrast=contrast, mode=mode)
 
     assert_equal(result.data, expected.data)
     assert result.info.keys() == expected.info.keys()

@@ -476,10 +476,15 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         thresholds, fallback = _compute_thresholds(smin, smax, n_levels,
                                                    mode)
         nonposmin[active] = fallback
+        # Sources with too many markers are only retried with linearly
+        # spaced levels (below), so only then may the kernel skip
+        # building their markers.
+        can_retry = mode != 'linear'
+        max_markers = _MAX_MARKERS if can_retry else -1
         markers, n_markers = deblend_markers_chunk(
             driver_data, driver_segm, labels[active], y0[active],
             y1[active], x0[active], x1[active], thresholds,
-            max_markers=_MAX_MARKERS, **chunk_kwargs)
+            max_markers=max_markers, **chunk_kwargs)
         for index, source_markers in zip(active, markers, strict=True):
             markers_list[index] = source_markers
 
@@ -487,7 +492,7 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         # sources are deblended again with linearly spaced levels. A
         # source that already fell back to the linear spacing keeps its
         # markers
-        if mode != 'linear':
+        if can_retry:
             retry = np.flatnonzero((n_markers > _MAX_MARKERS) & ~fallback)
             if retry.size > 0:
                 thresholds, _ = _compute_thresholds(
