@@ -19,7 +19,7 @@ from scipy.ndimage import sum_labels
 from photutils.segmentation._deblend_markers import make_deblend_markers
 from photutils.segmentation._deblend_watershed import deblend_watershed
 from photutils.segmentation.core import _get_labels
-from photutils.segmentation.deblend import _create_relabel_map
+from photutils.segmentation.deblend import _MAX_MARKERS, _create_relabel_map
 from photutils.utils._stats import nanmax, nanmin, nansum
 
 
@@ -341,10 +341,8 @@ class _SingleSourceDeblender:
 
         Parameters
         ----------
-        markers : list of `~photutils.segmentation.SegmentationImage`
-            A list of segmentation images that contain possible sources
-            as markers. The last list element contains all the potential
-            source markers.
+        markers : 2D int `~numpy.ndarray`
+            The marker image for the source.
 
         Returns
         -------
@@ -357,6 +355,9 @@ class _SingleSourceDeblender:
         # contrast criterion, then remove the faintest such source(s)
         # and repeat until all sources meet the contrast criterion.
         data_neg = np.ascontiguousarray(-self.data, dtype=np.float64)
+        # NaN pixels are flooded after all finite pixels, as in the
+        # compiled contrast loop
+        data_neg[np.isnan(data_neg)] = np.inf
         connectivity = 8 if self.footprint[0, 0] else 4
         remove_marker = True
         while remove_marker:
@@ -487,13 +488,12 @@ class _SingleSourceDeblender:
             return None
 
         # If there are too many markers (e.g., due to low threshold
-        # and/or small n_pixels), the watershed step can be very slow
-        # (the threshold of 200 is arbitrary, but seems to work well).
+        # and/or small n_pixels), the watershed step can be very slow.
         # This mostly affects the "exponential" mode, where there are
         # many levels at low thresholds, so here we try again with
         # "linear" mode.
         n_labels = len(_get_labels(markers))
-        if self.mode != 'linear' and n_labels > 200:
+        if self.mode != 'linear' and n_labels > _MAX_MARKERS:
             del markers  # free memory
             self.warnings['n_markers'] = 'too many markers'
             self.mode = 'linear'

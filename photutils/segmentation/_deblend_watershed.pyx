@@ -15,6 +15,11 @@ and ``watershed_line=False``), so the results are identical, but
 without the per-call validation, padding, and cropping overhead of the
 general-purpose function, which dominates for small cutouts.
 
+The flood order is only defined for ordered image values, so the
+deblending entry point maps NaN data pixels to a +inf flooding cost.
+Such pixels are assigned to the basins that reach them after all the
+finite pixels have been assigned.
+
 The flood core runs without the GIL and uses no global mutable state,
 so this module is safe to use from multiple threads, including on
 free-threaded Python builds.
@@ -22,7 +27,7 @@ free-threaded Python builds.
 
 import numpy as np
 
-from libc.math cimport isnan
+from libc.math cimport INFINITY, isnan
 from libc.stdlib cimport free, malloc
 
 __all__ = ['deblend_source_contrast', 'deblend_watershed']
@@ -229,7 +234,9 @@ def deblend_watershed(image, markers, mask, connectivity):
     Parameters
     ----------
     image : 2D `~numpy.ndarray`
-        The image to flood (the lowest values are flooded first).
+        The image to flood (the lowest values are flooded first). It
+        must not contain NaN values. The deblending callers map NaN
+        data pixels to +inf so that they are flooded last.
 
     markers : 2D int `~numpy.ndarray`
         The marker image. Zero means not a marker. All markers must
@@ -462,7 +469,10 @@ def deblend_source_contrast(const data_t[:, ::1] data,
     Parameters
     ----------
     data : 2D float `~numpy.ndarray`
-        The full data array.
+        The full data array. NaN pixels within the segment are flooded
+        after all the finite pixels, so they are assigned to a
+        neighboring basin. They contribute NaN to the flux of that
+        basin, as in the NumPy implementation.
 
     segm_data : 2D int `~numpy.ndarray`
         The full segmentation array.
@@ -536,7 +546,11 @@ def deblend_source_contrast(const data_t[:, ::1] data,
                 idx = (y0 + iy) * img_nx + x0 + ix
                 p = iy * nx_c + ix
                 posimg[p] = <double>data_ptr[idx]
-                negimg[p] = -posimg[p]
+                if isnan(posimg[p]):
+                    # NaN pixels are flooded after all finite pixels
+                    negimg[p] = INFINITY
+                else:
+                    negimg[p] = -posimg[p]
                 mask[p] = segm_ptr[idx] == label
                 if output[p] > n_max_labels:
                     n_max_labels = output[p]

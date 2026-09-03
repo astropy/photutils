@@ -318,8 +318,10 @@ def bench_stages(*, size=1000, n_peaks=25, mode='exponential',
     blended source, using the private _SingleSourceDeblender class:
 
     * constructor: the segment mask and min/max/sum reductions
-    * multithreshold: the ``n_levels`` _detect_sources calls
-    * make_markers: multithreshold plus the marker-merging label loop
+    * multithreshold: the ``n_levels`` per-level detection passes of
+      the reference marker construction
+    * make_markers: the multithreshold levels, the level quantization,
+      and the compiled component-tree kernel
     * watershed: a single watershed call over the cutout
     * apply_watershed: the watershed contrast loop (one watershed
       call per removed marker)
@@ -401,8 +403,9 @@ def bench_stages(*, size=1000, n_peaks=25, mode='exponential',
 
     benchmarks = [
         ('constructor (mask + min/max/sum)', _run_constructor),
-        (f'multithreshold ({n_levels} detects)', _run_multithreshold),
-        ('make_markers (detect + merge)', _run_make_markers),
+        (f'multithreshold ({n_levels} per-level detects)',
+         _run_multithreshold),
+        ('make_markers (component tree)', _run_make_markers),
         ('watershed (single call)', _run_watershed),
         ('apply_watershed (contrast loop)', _run_apply_watershed),
         ('deblend_source (full)', _run_deblend_source),

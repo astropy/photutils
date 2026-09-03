@@ -10,22 +10,23 @@ from dataclasses import dataclass
 import numpy as np
 from astropy.units import Quantity
 
-from photutils.segmentation._deblend_markers import (DEBLEND_FLAG_NMARKERS,
-                                                     DEBLEND_FLAG_NONPOSMIN,
-                                                     deblend_markers_chunk)
+from photutils.segmentation._deblend_markers import (deblend_markers_chunk,
+                                                     deblend_source_extrema)
 from photutils.segmentation._deblend_watershed import deblend_source_contrast
 from photutils.segmentation.core import (SegmentationImage, _get_labels,
                                          _remap_deblend_label_map)
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._deprecation import deprecated_renamed_argument
-from photutils.utils._stats import nanmin, nansum
+from photutils.utils._stats import nansum
 from photutils.utils.exceptions import DeblendWarning
 
 __all__ = ['deblend_sources']
 
-# Mode codes accepted by the compiled chunk driver
-_MODE_CODES = {'linear': 0, 'exponential': 1, 'sinh': 2}
+# The number of markers above which a source is deblended again with
+# linearly spaced threshold levels, which have fewer levels at low
+# thresholds. The value is arbitrary but works well in practice
+_MAX_MARKERS = 200
 
 
 @dataclass
@@ -63,7 +64,10 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     data : 2D `~numpy.ndarray`
         The 2D array of the image. If filtering is desired, please input
         a convolved image here. This array should be the same array used
-        in `~photutils.segmentation.detect_sources`.
+        in `~photutils.segmentation.detect_sources`. NaN pixels within
+        a source segment are excluded from the multithreshold levels
+        and the source flux, and are assigned to a neighboring
+        deblended source after all finite pixels have been assigned.
 
     segmentation_image : `~photutils.segmentation.SegmentationImage`
         The segmentation image to deblend.
@@ -128,7 +132,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
 
         .. deprecated:: 3.1
             The ``n_processes`` keyword is deprecated and will be
-            removed in a future version.
+            removed in version 4.0.
 
     progress_bar : bool, optional
         This keyword is deprecated and has no effect. Deblending no
@@ -136,7 +140,7 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
 
         .. deprecated:: 3.1
             The ``progress_bar`` keyword is deprecated and will be
-            removed in a future version.
+            removed in version 4.0.
 
     Returns
     -------
@@ -184,8 +188,8 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         msg = f'n_pixels must be a positive integer, got {n_pixels!r}'
         raise ValueError(msg)
 
-    if n_levels < 1:
-        msg = 'n_levels must be >= 1'
+    if (n_levels < 1) or (int(n_levels) != n_levels):
+        msg = f'n_levels must be a positive integer, got {n_levels!r}'
         raise ValueError(msg)
     if contrast < 0 or contrast > 1:
         msg = 'contrast must be >= 0 and <= 1'
@@ -223,18 +227,21 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     label_indices = segmentation_image.get_indices(labels)
     all_slices = [segmentation_image.slices[idx] for idx in label_indices]
 
-    # Contiguous, driver-compatible views of the inputs. Casting the
-    # non-float data dtypes to float64 is exact for the threshold
-    # comparisons, matching the NumPy promotion rules
-    if data.dtype in (np.float32, np.float64):
-        driver_data = np.ascontiguousarray(data)
+    # Contiguous, native-byte-order views of the inputs for the
+    # compiled kernels. Casting the non-float data dtypes to float64 is
+    # exact for the threshold comparisons, matching the NumPy promotion
+    # rules
+    if data.dtype.type in (np.float32, np.float64):
+        driver_dtype = data.dtype.newbyteorder('=')
     else:
-        driver_data = np.ascontiguousarray(data, dtype=np.float64)
+        driver_dtype = np.float64
+    driver_data = np.ascontiguousarray(data, dtype=driver_dtype)
     segm_data = segmentation_image.data
-    if segm_data.dtype in (np.int32, np.int64):
-        driver_segm = np.ascontiguousarray(segm_data)
+    if segm_data.dtype.type in (np.int32, np.int64):
+        driver_dtype = segm_data.dtype.newbyteorder('=')
     else:
-        driver_segm = np.ascontiguousarray(segm_data, dtype=np.int64)
+        driver_dtype = np.int64
+    driver_segm = np.ascontiguousarray(segm_data, dtype=driver_dtype)
 
     results = _deblend_sources_chunk(data, segm_data, driver_data,
                                      driver_segm, labels, all_slices,
@@ -292,16 +299,118 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     return segm_img
 
 
+def _linspace_rows(start, stop, num):
+    """
+    Evaluate ``np.linspace(start[i], stop[i], num)`` for every row.
+
+    This replicates the NumPy implementation operation for operation
+    (the evaluation dtype, the step computation, and the zero-step
+    special case), so that every row is bitwise identical to the
+    scalar ``np.linspace`` call of the pure-Python reference
+    implementation.
+
+    Parameters
+    ----------
+    start, stop : 1D `~numpy.ndarray`
+        The start and stop values of each row.
+
+    num : int
+        The number of samples per row.
+
+    Returns
+    -------
+    result : 2D `~numpy.ndarray`
+        The samples, with shape ``(len(start), num)``.
+    """
+    dtype = np.result_type(start, stop)
+    if not np.issubdtype(dtype, np.inexact):
+        dtype = np.float64
+    div = num - 1
+    delta = np.subtract(stop, start, dtype=dtype)
+    samples = np.arange(0, num, dtype=dtype)
+    step = delta / div
+    result = samples[None, :] * step[:, None]
+    zero_step = step == 0
+    if np.any(zero_step):
+        # The np.linspace special case for subnormal steps
+        result[zero_step] = (samples / div)[None, :] * delta[zero_step, None]
+    result += start[:, None]
+    result[:, -1] = stop
+    return result
+
+
+def _compute_thresholds(source_min, source_max, n_levels, mode):
+    """
+    Compute the multithreshold levels of a set of sources.
+
+    This is the vectorized form of the per-source threshold
+    computation of the pure-Python reference implementation
+    (``_SingleSourceDeblender.compute_thresholds``). It performs the
+    same NumPy operations in the same dtypes, so the levels are bitwise
+    identical to the reference implementation on every platform.
+
+    Parameters
+    ----------
+    source_min, source_max : 1D `~numpy.ndarray`
+        The minimum and maximum data value of each source segment, in
+        the data dtype. Each maximum must be larger than its minimum.
+
+    n_levels : int
+        The number of levels per source.
+
+    mode : {'exponential', 'linear', 'sinh'}
+        The level spacing. For the ``'exponential'`` mode, the sources
+        with a non-positive minimum use the ``'linear'`` spacing.
+
+    Returns
+    -------
+    thresholds : 2D float64 `~numpy.ndarray`
+        The levels of each source, with shape ``(n_sources,
+        n_levels)`` and ascending along the second axis. The source
+        minimum and maximum are excluded.
+
+    nonposmin : 1D bool `~numpy.ndarray`
+        Whether each source fell back to the ``'linear'`` spacing
+        because of a non-positive minimum.
+    """
+    source_min = np.asarray(source_min)
+    source_max = np.asarray(source_max)
+    nonposmin = np.zeros(source_min.shape, dtype=bool)
+    if mode == 'exponential':
+        nonposmin = source_min <= 0
+
+    thresholds = _linspace_rows(source_min, source_max, n_levels + 2)
+    if mode != 'linear':
+        delta = source_max - source_min
+        normalized = (thresholds - source_min[:, None]) / delta[:, None]
+        if mode == 'sinh':
+            a = 0.25
+            thresholds = np.sinh(normalized / a) / np.sinh(1.0 / a)
+            thresholds *= delta[:, None]
+            thresholds += source_min[:, None]
+        else:
+            keep = ~nonposmin
+            ratio = source_max[keep] / source_min[keep]
+            thresholds[keep] = (source_min[keep, None]
+                                * ratio[:, None] ** normalized[keep])
+
+    # Do not include the source minimum and maximum
+    return (np.ascontiguousarray(thresholds[:, 1:-1], dtype=np.float64),
+            nonposmin)
+
+
 def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
                            labels, slices, deblend_params):
     """
     Deblend a chunk of labeled sources.
 
-    The multithreshold markers of every source in the chunk are
-    built by the compiled chunk driver (which releases the GIL and
-    reuses one workspace across the chunk), and the watershed and
-    contrast steps then run for the sources that split into two or
-    more markers.
+    The data extrema of every source in the chunk are computed by a
+    compiled kernel, the multithreshold levels and the mode fallbacks
+    are computed for all sources at once in NumPy, the level
+    quantization and the marker construction run in the compiled chunk
+    driver (which releases the GIL and reuses one workspace across the
+    chunk), and the watershed and contrast steps then run for the
+    sources that split into two or more markers.
 
     Parameters
     ----------
@@ -313,7 +422,7 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
 
     driver_data, driver_segm : 2D `~numpy.ndarray`
         Contiguous views (or exact casts) of ``data`` and
-        ``segm_data`` with dtypes supported by the chunk driver.
+        ``segm_data`` with dtypes supported by the compiled kernels.
 
     labels : 1D `~numpy.ndarray`
         The labels of the sources in the chunk.
@@ -330,33 +439,77 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
         For each source, the deblended cutout (`None` if the source
         did not deblend) and the mode-fallback warnings dictionary.
     """
+    labels = np.asarray(labels, dtype=np.int64)
     y0 = np.array([slc[0].start for slc in slices], dtype=np.int64)
     y1 = np.array([slc[0].stop for slc in slices], dtype=np.int64)
     x0 = np.array([slc[1].start for slc in slices], dtype=np.int64)
     x1 = np.array([slc[1].stop for slc in slices], dtype=np.int64)
     connectivity = 8 if deblend_params.footprint[0, 0] else 4
-    markers_list, flags = deblend_markers_chunk(
-        driver_data, driver_segm, np.asarray(labels, dtype=np.int64),
-        y0, y1, x0, x1, n_pixels=int(deblend_params.n_pixels),
-        connectivity=connectivity,
-        n_levels=int(deblend_params.n_levels),
-        mode=_MODE_CODES[deblend_params.mode])
+    n_levels = int(deblend_params.n_levels)
+    mode = deblend_params.mode
+    chunk_kwargs = {'n_pixels': int(deblend_params.n_pixels),
+                    'connectivity': connectivity}
+
+    source_min, source_max = deblend_source_extrema(
+        driver_data, driver_segm, labels, y0, y1, x0, x1)
+
+    # Constant (or all-NaN) sources do not deblend. The multithreshold
+    # levels of the other sources are computed in the data dtype, as
+    # the pure-Python reference implementation does
+    active = np.flatnonzero(source_min < source_max)
+    markers_list = [None] * len(labels)
+    nonposmin = np.zeros(len(labels), dtype=bool)
+    n_markers_fallback = np.zeros(len(labels), dtype=bool)
+    if active.size > 0:
+        values_dtype = data.dtype.newbyteorder('=')
+        smin = source_min[active].astype(values_dtype)
+        smax = source_max[active].astype(values_dtype)
+        thresholds, fallback = _compute_thresholds(smin, smax, n_levels,
+                                                   mode)
+        nonposmin[active] = fallback
+        markers, n_markers = deblend_markers_chunk(
+            driver_data, driver_segm, labels[active], y0[active],
+            y1[active], x0[active], x1[active], thresholds,
+            max_markers=_MAX_MARKERS, **chunk_kwargs)
+        for index, source_markers in zip(active, markers, strict=True):
+            markers_list[index] = source_markers
+
+        # Too many markers make the watershed step very slow, so such
+        # sources are deblended again with linearly spaced levels. A
+        # source that already fell back to the linear spacing keeps its
+        # markers
+        if mode != 'linear':
+            retry = np.flatnonzero((n_markers > _MAX_MARKERS) & ~fallback)
+            if retry.size > 0:
+                thresholds, _ = _compute_thresholds(
+                    smin[retry], smax[retry], n_levels, 'linear')
+                retry = active[retry]
+                markers, _ = deblend_markers_chunk(
+                    driver_data, driver_segm, labels[retry], y0[retry],
+                    y1[retry], x0[retry], x1[retry], thresholds,
+                    max_markers=-1, **chunk_kwargs)
+                for index, source_markers in zip(retry, markers,
+                                                 strict=True):
+                    markers_list[index] = source_markers
+                n_markers_fallback[retry] = True
 
     results = []
-    for index, (label, slc, markers, flag) in enumerate(
-            zip(labels, slices, markers_list, flags, strict=True)):
+    for index, (label, slc, markers) in enumerate(
+            zip(labels, slices, markers_list, strict=True)):
         warns = {}
-        if flag & DEBLEND_FLAG_NONPOSMIN:
+        if nonposmin[index]:
             warns['nonposmin'] = 'non-positive minimum'
-        if flag & DEBLEND_FLAG_NMARKERS:
+        if n_markers_fallback[index]:
             warns['n_markers'] = 'too many markers'
         if markers is None:
             results.append((None, warns))
             continue
 
-        # The total source flux and minimum are computed here, with the
-        # same reductions as the per-source Python path, and passed to
-        # the compiled contrast loop.
+        # The total source flux is computed with the same reduction as
+        # the per-source Python path (its rounding depends on the
+        # summation order) and the source minimum comes from the
+        # compiled extrema. Both are passed to the compiled contrast
+        # loop.
         values = data[slc][segm_data[slc] == label]
         source_deblended = deblend_source_contrast(
             driver_data, driver_segm, int(label), int(y0[index]),
@@ -364,7 +517,7 @@ def _deblend_sources_chunk(data, segm_data, driver_data, driver_segm,
             connectivity=connectivity,
             contrast=float(deblend_params.contrast),
             source_sum=float(nansum(values)),
-            source_min=float(nanmin(values)))
+            source_min=float(source_min[index]))
         results.append((source_deblended, warns))
 
     return results

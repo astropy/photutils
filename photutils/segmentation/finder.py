@@ -101,7 +101,7 @@ class SourceFinder:
 
         .. deprecated:: 3.1
             The ``n_processes`` keyword is deprecated and will be
-            removed in a future version.
+            removed in version 4.0.
 
     progress_bar : bool, optional
         This keyword is deprecated and has no effect. Deblending no
@@ -109,7 +109,7 @@ class SourceFinder:
 
         .. deprecated:: 3.1
             The ``progress_bar`` keyword is deprecated and will be
-            removed in a future version.
+            removed in version 4.0.
 
     See Also
     --------

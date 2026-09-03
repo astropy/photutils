@@ -14,11 +14,14 @@ from astropy.utils.exceptions import (AstropyDeprecationWarning,
 from numpy.testing import assert_allclose, assert_equal
 from scipy import ndimage as ndi
 
-from photutils.segmentation import (SegmentationImage, deblend_sources,
-                                    detect_sources)
+from photutils.segmentation import SegmentationImage
+from photutils.segmentation import deblend as deblend_module
+from photutils.segmentation import deblend_sources, detect_sources
 from photutils.segmentation._deblend_reference import _SingleSourceDeblender
 from photutils.segmentation._deblend_watershed import deblend_watershed
-from photutils.segmentation.deblend import _DeblendParams
+from photutils.segmentation.deblend import (_compute_thresholds,
+                                            _create_relabel_map,
+                                            _DeblendParams)
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._optional_deps import HAS_SKIMAGE
@@ -276,13 +279,15 @@ class TestDeblendSources:
         with pytest.raises(ValueError, match=match):
             deblend_sources(self.data, self.segm, n_pixels)
 
-    def test_invalid_n_levels(self):
+    @pytest.mark.parametrize('n_levels', [0, -3, 2.7])
+    def test_invalid_n_levels(self, n_levels):
         """
-        Test invalid n_levels.
+        Test that invalid n_levels values raise a ValueError.
         """
-        match = 'n_levels must be >= 1'
+        match = 'n_levels must be a positive integer'
         with pytest.raises(ValueError, match=match):
-            deblend_sources(self.data, self.segm, self.n_pixels, n_levels=0)
+            deblend_sources(self.data, self.segm, self.n_pixels,
+                            n_levels=n_levels)
 
     def test_invalid_contrast(self):
         """
@@ -407,6 +412,8 @@ class TestDeblendSources:
         data[50, 50] = np.nan
         segm2 = deblend_sources(data, self.segm, 5)
         assert segm2.n_labels == 2
+        # The NaN pixel is assigned to the source surrounding it
+        assert segm2.data[50, 50] == segm2.data[50, 51] != 0
 
     def test_watershed(self):
         """
@@ -550,7 +557,6 @@ def normalize_markers(markers):
     result : 2D int `~numpy.ndarray`
         The relabeled marker image.
     """
-    from photutils.segmentation.deblend import _create_relabel_map
     relabel_map = _create_relabel_map(markers)
     if relabel_map is not None:
         markers = relabel_map[markers]
@@ -570,8 +576,6 @@ def test_make_markers_matches_legacy(kind, mode, connectivity):
     raster-scan label ordering, since the ordering determines the
     final deblended label assignment.
     """
-    from photutils.segmentation.utils import _make_binary_structure
-
     data = make_marker_test_image(kind)
     segm = detect_sources(data, 0.5, 5, connectivity=connectivity)
     footprint = _make_binary_structure(2, connectivity)
@@ -678,11 +682,12 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
     return results
 
 
-@pytest.mark.parametrize('dtype', ['float64', 'float32', 'int32'])
+@pytest.mark.parametrize('dtype', ['float64', 'float32', '>f4', 'int32'])
 @pytest.mark.parametrize('scene', ['blend', 'negmin', 'checkerboard',
                                    'gaussian', 'flat',
                                    'contrast-batch', 'contrast-single',
-                                   'contrast-all', 'contrast-negmin'])
+                                   'contrast-all', 'contrast-negmin',
+                                   'neighbors', 'nan'])
 def test_chunk_driver_matches_python_path(dtype, scene):
     """
     Test that the compiled chunk driver and contrast loop produce
@@ -696,10 +701,10 @@ def test_chunk_driver_matches_python_path(dtype, scene):
     a constant source, and contrast values that trigger the batched
     removal, the one-at-a-time removal, the removal of all but one
     basin, and the removal path for sources with a negative minimum
-    (which always removes one marker at a time).
+    (which always removes one marker at a time), a scene of several
+    segments with overlapping bounding boxes, and NaN pixels within a
+    segment.
     """
-    from photutils.segmentation import deblend as deblend_module
-
     contrast = 0.001
     if scene == 'blend':
         data = make_marker_test_image('blend')
@@ -724,6 +729,22 @@ def test_chunk_driver_matches_python_path(dtype, scene):
         data = np.zeros((51, 51))
         data[20:40, 20:40] = 5.0
         threshold, n_pixels = 0.5, 5
+    elif scene == 'neighbors':
+        # Blended pairs whose bounding boxes contain other segments
+        y, x = np.mgrid[0:121, 0:161]
+        data = (Gaussian2D(100, 50, 60, 6, 6)(x, y)
+                + Gaussian2D(90, 68, 60, 6, 6)(x, y)
+                + Gaussian2D(60, 82, 40, 3, 3)(x, y)
+                + Gaussian2D(80, 120, 70, 5, 5)(x, y)
+                + Gaussian2D(70, 135, 70, 5, 5)(x, y)
+                + Gaussian2D(50, 118, 95, 3, 3)(x, y))
+        threshold, n_pixels = 5.0, 5
+        contrast = 0.01
+    elif scene == 'nan':
+        if not np.issubdtype(np.dtype(dtype), np.floating):
+            pytest.skip('NaN requires a floating-point dtype')
+        data = make_marker_test_image('blend')
+        threshold, n_pixels = 0.5, 5
     else:
         # The n_markers fallback checkerboard scene
         size = 51
@@ -740,6 +761,12 @@ def test_chunk_driver_matches_python_path(dtype, scene):
 
     data = data.astype(dtype)
     segm = detect_sources(data, threshold, n_pixels)
+    if scene == 'nan':
+        # NaN pixels within the segment, set after the detection
+        rng = np.random.default_rng(11)
+        ys, xs = np.nonzero(segm.data > 0)
+        pick = rng.choice(ys.size, size=40, replace=False)
+        data[ys[pick], xs[pick]] = np.nan
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', DeblendWarning)
@@ -769,14 +796,75 @@ def test_deblend_segm_dtype():
     assert_equal(result.data, expected.data)
 
 
+def test_deblend_byte_order():
+    """
+    Test that non-native byte order data and segmentation images give
+    results identical to the native ones.
+    """
+    data, segm = make_multipeak_source()
+    for dtype in ('f4', 'f8'):
+        expected = deblend_sources(data.astype(f'<{dtype}'), segm, 5,
+                                   contrast=0.01)
+        result = deblend_sources(data.astype(f'>{dtype}'), segm, 5,
+                                 contrast=0.01)
+        assert_equal(result.data, expected.data)
+
+    expected = deblend_sources(data, segm, 5, contrast=0.01)
+    segm_be = SegmentationImage(segm.data.astype('>i4'))
+    result = deblend_sources(data, segm_be, 5, contrast=0.01)
+    assert_equal(result.data, expected.data)
+
+
+@pytest.mark.parametrize('dtype', ['float64', 'float32', 'int32'])
+@pytest.mark.parametrize('mode', ['exponential', 'linear', 'sinh'])
+@pytest.mark.parametrize('n_levels', [1, 7, 32])
+def test_compute_thresholds_matches_reference(dtype, mode, n_levels):
+    """
+    Test that the vectorized multithreshold levels are bitwise identical
+    to the per-source levels of the reference implementation, including
+    the exponential-mode fallback for non-positive minima and the
+    zero-step special case of np.linspace.
+    """
+    rng = np.random.default_rng(42)
+    n_src = 60
+    if dtype == 'int32':
+        smin = rng.integers(-50, 50, n_src)
+        smax = smin + rng.integers(1, 1000, n_src)
+    else:
+        smin = rng.uniform(-5.0, 5.0, n_src)
+        smax = smin + 10.0 ** rng.uniform(-3.0, 3.0, n_src)
+        smin[1] = 0.0
+        smax[1] = np.finfo(dtype).smallest_subnormal
+    smin[0] = 0
+    smin = smin.astype(dtype)
+    smax = smax.astype(dtype)
+    assert np.all(smax > smin)
+
+    thresholds, nonposmin = _compute_thresholds(smin, smax, n_levels,
+                                                mode)
+    assert thresholds.shape == (n_src, n_levels)
+    assert thresholds.dtype == np.float64
+    assert thresholds.flags.c_contiguous
+
+    params = _DeblendParams(1, np.ones((3, 3)), n_levels, 0.001, mode)
+    segment = np.ones((1, 2), dtype=int)
+    for i in range(n_src):
+        data = np.array([[smin[i], smax[i]]], dtype=dtype)
+        deblender = _SingleSourceDeblender(data, segment, 1, params)
+        expected = np.asarray(deblender.compute_thresholds(),
+                              dtype=np.float64)
+        # Compare the bit patterns, not just the values
+        assert_equal(thresholds[i].view(np.int64),
+                     expected.view(np.int64))
+        assert nonposmin[i] == ('nonposmin' in deblender.warnings)
+
+
 def test_python_path_connectivity_mismatch():
     """
     Test that the pure-Python reference path raises the same error
     as the compiled contrast loop when the detection and deblending
     connectivities differ.
     """
-    from photutils.segmentation import deblend as deblend_module
-
     data = np.zeros((51, 51))
     data[15:36, 15:36] = 10.0
     data[14, 36] = 1.0

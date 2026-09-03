@@ -123,8 +123,8 @@ class _SegmentationFlags(FlagRegistry):
         FlagDefinition(
             bit_value=256,
             name='undefined_shape',
-            description=('non-positive net flux, shape properties '
-                         'undefined'),
+            description=('non-positive net flux (shape properties '
+                         'undefined)'),
             detailed_description=('The net source flux (the zeroth '
                                   'image moment over the source '
                                   'segment) is not positive, so the '
