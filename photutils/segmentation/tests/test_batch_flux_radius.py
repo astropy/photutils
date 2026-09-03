@@ -270,7 +270,8 @@ def test_none_entries(scene):
 def test_solve_length_guard(scene):
     cat = make_catalog(scene)
     args = cat._flux_radius_optimizer_args
-    with pytest.raises(ValueError, match='same length as counts'):
+    match = 'starts must have the same length as counts'
+    with pytest.raises(ValueError, match=match):
         batch_flux_radius_solve(
             args.values, starts=args.starts, counts=args.counts[:-1],
             nx=args.nx, ny=args.ny, grid_edges=args.grid_edges,
@@ -282,7 +283,8 @@ def test_solve_grid_edges_guard(scene):
     cat = make_catalog(scene)
     args = cat._flux_radius_optimizer_args
     grid_edges = np.ascontiguousarray(args.grid_edges[:, :3])
-    with pytest.raises(ValueError, match='grid_edges must have 4 columns'):
+    match = 'grid_edges must have 4 columns'
+    with pytest.raises(ValueError, match=match):
         _solve(args._replace(grid_edges=grid_edges), 0.5)
 
 
@@ -463,7 +465,8 @@ def test_prepare_length_guard(scene, name):
     cat = make_catalog(scene)
     inp = _prepare_inputs(cat)
     inp[name] = inp[name][:-1]
-    with pytest.raises(ValueError, match='same length as labels'):
+    match = f'{name} must have the same length as labels'
+    with pytest.raises(ValueError, match=match):
         _call_prepare(inp)
 
 
@@ -472,7 +475,8 @@ def test_prepare_shape_guard(scene, name):
     cat = make_catalog(scene)
     inp = _prepare_inputs(cat)
     inp[name] = inp[name][:-1, :]
-    with pytest.raises(ValueError, match='same shape as data'):
+    match = f'{name} must have the same shape as data'
+    with pytest.raises(ValueError, match=match):
         _call_prepare(inp)
 
 

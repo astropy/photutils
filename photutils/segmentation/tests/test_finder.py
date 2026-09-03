@@ -152,7 +152,8 @@ def test_finder_invalid_bool_kwargs(name):
     """
     Test that the boolean keywords must be booleans.
     """
-    with pytest.raises(TypeError, match=f'{name} must be a boolean'):
+    match = f"{name} must be a boolean, got 'yes'"
+    with pytest.raises(TypeError, match=match):
         SourceFinder(n_pixels=5, **{name: 'yes'})
     assert SourceFinder(n_pixels=5, **{name: np.True_}) is not None
 

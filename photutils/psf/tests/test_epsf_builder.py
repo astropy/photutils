@@ -1543,8 +1543,8 @@ class TestEPSFBuilder:
         deprecated.
         """
         builder = EPSFBuilder(maxiters=1, progress_bar=False)
-        with pytest.warns(AstropyDeprecationWarning,
-                          match='coord_transformer'):
+        match = 'The coord_transformer attribute is deprecated'
+        with pytest.warns(AstropyDeprecationWarning, match=match):
             transformer = builder.coord_transformer
         assert transformer is builder._coord_transformer
 
@@ -1671,8 +1671,8 @@ class TestEPSFBuilder:
 
         builder = EPSFBuilder(oversampling=1, maxiters=5,
                               progress_bar=False)
-        with pytest.warns(AstropyUserWarning,
-                          match='has been excluded from ePSF fitting'):
+        match = 'has been excluded from ePSF fitting'
+        with pytest.warns(AstropyUserWarning, match=match):
             builder(stars)
 
     def test_star_exclusion_single_warning(self, epsf_test_data):

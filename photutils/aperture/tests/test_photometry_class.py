@@ -702,10 +702,11 @@ class TestInputValidation:
         """
         data = np.ones((11, 11))
         aper = CircularAperture((5, 5), r=3)
-        with pytest.raises(ValueError, match=f'Invalid method: {method!r}'):
+        match = f'Invalid method: {method!r}'
+        with pytest.raises(ValueError, match=match):
             AperturePhotometry(data, aper, method=method)
-        with pytest.raises(ValueError,
-                           match=f'Invalid sum_method: {method!r}'):
+        match = f'Invalid sum_method: {method!r}'
+        with pytest.raises(ValueError, match=match):
             ApertureStats(data, aper, sum_method=method)
 
     @pytest.mark.parametrize('subpixels', [0, -1, 2.5, True])

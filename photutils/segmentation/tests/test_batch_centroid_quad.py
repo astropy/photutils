@@ -254,7 +254,8 @@ def test_length_guard(scene, name):
     cat = make_catalog(scene)
     inp = _driver_inputs(cat)
     inp[name] = inp[name][:-1]
-    with pytest.raises(ValueError, match='same length as labels'):
+    match = f'{name} must have the same length as labels'
+    with pytest.raises(ValueError, match=match):
         _call_driver(inp)
 
 
@@ -263,7 +264,8 @@ def test_shape_guard(scene, name):
     cat = make_catalog(scene)
     inp = _driver_inputs(cat)
     inp[name] = inp[name][:-1, :]
-    with pytest.raises(ValueError, match='same shape as data'):
+    match = f'{name} must have the same shape as data'
+    with pytest.raises(ValueError, match=match):
         _call_driver(inp)
 
 
@@ -271,7 +273,8 @@ def test_compute_err_without_error(scene):
     cat = make_catalog(scene)
     inp = _driver_inputs(cat)
     inp['error'] = None
-    with pytest.raises(ValueError, match='error must be provided'):
+    match = 'error must be provided when compute_err is set'
+    with pytest.raises(ValueError, match=match):
         _call_driver(inp)
 
 

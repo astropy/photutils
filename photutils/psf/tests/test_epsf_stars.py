@@ -1941,7 +1941,8 @@ def test_zero_flux_star_normalization_no_warning():
     Regression test that normalizing a zero-flux star does not leak a
     RuntimeWarning during ePSF building.
     """
-    with pytest.warns(AstropyUserWarning, match='are zero'):
+    match = 'All unmasked data values in star cutout are zero'
+    with pytest.warns(AstropyUserWarning, match=match):
         star = EPSFStar(np.zeros((5, 5)))
     with warnings.catch_warnings():
         warnings.simplefilter('error')
@@ -1977,7 +1978,9 @@ def test_container_getattr_private_and_empty():
     with pytest.raises(AttributeError):
         stars._fit_error_status  # noqa: B018
     empty = EPSFStars([])
-    with pytest.raises(AttributeError, match='empty'):
+    match = ("'EPSFStars' object is empty and has no attribute "
+             "'cutout_center'")
+    with pytest.raises(AttributeError, match=match):
         empty.cutout_center  # noqa: B018
 
 

@@ -126,21 +126,23 @@ class TestRegionApertureRoundTrip:
                 height=10,
                 angle=Angle(30, 'deg'),
             )
-        with pytest.raises(ValueError, match=r'must be .* scalar'):
+        match = 'must be a strictly positive scalar'
+        with pytest.raises(ValueError, match=match):
             EllipsePixelRegion(
                 center=PixCoord(x=42, y=43),
                 width=[1, 16],
                 height=10,
                 angle=Angle(30, 'deg'),
             )
-        with pytest.raises(ValueError, match=r'must be .* scalar'):
+        with pytest.raises(ValueError, match=match):
             EllipsePixelRegion(
                 center=PixCoord(x=42, y=43),
                 width=16,
                 height=[1, 10],
                 angle=Angle(30, 'deg'),
             )
-        with pytest.raises(ValueError, match=r'must be .* scalar'):
+        match = "'angle' must be a scalar"
+        with pytest.raises(ValueError, match=match):
             EllipsePixelRegion(
                 center=PixCoord(x=42, y=43),
                 width=16,
@@ -235,12 +237,13 @@ class TestRegionApertureRoundTrip:
                 center=PixCoord(x=[0, 42], y=[1, 43]), inner_radius=5,
                 outer_radius=8,
             )
-        with pytest.raises(ValueError, match=r'must be .* scalar'):
+        match = 'must be a strictly positive scalar'
+        with pytest.raises(ValueError, match=match):
             CircleAnnulusPixelRegion(
                 center=PixCoord(x=42, y=43), inner_radius=[1, 5],
                 outer_radius=8,
             )
-        with pytest.raises(ValueError, match=r'must be .* scalar'):
+        with pytest.raises(ValueError, match=match):
             CircleAnnulusPixelRegion(
                 center=PixCoord(x=42, y=43), inner_radius=5,
                 outer_radius=[8, 10],
@@ -312,7 +315,8 @@ class TestRegionApertureRoundTrip:
                 outer_height=6.5,
                 angle=Angle(30, 'deg'),
             )
-        with pytest.raises(ValueError, match=r'must be .* scalar'):
+        match = 'must be a strictly positive scalar'
+        with pytest.raises(ValueError, match=match):
             EllipseAnnulusPixelRegion(
                 center=PixCoord(x=42, y=43),
                 inner_width=5.5,
@@ -321,7 +325,7 @@ class TestRegionApertureRoundTrip:
                 outer_height=6.5,
                 angle=Angle(30, 'deg'),
             )
-        with pytest.raises(ValueError, match=r'must be .* scalar'):
+        with pytest.raises(ValueError, match=match):
             EllipseAnnulusPixelRegion(
                 center=PixCoord(x=42, y=43),
                 inner_width=5.5,
@@ -330,7 +334,8 @@ class TestRegionApertureRoundTrip:
                 outer_height=[6.5, 10],
                 angle=Angle(30, 'deg'),
             )
-        with pytest.raises(ValueError, match=r'must be .* scalar'):
+        match = "'angle' must be a scalar"
+        with pytest.raises(ValueError, match=match):
             EllipseAnnulusPixelRegion(
                 center=PixCoord(x=42, y=43),
                 inner_width=5.5,
@@ -404,7 +409,8 @@ class TestRegionApertureRoundTrip:
                 outer_height=6.5,
                 angle=Angle(30, 'deg'),
             )
-        with pytest.raises(ValueError, match=r'must be .* scalar'):
+        match = 'must be a strictly positive scalar'
+        with pytest.raises(ValueError, match=match):
             RectangleAnnulusPixelRegion(
                 center=PixCoord(x=42, y=43),
                 inner_width=5.5,
@@ -413,7 +419,7 @@ class TestRegionApertureRoundTrip:
                 outer_height=6.5,
                 angle=Angle(30, 'deg'),
             )
-        with pytest.raises(ValueError, match=r'must be .* scalar'):
+        with pytest.raises(ValueError, match=match):
             RectangleAnnulusPixelRegion(
                 center=PixCoord(x=42, y=43),
                 inner_width=5.5,
@@ -422,7 +428,8 @@ class TestRegionApertureRoundTrip:
                 outer_height=[6.5, 10],
                 angle=Angle(30, 'deg'),
             )
-        with pytest.raises(ValueError, match=r'must be .* scalar'):
+        match = "'angle' must be a scalar"
+        with pytest.raises(ValueError, match=match):
             RectangleAnnulusPixelRegion(
                 center=PixCoord(x=42, y=43),
                 inner_width=5.5,

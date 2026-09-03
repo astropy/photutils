@@ -1924,7 +1924,8 @@ class TestSourceCatalogFlags:
         Test that return_bit_values must be passed as a keyword.
         """
         cat = SourceCatalog(self.data, self.segm)
-        with pytest.raises(TypeError, match='positional'):
+        match = 'takes 1 positional argument but 2 were given'
+        with pytest.raises(TypeError, match=match):
             cat.decode_flags(1)
 
 
