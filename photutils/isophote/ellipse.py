@@ -27,7 +27,7 @@ class Ellipse:
     Class to fit elliptical isophotes to a galaxy image.
 
     The isophotes in the image are measured using an iterative method
-    described by `Jedrzejewski (1987, MNRAS  226, 747)
+    described by `Jedrzejewski (1987, MNRAS 226, 747)
     <https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_.
     See the **Notes** section below for details about the algorithm.
 
@@ -508,7 +508,7 @@ class Ellipse:
             # `isophote` instance may no longer be OK.
             isophote = isophote_list[-1]
 
-            # figure out next sma. If it exceeded the user-defined
+            # Figure out the next sma. If it exceeded the user-defined
             # minimum, or is too small, bail out from this loop
             sma = isophote.sample.geometry.update_sma(step)
             if sma <= max(minsma, 0.5):
@@ -709,9 +709,9 @@ class Ellipse:
         if isophote_list:
             isophote = isophote_list.pop()
 
-            # check if isophote is bad. If so, fix its geometry
+            # Check if the isophote is bad. If so, fix its geometry
             # to be like the geometry of the index-th isophote
-            # in list.
+            # in the list.
             isophote.fix_geometry(isophote_list[index])
 
             # force new extraction of raw data, since

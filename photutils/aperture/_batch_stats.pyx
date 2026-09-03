@@ -1691,7 +1691,7 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
     Compute fused sigma-clipped statistics for each row of a 2D array.
 
     For each row, the finite values are sigma-clipped following
-    `astropy.stats.SigmaClip` (no-axis, no-grow case, see
+    `astropy.stats.SigmaClip` (no-axis, no-grow case, as in
     ``_sigma_clip_bounds``), and the mean, median, and population
     standard deviation of the surviving values are computed directly,
     without generating a clipped copy of the input. Optionally, the

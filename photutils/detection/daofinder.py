@@ -31,9 +31,10 @@ class DAOStarFinder(StarFinderBase):
     algorithm.
 
     DAOFIND searches images for local density maxima that have a peak
-    amplitude greater than ``threshold`` (approximately, since ``threshold``
-    is applied to a convolved image) and have a size and shape similar
-    to the defined 2D Gaussian kernel. The Gaussian kernel is defined
+    amplitude greater than ``threshold`` (approximately, since
+    ``threshold`` is applied to a convolved image) and have a size and
+    shape similar to the defined 2D Gaussian kernel. The Gaussian
+    kernel is defined
     by the ``fwhm``, ``ratio``, ``theta``, and ``sigma_radius`` input
     parameters.
 

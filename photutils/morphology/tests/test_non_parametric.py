@@ -121,7 +121,8 @@ def test_gini_bounded():
     """
     rng = np.random.default_rng(seed=0)
 
-    # Uniform random values in (0, 1) — strictly between extremes
+    # Uniform random values in (0, 1) give a result strictly between the
+    # extremes
     result = gini(rng.random((50, 50)))
     assert 0.0 < result < 1.0
 
@@ -130,7 +131,7 @@ def test_gini_bounded():
     result_mixed = gini(data_mixed_sign)
     assert 0.0 <= result_mixed <= 1.0
 
-    # Gradient array — monotonically increasing, result in (0, 1)
+    # A monotonically increasing gradient array gives a result in (0, 1)
     result_grad = gini(np.arange(1.0, 101.0))
     assert 0.0 < result_grad < 1.0
 

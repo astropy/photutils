@@ -201,8 +201,8 @@ class TestMakeSegmentationExclusion:
         # Neighbor whose mirror falls outside the cutout is excluded.
         segm2 = np.zeros((5, 5), dtype=int)
         segm2[1, 1] = 1
-        segm2[1, 0] = 2  # neighbor x=0,y=1, mirror x=2*1-0=2 in bounds
-        segm2[3, 3] = 2  # neighbor x=3,y=3, mirror x=2*1-3=-1 out of bounds
+        segm2[1, 0] = 2  # neighbor x=0,y=1 with mirror x=2*1-0=2 inside
+        segm2[3, 3] = 2  # neighbor x=3,y=3 with mirror x=2*1-3=-1 outside
         data = np.ones((5, 5))
         _, _, exclude, affected = make_segmentation_exclusion(
             'correct', segm2, 1, data=data, cutout_xycen=(1, 1))
@@ -213,8 +213,8 @@ class TestMakeSegmentationExclusion:
         # A neighbor whose mirror is also a neighbor must be excluded.
         segm = np.zeros((5, 5), dtype=int)
         segm[2, 2] = 1
-        segm[2, 1] = 2  # neighbor x=1,y=2, mirror x=3,y=2
-        segm[2, 3] = 2  # neighbor x=3,y=2, mirror x=1,y=2 (both neighbors)
+        segm[2, 1] = 2  # neighbor x=1,y=2 with mirror x=3,y=2
+        segm[2, 3] = 2  # neighbor x=3,y=2 with mirror x=1,y=2 (a neighbor)
         data = np.ones((5, 5))
         _, _, exclude, _ = make_segmentation_exclusion(
             'correct', segm, 1, data=data, cutout_xycen=(2, 2))
@@ -225,7 +225,7 @@ class TestMakeSegmentationExclusion:
         # A neighbor whose mirror is in base_mask must be excluded.
         segm = np.zeros((5, 5), dtype=int)
         segm[2, 2] = 1
-        segm[2, 1] = 2  # neighbor x=1,y=2, mirror x=3,y=2
+        segm[2, 1] = 2  # neighbor x=1,y=2 with mirror x=3,y=2
         base_mask = np.zeros((5, 5), dtype=bool)
         base_mask[2, 3] = True  # mask the mirror pixel
         data = np.ones((5, 5))

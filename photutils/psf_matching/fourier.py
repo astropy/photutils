@@ -316,8 +316,8 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         power in the source PSF's Fourier transform. When
         ``penalty`` is provided, this scales the penalty operator's
         power spectrum directly. Larger values produce smoother but
-        less accurate matching kernels, while smaller values preserve more
-        detail but may amplify noise. Must be a positive number.
+        less accurate matching kernels, while smaller values preserve
+        more detail but may amplify noise. Must be a positive number.
 
     penalty : `None`, ``'laplacian'``, ``'biharmonic'``, or 2D \
 array-like, optional

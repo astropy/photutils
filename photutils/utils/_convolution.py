@@ -50,7 +50,7 @@ def _filter_data(data, kernel, *, mode='constant', fill_value=0.0,
     -------
     result : `~numpy.ndarray` or `~astropy.units.Quantity`
         The convolved image. A `~astropy.units.Quantity` is returned if
-        ``data`` has units, otherwise a `~numpy.ndarray`.
+        ``data`` has units and a `~numpy.ndarray` otherwise.
     """
     if kernel is None:
         return data

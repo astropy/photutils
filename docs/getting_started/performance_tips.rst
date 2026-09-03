@@ -31,14 +31,14 @@ is currently limited to input arrays with ``float64`` data types and
 Bottleneck acceleration is used internally by the following Photutils
 packages:
 
-* `~photutils.background` — background and background RMS estimation
+* `~photutils.background`: background and background RMS estimation
   (e.g., `~photutils.background.Background2D`)
-* `~photutils.detection` — source detection peak finding
-* `~photutils.profiles` — radial-profile and curve-of-growth
+* `~photutils.detection`: source detection peak finding
+* `~photutils.profiles`: radial-profile and curve-of-growth
   calculations
-* `~photutils.psf` — ePSF building
+* `~photutils.psf`: ePSF building
   (e.g., `~photutils.psf.EPSFBuilder`)
-* `~photutils.segmentation` — source detection and deblending
+* `~photutils.segmentation`: source detection and deblending
 
 To install Bottleneck::
 

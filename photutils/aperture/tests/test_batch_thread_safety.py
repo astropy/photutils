@@ -71,8 +71,8 @@ def _assert_gather_equal(result, expected):
     The packed ``values``/``local_x``/``local_y`` buffers are allocated
     with an upper-bound length (the sum of the bounding-box areas), so
     only the valid per-source region ``[starts[k]:starts[k] + counts[k]]``
-    is meaningful. The trailing entries are uninitialized and must not be
-    compared.
+    is meaningful. The trailing entries are uninitialized and must not
+    be compared.
     """
     values, lx, ly, starts, counts, overlap, fcounts = result
     (e_values, e_lx, e_ly, e_starts, e_counts, e_overlap,

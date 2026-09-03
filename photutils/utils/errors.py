@@ -62,8 +62,8 @@ def calc_total_error(data, bkg_error, effective_gain):
         \sigma_{\mathrm{src}}  = \sqrt{g_{\mathrm{eff}} I}
 
     where :math:`g_{\mathrm{eff}}` is the effective gain
-    (``effective_gain``, an image or scalar) and :math:`I` is the ``data``
-    image.
+    (``effective_gain``, an image or scalar) and :math:`I` is the
+    ``data`` image.
 
     The total error is the combination of the background-only
     error and the source Poisson error. The total error array

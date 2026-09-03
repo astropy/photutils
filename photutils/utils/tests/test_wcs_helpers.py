@@ -145,9 +145,9 @@ class TestComputeLocalWCSJacobian:
     @pytest.mark.parametrize(('center_ra', 'center_dec'), TROUBLESOME_CENTERS)
     def test_well_conditioned_at_pole_and_wrap(self, center_ra, center_dec):
         """
-        Regression test that the near-singular values of the Jacobian must
-        match the expected ``1 / WCS_CDELT_ARCSEC`` value even near the
-        celestial poles and across the RA = 0 / 360 wraparound.
+        Test that the near-singular values of the Jacobian match the
+        expected ``1 / WCS_CDELT_ARCSEC`` value even near the celestial
+        poles and across the RA = 0 / 360 wraparound.
         """
         wcs = _make_sip_wcs(center_ra, center_dec)
         skycoord = SkyCoord(center_ra * u.deg, center_dec * u.deg)
@@ -158,8 +158,8 @@ class TestComputeLocalWCSJacobian:
     @pytest.mark.parametrize(('center_ra', 'center_dec'), TROUBLESOME_CENTERS)
     def test_parity_at_pole_and_wrap(self, center_ra, center_dec):
         """
-        Regression test that the determinant (parity) of the Jacobian must
-        stay negative for a standard RA-increases-to-the-left WCS at all
+        Test that the determinant (parity) of the Jacobian stays
+        negative for a standard RA-increases-to-the-left WCS at all
         declinations and RA values, including near the poles and across
         the wraparound.
         """
@@ -638,8 +638,8 @@ class TestSVDShapeConversions:
     @pytest.mark.parametrize(('center_ra', 'center_dec'), TROUBLESOME_CENTERS)
     def test_roundtrip_at_pole_and_wrap(self, center_ra, center_dec):
         """
-        Regression test that a directed sky shape converted to pixels and
-        back must round-trip to itself near the celestial poles and
+        Test that a directed sky shape converted to pixels and back
+        round-trips to itself near the celestial poles and
         across the RA = 0 / 360 wraparound.
         """
         wcs = _make_sip_wcs(center_ra, center_dec)
