@@ -89,8 +89,8 @@ class _BatchGather(NamedTuple):
     Container for the fast Cython batch-driver results shared by
     `ApertureStats._fast_gather` and `ApertureStats._fast_sum`.
 
-    Each instance populates only the fields relevant to its footprint;
-    the remaining fields are `None`:
+    Each instance populates only the fields relevant to its footprint,
+    and the remaining fields are `None`:
 
     * center-value gather (``_fast_gather``): ``values``, ``local_x``,
       ``local_y``, ``starts``, ``counts``, ``overlap``, and
@@ -541,7 +541,7 @@ class ApertureStats:
         keys = set(self.__dict__.keys()) & set(self._cached_properties)
         keys.add('_local_bkg')  # iterable defined in __init__
         # The packed gather buffers and their reductions are not
-        # per-source sliceable; the sliced object recomputes them
+        # per-source sliceable. The sliced object recomputes them
         # lazily from its sliced inputs.
         keys -= self._NON_SLICEABLE_CACHES
         for key in keys:
@@ -870,7 +870,7 @@ class ApertureStats:
         `~photutils.aperture.PixelAperture._batch_photometry`.
         """
         # A non-None sigma_clip is only supported when it maps to the
-        # fast clipping kernel; otherwise fall back to the mask path.
+        # fast clipping kernel. Otherwise fall back to the mask path.
         clip_spec = self._fast_clip_spec()
         if self.sigma_clip is not None and clip_spec is None:
             return None
@@ -1129,7 +1129,7 @@ class ApertureStats:
 
         The kernel is called as ``func(*buffers, starts, counts,
         *per_source)``. When ``n_threads`` > 1, the sources are
-        divided into contiguous ranges; each worker receives the
+        divided into contiguous ranges. Each worker receives the
         corresponding packed-buffer regions (with the ``starts``
         rebased to the region) and per-source array slices, so the
         kernels run concurrently on disjoint data. The per-chunk
@@ -1206,7 +1206,7 @@ class ApertureStats:
         if not (isinstance(sc.stdfunc, str)
                 and sc.stdfunc in ('std', 'mad_std', 'biweight')):
             return None
-        if sc.grow:  # False or 0 is supported; spatial growing is not
+        if sc.grow:  # False or 0 is supported but spatial growing is not
             return None
         maxiters = sc.maxiters
         if maxiters is None or maxiters == np.inf:
@@ -1601,7 +1601,7 @@ class ApertureStats:
                     fc_row[FLAG_COL_NONFINITE_ERROR] = np.any(
                         ~np.isfinite(error_cutout) & weighted & ~data_mask)
 
-                # Apply the aperture mask; for "exact" and "subpixel"
+                # Apply the aperture mask. For "exact" and "subpixel"
                 # this is an expanded boolean mask using the aperture
                 # mask zero values
                 mask_cutout = (aperweight_cutout == 0) | data_mask
@@ -1631,7 +1631,7 @@ class ApertureStats:
                 if self._error is None:
                     variance_cutout = None
                 else:
-                    # Apply the exact weights and total mask;
+                    # Apply the exact weights and total mask.
                     # error_cutout will have zeros where mask_cutout is True
                     variance = error_cutout**2
                     variance_cutout = (variance * aperweight_cutout**2
@@ -1667,7 +1667,7 @@ class ApertureStats:
         mask method.
         """
         # The sigma-clipped pixel count is not tracked for this
-        # footprint: only the "center" footprint's flags use it (see
+        # footprint. Only the "center" footprint's flags use it (see
         # `_footprint_flag_inputs`), so counting it here would be wasted
         # computation.
         return self._make_aperture_cutouts(self._aperture_masks,
@@ -1718,7 +1718,7 @@ class ApertureStats:
 
         `None` is returned (and the mask-based path is used) when
         the fast gather is unavailable or when segmentation neighbor
-        correction is applied: ``mask_method='correct'`` replaces
+        correction is applied, since ``mask_method='correct'`` replaces
         neighbor-pixel data *and error* values with their mirrored
         values, and the mirrored error values are not recoverable from
         the packed buffers.
@@ -2014,7 +2014,7 @@ class ApertureStats:
 
         n_kept : `~numpy.ndarray` or `None`
             For the center footprint, the per-source number of valid
-            pixels remaining after sigma clipping; `None` for the sum
+            pixels remaining after sigma clipping, or `None` for the sum
             footprint.
         """
         if footprint == 'center':
@@ -2130,7 +2130,7 @@ class ApertureStats:
             # symmetric covariance matrix, via the closed form
             # lambda = tr/2 -/+ sqrt((tr/2)**2 - det). The discriminant
             # ((lambda1 - lambda2)/2)**2 is non-negative for a real
-            # symmetric matrix; clip tiny negative rounding to zero.
+            # symmetric matrix, so clip tiny negative rounding to zero.
             half_trace = 0.5 * (covar[:, 0, 0] + covar[:, 1, 1])
             disc = np.maximum(half_trace**2 - covar_det, 0.0)
             min_eigval = half_trace - np.sqrt(disc)
@@ -2138,7 +2138,7 @@ class ApertureStats:
         # single pixel, and hence the smallest second moment a resolved
         # source can have given finite pixel size. The determinant test
         # (det < (1/12)**2) flags the isotropic case where both axes are
-        # unresolved; the eigenvalue test (min_eigval < 1/12)
+        # unresolved. The eigenvalue test (min_eigval < 1/12)
         # additionally flags rank-1 degeneracy (one unresolved axis) and
         # covariance matrices that are not positive semidefinite
         # (det < 0).
@@ -2263,7 +2263,7 @@ class ApertureStats:
                 (gather.values, gather.local_x, gather.local_y),
                 gather.starts, gather.counts, per_source=(zeros, zeros))
             # No-overlap sources have NaN moments (the mask-based path
-            # uses an all-NaN cutout); all-masked overlapping sources
+            # uses an all-NaN cutout). All-masked overlapping sources
             # have zero moments (an all-zero cutout).
             mom[~overlap] = np.nan
             return mom
@@ -2521,7 +2521,7 @@ class ApertureStats:
         areas = np.array([np.sum(weight.filled(0.0))
                           for weight in self._weight_cutout])
         # NaN only when no sum-method pixel survives. The center-method
-        # ``_all_masked`` flag must not be used here: when ``sum_method``
+        # ``_all_masked`` flag must not be used here. When ``sum_method``
         # is not "center", unmasked boundary pixels can carry a nonzero
         # fractional area even if every center-method pixel is masked
         # (and their values then also contribute to ``sum``).

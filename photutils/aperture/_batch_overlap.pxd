@@ -148,7 +148,7 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
         One of the ``_SEG_*`` codes:
 
         * ``_SEG_SOURCE``: not a neighbor-source pixel (or the method
-          is disabled); the pixel contributes its own value
+          is disabled). The pixel contributes its own value
         * ``_SEG_EXCLUDED``: a background pixel excluded by method 2
           (not a neighbor-source pixel)
         * ``_SEG_NEIGHBOR``: a neighbor-source pixel excluded by method
@@ -156,7 +156,7 @@ cdef inline int _classify_seg_pixel(const Py_ssize_t *segmentation,
         * ``_SEG_CORRECTED``: a neighbor-source pixel replaced by the
           mirror pixel written to ``(siy[0], six[0])`` (method 3)
         * ``_SEG_UNCORRECTED``: a neighbor-source pixel whose mirror
-          pixel is unavailable (method 3); the pixel is excluded
+          pixel is unavailable (method 3). The pixel is excluded
     """
     cdef Py_ssize_t seg_val = segmentation[iy * nx_data + ix]
     cdef Py_ssize_t xm, ym, mseg
@@ -210,7 +210,7 @@ cdef inline bint _seg_pixel_contributes(const Py_ssize_t *segmentation,
     -------
     contributes : bint
         `True` if the pixel contributes to the measurement (reading its
-        value from ``(siy[0], six[0])``); `False` if it is excluded.
+        value from ``(siy[0], six[0])``) and `False` if it is excluded.
     """
     cdef int code = _classify_seg_pixel(segmentation, mask, nx_data,
                                         seg_method, label, ix, iy, ix0,
@@ -253,7 +253,7 @@ cdef inline bint _resolve_seg_pixel(const Py_ssize_t *segmentation,
     -------
     contributes : bint
         `True` if the pixel contributes to the aperture (reading its
-        value from ``(siy[0], six[0])``); `False` if it is excluded.
+        value from ``(siy[0], six[0])``) and `False` if it is excluded.
     """
     cdef int code = _classify_seg_pixel(segmentation, mask, nx_data,
                                         seg_method, label, ix, iy, ix0,
@@ -543,7 +543,7 @@ cdef inline double _circular_annulus_pixel_frac(double pxmin, double pymin,
     -------
     frac : double
         The fraction (0 to 1) of the pixel's area that overlaps the
-        annulus. The result is clamped at zero: an annulus overlap can
+        annulus. The result is clamped at zero. An annulus overlap can
         never be negative, but subtracting the inner overlap from the
         outer overlap can otherwise yield a tiny negative value from
         floating-point noise.
@@ -586,7 +586,7 @@ cdef inline double _ellipse_frac_core(double pxmin, double pymin,
     This is the shared core used by both ``_ellipse_pixel_frac`` and
     ``_elliptical_annulus_pixel_frac``, given the precomputed pixel
     center ``pxcen``/``pycen``. The caller is responsible for the
-    bounding-box check; none is performed here.
+    bounding-box check. None is performed here.
 
     Parameters
     ----------
@@ -629,7 +629,7 @@ cdef inline double _ellipse_frac_core(double pxmin, double pymin,
 
     # Quadratic-form coefficients and fast-path thresholds. These are
     # kept inline (rather than calling ``ellipse_quadratic_coeffs``) so
-    # they stay in registers in this per-pixel hot path; the shared
+    # they stay in registers in this per-pixel hot path. The shared
     # decision core ``ellipse_frac_from_rpix2`` does the fast path and
     # exact/subpixel dispatch.
     cxx = cos_theta * cos_theta * inv_rx2 + sin_theta * sin_theta * inv_ry2
@@ -893,8 +893,8 @@ cdef inline double _rect_pixel_frac(double pxmin, double pymin,
     ``theta`` (given as ``cos_theta``/``sin_theta``) and centered on
     the origin.
 
-    This replicates the per-pixel logic of ``rectangular_overlap_grid``:
-    the exact mode uses an interior/exterior fast path and skips pixels
+    This replicates the per-pixel logic of ``rectangular_overlap_grid``.
+    The exact mode uses an interior/exterior fast path and skips pixels
     outside the axis-aligned bounding box of the rotated rectangle, so
     the result is identical to the grid function.
 

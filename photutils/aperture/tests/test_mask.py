@@ -52,7 +52,7 @@ class TestApertureMaskConstruction:
         assert mask.data[0, 0] == 100.0
 
         # No copy: copy=None returns a copy only if __array__ returns a
-        # copy; copy=None was introduced in NumPy 2.0
+        # copy (copy=None was introduced in NumPy 2.0)
         mask = ApertureMask(np.ones((10, 10)), bbox)
         mask_copy = np.array(mask, copy=None)
         mask_copy[0, 0] = 100.0

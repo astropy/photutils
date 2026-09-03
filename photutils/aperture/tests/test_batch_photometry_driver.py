@@ -43,7 +43,7 @@ def _batch_inputs():
 
 
 # Aperture shape specs: (shape_code, params, ext_x, ext_y).
-# The half-extents need only bound the aperture; they are identical
+# The half-extents need only bound the aperture. They are identical
 # across the baseline and concurrent calls, so the comparison is exact.
 _BATCH_SPECS = [
     (SHAPE_CIRCLE, [8.0], 8.0, 8.0),
@@ -310,7 +310,7 @@ def test_weights_out_matches_mask(make_aperture, method, use_exact,
     Test the outside-weight indicator against the aperture mask.
 
     The reference is the aperture's own unclipped ``to_mask`` array
-    with the part inside the data zeroed: the indicator must be set
+    with the part inside the data zeroed. The indicator must be set
     exactly when a nonzero mask value remains.
     """
     data = np.ones((40, 40))

@@ -241,7 +241,7 @@ def batch_mask_plane(data, mask, *, mask_nonfinite):
     Build the uint8 mask plane used by the batch Cython kernels.
 
     Bit 1 (value 1) marks input-masked pixels and bit 2 (value 2) marks
-    non-finite ``data`` pixels; any nonzero value excludes the pixel.
+    non-finite ``data`` pixels. Any nonzero value excludes the pixel.
     Folding the non-finite pixels into the plane lets the caller exclude
     them from the sum, area, and valid-pixel count while still flagging
     them as ``non_finite_data`` rather than ``masked_pixels``.

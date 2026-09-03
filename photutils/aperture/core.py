@@ -58,14 +58,14 @@ _METHOD_BULLETS = """\
 * ``'center'``:
   Binary weighting based on the pixel center. Weights are
   either 0 or 1. A pixel is included only if its center lies
-  strictly inside the aperture; pixel centers lying exactly
+  strictly inside the aperture. Pixel centers lying exactly
   on the aperture boundary are excluded (weight 0).
 * ``'subpixel'``:
   Approximates the overlap by averaging binary samples on a
   subgrid. The number of samples is set by the ``subpixels``
   parameter. Weights are discrete in the range [0, 1]. A
   subpixel is included only if its center lies strictly
-  inside the aperture; subpixel centers lying exactly on the
+  inside the aperture. Subpixel centers lying exactly on the
   aperture boundary are excluded (weight 0)."""
 
 _SUBPIXELS_DOC = """\
@@ -112,7 +112,7 @@ mask_method : {'none', 'mask', 'source_only', 'correct'}, optional
       Pixels belonging to neighboring sources (i.e., labeled but not
       the target source) are excluded.
     * ``'source_only'``:
-      Only pixels belonging to the target source are included; both
+      Only pixels belonging to the target source are included. Both
       neighboring sources and background pixels are excluded.
     * ``'correct'``:
       Pixels belonging to neighboring sources are replaced by the
@@ -149,7 +149,7 @@ overlap : 2D `~numpy.ndarray`
 _FLAG_DESCRIPTIONS_DOC = '\n'.join(define_flag_docstring(APERTURE_FLAGS))
 
 # Mapping of placeholder tags to their replacement text. Each tag must
-# appear alone on its own line in a docstring; the leading indentation
+# appear alone on its own line in a docstring. The leading indentation
 # of the placeholder is applied to the inserted text.
 _DOC_PLACEHOLDERS = {
     'method_subpixels_descriptions': _METHOD_SUBPIXELS_DOC,
@@ -489,7 +489,7 @@ class PixelAperture(Aperture):
     """
 
     # The class (if any) that opted in to the batch photometry driver
-    # via the _enable_batch_photometry decorator; instances use the
+    # via the _enable_batch_photometry decorator. Instances use the
     # batch driver only when this is their own class
     _batch_photometry_class = None
 
@@ -1003,7 +1003,7 @@ class PixelAperture(Aperture):
             support this aperture or these inputs (in which case
             the caller should use the mask-based code path). The
             ``flag_counts`` columns are given by the ``FLAG_COL_*``
-            constants in `photutils.aperture._batch_photometry`; on this
+            constants in `photutils.aperture._batch_photometry`. On this
             code path the ``FLAG_COL_BBOX_CLIPPED`` column is only a
             candidate indicator (bounding box clipped by a data edge)
             that the caller must resolve to the precise outside-weight
@@ -1280,7 +1280,7 @@ class PixelAperture(Aperture):
 
         The precise per-source test is evaluated (via per-source
         aperture masks) only for the candidate sources, i.e., those
-        whose bounding box is clipped by a data edge; the result is
+        whose bounding box is clipped by a data edge. The result is
         `False` for all other sources. Interior sources are never
         candidates, so no aperture masks are built for them.
 

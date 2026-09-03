@@ -644,7 +644,7 @@ one of four values:
   Pixels belonging to neighboring sources (labeled, but not the target
   source) are excluded.
 * ``'source_only'``:
-  Only pixels belonging to the target source are included; both
+  Only pixels belonging to the target source are included. Both
   neighboring sources and background pixels are excluded.
 * ``'correct'``:
   Pixels belonging to neighboring sources are replaced by the values of
@@ -847,7 +847,7 @@ used, for example, to compute a sigma-clipped median of pixels in an
 annulus aperture to estimate the local background level. Sigma clipping
 is applied independently on the "center" and ``sum_method`` footprints
 described above, so the sum-related properties are also computed from
-sigma-clipped data; see :ref:`aperture_flags` for how this affects the
+sigma-clipped data. See :ref:`aperture_flags` for how this affects the
 ``flags`` property.
 
 Here is a simple example using a circular aperture at one position.

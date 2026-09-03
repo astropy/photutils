@@ -405,8 +405,8 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
     cdef double poly_x_out[4]
     cdef double poly_y_out[4]
 
-    # Scratch buffers for the polygon clipping (rectangular apertures);
-    # these are local to this call, so this function is thread safe.
+    # Scratch buffers for the polygon clipping (rectangular apertures).
+    # These are local to this call, so this function is thread safe.
     cdef double buf_a_x[32]
     cdef double buf_a_y[32]
     cdef double buf_b_x[32]
@@ -502,7 +502,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                 poly_x[pk] = params[2 * pk]
                 poly_y[pk] = params[2 * pk + 1]
 
-            # One-time convexity test; convex polygons use an
+            # One-time convexity test. Convex polygons use an
             # interior/exterior fast path in ``_polygon_pixel_frac``.
             is_poly_convex = convex_edge_normals(poly_x, poly_y, n_poly,
                                                  pedge_nx, pedge_ny, pedge_c)
@@ -567,7 +567,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
 
     # Pass 1 (only when emitting the packed member buffers): size and
     # offset the packed buffers from the per-source clipped bounding-box
-    # areas. This performs only bounding-box arithmetic; it does not
+    # areas. This performs only bounding-box arithmetic. It does not
     # iterate over or evaluate individual pixels.
     if emit_sum:
         with nogil:
@@ -619,7 +619,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                     ccy = _round_half_away(cy)
 
             # Bounding box, overlap test, and pixel grid, replicated
-            # from the mask-based path (see ``_source_grid_setup``); the
+            # from the mask-based path (see ``_source_grid_setup``). The
             # sums stay NaN when there is no overlap.
             if not _source_grid_setup(cx, cy, ext_x, ext_y, off_x, off_y,
                                       nx_data, ny_data, &gxmin, &gymin,
@@ -658,7 +658,7 @@ def batch_aperture_sums(const double[:, ::1] data, const double[:, ::1] error,
                     pxmin = gxmin + (ix - ixmin) * dx
 
                     # The shape dispatch is inlined over the local
-                    # variables here; the outside-weight scan carries
+                    # variables here. The outside-weight scan carries
                     # the same dispatch in ``_batch_outside``, kept in
                     # a separate extension module so that each shape
                     # helper has a single call site in this one (see

@@ -120,7 +120,7 @@ class TestPixelCounts:
         mask = np.zeros(UNIT_SHAPE, dtype=np.uint8)
         mask[12, 12] = 1  # input-masked
         mask[12, 13] = 2  # non-finite data
-        mask[13, 12] = 3  # both; masked wins
+        mask[13, 12] = 3  # both, masked wins
         for func in (_sums_fcounts, _gather_fcounts):
             fc = func(data, (12.0, 12.0), 3.0, mask=mask)[0]
             assert fc[FLAG_COL_MASKED] == 2

@@ -100,7 +100,7 @@ def _polygon_is_simple(verts):
     of one edge lies on another edge. Adjacent edges (which share a
     vertex by construction) are not compared with each other, so a
     polygon that folds straight back onto an adjacent edge is not
-    detected here; such degenerate cases are instead excluded by the
+    detected here. Such degenerate cases are instead excluded by the
     zero-area check in `_validate_simple_polygon`.
 
     The cost is ``O(n^2)`` in the number of vertices ``n``. This is
@@ -142,7 +142,7 @@ def _validate_simple_polygon(verts, *, name='vertex_offsets',
     The polygon is required to be simple (i.e., non-self-intersecting),
     but it is not required to be convex. Self-intersection is checked
     explicitly with an ``O(n^2)`` edge-pair test (see
-    `_polygon_is_simple`); this is inexpensive for the polygon sizes
+    `_polygon_is_simple`). This is inexpensive for the polygon sizes
     used in aperture photometry and runs only once, when the attribute
     is set.
 
@@ -158,7 +158,7 @@ def _validate_simple_polygon(verts, *, name='vertex_offsets',
         Whether to run the ``O(n^2)`` self-intersection test. Set to
         `False` only for offsets that are already known to define
         a simple polygon (e.g., a circle, ellipse, or rectangle
-        discretized into vertices); the cheap shape, vertex-count,
+        discretized into vertices). The cheap shape, vertex-count,
         finiteness, and zero-area checks are still performed.
 
     Returns
@@ -257,7 +257,7 @@ class SkyVertexOffsets(ApertureAttribute):
                    f'got {value.shape}')
             raise ValueError(msg)
 
-        # Validate using arcsec values; angular geometry on the local
+        # Validate using arcsec values. Angular geometry on the local
         # tangent plane is preserved.
         verts = value.to_value(u.arcsec)
         verts = _validate_simple_polygon(verts, name=self.name)
@@ -408,7 +408,7 @@ class PolygonAperture(PixelAperture):
         of each polygon vertex relative to ``positions``. The polygon
         must be simple (non-self-intersecting) with at least 3 vertices.
         The polygon may be convex or non-convex. Either clockwise or
-        counter-clockwise vertex orderings are accepted; the input is
+        counter-clockwise vertex orderings are accepted. The input is
         normalized to counter-clockwise internally.
 
     Raises
@@ -666,7 +666,7 @@ class PolygonAperture(PixelAperture):
             # Compute inner radius to make the polygon edges adjacent
             # to each spike collinear (lie on the same straight line).
             # This creates a flat-bottomed indentation between spikes.
-            # At theta=0, these edges are horizontal; when rotated, they
+            # At theta=0, these edges are horizontal. When rotated, they
             # remain collinear but at a different angle. This requires
             # n_spikes >= 5 because for smaller values the formula
             # produces a negative or zero inner radius.
@@ -730,14 +730,14 @@ class PolygonAperture(PixelAperture):
         positions, the returned array has shape ``(n_positions,
         n_vertices, 2)``.
         """
-        # vertex_offsets shape: (n_v, 2); positions shape: (..., 2).
+        # vertex_offsets has shape (n_v, 2) and positions has shape (..., 2).
         # Broadcast position to vertices.
         offsets = self.vertex_offsets
         if self.isscalar:
             pos = np.asarray(self.positions, dtype=float)
             return pos + offsets
 
-        # positions shape: (n_positions, 2); result: (n_positions, n_v, 2)
+        # positions (n_positions, 2) broadcasts to (n_positions, n_v, 2)
         return self.positions[:, np.newaxis, :] + offsets[np.newaxis, :, :]
 
     @cached_property
@@ -907,7 +907,7 @@ class PolygonAperture(PixelAperture):
         rotating it by its exterior angle reproduces the same shape.
         The reported value therefore depends on which vertex is stored
         first, which is not necessarily the first vertex the user
-        input: clockwise ``vertex_offsets`` are reversed when they are
+        input. Clockwise ``vertex_offsets`` are reversed when they are
         normalized to counter-clockwise order. For example, a square
         specified clockwise reports ``90 deg`` where the identical
         square specified counter-clockwise reports ``0 deg``.
@@ -1323,7 +1323,7 @@ class SkyPolygonAperture(SkyAperture):
         rotating it by its exterior angle reproduces the same shape.
         The reported value therefore depends on which vertex is stored
         first, which is not necessarily the first vertex the user
-        input: clockwise ``vertex_offsets`` are reversed when they are
+        input. Clockwise ``vertex_offsets`` are reversed when they are
         normalized to counter-clockwise order.
 
         This attribute is only defined for regular polygons. Accessing

@@ -41,7 +41,7 @@ def _circular_polygon_offsets(r, n_vertices):
     using ``n_vertices`` equally spaced vertices.
 
     ``r`` may be a plain number (pixel offsets) or a
-    `~astropy.units.Quantity` (angular offsets); the returned offsets
+    `~astropy.units.Quantity` (angular offsets). The returned offsets
     carry the same type.
 
     Parameters
