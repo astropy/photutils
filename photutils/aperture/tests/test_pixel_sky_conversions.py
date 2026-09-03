@@ -513,7 +513,7 @@ class TestCircularInputAnglePreserved:
     """
     Verify that the SVD path preserves the input rotation angle when the
     input rectangular/elliptical aperture is shape-degenerate (width ==
-    height): the converted theta must round-trip exactly.
+    height). The converted theta must round-trip exactly.
 
     For a circular shape the SVD principal axis is otherwise arbitrary,
     so the helper falls back to the mapped width semi-axis direction to
@@ -553,8 +553,8 @@ class TestCircularInputAnglePreserved:
 
 class TestFlippedParityWCS:
     """
-    Regression tests for a flipped-parity WCS (North down, East left;
-    positive-determinant pixel scale matrix).
+    Regression tests for a flipped-parity WCS (North down, East left,
+    with a positive-determinant pixel scale matrix).
 
     Such a WCS previously produced apertures that were mirrored about
     the x-axis. For the flipped axis-aligned WCS, North = -y and East =

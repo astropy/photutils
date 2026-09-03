@@ -630,10 +630,10 @@ def webbpsf_reader(filename):
         data = data[np.newaxis, :]
 
     if not any('DET_YX' in key for key in header):
-        msg = 'Invalid WebbPSF FITS file; missing "DET_YX{}" header keys'
+        msg = 'Invalid WebbPSF FITS file. Missing "DET_YX{}" header keys'
         raise ValueError(msg)
     if 'OVERSAMP' not in header:
-        msg = 'Invalid WebbPSF FITS file; missing "OVERSAMP" header key'
+        msg = 'Invalid WebbPSF FITS file. Missing "OVERSAMP" header key'
         raise ValueError(msg)
 
     # Convert header to meta dict

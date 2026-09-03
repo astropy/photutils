@@ -115,10 +115,10 @@ cdef void _heapsort(double *a, Py_ssize_t lo, Py_ssize_t hi) noexcept nogil:
 cdef void _introsort(double *a, Py_ssize_t lo, Py_ssize_t hi,
                      int depth) noexcept nogil:
     """
-    Sort ``a[lo:hi]`` ascending in place by introsort: median-of-three
-    quicksort with Bentley-McIlroy three-way partitioning, heapsort
-    when the recursion depth budget is exhausted, and insertion sort
-    for short ranges.
+    Sort ``a[lo:hi]`` ascending in place by introsort. This is a
+    median-of-three quicksort with Bentley-McIlroy three-way
+    partitioning, heapsort when the recursion depth budget is
+    exhausted, and insertion sort for short ranges.
 
     The three-way partition keeps the two scanning indices of a Hoare
     partition (so distinct keys sort as fast) but parks the elements
@@ -247,7 +247,7 @@ cdef inline void _sort_doubles(double *a, Py_ssize_t n) noexcept nogil:
     This replaces the C library ``qsort`` (whose comparison callback
     cannot be inlined and costs an indirect call per comparison) with
     an introsort whose comparisons compile to plain branches. The
-    values must be finite: the ordering of NaN values is unspecified.
+    values must be finite. The ordering of NaN values is unspecified.
     """
     cdef int depth = 0
     cdef Py_ssize_t m = n
@@ -303,7 +303,7 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
     Compute the converged sigma-clip bounds for one source.
 
     This reproduces `astropy.stats.SigmaClip` for the no-axis, no-grow
-    case: it iteratively narrows the kept range and returns the final
+    case. It iteratively narrows the kept range and returns the final
     lower and upper value bounds. A source survives the clip if its
     value ``v`` satisfies ``not (v < out_min) and not (v > out_max)``,
     so NaN bounds keep every value, matching astropy's degenerate
@@ -459,7 +459,7 @@ def batch_aperture_gather(const double[:, ::1] data,
 
     The "center" aperture mask method (``use_exact=0``, ``subpixels=1``)
     selects the unmasked pixel values used for the order and moment
-    statistics; each survivor is packed into a contiguous buffer. The
+    statistics. Each survivor is packed into a contiguous buffer. The
     ``sum_method`` aperture sum, error, and area are computed separately
     by `~photutils.aperture._batch_photometry.batch_aperture_sums`.
 
@@ -705,7 +705,7 @@ def batch_aperture_gather(const double[:, ::1] data,
     # Pass 1: size and offset the packed value buffer from the
     # per-source clipped bounding-box areas (an upper bound on the
     # number of "center"-method survivors). This performs only
-    # bounding-box arithmetic; it does not iterate over or evaluate
+    # bounding-box arithmetic. It does not iterate over or evaluate
     # individual pixels.
     with nogil:
         total = _presize_packed_offsets(positions, ext_x, ext_y, off_x, off_y,
@@ -842,7 +842,7 @@ def batch_aperture_gather(const double[:, ::1] data,
             # Whether the bounding box is clipped by a data edge. The
             # caller resolves this to the precise outside-weight test
             # (nonzero aperture weights outside the data) only for these
-            # sources; unclipped interior sources are exactly 0.
+            # sources. Unclipped interior sources are exactly 0.
             ixmax_full = <Py_ssize_t>ceil(cx + off_x + ext_x + 0.5)
             iymax_full = <Py_ssize_t>ceil(cy + off_y + ext_y + 0.5)
             if (ixmin < ix0 or ixmax_full > ix1
@@ -1296,7 +1296,7 @@ def batch_gini(const double[::1] values,
     ----------
     values : 1D ndarray of float64
         The packed pixel values (see ``batch_aperture_gather``). The
-        values need not be sorted; the absolute values are sorted
+        values need not be sorted. The absolute values are sorted
         internally.
 
     starts, counts : 1D ndarray of intp
@@ -1601,7 +1601,7 @@ cdef inline double _biweight_location_range(double *s, Py_ssize_t lo,
         The half-open index range of the values to use.
 
     anchor : double
-        The location anchor (``M``; the median if not input).
+        The location anchor ``M`` (the median if not input).
 
     c : double
         The tuning constant.
@@ -1652,7 +1652,7 @@ cdef inline double _biweight_midvar_range(double *s, Py_ssize_t lo,
         The half-open index range of the values to use.
 
     anchor : double
-        The location anchor (``M``; the median if not input).
+        The location anchor ``M`` (the median if not input).
 
     c : double
         The tuning constant.
@@ -1691,7 +1691,7 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
     Compute fused sigma-clipped statistics for each row of a 2D array.
 
     For each row, the finite values are sigma-clipped following
-    `astropy.stats.SigmaClip` (no-axis, no-grow case; see
+    `astropy.stats.SigmaClip` (no-axis, no-grow case, as in
     ``_sigma_clip_bounds``), and the mean, median, and population
     standard deviation of the surviving values are computed directly,
     without generating a clipped copy of the input. Optionally, the
@@ -1796,7 +1796,7 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
 
     with nogil:
         for k in range(n_rows):
-            # The finite values are s[0:n]; NaN values sort last
+            # The finite values are s[0:n] because NaN values sort last
             n = n_cols
             while n > 0:
                 v = sorted_data[k, n - 1]

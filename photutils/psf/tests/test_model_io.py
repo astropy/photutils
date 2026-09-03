@@ -354,7 +354,7 @@ class TestWebbPSFReader:
                           keys_to_remove=('DET_YX0', 'DET_YX1', 'DET_YX2',
                                           'DET_YX3'))
 
-        match = 'missing "DET_YX'
+        match = 'Missing "DET_YX'
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel.read(filename, format='webbpsf')
 
@@ -363,7 +363,7 @@ class TestWebbPSFReader:
         make_webbpsf_file(filename, (0.0, 10.0), (0.0, 10.0),
                           keys_to_remove=('OVERSAMP',))
 
-        match = 'missing "OVERSAMP" header key'
+        match = 'Missing "OVERSAMP" header key'
         with pytest.raises(ValueError, match=match):
             GriddedPSFModel.read(filename, format='webbpsf')
 

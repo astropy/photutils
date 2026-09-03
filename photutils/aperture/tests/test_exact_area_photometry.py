@@ -29,8 +29,8 @@ def _phot_sum(aperture, *, data=None):
     return float(table['aperture_sum'][0])
 
 
-# Polygon shape library: (name, vertex_offsets) - each polygon is
-# centered at the origin so it can be placed at arbitrary positions.
+# Polygon shape library of (name, vertex_offsets) pairs. Each polygon
+# is centered at the origin so it can be placed at arbitrary positions.
 def _triangle():
     # Equilateral triangle with circumradius 4.
     angles = np.pi / 2 + np.arange(3) * 2 * np.pi / 3

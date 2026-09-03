@@ -31,7 +31,7 @@ cdef inline double circle_frac_from_d2(double pxmin, double pymin,
     fast path and the exact/subpixel dispatch live in a single,
     reusable place.
 
-    Using the squared distance avoids a ``sqrt`` per pixel: the
+    Using the squared distance avoids a ``sqrt`` per pixel. The
     interior/exterior fast-path thresholds ``r ± pixel_radius`` are
     simply squared. No bounding-box check is performed (the caller is
     responsible for it), so the same core can be shared by the circle

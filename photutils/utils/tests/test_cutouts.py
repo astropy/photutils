@@ -234,7 +234,7 @@ class TestMakeCutouts:
         cutouts, mask = _make_cutouts(self.data, xpos, ypos, (4, 4))
         assert cutouts.shape == (1, 4, 4)
         assert mask[0].all()  # fully inside
-        # Half-widths: hy=2, hx=2; cutout rows [3..6], cols [3..6]
+        # Half-widths hy=2, hx=2 give cutout rows [3..6], cols [3..6]
         expected = self.data[3:7, 3:7]
         np.testing.assert_array_equal(cutouts[0], expected)
 

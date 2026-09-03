@@ -339,7 +339,7 @@ def test_polygon_overlap_subpixel_on_all_boundaries():
     A unit square spanning [-1, 1] in both axes is sampled by a single
     pixel with ``subpixels=3``, so the 9 subpixel centers fall at every
     combination of (-1, 0, +1). Of these, only the central center
-    (0, 0) is strictly interior; the four edge-midpoint centers (two
+    (0, 0) is strictly interior. The four edge-midpoint centers (two
     horizontal, two vertical) and the four corner centers all lie on the
     boundary and are excluded, giving 1/9.
     """

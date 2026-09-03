@@ -276,7 +276,7 @@ class Background2D:
             raise ValueError(msg)
 
         # self._mask is a temporary instance variable to store the input
-        # mask array (deleted in self._calculate_stats); self._has_mask
+        # mask array (deleted in self._calculate_stats). self._has_mask
         # records whether a mask was provided for use after deletion.
         self._mask = self._validate_array(mask, 'mask')
         if data_mask is not None:
@@ -779,7 +779,7 @@ class Background2D:
 
         if np.ndim(bkg) == 0:
             if box_mask:  # single corner box
-                # np.nan is float64; use np.float32 to prevent numpy from
+                # np.nan is float64, so use np.float32 to prevent numpy from
                 # promoting the output data dtype to float64 if the
                 # input data is float32
                 bkg = np.float32(np.nan)
@@ -940,7 +940,7 @@ class Background2D:
                 col_bkg, col_bkgrms, col_n_good = col_stats
 
             if extra_row and extra_col:
-                # Extra corner box -- append to extra column.
+                # Extra corner box, appended to the extra column.
                 # Here we need to make a copy of the data array to
                 # avoid modifying the original data array.
                 corner_data = self._data[y1:, x1:].copy()
@@ -1069,8 +1069,8 @@ class Background2D:
             return data
 
         # Apply the median filter across the whole mesh in one call,
-        # then blend: keep the filtered value only where the background
-        # is above the threshold; use the original value everywhere
+        # then blend. Keep the filtered value only where the background
+        # is above the threshold and use the original value everywhere
         # else.
         filtered = generic_filter(data, nanmedian, size=self.filter_size,
                                   mode='constant', cval=np.nan)

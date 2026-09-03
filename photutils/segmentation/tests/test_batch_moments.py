@@ -150,8 +150,8 @@ def test_central_moments(scene):
 
 def test_central_moments_nan_centroid(scene):
     # A fully-masked source has zero total flux -> NaN centroid. The
-    # previous implementation then produced NaN everywhere except
-    # [0, 0], which holds the (zero) flux sum
+    # central moments are then NaN everywhere except [0, 0], which
+    # holds the (zero) flux sum
     cat = make_catalog(scene)
     inp = _driver_inputs(cat)
     n = cat.n_labels

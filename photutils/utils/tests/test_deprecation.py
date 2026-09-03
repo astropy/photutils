@@ -265,7 +265,7 @@ class TestDeprecatedColumn:
             col = copied['old']
         assert np.all(col == [3, 2, 1])
 
-        # Ensure it's a true copy; modifying original doesn't affect copy
+        # Ensure it's a true copy. Modifying original doesn't affect copy
         table['new'][0] = 999
         assert copied['new'][0] == 3
 
@@ -371,7 +371,7 @@ class TestDeprecatedColumn:
         """
         table = create_deprecated_table_from_data(raw_data, DEPRECATION_MAP)
 
-        # group_by accepts a Table as keys; _translate_names should pass
+        # group_by accepts a Table as keys. _translate_names should pass
         # it through without modification or warnings
         key_table = Table({'new': [3, 2, 1]})
         groups = table.group_by(key_table)

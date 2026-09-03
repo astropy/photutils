@@ -46,7 +46,7 @@ class _PSFParameterMapper:
     alias_to_model_param: dict = field(init=False, repr=False)
 
     # Valid column names that can be used for initial (x, y, flux)
-    # positions. Order matters: the first matched name in each tuple will
+    # positions. Order matters, as the first matched name in each tuple will
     # be used.
     VALID_INIT_COLNAMES = {  # noqa: RUF012
         'x': (

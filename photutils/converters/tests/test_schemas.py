@@ -411,7 +411,7 @@ PSF_GRID = _ndarray(PSF_GRID_VALUES)
 GRID_XYPOS = _ndarray(GRID_XYPOS_VALUES)
 
 # The parameters that each PSF schema requires. The remaining
-# parameters are optional; ``bbox_factor`` is optional in every
+# parameters are optional. ``bbox_factor`` is optional in every
 # functional-model schema, as is ``theta`` for the elliptical Gaussians
 # and ``oversampling`` for the STDPSF grid.
 REQUIRED_PSF_PARAMS = {

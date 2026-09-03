@@ -159,7 +159,7 @@ class TestApertureAttribute:
         """
         obj = MockBase()
         obj.attr = 1.0
-        # Triggers _reset_cached_properties; obj has no _cached_properties
+        # Triggers _reset_cached_properties, but obj has no _cached_properties
         obj.attr = 2.0
         assert obj.attr == 2.0
 

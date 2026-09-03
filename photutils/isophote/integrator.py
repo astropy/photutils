@@ -32,15 +32,15 @@ class _Integrator:
         ellipse.
 
     angles : list
-        Output list; contains the angle values along the elliptical
+        Output list containing the angle values along the elliptical
         path.
 
     radii : list
-        Output list; contains the radius values along the elliptical
+        Output list containing the radius values along the elliptical
         path.
 
     intensities : list
-        Output list; contains the extracted intensity values along the
+        Output list containing the extracted intensity values along the
         elliptical path.
     """
 

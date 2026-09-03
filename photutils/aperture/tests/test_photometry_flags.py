@@ -129,7 +129,7 @@ class TestOverlapFlags:
         result = AperturePhotometry(data, aper, method='center')
         assert result.flags == (APERTURE_FLAGS.NO_OVERLAP
                                 | APERTURE_FLAGS.NO_PIXELS)
-        # The sum is 0.0 (not NaN) here: the bounding box overlaps the
+        # The sum is 0.0 (not NaN) here. The bounding box overlaps the
         # data, but no weighted pixel falls inside
         assert result.flux == 0.0
 
@@ -336,7 +336,7 @@ class TestSegmentationFlags:
         data = unit_data
         segm = np.zeros(UNIT_SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
-        segm[12, 14] = 2  # neighbor; its mirror (12, 10) is source pixel
+        segm[12, 14] = 2  # neighbor whose mirror (12, 10) is a source pixel
         segm[12, 10] = 2  # make the mirror a neighbor too: uncorrectable
         aper = CircularAperture((12, 12), r=3.0)
         flags = _flags(aper, data, segmentation_image=segm, labels=1,
@@ -425,7 +425,7 @@ class TestMaskPathParity:
         data[nan_pixel] = np.nan
         segm = np.zeros(UNIT_SHAPE, dtype=int)
         segm[10:15, 10:15] = 1
-        segm[12, 14] = 2  # neighbor pixel; its mirror is (12, 10)
+        segm[12, 14] = 2  # neighbor pixel whose mirror is (12, 10)
 
         kwargs = {'segmentation_image': segm, 'labels': [1],
                   'mask_method': mask_method}
@@ -552,7 +552,7 @@ class TestResolveOutsideWeights:
         For the 'exact' method the minimal bounding box is tight, so a
         bbox that is clipped by a data edge always leaves a positive-area
         aperture sliver outside the data. The gated path returns the
-        bbox-clipped candidates unchanged; this must equal the reference
+        bbox-clipped candidates unchanged. This must equal the reference
         mask-based outside-weight test for a mix of interior, edge, corner,
         and fully off-image positions.
         """

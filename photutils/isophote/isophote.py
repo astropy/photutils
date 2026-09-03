@@ -62,7 +62,7 @@ class Isophote:
               used when the user turns off the fitting algorithm
               via the ``maxrit`` fitting parameter (see the
               `~photutils.isophote.Ellipse` class).
-           *  5: Ellipse diverged; not even the minimum number of
+           *  5: Ellipse diverged. Not even the minimum number of
               iterations could be executed. Subsequent ellipses at
               larger or smaller semimajor axis may have the same
               constant geometric parameters.
@@ -144,7 +144,7 @@ class Isophote:
                 # empty sample arrays would emit numpy warnings (e.g.,
                 # "Mean of empty slice"), so set non-meaningful values
                 # directly and skip the harmonic computations. Such a
-                # degenerate isophote is transient: it is either
+                # degenerate isophote is transient. It is either
                 # discarded or replaced by `_fix_last_isophote`.
                 self.rms = np.nan
                 self.int_err = np.nan
@@ -276,7 +276,7 @@ class Isophote:
         Compute integrated flux inside ellipse, as well as inside a
         circle defined with the same semimajor axis.
 
-        Pixels in a square section enclosing circle are scanned; the
+        Pixels in a square section enclosing circle are scanned. The
         distance of each pixel to the isophote center is compared both
         with the semimajor axis length and with the length of the
         ellipse radius vector, and integrals are updated if the pixel
@@ -380,7 +380,7 @@ class Isophote:
             # parameter errors result from direct projection of
             # coefficient errors. These showed to be the error estimators
             # that best convey the errors measured in Monte Carlo
-            # experiments (see Busko 1996; ASPC 101, 139).
+            # experiments (see Busko 1996, ASPC 101, 139).
             ea = abs(errors[2] / self.grad)
             eb = abs(errors[1] * (1.0 - eps) / self.grad)
             self.x0_err = np.sqrt((ea * np.cos(pa))**2 + (eb * np.sin(pa))**2)

@@ -85,7 +85,7 @@ class EllipseFitter:
             for preventing ellipses to grow to regions of too
             low signal-to-noise ratio. It specifies the maximum
             acceptable relative error in the local radial
-            intensity gradient. `Busko (1996; ASPC 101, 139)
+            intensity gradient. `Busko (1996, ASPC 101, 139)
             <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstr
             act>`_ showed that the fitting precision relates to that
             relative error. The usual behavior of the gradient relative
@@ -186,7 +186,7 @@ class EllipseFitter:
             largest_harmonic_index = np.argmax(np.abs(free_coeffs))
             largest_harmonic = free_coeffs[largest_harmonic_index]
 
-            # See if the amplitude decreased; if yes, keep the
+            # See if the amplitude decreased. If yes, keep the
             # corresponding sample for eventual later use.
             if abs(largest_harmonic) < minimum_amplitude_value:
                 minimum_amplitude_value = abs(largest_harmonic)

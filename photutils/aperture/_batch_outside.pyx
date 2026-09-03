@@ -8,7 +8,7 @@ The outside-weight scan of the batch aperture photometry driver.
 is clipped by a data edge, whether the aperture has a nonzero-fraction
 pixel outside the data. The scan lives in its own extension module so
 that the per-shape pixel-overlap helpers of ``_batch_overlap.pxd``
-keep a single call site in the driver's translation unit: with more
+keep a single call site in the driver's translation unit. With more
 call sites the C compiler stops inlining the larger helpers into the
 driver's per-pixel loop, which measured up to 30% slower.
 
@@ -157,7 +157,7 @@ cdef bint outside_weight(const _ShapeSpec *sp, bint inside_any,
     enormous) bounding-box area.
 
     Otherwise every outside pixel is tested until one has a nonzero
-    fraction: the center and subpixel methods sample the shape at
+    fraction. The center and subpixel methods sample the shape at
     pixel or subpixel centers, for which the ring argument does not
     hold, and an aperture with no weight inside the data may lie
     entirely in the clipped-away part of its bounding box (that scan

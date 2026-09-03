@@ -230,8 +230,8 @@ def deprecated_getattr(instance, name, deprecated_map, *, since=None,
             remove_str = 'version ' + str(until)
         else:
             remove_str = 'a future version'
-        warn_msg = (f'The {name!r} attribute was deprecated{since_str}; '
-                    f'use {new_name!r} instead. It will be removed in '
+        warn_msg = (f'The {name!r} attribute was deprecated{since_str}. '
+                    f'Use {new_name!r} instead. It will be removed in '
                     f'{remove_str}.')
         warnings.warn(warn_msg, AstropyDeprecationWarning, stacklevel=3)
         return getattr(instance, new_name)

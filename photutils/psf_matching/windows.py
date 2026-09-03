@@ -107,7 +107,7 @@ class SplitCosineBellWindow:
             raise ValueError(msg)
 
         if alpha + beta > 1.0:
-            msg = ('alpha + beta > 1.0; the taper region will be '
+            msg = ('alpha + beta > 1.0, so the taper region will be '
                    'clipped to the array boundary.')
             warnings.warn(msg, AstropyUserWarning)
 
@@ -224,7 +224,7 @@ class TukeyWindow(SplitCosineBellWindow):
     edges. This provides an excellent balance between preserving data in
     the central region and suppressing edge artifacts.
 
-    The ``alpha`` parameter controls the trade-off: smaller values
+    The ``alpha`` parameter controls the trade-off. Smaller values
     preserve more data but create stronger edge effects, while larger
     values reduce artifacts but taper more of the image.
 

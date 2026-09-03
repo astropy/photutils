@@ -68,11 +68,11 @@ def circular_overlap_grid(double xmin, double xmax, double ymin, double ymax,
     subpixels : int
         The number of subpixels to use in each dimension when using
         the sub-pixel sampling method. Each pixel is resampled by this
-        factor in each dimension; thus, each pixel is divided into
+        factor in each dimension, so each pixel is divided into
         ``subpixels ** 2`` subpixels.
 
         A subpixel is included only if its center lies strictly inside
-        the circle; subpixel centers lying exactly on the circle
+        the circle. Subpixel centers lying exactly on the circle
         boundary are excluded (weight 0).
 
     Returns

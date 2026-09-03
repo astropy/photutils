@@ -152,8 +152,7 @@ def test_centroid_2dg_constant_data(value):
 
     After subtracting the minimum, a constant array becomes all-zero,
     making the moment sum zero and the Gaussian parameters undefined.
-    This previously produced silent NaN results; now it raises a clear
-    error.
+    A clear error is raised rather than silent NaN results.
     """
     data = np.full((10, 10), value)
     match = 'Input data must have non-constant values'

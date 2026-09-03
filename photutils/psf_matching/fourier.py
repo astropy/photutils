@@ -316,8 +316,8 @@ def make_wiener_kernel(source_psf, target_psf, *, regularization=1e-4,
         power in the source PSF's Fourier transform. When
         ``penalty`` is provided, this scales the penalty operator's
         power spectrum directly. Larger values produce smoother but
-        less accurate matching kernels; smaller values preserve more
-        detail but may amplify noise. Must be a positive number.
+        less accurate matching kernels, while smaller values preserve
+        more detail but may amplify noise. Must be a positive number.
 
     penalty : `None`, ``'laplacian'``, ``'biharmonic'``, or 2D \
 array-like, optional
@@ -466,7 +466,7 @@ array-like, optional
         penalty_otf = _convert_psf_to_otf(penalty_array, source_psf.shape)
         reg_term = regularization * np.abs(penalty_otf) ** 2
     else:
-        # Wiener (Tikhonov; scalar/zero-order) regularization.
+        # Wiener (Tikhonov, scalar/zero-order) regularization.
         # This is frequency-independent and expressed as a fraction of
         # the peak power in the source OTF
         reg_term = regularization * np.max(source_power)

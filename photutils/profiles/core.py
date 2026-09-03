@@ -344,7 +344,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
             xarr = xarr[:first_nonfinite]
             profile = profile[:first_nonfinite]
 
-        # np.diff produces an array of length n-1: diff[i] represents
+        # np.diff produces an array of length n-1, where diff[i] represents
         # the step from profile[i] to profile[i+1]. A value <= 0 means
         # the profile stopped increasing at that step.
         diff = np.diff(profile) <= 0
@@ -360,7 +360,7 @@ class ProfileBase(metaclass=abc.ABCMeta):
 
         if len(xarr) < 2:
             msg = (f'The {name} profile is not monotonically '
-                   'increasing even at the smallest values -- cannot '
+                   'increasing even at the smallest values. Cannot '
                    'interpolate. Try using different input values '
                    '(especially the starting values) and/or using the '
                    '"exact" aperture overlap method.')

@@ -67,7 +67,7 @@ def as_pair(name, value, *, lower_bound=None, upper_bound=None,
 
     lower_bound : tuple of 2 int, optional
         A tuple defining the allowed lower bound of the value. The first
-        element is the bound; the second is 0 for exclusive or 1 for
+        element is the bound. The second is 0 for exclusive or 1 for
         inclusive (e.g. (0, 1) means value must be >= 0).
 
     upper_bound : tuple of 2 int, optional
@@ -142,8 +142,8 @@ def as_pair(name, value, *, lower_bound=None, upper_bound=None,
         if len(upper_bound) != 2:
             msg = 'upper_bound must contain only 2 elements'
             raise ValueError(msg)
-        # If value is larger than upper_bound, set to upper_bound;
-        # upper_bound is typically set to an image shape
+        # If value is larger than upper_bound, set to upper_bound.
+        # The upper_bound is typically set to an image shape
         value = np.array((min(value[0], upper_bound[0]),
                           min(value[1], upper_bound[1])))
 

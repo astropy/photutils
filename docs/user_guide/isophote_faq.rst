@@ -9,7 +9,7 @@ Isophote Frequently Asked Questions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The basic elliptical isophote fitting algorithm, as described in
-`Jedrzejewski (1987; MNRAS 226, 747)
+`Jedrzejewski (1987, MNRAS 226, 747)
 <https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_,
 computes corrections for the current ellipse's geometrical parameters
 by essentially "projecting" the fitted harmonic amplitudes onto the
@@ -65,7 +65,7 @@ by the fitting algorithm. As can be seen from the above formulae,
 small :math:`I'` values lead to large values for the correction terms.
 Thus, :math:`I'` errors may lead to large fluctuations in these terms,
 when :math:`I'` itself is small.  This usually happens at the fainter,
-outer regions of galaxy images.  `Busko (1996; ASPC 101, 139)
+outer regions of galaxy images.  `Busko (1996, ASPC 101, 139)
 <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_
 found by numerical experiments that the precision to which a given
 ellipse can be fitted is related to the relative error in the local
@@ -124,7 +124,7 @@ computed by standard error propagation. Errors in the ellipse geometry
 parameters, on the other hand, cannot be estimated in the same way,
 since these parameters are not computed directly but result from a
 number of updates from a starting guess value. An error analysis based
-on numerical experiments (`Busko 1996; ASPC 101, 139
+on numerical experiments (`Busko 1996, ASPC 101, 139
 <https://ui.adsabs.harvard.edu/abs/1996ASPC..101..139B/abstract>`_)
 showed that the best error estimators for these geometrical parameters
 can be found by simply "projecting" the harmonic amplitude errors that
@@ -142,7 +142,7 @@ it produces sensible error estimators in practice.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When sampling is done using elliptical sectors (mean or median modes),
-the algorithm described in `Jedrzejewski (1987; MNRAS 226, 747)
+the algorithm described in `Jedrzejewski (1987, MNRAS 226, 747)
 <https://ui.adsabs.harvard.edu/abs/1987MNRAS.226..747J/abstract>`_
 uses an elaborate, high-precision scheme to take into account partial
 pixels that lie along elliptical sector boundaries. In the current

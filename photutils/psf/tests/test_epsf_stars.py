@@ -479,7 +479,7 @@ class TestEPSFStar:
         weights = np.zeros((5, 5))  # All masked data
 
         # This should raise ValueError because all data is masked
-        match = 'Star cutout is completely masked; no valid data available'
+        match = 'Star cutout is completely masked. No valid data available'
         with pytest.raises(ValueError, match=match):
             EPSFStar(data, weights=weights)
 
@@ -492,7 +492,7 @@ class TestEPSFStar:
         weights = np.zeros((7, 7))
 
         # Should raise ValueError with appropriate message
-        match = 'Star cutout is completely masked; no valid data available'
+        match = 'Star cutout is completely masked. No valid data available'
         with pytest.raises(ValueError, match=match):
             EPSFStar(data, weights=weights)
 
@@ -589,7 +589,7 @@ class TestEPSFStar:
     def test_slices_bbox_rectangular_roundtrip(self):
         """
         Regression test that slices/bbox are correct for non-square
-        cutouts: indexing the parent image with star.slices must
+        cutouts. Indexing the parent image with star.slices must
         return the cutout.
         """
         img = np.arange(60 * 80, dtype=float).reshape(60, 80)
@@ -1093,7 +1093,7 @@ class TestLinkedEPSFStar:
 
         linked = LinkedEPSFStar([star1, star2, star3])
 
-        # This should process only the good stars; should not raise
+        # This should process only the good stars. It should not raise
         # warnings since there are good stars
         linked.constrain_centers()
 
@@ -1867,7 +1867,7 @@ class TestExtractStars:
         ndd = NDData(epsf_test_data['nddata'].data, uncertainty=uncertainty)
         size = 25
 
-        # Should only get the non-finite weights warning; stars should
+        # Should only get the non-finite weights warning. Stars should
         # still be extracted successfully
         match = 'non-finite weight values'
         with pytest.warns(AstropyUserWarning, match=match):

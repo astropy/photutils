@@ -607,7 +607,7 @@ class TestPolygonMasks:
         poly_mask = poly.to_mask(method='center').to_image(shape)
         assert_allclose(poly_mask, rect_mask)
 
-        # Boundary centers are excluded: only the strictly interior centers
+        # Boundary centers are excluded. Only the strictly interior centers
         # (x in {2, 3, 4}, y = 3) are counted.
         assert rect_mask.sum() == 3
 

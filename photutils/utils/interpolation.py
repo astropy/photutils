@@ -232,7 +232,7 @@ class ShepardIDWInterpolator:
             interpolation.
 
         eps : float, optional
-            Set to use approximate nearest neighbors; the kth neighbor
+            Set to use approximate nearest neighbors. The kth neighbor
             is guaranteed to be no further than (1 + ``eps``) times the
             distance to the real *k*-th nearest neighbor. See
             `scipy.spatial.cKDTree.query` for further information.
@@ -263,7 +263,7 @@ class ShepardIDWInterpolator:
         -------
         result : float or `~numpy.ndarray`
             The interpolated value(s). A scalar is returned when a
-            single position is provided; otherwise a 1D array is
+            single position is provided. Otherwise a 1D array is
             returned.
         """
         n_neighbors = int(n_neighbors)
@@ -308,20 +308,20 @@ class ShepardIDWInterpolator:
             dtype = self.values.dtype
 
         # distances and idx have shape (n_positions, n_neighbors). Mask
-        # for valid (finite) distances; invalid entries arise when
+        # for valid (finite) distances. Invalid entries arise when
         # n_neighbors exceeds the number of known data points.
         valid = np.isfinite(distances)
 
         # Replace non-finite distances and out-of-bound indices with
         # safe values so that vectorized indexing and arithmetic do not
-        # raise errors; the ``valid`` mask zeroes them out later.
+        # raise errors. The ``valid`` mask zeroes them out later.
         safe_distances = np.where(valid, distances, 1.0)
         safe_idx = np.where(valid, idx, 0)
 
         # Inverse distance weights: w_i = 1 / (d_i^power + reg) The
         # errstate context suppresses divide-by-zero warnings that occur
         # when a query point coincides with a data point (distance = 0
-        # and reg = 0); these are handled by the conf_dist override.
+        # and reg = 0). These are handled by the conf_dist override.
         with np.errstate(invalid='ignore', divide='ignore'):
             weights = np.where(valid,
                                1.0 / (safe_distances ** power
@@ -337,14 +337,14 @@ class ShepardIDWInterpolator:
             weights_tot = np.sum(weights, axis=1)
             weighted_sum = np.sum(weights * neighbor_values, axis=1)
 
-            # Where total weight is positive, compute interpolation;
-            # otherwise return NaN (covers both the "no valid
+            # Where total weight is positive, compute interpolation.
+            # Otherwise return NaN (covers both the "no valid
             # neighbours" and "all-zero external weights" cases).
             interp_values = np.where(weights_tot > 0.0,
                                      weighted_sum / weights_tot,
                                      np.nan).astype(dtype)
 
-        # Confusion-distance override: if the nearest neighbour is
+        # Confusion-distance override. If the nearest neighbour is
         # closer than ``conf_dist``, return its value directly instead
         # of interpolating (avoids singularities when reg == 0).
         if conf_dist is not None:

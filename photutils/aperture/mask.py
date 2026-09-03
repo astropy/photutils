@@ -263,10 +263,10 @@ class ApertureMask:
             the small array. `None` is returned if there is no overlap
             of the bounding box with the given image shape.
 
-        aper_weights: 2D float `~numpy.ndarray`
+        aper_weights : 2D float `~numpy.ndarray`
             The cutout aperture mask weights for the overlap.
 
-        pixel_mask: 2D bool `~numpy.ndarray`
+        pixel_mask : 2D bool `~numpy.ndarray`
             The cutout pixel mask for the overlap.
 
         Notes

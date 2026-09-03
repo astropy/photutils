@@ -318,7 +318,7 @@ class TestMasking(BaseApertureStatsData):
                 continue
             assert np.all(np.isnan(getattr(apstats1, prop)))
 
-        # id=2 has masked pixels; id=3 is completely masked
+        # id=2 has masked pixels and id=3 is completely masked
         assert apstats[1].flags == APERTURE_FLAGS.MASKED_PIXELS
         assert apstats[2].flags == (APERTURE_FLAGS.MASKED_PIXELS
                                     | APERTURE_FLAGS.ALL_MASKED)
@@ -1092,7 +1092,7 @@ class TestMadStdScale:
 
         The factor is duplicated in ``photutils.aperture.stats`` and
         ``photutils.aperture._batch_stats`` (a Cython constant cannot be
-        shared directly); the fast-vs-mask regression tests cover the
+        shared directly). The fast-vs-mask regression tests cover the
         Cython copy.
         """
         rng = np.random.default_rng(0)
@@ -1527,8 +1527,8 @@ def test_overridden_bbox_fallback():
     overrides ``bbox``.
 
     The bounds are normally computed from the aperture's vectorized
-    integer bounds without creating per-position BoundingBox objects;
-    an overridden ``bbox`` must fall back to reading the objects.
+    integer bounds without creating per-position BoundingBox objects.
+    An overridden ``bbox`` must fall back to reading the objects.
     """
     data = np.ones((60, 60))
     positions = [(20.0, 20.0), (35.5, 24.2), (10.1, 40.7)]

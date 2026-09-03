@@ -62,7 +62,7 @@ class GriddedPSFModel(Fittable2DModel):
 
         * ``'grid_xypos'``: A sequence of the fiducial ``(x, y)``
           detector coordinates for each reference ePSF. The order must
-          match the first axis of ``data``; that is, ``grid_xypos[i]``
+          match the first axis of ``data``. That is, ``grid_xypos[i]``
           gives the detector coordinates of ``nddata.data[i]``. The
           coordinates must form a rectangular grid.
 
@@ -146,7 +146,7 @@ class GriddedPSFModel(Fittable2DModel):
 
         self._data, self._grid_xypos = self._define_grid(nddata)
         self._meta = nddata.meta.copy()  # _meta to avoid the meta descriptor
-        # Drop a stale user-supplied key; the grid shape is derived
+        # Drop a stale user-supplied key. The grid shape is derived
         # from grid_xypos
         self._meta.pop('grid_shape', None)
         # The setter also stores the normalized (y, x) pair in meta
@@ -495,7 +495,7 @@ class GriddedPSFModel(Fittable2DModel):
         The (x, y) pixel coordinates, as a 1D `~numpy.ndarray`, of the
         origin of the coordinate system within the model image.
         """
-        # data.shape is (N_psf, ePSF_ny, ePSF_nx); the leading axis is
+        # data.shape is (N_psf, ePSF_ny, ePSF_nx). The leading axis is
         # excluded so that the result is the (x, y) image center
         xyorigin = (np.array(self.data.shape[1:]) - 1) / 2
         return xyorigin[::-1]
@@ -646,7 +646,7 @@ class GriddedPSFModel(Fittable2DModel):
         If the point is outside the grid, the nearest grid cell is
         selected.
 
-        This method is a scalar-only fast path: ``x`` and ``y`` must be
+        This method is a scalar-only fast path. ``x`` and ``y`` must be
         scalar values (the model ``x_0`` and ``y_0`` positions), which
         is always the case when called from ``_calc_model_values``.
 
@@ -697,7 +697,7 @@ class GriddedPSFModel(Fittable2DModel):
         Calculate the bilinear interpolation weights for a given (xi,
         yi) coordinate and the four bounding grid points.
 
-        This method is a scalar-only fast path: ``xi`` and ``yi`` must
+        This method is a scalar-only fast path. ``xi`` and ``yi`` must
         be scalar values (the model ``x_0`` and ``y_0`` positions).
 
         Parameters
@@ -747,7 +747,7 @@ class GriddedPSFModel(Fittable2DModel):
         Calculate the partial derivatives of the bilinear interpolation
         weights with respect to the (xi, yi) coordinate.
 
-        This method is a scalar-only fast path: ``xi`` and ``yi`` must
+        This method is a scalar-only fast path. ``xi`` and ``yi`` must
         be scalar values (the model ``x_0`` and ``y_0`` positions).
 
         `_calc_bilinear_weights` clamps the coordinates to the grid
@@ -1069,7 +1069,7 @@ class STDPSFGrid:
             key holding an ``(N, 2)`` array of the fiducial ``(x, y)``
             detector coordinates and a ``'grid_shape'`` key holding the
             ``(ny, nx)`` shape of the grid. It may also contain an
-            ``'oversampling'`` key; if absent, the default is ``(4,
+            ``'oversampling'`` key. If absent, the default is ``(4,
             4)``. These three keys are consumed here and are not
             retained in the ``meta`` attribute.
 

@@ -71,8 +71,8 @@ def _assert_gather_equal(result, expected):
     The packed ``values``/``local_x``/``local_y`` buffers are allocated
     with an upper-bound length (the sum of the bounding-box areas), so
     only the valid per-source region ``[starts[k]:starts[k] + counts[k]]``
-    is meaningful; the trailing entries are uninitialized and must not be
-    compared.
+    is meaningful. The trailing entries are uninitialized and must not
+    be compared.
     """
     values, lx, ly, starts, counts, overlap, fcounts = result
     (e_values, e_lx, e_ly, e_starts, e_counts, e_overlap,
@@ -299,7 +299,7 @@ class TestApertureStatsThreadSafety:
         real_gather = stats_mod.batch_aperture_gather
 
         def blocking_gather(data_arr, mask, positions, *args):
-            # Block only instance A's gather; B's must run freely
+            # Block only instance A's gather. B's must run freely
             if positions[0, 0] == 25.0:
                 entered_a.set()
                 assert release_a.wait(timeout=30)

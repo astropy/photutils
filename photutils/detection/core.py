@@ -81,7 +81,7 @@ class StarFinderBase(metaclass=abc.ABCMeta):
         Parameters
         ----------
         convolved_data : 2D array_like
-            The convolved 2D array. Should be NaN-free; any NaN values
+            The convolved 2D array. Should be NaN-free. Any NaN values
             should be handled before calling this method.
 
         kernel : `_StarFinderKernel` or 2D `~numpy.ndarray`
@@ -191,21 +191,23 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
 
     Subclasses **must** implement:
 
-    * :attr:`x_centroid` property -- Object centroid in the x direction.
-    * :attr:`y_centroid` property -- Object centroid in the y direction.
-    * `apply_filters` method -- Filter the catalog using
+    * :attr:`x_centroid` property: the object centroid in the x
+      direction.
+    * :attr:`y_centroid` property: the object centroid in the y
+      direction.
+    * `apply_filters` method: filter the catalog using
       algorithm-specific criteria.
-    * ``default_columns`` attribute -- A tuple of column names used
+    * ``default_columns`` attribute: a tuple of column names used
       by `to_table` when no explicit columns are given. This should
       be set in the subclass ``__init__``.
 
     Subclasses **may** override:
 
-    * `_get_init_attributes` -- Return attribute names to copy
+    * `_get_init_attributes`: return attribute names to copy
       during slicing. The override should include
       ``'default_columns'`` in the returned tuple.
-    * `make_cutouts` -- Customize how cutout arrays are extracted.
-    * `cutout_data` -- Customize the cutouts used for photometry
+    * `make_cutouts`: customize how cutout arrays are extracted.
+    * `cutout_data`: customize the cutouts used for photometry
       (e.g., zeroing negative pixels).
 
     Parameters
@@ -723,7 +725,7 @@ class StarFinderCatalogBase(metaclass=abc.ABCMeta):
         table.meta.update(_get_meta())  # keep table.meta type
         if columns is None:
             if not self.default_columns:
-                msg = ('default_columns attribute is not set; either '
+                msg = ('default_columns attribute is not set. Either '
                        'pass explicit column names or set '
                        'default_columns in the subclass __init__')
                 raise AttributeError(msg)
