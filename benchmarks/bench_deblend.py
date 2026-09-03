@@ -206,7 +206,7 @@ def bench_many_sources(*, n_sources_sweep=(500, 1000, 2000, 4000),
 
         for mode in ('linear', 'exponential', 'sinh'):
             bench = partial(deblend_sources, data, segm, N_PIXELS,
-                            mode=mode, progress_bar=False)
+                            mode=mode)
             segm_deblended = bench()
             t_best = time_best(bench, repeats=repeats)
             per_segment = 1000.0 * t_best / segm.n_labels
@@ -250,7 +250,7 @@ def bench_large_source(*, size_sweep=(250, 500, 1000, 2000), n_peaks=8,
         area = int(segm.areas[0])
         for mode in ('linear', 'exponential'):
             bench = partial(deblend_sources, data, segm, N_PIXELS,
-                            mode=mode, contrast=0.0, progress_bar=False)
+                            mode=mode, contrast=0.0)
             segm_deblended = bench()
             t_best = time_best(bench, repeats=repeats)
             name = f'size={size}, mode={mode}'
@@ -301,7 +301,7 @@ def bench_many_peaks(*, size=1000, n_peaks_sweep=(10, 25, 50, 100),
         data, segm = make_blended_inputs(size, n_peaks, seed=seed)
         for contrast in contrast_sweep:
             bench = partial(deblend_sources, data, segm, N_PIXELS,
-                            contrast=contrast, progress_bar=False)
+                            contrast=contrast)
             segm_deblended = bench()
             t_best = time_best(bench, repeats=repeats)
             name = f'n_peaks={n_peaks}, contrast={contrast}'
@@ -461,14 +461,12 @@ def bench_profile(*, n_sources=2000, size=1000, n_peaks=25, seed=0):
     _, data, segm = make_inputs(n_sources, seed=seed)
     profile_case(
         f'many small sources ({segm.n_labels} segments)',
-        partial(deblend_sources, data, segm, N_PIXELS,
-                progress_bar=False))
+        partial(deblend_sources, data, segm, N_PIXELS))
 
     data, segm = make_blended_inputs(size, n_peaks, seed=seed)
     profile_case(
         f'single large segment ({size}x{size}, {n_peaks} peaks)',
-        partial(deblend_sources, data, segm, N_PIXELS,
-                progress_bar=False))
+        partial(deblend_sources, data, segm, N_PIXELS))
 
 
 def parse_int_list(text):

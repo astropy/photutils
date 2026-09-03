@@ -34,8 +34,7 @@ from photutils.segmentation import (SegmentationImage, SourceCatalog,
                                     detect_sources, detect_threshold,
                                     make_2dgaussian_kernel)
 from photutils.utils import circular_footprint
-from photutils.utils._optional_deps import (HAS_RASTERIO, HAS_SHAPELY,
-                                            HAS_SKIMAGE)
+from photutils.utils._optional_deps import HAS_RASTERIO, HAS_SHAPELY
 
 FWHM = 4.0
 THRESHOLD = 5.0
@@ -189,10 +188,6 @@ def bench_deblend(*, n_sources=1000, process_counts=(1, 4), repeats=3,
     seed : int, optional
         The random number generator seed.
     """
-    if not HAS_SKIMAGE:
-        print('\n== deblend_sources: skipped (scikit-image required) ==')
-        return
-
     data, convolved_data, segm = make_inputs(n_sources, seed=seed)
 
     print(f'\n== deblend_sources ({n_sources} sources, '
@@ -202,9 +197,9 @@ def bench_deblend(*, n_sources=1000, process_counts=(1, 4), repeats=3,
 
     for mode in ('linear', 'exponential', 'sinh'):
         segm_deblended = deblend_sources(convolved_data, segm, N_PIXELS,
-                                         mode=mode, progress_bar=False)
+                                         mode=mode)
         bench = partial(deblend_sources, convolved_data, segm, N_PIXELS,
-                        mode=mode, progress_bar=False)
+                        mode=mode)
         t_best = time_best(bench, repeats=repeats)
         name = f'mode={mode}'
         print(f'{name:>36}{f"{t_best:.4f}s":>12}'
@@ -214,8 +209,7 @@ def bench_deblend(*, n_sources=1000, process_counts=(1, 4), repeats=3,
         if n_processes == 1:
             continue
         bench = partial(deblend_sources, convolved_data, segm, N_PIXELS,
-                        mode='exponential', n_processes=n_processes,
-                        progress_bar=False)
+                        mode='exponential', n_processes=n_processes)
         t_best = time_best(bench, repeats=repeats)
         name = f'mode=exponential, n_processes={n_processes}'
         print(f'{name:>36}{f"{t_best:.4f}s":>12}{"":>10}')
@@ -244,12 +238,8 @@ def bench_finder(*, n_sources=1000, repeats=3, seed=0):
           f'{data.shape[0]}x{data.shape[1]} image) ==')
     print(f'{"benchmark":>24}{"time":>12}{"n_labels":>10}')
 
-    deblend_options = [False]
-    if HAS_SKIMAGE:
-        deblend_options.append(True)
-    for deblend in deblend_options:
-        finder = SourceFinder(n_pixels=N_PIXELS, deblend=deblend,
-                              progress_bar=False)
+    for deblend in (False, True):
+        finder = SourceFinder(n_pixels=N_PIXELS, deblend=deblend)
         segm = finder(convolved_data, THRESHOLD)
         bench = partial(finder, convolved_data, THRESHOLD)
         t_best = time_best(bench, repeats=repeats)
