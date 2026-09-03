@@ -690,7 +690,8 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
                                    'contrast-batch', 'contrast-single',
                                    'contrast-all', 'contrast-negmin',
                                    'neighbors', 'nan',
-                                   'checkerboard-linear'])
+                                   'checkerboard-linear',
+                                   'checkerboard-negmin'])
 def test_chunk_driver_matches_python_path(dtype, scene):
     """
     Test that the compiled chunk driver and contrast loop produce
@@ -706,8 +707,10 @@ def test_chunk_driver_matches_python_path(dtype, scene):
     basin, and the removal path for sources with a negative minimum
     (which always removes one marker at a time), a scene of several
     segments with overlapping bounding boxes, NaN pixels within a
-    segment, and the checkerboard deblended in linear mode, which keeps
-    all of its markers instead of falling back.
+    segment, the checkerboard deblended in linear mode, which keeps
+    all of its markers instead of falling back, and the checkerboard
+    with a non-positive minimum, which falls back to sinh and is then
+    retried with linear levels.
     """
     contrast = 0.001
     mode = 'linear' if scene == 'checkerboard-linear' else 'exponential'
@@ -766,6 +769,10 @@ def test_chunk_driver_matches_python_path(dtype, scene):
 
     data = data.astype(dtype)
     segm = detect_sources(data, threshold, n_pixels)
+    if scene == 'checkerboard-negmin':
+        # A non-positive minimum (sinh fallback) combined with too many
+        # markers (linear retry), applied after the detection
+        data = data - 2
     if scene == 'nan':
         # NaN pixels within the segment, set after the detection
         rng = np.random.default_rng(11)

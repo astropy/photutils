@@ -360,10 +360,9 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
     if nonposmin_labels or n_markers_labels:
         msg = ('The deblending mode of one or more source labels from the '
                f'input segmentation image was changed from "{mode}" to a '
-               'fallback mode ("sinh" for non-positive minimum data '
-               'values, "linear" for too many potential deblended '
-               'sources). See the "info" attribute of the returned '
-               'segmentation image for the affected input labels.')
+               'fallback mode. See the "info" attribute of the returned '
+               'segmentation image for the affected input labels and the '
+               '"mode" documentation for the fallback rules.')
         warnings.warn(msg, DeblendWarning)
 
     relabel_map = None
@@ -474,6 +473,9 @@ def _compute_thresholds(source_min, source_max, n_levels, mode):
     if mode != 'linear':
         delta = source_max - source_min
         normalized = (thresholds - source_min[:, None]) / delta[:, None]
+        # The exponential rows keep the data dtype of the reference
+        # implementation (widened exactly below) while the sinh rows
+        # are float64, so the rows are combined in float64
         thresholds = thresholds.astype(np.float64)
         if mode == 'exponential':
             use_sinh = nonposmin

@@ -314,8 +314,8 @@ New Features
 
   - Added a new ``DeblendWarning`` class, a subclass of astropy's
     ``AstropyUserWarning``, which is raised by ``deblend_sources``
-    when the deblending mode is changed to "linear" for one or more
-    sources. [#2378]
+    when the deblending mode is changed to a fallback mode for one or
+    more sources. [#2378]
 
 Bug Fixes
 ^^^^^^^^^

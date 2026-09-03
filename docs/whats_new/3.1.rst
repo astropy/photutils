@@ -765,7 +765,10 @@ concentrated near the source minimum, recovering faint companions of
 bright sources that the linear spacing misses. Deblending results can
 therefore change for the affected sources, which continue to be recorded
 under the ``'nonposmin_labels'`` key of the ``info`` attribute and
-flagged with ``deblend_nonposmin``.
+flagged with ``deblend_nonposmin``. To reproduce the previous spacing
+for such sources, pass ``mode='linear'``. Note that this applies the
+linear spacing to every source, which is the only way to obtain the
+previous behavior.
 
 PSF ``decode_flags`` Methods Return a Dictionary
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -841,9 +844,9 @@ Deblending Warning Information
 
 `~photutils.segmentation.deblend_sources` now emits a
 `~photutils.utils.DeblendWarning` (a subclass of astropy's
-``AstropyUserWarning``) when the deblending mode is changed to "linear"
-for one or more sources. The affected input labels are now stored as
-arrays directly under ``'nonposmin_labels'`` and ``'n_markers_labels'``
-keys in the returned `~photutils.segmentation.SegmentationImage`
-``info`` dictionary, replacing the nested ``info['warnings']``
-dictionary.
+``AstropyUserWarning``) when the deblending mode is changed
+to a fallback mode for one or more sources. The affected
+input labels are now stored as arrays directly under
+``'nonposmin_labels'`` and ``'n_markers_labels'`` keys in the returned
+`~photutils.segmentation.SegmentationImage` ``info`` dictionary,
+replacing the nested ``info['warnings']`` dictionary.
