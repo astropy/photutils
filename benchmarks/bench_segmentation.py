@@ -25,8 +25,8 @@ import numpy as np
 from astropy.convolution import convolve
 from astropy.modeling.models import Gaussian2D
 from astropy.stats import gaussian_fwhm_to_sigma
-from bench_helpers import (format_sweep_cells, parse_thread_counts,
-                           print_environment, time_best)
+from bench_helpers import (format_sweep_cells, parse_int_list,
+                           parse_thread_counts, print_environment, time_best)
 
 from photutils.datasets import make_wcs
 from photutils.segmentation import (SegmentationImage, SourceCatalog,
@@ -535,27 +535,6 @@ def bench_catalog_n_threads(*, n_sources=1000, thread_counts=(1, 2, 4, 8),
                  for n_threads in thread_counts]
         cells = ''.join(f'{cell:>18}' for cell in format_sweep_cells(times))
         print(f'{name:>32}{cells}')
-
-
-def parse_int_list(text):
-    """
-    Parse a comma-separated list of positive integers.
-
-    Parameters
-    ----------
-    text : str
-        The comma-separated integers (e.g., ``'1,4'``).
-
-    Returns
-    -------
-    result : list of int
-        The parsed integers.
-    """
-    values = [int(item) for item in text.split(',')]
-    if any(value < 1 for value in values):
-        msg = 'values must be positive integers'
-        raise ValueError(msg)
-    return values
 
 
 def main():

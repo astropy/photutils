@@ -9,6 +9,7 @@ import pytest
 from astropy.convolution import convolve
 from astropy.modeling.models import Gaussian2D
 from astropy.utils.exceptions import AstropyDeprecationWarning
+from numpy.testing import assert_equal
 
 from photutils.datasets import make_100gaussians_image
 from photutils.segmentation.finder import SourceFinder
@@ -125,7 +126,34 @@ def test_finder_n_threads():
     finder = SourceFinder(n_pixels=5, n_threads=4)
     assert 'n_threads=4' in repr(finder)
     segm = finder(data, 10)
-    np.testing.assert_array_equal(segm.data, expected.data)
+    assert_equal(segm.data, expected.data)
+
+
+@pytest.mark.parametrize(('kwargs', 'match'), [
+    ({'connectivity': 3}, 'Invalid connectivity'),
+    ({'n_levels': 0}, 'n_levels must be a positive integer'),
+    ({'n_levels': 2.5}, 'n_levels must be a positive integer'),
+    ({'contrast': 1.5}, 'contrast must be'),
+    ({'mode': 'invalid'}, 'mode must be'),
+    ({'n_threads': 0}, 'n_threads must be a positive integer'),
+    ({'n_threads': True}, 'n_threads must be a positive integer'),
+])
+def test_finder_invalid_kwargs(kwargs, match):
+    """
+    Test that invalid keyword values are rejected at construction.
+    """
+    with pytest.raises(ValueError, match=match):
+        SourceFinder(n_pixels=5, **kwargs)
+
+
+@pytest.mark.parametrize('name', ['deblend', 'relabel'])
+def test_finder_invalid_bool_kwargs(name):
+    """
+    Test that the boolean keywords must be booleans.
+    """
+    with pytest.raises(TypeError, match=f'{name} must be a boolean'):
+        SourceFinder(n_pixels=5, **{name: 'yes'})
+    assert SourceFinder(n_pixels=5, **{name: np.True_}) is not None
 
 
 def test_finder_flags_passthrough():

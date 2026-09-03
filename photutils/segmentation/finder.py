@@ -3,7 +3,10 @@
 Tools for detecting sources in an image.
 """
 
-from photutils.segmentation.deblend import deblend_sources
+import numpy as np
+
+from photutils.segmentation.deblend import (_validate_deblend_kwargs,
+                                            deblend_sources)
 from photutils.segmentation.detect import detect_sources
 from photutils.utils._deprecation import (deprecated_getattr,
                                           deprecated_positional_kwargs,
@@ -183,6 +186,13 @@ class SourceFinder:
                  nproc=1,  # noqa: ARG002
                  n_processes=1, progress_bar=True):
         self.n_pixels = as_pair('n_pixels', n_pixels, check_odd=False)
+        for name, value in (('deblend', deblend), ('relabel', relabel)):
+            if not isinstance(value, (bool, np.bool_)):
+                msg = f'{name} must be a boolean, got {value!r}'
+                raise TypeError(msg)
+        _validate_deblend_kwargs(n_levels=n_levels, contrast=contrast,
+                                 mode=mode, connectivity=connectivity,
+                                 n_threads=n_threads)
         self.deblend = deblend
         self.connectivity = connectivity
         self.n_levels = n_levels

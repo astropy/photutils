@@ -792,8 +792,9 @@ def test_chunk_driver_matches_python_path(dtype, scene):
 def test_n_threads_identical():
     """
     Test that multithreaded deblending produces results identical to
-    the single-threaded computation, including when there are more
-    threads than sources.
+    the single-threaded computation, including the mode-fallback
+    warning, info, and flags, and when there are more threads than
+    sources.
     """
     y, x = np.mgrid[0:101, 0:301]
     data = (Gaussian2D(100, 50, 50, 5, 5)(x, y)
@@ -803,18 +804,49 @@ def test_n_threads_identical():
             + Gaussian2D(50, 250, 50, 5, 5)(x, y))
     segm = detect_sources(data, 10, 5)
     assert segm.n_labels == 3
+    data -= 20  # non-positive minima trigger the mode fallback
 
-    expected = deblend_sources(data, segm, 5)
+    match = 'The deblending mode of one or more source labels'
+    with pytest.warns(DeblendWarning, match=match):
+        expected = deblend_sources(data, segm, 5)
     assert expected.n_labels == 5
+    assert_equal(expected.info['nonposmin_labels'], [1, 2, 3])
     for n_threads in (2, 3, 64):
-        result = deblend_sources(data, segm, 5, n_threads=n_threads)
+        with pytest.warns(DeblendWarning, match=match) as record:
+            result = deblend_sources(data, segm, 5, n_threads=n_threads)
+        assert len(record) == 1
         assert_equal(result.data, expected.data)
         assert result._flags_map == expected._flags_map
         assert_equal(result.parent_to_deblended_labels,
                      expected.parent_to_deblended_labels)
+        assert result.info.keys() == expected.info.keys()
+        for key in expected.info:
+            assert_equal(result.info[key], expected.info[key])
 
 
-@pytest.mark.parametrize('n_threads', [0, -1, 1.5])
+def test_n_threads_worker_error():
+    """
+    Test that an error raised while deblending a chunk in a worker
+    thread propagates to the caller.
+    """
+    tile = np.zeros((51, 51))
+    tile[15:36, 15:36] = 10.0
+    tile[13, 13] = 10.0
+    tile[14, 14] = 5.0
+    tile[36, 36] = 10.0
+    tile[37, 37] = 10.0
+    data = np.zeros((51, 120))
+    data[:, :51] = tile
+    data[:, 60:111] = tile
+    segm = detect_sources(data, 0.1, 1, connectivity=8)
+    assert segm.n_labels == 2
+    match = 'Deblending failed for source'
+    with pytest.raises(ValueError, match=match):
+        deblend_sources(data, segm, 1, mode='linear', connectivity=4,
+                        n_threads=2)
+
+
+@pytest.mark.parametrize('n_threads', [0, -1, 1.5, True])
 def test_n_threads_invalid(n_threads):
     """
     Test that invalid n_threads values raise a ValueError.

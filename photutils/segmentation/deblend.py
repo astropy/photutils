@@ -30,6 +30,45 @@ __all__ = ['deblend_sources']
 _MAX_MARKERS = 200
 
 
+def _validate_deblend_kwargs(*, n_levels, contrast, mode, connectivity,
+                             n_threads):
+    """
+    Validate the deblending keywords shared by `deblend_sources` and
+    `~photutils.segmentation.SourceFinder`.
+
+    Parameters
+    ----------
+    n_levels, contrast, mode, connectivity, n_threads
+        The keyword values to validate. See `deblend_sources`.
+
+    Raises
+    ------
+    ValueError
+        If any of the values is invalid.
+    """
+    if (n_levels < 1) or (int(n_levels) != n_levels):
+        msg = f'n_levels must be a positive integer, got {n_levels!r}'
+        raise ValueError(msg)
+
+    if contrast < 0 or contrast > 1:
+        msg = 'contrast must be >= 0 and <= 1'
+        raise ValueError(msg)
+
+    if mode not in ('exponential', 'linear', 'sinh'):
+        msg = "mode must be 'exponential', 'linear', or 'sinh'"
+        raise ValueError(msg)
+
+    if connectivity not in (4, 8):
+        msg = f'Invalid connectivity={connectivity}. Options are 4 or 8'
+        raise ValueError(msg)
+
+    if (isinstance(n_threads, bool)
+            or not isinstance(n_threads, (int, np.integer))
+            or n_threads < 1):
+        msg = f'n_threads must be a positive integer, got {n_threads!r}'
+        raise ValueError(msg)
+
+
 @dataclass
 class _DeblendParams:
     n_pixels: int
@@ -210,20 +249,9 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
         msg = f'n_pixels must be a positive integer, got {n_pixels!r}'
         raise ValueError(msg)
 
-    if (n_levels < 1) or (int(n_levels) != n_levels):
-        msg = f'n_levels must be a positive integer, got {n_levels!r}'
-        raise ValueError(msg)
-    if contrast < 0 or contrast > 1:
-        msg = 'contrast must be >= 0 and <= 1'
-        raise ValueError(msg)
-
-    if mode not in ('exponential', 'linear', 'sinh'):
-        msg = "mode must be 'exponential', 'linear', or 'sinh'"
-        raise ValueError(msg)
-
-    if not isinstance(n_threads, (int, np.integer)) or n_threads < 1:
-        msg = 'n_threads must be a positive integer'
-        raise ValueError(msg)
+    _validate_deblend_kwargs(n_levels=n_levels, contrast=contrast,
+                             mode=mode, connectivity=connectivity,
+                             n_threads=n_threads)
 
     if contrast == 1:  # no deblending
         segm_img = segmentation_image.copy()
@@ -271,10 +299,19 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
 
     n_chunks = min(int(n_threads), len(labels))
     if n_chunks > 1:
-        # The sources are divided into chunks processed concurrently.
-        # The results are assembled in the input order, so they are
-        # identical to the single-threaded computation
-        chunk_indices = np.array_split(np.arange(len(labels)), n_chunks)
+        # The sources are dealt out to the chunks in decreasing order of
+        # their bounding-box area (the size of the cutouts the kernels
+        # work on), so that the chunks carry similar amounts of work
+        # regardless of the source ordering. The chunks are processed
+        # concurrently and the per-source results are scattered back
+        # into the input order, so they are identical to the
+        # single-threaded computation.
+        bbox_areas = np.array([(slc[0].stop - slc[0].start)
+                               * (slc[1].stop - slc[1].start)
+                               for slc in all_slices])
+        order = np.argsort(bbox_areas, kind='stable')[::-1]
+        chunk_indices = [np.sort(order[i::n_chunks])
+                         for i in range(n_chunks)]
 
         def _run_chunk(indices):
             chunk_slices = [all_slices[idx] for idx in indices]
@@ -282,11 +319,14 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                                           driver_segm, labels[indices],
                                           chunk_slices, deblend_params)
 
+        results = [None] * len(labels)
         with ThreadPoolExecutor(max_workers=n_chunks) as executor:
-            results = [result
-                       for chunk in executor.map(_run_chunk,
-                                                 chunk_indices)
-                       for result in chunk]
+            for indices, chunk_results in zip(
+                    chunk_indices, executor.map(_run_chunk, chunk_indices),
+                    strict=True):
+                for index, result in zip(indices, chunk_results,
+                                         strict=True):
+                    results[index] = result
     else:
         results = _deblend_sources_chunk(data, segm_data, driver_data,
                                          driver_segm, labels,

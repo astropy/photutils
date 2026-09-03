@@ -82,6 +82,27 @@ def print_environment():
     print(f'photutils path: {os.path.dirname(photutils.__file__)}')
 
 
+def parse_int_list(text):
+    """
+    Parse a comma-separated list of positive integers.
+
+    Parameters
+    ----------
+    text : str
+        The comma-separated integers (e.g., ``'250,500,1000'``).
+
+    Returns
+    -------
+    result : list of int
+        The parsed integers.
+    """
+    values = [int(item) for item in text.split(',')]
+    if any(value < 1 for value in values):
+        msg = 'values must be positive integers'
+        raise ValueError(msg)
+    return values
+
+
 def parse_thread_counts(text):
     """
     Parse a comma-separated list of thread counts.
@@ -96,11 +117,7 @@ def parse_thread_counts(text):
     result : list of int
         The thread counts.
     """
-    counts = [int(item) for item in text.split(',')]
-    if any(count < 1 for count in counts):
-        msg = 'thread counts must be positive integers'
-        raise ValueError(msg)
-    return counts
+    return parse_int_list(text)
 
 
 def format_sweep_cells(times):

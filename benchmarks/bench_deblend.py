@@ -32,7 +32,8 @@ from functools import partial
 import numpy as np
 from astropy.modeling.models import Gaussian2D
 from astropy.stats import gaussian_fwhm_to_sigma
-from bench_helpers import parse_thread_counts, print_environment, time_best
+from bench_helpers import (format_sweep_cells, parse_int_list,
+                           parse_thread_counts, print_environment, time_best)
 from bench_segmentation import N_PIXELS, THRESHOLD, make_inputs
 
 from photutils.segmentation import detect_sources
@@ -501,8 +502,6 @@ def bench_threads(*, n_sources=4000, size=1000, n_peaks=25,
     seed : int, optional
         The random number generator seed.
     """
-    from bench_helpers import format_sweep_cells
-
     _, data, segm = make_inputs(n_sources, seed=seed)
     tile = make_blended_image(size, n_peaks, seed=seed)
     grid = np.empty((2 * size, 2 * size))
@@ -528,27 +527,6 @@ def bench_threads(*, n_sources=4000, size=1000, n_peaks=25,
         cells = ''.join(f'{cell:>18}'
                         for cell in format_sweep_cells(times))
         print(f'{name:>24}{cells}')
-
-
-def parse_int_list(text):
-    """
-    Parse a comma-separated list of positive integers.
-
-    Parameters
-    ----------
-    text : str
-        The comma-separated integers (e.g., ``'250,500,1000'``).
-
-    Returns
-    -------
-    result : list of int
-        The parsed integers.
-    """
-    values = [int(item) for item in text.split(',')]
-    if any(value < 1 for value in values):
-        msg = 'values must be positive integers'
-        raise ValueError(msg)
-    return values
 
 
 def main():
