@@ -907,9 +907,9 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
 
     max_markers : int
         The number of markers above which the marker image of a source
-        is not built. Its marker count is still returned, so that the
-        caller can retry the source with other levels. A negative value
-        disables the limit.
+        is not kept (its region is left at zero). Its marker count is
+        still returned, so that the caller can retry the source with
+        other levels. A negative value disables the limit.
 
     saddle_limits : 1D float64 `~numpy.ndarray` or `None`, optional
         If given, the markers are selected with the saddle contrast
@@ -934,13 +934,18 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
     if thresholds.shape[0] != n_src:
         msg = 'thresholds must have one row per source'
         raise ValueError(msg)
-    if starts.shape[0] != n_src:
-        msg = 'starts must have one entry per source'
+    if (y0.shape[0] != n_src or y1.shape[0] != n_src
+            or x0.shape[0] != n_src or x1.shape[0] != n_src
+            or starts.shape[0] != n_src):
+        msg = 'every per-source array must have one entry per source'
         raise ValueError(msg)
 
     max_ntot = 1
     for isrc in range(n_src):
         n_tot = (y1[isrc] - y0[isrc]) * (x1[isrc] - x0[isrc])
+        if starts[isrc] + n_tot > packed.shape[0]:
+            msg = 'packed is too small for the source regions'
+            raise ValueError(msg)
         if n_tot > max_ntot:
             max_ntot = n_tot
 
@@ -983,15 +988,18 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
         saddle.posimg = &posimg_mv[0]
         saddle.fsum = &fsum_mv[0]
 
-    for isrc in range(n_src):
-        ny_c = y1[isrc] - y0[isrc]
-        nx_c = x1[isrc] - x0[isrc]
-        n_tot = ny_c * nx_c
-        start = starts[isrc]
-        if use_saddle:
-            saddle.limit = saddle_limits_mv[isrc]
-            saddle.thresholds = &thresholds[isrc, 0]
-        with nogil:
+    # The whole chunk runs without the GIL, so that the threads of a
+    # multithreaded deblend do not contend for it once per source.
+    cdef bint failed = False
+    with nogil:
+        for isrc in range(n_src):
+            ny_c = y1[isrc] - y0[isrc]
+            nx_c = x1[isrc] - x0[isrc]
+            n_tot = ny_c * nx_c
+            start = starts[isrc]
+            if use_saddle:
+                saddle.limit = saddle_limits_mv[isrc]
+                saddle.thresholds = &thresholds[isrc, 0]
             for p in range(n_tot):
                 packed[start + p] = 0
             n_markers = _source_markers(
@@ -1002,12 +1010,15 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
                 &parent_mv[0], &size_mv[0], &added_mv[0],
                 &stamp_mv[0], &node_of_root_mv[0], &order_mv[0],
                 &flood_mv[0], &packed[start])
+            if n_markers < 0:
+                failed = True
+                break
             if n_markers < 2 or (max_markers >= 0
                                  and n_markers > max_markers):
                 for p in range(n_tot):
                     packed[start + p] = 0
-        if n_markers < 0:
-            raise MemoryError
-        n_markers_mv[isrc] = n_markers
+            n_markers_mv[isrc] = n_markers
+    if failed:
+        raise MemoryError
 
     return n_markers_arr

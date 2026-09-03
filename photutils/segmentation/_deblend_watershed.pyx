@@ -537,7 +537,11 @@ def deblend_contrast_chunk(const data_t[:, ::1] data,
     ValueError
         If the flooded basins of a source do not cover its segment,
         which happens when the detection and deblending connectivities
-        differ.
+        differ, or if the per-source arrays do not have one entry per
+        source, or if ``packed`` is too small for the source regions.
+
+    MemoryError
+        If a workspace allocation fails.
     """
     cdef Py_ssize_t n_src = labels.shape[0]
     cdef Py_ssize_t img_nx = data.shape[1]
@@ -547,10 +551,22 @@ def deblend_contrast_chunk(const data_t[:, ::1] data,
     cdef int status = 0
     cdef bint conn8 = connectivity == 8
 
+    if (y0.shape[0] != n_src or y1.shape[0] != n_src
+            or x0.shape[0] != n_src or x1.shape[0] != n_src
+            or starts.shape[0] != n_src or n_markers.shape[0] != n_src
+            or source_sum.shape[0] != n_src
+            or source_min.shape[0] != n_src):
+        msg = 'every per-source array must have one entry per source'
+        raise ValueError(msg)
+
+    # The workspaces are sized to the largest cutout that is deblended
     max_ntot = 1
     for isrc in range(n_src):
         n_tot = (y1[isrc] - y0[isrc]) * (x1[isrc] - x0[isrc])
-        if n_tot > max_ntot:
+        if starts[isrc] + n_tot > packed.shape[0]:
+            msg = 'packed is too small for the source regions'
+            raise ValueError(msg)
+        if n_markers[isrc] >= 2 and n_tot > max_ntot:
             max_ntot = n_tot
 
     posimg_arr = np.empty(max_ntot, dtype=np.float64)
@@ -657,12 +673,30 @@ def write_deblended_labels(segm_t[:, ::1] segm_out,
 
     label_offsets : 1D int64 `~numpy.ndarray`
         The value added to the labels of each source.
+
+    Raises
+    ------
+    ValueError
+        If the per-source arrays do not have one entry per source, or
+        if ``packed`` is too small for the source regions.
     """
     cdef Py_ssize_t n_src = n_labels.shape[0]
     cdef Py_ssize_t img_nx = segm_out.shape[1]
     cdef Py_ssize_t isrc, ny_c, nx_c, iy, ix, idx, p, start
     cdef int value
     cdef segm_t* out_ptr = &segm_out[0, 0]
+
+    if (y0.shape[0] != n_src or y1.shape[0] != n_src
+            or x0.shape[0] != n_src or x1.shape[0] != n_src
+            or starts.shape[0] != n_src
+            or label_offsets.shape[0] != n_src):
+        msg = 'every per-source array must have one entry per source'
+        raise ValueError(msg)
+    for isrc in range(n_src):
+        if (starts[isrc] + (y1[isrc] - y0[isrc]) * (x1[isrc] - x0[isrc])
+                > packed.shape[0]):
+            msg = 'packed is too small for the source regions'
+            raise ValueError(msg)
 
     with nogil:
         for isrc in range(n_src):

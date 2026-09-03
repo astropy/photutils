@@ -419,8 +419,11 @@ def deblend_sources(data, segmentation_image, n_pixels, *, labels=None,
                                result.n_labels, label_offsets[indices])
     segm_deblended = segm_out.astype(segm_data.dtype, copy=False)
 
+    # The child labels carry the dtype of the output segmentation
+    # image, as the image itself does
     deblend_label_map = {
-        int(label): np.arange(1, count + 1) + offset
+        int(label): (np.arange(1, count + 1) + offset).astype(
+            segm_deblended.dtype)
         for label, count, offset in zip(labels[deblended],
                                         counts[deblended],
                                         label_offsets[deblended],
@@ -577,6 +580,10 @@ def _deblend_sources_chunk(data, segm_data,  # noqa: ARG001
                            deblend_params):
     """
     Deblend a chunk of labeled sources.
+
+    The signature is shared with the pure-Python chunk function of the
+    cross-implementation tests, which needs ``segm_data`` even though
+    the compiled kernels read only ``driver_segm``.
 
     The data extrema of every source in the chunk are computed by a
     compiled kernel, the multithreshold levels and the mode fallbacks

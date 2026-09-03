@@ -296,16 +296,10 @@ New Features
 
   - Significantly improved the performance of source deblending in
     ``deblend_sources`` and ``SourceFinder``, producing identical
-    results. The level quantization, the marker construction, the
-    watershed contrast loop, and the label write-out are batched over
-    chunks of sources in compiled code that releases the GIL. The total
-    source flux used by the contrast criterion is now accumulated
-    sequentially in float64 by the compiled kernel. It was previously
-    computed with a ``nansum`` reduction whose rounding depends on the
-    data dtype and on whether bottleneck is installed, so the contrast
-    fractions can differ in the last bits. Deblending is typically ~7-50
-    times faster, both for fields of many small blended sources and for
-    large segments with many markers. [#2408, #2413]
+    results. The multithreshold watershed markers are now built by
+    compiled code. Deblending is typically ~7-30 times faster, both for
+    fields of many small blended sources and for large segments with
+    many markers. [#2408, #2413]
 
   - Added an ``n_threads`` keyword to ``deblend_sources`` and
     ``SourceFinder`` to deblend the sources using multiple threads.
