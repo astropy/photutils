@@ -855,7 +855,9 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
                           const long long[::1] y1,
                           const long long[::1] x0,
                           const long long[::1] x1,
-                          const double[:, ::1] thresholds, *,
+                          const double[:, ::1] thresholds,
+                          int[::1] packed,
+                          const Py_ssize_t[::1] starts, *,
                           int n_pixels, int connectivity,
                           int max_markers, saddle_limits=None):
     """
@@ -884,6 +886,18 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
         The multithreshold levels of each source, with shape
         ``(n_sources, n_levels)`` and ascending along the second axis.
 
+    packed : 1D int32 `~numpy.ndarray`
+        The buffer that receives the marker image of every source. The
+        region of source ``i`` starts at ``starts[i]`` and holds its
+        ``(y1 - y0) * (x1 - x0)`` cutout pixels in raster order. Each
+        region is zeroed, and then the markers are written for the
+        sources that split into two or more markers (and no more than
+        ``max_markers`` when it is not negative). The other regions are
+        left at zero.
+
+    starts : 1D intp `~numpy.ndarray`
+        The start index of each source's region in ``packed``.
+
     n_pixels : int
         The minimum number of connected pixels an above-threshold
         component must have to be considered a source.
@@ -907,23 +921,21 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
 
     Returns
     -------
-    markers_list : list of 2D int `~numpy.ndarray` or `None`
-        The cutout marker image of each source that splits into two or
-        more markers (and no more than ``max_markers``), otherwise
-        `None`.
-
     n_markers : 1D intp `~numpy.ndarray`
         The number of markers found for each source.
     """
     cdef Py_ssize_t n_src = labels.shape[0]
     cdef Py_ssize_t img_nx = data.shape[1]
     cdef int n_levels = thresholds.shape[1]
-    cdef Py_ssize_t isrc, n_tot, max_ntot, ny_c, nx_c
+    cdef Py_ssize_t isrc, n_tot, max_ntot, ny_c, nx_c, start, p
     cdef Py_ssize_t n_markers
     cdef bint use_saddle = saddle_limits is not None
 
     if thresholds.shape[0] != n_src:
         msg = 'thresholds must have one row per source'
+        raise ValueError(msg)
+    if starts.shape[0] != n_src:
+        msg = 'starts must have one entry per source'
         raise ValueError(msg)
 
     max_ntot = 1
@@ -940,7 +952,6 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
     node_of_root_arr = np.zeros(max_ntot, dtype=np.int32)
     order_arr = np.empty(max_ntot, dtype=np.int32)
     flood_arr = np.empty(max_ntot, dtype=np.int32)
-    markers_arr = np.zeros(max_ntot, dtype=np.int32)
     n_markers_arr = np.zeros(n_src, dtype=np.intp)
 
     cdef int[::1] q_mv = q_arr
@@ -951,7 +962,6 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
     cdef int[::1] node_of_root_mv = node_of_root_arr
     cdef int[::1] order_mv = order_arr
     cdef int[::1] flood_mv = flood_arr
-    cdef int[::1] markers_mv = markers_arr
     cdef Py_ssize_t[::1] n_markers_mv = n_markers_arr
 
     # The saddle criterion inputs, with workspaces used only by it
@@ -973,14 +983,17 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
         saddle.posimg = &posimg_mv[0]
         saddle.fsum = &fsum_mv[0]
 
-    markers_list = []
     for isrc in range(n_src):
         ny_c = y1[isrc] - y0[isrc]
         nx_c = x1[isrc] - x0[isrc]
+        n_tot = ny_c * nx_c
+        start = starts[isrc]
         if use_saddle:
             saddle.limit = saddle_limits_mv[isrc]
             saddle.thresholds = &thresholds[isrc, 0]
         with nogil:
+            for p in range(n_tot):
+                packed[start + p] = 0
             n_markers = _source_markers(
                 &data[0, 0], &segm_data[0, 0], img_nx, labels[isrc],
                 y0[isrc], y1[isrc], x0[isrc], x1[isrc], n_pixels,
@@ -988,18 +1001,13 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
                 &saddle, &q_mv[0],
                 &parent_mv[0], &size_mv[0], &added_mv[0],
                 &stamp_mv[0], &node_of_root_mv[0], &order_mv[0],
-                &flood_mv[0], &markers_mv[0])
+                &flood_mv[0], &packed[start])
+            if n_markers < 2 or (max_markers >= 0
+                                 and n_markers > max_markers):
+                for p in range(n_tot):
+                    packed[start + p] = 0
         if n_markers < 0:
             raise MemoryError
         n_markers_mv[isrc] = n_markers
-        if n_markers >= 2 and (max_markers < 0
-                               or n_markers <= max_markers):
-            n_tot = ny_c * nx_c
-            quantized = q_arr[:n_tot].reshape(ny_c, nx_c)
-            markers = markers_arr[:n_tot].reshape(ny_c, nx_c)
-            markers_list.append(np.where(quantized > 0, markers,
-                                         np.int32(0)))
-        else:
-            markers_list.append(None)
 
-    return markers_list, n_markers_arr
+    return n_markers_arr

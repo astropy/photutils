@@ -976,6 +976,52 @@ def test_source_stats_matches_reference(dtype):
                     rtol=1e-12)
 
 
+def test_markers_chunk_packed_buffer():
+    """
+    Test that the marker kernel writes each source's markers into its
+    packed region, leaves the regions of sources that do not split or
+    that exceed max_markers at zero, and reports the marker counts.
+    """
+    y, x = np.mgrid[0:61, 0:141]
+    data = (Gaussian2D(100, 30, 30, 5, 5)(x, y)
+            + Gaussian2D(100, 45, 30, 5, 5)(x, y)
+            + Gaussian2D(50, 110, 30, 5, 5)(x, y))
+    segm = detect_sources(data, 10, 5)
+    assert segm.n_labels == 2
+    driver_data = np.ascontiguousarray(data)
+    labels = np.asarray(segm.labels, dtype=np.int64)
+    y0 = np.array([slc[0].start for slc in segm.slices])
+    y1 = np.array([slc[0].stop for slc in segm.slices])
+    x0 = np.array([slc[1].start for slc in segm.slices])
+    x1 = np.array([slc[1].stop for slc in segm.slices])
+    smin, smax, _ = deblend_source_stats(driver_data, segm.data, labels,
+                                         y0, y1, x0, x1)
+    thresholds, _ = _compute_thresholds(smin, smax, 32, 'exponential')
+    sizes = (y1 - y0) * (x1 - x0)
+    offsets = np.concatenate(([0], np.cumsum(sizes))).astype(np.intp)
+    packed = np.zeros(offsets[-1], dtype=np.int32)
+
+    n_markers = deblend_markers_chunk(driver_data, segm.data, labels,
+                                      y0, y1, x0, x1, thresholds,
+                                      packed, offsets[:-1], n_pixels=5,
+                                      connectivity=8, max_markers=-1)
+    assert_equal(n_markers, [2, 0])
+    region0 = packed[offsets[0]:offsets[1]]
+    region1 = packed[offsets[1]:offsets[2]]
+    assert_equal(np.unique(region0), [0, 1, 2])
+    assert not region1.any()
+
+    # A limit below the marker count leaves the region zero but still
+    # reports the count
+    packed[:] = 0
+    n_markers = deblend_markers_chunk(driver_data, segm.data, labels,
+                                      y0, y1, x0, x1, thresholds,
+                                      packed, offsets[:-1], n_pixels=5,
+                                      connectivity=8, max_markers=1)
+    assert_equal(n_markers, [2, 0])
+    assert not packed.any()
+
+
 @pytest.mark.parametrize('dtype', ['float64', 'float32'])
 @pytest.mark.parametrize('connectivity', [8, 4])
 @pytest.mark.parametrize(
@@ -1041,12 +1087,16 @@ def test_saddle_markers_match_reference(dtype, connectivity, scene,
     thresholds_2d = np.ascontiguousarray(thresholds[None, :],
                                          dtype=np.float64)
     limit = deblender.contrast * float(deblender.source_sum)
-    markers_list, _ = deblend_markers_chunk(
+    packed = np.zeros(cutout.size, dtype=np.int32)
+    starts = np.zeros(1, dtype=np.intp)
+    n_markers = deblend_markers_chunk(
         np.ascontiguousarray(data), segm.data,
         np.array([1], dtype=np.int64), y0, y1, x0, x1, thresholds_2d,
-        n_pixels=5, connectivity=connectivity, max_markers=-1,
-        saddle_limits=np.array([limit], dtype=np.float64))
-    result = markers_list[0]
+        packed, starts, n_pixels=5, connectivity=connectivity,
+        max_markers=-1, saddle_limits=np.array([limit], dtype=np.float64))
+    result = None
+    if n_markers[0] >= 2:
+        result = packed.reshape(cutout.shape)
 
     if expected is None or result is None:
         assert expected is None

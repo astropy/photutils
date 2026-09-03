@@ -596,9 +596,19 @@ def _deblend_sources_chunk(data, segm_data,  # noqa: ARG001
     # levels of the other sources are computed in the data dtype, as
     # the pure-Python reference implementation does
     active = np.flatnonzero(source_min < source_max)
-    markers_list = [None] * len(labels)
     nonposmin = np.zeros(len(labels), dtype=bool)
     n_markers_fallback = np.zeros(len(labels), dtype=bool)
+    n_markers = np.zeros(len(labels), dtype=np.intp)
+
+    # One packed buffer holds the bounding-box cutout of every source
+    # in the chunk, back to back. The kernels write the markers and
+    # then the deblended labels into it, so no per-source arrays are
+    # created in Python
+    sizes = (y1 - y0) * (x1 - x0)
+    offsets = np.zeros(len(labels) + 1, dtype=np.intp)
+    np.cumsum(sizes, out=offsets[1:])
+    packed = np.zeros(offsets[-1], dtype=np.int32)
+    starts = offsets[:-1]
 
     use_saddle = deblend_params.contrast_method == 'saddle'
     if active.size > 0:
@@ -618,43 +628,41 @@ def _deblend_sources_chunk(data, segm_data,  # noqa: ARG001
         # watershed, so no fallback is needed.
         can_retry = mode != 'linear' and not use_saddle
         max_markers = _MAX_MARKERS if can_retry else -1
-        markers, n_markers = deblend_markers_chunk(
+        n_markers[active] = deblend_markers_chunk(
             driver_data, driver_segm, labels[active], y0[active],
-            y1[active], x0[active], x1[active], thresholds,
-            max_markers=max_markers, saddle_limits=saddle_limits,
-            **chunk_kwargs)
-        for index, source_markers in zip(active, markers, strict=True):
-            markers_list[index] = source_markers
+            y1[active], x0[active], x1[active], thresholds, packed,
+            starts[active], max_markers=max_markers,
+            saddle_limits=saddle_limits, **chunk_kwargs)
 
         # Too many markers make the watershed step very slow, so such
         # sources are deblended again with linearly spaced levels
         if can_retry:
-            retry = np.flatnonzero(n_markers > _MAX_MARKERS)
+            retry = np.flatnonzero(n_markers[active] > _MAX_MARKERS)
             if retry.size > 0:
                 thresholds, _ = _compute_thresholds(
                     smin[retry], smax[retry], n_levels, 'linear')
                 retry = active[retry]
-                markers, _ = deblend_markers_chunk(
+                n_markers[retry] = deblend_markers_chunk(
                     driver_data, driver_segm, labels[retry], y0[retry],
-                    y1[retry], x0[retry], x1[retry], thresholds,
-                    max_markers=-1, **chunk_kwargs)
-                for index, source_markers in zip(retry, markers,
-                                                 strict=True):
-                    markers_list[index] = source_markers
+                    y1[retry], x0[retry], x1[retry], thresholds, packed,
+                    starts[retry], max_markers=-1, **chunk_kwargs)
                 n_markers_fallback[retry] = True
 
     results = []
-    for index, (label, markers) in enumerate(
-            zip(labels, markers_list, strict=True)):
+    for index, label in enumerate(labels):
         warns = {}
         if nonposmin[index]:
             warns['nonposmin'] = 'non-positive minimum'
         if n_markers_fallback[index]:
             warns['n_markers'] = 'too many markers'
-        if markers is None:
+        if n_markers[index] < 2:
             results.append((None, warns))
             continue
 
+        ny_c = int(y1[index] - y0[index])
+        nx_c = int(x1[index] - x0[index])
+        markers = packed[offsets[index]:offsets[index + 1]]
+        markers = markers.reshape(ny_c, nx_c)
         # The source flux and minimum come from the compiled stats
         # kernel. With the saddle criterion, the markers are already
         # contrast-selected, so the basin removal is disabled.
