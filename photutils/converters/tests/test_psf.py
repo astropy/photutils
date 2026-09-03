@@ -156,7 +156,7 @@ def test_gridded_psf_converter_preserves_modified_oversampling(tmp_path):
                     reason='asdf-astropy is not installed')
 @pytest.mark.parametrize(('example', 'converter_name', 'method'), [
     # GriddedPSFModel is an astropy model, so its converter builds the
-    # tree in to_yaml_tree_transform; STDPSFGrid is not a model, so its
+    # tree in to_yaml_tree_transform. STDPSFGrid is not a model, so its
     # converter uses to_yaml_tree.
     (examples.gridded_psf, 'GriddedPSFModelConverter',
      'to_yaml_tree_transform'),

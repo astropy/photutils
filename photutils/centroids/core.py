@@ -311,7 +311,7 @@ def centroid_quadratic(data, mask=None, fit_boxsize=5, xpeak=None,
     # data
     if xidx in (0, nx - 1) or yidx in (0, ny - 1):
         msg = ('maximum value is at the edge of the data and its '
-               'position was returned; no quadratic fit was performed')
+               'position was returned. No quadratic fit was performed')
         warnings.warn(msg, AstropyUserWarning)
         return np.array((xidx, yidx), dtype=float)
 

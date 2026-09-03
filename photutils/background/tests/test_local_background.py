@@ -247,7 +247,7 @@ class TestFastLocalBackground:
         """
         Test that non-finite data values are excluded, matching the
         per-aperture loop (where sigma clipping removes them with a
-        warning; the fast path masks them silently).
+        warning, while the fast path masks them silently).
         """
         data = self.data.copy()
         data[30:34, 36:40] = np.nan  # inside the annulus at (30, 30)

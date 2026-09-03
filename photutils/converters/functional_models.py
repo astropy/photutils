@@ -22,7 +22,7 @@ class _PSFModelConverter(TransformConverterBase):
     """
     Base class for the photutils PSF model converters.
 
-    Subclasses name the model parameters that describe the profile;
+    Subclasses name the model parameters that describe the profile.
     ``flux``, ``x_0``, ``y_0``, and ``bbox_factor`` are common to every
     model and are handled here.
 

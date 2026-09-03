@@ -252,7 +252,8 @@ class TestGaussian2DMoments:
 
     def test_symmetric_gaussian(self):
         """
-        Circular Gaussian: centroid and equal stddevs are recovered.
+        Test that a circular Gaussian recovers the centroid and equal
+        stddevs.
         """
         xcen, ycen, std = 25.0, 25.0, 5.0
         model = Gaussian2D(1.0, xcen, ycen, x_stddev=std, y_stddev=std)
@@ -277,8 +278,9 @@ class TestGaussian2DMoments:
                              np.deg2rad((0, 22, 37, 45, 60, 88, 90)))
     def test_asymmetric_gaussian_theta(self, theta_in):
         """
-        Axis-aligned elliptical Gaussian (theta=0): centroid and axis
-        stddevs are recovered. The larger sigma maps to x_stddev.
+        Test that an axis-aligned elliptical Gaussian (theta=0)
+        recovers the centroid and axis stddevs. The larger sigma maps
+        to x_stddev.
         """
         ampl = 3.5
         xcen, ycen = 30.0, 20.0

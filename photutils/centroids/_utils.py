@@ -57,7 +57,7 @@ def _process_data_mask(data, mask, *, ndim=2, fill_value=np.nan):
 
     This function validates the input data and mask, handles non-finite
     values, and returns the processed data. The input ``mask`` is never
-    mutated; a new array is created if the mask needs to be combined
+    mutated. A new array is created if the mask needs to be combined
     with a `~numpy.ma.MaskedArray` mask. Copies of ``data`` are made
     only when modifications are required.
 
@@ -109,7 +109,7 @@ def _process_data_mask(data, mask, *, ndim=2, fill_value=np.nan):
             data = data.copy()
         data[badmask] = fill_value
 
-    # If the input was a MaskedArray, return a plain ndarray; the mask
+    # If the input was a MaskedArray, return a plain ndarray. The mask
     # has already been applied to the data above.
     if is_masked_array:
         data = np.asarray(data)
@@ -122,7 +122,7 @@ def _validate_gaussian_inputs(data, mask, error):
     Process and validate the data, mask, and optional error inputs for
     Gaussian centroid functions.
 
-    The input ``mask`` and ``error`` arrays are not mutated; copies are
+    The input ``mask`` and ``error`` arrays are not mutated. Copies are
     made only when modifications are needed.
 
     Parameters
@@ -163,7 +163,7 @@ def _validate_gaussian_inputs(data, mask, error):
         if np.any(error_mask):
             combined_mask |= error_mask
 
-        # Zero error at all invalid pixel positions; copy only if needed
+        # Zero error at all invalid pixel positions, copying only if needed
         if np.any(combined_mask):
             error = error.copy()
             error[combined_mask] = 0.0
@@ -257,7 +257,7 @@ def _gaussian2d_moments(data):
 
     # Orientation angle (radians) between x-axis and the major axis.
     # When the distribution is nearly isotropic (mu_20 ~ mu_02, mu_11 ~
-    # 0), the angle is undefined; guard against floating-point noise by
+    # 0), the angle is undefined. Guard against floating-point noise by
     # returning theta = 0 in that case.
     anisotropy = np.sqrt((mu_20 - mu_02) ** 2 + (2.0 * mu_11) ** 2)
     if anisotropy < 1e-6 * (mu_20 + mu_02):

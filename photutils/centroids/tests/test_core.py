@@ -339,7 +339,7 @@ def test_centroid_quadratic_nan_in_fitbox():
     fit.
     """
     data = make_gaussian_source((11, 11), 100.0, 5.0, 5.0, 2.0, 2.0, 0)
-    # Place a NaN adjacent to the peak; with fit_boxsize=5 centered at
+    # Place a NaN adjacent to the peak. With fit_boxsize=5 centered at
     # (5, 5) the fit box covers rows/cols [3:8], so (row=5, col=4) is
     # inside the box and will trigger the ``if not np.all(finite_mask)``
     # branch.
