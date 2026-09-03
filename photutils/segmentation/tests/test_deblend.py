@@ -21,7 +21,7 @@ from photutils.segmentation._deblend_markers import (deblend_markers_chunk,
                                                      deblend_source_stats)
 from photutils.segmentation._deblend_reference import _SingleSourceDeblender
 from photutils.segmentation._deblend_watershed import deblend_watershed
-from photutils.segmentation.deblend import (_compute_thresholds,
+from photutils.segmentation.deblend import (_ChunkResult, _compute_thresholds,
                                             _create_relabel_map,
                                             _DeblendParams)
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
@@ -674,16 +674,35 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
 
     Returns
     -------
-    results : list of (2D `~numpy.ndarray` or `None`, dict)
-        The deblended cutout and warnings for each source.
+    result : `_ChunkResult`
+        The per-source deblended labels in the packed layout of the
+        compiled chunk driver.
     """
-    results = []
-    for label, slc in zip(labels, slices, strict=True):
+    y0 = np.array([slc[0].start for slc in slices], dtype=np.int64)
+    y1 = np.array([slc[0].stop for slc in slices], dtype=np.int64)
+    x0 = np.array([slc[1].start for slc in slices], dtype=np.int64)
+    x1 = np.array([slc[1].stop for slc in slices], dtype=np.int64)
+    sizes = (y1 - y0) * (x1 - x0)
+    offsets = np.zeros(len(labels) + 1, dtype=np.intp)
+    np.cumsum(sizes, out=offsets[1:])
+    packed = np.zeros(offsets[-1], dtype=np.int32)
+    n_labels = np.zeros(len(labels), dtype=np.intp)
+    nonposmin = np.zeros(len(labels), dtype=bool)
+    n_markers_fallback = np.zeros(len(labels), dtype=bool)
+    for index, (label, slc) in enumerate(zip(labels, slices,
+                                             strict=True)):
         deblender = _SingleSourceDeblender(data[slc], segm_data[slc],
                                            label, deblend_params)
-        results.append((deblender.deblend_source(),
-                        deblender.warnings))
-    return results
+        deblended = deblender.deblend_source()
+        nonposmin[index] = 'nonposmin' in deblender.warnings
+        n_markers_fallback[index] = 'n_markers' in deblender.warnings
+        if deblended is not None:
+            n_labels[index] = deblended.max()
+            packed[offsets[index]:offsets[index + 1]] = deblended.ravel()
+    return _ChunkResult(n_labels=n_labels, packed=packed,
+                        offsets=offsets, y0=y0, y1=y1, x0=x0, x1=x1,
+                        nonposmin=nonposmin,
+                        n_markers_fallback=n_markers_fallback)
 
 
 @pytest.mark.parametrize('contrast_method', ['basin', 'saddle'])

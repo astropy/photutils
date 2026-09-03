@@ -30,7 +30,8 @@ import numpy as np
 from libc.math cimport INFINITY, isnan
 from libc.stdlib cimport free, malloc
 
-__all__ = ['deblend_source_contrast', 'deblend_watershed']
+__all__ = ['deblend_contrast_chunk', 'deblend_watershed',
+           'write_deblended_labels']
 
 ctypedef fused data_t:
     float
@@ -229,7 +230,7 @@ def deblend_watershed(image, markers, mask, connectivity):
     This entry point is exported only for the pure-Python
     reference implementation in ``_deblend_reference`` and the
     cross-implementation tests. The production contrast loop calls the
-    watershed core directly through ``deblend_source_contrast``.
+    watershed core directly through ``deblend_contrast_chunk``.
 
     Parameters
     ----------
@@ -452,27 +453,35 @@ cdef int _contrast_core(const double* posimg, const double* negimg,
     return status
 
 
-def deblend_source_contrast(const data_t[:, ::1] data,
-                            const segm_t[:, ::1] segm_data,
-                            long long label, Py_ssize_t y0,
-                            Py_ssize_t y1, Py_ssize_t x0,
-                            Py_ssize_t x1, markers, *,
-                            int connectivity, double contrast,
-                            double source_sum, double source_min,
-                            bint apply_contrast=True):
+def deblend_contrast_chunk(const data_t[:, ::1] data,
+                           const segm_t[:, ::1] segm_data,
+                           const long long[::1] labels,
+                           const long long[::1] y0,
+                           const long long[::1] y1,
+                           const long long[::1] x0,
+                           const long long[::1] x1,
+                           int[::1] packed,
+                           const Py_ssize_t[::1] starts,
+                           const Py_ssize_t[::1] n_markers, *,
+                           int connectivity, double contrast,
+                           const double[::1] source_sum,
+                           const double[::1] source_min,
+                           bint apply_contrast):
     """
-    Apply the watershed contrast loop to one source's markers.
+    Apply the watershed contrast loop to the markers of a chunk of
+    sources in place.
 
-    The watershed flooding, the basin flux measurements, the
-    below-contrast marker removal (single or batched), and the final
-    consecutive relabeling all run in compiled code that releases
-    the GIL, producing results identical to the per-step NumPy
-    implementation in ``_SingleSourceDeblender``.
+    For every source with two or more markers, the flooding, the basin
+    flux measurements, the below-contrast marker removal, and the final
+    consecutive relabeling run in compiled code that releases the GIL,
+    reusing one workspace sized to the largest cutout in the chunk. The
+    results are identical to the per-step NumPy implementation in
+    ``_SingleSourceDeblender``.
 
     Parameters
     ----------
     data : 2D float `~numpy.ndarray`
-        The full data array. NaN pixels within the segment are flooded
+        The full data array. NaN pixels within a segment are flooded
         after all the finite pixels, so they are assigned to a
         neighboring basin. They contribute NaN to the flux of that
         basin, as in the NumPy implementation.
@@ -480,15 +489,24 @@ def deblend_source_contrast(const data_t[:, ::1] data,
     segm_data : 2D int `~numpy.ndarray`
         The full segmentation array.
 
-    label : int
-        The label of the source segment.
+    labels : 1D int64 `~numpy.ndarray`
+        The label of each source in the chunk.
 
-    y0, y1, x0, x1 : int
-        The bounding-box slice bounds of the source.
+    y0, y1, x0, x1 : 1D int64 `~numpy.ndarray`
+        The bounding-box slice bounds of each source.
 
-    markers : 2D int `~numpy.ndarray`
-        The marker image cutout, with markers labeled from 1. It is
-        not modified.
+    packed : 1D int32 `~numpy.ndarray`
+        The packed marker buffer written by ``deblend_markers_chunk``.
+        On output, the region of every source that deblends holds its
+        final labels, consecutive from 1, and every other region is
+        zero.
+
+    starts : 1D intp `~numpy.ndarray`
+        The start index of each source's region in ``packed``.
+
+    n_markers : 1D intp `~numpy.ndarray`
+        The number of markers of each source. Sources with fewer than
+        two markers are skipped.
 
     connectivity : {8, 4}
         The pixel connectivity.
@@ -497,14 +515,11 @@ def deblend_source_contrast(const data_t[:, ::1] data,
         The contrast criterion (the minimum fraction of the total
         source flux that a watershed basin must contain).
 
-    source_sum : float
-        The total flux of the source segment (NaN pixels excluded).
+    source_sum, source_min : 1D float64 `~numpy.ndarray`
+        The flux and the minimum data value of each source segment
+        (NaN pixels excluded).
 
-    source_min : float
-        The minimum data value of the source segment (NaN pixels
-        excluded).
-
-    apply_contrast : bool, optional
+    apply_contrast : bool
         Whether to apply the contrast criterion. If `False`, a single
         watershed pass is run with no basin removal. This is used with
         the saddle contrast criterion, where the markers are already
@@ -512,69 +527,154 @@ def deblend_source_contrast(const data_t[:, ::1] data,
 
     Returns
     -------
-    output : 2D int `~numpy.ndarray` or `None`
-        The deblended cutout with consecutive labels starting from
-        1, or `None` if only one basin remains after applying the
-        contrast criterion.
+    n_labels : 1D intp `~numpy.ndarray`
+        The number of final labels of each source. It is 0 for the
+        skipped sources and 1 for the sources whose basins were all but
+        one removed, and the packed regions of both are zero.
 
     Raises
     ------
     ValueError
-        If the flooded basins do not cover the segment mask, which
-        happens when the detection and deblending connectivities
+        If the flooded basins of a source do not cover its segment,
+        which happens when the detection and deblending connectivities
         differ.
     """
-    cdef Py_ssize_t ny_c = y1 - y0
-    cdef Py_ssize_t nx_c = x1 - x0
+    cdef Py_ssize_t n_src = labels.shape[0]
     cdef Py_ssize_t img_nx = data.shape[1]
+    cdef Py_ssize_t isrc, n_tot, max_ntot, ny_c, nx_c, start
+    cdef Py_ssize_t iy, ix, idx, p, n_max_labels
+    cdef Py_ssize_t failed = -1
+    cdef int status = 0
+    cdef bint conn8 = connectivity == 8
 
-    posimg_arr = np.empty((ny_c, nx_c), dtype=np.float64)
-    negimg_arr = np.empty((ny_c, nx_c), dtype=np.float64)
-    mask_arr = np.empty((ny_c, nx_c), dtype=np.uint8)
-    output_arr = np.array(markers, dtype=np.int32, copy=True, order='C')
+    max_ntot = 1
+    for isrc in range(n_src):
+        n_tot = (y1[isrc] - y0[isrc]) * (x1[isrc] - x0[isrc])
+        if n_tot > max_ntot:
+            max_ntot = n_tot
 
-    cdef double[:, ::1] posimg_mv = posimg_arr
-    cdef double[:, ::1] negimg_mv = negimg_arr
-    cdef unsigned char[:, ::1] mask_mv = mask_arr
-    cdef int[:, ::1] output_mv = output_arr
-    cdef double* posimg = &posimg_mv[0, 0]
-    cdef double* negimg = &negimg_mv[0, 0]
-    cdef unsigned char* mask = &mask_mv[0, 0]
-    cdef int* output = &output_mv[0, 0]
+    posimg_arr = np.empty(max_ntot, dtype=np.float64)
+    negimg_arr = np.empty(max_ntot, dtype=np.float64)
+    mask_arr = np.empty(max_ntot, dtype=np.uint8)
+    output_arr = np.empty(max_ntot, dtype=np.int32)
+    n_labels_arr = np.zeros(n_src, dtype=np.intp)
+    cdef double[::1] posimg_mv = posimg_arr
+    cdef double[::1] negimg_mv = negimg_arr
+    cdef unsigned char[::1] mask_mv = mask_arr
+    cdef int[::1] output_mv = output_arr
+    cdef Py_ssize_t[::1] n_labels_mv = n_labels_arr
+    cdef double* posimg = &posimg_mv[0]
+    cdef double* negimg = &negimg_mv[0]
+    cdef unsigned char* mask = &mask_mv[0]
+    cdef int* output = &output_mv[0]
     cdef const data_t* data_ptr = &data[0, 0]
     cdef const segm_t* segm_ptr = &segm_data[0, 0]
 
-    cdef bint conn8 = connectivity == 8
-    cdef Py_ssize_t iy, ix, idx, p
-    cdef Py_ssize_t n_max_labels = 0
-    cdef int status
-
     with nogil:
-        for iy in range(ny_c):
-            for ix in range(nx_c):
-                idx = (y0 + iy) * img_nx + x0 + ix
-                p = iy * nx_c + ix
-                posimg[p] = <double>data_ptr[idx]
-                if isnan(posimg[p]):
-                    # NaN pixels are flooded after all finite pixels
-                    negimg[p] = INFINITY
-                else:
-                    negimg[p] = -posimg[p]
-                mask[p] = segm_ptr[idx] == label
-                if output[p] > n_max_labels:
-                    n_max_labels = output[p]
-        status = _contrast_core(posimg, negimg, mask, output, ny_c,
-                                nx_c, conn8, contrast, source_sum,
-                                source_min, n_max_labels,
-                                apply_contrast)
+        for isrc in range(n_src):
+            if n_markers[isrc] < 2:
+                continue
+            ny_c = y1[isrc] - y0[isrc]
+            nx_c = x1[isrc] - x0[isrc]
+            n_tot = ny_c * nx_c
+            start = starts[isrc]
+            n_max_labels = 0
+            for iy in range(ny_c):
+                for ix in range(nx_c):
+                    idx = (y0[isrc] + iy) * img_nx + x0[isrc] + ix
+                    p = iy * nx_c + ix
+                    posimg[p] = <double>data_ptr[idx]
+                    if isnan(posimg[p]):
+                        # NaN pixels are flooded after all finite
+                        # pixels
+                        negimg[p] = INFINITY
+                    else:
+                        negimg[p] = -posimg[p]
+                    mask[p] = segm_ptr[idx] == labels[isrc]
+                    output[p] = packed[start + p]
+                    if output[p] > n_max_labels:
+                        n_max_labels = output[p]
+            status = _contrast_core(posimg, negimg, mask, output, ny_c,
+                                    nx_c, conn8, contrast,
+                                    source_sum[isrc], source_min[isrc],
+                                    n_max_labels, apply_contrast)
+            if status < 0:
+                failed = isrc
+                break
+            n_labels_mv[isrc] = status
+            if status >= 2:
+                for p in range(n_tot):
+                    packed[start + p] = output[p]
+            else:
+                for p in range(n_tot):
+                    packed[start + p] = 0
 
-    if status == -1:
-        raise MemoryError
-    if status == -2:
-        msg = (f'Deblending failed for source {int(label)!r}. '
+    if failed >= 0:
+        if status == -1:
+            raise MemoryError
+        msg = (f'Deblending failed for source {int(labels[failed])!r}. '
                'Please ensure you used the same pixel connectivity '
                'in detect_sources and deblend_sources.')
         raise ValueError(msg)
-    if status == 1:  # no deblending
-        return None
-    return output_arr
+
+    return n_labels_arr
+
+
+def write_deblended_labels(segm_t[:, ::1] segm_out,
+                           const int[::1] packed,
+                           const Py_ssize_t[::1] starts,
+                           const long long[::1] y0,
+                           const long long[::1] y1,
+                           const long long[::1] x0,
+                           const long long[::1] x1,
+                           const Py_ssize_t[::1] n_labels,
+                           const long long[::1] label_offsets):
+    """
+    Write the deblended labels of a chunk into a segmentation array.
+
+    For every source with two or more final labels, the nonzero
+    labels of its packed region are written into ``segm_out`` at its
+    bounding box, offset by ``label_offsets``. The other sources are
+    left untouched.
+
+    Parameters
+    ----------
+    segm_out : 2D int `~numpy.ndarray`
+        The segmentation array to write into. It must be a copy of the
+        input segmentation array.
+
+    packed : 1D int32 `~numpy.ndarray`
+        The packed label buffer written by ``deblend_contrast_chunk``.
+
+    starts : 1D intp `~numpy.ndarray`
+        The start index of each source's region in ``packed``.
+
+    y0, y1, x0, x1 : 1D int64 `~numpy.ndarray`
+        The bounding-box slice bounds of each source.
+
+    n_labels : 1D intp `~numpy.ndarray`
+        The number of final labels of each source.
+
+    label_offsets : 1D int64 `~numpy.ndarray`
+        The value added to the labels of each source.
+    """
+    cdef Py_ssize_t n_src = n_labels.shape[0]
+    cdef Py_ssize_t img_nx = segm_out.shape[1]
+    cdef Py_ssize_t isrc, ny_c, nx_c, iy, ix, idx, p, start
+    cdef int value
+    cdef segm_t* out_ptr = &segm_out[0, 0]
+
+    with nogil:
+        for isrc in range(n_src):
+            if n_labels[isrc] < 2:
+                continue
+            ny_c = y1[isrc] - y0[isrc]
+            nx_c = x1[isrc] - x0[isrc]
+            start = starts[isrc]
+            for iy in range(ny_c):
+                for ix in range(nx_c):
+                    p = iy * nx_c + ix
+                    value = packed[start + p]
+                    if value != 0:
+                        idx = (y0[isrc] + iy) * img_nx + x0[isrc] + ix
+                        out_ptr[idx] = <segm_t>(value + label_offsets[isrc])
