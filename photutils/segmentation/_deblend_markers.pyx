@@ -67,6 +67,16 @@ cdef struct _Nodes:
     Py_ssize_t cap
 
 
+cdef struct _SaddleArgs:
+    # Inputs of the saddle contrast criterion (see _markers_core).
+    # Only enabled is read when the criterion is not in use
+    bint enabled
+    const double* thresholds
+    double limit
+    double* posimg
+    double* fsum
+
+
 cdef inline bint _nodes_grow(_Nodes* nodes) noexcept nogil:
     """
     Double the node storage capacity and return False on failure.
@@ -147,10 +157,8 @@ cdef inline void _union(int* parent, int* size, double* fsum,
 
 cdef Py_ssize_t _markers_core(const int* qflat, Py_ssize_t ny,
                               Py_ssize_t nx, int n_pixels, bint conn8,
-                              const double* posimg,
-                              const double* thresholds,
-                              double saddle_limit, bint use_saddle,
-                              int* parent, int* size, double* fsum,
+                              int* parent, int* size,
+                              const _SaddleArgs* saddle,
                               unsigned char* added, int* stamp,
                               int* node_of_root, int* order,
                               int* flood, int* markers) noexcept nogil:
@@ -164,11 +172,17 @@ cdef Py_ssize_t _markers_core(const int* qflat, Py_ssize_t ny,
     quantized level (the caller is responsible for treating the
     other ``markers`` entries as zero).
 
-    With ``use_saddle``, the markers are instead selected with the
-    saddle contrast criterion, which requires the ``posimg`` pixel
+    With ``saddle.enabled``, the markers are instead selected with
+    the saddle contrast criterion, which requires the ``posimg`` pixel
     values, the ``thresholds`` level values, the ``fsum`` pixel-sized
-    workspace, and the ``saddle_limit`` flux (the contrast times the
-    total source flux). These may be NULL/0 otherwise.
+    workspace, and the ``limit`` flux (the contrast times the total
+    source flux) of the ``saddle`` arguments. A branch passes when the
+    flux it holds above the level at which it separates from its
+    siblings exceeds the limit. The component fluxes are accumulated
+    in the union-find merge order, so they can differ in the last bits
+    from the raster-order sums of the pure-Python reference
+    implementation. This only matters for a branch whose flux above
+    its level equals the limit to within rounding.
 
     Returns the number of markers (0 if the source does not split),
     or -1 if a memory allocation failed.
@@ -183,6 +197,18 @@ cdef Py_ssize_t _markers_core(const int* qflat, Py_ssize_t ny,
     cdef int v, lbl
     cdef bint splitting
     cdef double prominence
+
+    # Unpack the saddle criterion inputs
+    cdef bint use_saddle = saddle.enabled
+    cdef const double* posimg = NULL
+    cdef const double* thresholds = NULL
+    cdef double* fsum = NULL
+    cdef double saddle_limit = 0.0
+    if use_saddle:
+        posimg = saddle.posimg
+        thresholds = saddle.thresholds
+        fsum = saddle.fsum
+        saddle_limit = saddle.limit
 
     # Count the active (nonzero) pixels and the maximum level
     cdef int qmax = 0
@@ -361,12 +387,29 @@ cdef Py_ssize_t _markers_core(const int* qflat, Py_ssize_t ny,
         if final == NULL or passer == NULL or has_split == NULL:
             result = -1
         else:
-            for nid in range(nodes.n):
+            # A branch passes when the flux it holds above the level at
+            # which it separates from its siblings (the level above its
+            # parent junction) exceeds the saddle limit. A node
+            # represents its component over every level between two
+            # populated ones, so this is the lowest of those levels,
+            # as in the per-level reference construction. The
+            # lowest-level components separate at the first threshold
+            # level. Every other node is the child of exactly one node
+            for nid in range(snap_lo[n_snaps - 1],
+                             snap_hi[n_snaps - 1]):
                 prominence = (nodes.flux[nid]
-                              - thresholds[nodes.level[nid]]
-                              * nodes.area[nid])
+                              - thresholds[0] * nodes.area[nid])
                 passer[nid] = (nodes.kept[nid]
                                and prominence > saddle_limit)
+            for nid in range(nodes.n):
+                child = nodes.child[nid]
+                while child != -1:
+                    prominence = (nodes.flux[child]
+                                  - thresholds[nodes.level[nid] + 1]
+                                  * nodes.area[child])
+                    passer[child] = (nodes.kept[child]
+                                     and prominence > saddle_limit)
+                    child = nodes.sib[child]
 
             # Node ids ascend from the treetops down, so children are
             # always visited before their parents
@@ -624,15 +667,21 @@ def make_deblend_markers(const int[:, ::1] quantized, int n_pixels,
     cdef int[::1] order_mv = order_arr
     cdef int[::1] flood_mv = flood_arr
 
+    cdef _SaddleArgs saddle
+    saddle.enabled = False
+    saddle.thresholds = NULL
+    saddle.limit = 0.0
+    saddle.posimg = NULL
+    saddle.fsum = NULL
+
     cdef Py_ssize_t n_markers
     with nogil:
         n_markers = _markers_core(qflat, ny, nx, n_pixels,
-                                  connectivity == 8, NULL, NULL,
-                                  0.0, False,
-                                  &parent_mv[0], &size_mv[0], NULL,
-                                  &added_mv[0], &stamp_mv[0],
-                                  &node_of_root_mv[0], &order_mv[0],
-                                  &flood_mv[0], &markers_mv[0, 0])
+                                  connectivity == 8, &parent_mv[0],
+                                  &size_mv[0], &saddle, &added_mv[0],
+                                  &stamp_mv[0], &node_of_root_mv[0],
+                                  &order_mv[0], &flood_mv[0],
+                                  &markers_mv[0, 0])
     if n_markers < 0:
         raise MemoryError
 
@@ -751,8 +800,7 @@ cdef Py_ssize_t _source_markers(const data_t* data, const segm_t* segm,
                                 Py_ssize_t x0, Py_ssize_t x1,
                                 int n_pixels, bint conn8, int n_levels,
                                 const double* thresholds,
-                                double saddle_limit, bint use_saddle,
-                                int* q, double* posimg, double* fsum,
+                                const _SaddleArgs* saddle, int* q,
                                 int* parent, int* size,
                                 unsigned char* added, int* stamp,
                                 int* node_of_root, int* order,
@@ -775,8 +823,8 @@ cdef Py_ssize_t _source_markers(const data_t* data, const segm_t* segm,
     for iy in range(ny_c):
         for ix in range(nx_c):
             idx = (y0 + iy) * img_nx + x0 + ix
-            if use_saddle:
-                posimg[iy * nx_c + ix] = <double>data[idx]
+            if saddle.enabled:
+                saddle.posimg[iy * nx_c + ix] = <double>data[idx]
             if segm[idx] != label:
                 q[iy * nx_c + ix] = 0
                 continue
@@ -787,9 +835,8 @@ cdef Py_ssize_t _source_markers(const data_t* data, const segm_t* segm,
             q[iy * nx_c + ix] = _count_below(thresholds, n_levels,
                                              value)
 
-    return _markers_core(q, ny_c, nx_c, n_pixels, conn8, posimg,
-                         thresholds, saddle_limit, use_saddle, parent,
-                         size, fsum, added, stamp, node_of_root, order,
+    return _markers_core(q, ny_c, nx_c, n_pixels, conn8, parent, size,
+                         saddle, added, stamp, node_of_root, order,
                          flood, markers)
 
 
@@ -899,34 +946,38 @@ def deblend_markers_chunk(const data_t[:, ::1] data,
     cdef int[::1] markers_mv = markers_arr
     cdef Py_ssize_t[::1] n_markers_mv = n_markers_arr
 
-    # Workspaces used only by the saddle criterion
+    # The saddle criterion inputs, with workspaces used only by it
+    cdef _SaddleArgs saddle
     cdef const double[::1] saddle_limits_mv = None
     cdef double[::1] posimg_mv = None
     cdef double[::1] fsum_mv = None
-    cdef double* posimg = NULL
-    cdef double* fsum = NULL
-    cdef double saddle_limit = 0.0
+    saddle.enabled = use_saddle
+    saddle.thresholds = NULL
+    saddle.limit = 0.0
+    saddle.posimg = NULL
+    saddle.fsum = NULL
     if use_saddle:
         saddle_limits_mv = saddle_limits
         posimg_arr = np.empty(max_ntot, dtype=np.float64)
         fsum_arr = np.empty(max_ntot, dtype=np.float64)
         posimg_mv = posimg_arr
         fsum_mv = fsum_arr
-        posimg = &posimg_mv[0]
-        fsum = &fsum_mv[0]
+        saddle.posimg = &posimg_mv[0]
+        saddle.fsum = &fsum_mv[0]
 
     markers_list = []
     for isrc in range(n_src):
         ny_c = y1[isrc] - y0[isrc]
         nx_c = x1[isrc] - x0[isrc]
         if use_saddle:
-            saddle_limit = saddle_limits_mv[isrc]
+            saddle.limit = saddle_limits_mv[isrc]
+            saddle.thresholds = &thresholds[isrc, 0]
         with nogil:
             n_markers = _source_markers(
                 &data[0, 0], &segm_data[0, 0], img_nx, labels[isrc],
                 y0[isrc], y1[isrc], x0[isrc], x1[isrc], n_pixels,
                 connectivity == 8, n_levels, &thresholds[isrc, 0],
-                saddle_limit, use_saddle, &q_mv[0], posimg, fsum,
+                &saddle, &q_mv[0],
                 &parent_mv[0], &size_mv[0], &added_mv[0],
                 &stamp_mv[0], &node_of_root_mv[0], &order_mv[0],
                 &flood_mv[0], &markers_mv[0])

@@ -685,6 +685,7 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
     return results
 
 
+@pytest.mark.parametrize('contrast_method', ['basin', 'saddle'])
 @pytest.mark.parametrize('dtype', ['float64', 'float32', '>f4', 'int32'])
 @pytest.mark.parametrize('scene', ['blend', 'negmin', 'checkerboard',
                                    'gaussian', 'flat',
@@ -693,7 +694,7 @@ def python_deblend_chunk(data, segm_data, driver_data,  # noqa: ARG001
                                    'neighbors', 'nan',
                                    'checkerboard-linear',
                                    'checkerboard-negmin'])
-def test_chunk_driver_matches_python_path(dtype, scene):
+def test_chunk_driver_matches_python_path(dtype, scene, contrast_method):
     """
     Test that the compiled chunk driver and contrast loop produce
     results identical to the pure-Python per-source path, including
@@ -711,7 +712,7 @@ def test_chunk_driver_matches_python_path(dtype, scene):
     segment, the checkerboard deblended in linear mode, which keeps
     all of its markers instead of falling back, and the checkerboard
     with a non-positive minimum, which falls back to sinh and is then
-    retried with linear levels.
+    retried with linear levels, each with both contrast criteria.
     """
     contrast = 0.001
     mode = 'linear' if scene == 'checkerboard-linear' else 'exponential'
@@ -784,11 +785,13 @@ def test_chunk_driver_matches_python_path(dtype, scene):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', DeblendWarning)
         result = deblend_sources(data, segm, n_pixels,
-                                 contrast=contrast, mode=mode)
+                                 contrast=contrast, mode=mode,
+                                 contrast_method=contrast_method)
         with patch.object(deblend_module, '_deblend_sources_chunk',
                           python_deblend_chunk):
             expected = deblend_sources(data, segm, n_pixels,
-                                       contrast=contrast, mode=mode)
+                                       contrast=contrast, mode=mode,
+                                       contrast_method=contrast_method)
 
     assert_equal(result.data, expected.data)
     assert result.info.keys() == expected.info.keys()
@@ -940,144 +943,44 @@ def test_compute_thresholds_matches_reference(dtype, mode, n_levels):
         assert nonposmin[i] == ('nonposmin' in deblender.warnings)
 
 
-def raster_relabel(markers):
-    """
-    Relabel a marker image consecutively in raster-scan order of the
-    first pixel of each marker.
-
-    Parameters
-    ----------
-    markers : 2D int `~numpy.ndarray`
-        The marker image.
-
-    Returns
-    -------
-    result : 2D int `~numpy.ndarray`
-        The relabeled marker image.
-    """
-    flat = markers.ravel()
-    labels, first = np.unique(flat, return_index=True)
-    keep = labels > 0
-    labels = labels[keep]
-    order = np.argsort(first[keep])
-    lut = np.zeros(labels.max() + 1, dtype=np.int32)
-    lut[labels[order]] = np.arange(1, labels.size + 1)
-    return lut[markers]
-
-
-def python_saddle_markers(data, segment_mask, thresholds, n_pixels,
-                          limit, footprint):
-    """
-    Reference implementation of the saddle-criterion marker selection.
-
-    Builds the per-level component tree with per-level labeling and
-    selects the markers with a global junction scan. A junction splits
-    where at least two children with at least ``n_pixels`` pixels each
-    hold more flux above the junction level than ``limit``, and the
-    markers are the passing children of splitting junctions that contain
-    no deeper split.
-
-    Parameters
-    ----------
-    data : 2D `~numpy.ndarray`
-        The source cutout.
-
-    segment_mask : 2D bool `~numpy.ndarray`
-        The source segment mask.
-
-    thresholds : 1D `~numpy.ndarray`
-        The multithreshold levels.
-
-    n_pixels : int
-        The minimum number of connected pixels per component.
-
-    limit : float
-        The saddle flux limit (the contrast times the total source
-        flux).
-
-    footprint : 2D `~numpy.ndarray`
-        The connectivity footprint.
-
-    Returns
-    -------
-    markers : 2D int `~numpy.ndarray` or `None`
-        The marker image, or `None` if there are fewer than two
-        markers.
-    """
-    from scipy.ndimage import label as ndi_label
-
-    n_levels = len(thresholds)
-    level_labels = [ndi_label((data > threshold) & segment_mask,
-                              structure=footprint)[0]
-                    for threshold in thresholds]
-
-    passer = {}
-    children = {}
-    all_nodes = []
-    for level in range(n_levels):
-        labeled = level_labels[level]
-        for comp in np.unique(labeled[labeled > 0]):
-            node = (level, int(comp))
-            all_nodes.append(node)
-            region = labeled == comp
-            area = int(region.sum())
-            flux = float(np.sum(data[region], dtype=np.float64))
-            prominence = flux - thresholds[level] * area
-            passer[node] = area >= n_pixels and prominence > limit
-            children[node] = []
-            if level > 0:
-                parent_comp = int(level_labels[level - 1][region][0])
-                children[(level - 1, parent_comp)].append(node)
-
-    def is_splitting(kids):
-        return sum(passer[kid] for kid in kids) >= 2
-
-    has_split = {}
-    for node in reversed(all_nodes):  # children before parents
-        has_split[node] = (is_splitting(children[node])
-                           or any(has_split[kid]
-                                  for kid in children[node]))
-
-    root_children = [(0, int(comp))
-                     for comp in np.unique(level_labels[0]
-                                           [level_labels[0] > 0])]
-    junctions = [root_children] + [children[node]
-                                   for node in all_nodes]
-    markers = []
-    for kids in junctions:
-        if is_splitting(kids):
-            markers.extend(kid for kid in kids
-                           if passer[kid] and not has_split[kid])
-
-    if len(markers) < 2:
-        return None
-    out = np.zeros(data.shape, dtype=np.int32)
-    for index, (level, comp) in enumerate(markers):
-        out[level_labels[level] == comp] = index + 1
-    return out
-
-
 @pytest.mark.parametrize('dtype', ['float64', 'float32'])
 @pytest.mark.parametrize('connectivity', [8, 4])
 @pytest.mark.parametrize(
     ('scene', 'contrast'),
     [('multipeak', 0.0), ('multipeak', 0.001), ('multipeak', 0.01),
      ('multipeak', 0.1), ('hierarchical', 0.001),
-     ('hierarchical', 0.05), ('negmin', 0.01)])
+     ('hierarchical', 0.05), ('negmin', 0.01), ('discrete', 0.01),
+     ('discrete', 0.03), ('discrete', 0.05), ('quantized', 0.001),
+     ('quantized', 0.01)])
 def test_saddle_markers_match_reference(dtype, connectivity, scene,
                                         contrast):
     """
     Test that the compiled saddle-criterion marker selection matches
-    the pure-Python reference implementation, including nested splits,
+    the per-level reference implementation, including nested splits,
     dissolving below-contrast siblings, the sinh fallback for negative
-    minima, both connectivities, and float32 data.
+    minima, both connectivities, float32 data, and data with empty
+    threshold levels (discrete values and coarse quantization), where
+    a branch must be evaluated at the level above its junction rather
+    than at the top of its unchanged range of levels.
     """
     y, x = np.mgrid[0:101, 0:101]
+    mode = 'exponential'
     if scene == 'hierarchical':
         data = (Gaussian2D(1.0, 50, 50, 30, 30)(x, y)
                 + Gaussian2D(100, 35, 50, 3, 3)(x, y)
                 + Gaussian2D(80, 45, 50, 3, 3)(x, y)
                 + Gaussian2D(60, 70, 50, 3, 3)(x, y))
+    elif scene == 'discrete':
+        # A pedestal with two stepped blocks. Most of the linear levels
+        # between the steps are empty
+        data = np.zeros((41, 41))
+        data[2:39, 2:39] = 1.0
+        for cy, cx in ((12, 12), (28, 28)):
+            data[cy - 2:cy + 3, cx - 2:cx + 3] = 6.0
+            data[cy - 1:cy + 2, cx - 1:cx + 2] = 10.0
+        mode = 'linear'
+    elif scene == 'quantized':
+        data = make_marker_test_image('quantized')
     else:
         data, _ = make_multipeak_source()
     threshold = 0.5
@@ -1091,17 +994,12 @@ def test_saddle_markers_match_reference(dtype, connectivity, scene,
                           connectivity=connectivity)
     slc = segm.slices[0]
     cutout = data[slc]
-    segment_mask = segm.data[slc] == 1
-    values = cutout[segment_mask]
-    limit = contrast * float(np.nansum(values))
 
-    params = _DeblendParams(5, footprint, 32, contrast, 'exponential')
+    params = _DeblendParams(5, footprint, 32, contrast, mode, 'saddle')
     deblender = _SingleSourceDeblender(cutout, segm.data[slc], 1,
                                        params)
+    expected = deblender.make_markers()
     thresholds = deblender.compute_thresholds()
-
-    expected = python_saddle_markers(cutout, segment_mask, thresholds,
-                                     5, limit, footprint)
 
     y0 = np.array([slc[0].start], dtype=np.int64)
     y1 = np.array([slc[0].stop], dtype=np.int64)
@@ -1109,18 +1007,19 @@ def test_saddle_markers_match_reference(dtype, connectivity, scene,
     x1 = np.array([slc[1].stop], dtype=np.int64)
     thresholds_2d = np.ascontiguousarray(thresholds[None, :],
                                          dtype=np.float64)
+    limit = deblender.contrast * float(deblender.source_sum)
     markers_list, _ = deblend_markers_chunk(
         np.ascontiguousarray(data), segm.data,
         np.array([1], dtype=np.int64), y0, y1, x0, x1, thresholds_2d,
         n_pixels=5, connectivity=connectivity, max_markers=-1,
-        saddle_limits=np.array([limit]))
+        saddle_limits=np.array([limit], dtype=np.float64))
     result = markers_list[0]
 
     if expected is None or result is None:
         assert expected is None
         assert result is None
     else:
-        assert_equal(raster_relabel(result), raster_relabel(expected))
+        assert_equal(result, expected)
 
 
 def test_contrast_method_invalid():
