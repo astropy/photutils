@@ -115,6 +115,12 @@ def _mask_to_mirrored_value(data, replace_mask, xycenter, *, mask=None,
     If the mirror pixel is unavailable (i.e., it is outside the image or
     masked), then the masked pixel value is set to zero.
 
+    Note that this function is not used in production. The
+    `~photutils.segmentation.SourceCatalog` batch kernels apply the
+    mirroring correction in compiled code. It is kept as the pure-Python
+    mirror of that correction and must track the compiled semantics
+    exactly, which is enforced by the batch cross-implementation tests.
+
     Parameters
     ----------
     data : 2D `~numpy.ndarray`

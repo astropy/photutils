@@ -467,6 +467,11 @@ def make_deblend_markers(const int[:, ::1] quantized, int n_pixels,
     """
     Build the deblending watershed markers for a single source.
 
+    This single-source entry point is exported only for the pure-Python
+    reference implementation in ``_deblend_reference`` and the
+    cross-implementation tests. Production deblending goes through
+    ``deblend_markers_chunk``.
+
     Parameters
     ----------
     quantized : 2D int `~numpy.ndarray`

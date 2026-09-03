@@ -221,6 +221,11 @@ def deblend_watershed(image, markers, mask, connectivity):
     ``watershed_line=False``), but avoids the per-call validation,
     padding, and cropping overhead.
 
+    This entry point is exported only for the pure-Python
+    reference implementation in ``_deblend_reference`` and the
+    cross-implementation tests. The production contrast loop calls the
+    watershed core directly through ``deblend_source_contrast``.
+
     Parameters
     ----------
     image : 2D `~numpy.ndarray`
