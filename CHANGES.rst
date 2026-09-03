@@ -295,26 +295,8 @@ New Features
     results identical to the single-threaded computation. [#2407]
 
   - Significantly improved the performance of source deblending in
-    ``deblend_sources`` and ``SourceFinder``, producing identical
-    results. The multithreshold watershed markers are now built by
-    compiled code that computes the quantized component tree of each
-    source in a single pass, instead of one detection pass plus a
-    marker-merging pass per threshold level. The multithreshold levels
-    and the mode fallbacks are computed for all sources at once in
-    vectorized NumPy, and the level quantization and marker
-    construction are batched over chunks of sources in compiled code
-    that releases the GIL. In addition, obsolete per-level warnings
-    handling was removed and below-contrast markers are removed in
-    batches when doing so is equivalent to the one-at-a-time removal.
-    The watershed step now uses a compiled kernel that produces
-    results identical to ``skimage.segmentation.watershed`` (including
-    its plateau tie-breaking) without the per-call validation, padding,
-    and cropping overhead, so scikit-image is no longer needed for
-    source deblending, and the whole watershed contrast loop (flooding,
-    basin fluxes, below-contrast marker removal, and relabeling) runs
-    in compiled code. NaN pixels within a source segment are now
-    assigned to a neighboring deblended source after all finite pixels
-    have been assigned (previously their assignment was unspecified).
+    ``deblend_sources`` and ``SourceFinder``, producing identical results.
+    The multithreshold watershed markers are now built by compiled code.
     Deblending is typically ~7-30 times faster, both for fields of many
     small blended sources and for large segments with many markers.
     [#2408]

@@ -655,8 +655,7 @@ Source Deblending Performance Improvements
 Source deblending with :func:`~photutils.segmentation.deblend_sources`
 and `~photutils.segmentation.SourceFinder` is now typically 7--30 times
 faster, producing identical results. The whole watershed step now runs
-in compiled code. As an example, deblending a field of 2000 blended
-source pairs dropped from about 1.6 s to 0.05 s.
+in compiled code.
 
 The compiled watershed kernel produces results identical to
 ``skimage.segmentation.watershed``, so scikit-image is no longer
