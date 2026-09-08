@@ -10,6 +10,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 from astropy.modeling.fitting import TRFLSQFitter
+from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData
 from astropy.table import Table
 from astropy.utils.exceptions import AstropyUserWarning
@@ -22,7 +23,8 @@ from photutils.psf import (CircularGaussianPRF, EPSFBuilder, EPSFBuildResults,
                            EPSFFitter, EPSFStar, EPSFStars, ImagePSF,
                            extract_stars, make_psf_model_image)
 from photutils.psf.epsf_builder import (_CoordinateTransformer, _EPSFValidator,
-                                        _ProgressReporter, _SmoothingKernel)
+                                        _ProgressReporter, _SmoothingKernel,
+                                        _suppress_alias_modes)
 from photutils.psf.epsf_stars import LinkedEPSFStar
 from photutils.utils._optional_deps import HAS_TQDM
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
@@ -2765,3 +2767,172 @@ def test_invalid_recentering_maxiters(value):
     match = 'recentering_maxiters must be a strictly-positive integer'
     with pytest.raises(ValueError, match=match):
         EPSFBuilder(recentering_maxiters=value)
+
+
+def _make_heterogeneous_stars(seed=0, n_side=14):
+    """
+    Make a star sample that mimics non-ideal data.
+
+    The stars have a range of FWHMs and ellipticities, a wide range of
+    fluxes, initial center errors, and about 30 percent of the cutouts
+    contain only noise.
+    """
+    rng = np.random.default_rng(seed)
+    offset = 32
+    size = n_side * offset + offset
+    yy, xx = np.mgrid[0:size, 0:size]
+    image = np.zeros((size, size))
+    xpos = []
+    ypos = []
+    for y0 in np.arange(offset, size - offset // 2, offset):
+        for x0 in np.arange(offset, size - offset // 2, offset):
+            x = x0 + rng.uniform(-0.5, 0.5)
+            y = y0 + rng.uniform(-0.5, 0.5)
+            if rng.uniform() > 0.3:
+                sigma = rng.uniform(3.0, 6.0) / 2.3548
+                ellip = rng.uniform(0, 0.3)
+                theta = rng.uniform(0, np.pi)
+                amp = np.exp(rng.uniform(np.log(50), np.log(2000)))
+                slc = (slice(int(y) - 14, int(y) + 15),
+                       slice(int(x) - 14, int(x) + 15))
+                model = Gaussian2D(amp, x, y, sigma * (1 + ellip),
+                                   sigma * (1 - ellip), theta)
+                image[slc] += model(xx[slc], yy[slc])
+            xpos.append(x)
+            ypos.append(y)
+    image += rng.normal(0, 5.0, image.shape)
+    xpos = np.array(xpos)
+    ypos = np.array(ypos)
+    catalog = Table()
+    catalog['x'] = xpos + rng.normal(0, 0.5, len(xpos))
+    catalog['y'] = ypos + rng.normal(0, 0.5, len(ypos))
+    return extract_stars(NDData(image), catalog, size=25)
+
+
+def _alias_power_fraction(data, oversampling):
+    """
+    Fraction of the ePSF power near the star-pixel alias frequencies
+    along each axis.
+    """
+    power = np.abs(np.fft.fft2(data))**2
+    fractions = []
+    for axis in (0, 1):
+        freq = np.abs(np.fft.fftfreq(data.shape[axis]))
+        near = np.zeros(data.shape[axis], dtype=bool)
+        for k in range(1, oversampling // 2 + 1):
+            near |= np.abs(freq - k / oversampling) < 0.03
+        idx = [slice(None), slice(None)]
+        idx[axis] = near
+        fractions.append(power[tuple(idx)].sum() / power.sum())
+    return fractions
+
+
+@pytest.mark.parametrize('oversampling', [2, 4])
+def test_build_heterogeneous_stars_no_checkerboard(oversampling):
+    """
+    Regression test for a checkerboard ePSF built from non-ideal
+    stars with oversampling > 1.
+
+    Star-to-star heterogeneity produces pixel-to-pixel noise in the
+    oversampled ePSF grid, which biases the fitted star centers toward
+    particular subpixel phases. The biased centers then feed alternate
+    oversampled grid points with different subsets of stars, which
+    grows a checkerboard (alias) pattern in the ePSF.
+    """
+    stars = _make_heterogeneous_stars()
+    builder = EPSFBuilder(oversampling=oversampling, maxiters=4,
+                          fit_shape=11, recentering_boxsize=11,
+                          progress_bar=False)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', AstropyUserWarning)
+        result = builder(stars)
+
+    assert np.all(np.isfinite(result.epsf.data))
+    alias_power = _alias_power_fraction(result.epsf.data, oversampling)
+    assert max(alias_power) < 5.0e-4
+
+    # The fitted subpixel phases must stay uniform
+    centers = result.fitted_stars.cutout_center_flat
+    for axis in (0, 1):
+        hist = np.histogram(centers[:, axis] % 1, bins=4,
+                            range=(0, 1))[0]
+        chi2 = np.sum((hist - hist.mean())**2) / hist.mean()
+        assert chi2 < 20.0
+
+
+def test_resample_residual_pixel_footprint():
+    """
+    Each star pixel residual is deposited on every oversampled grid
+    point inside the pixel footprint, so a single star covers both
+    parities of the grid along each axis.
+    """
+    data = _make_gaussian_star_data()
+    star = EPSFStar(data, cutout_center=(5.25, 5.25))
+    stars = EPSFStars([star])
+    builder = EPSFBuilder(oversampling=2, progress_bar=False)
+    epsf = builder._create_initial_epsf(stars)
+    resid = builder._resample_residual(star, epsf)
+
+    finite = np.isfinite(resid)
+    assert finite[:, 0::2].any()
+    assert finite[:, 1::2].any()
+    assert finite[0::2, :].any()
+    assert finite[1::2, :].any()
+
+    # Every finite grid value equals one of the normalized star pixel
+    # values and each star pixel covers exactly 2x2 grid points.
+    values = data.ravel() / star.flux
+    assert np.all(np.isin(resid[finite], values))
+    assert finite.sum() == 4 * data.size
+
+    # With oversampling=1 the deposit reduces to the nearest grid point.
+    builder1 = EPSFBuilder(oversampling=1, progress_bar=False)
+    epsf1 = builder1._create_initial_epsf(stars)
+    resid1 = builder1._resample_residual(star, epsf1)
+    assert np.isfinite(resid1).sum() == data.size
+
+
+def test_suppress_alias_modes():
+    """
+    The alias low-pass removes a checkerboard, leaves a well-sampled
+    PSF unchanged, and is a no-op for oversampling=1.
+    """
+    yy, xx = np.mgrid[0:61, 0:61]
+    sigma = 2 * 7.0 / 2.3548
+    psf = np.exp(-((xx - 30.0)**2 + (yy - 30.0)**2) / (2 * sigma**2))
+    checker = 0.1 * (-1.0)**(xx + yy) * psf
+
+    result = _suppress_alias_modes(psf + checker, (2, 2))
+    assert_allclose(result, psf, atol=2e-3)
+    assert_allclose(_suppress_alias_modes(psf, (2, 2)), psf, atol=1e-5)
+    assert_array_equal(_suppress_alias_modes(psf + checker, (1, 1)),
+                       psf + checker)
+
+    # Only the oversampled axis is filtered. A single-axis alternation
+    # is suppressed by more than a factor of ten.
+    rows = 0.1 * (-1.0)**yy * psf
+    result = _suppress_alias_modes(psf + rows, (2, 1))
+    assert np.abs(result - psf).max() < 0.1 * np.abs(rows).max()
+    result = _suppress_alias_modes(psf + rows, (1, 2))
+    assert_allclose(result, psf + rows, atol=1e-5)
+
+
+def test_nonuniform_phase_warning():
+    """
+    A warning is emitted when the fitted star centers have strongly
+    non-uniform subpixel phases.
+    """
+    data = _make_gaussian_star_data()
+    # All stars at integer pixel phase and a fitter that does not move
+    # the centers.
+    stars = EPSFStars([EPSFStar(data, cutout_center=(5.0, 5.0))
+                       for _ in range(60)])
+
+    def fitter(model, **_kwargs):
+        return model
+
+    builder = EPSFBuilder(oversampling=2, maxiters=1, fitter=fitter,
+                          progress_bar=False)
+    match = 'subpixel phases of the fitted star centers'
+    with pytest.warns(AstropyUserWarning, match=match):
+        builder(stars)

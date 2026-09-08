@@ -401,6 +401,20 @@ provide a custom 2D array, or set it to `None` for no smoothing::
     ...                            smoothing_kernel='quadratic',
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
+Independently of the smoothing kernel, when the oversampling factor
+is greater than one the builder also applies a low-pass filter to the
+ePSF in every iteration. The filter removes only the finest-scale
+structure on the oversampled grid, which a real pixel-integrated PSF
+cannot contain, so it does not blur the ePSF. Together with depositing
+each star pixel residual over its full footprint on the oversampled
+grid, this prevents noise from heterogeneous, contaminated, or low
+signal-to-noise stars from growing into a checkerboard pattern in the
+ePSF. If the subpixel phases of the fitted star centers are strongly
+non-uniform at the end of the build, which indicates biased star
+centers, a warning is emitted. In that case the star sample should be
+inspected for stars with different PSFs, saturated or contaminated
+cutouts, or spurious detections.
+
 Customizing the ePSF Fitting
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -17,6 +17,7 @@ from astropy.stats import SigmaClip
 from astropy.utils.decorators import deprecated, deprecated_attribute
 from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import convolve
+from scipy.stats import chi2 as chi2_dist
 
 from photutils.centroids import centroid_com
 from photutils.psf.epsf_stars import EPSFStar, EPSFStars, LinkedEPSFStar
@@ -53,6 +54,91 @@ def _fitter_accepts_weights(fitter):
     return ('weights' in spec.parameters
             or any(p.kind == inspect.Parameter.VAR_KEYWORD
                    for p in spec.parameters.values()))
+
+
+def _suppress_alias_modes(data, oversampling, *, nu_pass=0.7, nu_stop=1.0):
+    """
+    Low-pass filter an oversampled ePSF above the input pixel sampling
+    frequency.
+
+    The filter is applied independently along each axis with an
+    oversampling factor greater than one. It has unit gain up to
+    ``nu_pass`` cycles per input (undersampled) pixel, a raised-cosine
+    transition, and zero gain at and above ``nu_stop`` cycles per input
+    pixel. Frequencies at integer cycles per input pixel are the zeros
+    of the pixel response, so a pixel-integrated PSF has essentially no
+    power there or above. However, those are exactly the frequencies at
+    which the star-pixel sampling lattice aliases onto the oversampled
+    grid, so noise at those frequencies can grow into a checkerboard
+    pattern during the ePSF build iterations.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The oversampled ePSF data.
+
+    oversampling : tuple of int
+        The (y, x) oversampling factors.
+
+    nu_pass : float, optional
+        The end of the passband in cycles per input pixel.
+
+    nu_stop : float, optional
+        The start of the stopband in cycles per input pixel.
+
+    Returns
+    -------
+    result : 2D `~numpy.ndarray`
+        The filtered data. The input is returned unchanged if both
+        oversampling factors are one.
+    """
+    data = np.asarray(data, dtype=float)
+    for axis in (0, 1):
+        factor = int(oversampling[axis])
+        if factor < 2:
+            continue
+
+        npts = data.shape[axis]
+        # Frequency in cycles per input (undersampled) pixel
+        nu = np.abs(np.fft.fftfreq(npts)) * factor
+        frac = np.clip((nu - nu_pass) / (nu_stop - nu_pass), 0.0, 1.0)
+        gain = 0.5 * (1.0 + np.cos(np.pi * frac))
+        shape = [1, 1]
+        shape[axis] = npts
+
+        spectrum = np.fft.fft(data, axis=axis) * gain.reshape(shape)
+        data = np.fft.ifft(spectrum, axis=axis).real
+
+    return data
+
+
+def _phase_uniformity_pvalue(centers, *, nbins=4):
+    """
+    Compute a chi-square p-value for the uniformity of the subpixel
+    phases of star centers.
+
+    Parameters
+    ----------
+    centers : 2D `~numpy.ndarray`
+        The (x, y) star centers, one row per star.
+
+    nbins : int, optional
+        The number of phase bins per axis.
+
+    Returns
+    -------
+    pvalue : float
+        The p-value of the chi-square test of a uniform phase
+        distribution, combining both axes.
+    """
+    chi2 = 0.0
+    for axis in (0, 1):
+        phases = np.mod(centers[:, axis], 1.0)
+        hist = np.histogram(phases, bins=nbins, range=(0.0, 1.0))[0]
+        expected = len(phases) / nbins
+        chi2 += np.sum((hist - expected) ** 2) / expected
+
+    return chi2_dist.sf(chi2, 2 * (nbins - 1))
 
 
 class _SmoothingKernel:
@@ -1079,6 +1165,21 @@ class EPSFBuilder:
 
     Notes
     -----
+    In each build iteration, the residual between each star and the
+    current ePSF model is deposited on every oversampled grid point
+    inside the footprint of each star pixel, so that every star
+    contributes to every grid point regardless of its subpixel phase.
+    After the residuals are combined and the ePSF is smoothed, power
+    at and above one cycle per input pixel is removed along each
+    oversampled axis. A pixel-integrated PSF has essentially no power
+    there, but those are the frequencies at which the star-pixel
+    sampling lattice aliases onto the oversampled grid. Without
+    these two measures, noise in the ePSF grid from heterogeneous
+    or contaminated stars can bias the fitted star centers toward
+    particular subpixel phases and grow into a checkerboard pattern in
+    the ePSF. A warning is emitted if the subpixel phases of the fitted
+    star centers are strongly non-uniform at the end of the build.
+
     This class stores per-call state on the instance (e.g., the list
     of per-iteration ePSFs), so a single instance must not be called
     concurrently from multiple threads. Create one instance per
@@ -1293,8 +1394,13 @@ class EPSFBuilder:
         A normalized residual image is calculated by subtracting the
         normalized ePSF model from the normalized star at the location
         of the star in the undersampled grid. The normalized residual
-        image is then resampled from the undersampled star grid to the
-        oversampled ePSF grid.
+        image is then resampled from the undersampled star grid to
+        the oversampled ePSF grid by depositing each star pixel value
+        on every oversampled grid point inside the footprint of that
+        pixel. Every star therefore contributes to every grid point that
+        its cutout covers, regardless of its subpixel phase. For an
+        oversampling factor of one along an axis, this reduces to the
+        nearest grid point.
 
         Parameters
         ----------
@@ -1323,20 +1429,29 @@ class EPSFBuilder:
                                     y=yidx_centered,
                                     flux=1.0, x_0=0.0, y_0=0.0))
 
-        # Use coordinate transformer to map to the oversampled ePSF grid
-        xidx, yidx = self._coord_transformer.star_to_epsf_coords(
-            xidx_centered, yidx_centered, epsf.origin)
+        # Star pixel centers in the oversampled ePSF grid
+        x_over, y_over = self._coord_transformer.undersampled_to_oversampled(
+            xidx_centered, yidx_centered)
+        x_over = x_over + epsf.origin[0]
+        y_over = y_over + epsf.origin[1]
 
         epsf_shape = epsf.data.shape
         if out_image is None:
             out_image = np.full(epsf_shape, np.nan)
 
-        mask = np.logical_and(np.logical_and(xidx >= 0, xidx < epsf_shape[1]),
-                              np.logical_and(yidx >= 0, yidx < epsf_shape[0]))
-        xidx_ = xidx[mask]
-        yidx_ = yidx[mask]
-
-        out_image[yidx_, xidx_] = stardata[mask]
+        # Each star pixel covers the grid points k with x_over - os /
+        # 2 < k <= x_over + os / 2, which is exactly oversampled grid
+        # points along each axis.
+        ny_over, nx_over = self.oversampling
+        x_first = np.floor(x_over - nx_over / 2.0).astype(int) + 1
+        y_first = np.floor(y_over - ny_over / 2.0).astype(int) + 1
+        for j in range(ny_over):
+            yidx = y_first + j
+            for i in range(nx_over):
+                xidx = x_first + i
+                mask = ((xidx >= 0) & (xidx < epsf_shape[1])
+                        & (yidx >= 0) & (yidx < epsf_shape[0]))
+                out_image[yidx[mask], xidx[mask]] = stardata[mask]
 
         return out_image
 
@@ -1605,6 +1720,11 @@ class EPSFBuilder:
 
         # Smooth the ePSF
         smoothed_data = self._smooth_epsf(new_epsf)
+
+        # Remove power at and above the input pixel sampling frequency
+        # along oversampled axes, where the star-pixel lattice aliases
+        # onto the ePSF grid.
+        smoothed_data = _suppress_alias_modes(smoothed_data, self.oversampling)
 
         # Recenter the ePSF using an intermediate ePSF that keeps the
         # current epsf's origin. The recentering shifts the ePSF by
@@ -1922,6 +2042,47 @@ class EPSFBuilder:
 
         return epsf, stars, fit_failed
 
+    @staticmethod
+    def _warn_nonuniform_phases(stars, *, min_stars=32, pvalue=1.0e-6):
+        """
+        Warn if the subpixel phases of the fitted star centers are
+        strongly non-uniform.
+
+        Unbiased star centers have uniformly distributed subpixel
+        phases. A strongly non-uniform distribution indicates that
+        the fitted centers are biased toward particular phases, which
+        happens when the ePSF grid is noisy (e.g., for heterogeneous,
+        contaminated, or low signal-to-noise stars).
+
+        Parameters
+        ----------
+        stars : `EPSFStars` object
+            The fitted stars.
+
+        min_stars : int, optional
+            The minimum number of successfully fitted stars needed to
+            perform the check.
+
+        pvalue : float, optional
+            The chi-square p-value below which the warning is emitted.
+        """
+        centers = [star.cutout_center for star in stars.all_stars
+                   if not star._excluded_from_fit
+                   and star._fit_error_status == 0]
+        if len(centers) < min_stars:
+            return
+
+        if _phase_uniformity_pvalue(np.array(centers)) < pvalue:
+            msg = ('The subpixel phases of the fitted star centers are '
+                   'strongly non-uniform, which indicates that the star '
+                   'centers are biased. The ePSF and the fitted star '
+                   'centers may be unreliable. This can be caused by '
+                   'stars with different PSFs, contaminated or saturated '
+                   'star cutouts, spurious detections, or low '
+                   'signal-to-noise stars. Consider using a cleaner '
+                   'star sample or a lower oversampling factor.')
+            warnings.warn(msg, AstropyUserWarning)
+
     def _finalize_build(self, epsf, stars, progress_reporter, iter_num,
                         converged, final_center_accuracy):
         """
@@ -1964,6 +2125,10 @@ class EPSFBuilder:
         excluded_star_indices = [i for i, star
                                  in enumerate(stars.all_stars)
                                  if star._excluded_from_fit]
+
+        # Warn if the fitted star centers have strongly non-uniform
+        # subpixel phases.
+        self._warn_nonuniform_phases(stars)
 
         # Create structured result
         return EPSFBuildResults(
