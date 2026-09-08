@@ -238,6 +238,10 @@ New Features
     intra-pixel sensitivity variations, which would otherwise be
     absorbed into the ePSF. [#2420]
 
+  - Added ``smoothing_kernel`` and ``fit_shape`` attributes to
+    ``EPSFBuildResults`` that report the smoothing kernel and fitting
+    box used in the final iteration. [#2421]
+
 - ``photutils.segmentation``
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``
@@ -1039,6 +1043,24 @@ API Changes
     container holding a single star (e.g., from indexing) converts to
     that star's 2D cutout, and a container holding multiple stars
     converts to a 3D stack of the cutouts. [#2395]
+
+  - The default ``smoothing_kernel`` and ``fit_shape`` of
+    ``EPSFBuilder`` are now ``'auto'``. The smoothing kernel is a
+    least-squares quartic polynomial kernel whose width is 0.7 times
+    the FWHM of the ePSF in oversampled grid points (no smoothing
+    below 5 grid points), and the fitting box is twice the FWHM of the
+    ePSF in detector pixels (at least 5 pixels and at most the star
+    cutout size). The FWHM is measured in each iteration along the
+    narrowest axis of the ePSF. The previous fixed 5x5 ``'quartic'``
+    kernel (in oversampled grid points) and 5-pixel fitting box (in
+    detector pixels) were designed for HST images with an oversampling
+    factor of 4. A fixed kernel oversmooths heavily undersampled
+    ePSFs, and a fixed 5-pixel fitting box applied to a well-sampled
+    star uses only its flat core, which biases the fitted centers and
+    can prevent convergence. The previous behavior is available with
+    ``smoothing_kernel='quartic'`` and ``fit_shape=5``. An invalid
+    string value for either parameter now raises a ``ValueError``.
+    [#2421]
 
 - ``photutils.segmentation``
 

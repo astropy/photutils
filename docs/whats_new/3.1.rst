@@ -753,10 +753,23 @@ variations, which would otherwise be absorbed into the ePSF. Set
 ``constrain_fluxes=False`` if the linked images have different flux
 scales.
 
-The ePSF building user guide now includes guidelines for choosing the
-oversampling factor and the star sample, e.g., using at least about four
-grid points per FWHM, not using an oversampling factor larger than the
-data require, and providing enough stars to sample every subpixel cell.
+The default smoothing kernel and fitting box now scale with the FWHM of
+the ePSF (``smoothing_kernel='auto'`` and ``fit_shape='auto'``). The
+previous fixed 5x5 ``'quartic'`` kernel (in oversampled grid points) and
+5-pixel fitting box (in detector pixels) were designed for HST images
+with an oversampling factor of 4, where they correspond to about 0.7 and
+2.5 FWHM, respectively. A fixed kernel oversmooths heavily undersampled
+ePSFs, and a fixed 5-pixel fitting box applied to a well-sampled star
+uses only its flat core, which biases the fitted centers and can prevent
+the build from converging. The automatic kernel is a least-squares
+quartic polynomial kernel 0.7 FWHM wide in oversampled grid points
+(no smoothing below 5 grid points), and the automatic fitting box
+is 2 FWHM wide in detector pixels (at least 5 pixels and at most
+the star cutout size). The choices made in the final iteration are
+reported in the new ``smoothing_kernel`` and ``fit_shape`` attributes
+of `~photutils.psf.EPSFBuildResults`, and they can be input as fixed
+values to reproduce the build. The previous behavior is available with
+``smoothing_kernel='quartic'`` and ``fit_shape=5``.
 
 .. _whatsnew-3.1-api-changes:
 

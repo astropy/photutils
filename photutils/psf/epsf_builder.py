@@ -8,7 +8,7 @@ import copy
 import inspect
 import numbers
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from astropy.modeling.fitting import TRFLSQFitter
@@ -33,6 +33,16 @@ from photutils.utils.exceptions import PhotutilsDeprecationWarning
 __all__ = ['EPSFBuildResults', 'EPSFBuilder', 'EPSFFitter']
 
 SIGMA_CLIP = SigmaClipSentinelDefault(sigma=3.0, maxiters=10)
+
+# Parameters of the automatic ('auto') smoothing kernel and fit shape.
+# The smoothing window is this fraction of the ePSF FWHM (in oversampled
+# grid points) and no smoothing is applied below the minimum size. The
+# fit shape is this multiple of the ePSF FWHM (in detector pixels), with
+# the given minimum size.
+_AUTO_KERNEL_FWHM_FRACTION = 0.7
+_AUTO_KERNEL_MIN_SIZE = 5
+_AUTO_FIT_FWHM_FRACTION = 2.0
+_AUTO_FIT_MIN_SIZE = 5
 
 
 def _fitter_accepts_weights(fitter):
@@ -112,6 +122,120 @@ def _suppress_alias_modes(data, oversampling, *, nu_pass=0.7, nu_stop=1.0):
     return data
 
 
+def _odd_size(value):
+    """
+    Round a positive value to the nearest integer and then up to an odd
+    integer.
+
+    The result is the nearest integer when that is odd and the next
+    larger integer when it is even, so the rounding is biased upward
+    rather than to the nearest odd integer (e.g., 5.9 gives 7).
+
+    Parameters
+    ----------
+    value : float
+        The input value.
+
+    Returns
+    -------
+    size : int
+        The odd integer, at least 1.
+    """
+    size = round(value)
+    if size % 2 == 0:
+        size += 1
+    return max(size, 1)
+
+
+def _profile_fwhm(profile):
+    """
+    Measure the full width at half maximum of a 1D profile.
+
+    The width is measured between the first crossings of the half
+    maximum on each side of the peak, using linear interpolation between
+    the neighboring samples.
+
+    Parameters
+    ----------
+    profile : 1D `~numpy.ndarray`
+        The profile.
+
+    Returns
+    -------
+    width : float or `None`
+        The width in samples, or `None` if the peak is not finite and
+        positive or the profile does not cross the half maximum on both
+        sides of the peak within the array.
+    """
+    if not np.any(np.isfinite(profile)):
+        return None
+
+    peak_index = int(np.nanargmax(profile))
+    peak = profile[peak_index]
+    if not np.isfinite(peak) or peak <= 0:
+        return None
+
+    half_max = 0.5 * peak
+    edges = []
+    for step in (-1, 1):
+        i = peak_index
+        while (0 <= i + step < len(profile)
+               and profile[i + step] > half_max):
+            i += step
+        j = i + step
+        if j < 0 or j >= len(profile) or not np.isfinite(profile[j]):
+            return None
+        # Linear interpolation between the last sample above the half
+        # maximum and the first sample at or below it.
+        edges.append(i + step * (profile[i] - half_max)
+                     / (profile[i] - profile[j]))
+
+    return abs(edges[1] - edges[0])
+
+
+def _measure_fwhm(data):
+    """
+    Measure the FWHM of a 2D ePSF along each axis.
+
+    The FWHM is measured along the row and the column through the
+    peak, from the first crossings of the half maximum on each side of
+    the peak. To reduce the sensitivity to noise, the row and column
+    profiles are averaged over the three rows and columns centered on
+    the peak.
+
+    Parameters
+    ----------
+    data : 2D `~numpy.ndarray`
+        The ePSF data.
+
+    Returns
+    -------
+    fwhm : tuple of float or `None`
+        The (y, x) FWHM in grid points, or `None` if the FWHM could not
+        be measured (e.g., a non-positive peak or a profile that does
+        not fall below half of the peak within the array).
+    """
+    data = np.asarray(data, dtype=float)
+    if data.size == 0 or not np.any(np.isfinite(data)):
+        return None
+
+    iy, ix = np.unravel_index(np.nanargmax(data), data.shape)
+    if data[iy, ix] <= 0:
+        return None
+
+    # The rows (columns) of a separable PSF are scaled copies of each
+    # other, so averaging the three rows (columns) around the peak
+    # reduces the noise without broadening the profiles.
+    profile_x = data[max(iy - 1, 0):iy + 2, :].mean(axis=0)
+    profile_y = data[:, max(ix - 1, 0):ix + 2].mean(axis=1)
+    fwhm_x = _profile_fwhm(profile_x)
+    fwhm_y = _profile_fwhm(profile_y)
+    if fwhm_x is None or fwhm_y is None:
+        return None
+
+    return fwhm_y, fwhm_x
+
+
 def _phase_uniformity_pvalue(centers, *, nbins=4):
     """
     Compute a chi-square p-value for the uniformity of the subpixel
@@ -141,6 +265,55 @@ def _phase_uniformity_pvalue(centers, *, nbins=4):
     return chi2_dist.sf(chi2, 2 * (nbins - 1))
 
 
+def _make_polynomial_kernel(size, *, degree=4):
+    """
+    Make the kernel of a least-squares polynomial smoother.
+
+    Convolving an array with this kernel replaces each value by the
+    value at the center of a 2D polynomial of the given degree fit by
+    least squares to the ``size`` x ``size`` values centered on it. The
+    5x5 ``'quartic'`` and ``'quadratic'`` kernels of `_SmoothingKernel`
+    are the ``degree=4`` and ``degree=2`` cases. The quartic kernel
+    is the smoothing kernel of equation 8 of Anderson and King 2000
+    (PASP 112, 1360).
+
+    Parameters
+    ----------
+    size : int
+        The odd size of the square kernel.
+
+    degree : int, optional
+        The degree of the 2D polynomial. The number of polynomial terms
+        must be smaller than the number of kernel elements.
+
+    Returns
+    -------
+    kernel : 2D `~numpy.ndarray`
+        The smoothing kernel.
+    """
+    if size < 3 or size % 2 == 0:
+        msg = 'size must be an odd integer greater than or equal to 3'
+        raise ValueError(msg)
+
+    nterms = (degree + 1) * (degree + 2) // 2
+    if degree < 1 or nterms >= size**2:
+        msg = ('degree must be at least 1 and the number of polynomial '
+               'terms must be smaller than the number of kernel elements')
+        raise ValueError(msg)
+
+    half = size // 2
+    yy, xx = np.mgrid[-half:half + 1, -half:half + 1]
+    design = np.array([xx.ravel()**i * yy.ravel()**j
+                       for i in range(degree + 1)
+                       for j in range(degree + 1 - i)], dtype=float).T
+
+    # The smoothed value at the center is the center row of the
+    # least-squares projection matrix applied to the data.
+    center = half * size + half
+    weights = design @ np.linalg.solve(design.T @ design, design[center])
+    return weights.reshape(size, size)
+
+
 class _SmoothingKernel:
     """
     Utility class for ePSF smoothing kernel generation and convolution.
@@ -149,20 +322,14 @@ class _SmoothingKernel:
     ePSF building and provides consistent smoothing operations.
     """
 
-    # Pre-computed kernels based on polynomial fits
-    QUARTIC_KERNEL = np.array([
-        [+0.041632, -0.080816, 0.078368, -0.080816, +0.041632],
-        [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
-        [+0.078368, +0.200816, 0.441632, +0.200816, +0.078368],
-        [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
-        [+0.041632, -0.080816, 0.078368, -0.080816, +0.041632]])
+    # The 5x5 least-squares polynomial kernels. The quartic kernel is
+    # equation 8 of Anderson and King 2000.
+    QUARTIC_KERNEL = _make_polynomial_kernel(5, degree=4)
+    QUADRATIC_KERNEL = _make_polynomial_kernel(5, degree=2)
 
-    QUADRATIC_KERNEL = np.array([
-        [-0.07428311, 0.01142786, 0.03999952, 0.01142786, -0.07428311],
-        [+0.01142786, 0.09714283, 0.12571449, 0.09714283, +0.01142786],
-        [+0.03999952, 0.12571449, 0.15428215, 0.12571449, +0.03999952],
-        [+0.01142786, 0.09714283, 0.12571449, 0.09714283, +0.01142786],
-        [-0.07428311, 0.01142786, 0.03999952, 0.01142786, -0.07428311]])
+    # The kernel constructor is a module-level function so that the
+    # class attributes above can be generated when the class is created.
+    make_polynomial_kernel = staticmethod(_make_polynomial_kernel)
 
     @classmethod
     def get_kernel(cls, kernel_type):
@@ -189,14 +356,11 @@ class _SmoothingKernel:
 
         Notes
         -----
-        The predefined kernels are derived from polynomial fits:
-
-        - 'quartic': From Polynomial2D fit with degree=4 to 5x5 array of
-          zeros with 1.0 at the center. Based on fourth degree polynomial.
-
-        - 'quadratic': From Polynomial2D fit with degree=2 to 5x5
-          array of zeros with 1.0 at the center. Based on second degree
-          polynomial.
+        The predefined kernels are 5x5 least-squares polynomial
+        smoothing kernels generated by ``make_polynomial_kernel``. The
+        ``'quartic'`` kernel (degree 4) is the smoothing kernel of
+        equation 8 of Anderson and King 2000 (PASP 112, 1360), and the
+        ``'quadratic'`` kernel is the degree 2 counterpart.
         """
         if isinstance(kernel_type, np.ndarray):
             if kernel_type.ndim != 2:
@@ -782,6 +946,17 @@ class EPSFBuildResults:
         building process. These correspond to positions in the flattened
         star list (stars.all_stars).
 
+    smoothing_kernel : 2D `~numpy.ndarray` or `None`
+        The smoothing kernel applied in the final iteration, or `None`
+        if no smoothing was applied. This includes the kernel chosen
+        by ``smoothing_kernel='auto'``, which can be input as a fixed
+        ``smoothing_kernel`` to reproduce the build.
+
+    fit_shape : tuple or `None`
+        The (ny, nx) shape of the fitting box used in the final
+        iteration, or `None` if the entire star cutouts were fit. This
+        includes the shape chosen by ``fit_shape='auto'``.
+
     Notes
     -----
     This result object maintains backward compatibility by implementing
@@ -809,6 +984,9 @@ class EPSFBuildResults:
     final_center_accuracy: float
     n_excluded_stars: int
     excluded_star_indices: list
+    smoothing_kernel: np.ndarray | None = field(default=None, compare=False,
+                                                repr=False)
+    fit_shape: tuple | None = None
 
     def __iter__(self):
         """
@@ -1095,16 +1273,24 @@ class EPSFBuilder:
         factor. The output ePSF will always have odd sizes along both
         axes to ensure a well-defined central pixel.
 
-    smoothing_kernel : {'quartic', 'quadratic'}, 2D `~numpy.ndarray`, or `None`
+    smoothing_kernel : {'auto', 'quartic', 'quadratic'}, 2D array, or `None`
         The smoothing kernel to apply to the ePSF during each iteration
-        step. The predefined ``'quartic'`` and ``'quadratic'`` kernels
-        are derived from fourth and second degree polynomials,
+        step. If ``'auto'``, a least-squares quartic polynomial kernel
+        (see Notes) whose width is 0.7 times the FWHM of the current
+        ePSF in oversampled grid points is used, and no smoothing
+        is applied if that width is less than 5 grid points, i.e.,
+        for heavily undersampled ePSFs. The kernel is square and the
+        FWHM is measured in each iteration along the narrowest axis
+        of the ePSF, so with anisotropic oversampling the axis with
+        the fewer grid points per FWHM sets the kernel size. If the
+        FWHM cannot be measured, the ``'quartic'`` kernel is used
+        and a warning is emitted. The predefined ``'quartic'`` and
+        ``'quadratic'`` kernels are 5x5 kernels (in oversampled grid
+        points) derived from fourth and second degree polynomials,
         respectively. Alternatively, a custom 2D array can be input.
         If `None` then no smoothing will be performed. The kernels are
-        applied on the oversampled grid, so their physical width depends
-        on the oversampling factor. For heavily undersampled ePSFs with
-        only a few grid points per FWHM, the kernels can lower the peak
-        of the ePSF and `None` is a reasonable choice. Power at and
+        applied on the oversampled grid, so the physical width of a
+        fixed kernel depends on the oversampling factor. Power at and
         above one cycle per input pixel is always removed from the ePSF
         along oversampled axes, independently of this parameter.
 
@@ -1152,16 +1338,21 @@ class EPSFBuilder:
             the ``fitter``, ``fit_shape``, and ``fitter_maxiters``
             parameters instead.
 
-    fit_shape : int, tuple of int, or `None`, optional
-        The size (in pixels) of the box centered on the star to be
-        used for ePSF fitting. This allows using only a small number
-        of central pixels of the star (i.e., where the star is
-        brightest) for fitting. If ``fit_shape`` is a scalar then a
-        square box of size ``fit_shape`` will be used. If ``fit_shape``
-        has two elements, they must be in ``(ny, nx)`` order.
-        ``fit_shape`` must have odd values and be greater than or equal
-        to 3 for both axes. If `None`, the fitter will use the entire
-        star image.
+    fit_shape : {'auto'}, int, tuple of int, or `None`, optional
+        The size (in detector pixels) of the box centered on the star
+        to be used for ePSF fitting. This allows using only a small
+        number of central pixels of the star (i.e., where the star is
+        brightest) for fitting. If ``'auto'``, a square box of twice the
+        FWHM of the current ePSF (measured in each iteration along its
+        narrowest axis, in detector pixels), with a minimum of 5 pixels
+        and a maximum of the smallest star cutout size, is used. For an
+        elongated ePSF, the narrower axis sets the box size along both
+        axes. If the FWHM cannot be measured, a 5x5 box is used and a
+        warning is emitted. If ``fit_shape`` is a scalar then a square
+        box of size ``fit_shape`` will be used. If ``fit_shape`` has two
+        elements, they must be in ``(ny, nx)`` order. ``fit_shape`` must
+        have odd values and be greater than or equal to 3 for both axes.
+        If `None`, the fitter will use the entire star image.
 
     fitter_maxiters : int, optional
         The maximum number of iterations in which the ``fitter`` is
@@ -1208,12 +1399,27 @@ class EPSFBuilder:
     the ePSF. A warning is emitted if the subpixel phases of the fitted
     star centers are strongly non-uniform at the end of the build.
 
+    The default ``smoothing_kernel='auto'`` and ``fit_shape='auto'``
+    scale the smoothing kernel and the fitting box with the FWHM of the
+    ePSF. The 5x5 ``'quartic'`` kernel (in oversampled grid points)
+    and 5-pixel fitting box (in detector pixels) of Anderson and King
+    2000 were designed for HST images with an oversampling factor
+    of 4, where they correspond to about 0.7 and 2.5 FWHM. A fixed
+    kernel oversmooths heavily undersampled ePSFs, and a fixed 5-pixel
+    fitting box applied to a well-sampled star uses only its flat core,
+    which biases the fitted centers and can prevent convergence. The
+    polynomial kernels replace each grid value by the value at the
+    center of a least-squares polynomial fit to the surrounding grid
+    values. The kernel and fitting box chosen in the final iteration are
+    reported in the ``smoothing_kernel`` and ``fit_shape`` attributes of
+    the returned `EPSFBuildResults`.
+
     This class stores per-call state on the instance (e.g., the list
     of per-iteration ePSFs), so a single instance must not be called
-    concurrently from multiple threads. Create one instance per
-    thread for concurrent use. Sharing a single Astropy fitter
-    instance across concurrently-used objects is also unsafe because
-    Astropy fitters store ``fit_info`` on themselves.
+    concurrently from multiple threads. Create one instance per thread
+    for concurrent use. Sharing a single Astropy fitter instance across
+    concurrently-used objects is also unsafe because Astropy fitters
+    store ``fit_info`` on themselves.
     """
 
     coord_transformer = deprecated_attribute(
@@ -1221,10 +1427,10 @@ class EPSFBuilder:
         warning_type=PhotutilsDeprecationWarning)
 
     def __init__(self, *, oversampling=4, shape=None,
-                 smoothing_kernel='quartic', sigma_clip=SIGMA_CLIP,
+                 smoothing_kernel='auto', sigma_clip=SIGMA_CLIP,
                  recentering_func=centroid_com, recentering_boxsize=(5, 5),
                  recentering_maxiters=20, center_accuracy=1.0e-3,
-                 fitter=None, fit_shape=5, fitter_maxiters=100,
+                 fitter=None, fit_shape='auto', fitter_maxiters=100,
                  constrain_fluxes=True, maxiters=10, progress_bar=True):
 
         # Validate and store oversampling using the validator
@@ -1257,14 +1463,26 @@ class EPSFBuilder:
         self.recentering_boxsize = as_pair('recentering_boxsize',
                                            recentering_boxsize,
                                            lower_bound=(3, 1), check_odd=True)
-        if smoothing_kernel is not None:
+
+        if isinstance(smoothing_kernel, str):
+            if smoothing_kernel not in ('auto', 'quartic', 'quadratic'):
+                msg = ("smoothing_kernel must be 'auto', 'quartic', "
+                       "'quadratic', a 2D array, or None")
+                raise ValueError(msg)
+        elif smoothing_kernel is not None:
             # Validate early so bad kernels fail at construction
-            # instead of in the middle of a build
+            # instead of in the middle of a build.
             _SmoothingKernel.get_kernel(smoothing_kernel)
         self.smoothing_kernel = smoothing_kernel
 
-        # Handle fitter parameter - accept both astropy Fitter and
-        # deprecated EPSFFitter for backward compatibility
+        # Per-call state for the automatic smoothing kernel and fit
+        # shape (reset in build_epsf and updated in each iteration).
+        self._auto_state = None
+        self._auto_fit_max = None
+        self._auto_fallback_warned = False
+
+        # Handle fitter parameter. Accept both astropy Fitter and
+        # deprecated EPSFFitter for backward compatibility.
         if isinstance(fitter, EPSFFitter):
             msg = ('Passing an EPSFFitter instance to EPSFBuilder is '
                    'deprecated. Use the fitter, fit_shape, and '
@@ -1283,12 +1501,15 @@ class EPSFBuilder:
             self.fitter = fitter
 
             # Validate fit_shape
-            if fit_shape is not None:
-                self.fit_shape = as_pair('fit_shape', fit_shape,
-                                         lower_bound=(3, 1),
-                                         check_odd=True)
+            if isinstance(fit_shape, str) and not self._is_auto(fit_shape):
+                msg = ("fit_shape must be 'auto', an integer, a tuple of "
+                       'integers, or None')
+                raise ValueError(msg)
+            if fit_shape is None or self._is_auto(fit_shape):
+                self.fit_shape = fit_shape
             else:
-                self.fit_shape = None
+                self.fit_shape = as_pair('fit_shape', fit_shape,
+                                         lower_bound=(3, 1), check_odd=True)
 
             # Validate fitter_maxiters
             self.fitter_maxiters = self._validate_fitter_maxiters(
@@ -1338,6 +1559,107 @@ class EPSFBuilder:
             The result of the ePSF building process.
         """
         return self.build_epsf(stars)
+
+    @staticmethod
+    def _is_auto(value):
+        """
+        Return whether a parameter value is the string ``'auto'``.
+        """
+        return isinstance(value, str) and value == 'auto'
+
+    def _auto_fallback(self):
+        """
+        Return the fallback state used when the ePSF FWHM cannot be
+        measured, warning once per build.
+        """
+        fit_size = _AUTO_FIT_MIN_SIZE
+        if self._auto_fit_max is not None:
+            fit_size = min(fit_size, self._auto_fit_max)
+
+        if not self._auto_fallback_warned:
+            auto_kernel = self._is_auto(self.smoothing_kernel)
+            auto_fit = self._is_auto(self.fit_shape)
+
+            if auto_kernel and auto_fit:
+                what = ('smoothing_kernel and fit_shape fall back to the '
+                        f"'quartic' kernel and a fit shape of {fit_size}")
+            elif auto_kernel:
+                what = "smoothing_kernel falls back to the 'quartic' kernel"
+            else:
+                what = f'fit_shape falls back to a fit shape of {fit_size}'
+
+            msg = ('The FWHM of the ePSF could not be measured, so the '
+                   f"'auto' {what}.")
+            warnings.warn(msg, AstropyUserWarning)
+
+            self._auto_fallback_warned = True
+
+        return {'kernel': _SmoothingKernel.QUARTIC_KERNEL,
+                'fit_shape': (fit_size, fit_size)}
+
+    def _update_auto_parameters(self, epsf_data):
+        """
+        Choose the smoothing kernel and fit shape from the FWHM of the
+        current ePSF.
+
+        The smoothing window is ``_AUTO_KERNEL_FWHM_FRACTION`` times
+        the FWHM in oversampled grid points (no smoothing below
+        ``_AUTO_KERNEL_MIN_SIZE``), and the fit shape is
+        ``_AUTO_FIT_FWHM_FRACTION`` times the FWHM in detector pixels
+        (at least ``_AUTO_FIT_MIN_SIZE`` and at most the smallest star
+        cutout size). The FWHM is measured along the narrowest axis of
+        the ePSF.
+
+        Parameters
+        ----------
+        epsf_data : 2D `~numpy.ndarray`
+            The current (unsmoothed) ePSF data.
+        """
+        if not (self._is_auto(self.smoothing_kernel)
+                or self._is_auto(self.fit_shape)):
+            return
+
+        fwhm = _measure_fwhm(epsf_data)
+        if fwhm is None:
+            self._auto_state = self._auto_fallback()
+            return
+
+        fwhm_grid = min(fwhm)
+        fwhm_pixels = min(fwhm[0] / self.oversampling[0],
+                          fwhm[1] / self.oversampling[1])
+
+        kernel = None
+        # Cap the kernel at the largest odd size smaller than the ePSF.
+        # A kernel as large as the ePSF would fit every grid value
+        # mostly to edge-reflected data.
+        size = _odd_size(_AUTO_KERNEL_FWHM_FRACTION * fwhm_grid)
+        size = min(size, _odd_size(min(epsf_data.shape)) - 2)
+        if size >= _AUTO_KERNEL_MIN_SIZE:
+            kernel = _SmoothingKernel.make_polynomial_kernel(size, degree=4)
+
+        fit_size = max(_AUTO_FIT_MIN_SIZE,
+                       _odd_size(_AUTO_FIT_FWHM_FRACTION * fwhm_pixels))
+        if self._auto_fit_max is not None:
+            fit_size = min(fit_size, self._auto_fit_max)
+
+        self._auto_state = {'kernel': kernel,
+                            'fit_shape': (fit_size, fit_size)}
+
+    def _current_smoothing_kernel(self):
+        """
+        Return the smoothing kernel for the current iteration.
+        """
+        if self._is_auto(self.smoothing_kernel):
+            return self._auto_state['kernel']
+        return self.smoothing_kernel
+
+    def _current_fit_shape(self):
+        """
+        Return the fit shape for the current iteration.
+        """
+        if self._is_auto(self.fit_shape):
+            return self._auto_state['fit_shape']
+        return self.fit_shape
 
     def _validate_fitter_maxiters(self, fitter_maxiters):
         """
@@ -1534,8 +1856,8 @@ class EPSFBuilder:
         result : 2D `~numpy.ndarray`
             The smoothed (convolved) ePSF data.
         """
-        return _SmoothingKernel.apply_smoothing(epsf_data,
-                                                self.smoothing_kernel)
+        return _SmoothingKernel.apply_smoothing(
+            epsf_data, self._current_smoothing_kernel())
 
     def _normalize_epsf(self, epsf_data):
         """
@@ -1748,6 +2070,10 @@ class EPSFBuilder:
         # Add the residuals to the previous ePSF image
         new_epsf = epsf.data + residuals
 
+        # Choose the automatic smoothing kernel and fit shape from the
+        # FWHM of the current ePSF.
+        self._update_auto_parameters(new_epsf)
+
         # Smooth the ePSF
         smoothed_data = self._smooth_epsf(new_epsf)
 
@@ -1914,7 +2240,7 @@ class EPSFBuilder:
         star : `EPSFStar`
             The fitted star with updated cutout center and flux.
         """
-        fit_shape = self.fit_shape
+        fit_shape = self._current_fit_shape()
         fitter = self.fitter
         fitter_kwargs = self._fitter_kwargs
         fitter_has_fit_info = self._fitter_has_fit_info
@@ -2162,7 +2488,17 @@ class EPSFBuilder:
         # subpixel phases.
         self._warn_nonuniform_phases(stars)
 
-        # Create structured result
+        # Create structured result. The kernel is copied so that the
+        # results own it and edits cannot reach the shared predefined
+        # kernels or the input array.
+        kernel = self._current_smoothing_kernel()
+        if kernel is not None:
+            kernel = _SmoothingKernel.get_kernel(kernel).copy()
+
+        fit_shape = self._current_fit_shape()
+        if fit_shape is not None:
+            fit_shape = tuple(int(size) for size in fit_shape)
+
         return EPSFBuildResults(
             epsf=epsf,
             fitted_stars=stars,
@@ -2171,6 +2507,8 @@ class EPSFBuilder:
             final_center_accuracy=final_center_accuracy,
             n_excluded_stars=len(excluded_star_indices),
             excluded_star_indices=excluded_star_indices,
+            smoothing_kernel=kernel,
+            fit_shape=fit_shape,
         )
 
     def build_epsf(self, stars, *, epsf=None):
@@ -2231,6 +2569,15 @@ class EPSFBuilder:
         fit_failed = np.zeros(stars.n_all_stars, dtype=bool)
         centers = stars.cutout_center_flat
 
+        # Reset the per-call automatic kernel and fit shape state. The
+        # automatic fit shape cannot exceed the smallest star cutout.
+        self._auto_state = None
+        self._auto_fallback_warned = False
+        min_cutout = min(min(star.shape) for star in stars.all_stars)
+        self._auto_fit_max = _odd_size(min_cutout)
+        if self._auto_fit_max > min_cutout:
+            self._auto_fit_max -= 2
+
         # Setup progress tracking
         progress_reporter = _ProgressReporter(self.progress_bar,
                                               self.maxiters).setup()
@@ -2259,7 +2606,7 @@ class EPSFBuilder:
             progress_reporter.update()
 
         # Calculate the final center accuracy
-        final_center_accuracy = np.max(center_dist_sq) ** 0.5
+        final_center_accuracy = float(np.max(center_dist_sq) ** 0.5)
 
         # Finalize and return structured results
         return self._finalize_build(epsf, stars, progress_reporter,
