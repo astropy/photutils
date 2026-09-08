@@ -2238,8 +2238,10 @@ class TestEPSFBuilder:
         with pytest.raises(ValueError, match=match):
             builder(stars)
 
-    @pytest.mark.parametrize('oversamp', [1, 2, 3, 4, 5])
-    def test_build_oversampling(self, oversamp):
+    @pytest.mark.parametrize(('oversamp', 'fwhm'),
+                             [(1, 7.0), (2, 7.0), (3, 7.0), (4, 7.0),
+                              (5, 7.0), (2, 3.0), (4, 2.0)])
+    def test_build_oversampling(self, oversamp, fwhm):
         """
         Test that the ePSF built with oversampling has the expected
         shape and properties.
@@ -2247,9 +2249,10 @@ class TestEPSFBuilder:
         Sources are placed on a regular grid with exact subpixel offsets
         to ensure that the ePSF is properly sampled. The test checks
         that the resulting ePSF has the expected shape, that it sums to
-        the expected value for an oversampled PSF, and that its shape
-        matches the input PSF model when scaled by the sum of the ePSF
-        data.
+        the expected value for an oversampled PSF, and that it matches
+        the true ePSF, i.e., the PSF integrated over a full input pixel
+        at each oversampled grid offset. The undersampled cases are
+        sensitive to this definition of the truth.
         """
         offsets = (np.arange(oversamp) * 1.0 / oversamp - 0.5 + 1.0
                    / (2.0 * oversamp))
@@ -2258,7 +2261,6 @@ class TestEPSFBuilder:
         ydithers = np.transpose(xydithers)[1]
 
         n_stars = oversamp**2
-        fwhm = 7.0
         sources = Table()
         offset = 50
         size = oversamp * offset + offset
@@ -2303,21 +2305,21 @@ class TestEPSFBuilder:
         expected_sum = oversamp**2
         assert_allclose(epsf.data.sum(), expected_sum, rtol=0.02)
 
-        # Check that the shape of the ePSF matches the input PSF model
-        # when scaled by the sum of the ePSF data. The input PSF model
-        # is a circular Gaussian with the specified FWHM, and the ePSF
-        # should approximate this shape when scaled by the total flux.
-
-        # Calculate the expected PSF shape based on the input model and
-        # the oversampling factor. The FWHM should be scaled by the
-        # oversampling factor to match the ePSF sampling.
+        # Check that the ePSF matches the true ePSF. The true ePSF
+        # at each oversampled grid point is the PSF integrated over
+        # a full input pixel centered at that grid offset (in input
+        # pixel units), which is what the pixel-integrated PRF model
+        # evaluates. Note that evaluating the PRF with the FWHM scaled
+        # by the oversampling factor on the oversampled grid would
+        # instead integrate over 1 / oversamp of a pixel and is not
+        # the ePSF.
         size = epsf.data.shape[0]
         cen = (size - 1) / 2
-        fwhm2 = oversamp * fwhm
-        model = CircularGaussianPRF(flux=1, x_0=cen, y_0=cen, fwhm=fwhm2)
+        model = CircularGaussianPRF(flux=1, x_0=0, y_0=0, fwhm=fwhm)
         yy, xx = np.mgrid[0:size, 0:size]
-        psf = model(xx, yy) * oversamp**2
-        assert_allclose(epsf.data, psf, atol=2e-4)
+        psf = model((xx - cen) / oversamp, (yy - cen) / oversamp)
+        assert_allclose(psf.sum(), expected_sum, rtol=1e-3)
+        assert_allclose(epsf.data, psf, atol=3e-3 * psf.max())
 
         # Check that the fitted centers are close to the true source
         # positions
