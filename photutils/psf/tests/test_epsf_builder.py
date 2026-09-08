@@ -3372,3 +3372,33 @@ def test_fit_stars_shares_spline_cache(epsf_test_data, monkeypatch):
     builder._fit_stars(epsf, stars)
     assert 'interpolator' in epsf.__dict__
     assert '_deriv_interpolators' in epsf.__dict__
+
+
+@pytest.mark.parametrize('oversampling', [1, 2, (1, 2), 4])
+def test_resample_residuals_matches_per_star(epsf_test_data, oversampling):
+    """
+    Test that the vectorized residual stack equals the per-star
+    resampling, including masked pixels, out-of-grid pixels, and
+    excluded stars.
+    """
+    stars = extract_stars(epsf_test_data['nddata'],
+                          epsf_test_data['init_stars'][:8], size=11)
+    # Mask a few pixels in one star and shift another star so that
+    # part of its footprint falls outside the ePSF grid.
+    star0, star1, star2 = stars.all_stars[:3]
+    star0.mask[2:4, 3:6] = True
+    star0.__dict__.pop('_data_values_normalized', None)
+    star1.cutout_center = (1.3, 9.2)
+    star2._excluded_from_fit = True
+
+    builder = EPSFBuilder(oversampling=oversampling, progress_bar=False)
+    epsf = builder._create_initial_epsf(stars)
+    rng = np.random.default_rng(0)
+    epsf.data[:] = rng.uniform(0.0, 1.0, epsf.data.shape)
+    stack = builder._resample_residuals(stars, epsf)
+    assert stack.shape[0] == 7
+
+    for i, star in enumerate(stars.all_good_stars):
+        expected = builder._resample_residual(star, epsf)
+        assert_array_equal(np.isnan(stack[i]), np.isnan(expected))
+        assert_allclose(stack[i], expected, equal_nan=True)

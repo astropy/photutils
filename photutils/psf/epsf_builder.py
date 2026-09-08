@@ -1850,20 +1850,57 @@ class EPSFBuilder:
             A 3D cube containing the resampled residual images.
         """
         epsf_shape = epsf.data.shape
-        n_good_stars = stars.n_good_stars
+        good_stars = stars.all_good_stars
+        n_good_stars = len(good_stars)
 
         if n_good_stars == 0:
             # Return empty array with correct shape
             return np.zeros((0, epsf_shape[0], epsf_shape[1]))
 
+        # Gather the unmasked pixels of all stars so that the ePSF model
+        # is evaluated once and the residuals are deposited with a
+        # single indexed assignment per footprint offset.
+        star_index = []
+        xidx_centered = []
+        yidx_centered = []
+        values = []
+        for i, star in enumerate(good_stars):
+            xidx, yidx = star._xyidx_centered
+            star_index.append(np.full(xidx.size, i))
+            xidx_centered.append(xidx)
+            yidx_centered.append(yidx)
+            values.append(star._data_values_normalized)
+        star_index = np.concatenate(star_index)
+        xidx_centered = np.concatenate(xidx_centered)
+        yidx_centered = np.concatenate(yidx_centered)
+        values = np.concatenate(values)
+
+        residuals = values - epsf.evaluate(x=xidx_centered, y=yidx_centered,
+                                           flux=1.0, x_0=0.0, y_0=0.0)
+
+        # Star pixel centers in the oversampled ePSF grid
+        x_over, y_over = self._coord_transformer.undersampled_to_oversampled(
+            xidx_centered, yidx_centered)
+        x_over = x_over + epsf.origin[0]
+        y_over = y_over + epsf.origin[1]
+
         # Pre-allocate with NaN (default for missing data)
         shape = (n_good_stars, epsf_shape[0], epsf_shape[1])
         epsf_resid = np.full(shape, np.nan)
 
-        # Loop over stars and compute residuals directly into the
-        # pre-allocated array
-        for i, star in enumerate(stars.all_good_stars):
-            self._resample_residual(star, epsf, out_image=epsf_resid[i])
+        # Deposit each pixel residual on every grid point inside the
+        # pixel footprint (see _resample_residual)
+        ny_over, nx_over = self.oversampling
+        x_first = np.floor(x_over - nx_over / 2.0).astype(int) + 1
+        y_first = np.floor(y_over - ny_over / 2.0).astype(int) + 1
+        for j in range(ny_over):
+            yidx = y_first + j
+            for i in range(nx_over):
+                xidx = x_first + i
+                mask = ((xidx >= 0) & (xidx < epsf_shape[1])
+                        & (yidx >= 0) & (yidx < epsf_shape[0]))
+                epsf_resid[star_index[mask], yidx[mask], xidx[mask]] = (
+                    residuals[mask])
 
         return epsf_resid
 
