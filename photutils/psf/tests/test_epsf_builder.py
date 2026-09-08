@@ -3266,3 +3266,109 @@ class TestAutoSmoothingAndFitShape:
                               smoothing_kernel=None, progress_bar=False)
         result = builder(stars)
         assert result.smoothing_kernel is None
+
+
+class TestConvergedFraction:
+    """
+    Tests for the converged_fraction convergence criterion.
+    """
+
+    @pytest.mark.parametrize('value', [0.0, 1.5, -0.1, 'auto', True])
+    def test_invalid(self, value):
+        match = 'converged_fraction must be a number'
+        with pytest.raises(ValueError, match=match):
+            EPSFBuilder(converged_fraction=value, progress_bar=False)
+
+    def test_default(self):
+        builder = EPSFBuilder(progress_bar=False)
+        assert builder.converged_fraction == 0.95
+
+    @pytest.mark.parametrize(('fraction', 'n_movers', 'expected'),
+                             [(1.0, 0, True), (1.0, 1, False),
+                              (0.95, 1, True), (0.95, 3, False)])
+    def test_check_convergence(self, epsf_test_data, fraction, n_movers,
+                               expected):
+        """
+        With 20 stars, 1 unconverged star is 95 percent converged and
+        3 unconverged stars are 85 percent converged.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:20], size=11)
+        builder = EPSFBuilder(center_accuracy=1e-3,
+                              converged_fraction=fraction,
+                              progress_bar=False)
+        centers = stars.cutout_center_flat.copy()
+        centers[:n_movers, 0] += 0.5
+        fit_failed = np.zeros(len(stars), dtype=bool)
+        converged, dist_sq, _ = builder._check_convergence(stars, centers,
+                                                           fit_failed)
+        assert converged is expected
+        assert np.sum(dist_sq > 0) == n_movers
+
+    def test_failed_fits_ignored(self, epsf_test_data):
+        """
+        Stars whose fit failed do not count toward the fraction.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:20], size=11)
+        builder = EPSFBuilder(converged_fraction=1.0, progress_bar=False)
+        centers = stars.cutout_center_flat.copy()
+        centers[:3, 0] += 0.5
+        fit_failed = np.zeros(len(stars), dtype=bool)
+        fit_failed[:3] = True
+        converged, dist_sq, _ = builder._check_convergence(stars, centers,
+                                                           fit_failed)
+        assert converged
+        assert len(dist_sq) == 17
+
+    def test_results_attribute(self, epsf_test_data):
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:20], size=11)
+        builder = EPSFBuilder(oversampling=1, maxiters=10,
+                              center_accuracy=1e-2, progress_bar=False)
+        result = builder(stars)
+        assert 0.0 <= result.converged_fraction <= 1.0
+        if result.converged:
+            assert result.converged_fraction >= builder.converged_fraction
+
+
+def test_fit_stars_shares_spline_cache(epsf_test_data, monkeypatch):
+    """
+    The spline interpolators are built once per ePSF and shared by
+    the model copies made for every star fit, so the number of spline
+    constructions does not depend on the number of stars.
+    """
+    from photutils.psf import image_models
+
+    counts = []
+    original = image_models.RectBivariateSpline
+
+    class CountingSpline(original):
+        def __init__(self, *args, **kwargs):
+            counts.append(1)
+            super().__init__(*args, **kwargs)
+
+    monkeypatch.setattr(image_models, 'RectBivariateSpline',
+                        CountingSpline)
+
+    n_constructions = []
+    for nstars in (4, 12):
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:nstars],
+                              size=11)
+        counts.clear()
+        builder = EPSFBuilder(oversampling=1, maxiters=2, progress_bar=False)
+        builder(stars)
+        n_constructions.append(len(counts))
+
+    assert n_constructions[0] == n_constructions[1]
+    assert n_constructions[1] < 12
+
+    # The original ePSF holds the caches after fitting
+    stars = extract_stars(epsf_test_data['nddata'],
+                          epsf_test_data['init_stars'][:4], size=11)
+    builder = EPSFBuilder(oversampling=1, fit_shape=5, progress_bar=False)
+    epsf = builder._create_initial_epsf(stars)
+    builder._fit_stars(epsf, stars)
+    assert 'interpolator' in epsf.__dict__
+    assert '_deriv_interpolators' in epsf.__dict__

@@ -936,6 +936,12 @@ class EPSFBuildResults:
         pixels. This indicates how much the star centers changed in the
         last iteration and can be used to assess convergence quality.
 
+    converged_fraction : float
+        The fraction of the successfully fitted stars whose centers
+        changed by less than ``center_accuracy`` in the final iteration.
+        The build is converged when this fraction is at least the
+        ``converged_fraction`` of the builder.
+
     n_excluded_stars : int
         The number of individual stars (including those from linked
         stars) that were excluded from fitting due to repeated fit
@@ -987,6 +993,7 @@ class EPSFBuildResults:
     smoothing_kernel: np.ndarray | None = field(default=None, compare=False,
                                                 repr=False)
     fit_shape: tuple | None = None
+    converged_fraction: float | None = None
 
     def __iter__(self):
         """
@@ -1322,11 +1329,21 @@ class EPSFBuilder:
         each ePSF build iteration.
 
     center_accuracy : float, optional
-        The desired accuracy for the centers of stars. The building
-        iterations will stop if the centers of all the stars change by
-        less than ``center_accuracy`` pixels between iterations. All
-        stars must meet this condition for the building iterations to
-        stop.
+        The desired accuracy for the centers of stars. The
+        building iterations will stop when the centers of at least
+        ``converged_fraction`` of the successfully fitted stars change
+        by less than ``center_accuracy`` pixels between iterations.
+
+    converged_fraction : float, optional
+        The fraction of the successfully fitted stars whose centers
+        must change by less than ``center_accuracy`` pixels between
+        iterations for the build to be considered converged. The
+        default of 0.95 allows a small number of stars (e.g., spurious
+        detections or contaminated cutouts) whose centers never settle
+        to not prevent convergence. Set to 1.0 to require all stars
+        to converge. The fraction achieved in the final iteration is
+        reported in the ``converged_fraction`` attribute of the returned
+        `EPSFBuildResults`.
 
     fitter : `~astropy.modeling.fitting.Fitter` or `EPSFFitter`, optional
         A `~astropy.modeling.fitting.Fitter` object used to fit the
@@ -1430,8 +1447,9 @@ class EPSFBuilder:
                  smoothing_kernel='auto', sigma_clip=SIGMA_CLIP,
                  recentering_func=centroid_com, recentering_boxsize=(5, 5),
                  recentering_maxiters=20, center_accuracy=1.0e-3,
-                 fitter=None, fit_shape='auto', fitter_maxiters=100,
-                 constrain_fluxes=True, maxiters=10, progress_bar=True):
+                 converged_fraction=0.95, fitter=None, fit_shape='auto',
+                 fitter_maxiters=100, constrain_fluxes=True, maxiters=10,
+                 progress_bar=True):
 
         # Validate and store oversampling using the validator
         self.oversampling = _EPSFValidator.validate_oversampling(
@@ -1528,6 +1546,13 @@ class EPSFBuilder:
         # Validate center accuracy using the validator
         _EPSFValidator.validate_center_accuracy(center_accuracy)
         self.center_accuracy_sq = center_accuracy**2
+
+        if (isinstance(converged_fraction, bool)
+                or not isinstance(converged_fraction, numbers.Real)
+                or not 0.0 < converged_fraction <= 1.0):
+            msg = 'converged_fraction must be a number in the range (0, 1]'
+            raise ValueError(msg)
+        self.converged_fraction = float(converged_fraction)
 
         # Validate maxiters using the validator
         _EPSFValidator.validate_maxiters(maxiters)
@@ -2108,9 +2133,9 @@ class EPSFBuilder:
         Check if the ePSF building has converged.
 
         Convergence is determined by the movement of the star centers
-        between iterations. The build has converged when the maximum
-        squared center movement among successfully fitted stars is less
-        than the configured center accuracy.
+        between iterations. The build has converged when at least
+        ``converged_fraction`` of the successfully fitted stars moved by
+        less than the configured center accuracy.
 
         Parameters
         ----------
@@ -2152,8 +2177,8 @@ class EPSFBuilder:
         center_dist_sq = np.sum(dx_dy_good * dx_dy_good, axis=1,
                                 dtype=np.float64)
 
-        max_movement = np.max(center_dist_sq)
-        converged = bool(max_movement < self.center_accuracy_sq)
+        fraction = np.mean(center_dist_sq < self.center_accuracy_sq)
+        converged = bool(fraction >= self.converged_fraction)
 
         return converged, center_dist_sq, new_centers
 
@@ -2185,6 +2210,12 @@ class EPSFBuilder:
         if not isinstance(epsf, ImagePSF):
             msg = 'The input epsf must be an ImagePSF'
             raise TypeError(msg)
+
+        # Build the (cached) spline interpolators once so that the
+        # model copies made by the fitter for every star share them
+        # instead of each rebuilding the spline.
+        epsf.interpolator  # noqa: B018
+        epsf._deriv_interpolators  # noqa: B018
 
         fitted_stars = []
         for star in stars:
@@ -2442,7 +2473,8 @@ class EPSFBuilder:
             warnings.warn(msg, AstropyUserWarning)
 
     def _finalize_build(self, epsf, stars, progress_reporter, iter_num,
-                        converged, final_center_accuracy):
+                        converged, final_center_accuracy,
+                        converged_fraction=None):
         """
         Finalize the ePSF building process and create result object.
 
@@ -2468,6 +2500,11 @@ class EPSFBuilder:
 
         final_center_accuracy : float
             Final center accuracy achieved.
+
+        converged_fraction : float, optional
+            The fraction of the successfully fitted stars whose centers
+            changed by less than the center accuracy in the final
+            iteration.
 
         Returns
         -------
@@ -2509,6 +2546,7 @@ class EPSFBuilder:
             excluded_star_indices=excluded_star_indices,
             smoothing_kernel=kernel,
             fit_shape=fit_shape,
+            converged_fraction=converged_fraction,
         )
 
     def build_epsf(self, stars, *, epsf=None):
@@ -2607,13 +2645,16 @@ class EPSFBuilder:
             # Update progress bar
             progress_reporter.update()
 
-        # Calculate the final center accuracy
+        # Calculate the final center accuracy and converged fraction
         final_center_accuracy = float(np.max(center_dist_sq) ** 0.5)
+        converged_fraction = float(
+            np.mean(center_dist_sq < self.center_accuracy_sq))
 
         # Finalize and return structured results
         return self._finalize_build(epsf, stars, progress_reporter,
                                     iter_num, converged,
-                                    final_center_accuracy)
+                                    final_center_accuracy,
+                                    converged_fraction)
 
 
 def __getattr__(name):

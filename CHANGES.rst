@@ -242,6 +242,20 @@ New Features
     ``EPSFBuildResults`` that report the smoothing kernel and fitting
     box used in the final iteration. [#2421]
 
+  - Added a ``converged_fraction`` keyword to ``EPSFBuilder`` (default
+    0.95) giving the fraction of the successfully fitted stars
+    whose centers must change by less than ``center_accuracy``
+    between iterations for the build to converge, so that a few
+    spurious or contaminated stars whose centers never settle do
+    not prevent convergence. The fraction achieved in the final
+    iteration is reported in the new ``converged_fraction`` attribute
+    of ``EPSFBuildResults``. Set ``converged_fraction=1.0`` for the
+    previous behavior. [#2422]
+
+  - ``EPSFBuilder`` now builds the ePSF spline interpolators once per
+    iteration instead of once per star, which speeds up the star fitting
+    step. [#2422]
+
 - ``photutils.segmentation``
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``
