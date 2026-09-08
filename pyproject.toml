@@ -368,4 +368,4 @@ convention = 'numpy'
 max-line-length = 79
 
 [tool.distutils.bdist_wheel]
-py-limited-api = "cp311"
+py-limited-api = "cp312"
