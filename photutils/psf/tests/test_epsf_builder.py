@@ -2672,6 +2672,44 @@ def _make_gaussian_star_data():
     return np.exp(-((xx - 5.0)**2 + (yy - 5.0)**2) / (2 * sig**2))
 
 
+@pytest.mark.parametrize('oversampling', [1, 4])
+def test_build_no_zero_edges(epsf_test_data, oversampling):
+    """
+    Regression test for an all-zero row and column at one edge of the
+    ePSF.
+
+    The recentering step shifts the ePSF with its spline, so the edge
+    row and column on one side of the grid fall outside the original
+    grid. They must be extrapolated rather than filled with zero.
+    """
+    stars = extract_stars(epsf_test_data['nddata'],
+                          epsf_test_data['init_stars'][:30], size=11)
+    builder = EPSFBuilder(oversampling=oversampling, maxiters=5,
+                          progress_bar=False)
+    result = builder(stars)
+    data = result.epsf.data
+    edges = [data[0], data[-1], data[:, 0], data[:, -1]]
+    for edge in edges:
+        assert np.any(edge != 0)
+    # Opposite edges of the symmetric PSF have comparable (near-zero)
+    # values relative to the peak.
+    atol = 5e-3 * data.max()
+    assert_allclose(data[0].mean(), data[-1].mean(), atol=atol)
+    assert_allclose(data[:, 0].mean(), data[:, -1].mean(), atol=atol)
+
+    # A single build step from an off-center initial ePSF keeps its
+    # edges after the recentering shift.
+    epsf = builder._create_initial_epsf(stars)
+    yy, xx = np.indices(epsf.data.shape)
+    cen = (epsf.data.shape[0] - 1) / 2 + 0.7 * oversampling
+    sigma = 2.7 / 2.3548 * oversampling
+    epsf.data[:] = np.exp(-((xx - cen)**2 + (yy - cen)**2) / (2 * sigma**2))
+    stepped = builder._build_epsf_step(stars, epsf=epsf)
+    data = stepped.data
+    for edge in (data[0], data[-1], data[:, 0], data[:, -1]):
+        assert np.any(edge != 0)
+
+
 def test_build_epsf_initial_epsf_too_small():
     """
     Regression test that build_epsf validates the shape of a provided

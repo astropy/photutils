@@ -787,6 +787,11 @@ Bug Fixes
     filter metadata is missing. The missing values left stray spaces in
     the title. [#2347]
 
+  - Fixed an all-zero row and column at one edge of the ePSF built by
+    ``EPSFBuilder``. The recentering step shifts the ePSF with its
+    spline, and the edge that moved outside the grid was filled with
+    zero instead of being extrapolated. [#2418]
+
 - ``photutils.psf_matching``
 
   - ``make_wiener_kernel`` now validates a custom ``penalty`` array.

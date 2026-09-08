@@ -1607,11 +1607,15 @@ class EPSFBuilder:
         smoothed_data = self._smooth_epsf(new_epsf)
 
         # Recenter the ePSF using an intermediate ePSF that keeps the
-        # current epsf's origin
+        # current epsf's origin. The recentering shifts the ePSF by
+        # evaluating its spline on the shifted grid, so the edge row and
+        # column on one side fall outside the original grid. They are
+        # extrapolated (fill_value=None) rather than set to zero, which
+        # would leave an all-zero row and column at that edge.
         temp_epsf = ImagePSF(data=smoothed_data,
                              origin=epsf.origin,
                              oversampling=self.oversampling,
-                             fill_value=0.0)
+                             fill_value=None)
 
         # Apply recentering to the smoothed data
         recentered_data = self._recenter_epsf(temp_epsf)
