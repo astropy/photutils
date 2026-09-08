@@ -1115,6 +1115,48 @@ class TestLinkedEPSFStar:
         with pytest.warns(AstropyUserWarning, match=match):
             linked.constrain_centers()
 
+    def test_constrain_fluxes(self, simple_wcs):
+        """
+        Test that constrain_fluxes sets the fluxes of the good linked
+        stars to their mean and leaves excluded stars unchanged.
+        """
+        star1 = EPSFStar(np.ones((5, 5)), wcs_large=simple_wcs, flux=10.0)
+        star2 = EPSFStar(np.ones((5, 5)), wcs_large=simple_wcs, flux=20.0)
+        star3 = EPSFStar(np.ones((5, 5)), wcs_large=simple_wcs, flux=90.0)
+        star3._excluded_from_fit = True
+        linked = LinkedEPSFStar([star1, star2, star3])
+
+        linked.constrain_fluxes()
+        assert star1.flux == 15.0
+        assert star2.flux == 15.0
+        assert star3.flux == 90.0
+
+    def test_constrain_fluxes_single_star(self, simple_wcs):
+        """
+        Test that constrain_fluxes is a no-op for a single star.
+        """
+        star = EPSFStar(np.ones((5, 5)), wcs_large=simple_wcs, flux=10.0)
+        linked = LinkedEPSFStar([star])
+        linked.constrain_fluxes()
+        assert star.flux == 10.0
+
+    def test_constrain_fluxes_all_excluded(self, simple_wcs):
+        """
+        Test that constrain_fluxes warns and does nothing when all
+        stars are excluded.
+        """
+        star1 = EPSFStar(np.ones((5, 5)), wcs_large=simple_wcs, flux=10.0)
+        star2 = EPSFStar(np.ones((5, 5)), wcs_large=simple_wcs, flux=20.0)
+        star1._excluded_from_fit = True
+        star2._excluded_from_fit = True
+        linked = LinkedEPSFStar([star1, star2])
+
+        match = 'Cannot constrain fluxes'
+        with pytest.warns(AstropyUserWarning, match=match):
+            linked.constrain_fluxes()
+        assert star1.flux == 10.0
+        assert star2.flux == 20.0
+
     def test_len_getitem_iter(self, simple_wcs):
         """
         Test __len__, __getitem__, and __iter__ methods.

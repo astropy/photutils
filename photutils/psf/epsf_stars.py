@@ -578,7 +578,8 @@ class LinkedEPSFStar:
 
     Linked stars are `EPSFStar` cutouts from different images that
     represent the same physical star. When building the ePSF, linked
-    stars are constrained to have the same sky coordinates.
+    stars are constrained to have the same sky coordinates and, by
+    default, the same flux.
 
     Note that unlike `EPSFStars` (which is a collection of potentially
     unrelated stars), `LinkedEPSFStar` represents a single logical star
@@ -764,6 +765,37 @@ class LinkedEPSFStar:
             pixel_center = star.wcs_large.world_to_pixel_values(
                 mean_lon, mean_lat)
             star.cutout_center = np.asarray(pixel_center) - star.origin
+
+    def constrain_fluxes(self):
+        """
+        Constrain the fluxes of linked `EPSFStar` objects (i.e., the
+        same physical star) to have the same value.
+
+        Only `EPSFStar` objects that have not been excluded during the
+        ePSF build process will be used to constrain the fluxes.
+
+        The single flux is calculated as the mean of the fluxes of the
+        linked stars. This assumes that the linked images have the
+        same flux scale (e.g., the same exposure time and throughput).
+        Averaging the fluxes across dithered images removes the
+        pixel-phase dependence of the individual flux measurements
+        caused by intra-pixel sensitivity variations, which would
+        otherwise be absorbed into the ePSF (Anderson and King 2000).
+        """
+        if len(self._data) < 2:  # no linked stars
+            return
+
+        if self.all_excluded:
+            msg = ('Cannot constrain fluxes of linked stars because '
+                   'they have all been excluded during the ePSF '
+                   'build process.')
+            warnings.warn(msg, AstropyUserWarning)
+            return
+
+        good_stars = self.all_good_stars
+        mean_flux = np.mean([star.flux for star in good_stars])
+        for star in good_stars:
+            star.flux = mean_flux
 
 
 def _compute_mean_sky_coordinate(sky_coords):
