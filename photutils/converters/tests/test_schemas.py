@@ -55,6 +55,21 @@ SIZE_PARAMS = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _validate_on_read():
+    """
+    Validate files against their schemas when they are read.
+
+    The asdf default will change to skip validation on read, so the
+    tests in this module enable it explicitly. Setting it also avoids
+    the ``AsdfFutureWarning`` that asdf emits when a file fails
+    validation while the option is unset.
+    """
+    with asdf.config_context() as config:
+        config.validate_on_read = True
+        yield
+
+
 def _load_resource(uri):
     """
     Load a YAML resource registered with ASDF.
