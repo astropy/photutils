@@ -4,10 +4,10 @@ Tests for the deprecated photutils.psf.matching subpackage.
 """
 
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils import psf_matching
 from photutils.psf import matching as old_matching
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 DEPRECATION_MATCH = 'photutils.psf.matching is deprecated'
 
@@ -18,7 +18,7 @@ def test_deprecated_attribute_access(name):
     Test that accessing each public name from the old location emits a
     deprecation warning and returns the object from the new location.
     """
-    with pytest.warns(AstropyDeprecationWarning, match=DEPRECATION_MATCH):
+    with pytest.warns(PhotutilsDeprecationWarning, match=DEPRECATION_MATCH):
         obj = getattr(old_matching, name)
     assert obj is getattr(psf_matching, name)
 
@@ -28,7 +28,7 @@ def test_deprecated_from_import():
     Test that a from-import of a name public in photutils < 3.0 emits
     a deprecation warning.
     """
-    with pytest.warns(AstropyDeprecationWarning, match=DEPRECATION_MATCH):
+    with pytest.warns(PhotutilsDeprecationWarning, match=DEPRECATION_MATCH):
         from photutils.psf.matching import resize_psf
     assert resize_psf is psf_matching.resize_psf
 

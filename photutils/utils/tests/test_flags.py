@@ -7,11 +7,11 @@ from typing import ClassVar
 
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.utils._flags import (FlagDefinition, FlagRegistry, decode_flags,
                                     define_flag_docstring,
                                     update_flag_docstring)
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 class _ExampleFlags(FlagRegistry):
@@ -100,7 +100,7 @@ class TestFlagRegistry:
         name.
         """
         match = "'old_one' is deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match) as record:
+        with pytest.warns(PhotutilsDeprecationWarning, match=match) as record:
             definition = registry.get_definition('old_one')
         assert definition.name == 'one'
         msg = str(record[0].message)
@@ -162,7 +162,7 @@ class TestFlagRegistry:
         new constant.
         """
         match = "'OLD_ONE' attribute was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             assert registry.OLD_ONE == 1
 
     def test_unknown_attribute(self, registry):

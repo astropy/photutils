@@ -9,14 +9,14 @@ import pytest
 from astropy.convolution import convolve
 from astropy.stats import SigmaClip
 from astropy.tests.helper import assert_quantity_allclose
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose
 
 from photutils.datasets import make_100gaussians_image
 from photutils.segmentation import SourceFinder, make_2dgaussian_kernel
 from photutils.utils._optional_deps import HAS_SKIMAGE
 from photutils.utils.depths import ImageDepth
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 bool_vals = (True, False)
 
@@ -254,7 +254,7 @@ class TestImageDepth:
                            n_iters=2, mask_pad=5, overlap=True, seed=123,
                            zeropoint=23.9, progress_bar=False)
         match = 'attribute was deprecated'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             _ = depth.napers
 
     def test_user_sigma_clip_instance_not_called(self, monkeypatch):

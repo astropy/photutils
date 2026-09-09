@@ -11,6 +11,7 @@ from photutils.psf_matching.utils import (_apply_window_to_fourier,
                                           _convert_psf_to_otf,
                                           _normalize_kernel,
                                           _validate_kernel_inputs)
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['create_matching_kernel', 'make_kernel', 'make_wiener_kernel']
 
@@ -488,7 +489,8 @@ array-like, optional
     return _normalize_kernel(kernel)
 
 
-@deprecated('3.0', alternative='make_kernel')
+@deprecated('3.0', alternative='make_kernel',
+            warning_type=PhotutilsDeprecationWarning)
 def create_matching_kernel(source_psf, target_psf, *,
                            regularization=1e-4, window=None):
     """

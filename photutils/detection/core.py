@@ -16,7 +16,6 @@ from functools import cached_property
 import astropy.units as u
 import numpy as np
 from astropy.stats import gaussian_fwhm_to_sigma
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.peakfinder import find_peaks
 from photutils.utils._deprecation import (create_empty_deprecated_qtable,
@@ -28,7 +27,8 @@ from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import check_units
 from photutils.utils._repr import make_repr
 from photutils.utils.cutouts import _make_cutouts
-from photutils.utils.exceptions import NoDetectionsWarning
+from photutils.utils.exceptions import (NoDetectionsWarning,
+                                        PhotutilsDeprecationWarning)
 
 __all__ = ['StarFinderBase', 'StarFinderCatalogBase']
 
@@ -1024,7 +1024,7 @@ def _handle_deprecated_range(old_lower, old_upper, new_range,
         msg = (f"The '{old_name}lo' and '{old_name}hi' parameters are "
                'deprecated and will be removed in a future version. '
                f"Use '{new_name}=(lower, upper)' instead.")
-        warnings.warn(msg, AstropyDeprecationWarning)
+        warnings.warn(msg, PhotutilsDeprecationWarning)
         _default = new_range if new_range is not None else default_range
         lower = (old_lower if old_lower is not _DEPR_DEFAULT
                  else _default[0])

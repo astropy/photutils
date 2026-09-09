@@ -9,12 +9,12 @@ from functools import cached_property
 
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_array_equal
 
 from photutils.detection import DAOStarFinder
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderCatalogBase,
                                       _StarFinderKernel, _validate_n_brightest)
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 class TestStarFinderKernel:
@@ -314,7 +314,7 @@ class TestStarFinderCatalogBase:
         """
         cat = make_catalog()
         match = "'xcentroid' attribute was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             tbl = cat.to_table(columns='xcentroid')
         assert tbl.colnames == ['x_centroid']
 
@@ -707,7 +707,7 @@ def test_deprecated_attr(data):
     finder = DAOStarFinder(threshold=5.0, fwhm=2.0)
     cat = finder._get_raw_catalog(data)
     match = 'attribute was deprecated'
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         _ = cat.xcentroid
 
 

@@ -25,7 +25,8 @@ from astropy.table import QTable, Table
 from astropy.utils.decorators import deprecated as astropy_deprecated
 from astropy.utils.decorators import (
     deprecated_renamed_argument as astropy_deprecated_renamed_argument)
-from astropy.utils.exceptions import AstropyDeprecationWarning
+
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 _SENTINEL = object()
 _future_column_names_var = ContextVar(
@@ -130,7 +131,8 @@ def deprecated(since, *, alternative=None, until=None):
     if alternative is not None:
         message += f' Use {alternative} instead.'
 
-    return astropy_deprecated(since, message=message)
+    return astropy_deprecated(since, message=message,
+                              warning_type=PhotutilsDeprecationWarning)
 
 
 def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
@@ -168,7 +170,8 @@ def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
     """
     if until is None:
         return astropy_deprecated_renamed_argument(
-            old_name, new_name, since)
+            old_name, new_name, since,
+            warning_type=PhotutilsDeprecationWarning)
 
     remove_version = 'version ' + str(until)
     message = (f"'{old_name}' was deprecated in version {since} and will "
@@ -176,7 +179,8 @@ def deprecated_renamed_argument(old_name, new_name, since, *, until=None):
     if new_name is not None:
         message += f" Use argument '{new_name}' instead."
     return astropy_deprecated_renamed_argument(
-        old_name, new_name, since, message=message)
+        old_name, new_name, since, message=message,
+        warning_type=PhotutilsDeprecationWarning)
 
 
 def deprecated_getattr(instance, name, deprecated_map, *, since=None,
@@ -233,7 +237,8 @@ def deprecated_getattr(instance, name, deprecated_map, *, since=None,
         warn_msg = (f'The {name!r} attribute was deprecated{since_str}. '
                     f'Use {new_name!r} instead. It will be removed in '
                     f'{remove_str}.')
-        warnings.warn(warn_msg, AstropyDeprecationWarning, stacklevel=3)
+        warnings.warn(warn_msg, PhotutilsDeprecationWarning,
+                      stacklevel=3)
         return getattr(instance, new_name)
 
     msg = f'{type(instance).__name__!r} object has no attribute {name!r}'
@@ -306,7 +311,8 @@ def deprecated_positional_kwargs(since, *, until=None):
                        f'{since_str} and will be removed in {remove_str}. '
                        f'Pass {pronoun} as {kwarg_noun} instead '
                        f'(e.g., {examples_str}).')
-                warnings.warn(msg, AstropyDeprecationWarning, stacklevel=2)
+                warnings.warn(msg, PhotutilsDeprecationWarning,
+                              stacklevel=2)
             return func(*args, **kwargs)
         return wrapper
     return decorator
@@ -355,7 +361,8 @@ class DeprecatedColumnMixin:
                f"'{new_name}', you may use the context manager "
                '``use_future_column_names()`` (recommended) to opt into a '
                'standard QTable without the deprecated column name mapping.')
-        warnings.warn(msg, AstropyDeprecationWarning, stacklevel=stacklevel)
+        warnings.warn(msg, PhotutilsDeprecationWarning,
+                      stacklevel=stacklevel)
 
     def _translate_name(self, name, *, stacklevel=4):
         """

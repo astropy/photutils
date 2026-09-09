@@ -15,6 +15,7 @@ from astropy.utils.decorators import deprecated
 from scipy.integrate import dblquad, trapezoid
 
 from photutils.utils._deprecation import deprecated_positional_kwargs
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['grid_from_epsfs', 'make_psf_model']
 
@@ -324,7 +325,8 @@ def _shift_model_param(model, param_name, *, shift=2):
 
 
 @deprecated_positional_kwargs(since='3.0', until='4.0')
-@deprecated(since='3.0', alternative='`GriddedPSFModel`')
+@deprecated(since='3.0', alternative='`GriddedPSFModel`',
+            warning_type=PhotutilsDeprecationWarning)
 def grid_from_epsfs(epsfs, grid_xypos=None, meta=None):  # pragma: no cover
     """
     Create a GriddedPSFModel from a list of ImagePSF models.

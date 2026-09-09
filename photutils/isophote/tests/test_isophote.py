@@ -6,7 +6,6 @@ Tests for the isophote module.
 import numpy as np
 import pytest
 from astropy.io import fits
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
 from photutils.datasets.load import _get_path
@@ -16,6 +15,7 @@ from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.isophote import CentralPixel, Isophote, IsophoteList
 from photutils.isophote.sample import EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 DEFAULT_FIX = np.array([False, False, False, False])
 
@@ -335,6 +335,6 @@ class TestIsophoteList:
         ellipse = Ellipse(test_img, geometry=g, threshold=0.1)
         isolist = ellipse.fit_image(maxsma=27)
         match = "'grad_error' attribute was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             tbl = isolist.to_table(columns=['grad_error'])
         assert tbl.colnames == ['gradient_err']

@@ -3,9 +3,11 @@
 Custom exceptions.
 """
 
-from astropy.utils.exceptions import AstropyUserWarning, AstropyWarning
+from astropy.utils.exceptions import (AstropyDeprecationWarning,
+                                      AstropyUserWarning, AstropyWarning)
 
-__all__ = ['DeblendWarning', 'NoDetectionsWarning']
+__all__ = ['DeblendWarning', 'NoDetectionsWarning',
+           'PhotutilsDeprecationWarning']
 
 
 class NoDetectionsWarning(AstropyWarning):
@@ -18,4 +20,15 @@ class DeblendWarning(AstropyUserWarning):
     """
     A warning class to indicate issues encountered while deblending
     sources.
+    """
+
+
+class PhotutilsDeprecationWarning(AstropyDeprecationWarning):
+    """
+    A warning class to indicate deprecated Photutils features.
+
+    This is a subclass of
+    `~astropy.utils.exceptions.AstropyDeprecationWarning`, so existing
+    warning filters for that class continue to match. The class name
+    identifies Photutils as the source of the warning.
     """

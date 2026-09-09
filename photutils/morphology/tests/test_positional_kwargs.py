@@ -6,9 +6,9 @@ positionally.
 
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.morphology import data_properties, gini
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 class TestDataPropertiesPositionalKwargs:
@@ -22,7 +22,7 @@ class TestDataPropertiesPositionalKwargs:
     def test_positional_warns(self):
         mask = np.zeros((10, 10), dtype=bool)
         match = 'data_properties'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             data_properties(self.data, mask)
 
     def test_keyword_no_warning(self):
@@ -39,7 +39,7 @@ class TestGiniPositionalKwargs:
         data = np.arange(100, dtype=float)
         mask = np.zeros(100, dtype=bool)
         match = 'gini'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             gini(data, mask)
 
     def test_keyword_no_warning(self):

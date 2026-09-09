@@ -7,10 +7,10 @@ positionally.
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.profiles import CurveOfGrowth, RadialProfile
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ class TestProfileBaseNormalizePositionalKwargs:
         radii = np.arange(1, 20)
         cog = CurveOfGrowth(data, xycen, radii)
         match = 'normalize'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             cog.normalize('max')
 
     def test_keyword_no_warning(self, profile_data):
@@ -56,7 +56,7 @@ class TestProfileBasePlotPositionalKwargs:
         edge_radii = np.arange(20)
         rp = RadialProfile(data, xycen, edge_radii)
         match = 'plot'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             rp.plot(None)
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
@@ -79,7 +79,7 @@ class TestProfileBasePlotErrorPositionalKwargs:
         edge_radii = np.arange(20)
         rp = RadialProfile(data, xycen, edge_radii, error=error)
         match = 'plot_error'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             rp.plot_error(None)
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')

@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.modeling.models import Gaussian2D
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
 from photutils.psf_matching.fourier import (create_matching_kernel,
@@ -15,6 +14,7 @@ from photutils.psf_matching.fourier import (create_matching_kernel,
 from photutils.psf_matching.tests.conftest import (
     _make_gaussian_psf, _make_gaussian_psf_noncentered)
 from photutils.psf_matching.windows import SplitCosineBellWindow
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 class TestMakeKernel:
@@ -651,7 +651,7 @@ class TestCreateMatchingKernelDeprecated:
         """
         Test that create_matching_kernel raises a deprecation warning.
         """
-        with pytest.warns(AstropyDeprecationWarning):
+        with pytest.warns(PhotutilsDeprecationWarning):
             kernel = create_matching_kernel(psf1, psf2)
         assert_allclose(kernel.sum(), 1.0)
 
@@ -660,7 +660,7 @@ class TestCreateMatchingKernelDeprecated:
         Test that create_matching_kernel returns the same result as
         make_kernel.
         """
-        with pytest.warns(AstropyDeprecationWarning):
+        with pytest.warns(PhotutilsDeprecationWarning):
             kernel_old = create_matching_kernel(psf1, psf2)
         kernel_new = make_kernel(psf1, psf2)
         assert_allclose(kernel_old, kernel_new)

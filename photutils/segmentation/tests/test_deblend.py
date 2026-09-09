@@ -9,8 +9,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 from scipy import ndimage as ndi
 
@@ -29,7 +28,8 @@ from photutils.segmentation.deblend import (_ChunkResult, _compute_thresholds,
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import _make_binary_structure
 from photutils.utils._optional_deps import HAS_SKIMAGE
-from photutils.utils.exceptions import DeblendWarning
+from photutils.utils.exceptions import (DeblendWarning,
+                                        PhotutilsDeprecationWarning)
 
 
 class TestDeblendSources:
@@ -500,7 +500,7 @@ class TestDeblendSources:
         the results.
         """
         name = next(iter(kwargs))
-        with pytest.warns(AstropyDeprecationWarning, match=name) as record:
+        with pytest.warns(PhotutilsDeprecationWarning, match=name) as record:
             result = deblend_sources(self.data, self.segm,
                                      self.n_pixels, mode='linear',
                                      **kwargs)

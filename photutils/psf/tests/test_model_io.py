@@ -12,13 +12,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 from astropy.io import fits, registry
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.psf import GriddedPSFModel, STDPSFGrid
 from photutils.psf.model_io import (_get_metadata, _has_fits_header_keys,
                                     _read_stdpsf, _split_wfc_uvis, is_stdpsf,
                                     is_webbpsf, stdpsf_reader)
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 # The first file has a single detector, the rest have multiple detectors
 STDPSF_FILENAMES = ('STDPSF_NRCA1_F150W_mock.fits',
@@ -247,7 +247,7 @@ class TestSTDPSFReader:
         """
         filename = get_data_filename('STDPSF_WFPC2_F814W_mock.fits')
         match = "'detector_id'"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             model = stdpsf_reader(filename, 1)
         assert isinstance(model, GriddedPSFModel)
 

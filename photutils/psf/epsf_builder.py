@@ -15,8 +15,7 @@ from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NoOverlapError, PartialOverlapError, overlap_slices
 from astropy.stats import SigmaClip
 from astropy.utils.decorators import deprecated, deprecated_attribute
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import convolve
 
 from photutils.centroids import centroid_com
@@ -28,6 +27,7 @@ from photutils.utils._parameters import (SigmaClipSentinelDefault, as_pair,
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._round import round_half_away
 from photutils.utils._stats import nanmedian
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['EPSFBuildResults', 'EPSFBuilder', 'EPSFFitter']
 
@@ -773,7 +773,8 @@ class EPSFBuildResults:
 @deprecated(since='3.0',
             message=('EPSFFitter is deprecated and will be removed in '
                      'version 4.0. Use EPSFBuilder with the fitter, '
-                     'fit_shape, and fitter_maxiters parameters instead.'))
+                     'fit_shape, and fitter_maxiters parameters instead.'),
+            warning_type=PhotutilsDeprecationWarning)
 class EPSFFitter:
     """
     Class to fit an ePSF model to one or more stars.
@@ -1086,7 +1087,9 @@ class EPSFBuilder:
     Astropy fitters store ``fit_info`` on themselves.
     """
 
-    coord_transformer = deprecated_attribute('coord_transformer', '3.1')
+    coord_transformer = deprecated_attribute(
+        'coord_transformer', '3.1',
+        warning_type=PhotutilsDeprecationWarning)
 
     def __init__(self, *, oversampling=4, shape=None,
                  smoothing_kernel='quartic', sigma_clip=SIGMA_CLIP,
@@ -1137,7 +1140,7 @@ class EPSFBuilder:
             msg = ('Passing an EPSFFitter instance to EPSFBuilder is '
                    'deprecated. Use the fitter, fit_shape, and '
                    'fitter_maxiters parameters instead.')
-            warnings.warn(msg, AstropyDeprecationWarning)
+            warnings.warn(msg, PhotutilsDeprecationWarning)
             self.fitter = fitter.fitter
             self.fit_shape = fitter.fit_boxsize
             self.fitter_maxiters = None
@@ -2068,7 +2071,7 @@ def __getattr__(name):
     if name == 'EPSFBuildResult':
         msg = ('EPSFBuildResult is deprecated and will be removed in a '
                'future version. Use EPSFBuildResults instead.')
-        warnings.warn(msg, AstropyDeprecationWarning, stacklevel=2)
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=2)
         return EPSFBuildResults
 
     msg = f'module {__name__!r} has no attribute {name!r}'

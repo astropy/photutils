@@ -5,12 +5,11 @@ Deprecated subpackage. Use ``photutils.psf_matching`` instead.
 
 import warnings
 
-from astropy.utils.exceptions import AstropyDeprecationWarning
-
 import photutils.psf_matching as _psf_matching
 from photutils.psf_matching.fourier import __all__ as _fourier_all
 from photutils.psf_matching.utils import __all__ as _utils_all
 from photutils.psf_matching.windows import __all__ as _windows_all
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = list(_fourier_all) + list(_utils_all) + list(_windows_all)
 
@@ -22,7 +21,7 @@ _deprecation_msg = ('photutils.psf.matching is deprecated (since version '
 
 def __getattr__(name):
     if name in __all__:
-        warnings.warn(_deprecation_msg, AstropyDeprecationWarning,
+        warnings.warn(_deprecation_msg, PhotutilsDeprecationWarning,
                       stacklevel=2)
         return getattr(_psf_matching, name)
     msg = f'module {__name__!r} has no attribute {name!r}'

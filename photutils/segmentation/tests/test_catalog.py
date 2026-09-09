@@ -15,7 +15,6 @@ from astropy.convolution import convolve
 from astropy.coordinates import SkyCoord
 from astropy.modeling.models import Gaussian2D
 from astropy.table import QTable
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_equal
 
@@ -34,6 +33,7 @@ from photutils.segmentation.utils import make_2dgaussian_kernel
 from photutils.utils._optional_deps import HAS_GWCS, HAS_MATPLOTLIB
 from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 from photutils.utils.cutouts import CutoutImage
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 @pytest.fixture
@@ -439,7 +439,7 @@ class TestSourceCatalog:
         validation.
         """
         match = "'xcentroid' attribute was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             tbl = self.cat.to_table(columns='xcentroid')
         assert tbl.colnames == ['x_centroid']
 
@@ -1307,7 +1307,7 @@ class TestSourceCatalog:
         """
         Test meta aliases for deprecated keyword names.
         """
-        with pytest.warns(AstropyDeprecationWarning) as record:
+        with pytest.warns(PhotutilsDeprecationWarning) as record:
             cat = SourceCatalog(self.data, self.segm, error=self.error,
                                 background=self.background, mask=self.mask,
                                 wcs=self.wcs, localbkg_width=24,
@@ -1328,7 +1328,7 @@ class TestSourceCatalog:
 
         monkeypatch.setattr(photutils, 'future_column_names', True)
 
-        with pytest.warns(AstropyDeprecationWarning) as record:
+        with pytest.warns(PhotutilsDeprecationWarning) as record:
             cat = SourceCatalog(self.data, self.segm, error=self.error,
                                 background=self.background, mask=self.mask,
                                 wcs=self.wcs, localbkg_width=24,
@@ -2270,7 +2270,7 @@ def test_progress_bar_deprecated():
     data = Gaussian2D(100, 50, 50, 5, 5)(xx, yy)
     segm = detect_sources(data, 10.0, n_pixels=5)
     match = "'progress_bar' was deprecated"
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         cat = SourceCatalog(data, segm, progress_bar=True)
     assert cat.progress_bar
     cat2 = SourceCatalog(data, segm)
