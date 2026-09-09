@@ -12,17 +12,18 @@ generally difficult to model. `Anderson and King 2000 (PASP 112, 1360)
 showed that accurate stellar photometry and astrometry can be derived
 by modeling the net PSF, which they call the effective PSF (ePSF). The
 ePSF is an empirical model describing what fraction of a star's light
-will land in a particular pixel. The constructed ePSF is typically
-oversampled with respect to the detector pixels.
+will land in a particular pixel. The constructed ePSF may be oversampled
+with respect to the detector pixels.
 
-The oversampling in the ePSF is crucial because it captures the PSF
-pixel phase effect. Since stars can land at fractional pixel positions
-on the detector, the PSF appearance varies depending on the star's
-position within a pixel. By building an oversampled ePSF, we capture
-this phase information across the full pixel-to-pixel variation.
-This allows for more accurate PSF modeling and improved photometric
-measurements, as the PSF can be interpolated to the exact position of
-any star.
+Oversampling matters when the PSF is undersampled by the detector, e.g.,
+a FWHM of only one or two pixels. Since stars can land at fractional
+pixel positions on the detector, the appearance of such a PSF varies
+with the star's position within a pixel, and an oversampled ePSF
+captures this pixel-phase variation so that the PSF can be interpolated
+to the exact position of any star. When the PSF is well sampled (a FWHM
+of a few pixels or more), an ePSF with no oversampling already captures
+its shape, and a larger oversampling factor only adds noise and requires
+more stars (see :ref:`epsf-guidelines`).
 
 
 Building an ePSF
@@ -46,11 +47,12 @@ or :class:`~photutils.detection.IRAFStarFinder`) to identify an initial
 sample of stars. However, the step of creating a good sample of stars
 generally requires visual inspection and manual selection to ensure
 stars are sufficiently isolated and of good quality (e.g., no cosmic
-rays, detector artifacts, etc.). To produce a good ePSF, one should have
-a reasonably large sample of stars (e.g., several hundred) in order to
-fully sample the PSF over the oversampled grid and to help reduce the
-effects of noise. Otherwise, the resulting ePSF may have holes or may be
-noisy.
+rays, detector artifacts, etc.). To produce a good ePSF, one should
+have a reasonably large sample of stars (e.g., several hundred for an
+oversampling factor of 4) in order to sample the PSF at all subpixel
+phases and to help reduce the effects of noise. Otherwise, the resulting
+ePSF may be noisy or biased. See :ref:`epsf-guidelines` for guidance on
+choosing the oversampling factor and the star sample.
 
 Let's start by loading a simulated HST/WFC3 image in the F160W band::
 
@@ -270,14 +272,16 @@ Constructing the ePSF
 ---------------------
 
 With the star cutouts, we are ready to construct the ePSF with the
-:class:`~photutils.psf.EPSFBuilder` class. We'll create an ePSF with
-an oversampling factor of 4. Here we limit the maximum number of
-iterations to 3 (to limit its run time), but in practice one should use
-about 10 or more iterations. The :class:`~photutils.psf.EPSFBuilder`
-class has many options to control the ePSF build process, including
-changing the recentering function, the smoothing kernel, and the
-convergence accuracy. Please see the :class:`~photutils.psf.EPSFBuilder`
-documentation for further details.
+:class:`~photutils.psf.EPSFBuilder` class. We'll create an ePSF
+with an oversampling factor of 4, which is appropriate for these
+undersampled stars (a FWHM of about 1.5 pixels). Here we limit
+the maximum number of iterations to 3 (to limit its run time).
+In practice the default of 10 iterations is usually enough, and
+the build stops early once the star centers have converged. The
+:class:`~photutils.psf.EPSFBuilder` class has many options to control
+the ePSF build process, including the smoothing kernel, the fitting box,
+the recentering function, and the convergence criterion. Please see the
+:class:`~photutils.psf.EPSFBuilder` documentation for further details.
 
 We first initialize an :class:`~photutils.psf.EPSFBuilder` instance with
 our desired parameters and then input the cutouts of our selected stars
@@ -388,11 +392,11 @@ Smoothing Kernel
 
 The ``smoothing_kernel`` parameter controls the smoothing applied to
 the ePSF during each iteration. The smoothing helps to reduce noise in
-the ePSF, especially when the number of stars is small. The default
-is ``'quartic'``, which uses a fourth-degree polynomial kernel. This
-kernel was initially developed by Anderson and King for HST data with an
-ePSF oversampling factor of 4. It is designed to provide a good balance
-between smoothing and preserving the shape of the ePSF.
+the ePSF, especially when the number of stars is small. The default is
+``'quartic'``, which uses a fourth-degree polynomial kernel. This 5x5
+pixel kernel was initially developed by Anderson and King for HST data
+with an ePSF oversampling factor of 4. It is designed to provide a good
+balance between smoothing and preserving the shape of the ePSF.
 
 You can also use ``'quadratic'`` for a second-degree polynomial kernel,
 provide a custom 2D array, or set it to `None` for no smoothing::
@@ -400,6 +404,14 @@ provide a custom 2D array, or set it to `None` for no smoothing::
     >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
     ...                            smoothing_kernel='quadratic',
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
+
+The kernels are applied on the oversampled grid, so their physical width
+is ``5 / oversampling`` input pixels. For a heavily undersampled ePSF
+with only about four to six grid points per FWHM, even the ``'quartic'``
+kernel lowers the peak of the ePSF, and ``smoothing_kernel=None`` is a
+reasonable choice, especially when the stars have high signal-to-noise.
+Smoothing is most useful for well-sampled ePSFs built from noisy or few
+stars.
 
 Independently of the smoothing kernel, when the oversampling factor
 is greater than one the builder also applies a low-pass filter to the
@@ -474,6 +486,8 @@ any of the `~astropy.nddata.NDUncertainty` subclasses (e.g.,
     >>> nddata = NDData(data=data, uncertainty=uncertainty)  # doctest: +REMOTE_DATA, +SKIP
 
 
+.. _epsf-linked-stars:
+
 Linked Stars for Dithered Images
 --------------------------------
 
@@ -495,3 +509,70 @@ are constrained to have the same sky coordinate across all images.
     >>> catalog = Table()
     >>> catalog['skycoord'] = SkyCoord(ra=[...]*u.deg, dec=[...]*u.deg)
     >>> stars = extract_stars([nddata1, nddata2], catalog, size=25)
+
+
+.. _epsf-guidelines:
+
+Guidelines for Building a Good ePSF
+-----------------------------------
+
+The quality of an ePSF depends more on the input stars and on a
+sensible choice of the oversampling factor than on the other builder
+parameters. The following guidelines are based on `Anderson and King
+2000 (PASP 112, 1360)
+<https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_ and
+on the systematic tests of `Godden and Blundell 2026 (RASTI 5, 1)
+<https://doi.org/10.1093/rasti/rzaf063>`_.
+
+Choosing the oversampling factor
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ePSF is tabulated on a grid with a spacing of ``1 / oversampling``
+detector pixels and is evaluated between grid points by cubic spline
+interpolation. The interpolation is accurate when there are at least
+about four grid points per FWHM of the ePSF, so a good rule of thumb
+is ``oversampling >= 4 / FWHM`` with the FWHM in pixels (measured
+along the narrowest direction of an elongated PSF). For example, use
+an oversampling of 3 or 4 for a FWHM of 1.5 pixels, 2 for a FWHM of 2
+pixels, and 1 for a FWHM of 4 pixels or more.
+
+Do not use a larger oversampling factor than the data require. A
+pixel-integrated PSF has essentially no structure on scales smaller
+than a pixel once the PSF is well sampled, so extra grid points add
+no information. They do, however, divide the star samples among more
+grid cells and make the ePSF noisier, and they require more stars. For
+well-sampled data (a FWHM of a few pixels or more), an oversampling of 1
+is usually the best choice.
+
+Choosing the star sample
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Each of the ``oversampling**2`` subpixel cells within a pixel must be
+sampled by the centers of several stars. With randomly placed stars,
+plan on at least about 10 stars per cell, i.e., roughly ``10 *
+oversampling**2`` stars (about 40 for an oversampling of 2, 90 for 3,
+and 160 for 4), and considerably more if the stars are faint. Godden
+and Blundell estimate that about 240 randomly placed stars are needed
+for an oversampling of 4 to have a 95 percent probability of at least
+six samples in every cell. A set of exposures dithered by fractions
+of a pixel that uniformly cover the subpixel phases is far more
+effective than random placement and also allows the star positions
+to be constrained across images (see :ref:`epsf-linked-stars`).
+
+The stars should be bright but unsaturated, isolated (no neighbors
+within the cutout), free of cosmic rays and detector artifacts, and have
+a clean background subtraction so that the total flux of each cutout
+is a reliable normalization. Just as important, all of the stars must
+share the same PSF. Do not combine exposures with different seeing or
+focus, and do not mix regions of the field where the PSF differs unless
+the variation is small compared to the accuracy you need. Heterogeneous
+stars produce pixel-to-pixel noise in the oversampled grid that biases
+the fitted star centers toward particular subpixel phases, and the
+builder emits a warning if the subpixel phases of the fitted centers are
+strongly non-uniform at the end of the build. In that case, inspect the
+star sample rather than increasing the number of iterations.
+
+Finally, check the result. The subpixel phases of the fitted star
+centers should be uniformly distributed, and the fitted fluxes and
+positions of the stars (or of an independent set of stars) should not
+depend on their subpixel phase.

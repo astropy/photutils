@@ -1077,7 +1077,15 @@ class EPSFBuilder:
         The integer oversampling factor(s) of the output ePSF relative
         to the input ``stars`` along each axis. If ``oversampling`` is a
         scalar then it will be used for both axes. If ``oversampling``
-        has two elements, they must be in ``(y, x)`` order.
+        has two elements, they must be in ``(y, x)`` order. The ePSF
+        should have at least about four grid points per FWHM, so a good
+        rule of thumb is ``oversampling >= 4 / FWHM`` with the FWHM
+        in pixels. Do not use a larger value than the data require.
+        For well-sampled data (a FWHM of a few pixels or more), an
+        oversampling of 1 is usually the best choice. Larger values
+        require more stars, roughly ``10 * oversampling**2`` stars with
+        uniformly distributed subpixel phases. See the guidelines in the
+        ePSF building user guide for details.
 
     shape : int, tuple of two ints, or `None`, optional
         The (ny, nx) shape of the output ePSF. If the input shape is
@@ -1091,8 +1099,14 @@ class EPSFBuilder:
         The smoothing kernel to apply to the ePSF during each iteration
         step. The predefined ``'quartic'`` and ``'quadratic'`` kernels
         are derived from fourth and second degree polynomials,
-        respectively. Alternatively, a custom 2D array can be input. If
-        `None` then no smoothing will be performed.
+        respectively. Alternatively, a custom 2D array can be input.
+        If `None` then no smoothing will be performed. The kernels are
+        applied on the oversampled grid, so their physical width depends
+        on the oversampling factor. For heavily undersampled ePSFs with
+        only a few grid points per FWHM, the kernels can lower the peak
+        of the ePSF and `None` is a reasonable choice. Power at and
+        above one cycle per input pixel is always removed from the ePSF
+        along oversampled axes, independently of this parameter.
 
     sigma_clip : `astropy.stats.SigmaClip` instance, optional
         A `~astropy.stats.SigmaClip` object that defines the sigma
