@@ -744,6 +744,20 @@ oversampling factor and the star sample, e.g., using at least about four
 grid points per FWHM, not using an oversampling factor larger than the
 data require, and providing enough stars to sample every subpixel cell.
 
+The fluxes of linked stars (the same star observed in multiple
+dithered images) are now constrained to their mean value after each
+fitting iteration, in addition to their centers, following Anderson
+and King (2000). This breaks the degeneracy between the flux of a
+star and its subpixel position caused by intra-pixel sensitivity
+variations, which would otherwise be absorbed into the ePSF. Set
+``constrain_fluxes=False`` if the linked images have different flux
+scales.
+
+The ePSF building user guide now includes guidelines for choosing the
+oversampling factor and the star sample, e.g., using at least about four
+grid points per FWHM, not using an oversampling factor larger than the
+data require, and providing enough stars to sample every subpixel cell.
+
 .. _whatsnew-3.1-api-changes:
 
 

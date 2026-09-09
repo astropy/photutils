@@ -115,6 +115,34 @@ def test_build_epsf_linked_stars():
     assert result.epsf.data.shape[0] >= 11
 
 
+@pytest.mark.parametrize('constrain_fluxes', [True, False])
+def test_build_epsf_linked_stars_constrain_fluxes(constrain_fluxes):
+    """
+    Test that the fluxes of linked stars are constrained to their mean
+    after fitting when ``constrain_fluxes`` is `True`.
+    """
+    yy, xx = np.indices((11, 11))
+    sig = 2.5 / 2.3548
+    star_data = np.exp(-((xx - 5.0)**2 + (yy - 5.0)**2) / (2 * sig**2))
+
+    # The same star with different flux scales in the two images
+    stars_list = [EPSFStar(scale * star_data, cutout_center=(5.0, 5.0),
+                           origin=(0, 0), wcs_large=_MockWCS())
+                  for scale in (1.0, 3.0)]
+    linked = LinkedEPSFStar(stars_list)
+    stars = EPSFStars([linked])
+    builder = EPSFBuilder(oversampling=1, maxiters=2,
+                          constrain_fluxes=constrain_fluxes,
+                          progress_bar=False)
+    assert builder.constrain_fluxes is constrain_fluxes
+    result = builder(stars)
+    fluxes = result.fitted_stars[0].flux
+    if constrain_fluxes:
+        assert_allclose(fluxes[0], fluxes[1])
+    else:
+        assert_allclose(fluxes[1] / fluxes[0], 3.0, rtol=0.05)
+
+
 class TestSmoothingKernel:
     """
     Tests for the _SmoothingKernel class.

@@ -1169,6 +1169,20 @@ class EPSFBuilder:
         is not converging. This parameter is passed to the ``fitter``
         if it supports the ``maxiter`` parameter and ignored otherwise.
 
+    constrain_fluxes : bool, optional
+        Whether to constrain the fluxes of the stars within each
+        `~photutils.psf.LinkedEPSFStar` (i.e., the same physical star
+        observed in multiple dithered images) to their mean value after
+        each fitting iteration, in addition to constraining their
+        centers to the same sky coordinate. This breaks the degeneracy
+        between the flux of a star and its subpixel position caused
+        by intra-pixel sensitivity variations, which would otherwise
+        be absorbed into the ePSF. It assumes that the linked images
+        have the same flux scale (e.g., the same exposure time and
+        throughput). Set to `False` if the linked images have different
+        flux scales. This parameter has no effect on stars that are not
+        linked.
+
     maxiters : int, optional
         The maximum number of ePSF building iterations to perform.
 
@@ -1211,7 +1225,7 @@ class EPSFBuilder:
                  recentering_func=centroid_com, recentering_boxsize=(5, 5),
                  recentering_maxiters=20, center_accuracy=1.0e-3,
                  fitter=None, fit_shape=5, fitter_maxiters=100,
-                 maxiters=10, progress_bar=True):
+                 constrain_fluxes=True, maxiters=10, progress_bar=True):
 
         # Validate and store oversampling using the validator
         self.oversampling = _EPSFValidator.validate_oversampling(
@@ -1287,6 +1301,8 @@ class EPSFBuilder:
 
         self._fitter_has_fit_info = hasattr(self.fitter, 'fit_info')
         self._fitter_accepts_weights = _fitter_accepts_weights(self.fitter)
+
+        self.constrain_fluxes = bool(constrain_fluxes)
 
         # Validate center accuracy using the validator
         _EPSFValidator.validate_center_accuracy(center_accuracy)
@@ -1869,6 +1885,8 @@ class EPSFBuilder:
 
                     fitted_star = LinkedEPSFStar(fitted_star)
                     fitted_star.constrain_centers()
+                    if self.constrain_fluxes:
+                        fitted_star.constrain_fluxes()
 
             else:
                 msg = ('stars must contain only EPSFStar and/or '

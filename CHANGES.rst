@@ -229,6 +229,15 @@ New Features
     roughly 60% of the model evaluations performed during fitting.
     [#2393]
 
+  - Added a ``constrain_fluxes`` method to ``LinkedEPSFStar`` and a
+    ``constrain_fluxes`` keyword to ``EPSFBuilder`` (default `True`)
+    that constrains the fluxes of linked stars (the same star observed
+    in multiple dithered images) to their mean value after each fitting
+    iteration, in addition to their centers. This breaks the degeneracy
+    between the flux of a star and its subpixel position caused by
+    intra-pixel sensitivity variations, which would otherwise be
+    absorbed into the ePSF. [#2420]
+
 - ``photutils.segmentation``
 
   - Added validation of the ``SourceCatalog.to_table()`` ``columns``
