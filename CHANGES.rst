@@ -792,6 +792,15 @@ Bug Fixes
     spline, and the edge that moved outside the grid was filled with
     zero instead of being extrapolated. [#2418]
 
+  - Fixed a checkerboard pattern in ePSFs built by ``EPSFBuilder``
+    with ``oversampling`` greater than one from heterogeneous or
+    contaminated stars. Each star pixel residual is now deposited on
+    every oversampled grid point inside its footprint, so that every
+    star contributes to every grid point regardless of its subpixel
+    phase. A warning is now emitted if the subpixel phases of the fitted
+    star centers are strongly non-uniform, which indicates biased star
+    centers. [#2419]
+
 - ``photutils.psf_matching``
 
   - ``make_wiener_kernel`` now validates a custom ``penalty`` array.

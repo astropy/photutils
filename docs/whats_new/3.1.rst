@@ -696,7 +696,6 @@ typical performance improvements of approximately 20–25%. The
 optimizations reduce the overhead of PSF interpolation, improving the
 runtime of PSF photometry workflows.
 
-
 Photutils Deprecation Warning Class
 ===================================
 
@@ -708,6 +707,42 @@ it easier to find the deprecated code path when a warning is raised from
 within a larger pipeline. Because it is a subclass, existing warning
 filters and ``pytest.warns`` checks for ``AstropyDeprecationWarning``
 continue to work unchanged.
+
+More Robust ePSF Building
+=========================
+
+~photutils.psf.EPSFBuilder no longer produces a checkerboard pattern in
+the ePSF when the input stars are heterogeneous. This includes stars
+from exposures with different PSFs, saturated or contaminated cutouts,
+spurious detections, and low signal-to-noise stars. The issue occurred
+when the oversampling factor was greater than one.
+
+Previously, each star-pixel residual was assigned to the nearest
+oversampled grid point. As a result, neighboring grid points were
+estimated from different subsets of stars. These subsets were selected
+based on the stars' subpixel phases. Noise in the grid biased the fitted
+star centers toward particular subpixel phases. This prevented alternate
+grid points from being sampled evenly. The effect grew with each
+iteration and produced a checkerboard, or alias, pattern.
+
+Now, each star-pixel residual is deposited on every oversampled grid
+point within its footprint. This ensures that every star contributes to
+every grid point, regardless of its subpixel phase. In each iteration,
+power at and above one cycle per input pixel is also removed from
+the ePSF. A pixel-integrated PSF has essentially no signal at these
+frequencies. However, the star-pixel sampling lattice can alias onto the
+oversampled grid.
+
+On clean data, the ePSF is at least as accurate as before and is often
+better. Star centers are recovered more accurately, and the build
+converges in fewer iterations. A warning is now emitted if the fitted
+star centers have strongly non-uniform subpixel phases at the end of the
+build. This indicates that the star centers may be biased.
+
+The ePSF building user guide now includes guidelines for choosing the
+oversampling factor and the star sample, e.g., using at least about four
+grid points per FWHM, not using an oversampling factor larger than the
+data require, and providing enough stars to sample every subpixel cell.
 
 .. _whatsnew-3.1-api-changes:
 
