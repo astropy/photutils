@@ -6,5 +6,5 @@ coverage:
     project:
       default:
         target: auto
-        # this allows a small drop from the previous base commit coverage
+        # This allows a small drop from the previous base commit coverage.
         threshold: 0.05%

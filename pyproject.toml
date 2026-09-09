@@ -201,7 +201,7 @@ force-exclude = """
 skips = ['*_test.py', '*/test_*.py']
 
 [tool.cibuildwheel]
-# explicitly skip free-threaded builds
+# Explicitly skip free-threaded builds
 skip = ["cp*t-*"]
 
 [tool.repo-review]
@@ -243,8 +243,8 @@ checks = [
     'SS06',  # single-line summary
 ]
 
-# Do not report on objects that match any of these regex;
-# remember to use single quotes for regex in TOML
+# Do not report on objects that match any of these regex.
+# Remember to use single quotes for regex in TOML.
 exclude = [
     '__init__',
     '\._.*',  # private functions/methods

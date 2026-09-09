@@ -179,7 +179,7 @@ nitpicky = True
 #
 # <type> <class>
 #
-# for example:
+# For example:
 #
 # py:class astropy.io.votable.tree.Element
 # py:class astropy.io.votable.tree.SimpleElement
