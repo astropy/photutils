@@ -2547,6 +2547,8 @@ class EPSFBuilder:
         - final_center_accuracy: Final center movement accuracy
         - n_excluded_stars: Number of stars excluded due to fit failures
         - excluded_star_indices: Indices of excluded stars
+        - smoothing_kernel: Smoothing kernel of the final iteration
+        - fit_shape: Fitting box of the final iteration
         """
         if epsf is not None:
             if not np.array_equal(epsf.oversampling, self.oversampling):
