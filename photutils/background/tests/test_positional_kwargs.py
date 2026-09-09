@@ -7,7 +7,6 @@ positionally.
 import numpy as np
 import pytest
 from astropy.stats import SigmaClip
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.background import (BiweightLocationBackground,
                                   BiweightScaleBackgroundRMS, LocalBackground,
@@ -15,6 +14,7 @@ from photutils.background import (BiweightLocationBackground,
                                   MedianBackground, MMMBackground,
                                   ModeEstimatorBackground,
                                   SExtractorBackground, StdBackgroundRMS)
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 BKG_CLASSES = [MeanBackground,
                MedianBackground,
@@ -39,11 +39,11 @@ class TestBackgroundBasePositionalKwargs:
     def test_call_positional_warns(self, cls):
         bkg = cls()
         match = '__call__'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             bkg(self.data, None)
 
         match = 'calc_background'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             bkg.calc_background(self.data, None)
 
     @pytest.mark.parametrize('cls', BKG_CLASSES)
@@ -65,11 +65,11 @@ class TestBackgroundRMSBasePositionalKwargs:
     def test_call_positional_warns(self, cls):
         bkgrms = cls()
         match = '__call__'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             bkgrms(self.data, None)
 
         match = 'calc_background_rms'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             bkgrms.calc_background_rms(self.data, None)
 
     @pytest.mark.parametrize('cls', BKGRMS_CLASSES)
@@ -92,7 +92,7 @@ class TestEstimatorInitPositionalKwargs:
     ])
     def test_init_positional_warns(self, cls, args):
         match = '__init__'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             cls(*args)
 
     def test_init_keyword_no_warning(self):
@@ -112,7 +112,7 @@ class TestLocalBackgroundPositionalKwargs:
 
     def test_init_positional_warns(self):
         match = '__init__'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             LocalBackground(5, 10, MedianBackground())
 
     def test_init_keyword_no_warning(self):
@@ -122,7 +122,7 @@ class TestLocalBackgroundPositionalKwargs:
         local_bkg = LocalBackground(5, 10)
         mask = np.zeros((101, 101), dtype=bool)
         match = '__call__'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             local_bkg(self.data, 50, 50, mask)
 
     def test_call_keyword_no_warning(self):

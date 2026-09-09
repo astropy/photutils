@@ -6,10 +6,10 @@ positionally.
 
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.psf.flags import decode_psf_flags
 from photutils.psf.groupers import SourceGrouper
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 class TestDecodePSFFlagsPositionalKwargs:
@@ -19,7 +19,7 @@ class TestDecodePSFFlagsPositionalKwargs:
 
     def test_positional_warns(self):
         match = 'decode_psf_flags'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             decode_psf_flags(0, True)  # noqa: FBT003
 
     def test_keyword_no_warning(self):
@@ -36,7 +36,7 @@ class TestSourceGrouperPositionalKwargs:
         x = np.array([0.0, 5.0, 50.0])
         y = np.array([0.0, 5.0, 50.0])
         match = '__call__'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             grouper(x, y, True)  # noqa: FBT003
 
     def test_keyword_no_warning(self):

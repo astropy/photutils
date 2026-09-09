@@ -12,8 +12,7 @@ import pytest
 from astropy.modeling.fitting import TRFLSQFitter
 from astropy.nddata import NDData
 from astropy.table import Table
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.centroids import (centroid_1dg, centroid_2dg, centroid_com,
@@ -26,6 +25,7 @@ from photutils.psf.epsf_builder import (_CoordinateTransformer, _EPSFValidator,
                                         _ProgressReporter, _SmoothingKernel)
 from photutils.psf.epsf_stars import LinkedEPSFStar
 from photutils.utils._optional_deps import HAS_TQDM
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 @pytest.fixture
@@ -89,7 +89,7 @@ def _make_epsf_fitter(**kwargs):
     removed.
     """
     with warnings.catch_warnings():
-        warnings.simplefilter('ignore', AstropyDeprecationWarning)
+        warnings.simplefilter('ignore', PhotutilsDeprecationWarning)
         return EPSFFitter(**kwargs)
 
 
@@ -806,11 +806,11 @@ class TestEPSFBuildResults:
         from photutils.psf import epsf_builder
 
         match = 'EPSFBuildResult is deprecated'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             cls = psf.EPSFBuildResult
         assert cls is EPSFBuildResults
 
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             cls = epsf_builder.EPSFBuildResult
         assert cls is EPSFBuildResults
 
@@ -828,7 +828,7 @@ class TestEPSFFitter:
         Test that EPSFFitter emits a deprecation warning.
         """
         match = 'EPSFFitter is deprecated'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             EPSFFitter()
 
     def test_fit_stars(self, epsf_fitter_data):
@@ -1279,7 +1279,7 @@ class TestEPSFBuilder:
         epsf_fitter = _make_epsf_fitter(fit_boxsize=7)
 
         match = 'Passing an EPSFFitter instance'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             builder = EPSFBuilder(fitter=epsf_fitter, maxiters=3)
 
         # The astropy fitter should be extracted
@@ -1544,7 +1544,7 @@ class TestEPSFBuilder:
         """
         builder = EPSFBuilder(maxiters=1, progress_bar=False)
         match = 'The coord_transformer attribute is deprecated'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             transformer = builder.coord_transformer
         assert transformer is builder._coord_transformer
 

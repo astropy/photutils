@@ -32,6 +32,7 @@ from photutils.utils._parameters import as_pair
 from photutils.utils._progress_bars import add_progress_bar
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils._repr import make_repr
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['PSFPhotometry']
 
@@ -1641,7 +1642,8 @@ class PSFPhotometry:
             self._state.clear()
 
     @property
-    @deprecated('2.3.0', alternative='results')
+    @deprecated('2.3.0', alternative='results',
+                warning_type=PhotutilsDeprecationWarning)
     def fit_params(self):
         """
         The table of fit parameters and their errors.

@@ -7,7 +7,6 @@ import warnings
 from functools import cached_property
 
 import numpy as np
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.detection.core import (_DEPR_DEFAULT, StarFinderBase,
                                       StarFinderCatalogBase,
@@ -19,7 +18,8 @@ from photutils.utils._deprecation import (deprecated_positional_kwargs,
                                           deprecated_renamed_argument)
 from photutils.utils._quantity_helpers import check_units, isscalar
 from photutils.utils._repr import make_repr
-from photutils.utils.exceptions import NoDetectionsWarning
+from photutils.utils.exceptions import (NoDetectionsWarning,
+                                        PhotutilsDeprecationWarning)
 
 __all__ = ['IRAFStarFinder']
 
@@ -218,7 +218,7 @@ class IRAFStarFinder(StarFinderBase):
             msg = ("The 'minsep_fwhm' parameter is deprecated "
                    'and will be removed in a future version. Use '
                    "'min_separation' instead.")
-            warnings.warn(msg, AstropyDeprecationWarning)
+            warnings.warn(msg, PhotutilsDeprecationWarning)
             if minsep_fwhm < 0:
                 msg = 'minsep_fwhm must be >= 0'
                 raise ValueError(msg)

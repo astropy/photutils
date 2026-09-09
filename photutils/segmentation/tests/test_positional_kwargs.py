@@ -6,10 +6,10 @@ positionally.
 
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.segmentation.core import SegmentationImage
 from photutils.segmentation.utils import make_2dgaussian_kernel
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 class TestSegmentationImagePositionalKwargs:
@@ -26,7 +26,7 @@ class TestSegmentationImagePositionalKwargs:
     def test_reassign_label_positional_warns(self):
         segm = SegmentationImage(self.data.copy())
         match = 'reassign_label'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             segm.reassign_label(1, 4, True)  # noqa: FBT003
 
     def test_reassign_label_keyword_no_warning(self):
@@ -36,7 +36,7 @@ class TestSegmentationImagePositionalKwargs:
     def test_keep_label_positional_warns(self):
         segm = SegmentationImage(self.data.copy())
         match = 'keep_label'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             segm.keep_label(1, True)  # noqa: FBT003
 
     def test_keep_label_keyword_no_warning(self):
@@ -46,7 +46,7 @@ class TestSegmentationImagePositionalKwargs:
     def test_remove_label_positional_warns(self):
         segm = SegmentationImage(self.data.copy())
         match = 'remove_label'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             segm.remove_label(1, True)  # noqa: FBT003
 
     def test_remove_label_keyword_no_warning(self):
@@ -56,7 +56,7 @@ class TestSegmentationImagePositionalKwargs:
     def test_remove_border_labels_positional_warns(self):
         segm = SegmentationImage(self.data.copy())
         match = 'remove_border_labels'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             segm.remove_border_labels(1, True)  # noqa: FBT003
 
     def test_remove_border_labels_keyword_no_warning(self):
@@ -68,7 +68,7 @@ class TestSegmentationImagePositionalKwargs:
         mask = np.zeros(self.data.shape, dtype=bool)
         mask[0, 0] = True
         match = 'remove_masked_labels'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             segm.remove_masked_labels(mask, True)  # noqa: FBT003
 
     def test_remove_masked_labels_keyword_no_warning(self):
@@ -82,7 +82,7 @@ class TestSegmentationImagePositionalKwargs:
         segment = segm.segments[0]
         data = np.random.default_rng(0).random(self.data.shape)
         match = 'make_cutout'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             segment.make_cutout(data, True)  # noqa: FBT003
 
     def test_make_cutout_keyword_no_warning(self):
@@ -99,7 +99,7 @@ class TestMake2DGaussianKernelPositionalKwargs:
 
     def test_positional_warns(self):
         match = 'make_2dgaussian_kernel'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             make_2dgaussian_kernel(3.0, 5, 'oversample')
 
     def test_keyword_no_warning(self):

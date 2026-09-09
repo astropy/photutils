@@ -13,8 +13,7 @@ from astropy.modeling.fitting import (LevMarLSQFitter, LMLSQFitter,
 from astropy.modeling.models import Gaussian1D, Gaussian2D
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.table import QTable, Table
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background import LocalBackground, MMMBackground
@@ -23,7 +22,8 @@ from photutils.detection import DAOStarFinder
 from photutils.psf import (CircularGaussianPRF, ImagePSF, PSFPhotometry,
                            SourceGrouper, make_psf_model, make_psf_model_image)
 from photutils.psf.flags import decode_psf_flags
-from photutils.utils.exceptions import NoDetectionsWarning
+from photutils.utils.exceptions import (NoDetectionsWarning,
+                                        PhotutilsDeprecationWarning)
 
 
 @pytest.fixture(name='test_data')
@@ -242,7 +242,7 @@ def test_psf_photometry(test_data):
         assert not isinstance(photu[col], u.Quantity)
 
     match = 'The fit_params function is deprecated'
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         assert isinstance(psfphot.fit_params, Table)
 
 
@@ -1689,7 +1689,7 @@ def test_psf_photometry_methods(test_data):
                             aperture_radius=4)
 
     match = 'The fit_params function is deprecated'
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         assert psfphot.fit_params is None
 
     match = 'No results available. Please run the PSFPhotometry'
@@ -1710,7 +1710,7 @@ def test_psf_photometry_methods(test_data):
     assert isinstance(psfphot.fit_info, list)
 
     match = 'The fit_params function is deprecated'
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         assert isinstance(psfphot.fit_params, Table)
 
 
@@ -1926,21 +1926,21 @@ def test_deprecated_shims(test_data):
     finder = DAOStarFinder(6.0, 2.0)
 
     match = "'localbkg_estimator' was deprecated in version 3.0"
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         psfphot = PSFPhotometry(model, (5, 5), finder=finder,
                                 aperture_radius=4,
                                 localbkg_estimator=None)
     psfphot(data, error=error)
 
     match = "'include_localbkg' was deprecated in version 3.0"
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         psfphot.make_model_image((25, 25), include_localbkg=False)
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         psfphot.make_residual_image(data, include_localbkg=False)
 
     match = ("Passing 'return_bit_values' positionally to "
              "'decode_flags' is deprecated")
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         psfphot.decode_flags(True)  # noqa: FBT003
 
 

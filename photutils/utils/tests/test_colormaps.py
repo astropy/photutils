@@ -4,11 +4,11 @@ Tests for the colormaps module.
 """
 
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
 from photutils.utils.colormaps import make_random_cmap
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
@@ -51,6 +51,6 @@ def test_colormap_ncolors_deprecated():
     deprecation warning.
     """
     match = "'ncolors' was deprecated"
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         cmap = make_random_cmap(ncolors=10, seed=0)
     assert len(cmap.colors) == 10

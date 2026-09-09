@@ -12,8 +12,7 @@ from unittest.mock import PropertyMock, patch
 
 import numpy as np
 import pytest
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 import photutils.segmentation.core as segm_core
@@ -21,6 +20,7 @@ from photutils.segmentation.core import Segment, SegmentationImage
 from photutils.utils import circular_footprint
 from photutils.utils._optional_deps import (HAS_MATPLOTLIB, HAS_RASTERIO,
                                             HAS_REGIONS, HAS_SHAPELY)
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 @pytest.fixture
@@ -2258,5 +2258,5 @@ def test_segment_deprecations(segm_data):
     segment_map = SegmentationImage(segm_data)
     segments = segment_map.segments
     match = 'attribute was deprecated'
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         _ = segments[0].data_ma

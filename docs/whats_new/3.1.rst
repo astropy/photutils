@@ -696,6 +696,19 @@ typical performance improvements of approximately 20–25%. The
 optimizations reduce the overhead of PSF interpolation, improving the
 runtime of PSF photometry workflows.
 
+
+Photutils Deprecation Warning Class
+===================================
+
+All Photutils deprecation warnings are now emitted as
+`~photutils.utils.PhotutilsDeprecationWarning`, a subclass of astropy's
+`~astropy.utils.exceptions.AstropyDeprecationWarning`. The warning class
+name now identifies Photutils as the source of the warning, which makes
+it easier to find the deprecated code path when a warning is raised from
+within a larger pipeline. Because it is a subclass, existing warning
+filters and ``pytest.warns`` checks for ``AstropyDeprecationWarning``
+continue to work unchanged.
+
 .. _whatsnew-3.1-api-changes:
 
 

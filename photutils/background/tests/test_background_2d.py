@@ -8,8 +8,7 @@ import numpy as np
 import pytest
 from astropy.nddata import CCDData, NDData
 from astropy.stats import SigmaClip, biweight_location, biweight_scale
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.background import (Background2D, BiweightLocationBackground,
@@ -19,6 +18,7 @@ from photutils.background import (Background2D, BiweightLocationBackground,
                                   MMMBackground, ModeEstimatorBackground,
                                   SExtractorBackground, StdBackgroundRMS)
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 @pytest.fixture
@@ -878,11 +878,11 @@ class TestBackground2D:
         Test that the interpolator keyword is deprecated.
         """
         match = 'BkgZoomInterpolator is deprecated'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             interp = BkgZoomInterpolator()
 
         match = "'interpolator' was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             bkg = Background2D(test_data, (25, 25), interpolator=interp)
 
         assert_allclose(bkg.background, test_data)
@@ -1056,9 +1056,9 @@ def test_deprecations(test_data):
     data = test_data.copy()
     bkg = Background2D(data, (25, 25))
     match = 'was deprecated'
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         assert bkg.npixels_mesh.shape == (4, 4)
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         assert bkg.npixels_map.shape == data.shape
 
 

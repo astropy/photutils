@@ -6,13 +6,13 @@ positionally.
 
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.datasets.load import load_irac_psf
 from photutils.datasets.model_params import make_random_models_table
 from photutils.datasets.noise import apply_poisson_noise, make_noise_image
 from photutils.datasets.wcs import make_gwcs, make_wcs
 from photutils.utils._optional_deps import HAS_GWCS
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 class TestLoadIracPsfPositionalKwargs:
@@ -23,7 +23,7 @@ class TestLoadIracPsfPositionalKwargs:
     @pytest.mark.remote_data
     def test_positional_warns(self):
         match = 'load_irac_psf'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             load_irac_psf(1, False)  # noqa: FBT003
 
     @pytest.mark.remote_data
@@ -39,7 +39,7 @@ class TestMakeRandomModelsTablePositionalKwargs:
 
     def test_positional_warns(self):
         match = 'make_random_models_table'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             make_random_models_table(5, {'x_mean': [0, 100]}, 0)
 
     def test_keyword_no_warning(self):
@@ -54,7 +54,7 @@ class TestApplyPoissonNoisePositionalKwargs:
     def test_positional_warns(self):
         data = np.ones((10, 10))
         match = 'apply_poisson_noise'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             apply_poisson_noise(data, 0)
 
     def test_keyword_no_warning(self):
@@ -69,7 +69,7 @@ class TestMakeNoiseImagePositionalKwargs:
 
     def test_positional_warns(self):
         match = 'make_noise_image'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             make_noise_image((10, 10), 'gaussian', mean=0.0, stddev=2.0)
 
     def test_keyword_no_warning(self):
@@ -84,7 +84,7 @@ class TestMakeWcsPositionalKwargs:
 
     def test_positional_warns(self):
         match = 'make_wcs'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             make_wcs((100, 100), False)  # noqa: FBT003
 
     def test_keyword_no_warning(self):
@@ -99,7 +99,7 @@ class TestMakeGwcsPositionalKwargs:
     @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
     def test_positional_warns(self):
         match = 'make_gwcs'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             make_gwcs((100, 100), False)  # noqa: FBT003
 
     @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')

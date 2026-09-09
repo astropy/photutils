@@ -10,8 +10,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.modeling.models import Gaussian2D
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.centroids.core import (CentroidQuadratic, centroid_com,
@@ -19,6 +18,7 @@ from photutils.centroids.core import (CentroidQuadratic, centroid_com,
 from photutils.centroids.gaussian import centroid_1dg, centroid_2dg
 from photutils.centroids.tests.helpers import make_gaussian_source
 from photutils.datasets import make_4gaussians_image, make_noise_image
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 @pytest.fixture(name='test_data')
@@ -249,25 +249,25 @@ def test_centroid_quadratic_xypeak():
     xycen1 = centroid_quadratic(data, fit_boxsize=3)
     assert_allclose(xycen1, (9, 9))
 
-    with pytest.warns(AstropyDeprecationWarning):
+    with pytest.warns(PhotutilsDeprecationWarning):
         xycen2 = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=3)
     assert_allclose(xycen2, (5, 5))
 
-    with pytest.warns(AstropyDeprecationWarning):
+    with pytest.warns(PhotutilsDeprecationWarning):
         xycen3 = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=3,
                                     search_boxsize=5)
     assert_allclose(xycen3, (7, 7))
 
     match = 'xpeak is outside the input data'
-    with (pytest.warns(AstropyDeprecationWarning),
+    with (pytest.warns(PhotutilsDeprecationWarning),
           pytest.raises(ValueError, match=match)):
         centroid_quadratic(data, xpeak=15, ypeak=5)
-    with (pytest.warns(AstropyDeprecationWarning),
+    with (pytest.warns(PhotutilsDeprecationWarning),
           pytest.raises(ValueError, match=match)):
         centroid_quadratic(data, xpeak=15, ypeak=15)
 
     match = 'ypeak is outside the input data'
-    with (pytest.warns(AstropyDeprecationWarning),
+    with (pytest.warns(PhotutilsDeprecationWarning),
           pytest.raises(ValueError, match=match)):
         centroid_quadratic(data, xpeak=5, ypeak=15)
 
@@ -414,10 +414,10 @@ def test_centroid_quadratic_invalid_inputs():
     data = np.zeros((4, 4))
     mask = np.zeros((2, 2), dtype=bool)
     match = 'xpeak and ypeak must both be input or "None"'
-    with (pytest.warns(AstropyDeprecationWarning),
+    with (pytest.warns(PhotutilsDeprecationWarning),
           pytest.raises(ValueError, match=match)):
         centroid_quadratic(data, xpeak=3, ypeak=None)
-    with (pytest.warns(AstropyDeprecationWarning),
+    with (pytest.warns(PhotutilsDeprecationWarning),
           pytest.raises(ValueError, match=match)):
         centroid_quadratic(data, xpeak=None, ypeak=3)
 
@@ -458,11 +458,11 @@ def test_centroid_quadratic_edge():
     data[1, 1] = 100
     data[9, 9] = 100
 
-    with pytest.warns(AstropyDeprecationWarning):
+    with pytest.warns(PhotutilsDeprecationWarning):
         xycen = centroid_quadratic(data, xpeak=1, ypeak=1, fit_boxsize=5)
     assert_allclose(xycen, (0.923077, 0.923077))
 
-    with pytest.warns(AstropyDeprecationWarning):
+    with pytest.warns(PhotutilsDeprecationWarning):
         xycen = centroid_quadratic(data, xpeak=9, ypeak=9, fit_boxsize=5)
     assert_allclose(xycen, (9.076923, 9.076923))
 
@@ -521,7 +521,7 @@ def test_centroid_quadratic_fit_failed():
 
     with patch('numpy.linalg.lstsq', side_effect=np.linalg.LinAlgError):
         match = 'quadratic fit failed'
-        with (pytest.warns(AstropyDeprecationWarning),
+        with (pytest.warns(PhotutilsDeprecationWarning),
               pytest.warns(AstropyUserWarning, match=match)):
             xycen = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=5)
         assert np.isnan(xycen[0])
@@ -548,7 +548,7 @@ def test_centroid_quadratic_no_maximum():
     data[5, 5] = 20.0
 
     match = 'quadratic fit does not have a maximum'
-    with (pytest.warns(AstropyDeprecationWarning),
+    with (pytest.warns(PhotutilsDeprecationWarning),
           pytest.warns(AstropyUserWarning, match=match)):
         xycen = centroid_quadratic(data, xpeak=5, ypeak=5, fit_boxsize=5)
     assert np.isnan(xycen[0])
@@ -573,7 +573,7 @@ def test_centroid_quadratic_max_outside_image():
     data[3, 3] = 6.0  # local peak to center the fit
 
     match = 'quadratic polynomial maximum value falls outside'
-    with (pytest.warns(AstropyDeprecationWarning),
+    with (pytest.warns(PhotutilsDeprecationWarning),
           pytest.warns(AstropyUserWarning, match=match)):
         xycen = centroid_quadratic(data, xpeak=3, ypeak=3, fit_boxsize=5)
     assert np.isnan(xycen[0])
@@ -761,7 +761,7 @@ class TestCentroidSources:
         data[7, 7] = 110
         data[9, 9] = 120
 
-        with pytest.warns(AstropyDeprecationWarning):
+        with pytest.warns(PhotutilsDeprecationWarning):
             xycen3 = centroid_sources(data, xpos=7, ypos=7, box_size=5,
                                       centroid_func=centroid_quadratic,
                                       xpeak=7, ypeak=7, fit_boxsize=3)
@@ -849,7 +849,7 @@ class TestCentroidSources:
         data[10, 10] = 100.0
         data[10, 11] = 100.0
 
-        with pytest.warns(AstropyDeprecationWarning):
+        with pytest.warns(PhotutilsDeprecationWarning):
             xc_multi, yc_multi = centroid_sources(
                 data, xpos=[10, 11], ypos=[10, 10], box_size=5,
                 centroid_func=centroid_quadratic,
@@ -857,12 +857,12 @@ class TestCentroidSources:
 
         # Compare with individual single-source calls using the same
         # xpeak/ypeak to get the reference values.
-        with pytest.warns(AstropyDeprecationWarning):
+        with pytest.warns(PhotutilsDeprecationWarning):
             xc1, yc1 = centroid_sources(
                 data, xpos=10, ypos=10, box_size=5,
                 centroid_func=centroid_quadratic,
                 xpeak=10, ypeak=10, fit_boxsize=3)
-        with pytest.warns(AstropyDeprecationWarning):
+        with pytest.warns(PhotutilsDeprecationWarning):
             xc2, yc2 = centroid_sources(
                 data, xpos=11, ypos=10, box_size=5,
                 centroid_func=centroid_quadratic,

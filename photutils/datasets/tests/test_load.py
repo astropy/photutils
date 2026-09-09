@@ -9,10 +9,10 @@ import numpy as np
 import pytest
 from astropy.io import fits
 from astropy.table import Table
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.datasets import load
 from photutils.datasets.load import _get_path, _load_fits_as_imagehdu
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 def test_get_path():
@@ -130,7 +130,7 @@ def test_load_star_image():
     Test that load_star_image returns an HDU with the expected header
     and data shape.
     """
-    with pytest.warns(AstropyDeprecationWarning):
+    with pytest.warns(PhotutilsDeprecationWarning):
         hdu = load.load_star_image()
     assert len(hdu.header) == 106
     assert hdu.data.shape == (1059, 1059)
@@ -184,7 +184,7 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'spitzer_example_image.fits'
         hdulist.writeto(filepath)
 
-        with (pytest.warns(AstropyDeprecationWarning),
+        with (pytest.warns(PhotutilsDeprecationWarning),
               patch('photutils.datasets.load._get_path',
                     return_value=str(filepath))):
             hdu = load.load_spitzer_image()
@@ -206,7 +206,7 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'spitzer_example_image.fits'
         hdulist.writeto(filepath)
 
-        with (pytest.warns(AstropyDeprecationWarning),
+        with (pytest.warns(PhotutilsDeprecationWarning),
               patch('photutils.datasets.load._get_path',
                     return_value=str(filepath)) as mock_get_path):
             hdu = load.load_spitzer_image(show_progress=True)
@@ -230,7 +230,7 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'spitzer_example_catalog.xml'
         catalog_data.write(filepath, format='votable', overwrite=True)
 
-        with (pytest.warns(AstropyDeprecationWarning),
+        with (pytest.warns(PhotutilsDeprecationWarning),
               patch('photutils.datasets.load._get_path',
                     return_value=str(filepath))):
             catalog = load.load_spitzer_catalog()
@@ -251,7 +251,7 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'spitzer_example_catalog.xml'
         catalog_data.write(filepath, format='votable', overwrite=True)
 
-        with (pytest.warns(AstropyDeprecationWarning),
+        with (pytest.warns(PhotutilsDeprecationWarning),
               patch('photutils.datasets.load._get_path',
                     return_value=str(filepath)) as mock_get_path):
             catalog = load.load_spitzer_catalog(show_progress=True)
@@ -350,7 +350,7 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'M6707HH.fits'
         hdulist.writeto(filepath)
 
-        with (pytest.warns(AstropyDeprecationWarning),
+        with (pytest.warns(PhotutilsDeprecationWarning),
               patch('photutils.datasets.load._get_path',
                     return_value=str(filepath))):
             hdu = load.load_star_image()
@@ -372,7 +372,7 @@ class TestLoadFunctionsMocked:
         filepath = tmp_path / 'M6707HH.fits'
         hdulist.writeto(filepath)
 
-        with (pytest.warns(AstropyDeprecationWarning),
+        with (pytest.warns(PhotutilsDeprecationWarning),
               patch('photutils.datasets.load._get_path',
                     return_value=str(filepath)) as mock_get_path):
             hdu = load.load_star_image(show_progress=True)
@@ -445,6 +445,6 @@ def test_deprecated_get_path():
     returns the expected path.
     """
     fn = '4gaussians_params.ecsv'
-    with pytest.warns(AstropyDeprecationWarning):
+    with pytest.warns(PhotutilsDeprecationWarning):
         result = load.get_path(fn, location='local')
     assert fn in result

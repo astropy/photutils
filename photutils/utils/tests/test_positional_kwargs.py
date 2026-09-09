@@ -6,11 +6,11 @@ positionally.
 
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
 from photutils.utils.colormaps import make_random_cmap
 from photutils.utils.cutouts import CutoutImage
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 from photutils.utils.footprints import circular_footprint
 from photutils.utils.interpolation import ShepardIDWInterpolator
 
@@ -23,7 +23,7 @@ class TestMakeRandomCmapPositionalKwargs:
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
     def test_positional_warns(self):
         match = 'make_random_cmap'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             make_random_cmap(100)
 
     @pytest.mark.skipif(not HAS_MATPLOTLIB, reason='matplotlib is required')
@@ -41,7 +41,7 @@ class TestCutoutImagePositionalKwargs:
 
     def test_positional_warns(self):
         match = '__init__'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             CutoutImage(self.data, (5, 5), (3, 3), 'trim')
 
     def test_keyword_no_warning(self):
@@ -55,7 +55,7 @@ class TestCircularFootprintPositionalKwargs:
 
     def test_positional_warns(self):
         match = 'circular_footprint'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             circular_footprint(3, float)
 
     def test_keyword_no_warning(self):
@@ -75,7 +75,7 @@ class TestShepardIDWInterpolatorPositionalKwargs:
     def test_init_positional_warns(self):
         weights = np.ones(100)
         match = 'init'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             ShepardIDWInterpolator(self.coords, self.values, weights)
 
     def test_init_keyword_no_warning(self):
@@ -85,7 +85,7 @@ class TestShepardIDWInterpolatorPositionalKwargs:
     def test_call_positional_warns(self):
         interp = ShepardIDWInterpolator(self.coords, self.values)
         match = '__call__'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             interp([0.5, 0.6], 4)
 
     def test_call_keyword_no_warning(self):

@@ -7,10 +7,10 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
 from photutils.utils import ShepardIDWInterpolator as IDWInterp
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 SHAPE = (5, 5)
 DATA = np.ones(SHAPE) * 2.0
@@ -83,7 +83,7 @@ class TestShepardIDWInterpolator:
         Test the deprecated ncoords attribute.
         """
         match = "The 'ncoords' attribute was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             assert self.f.ncoords == self.f.n_coords
 
     def test_invalid_attribute(self):

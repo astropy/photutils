@@ -12,8 +12,7 @@ import numpy as np
 import pytest
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.stats import SigmaClip, biweight_location, biweight_scale, mad_std
-from astropy.utils.exceptions import (AstropyDeprecationWarning,
-                                      AstropyUserWarning)
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture.bounding_box import BoundingBox
@@ -29,6 +28,7 @@ from photutils.aperture.stats import _MAD_STD_SCALE, ApertureStats
 from photutils.aperture.tests.conftest import NoBatchCircularAperture
 from photutils.datasets import make_100gaussians_image, make_wcs
 from photutils.utils._optional_deps import HAS_REGIONS
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 @_enable_batch_photometry
@@ -450,7 +450,7 @@ class TestTable(BaseApertureStatsData):
         validation.
         """
         match = "'xcentroid' attribute was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             tbl = self.apstats1.to_table(columns='xcentroid')
         assert tbl.colnames == ['x_centroid']
 
@@ -607,7 +607,7 @@ class TestDeprecations(BaseApertureStatsData):
         """
         Test that deprecated attributes are still available and
         give the same value as the new attributes, but raise an
-        AstropyDeprecationWarning.
+        PhotutilsDeprecationWarning.
         """
         apstats = ApertureStats(self.data, self.aperture, error=self.error)
         match = 'attribute was deprecated'
@@ -628,7 +628,7 @@ class TestDeprecations(BaseApertureStatsData):
             'ycentroid': 'y_centroid',
         }
         for old_name, new_name in deprecated_map.items():
-            with pytest.warns(AstropyDeprecationWarning, match=match):
+            with pytest.warns(PhotutilsDeprecationWarning, match=match):
                 old_val = getattr(apstats, old_name)
             new_val = getattr(apstats, new_name)
             assert_equal(old_val, new_val)
@@ -640,13 +640,13 @@ class TestDeprecations(BaseApertureStatsData):
         """
         apstats = ApertureStats(self.data, self.aperture)
         match = 'deprecated in version 3.1'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             old_val = apstats.ids
         assert_equal(old_val, apstats.id)
 
         # A scalar instance returns the scalar id
         scalar = apstats[0]
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             assert scalar.ids == scalar.id
 
     def test_deprecated_n_apertures(self):
@@ -656,7 +656,7 @@ class TestDeprecations(BaseApertureStatsData):
         """
         apstats = ApertureStats(self.data, self.aperture)
         match = 'deprecated in version 3.1'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             old_val = apstats.n_apertures
         assert old_val == apstats.n_positions
 

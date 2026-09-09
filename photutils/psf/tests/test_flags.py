@@ -5,12 +5,12 @@ Tests for the flags module.
 
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.psf import IterativePSFPhotometry, PSFPhotometry
 from photutils.psf.flags import (PSF_FLAGS, _PSFFlags,
                                  _update_decode_docstring, decode_psf_flags)
 from photutils.utils._flags import FlagDefinition
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 def test_decode_psf_flags():
@@ -352,7 +352,7 @@ def test_psf_flags_get_definition_deprecated_name():
     """
     match = ("The flag name 'npixfit_partial' is deprecated.*Use "
              "'n_pixels_fit_partial' instead")
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         deprecated_def = PSF_FLAGS.get_definition('npixfit_partial')
 
     current_def = PSF_FLAGS.get_definition('n_pixels_fit_partial')

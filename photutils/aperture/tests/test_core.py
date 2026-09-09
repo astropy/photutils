@@ -7,7 +7,6 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
 from photutils.aperture import (Aperture, AperturePhotometry, CircularAperture,
@@ -18,6 +17,7 @@ from photutils.aperture import (Aperture, AperturePhotometry, CircularAperture,
                                 SkyRectangularAnnulus, SkyRectangularAperture)
 from photutils.aperture.core import (_aperture_metadata,
                                      _update_method_subpixels_docstring)
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 POSITIONS = [(5, 5), (10, 10), (15, 15)]
 SCALAR_POS = (5, 5)
@@ -350,7 +350,7 @@ class TestPixelAperturePhotometry:
         error = np.full(self.data.shape, 0.1)
         expected = self.aper._photometry(self.data, error=error)
         match = r'Use AperturePhotometry instead'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             result = self.aper.do_photometry(self.data, error=error)
         assert len(result) == 2
         flux, flux_err = result

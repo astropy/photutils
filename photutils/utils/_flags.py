@@ -13,9 +13,9 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.utils._deprecation import deprecated_getattr
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = []
 
@@ -150,7 +150,7 @@ class FlagRegistry:
                     f"in version {self._DEPRECATED_SINCE}. Use "
                     f"'{new_name}' instead. It will be removed in "
                     f'version {self._DEPRECATED_UNTIL}.',
-                    AstropyDeprecationWarning,
+                    PhotutilsDeprecationWarning,
                     stacklevel=2,
                 )
                 identifier = new_name

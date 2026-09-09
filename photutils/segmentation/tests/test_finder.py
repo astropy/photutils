@@ -8,14 +8,14 @@ import numpy as np
 import pytest
 from astropy.convolution import convolve
 from astropy.modeling.models import Gaussian2D
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_equal
 
 from photutils.datasets import make_100gaussians_image
 from photutils.segmentation.finder import SourceFinder
 from photutils.segmentation.flags import SEGMENTATION_FLAGS
 from photutils.segmentation.utils import make_2dgaussian_kernel
-from photutils.utils.exceptions import NoDetectionsWarning
+from photutils.utils.exceptions import (NoDetectionsWarning,
+                                        PhotutilsDeprecationWarning)
 
 
 class TestSourceFinder:
@@ -99,16 +99,16 @@ class TestSourceFinder:
 def test_finder_deprecations():
     finder = SourceFinder(n_pixels=10)
     match = 'attribute was deprecated'
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         _ = finder.npixels
-    with pytest.warns(AstropyDeprecationWarning, match=match):
+    with pytest.warns(PhotutilsDeprecationWarning, match=match):
         _ = finder.nlevels
 
     # Each deprecated keyword emits exactly one warning
     for kwargs in ({'progress_bar': False}, {'n_processes': 2},
                    {'nproc': 2}):
         name = next(iter(kwargs))
-        with pytest.warns(AstropyDeprecationWarning,
+        with pytest.warns(PhotutilsDeprecationWarning,
                           match=name) as record:
             SourceFinder(n_pixels=10, **kwargs)
         assert len(record) == 1

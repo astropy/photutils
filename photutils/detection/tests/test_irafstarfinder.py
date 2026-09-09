@@ -6,12 +6,12 @@ Tests for the irafstarfinder module.
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_array_equal
 
 from photutils.detection import IRAFStarFinder
 from photutils.psf import CircularGaussianPRF
-from photutils.utils.exceptions import NoDetectionsWarning
+from photutils.utils.exceptions import (NoDetectionsWarning,
+                                        PhotutilsDeprecationWarning)
 
 
 class TestIRAFStarFinder:
@@ -56,7 +56,7 @@ class TestIRAFStarFinder:
             IRAFStarFinder(10, 1.5, n_brightest=3.1)
 
         match = 'minsep_fwhm must be >= 0'
-        with (pytest.warns(AstropyDeprecationWarning),
+        with (pytest.warns(PhotutilsDeprecationWarning),
               pytest.raises(ValueError, match=match)):
             IRAFStarFinder(10, 1.5, minsep_fwhm=-1)
 
@@ -503,11 +503,11 @@ class TestIRAFStarFinder:
         warning and still work.
         """
         match = "The 'sharplo' and 'sharphi' parameters are deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, sharplo=0.3)
         assert finder.sharpness_range == (0.3, 2.0)
 
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, sharphi=3.0)
         assert finder.sharpness_range == (0.5, 3.0)
 
@@ -517,11 +517,11 @@ class TestIRAFStarFinder:
         warning and still work.
         """
         match = "The 'roundlo' and 'roundhi' parameters are deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, roundlo=-0.1)
         assert finder.roundness_range == (-0.1, 0.2)
 
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, roundhi=0.5)
         assert finder.roundness_range == (0.0, 0.5)
 
@@ -531,7 +531,7 @@ class TestIRAFStarFinder:
         and still works.
         """
         match = "'brightest' was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, brightest=5)
         assert finder.n_brightest == 5
 
@@ -541,7 +541,7 @@ class TestIRAFStarFinder:
         and still works.
         """
         match = "'peakmax' was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = IRAFStarFinder(threshold=5.0, fwhm=3.0, peakmax=100.0)
         assert finder.peak_max == 100.0
 
@@ -553,7 +553,7 @@ class TestIRAFStarFinder:
         fwhm = 3.0
         minsep_fwhm = 2.5
         match = "The 'minsep_fwhm' parameter is deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = IRAFStarFinder(threshold=5.0, fwhm=fwhm,
                                     minsep_fwhm=minsep_fwhm)
         expected = max(2, int((fwhm * minsep_fwhm) + 0.5))
@@ -564,7 +564,7 @@ class TestIRAFStarFinder:
         Test that min_separation takes priority over minsep_fwhm.
         """
         match = "The 'minsep_fwhm' parameter is deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = IRAFStarFinder(threshold=5.0, fwhm=3.0,
                                     minsep_fwhm=2.5, min_separation=7.0)
         assert finder.min_separation == 7.0

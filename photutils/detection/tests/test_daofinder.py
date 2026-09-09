@@ -6,11 +6,11 @@ Tests for the daofinder module.
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_array_equal
 
 from photutils.detection.daofinder import DAOStarFinder
-from photutils.utils.exceptions import NoDetectionsWarning
+from photutils.utils.exceptions import (NoDetectionsWarning,
+                                        PhotutilsDeprecationWarning)
 
 
 class TestDAOStarFinder:
@@ -570,15 +570,15 @@ class TestDAOStarFinder:
         warning and still work.
         """
         match = "The 'sharplo' and 'sharphi' parameters are deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0, sharplo=0.1)
         assert finder.sharpness_range == (0.1, 1.0)
 
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0, sharphi=2.0)
         assert finder.sharpness_range == (0.2, 2.0)
 
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
                                    sharplo=0.1, sharphi=2.0)
         assert finder.sharpness_range == (0.1, 2.0)
@@ -589,15 +589,15 @@ class TestDAOStarFinder:
         warning and still work.
         """
         match = "The 'roundlo' and 'roundhi' parameters are deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0, roundlo=-0.5)
         assert finder.roundness_range == (-0.5, 1.0)
 
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0, roundhi=0.5)
         assert finder.roundness_range == (-1.0, 0.5)
 
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0,
                                    roundlo=-0.5, roundhi=0.5)
         assert finder.roundness_range == (-0.5, 0.5)
@@ -608,7 +608,7 @@ class TestDAOStarFinder:
         and still works.
         """
         match = "'brightest' was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0, brightest=5)
         assert finder.n_brightest == 5
 
@@ -618,6 +618,6 @@ class TestDAOStarFinder:
         and still works.
         """
         match = "'peakmax' was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = DAOStarFinder(threshold=5.0, fwhm=3.0, peakmax=100.0)
         assert finder.peak_max == 100.0

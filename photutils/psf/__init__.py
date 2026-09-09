@@ -25,13 +25,13 @@ def __getattr__(name):
     if name == 'EPSFBuildResult':
         import warnings
 
-        from astropy.utils.exceptions import AstropyDeprecationWarning
+        from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
         from .epsf_builder import EPSFBuildResults
 
         msg = ('EPSFBuildResult is deprecated and will be removed in a '
                'future version. Use EPSFBuildResults instead.')
-        warnings.warn(msg, AstropyDeprecationWarning, stacklevel=2)
+        warnings.warn(msg, PhotutilsDeprecationWarning, stacklevel=2)
         return EPSFBuildResults
 
     msg = f'module {__name__!r} has no attribute {name!r}'

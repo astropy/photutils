@@ -326,6 +326,12 @@ New Features
     when the deblending mode is changed to a fallback mode for one or
     more sources. [#2378]
 
+  - Added a new ``PhotutilsDeprecationWarning`` class, a subclass
+    of astropy's ``AstropyDeprecationWarning``, which is now used for
+    all Photutils deprecation warnings. The class name identifies
+    Photutils as the source of the warning. Existing warning filters for
+    ``AstropyDeprecationWarning`` continue to match. [#2417]
+
 Bug Fixes
 ^^^^^^^^^
 

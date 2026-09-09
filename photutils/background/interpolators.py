@@ -13,6 +13,7 @@ from scipy.ndimage import affine_transform, spline_filter, zoom
 
 from photutils.utils import ShepardIDWInterpolator
 from photutils.utils._repr import make_repr
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 __all__ = ['BkgIDWInterpolator', 'BkgZoomInterpolator']
 
@@ -204,7 +205,8 @@ class _BkgZoomInterpolator:
 
 
 @deprecated(since='3.0', message=('BkgZoomInterpolator is deprecated and will '
-                                  'be removed in version 4.0.'))
+                                  'be removed in version 4.0.'),
+            warning_type=PhotutilsDeprecationWarning)
 class BkgZoomInterpolator(_BkgZoomInterpolator):
     """
     Class to generate a full-sized background and background RMS images
@@ -248,7 +250,8 @@ class BkgZoomInterpolator(_BkgZoomInterpolator):
 
 
 @deprecated(since='3.0', message=('BkgIDWInterpolator is deprecated and will '
-                                  'be removed in version 4.0.'))
+                                  'be removed in version 4.0.'),
+            warning_type=PhotutilsDeprecationWarning)
 class BkgIDWInterpolator:
     """
     Class to generate a full-sized background and background RMS images

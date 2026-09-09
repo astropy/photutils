@@ -7,11 +7,11 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.table import Table
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_array_equal, assert_equal
 
 from photutils.detection import StarFinder
-from photutils.utils.exceptions import NoDetectionsWarning
+from photutils.utils.exceptions import (NoDetectionsWarning,
+                                        PhotutilsDeprecationWarning)
 
 
 class TestStarFinder:
@@ -373,7 +373,7 @@ class TestStarFinder:
         and still works.
         """
         match = "'brightest' was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = StarFinder(threshold=5.0, kernel=kernel, brightest=5)
         assert finder.n_brightest == 5
 
@@ -383,6 +383,6 @@ class TestStarFinder:
         and still works.
         """
         match = "'peakmax' was deprecated"
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             finder = StarFinder(threshold=5.0, kernel=kernel, peakmax=100.0)
         assert finder.peak_max == 100.0

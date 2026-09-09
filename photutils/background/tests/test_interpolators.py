@@ -6,12 +6,12 @@ Tests for the interpolators module.
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 from numpy.testing import assert_allclose
 
 from photutils.background.background_2d import Background2D
 from photutils.background.interpolators import (BkgIDWInterpolator,
                                                 _BkgZoomInterpolator)
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 @pytest.fixture
@@ -103,9 +103,9 @@ def test_idw_interp(test_data, test_mesh):
     """
     Test the IDW interpolator.
     """
-    with pytest.warns(AstropyDeprecationWarning):
+    with pytest.warns(PhotutilsDeprecationWarning):
         interp = BkgIDWInterpolator()
-    with pytest.warns(AstropyDeprecationWarning):
+    with pytest.warns(PhotutilsDeprecationWarning):
         bkg = Background2D(test_data, 100, interpolator=interp)
 
     zoom = interp(test_mesh, **bkg._interp_kwargs)
@@ -117,7 +117,7 @@ def test_idw_interp(test_data, test_mesh):
 
     # Test with units
     unit = u.nJy
-    with pytest.warns(AstropyDeprecationWarning):
+    with pytest.warns(PhotutilsDeprecationWarning):
         bkg = Background2D(test_data << unit, 100, interpolator=interp)
     zoom = interp(test_mesh << unit, **bkg._interp_kwargs)
     assert zoom.shape == (300, 300)

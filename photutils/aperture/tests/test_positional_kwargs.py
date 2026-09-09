@@ -8,7 +8,6 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
@@ -23,6 +22,7 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
                                           SkyRectangularAnnulus,
                                           SkyRectangularAperture)
 from photutils.utils._optional_deps import HAS_MATPLOTLIB
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 DATA = np.ones((101, 101))
 POSITION = (50, 50)
@@ -98,7 +98,7 @@ class TestCircularMaskMixinPositionalKwargs:
     def test_to_mask_positional_warning(self):
         aper = CircularAperture(POSITION, r=5)
         match = 'to_mask'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             aper.to_mask('exact')
 
 
@@ -116,7 +116,7 @@ class TestApertureMethodsPositionalKwargs:
     def test_plot_positional_warning(self, aperture_class, params):
         aper = aperture_class(POSITION, **params)
         match = 'plot'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             aper.plot(None)
 
     @pytest.mark.parametrize(('aperture_class', 'params'),
@@ -130,7 +130,7 @@ class TestApertureMethodsPositionalKwargs:
     def test_to_mask_positional_warning(self, aperture_class, params):
         aper = aperture_class(POSITION, **params)
         match = 'to_mask'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             aper.to_mask('exact')
 
 
@@ -146,7 +146,7 @@ class TestApertureInitPositionalKwargs:
                              INIT_WARN_APERTURES)
     def test_init_positional_warning(self, aperture_class, position, params):
         match = '__init__'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             aperture_class(position, *params.values())
 
 
@@ -161,7 +161,7 @@ class TestBoundingBoxPositionalKwargs:
     def test_plot_positional_warning(self):
         bbox = BoundingBox(ixmin=1, ixmax=10, iymin=2, iymax=20)
         match = 'plot'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             bbox.plot(None)
 
 
@@ -175,7 +175,7 @@ class TestApertureMaskPositionalKwargs:
 
     def test_to_image_positional_warning(self):
         match = 'to_image'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             self.mask.to_image(DATA.shape, int)
 
     def test_cutout_no_warning(self):
@@ -183,7 +183,7 @@ class TestApertureMaskPositionalKwargs:
 
     def test_cutout_positional_warning(self):
         match = 'cutout'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             self.mask.cutout(DATA, 0.0)
 
     def test_multiply_no_warning(self):
@@ -191,7 +191,7 @@ class TestApertureMaskPositionalKwargs:
 
     def test_multiply_positional_warning(self):
         match = 'multiply'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             self.mask.multiply(DATA, 0.0)
 
     def test_get_values_no_warning(self):
@@ -199,7 +199,7 @@ class TestApertureMaskPositionalKwargs:
 
     def test_get_values_positional_warning(self):
         match = 'get_values'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             self.mask.get_values(DATA, None)
 
 
@@ -212,5 +212,5 @@ class TestAperturePhotometryPositionalKwargs:
         aper = CircularAperture(POSITION, r=5)
         error = np.ones_like(DATA)
         match = 'aperture_photometry'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             aperture_photometry(DATA, aper, error)

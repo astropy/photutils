@@ -6,13 +6,13 @@ positionally.
 
 import numpy as np
 import pytest
-from astropy.utils.exceptions import AstropyDeprecationWarning
 
 from photutils.isophote.ellipse import Ellipse
 from photutils.isophote.geometry import EllipseGeometry
 from photutils.isophote.model import build_ellipse_model
 from photutils.isophote.sample import CentralEllipseSample, EllipseSample
 from photutils.isophote.tests.make_test_data import make_test_image
+from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
 
 class TestEllipsePositionalKwargs:
@@ -30,7 +30,7 @@ class TestEllipsePositionalKwargs:
         geometry = EllipseGeometry(x0=64, y0=64, sma=10, eps=0.2,
                                    pa=np.pi / 2)
         match = '__init__'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             Ellipse(self.data, geometry)
 
     def test_init_keyword_no_warning(self):
@@ -41,7 +41,7 @@ class TestEllipsePositionalKwargs:
     def test_fit_image_positional_warns(self):
         ellipse = Ellipse(self.data)
         match = 'fit_image'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             ellipse.fit_image(10.0, maxsma=15.0)
 
     def test_fit_image_keyword_no_warning(self):
@@ -51,7 +51,7 @@ class TestEllipsePositionalKwargs:
     def test_fit_isophote_positional_warns(self):
         ellipse = Ellipse(self.data)
         match = 'fit_isophote'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             ellipse.fit_isophote(10.0, 0.1)
 
     def test_fit_isophote_keyword_no_warning(self):
@@ -66,7 +66,7 @@ class TestEllipseGeometryPositionalKwargs:
 
     def test_init_positional_warns(self):
         match = '__init__'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             EllipseGeometry(0.0, 0.0, 100.0, 0.0, 0.0, 0.2)
 
     def test_init_keyword_no_warning(self):
@@ -77,7 +77,7 @@ class TestEllipseGeometryPositionalKwargs:
         geometry = EllipseGeometry(x0=256, y0=256, sma=10, eps=0.2,
                                    pa=np.pi / 2)
         match = 'find_center'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             geometry.find_center(data, 0.5)
 
     def test_find_center_keyword_no_warning(self):
@@ -110,7 +110,7 @@ class TestBuildEllipseModelPositionalKwargs:
     def test_positional_warns(self, small_isolist):
         shape, isolist = small_isolist
         match = 'build_ellipse_model'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             build_ellipse_model(shape, isolist, 0.0)
 
     def test_keyword_no_warning(self, small_isolist):
@@ -128,7 +128,7 @@ class TestEllipseSamplePositionalKwargs:
 
     def test_init_positional_warns(self):
         match = '__init__'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             EllipseSample(self.data, 40.0, 256.0)
 
     def test_init_keyword_no_warning(self):
@@ -138,7 +138,7 @@ class TestEllipseSamplePositionalKwargs:
         sample = EllipseSample(self.data, 40.0)
         fix = np.array([False, False, False, False])
         match = 'update'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             sample.update(fix)
 
     def test_update_keyword_no_warning(self):
@@ -157,7 +157,7 @@ class TestCentralEllipseSamplePositionalKwargs:
         sample = CentralEllipseSample(data, 0.0)
         fix = np.array([False, False, False, False])
         match = 'update'
-        with pytest.warns(AstropyDeprecationWarning, match=match):
+        with pytest.warns(PhotutilsDeprecationWarning, match=match):
             sample.update(fix)
 
     def test_update_keyword_no_warning(self):
