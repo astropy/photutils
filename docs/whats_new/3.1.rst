@@ -777,9 +777,9 @@ stars have settled to the requested ``center_accuracy``, instead of
 requiring every star. A few spurious detections or contaminated cutouts
 whose centers never settle previously forced the build to run to
 ``maxiters``. On a real sample of about 2000 stars with 30% spurious
-detections, the build now stops after 6 iterations instead of 100,
-in 21 seconds instead of about 5 minutes. The fraction achieved is
-reported in the new ``converged_fraction`` attribute of the results,
+detections, the build now stops after 6 iterations instead of 100, in 21
+seconds instead of about 5 minutes. The fraction achieved is reported
+in the new ``final_converged_fraction`` attribute of the results,
 and ``converged_fraction=1.0`` restores the previous behavior. Each
 iteration is also about 20% faster (25% at an oversampling of 4) because
 the ePSF spline interpolators are built once per iteration instead of

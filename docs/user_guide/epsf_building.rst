@@ -316,7 +316,7 @@ information about the build process::
     0
 
 The results also report the fraction of stars whose centers converged
-(``converged_fraction``), the largest center movement in the final
+(``final_converged_fraction``), the largest center movement in the final
 iteration (``final_center_accuracy``), and the smoothing kernel and
 fitting box that were used (``smoothing_kernel`` and ``fit_shape``). See
 `~photutils.psf.EPSFBuildResults` for the full list.

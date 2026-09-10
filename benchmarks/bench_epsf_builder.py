@@ -284,7 +284,7 @@ def bench_stages(*, n_stars=400, oversampling=2, fwhm=2.8, cutout_size=25,
         smoothed = builder._smooth_epsf(new_epsf)
         smoothed = _suppress_alias_modes(smoothed, builder.oversampling)
         temp = ImagePSF(data=smoothed, origin=epsf.origin,
-                        oversampling=builder.oversampling, fill_value=0.0)
+                        oversampling=builder.oversampling, fill_value=None)
         return builder._normalize_epsf(builder._recenter_epsf(temp))
 
     def fit():

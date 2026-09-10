@@ -632,6 +632,36 @@ class _EPSFValidator:
             warnings.warn(msg, AstropyUserWarning)
 
     @staticmethod
+    def validate_converged_fraction(converged_fraction):
+        """
+        Validate the converged fraction parameter.
+
+        Parameters
+        ----------
+        converged_fraction : float
+            The fraction of the successfully fitted stars that must
+            converge.
+
+        Raises
+        ------
+        TypeError
+            If converged_fraction is not a number.
+
+        ValueError
+            If converged_fraction is not in the range (0, 1].
+        """
+        if (isinstance(converged_fraction, bool)
+                or not isinstance(converged_fraction, numbers.Real)):
+            msg = (f'converged_fraction must be a number, got '
+                   f'{type(converged_fraction)}')
+            raise TypeError(msg)
+
+        if not 0.0 < converged_fraction <= 1.0:
+            msg = (f'converged_fraction must be in the range (0, 1], got '
+                   f'{converged_fraction}')
+            raise ValueError(msg)
+
+    @staticmethod
     def validate_maxiters(maxiters):
         """
         Validate maximum iterations parameter.
@@ -935,10 +965,13 @@ class EPSFBuildResults:
 
     final_center_accuracy : float
         The maximum center displacement in the final iteration, in
-        pixels. This indicates how much the star centers changed in the
-        last iteration and can be used to assess convergence quality.
+        pixels, over all of the successfully fitted stars. This includes
+        the stars that the ``converged_fraction`` of the builder allows
+        to remain unconverged, so it can be much larger than the
+        ``center_accuracy`` for a converged build. Use it together with
+        ``final_converged_fraction`` to assess the convergence quality.
 
-    converged_fraction : float
+    final_converged_fraction : float
         The fraction of the successfully fitted stars whose centers
         changed by less than ``center_accuracy`` in the final iteration.
         The build is converged when this fraction is at least the
@@ -995,7 +1028,7 @@ class EPSFBuildResults:
     smoothing_kernel: np.ndarray | None = field(default=None, compare=False,
                                                 repr=False)
     fit_shape: tuple | None = None
-    converged_fraction: float | None = None
+    final_converged_fraction: float | None = None
 
     def __iter__(self):
         """
@@ -1344,8 +1377,8 @@ class EPSFBuilder:
         detections or contaminated cutouts) whose centers never settle
         to not prevent convergence. Set to 1.0 to require all stars
         to converge. The fraction achieved in the final iteration is
-        reported in the ``converged_fraction`` attribute of the returned
-        `EPSFBuildResults`.
+        reported in the ``final_converged_fraction`` attribute of the
+        returned `EPSFBuildResults`.
 
     fitter : `~astropy.modeling.fitting.Fitter` or `EPSFFitter`, optional
         A `~astropy.modeling.fitting.Fitter` object used to fit the
@@ -1549,11 +1582,8 @@ class EPSFBuilder:
         _EPSFValidator.validate_center_accuracy(center_accuracy)
         self.center_accuracy_sq = center_accuracy**2
 
-        if (isinstance(converged_fraction, bool)
-                or not isinstance(converged_fraction, numbers.Real)
-                or not 0.0 < converged_fraction <= 1.0):
-            msg = 'converged_fraction must be a number in the range (0, 1]'
-            raise ValueError(msg)
+        # Validate converged_fraction using the validator
+        _EPSFValidator.validate_converged_fraction(converged_fraction)
         self.converged_fraction = float(converged_fraction)
 
         # Validate maxiters using the validator
@@ -1765,99 +1795,75 @@ class EPSFBuilder:
         return ImagePSF(data=data, origin=origin_xy, oversampling=oversampling,
                         fill_value=0.0)
 
-    def _resample_residual(self, star, epsf, *, out_image=None):
+    def _resample_residuals(self, stars, epsf, *, chunk_size=128):
         """
-        Compute a normalized residual image in the oversampled ePSF
-        grid.
+        Compute normalized residual images in the oversampled ePSF grid
+        for all the input stars.
 
-        A normalized residual image is calculated by subtracting the
-        normalized ePSF model from the normalized star at the location
-        of the star in the undersampled grid. The normalized residual
-        image is then resampled from the undersampled star grid to
-        the oversampled ePSF grid by depositing each star pixel value
-        on every oversampled grid point inside the footprint of that
-        pixel. Every star therefore contributes to every grid point that
-        its cutout covers, regardless of its subpixel phase. For an
-        oversampling factor of one along an axis, this reduces to the
-        nearest grid point.
-
-        Parameters
-        ----------
-        star : `EPSFStar` object
-            A single star object.
-
-        epsf : `ImagePSF` object
-            The ePSF model.
-
-        out_image : 2D `~numpy.ndarray`, optional
-            A 2D array to hold the resampled residual image. If `None`,
-            a new array will be created.
-
-        Returns
-        -------
-        image : 2D `~numpy.ndarray`
-            A 2D image containing the resampled residual image. The
-            image contains NaNs where there is no data.
-        """
-        # Compute the normalized residual by subtracting the ePSF model
-        # from the normalized star at the location of the star in the
-        # undersampled grid.
-        xidx_centered, yidx_centered = star._xyidx_centered
-        stardata = (star._data_values_normalized
-                    - epsf.evaluate(x=xidx_centered,
-                                    y=yidx_centered,
-                                    flux=1.0, x_0=0.0, y_0=0.0))
-
-        # Star pixel centers in the oversampled ePSF grid
-        x_over, y_over = self._coord_transformer.undersampled_to_oversampled(
-            xidx_centered, yidx_centered)
-        x_over = x_over + epsf.origin[0]
-        y_over = y_over + epsf.origin[1]
-
-        epsf_shape = epsf.data.shape
-        if out_image is None:
-            out_image = np.full(epsf_shape, np.nan)
-
-        # Each star pixel covers the grid points k with x_over - os /
-        # 2 < k <= x_over + os / 2, which is exactly oversampled grid
-        # points along each axis.
-        ny_over, nx_over = self.oversampling
-        x_first = np.floor(x_over - nx_over / 2.0).astype(int) + 1
-        y_first = np.floor(y_over - ny_over / 2.0).astype(int) + 1
-        for j in range(ny_over):
-            yidx = y_first + j
-            for i in range(nx_over):
-                xidx = x_first + i
-                mask = ((xidx >= 0) & (xidx < epsf_shape[1])
-                        & (yidx >= 0) & (yidx < epsf_shape[0]))
-                out_image[yidx[mask], xidx[mask]] = stardata[mask]
-
-        return out_image
-
-    def _resample_residuals(self, stars, epsf):
-        """
-        Compute normalized residual images for all the input stars.
+        A normalized residual image is calculated for each star by
+        subtracting the normalized ePSF model from the normalized
+        star at the location of the star in the undersampled grid.
+        The normalized residual image is then resampled from the
+        undersampled star grid to the oversampled ePSF grid by
+        depositing each star pixel value on every oversampled grid
+        point inside the footprint of that pixel. Every star therefore
+        contributes to every grid point that its cutout covers,
+        regardless of its subpixel phase. For an oversampling factor of
+        one along an axis, this reduces to the nearest grid point.
 
         Parameters
         ----------
         stars : `EPSFStars` object
-            The stars used to build the ePSF.
+            The stars used to build the ePSF. Stars that are excluded
+            from fitting are skipped.
 
         epsf : `ImagePSF` object
             The ePSF model.
 
+        chunk_size : int, optional
+            The number of stars processed together. The stars are
+            resampled in chunks so that the temporary per-pixel arrays
+            stay bounded for large star samples.
+
         Returns
         -------
         epsf_resid : 3D `~numpy.ndarray`
-            A 3D cube containing the resampled residual images.
+            A 3D cube containing the resampled residual images, one
+            per star. The images contain NaNs where there is no data.
         """
-        epsf_shape = epsf.data.shape
+        ny, nx = epsf.data.shape
         good_stars = stars.all_good_stars
         n_good_stars = len(good_stars)
 
-        if n_good_stars == 0:
-            # Return empty array with correct shape
-            return np.zeros((0, epsf_shape[0], epsf_shape[1]))
+        # Pre-allocate with NaN (default for missing data)
+        epsf_resid = np.full((n_good_stars, ny, nx), np.nan)
+
+        for start in range(0, n_good_stars, chunk_size):
+            stop = min(start + chunk_size, n_good_stars)
+            self._deposit_residuals(good_stars[start:stop], epsf,
+                                    epsf_resid[start:stop])
+
+        return epsf_resid
+
+    def _deposit_residuals(self, stars, epsf, epsf_resid):
+        """
+        Deposit the normalized residuals of the input stars into a
+        stack of oversampled ePSF grid images.
+
+        Parameters
+        ----------
+        stars : list of `EPSFStar`
+            The stars to resample.
+
+        epsf : `ImagePSF` object
+            The ePSF model.
+
+        epsf_resid : 3D `~numpy.ndarray`
+            The contiguous stack of residual images, with one image per
+            input star, that is filled in place. Grid points that are
+            not covered by a star pixel are left unchanged.
+        """
+        ny, nx = epsf.data.shape
 
         # Gather the unmasked pixels of all stars so that the ePSF model
         # is evaluated once and the residuals are deposited with a
@@ -1865,46 +1871,52 @@ class EPSFBuilder:
         star_index = []
         xidx_centered = []
         yidx_centered = []
-        values = []
-        for i, star in enumerate(good_stars):
+        residuals = []
+        for i, star in enumerate(stars):
             xidx, yidx = star._xyidx_centered
             star_index.append(np.full(xidx.size, i))
             xidx_centered.append(xidx)
             yidx_centered.append(yidx)
-            values.append(star._data_values_normalized)
+            residuals.append(star._data_values_normalized)
         star_index = np.concatenate(star_index)
         xidx_centered = np.concatenate(xidx_centered)
         yidx_centered = np.concatenate(yidx_centered)
-        values = np.concatenate(values)
 
-        residuals = values - epsf.evaluate(x=xidx_centered, y=yidx_centered,
-                                           flux=1.0, x_0=0.0, y_0=0.0)
+        # The concatenation is a new array, so the model can be
+        # subtracted in place.
+        residuals = np.concatenate(residuals)
+        residuals -= epsf.evaluate(x=xidx_centered, y=yidx_centered,
+                                   flux=1.0, x_0=0.0, y_0=0.0)
 
-        # Star pixel centers in the oversampled ePSF grid
+        # Each star pixel covers the oversampled grid points k with
+        # x_over - os / 2 < k <= x_over + os / 2 along each axis, where
+        # x_over is the pixel center in the oversampled ePSF grid.
+        # Compute the first covered grid point along each axis.
+        ny_over, nx_over = self.oversampling
         x_over, y_over = self._coord_transformer.undersampled_to_oversampled(
             xidx_centered, yidx_centered)
-        x_over = x_over + epsf.origin[0]
-        y_over = y_over + epsf.origin[1]
-
-        # Pre-allocate with NaN (default for missing data)
-        shape = (n_good_stars, epsf_shape[0], epsf_shape[1])
-        epsf_resid = np.full(shape, np.nan)
+        x_first = np.floor(x_over + epsf.origin[0] - nx_over / 2.0)
+        y_first = np.floor(y_over + epsf.origin[1] - ny_over / 2.0)
+        x_first = x_first.astype(int) + 1
+        y_first = y_first.astype(int) + 1
 
         # Deposit each pixel residual on every grid point inside the
-        # pixel footprint (see _resample_residual)
-        ny_over, nx_over = self.oversampling
-        x_first = np.floor(x_over - nx_over / 2.0).astype(int) + 1
-        y_first = np.floor(y_over - ny_over / 2.0).astype(int) + 1
+        # pixel footprint through a flat index into the stack, which
+        # needs only two masked copies per footprint offset. The
+        # in-bounds masks along the x axis are the same for every row
+        # offset, so they are computed once.
+        epsf_resid_flat = epsf_resid.reshape(-1)
+        star_offset = star_index * (ny * nx)
+        x_masks = [((x_first + i) >= 0) & ((x_first + i) < nx)
+                   for i in range(nx_over)]
         for j in range(ny_over):
             yidx = y_first + j
+            y_mask = (yidx >= 0) & (yidx < ny)
+            row_index = star_offset + yidx * nx
             for i in range(nx_over):
-                xidx = x_first + i
-                mask = ((xidx >= 0) & (xidx < epsf_shape[1])
-                        & (yidx >= 0) & (yidx < epsf_shape[0]))
-                epsf_resid[star_index[mask], yidx[mask], xidx[mask]] = (
-                    residuals[mask])
-
-        return epsf_resid
+                mask = y_mask & x_masks[i]
+                flat_index = row_index + (x_first + i)
+                epsf_resid_flat[flat_index[mask]] = residuals[mask]
 
     def _smooth_epsf(self, epsf_data):
         """
@@ -2192,8 +2204,13 @@ class EPSFBuilder:
         converged : bool
             `True` if convergence criteria are met.
 
-        center_dist_sq : `~numpy.ndarray`
-            Squared distances of center movements.
+        converged_fraction : float
+            The fraction of the successfully fitted stars whose centers
+            moved by less than the center accuracy.
+
+        max_center_dist_sq : float
+            The maximum squared center movement of the successfully
+            fitted stars.
 
         new_centers : `~numpy.ndarray`
             Updated star center positions.
@@ -2210,16 +2227,18 @@ class EPSFBuilder:
             # is unreachable from build_epsf (all-failed fits raise
             # earlier), but guards direct calls. NaN indicates that no
             # center movement could be measured.
-            return False, np.array([np.nan]), new_centers
+            return False, 0.0, np.nan, new_centers
 
         dx_dy_good = dx_dy[good_stars]
         center_dist_sq = np.sum(dx_dy_good * dx_dy_good, axis=1,
                                 dtype=np.float64)
 
-        fraction = np.mean(center_dist_sq < self.center_accuracy_sq)
-        converged = bool(fraction >= self.converged_fraction)
+        converged_fraction = float(
+            np.mean(center_dist_sq < self.center_accuracy_sq))
+        converged = converged_fraction >= self.converged_fraction
 
-        return converged, center_dist_sq, new_centers
+        return (converged, converged_fraction, float(np.max(center_dist_sq)),
+                new_centers)
 
     def _fit_stars(self, epsf, stars):
         """
@@ -2250,11 +2269,10 @@ class EPSFBuilder:
             msg = 'The input epsf must be an ImagePSF'
             raise TypeError(msg)
 
-        # Build the (cached) spline interpolators once so that the
-        # model copies made by the fitter for every star share them
-        # instead of each rebuilding the spline.
-        epsf.interpolator  # noqa: B018
-        epsf._deriv_interpolators  # noqa: B018
+        # Build the cached spline interpolators once so that the model
+        # copies made by the fitter for every star share them instead
+        # of each rebuilding the spline.
+        epsf._precompute_interpolators()
 
         fitted_stars = []
         for star in stars:
@@ -2513,7 +2531,7 @@ class EPSFBuilder:
 
     def _finalize_build(self, epsf, stars, progress_reporter, iter_num,
                         converged, final_center_accuracy,
-                        converged_fraction=None):
+                        final_converged_fraction=None):
         """
         Finalize the ePSF building process and create result object.
 
@@ -2540,7 +2558,7 @@ class EPSFBuilder:
         final_center_accuracy : float
             Final center accuracy achieved.
 
-        converged_fraction : float, optional
+        final_converged_fraction : float, optional
             The fraction of the successfully fitted stars whose centers
             changed by less than the center accuracy in the final
             iteration.
@@ -2585,7 +2603,7 @@ class EPSFBuilder:
             excluded_star_indices=excluded_star_indices,
             smoothing_kernel=kernel,
             fit_shape=fit_shape,
-            converged_fraction=converged_fraction,
+            final_converged_fraction=final_converged_fraction,
         )
 
     def build_epsf(self, stars, *, epsf=None):
@@ -2617,12 +2635,14 @@ class EPSFBuilder:
         Notes
         -----
         The structured result object contains:
+
         - epsf: The final constructed ePSF
         - fitted_stars: Stars with updated centers/fluxes
         - iterations: Number of iterations performed
         - converged: Whether convergence was achieved
         - final_center_accuracy: Final center movement accuracy
-        - converged_fraction: Fraction of stars that met the accuracy
+        - final_converged_fraction: Fraction of stars that met the
+          accuracy
         - n_excluded_stars: Number of stars excluded due to fit failures
         - excluded_star_indices: Indices of excluded stars
         - smoothing_kernel: Smoothing kernel of the final iteration
@@ -2665,7 +2685,8 @@ class EPSFBuilder:
         # Initialize iteration variables
         iter_num = 0
         converged = False
-        center_dist_sq = np.array([self.center_accuracy_sq + 1.0])
+        converged_fraction = 0.0
+        max_center_dist_sq = self.center_accuracy_sq + 1.0
 
         # Main iteration loop. Note that an all-failed iteration
         # raises inside _process_iteration, so no fit_failed exit
@@ -2679,16 +2700,13 @@ class EPSFBuilder:
                 stars, epsf, iter_num)
 
             # Check convergence based on center movements
-            converged, center_dist_sq, centers = self._check_convergence(
-                stars, centers, fit_failed)
+            (converged, converged_fraction, max_center_dist_sq,
+             centers) = self._check_convergence(stars, centers, fit_failed)
 
             # Update progress bar
             progress_reporter.update()
 
-        # Calculate the final center accuracy and converged fraction
-        final_center_accuracy = float(np.max(center_dist_sq) ** 0.5)
-        converged_fraction = float(
-            np.mean(center_dist_sq < self.center_accuracy_sq))
+        final_center_accuracy = float(max_center_dist_sq ** 0.5)
 
         # Finalize and return structured results
         return self._finalize_build(epsf, stars, progress_reporter,
