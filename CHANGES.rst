@@ -829,6 +829,11 @@ Bug Fixes
     star centers are strongly non-uniform, which indicates biased star
     centers. [#2419]
 
+  - Fixed a bug where ``EPSFBuilder`` raised ``NonFiniteValueError``
+    when a star cutout contained a non-finite (e.g., NaN) pixel inside
+    the fitting region. A star whose fitting region is fully masked is
+    now treated as a fit failure instead of raising an error. [#2423]
+
 - ``photutils.psf_matching``
 
   - ``make_wiener_kernel`` now validates a custom ``penalty`` array.
