@@ -23,7 +23,8 @@ from photutils.psf import (CircularGaussianPRF, EPSFBuilder, EPSFBuildResults,
                            EPSFFitter, EPSFStar, EPSFStars, ImagePSF,
                            extract_stars, make_psf_model_image)
 from photutils.psf.epsf_builder import (_CoordinateTransformer, _EPSFValidator,
-                                        _ProgressReporter, _SmoothingKernel,
+                                        _measure_fwhm, _ProgressReporter,
+                                        _SmoothingKernel,
                                         _suppress_alias_modes)
 from photutils.psf.epsf_stars import LinkedEPSFStar
 from photutils.utils._optional_deps import HAS_TQDM
@@ -824,7 +825,7 @@ class TestEPSFBuildResults:
         assert result.fitted_stars is not None
         assert isinstance(result.iterations, int)
         assert isinstance(result.converged, bool)
-        assert isinstance(result.final_center_accuracy, (float, np.floating))
+        assert type(result.final_center_accuracy) is float
         assert isinstance(result.n_excluded_stars, int)
         assert isinstance(result.excluded_star_indices, list)
 
@@ -1271,8 +1272,9 @@ class TestEPSFBuilder:
         # Test with default fitter (TRFLSQFitter)
         builder1 = EPSFBuilder(maxiters=3)
         assert isinstance(builder1.fitter, TRFLSQFitter)
-        # Default fit_shape is 5
-        assert_array_equal(builder1.fit_shape, (5, 5))
+        # Default fit_shape is 'auto'
+        assert builder1.fit_shape == 'auto'
+        assert builder1.smoothing_kernel == 'auto'
         assert builder1.fitter_maxiters == 100
 
         # Test with explicit astropy fitter
@@ -1749,7 +1751,8 @@ class TestEPSFBuilder:
         original_star._excluded_from_fit = True
 
         # Create an ePSF for fitting
-        builder = EPSFBuilder(oversampling=1, maxiters=1, progress_bar=False)
+        builder = EPSFBuilder(oversampling=1, maxiters=1, fit_shape=5,
+                              progress_bar=False)
         epsf = builder._create_initial_epsf(stars)
 
         # Fit the stars using the builder's internal method
@@ -2347,7 +2350,9 @@ class TestEPSFBuilder:
         yy, xx = np.mgrid[0:size, 0:size]
         psf = model((xx - cen) / oversamp, (yy - cen) / oversamp)
         assert_allclose(psf.sum(), expected_sum, rtol=1e-3)
-        assert_allclose(epsf.data, psf, atol=3e-3 * psf.max())
+        # The default 'auto' smoothing kernel (0.7 FWHM wide) lowers
+        # the peak of a noiseless ePSF by a few tenths of a percent.
+        assert_allclose(epsf.data, psf, atol=5e-3 * psf.max())
 
         # Check that the fitted centers are close to the true source
         # positions
@@ -2786,10 +2791,18 @@ def test_build_epsf_fully_excluded_linked_star():
     assert result.epsf is not None
 
 
-def test_invalid_smoothing_kernel_at_init():
-    match = 'Unsupported kernel type'
-    with pytest.raises(TypeError, match=match):
-        EPSFBuilder(smoothing_kernel='bogus')
+@pytest.mark.parametrize('value', ['bogus', 'AUTO'])
+def test_invalid_smoothing_kernel_at_init(value):
+    match = "smoothing_kernel must be 'auto', 'quartic', 'quadratic'"
+    with pytest.raises(ValueError, match=match):
+        EPSFBuilder(smoothing_kernel=value)
+
+
+@pytest.mark.parametrize('value', ['bogus', 'AUTO'])
+def test_invalid_fit_shape_string(value):
+    match = "fit_shape must be 'auto', an integer, a tuple of integers"
+    with pytest.raises(ValueError, match=match):
+        EPSFBuilder(fit_shape=value)
 
 
 @pytest.mark.parametrize('value', [-3, 0, 2.5, True])
@@ -2966,3 +2979,290 @@ def test_nonuniform_phase_warning():
     match = 'subpixel phases of the fitted star centers'
     with pytest.warns(AstropyUserWarning, match=match):
         builder(stars)
+
+
+class TestPolynomialKernel:
+    """
+    Tests for _SmoothingKernel.make_polynomial_kernel.
+    """
+
+    def test_quartic_matches_anderson_king(self):
+        """
+        The 'quartic' kernel is the 5x5 least-squares quartic kernel
+        of equation 8 of Anderson and King 2000 (PASP 112, 1360). The
+        printed table contains two misprints in its first and last rows
+        that break the symmetry of the kernel, so the symmetric values
+        are used here.
+        """
+        published = np.array([
+            [+0.041632, -0.080816, 0.078368, -0.080816, +0.041632],
+            [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
+            [+0.078368, +0.200816, 0.441632, +0.200816, +0.078368],
+            [-0.080816, -0.019592, 0.200816, -0.019592, -0.080816],
+            [+0.041632, -0.080816, 0.078368, -0.080816, +0.041632]])
+        assert_allclose(_SmoothingKernel.QUARTIC_KERNEL, published,
+                        atol=1e-6)
+        assert_allclose(_SmoothingKernel.get_kernel('quartic'), published,
+                        atol=1e-6)
+
+    def test_exact_values(self):
+        """
+        The 5x5 kernels have exact rational values.
+        """
+        quartic = _SmoothingKernel.QUARTIC_KERNEL
+        assert_allclose(quartic[2, 2], 541 / 1225, rtol=1e-12)
+        assert_allclose(quartic[2, 1], 246 / 1225, rtol=1e-12)
+        assert_allclose(quartic[2, 0], 96 / 1225, rtol=1e-12)
+        assert_allclose(quartic[0, 0], 51 / 1225, rtol=1e-12)
+        assert_allclose(quartic.sum(), 1.0, rtol=1e-12)
+
+        quadratic = _SmoothingKernel.QUADRATIC_KERNEL
+        assert_allclose(quadratic[2, 2], 27 / 175, rtol=1e-12)
+        assert_allclose(quadratic[2, 1], 22 / 175, rtol=1e-12)
+        assert_allclose(quadratic[2, 0], 1 / 25, rtol=1e-12)
+        assert_allclose(quadratic[0, 0], -13 / 175, rtol=1e-12)
+        assert_allclose(quadratic.sum(), 1.0, rtol=1e-12)
+
+    @pytest.mark.parametrize('size', [7, 9, 11])
+    def test_properties(self, size):
+        kernel = _SmoothingKernel.make_polynomial_kernel(size)
+        assert kernel.shape == (size, size)
+        assert_allclose(kernel.sum(), 1.0)
+        assert_allclose(kernel, kernel.T)
+        assert_allclose(kernel, kernel[::-1, ::-1])
+
+        # The kernel preserves any quartic polynomial exactly.
+        yy, xx = np.mgrid[0:41, 0:41] - 20.0
+        poly = 1.0 + 0.1 * xx - 0.2 * yy + 0.01 * xx * yy**3 + 1e-3 * xx**4
+        smoothed = _SmoothingKernel.apply_smoothing(poly, kernel)
+        half = size // 2
+        assert_allclose(smoothed[half:-half, half:-half],
+                        poly[half:-half, half:-half], atol=1e-9)
+
+    def test_invalid(self):
+        match = 'size must be an odd integer'
+        with pytest.raises(ValueError, match=match):
+            _SmoothingKernel.make_polynomial_kernel(4)
+        with pytest.raises(ValueError, match=match):
+            _SmoothingKernel.make_polynomial_kernel(1)
+        match = 'degree must be at least 1'
+        with pytest.raises(ValueError, match=match):
+            _SmoothingKernel.make_polynomial_kernel(5, degree=0)
+        with pytest.raises(ValueError, match=match):
+            _SmoothingKernel.make_polynomial_kernel(3, degree=4)
+
+
+class TestMeasureFWHM:
+    """
+    Tests for _measure_fwhm.
+    """
+
+    @staticmethod
+    def _gaussian(fwhm_y, fwhm_x, size=61):
+        yy, xx = np.mgrid[0:size, 0:size] - size // 2
+        sig_y = fwhm_y / 2.3548
+        sig_x = fwhm_x / 2.3548
+        return np.exp(-0.5 * ((xx / sig_x)**2 + (yy / sig_y)**2))
+
+    def test_gaussian(self):
+        fwhm_y, fwhm_x = _measure_fwhm(self._gaussian(6.0, 10.0))
+        assert_allclose(fwhm_y, 6.0, rtol=0.02)
+        assert_allclose(fwhm_x, 10.0, rtol=0.02)
+
+    def test_scaled_and_offset_peak(self):
+        data = 1000.0 * self._gaussian(8.0, 8.0)
+        data = np.roll(data, (5, -7), axis=(0, 1))
+        fwhm = _measure_fwhm(data)
+        assert_allclose(fwhm, (8.0, 8.0), rtol=0.02)
+
+    def test_unmeasurable(self):
+        # Non-positive peak
+        assert _measure_fwhm(np.zeros((11, 11))) is None
+        assert _measure_fwhm(-self._gaussian(5.0, 5.0)) is None
+        # No finite values
+        assert _measure_fwhm(np.full((11, 11), np.nan)) is None
+        # Flat profile that never falls below half of the peak
+        assert _measure_fwhm(np.ones((11, 11))) is None
+        # Peak at the edge of the array
+        data = self._gaussian(5.0, 5.0)[30:, :]
+        assert _measure_fwhm(data) is None
+        # Non-finite value next to the peak
+        data = self._gaussian(5.0, 5.0)
+        data[30, 31] = np.nan
+        assert _measure_fwhm(data) is None
+        # Non-finite row next to the peak, so the averaged row profile
+        # has no finite values
+        data = self._gaussian(5.0, 5.0)
+        data[29, :] = np.nan
+        assert _measure_fwhm(data) is None
+        # Negative row next to the peak, so the averaged row profile
+        # has a non-positive peak
+        data = np.zeros((11, 11))
+        data[5, 5] = 1.0
+        data[4, :] = -3.0
+        assert _measure_fwhm(data) is None
+        # Infinite peak
+        data = self._gaussian(5.0, 5.0)
+        data[30, 30] = np.inf
+        assert _measure_fwhm(data) is None
+
+    def test_low_pixel_next_to_peak(self):
+        """
+        The profiles are averaged over the three rows and columns
+        around the peak, so a single low pixel next to the peak does
+        not truncate the width.
+        """
+        data = self._gaussian(11.2, 11.2)
+        data[30, 33] = 0.1
+        fwhm = _measure_fwhm(data)
+        assert_allclose(fwhm, (11.2, 11.2), rtol=0.05)
+
+
+class TestAutoSmoothingAndFitShape:
+    """
+    Tests for the 'auto' smoothing kernel and fit shape.
+    """
+
+    @pytest.fixture
+    def stars(self, epsf_test_data):
+        return extract_stars(epsf_test_data['nddata'],
+                             epsf_test_data['init_stars'][:30], size=11)
+
+    def test_auto_choices_oversampled(self, stars):
+        """
+        The ePSF FWHM is about 2.9 pixels (11.2 grid points at
+        oversampling 4), so the kernel is 0.7 x 11.2 = 7.9 -> 9 grid
+        points and the fit shape is 2 x 2.9 = 5.7 -> 7 pixels.
+        """
+        builder = EPSFBuilder(oversampling=4, maxiters=3,
+                              progress_bar=False)
+        result = builder(stars)
+        assert result.smoothing_kernel.shape == (9, 9)
+        assert result.fit_shape == (7, 7)
+        fwhm = _measure_fwhm(result.epsf.data)
+        assert_allclose(fwhm, (11.2, 11.2), rtol=0.05)
+
+        # The reported kernel and fit shape reproduce the build when
+        # input as fixed values.
+        builder = EPSFBuilder(oversampling=4, maxiters=3,
+                              smoothing_kernel=result.smoothing_kernel,
+                              fit_shape=result.fit_shape,
+                              progress_bar=False)
+        fixed = builder(stars)
+        assert_allclose(fixed.epsf.data, result.epsf.data)
+        assert_array_equal(fixed.smoothing_kernel, result.smoothing_kernel)
+
+    def test_auto_no_smoothing_undersampled(self, stars):
+        """
+        At oversampling 1 the window (0.7 x 2.9 = 2 grid points) is
+        below the minimum kernel size, so no smoothing is applied.
+        """
+        builder = EPSFBuilder(oversampling=1, maxiters=3,
+                              progress_bar=False)
+        result = builder(stars)
+        assert result.smoothing_kernel is None
+        assert result.fit_shape == (7, 7)
+
+    def test_auto_anisotropic_oversampling(self, stars):
+        """
+        The FWHM along the narrowest axis in input pixels sets the fit
+        shape and the narrowest axis in grid points sets the kernel.
+        """
+        builder = EPSFBuilder(oversampling=(1, 2), maxiters=3,
+                              progress_bar=False)
+        result = builder(stars)
+        assert result.smoothing_kernel is None
+        assert result.fit_shape == (7, 7)
+
+    def test_auto_fit_shape_capped_by_cutout(self):
+        """
+        A wide PSF in small cutouts: the 2 FWHM fit box (15 pixels)
+        is capped at the cutout size and the kernel is 0.7 x 7 = 5.
+        """
+        fwhm = 7.0
+        data, params = make_psf_model_image(
+            (600, 600), CircularGaussianPRF(flux=1, fwhm=fwhm), 30,
+            model_shape=(25, 25), flux=(500, 700), min_separation=40,
+            border_size=30, seed=1)
+        tbl = Table({'x': params['x_0'], 'y': params['y_0']})
+        stars = extract_stars(NDData(data), tbl, size=11)
+        builder = EPSFBuilder(oversampling=1, maxiters=3, progress_bar=False)
+        result = builder(stars)
+        assert result.smoothing_kernel.shape == (5, 5)
+        assert result.fit_shape == (11, 11)
+
+    def test_auto_fit_shape_capped_by_even_cutout(self):
+        """
+        The automatic fit shape is capped at the largest odd size that
+        fits in an even-sized cutout.
+        """
+        yy, xx = np.indices((10, 10))
+        sig = 7.0 / 2.3548
+        data = np.exp(-((xx - 4.5)**2 + (yy - 4.5)**2) / (2 * sig**2))
+        stars = EPSFStars([EPSFStar(data, cutout_center=(4.5, 4.5))
+                           for _ in range(3)])
+        builder = EPSFBuilder(oversampling=1, maxiters=2, progress_bar=False)
+        result = builder(stars)
+        assert result.fit_shape == (9, 9)
+
+    @pytest.mark.parametrize(
+        ('kwargs', 'match', 'kernel_shape', 'fit_shape'),
+        [({}, ("the 'auto' smoothing_kernel and fit_shape fall back to "
+               "the 'quartic' kernel and a fit shape of 5"), (5, 5), (5, 5)),
+         ({'smoothing_kernel': None},
+          "the 'auto' fit_shape falls back to a fit shape of 5", None,
+          (5, 5)),
+         ({'fit_shape': 7},
+          "the 'auto' smoothing_kernel falls back to the 'quartic' kernel",
+          (5, 5), (7, 7))])
+    def test_auto_fallback_warning(self, kwargs, match, kernel_shape,
+                                   fit_shape):
+        """
+        The FWHM of flat cutouts cannot be measured, so the build falls
+        back to the quartic kernel and a 5x5 fit shape with a single
+        warning that names only the 'auto' parameters.
+        """
+        stars = EPSFStars([EPSFStar(np.ones((11, 11))) for _ in range(3)])
+        builder = EPSFBuilder(oversampling=1, maxiters=2, progress_bar=False,
+                              **kwargs)
+        with pytest.warns(AstropyUserWarning, match=match) as record:
+            result = builder(stars)
+        messages = [str(r.message) for r in record
+                    if 'could not be measured' in str(r.message)]
+        assert len(messages) == 1
+        assert messages[0].endswith(f'{match}.')
+        if kernel_shape is None:
+            assert result.smoothing_kernel is None
+        else:
+            assert result.smoothing_kernel.shape == kernel_shape
+        assert result.fit_shape == fit_shape
+
+    def test_fixed_choices_reported(self, stars):
+        """
+        The results report fixed kernels and fit shapes too.
+        """
+        builder = EPSFBuilder(oversampling=1, maxiters=1,
+                              smoothing_kernel='quadratic', fit_shape=None,
+                              progress_bar=False)
+        result = builder(stars)
+        assert_array_equal(result.smoothing_kernel,
+                           _SmoothingKernel.QUADRATIC_KERNEL)
+        assert result.fit_shape is None
+        # The results own a copy of the kernel, so editing it does not
+        # change the shared predefined kernel
+        result.smoothing_kernel[0, 0] = 0.0
+        assert _SmoothingKernel.QUADRATIC_KERNEL[0, 0] != 0.0
+
+        kernel = np.full((3, 3), 1 / 9)
+        builder = EPSFBuilder(oversampling=1, maxiters=1,
+                              smoothing_kernel=kernel, fit_shape=(5, 7),
+                              progress_bar=False)
+        result = builder(stars)
+        assert result.smoothing_kernel is not kernel
+        assert_array_equal(result.smoothing_kernel, kernel)
+        assert result.fit_shape == (5, 7)
+
+        builder = EPSFBuilder(oversampling=1, maxiters=1,
+                              smoothing_kernel=None, progress_bar=False)
+        result = builder(stars)
+        assert result.smoothing_kernel is None

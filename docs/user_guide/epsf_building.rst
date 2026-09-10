@@ -315,6 +315,11 @@ information about the build process::
     >>> result.n_excluded_stars  # doctest: +REMOTE_DATA
     0
 
+The results also report the largest center movement in the final
+iteration (``final_center_accuracy``) and the smoothing kernel and
+fitting box that were used (``smoothing_kernel`` and ``fit_shape``). See
+`~photutils.psf.EPSFBuildResults` for the full list.
+
 The returned ``epsf`` is an `~photutils.psf.ImagePSF` object, and
 ``fitted_stars`` is a new `~photutils.psf.EPSFStars` object with the
 updated star positions and fluxes from fitting the final ePSF model.
@@ -392,25 +397,44 @@ Smoothing Kernel
 ^^^^^^^^^^^^^^^^
 
 The ``smoothing_kernel`` parameter controls the smoothing applied to
-the ePSF during each iteration. The smoothing helps to reduce noise in
-the ePSF, especially when the number of stars is small. The default is
-``'quartic'``, which uses a fourth-degree polynomial kernel. This 5x5
-pixel kernel was initially developed by Anderson and King for HST data
-with an ePSF oversampling factor of 4. It is designed to provide a good
-balance between smoothing and preserving the shape of the ePSF.
+the ePSF during each iteration. The smoothing helps to reduce noise
+in the ePSF, especially when the star sample is small or noisy. The
+smoothing kernels are least-squares polynomial smoothers. Each grid
+value is replaced by the value at the center of a polynomial fit to
+the surrounding grid values, which removes noise while preserving the
+polynomial shape of the ePSF within the kernel window.
 
-You can also use ``'quadratic'`` for a second-degree polynomial kernel,
+The default is ``'auto'``, which uses a quartic (fourth-degree)
+polynomial kernel whose width is 0.7 times the FWHM of the ePSF in
+oversampled grid points, measured in each iteration along its narrowest
+axis. The width is rounded to an odd number of grid points, and no
+smoothing is applied when it would be smaller than 5 grid points, i.e.,
+for heavily undersampled ePSFs with fewer than about 5 grid points per
+FWHM, where a fixed 5x5 kernel would lower the peak of the ePSF. The
+kernel is square, so with anisotropic oversampling the axis with the
+fewer grid points per FWHM sets its size. The chosen kernel is reported
+in the ``smoothing_kernel`` attribute of the results, and it can be
+input as a fixed ``smoothing_kernel`` to reproduce the build. If the
+FWHM cannot be measured, the ``'quartic'`` kernel is used and a warning
+is emitted.
+
+You can also use ``'quartic'`` or ``'quadratic'`` for the fixed 5x5
+fourth- and second-degree polynomial kernels of `Anderson and King 2000
+(PASP 112, 1360)
+<https://ui.adsabs.harvard.edu/abs/2000PASP..112.1360A/abstract>`_,
 provide a custom 2D array, or set it to `None` for no smoothing::
 
     >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
     ...                            smoothing_kernel='quadratic',
     ...                            progress_bar=False)  # doctest: +REMOTE_DATA
 
-The kernels are applied on the oversampled grid, so their physical width
-is ``5 / oversampling`` input pixels. For a heavily undersampled ePSF
-with only about four to six grid points per FWHM, even the ``'quartic'``
-kernel lowers the peak of the ePSF, and ``smoothing_kernel=None`` is a
-reasonable choice, especially when the stars have high signal-to-noise.
+The fixed kernels are applied on the oversampled grid, so their physical
+width is ``5 / oversampling`` detector pixels. The 5x5 quartic kernel
+was developed for HST data with an oversampling factor of 4, where
+it is about 0.7 FWHM wide. When using a fixed kernel for a heavily
+undersampled ePSF with fewer than about five grid points per FWHM, the
+kernel lowers the peak of the ePSF, and ``smoothing_kernel=None`` is
+a better choice, especially when the stars have high signal-to-noise.
 Smoothing is most useful for well-sampled ePSFs built from noisy or few
 stars.
 
@@ -470,9 +494,18 @@ Customizing the ePSF Fitting
 
 The :class:`~photutils.psf.EPSFBuilder` class allows you to customize
 the fitting process using the ``fit_shape`` parameter. This parameter
-specifies the size of the box (in pixels) centered on each star used
-for fitting. Using a smaller box can speed up the fitting process while
-still capturing the core of the PSF::
+specifies the size of the box (in detector pixels) centered on each
+star used for fitting. The default is ``'auto'``, which uses a square
+box of twice the FWHM of the ePSF in detector pixels (measured in
+each iteration along its narrowest axis), with a minimum of 5 pixels
+and a maximum of the star cutout size. The chosen box is reported in
+the ``fit_shape`` attribute of the results. A fixed box can be given
+instead. A smaller box speeds up the fitting, but it should still cover
+the core of the star. A box that is much smaller than the star uses only
+its flat core, which biases the fitted centers and can prevent the build
+from converging. The 5-pixel box of Anderson and King is about 2.5 FWHM
+wide for HST data but only about 1 FWHM wide for a star with a FWHM of 5
+pixels::
 
     >>> epsf_builder = EPSFBuilder(oversampling=4, maxiters=3,
     ...                            fit_shape=7,
