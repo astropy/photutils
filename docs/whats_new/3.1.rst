@@ -771,8 +771,23 @@ of `~photutils.psf.EPSFBuildResults`, and they can be input as fixed
 values to reproduce the build. The previous behavior is available with
 ``smoothing_kernel='quartic'`` and ``fit_shape=5``.
 
-.. _whatsnew-3.1-api-changes:
+ePSF building is also faster. The build now converges when at least
+a ``converged_fraction`` (default 0.95) of the successfully fitted
+stars have settled to the requested ``center_accuracy``, instead of
+requiring every star. A few spurious detections or contaminated cutouts
+whose centers never settle previously forced the build to run to
+``maxiters``. On a real sample of about 2000 stars with 30% spurious
+detections, the build now stops after 6 iterations instead of 100, in 21
+seconds instead of about 5 minutes. The fraction achieved is reported
+in the new ``final_converged_fraction`` attribute of the results,
+and ``converged_fraction=1.0`` restores the previous behavior. Each
+iteration is also about 20% faster (25% at an oversampling of 4) because
+the ePSF spline interpolators are built once per iteration instead of
+once per star and the star residuals are stacked in a single vectorized
+operation.
 
+
+.. _whatsnew-3.1-api-changes:
 
 API Changes
 ===========

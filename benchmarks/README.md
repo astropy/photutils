@@ -209,6 +209,24 @@ python benchmarks/bench_psf.py
 python benchmarks/bench_psf.py --which photometry --n-sources-list 500,5000
 ```
 
+## ePSF building (`bench_epsf_builder.py`)
+
+Benchmarks for `EPSFBuilder` on noisy Gaussian stars with random
+subpixel positions:
+
+- a full build (total time, number of iterations, time per iteration,
+  and time per star per iteration) versus the number of stars
+- a full build versus the oversampling factor
+- the stages of a single build iteration (residual stacking, sigma
+  clipping and median, smoothing and recentering, and star fitting)
+  on a converged ePSF
+
+```bash
+python benchmarks/bench_epsf_builder.py
+python benchmarks/bench_epsf_builder.py --which stages --n-stars 2000
+python benchmarks/bench_epsf_builder.py --which stars --oversampling 4 --fwhm 1.5
+```
+
 ## PSF matching (`bench_psf_matching.py`)
 
 Benchmarks for the `photutils.psf_matching` subpackage:

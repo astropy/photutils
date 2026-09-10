@@ -1594,13 +1594,14 @@ class TestEPSFBuilder:
         centers = np.array([[2.0, 2.0]])
         fit_failed = np.array([True])  # All stars failed
 
-        converged, center_dist_sq, _ = builder._check_convergence(
+        converged, fraction, max_dist_sq, _ = builder._check_convergence(
             stars, centers, fit_failed)
 
         # Should return False (not converged) when no good stars
         assert converged is False
+        assert fraction == 0.0
         # No center movement could be measured
-        assert np.isnan(center_dist_sq[0])
+        assert np.isnan(max_dist_sq)
 
     def test_resample_residuals_no_good_stars(self, epsf_test_data):
         """
@@ -1621,26 +1622,6 @@ class TestEPSFBuilder:
         # Now resample residuals should handle no good stars
         result = builder._resample_residuals(stars, epsf)
         assert result.shape[0] == 0  # No good stars
-
-    def test_resample_residual_output(self, epsf_test_data):
-        """
-        Test EPSFBuilder._resample_residual creates output image if None
-        is passed.
-        """
-        builder = EPSFBuilder(maxiters=1, progress_bar=False)
-
-        stars = extract_stars(epsf_test_data['nddata'],
-                              epsf_test_data['init_stars'][:2], size=11)
-
-        # Create an initial ePSF
-        epsf = builder._create_initial_epsf(stars)
-
-        # Call _resample_residual without out_image (should create one)
-        star = stars.all_stars[0]
-        result = builder._resample_residual(star, epsf, out_image=None)
-
-        assert result is not None
-        assert result.shape == epsf.data.shape
 
     def test_build_step_with_epsf(self, epsf_test_data):
         """
@@ -2914,7 +2895,7 @@ def test_resample_residual_pixel_footprint():
     stars = EPSFStars([star])
     builder = EPSFBuilder(oversampling=2, progress_bar=False)
     epsf = builder._create_initial_epsf(stars)
-    resid = builder._resample_residual(star, epsf)
+    resid = builder._resample_residuals(stars, epsf)[0]
 
     finite = np.isfinite(resid)
     assert finite[:, 0::2].any()
@@ -2931,7 +2912,7 @@ def test_resample_residual_pixel_footprint():
     # With oversampling=1 the deposit reduces to the nearest grid point.
     builder1 = EPSFBuilder(oversampling=1, progress_bar=False)
     epsf1 = builder1._create_initial_epsf(stars)
-    resid1 = builder1._resample_residual(star, epsf1)
+    resid1 = builder1._resample_residuals(stars, epsf1)[0]
     assert np.isfinite(resid1).sum() == data.size
 
 
@@ -3266,3 +3247,228 @@ class TestAutoSmoothingAndFitShape:
                               smoothing_kernel=None, progress_bar=False)
         result = builder(stars)
         assert result.smoothing_kernel is None
+
+
+class _ShiftingFitter(TRFLSQFitter):
+    """
+    A fitter that alternately shifts the fitted x center of the first
+    ``n_shift`` stars of every ``n_stars`` fits by half a pixel, so that
+    the centers of those stars never settle.
+    """
+
+    def __init__(self, n_stars, n_shift):
+        super().__init__()
+        self.n_stars = n_stars
+        self.n_shift = n_shift
+        self.n_calls = 0
+
+    def __call__(self, model, x, y, z=None, weights=None, **kwargs):
+        fitted = super().__call__(model, x, y, z=z, weights=weights,
+                                  **kwargs)
+        if self.n_calls % self.n_stars < self.n_shift:
+            iteration = self.n_calls // self.n_stars
+            fitted.x_0 = fitted.x_0.value + 0.5 * (-1) ** iteration
+        self.n_calls += 1
+        return fitted
+
+
+class _FailingFitter(TRFLSQFitter):
+    """
+    A fitter that returns a fitted center outside the cutout for the
+    star whose input flux is ``flux``, so that its fit always fails.
+    """
+
+    def __init__(self, flux):
+        super().__init__()
+        self.flux = flux
+
+    def __call__(self, model, x, y, z=None, weights=None, **kwargs):
+        fitted = super().__call__(model, x, y, z=z, weights=weights,
+                                  **kwargs)
+        if model.flux.value == self.flux:
+            fitted.x_0 = 1000.0
+        return fitted
+
+
+class TestConvergedFraction:
+    """
+    Tests for the converged_fraction convergence criterion.
+    """
+
+    @pytest.fixture
+    def stars(self, epsf_test_data):
+        return extract_stars(epsf_test_data['nddata'],
+                             epsf_test_data['init_stars'][:20], size=11)
+
+    @pytest.mark.parametrize('value', ['auto', True, None])
+    def test_invalid_type(self, value):
+        match = 'converged_fraction must be a number'
+        with pytest.raises(TypeError, match=match):
+            EPSFBuilder(converged_fraction=value, progress_bar=False)
+
+    @pytest.mark.parametrize('value', [0.0, 1.5, -0.1, np.nan])
+    def test_invalid_value(self, value):
+        match = r'converged_fraction must be in the range \(0, 1\]'
+        with pytest.raises(ValueError, match=match):
+            EPSFBuilder(converged_fraction=value, progress_bar=False)
+
+    def test_default(self):
+        builder = EPSFBuilder(progress_bar=False)
+        assert builder.converged_fraction == 0.95
+
+    @pytest.mark.parametrize(('fraction', 'n_shift', 'expected'),
+                             [(1.0, 0, True), (1.0, 1, False),
+                              (0.95, 1, True), (0.95, 3, False)])
+    def test_convergence(self, stars, fraction, n_shift, expected):
+        """
+        With 20 stars, 1 unsettled star leaves 95 percent converged
+        and 3 unsettled stars leave 85 percent converged.
+        """
+        maxiters = 6
+        fitter = _ShiftingFitter(len(stars), n_shift)
+        builder = EPSFBuilder(oversampling=1, maxiters=maxiters,
+                              center_accuracy=1e-2,
+                              converged_fraction=fraction, fitter=fitter,
+                              progress_bar=False)
+        result = builder(stars)
+
+        assert result.converged is expected
+        assert result.final_converged_fraction == 1.0 - n_shift / 20
+        if expected:
+            assert result.iterations < maxiters
+        else:
+            assert result.iterations == maxiters
+            assert result.final_center_accuracy > 0.5
+
+        # The build converges when the achieved fraction reaches the
+        # requested fraction
+        assert result.converged == (result.final_converged_fraction
+                                    >= builder.converged_fraction)
+
+    def test_failed_fits_ignored(self, stars):
+        """
+        Stars whose fit failed do not count toward the fraction.
+        """
+        # The failing star is never updated, so its flux stays at the
+        # input value that identifies it to the fitter
+        failed_star = stars.all_stars[0]
+        fitter = _FailingFitter(failed_star.flux)
+        builder = EPSFBuilder(oversampling=1, maxiters=10,
+                              center_accuracy=1e-2, converged_fraction=1.0,
+                              fitter=fitter, progress_bar=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', AstropyUserWarning)
+            result = builder(stars)
+
+        assert result.converged
+        assert result.final_converged_fraction == 1.0
+        assert_array_equal(result.fitted_stars.all_stars[0].cutout_center,
+                           failed_star.cutout_center)
+
+    def test_results_attribute(self, stars):
+        builder = EPSFBuilder(oversampling=1, maxiters=10,
+                              center_accuracy=1e-2, progress_bar=False)
+        result = builder(stars)
+        assert 0.0 <= result.final_converged_fraction <= 1.0
+        assert result.converged == (result.final_converged_fraction
+                                    >= builder.converged_fraction)
+
+
+def test_build_shares_spline_cache(epsf_test_data, monkeypatch):
+    """
+    The spline interpolators are built once per ePSF and shared by
+    the model copies made for every star fit, so the number of spline
+    constructions does not depend on the number of stars.
+    """
+    from photutils.psf import image_models
+
+    counts = []
+    original = image_models.RectBivariateSpline
+
+    class CountingSpline(original):
+        def __init__(self, *args, **kwargs):
+            counts.append(1)
+            super().__init__(*args, **kwargs)
+
+    monkeypatch.setattr(image_models, 'RectBivariateSpline',
+                        CountingSpline)
+
+    n_constructions = []
+    for n_stars in (4, 12):
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:n_stars],
+                              size=11)
+        counts.clear()
+        builder = EPSFBuilder(oversampling=1, maxiters=2, progress_bar=False)
+        builder(stars)
+        n_constructions.append(len(counts))
+
+    assert n_constructions[0] == n_constructions[1]
+    assert n_constructions[1] < 12
+
+
+def _resample_residual_per_star(builder, star, epsf):
+    """
+    Reference per-star implementation of the residual resampling.
+
+    The normalized ePSF model is subtracted from the normalized star
+    and each pixel residual is deposited on every oversampled grid
+    point inside the footprint of that pixel. Grid points without data
+    are NaN.
+    """
+    xidx_centered, yidx_centered = star._xyidx_centered
+    stardata = (star._data_values_normalized
+                - epsf.evaluate(x=xidx_centered, y=yidx_centered,
+                                flux=1.0, x_0=0.0, y_0=0.0))
+
+    # Star pixel centers in the oversampled ePSF grid
+    ny_over, nx_over = builder.oversampling
+    x_over = xidx_centered * nx_over + epsf.origin[0]
+    y_over = yidx_centered * ny_over + epsf.origin[1]
+
+    epsf_shape = epsf.data.shape
+    out_image = np.full(epsf_shape, np.nan)
+    x_first = np.floor(x_over - nx_over / 2.0).astype(int) + 1
+    y_first = np.floor(y_over - ny_over / 2.0).astype(int) + 1
+    for j in range(ny_over):
+        yidx = y_first + j
+        for i in range(nx_over):
+            xidx = x_first + i
+            mask = ((xidx >= 0) & (xidx < epsf_shape[1])
+                    & (yidx >= 0) & (yidx < epsf_shape[0]))
+            out_image[yidx[mask], xidx[mask]] = stardata[mask]
+
+    return out_image
+
+
+@pytest.mark.parametrize('oversampling', [1, 2, (1, 2), 4])
+def test_resample_residuals_matches_per_star(epsf_test_data, oversampling):
+    """
+    Test that the vectorized residual stack equals the per-star
+    resampling, including masked pixels, out-of-grid pixels, and
+    excluded stars.
+    """
+    stars = extract_stars(epsf_test_data['nddata'],
+                          epsf_test_data['init_stars'][:8], size=11)
+    # Mask a few pixels in one star and shift another star so that
+    # part of its footprint falls outside the ePSF grid.
+    star0, star1, star2 = stars.all_stars[:3]
+    star0.mask[2:4, 3:6] = True
+    star1.cutout_center = (1.3, 9.2)
+    star2._excluded_from_fit = True
+
+    builder = EPSFBuilder(oversampling=oversampling, progress_bar=False)
+    epsf = builder._create_initial_epsf(stars)
+    rng = np.random.default_rng(0)
+    epsf.data[:] = rng.uniform(0.0, 1.0, epsf.data.shape)
+    stack = builder._resample_residuals(stars, epsf)
+    assert stack.shape[0] == 7
+
+    for i, star in enumerate(stars.all_good_stars):
+        expected = _resample_residual_per_star(builder, star, epsf)
+        assert_array_equal(np.isnan(stack[i]), np.isnan(expected))
+        assert_allclose(stack[i], expected, equal_nan=True)
+
+    # Processing the stars in several chunks gives the same stack
+    chunked = builder._resample_residuals(stars, epsf, chunk_size=3)
+    assert_array_equal(chunked, stack)

@@ -369,6 +369,20 @@ class ImagePSF(Fittable2DModel):
         return (self.interpolator.partial_derivative(1, 0),
                 self.interpolator.partial_derivative(0, 1))
 
+    def _precompute_interpolators(self):
+        """
+        Compute and cache the spline interpolators.
+
+        The cached interpolators are shared by the model copies made
+        with `copy` (e.g., by the fitters), so calling this method
+        before fitting the model to many sources builds the splines
+        once instead of once per copy. The derivative interpolators are
+        computed only when `fit_deriv` is enabled.
+        """
+        _ = self.interpolator
+        if self.fit_deriv is not None:
+            _ = self._deriv_interpolators
+
     def _calc_bounding_box(self):
         """
         Return a bounding box defining the limits of the model.
