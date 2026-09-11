@@ -72,6 +72,22 @@ def epsf_fitter_data(epsf_test_data):
     return {'stars': stars, 'epsf': epsf}
 
 
+def _insert_nan_near_star(epsf_test_data, *, index=0):
+    """
+    Copy the test image and set a pixel one row above the given star
+    center to NaN.
+
+    Returns the NDData copy and the true (x, y) center of that star.
+    """
+    data = epsf_test_data['data'].copy()
+    xtrue = epsf_test_data['init_stars']['x'][index]
+    ytrue = epsf_test_data['init_stars']['y'][index]
+    iy = int(np.round(ytrue)) + 1
+    ix = int(np.round(xtrue))
+    data[iy, ix] = np.nan
+    return NDData(data), (xtrue, ytrue)
+
+
 class _MockWCS:
     """
     Mock WCS with an identity pixel-to-world transform.
@@ -1182,6 +1198,49 @@ class TestEPSFFitter:
         assert_allclose(fitted_star.cutout_center, (5.0, 5.0))
         assert fitted_star.flux == star.flux
 
+    def test_fit_star_masked_pixel_in_fit_box(self, epsf_test_data):
+        """
+        Test that a masked (NaN) pixel inside the fit box is excluded
+        from the fit instead of raising a fitter error.
+        """
+        nddata, (xtrue, ytrue) = _insert_nan_near_star(epsf_test_data)
+        match = 'Input data array contains invalid data'
+        with pytest.warns(AstropyUserWarning, match=match):
+            stars = extract_stars(nddata, epsf_test_data['init_stars'][:4],
+                                  size=11)
+        assert np.isnan(stars[0].data).any()
+
+        builder = EPSFBuilder(oversampling=1, maxiters=2, progress_bar=False)
+        epsf, _ = builder(stars)
+
+        fitter = _make_epsf_fitter(fit_boxsize=5)
+        fitted_stars = fitter(epsf, stars)
+
+        fitted_star = fitted_stars.all_stars[0]
+        assert fitted_star._fit_error_status == 0
+        assert_allclose(fitted_star.center, (xtrue, ytrue), atol=0.1)
+
+    def test_fit_star_all_masked_fit_box(self, epsf_fitter_data):
+        """
+        Test that a star whose fit box is fully masked is flagged as a
+        fit failure and left unchanged.
+        """
+        epsf = epsf_fitter_data['epsf']
+
+        star_data = np.ones((11, 11))
+        weights = np.ones((11, 11))
+        weights[3:8, 3:8] = 0.0
+        star = EPSFStar(star_data, weights=weights, cutout_center=(5.0, 5.0))
+        stars = EPSFStars([star])
+
+        fitter = _make_epsf_fitter(fit_boxsize=5)
+        fitted_stars = fitter(epsf, stars)
+
+        fitted_star = fitted_stars.all_stars[0]
+        assert fitted_star._fit_error_status == 4
+        assert_allclose(fitted_star.cutout_center, (5.0, 5.0))
+        assert fitted_star.flux == star.flux
+
 
 class TestEPSFBuilder:
     """
@@ -2212,6 +2271,78 @@ class TestEPSFBuilder:
         # Check that fitting succeeded
         assert fitted_star._fit_error_status == 0
         assert fitted_star.flux > 0
+
+    def test_build_epsf_masked_pixel_in_fit_shape(self, epsf_test_data):
+        """
+        Regression test for a NaN pixel inside the fit shape.
+
+        A masked pixel next to a star center must be excluded from
+        the fit instead of raising NonFiniteValueError in the astropy
+        fitter.
+        """
+        nddata, (xtrue, ytrue) = _insert_nan_near_star(epsf_test_data)
+        match = 'Input data array contains invalid data'
+        with pytest.warns(AstropyUserWarning, match=match):
+            stars = extract_stars(nddata, epsf_test_data['init_stars'][:25],
+                                  size=25)
+        assert np.isnan(stars[0].data).any()
+
+        builder = EPSFBuilder(oversampling=2, maxiters=3, progress_bar=False)
+        epsf, fitted_stars = builder(stars)
+
+        assert np.all(np.isfinite(epsf.data))
+        fitted_star = fitted_stars.all_stars[0]
+        assert fitted_star._fit_error_status == 0
+        assert_allclose(fitted_star.center, (xtrue, ytrue), atol=0.1)
+
+    def test_fit_star_all_masked_fit_shape(self, epsf_test_data):
+        """
+        Test EPSFBuilder._fit_star with a fully masked fit shape.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:2], size=11)
+        builder = EPSFBuilder(oversampling=1, maxiters=2, fit_shape=5,
+                              progress_bar=False)
+        epsf, _ = builder(stars)
+
+        star_data = np.ones((11, 11))
+        weights = np.ones((11, 11))
+        weights[3:8, 3:8] = 0.0
+        star = EPSFStar(star_data, weights=weights, cutout_center=(5.0, 5.0))
+
+        fitted_star = builder._fit_star(epsf, star)
+
+        assert fitted_star._fit_error_status == 4
+        assert_allclose(fitted_star.cutout_center, (5.0, 5.0))
+        assert fitted_star.flux == star.flux
+
+    def test_process_iteration_excludes_all_masked(self, epsf_test_data):
+        """
+        Test that _process_iteration excludes a star whose fit shape
+        contains no unmasked pixels.
+        """
+        stars = extract_stars(epsf_test_data['nddata'],
+                              epsf_test_data['init_stars'][:2], size=11)
+        builder = EPSFBuilder(oversampling=1, maxiters=2, fit_shape=5,
+                              progress_bar=False)
+        epsf, _ = builder(stars)
+
+        star_data = np.ones((11, 11))
+        weights = np.ones((11, 11))
+        weights[3:8, 3:8] = 0.0
+        masked_star = EPSFStar(star_data, weights=weights,
+                               cutout_center=(5.0, 5.0))
+        stars = EPSFStars([masked_star, stars.all_stars[1]])
+
+        match = 'its fitting region contains no unmasked pixels'
+        with pytest.warns(AstropyUserWarning, match=match):
+            _, stars_new, fit_failed = builder._process_iteration(
+                stars, epsf, iter_num=4)
+
+        assert fit_failed[0]
+        assert not fit_failed[1]
+        assert stars_new.all_stars[0]._excluded_from_fit
+        assert stars_new.all_stars[0]._fit_error_status == 4
 
     def test_normalize_epsf_zero_sum(self):
         """

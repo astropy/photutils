@@ -1220,6 +1220,7 @@ class EPSFFitter:
 
             data = star.data[large_slc]
             weights = star.weights[large_slc]
+            mask = star.mask[large_slc]
 
             # Define the origin of the fitting region
             x0 = large_slc[1].start
@@ -1228,6 +1229,7 @@ class EPSFFitter:
             # Use the entire cutout image
             data = star.data
             weights = star.weights
+            mask = star.mask
 
             # Define the origin of the fitting region
             x0 = 0
@@ -1239,6 +1241,19 @@ class EPSFFitter:
         yy, xx = np.indices(data.shape, dtype=float)
         xx = xx + x0 - star.cutout_center[0]
         yy = yy + y0 - star.cutout_center[1]
+
+        # Fit only the unmasked pixels. Masked pixels (non-finite data
+        # or non-positive weights) are dropped from the fit because the
+        # fitter objective function raises on non-finite data values
+        # even where the weight is zero.
+        good = ~mask
+        if not np.any(good):
+            star._fit_error_status = 4  # fitting region is fully masked
+            return star
+        xx = xx[good]
+        yy = yy[good]
+        data = data[good]
+        weights = weights[good]
 
         # Define the initial guesses for fitted flux and shifts
         epsf.flux = star.flux
@@ -2351,6 +2366,7 @@ class EPSFBuilder:
 
             data = star.data[large_slc]
             weights = star.weights[large_slc]
+            mask = star.mask[large_slc]
 
             # Define the origin of the fitting region
             x0 = large_slc[1].start
@@ -2359,6 +2375,7 @@ class EPSFBuilder:
             # Use the entire cutout image
             data = star.data
             weights = star.weights
+            mask = star.mask
 
             # Define the origin of the fitting region
             x0 = 0
@@ -2370,6 +2387,19 @@ class EPSFBuilder:
         yy, xx = np.indices(data.shape, dtype=float)
         xx = xx + x0 - star.cutout_center[0]
         yy = yy + y0 - star.cutout_center[1]
+
+        # Fit only the unmasked pixels. Masked pixels (non-finite data
+        # or non-positive weights) are dropped from the fit because the
+        # fitter objective function raises on non-finite data values
+        # even where the weight is zero.
+        good = ~mask
+        if not np.any(good):
+            star._fit_error_status = 4  # fitting region is fully masked
+            return star
+        xx = xx[good]
+        yy = yy[good]
+        data = data[good]
+        weights = weights[good]
 
         # Define the initial guesses for fitted flux and shifts
         epsf.flux = star.flux
@@ -2472,6 +2502,9 @@ class EPSFBuilder:
                     elif star._fit_error_status == 3:
                         reason = ('its fitted position is outside the '
                                   'data cutout')
+                    elif star._fit_error_status == 4:
+                        reason = ('its fitting region contains no '
+                                  'unmasked pixels')
                     else:  # _fit_error_status == 2
                         reason = 'the fit did not converge'
 
