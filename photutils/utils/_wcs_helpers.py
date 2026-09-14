@@ -356,11 +356,10 @@ def jacobian_pixel_to_sky_mean_scale(pixcoord, wcs):
         The mean scale factor (arcsec per pixel), computed as the mean
         of the two singular values of the inverse Jacobian.
     """
-    center, _, jacobian_inv, _ = _pixel_to_sky_jacobian(pixcoord, wcs)
-    scales = np.linalg.svd(jacobian_inv, compute_uv=False)
-
-    # Mean of singular values gives the best isotropic approximation
-    return center, np.mean(scales)
+    center = _pixel_to_world(wcs, pixcoord[0], pixcoord[1])
+    mean_scale = compute_pixel_to_sky_mean_scales(pixcoord[0], pixcoord[1],
+                                                  wcs)[0]
+    return center, mean_scale
 
 
 def compute_local_wcs_jacobian(skycoord, wcs):
@@ -498,6 +497,87 @@ def compute_pixel_to_sky_jacobians(x, y, wcs):
         jacobians[:, 0, col] = dxi * arcsec_per_rad
         jacobians[:, 1, col] = deta * arcsec_per_rad
     return jacobians
+
+
+def compute_pixel_to_sky_mean_scales(x, y, wcs):
+    """
+    Compute the isotropic (mean) pixel scale at an array of pixel
+    positions.
+
+    This is the vectorized counterpart of
+    `jacobian_pixel_to_sky_mean_scale`. The scale at each position is
+    the mean of the two singular values of the local forward Jacobian
+    ``F = d(sky_arcsec)/d(pixel)``, which is the best isotropic
+    approximation to the (potentially anisotropic) mapping. It uses only
+    the forward WCS transform, so it is fast for a gwcs whose inverse
+    must be found numerically.
+
+    Parameters
+    ----------
+    x, y : float or `~numpy.ndarray`
+        The pixel coordinates.
+
+    wcs : WCS object
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+
+    Returns
+    -------
+    mean_scales : `~numpy.ndarray`
+        The 1D array of mean scale factors (arcsec per pixel).
+    """
+    jacobians = compute_pixel_to_sky_jacobians(x, y, wcs)
+    scales = np.linalg.svd(jacobians, compute_uv=False)
+    return scales.mean(axis=1)
+
+
+def compute_pixel_scale_angles(x, y, wcs):
+    """
+    Compute the pixel scale and the pixel-frame angle of North at an
+    array of pixel positions.
+
+    This is the vectorized counterpart of `wcs_pixel_scale_angle`. The
+    scale is the geometric mean of the scales along the x and y pixel
+    axes. The angle is found by solving the local forward Jacobian for
+    the pixel step that moves due North on the sky, so it needs only the
+    forward WCS transform and no per-source inverse.
+
+    Parameters
+    ----------
+    x, y : float or `~numpy.ndarray`
+        The pixel coordinates.
+
+    wcs : WCS object
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+
+    Returns
+    -------
+    scales : `~numpy.ndarray`
+        The 1D array of pixel scales in arcsec/pixel.
+
+    angles : `~astropy.coordinates.Angle`
+        The angles measured counterclockwise from the positive x axis to
+        the "North" axis of the celestial coordinate system, wrapped to
+        [0, 360) degrees.
+    """
+    jacobians = compute_pixel_to_sky_jacobians(x, y, wcs)
+
+    # The columns of F are the sky displacements per pixel step along
+    # x and y, so their norms are the directional pixel scales
+    axis_scales = np.linalg.norm(jacobians, axis=1)
+    scales = np.sqrt(axis_scales[:, 0] * axis_scales[:, 1])
+
+    # Solve F @ step = (0, 1) for the pixel step that moves North
+    north = np.broadcast_to([0.0, 1.0], (jacobians.shape[0], 2))
+    step = np.linalg.solve(jacobians, north[..., np.newaxis])[..., 0]
+    angles = Angle(np.degrees(np.arctan2(step[:, 1], step[:, 0])) * u.deg)
+
+    return scales, angles.wrap_at(360 * u.deg)
 
 
 def sky_to_pixel_mean_scale(skycoord, wcs):

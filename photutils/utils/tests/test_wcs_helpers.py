@@ -14,7 +14,9 @@ from numpy.testing import assert_allclose
 from photutils.datasets import make_gwcs
 from photutils.utils._optional_deps import HAS_GWCS
 from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
+                                          compute_pixel_scale_angles,
                                           compute_pixel_to_sky_jacobians,
+                                          compute_pixel_to_sky_mean_scales,
                                           jacobian_pixel_to_sky_mean_scale,
                                           jacobian_sky_to_pixel_mean_scale,
                                           pixel_shape_to_sky_svd,
@@ -1081,3 +1083,65 @@ class TestGWCSBoundingBox:
         _, scale, angle = wcs_pixel_scale_angle(skycoord, bounded_gwcs)
         assert np.isfinite(scale)
         assert np.isfinite(angle.deg)
+
+
+class TestVectorizedScalesAndAngles:
+    """
+    Tests for the vectorized pixel scale and North angle helpers.
+
+    Each must reproduce the per-source function it replaces at every
+    position, without calling the WCS inverse once per source.
+    """
+
+    positions = (np.array([3.0, 10.0, 16.5]), np.array([4.0, 10.0, 2.2]))
+
+    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
+                                          'nonsquare_wcs', 'sip_wcs'])
+    def test_mean_scales_match_per_source(self, wcs_name, request):
+        wcs = request.getfixturevalue(wcs_name)
+        x, y = self.positions
+        scales = compute_pixel_to_sky_mean_scales(x, y, wcs)
+        assert scales.shape == (3,)
+        for i in range(x.size):
+            _, expected = jacobian_pixel_to_sky_mean_scale((x[i], y[i]), wcs)
+            assert_allclose(scales[i], expected, rtol=1e-8)
+
+    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
+                                          'nonsquare_wcs', 'sip_wcs'])
+    def test_scale_angles_match_per_source(self, wcs_name, request):
+        wcs = request.getfixturevalue(wcs_name)
+        x, y = self.positions
+        scales, angles = compute_pixel_scale_angles(x, y, wcs)
+        assert scales.shape == (3,)
+        assert isinstance(angles, Angle)
+        assert angles.shape == (3,)
+        for i in range(x.size):
+            skycoord = wcs.pixel_to_world(x[i], y[i])
+            _, scale, angle = wcs_pixel_scale_angle(skycoord, wcs)
+            # The per-source scale uses one-sided 1-pixel differences,
+            # which differ from the central differences at the few 1e-6
+            # level on the arcminute-sized nonsquare pixels.
+            assert_allclose(scales[i], scale, rtol=1e-5)
+            assert_allclose(angles[i].deg, angle.deg, atol=1e-4)
+
+    def test_angles_wrapped(self, flipped_wcs):
+        _, angles = compute_pixel_scale_angles(*self.positions, flipped_wcs)
+        assert np.all((angles.deg >= 0) & (angles.deg < 360))
+
+    def test_scalar_inputs(self, simple_wcs):
+        scales = compute_pixel_to_sky_mean_scales(10.0, 10.0, simple_wcs)
+        assert scales.shape == (1,)
+        scales, angles = compute_pixel_scale_angles(10.0, 10.0, simple_wcs)
+        assert scales.shape == (1,)
+        assert angles.shape == (1,)
+
+    def test_north_angle_direction(self, rotated_wcs):
+        # Solve for the pixel step that moves exactly North on the sky
+        # and check that it points along the returned angle.
+        x, y = self.positions
+        _, angles = compute_pixel_scale_angles(x, y, rotated_wcs)
+        jacs = compute_pixel_to_sky_jacobians(x, y, rotated_wcs)
+        north = np.tile([0.0, 1.0], (x.size, 1))[..., np.newaxis]
+        north_pix = np.linalg.solve(jacs, north)[..., 0]
+        expected = np.degrees(np.arctan2(north_pix[:, 1], north_pix[:, 0]))
+        assert_allclose(angles.wrap_at(180 * u.deg).deg, expected, atol=1e-8)
