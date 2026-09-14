@@ -921,39 +921,14 @@ def wcs_pixel_scale_angle(skycoord, wcs):
 
     Notes
     -----
-    If distortions are present in the WCS, the x and y pixel scales
-    likely differ. This function computes independent x and y scales and
-    takes their geometric mean.
+    This is the scalar counterpart of `compute_pixel_scale_angles`,
+    which it calls after converting the sky coordinate to pixels. If
+    distortions are present in the WCS, the x and y pixel scales likely
+    differ. The returned scale is the geometric mean of the two.
     """
     # Convert to pixel coordinates
     x, y = _world_to_pixel(wcs, skycoord)
     pixcoord = (float(x), float(y))
+    scales, angles = compute_pixel_scale_angles(x, y, wcs)
 
-    # Position-dependent scale from the sky separation between the pixel
-    # edges half a pixel either side of the position along x and y. The
-    # central difference is exact for a locally quadratic distortion.
-    # The pixel scale is the geometric mean of the two directional
-    # scales.
-    cdelt_x = _pixel_to_world(wcs, x - 0.5, y).separation(
-        _pixel_to_world(wcs, x + 0.5, y)).arcsec
-    cdelt_y = _pixel_to_world(wcs, x, y - 0.5).separation(
-        _pixel_to_world(wcs, x, y + 0.5)).arcsec
-    scale = np.sqrt(cdelt_x * cdelt_y)
-
-    # Compute the angle from the pixel positions of the points half
-    # a local cdelt (geometric-mean pixel scale) North and South
-    # of the input coordinate. Probing at the pixel scale samples
-    # the distortion field on the scale of a pixel, and the central
-    # difference cancels its curvature.
-    half_cdelt = 0.5 * scale * u.arcsec
-    sky_north = skycoord.directional_offset_by(0.0 * u.deg, half_cdelt)
-    sky_south = skycoord.directional_offset_by(180.0 * u.deg, half_cdelt)
-    x_north, y_north = _world_to_pixel(wcs, sky_north)
-    x_south, y_south = _world_to_pixel(wcs, sky_south)
-    dx = x_north - x_south
-    dy = y_north - y_south
-
-    angle_rad = np.arctan2(dy, dx)
-    angle = Angle(np.rad2deg(angle_rad) * u.deg).wrap_at(360 * u.deg)
-
-    return pixcoord, scale, angle
+    return pixcoord, float(scales[0]), angles[0]
