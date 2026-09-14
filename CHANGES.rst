@@ -118,6 +118,12 @@ New Features
     order statistics (``min``, ``max``, ``median``), ``mad_std``,
     and biweight properties. [#2364]
 
+  - The ``to_pixel`` methods of the sky apertures now invert the WCS
+    once, for the aperture positions, and reuse that pixel position
+    for the shape conversion. Together with the faster WCS helpers,
+    the ``to_sky`` and ``to_pixel`` methods of all apertures are two
+    to five times faster. [#2425]
+
 - ``photutils.background``
 
   - Updated ``LocalBackground`` so that ``Quantity`` input data is
