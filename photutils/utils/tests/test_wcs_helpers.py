@@ -1161,3 +1161,86 @@ class TestVectorizedScalesAndAngles:
         north_pix = np.linalg.solve(jacs, north)[..., 0]
         expected = np.degrees(np.arctan2(north_pix[:, 1], north_pix[:, 0]))
         assert_allclose(angles.wrap_at(180 * u.deg).deg, expected, atol=1e-8)
+
+
+class _CountingWCS:
+    """
+    Wrapper that counts the calls to the WCS transform methods.
+    """
+
+    def __init__(self, real_wcs):
+        self._wcs = real_wcs
+        self.n_pixel_to_world = 0
+        self.n_world_to_pixel = 0
+
+    def pixel_to_world(self, *args, **kwargs):
+        self.n_pixel_to_world += 1
+        return self._wcs.pixel_to_world(*args, **kwargs)
+
+    def world_to_pixel(self, *args, **kwargs):
+        self.n_world_to_pixel += 1
+        return self._wcs.world_to_pixel(*args, **kwargs)
+
+
+def _reference_jacobians(x, y, wcs):
+    """
+    Forward Jacobians from great-circle separations and position angles
+    of the half-pixel offset points, independent of the implementation
+    under test.
+    """
+    x = np.atleast_1d(x).astype(float)
+    y = np.atleast_1d(y).astype(float)
+    sky0 = wcs.pixel_to_world(x, y)
+    arcsec_per_rad = 3600.0 * np.degrees(1)
+    jac = np.empty((x.size, 2, 2))
+    for col, (dx, dy) in enumerate(((0.5, 0.0), (0.0, 0.5))):
+        lo = wcs.pixel_to_world(x - dx, y - dy)
+        hi = wcs.pixel_to_world(x + dx, y + dy)
+        s_lo, p_lo = sky0.separation(lo).rad, sky0.position_angle(lo).rad
+        s_hi, p_hi = sky0.separation(hi).rad, sky0.position_angle(hi).rad
+        jac[:, 0, col] = (s_hi * np.sin(p_hi) - s_lo * np.sin(p_lo))
+        jac[:, 1, col] = (s_hi * np.cos(p_hi) - s_lo * np.cos(p_lo))
+    return jac * arcsec_per_rad
+
+
+class TestJacobianEvaluation:
+    """
+    Tests for how the vectorized Jacobian evaluates the WCS.
+    """
+
+    def test_single_wcs_call(self, sip_wcs):
+        wcs = _CountingWCS(sip_wcs)
+        compute_pixel_to_sky_jacobians(np.array([5.0, 12.0]),
+                                       np.array([7.0, 3.0]), wcs)
+        assert wcs.n_pixel_to_world == 1
+        assert wcs.n_world_to_pixel == 0
+
+    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
+                                          'nonsquare_wcs', 'flipped_wcs',
+                                          'sip_wcs'])
+    def test_agrees_with_separation_position_angle(self, wcs_name, request):
+        wcs = request.getfixturevalue(wcs_name)
+        x = np.array([3.0, 9.5, 16.2])
+        y = np.array([4.0, 9.5, 2.7])
+        jacs = compute_pixel_to_sky_jacobians(x, y, wcs)
+        expected = _reference_jacobians(x, y, wcs)
+        assert_allclose(jacs, expected, rtol=1e-7, atol=1e-7)
+
+    @pytest.mark.parametrize(('center_ra', 'center_dec'), TROUBLESOME_CENTERS)
+    def test_agrees_near_pole_and_wrap(self, center_ra, center_dec):
+        wcs = _make_sip_wcs(center_ra, center_dec)
+        x = np.array([9.5, 3.0])
+        y = np.array([9.5, 15.0])
+        jacs = compute_pixel_to_sky_jacobians(x, y, wcs)
+        expected = _reference_jacobians(x, y, wcs)
+        assert_allclose(jacs, expected, rtol=1e-7, atol=1e-7)
+
+    @pytest.mark.parametrize('dec', [90.0, -90.0])
+    def test_exact_pole(self, dec):
+        # Longitude is degenerate at the pole, but the pixel area and
+        # the Jacobian must stay finite and correct.
+        wcs = _make_sip_wcs(0.0, dec)
+        jac = compute_pixel_to_sky_jacobians(9.5, 9.5, wcs)[0]
+        assert np.all(np.isfinite(jac))
+        assert_allclose(np.abs(np.linalg.det(jac)), WCS_CDELT_ARCSEC**2,
+                        rtol=1e-6)

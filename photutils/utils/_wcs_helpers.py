@@ -5,7 +5,7 @@ Tools for WCS helpers.
 
 import astropy.units as u
 import numpy as np
-from astropy.coordinates import Angle
+from astropy.coordinates import Angle, UnitSphericalRepresentation
 from astropy.wcs.wcsapi import (high_level_objects_to_values,
                                 values_to_high_level_objects)
 
@@ -400,10 +400,11 @@ def compute_pixel_to_sky_jacobians(x, y, wcs):
     North (the Declination direction). Each derivative is the central
     difference between the sky positions half a pixel either side of the
     center, so it is unbiased where the distortion has curvature. The
-    offsets are computed from the great-circle separation and position
-    angle between the center and each offset point, so the formula
+    sky positions are handled as unit vectors and the differences are
+    projected onto the local East and North directions, so the formula
     is well-defined at the celestial poles and across the longitude
-    wraparound (RA = 0 / 360).
+    wraparound (RA = 0 / 360). All five positions per pixel are
+    evaluated in a single WCS call.
 
     Parameters
     ----------
@@ -424,34 +425,46 @@ def compute_pixel_to_sky_jacobians(x, y, wcs):
     """
     x = np.atleast_1d(x).astype(float)
     y = np.atleast_1d(y).astype(float)
+    n = x.size
 
-    # Sky positions at the pixel edges, half a pixel either side of the
-    # center along each axis
-    sky0 = _pixel_to_world(wcs, x, y)
-    offsets = ((_pixel_to_world(wcs, x - 0.5, y),
-                _pixel_to_world(wcs, x + 0.5, y)),
-               (_pixel_to_world(wcs, x, y - 0.5),
-                _pixel_to_world(wcs, x, y + 0.5)))
+    # Evaluate the pixel centers and the four edge points half a pixel
+    # either side of each center in a single WCS call. The blocks are
+    # ordered center, -x, +x, -y, +y.
+    xx = np.concatenate((x, x - 0.5, x + 0.5, x, x))
+    yy = np.concatenate((y, y, y, y - 0.5, y + 0.5))
+    sky = _pixel_to_world(wcs, xx, yy).represent_as(
+        UnitSphericalRepresentation)
+    lon = sky.lon.rad
+    lat = sky.lat.rad
 
-    # Compute the tangent-plane offsets (xi, eta) in arcsec of each edge
-    # point from the great-circle separation and position angle to that
-    # point. The position angle is measured from North (eta) toward East
-    # (xi). This formulation is intrinsically wrap-safe (no longitude
-    # subtractions) and pole-safe (no division by cos(dec)). The central
-    # difference of the two edges gives the derivative at the pixel
-    # center.
+    # Unit vectors pointing at each position
+    cos_lat = np.cos(lat)
+    xyz = np.stack((cos_lat * np.cos(lon), cos_lat * np.sin(lon),
+                    np.sin(lat)), axis=-1).reshape(5, n, 3)
+
+    # Local East (+longitude) and North (+latitude) unit vectors at the
+    # centers. The closed forms stay defined at the poles, where they
+    # follow the nominal longitude of the center.
+    lon0 = lon[:n]
+    lat0 = lat[:n]
+    sin_lon0 = np.sin(lon0)
+    cos_lon0 = np.cos(lon0)
+    sin_lat0 = np.sin(lat0)
+    east = np.stack((-sin_lon0, cos_lon0, np.zeros(n)), axis=-1)
+    north = np.stack((-sin_lat0 * cos_lon0, -sin_lat0 * sin_lon0,
+                      np.cos(lat0)), axis=-1)
+
+    # The central difference of the edge unit vectors, projected onto
+    # East and North, gives the tangent-plane (xi, eta) displacement per
+    # pixel in radians. This formulation has no longitude subtraction
+    # and no division by cos(lat), so it is wrap-safe and pole-safe.
     arcsec_per_rad = 3600.0 * np.degrees(1)
-    jacobians = np.empty((x.size, 2, 2))
-    for col, (sky_lo, sky_hi) in enumerate(offsets):
-        sep_lo = np.atleast_1d(sky0.separation(sky_lo).rad)
-        pa_lo = np.atleast_1d(sky0.position_angle(sky_lo).rad)
-        sep_hi = np.atleast_1d(sky0.separation(sky_hi).rad)
-        pa_hi = np.atleast_1d(sky0.position_angle(sky_hi).rad)
-        dxi = sep_hi * np.sin(pa_hi) - sep_lo * np.sin(pa_lo)
-        deta = sep_hi * np.cos(pa_hi) - sep_lo * np.cos(pa_lo)
-        jacobians[:, 0, col] = dxi * arcsec_per_rad
-        jacobians[:, 1, col] = deta * arcsec_per_rad
-    return jacobians
+    jacobians = np.empty((n, 2, 2))
+    for col, (lo, hi) in enumerate(((1, 2), (3, 4))):
+        step = xyz[hi] - xyz[lo]
+        jacobians[:, 0, col] = np.einsum('ij,ij->i', step, east)
+        jacobians[:, 1, col] = np.einsum('ij,ij->i', step, north)
+    return jacobians * arcsec_per_rad
 
 
 def compute_pixel_to_sky_mean_scales(x, y, wcs):
