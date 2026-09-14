@@ -982,3 +982,56 @@ class TestSVDScales:
         _, _, _, sky_angle = pixel_to_sky_svd_scales((50.0, 50.0), wcs)
         assert 0.0 <= pixel_angle.deg < 360.0
         assert 0.0 <= sky_angle.deg < 360.0
+
+
+def _make_quadratic_sip_wcs(coeff=1e-3):
+    """
+    Build a TAN-SIP WCS whose distortion is a pure quadratic in the
+    pixel offset from CRPIX.
+
+    At CRPIX the quadratic term has zero slope, so the true local scale
+    is exactly CDELT. A one-sided finite difference is biased there by
+    a fraction ``coeff``, while a central difference is exact for a
+    quadratic.
+    """
+    header = Header()
+    header['NAXIS'] = 2
+    header['NAXIS1'] = 100
+    header['NAXIS2'] = 100
+    header['CRPIX1'] = 50.0
+    header['CRPIX2'] = 50.0
+    header['CRVAL1'] = 150.0
+    header['CRVAL2'] = 0.0
+    header['CTYPE1'] = 'RA---TAN-SIP'
+    header['CTYPE2'] = 'DEC--TAN-SIP'
+    cdelt = WCS_CDELT_ARCSEC / 3600.0
+    header['CD1_1'] = -cdelt
+    header['CD1_2'] = 0.0
+    header['CD2_1'] = 0.0
+    header['CD2_2'] = cdelt
+    header['A_ORDER'] = 2
+    header['A_2_0'] = coeff
+    header['B_ORDER'] = 2
+    header['B_0_2'] = coeff
+    return APWCS(header)
+
+
+class TestCentralDifferences:
+    """
+    Tests that the finite-difference Jacobians are unbiased where the
+    distortion has curvature.
+    """
+
+    def test_pixel_to_sky_jacobians_unbiased_at_crpix(self):
+        wcs = _make_quadratic_sip_wcs()
+        x = np.array([wcs.wcs.crpix[0] - 1.0])
+        y = np.array([wcs.wcs.crpix[1] - 1.0])
+        jac = compute_pixel_to_sky_jacobians(x, y, wcs)[0]
+        assert_allclose(np.abs(np.diag(jac)), WCS_CDELT_ARCSEC, rtol=1e-6)
+
+    def test_local_wcs_jacobian_unbiased_at_crval(self):
+        wcs = _make_quadratic_sip_wcs()
+        skycoord = SkyCoord(150.0 * u.deg, 0.0 * u.deg)
+        jac = compute_local_wcs_jacobian(skycoord, wcs)
+        assert_allclose(np.abs(np.diag(jac)), 1.0 / WCS_CDELT_ARCSEC,
+                        rtol=1e-6)

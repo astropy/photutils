@@ -290,7 +290,7 @@ def jacobian_pixel_to_sky_mean_scale(pixcoord, wcs):
 def compute_local_wcs_jacobian(skycoord, wcs):
     """
     Compute the local 2x2 Jacobian matrix d(pixel)/d(tangent-plane) at
-    the given sky coordinate using 1-pixel finite differences.
+    the given sky coordinate using central finite differences.
 
     The Jacobian matrix ``J`` linearizes the WCS transformation in the
     neighborhood of ``skycoord``. It maps infinitesimal offsets in the
@@ -307,16 +307,19 @@ def compute_local_wcs_jacobian(skycoord, wcs):
         * ``eta`` (Dec direction): offset along Declination,
           increasing to the North.
 
-    The Jacobian is computed by making 1-pixel offsets in x and y,
-    converting the resulting pixel positions to sky coordinates, and
-    measuring the tangent-plane displacements in arcsec. The (xi, eta)
-    offsets are computed from the great-circle separation and position
-    angle between the center and each offset point, so the formula
-    is well-defined at the celestial poles and across the longitude
-    wraparound (RA = 0 / 360). This gives the forward Jacobian ``F =
-    d(sky_arcsec)/d(pixel)``, which is then inverted to obtain ``J =
-    F^{-1} = d(pixel)/d(sky_arcsec)``. Using 1-pixel steps ensures
-    numerical stability across all pixel scales.
+    The Jacobian is computed by offsetting half a pixel either side of
+    the position in x and y, converting the resulting pixel positions to
+    sky coordinates, and differencing the tangent-plane displacements
+    in arcsec. The (xi, eta) offsets are computed from the great-circle
+    separation and position angle between the center and each offset
+    point, so the formula is well-defined at the celestial poles and
+    across the longitude wraparound (RA = 0 / 360). This gives the
+    forward Jacobian ``F = d(sky_arcsec)/d(pixel)``, which is then
+    inverted to obtain ``J = F^{-1} = d(pixel)/d(sky_arcsec)``. The
+    central difference over one pixel is exact for a distortion that is
+    locally quadratic, unlike a one-sided difference, which is biased by
+    half the curvature. Using 1-pixel steps ensures numerical stability
+    across all pixel scales.
 
     This function works with any WCS that supports
     the `astropy shared interface for WCS
@@ -344,32 +347,9 @@ def compute_local_wcs_jacobian(skycoord, wcs):
     # Reference pixel position
     x0, y0 = wcs.world_to_pixel(skycoord)
 
-    # Sky positions at 1-pixel offsets in x and y
-    sky0 = wcs.pixel_to_world(x0, y0)
-    sky_x = wcs.pixel_to_world(x0 + 1, y0)
-    sky_y = wcs.pixel_to_world(x0, y0 + 1)
-
-    # Compute tangent-plane offsets (xi, eta) in arcsec from the
-    # great-circle separation and position angle to the offset point.
-    # Position angle is measured from North (eta) toward East (xi),
-    # counterclockwise as seen on the sky from outside.
-    # This formulation is intrinsically wrap-safe (no longitude
-    # subtractions) and pole-safe (no division by cos(dec)).
-    arcsec_per_rad = 3600.0 * np.degrees(1)
-    sep_x = sky0.separation(sky_x).rad
-    pa_x = sky0.position_angle(sky_x).rad
-    sep_y = sky0.separation(sky_y).rad
-    pa_y = sky0.position_angle(sky_y).rad
-
-    dxi_x = sep_x * np.sin(pa_x) * arcsec_per_rad
-    deta_x = sep_x * np.cos(pa_x) * arcsec_per_rad
-    dxi_y = sep_y * np.sin(pa_y) * arcsec_per_rad
-    deta_y = sep_y * np.cos(pa_y) * arcsec_per_rad
-
     # Forward Jacobian F = d(sky_arcsec)/d(pixel), shape (2, 2).
     # Rows are (xi, eta), columns are (px_x, px_y).
-    forward = np.array([[dxi_x, dxi_y],
-                        [deta_x, deta_y]])
+    forward = compute_pixel_to_sky_jacobians(x0, y0, wcs)[0]
 
     # Invert to get J = d(pixel)/d(sky_arcsec)
     return np.linalg.inv(forward)
@@ -378,7 +358,7 @@ def compute_local_wcs_jacobian(skycoord, wcs):
 def compute_pixel_to_sky_jacobians(x, y, wcs):
     """
     Compute local forward WCS Jacobians for an array of pixel positions
-    using 1-pixel finite differences.
+    using central finite differences.
 
     Each 2x2 Jacobian ``F`` maps pixel-coordinate offsets to
     tangent-plane offsets in arcsec::
@@ -387,10 +367,13 @@ def compute_pixel_to_sky_jacobians(x, y, wcs):
 
     where ``xi`` is the offset along East (the Right Ascension
     direction, as a great-circle angle) and ``eta`` is the offset along
-    North (the Declination direction). The offsets are computed from the
-    great-circle separation and position angle between the center and
-    each offset point, so the formula is well-defined at the celestial
-    poles and across the longitude wraparound (RA = 0 / 360).
+    North (the Declination direction). Each derivative is the central
+    difference between the sky positions half a pixel either side of the
+    center, so it is unbiased where the distortion has curvature. The
+    offsets are computed from the great-circle separation and position
+    angle between the center and each offset point, so the formula
+    is well-defined at the celestial poles and across the longitude
+    wraparound (RA = 0 / 360).
 
     Parameters
     ----------
@@ -412,17 +395,32 @@ def compute_pixel_to_sky_jacobians(x, y, wcs):
     x = np.atleast_1d(x).astype(float)
     y = np.atleast_1d(y).astype(float)
 
+    # Sky positions at the pixel edges, half a pixel either side of the
+    # center along each axis
     sky0 = wcs.pixel_to_world(x, y)
-    sky_x = wcs.pixel_to_world(x + 1.0, y)
-    sky_y = wcs.pixel_to_world(x, y + 1.0)
+    offsets = ((wcs.pixel_to_world(x - 0.5, y),
+                wcs.pixel_to_world(x + 0.5, y)),
+               (wcs.pixel_to_world(x, y - 0.5),
+                wcs.pixel_to_world(x, y + 0.5)))
 
+    # Compute the tangent-plane offsets (xi, eta) in arcsec of each edge
+    # point from the great-circle separation and position angle to that
+    # point. The position angle is measured from North (eta) toward East
+    # (xi). This formulation is intrinsically wrap-safe (no longitude
+    # subtractions) and pole-safe (no division by cos(dec)). The central
+    # difference of the two edges gives the derivative at the pixel
+    # center.
     arcsec_per_rad = 3600.0 * np.degrees(1)
     jacobians = np.empty((x.size, 2, 2))
-    for col, sky_offset in enumerate((sky_x, sky_y)):
-        sep = np.atleast_1d(sky0.separation(sky_offset).rad)
-        pa = np.atleast_1d(sky0.position_angle(sky_offset).rad)
-        jacobians[:, 0, col] = sep * np.sin(pa) * arcsec_per_rad
-        jacobians[:, 1, col] = sep * np.cos(pa) * arcsec_per_rad
+    for col, (sky_lo, sky_hi) in enumerate(offsets):
+        sep_lo = np.atleast_1d(sky0.separation(sky_lo).rad)
+        pa_lo = np.atleast_1d(sky0.position_angle(sky_lo).rad)
+        sep_hi = np.atleast_1d(sky0.separation(sky_hi).rad)
+        pa_hi = np.atleast_1d(sky0.position_angle(sky_hi).rad)
+        dxi = sep_hi * np.sin(pa_hi) - sep_lo * np.sin(pa_lo)
+        deta = sep_hi * np.cos(pa_hi) - sep_lo * np.cos(pa_lo)
+        jacobians[:, 0, col] = dxi * arcsec_per_rad
+        jacobians[:, 1, col] = deta * arcsec_per_rad
     return jacobians
 
 
