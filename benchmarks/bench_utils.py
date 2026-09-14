@@ -8,7 +8,7 @@ of apertures (including the non-overlapping mode and concurrent
 calls from multiple threads), ``ShepardIDWInterpolator`` construction
 and evaluation, cutout generation, ``calc_total_error``, the
 NaN-ignoring statistics functions, random-coordinate generation with
-a minimum separation, and the local WCS helper functions.
+and a minimum separation.
 
 Run ``python benchmarks/bench_utils.py --help`` to see the available
 options.
@@ -24,14 +24,11 @@ from astropy.utils.exceptions import AstropyUserWarning
 from bench_helpers import (format_sweep_cells, make_image, parse_thread_counts,
                            print_environment, time_best)
 
-from photutils.datasets import make_wcs
 from photutils.utils import (CutoutImage, ImageDepth, ShepardIDWInterpolator,
                              calc_total_error)
 from photutils.utils._coords import make_random_xycoords
 from photutils.utils._stats import (nanmax, nanmean, nanmedian, nanmin, nanstd,
                                     nansum, nanvar)
-from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
-                                          wcs_pixel_scale_angle)
 from photutils.utils.cutouts import _make_cutouts
 
 APER_RADIUS = 4.0
@@ -465,35 +462,6 @@ def bench_random_coords(*, size=1000, n_coords_list=(1_000, 10_000),
         print(''.join(cells))
 
 
-def bench_wcs_helpers(*, n_iter=100, repeats=3):
-    """
-    Benchmark the per-call cost of the local WCS helper functions.
-
-    Parameters
-    ----------
-    n_iter : int, optional
-        The number of calls per timing; the per-call time is reported.
-
-    repeats : int, optional
-        The number of repeats for each timing (best time is kept).
-    """
-    wcs = make_wcs((1000, 1000))
-    skycoord = wcs.pixel_to_world(500.0, 500.0)
-
-    funcs = [('local Jacobian', compute_local_wcs_jacobian),
-             ('scale/angle', wcs_pixel_scale_angle)]
-
-    print('\n== WCS helpers (TAN WCS, per-call time) ==')
-    print(f'{"function":>16}{"time":>12}')
-    for name, func in funcs:
-        def run(func=func):
-            for _ in range(n_iter):
-                func(skycoord, wcs)
-
-        t_call = time_best(run, repeats=repeats) / n_iter
-        print(f'{name:>16}{f"{t_call * 1e6:.1f}us":>12}')
-
-
 def main():
     """
     Run the photutils.utils benchmarks.
@@ -514,7 +482,7 @@ def main():
     parser.add_argument('--which', default='all',
                         choices=['all', 'image-depth', 'depth-threads',
                                  'idw', 'cutouts', 'total-error',
-                                 'nan-stats', 'random-coords', 'wcs'],
+                                 'nan-stats', 'random-coords'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
     args = parser.parse_args()
@@ -536,8 +504,6 @@ def main():
         bench_nan_stats(repeats=args.repeats)
     if args.which in ('all', 'random-coords'):
         bench_random_coords(repeats=args.repeats)
-    if args.which in ('all', 'wcs'):
-        bench_wcs_helpers(repeats=args.repeats)
 
 
 if __name__ == '__main__':

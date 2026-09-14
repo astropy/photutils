@@ -384,6 +384,24 @@ python benchmarks/bench_background.py --which background2d \
     --sizes 2048,4096 --box-sizes 64 --n-threads 1,2,4,8
 ```
 
+## WCS helpers (`bench_wcs_helpers.py`)
+
+Benchmarks for the local WCS helper functions in
+`photutils.utils._wcs_helpers`:
+
+- the per-call cost of the scalar helpers (local Jacobian, pixel
+  scale and North angle, mean-scale and SVD conversions) on astropy
+  TAN, TAN-SIP, and gwcs transforms
+- the vectorized helpers versus the number of positions, with the
+  speedup over a per-source loop of the scalar mean-scale helper
+- the aperture `to_pixel` and `to_sky` conversions that use the
+  helpers
+
+```bash
+python benchmarks/bench_wcs_helpers.py
+python benchmarks/bench_wcs_helpers.py --which vectorized --n-positions 1000,100000
+```
+
 ## Utils (`bench_utils.py`)
 
 Benchmarks for the `photutils.utils` subpackage:
@@ -399,7 +417,6 @@ Benchmarks for the `photutils.utils` subpackage:
 - the NaN-ignoring statistics functions on float64 (bottleneck) and
   float32 (NumPy) arrays
 - `make_random_xycoords` with and without a minimum separation
-- the per-call cost of the local WCS helper functions
 
 Examples:
 
