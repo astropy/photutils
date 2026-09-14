@@ -224,6 +224,29 @@ def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
     return out_width, out_height, angle
 
 
+def _mean_singular_values(matrices):
+    """
+    Return the mean of the two singular values of 2x2 matrices.
+
+    For a 2x2 matrix the sum of the singular values satisfies ``(s1 +
+    s2)**2 = |M|_F**2 + 2 |det M|``, where ``|M|_F`` is the Frobenius
+    norm, so the mean needs no singular value decomposition.
+
+    Parameters
+    ----------
+    matrices : `~numpy.ndarray`
+        An array of shape ``(..., 2, 2)``.
+
+    Returns
+    -------
+    result : `~numpy.ndarray`
+        The mean singular value of each matrix, with shape ``(...)``.
+    """
+    frobenius_sq = np.einsum('...ij,...ij->...', matrices, matrices)
+    det = np.abs(np.linalg.det(matrices))
+    return 0.5 * np.sqrt(frobenius_sq + 2.0 * det)
+
+
 def jacobian_sky_to_pixel_mean_scale(skycoord, wcs):
     """
     Compute the pixel center and isotropic (mean) scale factor for a
@@ -269,10 +292,9 @@ def jacobian_sky_to_pixel_mean_scale(skycoord, wcs):
         of the two singular values of the Jacobian.
     """
     center, jacobian = _sky_to_pixel_jacobian(skycoord, wcs)
-    scales = np.linalg.svd(jacobian, compute_uv=False)
 
     # Mean of singular values gives the best isotropic approximation
-    return center, np.mean(scales)
+    return center, float(_mean_singular_values(jacobian))
 
 
 def jacobian_pixel_to_sky_mean_scale(pixcoord, wcs):
@@ -497,8 +519,7 @@ def compute_pixel_to_sky_mean_scales(x, y, wcs):
         The 1D array of mean scale factors (arcsec per pixel).
     """
     jacobians = compute_pixel_to_sky_jacobians(x, y, wcs)
-    scales = np.linalg.svd(jacobians, compute_uv=False)
-    return scales.mean(axis=1)
+    return _mean_singular_values(jacobians)
 
 
 def compute_pixel_scale_angles(x, y, wcs):

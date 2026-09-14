@@ -1244,3 +1244,28 @@ class TestJacobianEvaluation:
         assert np.all(np.isfinite(jac))
         assert_allclose(np.abs(np.linalg.det(jac)), WCS_CDELT_ARCSEC**2,
                         rtol=1e-6)
+
+
+class TestMeanScaleClosedForm:
+    """
+    Tests that the mean pixel scale equals the mean of the singular
+    values of the Jacobian.
+    """
+
+    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
+                                          'nonsquare_wcs', 'flipped_wcs',
+                                          'sip_wcs'])
+    def test_vectorized_matches_svd(self, wcs_name, request):
+        wcs = request.getfixturevalue(wcs_name)
+        x = np.array([3.0, 9.5, 16.2])
+        y = np.array([4.0, 9.5, 2.7])
+        scales = compute_pixel_to_sky_mean_scales(x, y, wcs)
+        jacs = compute_pixel_to_sky_jacobians(x, y, wcs)
+        expected = np.linalg.svd(jacs, compute_uv=False).mean(axis=1)
+        assert_allclose(scales, expected, rtol=1e-12)
+
+    def test_scalar_matches_svd(self, nonsquare_wcs):
+        _, scale = jacobian_sky_to_pixel_mean_scale(WCS_CENTER, nonsquare_wcs)
+        jac = compute_local_wcs_jacobian(WCS_CENTER, nonsquare_wcs)
+        expected = np.linalg.svd(jac, compute_uv=False).mean()
+        assert_allclose(scale, expected, rtol=1e-12)
