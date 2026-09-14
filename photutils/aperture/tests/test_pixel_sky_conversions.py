@@ -626,3 +626,68 @@ class TestFlippedParityWCS:
         sky_rt = sky.to_pixel(flipped_wcs).to_sky(flipped_wcs)
         diff = _angle_diff_deg(sky_rt.theta, theta_deg * u.deg)
         assert abs(diff) < 2e-5
+
+
+class _CountingWCS:
+    """
+    Wrapper that counts the WCS inversions.
+    """
+
+    def __init__(self, real_wcs):
+        self._wcs = real_wcs
+        self.has_distortion = real_wcs.has_distortion
+        self.n_world_to_pixel = 0
+
+    def pixel_to_world(self, *args, **kwargs):
+        return self._wcs.pixel_to_world(*args, **kwargs)
+
+    def world_to_pixel(self, *args, **kwargs):
+        self.n_world_to_pixel += 1
+        return self._wcs.world_to_pixel(*args, **kwargs)
+
+
+# Sky apertures and to_pixel keywords for the single-inversion tests
+_SKY_APERTURE_CASES = [
+    pytest.param(SkyCircularAperture(CENTER, r=1 * u.arcsec), {},
+                 id='circle'),
+    pytest.param(SkyCircularAnnulus(CENTER, r_in=1 * u.arcsec,
+                                    r_out=2 * u.arcsec), {},
+                 id='circle_annulus'),
+    pytest.param(SkyEllipticalAperture(CENTER, a=2 * u.arcsec,
+                                       b=1 * u.arcsec,
+                                       theta=30 * u.deg), {},
+                 id='ellipse'),
+    pytest.param(SkyEllipticalAnnulus(CENTER, a_in=1 * u.arcsec,
+                                      a_out=2 * u.arcsec,
+                                      b_out=1 * u.arcsec,
+                                      theta=30 * u.deg), {},
+                 id='ellipse_annulus'),
+    pytest.param(SkyRectangularAperture(CENTER, w=2 * u.arcsec,
+                                        h=1 * u.arcsec,
+                                        theta=30 * u.deg), {},
+                 id='rectangle'),
+    pytest.param(SkyRectangularAnnulus(CENTER, w_in=1 * u.arcsec,
+                                       w_out=2 * u.arcsec,
+                                       h_out=1 * u.arcsec,
+                                       theta=30 * u.deg), {},
+                 id='rectangle_annulus'),
+]
+
+
+class TestSingleInversion:
+    """
+    Tests that the sky-to-pixel conversions invert the WCS only once,
+    for the aperture positions, and reuse that pixel position for the
+    shape conversion.
+    """
+
+    @pytest.mark.parametrize(('aperture', 'kwargs'), _SKY_APERTURE_CASES)
+    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'sip_wcs'])
+    def test_one_inversion(self, aperture, kwargs, wcs_name, request):
+        real_wcs = request.getfixturevalue(wcs_name)
+        expected = aperture.to_pixel(real_wcs, **kwargs)
+        wcs = _CountingWCS(real_wcs)
+        result = aperture.to_pixel(wcs, **kwargs)
+        assert wcs.n_world_to_pixel == 1
+        assert type(result) is type(expected)
+        assert_allclose(result.positions, expected.positions, atol=1e-8)

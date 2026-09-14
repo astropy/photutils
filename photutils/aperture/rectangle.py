@@ -693,11 +693,12 @@ class SkyRectangularAperture(_RotatableApertureMixin, SkyAperture):
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
+        first_pixcoord = tuple(np.atleast_2d(positions)[0])
         _, pix_w, pix_h, pix_angle = sky_shape_to_pixel_svd(
             skypos, wcs,
             self.w.to_value(u.arcsec),
             self.h.to_value(u.arcsec),
-            self._theta_rad)
+            self._theta_rad, pixcoord=first_pixcoord)
 
         return RectangularAperture(positions=positions, w=pix_w, h=pix_h,
                                    theta=pix_angle)
@@ -830,16 +831,17 @@ class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
+        first_pixcoord = tuple(np.atleast_2d(positions)[0])
         _, pix_w_out, pix_h_out, pix_angle = sky_shape_to_pixel_svd(
             skypos, wcs,
             self.w_out.to_value(u.arcsec),
             self.h_out.to_value(u.arcsec),
-            self._theta_rad)
+            self._theta_rad, pixcoord=first_pixcoord)
         _, pix_w_in, pix_h_in, _ = sky_shape_to_pixel_svd(
             skypos, wcs,
             self.w_in.to_value(u.arcsec),
             self.h_in.to_value(u.arcsec),
-            self._theta_rad)
+            self._theta_rad, pixcoord=first_pixcoord)
 
         return RectangularAnnulus(positions=positions, w_in=pix_w_in,
                                   w_out=pix_w_out, h_out=pix_h_out,

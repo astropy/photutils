@@ -1174,6 +1174,7 @@ class _CountingWCS:
 
     def __init__(self, real_wcs):
         self._wcs = real_wcs
+        self.has_distortion = getattr(real_wcs, 'has_distortion', True)
         self.n_pixel_to_world = 0
         self.n_world_to_pixel = 0
 
@@ -1273,3 +1274,79 @@ class TestMeanScaleClosedForm:
         jac = compute_local_wcs_jacobian(WCS_CENTER, nonsquare_wcs)
         expected = np.linalg.svd(jac, compute_uv=False).mean()
         assert_allclose(scale, expected, rtol=1e-12)
+
+
+class TestKnownPixelPosition:
+    """
+    Tests for the ``pixcoord`` keyword of the sky-input helpers.
+
+    When the pixel position of the sky coordinate is already known,
+    the helpers must use it instead of inverting the WCS, and must
+    return the same results as when they invert it themselves. The
+    known position is taken from the WCS inverse so that both paths
+    evaluate the Jacobian at the same place.
+    """
+
+    @staticmethod
+    def _known(wcs, x, y):
+        skycoord = wcs.pixel_to_world(x, y)
+        pixcoord = tuple(float(v) for v in wcs.world_to_pixel(skycoord))
+        return skycoord, pixcoord
+
+    @pytest.fixture
+    def known(self, sip_wcs):
+        return self._known(sip_wcs, 12.0, 7.0)
+
+    def test_mean_scale_jacobian_path(self, sip_wcs, known):
+        skycoord, pixcoord = known
+        center, scale = sky_to_pixel_mean_scale(skycoord, sip_wcs)
+        wcs = _CountingWCS(sip_wcs)
+        center2, scale2 = sky_to_pixel_mean_scale(skycoord, wcs,
+                                                  pixcoord=pixcoord)
+        assert wcs.n_world_to_pixel == 0
+        assert_allclose(center2, center, atol=1e-10)
+        assert_allclose(scale2, scale, rtol=1e-12)
+
+    def test_mean_scale_offset_path(self, simple_wcs):
+        skycoord, pixcoord = self._known(simple_wcs, 12.0, 7.0)
+        center, scale = sky_to_pixel_mean_scale(skycoord, simple_wcs)
+        wcs = _CountingWCS(simple_wcs)
+        assert not wcs.has_distortion
+        center2, scale2 = sky_to_pixel_mean_scale(skycoord, wcs,
+                                                  pixcoord=pixcoord)
+        assert wcs.n_world_to_pixel == 0
+        assert_allclose(center2, center, atol=1e-10)
+        assert_allclose(scale2, scale, rtol=1e-12)
+
+    def test_scale_angle(self, sip_wcs, known):
+        skycoord, pixcoord = known
+        center, scale, angle = wcs_pixel_scale_angle(skycoord, sip_wcs)
+        wcs = _CountingWCS(sip_wcs)
+        center2, scale2, angle2 = wcs_pixel_scale_angle(skycoord, wcs,
+                                                        pixcoord=pixcoord)
+        assert wcs.n_world_to_pixel == 0
+        assert_allclose(center2, center, atol=1e-10)
+        assert_allclose(scale2, scale, rtol=1e-12)
+        assert_allclose(angle2.deg, angle.deg, atol=1e-10)
+
+    def test_svd_scales(self, sip_wcs, known):
+        skycoord, pixcoord = known
+        expected = sky_to_pixel_svd_scales(skycoord, sip_wcs)
+        wcs = _CountingWCS(sip_wcs)
+        result = sky_to_pixel_svd_scales(skycoord, wcs, pixcoord=pixcoord)
+        assert wcs.n_world_to_pixel == 0
+        assert_allclose(result[0], expected[0], atol=1e-10)
+        assert_allclose(result[1:3], expected[1:3], rtol=1e-12)
+        assert_allclose(result[3].deg, expected[3].deg, atol=1e-10)
+
+    def test_shape_svd(self, sip_wcs, known):
+        skycoord, pixcoord = known
+        args = (2.0, 1.0, 0.3)
+        expected = sky_shape_to_pixel_svd(skycoord, sip_wcs, *args)
+        wcs = _CountingWCS(sip_wcs)
+        result = sky_shape_to_pixel_svd(skycoord, wcs, *args,
+                                        pixcoord=pixcoord)
+        assert wcs.n_world_to_pixel == 0
+        assert_allclose(result[0], expected[0], atol=1e-10)
+        assert_allclose(result[1:3], expected[1:3], rtol=1e-12)
+        assert_allclose(result[3].deg, expected[3].deg, atol=1e-10)

@@ -675,11 +675,12 @@ class SkyEllipticalAperture(_RotatableApertureMixin, SkyAperture):
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
+        first_pixcoord = tuple(np.atleast_2d(positions)[0])
         _, pix_width, pix_height, pix_angle = sky_shape_to_pixel_svd(
             skypos, wcs,
             2 * self.a.to_value(u.arcsec),
             2 * self.b.to_value(u.arcsec),
-            self._theta_rad)
+            self._theta_rad, pixcoord=first_pixcoord)
 
         a = pix_width / 2
         b = pix_height / 2
@@ -810,17 +811,18 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
+        first_pixcoord = tuple(np.atleast_2d(positions)[0])
 
         _, pix_w_out, pix_h_out, pix_angle = sky_shape_to_pixel_svd(
             skypos, wcs,
             2 * self.a_out.to_value(u.arcsec),
             2 * self.b_out.to_value(u.arcsec),
-            self._theta_rad)
+            self._theta_rad, pixcoord=first_pixcoord)
         _, pix_w_in, pix_h_in, _ = sky_shape_to_pixel_svd(
             skypos, wcs,
             2 * self.a_in.to_value(u.arcsec),
             2 * self.b_in.to_value(u.arcsec),
-            self._theta_rad)
+            self._theta_rad, pixcoord=first_pixcoord)
 
         a_out = pix_w_out / 2
         b_out = pix_h_out / 2
