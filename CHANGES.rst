@@ -118,6 +118,13 @@ New Features
     order statistics (``min``, ``max``, ``median``), ``mad_std``,
     and biweight properties. [#2364]
 
+  - Added an ``as_ellipse`` keyword to the ``to_pixel`` and ``to_sky``
+    methods of ``CircularAperture``, ``CircularAnnulus``,
+    ``SkyCircularAperture``, and ``SkyCircularAnnulus``. If `True`, the
+    image of the circle under the local linear WCS is returned as an
+    elliptical aperture, which differs from a circle when the pixels are
+    not square or the WCS is sheared. [#2428]
+
   - The ``to_pixel`` methods of the sky apertures now invert the WCS
     once, for the aperture positions, and reuse that pixel position
     for the shape conversion. The elliptical and rectangular annuli

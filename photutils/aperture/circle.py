@@ -19,12 +19,17 @@ from photutils.aperture.attributes import (PixelPositions, PositiveScalar,
 from photutils.aperture.core import (PixelAperture, SkyAperture,
                                      _enable_batch_photometry,
                                      _update_method_subpixels_docstring)
+from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
+                                        SkyEllipticalAnnulus,
+                                        SkyEllipticalAperture)
 from photutils.aperture.mask import ApertureMask
 from photutils.aperture.polygon import PolygonAperture, SkyPolygonAperture
 from photutils.geometry import circular_overlap_grid
 from photutils.utils._deprecation import deprecated
 from photutils.utils._wcs_helpers import (pixel_to_sky_mean_scale,
-                                          sky_to_pixel_mean_scale)
+                                          pixel_to_sky_svd_scales,
+                                          sky_to_pixel_mean_scale,
+                                          sky_to_pixel_svd_scales)
 
 __all__ = [
     'CircularAnnulus',
@@ -233,7 +238,7 @@ class CircularAperture(PixelAperture):
                                      edges[3], nx, ny, self.r,
                                      use_exact, subpixels)
 
-    def to_sky(self, wcs):
+    def to_sky(self, wcs, *, as_ellipse=False):
         """
         Convert the aperture to a `SkyCircularAperture` object defined
         in celestial coordinates.
@@ -246,10 +251,18 @@ class CircularAperture(PixelAperture):
             <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
             (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
+        as_ellipse : bool, optional
+            If `True`, return the image of the circle under the local
+            linear WCS at the reference position, which is an ellipse
+            whenever the pixels are not square or the WCS is sheared.
+            If `False` (the default), return a circle whose radius is
+            scaled by the isotropic mean pixel scale.
+
         Returns
         -------
-        aperture : `SkyCircularAperture` object
-            A `SkyCircularAperture` object.
+        aperture : `SkyCircularAperture` or `SkyEllipticalAperture`
+            The sky aperture. A `SkyEllipticalAperture` is returned if
+            ``as_ellipse`` is `True`.
 
         Notes
         -----
@@ -265,9 +278,17 @@ class CircularAperture(PixelAperture):
         positions = wcs.pixel_to_world(xpos, ypos)
 
         first_pos = np.atleast_2d(self.positions)[0]
-        mean_scale = pixel_to_sky_mean_scale(
-            wcs, (float(first_pos[0]), float(first_pos[1])))
+        pixcoord = (float(first_pos[0]), float(first_pos[1]))
 
+        if as_ellipse:
+            scale_major, scale_minor, theta = pixel_to_sky_svd_scales(
+                wcs, pixcoord)
+            a = Angle(self.r * scale_major, 'arcsec')
+            b = Angle(self.r * scale_minor, 'arcsec')
+            return SkyEllipticalAperture(positions=positions, a=a, b=b,
+                                         theta=theta)
+
+        mean_scale = pixel_to_sky_mean_scale(wcs, pixcoord)
         r = Angle(self.r * mean_scale, 'arcsec')
         return SkyCircularAperture(positions=positions, r=r)
 
@@ -418,7 +439,7 @@ class CircularAnnulus(PixelAperture):
         np.maximum(overlap, 0.0, out=overlap)
         return overlap
 
-    def to_sky(self, wcs):
+    def to_sky(self, wcs, *, as_ellipse=False):
         """
         Convert the aperture to a `SkyCircularAnnulus` object defined in
         celestial coordinates.
@@ -431,10 +452,18 @@ class CircularAnnulus(PixelAperture):
             <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
             (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
+        as_ellipse : bool, optional
+            If `True`, return the image of the circle under the local
+            linear WCS at the reference position, which is an ellipse
+            whenever the pixels are not square or the WCS is sheared.
+            If `False` (the default), return a circle whose radius is
+            scaled by the isotropic mean pixel scale.
+
         Returns
         -------
-        aperture : `SkyCircularAnnulus` object
-            A `SkyCircularAnnulus` object.
+        aperture : `SkyCircularAnnulus` or `SkyEllipticalAnnulus`
+            The sky aperture. A `SkyEllipticalAnnulus` is returned if
+            ``as_ellipse`` is `True`.
 
         Notes
         -----
@@ -450,9 +479,20 @@ class CircularAnnulus(PixelAperture):
         positions = wcs.pixel_to_world(xpos, ypos)
 
         first_pos = np.atleast_2d(self.positions)[0]
-        mean_scale = pixel_to_sky_mean_scale(
-            wcs, (float(first_pos[0]), float(first_pos[1])))
+        pixcoord = (float(first_pos[0]), float(first_pos[1]))
 
+        if as_ellipse:
+            scale_major, scale_minor, theta = pixel_to_sky_svd_scales(
+                wcs, pixcoord)
+            return SkyEllipticalAnnulus(
+                positions=positions,
+                a_in=Angle(self.r_in * scale_major, 'arcsec'),
+                a_out=Angle(self.r_out * scale_major, 'arcsec'),
+                b_out=Angle(self.r_out * scale_minor, 'arcsec'),
+                b_in=Angle(self.r_in * scale_minor, 'arcsec'),
+                theta=theta)
+
+        mean_scale = pixel_to_sky_mean_scale(wcs, pixcoord)
         r_in = Angle(self.r_in * mean_scale, 'arcsec')
         r_out = Angle(self.r_out * mean_scale, 'arcsec')
         return SkyCircularAnnulus(positions=positions, r_in=r_in, r_out=r_out)
@@ -491,7 +531,7 @@ class SkyCircularAperture(SkyAperture):
         self.positions = positions
         self.r = r
 
-    def to_pixel(self, wcs):
+    def to_pixel(self, wcs, *, as_ellipse=False):
         """
         Convert the aperture to a `CircularAperture` object defined in
         pixel coordinates.
@@ -504,10 +544,18 @@ class SkyCircularAperture(SkyAperture):
             <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
             (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
+        as_ellipse : bool, optional
+            If `True`, return the image of the circle under the local
+            linear WCS at the reference position, which is an ellipse
+            whenever the pixels are not square or the WCS is sheared.
+            If `False` (the default), return a circle whose radius is
+            scaled by the isotropic mean pixel scale.
+
         Returns
         -------
-        aperture : `CircularAperture` object
-            A `CircularAperture` object.
+        aperture : `CircularAperture` or `EllipticalAperture`
+            The pixel aperture. An `EllipticalAperture` is returned if
+            ``as_ellipse`` is `True`.
 
         Notes
         -----
@@ -524,12 +572,18 @@ class SkyCircularAperture(SkyAperture):
 
         skypos = self.positions if self.isscalar else self.positions[0]
         first_pixcoord = tuple(np.atleast_2d(positions)[0])
+        r_arcsec = self.r.to_value(u.arcsec)
+
+        if as_ellipse:
+            _, scale_major, scale_minor, theta = sky_to_pixel_svd_scales(
+                wcs, skypos, pixcoord=first_pixcoord)
+            return EllipticalAperture(positions=positions,
+                                      a=r_arcsec * scale_major,
+                                      b=r_arcsec * scale_minor, theta=theta)
 
         _, mean_scale = sky_to_pixel_mean_scale(wcs, skypos,
                                                 pixcoord=first_pixcoord)
-
-        r = self.r.to_value(u.arcsec) * mean_scale
-        return CircularAperture(positions=positions, r=r)
+        return CircularAperture(positions=positions, r=r_arcsec * mean_scale)
 
     def to_polygon(self, *, n_vertices=100):
         """
@@ -591,7 +645,7 @@ class SkyCircularAnnulus(SkyAperture):
         self.r_in = r_in
         self.r_out = r_out
 
-    def to_pixel(self, wcs):
+    def to_pixel(self, wcs, *, as_ellipse=False):
         """
         Convert the aperture to a `CircularAnnulus` object defined in
         pixel coordinates.
@@ -604,10 +658,18 @@ class SkyCircularAnnulus(SkyAperture):
             <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_
             (e.g., `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
+        as_ellipse : bool, optional
+            If `True`, return the image of the circle under the local
+            linear WCS at the reference position, which is an ellipse
+            whenever the pixels are not square or the WCS is sheared.
+            If `False` (the default), return a circle whose radius is
+            scaled by the isotropic mean pixel scale.
+
         Returns
         -------
-        aperture : `CircularAnnulus` object
-            A `CircularAnnulus` object.
+        aperture : `CircularAnnulus` or `EllipticalAnnulus`
+            The pixel aperture. An `EllipticalAnnulus` is returned if
+            ``as_ellipse`` is `True`.
 
         Notes
         -----
@@ -624,10 +686,21 @@ class SkyCircularAnnulus(SkyAperture):
 
         skypos = self.positions if self.isscalar else self.positions[0]
         first_pixcoord = tuple(np.atleast_2d(positions)[0])
+        r_in_arcsec = self.r_in.to_value(u.arcsec)
+        r_out_arcsec = self.r_out.to_value(u.arcsec)
+
+        if as_ellipse:
+            _, scale_major, scale_minor, theta = sky_to_pixel_svd_scales(
+                wcs, skypos, pixcoord=first_pixcoord)
+            return EllipticalAnnulus(positions=positions,
+                                     a_in=r_in_arcsec * scale_major,
+                                     a_out=r_out_arcsec * scale_major,
+                                     b_out=r_out_arcsec * scale_minor,
+                                     b_in=r_in_arcsec * scale_minor,
+                                     theta=theta)
 
         _, mean_scale = sky_to_pixel_mean_scale(wcs, skypos,
                                                 pixcoord=first_pixcoord)
-
-        r_in = self.r_in.to_value(u.arcsec) * mean_scale
-        r_out = self.r_out.to_value(u.arcsec) * mean_scale
+        r_in = r_in_arcsec * mean_scale
+        r_out = r_out_arcsec * mean_scale
         return CircularAnnulus(positions=positions, r_in=r_in, r_out=r_out)
