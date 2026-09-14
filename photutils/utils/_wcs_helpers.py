@@ -561,10 +561,14 @@ def compute_pixel_scale_angles(x, y, wcs):
     axis_scales = np.linalg.norm(jacobians, axis=1)
     scales = np.sqrt(axis_scales[:, 0] * axis_scales[:, 1])
 
-    # Solve F @ step = (0, 1) for the pixel step that moves North
-    north = np.broadcast_to([0.0, 1.0], (jacobians.shape[0], 2))
-    step = np.linalg.solve(jacobians, north[..., np.newaxis])[..., 0]
-    angles = Angle(np.degrees(np.arctan2(step[:, 1], step[:, 0])) * u.deg)
+    # Solve F @ step = (0, 1) for the pixel step that moves North.
+    # For F = [[a, b], [c, d]] the solution is (-b, a) / det(F). The
+    # division keeps the sign of the determinant, which matters for a
+    # flipped-parity WCS.
+    det = np.linalg.det(jacobians)
+    step_x = -jacobians[:, 0, 1] / det
+    step_y = jacobians[:, 0, 0] / det
+    angles = Angle(np.degrees(np.arctan2(step_y, step_x)) * u.deg)
 
     return scales, angles.wrap_at(360 * u.deg)
 

@@ -1151,12 +1151,16 @@ class TestVectorizedScalesAndAngles:
         assert scales.shape == (1,)
         assert angles.shape == (1,)
 
-    def test_north_angle_direction(self, rotated_wcs):
+    @pytest.mark.parametrize('wcs_name', ['rotated_wcs', 'flipped_wcs',
+                                          'nonsquare_wcs', 'sip_wcs'])
+    def test_north_angle_direction(self, wcs_name, request):
         # Solve for the pixel step that moves exactly North on the sky
-        # and check that it points along the returned angle.
+        # and check that it points along the returned angle. The flipped
+        # WCS has a negative Jacobian determinant.
+        wcs = request.getfixturevalue(wcs_name)
         x, y = self.positions
-        _, angles = compute_pixel_scale_angles(x, y, rotated_wcs)
-        jacs = compute_pixel_to_sky_jacobians(x, y, rotated_wcs)
+        _, angles = compute_pixel_scale_angles(x, y, wcs)
+        jacs = compute_pixel_to_sky_jacobians(x, y, wcs)
         north = np.tile([0.0, 1.0], (x.size, 1))[..., np.newaxis]
         north_pix = np.linalg.solve(jacs, north)[..., 0]
         expected = np.degrees(np.arctan2(north_pix[:, 1], north_pix[:, 0]))
