@@ -93,10 +93,8 @@ def _world_to_pixel(wcs, skycoord):
 
 def _sky_to_pixel_jacobian(skycoord, wcs):
     """
-    Set up common values for sky-to-pixel Jacobian-based conversions.
-
-    Returns the pixel center, the local Jacobian matrix, and the WCS
-    parity.
+    Compute the pixel center and the local Jacobian for a sky-to-pixel
+    conversion.
 
     Parameters
     ----------
@@ -116,54 +114,11 @@ def _sky_to_pixel_jacobian(skycoord, wcs):
 
     jacobian : 2x2 `~numpy.ndarray`
         The Jacobian matrix ``d(pixel)/d(sky_arcsec)``.
-
-    parity : float
-        The sign of ``det(jacobian)`` (+1 or -1).
     """
     x0, y0 = _world_to_pixel(wcs, skycoord)
     center = (float(x0), float(y0))
-    jacobian = compute_local_wcs_jacobian(skycoord, wcs)
-    parity = np.sign(np.linalg.det(jacobian))
-    return center, jacobian, parity
-
-
-def _pixel_to_sky_jacobian(pixcoord, wcs):
-    """
-    Set up common values for pixel-to-sky Jacobian-based conversions.
-
-    Returns the sky center, the local Jacobian matrix, its inverse, and
-    the WCS parity.
-
-    Parameters
-    ----------
-    pixcoord : tuple of float
-        The ``(x, y)`` pixel coordinate of the region center.
-
-    wcs : WCS object
-        A world coordinate system (WCS) transformation that
-        supports the `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
-        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
-
-    Returns
-    -------
-    center : `~astropy.coordinates.SkyCoord`
-        The sky center position.
-
-    jacobian : 2x2 `~numpy.ndarray`
-        The Jacobian matrix ``d(pixel)/d(sky_arcsec)``.
-
-    jacobian_inv : 2x2 `~numpy.ndarray`
-        The inverse Jacobian ``d(sky_arcsec)/d(pixel)``.
-
-    parity : float
-        The sign of ``det(jacobian)`` (+1 or -1).
-    """
-    center = _pixel_to_world(wcs, pixcoord[0], pixcoord[1])
-    jacobian = compute_local_wcs_jacobian(center, wcs)
-    jacobian_inv = np.linalg.inv(jacobian)
-    parity = np.sign(np.linalg.det(jacobian))
-    return center, jacobian, jacobian_inv, parity
+    forward = compute_pixel_to_sky_jacobians(x0, y0, wcs)[0]
+    return center, np.linalg.inv(forward)
 
 
 def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
@@ -313,7 +268,7 @@ def jacobian_sky_to_pixel_mean_scale(skycoord, wcs):
         The mean scale factor (pixels per arcsec), computed as the mean
         of the two singular values of the Jacobian.
     """
-    center, jacobian, _ = _sky_to_pixel_jacobian(skycoord, wcs)
+    center, jacobian = _sky_to_pixel_jacobian(skycoord, wcs)
     scales = np.linalg.svd(jacobian, compute_uv=False)
 
     # Mean of singular values gives the best isotropic approximation
@@ -712,7 +667,9 @@ def pixel_shape_to_sky_svd(pixcoord, wcs, width, height, pixel_angle_rad):
         counterclockwise from North (the latitude/Dec axis), wrapped to
         [0, 360) degrees.
     """
-    center, _, jacobian_inv, _ = _pixel_to_sky_jacobian(pixcoord, wcs)
+    center = _pixel_to_world(wcs, pixcoord[0], pixcoord[1])
+    jacobian_inv = compute_pixel_to_sky_jacobians(pixcoord[0], pixcoord[1],
+                                                  wcs)[0]
 
     # Build M_pix: columns are pixel semi-axis vectors
     cos_a = np.cos(pixel_angle_rad)
@@ -785,7 +742,7 @@ def sky_shape_to_pixel_svd(skycoord, wcs, width_arcsec, height_arcsec,
         counterclockwise from the positive x-axis, wrapped to [0, 360)
         degrees.
     """
-    center, jacobian, _ = _sky_to_pixel_jacobian(skycoord, wcs)
+    center, jacobian = _sky_to_pixel_jacobian(skycoord, wcs)
 
     # Build M_sky: columns are sky semi-axis vectors in tangent-plane
     # coordinates (xi=East, eta=North). The width axis is at the given
@@ -856,7 +813,7 @@ def sky_to_pixel_svd_scales(skycoord, wcs):
         counterclockwise from the positive x-axis, wrapped to
         [0, 360) degrees.
     """
-    center, jacobian, _ = _sky_to_pixel_jacobian(skycoord, wcs)
+    center, jacobian = _sky_to_pixel_jacobian(skycoord, wcs)
     u_mat, s_vals, _vt = np.linalg.svd(jacobian)
 
     # Pixel angle of the major axis: direction of u_mat[:, 0] in pixel
@@ -916,7 +873,9 @@ def pixel_to_sky_svd_scales(pixcoord, wcs):
         counterclockwise from North (the latitude/Dec axis), wrapped to
         [0, 360) degrees.
     """
-    center, _, jacobian_inv, _ = _pixel_to_sky_jacobian(pixcoord, wcs)
+    center = _pixel_to_world(wcs, pixcoord[0], pixcoord[1])
+    jacobian_inv = compute_pixel_to_sky_jacobians(pixcoord[0], pixcoord[1],
+                                                  wcs)[0]
     u_mat, s_vals, _vt = np.linalg.svd(jacobian_inv)
 
     # Sky position angle (PA) of the major axis, measured from North
