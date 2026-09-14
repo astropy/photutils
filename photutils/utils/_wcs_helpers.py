@@ -6,6 +6,8 @@ Tools for WCS helpers.
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import Angle
+from astropy.wcs.wcsapi import (high_level_objects_to_values,
+                                values_to_high_level_objects)
 
 
 def _has_distortion(wcs):
@@ -13,6 +15,80 @@ def _has_distortion(wcs):
     Return True if the WCS has distortions or is non-FITS.
     """
     return getattr(wcs, 'has_distortion', True)
+
+
+def _is_gwcs(wcs):
+    """
+    Return True if the WCS looks like a gwcs object.
+
+    A gwcs object is callable and carries a bounding box. Neither is
+    true of `astropy.wcs.WCS`, which has no bounding box to bypass.
+    """
+    return callable(wcs) and hasattr(wcs, 'bounding_box')
+
+
+def _pixel_to_world(wcs, x, y):
+    """
+    Convert pixel coordinates to a sky coordinate, ignoring any gwcs
+    bounding box.
+
+    The finite differences used here step half a pixel beyond the source
+    position. For a source in the outermost pixel of the array those
+    steps fall outside a gwcs bounding box, where the gwcs high-level
+    API returns NaN. The forward transform is well defined there, so it
+    is evaluated with the bounding box disabled.
+
+    Parameters
+    ----------
+    wcs : WCS object
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+
+    x, y : float or `~numpy.ndarray`
+        The pixel coordinates.
+
+    Returns
+    -------
+    skycoord : `~astropy.coordinates.SkyCoord`
+        The sky coordinate(s).
+    """
+    if _is_gwcs(wcs):
+        values = wcs(x, y, with_bounding_box=False)
+        return values_to_high_level_objects(*values, low_level_wcs=wcs)[0]
+    return wcs.pixel_to_world(x, y)
+
+
+def _world_to_pixel(wcs, skycoord):
+    """
+    Convert a sky coordinate to pixel coordinates, ignoring any gwcs
+    bounding box.
+
+    See `_pixel_to_world` for why the bounding box is bypassed. The
+    sky offsets used to find the direction of North can likewise fall
+    outside the box for a source at the edge of the array.
+
+    Parameters
+    ----------
+    wcs : WCS object
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+
+    skycoord : `~astropy.coordinates.SkyCoord`
+        The sky coordinate(s).
+
+    Returns
+    -------
+    x, y : float or `~numpy.ndarray`
+        The pixel coordinates.
+    """
+    if _is_gwcs(wcs):
+        values = high_level_objects_to_values(skycoord, low_level_wcs=wcs)
+        return wcs.invert(*values, with_bounding_box=False)
+    return wcs.world_to_pixel(skycoord)
 
 
 def _sky_to_pixel_jacobian(skycoord, wcs):
@@ -44,7 +120,7 @@ def _sky_to_pixel_jacobian(skycoord, wcs):
     parity : float
         The sign of ``det(jacobian)`` (+1 or -1).
     """
-    x0, y0 = wcs.world_to_pixel(skycoord)
+    x0, y0 = _world_to_pixel(wcs, skycoord)
     center = (float(x0), float(y0))
     jacobian = compute_local_wcs_jacobian(skycoord, wcs)
     parity = np.sign(np.linalg.det(jacobian))
@@ -83,7 +159,7 @@ def _pixel_to_sky_jacobian(pixcoord, wcs):
     parity : float
         The sign of ``det(jacobian)`` (+1 or -1).
     """
-    center = wcs.pixel_to_world(pixcoord[0], pixcoord[1])
+    center = _pixel_to_world(wcs, pixcoord[0], pixcoord[1])
     jacobian = compute_local_wcs_jacobian(center, wcs)
     jacobian_inv = np.linalg.inv(jacobian)
     parity = np.sign(np.linalg.det(jacobian))
@@ -345,7 +421,7 @@ def compute_local_wcs_jacobian(skycoord, wcs):
         d_eta]^T``, with units of pixels/arcsec.
     """
     # Reference pixel position
-    x0, y0 = wcs.world_to_pixel(skycoord)
+    x0, y0 = _world_to_pixel(wcs, skycoord)
 
     # Forward Jacobian F = d(sky_arcsec)/d(pixel), shape (2, 2).
     # Rows are (xi, eta), columns are (px_x, px_y).
@@ -397,11 +473,11 @@ def compute_pixel_to_sky_jacobians(x, y, wcs):
 
     # Sky positions at the pixel edges, half a pixel either side of the
     # center along each axis
-    sky0 = wcs.pixel_to_world(x, y)
-    offsets = ((wcs.pixel_to_world(x - 0.5, y),
-                wcs.pixel_to_world(x + 0.5, y)),
-               (wcs.pixel_to_world(x, y - 0.5),
-                wcs.pixel_to_world(x, y + 0.5)))
+    sky0 = _pixel_to_world(wcs, x, y)
+    offsets = ((_pixel_to_world(wcs, x - 0.5, y),
+                _pixel_to_world(wcs, x + 0.5, y)),
+               (_pixel_to_world(wcs, x, y - 0.5),
+                _pixel_to_world(wcs, x, y + 0.5)))
 
     # Compute the tangent-plane offsets (xi, eta) in arcsec of each edge
     # point from the great-circle separation and position angle to that
@@ -496,7 +572,7 @@ def pixel_to_sky_mean_scale(pixcoord, wcs):
     # should use the Jacobian method to compute the pixel scales and
     # angle.
     if not _has_distortion(wcs):
-        center = wcs.pixel_to_world(pixcoord[0], pixcoord[1])
+        center = _pixel_to_world(wcs, pixcoord[0], pixcoord[1])
         _, pixscale, _ = wcs_pixel_scale_angle(center, wcs)
         return center, pixscale
 
@@ -811,15 +887,15 @@ def wcs_pixel_scale_angle(skycoord, wcs):
     takes their geometric mean.
     """
     # Convert to pixel coordinates
-    x, y = wcs.world_to_pixel(skycoord)
+    x, y = _world_to_pixel(wcs, skycoord)
     pixcoord = (float(x), float(y))
 
     # Position-dependent scale using 1-pixel offsets in x and y.
     # The pixel scale is the geometric mean of the two directional
     # scales.
-    sky0 = wcs.pixel_to_world(x, y)
-    sky_x = wcs.pixel_to_world(x + 1, y)
-    sky_y = wcs.pixel_to_world(x, y + 1)
+    sky0 = _pixel_to_world(wcs, x, y)
+    sky_x = _pixel_to_world(wcs, x + 1, y)
+    sky_y = _pixel_to_world(wcs, x, y + 1)
     cdelt_x = sky0.separation(sky_x).arcsec
     cdelt_y = sky0.separation(sky_y).arcsec
     scale = np.sqrt(cdelt_x * cdelt_y)
@@ -831,7 +907,7 @@ def wcs_pixel_scale_angle(skycoord, wcs):
     cdelt_deg = scale / 3600  # arcsec -> deg
     skycoord_offset = skycoord.directional_offset_by(
         0.0, cdelt_deg * u.deg)
-    x_offset, y_offset = wcs.world_to_pixel(skycoord_offset)
+    x_offset, y_offset = _world_to_pixel(wcs, skycoord_offset)
     dx = x_offset - x
     dy = y_offset - y
 

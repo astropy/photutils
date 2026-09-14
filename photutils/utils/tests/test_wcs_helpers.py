@@ -11,6 +11,8 @@ from astropy.io.fits import Header
 from astropy.wcs import WCS as APWCS
 from numpy.testing import assert_allclose
 
+from photutils.datasets import make_gwcs
+from photutils.utils._optional_deps import HAS_GWCS
 from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
                                           compute_pixel_to_sky_jacobians,
                                           jacobian_pixel_to_sky_mean_scale,
@@ -1035,3 +1037,47 @@ class TestCentralDifferences:
         jac = compute_local_wcs_jacobian(skycoord, wcs)
         assert_allclose(np.abs(np.diag(jac)), 1.0 / WCS_CDELT_ARCSEC,
                         rtol=1e-6)
+
+
+@pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
+class TestGWCSBoundingBox:
+    """
+    Tests that the finite differences ignore a gwcs bounding box.
+
+    The half-pixel offsets used to build the Jacobian at a source in the
+    last pixel of the array fall outside the bounding box. gwcs returns
+    NaN there when the box is honored, which would make the Jacobian of
+    every edge source NaN.
+    """
+
+    @pytest.fixture
+    def bounded_gwcs(self):
+        shape = (50, 60)
+        gwcs = make_gwcs(shape)
+        gwcs.bounding_box = ((-0.5, shape[1] - 0.5), (-0.5, shape[0] - 0.5))
+        return gwcs
+
+    def test_pixel_to_sky_jacobians_finite_at_edge(self, bounded_gwcs):
+        x = np.array([59.4, 0.0, 30.0])
+        y = np.array([10.0, 49.4, -0.4])
+        jacs = compute_pixel_to_sky_jacobians(x, y, bounded_gwcs)
+        assert np.all(np.isfinite(jacs))
+
+    def test_edge_jacobian_matches_interior(self, bounded_gwcs):
+        # The gwcs has no distortion, so the Jacobian is the same
+        # everywhere
+        jacs = compute_pixel_to_sky_jacobians(np.array([59.4, 30.0]),
+                                              np.array([10.0, 25.0]),
+                                              bounded_gwcs)
+        assert_allclose(jacs[0], jacs[1], rtol=1e-6)
+
+    def test_local_wcs_jacobian_finite_at_edge(self, bounded_gwcs):
+        skycoord = bounded_gwcs.pixel_to_world(59.4, 10.0)
+        jac = compute_local_wcs_jacobian(skycoord, bounded_gwcs)
+        assert np.all(np.isfinite(jac))
+
+    def test_pixel_scale_angle_finite_at_edge(self, bounded_gwcs):
+        skycoord = bounded_gwcs.pixel_to_world(59.4, 10.0)
+        _, scale, angle = wcs_pixel_scale_angle(skycoord, bounded_gwcs)
+        assert np.isfinite(scale)
+        assert np.isfinite(angle.deg)
