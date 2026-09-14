@@ -988,7 +988,7 @@ class TestSVDScales:
         assert 0.0 <= sky_angle.deg < 360.0
 
 
-def _make_quadratic_sip_wcs(coeff=1e-3):
+def _make_quadratic_sip_wcs(coeff=1e-3, cross=0.0):
     """
     Build a TAN-SIP WCS whose distortion is a pure quadratic in the
     pixel offset from CRPIX.
@@ -997,6 +997,11 @@ def _make_quadratic_sip_wcs(coeff=1e-3):
     is exactly CDELT. A one-sided finite difference is biased there by
     a fraction ``coeff``, while a central difference is exact for a
     quadratic.
+
+    ``cross`` adds an ``A_0_2`` term that bends the image of a step
+    North into x. It leaves the true direction of North at CRPIX along
+    +y, but a one-sided offset North is deflected by ``cross`` times the
+    step, which biases the North angle.
     """
     header = Header()
     header['NAXIS'] = 2
@@ -1015,6 +1020,7 @@ def _make_quadratic_sip_wcs(coeff=1e-3):
     header['CD2_2'] = cdelt
     header['A_ORDER'] = 2
     header['A_2_0'] = coeff
+    header['A_0_2'] = cross
     header['B_ORDER'] = 2
     header['B_0_2'] = coeff
     return APWCS(header)
@@ -1039,6 +1045,19 @@ class TestCentralDifferences:
         jac = compute_local_wcs_jacobian(skycoord, wcs)
         assert_allclose(np.abs(np.diag(jac)), 1.0 / WCS_CDELT_ARCSEC,
                         rtol=1e-6)
+
+    def test_pixel_scale_unbiased_at_crval(self):
+        wcs = _make_quadratic_sip_wcs()
+        skycoord = SkyCoord(150.0 * u.deg, 0.0 * u.deg)
+        _, scale, _ = wcs_pixel_scale_angle(skycoord, wcs)
+        assert_allclose(scale, WCS_CDELT_ARCSEC, rtol=1e-6)
+
+    def test_north_angle_unbiased_at_crval(self):
+        # CD1_1 < 0 and CD2_2 > 0, so North is along +y at CRPIX
+        wcs = _make_quadratic_sip_wcs(cross=1e-3)
+        skycoord = SkyCoord(150.0 * u.deg, 0.0 * u.deg)
+        _, _, angle = wcs_pixel_scale_angle(skycoord, wcs)
+        assert_allclose(angle.deg, 90.0, atol=1e-4)
 
 
 @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
@@ -1118,10 +1137,7 @@ class TestVectorizedScalesAndAngles:
         for i in range(x.size):
             skycoord = wcs.pixel_to_world(x[i], y[i])
             _, scale, angle = wcs_pixel_scale_angle(skycoord, wcs)
-            # The per-source scale uses one-sided 1-pixel differences,
-            # which differ from the central differences at the few 1e-6
-            # level on the arcminute-sized nonsquare pixels.
-            assert_allclose(scales[i], scale, rtol=1e-5)
+            assert_allclose(scales[i], scale, rtol=1e-6)
             assert_allclose(angles[i].deg, angle.deg, atol=1e-4)
 
     def test_angles_wrapped(self, flipped_wcs):

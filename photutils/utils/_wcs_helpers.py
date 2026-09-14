@@ -970,26 +970,29 @@ def wcs_pixel_scale_angle(skycoord, wcs):
     x, y = _world_to_pixel(wcs, skycoord)
     pixcoord = (float(x), float(y))
 
-    # Position-dependent scale using 1-pixel offsets in x and y.
+    # Position-dependent scale from the sky separation between the pixel
+    # edges half a pixel either side of the position along x and y. The
+    # central difference is exact for a locally quadratic distortion.
     # The pixel scale is the geometric mean of the two directional
     # scales.
-    sky0 = _pixel_to_world(wcs, x, y)
-    sky_x = _pixel_to_world(wcs, x + 1, y)
-    sky_y = _pixel_to_world(wcs, x, y + 1)
-    cdelt_x = sky0.separation(sky_x).arcsec
-    cdelt_y = sky0.separation(sky_y).arcsec
+    cdelt_x = _pixel_to_world(wcs, x - 0.5, y).separation(
+        _pixel_to_world(wcs, x + 0.5, y)).arcsec
+    cdelt_y = _pixel_to_world(wcs, x, y - 0.5).separation(
+        _pixel_to_world(wcs, x, y + 0.5)).arcsec
     scale = np.sqrt(cdelt_x * cdelt_y)
 
-    # Compute the angle by offsetting in latitude by exactly the local
-    # cdelt (geometric-mean pixel scale in degrees). This ensures
-    # the finite-difference derivative probes the same scale of the
-    # distortion field.
-    cdelt_deg = scale / 3600  # arcsec -> deg
-    skycoord_offset = skycoord.directional_offset_by(
-        0.0, cdelt_deg * u.deg)
-    x_offset, y_offset = _world_to_pixel(wcs, skycoord_offset)
-    dx = x_offset - x
-    dy = y_offset - y
+    # Compute the angle from the pixel positions of the points half
+    # a local cdelt (geometric-mean pixel scale) North and South
+    # of the input coordinate. Probing at the pixel scale samples
+    # the distortion field on the scale of a pixel, and the central
+    # difference cancels its curvature.
+    half_cdelt = 0.5 * scale * u.arcsec
+    sky_north = skycoord.directional_offset_by(0.0 * u.deg, half_cdelt)
+    sky_south = skycoord.directional_offset_by(180.0 * u.deg, half_cdelt)
+    x_north, y_north = _world_to_pixel(wcs, sky_north)
+    x_south, y_south = _world_to_pixel(wcs, sky_south)
+    dx = x_north - x_south
+    dy = y_north - y_south
 
     angle_rad = np.arctan2(dy, dx)
     angle = Angle(np.rad2deg(angle_rad) * u.deg).wrap_at(360 * u.deg)

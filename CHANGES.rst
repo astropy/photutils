@@ -893,11 +893,11 @@ Bug Fixes
   - Fixed a crash in ``calc_total_error`` when the input ``data`` array
     has an integer data type. [#2375]
 
-  - The local WCS Jacobian used by the aperture ``to_sky`` and
-    ``to_pixel`` methods and by the ``SourceCatalog`` sky position
-    errors is now computed with central finite differences (half a
-    pixel either side of the position) instead of a one-sided
-    1-pixel difference. [#2425]
+  - The local WCS Jacobians, pixel scales, and North angles used
+    by the aperture ``to_sky`` and ``to_pixel`` methods and by the
+    ``SourceCatalog`` sky position errors are now computed with central
+    finite differences (half a pixel either side of the position)
+    instead of one-sided 1-pixel differences. [#2425]
 
   - The WCS helper functions now evaluate a ``gwcs`` transform with its
     bounding box disabled. Previously, sources within half a pixel of
