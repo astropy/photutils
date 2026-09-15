@@ -7,8 +7,8 @@ The benchmarks cover the scaling of ``ImageDepth`` with the number
 of apertures (including the non-overlapping mode and concurrent
 calls from multiple threads), ``ShepardIDWInterpolator`` construction
 and evaluation, cutout generation, ``calc_total_error``, the
-NaN-ignoring statistics functions, random-coordinate generation with
-and a minimum separation.
+NaN-ignoring statistics functions, and random-coordinate generation
+with a minimum separation.
 
 Run ``python benchmarks/bench_utils.py --help`` to see the available
 options.
