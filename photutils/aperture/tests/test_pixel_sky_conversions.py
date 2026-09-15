@@ -729,6 +729,97 @@ _PIXEL_APERTURE_CASES = [
 ]
 
 
+class TestAnnulusIndependentInnerShape:
+    """
+    Tests that an annulus whose inner shape has a different aspect ratio
+    from the outer one converts each shape independently.
+
+    The annuli convert both shapes in one WCS evaluation. Each size must
+    match the conversion of the matching simple aperture, and the angle
+    is that of the outer shape.
+    """
+
+    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs'])
+    def test_elliptical_pixel_to_sky(self, wcs_name, request):
+        wcs = request.getfixturevalue(wcs_name)
+        theta = 45 * u.deg
+        annulus = EllipticalAnnulus(PIX_CENTER, a_in=2, a_out=4, b_out=2,
+                                    b_in=1.5, theta=theta)
+        outer = EllipticalAperture(PIX_CENTER, a=4, b=2, theta=theta)
+        inner = EllipticalAperture(PIX_CENTER, a=2, b=1.5, theta=theta)
+        sky = annulus.to_sky(wcs)
+        sky_outer = outer.to_sky(wcs)
+        sky_inner = inner.to_sky(wcs)
+        assert_quantity_allclose(sky.a_out, sky_outer.a, rtol=1e-12)
+        assert_quantity_allclose(sky.b_out, sky_outer.b, rtol=1e-12)
+        assert_quantity_allclose(sky.a_in, sky_inner.a, rtol=1e-12)
+        assert_quantity_allclose(sky.b_in, sky_inner.b, rtol=1e-12)
+        assert_quantity_allclose(sky.theta, sky_outer.theta,
+                                 atol=1e-10 * u.deg)
+
+    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs'])
+    def test_elliptical_sky_to_pixel(self, wcs_name, request):
+        wcs = request.getfixturevalue(wcs_name)
+        theta = 30 * u.deg
+        annulus = SkyEllipticalAnnulus(CENTER, a_in=1 * u.arcsec,
+                                       a_out=2 * u.arcsec,
+                                       b_out=1 * u.arcsec,
+                                       b_in=0.75 * u.arcsec, theta=theta)
+        outer = SkyEllipticalAperture(CENTER, a=2 * u.arcsec,
+                                      b=1 * u.arcsec, theta=theta)
+        inner = SkyEllipticalAperture(CENTER, a=1 * u.arcsec,
+                                      b=0.75 * u.arcsec, theta=theta)
+        pix = annulus.to_pixel(wcs)
+        pix_outer = outer.to_pixel(wcs)
+        pix_inner = inner.to_pixel(wcs)
+        assert_allclose(pix.a_out, pix_outer.a, rtol=1e-12)
+        assert_allclose(pix.b_out, pix_outer.b, rtol=1e-12)
+        assert_allclose(pix.a_in, pix_inner.a, rtol=1e-12)
+        assert_allclose(pix.b_in, pix_inner.b, rtol=1e-12)
+        assert_quantity_allclose(pix.theta, pix_outer.theta,
+                                 atol=1e-10 * u.deg)
+
+    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs'])
+    def test_rectangular_pixel_to_sky(self, wcs_name, request):
+        wcs = request.getfixturevalue(wcs_name)
+        theta = 45 * u.deg
+        annulus = RectangularAnnulus(PIX_CENTER, w_in=2, w_out=4, h_out=2,
+                                     h_in=1.5, theta=theta)
+        outer = RectangularAperture(PIX_CENTER, w=4, h=2, theta=theta)
+        inner = RectangularAperture(PIX_CENTER, w=2, h=1.5, theta=theta)
+        sky = annulus.to_sky(wcs)
+        sky_outer = outer.to_sky(wcs)
+        sky_inner = inner.to_sky(wcs)
+        assert_quantity_allclose(sky.w_out, sky_outer.w, rtol=1e-12)
+        assert_quantity_allclose(sky.h_out, sky_outer.h, rtol=1e-12)
+        assert_quantity_allclose(sky.w_in, sky_inner.w, rtol=1e-12)
+        assert_quantity_allclose(sky.h_in, sky_inner.h, rtol=1e-12)
+        assert_quantity_allclose(sky.theta, sky_outer.theta,
+                                 atol=1e-10 * u.deg)
+
+    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs'])
+    def test_rectangular_sky_to_pixel(self, wcs_name, request):
+        wcs = request.getfixturevalue(wcs_name)
+        theta = 30 * u.deg
+        annulus = SkyRectangularAnnulus(CENTER, w_in=1 * u.arcsec,
+                                        w_out=2 * u.arcsec,
+                                        h_out=1 * u.arcsec,
+                                        h_in=0.75 * u.arcsec, theta=theta)
+        outer = SkyRectangularAperture(CENTER, w=2 * u.arcsec,
+                                       h=1 * u.arcsec, theta=theta)
+        inner = SkyRectangularAperture(CENTER, w=1 * u.arcsec,
+                                       h=0.75 * u.arcsec, theta=theta)
+        pix = annulus.to_pixel(wcs)
+        pix_outer = outer.to_pixel(wcs)
+        pix_inner = inner.to_pixel(wcs)
+        assert_allclose(pix.w_out, pix_outer.w, rtol=1e-12)
+        assert_allclose(pix.h_out, pix_outer.h, rtol=1e-12)
+        assert_allclose(pix.w_in, pix_inner.w, rtol=1e-12)
+        assert_allclose(pix.h_in, pix_inner.h, rtol=1e-12)
+        assert_quantity_allclose(pix.theta, pix_outer.theta,
+                                 atol=1e-10 * u.deg)
+
+
 class TestSingleWCSEvaluation:
     """
     Tests that each conversion evaluates the WCS as few times as

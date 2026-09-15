@@ -592,6 +592,16 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
         conversion. For apertures with multiple positions used with a
         WCS that has spatially-varying distortions, this may produce
         inaccurate results for positions far from the first position.
+
+        The outer and inner rectangles are converted independently, so
+        an inner rectangle with a different aspect ratio keeps its own
+        converted sides. The annulus has a single rotation angle, which
+        is that of the converted outer rectangle. If the WCS is sheared
+        and the inner aspect ratio differs from the outer one, the
+        converted inner rectangle has a slightly different orientation,
+        so the inner shape of the returned annulus is approximate. The
+        inner sides always remain smaller than the outer sides, so the
+        result is always a valid annulus.
         """
         xpos, ypos = np.transpose(self.positions)
         positions = wcs.pixel_to_world(xpos, ypos)
@@ -828,6 +838,16 @@ class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
         conversion. For apertures with multiple positions used with a
         WCS that has spatially-varying distortions, this may produce
         inaccurate results for positions far from the first position.
+
+        The outer and inner rectangles are converted independently, so
+        an inner rectangle with a different aspect ratio keeps its own
+        converted sides. The annulus has a single rotation angle, which
+        is that of the converted outer rectangle. If the WCS is sheared
+        and the inner aspect ratio differs from the outer one, the
+        converted inner rectangle has a slightly different orientation,
+        so the inner shape of the returned annulus is approximate. The
+        inner sides always remain smaller than the outer sides, so the
+        result is always a valid annulus.
         """
         xpos, ypos = wcs.world_to_pixel(self.positions)
         positions = np.transpose((xpos, ypos))

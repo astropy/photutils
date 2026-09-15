@@ -575,6 +575,16 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
         conversion. For apertures with multiple positions used with a
         WCS that has spatially-varying distortions, this may produce
         inaccurate results for positions far from the first position.
+
+        The outer and inner ellipses are converted independently, so
+        an inner ellipse with a different aspect ratio keeps its own
+        converted axes. The annulus has a single rotation angle, which
+        is that of the converted outer ellipse. If the WCS is sheared
+        and the inner aspect ratio differs from the outer one, the
+        converted inner ellipse has a slightly different orientation,
+        so the inner shape of the returned annulus is approximate. The
+        inner axes always remain smaller than the outer axes, so the
+        result is always a valid annulus.
         """
         xpos, ypos = np.transpose(self.positions)
         positions = wcs.pixel_to_world(xpos, ypos)
@@ -807,6 +817,16 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
         conversion. For apertures with multiple positions used with a
         WCS that has spatially-varying distortions, this may produce
         inaccurate results for positions far from the first position.
+
+        The outer and inner ellipses are converted independently, so
+        an inner ellipse with a different aspect ratio keeps its own
+        converted axes. The annulus has a single rotation angle, which
+        is that of the converted outer ellipse. If the WCS is sheared
+        and the inner aspect ratio differs from the outer one, the
+        converted inner ellipse has a slightly different orientation,
+        so the inner shape of the returned annulus is approximate. The
+        inner axes always remain smaller than the outer axes, so the
+        result is always a valid annulus.
         """
         xpos, ypos = wcs.world_to_pixel(self.positions)
         positions = np.transpose((xpos, ypos))
