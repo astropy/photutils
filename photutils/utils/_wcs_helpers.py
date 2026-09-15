@@ -3,6 +3,8 @@
 Tools for WCS helpers.
 """
 
+import sys
+
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import Angle
@@ -23,12 +25,21 @@ def _low_level_wcs(wcs):
 
 def _is_gwcs(wcs):
     """
-    Return True if the low-level WCS looks like a gwcs object.
+    Return True if the low-level WCS is a `gwcs.wcs.WCS` object.
 
-    A gwcs object is callable and carries a bounding box. Neither is
-    true of `astropy.wcs.WCS`, which has no bounding box to bypass.
+    Only a gwcs object has a bounding box to bypass. A gwcs instance can
+    exist only if its defining module has been imported, so a missing
+    ``sys.modules`` entry means there is no gwcs object to detect. The
+    check never imports gwcs itself.
     """
-    return callable(wcs) and hasattr(wcs, 'bounding_box')
+    # The HAS_GWCS optional dependency flag is deliberately not used.
+    # Resolving it imports gwcs whenever it is installed, which costs
+    # tens of milliseconds on the first call even for a workflow that
+    # only ever uses astropy FITS WCS objects. The function-level
+    # imports also cost about 1 us per call. Looking up sys.modules
+    # costs about 100 ns and imports nothing.
+    gwcs_wcs = sys.modules.get('gwcs.wcs')
+    return gwcs_wcs is not None and isinstance(wcs, gwcs_wcs.WCS)
 
 
 def _to_radians(values, unit):
