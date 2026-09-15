@@ -442,8 +442,9 @@ def compute_pixel_to_sky_jacobians(x, y, wcs):
 
     Parameters
     ----------
-    x, y : `~numpy.ndarray`
-        The 1D arrays of pixel coordinates.
+    x, y : float or array_like
+        The pixel coordinates. Arrays are flattened, so the Jacobians
+        are returned in the flattened order.
 
     wcs : WCS object
         A world coordinate system (WCS) transformation that
@@ -457,8 +458,11 @@ def compute_pixel_to_sky_jacobians(x, y, wcs):
         The (N, 2, 2) array of forward Jacobians in arcsec / pixel, with
         rows ``(xi, eta)`` and columns ``(x, y)``.
     """
-    x = np.atleast_1d(x).astype(float)
-    y = np.atleast_1d(y).astype(float)
+    x = np.asarray(x, dtype=float).ravel()
+    y = np.asarray(y, dtype=float).ravel()
+    if x.size != y.size:
+        msg = 'x and y must have the same size'
+        raise ValueError(msg)
     n = x.size
 
     # Evaluate the pixel centers and the four edge points half a pixel
@@ -516,8 +520,8 @@ def compute_pixel_to_sky_mean_scales(x, y, wcs):
 
     Parameters
     ----------
-    x, y : float or `~numpy.ndarray`
-        The pixel coordinates.
+    x, y : float or array_like
+        The pixel coordinates. Arrays are flattened.
 
     wcs : WCS object
         A world coordinate system (WCS) transformation that
@@ -547,8 +551,8 @@ def compute_pixel_scale_angles(x, y, wcs):
 
     Parameters
     ----------
-    x, y : float or `~numpy.ndarray`
-        The pixel coordinates.
+    x, y : float or array_like
+        The pixel coordinates. Arrays are flattened.
 
     wcs : WCS object
         A world coordinate system (WCS) transformation that

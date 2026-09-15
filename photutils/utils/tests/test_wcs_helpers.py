@@ -1213,6 +1213,19 @@ class TestJacobianEvaluation:
     Tests for how the vectorized Jacobian evaluates the WCS.
     """
 
+    def test_flattens_inputs(self, sip_wcs):
+        yy, xx = np.mgrid[2:5, 3:7].astype(float)
+        jacs = compute_pixel_to_sky_jacobians(xx, yy, sip_wcs)
+        expected = compute_pixel_to_sky_jacobians(xx.ravel(), yy.ravel(),
+                                                  sip_wcs)
+        assert jacs.shape == (12, 2, 2)
+        assert_allclose(jacs, expected, rtol=1e-12)
+
+    def test_size_mismatch(self, sip_wcs):
+        match = 'x and y must have the same size'
+        with pytest.raises(ValueError, match=match):
+            compute_pixel_to_sky_jacobians([1.0, 2.0], [1.0], sip_wcs)
+
     def test_single_wcs_call(self, sip_wcs):
         wcs = _CountingWCS(sip_wcs)
         compute_pixel_to_sky_jacobians(np.array([5.0, 12.0]),
