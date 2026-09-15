@@ -175,7 +175,7 @@ def bench_scalar_helpers(*, shape=(2000, 2000), n_iter=50, repeats=3):
         The ``(ny, nx)`` image shape.
 
     n_iter : int, optional
-        The number of calls per timing; the per-call time is reported.
+        The number of calls per timing. The per-call time is reported.
 
     repeats : int, optional
         The number of repeats for each timing (best time is kept).
@@ -260,7 +260,7 @@ def bench_aperture_conversions(*, shape=(2000, 2000), n_iter=20, repeats=3):
         The ``(ny, nx)`` image shape.
 
     n_iter : int, optional
-        The number of calls per timing; the per-call time is reported.
+        The number of calls per timing. The per-call time is reported.
 
     repeats : int, optional
         The number of repeats for each timing (best time is kept).
@@ -311,8 +311,9 @@ def main():
                              'the vectorized-helper benchmark '
                              '(default: 100,1000,10000,100000)')
     parser.add_argument('--repeats', type=int, default=3,
-                        help='number of repeats per timing; the best '
-                             'time is reported (default: %(default)s)')
+                        help='number of repeats per timing, of which '
+                             'the best time is reported '
+                             '(default: %(default)s)')
     parser.add_argument('--which', default='all',
                         choices=['all', 'scalar', 'vectorized',
                                  'apertures'],
