@@ -266,7 +266,7 @@ class CircularAperture(PixelAperture):
 
         first_pos = np.atleast_2d(self.positions)[0]
         mean_scale = pixel_to_sky_mean_scale(
-            (float(first_pos[0]), float(first_pos[1])), wcs)
+            wcs, (float(first_pos[0]), float(first_pos[1])))
 
         r = Angle(self.r * mean_scale, 'arcsec')
         return SkyCircularAperture(positions=positions, r=r)
@@ -451,7 +451,7 @@ class CircularAnnulus(PixelAperture):
 
         first_pos = np.atleast_2d(self.positions)[0]
         mean_scale = pixel_to_sky_mean_scale(
-            (float(first_pos[0]), float(first_pos[1])), wcs)
+            wcs, (float(first_pos[0]), float(first_pos[1])))
 
         r_in = Angle(self.r_in * mean_scale, 'arcsec')
         r_out = Angle(self.r_out * mean_scale, 'arcsec')
@@ -525,7 +525,7 @@ class SkyCircularAperture(SkyAperture):
         skypos = self.positions if self.isscalar else self.positions[0]
         first_pixcoord = tuple(np.atleast_2d(positions)[0])
 
-        _, mean_scale = sky_to_pixel_mean_scale(skypos, wcs,
+        _, mean_scale = sky_to_pixel_mean_scale(wcs, skypos,
                                                 pixcoord=first_pixcoord)
 
         r = self.r.to_value(u.arcsec) * mean_scale
@@ -625,7 +625,7 @@ class SkyCircularAnnulus(SkyAperture):
         skypos = self.positions if self.isscalar else self.positions[0]
         first_pixcoord = tuple(np.atleast_2d(positions)[0])
 
-        _, mean_scale = sky_to_pixel_mean_scale(skypos, wcs,
+        _, mean_scale = sky_to_pixel_mean_scale(wcs, skypos,
                                                 pixcoord=first_pixcoord)
 
         r_in = self.r_in.to_value(u.arcsec) * mean_scale

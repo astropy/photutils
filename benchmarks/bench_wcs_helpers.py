@@ -147,20 +147,20 @@ def make_scalar_cases(skycoord, pixcoord, wcs):
     """
     width, height, angle = 2.0, 1.0, 0.5
     return [
-        ('local Jacobian', partial(compute_local_wcs_jacobian, skycoord, wcs)),
+        ('local Jacobian', partial(compute_local_wcs_jacobian, wcs, skycoord)),
         ('sky->pix mean scale',
-         partial(sky_to_pixel_mean_scale, skycoord, wcs)),
+         partial(sky_to_pixel_mean_scale, wcs, skycoord)),
         ('sky->pix SVD scales',
-         partial(sky_to_pixel_svd_scales, skycoord, wcs)),
+         partial(sky_to_pixel_svd_scales, wcs, skycoord)),
         ('sky->pix shape SVD',
-         partial(sky_shape_to_pixel_svd, skycoord, wcs, width, height,
+         partial(sky_shape_to_pixel_svd, wcs, skycoord, width, height,
                  angle)),
         ('pix->sky mean scale',
-         partial(pixel_to_sky_mean_scale, pixcoord, wcs)),
+         partial(pixel_to_sky_mean_scale, wcs, pixcoord)),
         ('pix->sky SVD scales',
-         partial(pixel_to_sky_svd_scales, pixcoord, wcs)),
+         partial(pixel_to_sky_svd_scales, wcs, pixcoord)),
         ('pix->sky shape SVD',
-         partial(pixel_shape_to_sky_svd, pixcoord, wcs, width, height,
+         partial(pixel_shape_to_sky_svd, wcs, pixcoord, width, height,
                  angle)),
     ]
 
@@ -232,7 +232,7 @@ def bench_vectorized_helpers(*, shape=(2000, 2000),
               f'{"loop speedup":>14}')
         for n_positions in n_positions_list:
             x, y = make_positions(shape, n_positions)
-            times = [time_best(partial(func, x, y, wcs), repeats=repeats)
+            times = [time_best(partial(func, wcs, x, y), repeats=repeats)
                      for _, func in vectorized]
             # Per-source loop of the scalar mean-scale helper, scaled
             # to n_positions
@@ -240,7 +240,7 @@ def bench_vectorized_helpers(*, shape=(2000, 2000),
 
             def loop(x=x, y=y, wcs=wcs, n_calls=n_calls):
                 for i in range(n_calls):
-                    pixel_to_sky_mean_scale((x[i], y[i]), wcs)
+                    pixel_to_sky_mean_scale(wcs, (x[i], y[i]))
 
             t_loop = time_best(loop, repeats=1) * n_positions / n_calls
             cells = [f'{t * 1e3:.2f}ms' for t in times]

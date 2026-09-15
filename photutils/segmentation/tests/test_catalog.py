@@ -3410,8 +3410,8 @@ def test_sky_err_from_cov():
     # Reference: compare against the vectorized Jacobian helper
     # directly (transport identity), and check the isotropic invariant
     # trace(sky_cov) = scale^2 * trace(pix_cov)
-    jac = compute_pixel_to_sky_jacobians(xycen[:, 0], xycen[:, 1],
-                                         wcs)
+    jac = compute_pixel_to_sky_jacobians(wcs, xycen[:, 0],
+                                         xycen[:, 1])
     sky_cov = jac[0] @ pix_cov[0] @ jac[0].T
     assert_allclose(sky_err.to_value('arcsec')[0],
                     np.sqrt(np.diag(sky_cov)))

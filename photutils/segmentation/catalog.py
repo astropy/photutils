@@ -2388,9 +2388,9 @@ class SourceCatalog:
         good = (np.all(np.isfinite(xycen), axis=1)
                 & np.all(np.isfinite(pix_cov), axis=(1, 2)))
         if np.any(good):
-            jac = compute_pixel_to_sky_jacobians(xycen[good, 0],
-                                                 xycen[good, 1],
-                                                 self.wcs)
+            jac = compute_pixel_to_sky_jacobians(self.wcs,
+                                                 xycen[good, 0],
+                                                 xycen[good, 1])
             # The Einstein summation computes the matrix product of the
             # Jacobian, the pixel covariance, and the Jacobian transpose
             # for each source. The result is the sky covariance matrix

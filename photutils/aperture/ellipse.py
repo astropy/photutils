@@ -346,7 +346,7 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
         sky_width, sky_height, sky_angle = pixel_shape_to_sky_svd(
-            pixcoord, wcs, 2 * self.a, 2 * self.b, self._theta_rad)
+            wcs, pixcoord, 2 * self.a, 2 * self.b, self._theta_rad)
 
         a = Angle(sky_width / 2, 'arcsec')
         b = Angle(sky_height / 2, 'arcsec')
@@ -585,7 +585,7 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
         # Convert the outer and inner ellipses with one WCS evaluation.
         # The rotation angle is that of the outer ellipse.
         sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
-            pixcoord, wcs, [2 * self.a_out, 2 * self.a_in],
+            wcs, pixcoord, [2 * self.a_out, 2 * self.a_in],
             [2 * self.b_out, 2 * self.b_in], self._theta_rad)
 
         a_out = Angle(sky_w[0] / 2, 'arcsec')
@@ -678,7 +678,7 @@ class SkyEllipticalAperture(_RotatableApertureMixin, SkyAperture):
         skypos = self.positions if self.isscalar else self.positions[0]
         first_pixcoord = tuple(np.atleast_2d(positions)[0])
         _, pix_width, pix_height, pix_angle = sky_shape_to_pixel_svd(
-            skypos, wcs,
+            wcs, skypos,
             2 * self.a.to_value(u.arcsec),
             2 * self.b.to_value(u.arcsec),
             self._theta_rad, pixcoord=first_pixcoord)
@@ -817,7 +817,7 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
         # Convert the outer and inner ellipses with one WCS evaluation.
         # The rotation angle is that of the outer ellipse.
         _, pix_w, pix_h, pix_angle = sky_shape_to_pixel_svd(
-            skypos, wcs,
+            wcs, skypos,
             [2 * self.a_out.to_value(u.arcsec),
              2 * self.a_in.to_value(u.arcsec)],
             [2 * self.b_out.to_value(u.arcsec),
