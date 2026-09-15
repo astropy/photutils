@@ -146,7 +146,8 @@ def _sky_to_pixel_jacobian(wcs, skycoord, *, pixcoord=None):
 
     pixcoord : tuple of float, optional
         The ``(x, y)`` pixel position of ``skycoord``, if already known.
-        When given, the WCS is not inverted to find it.
+        When given, the WCS is not inverted to find it and ``skycoord``
+        is not used.
 
     Returns
     -------
@@ -165,7 +166,7 @@ def _sky_to_pixel_jacobian(wcs, skycoord, *, pixcoord=None):
     return center, np.linalg.inv(forward)
 
 
-def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
+def _svd_ellipse_from_composite(m_comp, *, sky_angle=False,
                                 input_circular=False):
     """
     Extract ellipse widths, heights, and angles from composite matrices
@@ -180,11 +181,8 @@ def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
     ----------
     m_comp : `~numpy.ndarray`
         The composite matrices, with shape ``(..., 2, 2)``, whose SVD
-        gives the output ellipse axes.
-
-    width_col_idx : int, optional
-        The column index (0 or 1) of ``m_comp`` that corresponds to the
-        width semi-axis. Default is 0.
+        gives the output ellipse axes. The first column is the mapped
+        width semi-axis and the second the mapped height semi-axis.
 
     sky_angle : bool, optional
         If True, the composite matrix columns are tangent-plane (``xi``
@@ -219,7 +217,7 @@ def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
     # corresponds to the major axis. Determine whether the major axis
     # corresponds to the width or height by checking alignment with the
     # mapped width semi-axis.
-    width_col = m_comp[..., :, width_col_idx]
+    width_col = m_comp[..., :, 0]
     dot_major = np.abs(np.einsum('...i,...i->...', u_mat[..., :, 0],
                                  width_col))
     dot_minor = np.abs(np.einsum('...i,...i->...', u_mat[..., :, 1],
@@ -350,15 +348,7 @@ def compute_local_wcs_jacobian(wcs, skycoord):
         The Jacobian matrix ``J`` such that ``[dx, dy]^T ≈ J @ [d_xi,
         d_eta]^T``, with units of pixels/arcsec.
     """
-    # Reference pixel position
-    x0, y0 = _world_to_pixel(wcs, skycoord)
-
-    # Forward Jacobian F = d(sky_arcsec)/d(pixel), shape (2, 2).
-    # Rows are (xi, eta), columns are (px_x, px_y).
-    forward = compute_pixel_to_sky_jacobians(wcs, x0, y0)[0]
-
-    # Invert to get J = d(pixel)/d(sky_arcsec)
-    return np.linalg.inv(forward)
+    return _sky_to_pixel_jacobian(wcs, skycoord)[1]
 
 
 def compute_pixel_to_sky_jacobians(wcs, x, y):
@@ -516,7 +506,8 @@ def sky_to_pixel_mean_scale(wcs, skycoord, *, pixcoord=None):
 
     pixcoord : tuple of float, optional
         The ``(x, y)`` pixel position of ``skycoord``, if already known.
-        When given, the WCS is not inverted to find it.
+        When given, the WCS is not inverted to find it and ``skycoord``
+        is not used.
 
     Returns
     -------
@@ -693,7 +684,8 @@ def sky_shape_to_pixel_svd(wcs, skycoord, width_arcsec, height_arcsec,
 
     pixcoord : tuple of float, optional
         The ``(x, y)`` pixel position of ``skycoord``, if already known.
-        When given, the WCS is not inverted to find it.
+        When given, the WCS is not inverted to find it and ``skycoord``
+        is not used.
 
     Returns
     -------
@@ -778,7 +770,8 @@ def sky_to_pixel_svd_scales(wcs, skycoord, *, pixcoord=None):
 
     pixcoord : tuple of float, optional
         The ``(x, y)`` pixel position of ``skycoord``, if already known.
-        When given, the WCS is not inverted to find it.
+        When given, the WCS is not inverted to find it and ``skycoord``
+        is not used.
 
     Returns
     -------
