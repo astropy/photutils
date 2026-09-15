@@ -6,14 +6,14 @@ Tests for the wcs module.
 import astropy.units as u
 import numpy as np
 import pytest
-from astropy.io.fits import Header
 from astropy.wcs import WCS
 from astropy.wcs.utils import proj_plane_pixel_area
 from numpy.testing import assert_allclose
 
 from photutils.datasets import make_gwcs
 from photutils.utils._optional_deps import HAS_GWCS
-from photutils.utils.tests.conftest import WCS_CDELT_ARCSEC, WCS_CENTER
+from photutils.utils.tests.wcs_test_helpers import (WCS_CDELT_ARCSEC,
+                                                    WCS_CENTER, make_sip_wcs)
 from photutils.utils.wcs import compute_pixel_areas, pixel_area_map
 
 UNIFORM_AREA = WCS_CDELT_ARCSEC**2
@@ -24,26 +24,7 @@ def _make_sip_wcs(shape, coeff=2e-5):
     Build a TAN-SIP WCS whose pixel area varies smoothly across an array
     of the given shape.
     """
-    header = Header()
-    header['NAXIS'] = 2
-    header['NAXIS1'] = shape[1]
-    header['NAXIS2'] = shape[0]
-    header['CRPIX1'] = shape[1] / 2
-    header['CRPIX2'] = shape[0] / 2
-    header['CRVAL1'] = WCS_CENTER.ra.deg
-    header['CRVAL2'] = WCS_CENTER.dec.deg
-    header['CTYPE1'] = 'RA---TAN-SIP'
-    header['CTYPE2'] = 'DEC--TAN-SIP'
-    cdelt = WCS_CDELT_ARCSEC / 3600.0
-    header['CD1_1'] = -cdelt
-    header['CD1_2'] = 0.0
-    header['CD2_1'] = 0.0
-    header['CD2_2'] = cdelt
-    header['A_ORDER'] = 2
-    header['A_2_0'] = coeff
-    header['B_ORDER'] = 2
-    header['B_0_2'] = coeff
-    return WCS(header)
+    return make_sip_wcs(shape, coeffs={'A_2_0': coeff, 'B_0_2': coeff})
 
 
 def _make_wide_tan_wcs(shape, deg_per_pix=0.01):
