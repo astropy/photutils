@@ -1119,6 +1119,27 @@ class TestJacobianEvaluation:
         assert wcs.n_pixel_to_world == 1
         assert wcs.n_world_to_pixel == 0
 
+    @pytest.mark.parametrize('func', [
+        pixel_to_sky_mean_scale,
+        pixel_to_sky_svd_scales,
+        lambda pixcoord, wcs: pixel_shape_to_sky_svd(pixcoord, wcs, 2.0, 1.0,
+                                                     0.3),
+    ], ids=['mean_scale', 'svd_scales', 'shape_svd'])
+    def test_pixel_to_sky_helpers_single_call(self, sip_wcs, func):
+        # The center sky position comes from the same forward call as
+        # the Jacobian
+        pixcoord = (5.0, 12.0)
+        expected = func(pixcoord, sip_wcs)
+        wcs = _CountingWCS(sip_wcs)
+        result = func(pixcoord, wcs)
+        assert wcs.n_pixel_to_world == 1
+        assert wcs.n_world_to_pixel == 0
+        assert result[0].isscalar
+        assert_allclose(result[0].separation(expected[0]).arcsec, 0,
+                        atol=1e-9)
+        center = sip_wcs.pixel_to_world(*pixcoord)
+        assert_allclose(result[0].separation(center).arcsec, 0, atol=1e-9)
+
     @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
                                           'nonsquare_wcs', 'flipped_wcs',
                                           'sip_wcs'])

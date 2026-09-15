@@ -354,6 +354,39 @@ def compute_pixel_to_sky_jacobians(x, y, wcs):
         The (N, 2, 2) array of forward Jacobians in arcsec / pixel, with
         rows ``(xi, eta)`` and columns ``(x, y)``.
     """
+    return _pixel_to_sky_jacobians(x, y, wcs)[1]
+
+
+def _pixel_to_sky_jacobians(x, y, wcs):
+    """
+    Compute the sky positions and the local forward WCS Jacobians at an
+    array of pixel positions.
+
+    This is the implementation of `compute_pixel_to_sky_jacobians`.
+    It also returns the sky positions of the pixel centers, which the
+    single WCS call evaluates anyway, so callers that need both avoid a
+    second forward transform.
+
+    Parameters
+    ----------
+    x, y : float or array_like
+        The pixel coordinates. Arrays are flattened.
+
+    wcs : WCS object
+        A world coordinate system (WCS) transformation that
+        supports the `astropy shared interface for WCS
+        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
+        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
+
+    Returns
+    -------
+    centers : `~astropy.coordinates.SkyCoord`
+        The 1D array of sky positions of the pixel centers.
+
+    jacobians : `~numpy.ndarray`
+        The (N, 2, 2) array of forward Jacobians in arcsec / pixel, with
+        rows ``(xi, eta)`` and columns ``(x, y)``.
+    """
     x = np.asarray(x, dtype=float).ravel()
     y = np.asarray(y, dtype=float).ravel()
     if x.size != y.size:
@@ -366,8 +399,8 @@ def compute_pixel_to_sky_jacobians(x, y, wcs):
     # ordered center, -x, +x, -y, +y.
     xx = np.concatenate((x, x - 0.5, x + 0.5, x, x))
     yy = np.concatenate((y, y, y, y - 0.5, y + 0.5))
-    sky = _pixel_to_world(wcs, xx, yy).represent_as(
-        UnitSphericalRepresentation)
+    skycoords = _pixel_to_world(wcs, xx, yy)
+    sky = skycoords.represent_as(UnitSphericalRepresentation)
     lon = sky.lon.rad
     lat = sky.lat.rad
 
@@ -398,7 +431,7 @@ def compute_pixel_to_sky_jacobians(x, y, wcs):
         step = xyz[hi] - xyz[lo]
         jacobians[:, 0, col] = np.einsum('ij,ij->i', step, east)
         jacobians[:, 1, col] = np.einsum('ij,ij->i', step, north)
-    return jacobians * arcsec_per_rad
+    return skycoords[:n], jacobians * arcsec_per_rad
 
 
 def compute_pixel_to_sky_mean_scales(x, y, wcs):
@@ -563,10 +596,9 @@ def pixel_to_sky_mean_scale(pixcoord, wcs):
     mean_scale : float
         The mean scale factor (arcsec per pixel).
     """
-    center = _pixel_to_world(wcs, pixcoord[0], pixcoord[1])
-    mean_scale = compute_pixel_to_sky_mean_scales(pixcoord[0], pixcoord[1],
-                                                  wcs)[0]
-    return center, float(mean_scale)
+    centers, jacobians = _pixel_to_sky_jacobians(pixcoord[0], pixcoord[1],
+                                                 wcs)
+    return centers[0], float(_mean_singular_values(jacobians)[0])
 
 
 def pixel_shape_to_sky_svd(pixcoord, wcs, width, height, pixel_angle_rad):
@@ -622,9 +654,10 @@ def pixel_shape_to_sky_svd(pixcoord, wcs, width, height, pixel_angle_rad):
         counterclockwise from North (the latitude/Dec axis), wrapped to
         [0, 360) degrees.
     """
-    center = _pixel_to_world(wcs, pixcoord[0], pixcoord[1])
-    jacobian_inv = compute_pixel_to_sky_jacobians(pixcoord[0], pixcoord[1],
-                                                  wcs)[0]
+    centers, jacobians = _pixel_to_sky_jacobians(pixcoord[0], pixcoord[1],
+                                                 wcs)
+    center = centers[0]
+    jacobian_inv = jacobians[0]
 
     # Build M_pix: columns are pixel semi-axis vectors
     cos_a = np.cos(pixel_angle_rad)
@@ -838,9 +871,10 @@ def pixel_to_sky_svd_scales(pixcoord, wcs):
         counterclockwise from North (the latitude/Dec axis), wrapped to
         [0, 360) degrees.
     """
-    center = _pixel_to_world(wcs, pixcoord[0], pixcoord[1])
-    jacobian_inv = compute_pixel_to_sky_jacobians(pixcoord[0], pixcoord[1],
-                                                  wcs)[0]
+    centers, jacobians = _pixel_to_sky_jacobians(pixcoord[0], pixcoord[1],
+                                                 wcs)
+    center = centers[0]
+    jacobian_inv = jacobians[0]
     u_mat, s_vals, _vt = np.linalg.svd(jacobian_inv)
 
     # Sky position angle (PA) of the major axis, measured from North
