@@ -46,6 +46,23 @@ def _make_sip_wcs(shape, coeff=2e-5):
     return WCS(header)
 
 
+def _make_wide_tan_wcs(shape, deg_per_pix=0.01):
+    """
+    Build a TAN WCS whose pixels are large enough that the pixel area
+    varies non-polynomially across the field.
+
+    A quadratic SIP distortion is reproduced exactly by the bicubic
+    spline in ``pixel_area_map``, so it cannot detect an interpolation
+    error. The gnomonic area factor of a wide field can.
+    """
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = [shape[1] / 2 + 0.5, shape[0] / 2 + 0.5]
+    wcs.wcs.crval = [WCS_CENTER.ra.deg, WCS_CENTER.dec.deg]
+    wcs.wcs.cdelt = [-deg_per_pix, deg_per_pix]
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    return wcs
+
+
 def _make_cd_wcs(cd_deg):
     """
     Build a TAN WCS with the given CD matrix in degrees per pixel.
@@ -143,9 +160,23 @@ class TestPixelAreaMap:
         expected = compute_pixel_areas(wcs, xx.ravel(), yy.ravel())
         assert_allclose(area.ravel(), expected, rtol=1e-6)
 
+    def test_matches_point_values_wide_field(self):
+        shape = (300, 200)
+        wcs = _make_wide_tan_wcs(shape)
+        area = pixel_area_map(wcs, shape)
+
+        # The gnomonic projection must actually produce a gradient
+        assert np.ptp(area) / area.mean() > 1e-3
+
+        rng = np.random.default_rng(0)
+        y = rng.integers(0, shape[0], 50)
+        x = rng.integers(0, shape[1], 50)
+        expected = compute_pixel_areas(wcs, x, y)
+        assert_allclose(area[y, x], expected, rtol=1e-6)
+
     def test_step_independent(self):
         shape = (300, 200)
-        wcs = _make_sip_wcs(shape)
+        wcs = _make_wide_tan_wcs(shape)
         fine = pixel_area_map(wcs, shape, step=16)
         coarse = pixel_area_map(wcs, shape, step=128)
         assert_allclose(fine, coarse, rtol=1e-6)
