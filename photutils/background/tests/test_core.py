@@ -701,19 +701,21 @@ class TestFastFlatClip:
     def test_all_clipped_consistent_with_axis(self):
         """
         Test that when sigma clipping rejects all values, the
-        axis=None result is consistent with the axis-based result
-        (astropy keeps all values in this degenerate case).
-        Previously, the axis=None path returned NaN.
+        axis=None result is consistent with the axis-based result.
+
+        The value itself depends on the astropy version. Older
+        versions of astropy's C implementation kept all values in
+        this degenerate case (giving 50.0), while newer versions mask
+        all values (giving NaN). Both code paths must agree either way.
         """
         data = np.array([0.0, 100.0])
         sigma_clip = SigmaClip(sigma=0.1, maxiters=10)
         bkg = MeanBackground(sigma_clip=sigma_clip)
-        # astropy's C implementation emits a numpy RuntimeWarning for
-        # the NaN bound comparisons in this degenerate case
+        # Older astropy versions emit a numpy RuntimeWarning for the NaN
+        # bound comparisons in this degenerate case.
         with np.errstate(invalid='ignore'):
             value = bkg.calc_background(data)
             value_axis = bkg.calc_background(data[np.newaxis, :], axis=1)
-        assert_allclose(value, 50.0)
         assert_allclose(value, value_axis[0])
 
     def test_unsupported_sigma_clip_uses_slow_path(self):

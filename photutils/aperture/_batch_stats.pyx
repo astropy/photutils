@@ -305,9 +305,11 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
     This reproduces `astropy.stats.SigmaClip` for the no-axis, no-grow
     case. It iteratively narrows the kept range and returns the final
     lower and upper value bounds. A source survives the clip if its
-    value ``v`` satisfies ``not (v < out_min) and not (v > out_max)``,
-    so NaN bounds keep every value, matching astropy's degenerate
-    empty-set behavior.
+    value ``v`` satisfies ``not (v < out_min) and not (v > out_max)``.
+    If an iteration rejects every remaining value, the bounds from the
+    last iteration that still had data are kept, so every value is
+    clipped. This matches astropy's behavior in this degenerate case.
+    For an empty input, the bounds are NaN.
 
     For the biweight center/scale codes (astropy's 'biweight' string
     options, which use astropy's Python clipping code paths), the
@@ -358,8 +360,6 @@ cdef inline void _sigma_clip_bounds(double *s, double *work, Py_ssize_t n,
         iteration += 1
         cnt = hi - lo
         if cnt == 0:
-            minv = NAN
-            maxv = NAN
             break
 
         # The biweight center and scale need the median and the
@@ -1813,9 +1813,9 @@ def batch_sigma_clip_stats(double[:, ::1] sorted_data, double sigma_lower,
                 _sigma_clip_bounds(s, &w[0], n, sigma_lower,
                                    sigma_upper, maxiters, cenfunc_code,
                                    stdfunc_code, &minv, &maxv)
-                # A value survives if not (v < minv) and not
-                # (v > maxv), so NaN bounds keep every value, matching
-                # astropy's degenerate empty-set behavior
+                # A value survives if not (v < minv) and not (v > maxv).
+                # When the clip rejects every value, the bounds exclude
+                # all of them and cnt becomes 0.
                 while lo < n and s[lo] < minv:
                     lo += 1
                 while hi > lo and s[hi - 1] > maxv:
