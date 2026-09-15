@@ -167,6 +167,25 @@ To convert a sky aperture to a pixel aperture, use the
     >>> pix_aperture
     <CircularAperture([12.29985329, 18.700118  ], r=4.000000002260265)>
 
+By default, a circular aperture converts to a circle whose radius is
+scaled by the mean pixel scale. A circle on the sky maps to an ellipse
+in pixel coordinates (and vice versa) whenever the pixels are not square
+or the WCS is sheared. Pass ``as_ellipse=True`` to the ``to_pixel``
+or ``to_sky`` method of a circular aperture or annulus to return that
+ellipse instead. For example, with pixels that are 0.1 arcsec wide and
+0.2 arcsec tall, a 0.4 arcsec sky circle becomes a pixel ellipse with
+semi-axes of 4 and 2 pixels::
+
+    >>> from astropy.wcs import WCS
+    >>> wcs2 = WCS(naxis=2)
+    >>> wcs2.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    >>> wcs2.wcs.crval = [197.89228076, -1.36685926]
+    >>> wcs2.wcs.crpix = [50.0, 50.0]
+    >>> wcs2.wcs.cdelt = [-0.1 / 3600, 0.2 / 3600]
+    >>> ellipse = aperture.to_pixel(wcs2, as_ellipse=True)
+    >>> print(ellipse.a, ellipse.b)
+    3.999999998537498 2.0000000002783653
+
 .. note::
 
     Each aperture has a single fixed shape that is applied identically

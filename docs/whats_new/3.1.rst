@@ -787,6 +787,43 @@ once per star and the star residuals are stacked in a single vectorized
 operation.
 
 
+Circular Apertures as Ellipses
+==============================
+
+A circle on the sky maps to an ellipse in pixel coordinates whenever
+the pixels are not square or the WCS is sheared, and likewise a
+pixel circle maps to an ellipse on the sky. The ``to_pixel`` and
+``to_sky`` methods of `~photutils.aperture.CircularAperture`,
+`~photutils.aperture.CircularAnnulus`,
+`~photutils.aperture.SkyCircularAperture`, and
+`~photutils.aperture.SkyCircularAnnulus` now accept an ``as_ellipse``
+keyword. If `True`, the image of the circle under the local linear
+WCS at the reference position is returned as an ellipse instead of a
+circle scaled by the mean pixel scale. The default remains a circle, so
+existing results are unchanged::
+
+    >>> import astropy.units as u
+    >>> from astropy.coordinates import SkyCoord
+    >>> from astropy.wcs import WCS
+    >>> from photutils.aperture import SkyCircularAperture
+    >>> wcs = WCS(naxis=2)
+    >>> wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    >>> wcs.wcs.crval = [150.0, 20.0]
+    >>> wcs.wcs.crpix = [50.0, 50.0]
+    >>> wcs.wcs.cdelt = [-0.05 / 3600, 0.03 / 3600]  # non-square pixels
+    >>> aperture = SkyCircularAperture(SkyCoord(150.0, 20.0, unit='deg'),
+    ...                                r=1 * u.arcsec)
+    >>> ellipse = aperture.to_pixel(wcs, as_ellipse=True)
+    >>> repr(ellipse)
+    <EllipticalAperture([49., 49.], a=33.33333336112715, b=20.000000013646787, theta=90.00000000582446 deg)>
+
+For most imagers the pixel anisotropy is a percent or less, and the flux
+difference between the ellipse and the mean-scale circle is negligible.
+The ellipse matters for strongly rectangular pixels or a strongly
+sheared WCS, and whenever the footprint of the aperture must follow
+the WCS rather than the mean pixel scale.
+
+
 Per-Pixel Sky Areas from a WCS
 ==============================
 

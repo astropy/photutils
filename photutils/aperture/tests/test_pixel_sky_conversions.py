@@ -684,29 +684,183 @@ class TestFlippedParityWCS:
         assert abs(diff) < 2e-5
 
 
-# Sky apertures for the single-evaluation tests
+def _make_nonsquare_wcs():
+    """
+    Non-distorted TAN WCS with non-square pixels (0.03 x 0.05 deg).
+    """
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = list(PIX_CENTER)
+    wcs.wcs.crval = [CENTER.ra.deg, CENTER.dec.deg]
+    wcs.wcs.cdelt = [-0.03, 0.05]
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    return wcs
+
+
+def _pixel_ellipse_boundary(aperture, n_points=90):
+    """
+    Return the (x, y) pixel coordinates of points on the boundary of a
+    single-position elliptical pixel aperture.
+    """
+    t = np.linspace(0, 2 * np.pi, n_points, endpoint=False)
+    theta = aperture.theta
+    if not isinstance(theta, float):
+        theta = theta.to_value(u.rad)
+    x0, y0 = np.atleast_2d(aperture.positions)[0]
+    xe = aperture.a * np.cos(t)
+    ye = aperture.b * np.sin(t)
+    x = x0 + xe * np.cos(theta) - ye * np.sin(theta)
+    y = y0 + xe * np.sin(theta) + ye * np.cos(theta)
+    return x, y
+
+
+class TestCircleAsEllipse:
+    """
+    Tests for the ``as_ellipse`` keyword of the circular aperture
+    ``to_pixel`` and ``to_sky`` methods.
+
+    A circle on the sky maps to an ellipse in pixels (and vice versa)
+    whenever the pixels are not square or the WCS is sheared. The
+    keyword returns that exact ellipse instead of the mean-scale circle.
+    """
+
+    NONSQUARE_X_ARCSEC = 0.03 * 3600
+    NONSQUARE_Y_ARCSEC = 0.05 * 3600
+
+    def test_default_returns_circle(self, simple_wcs):
+        sky = SkyCircularAperture(CENTER, r=1 * u.arcsec)
+        assert isinstance(sky.to_pixel(simple_wcs), CircularAperture)
+        pix = CircularAperture(PIX_CENTER, r=2)
+        assert isinstance(pix.to_sky(simple_wcs), SkyCircularAperture)
+
+    def test_sky_to_pixel_nonsquare(self):
+        wcs = _make_nonsquare_wcs()
+        sky = SkyCircularAperture(CENTER, r=1 * u.arcsec)
+        aper = sky.to_pixel(wcs, as_ellipse=True)
+        assert isinstance(aper, EllipticalAperture)
+        assert_allclose(aper.a, 1 / self.NONSQUARE_X_ARCSEC, rtol=1e-6)
+        assert_allclose(aper.b, 1 / self.NONSQUARE_Y_ARCSEC, rtol=1e-6)
+        # The major axis is along x
+        assert_allclose(np.sin(aper.theta.to_value(u.rad)), 0, atol=1e-6)
+
+    def test_pixel_to_sky_nonsquare(self):
+        wcs = _make_nonsquare_wcs()
+        # Place the aperture on the tangent point (CRPIX is 1-based),
+        # where the pixel y axis points exactly North. One pixel away
+        # the meridians have already converged by 0.02 deg with these
+        # 0.05 deg pixels.
+        pix = CircularAperture((PIX_CENTER[0] - 1, PIX_CENTER[1] - 1), r=2)
+        aper = pix.to_sky(wcs, as_ellipse=True)
+        assert isinstance(aper, SkyEllipticalAperture)
+        y_arcsec = self.NONSQUARE_Y_ARCSEC * u.arcsec
+        x_arcsec = self.NONSQUARE_X_ARCSEC * u.arcsec
+        assert_quantity_allclose(aper.a, 2 * y_arcsec, rtol=1e-6)
+        assert_quantity_allclose(aper.b, 2 * x_arcsec, rtol=1e-6)
+        # The major axis is along y, which is North, so the position
+        # angle is 0 mod 180.
+        assert_allclose(np.sin(aper.theta.to_value(u.rad)), 0, atol=1e-6)
+
+    def test_sky_annulus_to_pixel_nonsquare(self):
+        wcs = _make_nonsquare_wcs()
+        sky = SkyCircularAnnulus(CENTER, r_in=1 * u.arcsec, r_out=2 * u.arcsec)
+        aper = sky.to_pixel(wcs, as_ellipse=True)
+        assert isinstance(aper, EllipticalAnnulus)
+        assert_allclose(aper.a_in, 1 / self.NONSQUARE_X_ARCSEC, rtol=1e-6)
+        assert_allclose(aper.a_out, 2 / self.NONSQUARE_X_ARCSEC, rtol=1e-6)
+        assert_allclose(aper.b_in, 1 / self.NONSQUARE_Y_ARCSEC, rtol=1e-6)
+        assert_allclose(aper.b_out, 2 / self.NONSQUARE_Y_ARCSEC, rtol=1e-6)
+
+    def test_pixel_annulus_to_sky_nonsquare(self):
+        wcs = _make_nonsquare_wcs()
+        pix = CircularAnnulus(PIX_CENTER, r_in=2, r_out=4)
+        aper = pix.to_sky(wcs, as_ellipse=True)
+        assert isinstance(aper, SkyEllipticalAnnulus)
+        y_arcsec = self.NONSQUARE_Y_ARCSEC * u.arcsec
+        x_arcsec = self.NONSQUARE_X_ARCSEC * u.arcsec
+        assert_quantity_allclose(aper.a_in, 2 * y_arcsec, rtol=1e-6)
+        assert_quantity_allclose(aper.a_out, 4 * y_arcsec, rtol=1e-6)
+        assert_quantity_allclose(aper.b_in, 2 * x_arcsec, rtol=1e-6)
+        assert_quantity_allclose(aper.b_out, 4 * x_arcsec, rtol=1e-6)
+
+    def test_square_pixels_give_circle(self, simple_wcs):
+        sky = SkyCircularAperture(CENTER, r=1 * u.arcsec)
+        aper = sky.to_pixel(simple_wcs, as_ellipse=True)
+        circle = sky.to_pixel(simple_wcs)
+        assert_allclose(aper.a, aper.b, rtol=1e-8)
+        assert_allclose(aper.a, circle.r, rtol=1e-8)
+
+    @pytest.mark.parametrize('wcs_name', ['sheared_wcs', 'sip_wcs'])
+    def test_pixel_ellipse_traces_sky_circle(self, wcs_name, request):
+        # Every point on the pixel ellipse boundary must lie at the
+        # circle radius from the center on the sky.
+        wcs = request.getfixturevalue(wcs_name)
+        radius = 2 * u.arcsec
+        sky = SkyCircularAperture(CENTER, r=radius)
+        aper = sky.to_pixel(wcs, as_ellipse=True)
+        x, y = _pixel_ellipse_boundary(aper)
+        separations = CENTER.separation(wcs.pixel_to_world(x, y))
+        assert_quantity_allclose(separations, radius, rtol=1e-4)
+
+    def test_sky_circle_roundtrip_through_ellipse(self, sheared_wcs):
+        sky = SkyCircularAperture(CENTER, r=2 * u.arcsec)
+        back = sky.to_pixel(sheared_wcs, as_ellipse=True).to_sky(sheared_wcs)
+        assert_quantity_allclose(back.a, 2 * u.arcsec, rtol=1e-6)
+        assert_quantity_allclose(back.b, 2 * u.arcsec, rtol=1e-6)
+
+    def test_pixel_circle_roundtrip_through_ellipse(self, sheared_wcs):
+        pix = CircularAperture(PIX_CENTER, r=3)
+        back = pix.to_sky(sheared_wcs, as_ellipse=True).to_pixel(sheared_wcs)
+        assert_allclose(back.a, 3, rtol=1e-6)
+        assert_allclose(back.b, 3, rtol=1e-6)
+
+    def test_multiple_positions(self):
+        wcs = _make_nonsquare_wcs()
+        positions = [(10.5, 10.5), (12.0, 8.0)]
+        pix = CircularAperture(positions, r=2)
+        aper = pix.to_sky(wcs, as_ellipse=True)
+        assert aper.positions.shape == (2,)
+        assert np.isscalar(aper.a.value)
+        sky = SkyCircularAperture(wcs.pixel_to_world(*np.transpose(positions)),
+                                  r=1 * u.arcsec)
+        aper = sky.to_pixel(wcs, as_ellipse=True)
+        assert aper.positions.shape == (2, 2)
+        assert np.isscalar(aper.a)
+
+    def test_as_ellipse_is_keyword_only(self, simple_wcs):
+        sky = SkyCircularAperture(CENTER, r=1 * u.arcsec)
+        match = 'positional argument'
+        with pytest.raises(TypeError, match=match):
+            sky.to_pixel(simple_wcs, True)  # noqa: FBT003
+
+
+# Sky apertures and to_pixel keywords for the single-evaluation tests
 _SKY_APERTURE_CASES = [
-    pytest.param(SkyCircularAperture(CENTER, r=1 * u.arcsec), id='circle'),
+    pytest.param(SkyCircularAperture(CENTER, r=1 * u.arcsec), {},
+                 id='circle'),
+    pytest.param(SkyCircularAperture(CENTER, r=1 * u.arcsec),
+                 {'as_ellipse': True}, id='circle_ellipse'),
+    pytest.param(SkyCircularAnnulus(CENTER, r_in=1 * u.arcsec,
+                                    r_out=2 * u.arcsec), {},
+                 id='circle_annulus'),
     pytest.param(SkyCircularAnnulus(CENTER, r_in=1 * u.arcsec,
                                     r_out=2 * u.arcsec),
-                 id='circle_annulus'),
+                 {'as_ellipse': True}, id='circle_annulus_ellipse'),
     pytest.param(SkyEllipticalAperture(CENTER, a=2 * u.arcsec,
                                        b=1 * u.arcsec,
-                                       theta=30 * u.deg),
+                                       theta=30 * u.deg), {},
                  id='ellipse'),
     pytest.param(SkyEllipticalAnnulus(CENTER, a_in=1 * u.arcsec,
                                       a_out=2 * u.arcsec,
                                       b_out=1 * u.arcsec,
-                                      theta=30 * u.deg),
+                                      theta=30 * u.deg), {},
                  id='ellipse_annulus'),
     pytest.param(SkyRectangularAperture(CENTER, w=2 * u.arcsec,
                                         h=1 * u.arcsec,
-                                        theta=30 * u.deg),
+                                        theta=30 * u.deg), {},
                  id='rectangle'),
     pytest.param(SkyRectangularAnnulus(CENTER, w_in=1 * u.arcsec,
                                        w_out=2 * u.arcsec,
                                        h_out=1 * u.arcsec,
-                                       theta=30 * u.deg),
+                                       theta=30 * u.deg), {},
                  id='rectangle_annulus'),
 ]
 
@@ -834,13 +988,13 @@ class TestSingleWCSEvaluation:
     evaluations.
     """
 
-    @pytest.mark.parametrize('aperture', _SKY_APERTURE_CASES)
+    @pytest.mark.parametrize(('aperture', 'kwargs'), _SKY_APERTURE_CASES)
     @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'sip_wcs'])
-    def test_sky_to_pixel(self, aperture, wcs_name, request):
+    def test_sky_to_pixel(self, aperture, kwargs, wcs_name, request):
         real_wcs = request.getfixturevalue(wcs_name)
-        expected = aperture.to_pixel(real_wcs)
+        expected = aperture.to_pixel(real_wcs, **kwargs)
         wcs = CountingWCS(real_wcs)
-        result = aperture.to_pixel(wcs)
+        result = aperture.to_pixel(wcs, **kwargs)
         assert wcs.n_world_to_pixel == 1
         assert wcs.n_pixel_to_world_values == 1
         assert wcs.n_pixel_to_world == 0

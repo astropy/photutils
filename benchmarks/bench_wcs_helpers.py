@@ -319,8 +319,12 @@ def bench_aperture_conversions(*, shape=(2000, 2000), n_iter=20, repeats=3):
                                             theta=30 * u.deg)
         funcs = [
             ('CircularAperture.to_sky', partial(circle.to_sky, wcs)),
+            ('CircularAperture.to_sky (ellipse)',
+             partial(circle.to_sky, wcs, as_ellipse=True)),
             ('SkyCircularAperture.to_pixel',
              partial(sky_circle.to_pixel, wcs)),
+            ('SkyCircularAperture.to_pixel (ellipse)',
+             partial(sky_circle.to_pixel, wcs, as_ellipse=True)),
             ('EllipticalAperture.to_sky', partial(ellipse.to_sky, wcs)),
             ('SkyEllipticalAperture.to_pixel',
              partial(sky_ellipse.to_pixel, wcs)),
