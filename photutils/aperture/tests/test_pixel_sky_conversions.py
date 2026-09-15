@@ -33,7 +33,7 @@ from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 SkyRectangularAnnulus, SkyRectangularAperture)
 from photutils.datasets import make_gwcs
 from photutils.utils._optional_deps import HAS_GWCS
-from photutils.utils.tests.conftest import CountingWCS
+from photutils.utils.tests.wcs_test_helpers import CountingWCS
 
 # Module constants
 CENTER = SkyCoord(100 * u.deg, 30 * u.deg)

@@ -22,8 +22,9 @@ from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
                                           sky_shape_to_pixel_svd,
                                           sky_to_pixel_mean_scale,
                                           sky_to_pixel_svd_scales)
-from photutils.utils.tests.conftest import (WCS_CDELT_ARCSEC, WCS_CENTER,
-                                            CountingWCS, make_sip_wcs)
+from photutils.utils.tests.wcs_test_helpers import (WCS_CDELT_ARCSEC,
+                                                    WCS_CENTER, CountingWCS,
+                                                    make_sip_wcs)
 
 # WCS centers that historically broke the flat-sky finite-difference
 # Jacobian and SVD shape conversions:
