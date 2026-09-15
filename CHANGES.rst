@@ -957,12 +957,15 @@ API Changes
     for scalar apertures, as documented, instead of a tuple. [#2362]
 
   - The ``to_pixel`` and ``to_sky`` methods of the circular apertures
-    now use the mean singular value of the local WCS Jacobian as the
-    isotropic pixel scale for every WCS. Previously, an undistorted
-    ``astropy.wcs.WCS`` used the geometric mean of the x and y pixel
-    scales, so the converted radii differed from those of a distorted
-    WCS with the same pixel scales. The radii are unchanged for
-    undistorted WCS with square pixels. [#2425]
+    now use the geometric mean of the two singular values of the local
+    WCS Jacobian (the square root of its absolute determinant) as the
+    isotropic pixel scale for every WCS. The scale preserves the area
+    of the mapped circle and inverts exactly, so a conversion to pixels
+    and back returns the original radius. Previously, a distorted WCS
+    or a ``gwcs`` used the arithmetic mean of the singular values, and
+    an undistorted ``astropy.wcs.WCS`` used the geometric mean of the x
+    and y pixel scales. The radii are unchanged for undistorted WCS with
+    orthogonal pixel axes. [#2425]
 
 - ``photutils.datasets``
 

@@ -224,13 +224,16 @@ def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
     return out_width, out_height, angle
 
 
-def _mean_singular_values(matrices):
+def _geometric_mean_singular_values(matrices):
     """
-    Return the mean of the two singular values of 2x2 matrices.
+    Return the geometric mean of the two singular values of 2x2
+    matrices.
 
-    For a 2x2 matrix the sum of the singular values satisfies ``(s1 +
-    s2)**2 = |M|_F**2 + 2 |det M|``, where ``|M|_F`` is the Frobenius
-    norm, so the mean needs no singular value decomposition.
+    The product of the singular values is the absolute determinant,
+    so the geometric mean is its square root and needs no singular
+    value decomposition. A circle scaled by it has the same area as the
+    ellipse that the matrix maps the unit circle to, and the geometric
+    means of a matrix and its inverse multiply to exactly one.
 
     Parameters
     ----------
@@ -240,11 +243,10 @@ def _mean_singular_values(matrices):
     Returns
     -------
     result : `~numpy.ndarray`
-        The mean singular value of each matrix, with shape ``(...)``.
+        The geometric mean singular value of each matrix, with shape
+        ``(...)``.
     """
-    frobenius_sq = np.einsum('...ij,...ij->...', matrices, matrices)
-    det = np.abs(np.linalg.det(matrices))
-    return 0.5 * np.sqrt(frobenius_sq + 2.0 * det)
+    return np.sqrt(np.abs(np.linalg.det(matrices)))
 
 
 def compute_local_wcs_jacobian(skycoord, wcs):
@@ -447,11 +449,11 @@ def compute_pixel_to_sky_mean_scales(x, y, wcs):
     positions.
 
     This is the vectorized counterpart of `pixel_to_sky_mean_scale`. The
-    scale at each position is the mean of the two singular values of
-    the local forward Jacobian ``F = d(sky_arcsec)/d(pixel)``, which is
-    the best isotropic approximation to the (potentially anisotropic)
-    mapping. It uses only the forward WCS transform, so it is fast for a
-    gwcs whose inverse must be found numerically.
+    scale at each position is the geometric mean of the two singular
+    values of the local forward Jacobian ``F = d(sky_arcsec)/d(pixel)``,
+    which is the square root of its absolute determinant. It uses only
+    the forward WCS transform, so it is fast for a gwcs whose inverse
+    must be found numerically.
 
     Parameters
     ----------
@@ -470,7 +472,7 @@ def compute_pixel_to_sky_mean_scales(x, y, wcs):
         The 1D array of mean scale factors (arcsec per pixel).
     """
     jacobians = compute_pixel_to_sky_jacobians(x, y, wcs)
-    return _mean_singular_values(jacobians)
+    return _geometric_mean_singular_values(jacobians)
 
 
 def sky_to_pixel_mean_scale(skycoord, wcs, *, pixcoord=None):
@@ -479,19 +481,21 @@ def sky_to_pixel_mean_scale(skycoord, wcs, *, pixcoord=None):
     sky-to-pixel conversion.
 
     This function is used for circular regions (circles and circle
-    annuli) where a single isotropic scale factor is needed to preserve
-    the circular shape. The scale factor is the mean of the two singular
-    values of the local Jacobian ``J = d(pixel)/d(sky_arcsec)``, which
-    are the maximum and minimum stretch factors of the mapping. Their
-    mean is the best isotropic approximation to the (potentially
-    anisotropic) Jacobian, in the sense that it minimizes the sum of
-    squared residuals between the true (elliptical) mapping and the
-    isotropic (circular) approximation.
+    annuli) where a single isotropic scale factor is needed to
+    preserve the circular shape. The scale factor is the geometric
+    mean of the two singular values of the local Jacobian ``J =
+    d(pixel)/d(sky_arcsec)``, which are the maximum and minimum stretch
+    factors of the mapping. The geometric mean is the square root of the
+    absolute determinant, so a circle scaled by it has the same area as
+    the ellipse that the mapping produces, and a conversion to pixels
+    followed by the conversion back to the sky returns the original
+    radius exactly.
 
-    For a WCS without distortion and with equal pixel scales in x and y,
-    the two singular values are equal and the mean is exact. For
-    distorted WCS or non-square pixels, the two singular values differ
-    and the mean provides a balanced compromise.
+    For a WCS without distortion and with equal pixel scales in x and
+    y, the two singular values are equal at the tangent point and the
+    scale is exact. For distorted WCS, non-square pixels, or positions
+    far from the tangent point, the two singular values differ and the
+    geometric mean is the area-preserving compromise.
 
     Parameters
     ----------
@@ -518,7 +522,7 @@ def sky_to_pixel_mean_scale(skycoord, wcs, *, pixcoord=None):
     """
     center, jacobian = _sky_to_pixel_jacobian(skycoord, wcs,
                                               pixcoord=pixcoord)
-    return center, float(_mean_singular_values(jacobian))
+    return center, float(_geometric_mean_singular_values(jacobian))
 
 
 def pixel_to_sky_mean_scale(pixcoord, wcs):
@@ -529,9 +533,10 @@ def pixel_to_sky_mean_scale(pixcoord, wcs):
     This is the inverse of `sky_to_pixel_mean_scale`. It is used for
     circular pixel regions (circles and circle annuli) where a single
     isotropic scale factor is needed to preserve the circular shape. The
-    scale factor is the mean of the two singular values of the local
-    forward Jacobian ``F = d(sky_arcsec)/d(pixel)``, which are the
-    maximum and minimum angular extents per pixel.
+    scale factor is the geometric mean of the two singular values of the
+    local forward Jacobian ``F = d(sky_arcsec)/d(pixel)``, which are
+    the maximum and minimum angular extents per pixel. It is the exact
+    inverse of the sky-to-pixel scale at the same position.
 
     Parameters
     ----------
@@ -554,7 +559,7 @@ def pixel_to_sky_mean_scale(pixcoord, wcs):
     """
     centers, jacobians = _pixel_to_sky_jacobians(pixcoord[0], pixcoord[1],
                                                  wcs)
-    return centers[0], float(_mean_singular_values(jacobians)[0])
+    return centers[0], float(_geometric_mean_singular_values(jacobians)[0])
 
 
 def pixel_shape_to_sky_svd(pixcoord, wcs, width, height, pixel_angle_rad):

@@ -247,15 +247,37 @@ class TestMeanScale:
         assert isinstance(sky_position, SkyCoord)
         assert_allclose(scale, WCS_CDELT_ARCSEC, rtol=1e-6)
 
-    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'sip_wcs'])
+    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
+                                          'nonsquare_wcs', 'flipped_wcs',
+                                          'sip_wcs'])
     def test_roundtrip_scale(self, wcs_name, request):
         """
-        Sky -> pixel mean_scale * pixel -> sky mean_scale should ~ 1.
+        Sky -> pixel mean_scale * pixel -> sky mean_scale must be
+        exactly 1, even where the Jacobian is anisotropic.
         """
         wcs = request.getfixturevalue(wcs_name)
         center_pix, s2p = sky_to_pixel_mean_scale(WCS_CENTER, wcs)
         _, p2s = pixel_to_sky_mean_scale(center_pix, wcs)
-        assert_allclose(s2p * p2s, 1.0)
+        assert_allclose(s2p * p2s, 1.0, rtol=1e-12)
+
+    def test_roundtrip_scale_off_axis(self):
+        """
+        Far from the tangent point of a wide-field TAN projection the
+        Jacobian is anisotropic even for square pixels, and the scale
+        must still invert exactly.
+        """
+        wcs = APWCS(naxis=2)
+        wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+        wcs.wcs.crpix = [50.5, 50.5]
+        wcs.wcs.crval = [WCS_CENTER.ra.deg, WCS_CENTER.dec.deg]
+        wcs.wcs.cdelt = [-0.02, 0.02]
+        pixcoord = (-50.5, 299.5)
+        jac = compute_pixel_to_sky_jacobians(*pixcoord, wcs)[0]
+        s_max, s_min = np.linalg.svd(jac, compute_uv=False)
+        assert (s_max - s_min) / (s_max + s_min) > 1e-3
+        skycoord, p2s = pixel_to_sky_mean_scale(pixcoord, wcs)
+        _, s2p = sky_to_pixel_mean_scale(skycoord, wcs)
+        assert_allclose(s2p * p2s, 1.0, rtol=1e-12)
 
     def test_center_coordinates(self, simple_wcs):
         """
@@ -268,14 +290,14 @@ class TestMeanScale:
 
     def test_nonsquare_mean_scale(self, nonsquare_wcs):
         """
-        For non-square pixels the mean scale should be the arithmetic
+        For non-square pixels the mean scale should be the geometric
         mean of the two singular values (1/cdelt_x and 1/cdelt_y in
         pix/arcsec).
         """
         _, scale = sky_to_pixel_mean_scale(WCS_CENTER, nonsquare_wcs)
         cdelt_x = 0.03 * 3600
         cdelt_y = 0.05 * 3600
-        expected = 0.5 * (1.0 / cdelt_x + 1.0 / cdelt_y)
+        expected = 1.0 / np.sqrt(cdelt_x * cdelt_y)
         assert_allclose(scale, expected, rtol=1e-6)
 
     def test_nonsquare_same_for_sip(self, nonsquare_wcs):
@@ -973,8 +995,8 @@ class TestJacobianEvaluation:
 
 class TestMeanScaleClosedForm:
     """
-    Tests that the mean pixel scale equals the mean of the singular
-    values of the Jacobian.
+    Tests that the mean pixel scale equals the geometric mean of the
+    singular values of the Jacobian.
     """
 
     @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
@@ -986,13 +1008,14 @@ class TestMeanScaleClosedForm:
         y = np.array([4.0, 9.5, 2.7])
         scales = compute_pixel_to_sky_mean_scales(x, y, wcs)
         jacs = compute_pixel_to_sky_jacobians(x, y, wcs)
-        expected = np.linalg.svd(jacs, compute_uv=False).mean(axis=1)
+        expected = np.sqrt(np.prod(np.linalg.svd(jacs, compute_uv=False),
+                                   axis=1))
         assert_allclose(scales, expected, rtol=1e-12)
 
     def test_scalar_matches_svd(self, nonsquare_wcs):
         _, scale = sky_to_pixel_mean_scale(WCS_CENTER, nonsquare_wcs)
         jac = compute_local_wcs_jacobian(WCS_CENTER, nonsquare_wcs)
-        expected = np.linalg.svd(jac, compute_uv=False).mean()
+        expected = np.sqrt(np.prod(np.linalg.svd(jac, compute_uv=False)))
         assert_allclose(scale, expected, rtol=1e-12)
 
 
