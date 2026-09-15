@@ -1278,13 +1278,17 @@ class TestFastBoxStatistics:
             assert bkg._box_stats_spec is None
             assert np.all(np.isfinite(bkg.background_mesh))
 
-    def test_degenerate_clip_keeps_all(self, monkeypatch):
+    def test_degenerate_clip_masks_all(self, monkeypatch):
         """
         Test the degenerate case where sigma clipping converges to an
         empty set.
 
-        Astropy then keeps every value (NaN bounds), and the fast path
-        must match.
+        Every value in the box is clipped, so the box has no surviving
+        pixels and its mesh value is filled by interpolation. This
+        matches astropy's corrected behavior (astropy/astropy#20393).
+        Older astropy versions instead kept every value in this case,
+        so the generic path is only compared when the installed astropy
+        agrees.
         """
         data = np.ones((2, 4))
         data[0:2, 2:4] = [[0.0, 0.0], [100.0, 100.0]]
@@ -1293,14 +1297,21 @@ class TestFastBoxStatistics:
                   'exclude_percentile': 100.0, 'sigma_clip': sigma_clip}
 
         bkg_fast = Background2D(data, **kwargs)
-        # The generic path (astropy's gufunc) emits a numpy
-        # RuntimeWarning for the NaN bound comparisons in this
-        # degenerate case. The fast path does not.
+        assert bkg_fast._box_stats_spec is not None
+        assert_equal(bkg_fast.n_pixels_mesh, [[4, 0]])
+        assert_allclose(bkg_fast.background_mesh, 1.0)
+
+        # Older astropy versions (<8.0.2) emit a numpy RuntimeWarning
+        # for the NaN bound comparisons in this degenerate case.
         with np.errstate(invalid='ignore'):
-            bkg_generic = _make_generic_background2d(monkeypatch, data,
-                                                     **kwargs)
+            clipped = sigma_clip(data[:, 2:4].ravel(), axis=0, masked=True)
+        if not np.all(clipped.mask):
+            pytest.skip('installed astropy keeps all values when sigma '
+                        'clipping rejects every value')
+
+        bkg_generic = _make_generic_background2d(monkeypatch, data,
+                                                 **kwargs)
         assert_equal(bkg_fast.n_pixels_mesh, bkg_generic.n_pixels_mesh)
-        assert bkg_fast.n_pixels_mesh[0, 1] == 4  # all values kept
         assert_allclose(bkg_fast.background_mesh,
                         bkg_generic.background_mesh, rtol=1e-10)
 

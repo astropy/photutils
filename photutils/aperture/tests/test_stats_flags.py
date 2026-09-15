@@ -229,7 +229,7 @@ class TestSigmaClipFlags:
     def test_all_clipped(self, unit_data):
         """
         Test the all_clipped flag using a SigmaClip subclass that rejects
-        every pixel (only reachable via the mask-based path).
+        every pixel via the mask-based path.
         """
         class _ClipAll(SigmaClip):
             def __call__(self, data, **kwargs):  # noqa: ARG002
@@ -242,6 +242,28 @@ class TestSigmaClipFlags:
         # forcing the mask-based path
         sigclip = _ClipAll(cenfunc=np.ma.median)
         stats = ApertureStats(data, aper, sigma_clip=sigclip)
+        assert stats.flags == (APERTURE_FLAGS.SIGMA_CLIPPED
+                               | APERTURE_FLAGS.ALL_CLIPPED)
+        assert np.isnan(stats.mean)
+
+    def test_all_clipped_fast_path(self):
+        """
+        Test the all_clipped flag when the fast clipping kernel rejects
+        every pixel.
+
+        Sigma clipping two very different values with a tiny sigma
+        converges to an empty set. The kernel then keeps the bounds
+        from the last iteration that still had data, so every pixel is
+        clipped. This matches astropy's fast C sigma clipping.
+        """
+        data = np.zeros((25, 25))
+        data[12, 13] = 100.0
+        # The r=0.6 center footprint contains exactly the two pixels
+        # (12, 12) and (12, 13), with values 0 and 100.
+        aper = CircularAperture((12.5, 12), r=0.6)
+        sigclip = SigmaClip(sigma=0.1, maxiters=10)
+        stats = ApertureStats(data, aper, sigma_clip=sigclip)
+        assert stats._batch_inputs is not None
         assert stats.flags == (APERTURE_FLAGS.SIGMA_CLIPPED
                                | APERTURE_FLAGS.ALL_CLIPPED)
         assert np.isnan(stats.mean)
