@@ -1184,6 +1184,10 @@ API Changes
     ``deblend_nonposmin`` flag are unchanged and continue to record
     the affected sources. [#2410]
 
+  - ``detect_sources`` now emits an ``AstropyUserWarning`` if the
+    ``threshold`` is negative or, for a threshold array, has any
+    negative values. [#2429]
+
 - ``photutils.utils``
 
   - The ``ShepardIDWInterpolator`` ``ncoords`` attribute has been

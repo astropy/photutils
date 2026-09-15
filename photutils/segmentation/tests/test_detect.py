@@ -3,10 +3,13 @@
 Tests for the detect module.
 """
 
+import warnings
+
 import astropy.units as u
 import numpy as np
 import pytest
 from astropy.stats import SigmaClip
+from astropy.utils.exceptions import AstropyUserWarning
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.segmentation.detect import detect_sources, detect_threshold
@@ -224,6 +227,75 @@ class TestDetectSources:
             detect_sources(self.data, threshold=0.9 * u.Jy, n_pixels=2)
         with pytest.raises(ValueError, match=match):
             detect_sources(self.data << u.uJy, threshold=0.9 * u.m, n_pixels=2)
+
+    @pytest.mark.parametrize('threshold', [-1.0, -1e-6])
+    def test_negative_scalar_threshold(self, threshold):
+        """
+        Test that a negative scalar threshold emits a warning and that
+        the detection still proceeds.
+        """
+        match = f'threshold is negative \\({threshold}\\)'
+        with pytest.warns(AstropyUserWarning, match=match):
+            segm = detect_sources(self.data, threshold=threshold,
+                                  n_pixels=2)
+        assert segm is not None
+        assert segm.n_labels == 1
+
+    def test_negative_quantity_threshold(self):
+        """
+        Test that the warning is emitted for a Quantity threshold.
+        """
+        match = 'threshold is negative'
+        with pytest.warns(AstropyUserWarning, match=match):
+            detect_sources(self.data << u.uJy, threshold=-1.0 * u.uJy,
+                           n_pixels=2)
+
+        threshold = np.full(self.data.shape, 0.9) << u.uJy
+        threshold[0, 0] = -1.0 * u.uJy
+        match = r'threshold has 1 negative value\(s\)'
+        with pytest.warns(AstropyUserWarning, match=match):
+            detect_sources(self.data << u.uJy, threshold=threshold,
+                           n_pixels=2)
+
+    def test_negative_array_threshold(self):
+        """
+        Test that a threshold array with negative values emits a
+        warning that counts only the negative values and that the
+        detection still proceeds.
+        """
+        threshold = np.full(self.data.shape, 0.9)
+        threshold[0, 0] = 0.0
+        threshold[2, 2] = -1.0
+        match = r'threshold has 1 negative value\(s\)'
+        with pytest.warns(AstropyUserWarning, match=match):
+            segm = detect_sources(self.data, threshold=threshold,
+                                  n_pixels=2)
+        # The zero-valued pixel above the negative threshold joins the
+        # source through its corner
+        expected = self.refdata.copy()
+        expected[2, 2] = 1
+        assert_equal(segm.data, expected)
+
+    def test_nonnegative_threshold_no_warning(self):
+        """
+        Test that zero and positive thresholds, including an array with
+        zero and NaN values, do not emit the warning.
+
+        Pixels must be strictly greater than the threshold, so a zero
+        threshold cannot include pixels with zero or negative values.
+        """
+        threshold = np.full(self.data.shape, 0.9)
+        threshold[0, 0] = np.nan
+        threshold[1, 1] = 0.0
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            segm = detect_sources(self.data, threshold=threshold,
+                                  n_pixels=2)
+            assert_equal(segm.data, self.refdata)
+            segm = detect_sources(self.data, threshold=0.0, n_pixels=2)
+            assert_equal(segm.data, self.refdata)
+            segm = detect_sources(self.data, threshold=1e-6, n_pixels=2)
+            assert_equal(segm.data, self.refdata)
 
     def test_small_sources(self):
         """
