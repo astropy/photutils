@@ -3,6 +3,8 @@
 Tests for the wcs module.
 """
 
+import warnings
+
 import astropy.units as u
 import numpy as np
 import pytest
@@ -41,6 +43,23 @@ def _make_wide_tan_wcs(shape, deg_per_pix=0.01):
     wcs.wcs.crval = [WCS_CENTER.ra.deg, WCS_CENTER.dec.deg]
     wcs.wcs.cdelt = [-deg_per_pix, deg_per_pix]
     wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    return wcs
+
+
+ALLSKY_SHAPE = (180, 360)
+
+
+def _make_allsky_wcs(projection):
+    """
+    Build an all-sky WCS with 1 degree pixels in the given
+    projection (e.g., ``'CAR'`` or ``'AIT'``) for an array of shape
+    ``ALLSKY_SHAPE``.
+    """
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = [ALLSKY_SHAPE[1] / 2 + 0.5, ALLSKY_SHAPE[0] / 2 + 0.5]
+    wcs.wcs.crval = [0.0, 0.0]
+    wcs.wcs.cdelt = [-1.0, 1.0]
+    wcs.wcs.ctype = [f'RA---{projection}', f'DEC--{projection}']
     return wcs
 
 
@@ -101,6 +120,24 @@ class TestComputePixelAreas:
         area = compute_pixel_areas(flipped_wcs, 10.0, 10.0)
         assert area > 0
         assert_allclose(area, UNIFORM_AREA, rtol=1e-6)
+
+    @pytest.mark.parametrize('bad', [np.nan, np.inf, -np.inf])
+    def test_nonfinite_position(self, simple_wcs, bad):
+        x = np.array([10.0, bad, 10.0])
+        y = np.array([10.0, 10.0, bad])
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            areas = compute_pixel_areas(simple_wcs, x, y)
+        assert_allclose(areas[0], UNIFORM_AREA, rtol=1e-6)
+        assert np.all(np.isnan(areas[1:]))
+
+    def test_outside_projection(self):
+        # An all-sky Aitoff map has corners outside the projection
+        wcs = _make_allsky_wcs('AIT')
+        areas = compute_pixel_areas(wcs, [0.0, 180.0], [0.0, 90.0])
+        assert np.isnan(areas[0])
+        assert np.isfinite(areas[1])
+        assert areas[1] > 0
 
     def test_varies_with_distortion(self):
         wcs = _make_sip_wcs((200, 200))
