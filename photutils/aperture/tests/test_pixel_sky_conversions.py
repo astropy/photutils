@@ -629,30 +629,29 @@ class TestFlippedParityWCS:
         assert abs(diff) < 2e-5
 
 
-# Sky apertures and to_pixel keywords for the single-evaluation tests
+# Sky apertures for the single-evaluation tests
 _SKY_APERTURE_CASES = [
-    pytest.param(SkyCircularAperture(CENTER, r=1 * u.arcsec), {},
-                 id='circle'),
+    pytest.param(SkyCircularAperture(CENTER, r=1 * u.arcsec), id='circle'),
     pytest.param(SkyCircularAnnulus(CENTER, r_in=1 * u.arcsec,
-                                    r_out=2 * u.arcsec), {},
+                                    r_out=2 * u.arcsec),
                  id='circle_annulus'),
     pytest.param(SkyEllipticalAperture(CENTER, a=2 * u.arcsec,
                                        b=1 * u.arcsec,
-                                       theta=30 * u.deg), {},
+                                       theta=30 * u.deg),
                  id='ellipse'),
     pytest.param(SkyEllipticalAnnulus(CENTER, a_in=1 * u.arcsec,
                                       a_out=2 * u.arcsec,
                                       b_out=1 * u.arcsec,
-                                      theta=30 * u.deg), {},
+                                      theta=30 * u.deg),
                  id='ellipse_annulus'),
     pytest.param(SkyRectangularAperture(CENTER, w=2 * u.arcsec,
                                         h=1 * u.arcsec,
-                                        theta=30 * u.deg), {},
+                                        theta=30 * u.deg),
                  id='rectangle'),
     pytest.param(SkyRectangularAnnulus(CENTER, w_in=1 * u.arcsec,
                                        w_out=2 * u.arcsec,
                                        h_out=1 * u.arcsec,
-                                       theta=30 * u.deg), {},
+                                       theta=30 * u.deg),
                  id='rectangle_annulus'),
 ]
 
@@ -682,21 +681,23 @@ class TestSingleWCSEvaluation:
 
     A sky-to-pixel conversion inverts the WCS once, for the aperture
     positions, reuses that pixel position for the shape conversion,
-    and evaluates the forward transform once for the local Jacobian. A
-    pixel-to-sky conversion evaluates the forward transform once for
-    the positions and once for the Jacobian. The annuli convert both of
-    their shapes within those same evaluations.
+    and evaluates the low-level forward transform once for the local
+    Jacobian. A pixel-to-sky conversion evaluates the high-level forward
+    transform once for the positions and the low-level one once for the
+    Jacobian. The annuli convert both of their shapes within those same
+    evaluations.
     """
 
-    @pytest.mark.parametrize(('aperture', 'kwargs'), _SKY_APERTURE_CASES)
+    @pytest.mark.parametrize('aperture', _SKY_APERTURE_CASES)
     @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'sip_wcs'])
-    def test_sky_to_pixel(self, aperture, kwargs, wcs_name, request):
+    def test_sky_to_pixel(self, aperture, wcs_name, request):
         real_wcs = request.getfixturevalue(wcs_name)
-        expected = aperture.to_pixel(real_wcs, **kwargs)
+        expected = aperture.to_pixel(real_wcs)
         wcs = CountingWCS(real_wcs)
-        result = aperture.to_pixel(wcs, **kwargs)
+        result = aperture.to_pixel(wcs)
         assert wcs.n_world_to_pixel == 1
-        assert wcs.n_pixel_to_world == 1
+        assert wcs.n_pixel_to_world_values == 1
+        assert wcs.n_pixel_to_world == 0
         assert type(result) is type(expected)
         assert_allclose(result.positions, expected.positions, atol=1e-8)
 
@@ -708,6 +709,7 @@ class TestSingleWCSEvaluation:
         wcs = CountingWCS(real_wcs)
         result = aperture.to_sky(wcs)
         assert wcs.n_world_to_pixel == 0
-        assert wcs.n_pixel_to_world == 2
+        assert wcs.n_pixel_to_world == 1
+        assert wcs.n_pixel_to_world_values == 1
         assert type(result) is type(expected)
         assert result.positions.separation(expected.positions).arcsec < 1e-9

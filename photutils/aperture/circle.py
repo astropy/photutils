@@ -265,7 +265,7 @@ class CircularAperture(PixelAperture):
         positions = wcs.pixel_to_world(xpos, ypos)
 
         first_pos = np.atleast_2d(self.positions)[0]
-        _, mean_scale = pixel_to_sky_mean_scale(
+        mean_scale = pixel_to_sky_mean_scale(
             (float(first_pos[0]), float(first_pos[1])), wcs)
 
         r = Angle(self.r * mean_scale, 'arcsec')
@@ -450,7 +450,7 @@ class CircularAnnulus(PixelAperture):
         positions = wcs.pixel_to_world(xpos, ypos)
 
         first_pos = np.atleast_2d(self.positions)[0]
-        _, mean_scale = pixel_to_sky_mean_scale(
+        mean_scale = pixel_to_sky_mean_scale(
             (float(first_pos[0]), float(first_pos[1])), wcs)
 
         r_in = Angle(self.r_in * mean_scale, 'arcsec')

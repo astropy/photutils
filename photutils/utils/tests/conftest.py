@@ -112,11 +112,20 @@ class CountingWCS:
     def __init__(self, real_wcs):
         self._wcs = real_wcs
         self.n_pixel_to_world = 0
+        self.n_pixel_to_world_values = 0
         self.n_world_to_pixel = 0
+
+    @property
+    def world_axis_units(self):
+        return self._wcs.world_axis_units
 
     def pixel_to_world(self, *args, **kwargs):
         self.n_pixel_to_world += 1
         return self._wcs.pixel_to_world(*args, **kwargs)
+
+    def pixel_to_world_values(self, *args, **kwargs):
+        self.n_pixel_to_world_values += 1
+        return self._wcs.pixel_to_world_values(*args, **kwargs)
 
     def world_to_pixel(self, *args, **kwargs):
         self.n_world_to_pixel += 1

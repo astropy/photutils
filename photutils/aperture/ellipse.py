@@ -345,7 +345,7 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
 
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
-        _, sky_width, sky_height, sky_angle = pixel_shape_to_sky_svd(
+        sky_width, sky_height, sky_angle = pixel_shape_to_sky_svd(
             pixcoord, wcs, 2 * self.a, 2 * self.b, self._theta_rad)
 
         a = Angle(sky_width / 2, 'arcsec')
@@ -584,7 +584,7 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
 
         # Convert the outer and inner ellipses with one WCS evaluation.
         # The rotation angle is that of the outer ellipse.
-        _, sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
+        sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
             pixcoord, wcs, [2 * self.a_out, 2 * self.a_in],
             [2 * self.b_out, 2 * self.b_in], self._theta_rad)
 

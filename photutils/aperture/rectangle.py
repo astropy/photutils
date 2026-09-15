@@ -356,7 +356,7 @@ class RectangularAperture(_RotatableApertureMixin, PixelAperture):
 
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
-        _, sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
+        sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
             pixcoord, wcs, self.w, self.h, self._theta_rad)
 
         width = Angle(sky_w, 'arcsec')
@@ -600,7 +600,7 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
         # Convert the outer and inner rectangles with one WCS
         # evaluation. The rotation angle is that of the outer rectangle.
-        _, sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
+        sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
             pixcoord, wcs, [self.w_out, self.w_in], [self.h_out, self.h_in],
             self._theta_rad)
         sky_angle = sky_angle[0]
