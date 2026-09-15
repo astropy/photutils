@@ -10,13 +10,6 @@ from astropy.wcs.wcsapi import (high_level_objects_to_values,
                                 values_to_high_level_objects)
 
 
-def _has_distortion(wcs):
-    """
-    Return True if the WCS has distortions or is non-FITS.
-    """
-    return getattr(wcs, 'has_distortion', True)
-
-
 def _is_gwcs(wcs):
     """
     Return True if the WCS looks like a gwcs object.
@@ -254,103 +247,6 @@ def _mean_singular_values(matrices):
     return 0.5 * np.sqrt(frobenius_sq + 2.0 * det)
 
 
-def jacobian_sky_to_pixel_mean_scale(skycoord, wcs, *, pixcoord=None):
-    """
-    Compute the pixel center and isotropic (mean) scale factor for a
-    sky-to-pixel conversion using SVD of the local WCS Jacobian.
-
-    This function is used for circular regions (circles and circle
-    annuli) where a single isotropic scale factor is needed to preserve
-    the circular shape. The scale factor is the mean of the two singular
-    values of the Jacobian matrix.
-
-    Singular Value Decomposition (SVD) of the 2x2 Jacobian ``J``
-    yields ``J = U @ diag(s1, s2) @ V^T``, where ``s1`` and ``s2`` are
-    the singular values representing the maximum and minimum stretch
-    factors of the linear transformation. Using their mean as the scale
-    factor is the best isotropic approximation to the (potentially
-    anisotropic) Jacobian, in the sense that it minimizes the sum of
-    squared residuals between the true (elliptical) mapping and the
-    isotropic (circular) approximation.
-
-    For a WCS without distortion and with equal pixel scales in x and y,
-    ``s1 == s2`` and the mean is exact. For distorted WCS or non-square
-    pixels, the two singular values may differ, and the mean provides a
-    balanced compromise.
-
-    Parameters
-    ----------
-    skycoord : `~astropy.coordinates.SkyCoord`
-        The sky coordinate of the region center.
-
-    wcs : WCS object
-        A world coordinate system (WCS) transformation that
-        supports the `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
-        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
-
-    pixcoord : tuple of float, optional
-        The ``(x, y)`` pixel position of ``skycoord``, if already known.
-        When given, the WCS is not inverted to find it.
-
-    Returns
-    -------
-    center : tuple of float
-        The ``(x, y)`` pixel center position.
-
-    mean_scale : float
-        The mean scale factor (pixels per arcsec), computed as the mean
-        of the two singular values of the Jacobian.
-    """
-    center, jacobian = _sky_to_pixel_jacobian(skycoord, wcs,
-                                              pixcoord=pixcoord)
-
-    # Mean of singular values gives the best isotropic approximation
-    return center, float(_mean_singular_values(jacobian))
-
-
-def jacobian_pixel_to_sky_mean_scale(pixcoord, wcs):
-    """
-    Compute the sky center and isotropic (mean) scale factor for a
-    pixel-to-sky conversion using SVD of the inverse Jacobian.
-
-    This is the inverse of `jacobian_sky_to_pixel_mean_scale`. It is
-    used for circular pixel regions (circles and circle annuli) where
-    a single isotropic scale factor is needed to preserve the circular
-    shape.
-
-    The inverse Jacobian ``J^{-1} = d(sky)/d(pixel)`` maps pixel offsets
-    to tangent-plane offsets. Its singular values represent the maximum
-    and minimum angular extents per pixel. The mean of these singular
-    values provides the best isotropic approximation for converting
-    pixel radii to sky angular radii.
-
-    Parameters
-    ----------
-    pixcoord : tuple of float
-        The ``(x, y)`` pixel coordinate of the region center.
-
-    wcs : WCS object
-        A world coordinate system (WCS) transformation that
-        supports the `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
-        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
-
-    Returns
-    -------
-    center : `~astropy.coordinates.SkyCoord`
-        The sky center position.
-
-    mean_scale : float
-        The mean scale factor (arcsec per pixel), computed as the mean
-        of the two singular values of the inverse Jacobian.
-    """
-    center = _pixel_to_world(wcs, pixcoord[0], pixcoord[1])
-    mean_scale = compute_pixel_to_sky_mean_scales(pixcoord[0], pixcoord[1],
-                                                  wcs)[0]
-    return center, mean_scale
-
-
 def compute_local_wcs_jacobian(skycoord, wcs):
     """
     Compute the local 2x2 Jacobian matrix d(pixel)/d(tangent-plane) at
@@ -510,13 +406,12 @@ def compute_pixel_to_sky_mean_scales(x, y, wcs):
     Compute the isotropic (mean) pixel scale at an array of pixel
     positions.
 
-    This is the vectorized counterpart of
-    `jacobian_pixel_to_sky_mean_scale`. The scale at each position is
-    the mean of the two singular values of the local forward Jacobian
-    ``F = d(sky_arcsec)/d(pixel)``, which is the best isotropic
-    approximation to the (potentially anisotropic) mapping. It uses only
-    the forward WCS transform, so it is fast for a gwcs whose inverse
-    must be found numerically.
+    This is the vectorized counterpart of `pixel_to_sky_mean_scale`. The
+    scale at each position is the mean of the two singular values of
+    the local forward Jacobian ``F = d(sky_arcsec)/d(pixel)``, which is
+    the best isotropic approximation to the (potentially anisotropic)
+    mapping. It uses only the forward WCS transform, so it is fast for a
+    gwcs whose inverse must be found numerically.
 
     Parameters
     ----------
@@ -591,13 +486,23 @@ def compute_pixel_scale_angles(x, y, wcs):
 
 def sky_to_pixel_mean_scale(skycoord, wcs, *, pixcoord=None):
     """
-    Convert a sky region center to pixel coordinates with an isotropic
-    scale factor.
+    Compute the pixel center and isotropic (mean) scale factor for a
+    sky-to-pixel conversion.
 
-    For a WCS without distortion, this uses the `wcs_pixel_scale_angle`
-    offset method. For a WCS with distortion (or a non-astropy WCS
-    like GWCS), this uses the SVD of the local Jacobian matrix via
-    `jacobian_sky_to_pixel_mean_scale`.
+    This function is used for circular regions (circles and circle
+    annuli) where a single isotropic scale factor is needed to preserve
+    the circular shape. The scale factor is the mean of the two singular
+    values of the local Jacobian ``J = d(pixel)/d(sky_arcsec)``, which
+    are the maximum and minimum stretch factors of the mapping. Their
+    mean is the best isotropic approximation to the (potentially
+    anisotropic) Jacobian, in the sense that it minimizes the sum of
+    squared residuals between the true (elliptical) mapping and the
+    isotropic (circular) approximation.
+
+    For a WCS without distortion and with equal pixel scales in x and y,
+    the two singular values are equal and the mean is exact. For
+    distorted WCS or non-square pixels, the two singular values differ
+    and the mean provides a balanced compromise.
 
     Parameters
     ----------
@@ -622,26 +527,22 @@ def sky_to_pixel_mean_scale(skycoord, wcs, *, pixcoord=None):
     mean_scale : float
         The mean scale factor (pixels per arcsec).
     """
-    # Non-FITS WCS (e.g., GWCS) and astropy.wcs.WCS with distortions
-    # should use the Jacobian method to compute the pixel scales and
-    # angle.
-    if not _has_distortion(wcs):
-        center, pixscale, _ = wcs_pixel_scale_angle(skycoord, wcs,
-                                                    pixcoord=pixcoord)
-        return center, 1.0 / pixscale
-
-    return jacobian_sky_to_pixel_mean_scale(skycoord, wcs, pixcoord=pixcoord)
+    center, jacobian = _sky_to_pixel_jacobian(skycoord, wcs,
+                                              pixcoord=pixcoord)
+    return center, float(_mean_singular_values(jacobian))
 
 
 def pixel_to_sky_mean_scale(pixcoord, wcs):
     """
-    Convert a pixel region center to sky coordinates with an isotropic
-    scale factor.
+    Compute the sky center and isotropic (mean) scale factor for a
+    pixel-to-sky conversion.
 
-    For a WCS without distortion, this uses the `wcs_pixel_scale_angle`
-    offset method. For a WCS with distortion (or a non-astropy WCS
-    like GWCS), this uses the SVD of the inverse Jacobian matrix via
-    `jacobian_pixel_to_sky_mean_scale`.
+    This is the inverse of `sky_to_pixel_mean_scale`. It is used for
+    circular pixel regions (circles and circle annuli) where a single
+    isotropic scale factor is needed to preserve the circular shape. The
+    scale factor is the mean of the two singular values of the local
+    forward Jacobian ``F = d(sky_arcsec)/d(pixel)``, which are the
+    maximum and minimum angular extents per pixel.
 
     Parameters
     ----------
@@ -662,15 +563,10 @@ def pixel_to_sky_mean_scale(pixcoord, wcs):
     mean_scale : float
         The mean scale factor (arcsec per pixel).
     """
-    # Non-FITS WCS (e.g., GWCS) and astropy.wcs.WCS with distortions
-    # should use the Jacobian method to compute the pixel scales and
-    # angle.
-    if not _has_distortion(wcs):
-        center = _pixel_to_world(wcs, pixcoord[0], pixcoord[1])
-        _, pixscale, _ = wcs_pixel_scale_angle(center, wcs)
-        return center, pixscale
-
-    return jacobian_pixel_to_sky_mean_scale(pixcoord, wcs)
+    center = _pixel_to_world(wcs, pixcoord[0], pixcoord[1])
+    mean_scale = compute_pixel_to_sky_mean_scales(pixcoord[0], pixcoord[1],
+                                                  wcs)[0]
+    return center, float(mean_scale)
 
 
 def pixel_shape_to_sky_svd(pixcoord, wcs, width, height, pixel_angle_rad):

@@ -957,6 +957,14 @@ API Changes
   - The ``PixelAperture.plot`` method now returns a list of patches
     for scalar apertures, as documented, instead of a tuple. [#2362]
 
+  - The ``to_pixel`` and ``to_sky`` methods of the circular apertures
+    now use the mean singular value of the local WCS Jacobian as the
+    isotropic pixel scale for every WCS. Previously, an undistorted
+    ``astropy.wcs.WCS`` used the geometric mean of the x and y pixel
+    scales, so the converted radii differed from those of a distorted
+    WCS with the same pixel scales. The radii are unchanged for
+    undistorted WCS with square pixels. [#2425]
+
 - ``photutils.datasets``
 
   - ``make_model_image`` now also skips sources that have a
