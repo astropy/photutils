@@ -389,9 +389,8 @@ python benchmarks/bench_background.py --which background2d \
 Benchmarks for the local WCS helper functions in
 `photutils.utils._wcs_helpers`:
 
-- the per-call cost of the scalar helpers (local Jacobian, pixel
-  scale and North angle, mean-scale and SVD conversions) on astropy
-  TAN, TAN-SIP, and gwcs transforms
+- the per-call cost of the scalar helpers (local Jacobian, mean-scale
+  and SVD conversions) on astropy TAN, TAN-SIP, and gwcs transforms
 - the vectorized helpers versus the number of positions, with the
   speedup over a per-source loop of the scalar mean-scale helper
 - the aperture `to_pixel` and `to_sky` conversions that use the

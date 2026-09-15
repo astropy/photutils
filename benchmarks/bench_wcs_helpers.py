@@ -26,7 +26,6 @@ from photutils.aperture import (CircularAperture, EllipticalAperture,
                                 SkyCircularAperture, SkyEllipticalAperture)
 from photutils.datasets import make_gwcs, make_wcs
 from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
-                                          compute_pixel_scale_angles,
                                           compute_pixel_to_sky_jacobians,
                                           compute_pixel_to_sky_mean_scales,
                                           pixel_shape_to_sky_svd,
@@ -34,8 +33,7 @@ from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
                                           pixel_to_sky_svd_scales,
                                           sky_shape_to_pixel_svd,
                                           sky_to_pixel_mean_scale,
-                                          sky_to_pixel_svd_scales,
-                                          wcs_pixel_scale_angle)
+                                          sky_to_pixel_svd_scales)
 
 # The per-source loops are capped at this many calls and the time is
 # scaled to the requested number of positions
@@ -150,7 +148,6 @@ def make_scalar_cases(skycoord, pixcoord, wcs):
     width, height, angle = 2.0, 1.0, 0.5
     return [
         ('local Jacobian', partial(compute_local_wcs_jacobian, skycoord, wcs)),
-        ('scale/angle', partial(wcs_pixel_scale_angle, skycoord, wcs)),
         ('sky->pix mean scale',
          partial(sky_to_pixel_mean_scale, skycoord, wcs)),
         ('sky->pix SVD scales',
@@ -227,13 +224,12 @@ def bench_vectorized_helpers(*, shape=(2000, 2000),
     vectorized = [
         ('Jacobians', compute_pixel_to_sky_jacobians),
         ('mean scales', compute_pixel_to_sky_mean_scales),
-        ('scale/angles', compute_pixel_scale_angles),
     ]
 
     for wcs_name, wcs in make_wcs_cases(shape):
         print(f'\n== Vectorized WCS helpers ({wcs_name}) ==')
         print(f'{"n_positions":>12}{"Jacobians":>12}{"mean scales":>14}'
-              f'{"scale/angles":>14}{"loop speedup":>14}')
+              f'{"loop speedup":>14}')
         for n_positions in n_positions_list:
             x, y = make_positions(shape, n_positions)
             times = [time_best(partial(func, x, y, wcs), repeats=repeats)
@@ -250,7 +246,7 @@ def bench_vectorized_helpers(*, shape=(2000, 2000),
             cells = [f'{t * 1e3:.2f}ms' for t in times]
             cells.append(f'{t_loop / times[1]:.0f}x')
             print(f'{n_positions:>12}{cells[0]:>12}{cells[1]:>14}'
-                  f'{cells[2]:>14}{cells[3]:>14}')
+                  f'{cells[2]:>14}')
 
 
 def bench_aperture_conversions(*, shape=(2000, 2000), n_iter=20, repeats=3):

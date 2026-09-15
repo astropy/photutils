@@ -13,7 +13,6 @@ from numpy.testing import assert_allclose
 from photutils.datasets import make_gwcs
 from photutils.utils._optional_deps import HAS_GWCS
 from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
-                                          compute_pixel_scale_angles,
                                           compute_pixel_to_sky_jacobians,
                                           compute_pixel_to_sky_mean_scales,
                                           pixel_shape_to_sky_svd,
@@ -21,8 +20,7 @@ from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
                                           pixel_to_sky_svd_scales,
                                           sky_shape_to_pixel_svd,
                                           sky_to_pixel_mean_scale,
-                                          sky_to_pixel_svd_scales,
-                                          wcs_pixel_scale_angle)
+                                          sky_to_pixel_svd_scales)
 from photutils.utils.tests.conftest import (WCS_CDELT_ARCSEC, WCS_CENTER,
                                             CountingWCS, make_sip_wcs)
 
@@ -193,86 +191,6 @@ def test_compute_pixel_to_sky_jacobians_scale():
                                           np.array([50.0]), wcs)
     assert_allclose(np.abs(jacs[0]),
                     [[0.5, 0.0], [0.0, 0.5]], atol=1e-4)
-
-
-class TestWcsPixelScaleAngle:
-    """
-    Tests for `wcs_pixel_scale_angle`.
-    """
-
-    def test_return_types(self, simple_wcs):
-        """
-        Should return (tuple, float, Angle).
-        """
-        xy_coord, scale, angle = wcs_pixel_scale_angle(
-            WCS_CENTER, simple_wcs)
-        assert isinstance(xy_coord, tuple)
-        assert isinstance(scale, float)
-        assert isinstance(angle, Angle)
-
-    def test_simple_wcs_scale(self, simple_wcs):
-        """
-        For a simple TAN WCS, scale should equal CDELT in arcsec/pixel.
-        """
-        _, scale, _ = wcs_pixel_scale_angle(WCS_CENTER, simple_wcs)
-        assert_allclose(scale, WCS_CDELT_ARCSEC)
-
-    def test_simple_wcs_angle(self, simple_wcs):
-        """
-        For an axis-aligned TAN WCS with CDELT=[-c, c], North is along
-        +y, so the angle should be ~90 degrees.
-        """
-        _, _, angle = wcs_pixel_scale_angle(WCS_CENTER, simple_wcs)
-        assert_allclose(angle.deg, 90.0)
-
-    def test_angle_wrapped(self, simple_wcs):
-        """
-        The angle should be in [0, 360) degrees.
-        """
-        _, _, angle = wcs_pixel_scale_angle(WCS_CENTER, simple_wcs)
-        assert 0.0 <= angle.deg < 360.0
-
-    def test_rotated_wcs_angle(self, rotated_wcs):
-        """
-        For a 25-degree rotated WCS, the North angle should shift by
-        ~25 degrees from the axis-aligned value (~90 deg).
-        """
-        _, _, angle = wcs_pixel_scale_angle(WCS_CENTER, rotated_wcs)
-        # The rotation should be about 90 - 25 = 65 degrees
-        assert_allclose(angle.deg, 90.0 - 25.0)
-
-    def test_rotated_wcs_scale(self, rotated_wcs):
-        """
-        Rotation should not change the pixel scale.
-        """
-        _, scale, _ = wcs_pixel_scale_angle(WCS_CENTER, rotated_wcs)
-        assert_allclose(scale, WCS_CDELT_ARCSEC)
-
-    def test_nonsquare_wcs_scale(self, nonsquare_wcs):
-        """
-        For non-square pixels the scale should be the geometric mean.
-        """
-        _, scale, _ = wcs_pixel_scale_angle(WCS_CENTER, nonsquare_wcs)
-        expected = np.sqrt(0.03 * 0.05) * 3600
-        assert_allclose(scale, expected, rtol=1e-5)
-
-    def test_pixel_coordinate(self, simple_wcs):
-        """
-        The returned xy_coord should match world_to_pixel.
-        """
-        xy_coord, _, _ = wcs_pixel_scale_angle(WCS_CENTER, simple_wcs)
-        x_exp, y_exp = simple_wcs.world_to_pixel(WCS_CENTER)
-        assert_allclose(xy_coord[0], x_exp)
-        assert_allclose(xy_coord[1], y_exp)
-
-    def test_off_center_position(self, simple_wcs):
-        """
-        Test a position away from the WCS reference pixel.
-        """
-        skycoord = SkyCoord(100.5 * u.deg, 30.5 * u.deg)
-        _, scale, angle = wcs_pixel_scale_angle(skycoord, simple_wcs)
-        assert scale > 0
-        assert 0.0 <= angle.deg < 360.0
 
 
 class TestMeanScale:
@@ -854,7 +772,7 @@ class TestSVDScales:
         assert 0.0 <= sky_angle.deg < 360.0
 
 
-def _make_quadratic_sip_wcs(coeff=1e-3, cross=0.0):
+def _make_quadratic_sip_wcs(coeff=1e-3):
     """
     Build a TAN-SIP WCS whose distortion is a pure quadratic in the
     pixel offset from CRPIX.
@@ -864,13 +782,9 @@ def _make_quadratic_sip_wcs(coeff=1e-3, cross=0.0):
     a fraction ``coeff``, while a central difference is exact for a
     quadratic.
 
-    ``cross`` adds an ``A_0_2`` term that bends the image of a step
-    North into x. It leaves the true direction of North at CRPIX along
-    +y, but a one-sided offset North is deflected by ``cross`` times the
-    step, which biases the North angle.
     """
     center = SkyCoord(150.0 * u.deg, 0.0 * u.deg)
-    coeffs = {'A_2_0': coeff, 'A_0_2': cross, 'B_0_2': coeff}
+    coeffs = {'A_2_0': coeff, 'B_0_2': coeff}
     return make_sip_wcs((100, 100), center=center, coeffs=coeffs)
 
 
@@ -893,19 +807,6 @@ class TestCentralDifferences:
         jac = compute_local_wcs_jacobian(skycoord, wcs)
         assert_allclose(np.abs(np.diag(jac)), 1.0 / WCS_CDELT_ARCSEC,
                         rtol=1e-6)
-
-    def test_pixel_scale_unbiased_at_crval(self):
-        wcs = _make_quadratic_sip_wcs()
-        skycoord = SkyCoord(150.0 * u.deg, 0.0 * u.deg)
-        _, scale, _ = wcs_pixel_scale_angle(skycoord, wcs)
-        assert_allclose(scale, WCS_CDELT_ARCSEC, rtol=1e-6)
-
-    def test_north_angle_unbiased_at_crval(self):
-        # CD1_1 < 0 and CD2_2 > 0, so North is along +y at CRPIX
-        wcs = _make_quadratic_sip_wcs(cross=1e-3)
-        skycoord = SkyCoord(150.0 * u.deg, 0.0 * u.deg)
-        _, _, angle = wcs_pixel_scale_angle(skycoord, wcs)
-        assert_allclose(angle.deg, 90.0, atol=1e-4)
 
 
 @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
@@ -945,19 +846,13 @@ class TestGWCSBoundingBox:
         jac = compute_local_wcs_jacobian(skycoord, bounded_gwcs)
         assert np.all(np.isfinite(jac))
 
-    def test_pixel_scale_angle_finite_at_edge(self, bounded_gwcs):
-        skycoord = bounded_gwcs.pixel_to_world(59.4, 10.0)
-        _, scale, angle = wcs_pixel_scale_angle(skycoord, bounded_gwcs)
-        assert np.isfinite(scale)
-        assert np.isfinite(angle.deg)
 
-
-class TestVectorizedScalesAndAngles:
+class TestVectorizedMeanScales:
     """
-    Tests for the vectorized pixel scale and North angle helpers.
+    Tests for the vectorized mean pixel scale helper.
 
-    Each must reproduce the per-source function it replaces at every
-    position, without calling the WCS inverse once per source.
+    It must reproduce the per-source function at every position,
+    without calling the WCS inverse once per source.
     """
 
     positions = (np.array([3.0, 10.0, 16.5]), np.array([4.0, 10.0, 2.2]))
@@ -973,46 +868,9 @@ class TestVectorizedScalesAndAngles:
             _, expected = pixel_to_sky_mean_scale((x[i], y[i]), wcs)
             assert_allclose(scales[i], expected, rtol=1e-8)
 
-    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
-                                          'nonsquare_wcs', 'sip_wcs'])
-    def test_scale_angles_match_per_source(self, wcs_name, request):
-        wcs = request.getfixturevalue(wcs_name)
-        x, y = self.positions
-        scales, angles = compute_pixel_scale_angles(x, y, wcs)
-        assert scales.shape == (3,)
-        assert isinstance(angles, Angle)
-        assert angles.shape == (3,)
-        for i in range(x.size):
-            skycoord = wcs.pixel_to_world(x[i], y[i])
-            _, scale, angle = wcs_pixel_scale_angle(skycoord, wcs)
-            assert_allclose(scales[i], scale, rtol=1e-6)
-            assert_allclose(angles[i].deg, angle.deg, atol=1e-4)
-
-    def test_angles_wrapped(self, flipped_wcs):
-        _, angles = compute_pixel_scale_angles(*self.positions, flipped_wcs)
-        assert np.all((angles.deg >= 0) & (angles.deg < 360))
-
     def test_scalar_inputs(self, simple_wcs):
         scales = compute_pixel_to_sky_mean_scales(10.0, 10.0, simple_wcs)
         assert scales.shape == (1,)
-        scales, angles = compute_pixel_scale_angles(10.0, 10.0, simple_wcs)
-        assert scales.shape == (1,)
-        assert angles.shape == (1,)
-
-    @pytest.mark.parametrize('wcs_name', ['rotated_wcs', 'flipped_wcs',
-                                          'nonsquare_wcs', 'sip_wcs'])
-    def test_north_angle_direction(self, wcs_name, request):
-        # Solve for the pixel step that moves exactly North on the sky
-        # and check that it points along the returned angle. The flipped
-        # WCS has a negative Jacobian determinant.
-        wcs = request.getfixturevalue(wcs_name)
-        x, y = self.positions
-        _, angles = compute_pixel_scale_angles(x, y, wcs)
-        jacs = compute_pixel_to_sky_jacobians(x, y, wcs)
-        north = np.tile([0.0, 1.0], (x.size, 1))[..., np.newaxis]
-        north_pix = np.linalg.solve(jacs, north)[..., 0]
-        expected = np.degrees(np.arctan2(north_pix[:, 1], north_pix[:, 0]))
-        assert_allclose(angles.wrap_at(180 * u.deg).deg, expected, atol=1e-8)
 
 
 def _reference_jacobians(x, y, wcs):
@@ -1170,17 +1028,6 @@ class TestKnownPixelPosition:
         assert wcs.n_world_to_pixel == 0
         assert_allclose(center2, center, atol=1e-10)
         assert_allclose(scale2, scale, rtol=1e-12)
-
-    def test_scale_angle(self, sip_wcs, known):
-        skycoord, pixcoord = known
-        center, scale, angle = wcs_pixel_scale_angle(skycoord, sip_wcs)
-        wcs = CountingWCS(sip_wcs)
-        center2, scale2, angle2 = wcs_pixel_scale_angle(skycoord, wcs,
-                                                        pixcoord=pixcoord)
-        assert wcs.n_world_to_pixel == 0
-        assert_allclose(center2, center, atol=1e-10)
-        assert_allclose(scale2, scale, rtol=1e-12)
-        assert_allclose(angle2.deg, angle.deg, atol=1e-10)
 
     def test_svd_scales(self, sip_wcs, known):
         skycoord, pixcoord = known
