@@ -368,6 +368,10 @@ New Features
     Photutils as the source of the warning. Existing warning filters for
     ``AstropyDeprecationWarning`` continue to match. [#2417]
 
+  - Added ``compute_pixel_areas`` and ``pixel_area_map`` functions to
+    compute the on-sky area of image pixels from a WCS, either at an
+    array of positions or for every pixel in an image. [#2426]
+
 Bug Fixes
 ^^^^^^^^^
 
