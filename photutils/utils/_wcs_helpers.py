@@ -99,9 +99,10 @@ def _world_to_pixel(wcs, skycoord):
     Convert a sky coordinate to pixel coordinates, ignoring any gwcs
     bounding box.
 
-    See `_pixel_to_world` for why the bounding box is bypassed. The
-    sky offsets used to find the direction of North can likewise fall
-    outside the box for a source at the edge of the array.
+    See `_pixel_to_world_radians` for why the bounding box is bypassed.
+    The forward transform is well defined outside the box, so a source
+    just beyond the array edge inverts to a finite pixel position
+    instead of NaN.
 
     Parameters
     ----------
