@@ -248,7 +248,7 @@ class TestMeanScale:
 
     @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
                                           'nonsquare_wcs', 'flipped_wcs',
-                                          'sip_wcs'])
+                                          'swapped_wcs', 'sip_wcs'])
     def test_roundtrip_scale(self, wcs_name, request):
         """
         Sky -> pixel mean_scale * pixel -> sky mean_scale must be
@@ -959,7 +959,8 @@ class TestVectorizedMeanScales:
     positions = (np.array([3.0, 10.0, 16.5]), np.array([4.0, 10.0, 2.2]))
 
     @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
-                                          'nonsquare_wcs', 'sip_wcs'])
+                                          'nonsquare_wcs', 'swapped_wcs',
+                                          'sip_wcs'])
     def test_mean_scales_match_per_source(self, wcs_name, request):
         wcs = request.getfixturevalue(wcs_name)
         x, y = self.positions
@@ -1072,7 +1073,7 @@ class TestJacobianEvaluation:
 
     @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
                                           'nonsquare_wcs', 'flipped_wcs',
-                                          'sip_wcs'])
+                                          'swapped_wcs', 'sip_wcs'])
     def test_agrees_with_separation_position_angle(self, wcs_name, request):
         wcs = request.getfixturevalue(wcs_name)
         x = np.array([3.0, 9.5, 16.2])
@@ -1080,6 +1081,21 @@ class TestJacobianEvaluation:
         jacs = compute_pixel_to_sky_jacobians(wcs, x, y)
         expected = _reference_jacobians(x, y, wcs)
         assert_allclose(jacs, expected, rtol=1e-7, atol=1e-7)
+
+    def test_world_axis_order(self, simple_wcs, swapped_wcs):
+        """
+        Test that a WCS with the latitude axis first gives the same
+        Jacobians as the equivalent WCS with the longitude axis first.
+        """
+        x = np.array([3.0, 9.5, 16.2])
+        y = np.array([4.0, 9.5, 2.7])
+        expected = compute_pixel_to_sky_jacobians(simple_wcs, x, y)
+        jacs = compute_pixel_to_sky_jacobians(swapped_wcs, x, y)
+        assert_allclose(jacs, expected, rtol=1e-9)
+        skycoord = simple_wcs.pixel_to_world(x[0], y[0])
+        expected = compute_local_wcs_jacobian(simple_wcs, skycoord)
+        jac = compute_local_wcs_jacobian(swapped_wcs, skycoord)
+        assert_allclose(jac, expected, rtol=1e-9)
 
     @pytest.mark.parametrize(('center_ra', 'center_dec'), TROUBLESOME_CENTERS)
     def test_agrees_near_pole_and_wrap(self, center_ra, center_dec):
@@ -1109,7 +1125,7 @@ class TestMeanScaleClosedForm:
 
     @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
                                           'nonsquare_wcs', 'flipped_wcs',
-                                          'sip_wcs'])
+                                          'swapped_wcs', 'sip_wcs'])
     def test_vectorized_matches_svd(self, wcs_name, request):
         wcs = request.getfixturevalue(wcs_name)
         x = np.array([3.0, 9.5, 16.2])

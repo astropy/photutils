@@ -235,6 +235,24 @@ def flipped_wcs():
     return wcs
 
 
+@pytest.fixture
+def swapped_wcs():
+    """
+    A TAN WCS with the latitude axis first (Dec, RA).
+
+    The CD matrix maps the same sky footprint as ``simple_wcs``, so
+    every conversion must give the same aperture.
+    """
+    cdelt = 0.1 / 3600
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = [10.5, 10.5]
+    wcs.wcs.crval = [CENTER.dec.deg, CENTER.ra.deg]
+    wcs.wcs.cd = [[0.0, cdelt], [-cdelt, 0.0]]
+    wcs.wcs.ctype = ['DEC--TAN', 'RA---TAN']
+
+    return wcs
+
+
 class TestSkyToPixel:
     """
     Converting a sky aperture to a pixel aperture must return the
@@ -374,6 +392,43 @@ class TestRoundtripPixelSkyPixel:
         if case['has_angle']:
             assert_quantity_allclose(pix_rt.theta, pix.theta,
                                      atol=1e-3 * u.deg)
+
+
+class TestSwappedAxisWCS:
+    """
+    A WCS with the latitude axis first must give the same apertures as
+    the equivalent WCS with the longitude axis first.
+
+    A roundtrip alone would not catch a Jacobian built from swapped
+    longitude and latitude, because the forward and inverse conversions
+    would share the same error.
+    """
+
+    @pytest.mark.parametrize('case', APERTURE_CASES)
+    def test_sky_to_pixel(self, simple_wcs, swapped_wcs, case):
+        sky = case['sky_cls'](CENTER, **case['sky_kw'])
+        expected = sky.to_pixel(simple_wcs)
+        pix = sky.to_pixel(swapped_wcs)
+        assert_allclose(pix.positions, expected.positions, atol=1e-8)
+        for attr in case['size_attrs']:
+            assert_allclose(getattr(pix, attr), getattr(expected, attr),
+                            rtol=1e-9)
+        if case['has_angle']:
+            assert_quantity_allclose(pix.theta, expected.theta,
+                                     atol=1e-6 * u.deg)
+
+    @pytest.mark.parametrize('case', APERTURE_CASES)
+    def test_pixel_to_sky(self, simple_wcs, swapped_wcs, case):
+        pix = case['pix_cls'](PIX_CENTER, **case['pix_kw'])
+        expected = pix.to_sky(simple_wcs)
+        sky = pix.to_sky(swapped_wcs)
+        assert sky.positions.separation(expected.positions).arcsec < 1e-8
+        for attr in case['size_attrs']:
+            assert_quantity_allclose(getattr(sky, attr),
+                                     getattr(expected, attr), rtol=1e-9)
+        if case['has_angle']:
+            assert_quantity_allclose(sky.theta, expected.theta,
+                                     atol=1e-6 * u.deg)
 
 
 @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')

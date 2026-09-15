@@ -51,10 +51,13 @@ def _pixel_to_world_radians(wcs, x, y):
     forward transform is well defined there, so it is evaluated with
     the bounding box disabled.
 
-    The low-level WCS interface is used because it returns plain
-    arrays. The high-level interface builds a
-    `~astropy.coordinates.SkyCoord`, which costs far more than the
-    transform itself for a handful of positions.
+    The low-level WCS interface is used because it returns plain arrays.
+    The high-level interface builds a `~astropy.coordinates.SkyCoord`,
+    which costs far more than the transform itself for a handful of
+    positions. The longitude and latitude outputs are identified by
+    their component index in ``world_axis_object_components``, so a WCS
+    whose latitude axis comes first (e.g., ``CTYPE1 = 'DEC--TAN'``) is
+    handled correctly.
 
     Parameters
     ----------
@@ -74,11 +77,21 @@ def _pixel_to_world_radians(wcs, x, y):
     """
     low_level_wcs = _low_level_wcs(wcs)
     if _is_gwcs(low_level_wcs):
-        lon, lat = low_level_wcs(x, y, with_bounding_box=False)
+        world = low_level_wcs(x, y, with_bounding_box=False)
     else:
-        lon, lat = low_level_wcs.pixel_to_world_values(x, y)
-    lon_unit, lat_unit = low_level_wcs.world_axis_units
-    return _to_radians(lon, lon_unit), _to_radians(lat, lat_unit)
+        world = low_level_wcs.pixel_to_world_values(x, y)
+
+    # The second element of each world_axis_object_components entry
+    # is the index of the axis within the sky coordinate, 0 for the
+    # longitude and 1 for the latitude, whatever the axis order of
+    # the WCS.
+    component_indices = [comp[1] for comp
+                         in low_level_wcs.world_axis_object_components]
+    lon_idx = component_indices.index(0)
+    lat_idx = component_indices.index(1)
+    units = low_level_wcs.world_axis_units
+    return (_to_radians(world[lon_idx], units[lon_idx]),
+            _to_radians(world[lat_idx], units[lat_idx]))
 
 
 def _world_to_pixel(wcs, skycoord):

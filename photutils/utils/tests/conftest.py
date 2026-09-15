@@ -119,6 +119,10 @@ class CountingWCS:
     def world_axis_units(self):
         return self._wcs.world_axis_units
 
+    @property
+    def world_axis_object_components(self):
+        return self._wcs.world_axis_object_components
+
     def pixel_to_world(self, *args, **kwargs):
         self.n_pixel_to_world += 1
         return self._wcs.pixel_to_world(*args, **kwargs)
@@ -168,6 +172,25 @@ def nonsquare_wcs():
     wcs.wcs.crval = [WCS_CENTER.ra.deg, WCS_CENTER.dec.deg]
     wcs.wcs.cdelt = [-0.03, 0.05]
     wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    return wcs
+
+
+@pytest.fixture
+def swapped_wcs():
+    """
+    Non-distorted TAN WCS with the latitude axis first.
+
+    The CD matrix maps the same sky footprint as ``simple_wcs`` (RA
+    increasing to the left along x, Dec increasing along y), but the
+    world axes are ordered (Dec, RA). The Jacobians and conversions must
+    not depend on the world axis order.
+    """
+    cdelt = WCS_CDELT_ARCSEC / 3600
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = [10.5, 10.5]
+    wcs.wcs.crval = [WCS_CENTER.dec.deg, WCS_CENTER.ra.deg]
+    wcs.wcs.cd = [[0.0, cdelt], [-cdelt, 0.0]]
+    wcs.wcs.ctype = ['DEC--TAN', 'RA---TAN']
     return wcs
 
 
