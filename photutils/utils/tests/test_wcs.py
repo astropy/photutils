@@ -215,6 +215,30 @@ class TestPixelAreaMap:
         assert np.array_equal(area_7, capped)
         assert not np.array_equal(area_5, capped)
 
+    @pytest.mark.parametrize('projection', ['CAR', 'AIT'])
+    def test_coarse_grid_outside_projection(self, projection):
+        """
+        Test all-sky maps whose padded coarse grid leaves the valid
+        region of the projection.
+
+        Every pixel of the CAR map is valid, while the AIT map has
+        corners outside the projection. In both cases the map must
+        match the directly evaluated areas pixel for pixel, including
+        the NaN pattern.
+        """
+        wcs = _make_allsky_wcs(projection)
+        yy, xx = np.mgrid[:ALLSKY_SHAPE[0], :ALLSKY_SHAPE[1]]
+        expected = compute_pixel_areas(wcs, xx, yy)
+        area = compute_pixel_area_map(wcs, ALLSKY_SHAPE)
+        assert area.shape == ALLSKY_SHAPE
+        assert_allclose(area, expected, rtol=1e-12, equal_nan=True)
+
+        finite = np.isfinite(expected)
+        if projection == 'CAR':
+            assert np.all(finite)
+        else:
+            assert 0 < finite.mean() < 1
+
     @pytest.mark.parametrize('step', [0, -4, 2.5, True])
     def test_invalid_step(self, simple_wcs, step):
         match = 'step must be a positive integer'

@@ -134,11 +134,20 @@ def compute_pixel_area_map(wcs, shape, *, step=64):
     -------
     areas : `~numpy.ndarray`
         The 2D array of pixel areas in arcsec\\ :sup:`2`, with the same
-        shape as the image.
+        shape as the image. The area is NaN for pixels where the WCS is
+        undefined (e.g., outside the valid region of the projection).
 
     See Also
     --------
     compute_pixel_areas
+
+    Notes
+    -----
+    If any node of the padded coarse grid lies outside the valid region
+    of the projection, which can happen for an all-sky map even when
+    every image pixel is valid, the areas are instead evaluated directly
+    at every pixel with `compute_pixel_areas`. That is exact but slower
+    (a few seconds for a 4096 x 4096 image).
 
     Examples
     --------
@@ -177,6 +186,15 @@ def compute_pixel_area_map(wcs, shape, *, step=64):
     grid_x = np.arange(-2 * step, nx + 2 * step, step, dtype=float)
     xx, yy = np.meshgrid(grid_x, grid_y)
     coarse = compute_pixel_areas(wcs, xx, yy)
+
+    # A NaN anywhere on the coarse grid would make the spline NaN at
+    # every pixel. That happens when a node lies outside the valid
+    # region of the projection, which the padding can do even when every
+    # image pixel is valid (e.g., an all-sky map). Evaluate the areas
+    # directly at every pixel in that case.
+    if not np.all(np.isfinite(coarse)):
+        yy, xx = np.mgrid[:ny, :nx]
+        return compute_pixel_areas(wcs, xx, yy)
 
     spline = RectBivariateSpline(grid_y, grid_x, coarse)
     return spline(np.arange(ny, dtype=float), np.arange(nx, dtype=float))
