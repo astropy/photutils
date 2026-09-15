@@ -278,14 +278,17 @@ def compute_local_wcs_jacobian(skycoord, wcs):
     inverted to obtain ``J = F^{-1} = d(pixel)/d(sky_arcsec)``. The
     central difference over one pixel is exact for a distortion that is
     locally quadratic, unlike a one-sided difference, which is biased by
-    half the curvature. Using 1-pixel steps ensures numerical stability
-    across all pixel scales.
+    half the curvature. The half-pixel steps either side of the position
+    span one pixel, which keeps the differences well conditioned at any
+    pixel scale.
 
     This function works with any WCS that supports
     the `astropy shared interface for WCS
     <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
     `astropy.wcs.WCS`, `gwcs.wcs.WCS`), because it relies only on the
-    ``world_to_pixel`` and ``pixel_to_world`` methods.
+    forward and inverse transforms. A gwcs transform is evaluated with
+    its bounding box disabled, so the finite differences stay finite for
+    a source at the edge of the array.
 
     Parameters
     ----------
@@ -333,8 +336,12 @@ def compute_pixel_to_sky_jacobians(x, y, wcs):
     sky positions are handled as unit vectors and the differences are
     projected onto the local East and North directions, so the formula
     is well-defined at the celestial poles and across the longitude
-    wraparound (RA = 0 / 360). All five positions per pixel are
-    evaluated in a single WCS call.
+    wraparound (RA = 0 / 360). The differences use the chord between
+    the offset unit vectors rather than the arc, so each element has a
+    relative error of about ``h**2 / 24`` for a pixel that subtends an
+    angle ``h`` in radians. That is 1e-7 at 0.1 deg per pixel and 1e-5
+    at 1 deg per pixel. All five positions per pixel are evaluated in a
+    single WCS call.
 
     Parameters
     ----------
