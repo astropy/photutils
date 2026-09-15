@@ -1130,6 +1130,52 @@ class TestJacobianEvaluation:
                         rtol=1e-6)
 
 
+class TestCovarianceTransport:
+    """
+    Monte Carlo tests of the pixel-to-sky error covariance transport.
+
+    A pixel error covariance is mapped to the local tangent plane as ``F
+    @ cov @ F.T`` with the forward Jacobian ``F``. Pixel positions drawn
+    from that covariance and converted with the high-level WCS interface
+    must scatter on the sky by the transported amount, along East and
+    North and in their correlation.
+    """
+
+    PIX_COV = np.array([[0.04, 0.01], [0.01, 0.09]])
+    N_DRAW = 50_000
+
+    @pytest.mark.parametrize('wcs_name', ['sheared', 'swapped_wcs',
+                                          'sip_wcs'])
+    def test_scatter_matches_transport(self, wcs_name, request):
+        if wcs_name == 'sheared':
+            wcs = _make_sheared_wcs()
+            xy0 = np.array([50.0, 50.0])
+        else:
+            wcs = request.getfixturevalue(wcs_name)
+            xy0 = np.array([12.3, 7.6])
+        jac = compute_pixel_to_sky_jacobians(wcs, *xy0)[0]
+        sky_cov = jac @ self.PIX_COV @ jac.T
+
+        rng = np.random.default_rng(0)
+        draws = rng.multivariate_normal(xy0, self.PIX_COV, size=self.N_DRAW)
+        center = wcs.pixel_to_world(*xy0)
+        coords = wcs.pixel_to_world(draws[:, 0], draws[:, 1])
+        sep = center.separation(coords).rad
+        pa = center.position_angle(coords).rad
+        arcsec_per_rad = 3600.0 * np.degrees(1)
+        east = sep * np.sin(pa) * arcsec_per_rad
+        north = sep * np.cos(pa) * arcsec_per_rad
+        mc_cov = np.cov(east, north)
+
+        # The Monte Carlo precision of a standard deviation is 1 /
+        # sqrt(2 N) = 0.3%, so the tolerances are several sigma.
+        assert_allclose(np.sqrt(np.diag(mc_cov)), np.sqrt(np.diag(sky_cov)),
+                        rtol=0.02)
+        mc_corr = mc_cov[0, 1] / np.sqrt(mc_cov[0, 0] * mc_cov[1, 1])
+        corr = sky_cov[0, 1] / np.sqrt(sky_cov[0, 0] * sky_cov[1, 1])
+        assert_allclose(mc_corr, corr, atol=0.02)
+
+
 class TestMeanScaleClosedForm:
     """
     Tests that the mean pixel scale equals the geometric mean of the
