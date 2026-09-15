@@ -6,8 +6,9 @@ Benchmarks for the local WCS helper functions.
 The benchmarks cover the per-call cost of the scalar helpers on
 astropy TAN, TAN-SIP, and gwcs transforms, the vectorized helpers
 versus the number of positions (with the speedup over a per-source
-loop), and the aperture ``to_pixel`` and ``to_sky`` conversions that
-use the helpers.
+loop), the full-frame pixel-area map versus image size and grid step,
+and the aperture ``to_pixel`` and ``to_sky`` conversions that use the
+helpers.
 
 Run ``python benchmarks/bench_wcs_helpers.py --help`` to see the
 available options.
@@ -25,6 +26,7 @@ from bench_helpers import parse_int_list, print_environment, time_best
 from photutils.aperture import (CircularAperture, EllipticalAperture,
                                 SkyCircularAperture, SkyEllipticalAperture)
 from photutils.datasets import make_gwcs, make_wcs
+from photutils.utils import compute_pixel_area_map, compute_pixel_areas
 from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
                                           compute_pixel_to_sky_jacobians,
                                           compute_pixel_to_sky_mean_scales,
@@ -229,11 +231,14 @@ def bench_vectorized_helpers(*, shape=(2000, 2000),
     for wcs_name, wcs in make_wcs_cases(shape):
         print(f'\n== Vectorized WCS helpers ({wcs_name}) ==')
         print(f'{"n_positions":>12}{"Jacobians":>12}{"mean scales":>14}'
-              f'{"loop speedup":>14}')
+              f'{"pixel areas":>14}{"loop speedup":>14}')
         for n_positions in n_positions_list:
             x, y = make_positions(shape, n_positions)
             times = [time_best(partial(func, wcs, x, y), repeats=repeats)
                      for _, func in vectorized]
+            t_area = time_best(partial(compute_pixel_areas, wcs, x, y),
+                               repeats=repeats)
+
             # Per-source loop of the scalar mean-scale helper, scaled
             # to n_positions
             n_calls = min(n_positions, MAX_LOOP_CALLS)
@@ -243,10 +248,42 @@ def bench_vectorized_helpers(*, shape=(2000, 2000),
                     pixel_to_sky_mean_scale(wcs, (x[i], y[i]))
 
             t_loop = time_best(loop, repeats=1) * n_positions / n_calls
-            cells = [f'{t * 1e3:.2f}ms' for t in times]
+            cells = [f'{t * 1e3:.2f}ms' for t in [*times, t_area]]
             cells.append(f'{t_loop / times[1]:.0f}x')
             print(f'{n_positions:>12}{cells[0]:>12}{cells[1]:>14}'
-                  f'{cells[2]:>14}')
+                  f'{cells[2]:>14}{cells[3]:>14}')
+
+
+def bench_pixel_area_map(*, sizes=(512, 2048, 4096), steps=(8, 16, 32, 64),
+                         repeats=3):
+    """
+    Benchmark the full-frame pixel-area map versus image size and grid
+    step.
+
+    Parameters
+    ----------
+    sizes : tuple of int, optional
+        The image sizes. Each image is ``(size, size)``.
+
+    steps : tuple of int, optional
+        The coarse-grid steps in pixels. Every step must be at most
+        ``min(sizes) // 8``, the largest step the function allows.
+
+    repeats : int, optional
+        The number of repeats for each timing (best time is kept).
+    """
+    for wcs_name in ('TAN-SIP', 'gwcs'):
+        print(f'\n== compute_pixel_area_map ({wcs_name}) ==')
+        print(f'{"size":>8}' + ''.join(f'{f"step={s}":>12}' for s in steps))
+        for size in sizes:
+            shape = (size, size)
+            wcs = dict(make_wcs_cases(shape))[wcs_name]
+            cells = []
+            for step in steps:
+                func = partial(compute_pixel_area_map, wcs, shape, step=step)
+                t = time_best(func, repeats=repeats)
+                cells.append(f'{t * 1e3:.1f}ms')
+            print(f'{size:>8}' + ''.join(f'{cell:>12}' for cell in cells))
 
 
 def bench_aperture_conversions(*, shape=(2000, 2000), n_iter=20, repeats=3):
@@ -310,12 +347,17 @@ def main():
                         help='comma-separated numbers of positions for '
                              'the vectorized-helper benchmark '
                              '(default: 100,1000,10000,100000)')
+    parser.add_argument('--sizes', type=parse_int_list,
+                        default=[512, 2048, 4096],
+                        help='comma-separated image sizes for the '
+                             'pixel-area-map benchmark '
+                             '(default: 512,2048,4096)')
     parser.add_argument('--repeats', type=int, default=3,
                         help='number of repeats per timing, of which '
                              'the best time is reported '
                              '(default: %(default)s)')
     parser.add_argument('--which', default='all',
-                        choices=['all', 'scalar', 'vectorized',
+                        choices=['all', 'scalar', 'vectorized', 'area-map',
                                  'apertures'],
                         help='which benchmark to run '
                              '(default: %(default)s)')
@@ -328,6 +370,8 @@ def main():
     if args.which in ('all', 'vectorized'):
         bench_vectorized_helpers(n_positions_list=args.n_positions,
                                  repeats=args.repeats)
+    if args.which in ('all', 'area-map'):
+        bench_pixel_area_map(sizes=args.sizes, repeats=args.repeats)
     if args.which in ('all', 'apertures'):
         bench_aperture_conversions(repeats=args.repeats)
 

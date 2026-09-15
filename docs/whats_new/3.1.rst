@@ -787,6 +787,35 @@ once per star and the star residuals are stacked in a single vectorized
 operation.
 
 
+Per-Pixel Sky Areas from a WCS
+==============================
+
+The new :func:`~photutils.utils.compute_pixel_areas` and
+:func:`~photutils.utils.compute_pixel_area_map` functions compute the
+on-sky area of image pixels directly from a WCS, either at an array of
+positions or for every pixel in an image. The area of each pixel is the
+absolute determinant of the local WCS Jacobian, evaluated with central
+finite differences, so it follows the distortion across the field and is
+well defined at the celestial poles and across the RA wraparound. Both
+functions accept any WCS that supports the astropy shared WCS interface,
+including ``gwcs`` objects.
+
+The pixel area of a distorted image typically varies by a few percent
+across the field. Converting a surface-brightness image (e.g., in
+MJy/sr) to fluxes with a single nominal pixel area therefore leaves a
+position-dependent error. Multiplying by the pixel-area map removes it::
+
+    >>> import astropy.units as u
+    >>> from photutils.datasets import make_wcs
+    >>> from photutils.utils import compute_pixel_area_map
+    >>> shape = (100, 100)
+    >>> wcs = make_wcs(shape)
+    >>> areas = compute_pixel_area_map(wcs, shape) * u.arcsec**2
+    >>> areas[50, 50]
+    <Quantity 0.01 arcsec2>
+    >>> pixel_area_sr = areas.to(u.sr)  # multiply a MJy/sr image by this
+
+
 .. _whatsnew-3.1-api-changes:
 
 API Changes
