@@ -395,7 +395,7 @@ Benchmarks for the local WCS helper functions in
   speedup over a per-source loop of the scalar mean-scale helper
 - `compute_pixel_area_map` versus image size and coarse-grid step
 - the aperture `to_pixel` and `to_sky` conversions that use the
-  helpers
+  helpers, including the circular apertures with `as_ellipse=True`
 
 ```bash
 python benchmarks/bench_wcs_helpers.py
