@@ -124,18 +124,19 @@ def _sky_to_pixel_jacobian(skycoord, wcs, *, pixcoord=None):
 def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
                                 input_circular=False):
     """
-    Extract ellipse width, height, and angle from a composite matrix
+    Extract ellipse widths, heights, and angles from composite matrices
     using SVD.
 
-    Given a 2x2 matrix ``m_comp`` whose columns represent the mapped
-    semi-axis vectors of an ellipse, perform SVD and return the full
-    widths, heights, and rotation angle, preserving the width/height
-    assignment of the input ellipse.
+    Given 2x2 matrices ``m_comp`` whose columns represent the mapped
+    semi-axis vectors of ellipses, perform SVD and return the full
+    widths, heights, and rotation angles, preserving the width/height
+    assignment of the input ellipses.
 
     Parameters
     ----------
-    m_comp : 2x2 `~numpy.ndarray`
-        The composite matrix whose SVD gives the output ellipse axes.
+    m_comp : `~numpy.ndarray`
+        The composite matrices, with shape ``(..., 2, 2)``, whose SVD
+        gives the output ellipse axes.
 
     width_col_idx : int, optional
         The column index (0 or 1) of ``m_comp`` that corresponds to the
@@ -149,23 +150,24 @@ def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
         and the returned angle is measured counterclockwise from the
         positive x-axis.
 
-    input_circular : bool, optional
-        If True, the input ellipse is known to be circular (width ==
-        height), so the SVD's principal axis is meaningless and the
-        rotation angle is taken directly from the mapped width semi-
-        axis. Default is False.
+    input_circular : bool or array_like of bool, optional
+        Whether each input ellipse is known to be circular (width ==
+        height), in which case the SVD's principal axis is meaningless
+        and the rotation angle is taken directly from the mapped width
+        semi-axis. Broadcast against the leading shape of ``m_comp``.
+        Default is False.
 
     Returns
     -------
-    out_width : float
-        The full width of the output ellipse.
+    out_width : `~numpy.ndarray`
+        The full widths of the output ellipses, with shape ``(...)``.
 
-    out_height : float
-        The full height of the output ellipse.
+    out_height : `~numpy.ndarray`
+        The full heights of the output ellipses, with shape ``(...)``.
 
     angle : `~astropy.coordinates.Angle`
-        The rotation angle of the width axis, wrapped to [0, 360)
-        degrees.
+        The rotation angles of the width axes, wrapped to [0, 360)
+        degrees, with shape ``(...)``.
     """
     u_mat, s_vals, _vt = np.linalg.svd(m_comp)
 
@@ -173,23 +175,22 @@ def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
     # corresponds to the major axis. Determine whether the major axis
     # corresponds to the width or height by checking alignment with the
     # mapped width semi-axis.
-    width_col = m_comp[:, width_col_idx]
-    if (np.abs(np.dot(u_mat[:, 0], width_col))
-            >= np.abs(np.dot(u_mat[:, 1], width_col))):
-        # Major axis aligns with width
-        out_width = 2 * s_vals[0]
-        out_height = 2 * s_vals[1]
-        angle_col = u_mat[:, 0]
-    else:
-        # Major axis aligns with height, so swap
-        out_width = 2 * s_vals[1]
-        out_height = 2 * s_vals[0]
-        angle_col = u_mat[:, 1]
+    width_col = m_comp[..., :, width_col_idx]
+    dot_major = np.abs(np.einsum('...i,...i->...', u_mat[..., :, 0],
+                                 width_col))
+    dot_minor = np.abs(np.einsum('...i,...i->...', u_mat[..., :, 1],
+                                 width_col))
+    major_is_width = dot_major >= dot_minor
 
-    # Fix SVD sign ambiguity: ensure the angle direction aligns with the
-    # mapped width semi-axis
-    if np.dot(angle_col, width_col) < 0:
-        angle_col = -angle_col
+    out_width = 2 * np.where(major_is_width, s_vals[..., 0], s_vals[..., 1])
+    out_height = 2 * np.where(major_is_width, s_vals[..., 1], s_vals[..., 0])
+    angle_col = np.where(major_is_width[..., np.newaxis], u_mat[..., :, 0],
+                         u_mat[..., :, 1])
+
+    # Fix SVD sign ambiguity. Ensure the angle direction aligns with the
+    # mapped width semi-axis.
+    flip = np.einsum('...i,...i->...', angle_col, width_col) < 0
+    angle_col = np.where(flip[..., np.newaxis], -angle_col, angle_col)
 
     # When the input ellipse is circular (width == height), the SVD's
     # principal direction has no physical meaning. Any rotation of a
@@ -197,12 +198,13 @@ def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
     # principal axis derived from the Jacobian. To preserve the input
     # rotation angle, fall back to the mapped width semi-axis direction
     # (which carries the input theta through the Jacobian).
-    if input_circular:
-        width_norm = np.linalg.norm(width_col)
-        if width_norm > 0:
-            angle_col = width_col / width_norm
+    width_norm = np.linalg.norm(width_col, axis=-1)
+    use_width = (np.broadcast_to(input_circular, width_norm.shape)
+                 & (width_norm > 0))
+    safe_norm = np.where(width_norm > 0, width_norm, 1.0)
+    angle_col = np.where(use_width[..., np.newaxis],
+                         width_col / safe_norm[..., np.newaxis], angle_col)
 
-    # Compute the rotation angle
     if sky_angle:
         # Sky position angle (PA) measured from North (eta/Dec) toward
         # East. The composite-matrix columns are tangent-plane vectors
@@ -210,16 +212,11 @@ def _svd_ellipse_from_composite(m_comp, *, width_col_idx=0, sky_angle=False,
         # arctan2(xi, eta). The local Jacobian (or its inverse) used to
         # build the composite matrix already encodes the WCS parity, so
         # no additional parity correction is needed here.
-        angle = Angle(
-            np.rad2deg(np.arctan2(angle_col[0],
-                                  angle_col[1])) * u.deg,
-        ).wrap_at(360 * u.deg)
+        angle_rad = np.arctan2(angle_col[..., 0], angle_col[..., 1])
     else:
         # Pixel angle: measured from +x toward +y
-        angle = Angle(
-            np.rad2deg(np.arctan2(angle_col[1],
-                                  angle_col[0])) * u.deg,
-        ).wrap_at(360 * u.deg)
+        angle_rad = np.arctan2(angle_col[..., 1], angle_col[..., 0])
+    angle = Angle(np.rad2deg(angle_rad) * u.deg).wrap_at(360 * u.deg)
 
     return out_width, out_height, angle
 
@@ -587,12 +584,15 @@ def pixel_shape_to_sky_svd(pixcoord, wcs, width, height, pixel_angle_rad):
         <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
-    width : float
+    width : float or array_like
         The full width of the pixel ellipse (before rotation) in pixels.
+        Arrays convert several concentric ellipses with the same center
+        and rotation, such as the two shapes of an annulus, in a single
+        WCS evaluation.
 
-    height : float
+    height : float or array_like
         The full height of the pixel ellipse (before rotation) in
-        pixels.
+        pixels. Broadcast against ``width``.
 
     pixel_angle_rad : float
         The pixel rotation angle in radians. This is the angle of the
@@ -604,37 +604,49 @@ def pixel_shape_to_sky_svd(pixcoord, wcs, width, height, pixel_angle_rad):
     center : `~astropy.coordinates.SkyCoord`
         The sky center position.
 
-    sky_width : float
-        The full width of the sky ellipse in arcsec.
+    sky_width : float or `~numpy.ndarray`
+        The full width of the sky ellipse in arcsec, with the broadcast
+        shape of ``width`` and ``height``.
 
-    sky_height : float
-        The full height of the sky ellipse in arcsec.
+    sky_height : float or `~numpy.ndarray`
+        The full height of the sky ellipse in arcsec, with the broadcast
+        shape of ``width`` and ``height``.
 
     sky_angle : `~astropy.coordinates.Angle`
         The sky position angle (PA) of the width axis, measured
-        counterclockwise from North (the latitude/Dec axis), wrapped to
-        [0, 360) degrees.
+        counterclockwise from North (the latitude/Dec axis), wrapped
+        to [0, 360) degrees, with the broadcast shape of ``width`` and
+        ``height``.
     """
     centers, jacobians = _pixel_to_sky_jacobians(pixcoord[0], pixcoord[1],
                                                  wcs)
     center = centers[0]
     jacobian_inv = jacobians[0]
 
-    # Build M_pix: columns are pixel semi-axis vectors
+    # Build M_pix: columns are pixel semi-axis vectors, one matrix per
+    # broadcast width and height.
+    width = np.asarray(width, dtype=float)
+    height = np.asarray(height, dtype=float)
+    shape = np.broadcast_shapes(width.shape, height.shape)
     cos_a = np.cos(pixel_angle_rad)
     sin_a = np.sin(pixel_angle_rad)
-    half_w = 0.5 * width
-    half_h = 0.5 * height
-    m_pix = np.array([[half_w * cos_a, -half_h * sin_a],
-                      [half_w * sin_a, half_h * cos_a]])
+    half_w = np.broadcast_to(0.5 * width, shape)
+    half_h = np.broadcast_to(0.5 * height, shape)
+    m_pix = np.empty((*shape, 2, 2))
+    m_pix[..., 0, 0] = half_w * cos_a
+    m_pix[..., 0, 1] = -half_h * sin_a
+    m_pix[..., 1, 0] = half_w * sin_a
+    m_pix[..., 1, 1] = half_h * cos_a
 
-    # M_sky = J^{-1} @ M_pix: columns are sky semi-axis vectors
+    # M_sky = J^{-1} @ M_pix: columns are sky semi-axis vectors.
     m_sky = jacobian_inv @ m_pix
 
     sky_width, sky_height, sky_angle = _svd_ellipse_from_composite(
         m_sky, sky_angle=True,
         input_circular=np.isclose(width, height))
 
+    if not shape:
+        return center, float(sky_width), float(sky_height), sky_angle
     return center, sky_width, sky_height, sky_angle
 
 
@@ -664,11 +676,15 @@ def sky_shape_to_pixel_svd(skycoord, wcs, width_arcsec, height_arcsec,
         <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
         `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
 
-    width_arcsec : float
-        The full width of the sky ellipse in arcsec.
+    width_arcsec : float or array_like
+        The full width of the sky ellipse in arcsec. Arrays convert
+        several concentric ellipses with the same center and rotation,
+        such as the two shapes of an annulus, in a single WCS
+        evaluation.
 
-    height_arcsec : float
-        The full height of the sky ellipse in arcsec.
+    height_arcsec : float or array_like
+        The full height of the sky ellipse in arcsec. Broadcast against
+        ``width_arcsec``.
 
     sky_angle_rad : float
         The sky rotation angle in radians as a position angle (PA).
@@ -684,16 +700,19 @@ def sky_shape_to_pixel_svd(skycoord, wcs, width_arcsec, height_arcsec,
     center : tuple of float
         The ``(x, y)`` pixel center position.
 
-    pixel_width : float
-        The full width of the pixel ellipse in pixels.
+    pixel_width : float or `~numpy.ndarray`
+        The full width of the pixel ellipse in pixels, with the
+        broadcast shape of ``width_arcsec`` and ``height_arcsec``.
 
-    pixel_height : float
-        The full height of the pixel ellipse in pixels.
+    pixel_height : float or `~numpy.ndarray`
+        The full height of the pixel ellipse in pixels, with the
+        broadcast shape of ``width_arcsec`` and ``height_arcsec``.
 
     pixel_angle : `~astropy.coordinates.Angle`
         The pixel rotation angle of the width axis, measured
         counterclockwise from the positive x-axis, wrapped to [0, 360)
-        degrees.
+        degrees, with the broadcast shape of ``width_arcsec`` and
+        ``height_arcsec``.
     """
     center, jacobian = _sky_to_pixel_jacobian(skycoord, wcs,
                                               pixcoord=pixcoord)
@@ -704,12 +723,18 @@ def sky_shape_to_pixel_svd(skycoord, wcs, width_arcsec, height_arcsec,
     # (sin(PA), cos(PA)). The height axis is perpendicular, at PA+90.
     # The local Jacobian already encodes the WCS parity, so no manual
     # parity factor is applied here.
+    width_arcsec = np.asarray(width_arcsec, dtype=float)
+    height_arcsec = np.asarray(height_arcsec, dtype=float)
+    shape = np.broadcast_shapes(width_arcsec.shape, height_arcsec.shape)
     cos_pa = np.cos(sky_angle_rad)
     sin_pa = np.sin(sky_angle_rad)
-    half_w = 0.5 * width_arcsec
-    half_h = 0.5 * height_arcsec
-    m_sky = np.array([[half_w * sin_pa, half_h * cos_pa],
-                      [half_w * cos_pa, -half_h * sin_pa]])
+    half_w = np.broadcast_to(0.5 * width_arcsec, shape)
+    half_h = np.broadcast_to(0.5 * height_arcsec, shape)
+    m_sky = np.empty((*shape, 2, 2))
+    m_sky[..., 0, 0] = half_w * sin_pa
+    m_sky[..., 0, 1] = half_h * cos_pa
+    m_sky[..., 1, 0] = half_w * cos_pa
+    m_sky[..., 1, 1] = -half_h * sin_pa
 
     # M_pix = J @ M_sky: columns are pixel semi-axis vectors
     m_pix = jacobian @ m_sky
@@ -717,6 +742,8 @@ def sky_shape_to_pixel_svd(skycoord, wcs, width_arcsec, height_arcsec,
     pixel_width, pixel_height, pixel_angle = _svd_ellipse_from_composite(
         m_pix, input_circular=np.isclose(width_arcsec, height_arcsec))
 
+    if not shape:
+        return center, float(pixel_width), float(pixel_height), pixel_angle
     return center, pixel_width, pixel_height, pixel_angle
 
 

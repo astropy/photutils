@@ -582,18 +582,19 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
 
-        _, sky_w_out, sky_h_out, sky_angle = pixel_shape_to_sky_svd(
-            pixcoord, wcs, 2 * self.a_out, 2 * self.b_out, self._theta_rad)
-        _, sky_w_in, sky_h_in, _ = pixel_shape_to_sky_svd(
-            pixcoord, wcs, 2 * self.a_in, 2 * self.b_in, self._theta_rad)
+        # Convert the outer and inner ellipses with one WCS evaluation.
+        # The rotation angle is that of the outer ellipse.
+        _, sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
+            pixcoord, wcs, [2 * self.a_out, 2 * self.a_in],
+            [2 * self.b_out, 2 * self.b_in], self._theta_rad)
 
-        a_out = Angle(sky_w_out / 2, 'arcsec')
-        b_out = Angle(sky_h_out / 2, 'arcsec')
-        a_in = Angle(sky_w_in / 2, 'arcsec')
-        b_in = Angle(sky_h_in / 2, 'arcsec')
+        a_out = Angle(sky_w[0] / 2, 'arcsec')
+        b_out = Angle(sky_h[0] / 2, 'arcsec')
+        a_in = Angle(sky_w[1] / 2, 'arcsec')
+        b_in = Angle(sky_h[1] / 2, 'arcsec')
         return SkyEllipticalAnnulus(positions=positions, a_in=a_in,
                                     a_out=a_out, b_out=b_out,
-                                    b_in=b_in, theta=sky_angle)
+                                    b_in=b_in, theta=sky_angle[0])
 
 
 class SkyEllipticalAperture(_RotatableApertureMixin, SkyAperture):
@@ -813,21 +814,21 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
         skypos = self.positions if self.isscalar else self.positions[0]
         first_pixcoord = tuple(np.atleast_2d(positions)[0])
 
-        _, pix_w_out, pix_h_out, pix_angle = sky_shape_to_pixel_svd(
+        # Convert the outer and inner ellipses with one WCS evaluation.
+        # The rotation angle is that of the outer ellipse.
+        _, pix_w, pix_h, pix_angle = sky_shape_to_pixel_svd(
             skypos, wcs,
-            2 * self.a_out.to_value(u.arcsec),
-            2 * self.b_out.to_value(u.arcsec),
+            [2 * self.a_out.to_value(u.arcsec),
+             2 * self.a_in.to_value(u.arcsec)],
+            [2 * self.b_out.to_value(u.arcsec),
+             2 * self.b_in.to_value(u.arcsec)],
             self._theta_rad, pixcoord=first_pixcoord)
-        _, pix_w_in, pix_h_in, _ = sky_shape_to_pixel_svd(
-            skypos, wcs,
-            2 * self.a_in.to_value(u.arcsec),
-            2 * self.b_in.to_value(u.arcsec),
-            self._theta_rad, pixcoord=first_pixcoord)
+        pix_angle = pix_angle[0]
 
-        a_out = pix_w_out / 2
-        b_out = pix_h_out / 2
-        a_in = pix_w_in / 2
-        b_in = pix_h_in / 2
+        a_out = pix_w[0] / 2
+        b_out = pix_h[0] / 2
+        a_in = pix_w[1] / 2
+        b_in = pix_h[1] / 2
         return EllipticalAnnulus(positions=positions, a_in=a_in,
                                  a_out=a_out, b_out=b_out,
                                  b_in=b_in, theta=pix_angle)

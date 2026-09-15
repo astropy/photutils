@@ -345,6 +345,71 @@ class TestSVDShapeConversions:
         assert isinstance(h, (float, np.floating))
         assert isinstance(angle, Angle)
 
+    @pytest.mark.parametrize('wcs_name', ['sip_wcs', 'nonsquare_wcs',
+                                          'flipped_wcs'])
+    def test_pixel_to_sky_array_shapes(self, wcs_name, request):
+        """
+        Array widths and heights give the per-shape scalar results
+        in one WCS evaluation. The middle shape is circular, so the
+        circular-input angle path is exercised as well.
+        """
+        real_wcs = request.getfixturevalue(wcs_name)
+        widths = np.array([10.0, 6.0, 4.0])
+        heights = np.array([5.0, 6.0, 7.0])
+        wcs = CountingWCS(real_wcs)
+        center, w, h, angle = pixel_shape_to_sky_svd((12.0, 7.0), wcs,
+                                                     widths, heights, 0.3)
+        assert wcs.n_pixel_to_world == 1
+        assert w.shape == h.shape == angle.shape == (3,)
+        for i in range(3):
+            c1, w1, h1, a1 = pixel_shape_to_sky_svd(
+                (12.0, 7.0), real_wcs, widths[i], heights[i], 0.3)
+            assert_allclose(w[i], w1, rtol=1e-12)
+            assert_allclose(h[i], h1, rtol=1e-12)
+            assert_allclose(angle[i].deg, a1.deg, atol=1e-10)
+            assert center.separation(c1).arcsec < 1e-9
+
+    @pytest.mark.parametrize('wcs_name', ['sip_wcs', 'nonsquare_wcs',
+                                          'flipped_wcs'])
+    def test_sky_to_pixel_array_shapes(self, wcs_name, request):
+        """
+        Array widths and heights give the per-shape scalar results with
+        one WCS evaluation and, given the pixel position, no inversion.
+        """
+        real_wcs = request.getfixturevalue(wcs_name)
+        widths = np.array([1.0, 0.6, 0.4])
+        heights = np.array([0.5, 0.6, 0.7])
+        pixcoord = tuple(float(v) for v in real_wcs.world_to_pixel(WCS_CENTER))
+        wcs = CountingWCS(real_wcs)
+        center, w, h, angle = sky_shape_to_pixel_svd(
+            WCS_CENTER, wcs, widths, heights, 0.3, pixcoord=pixcoord)
+        assert wcs.n_pixel_to_world == 1
+        assert wcs.n_world_to_pixel == 0
+        assert w.shape == h.shape == angle.shape == (3,)
+        for i in range(3):
+            c1, w1, h1, a1 = sky_shape_to_pixel_svd(
+                WCS_CENTER, real_wcs, widths[i], heights[i], 0.3)
+            assert_allclose(w[i], w1, rtol=1e-12)
+            assert_allclose(h[i], h1, rtol=1e-12)
+            assert_allclose(angle[i].deg, a1.deg, atol=1e-10)
+            assert_allclose(center, c1, atol=1e-10)
+
+    def test_shape_broadcasting(self, sip_wcs):
+        """
+        A scalar width broadcasts against an array of heights, and
+        scalar inputs give scalar outputs.
+        """
+        _, w, h, angle = pixel_shape_to_sky_svd((12.0, 7.0), sip_wcs, 8.0,
+                                                [4.0, 8.0], 0.3)
+        assert w.shape == h.shape == angle.shape == (2,)
+        _, w1, h1, a1 = pixel_shape_to_sky_svd((12.0, 7.0), sip_wcs, 8.0,
+                                               8.0, 0.3)
+        assert isinstance(w1, float)
+        assert isinstance(h1, float)
+        assert a1.isscalar
+        assert_allclose(w[1], w1, rtol=1e-12)
+        assert_allclose(angle[1].deg, a1.deg, atol=1e-10)
+
     def test_roundtrip_sky_pixel_sky(self, simple_wcs):
         """
         Sky -> pixel -> sky should recover the original ellipse.

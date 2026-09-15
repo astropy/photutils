@@ -598,15 +598,17 @@ class RectangularAnnulus(_RotatableApertureMixin, PixelAperture):
 
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
-        _, sky_w_out, sky_h_out, sky_angle = pixel_shape_to_sky_svd(
-            pixcoord, wcs, self.w_out, self.h_out, self._theta_rad)
-        _, sky_w_in, sky_h_in, _ = pixel_shape_to_sky_svd(
-            pixcoord, wcs, self.w_in, self.h_in, self._theta_rad)
+        # Convert the outer and inner rectangles with one WCS
+        # evaluation. The rotation angle is that of the outer rectangle.
+        _, sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
+            pixcoord, wcs, [self.w_out, self.w_in], [self.h_out, self.h_in],
+            self._theta_rad)
+        sky_angle = sky_angle[0]
 
-        w_in = Angle(sky_w_in, 'arcsec')
-        w_out = Angle(sky_w_out, 'arcsec')
-        h_in = Angle(sky_h_in, 'arcsec')
-        h_out = Angle(sky_h_out, 'arcsec')
+        w_in = Angle(sky_w[1], 'arcsec')
+        w_out = Angle(sky_w[0], 'arcsec')
+        h_in = Angle(sky_h[1], 'arcsec')
+        h_out = Angle(sky_h[0], 'arcsec')
         return SkyRectangularAnnulus(positions=positions, w_in=w_in,
                                      w_out=w_out, h_out=h_out,
                                      h_in=h_in, theta=sky_angle)
@@ -832,17 +834,14 @@ class SkyRectangularAnnulus(_RotatableApertureMixin, SkyAperture):
 
         skypos = self.positions if self.isscalar else self.positions[0]
         first_pixcoord = tuple(np.atleast_2d(positions)[0])
-        _, pix_w_out, pix_h_out, pix_angle = sky_shape_to_pixel_svd(
+        # Convert the outer and inner rectangles with one WCS
+        # evaluation. The rotation angle is that of the outer rectangle.
+        _, pix_w, pix_h, pix_angle = sky_shape_to_pixel_svd(
             skypos, wcs,
-            self.w_out.to_value(u.arcsec),
-            self.h_out.to_value(u.arcsec),
-            self._theta_rad, pixcoord=first_pixcoord)
-        _, pix_w_in, pix_h_in, _ = sky_shape_to_pixel_svd(
-            skypos, wcs,
-            self.w_in.to_value(u.arcsec),
-            self.h_in.to_value(u.arcsec),
+            [self.w_out.to_value(u.arcsec), self.w_in.to_value(u.arcsec)],
+            [self.h_out.to_value(u.arcsec), self.h_in.to_value(u.arcsec)],
             self._theta_rad, pixcoord=first_pixcoord)
 
-        return RectangularAnnulus(positions=positions, w_in=pix_w_in,
-                                  w_out=pix_w_out, h_out=pix_h_out,
-                                  h_in=pix_h_in, theta=pix_angle)
+        return RectangularAnnulus(positions=positions, w_in=pix_w[1],
+                                  w_out=pix_w[0], h_out=pix_h[0],
+                                  h_in=pix_h[1], theta=pix_angle[0])

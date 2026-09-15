@@ -629,7 +629,7 @@ class TestFlippedParityWCS:
         assert abs(diff) < 2e-5
 
 
-# Sky apertures and to_pixel keywords for the single-inversion tests
+# Sky apertures and to_pixel keywords for the single-evaluation tests
 _SKY_APERTURE_CASES = [
     pytest.param(SkyCircularAperture(CENTER, r=1 * u.arcsec), {},
                  id='circle'),
@@ -657,20 +657,57 @@ _SKY_APERTURE_CASES = [
 ]
 
 
-class TestSingleInversion:
+# Pixel apertures for the single-evaluation tests
+_PIXEL_APERTURE_CASES = [
+    pytest.param(CircularAperture(PIX_CENTER, r=3.0), id='circle'),
+    pytest.param(CircularAnnulus(PIX_CENTER, r_in=3.0, r_out=5.0),
+                 id='circle_annulus'),
+    pytest.param(EllipticalAperture(PIX_CENTER, a=5.0, b=3.0, theta=0.5),
+                 id='ellipse'),
+    pytest.param(EllipticalAnnulus(PIX_CENTER, a_in=3.0, a_out=5.0,
+                                   b_out=3.0, theta=0.5),
+                 id='ellipse_annulus'),
+    pytest.param(RectangularAperture(PIX_CENTER, w=5.0, h=3.0, theta=0.5),
+                 id='rectangle'),
+    pytest.param(RectangularAnnulus(PIX_CENTER, w_in=3.0, w_out=5.0,
+                                    h_out=3.0, theta=0.5),
+                 id='rectangle_annulus'),
+]
+
+
+class TestSingleWCSEvaluation:
     """
-    Tests that the sky-to-pixel conversions invert the WCS only once,
-    for the aperture positions, and reuse that pixel position for the
-    shape conversion.
+    Tests that each conversion evaluates the WCS as few times as
+    possible.
+
+    A sky-to-pixel conversion inverts the WCS once, for the aperture
+    positions, reuses that pixel position for the shape conversion,
+    and evaluates the forward transform once for the local Jacobian. A
+    pixel-to-sky conversion evaluates the forward transform once for
+    the positions and once for the Jacobian. The annuli convert both of
+    their shapes within those same evaluations.
     """
 
     @pytest.mark.parametrize(('aperture', 'kwargs'), _SKY_APERTURE_CASES)
     @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'sip_wcs'])
-    def test_one_inversion(self, aperture, kwargs, wcs_name, request):
+    def test_sky_to_pixel(self, aperture, kwargs, wcs_name, request):
         real_wcs = request.getfixturevalue(wcs_name)
         expected = aperture.to_pixel(real_wcs, **kwargs)
         wcs = CountingWCS(real_wcs)
         result = aperture.to_pixel(wcs, **kwargs)
         assert wcs.n_world_to_pixel == 1
+        assert wcs.n_pixel_to_world == 1
         assert type(result) is type(expected)
         assert_allclose(result.positions, expected.positions, atol=1e-8)
+
+    @pytest.mark.parametrize('aperture', _PIXEL_APERTURE_CASES)
+    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'sip_wcs'])
+    def test_pixel_to_sky(self, aperture, wcs_name, request):
+        real_wcs = request.getfixturevalue(wcs_name)
+        expected = aperture.to_sky(real_wcs)
+        wcs = CountingWCS(real_wcs)
+        result = aperture.to_sky(wcs)
+        assert wcs.n_world_to_pixel == 0
+        assert wcs.n_pixel_to_world == 2
+        assert type(result) is type(expected)
+        assert result.positions.separation(expected.positions).arcsec < 1e-9

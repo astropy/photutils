@@ -120,9 +120,11 @@ New Features
 
   - The ``to_pixel`` methods of the sky apertures now invert the WCS
     once, for the aperture positions, and reuse that pixel position
-    for the shape conversion. Together with the faster WCS helpers,
-    the ``to_sky`` and ``to_pixel`` methods of all apertures are two
-    to five times faster. [#2425]
+    for the shape conversion. The elliptical and rectangular annuli
+    convert both of their shapes with one evaluation of the local WCS
+    Jacobian in each direction. Together with the faster WCS helpers,
+    the ``to_sky`` and ``to_pixel`` methods of all apertures are two to
+    five times faster. [#2425]
 
 - ``photutils.background``
 
