@@ -794,11 +794,17 @@ def test_chunk_driver_matches_python_path(dtype, scene, contrast_method):
         threshold, n_pixels = 0.01, 1
 
     data = data.astype(dtype)
-    segm = detect_sources(data, threshold, n_pixels)
+    with warnings.catch_warnings():
+        # The negmin scenes use a negative threshold on purpose.
+        warnings.filterwarnings('ignore', 'threshold is negative',
+                                AstropyUserWarning)
+        segm = detect_sources(data, threshold, n_pixels)
+
     if scene == 'checkerboard-negmin':
         # A non-positive minimum (sinh fallback) combined with too many
         # markers (linear retry), applied after the detection
         data = data - 2
+
     if scene == 'nan':
         # NaN pixels within the segment, set after the detection
         rng = np.random.default_rng(11)
@@ -1273,8 +1279,13 @@ def test_saddle_markers_match_reference(dtype, connectivity, scene,
     data = data.astype(dtype)
 
     footprint = _make_binary_structure(2, connectivity)
-    segm = detect_sources(data, threshold, 5,
-                          connectivity=connectivity)
+    with warnings.catch_warnings():
+        # The negmin scene uses a negative threshold on purpose
+        warnings.filterwarnings('ignore', 'threshold is negative',
+                                AstropyUserWarning)
+        segm = detect_sources(data, threshold, 5,
+                              connectivity=connectivity)
+
     slc = segm.slices[0]
     cutout = data[slc]
 
@@ -1388,7 +1399,11 @@ def test_nonposmin_fallback_sinh():
     y, x = np.mgrid[0:61, 0:81]
     data = (Gaussian2D(1000, 36, 30, 1.7, 1.7)(x, y)
             + Gaussian2D(20, 44, 30, 1.7, 1.7)(x, y) - 1.2)
-    segm = detect_sources(data, -0.2, 5)
+    with warnings.catch_warnings():
+        # The negative threshold is the point of the test
+        warnings.filterwarnings('ignore', 'threshold is negative',
+                                AstropyUserWarning)
+        segm = detect_sources(data, -0.2, 5)
     assert segm.n_labels == 1
 
     match = 'The deblending mode of one or more source labels'

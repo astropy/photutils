@@ -248,7 +248,10 @@ class SourceFinder:
             used as the per-pixel detection threshold. If ``data`` is
             a `~astropy.units.Quantity` array, then ``threshold`` must
             have the same units as ``data``. A 2D ``threshold`` array must
-            have the same shape as ``data``.
+            have the same shape as ``data``. A warning is emitted if the
+            threshold is negative (or, for an array, has any negative
+            values), because pixels with zero or negative values can then
+            be included in the detected sources.
 
         mask : 2D bool `~numpy.ndarray`, optional
             A boolean mask with the same shape as ``data``, where a

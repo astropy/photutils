@@ -7,6 +7,7 @@ import warnings
 
 import numpy as np
 from astropy.stats import SigmaClip
+from astropy.utils.exceptions import AstropyUserWarning
 from scipy.ndimage import find_objects
 from scipy.ndimage import label as ndi_label
 
@@ -242,6 +243,45 @@ def _detect_sources(data, threshold, n_pixels, footprint, inverse_mask):
                                         slices=segm_slices)
 
 
+def _warn_negative_threshold(threshold):
+    """
+    Warn if the detection threshold is negative.
+
+    Sources are defined by pixels that are strictly greater than the
+    threshold, so a negative threshold can include pixels with zero
+    or negative values in the detected sources. Such pixels contribute
+    to the source areas, but `~photutils.segmentation.SourceCatalog`
+    sets negative data values to zero when computing the source
+    moments, so they do not contribute to the centroids and shapes.
+    A source whose minimum data value is not positive also switches
+    `~photutils.segmentation.deblend_sources` to its sinh fallback
+    mode.
+
+    Parameters
+    ----------
+    threshold : float, 2D `~numpy.ndarray`, or `~astropy.units.Quantity`
+        The detection threshold. NaN values are ignored.
+    """
+    (values,), _ = process_quantities((threshold,), ('threshold',))
+    values = np.asanyarray(values)
+    if values.ndim == 0:
+        if values < 0:
+            msg = (f'threshold is negative ({values}). Pixels with zero '
+                   'or negative values can be included in the detected '
+                   'sources. SourceCatalog sets negative data values to '
+                   'zero when computing the source moments.')
+            warnings.warn(msg, AstropyUserWarning)
+        return
+
+    n_bad = np.count_nonzero(values < 0)
+    if n_bad > 0:
+        msg = (f'threshold has {n_bad} negative value(s). Pixels with '
+               'zero or negative values can be included in the detected '
+               'sources. SourceCatalog sets negative data values to zero '
+               'when computing the source moments.')
+        warnings.warn(msg, AstropyUserWarning)
+
+
 @deprecated_renamed_argument('npixels', 'n_pixels', '3.0', until='4.0')
 def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
     """
@@ -269,6 +309,9 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
         detection threshold. If ``data`` is a `~astropy.units.Quantity`
         array, then ``threshold`` must have the same units as ``data``.
         A 2D ``threshold`` array must have the same shape as ``data``.
+        A warning is emitted if the threshold is negative (or, for an
+        array, has any negative values), because pixels with zero or
+        negative values can then be included in the detected sources.
 
     n_pixels : int
         The minimum number of connected pixels, each greater than
@@ -298,6 +341,10 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
     ------
     NoDetectionsWarning
         If no sources are found.
+
+    AstropyUserWarning
+        If ``threshold`` is negative or, for an array, has any negative
+        values.
 
     See Also
     --------
@@ -342,6 +389,7 @@ def detect_sources(data, threshold, n_pixels, *, connectivity=8, mask=None):
         fig.tight_layout()
     """
     check_units((data, threshold), ('data', 'threshold'))
+    _warn_negative_threshold(threshold)
 
     if (n_pixels <= 0) or (int(n_pixels) != n_pixels):
         msg = f'n_pixels must be a positive integer, got {n_pixels!r}'
