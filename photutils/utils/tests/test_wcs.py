@@ -8,6 +8,7 @@ import warnings
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.utils.exceptions import AstropyUserWarning
 from astropy.wcs import WCS
 from astropy.wcs.utils import proj_plane_pixel_area
 from numpy.testing import assert_allclose
@@ -193,27 +194,50 @@ class TestPixelAreaMap:
         assert_allclose(area[y, x], expected, rtol=1e-6)
 
     def test_step_independent(self):
-        shape = (300, 200)
+        shape = (1040, 1040)
         wcs = _make_wide_tan_wcs(shape)
         fine = compute_pixel_area_map(wcs, shape, step=16)
         coarse = compute_pixel_area_map(wcs, shape, step=128)
         assert_allclose(fine, coarse, rtol=1e-6)
 
-    def test_step_capped(self):
+    @pytest.mark.parametrize('step', [7, 1000])
+    def test_step_capped(self, step):
         """
         Test that a step larger than min(shape) // 8 is reduced to
-        it, so the result is identical to that of the capped step and
-        differs from what the uncapped coarse grid would give.
+        it with a warning, so the result is identical to that of the
+        largest allowed step and differs from a smaller step.
         """
         shape = (64, 48)
         wcs = _make_wide_tan_wcs(shape, deg_per_pix=0.2)
         capped = compute_pixel_area_map(wcs, shape, step=6)
-        area_1000 = compute_pixel_area_map(wcs, shape, step=1000)
-        area_7 = compute_pixel_area_map(wcs, shape, step=7)
-        area_5 = compute_pixel_area_map(wcs, shape, step=5)
-        assert np.array_equal(area_1000, capped)
-        assert np.array_equal(area_7, capped)
-        assert not np.array_equal(area_5, capped)
+        match = f'step={step} was reduced to 6 '
+        with pytest.warns(AstropyUserWarning, match=match):
+            area = compute_pixel_area_map(wcs, shape, step=step)
+        assert np.array_equal(area, capped)
+        smaller = compute_pixel_area_map(wcs, shape, step=5)
+        assert not np.array_equal(smaller, capped)
+
+    def test_default_step_small_image(self):
+        """
+        Test that the default step is silently reduced on a small image
+        and equals the largest allowed step.
+        """
+        shape = (64, 48)
+        wcs = _make_wide_tan_wcs(shape, deg_per_pix=0.2)
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            area = compute_pixel_area_map(wcs, shape)
+            expected = compute_pixel_area_map(wcs, shape, step=6)
+        assert np.array_equal(area, expected)
+
+    def test_default_step_large_image(self):
+        shape = (600, 520)
+        wcs = _make_wide_tan_wcs(shape)
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            area = compute_pixel_area_map(wcs, shape)
+            expected = compute_pixel_area_map(wcs, shape, step=64)
+        assert np.array_equal(area, expected)
 
     @pytest.mark.parametrize('projection', ['CAR', 'AIT'])
     def test_coarse_grid_outside_projection(self, projection):
@@ -241,7 +265,7 @@ class TestPixelAreaMap:
 
     @pytest.mark.parametrize('step', [0, -4, 2.5, True])
     def test_invalid_step(self, simple_wcs, step):
-        match = 'step must be a positive integer'
+        match = 'step must be a positive integer or None'
         with pytest.raises(ValueError, match=match):
             compute_pixel_area_map(simple_wcs, (20, 20), step=step)
 

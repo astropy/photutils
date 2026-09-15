@@ -3,7 +3,10 @@
 Tools for computing the on-sky area of image pixels from a WCS.
 """
 
+import warnings
+
 import numpy as np
+from astropy.utils.exceptions import AstropyUserWarning
 from scipy.interpolate import RectBivariateSpline
 
 from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
@@ -98,7 +101,7 @@ def _is_positive_int(value):
             and not isinstance(value, (bool, np.bool_)) and value > 0)
 
 
-def compute_pixel_area_map(wcs, shape, *, step=64):
+def compute_pixel_area_map(wcs, shape, *, step=None):
     """
     Compute the on-sky area of every pixel in an image.
 
@@ -119,16 +122,19 @@ def compute_pixel_area_map(wcs, shape, *, step=64):
     shape : 2-tuple of int
         The ``(ny, nx)`` shape of the image.
 
-    step : int, optional
+    step : int or None, optional
         The spacing in pixels of the coarse grid on which the areas are
         evaluated. The grid is padded by two steps beyond the image
         edges, so the interpolation never extrapolates and the spline
         is well defined for any image shape. Steps from about 32 to 128
         give equivalent results, since smaller steps only add runtime
         and larger steps lose accuracy on strongly distorted or very
-        wide fields. The step is capped at ``min(shape) // 8`` (and at
-        least 1), so the coarse grid always has at least eight intervals
-        across the image.
+        wide fields. The largest allowed step is ``min(shape) // 8``
+        (and at least 1), so that the coarse grid always has at least
+        eight intervals across the image. If `None`, the step is 64
+        or the largest allowed step, whichever is smaller. A larger
+        step than allowed is reduced to the largest allowed step with a
+        warning.
 
     Returns
     -------
@@ -170,14 +176,20 @@ def compute_pixel_area_map(wcs, shape, *, step=64):
     if not (_is_positive_int(ny) and _is_positive_int(nx)):
         raise ValueError(msg)
 
-    if not _is_positive_int(step):
-        msg = 'step must be a positive integer'
-        raise ValueError(msg)
-
     # Ensure the image spans at least eight grid intervals so that large
     # steps on smaller images do not leave the spline with too few
     # knots.
-    step = min(step, max(1, min(ny, nx) // 8))
+    max_step = max(1, min(ny, nx) // 8)
+    if step is None:
+        step = min(64, max_step)
+    elif not _is_positive_int(step):
+        msg = 'step must be a positive integer or None'
+        raise ValueError(msg)
+    elif step > max_step:
+        msg = (f'step={step} was reduced to {max_step} so that the coarse '
+               'grid has at least eight intervals across the image')
+        warnings.warn(msg, AstropyUserWarning)
+        step = max_step
 
     # Coarse grid padded by two steps beyond each edge. This gives the
     # spline at least five knots per axis and keeps the interpolation

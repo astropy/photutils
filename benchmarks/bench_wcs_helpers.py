@@ -254,7 +254,7 @@ def bench_vectorized_helpers(*, shape=(2000, 2000),
                   f'{cells[2]:>14}{cells[3]:>14}')
 
 
-def bench_pixel_area_map(*, sizes=(500, 2000, 4096), steps=(16, 64, 256),
+def bench_pixel_area_map(*, sizes=(512, 2048, 4096), steps=(8, 16, 32, 64),
                          repeats=3):
     """
     Benchmark the full-frame pixel-area map versus image size and grid
@@ -266,7 +266,8 @@ def bench_pixel_area_map(*, sizes=(500, 2000, 4096), steps=(16, 64, 256),
         The image sizes. Each image is ``(size, size)``.
 
     steps : tuple of int, optional
-        The coarse-grid steps in pixels.
+        The coarse-grid steps in pixels. Every step must be at most
+        ``min(sizes) // 8``, the largest step the function allows.
 
     repeats : int, optional
         The number of repeats for each timing (best time is kept).
@@ -347,10 +348,10 @@ def main():
                              'the vectorized-helper benchmark '
                              '(default: 100,1000,10000,100000)')
     parser.add_argument('--sizes', type=parse_int_list,
-                        default=[500, 2000, 4096],
+                        default=[512, 2048, 4096],
                         help='comma-separated image sizes for the '
                              'pixel-area-map benchmark '
-                             '(default: 500,2000,4096)')
+                             '(default: 512,2048,4096)')
     parser.add_argument('--repeats', type=int, default=3,
                         help='number of repeats per timing, of which '
                              'the best time is reported '
