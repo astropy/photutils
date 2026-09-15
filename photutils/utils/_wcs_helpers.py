@@ -39,7 +39,8 @@ def _is_gwcs(wcs):
     # imports also cost about 1 us per call. Looking up sys.modules
     # costs about 100 ns and imports nothing.
     gwcs_wcs = sys.modules.get('gwcs.wcs')
-    return gwcs_wcs is not None and isinstance(wcs, gwcs_wcs.WCS)
+    gwcs_cls = getattr(gwcs_wcs, 'WCS', None)
+    return gwcs_cls is not None and isinstance(wcs, gwcs_cls)
 
 
 def _to_radians(values, unit):
