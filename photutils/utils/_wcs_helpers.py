@@ -99,6 +99,10 @@ def _pixel_to_world_radians(wcs, x, y):
     # the WCS.
     component_indices = [comp[1] for comp
                          in low_level_wcs.world_axis_object_components]
+    if component_indices.count(0) != 1 or component_indices.count(1) != 1:
+        msg = ('wcs must have exactly one celestial longitude axis and '
+               'one celestial latitude axis')
+        raise ValueError(msg)
     lon_idx = component_indices.index(0)
     lat_idx = component_indices.index(1)
     units = low_level_wcs.world_axis_units

@@ -1098,6 +1098,18 @@ class TestJacobianEvaluation:
         jac = compute_local_wcs_jacobian(swapped_wcs, skycoord)
         assert_allclose(jac, expected, rtol=1e-9)
 
+    def test_non_celestial_wcs(self):
+        """
+        Test that a WCS without a celestial longitude and latitude pair
+        is rejected with a clear message.
+        """
+        wcs = APWCS(naxis=2)
+        wcs.wcs.ctype = ['LINEAR', 'LINEAR']
+        wcs.wcs.cdelt = [0.1, 0.1]
+        match = 'exactly one celestial longitude axis'
+        with pytest.raises(ValueError, match=match):
+            compute_pixel_to_sky_jacobians(wcs, 5.0, 5.0)
+
     @pytest.mark.parametrize(('center_ra', 'center_dec'), TROUBLESOME_CENTERS)
     def test_agrees_near_pole_and_wrap(self, center_ra, center_dec):
         wcs = _make_sip_wcs(center_ra, center_dec)
