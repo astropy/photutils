@@ -345,8 +345,8 @@ class EllipticalAperture(_RotatableApertureMixin, PixelAperture):
 
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
-        _, sky_width, sky_height, sky_angle = pixel_shape_to_sky_svd(
-            pixcoord, wcs, 2 * self.a, 2 * self.b, self._theta_rad)
+        sky_width, sky_height, sky_angle = pixel_shape_to_sky_svd(
+            wcs, pixcoord, 2 * self.a, 2 * self.b, self._theta_rad)
 
         a = Angle(sky_width / 2, 'arcsec')
         b = Angle(sky_height / 2, 'arcsec')
@@ -575,6 +575,16 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
         conversion. For apertures with multiple positions used with a
         WCS that has spatially-varying distortions, this may produce
         inaccurate results for positions far from the first position.
+
+        The outer and inner ellipses are converted independently, so
+        an inner ellipse with a different aspect ratio keeps its own
+        converted axes. The annulus has a single rotation angle, which
+        is that of the converted outer ellipse. If the WCS is sheared
+        and the inner aspect ratio differs from the outer one, the
+        converted inner ellipse has a slightly different orientation,
+        so the inner shape of the returned annulus is approximate. The
+        inner axes always remain smaller than the outer axes, so the
+        result is always a valid annulus.
         """
         xpos, ypos = np.transpose(self.positions)
         positions = wcs.pixel_to_world(xpos, ypos)
@@ -582,18 +592,19 @@ class EllipticalAnnulus(_RotatableApertureMixin, PixelAperture):
         first_pos = np.atleast_2d(self.positions)[0]
         pixcoord = (float(first_pos[0]), float(first_pos[1]))
 
-        _, sky_w_out, sky_h_out, sky_angle = pixel_shape_to_sky_svd(
-            pixcoord, wcs, 2 * self.a_out, 2 * self.b_out, self._theta_rad)
-        _, sky_w_in, sky_h_in, _ = pixel_shape_to_sky_svd(
-            pixcoord, wcs, 2 * self.a_in, 2 * self.b_in, self._theta_rad)
+        # Convert the outer and inner ellipses with one WCS evaluation.
+        # The rotation angle is that of the outer ellipse.
+        sky_w, sky_h, sky_angle = pixel_shape_to_sky_svd(
+            wcs, pixcoord, [2 * self.a_out, 2 * self.a_in],
+            [2 * self.b_out, 2 * self.b_in], self._theta_rad)
 
-        a_out = Angle(sky_w_out / 2, 'arcsec')
-        b_out = Angle(sky_h_out / 2, 'arcsec')
-        a_in = Angle(sky_w_in / 2, 'arcsec')
-        b_in = Angle(sky_h_in / 2, 'arcsec')
+        a_out = Angle(sky_w[0] / 2, 'arcsec')
+        b_out = Angle(sky_h[0] / 2, 'arcsec')
+        a_in = Angle(sky_w[1] / 2, 'arcsec')
+        b_in = Angle(sky_h[1] / 2, 'arcsec')
         return SkyEllipticalAnnulus(positions=positions, a_in=a_in,
                                     a_out=a_out, b_out=b_out,
-                                    b_in=b_in, theta=sky_angle)
+                                    b_in=b_in, theta=sky_angle[0])
 
 
 class SkyEllipticalAperture(_RotatableApertureMixin, SkyAperture):
@@ -675,11 +686,12 @@ class SkyEllipticalAperture(_RotatableApertureMixin, SkyAperture):
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
+        first_pixcoord = tuple(np.atleast_2d(positions)[0])
         _, pix_width, pix_height, pix_angle = sky_shape_to_pixel_svd(
-            skypos, wcs,
+            wcs, skypos,
             2 * self.a.to_value(u.arcsec),
             2 * self.b.to_value(u.arcsec),
-            self._theta_rad)
+            self._theta_rad, pixcoord=first_pixcoord)
 
         a = pix_width / 2
         b = pix_height / 2
@@ -805,27 +817,38 @@ class SkyEllipticalAnnulus(_RotatableApertureMixin, SkyAperture):
         conversion. For apertures with multiple positions used with a
         WCS that has spatially-varying distortions, this may produce
         inaccurate results for positions far from the first position.
+
+        The outer and inner ellipses are converted independently, so
+        an inner ellipse with a different aspect ratio keeps its own
+        converted axes. The annulus has a single rotation angle, which
+        is that of the converted outer ellipse. If the WCS is sheared
+        and the inner aspect ratio differs from the outer one, the
+        converted inner ellipse has a slightly different orientation,
+        so the inner shape of the returned annulus is approximate. The
+        inner axes always remain smaller than the outer axes, so the
+        result is always a valid annulus.
         """
         xpos, ypos = wcs.world_to_pixel(self.positions)
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
+        first_pixcoord = tuple(np.atleast_2d(positions)[0])
 
-        _, pix_w_out, pix_h_out, pix_angle = sky_shape_to_pixel_svd(
-            skypos, wcs,
-            2 * self.a_out.to_value(u.arcsec),
-            2 * self.b_out.to_value(u.arcsec),
-            self._theta_rad)
-        _, pix_w_in, pix_h_in, _ = sky_shape_to_pixel_svd(
-            skypos, wcs,
-            2 * self.a_in.to_value(u.arcsec),
-            2 * self.b_in.to_value(u.arcsec),
-            self._theta_rad)
+        # Convert the outer and inner ellipses with one WCS evaluation.
+        # The rotation angle is that of the outer ellipse.
+        _, pix_w, pix_h, pix_angle = sky_shape_to_pixel_svd(
+            wcs, skypos,
+            [2 * self.a_out.to_value(u.arcsec),
+             2 * self.a_in.to_value(u.arcsec)],
+            [2 * self.b_out.to_value(u.arcsec),
+             2 * self.b_in.to_value(u.arcsec)],
+            self._theta_rad, pixcoord=first_pixcoord)
+        pix_angle = pix_angle[0]
 
-        a_out = pix_w_out / 2
-        b_out = pix_h_out / 2
-        a_in = pix_w_in / 2
-        b_in = pix_h_in / 2
+        a_out = pix_w[0] / 2
+        b_out = pix_h[0] / 2
+        a_in = pix_w[1] / 2
+        b_in = pix_h[1] / 2
         return EllipticalAnnulus(positions=positions, a_in=a_in,
                                  a_out=a_out, b_out=b_out,
                                  b_in=b_in, theta=pix_angle)

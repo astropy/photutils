@@ -118,6 +118,14 @@ New Features
     order statistics (``min``, ``max``, ``median``), ``mad_std``,
     and biweight properties. [#2364]
 
+  - The ``to_pixel`` methods of the sky apertures now invert the WCS
+    once, for the aperture positions, and reuse that pixel position
+    for the shape conversion. The elliptical and rectangular annuli
+    convert both of their shapes with one evaluation of the local WCS
+    Jacobian in each direction. Together with the faster WCS helpers,
+    the ``to_sky`` and ``to_pixel`` methods of all apertures are two to
+    five times faster. [#2425]
+
 - ``photutils.background``
 
   - Updated ``LocalBackground`` so that ``Quantity`` input data is
@@ -893,6 +901,17 @@ Bug Fixes
   - Fixed a crash in ``calc_total_error`` when the input ``data`` array
     has an integer data type. [#2375]
 
+  - The local WCS Jacobians and pixel scales used by the aperture
+    ``to_sky`` and ``to_pixel`` methods and by the ``SourceCatalog`` sky
+    position errors are now computed with central finite differences
+    (half a pixel either side of the position) instead of one-sided
+    1-pixel differences. [#2425]
+
+  - The WCS helper functions now evaluate a ``gwcs`` transform with its
+    bounding box disabled. Previously, sources within half a pixel of
+    the array edge received NaN Jacobians and pixel scales because the
+    finite-difference offsets fell outside the bounding box. [#2425]
+
 API Changes
 ^^^^^^^^^^^
 
@@ -938,6 +957,17 @@ API Changes
 
   - The ``PixelAperture.plot`` method now returns a list of patches
     for scalar apertures, as documented, instead of a tuple. [#2362]
+
+  - The ``to_pixel`` and ``to_sky`` methods of the circular apertures
+    now use the geometric mean of the two singular values of the local
+    WCS Jacobian (the square root of its absolute determinant) as the
+    isotropic pixel scale for every WCS. The scale preserves the area
+    of the mapped circle and inverts exactly, so a conversion to pixels
+    and back returns the original radius. Previously, a distorted WCS
+    or a ``gwcs`` used the arithmetic mean of the singular values, and
+    an undistorted ``astropy.wcs.WCS`` used the geometric mean of the x
+    and y pixel scales. The radii are unchanged for undistorted WCS with
+    orthogonal pixel axes. [#2425]
 
 - ``photutils.datasets``
 

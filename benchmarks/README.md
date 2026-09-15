@@ -384,6 +384,47 @@ python benchmarks/bench_background.py --which background2d \
     --sizes 2048,4096 --box-sizes 64 --n-threads 1,2,4,8
 ```
 
+## WCS helpers (`bench_wcs_helpers.py`)
+
+Benchmarks for the local WCS helper functions in
+`photutils.utils._wcs_helpers`:
+
+- the per-call cost of the scalar helpers (local Jacobian, mean-scale
+  and SVD conversions) on astropy TAN, TAN-SIP, and gwcs transforms
+- the vectorized helpers versus the number of positions, with the
+  speedup over a per-source loop of the scalar mean-scale helper
+- the aperture `to_pixel` and `to_sky` conversions that use the
+  helpers
+
+```bash
+python benchmarks/bench_wcs_helpers.py
+python benchmarks/bench_wcs_helpers.py --which vectorized --n-positions 1000,100000
+```
+
+## SourceCatalog centroid errors (`mc_sky_centroid_err.py`)
+
+Monte Carlo verification of the `SourceCatalog` centroid errors (a
+validation script rather than a timing benchmark):
+
+- the pixel-to-sky error covariance transport, checked against the
+  scatter of pixel positions drawn from a known covariance and
+  converted with the high-level WCS interface, on rotated, sheared,
+  swapped-axis, SIP, near-pole, and gwcs transforms
+- the end-to-end pixel and sky centroid errors, checked against the
+  scatter of the measured centroids over many noise realizations of a
+  Gaussian source on a sheared, anisotropic WCS
+
+`SourceCatalog` zeroes negative data values within a segment before
+computing moments, so a segment that extends into wings below the
+noise gives a clipped centroid whose reported (linear) error is a
+few percent high. The defaults keep the segment edge well above the
+noise; `--radius 8` with the default amplitude shows the effect.
+
+```bash
+python benchmarks/mc_sky_centroid_err.py
+python benchmarks/mc_sky_centroid_err.py --which end-to-end --radius 8 --amplitude 40
+```
+
 ## Utils (`bench_utils.py`)
 
 Benchmarks for the `photutils.utils` subpackage:
@@ -399,7 +440,6 @@ Benchmarks for the `photutils.utils` subpackage:
 - the NaN-ignoring statistics functions on float64 (bottleneck) and
   float32 (NumPy) arrays
 - `make_random_xycoords` with and without a minimum separation
-- the per-call cost of the local WCS helper functions
 
 Examples:
 

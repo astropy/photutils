@@ -265,8 +265,8 @@ class CircularAperture(PixelAperture):
         positions = wcs.pixel_to_world(xpos, ypos)
 
         first_pos = np.atleast_2d(self.positions)[0]
-        _, mean_scale = pixel_to_sky_mean_scale(
-            (float(first_pos[0]), float(first_pos[1])), wcs)
+        mean_scale = pixel_to_sky_mean_scale(
+            wcs, (float(first_pos[0]), float(first_pos[1])))
 
         r = Angle(self.r * mean_scale, 'arcsec')
         return SkyCircularAperture(positions=positions, r=r)
@@ -450,8 +450,8 @@ class CircularAnnulus(PixelAperture):
         positions = wcs.pixel_to_world(xpos, ypos)
 
         first_pos = np.atleast_2d(self.positions)[0]
-        _, mean_scale = pixel_to_sky_mean_scale(
-            (float(first_pos[0]), float(first_pos[1])), wcs)
+        mean_scale = pixel_to_sky_mean_scale(
+            wcs, (float(first_pos[0]), float(first_pos[1])))
 
         r_in = Angle(self.r_in * mean_scale, 'arcsec')
         r_out = Angle(self.r_out * mean_scale, 'arcsec')
@@ -523,7 +523,10 @@ class SkyCircularAperture(SkyAperture):
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
-        _, mean_scale = sky_to_pixel_mean_scale(skypos, wcs)
+        first_pixcoord = tuple(np.atleast_2d(positions)[0])
+
+        _, mean_scale = sky_to_pixel_mean_scale(wcs, skypos,
+                                                pixcoord=first_pixcoord)
 
         r = self.r.to_value(u.arcsec) * mean_scale
         return CircularAperture(positions=positions, r=r)
@@ -620,7 +623,10 @@ class SkyCircularAnnulus(SkyAperture):
         positions = np.transpose((xpos, ypos))
 
         skypos = self.positions if self.isscalar else self.positions[0]
-        _, mean_scale = sky_to_pixel_mean_scale(skypos, wcs)
+        first_pixcoord = tuple(np.atleast_2d(positions)[0])
+
+        _, mean_scale = sky_to_pixel_mean_scale(wcs, skypos,
+                                                pixcoord=first_pixcoord)
 
         r_in = self.r_in.to_value(u.arcsec) * mean_scale
         r_out = self.r_out.to_value(u.arcsec) * mean_scale
