@@ -14,7 +14,7 @@ from photutils.datasets import make_gwcs
 from photutils.utils._optional_deps import HAS_GWCS
 from photutils.utils.tests.wcs_test_helpers import (WCS_CDELT_ARCSEC,
                                                     WCS_CENTER, make_sip_wcs)
-from photutils.utils.wcs import compute_pixel_areas, pixel_area_map
+from photutils.utils.wcs import compute_pixel_area_map, compute_pixel_areas
 
 UNIFORM_AREA = WCS_CDELT_ARCSEC**2
 
@@ -33,7 +33,7 @@ def _make_wide_tan_wcs(shape, deg_per_pix=0.01):
     varies non-polynomially across the field.
 
     A quadratic SIP distortion is reproduced exactly by the bicubic
-    spline in ``pixel_area_map``, so it cannot detect an interpolation
+    spline in ``compute_pixel_area_map``, so it cannot detect an interpolation
     error. The gnomonic area factor of a wide field can.
     """
     wcs = WCS(naxis=2)
@@ -112,7 +112,7 @@ class TestComputePixelAreas:
 class TestPixelAreaMap:
     def test_uniform_wcs(self, simple_wcs):
         shape = (20, 30)
-        area = pixel_area_map(simple_wcs, shape)
+        area = compute_pixel_area_map(simple_wcs, shape)
         assert isinstance(area, np.ndarray)
         assert area.shape == shape
         assert_allclose(area, UNIFORM_AREA, rtol=1e-6)
@@ -120,7 +120,7 @@ class TestPixelAreaMap:
     def test_matches_point_values_with_distortion(self):
         shape = (300, 200)
         wcs = _make_sip_wcs(shape)
-        area = pixel_area_map(wcs, shape)
+        area = compute_pixel_area_map(wcs, shape)
 
         # The distortion must actually produce a gradient
         assert np.ptp(area) / area.mean() > 1e-3
@@ -135,7 +135,7 @@ class TestPixelAreaMap:
                                        (3, 130)])
     def test_small_shapes(self, shape):
         wcs = _make_sip_wcs(shape)
-        area = pixel_area_map(wcs, shape)
+        area = compute_pixel_area_map(wcs, shape)
         assert area.shape == shape
         yy, xx = np.mgrid[:shape[0], :shape[1]]
         expected = compute_pixel_areas(wcs, xx.ravel(), yy.ravel())
@@ -144,7 +144,7 @@ class TestPixelAreaMap:
     def test_matches_point_values_wide_field(self):
         shape = (300, 200)
         wcs = _make_wide_tan_wcs(shape)
-        area = pixel_area_map(wcs, shape)
+        area = compute_pixel_area_map(wcs, shape)
 
         # The gnomonic projection must actually produce a gradient
         assert np.ptp(area) / area.mean() > 1e-3
@@ -158,8 +158,8 @@ class TestPixelAreaMap:
     def test_step_independent(self):
         shape = (300, 200)
         wcs = _make_wide_tan_wcs(shape)
-        fine = pixel_area_map(wcs, shape, step=16)
-        coarse = pixel_area_map(wcs, shape, step=128)
+        fine = compute_pixel_area_map(wcs, shape, step=16)
+        coarse = compute_pixel_area_map(wcs, shape, step=128)
         assert_allclose(fine, coarse, rtol=1e-6)
 
     def test_step_capped(self):
@@ -170,30 +170,33 @@ class TestPixelAreaMap:
         """
         shape = (64, 48)
         wcs = _make_wide_tan_wcs(shape, deg_per_pix=0.2)
-        capped = pixel_area_map(wcs, shape, step=6)
-        assert np.array_equal(pixel_area_map(wcs, shape, step=1000), capped)
-        assert np.array_equal(pixel_area_map(wcs, shape, step=7), capped)
-        assert not np.array_equal(pixel_area_map(wcs, shape, step=5), capped)
+        capped = compute_pixel_area_map(wcs, shape, step=6)
+        area_1000 = compute_pixel_area_map(wcs, shape, step=1000)
+        area_7 = compute_pixel_area_map(wcs, shape, step=7)
+        area_5 = compute_pixel_area_map(wcs, shape, step=5)
+        assert np.array_equal(area_1000, capped)
+        assert np.array_equal(area_7, capped)
+        assert not np.array_equal(area_5, capped)
 
     @pytest.mark.parametrize('step', [0, -4, 2.5, True])
     def test_invalid_step(self, simple_wcs, step):
         match = 'step must be a positive integer'
         with pytest.raises(ValueError, match=match):
-            pixel_area_map(simple_wcs, (20, 20), step=step)
+            compute_pixel_area_map(simple_wcs, (20, 20), step=step)
 
     @pytest.mark.parametrize('shape', [(20,), (20, 20, 20), (0, 20),
                                        (20, -1), (20.0, 20), (True, 20)])
     def test_invalid_shape(self, simple_wcs, shape):
         match = 'shape must be two positive integers'
         with pytest.raises(ValueError, match=match):
-            pixel_area_map(simple_wcs, shape)
+            compute_pixel_area_map(simple_wcs, shape)
 
     @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
     def test_gwcs_bounding_box(self):
         shape = (40, 50)
         gwcs = make_gwcs(shape)
         gwcs.bounding_box = ((-0.5, shape[1] - 0.5), (-0.5, shape[0] - 0.5))
-        area = pixel_area_map(gwcs, shape)
+        area = compute_pixel_area_map(gwcs, shape)
         assert np.all(np.isfinite(area))
         # make_gwcs has a uniform 0.1 arcsec pixel scale
         assert_allclose(area, 0.01, rtol=1e-6)
@@ -201,5 +204,5 @@ class TestPixelAreaMap:
     def test_matches_astropy_proj_plane_area(self, simple_wcs):
         expected = (proj_plane_pixel_area(simple_wcs) * u.deg**2).to_value(
             u.arcsec**2)
-        area = pixel_area_map(simple_wcs, (20, 20))
+        area = compute_pixel_area_map(simple_wcs, (20, 20))
         assert_allclose(area, expected, rtol=1e-6)

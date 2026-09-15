@@ -8,7 +8,7 @@ from scipy.interpolate import RectBivariateSpline
 
 from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 
-__all__ = ['compute_pixel_areas', 'pixel_area_map']
+__all__ = ['compute_pixel_area_map', 'compute_pixel_areas']
 
 
 def compute_pixel_areas(wcs, x, y):
@@ -45,7 +45,7 @@ def compute_pixel_areas(wcs, x, y):
 
     See Also
     --------
-    pixel_area_map
+    compute_pixel_area_map
 
     Notes
     -----
@@ -86,7 +86,7 @@ def _is_positive_int(value):
             and not isinstance(value, (bool, np.bool_)) and value > 0)
 
 
-def pixel_area_map(wcs, shape, *, step=64):
+def compute_pixel_area_map(wcs, shape, *, step=64):
     """
     Compute the on-sky area of every pixel in an image.
 
@@ -132,10 +132,10 @@ def pixel_area_map(wcs, shape, *, step=64):
     --------
     >>> import numpy as np
     >>> from photutils.datasets import make_wcs
-    >>> from photutils.utils import pixel_area_map
+    >>> from photutils.utils import compute_pixel_area_map
     >>> shape = (100, 100)
     >>> wcs = make_wcs(shape)
-    >>> areas = pixel_area_map(wcs, shape)
+    >>> areas = compute_pixel_area_map(wcs, shape)
     >>> areas.shape
     (100, 100)
     >>> print(np.round(areas[50, 50], 6))  # arcsec**2

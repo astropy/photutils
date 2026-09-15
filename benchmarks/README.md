@@ -393,7 +393,7 @@ Benchmarks for the local WCS helper functions in
   and SVD conversions) on astropy TAN, TAN-SIP, and gwcs transforms
 - the vectorized helpers versus the number of positions, with the
   speedup over a per-source loop of the scalar mean-scale helper
-- `pixel_area_map` versus image size and coarse-grid step
+- `compute_pixel_area_map` versus image size and coarse-grid step
 - the aperture `to_pixel` and `to_sky` conversions that use the
   helpers
 

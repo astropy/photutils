@@ -26,7 +26,7 @@ from bench_helpers import parse_int_list, print_environment, time_best
 from photutils.aperture import (CircularAperture, EllipticalAperture,
                                 SkyCircularAperture, SkyEllipticalAperture)
 from photutils.datasets import make_gwcs, make_wcs
-from photutils.utils import compute_pixel_areas, pixel_area_map
+from photutils.utils import compute_pixel_area_map, compute_pixel_areas
 from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
                                           compute_pixel_to_sky_jacobians,
                                           compute_pixel_to_sky_mean_scales,
@@ -272,15 +272,15 @@ def bench_pixel_area_map(*, sizes=(500, 2000, 4096), steps=(16, 64, 256),
         The number of repeats for each timing (best time is kept).
     """
     for wcs_name in ('TAN-SIP', 'gwcs'):
-        print(f'\n== pixel_area_map ({wcs_name}) ==')
+        print(f'\n== compute_pixel_area_map ({wcs_name}) ==')
         print(f'{"size":>8}' + ''.join(f'{f"step={s}":>12}' for s in steps))
         for size in sizes:
             shape = (size, size)
             wcs = dict(make_wcs_cases(shape))[wcs_name]
             cells = []
             for step in steps:
-                t = time_best(partial(pixel_area_map, wcs, shape, step=step),
-                              repeats=repeats)
+                func = partial(compute_pixel_area_map, wcs, shape, step=step)
+                t = time_best(func, repeats=repeats)
                 cells.append(f'{t * 1e3:.1f}ms')
             print(f'{size:>8}' + ''.join(f'{cell:>12}' for cell in cells))
 
