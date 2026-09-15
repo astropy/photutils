@@ -78,6 +78,14 @@ def compute_pixel_areas(wcs, x, y):
     return areas
 
 
+def _is_positive_int(value):
+    """
+    Return whether ``value`` is a positive integer (and not a bool).
+    """
+    return (isinstance(value, (int, np.integer))
+            and not isinstance(value, (bool, np.bool_)) and value > 0)
+
+
 def pixel_area_map(wcs, shape, *, step=64):
     """
     Compute the on-sky area of every pixel in an image.
@@ -137,12 +145,11 @@ def pixel_area_map(wcs, shape, *, step=64):
         ny, nx = shape
     except (TypeError, ValueError):
         ny = nx = 0
-    if not (isinstance(ny, (int, np.integer))
-            and isinstance(nx, (int, np.integer)) and ny > 0 and nx > 0):
+    if not (_is_positive_int(ny) and _is_positive_int(nx)):
         msg = 'shape must be two positive integers'
         raise ValueError(msg)
 
-    if not isinstance(step, (int, np.integer)) or step < 1:
+    if not _is_positive_int(step):
         msg = 'step must be a positive integer'
         raise ValueError(msg)
 

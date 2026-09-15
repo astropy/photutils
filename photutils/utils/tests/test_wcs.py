@@ -175,14 +175,14 @@ class TestPixelAreaMap:
         assert np.array_equal(pixel_area_map(wcs, shape, step=7), capped)
         assert not np.array_equal(pixel_area_map(wcs, shape, step=5), capped)
 
-    @pytest.mark.parametrize('step', [0, -4, 2.5])
+    @pytest.mark.parametrize('step', [0, -4, 2.5, True])
     def test_invalid_step(self, simple_wcs, step):
         match = 'step must be a positive integer'
         with pytest.raises(ValueError, match=match):
             pixel_area_map(simple_wcs, (20, 20), step=step)
 
     @pytest.mark.parametrize('shape', [(20,), (20, 20, 20), (0, 20),
-                                       (20, -1)])
+                                       (20, -1), (20.0, 20), (True, 20)])
     def test_invalid_shape(self, simple_wcs, shape):
         match = 'shape must be two positive integers'
         with pytest.raises(ValueError, match=match):
