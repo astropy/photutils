@@ -162,12 +162,12 @@ def compute_pixel_area_map(wcs, shape, *, step=64):
     >>> print(np.round(areas[50, 50], 6))  # arcsec**2
     0.01
     """
+    msg = 'shape must be two positive integers'
     try:
         ny, nx = shape
     except (TypeError, ValueError):
-        ny = nx = 0
+        raise ValueError(msg) from None
     if not (_is_positive_int(ny) and _is_positive_int(nx)):
-        msg = 'shape must be two positive integers'
         raise ValueError(msg)
 
     if not _is_positive_int(step):
