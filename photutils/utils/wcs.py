@@ -106,7 +106,9 @@ def pixel_area_map(wcs, shape, *, step=64):
         is well defined for any image shape. Steps from about 32 to 128
         give equivalent results, since smaller steps only add runtime
         and larger steps lose accuracy on strongly distorted or very
-        wide fields.
+        wide fields. The step is capped at ``min(shape) // 8`` (and at
+        least 1), so the coarse grid always has at least eight intervals
+        across the image.
 
     Returns
     -------
@@ -143,6 +145,11 @@ def pixel_area_map(wcs, shape, *, step=64):
     if not isinstance(step, (int, np.integer)) or step < 1:
         msg = 'step must be a positive integer'
         raise ValueError(msg)
+
+    # Ensure the image spans at least eight grid intervals so that large
+    # steps on smaller images do not leave the spline with too few
+    # knots.
+    step = min(step, max(1, min(ny, nx) // 8))
 
     # Coarse grid padded by two steps beyond each edge. This gives the
     # spline at least five knots per axis and keeps the interpolation

@@ -162,6 +162,19 @@ class TestPixelAreaMap:
         coarse = pixel_area_map(wcs, shape, step=128)
         assert_allclose(fine, coarse, rtol=1e-6)
 
+    def test_step_capped(self):
+        """
+        Test that a step larger than min(shape) // 8 is reduced to
+        it, so the result is identical to that of the capped step and
+        differs from what the uncapped coarse grid would give.
+        """
+        shape = (64, 48)
+        wcs = _make_wide_tan_wcs(shape, deg_per_pix=0.2)
+        capped = pixel_area_map(wcs, shape, step=6)
+        assert np.array_equal(pixel_area_map(wcs, shape, step=1000), capped)
+        assert np.array_equal(pixel_area_map(wcs, shape, step=7), capped)
+        assert not np.array_equal(pixel_area_map(wcs, shape, step=5), capped)
+
     @pytest.mark.parametrize('step', [0, -4, 2.5])
     def test_invalid_step(self, simple_wcs, step):
         match = 'step must be a positive integer'
