@@ -7,7 +7,6 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import Angle, SkyCoord
-from astropy.io.fits import Header
 from astropy.wcs import WCS as APWCS
 from numpy.testing import assert_allclose
 
@@ -24,7 +23,8 @@ from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
                                           sky_to_pixel_mean_scale,
                                           sky_to_pixel_svd_scales,
                                           wcs_pixel_scale_angle)
-from photutils.utils.tests.conftest import WCS_CDELT_ARCSEC, WCS_CENTER
+from photutils.utils.tests.conftest import (WCS_CDELT_ARCSEC, WCS_CENTER,
+                                            CountingWCS, make_sip_wcs)
 
 # WCS centers that historically broke the flat-sky finite-difference
 # Jacobian and SVD shape conversions:
@@ -51,31 +51,11 @@ def _make_sip_wcs(ra_deg, dec_deg):
     """
     Build a small TAN-SIP WCS centered at (ra_deg, dec_deg).
 
-    The SIP terms are tiny but nonzero, ensuring that
-    ``compute_local_wcs_jacobian`` is exercised (the jacobian is only
-    used for distorted WCS).
+    The SIP terms are tiny but nonzero, so the distortion code paths
+    are exercised.
     """
-    header = Header()
-    header['NAXIS'] = 2
-    header['NAXIS1'] = 20
-    header['NAXIS2'] = 20
-    header['CRPIX1'] = 10.5
-    header['CRPIX2'] = 10.5
-    header['CRVAL1'] = ra_deg
-    header['CRVAL2'] = dec_deg
-    header['CTYPE1'] = 'RA---TAN-SIP'
-    header['CTYPE2'] = 'DEC--TAN-SIP'
-    cdelt = WCS_CDELT_ARCSEC / 3600.0
-    header['CD1_1'] = -cdelt
-    header['CD1_2'] = 0.0
-    header['CD2_1'] = 0.0
-    header['CD2_2'] = cdelt
-    header['A_ORDER'] = 2
-    header['A_2_0'] = 1e-6
-    header['B_ORDER'] = 2
-    header['B_0_2'] = 1e-6
-
-    return APWCS(header)
+    center = SkyCoord(ra_deg * u.deg, dec_deg * u.deg)
+    return make_sip_wcs(center=center, coeffs={'A_2_0': 1e-6, 'B_0_2': 1e-6})
 
 
 class TestComputeLocalWCSJacobian:
@@ -889,27 +869,9 @@ def _make_quadratic_sip_wcs(coeff=1e-3, cross=0.0):
     +y, but a one-sided offset North is deflected by ``cross`` times the
     step, which biases the North angle.
     """
-    header = Header()
-    header['NAXIS'] = 2
-    header['NAXIS1'] = 100
-    header['NAXIS2'] = 100
-    header['CRPIX1'] = 50.0
-    header['CRPIX2'] = 50.0
-    header['CRVAL1'] = 150.0
-    header['CRVAL2'] = 0.0
-    header['CTYPE1'] = 'RA---TAN-SIP'
-    header['CTYPE2'] = 'DEC--TAN-SIP'
-    cdelt = WCS_CDELT_ARCSEC / 3600.0
-    header['CD1_1'] = -cdelt
-    header['CD1_2'] = 0.0
-    header['CD2_1'] = 0.0
-    header['CD2_2'] = cdelt
-    header['A_ORDER'] = 2
-    header['A_2_0'] = coeff
-    header['A_0_2'] = cross
-    header['B_ORDER'] = 2
-    header['B_0_2'] = coeff
-    return APWCS(header)
+    center = SkyCoord(150.0 * u.deg, 0.0 * u.deg)
+    coeffs = {'A_2_0': coeff, 'A_0_2': cross, 'B_0_2': coeff}
+    return make_sip_wcs((100, 100), center=center, coeffs=coeffs)
 
 
 class TestCentralDifferences:
@@ -1053,26 +1015,6 @@ class TestVectorizedScalesAndAngles:
         assert_allclose(angles.wrap_at(180 * u.deg).deg, expected, atol=1e-8)
 
 
-class _CountingWCS:
-    """
-    Wrapper that counts the calls to the WCS transform methods.
-    """
-
-    def __init__(self, real_wcs):
-        self._wcs = real_wcs
-        self.has_distortion = getattr(real_wcs, 'has_distortion', True)
-        self.n_pixel_to_world = 0
-        self.n_world_to_pixel = 0
-
-    def pixel_to_world(self, *args, **kwargs):
-        self.n_pixel_to_world += 1
-        return self._wcs.pixel_to_world(*args, **kwargs)
-
-    def world_to_pixel(self, *args, **kwargs):
-        self.n_world_to_pixel += 1
-        return self._wcs.world_to_pixel(*args, **kwargs)
-
-
 def _reference_jacobians(x, y, wcs):
     """
     Forward Jacobians from great-circle separations and position angles
@@ -1113,7 +1055,7 @@ class TestJacobianEvaluation:
             compute_pixel_to_sky_jacobians([1.0, 2.0], [1.0], sip_wcs)
 
     def test_single_wcs_call(self, sip_wcs):
-        wcs = _CountingWCS(sip_wcs)
+        wcs = CountingWCS(sip_wcs)
         compute_pixel_to_sky_jacobians(np.array([5.0, 12.0]),
                                        np.array([7.0, 3.0]), wcs)
         assert wcs.n_pixel_to_world == 1
@@ -1130,7 +1072,7 @@ class TestJacobianEvaluation:
         # the Jacobian
         pixcoord = (5.0, 12.0)
         expected = func(pixcoord, sip_wcs)
-        wcs = _CountingWCS(sip_wcs)
+        wcs = CountingWCS(sip_wcs)
         result = func(pixcoord, wcs)
         assert wcs.n_pixel_to_world == 1
         assert wcs.n_world_to_pixel == 0
@@ -1222,7 +1164,7 @@ class TestKnownPixelPosition:
         real_wcs = request.getfixturevalue(wcs_name)
         skycoord, pixcoord = self._known(real_wcs, 12.0, 7.0)
         center, scale = sky_to_pixel_mean_scale(skycoord, real_wcs)
-        wcs = _CountingWCS(real_wcs)
+        wcs = CountingWCS(real_wcs)
         center2, scale2 = sky_to_pixel_mean_scale(skycoord, wcs,
                                                   pixcoord=pixcoord)
         assert wcs.n_world_to_pixel == 0
@@ -1232,7 +1174,7 @@ class TestKnownPixelPosition:
     def test_scale_angle(self, sip_wcs, known):
         skycoord, pixcoord = known
         center, scale, angle = wcs_pixel_scale_angle(skycoord, sip_wcs)
-        wcs = _CountingWCS(sip_wcs)
+        wcs = CountingWCS(sip_wcs)
         center2, scale2, angle2 = wcs_pixel_scale_angle(skycoord, wcs,
                                                         pixcoord=pixcoord)
         assert wcs.n_world_to_pixel == 0
@@ -1243,7 +1185,7 @@ class TestKnownPixelPosition:
     def test_svd_scales(self, sip_wcs, known):
         skycoord, pixcoord = known
         expected = sky_to_pixel_svd_scales(skycoord, sip_wcs)
-        wcs = _CountingWCS(sip_wcs)
+        wcs = CountingWCS(sip_wcs)
         result = sky_to_pixel_svd_scales(skycoord, wcs, pixcoord=pixcoord)
         assert wcs.n_world_to_pixel == 0
         assert_allclose(result[0], expected[0], atol=1e-10)
@@ -1254,7 +1196,7 @@ class TestKnownPixelPosition:
         skycoord, pixcoord = known
         args = (2.0, 1.0, 0.3)
         expected = sky_shape_to_pixel_svd(skycoord, sip_wcs, *args)
-        wcs = _CountingWCS(sip_wcs)
+        wcs = CountingWCS(sip_wcs)
         result = sky_shape_to_pixel_svd(skycoord, wcs, *args,
                                         pixcoord=pixcoord)
         assert wcs.n_world_to_pixel == 0

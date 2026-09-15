@@ -7,6 +7,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 from astropy.coordinates import SkyCoord
+from astropy.io.fits import Header
 from astropy.wcs import WCS
 
 # WCS test constants
@@ -55,35 +56,71 @@ def _make_simple_wcs(skycoord, resolution, size, *, rotation_deg=0.0):
     return wcs
 
 
-def _make_sip_wcs():
+def make_sip_wcs(shape=(20, 20), *, center=WCS_CENTER, coeffs=None):
     """
-    Create a TAN WCS with small SIP distortion terms.
+    Build a TAN-SIP WCS with the standard test pixel scale.
+
+    Parameters
+    ----------
+    shape : tuple of int, optional
+        The ``(ny, nx)`` image shape. CRPIX is at the image center.
+
+    center : `~astropy.coordinates.SkyCoord`, optional
+        The sky position of CRPIX.
+
+    coeffs : dict, optional
+        The SIP coefficients, e.g. ``{'A_2_0': 1e-6, 'B_0_2': 1e-6}``.
+        The polynomial orders are set from the highest given indices.
 
     Returns
     -------
     wcs : `~astropy.wcs.WCS`
         The WCS object with SIP distortion.
     """
-    wcs = WCS(naxis=2)
-    wcs.wcs.crpix = [10.5, 10.5]
-    wcs.wcs.crval = [WCS_CENTER.ra.deg, WCS_CENTER.dec.deg]
-    wcs.wcs.cdelt = [-WCS_CDELT_ARCSEC / 3600, WCS_CDELT_ARCSEC / 3600]
-    wcs.wcs.ctype = ['RA---TAN-SIP', 'DEC--TAN-SIP']
+    header = Header()
+    header['NAXIS'] = 2
+    header['NAXIS1'] = shape[1]
+    header['NAXIS2'] = shape[0]
+    header['CRPIX1'] = shape[1] / 2 + 0.5
+    header['CRPIX2'] = shape[0] / 2 + 0.5
+    header['CRVAL1'] = center.ra.deg
+    header['CRVAL2'] = center.dec.deg
+    header['CTYPE1'] = 'RA---TAN-SIP'
+    header['CTYPE2'] = 'DEC--TAN-SIP'
+    cdelt = WCS_CDELT_ARCSEC / 3600.0
+    header['CD1_1'] = -cdelt
+    header['CD1_2'] = 0.0
+    header['CD2_1'] = 0.0
+    header['CD2_2'] = cdelt
 
-    # Small SIP distortion coefficients
-    m = 2  # A/B order
-    wcs.sip = None  # will be populated from the header
-    sip_header = wcs.to_header()
-    sip_header['CTYPE1'] = 'RA---TAN-SIP'
-    sip_header['CTYPE2'] = 'DEC--TAN-SIP'
-    sip_header['A_ORDER'] = m
-    sip_header['B_ORDER'] = m
-    sip_header['A_2_0'] = 1e-7
-    sip_header['A_0_2'] = 1e-7
-    sip_header['B_2_0'] = 1e-7
-    sip_header['B_0_2'] = 1e-7
+    coeffs = coeffs or {}
+    for prefix in ('A', 'B'):
+        orders = [int(key[2]) + int(key[4]) for key in coeffs
+                  if key.startswith(prefix)]
+        header[f'{prefix}_ORDER'] = max(orders, default=2)
+    for key, value in coeffs.items():
+        header[key] = value
 
-    return WCS(sip_header)
+    return WCS(header)
+
+
+class CountingWCS:
+    """
+    Wrapper that counts the calls to the WCS transform methods.
+    """
+
+    def __init__(self, real_wcs):
+        self._wcs = real_wcs
+        self.n_pixel_to_world = 0
+        self.n_world_to_pixel = 0
+
+    def pixel_to_world(self, *args, **kwargs):
+        self.n_pixel_to_world += 1
+        return self._wcs.pixel_to_world(*args, **kwargs)
+
+    def world_to_pixel(self, *args, **kwargs):
+        self.n_world_to_pixel += 1
+        return self._wcs.world_to_pixel(*args, **kwargs)
 
 
 @pytest.fixture
@@ -108,7 +145,8 @@ def sip_wcs():
     """
     TAN WCS with small SIP distortion terms.
     """
-    return _make_sip_wcs()
+    coeffs = {'A_2_0': 1e-7, 'A_0_2': 1e-7, 'B_2_0': 1e-7, 'B_0_2': 1e-7}
+    return make_sip_wcs(coeffs=coeffs)
 
 
 @pytest.fixture

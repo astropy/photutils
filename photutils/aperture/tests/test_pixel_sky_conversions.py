@@ -33,6 +33,7 @@ from photutils.aperture import (CircularAnnulus, CircularAperture,
                                 SkyRectangularAnnulus, SkyRectangularAperture)
 from photutils.datasets import make_gwcs
 from photutils.utils._optional_deps import HAS_GWCS
+from photutils.utils.tests.conftest import CountingWCS
 
 # Module constants
 CENTER = SkyCoord(100 * u.deg, 30 * u.deg)
@@ -628,24 +629,6 @@ class TestFlippedParityWCS:
         assert abs(diff) < 2e-5
 
 
-class _CountingWCS:
-    """
-    Wrapper that counts the WCS inversions.
-    """
-
-    def __init__(self, real_wcs):
-        self._wcs = real_wcs
-        self.has_distortion = real_wcs.has_distortion
-        self.n_world_to_pixel = 0
-
-    def pixel_to_world(self, *args, **kwargs):
-        return self._wcs.pixel_to_world(*args, **kwargs)
-
-    def world_to_pixel(self, *args, **kwargs):
-        self.n_world_to_pixel += 1
-        return self._wcs.world_to_pixel(*args, **kwargs)
-
-
 # Sky apertures and to_pixel keywords for the single-inversion tests
 _SKY_APERTURE_CASES = [
     pytest.param(SkyCircularAperture(CENTER, r=1 * u.arcsec), {},
@@ -686,7 +669,7 @@ class TestSingleInversion:
     def test_one_inversion(self, aperture, kwargs, wcs_name, request):
         real_wcs = request.getfixturevalue(wcs_name)
         expected = aperture.to_pixel(real_wcs, **kwargs)
-        wcs = _CountingWCS(real_wcs)
+        wcs = CountingWCS(real_wcs)
         result = aperture.to_pixel(wcs, **kwargs)
         assert wcs.n_world_to_pixel == 1
         assert type(result) is type(expected)
