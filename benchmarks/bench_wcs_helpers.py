@@ -4,11 +4,11 @@
 Benchmarks for the local WCS helper functions.
 
 The benchmarks cover the per-call cost of the scalar helpers on
-astropy TAN, TAN-SIP, and gwcs transforms, the vectorized helpers
-versus the number of positions (with the speedup over a per-source
-loop), the full-frame pixel-area map versus image size and grid step,
-and the aperture ``to_pixel`` and ``to_sky`` conversions that use the
-helpers.
+astropy TAN, TAN-SIP, and gwcs transforms, the vectorized Jacobians
+and pixel areas versus the number of positions (with the speedup over
+a per-source loop of the scalar mean-scale helper), the full-frame
+pixel-area map versus image size and grid step, and the aperture
+``to_pixel`` and ``to_sky`` conversions that use the helpers.
 
 Run ``python benchmarks/bench_wcs_helpers.py --help`` to see the
 available options.
@@ -27,9 +27,7 @@ from photutils.aperture import (CircularAperture, EllipticalAperture,
                                 SkyCircularAperture, SkyEllipticalAperture)
 from photutils.datasets import make_gwcs, make_wcs
 from photutils.utils import compute_pixel_area_map, compute_pixel_areas
-from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
-                                          compute_pixel_to_sky_jacobians,
-                                          compute_pixel_to_sky_mean_scales,
+from photutils.utils._wcs_helpers import (compute_pixel_to_sky_jacobians,
                                           pixel_shape_to_sky_svd,
                                           pixel_to_sky_mean_scale,
                                           pixel_to_sky_svd_scales,
@@ -149,7 +147,6 @@ def make_scalar_cases(skycoord, pixcoord, wcs):
     """
     width, height, angle = 2.0, 1.0, 0.5
     return [
-        ('local Jacobian', partial(compute_local_wcs_jacobian, wcs, skycoord)),
         ('sky->pix mean scale',
          partial(sky_to_pixel_mean_scale, wcs, skycoord)),
         ('sky->pix SVD scales',
@@ -208,8 +205,9 @@ def bench_vectorized_helpers(*, shape=(2000, 2000),
     """
     Benchmark the vectorized helpers versus the number of positions.
 
-    The speedup over a per-source loop of the scalar equivalents is
-    also reported. The loops are capped at ``MAX_LOOP_CALLS`` calls and
+    The speedup of the vectorized Jacobians over a per-source loop of
+    the scalar mean-scale helper, which does the same WCS work, is also
+    reported. The loops are capped at ``MAX_LOOP_CALLS`` calls and
     scaled to the number of positions.
 
     Parameters
@@ -225,19 +223,17 @@ def bench_vectorized_helpers(*, shape=(2000, 2000),
     """
     vectorized = [
         ('Jacobians', compute_pixel_to_sky_jacobians),
-        ('mean scales', compute_pixel_to_sky_mean_scales),
+        ('pixel areas', compute_pixel_areas),
     ]
 
     for wcs_name, wcs in make_wcs_cases(shape):
         print(f'\n== Vectorized WCS helpers ({wcs_name}) ==')
-        print(f'{"n_positions":>12}{"Jacobians":>12}{"mean scales":>14}'
-              f'{"pixel areas":>14}{"loop speedup":>14}')
+        print(f'{"n_positions":>12}{"Jacobians":>12}{"pixel areas":>14}'
+              f'{"loop speedup":>14}')
         for n_positions in n_positions_list:
             x, y = make_positions(shape, n_positions)
             times = [time_best(partial(func, wcs, x, y), repeats=repeats)
                      for _, func in vectorized]
-            t_area = time_best(partial(compute_pixel_areas, wcs, x, y),
-                               repeats=repeats)
 
             # Per-source loop of the scalar mean-scale helper, scaled
             # to n_positions
@@ -248,10 +244,10 @@ def bench_vectorized_helpers(*, shape=(2000, 2000),
                     pixel_to_sky_mean_scale(wcs, (x[i], y[i]))
 
             t_loop = time_best(loop, repeats=1) * n_positions / n_calls
-            cells = [f'{t * 1e3:.2f}ms' for t in [*times, t_area]]
-            cells.append(f'{t_loop / times[1]:.0f}x')
+            cells = [f'{t * 1e3:.2f}ms' for t in times]
+            cells.append(f'{t_loop / times[0]:.0f}x')
             print(f'{n_positions:>12}{cells[0]:>12}{cells[1]:>14}'
-                  f'{cells[2]:>14}{cells[3]:>14}')
+                  f'{cells[2]:>14}')
 
 
 def bench_pixel_area_map(*, sizes=(512, 2048, 4096), steps=(8, 16, 32, 64),

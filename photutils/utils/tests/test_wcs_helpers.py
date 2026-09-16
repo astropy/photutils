@@ -3,6 +3,8 @@
 Tests for the _wcs_helpers module.
 """
 
+import warnings
+
 import astropy.units as u
 import numpy as np
 import pytest
@@ -13,9 +15,7 @@ from numpy.testing import assert_allclose
 
 from photutils.datasets import make_gwcs
 from photutils.utils._optional_deps import HAS_GWCS
-from photutils.utils._wcs_helpers import (compute_local_wcs_jacobian,
-                                          compute_pixel_to_sky_jacobians,
-                                          compute_pixel_to_sky_mean_scales,
+from photutils.utils._wcs_helpers import (compute_pixel_to_sky_jacobians,
                                           pixel_shape_to_sky_svd,
                                           pixel_to_sky_mean_scale,
                                           pixel_to_sky_svd_scales,
@@ -58,100 +58,6 @@ def _make_sip_wcs(ra_deg, dec_deg):
     return make_sip_wcs(center=center, coeffs={'A_2_0': 1e-6, 'B_0_2': 1e-6})
 
 
-class TestComputeLocalWCSJacobian:
-    """
-    Tests for `compute_local_wcs_jacobian`.
-    """
-
-    def test_shape(self, simple_wcs):
-        """
-        The Jacobian must be a 2x2 array.
-        """
-        jac = compute_local_wcs_jacobian(simple_wcs, WCS_CENTER)
-        assert jac.shape == (2, 2)
-
-    def test_simple_wcs_diagonal(self, simple_wcs):
-        """
-        For an axis-aligned TAN WCS the Jacobian should be nearly
-        diagonal with magnitudes ~ 1/WCS_CDELT_ARCSEC.
-        """
-        jac = compute_local_wcs_jacobian(simple_wcs, WCS_CENTER)
-        # Off-diagonal elements should be near zero
-        assert_allclose(jac[0, 1], 0.0, atol=1e-4)
-        assert_allclose(jac[1, 0], 0.0, atol=1e-4)
-        # Diagonal: RA axis (pix/arcsec) is negative (RA increases left)
-        expected_scale = 1.0 / WCS_CDELT_ARCSEC
-        assert_allclose(np.abs(jac[0, 0]), expected_scale)
-        assert_allclose(np.abs(jac[1, 1]), expected_scale)
-
-    def test_rotated_wcs(self, rotated_wcs):
-        """
-        For a rotated WCS the off-diagonal elements should be nonzero,
-        but the singular values should still match 1/WCS_CDELT_ARCSEC.
-        """
-        jac = compute_local_wcs_jacobian(rotated_wcs, WCS_CENTER)
-        sv = np.linalg.svd(jac, compute_uv=False)
-        expected_scale = 1.0 / WCS_CDELT_ARCSEC
-        assert_allclose(sv, expected_scale, rtol=1e-6)
-
-    def test_sip_wcs(self, sip_wcs):
-        """
-        For a SIP WCS the Jacobian should still be close to the
-        undistorted value near the reference pixel.
-        """
-        jac = compute_local_wcs_jacobian(sip_wcs, WCS_CENTER)
-        sv = np.linalg.svd(jac, compute_uv=False)
-        expected_scale = 1.0 / WCS_CDELT_ARCSEC
-        assert_allclose(sv, expected_scale, rtol=1e-5)
-
-    def test_inverse_of_forward(self, simple_wcs):
-        """
-        The Jacobian should be the inverse of the forward
-        d(sky)/d(pixel) matrix derived from central differences over one
-        pixel.
-        """
-        jac = compute_local_wcs_jacobian(simple_wcs, WCS_CENTER)
-        # A 1-pixel step should map to ~CDELT arcsec in sky
-        forward = np.linalg.inv(jac)
-        # Diagonal magnitudes should be ~WCS_CDELT_ARCSEC
-        assert_allclose(np.abs(forward[0, 0]), WCS_CDELT_ARCSEC)
-        assert_allclose(np.abs(forward[1, 1]), WCS_CDELT_ARCSEC)
-
-    def test_determinant_sign(self, simple_wcs):
-        """
-        Standard WCS (RA increasing to the left) should have negative
-        determinant.
-        """
-        jac = compute_local_wcs_jacobian(simple_wcs, WCS_CENTER)
-        assert np.linalg.det(jac) < 0
-
-    @pytest.mark.parametrize(('center_ra', 'center_dec'), TROUBLESOME_CENTERS)
-    def test_well_conditioned_at_pole_and_wrap(self, center_ra, center_dec):
-        """
-        Test that the near-singular values of the Jacobian match the
-        expected ``1 / WCS_CDELT_ARCSEC`` value even near the celestial
-        poles and across the RA = 0 / 360 wraparound.
-        """
-        wcs = _make_sip_wcs(center_ra, center_dec)
-        skycoord = SkyCoord(center_ra * u.deg, center_dec * u.deg)
-        jac = compute_local_wcs_jacobian(wcs, skycoord)
-        sv = np.linalg.svd(jac, compute_uv=False)
-        assert_allclose(sv, 1.0 / WCS_CDELT_ARCSEC, rtol=1e-3)
-
-    @pytest.mark.parametrize(('center_ra', 'center_dec'), TROUBLESOME_CENTERS)
-    def test_parity_at_pole_and_wrap(self, center_ra, center_dec):
-        """
-        Test that the determinant (parity) of the Jacobian stays
-        negative for a standard RA-increases-to-the-left WCS at all
-        declinations and RA values, including near the poles and across
-        the wraparound.
-        """
-        wcs = _make_sip_wcs(center_ra, center_dec)
-        skycoord = SkyCoord(center_ra * u.deg, center_dec * u.deg)
-        jac = compute_local_wcs_jacobian(wcs, skycoord)
-        assert np.linalg.det(jac) < 0
-
-
 def _make_rotated_wcs(rotation_deg, scale_arcsec=0.25,
                       crval=(150.0, 30.0)):
     wcs = APWCS(naxis=2)
@@ -168,8 +74,13 @@ def _make_rotated_wcs(rotation_deg, scale_arcsec=0.25,
 
 def test_compute_pixel_to_sky_jacobians():
     """
-    Test the vectorized forward Jacobians against the inverse of the
-    scalar compute_local_wcs_jacobian at several positions.
+    Test the singular values of the vectorized forward Jacobians against
+    the reciprocals of the per-region sky-to-pixel scales at several
+    positions.
+
+    This is a consistency check between the vectorized and per-region
+    paths. The independent great-circle reference is in
+    ``TestJacobianEvaluation``.
     """
     wcs = _make_rotated_wcs(30.0)
     x = np.array([10.0, 50.0, 80.3])
@@ -179,9 +90,10 @@ def test_compute_pixel_to_sky_jacobians():
     assert jacs.shape == (3, 2, 2)
 
     for i in range(x.size):
-        skycoord = wcs.pixel_to_world(x[i], y[i])
-        jac_inv = compute_local_wcs_jacobian(wcs, skycoord)
-        assert_allclose(jacs[i], np.linalg.inv(jac_inv), rtol=1e-4)
+        _, major, minor, _ = sky_to_pixel_svd_scales(wcs, None,
+                                                     pixcoord=(x[i], y[i]))
+        sv = np.linalg.svd(jacs[i], compute_uv=False)
+        assert_allclose(sv, [1.0 / minor, 1.0 / major], rtol=1e-10)
 
 
 def test_compute_pixel_to_sky_jacobians_scale():
@@ -448,6 +360,17 @@ class TestSVDShapeConversions:
             simple_wcs, center_xy_coord, pix_w, pix_h, 0.0)
         assert_allclose(sw, pix_w * WCS_CDELT_ARCSEC, rtol=1e-5)
         assert_allclose(sh, pix_h * WCS_CDELT_ARCSEC, rtol=1e-5)
+
+    def test_zero_width_keeps_axis_assignment(self, simple_wcs,
+                                              center_xy_coord):
+        """
+        Test that a zero-width ellipse maps its width axis to a zero sky
+        width rather than swapping the axes.
+        """
+        sky_width, sky_height, _ = pixel_shape_to_sky_svd(
+            simple_wcs, center_xy_coord, 0.0, 2.0, 0.3)
+        assert sky_width == 0.0
+        assert_allclose(sky_height, 2.0 * WCS_CDELT_ARCSEC, rtol=1e-6)
 
     def test_height_larger_than_width(self, simple_wcs, center_xy_coord):
         """
@@ -888,12 +811,11 @@ class TestCentralDifferences:
         jac = compute_pixel_to_sky_jacobians(wcs, x, y)[0]
         assert_allclose(np.abs(np.diag(jac)), WCS_CDELT_ARCSEC, rtol=1e-6)
 
-    def test_local_wcs_jacobian_unbiased_at_crval(self):
+    def test_sky_to_pixel_scales_unbiased_at_crval(self):
         wcs = _make_quadratic_sip_wcs()
         skycoord = SkyCoord(150.0 * u.deg, 0.0 * u.deg)
-        jac = compute_local_wcs_jacobian(wcs, skycoord)
-        assert_allclose(np.abs(np.diag(jac)), 1.0 / WCS_CDELT_ARCSEC,
-                        rtol=1e-6)
+        _, major, minor, _ = sky_to_pixel_svd_scales(wcs, skycoord)
+        assert_allclose([major, minor], 1.0 / WCS_CDELT_ARCSEC, rtol=1e-6)
 
 
 @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
@@ -928,10 +850,11 @@ class TestGWCSBoundingBox:
                                               np.array([10.0, 25.0]))
         assert_allclose(jacs[0], jacs[1], rtol=1e-6)
 
-    def test_local_wcs_jacobian_finite_at_edge(self, bounded_gwcs):
+    def test_sky_to_pixel_scales_finite_at_edge(self, bounded_gwcs):
         skycoord = bounded_gwcs.pixel_to_world(59.4, 10.0)
-        jac = compute_local_wcs_jacobian(bounded_gwcs, skycoord)
-        assert np.all(np.isfinite(jac))
+        _, major, minor, _ = sky_to_pixel_svd_scales(bounded_gwcs, skycoord)
+        assert np.isfinite(major)
+        assert np.isfinite(minor)
 
     def test_wrapped_gwcs_finite_at_edge(self, bounded_gwcs):
         """
@@ -945,35 +868,9 @@ class TestGWCSBoundingBox:
         assert np.all(np.isfinite(jacs))
         assert_allclose(jacs, expected, rtol=1e-12)
         skycoord = bounded_gwcs.pixel_to_world(59.4, 10.0)
-        jac = compute_local_wcs_jacobian(wrapped, skycoord)
-        assert np.all(np.isfinite(jac))
-
-
-class TestVectorizedMeanScales:
-    """
-    Tests for the vectorized mean pixel scale helper.
-
-    It must reproduce the per-source function at every position,
-    without calling the WCS inverse once per source.
-    """
-
-    positions = (np.array([3.0, 10.0, 16.5]), np.array([4.0, 10.0, 2.2]))
-
-    @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
-                                          'nonsquare_wcs', 'swapped_wcs',
-                                          'sip_wcs'])
-    def test_mean_scales_match_per_source(self, wcs_name, request):
-        wcs = request.getfixturevalue(wcs_name)
-        x, y = self.positions
-        scales = compute_pixel_to_sky_mean_scales(wcs, x, y)
-        assert scales.shape == (3,)
-        for i in range(x.size):
-            expected = pixel_to_sky_mean_scale(wcs, (x[i], y[i]))
-            assert_allclose(scales[i], expected, rtol=1e-8)
-
-    def test_scalar_inputs(self, simple_wcs):
-        scales = compute_pixel_to_sky_mean_scales(simple_wcs, 10.0, 10.0)
-        assert scales.shape == (1,)
+        _, major, minor, _ = sky_to_pixel_svd_scales(wrapped, skycoord)
+        assert np.isfinite(major)
+        assert np.isfinite(minor)
 
 
 def _reference_jacobians(x, y, wcs):
@@ -1094,9 +991,11 @@ class TestJacobianEvaluation:
         jacs = compute_pixel_to_sky_jacobians(swapped_wcs, x, y)
         assert_allclose(jacs, expected, rtol=1e-9)
         skycoord = simple_wcs.pixel_to_world(x[0], y[0])
-        expected = compute_local_wcs_jacobian(simple_wcs, skycoord)
-        jac = compute_local_wcs_jacobian(swapped_wcs, skycoord)
-        assert_allclose(jac, expected, rtol=1e-9)
+        expected = sky_to_pixel_svd_scales(simple_wcs, skycoord)
+        result = sky_to_pixel_svd_scales(swapped_wcs, skycoord)
+        assert_allclose(result[0], expected[0], atol=1e-9)
+        assert_allclose(result[1:3], expected[1:3], rtol=1e-9)
+        assert_allclose(result[3].deg, expected[3].deg, atol=1e-9)
 
     def test_non_celestial_wcs(self):
         """
@@ -1106,9 +1005,12 @@ class TestJacobianEvaluation:
         wcs = APWCS(naxis=2)
         wcs.wcs.ctype = ['LINEAR', 'LINEAR']
         wcs.wcs.cdelt = [0.1, 0.1]
+        wcs = CountingWCS(wcs)
         match = 'exactly one celestial longitude axis'
         with pytest.raises(ValueError, match=match):
             compute_pixel_to_sky_jacobians(wcs, 5.0, 5.0)
+        # The axes are checked before any transform is evaluated
+        assert wcs.n_pixel_to_world_values == 0
 
     @pytest.mark.parametrize(('center_ra', 'center_dec'), TROUBLESOME_CENTERS)
     def test_agrees_near_pole_and_wrap(self, center_ra, center_dec):
@@ -1185,21 +1087,22 @@ class TestMeanScaleClosedForm:
     @pytest.mark.parametrize('wcs_name', ['simple_wcs', 'rotated_wcs',
                                           'nonsquare_wcs', 'flipped_wcs',
                                           'swapped_wcs', 'sip_wcs'])
-    def test_vectorized_matches_svd(self, wcs_name, request):
+    def test_pixel_to_sky_matches_svd(self, wcs_name, request):
         wcs = request.getfixturevalue(wcs_name)
         x = np.array([3.0, 9.5, 16.2])
         y = np.array([4.0, 9.5, 2.7])
-        scales = compute_pixel_to_sky_mean_scales(wcs, x, y)
         jacs = compute_pixel_to_sky_jacobians(wcs, x, y)
         expected = np.sqrt(np.prod(np.linalg.svd(jacs, compute_uv=False),
                                    axis=1))
-        assert_allclose(scales, expected, rtol=1e-12)
+        for i in range(x.size):
+            scale = pixel_to_sky_mean_scale(wcs, (x[i], y[i]))
+            assert_allclose(scale, expected[i], rtol=1e-12)
 
-    def test_scalar_matches_svd(self, nonsquare_wcs):
+    def test_sky_to_pixel_matches_svd(self, nonsquare_wcs):
         _, scale = sky_to_pixel_mean_scale(nonsquare_wcs, WCS_CENTER)
-        jac = compute_local_wcs_jacobian(nonsquare_wcs, WCS_CENTER)
-        expected = np.sqrt(np.prod(np.linalg.svd(jac, compute_uv=False)))
-        assert_allclose(scale, expected, rtol=1e-12)
+        _, major, minor, _ = sky_to_pixel_svd_scales(nonsquare_wcs,
+                                                     WCS_CENTER)
+        assert_allclose(scale, np.sqrt(major * minor), rtol=1e-12)
 
 
 class TestKnownPixelPosition:
@@ -1256,3 +1159,143 @@ class TestKnownPixelPosition:
         assert_allclose(result[0], expected[0], atol=1e-10)
         assert_allclose(result[1:3], expected[1:3], rtol=1e-12)
         assert_allclose(result[3].deg, expected[3].deg, atol=1e-10)
+
+
+def _make_allsky_ait_wcs():
+    """
+    Build an all-sky Aitoff WCS with 1 degree pixels whose corner pixels
+    lie outside the valid region of the projection.
+    """
+    wcs = APWCS(naxis=2)
+    wcs.wcs.crpix = [180.5, 90.5]
+    wcs.wcs.crval = [0.0, 0.0]
+    wcs.wcs.cdelt = [-1.0, 1.0]
+    wcs.wcs.ctype = ['RA---AIT', 'DEC--AIT']
+    return wcs
+
+
+@pytest.fixture
+def ait_wcs():
+    return _make_allsky_ait_wcs()
+
+
+class _ConstantWCS(CountingWCS):
+    """
+    Wrapper whose forward transform maps every pixel to the sky position
+    of the wrapped WCS origin, so every Jacobian is zero.
+    """
+
+    def pixel_to_world_values(self, x, y):
+        """
+        Return the sky position of pixel (0, 0) for every input.
+
+        Parameters
+        ----------
+        x, y : `~numpy.ndarray`
+            The pixel coordinates, used only for their shape.
+
+        Returns
+        -------
+        result : tuple of `~numpy.ndarray`
+            The world coordinate values.
+        """
+        return self._wcs.pixel_to_world_values(np.zeros_like(x),
+                                               np.zeros_like(y))
+
+
+class TestUndefinedWCS:
+    """
+    Tests of the helpers at a pixel position where the WCS is undefined.
+
+    The vectorized Jacobians propagate NaN silently, one element per
+    position, while the per-region helpers raise a ValueError that names
+    the position.
+    """
+
+    OUTSIDE = (0.0, 0.0)
+
+    def test_vectorized_helpers_return_nan(self, ait_wcs):
+        x = np.array([self.OUTSIDE[0], 180.0])
+        y = np.array([self.OUTSIDE[1], 90.0])
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            jacobians = compute_pixel_to_sky_jacobians(ait_wcs, x, y)
+        assert np.all(np.isnan(jacobians[0]))
+        assert np.all(np.isfinite(jacobians[1]))
+
+    @pytest.mark.parametrize('func', [
+        pixel_to_sky_mean_scale,
+        pixel_to_sky_svd_scales,
+        lambda wcs, pixcoord: pixel_shape_to_sky_svd(wcs, pixcoord, 2.0, 1.0,
+                                                     0.3),
+        lambda wcs, pixcoord: sky_to_pixel_mean_scale(wcs, None,
+                                                      pixcoord=pixcoord),
+        lambda wcs, pixcoord: sky_to_pixel_svd_scales(wcs, None,
+                                                      pixcoord=pixcoord),
+        lambda wcs, pixcoord: sky_shape_to_pixel_svd(wcs, None, 2.0, 1.0,
+                                                     0.3, pixcoord=pixcoord),
+    ], ids=['pixel_to_sky_mean_scale', 'pixel_to_sky_svd_scales',
+            'pixel_shape_to_sky_svd', 'sky_to_pixel_mean_scale',
+            'sky_to_pixel_svd_scales', 'sky_shape_to_pixel_svd'])
+    def test_per_region_helpers_raise(self, ait_wcs, func):
+        match = r'The WCS is undefined at pixel position \(0\.0, 0\.0\)'
+        with pytest.raises(ValueError, match=match):
+            func(ait_wcs, self.OUTSIDE)
+
+    @pytest.mark.parametrize('func', [
+        sky_to_pixel_mean_scale,
+        sky_to_pixel_svd_scales,
+        lambda wcs, skycoord, **kwargs: sky_shape_to_pixel_svd(
+            wcs, skycoord, 2.0, 1.0, 0.3, **kwargs),
+    ], ids=['sky_to_pixel_mean_scale', 'sky_to_pixel_svd_scales',
+            'sky_shape_to_pixel_svd'])
+    @pytest.mark.parametrize('pixcoord', [None, (np.nan, np.nan)],
+                             ids=['inverted', 'given'])
+    def test_sky_coordinate_without_pixel_position(self, simple_wcs, func,
+                                                   pixcoord):
+        """
+        Test a sky coordinate that the projection cannot reach, so its
+        pixel position is NaN whether the helper inverts the WCS or the
+        caller passes the inverted position, as the apertures do.
+        """
+        antipode = SkyCoord(WCS_CENTER.ra + 180 * u.deg, -WCS_CENTER.dec)
+        match = (r'The sky coordinate \(280 -30 icrs\) has no pixel '
+                 'position under the WCS')
+        with pytest.raises(ValueError, match=match):
+            func(simple_wcs, antipode, pixcoord=pixcoord)
+
+    def test_length_one_array_skycoord(self, simple_wcs):
+        antipode = SkyCoord([WCS_CENTER.ra + 180 * u.deg], [-WCS_CENTER.dec])
+        match = r'The sky coordinate \(280 -30 icrs\) has no pixel position'
+        with pytest.raises(ValueError, match=match):
+            sky_to_pixel_mean_scale(simple_wcs, antipode)
+
+    def test_nonfinite_pixcoord_without_skycoord(self, simple_wcs):
+        match = r'The pixel position \(nan, 10\.0\) is not finite'
+        with pytest.raises(ValueError, match=match):
+            sky_to_pixel_mean_scale(simple_wcs, None,
+                                    pixcoord=(np.nan, 10.0))
+
+    def test_singular_jacobian_raises(self, simple_wcs):
+        """
+        Test a forward transform that maps every pixel to one sky
+        position, so the Jacobian is finite but singular.
+        """
+        wcs = _ConstantWCS(simple_wcs)
+        match = (r'The WCS Jacobian is singular at pixel position '
+                 r'\(10\.0, 10\.0\)')
+        with pytest.raises(ValueError, match=match):
+            sky_to_pixel_mean_scale(wcs, None, pixcoord=(10.0, 10.0))
+
+    def test_inverted_sky_position_raises(self, ait_wcs):
+        """
+        Test the path where the pixel position is found by inverting
+        the WCS rather than given.
+        """
+        skycoord = SkyCoord(0.0 * u.deg, 0.0 * u.deg)
+        # Every sky coordinate inverts to a valid pixel of an all-sky
+        # map, so force the inversion to land outside the projection.
+        wcs = CountingWCS(ait_wcs)
+        wcs.world_to_pixel = lambda _skycoord: self.OUTSIDE
+        with pytest.raises(ValueError, match='WCS is undefined'):
+            sky_to_pixel_mean_scale(wcs, skycoord)
