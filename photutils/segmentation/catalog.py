@@ -3082,6 +3082,12 @@ class SourceCatalog:
         `centroid_err`). The errors are NaN for sources where the
         maximum data value is at the edge of the source segment (where
         the position of the maximum pixel is returned instead of a fit).
+
+        The delta method linearizes the peak solution at the fitted
+        coefficients, whose curvature terms are noisy for faint peaks.
+        The errors are accurate for well-detected peaks but run several
+        percent high when the peak is only a few tens of sigma above the
+        noise.
         """
         results = self._centroid_quad_results
         with warnings.catch_warnings():
@@ -5390,6 +5396,15 @@ class SourceCatalog:
         returned. This will occur where the source `centroid` position
         or elliptical shape parameters are not finite or where the
         source is completely masked.
+
+        The error is the quadrature sum of the input ``error`` array
+        over the pixels in the Kron aperture, which is treated as fixed.
+        The aperture center, shape, and radius are themselves measured
+        from the data, and the flux variation from that aperture
+        uncertainty is not propagated. The error is therefore a lower
+        bound. The missing contribution is negligible when the aperture
+        extends into the sky background, where the source surface
+        brightness at the aperture boundary is small.
         """
         kron_flux_err = self._kron_photometry[:, 1]
         if self._data_unit is not None:
