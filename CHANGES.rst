@@ -382,8 +382,9 @@ New Features
 
   - Added ``compute_pixel_areas`` and ``compute_pixel_area_map``
     functions to compute the on-sky area of image pixels from a WCS,
-    either at an array of positions or for every pixel in an image.
-    [#2427, #2431]
+    either at an array of positions or for every pixel in an image. The
+    map is interpolated from a coarse grid by default, or evaluated
+    exactly at every pixel with ``interpolate=False``. [#2427, #2431]
 
 Bug Fixes
 ^^^^^^^^^

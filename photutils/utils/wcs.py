@@ -105,9 +105,21 @@ def _compute_areas_at_every_pixel(wcs, ny, nx):
     """
     Evaluate `compute_pixel_areas` directly at every pixel of an image
     with the given ``(ny, nx)`` shape.
+
+    The image is evaluated in blocks of rows so that the temporary
+    arrays of the Jacobian computation, which take about 500 bytes per
+    pixel at their peak, stay bounded for large images. The result is
+    identical to a single evaluation of the whole image.
     """
-    yy, xx = np.mgrid[:ny, :nx]
-    return compute_pixel_areas(wcs, xx, yy)
+    max_block_pixels = 2**18
+    n_rows = max(1, max_block_pixels // nx)
+    areas = np.empty((ny, nx))
+    x = np.arange(nx, dtype=float)
+    for y0 in range(0, ny, n_rows):
+        y1 = min(y0 + n_rows, ny)
+        xx, yy = np.meshgrid(x, np.arange(y0, y1, dtype=float))
+        areas[y0:y1] = compute_pixel_areas(wcs, xx, yy)
+    return areas
 
 
 def compute_pixel_area_map(wcs, shape, *, interpolate=True, step=None):
@@ -134,15 +146,15 @@ def compute_pixel_area_map(wcs, shape, *, interpolate=True, step=None):
         The ``(ny, nx)`` shape of the image.
 
     interpolate : bool, optional
-        Whether to interpolate the areas from a coarse grid. If `False`,
-        the area is evaluated directly at every pixel with
-        `compute_pixel_areas` and ``step`` must be `None`. That is exact
-        but slower (a few seconds for a 4096 x 4096 image).
-        Interpolation is faster than direct evaluation for every step
-        of 2 or more (about 3 times at a step of 2 and more than 10
-        times at a step of 4), so a small step is not a reason to
-        disable it. Set ``interpolate=False`` only when the exact
-        per-pixel areas are wanted.
+        Whether to interpolate the areas from a coarse grid. If
+        `False`, the area is evaluated directly at every pixel with
+        `compute_pixel_areas`. That is exact but slower (a few seconds
+        for a 4096 x 4096 image). For any image more than a few dozen
+        pixels on a side, interpolation is faster than direct evaluation
+        at every step of 2 or more (about 3 times at a step of 2 and
+        more than 10 times at a step of 4), so a small step is not a
+        reason to disable it. Set ``interpolate=False`` only when the
+        exact per-pixel areas are wanted.
 
     step : int or None, optional
         The spacing in pixels of the coarse grid on which the areas are
@@ -201,6 +213,9 @@ def compute_pixel_area_map(wcs, shape, *, interpolate=True, step=None):
     if not (_is_positive_int(ny) and _is_positive_int(nx)):
         raise ValueError(msg)
 
+    if not isinstance(interpolate, (bool, np.bool_)):
+        msg = f'interpolate must be a boolean, got {interpolate!r}'
+        raise TypeError(msg)
     if not interpolate:
         if step is not None:
             msg = 'step must be None when interpolate=False'
@@ -217,13 +232,20 @@ def compute_pixel_area_map(wcs, shape, *, interpolate=True, step=None):
         msg = 'step must be a positive integer or None'
         raise ValueError(msg)
     elif step > max_step:
-        msg = (f'step={step} was reduced to {max_step} so that the coarse '
-               'grid has at least eight intervals across the image')
+        if max_step == 1:
+            msg = (f'step={step} was reduced to 1, so the area is '
+                   'evaluated directly at every pixel')
+        else:
+            msg = (f'step={step} was reduced to {max_step} so that the '
+                   'coarse grid has at least eight intervals across the '
+                   'image')
         warnings.warn(msg, AstropyUserWarning)
         step = max_step
 
     # A step of 1 samples every pixel, so evaluate the areas directly
-    # instead of interpolating them from themselves.
+    # instead of interpolating them from themselves. This check comes
+    # after the step is validated and capped so that a capped step still
+    # warns before taking the direct path.
     if step == 1:
         return _compute_areas_at_every_pixel(wcs, ny, nx)
 
