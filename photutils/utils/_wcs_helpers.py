@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 """
-Tools for WCS helpers.
+Private helpers for local WCS Jacobians, isotropic and principal-axis
+pixel scales, and ellipse conversions between the pixel and sky frames.
 """
 
 import sys
@@ -61,7 +62,11 @@ def _pixel_to_world_radians(wcs, x, y):
     position. For a source in the outermost pixel of the array those
     steps fall outside a gwcs bounding box, where gwcs returns NaN. The
     forward transform is well defined there, so it is evaluated with
-    the bounding box disabled.
+    the bounding box disabled. The bypass applies only to a gwcs object
+    passed directly or through a high-level wrapper. A gwcs behind an
+    astropy `~astropy.wcs.wcsapi.SlicedLowLevelWCS` is evaluated through
+    the slice, which keeps the bounding box, so its edge pixels can give
+    NaN.
 
     The low-level WCS interface is used because it returns plain arrays.
     The high-level interface builds a `~astropy.coordinates.SkyCoord`,
@@ -88,15 +93,12 @@ def _pixel_to_world_radians(wcs, x, y):
         The world longitude and latitude in radians.
     """
     low_level_wcs = _low_level_wcs(wcs)
-    if _is_gwcs(low_level_wcs):
-        world = low_level_wcs(x, y, with_bounding_box=False)
-    else:
-        world = low_level_wcs.pixel_to_world_values(x, y)
 
     # The second element of each world_axis_object_components entry
     # is the index of the axis within the sky coordinate, 0 for the
-    # longitude and 1 for the latitude, whatever the axis order of
-    # the WCS.
+    # longitude and 1 for the latitude, whatever the axis order of the
+    # WCS. The check comes before the transform so that an invalid WCS
+    # is rejected without evaluating it.
     component_indices = [comp[1] for comp
                          in low_level_wcs.world_axis_object_components]
     if component_indices.count(0) != 1 or component_indices.count(1) != 1:
@@ -106,6 +108,11 @@ def _pixel_to_world_radians(wcs, x, y):
     lon_idx = component_indices.index(0)
     lat_idx = component_indices.index(1)
     units = low_level_wcs.world_axis_units
+
+    if _is_gwcs(low_level_wcs):
+        world = low_level_wcs(x, y, with_bounding_box=False)
+    else:
+        world = low_level_wcs.pixel_to_world_values(x, y)
     return (_to_radians(world[lon_idx], units[lon_idx]),
             _to_radians(world[lat_idx], units[lat_idx]))
 
@@ -144,10 +151,41 @@ def _world_to_pixel(wcs, skycoord):
     return wcs.world_to_pixel(skycoord)
 
 
+def _check_jacobian_defined(jacobian, pixcoord):
+    """
+    Raise a ValueError if a Jacobian is not finite.
+
+    A non-finite Jacobian means the WCS is undefined at the position,
+    for example outside the valid region of an all-sky projection.
+    The per-region helpers raise here so that the caller gets a clear
+    message instead of a NaN scale or a failed decomposition later.
+
+    Parameters
+    ----------
+    jacobian : `~numpy.ndarray`
+        The 2x2 Jacobian to check.
+
+    pixcoord : tuple of float
+        The ``(x, y)`` pixel position, used in the error message.
+    """
+    if not np.all(np.isfinite(jacobian)):
+        x, y = pixcoord
+        msg = (f'The WCS is undefined at pixel position ({x}, {y}), '
+               'e.g., outside the valid region of the projection')
+        raise ValueError(msg)
+
+
 def _sky_to_pixel_jacobian(wcs, skycoord, *, pixcoord=None):
     """
     Compute the pixel center and the local Jacobian for a sky-to-pixel
     conversion.
+
+    The pixel position of ``skycoord`` is found by inverting the WCS
+    unless it is given. The forward Jacobian ``F = d(sky_arcsec)/
+    d(pixel)`` is then evaluated there with
+    `compute_pixel_to_sky_jacobians`, by central differences half a
+    pixel either side of the position, and inverted to give ``J =
+    F^{-1} = d(pixel)/d(sky_arcsec)``.
 
     Parameters
     ----------
@@ -177,9 +215,31 @@ def _sky_to_pixel_jacobian(wcs, skycoord, *, pixcoord=None):
         x0, y0 = _world_to_pixel(wcs, skycoord)
     else:
         x0, y0 = pixcoord
+    if not (np.isfinite(x0) and np.isfinite(y0)):
+        # Callers often invert the WCS themselves and pass the position
+        # along with the sky coordinate, so name the sky coordinate
+        # whenever it is available.
+        if skycoord is None:
+            msg = f'The pixel position ({x0}, {y0}) is not finite'
+        else:
+            coord = ' '.join(np.atleast_1d(skycoord.to_string()))
+            msg = (f'The sky coordinate ({coord} {skycoord.frame.name}) '
+                   'has no pixel position under the WCS, e.g., it lies '
+                   'outside the valid region of the projection')
+        raise ValueError(msg)
     center = (float(x0), float(y0))
     forward = compute_pixel_to_sky_jacobians(wcs, x0, y0)[0]
-    return center, np.linalg.inv(forward)
+    _check_jacobian_defined(forward, center)
+
+    # The explicit 2x2 inverse is much faster than np.linalg.inv on a
+    # single small matrix.
+    det = forward[0, 0] * forward[1, 1] - forward[0, 1] * forward[1, 0]
+    if det == 0:
+        msg = f'The WCS Jacobian is singular at pixel position {center}'
+        raise ValueError(msg)
+    inverse = np.array([[forward[1, 1], -forward[0, 1]],
+                        [-forward[1, 0], forward[0, 0]]]) / det
+    return center, inverse
 
 
 def _svd_ellipse_from_composite(m_comp, *, sky_angle=False,
@@ -238,7 +298,9 @@ def _svd_ellipse_from_composite(m_comp, *, sky_angle=False,
                                  width_col))
     dot_minor = np.abs(np.einsum('...i,...i->...', u_mat[..., :, 1],
                                  width_col))
-    major_is_width = dot_major >= dot_minor
+    # A strict comparison keeps a zero-length width column, whose dot
+    # products are both zero, from being taken as the major axis.
+    major_is_width = dot_major > dot_minor
 
     out_width = 2 * np.where(major_is_width, s_vals[..., 0], s_vals[..., 1])
     out_height = 2 * np.where(major_is_width, s_vals[..., 1], s_vals[..., 0])
@@ -301,70 +363,12 @@ def _geometric_mean_singular_values(matrices):
         The geometric mean singular value of each matrix, with shape
         ``(...)``.
     """
-    return np.sqrt(np.abs(np.linalg.det(matrices)))
-
-
-def compute_local_wcs_jacobian(wcs, skycoord):
-    """
-    Compute the local 2x2 Jacobian matrix d(pixel)/d(tangent-plane) at
-    the given sky coordinate using central finite differences.
-
-    The Jacobian matrix ``J`` linearizes the WCS transformation in the
-    neighborhood of ``skycoord``. It maps infinitesimal offsets in the
-    tangent-plane coordinate system (in arcsec) to pixel coordinate
-    offsets (in pixels)::
-
-        [dx, dy]^T ~ J @ [d_xi, d_eta]^T
-
-    The tangent-plane coordinate system has two orthogonal axes:
-
-        * ``xi`` (RA direction): offset along Right Ascension,
-          increasing to the East.
-
-        * ``eta`` (Dec direction): offset along Declination,
-          increasing to the North.
-
-    The Jacobian is computed by offsetting half a pixel either side
-    of the position in x and y, converting the resulting pixel
-    positions to sky coordinates, and differencing them in the
-    tangent plane. The sky positions are handled as unit vectors
-    and the differences are projected onto the local East and North
-    directions (see `compute_pixel_to_sky_jacobians`), so the formula
-    is well-defined at the celestial poles and across the longitude
-    wraparound (RA = 0 / 360). This gives the forward Jacobian ``F =
-    d(sky_arcsec)/d(pixel)``, which is then inverted to obtain ``J =
-    F^{-1} = d(pixel)/d(sky_arcsec)``. The central difference over one
-    pixel is exact for a distortion that is locally quadratic, unlike
-    a one-sided difference, which is biased by half the curvature. The
-    half-pixel steps either side of the position span one pixel, which
-    keeps the differences well conditioned at any pixel scale.
-
-    This function works with any WCS that supports
-    the `astropy shared interface for WCS
-    <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
-    `astropy.wcs.WCS`, `gwcs.wcs.WCS`), because it relies only on the
-    forward and inverse transforms. A gwcs transform is evaluated with
-    its bounding box disabled, so the finite differences stay finite for
-    a source at the edge of the array.
-
-    Parameters
-    ----------
-    wcs : WCS object
-        A world coordinate system (WCS) transformation that
-        supports the `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
-        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
-
-    skycoord : `~astropy.coordinates.SkyCoord`
-        The sky coordinate at which to evaluate the Jacobian.
-
-    Returns
-    -------
-    jacobian : 2x2 `~numpy.ndarray`
-        The Jacobian matrix ``J`` such that ``[dx, dy]^T ≈ J @ [d_xi,
-        d_eta]^T``, with units of pixels/arcsec.
-    """
-    return _sky_to_pixel_jacobian(wcs, skycoord)[1]
+    # The explicit 2x2 determinant is much faster than np.linalg.det on
+    # a stack of small matrices and propagates NaN without raising a
+    # warning.
+    det = (matrices[..., 0, 0] * matrices[..., 1, 1]
+           - matrices[..., 0, 1] * matrices[..., 1, 0])
+    return np.sqrt(np.abs(det))
 
 
 def compute_pixel_to_sky_jacobians(wcs, x, y):
@@ -425,10 +429,14 @@ def compute_pixel_to_sky_jacobians(wcs, x, y):
     yy = np.concatenate((y, y, y, y - 0.5, y + 0.5))
     lon, lat = _pixel_to_world_radians(wcs, xx, yy)
 
-    # Unit vectors pointing at each position
+    # Unit vectors pointing at the four edge positions. The center block
+    # is needed only through its longitude and latitude below.
     cos_lat = np.cos(lat)
-    xyz = np.stack((cos_lat * np.cos(lon), cos_lat * np.sin(lon),
-                    np.sin(lat)), axis=-1).reshape(5, n, 3)
+    edge_lon = lon[n:]
+    edge_cos_lat = cos_lat[n:]
+    xyz = np.stack((edge_cos_lat * np.cos(edge_lon),
+                    edge_cos_lat * np.sin(edge_lon),
+                    np.sin(lat[n:])), axis=-1).reshape(4, n, 3)
 
     # Local East (+longitude) and North (+latitude) unit vectors at the
     # centers. The closed forms stay defined at the poles, where they
@@ -440,51 +448,20 @@ def compute_pixel_to_sky_jacobians(wcs, x, y):
     sin_lat0 = np.sin(lat0)
     east = np.stack((-sin_lon0, cos_lon0, np.zeros(n)), axis=-1)
     north = np.stack((-sin_lat0 * cos_lon0, -sin_lat0 * sin_lon0,
-                      np.cos(lat0)), axis=-1)
+                      cos_lat[:n]), axis=-1)
 
     # The central difference of the edge unit vectors, projected onto
     # East and North, gives the tangent-plane (xi, eta) displacement per
     # pixel in radians. This formulation has no longitude subtraction
     # and no division by cos(lat), so it is wrap-safe and pole-safe.
+    # The edge blocks are ordered -x, +x, -y, +y.
     arcsec_per_rad = 3600.0 * np.degrees(1)
     jacobians = np.empty((n, 2, 2))
-    for col, (lo, hi) in enumerate(((1, 2), (3, 4))):
+    for col, (lo, hi) in enumerate(((0, 1), (2, 3))):
         step = xyz[hi] - xyz[lo]
         jacobians[:, 0, col] = np.einsum('ij,ij->i', step, east)
         jacobians[:, 1, col] = np.einsum('ij,ij->i', step, north)
     return jacobians * arcsec_per_rad
-
-
-def compute_pixel_to_sky_mean_scales(wcs, x, y):
-    """
-    Compute the isotropic (mean) pixel scale at an array of pixel
-    positions.
-
-    This is the vectorized counterpart of `pixel_to_sky_mean_scale`. The
-    scale at each position is the geometric mean of the two singular
-    values of the local forward Jacobian ``F = d(sky_arcsec)/d(pixel)``,
-    which is the square root of its absolute determinant. It uses only
-    the forward WCS transform, so it is fast for a gwcs whose inverse
-    must be found numerically.
-
-    Parameters
-    ----------
-    wcs : WCS object
-        A world coordinate system (WCS) transformation that
-        supports the `astropy shared interface for WCS
-        <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_ (e.g.,
-        `astropy.wcs.WCS`, `gwcs.wcs.WCS`).
-
-    x, y : float or array_like
-        The pixel coordinates. Arrays are flattened.
-
-    Returns
-    -------
-    mean_scales : `~numpy.ndarray`
-        The 1D array of mean scale factors (arcsec per pixel).
-    """
-    jacobians = compute_pixel_to_sky_jacobians(wcs, x, y)
-    return _geometric_mean_singular_values(jacobians)
 
 
 def sky_to_pixel_mean_scale(wcs, skycoord, *, pixcoord=None):
@@ -567,18 +544,20 @@ def pixel_to_sky_mean_scale(wcs, pixcoord):
     mean_scale : float
         The mean scale factor (arcsec per pixel).
     """
-    jacobians = compute_pixel_to_sky_jacobians(wcs, pixcoord[0], pixcoord[1])
-    return float(_geometric_mean_singular_values(jacobians)[0])
+    jacobian = compute_pixel_to_sky_jacobians(wcs, pixcoord[0],
+                                              pixcoord[1])[0]
+    _check_jacobian_defined(jacobian, pixcoord)
+    return float(_geometric_mean_singular_values(jacobian))
 
 
 def pixel_shape_to_sky_svd(wcs, pixcoord, width, height, pixel_angle_rad):
     """
     Convert a pixel ellipse to a sky ellipse using SVD.
 
-    This builds the composite matrix ``M_sky = J^{-1} @ M_pix`` where
-    ``M_pix`` encodes the pixel ellipse semi-axes and rotation, and
-    ``J^{-1}`` is the local inverse Jacobian. The SVD of ``M_sky`` gives
-    the exact sky ellipse semi-axes and orientation.
+    This builds the composite matrix ``M_sky = F @ M_pix`` where
+    ``M_pix`` encodes the pixel ellipse semi-axes and rotation, and ``F
+    = d(sky_arcsec)/d(pixel)`` is the local forward Jacobian. The SVD of
+    ``M_sky`` gives the exact sky ellipse semi-axes and orientation.
 
     This handles WCS shear correctly. The sky image of a pixel ellipse
     is always an ellipse, and SVD extracts its true principal axes,
@@ -627,8 +606,9 @@ def pixel_shape_to_sky_svd(wcs, pixcoord, width, height, pixel_angle_rad):
         to [0, 360) degrees, with the broadcast shape of ``width`` and
         ``height``.
     """
-    jacobian_inv = compute_pixel_to_sky_jacobians(wcs, pixcoord[0],
-                                                  pixcoord[1])[0]
+    forward = compute_pixel_to_sky_jacobians(wcs, pixcoord[0],
+                                             pixcoord[1])[0]
+    _check_jacobian_defined(forward, pixcoord)
 
     # Build M_pix: columns are pixel semi-axis vectors, one matrix per
     # broadcast width and height.
@@ -645,8 +625,8 @@ def pixel_shape_to_sky_svd(wcs, pixcoord, width, height, pixel_angle_rad):
     m_pix[..., 1, 0] = half_w * sin_a
     m_pix[..., 1, 1] = half_h * cos_a
 
-    # M_sky = J^{-1} @ M_pix: columns are sky semi-axis vectors.
-    m_sky = jacobian_inv @ m_pix
+    # M_sky = F @ M_pix: columns are sky semi-axis vectors.
+    m_sky = forward @ m_pix
 
     sky_width, sky_height, sky_angle = _svd_ellipse_from_composite(
         m_sky, sky_angle=True,
@@ -824,15 +804,15 @@ def sky_to_pixel_svd_scales(wcs, skycoord, *, pixcoord=None):
 def pixel_to_sky_svd_scales(wcs, pixcoord):
     """
     Compute the principal-axis scale factors and sky angle for a
-    pixel-to-sky conversion using SVD of the inverse Jacobian.
+    pixel-to-sky conversion using SVD of the forward Jacobian.
 
-    Uses the singular value decomposition (SVD) of the local inverse
-    Jacobian ``J^{-1} = d(sky)/d(pixel)`` to find the natural principal
-    axes of the WCS transformation at the given pixel position. The
-    singular values give the scale factors along the major and minor
-    axes of the ellipse that a unit circle in pixel space maps to in sky
-    space. The left singular vectors give the directions of those axes
-    in tangent-plane coordinates.
+    Uses the singular value decomposition (SVD) of the local forward
+    Jacobian ``F = d(sky_arcsec)/d(pixel)`` to find the natural
+    principal axes of the WCS transformation at the given pixel
+    position. The singular values give the scale factors along the major
+    and minor axes of the ellipse that a unit circle in pixel space maps
+    to in sky space. The left singular vectors give the directions of
+    those axes in tangent-plane coordinates.
 
     This is the appropriate method for converting a circular pixel
     region to a sky ellipse, as the resulting ellipse accurately
@@ -865,14 +845,15 @@ def pixel_to_sky_svd_scales(wcs, pixcoord):
         counterclockwise from North (the latitude/Dec axis), wrapped to
         [0, 360) degrees.
     """
-    jacobian_inv = compute_pixel_to_sky_jacobians(wcs, pixcoord[0],
-                                                  pixcoord[1])[0]
-    u_mat, s_vals, _vt = np.linalg.svd(jacobian_inv)
+    forward = compute_pixel_to_sky_jacobians(wcs, pixcoord[0],
+                                             pixcoord[1])[0]
+    _check_jacobian_defined(forward, pixcoord)
+    u_mat, s_vals, _vt = np.linalg.svd(forward)
 
-    # Sky position angle (PA) of the major axis, measured from North
-    # (eta/Dec) toward East (xi/RA). The columns of u_mat are
+    # Sky position angle (PA) of the major axis, measured from
+    # North (eta/Dec) toward East (xi/RA). The columns of u_mat are
     # tangent-plane vectors with components (xi=East, eta=North), so the
-    # PA is arctan2(xi, eta). The inverse Jacobian already encodes the
+    # PA is arctan2(xi, eta). The forward Jacobian already encodes the
     # WCS parity, so no manual parity correction is needed here.
     sky_angle = Angle(
         np.rad2deg(np.arctan2(u_mat[0, 0], u_mat[1, 0])) * u.deg,

@@ -14,6 +14,7 @@ from photutils.aperture.circle import (CircularAnnulus, CircularAperture,
                                        SkyCircularAnnulus, SkyCircularAperture)
 from photutils.aperture.tests.test_aperture_common import (
     BaseTestAnnulusMutation, BaseTestAperture, BaseTestPixelAperture)
+from photutils.datasets import make_wcs
 
 POSITIONS = [(10, 20), (30, 40), (50, 60), (70, 80)]
 RA, DEC = np.transpose(POSITIONS)
@@ -74,6 +75,20 @@ class TestSkyCircularAperture(BaseTestAperture):
         match = "'r' must be greater than zero"
         with pytest.raises(ValueError, match=match):
             SkyCircularAperture(SKYCOORD, r=radius * UNIT)
+
+    @staticmethod
+    def test_to_pixel_unreachable_position():
+        """
+        Test that a position the projection cannot reach is reported
+        by its sky coordinate rather than as a NaN pixel position.
+        """
+        wcs = make_wcs((100, 100))
+        center = wcs.pixel_to_world(50, 50)
+        antipode = SkyCoord(center.ra + 180 * u.deg, -center.dec)
+        aperture = SkyCircularAperture(antipode, r=3.0 * UNIT)
+        match = 'The sky coordinate .* has no pixel position under the WCS'
+        with pytest.raises(ValueError, match=match):
+            aperture.to_pixel(wcs)
 
 
 class TestSkyCircularAnnulus(BaseTestAnnulusMutation, BaseTestAperture):
