@@ -2299,6 +2299,26 @@ def test_negative_covariance_eigvals(single_source_catalog):
     assert np.all(np.isnan(eigvals.value))
 
 
+def test_partially_finite_covariance_eigvals(centroid_win_data):
+    """
+    Test that a covariance matrix with any non-finite element is
+    excluded from the eigenvalue solve and gives NaN eigenvalues, while
+    wholly finite matrices are unaffected.
+    """
+    data, segm, _convolved_data = centroid_win_data
+    cat = SourceCatalog(data, segm)
+    expected = cat.covariance_eigvals.value
+
+    covar = cat._covariance.copy()
+    covar[0, 0, 1] = np.nan
+    cat.__dict__['_covariance'] = covar
+    del cat.__dict__['covariance_eigvals']
+    eigvals = cat.covariance_eigvals.value
+
+    assert np.all(np.isnan(eigvals[0]))
+    assert_allclose(eigvals[1:], expected[1:])
+
+
 def test_local_background_few_pixels():
     """
     Test that _local_background returns 0 when fewer than 10 unmasked

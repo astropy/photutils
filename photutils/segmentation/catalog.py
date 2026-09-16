@@ -4036,10 +4036,10 @@ class SourceCatalog:
         The two eigenvalues of the `covariance` matrix in decreasing
         order.
         """
-        eigvals = np.empty((self.n_labels, 2))
-        eigvals.fill(np.nan)
-        # np.linalg.eigvalsh requires finite input values
-        idx = np.unique(np.where(np.isfinite(self._covariance))[0])
+        eigvals = np.full((self.n_labels, 2), np.nan)
+        # np.linalg.eigvalsh requires that every element of a covariance
+        # matrix be finite, so select only the wholly finite matrices
+        idx = np.flatnonzero(np.isfinite(self._covariance).all(axis=(1, 2)))
         eigvals[idx] = np.linalg.eigvalsh(self._covariance[idx])
 
         # Check for negative variance (in case covariance matrix is not
