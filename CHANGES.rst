@@ -304,6 +304,11 @@ New Features
     computed by transporting the pixel centroid error covariance through
     the local WCS Jacobian. [#2399]
 
+  - Added a ``SourceCatalog`` ``sky_orientation`` property providing
+    the position angle on the sky of the source major axis, measured
+    from North toward East, computed by transporting the pixel
+    covariance matrix through the local WCS Jacobian. [#2430]
+
   - Added a bitwise quality-flag system for segmentation. A new public
     ``SEGMENTATION_FLAGS`` registry and ``decode_segmentation_flags``
     function were added. ``SegmentationImage`` objects now have a
