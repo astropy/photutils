@@ -402,28 +402,36 @@ python benchmarks/bench_wcs_helpers.py
 python benchmarks/bench_wcs_helpers.py --which vectorized --n-positions 1000,100000
 ```
 
-## SourceCatalog centroid errors (`mc_sky_centroid_err.py`)
+## SourceCatalog errors (`mc_catalog_err.py`)
 
-Monte Carlo verification of the `SourceCatalog` centroid errors (a
+Monte Carlo verification of the `SourceCatalog` error properties (a
 validation script rather than a timing benchmark):
 
-- the pixel-to-sky error covariance transport, checked against the
+- the pixel-to-sky error covariance transport shared by the isophotal,
+  windowed, and quadratic sky centroid errors, checked against the
   scatter of pixel positions drawn from a known covariance and
   converted with the high-level WCS interface, on rotated, sheared,
   swapped-axis, SIP, near-pole, and gwcs transforms
-- the end-to-end pixel and sky centroid errors, checked against the
-  scatter of the measured centroids over many noise realizations of a
-  Gaussian source on a sheared, anisotropic WCS
+- the end-to-end errors of the isophotal, windowed, and quadratic
+  centroids in pixel and sky coordinates and of the segment and Kron
+  fluxes, checked against the scatter of the measured values over many
+  noise realizations of a Gaussian source on a sheared, anisotropic
+  WCS
 
 `SourceCatalog` zeroes negative data values within a segment before
 computing moments, so a segment that extends into wings below the
-noise gives a clipped centroid whose reported (linear) error is a
-few percent high. The defaults keep the segment edge well above the
-noise; `--radius 8` with the default amplitude shows the effect.
+noise gives a clipped isophotal centroid whose reported (linear) error
+is a few percent high. The defaults keep the segment edge well above
+the noise; `--radius 8` with the default amplitude shows the effect.
+The quadratic centroid error is a delta-method linearization evaluated
+at the noisy peak fit, so it is several percent high when the peak is
+only a few tens of sigma above the noise (`--amplitude 40`). The Kron
+flux scatter also includes the variation of the measured Kron
+aperture, which the reported error does not propagate.
 
 ```bash
-python benchmarks/mc_sky_centroid_err.py
-python benchmarks/mc_sky_centroid_err.py --which end-to-end --radius 8 --amplitude 40
+python benchmarks/mc_catalog_err.py
+python benchmarks/mc_catalog_err.py --which end-to-end --radius 8 --amplitude 40
 ```
 
 ## Utils (`bench_utils.py`)
