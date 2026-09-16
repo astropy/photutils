@@ -300,6 +300,28 @@ class TestPixelAreaMap:
         assert_allclose(area, expected, rtol=1e-12, equal_nan=True)
         assert 0 < np.isfinite(area).mean() < 1
 
+    def test_step_one_is_exact(self):
+        """
+        Test that a step of 1, explicit or from the default on a tiny
+        image, evaluates every pixel directly instead of interpolating.
+        """
+        shape = (300, 200)
+        wcs = _make_wide_tan_wcs(shape)
+        exact = compute_pixel_area_map(wcs, shape, interpolate=False)
+        area = compute_pixel_area_map(wcs, shape, step=1)
+        assert np.array_equal(area, exact)
+
+        shape = (12, 9)
+        wcs = _make_wide_tan_wcs(shape)
+        exact = compute_pixel_area_map(wcs, shape, interpolate=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            area = compute_pixel_area_map(wcs, shape)
+        assert np.array_equal(area, exact)
+        with pytest.warns(AstropyUserWarning, match='step=64 was reduced'):
+            area = compute_pixel_area_map(wcs, shape, step=64)
+        assert np.array_equal(area, exact)
+
     @pytest.mark.parametrize('step', [1, 16, 1000])
     def test_exact_rejects_step(self, simple_wcs, step):
         match = 'step must be None when interpolate=False'
