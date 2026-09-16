@@ -263,6 +263,90 @@ class TestPixelAreaMap:
         else:
             assert 0 < finite.mean() < 1
 
+    @pytest.mark.parametrize('shape', [(1, 1), (2, 5), (65, 3), (300, 200),
+                                       (600, 520)])
+    def test_exact_matches_direct_evaluation(self, shape):
+        """
+        Test that ``interpolate=False`` returns the areas evaluated
+        directly at every pixel, without any interpolation.
+
+        The largest shape has more pixels than one evaluation block,
+        with a partial final block, so it also checks that the blocks
+        are stitched together correctly.
+        """
+        wcs = _make_wide_tan_wcs(shape)
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            area = compute_pixel_area_map(wcs, shape, interpolate=False)
+        assert isinstance(area, np.ndarray)
+        assert area.shape == shape
+        yy, xx = np.mgrid[:shape[0], :shape[1]]
+        expected = compute_pixel_areas(wcs, xx, yy)
+        assert np.array_equal(area, expected)
+
+    def test_exact_agrees_with_interpolated(self):
+        shape = (300, 200)
+        wcs = _make_wide_tan_wcs(shape)
+        exact = compute_pixel_area_map(wcs, shape, interpolate=False)
+        interpolated = compute_pixel_area_map(wcs, shape)
+        assert np.ptp(exact) / exact.mean() > 1e-3
+        assert_allclose(interpolated, exact, rtol=1e-6)
+
+    def test_exact_outside_projection(self):
+        """
+        Test that ``interpolate=False`` keeps the NaN pattern of the
+        pixels outside the projection.
+        """
+        wcs = _make_allsky_wcs('AIT')
+        area = compute_pixel_area_map(wcs, ALLSKY_SHAPE, interpolate=False)
+        yy, xx = np.mgrid[:ALLSKY_SHAPE[0], :ALLSKY_SHAPE[1]]
+        expected = compute_pixel_areas(wcs, xx, yy)
+        assert np.array_equal(area, expected, equal_nan=True)
+        assert 0 < np.isfinite(area).mean() < 1
+
+    @pytest.mark.parametrize(('shape', 'step'),
+                             [((300, 200), 1), ((12, 9), None),
+                              ((12, 9), 1)])
+    def test_step_one_is_exact(self, shape, step):
+        """
+        Test that a step of 1, explicit or from the default on a tiny
+        image, evaluates every pixel directly instead of interpolating.
+        """
+        wcs = _make_wide_tan_wcs(shape)
+        exact = compute_pixel_area_map(wcs, shape, interpolate=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            area = compute_pixel_area_map(wcs, shape, step=step)
+        assert np.array_equal(area, exact)
+
+    def test_step_capped_to_one(self):
+        """
+        Test that a step capped to 1 on a tiny image warns that every
+        pixel is evaluated directly and gives the exact map.
+        """
+        shape = (12, 9)
+        wcs = _make_wide_tan_wcs(shape)
+        exact = compute_pixel_area_map(wcs, shape, interpolate=False)
+        match = ('step=64 was reduced to 1, so the area is evaluated '
+                 'directly at every pixel')
+        with pytest.warns(AstropyUserWarning, match=match):
+            area = compute_pixel_area_map(wcs, shape, step=64)
+        assert np.array_equal(area, exact)
+
+    @pytest.mark.parametrize('interpolate', ['no', None, 0, 1])
+    def test_invalid_interpolate(self, simple_wcs, interpolate):
+        match = f'interpolate must be a boolean, got {interpolate!r}'
+        with pytest.raises(TypeError, match=match):
+            compute_pixel_area_map(simple_wcs, (20, 20),
+                                   interpolate=interpolate)
+
+    @pytest.mark.parametrize('step', [1, 16, 1000])
+    def test_exact_rejects_step(self, simple_wcs, step):
+        match = 'step must be None when interpolate=False'
+        with pytest.raises(ValueError, match=match):
+            compute_pixel_area_map(simple_wcs, (20, 20), step=step,
+                                   interpolate=False)
+
     @pytest.mark.parametrize('step', [0, -4, 2.5, True])
     def test_invalid_step(self, simple_wcs, step):
         match = 'step must be a positive integer or None'
@@ -275,6 +359,8 @@ class TestPixelAreaMap:
         match = 'shape must be two positive integers'
         with pytest.raises(ValueError, match=match):
             compute_pixel_area_map(simple_wcs, shape)
+        with pytest.raises(ValueError, match=match):
+            compute_pixel_area_map(simple_wcs, shape, interpolate=False)
 
     @pytest.mark.skipif(not HAS_GWCS, reason='gwcs is required')
     def test_gwcs_bounding_box(self):

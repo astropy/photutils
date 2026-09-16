@@ -880,6 +880,11 @@ position-dependent error. Multiplying by the pixel-area map removes it::
     <Quantity 0.01 arcsec2>
     >>> pixel_area_sr = areas.to(u.sr)  # multiply a MJy/sr image by this
 
+The map is interpolated from a coarse grid of positions by default,
+which is accurate to better than a part per million for typical
+distortions. Pass ``interpolate=False`` to evaluate the area exactly at
+every pixel instead.
+
 
 .. _whatsnew-3.1-api-changes:
 

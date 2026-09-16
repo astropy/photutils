@@ -101,15 +101,38 @@ def _is_positive_int(value):
             and not isinstance(value, (bool, np.bool_)) and value > 0)
 
 
-def compute_pixel_area_map(wcs, shape, *, step=None):
+def _compute_areas_at_every_pixel(wcs, ny, nx):
+    """
+    Evaluate `compute_pixel_areas` directly at every pixel of an image
+    with the given ``(ny, nx)`` shape.
+
+    The image is evaluated in blocks of rows so that the temporary
+    arrays of the Jacobian computation, which take about 500 bytes per
+    pixel at their peak, stay bounded for large images. The result is
+    identical to a single evaluation of the whole image.
+    """
+    max_block_pixels = 2**18
+    n_rows = max(1, max_block_pixels // nx)
+    areas = np.empty((ny, nx))
+    x = np.arange(nx, dtype=float)
+    for y0 in range(0, ny, n_rows):
+        y1 = min(y0 + n_rows, ny)
+        xx, yy = np.meshgrid(x, np.arange(y0, y1, dtype=float))
+        areas[y0:y1] = compute_pixel_areas(wcs, xx, yy)
+    return areas
+
+
+def compute_pixel_area_map(wcs, shape, *, interpolate=True, step=None):
     """
     Compute the on-sky area of every pixel in an image.
 
-    The areas are computed with `compute_pixel_areas` on a coarse grid
-    of positions and then interpolated onto the full image grid with a
-    bicubic spline. Distortions vary smoothly on scales far larger than
-    the grid spacing, so the interpolation error is negligible compared
-    with the variation in area that the map captures.
+    By default, the areas are computed with `compute_pixel_areas` on
+    a coarse grid of positions and then interpolated onto the full
+    image grid with a bicubic spline. Distortions vary smoothly on
+    scales far larger than the grid spacing, so the interpolation error
+    is negligible compared with the variation in area that the map
+    captures. Set ``interpolate=False`` to instead evaluate the area
+    directly at every pixel.
 
     Parameters
     ----------
@@ -121,6 +144,17 @@ def compute_pixel_area_map(wcs, shape, *, step=None):
 
     shape : 2-tuple of int
         The ``(ny, nx)`` shape of the image.
+
+    interpolate : bool, optional
+        Whether to interpolate the areas from a coarse grid. If
+        `False`, the area is evaluated directly at every pixel with
+        `compute_pixel_areas`. That is exact but slower (a few seconds
+        for a 4096 x 4096 image). For any image more than a few dozen
+        pixels on a side, interpolation is faster than direct evaluation
+        at every step of 2 or more (about 3 times at a step of 2 and
+        more than 10 times at a step of 4), so a small step is not a
+        reason to disable it. Set ``interpolate=False`` only when the
+        exact per-pixel areas are wanted.
 
     step : int or None, optional
         The spacing in pixels of the coarse grid on which the areas are
@@ -134,7 +168,10 @@ def compute_pixel_area_map(wcs, shape, *, step=None):
         eight intervals across the image. If `None`, the step is 64
         or the largest allowed step, whichever is smaller. A larger
         step than allowed is reduced to the largest allowed step with a
-        warning.
+        warning. A step of 1 samples every pixel, so the area is then
+        evaluated directly at every pixel without interpolation, as
+        if ``interpolate`` were `False`. ``step`` must be `None` if
+        ``interpolate`` is `False`.
 
     Returns
     -------
@@ -152,8 +189,8 @@ def compute_pixel_area_map(wcs, shape, *, step=None):
     If any node of the padded coarse grid lies outside the valid region
     of the projection, which can happen for an all-sky map even when
     every image pixel is valid, the areas are instead evaluated directly
-    at every pixel with `compute_pixel_areas`. That is exact but slower
-    (a few seconds for a 4096 x 4096 image).
+    at every pixel with `compute_pixel_areas`, as if ``interpolate``
+    were `False`.
 
     Examples
     --------
@@ -176,6 +213,15 @@ def compute_pixel_area_map(wcs, shape, *, step=None):
     if not (_is_positive_int(ny) and _is_positive_int(nx)):
         raise ValueError(msg)
 
+    if not isinstance(interpolate, (bool, np.bool_)):
+        msg = f'interpolate must be a boolean, got {interpolate!r}'
+        raise TypeError(msg)
+    if not interpolate:
+        if step is not None:
+            msg = 'step must be None when interpolate=False'
+            raise ValueError(msg)
+        return _compute_areas_at_every_pixel(wcs, ny, nx)
+
     # Ensure the image spans at least eight grid intervals so that large
     # steps on smaller images do not leave the spline with too few
     # knots.
@@ -186,10 +232,22 @@ def compute_pixel_area_map(wcs, shape, *, step=None):
         msg = 'step must be a positive integer or None'
         raise ValueError(msg)
     elif step > max_step:
-        msg = (f'step={step} was reduced to {max_step} so that the coarse '
-               'grid has at least eight intervals across the image')
+        if max_step == 1:
+            msg = (f'step={step} was reduced to 1, so the area is '
+                   'evaluated directly at every pixel')
+        else:
+            msg = (f'step={step} was reduced to {max_step} so that the '
+                   'coarse grid has at least eight intervals across the '
+                   'image')
         warnings.warn(msg, AstropyUserWarning)
         step = max_step
+
+    # A step of 1 samples every pixel, so evaluate the areas directly
+    # instead of interpolating them from themselves. This check comes
+    # after the step is validated and capped so that a capped step still
+    # warns before taking the direct path.
+    if step == 1:
+        return _compute_areas_at_every_pixel(wcs, ny, nx)
 
     # Coarse grid padded by two steps beyond each edge. This gives the
     # spline at least five knots per axis and keeps the interpolation
@@ -205,8 +263,7 @@ def compute_pixel_area_map(wcs, shape, *, step=None):
     # image pixel is valid (e.g., an all-sky map). Evaluate the areas
     # directly at every pixel in that case.
     if not np.all(np.isfinite(coarse)):
-        yy, xx = np.mgrid[:ny, :nx]
-        return compute_pixel_areas(wcs, xx, yy)
+        return _compute_areas_at_every_pixel(wcs, ny, nx)
 
     spline = RectBivariateSpline(grid_y, grid_x, coarse)
     return spline(np.arange(ny, dtype=float), np.arange(nx, dtype=float))
