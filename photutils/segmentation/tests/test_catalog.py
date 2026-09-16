@@ -3516,6 +3516,146 @@ def test_sky_centroid_err_columns():
     assert single.sky_centroid_ra_err == sky_err[0]
 
 
+def _make_rotated_tan_wcs(parity, rotation_deg, *, scale=0.25):
+    """
+    Make a TAN WCS whose CD matrix is a rotation of an axis-aligned
+    frame with the given parity.
+
+    With ``parity=-1`` and no rotation, +x points West and +y points
+    North (the standard "North up, East left" orientation). With
+    ``parity=1`` the x axis is flipped so that +x points East.
+    """
+    wcs = WCS(naxis=2)
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    wcs.wcs.crpix = [15.0, 15.0]
+    wcs.wcs.crval = [150.0, 20.0]
+    phi = np.deg2rad(rotation_deg)
+    rotation = np.array([[np.cos(phi), -np.sin(phi)],
+                         [np.sin(phi), np.cos(phi)]])
+    wcs.wcs.cd = (scale / 3600.0) * rotation @ np.diag([parity, 1.0])
+    return wcs
+
+
+def _elongated_source_catalog(theta_deg, wcs):
+    """
+    Make a single-source catalog of an elongated Gaussian centered near
+    the WCS reference pixel.
+    """
+    yy, xx = np.mgrid[0:31, 0:31]
+    theta = np.deg2rad(theta_deg)
+    data = Gaussian2D(500.0, 15.2, 15.6, 3.0, 1.5, theta)(xx, yy)
+    segment_map = detect_sources(data, 10.0, n_pixels=10)
+    return SourceCatalog(data, segment_map, convolved_data=data, wcs=wcs,
+                         aperture_mask_method='none')
+
+
+def _wrap_m90_p90(angle_deg):
+    """
+    Wrap angles in degrees to the range (-90, 90].
+    """
+    return -((-angle_deg + 90.0) % 180.0) + 90.0
+
+
+@pytest.mark.parametrize('theta_deg', [-60.0, 10.0, 45.0, 80.0])
+@pytest.mark.parametrize(('parity', 'rotation_deg'),
+                         [(-1, 0.0), (1, 0.0), (-1, 30.0), (-1, -75.0),
+                          (1, 120.0)])
+def test_sky_orientation(theta_deg, parity, rotation_deg):
+    """
+    Test the sky orientation against the pixel orientation mapped
+    through the CD matrix.
+
+    Near the reference pixel of a TAN projection the local Jacobian is
+    the CD matrix, so the sky position angle of the pixel major-axis
+    direction is known in closed form.
+    """
+    wcs = _make_rotated_tan_wcs(parity, rotation_deg)
+    cat = _elongated_source_catalog(theta_deg, wcs)
+
+    sky_orient = cat.sky_orientation
+    assert sky_orient.unit == u.deg
+    assert sky_orient.shape == (1,)
+    assert np.all(sky_orient > -90 * u.deg)
+    assert np.all(sky_orient <= 90 * u.deg)
+
+    # The major-axis direction on the sky is the CD matrix (columns x
+    # and y, rows xi=East and eta=North) applied to the pixel direction.
+    # The position angle is measured from North toward East.
+    pix_orient = np.deg2rad(cat.orientation.to_value(u.deg)[0])
+    pix_dir = np.array([np.cos(pix_orient), np.sin(pix_orient)])
+    xi, eta = wcs.wcs.cd @ pix_dir
+    expected = _wrap_m90_p90(np.rad2deg(np.arctan2(xi, eta)))
+    assert_allclose(sky_orient.to_value(u.deg)[0], expected, atol=1e-4)
+
+    # A scalar catalog collapses to a scalar Quantity
+    single = cat[0]
+    assert single.sky_orientation.shape == ()
+    assert_allclose(single.sky_orientation, sky_orient[0])
+
+
+def test_sky_orientation_north_up_east_left():
+    """
+    Test the closed-form relation for the standard North-up, East-left
+    orientation, where the position angle is the pixel orientation minus
+    90 degrees.
+    """
+    wcs = _make_rotated_tan_wcs(-1, 0.0)
+    cat = _elongated_source_catalog(30.0, wcs)
+    expected = _wrap_m90_p90(cat.orientation.to_value(u.deg) - 90.0)
+    assert_allclose(cat.sky_orientation.to_value(u.deg), expected, atol=1e-4)
+
+    # A flipped parity (East right) mirrors the position angle
+    wcs_flip = _make_rotated_tan_wcs(1, 0.0)
+    cat_flip = _elongated_source_catalog(30.0, wcs_flip)
+    expected_flip = _wrap_m90_p90(90.0
+                                  - cat_flip.orientation.to_value(u.deg))
+    assert_allclose(cat_flip.sky_orientation.to_value(u.deg), expected_flip,
+                    atol=1e-4)
+
+
+def test_sky_orientation_nan():
+    """
+    Test that a source with an undefined shape has a NaN sky orientation
+    while the other sources are finite.
+    """
+    wcs = _make_rotated_tan_wcs(-1, 0.0)
+    yy, xx = np.mgrid[0:31, 0:31]
+    data = (Gaussian2D(500.0, 8.0, 8.0, 3.0, 1.5, 0.5)(xx, yy)
+            + Gaussian2D(500.0, 22.0, 22.0, 3.0, 1.5, 0.5)(xx, yy))
+    segment_map = detect_sources(data, 10.0, n_pixels=10)
+    assert segment_map.n_labels == 2
+    mask = segment_map.data == 1
+    cat = SourceCatalog(data, segment_map, convolved_data=data, wcs=wcs,
+                        mask=mask, aperture_mask_method='none')
+
+    sky_orient = cat.sky_orientation.to_value(u.deg)
+    assert np.isnan(cat.orientation[0])
+    assert np.isnan(sky_orient[0])
+    assert np.isfinite(sky_orient[1])
+
+
+def test_sky_orientation_no_wcs():
+    """
+    Test that sky_orientation is None without a wcs.
+    """
+    cat = _elongated_source_catalog(30.0, None)
+    assert np.all(cat.sky_orientation == np.array(None))
+    assert cat[0].sky_orientation is None
+
+
+def test_sky_orientation_column():
+    """
+    Test the sky_orientation column in to_table.
+    """
+    wcs = _make_rotated_tan_wcs(-1, 0.0)
+    cat = _elongated_source_catalog(30.0, wcs)
+    columns = ['label', 'orientation', 'sky_orientation']
+    tbl = cat.to_table(columns=columns)
+    assert tbl.colnames == columns
+    assert tbl['sky_orientation'].unit == u.deg
+    assert_allclose(tbl['sky_orientation'], cat.sky_orientation)
+
+
 class TestPartialPixelErrorWeights:
     """
     Tests that aperture flux errors weight the pixel variances by the

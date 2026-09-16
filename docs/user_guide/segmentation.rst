@@ -792,6 +792,14 @@ position errors are available in arcsec via the
 as great-circle angles along the East direction (i.e., they include the
 cos(dec) factor).
 
+A ``wcs`` also enables the
+`~photutils.segmentation.SourceCatalog.sky_orientation`
+property, the position angle on the sky of the source major
+axis measured from North toward East. It transports the pixel
+`~photutils.segmentation.SourceCatalog.covariance` matrix through the
+local WCS Jacobian, so it accounts for the WCS rotation, parity, and
+distortion.
+
 
 Pixel Masking
 ^^^^^^^^^^^^^
