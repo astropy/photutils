@@ -2358,15 +2358,52 @@ class SourceCatalog:
         cov[:, 1, 0] = err_cov_xy
         return cov
 
+    def _sky_cov_from_pixel_cov(self, pix_cov, xycen):
+        """
+        Transport pixel covariance matrices to the local tangent plane.
+
+        The pixel covariance of each source is mapped to the local
+        tangent plane with the forward WCS Jacobian ``F`` evaluated at
+        the source position (``sky_cov = F pix_cov F^T``).
+
+        Parameters
+        ----------
+        pix_cov : `~numpy.ndarray`
+            The ``(N, 2, 2)`` pixel covariance matrices.
+
+        xycen : `~numpy.ndarray`
+            The ``(N, 2)`` pixel ``(x, y)`` centroid positions at which
+            to evaluate the WCS Jacobians.
+
+        Returns
+        -------
+        sky_cov : `~numpy.ndarray`
+            The ``(N, 2, 2)`` tangent-plane covariance matrices in
+            arcsec**2, with rows and columns ordered ``(East, North)``.
+            Matrices are NaN where the position or covariance is not
+            finite.
+        """
+        sky_cov = np.full(pix_cov.shape, np.nan)
+        good = (np.all(np.isfinite(xycen), axis=1)
+                & np.all(np.isfinite(pix_cov), axis=(1, 2)))
+        if np.any(good):
+            jac = compute_pixel_to_sky_jacobians(self.wcs,
+                                                 xycen[good, 0],
+                                                 xycen[good, 1])
+            # The Einstein summation computes the matrix product of the
+            # Jacobian, the pixel covariance, and the Jacobian transpose
+            # for each source. The result is the sky covariance matrix
+            # in the local tangent plane.
+            sky_cov[good] = np.einsum('nij,njk,nlk->nil', jac,
+                                      pix_cov[good], jac)
+        return sky_cov
+
     def _sky_err_from_cov(self, pix_cov, xycen):
         """
         Transport pixel error covariances to sky position errors.
 
-        The pixel covariance of each source is mapped to the local
-        tangent plane with the forward WCS Jacobian ``F`` evaluated at
-        the source position (``sky_cov = F pix_cov F^T``). The returned
-        errors are the square roots of the tangent-plane variances along
-        East and North.
+        The returned errors are the square roots of the tangent-plane
+        variances along East and North (see `_sky_cov_from_pixel_cov`).
 
         Parameters
         ----------
@@ -2384,20 +2421,9 @@ class SourceCatalog:
             columns ``(east_err, north_err)``. Rows are NaN where the
             position or covariance is not finite.
         """
-        sky_err = np.full(xycen.shape, np.nan)
-        good = (np.all(np.isfinite(xycen), axis=1)
-                & np.all(np.isfinite(pix_cov), axis=(1, 2)))
-        if np.any(good):
-            jac = compute_pixel_to_sky_jacobians(self.wcs,
-                                                 xycen[good, 0],
-                                                 xycen[good, 1])
-            # The Einstein summation computes the matrix product of the
-            # Jacobian, the pixel covariance, and the Jacobian transpose
-            # for each source. The result is the sky covariance matrix
-            # in the local tangent plane.
-            sky_cov = np.einsum('nij,njk,nlk->nil', jac, pix_cov[good], jac)
-            sky_err[good, 0] = np.sqrt(sky_cov[:, 0, 0])
-            sky_err[good, 1] = np.sqrt(sky_cov[:, 1, 1])
+        sky_cov = self._sky_cov_from_pixel_cov(pix_cov, xycen)
+        sky_err = np.sqrt(np.stack((sky_cov[:, 0, 0], sky_cov[:, 1, 1]),
+                                   axis=1))
         return sky_err << u.arcsec
 
     @cached_property
