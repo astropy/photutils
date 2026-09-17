@@ -133,6 +133,11 @@ New Features
     the ``to_sky`` and ``to_pixel`` methods of all apertures are two to
     five times faster. [#2425]
 
+  - Added an ``ApertureStats`` ``sky_orientation`` property providing
+    the position angle on the sky of the source major axis, measured
+    from North toward East, computed by transporting the pixel
+    covariance matrix through the local WCS Jacobian. [#2433]
+
 - ``photutils.background``
 
   - Updated ``LocalBackground`` so that ``Quantity`` input data is

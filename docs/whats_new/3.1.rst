@@ -610,8 +610,10 @@ RA errors are expressed as great-circle angles along the East direction
 Sky Orientation of Sources
 ==========================
 
-`~photutils.segmentation.SourceCatalog` has a new
-`~photutils.segmentation.SourceCatalog.sky_orientation` property
+`~photutils.segmentation.SourceCatalog` and
+`~photutils.aperture.ApertureStats` have new
+`~photutils.segmentation.SourceCatalog.sky_orientation` and
+`~photutils.aperture.ApertureStats.sky_orientation` properties
 giving the position angle on the sky of the major axis of
 each source, measured from North toward East in the range
 (-90, 90] degrees. It is computed by transporting the pixel

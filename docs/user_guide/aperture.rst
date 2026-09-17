@@ -827,7 +827,8 @@ like :attr:`~photutils.aperture.ApertureStats.centroid`,
 :attr:`~photutils.aperture.ApertureStats.fwhm`,
 :attr:`~photutils.aperture.ApertureStats.semimajor_axis`,
 :attr:`~photutils.aperture.ApertureStats.semiminor_axis`,
-:attr:`~photutils.aperture.ApertureStats.orientation`, and
+:attr:`~photutils.aperture.ApertureStats.orientation`,
+:attr:`~photutils.aperture.ApertureStats.sky_orientation`, and
 :attr:`~photutils.aperture.ApertureStats.eccentricity`. Please see
 :class:`~photutils.aperture.ApertureStats` for the complete
 list of properties that can be calculated. The properties can be
