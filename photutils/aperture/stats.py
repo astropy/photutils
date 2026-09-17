@@ -51,7 +51,8 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated, deprecated_getattr,
                                           deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
-from photutils.utils._moments import _image_moments
+from photutils.utils._moments import (_image_moments, _pixel_cov_to_sky_cov,
+                                      _sky_orientation_from_cov)
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import process_quantities
 
@@ -2969,6 +2970,31 @@ class ApertureStats:
         orient_radians = 0.5 * np.arctan2(2.0 * covar[:, 0, 1],
                                           (covar[:, 0, 0] - covar[:, 1, 1]))
         return np.rad2deg(orient_radians) * u.deg
+
+    @cached_property
+    def sky_orientation(self):
+        """
+        The position angle on the sky of the major axis of the 2D
+        Gaussian function that has the same second-order moments as the
+        source.
+
+        The pixel `covariance` matrix is transported to the local
+        tangent plane with the WCS Jacobian evaluated at each source
+        `centroid`, which accounts for the WCS rotation, parity,
+        and any local distortion. The position angle is measured
+        from North toward East (i.e., counter-clockwise on the sky)
+        in the celestial frame of the input ``wcs`` and is in the
+        range (-90, 90] degrees. This is the same convention as
+        the ``theta`` parameter of the sky-based apertures (e.g.,
+        `~photutils.aperture.SkyEllipticalAperture`).
+
+        `None` if ``wcs`` is not input.
+        """
+        if self._wcs is None:
+            return self._null_object
+        sky_cov = _pixel_cov_to_sky_cov(self._wcs, self._covariance,
+                                        self._array('centroid'))
+        return _sky_orientation_from_cov(sky_cov) * u.deg
 
     @cached_property
     def eccentricity(self):

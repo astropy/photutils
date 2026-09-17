@@ -10,16 +10,19 @@ from unittest.mock import patch
 import astropy.units as u
 import numpy as np
 import pytest
+from astropy.modeling.models import Gaussian2D
 from astropy.nddata import NDData, StdDevUncertainty
 from astropy.stats import SigmaClip, biweight_location, biweight_scale, mad_std
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.aperture.bounding_box import BoundingBox
 from photutils.aperture.circle import CircularAnnulus, CircularAperture
 from photutils.aperture.core import _enable_batch_photometry
 from photutils.aperture.ellipse import (EllipticalAnnulus, EllipticalAperture,
-                                        SkyEllipticalAnnulus)
+                                        SkyEllipticalAnnulus,
+                                        SkyEllipticalAperture)
 from photutils.aperture.flags import APERTURE_FLAGS
 from photutils.aperture.photometry import AperturePhotometry
 from photutils.aperture.rectangle import (RectangularAnnulus,
@@ -310,7 +313,7 @@ class TestMasking(BaseApertureStatsData):
         assert apstats[1].sum_err < self.apstats1[1].sum_err
 
         exclude = ('isscalar', 'n_positions', 'sky_centroid',
-                   'sky_centroid_icrs', 'flags')
+                   'sky_centroid_icrs', 'sky_orientation', 'flags')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
             if (prop in exclude or 'bbox' in prop or 'cutout' in prop
@@ -391,7 +394,7 @@ class TestMasking(BaseApertureStatsData):
         assert_equal(apstats._overlap, [True, True, False])
 
         exclude = ('isscalar', 'n_positions', 'sky_centroid',
-                   'sky_centroid_icrs', 'flags')
+                   'sky_centroid_icrs', 'sky_orientation', 'flags')
         apstats1 = apstats[2]
         for prop in apstats1.properties:
             if (prop in exclude or 'bbox' in prop or 'cutout' in prop
@@ -1754,3 +1757,180 @@ class TestSumErrPartialPixelWeights:
         assert_allclose(cutout.filled(0.0), expected)
         assert_allclose(np.sqrt(np.sum(cutout.filled(0.0) ** 2)),
                         apstats.sum_err)
+
+
+def _make_rotated_tan_wcs(parity, rotation_deg, *, scale=0.25):
+    """
+    Make a TAN WCS whose CD matrix is a rotation of an axis-aligned
+    frame with the given parity.
+
+    With ``parity=-1`` and no rotation, +x points West and +y points
+    North (the standard "North up, East left" orientation). With
+    ``parity=1`` the x axis is flipped so that +x points East.
+    """
+    wcs = WCS(naxis=2)
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    wcs.wcs.crpix = [15.0, 15.0]
+    wcs.wcs.crval = [150.0, 20.0]
+    phi = np.deg2rad(rotation_deg)
+    rotation = np.array([[np.cos(phi), -np.sin(phi)],
+                         [np.sin(phi), np.cos(phi)]])
+    wcs.wcs.cd = (scale / 3600.0) * rotation @ np.diag([parity, 1.0])
+    return wcs
+
+
+def _wrap_m90_p90(angle_deg):
+    """
+    Wrap angles in degrees to the range (-90, 90].
+    """
+    return -((-angle_deg + 90.0) % 180.0) + 90.0
+
+
+class TestSkyOrientation:
+    """
+    Tests for the ``sky_orientation`` property.
+    """
+
+    @staticmethod
+    def _elongated_source_stats(theta_deg, wcs, *, scalar=False):
+        """
+        Make an ``ApertureStats`` of an elongated Gaussian centered near
+        the WCS reference pixel, measured within a circular aperture
+        that contains the whole source.
+        """
+        yy, xx = np.mgrid[0:31, 0:31]
+        theta = np.deg2rad(theta_deg)
+        data = Gaussian2D(500.0, 15.2, 15.6, 3.0, 1.5, theta)(xx, yy)
+        positions = (15.0, 15.0) if scalar else [(15.0, 15.0)]
+        aperture = CircularAperture(positions, 12.0)
+        return ApertureStats(data, aperture, wcs=wcs)
+
+    @pytest.mark.parametrize('theta_deg', [-60.0, 10.0, 45.0, 80.0])
+    @pytest.mark.parametrize(('parity', 'rotation_deg'),
+                             [(-1, 0.0), (1, 0.0), (-1, 30.0), (-1, -75.0),
+                              (1, 120.0)])
+    def test_sky_orientation(self, theta_deg, parity, rotation_deg):
+        """
+        Test the sky orientation against the pixel orientation mapped
+        through the CD matrix.
+
+        Near the reference pixel of a TAN projection the local Jacobian
+        is the CD matrix, so the sky position angle of the pixel
+        major-axis direction is known in closed form.
+        """
+        wcs = _make_rotated_tan_wcs(parity, rotation_deg)
+        apstats = self._elongated_source_stats(theta_deg, wcs)
+
+        sky_orient = apstats.sky_orientation
+        assert sky_orient.unit == u.deg
+        assert sky_orient.shape == (1,)
+        assert np.all(sky_orient > -90 * u.deg)
+        assert np.all(sky_orient <= 90 * u.deg)
+
+        # The major-axis direction on the sky is the CD matrix (columns
+        # x and y, rows xi=East and eta=North) applied to the pixel
+        # direction. The position angle is measured from North toward
+        # East.
+        pix_orient = np.deg2rad(apstats.orientation.to_value(u.deg)[0])
+        pix_dir = np.array([np.cos(pix_orient), np.sin(pix_orient)])
+        xi, eta = wcs.wcs.cd @ pix_dir
+        expected = _wrap_m90_p90(np.rad2deg(np.arctan2(xi, eta)))
+        assert_allclose(sky_orient.to_value(u.deg)[0], expected, atol=1e-4)
+
+        # A sliced scalar instance collapses to a scalar Quantity
+        single = apstats[0]
+        assert single.sky_orientation.shape == ()
+        assert_allclose(single.sky_orientation, sky_orient[0])
+
+    @pytest.mark.parametrize(('parity', 'rotation_deg'),
+                             [(-1, 0.0), (1, 0.0), (-1, 30.0), (-1, -75.0),
+                              (1, 120.0)])
+    def test_sky_aperture_theta_convention(self, parity, rotation_deg):
+        """
+        Test that the sky orientation follows the same position-angle
+        convention as the ``theta`` parameter of the sky-based
+        apertures.
+
+        A sky ellipse built with ``theta=sky_orientation`` must have the
+        pixel ``orientation`` after conversion to a pixel aperture.
+        """
+        wcs = _make_rotated_tan_wcs(parity, rotation_deg)
+        apstats = self._elongated_source_stats(40.0, wcs)
+        sky_aperture = SkyEllipticalAperture(apstats.sky_centroid[0],
+                                             3.0 * u.arcsec, 1.5 * u.arcsec,
+                                             theta=apstats.sky_orientation[0])
+        pix_theta = sky_aperture.to_pixel(wcs).theta.to_value(u.deg)
+        expected = apstats.orientation.to_value(u.deg)[0]
+        assert_allclose(_wrap_m90_p90(pix_theta), expected, atol=1e-4)
+
+    def test_scalar_aperture(self):
+        """
+        Test that an instance built from a scalar aperture gives the
+        same scalar result as slicing a one-element instance.
+        """
+        wcs = _make_rotated_tan_wcs(-1, 30.0)
+        apstats = self._elongated_source_stats(30.0, wcs)
+        scalar_stats = self._elongated_source_stats(30.0, wcs, scalar=True)
+        assert scalar_stats.isscalar
+        assert scalar_stats.sky_orientation.shape == ()
+        assert_allclose(scalar_stats.sky_orientation,
+                        apstats.sky_orientation[0])
+
+    def test_north_up_east_left(self):
+        """
+        Test the closed-form relation for the standard North-up,
+        East-left orientation, where the position angle is the pixel
+        orientation minus 90 degrees.
+        """
+        wcs = _make_rotated_tan_wcs(-1, 0.0)
+        apstats = self._elongated_source_stats(30.0, wcs)
+        expected = _wrap_m90_p90(apstats.orientation.to_value(u.deg) - 90.0)
+        assert_allclose(apstats.sky_orientation.to_value(u.deg), expected,
+                        atol=1e-4)
+
+        # A flipped parity (East right) mirrors the position angle
+        wcs_flip = _make_rotated_tan_wcs(1, 0.0)
+        apstats_flip = self._elongated_source_stats(30.0, wcs_flip)
+        expected_flip = _wrap_m90_p90(
+            90.0 - apstats_flip.orientation.to_value(u.deg))
+        assert_allclose(apstats_flip.sky_orientation.to_value(u.deg),
+                        expected_flip, atol=1e-4)
+
+    def test_nan(self):
+        """
+        Test that a fully masked aperture has a NaN sky orientation
+        while an unmasked aperture is finite.
+        """
+        wcs = _make_rotated_tan_wcs(-1, 0.0)
+        yy, xx = np.mgrid[0:31, 0:31]
+        data = (Gaussian2D(500.0, 8.0, 8.0, 3.0, 1.5, 0.5)(xx, yy)
+                + Gaussian2D(500.0, 22.0, 22.0, 3.0, 1.5, 0.5)(xx, yy))
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[:16, :16] = True
+        aperture = CircularAperture([(8.0, 8.0), (22.0, 22.0)], 6.0)
+        apstats = ApertureStats(data, aperture, wcs=wcs, mask=mask)
+
+        sky_orient = apstats.sky_orientation.to_value(u.deg)
+        assert np.isnan(apstats.orientation[0])
+        assert np.isnan(sky_orient[0])
+        assert np.isfinite(sky_orient[1])
+
+    def test_no_wcs(self):
+        """
+        Test that sky_orientation is None without a wcs.
+        """
+        apstats = self._elongated_source_stats(30.0, None)
+        assert np.all(apstats.sky_orientation == np.array(None))
+        assert apstats[0].sky_orientation is None
+
+    def test_table_column(self):
+        """
+        Test the sky_orientation column in to_table.
+        """
+        wcs = _make_rotated_tan_wcs(-1, 0.0)
+        apstats = self._elongated_source_stats(30.0, wcs)
+        columns = ['id', 'orientation', 'sky_orientation']
+        tbl = apstats.to_table(columns=columns)
+        assert tbl.colnames == columns
+        assert tbl['sky_orientation'].unit == u.deg
+        assert_allclose(tbl['sky_orientation'], apstats.sky_orientation)
