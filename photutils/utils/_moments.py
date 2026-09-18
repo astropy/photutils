@@ -10,8 +10,6 @@ the ``(2, 0)`` element is the second moment along ``y``. They return
 plain `~numpy.ndarray` values without units.
 """
 
-import warnings
-
 import numpy as np
 
 from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
@@ -84,9 +82,8 @@ def centroid_from_moments(moments):
         origin of the moments. Sources with zero total flux have
         non-finite values.
     """
-    # Ignore divide-by-zero RuntimeWarning
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', RuntimeWarning)
+    # Ignore divide-by-zero floating-point errors
+    with np.errstate(all='ignore'):
         y_centroid = moments[:, 1, 0] / moments[:, 0, 0]
         x_centroid = moments[:, 0, 1] / moments[:, 0, 0]
     return np.transpose((x_centroid, y_centroid))
@@ -134,9 +131,8 @@ def covariance_from_moments(moments_central):
         regularization. Sources with zero total flux have non-finite
         elements.
     """
-    # Ignore divide-by-zero RuntimeWarning
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', RuntimeWarning)
+    # Ignore divide-by-zero floating-point errors
+    with np.errstate(all='ignore'):
         mu_norm = (moments_central
                    / moments_central[:, 0, 0][:, np.newaxis, np.newaxis])
     covar = np.array([mu_norm[:, 0, 2], mu_norm[:, 1, 1],
@@ -158,9 +154,8 @@ def covariance_determinant(covariance):
     determinant : `~numpy.ndarray`
         The ``(N,)`` determinants. Matrices with NaN elements give NaN.
     """
-    # Ignore RuntimeWarning from NaN values in the covariance
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', RuntimeWarning)
+    # Ignore floating-point errors from NaN values in the covariance
+    with np.errstate(all='ignore'):
         return np.linalg.det(covariance)
 
 
@@ -191,9 +186,8 @@ def covariance_min_eigval(covariance, *, determinant=None):
     """
     if determinant is None:
         determinant = covariance_determinant(covariance)
-    # Ignore RuntimeWarning from NaN values in the covariance
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', RuntimeWarning)
+    # Ignore floating-point errors from NaN values in the covariance
+    with np.errstate(all='ignore'):
         half_trace = 0.5 * (covariance[:, 0, 0] + covariance[:, 1, 1])
         disc = np.maximum(half_trace**2 - determinant, 0.0)
         return half_trace - np.sqrt(disc)
@@ -268,9 +262,8 @@ def regularize_covariance(covariance):
     """
     covar = covariance.copy()
     covar_det = covariance_determinant(covar)
-    # Ignore RuntimeWarning from NaN values in the covariance
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', RuntimeWarning)
+    # Ignore floating-point errors from NaN values in the covariance
+    with np.errstate(all='ignore'):
         covar_trace = covar[:, 0, 0] + covar[:, 1, 1]
         bad = (covar_det < 0) | (covar_trace < 0)
         covar[bad] = np.nan
@@ -333,9 +326,12 @@ def orientation_from_covariance(covariance):
         in the counter-clockwise direction and is in the range (-90,
         90].
     """
-    orient_radians = 0.5 * np.arctan2(2.0 * covariance[:, 0, 1],
-                                      (covariance[:, 0, 0]
-                                       - covariance[:, 1, 1]))
+    # Ignore floating-point errors from non-finite values in the
+    # covariance (e.g., the difference of two infinite variances)
+    with np.errstate(all='ignore'):
+        orient_radians = 0.5 * np.arctan2(2.0 * covariance[:, 0, 1],
+                                          (covariance[:, 0, 0]
+                                           - covariance[:, 1, 1]))
     return np.rad2deg(orient_radians)
 
 

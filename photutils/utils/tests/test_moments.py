@@ -3,6 +3,8 @@
 Tests for the _moments module.
 """
 
+import warnings
+
 import numpy as np
 import pytest
 from astropy.wcs import WCS
@@ -19,6 +21,20 @@ from photutils.utils._moments import (PIXEL_VARIANCE, centroid_from_moments,
                                       pixel_to_sky_covariance,
                                       regularize_covariance,
                                       sky_orientation_from_covariance)
+
+
+@pytest.fixture(autouse=True)
+def warnings_as_errors():
+    """
+    Turn every warning into an error for each test in this module.
+
+    The helpers must not emit a warning for zero-flux or non-finite
+    inputs. This fixture checks that without relying on the pytest
+    warnings plugin, which some CI jobs disable.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        yield
 
 
 @pytest.fixture
@@ -405,6 +421,14 @@ def test_orientation_from_covariance(covariances):
                       [[1.0, -0.5], [-0.5, 1.0]],
                       [[1.0, 0.0], [0.0, 4.0]]])
     assert_allclose(orientation_from_covariance(covar), [45.0, -45.0, 90.0])
+
+
+def test_orientation_from_covariance_infinite():
+    """
+    Test that two infinite variances give NaN without a warning.
+    """
+    covar = np.array([[[np.inf, 0.0], [0.0, np.inf]]])
+    assert np.isnan(orientation_from_covariance(covar)[0])
 
 
 class TestPixelToSkyCovariance:
