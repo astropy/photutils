@@ -310,21 +310,32 @@ class TestIsSingularCovariance:
             covar, determinant=det, include_degenerate=include_degenerate)
         assert_equal(mask, [True, False])
 
-    @pytest.mark.parametrize(('include_degenerate', 'expected'),
-                             [(False, True), (True, False)])
-    def test_infinite_determinant(self, include_degenerate, expected):
+    @pytest.mark.parametrize('include_degenerate', [False, True])
+    def test_infinite_determinant(self, include_degenerate):
         """
-        Test a determinant of negative infinity.
-
-        The determinant-only form flags it. The degenerate form never
-        flags a non-finite determinant.
+        Test that both forms flag a determinant of negative infinity.
         """
         covar = np.array([[[1e200, 1e200], [1e200, -1e200]]])
         det = covariance_determinant(covar)
         assert det[0] == -np.inf
         mask = is_singular_covariance(
             covar, determinant=det, include_degenerate=include_degenerate)
-        assert_equal(mask, [expected])
+        assert_equal(mask, [True])
+
+    def test_degenerate_includes_determinant_only(self, covariances):
+        """
+        Test that the degenerate mask includes the determinant-only
+        mask.
+        """
+        covar = np.concatenate(
+            (covariances, [[[1e200, 1e200], [1e200, -1e200]],
+                           [[np.inf, 0.0], [0.0, np.inf]]]))
+        det = covariance_determinant(covar)
+        point_like = is_singular_covariance(covar, determinant=det,
+                                            include_degenerate=False)
+        degenerate = is_singular_covariance(covar, determinant=det,
+                                            include_degenerate=True)
+        assert np.all(degenerate[point_like])
 
 
 class TestRegularizeCovariance:

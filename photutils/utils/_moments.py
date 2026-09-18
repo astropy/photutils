@@ -204,7 +204,8 @@ def is_singular_covariance(covariance, *, determinant, include_degenerate):
     Parameters
     ----------
     covariance : `~numpy.ndarray`
-        The ``(N, 2, 2)`` raw covariance matrices.
+        The ``(N, 2, 2)`` raw covariance matrices. They are used only if
+        ``include_degenerate`` is `True`.
 
     determinant : `~numpy.ndarray`
         The ``(N,)`` determinants of ``covariance`` (see
@@ -219,18 +220,19 @@ def is_singular_covariance(covariance, *, determinant, include_degenerate):
     Returns
     -------
     mask : `~numpy.ndarray`
-        The ``(N,)`` boolean mask. Sources with a NaN determinant are
-        never flagged. If ``include_degenerate`` is `True`, sources
-        with any non-finite determinant or minor-axis variance are
-        never flagged.
+        The ``(N,)`` boolean mask. Sources with a NaN determinant
+        are never flagged. The minor-axis test is applied only
+        to sources with a finite determinant, so the mask for
+        ``include_degenerate`` equal to `True` always includes the
+        determinant-only mask.
     """
     point_like = determinant < PIXEL_VARIANCE**2
     if not include_degenerate:
         return point_like
 
     min_eigval = covariance_min_eigval(covariance, determinant=determinant)
-    finite = np.isfinite(determinant) & np.isfinite(min_eigval)
-    return finite & (point_like | (min_eigval < PIXEL_VARIANCE))
+    degenerate = np.isfinite(determinant) & (min_eigval < PIXEL_VARIANCE)
+    return point_like | degenerate
 
 
 def regularize_covariance(covariance, *, determinant):
