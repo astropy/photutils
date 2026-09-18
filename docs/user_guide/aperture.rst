@@ -848,6 +848,18 @@ pixels with fractional (partial) aperture weights. Accordingly, these
 quantities cannot be rigorously computed from a weighted aperture
 footprint.
 
+The centroid and the shape properties are calculated from image moments
+of the ``data`` values, including negative values. This differs from
+:class:`~photutils.segmentation.SourceCatalog`, which sets negative
+values to zero for these properties. A source segment contains only
+pixels above the detection threshold, whereas the sky pixels within
+an aperture on background-subtracted data are negative about half of
+the time. Including them lets the positive and negative noise cancel
+on average, which keeps the centroid and the shape properties nearly
+unbiased. For a faint source the image moments can be too noisy to
+define a shape. In that case the ``'undefined_shape'`` flag is set or
+the covariance-derived shape properties are NaN.
+
 The input ``sum_method`` and ``subpixels`` keywords are used to
 determine the aperture-mask method only for the sum-related properties:
 ``sum``, ``sum_err``, ``sum_aper_area``, ``data_sum_cutout``, and
