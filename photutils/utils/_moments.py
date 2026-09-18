@@ -144,6 +144,98 @@ def covariance_from_moments(moments_central):
     return covar.reshape((covar.shape[0], 2, 2))
 
 
+def covariance_determinant(covariance):
+    """
+    Compute the determinant of each ``(2, 2)`` covariance matrix.
+
+    Parameters
+    ----------
+    covariance : `~numpy.ndarray`
+        The ``(N, 2, 2)`` covariance matrices.
+
+    Returns
+    -------
+    determinant : `~numpy.ndarray`
+        The ``(N,)`` determinants. Matrices with NaN elements give NaN.
+    """
+    # Ignore RuntimeWarning from NaN values in the covariance
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        return np.linalg.det(covariance)
+
+
+def covariance_min_eigval(covariance, *, determinant=None):
+    """
+    Compute the smaller eigenvalue of each symmetric ``(2, 2)``
+    covariance matrix.
+
+    The closed form ``lambda = tr/2 - sqrt((tr/2)**2 - det)`` is used.
+    The discriminant ``((lambda1 - lambda2) / 2)**2`` is non-negative
+    for a real symmetric matrix, so tiny negative rounding is clipped to
+    zero.
+
+    Parameters
+    ----------
+    covariance : `~numpy.ndarray`
+        The ``(N, 2, 2)`` covariance matrices.
+
+    determinant : `~numpy.ndarray` or `None`, optional
+        The precomputed ``(N,)`` determinants. If `None`, they are
+        computed from ``covariance``.
+
+    Returns
+    -------
+    min_eigval : `~numpy.ndarray`
+        The ``(N,)`` smaller eigenvalues (the minor-axis variances).
+        Matrices with NaN elements give NaN.
+    """
+    if determinant is None:
+        determinant = covariance_determinant(covariance)
+    # Ignore RuntimeWarning from NaN values in the covariance
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        half_trace = 0.5 * (covariance[:, 0, 0] + covariance[:, 1, 1])
+        disc = np.maximum(half_trace**2 - determinant, 0.0)
+        return half_trace - np.sqrt(disc)
+
+
+def is_singular_covariance(covariance, *, include_degenerate):
+    """
+    Return a mask of sources whose raw covariance matrix is singular or
+    nearly singular.
+
+    A source is flagged when the determinant of its raw (unregularized)
+    covariance matrix is less than ``PIXEL_VARIANCE**2``. This is the
+    isotropic point-like case where both axes are unresolved. It is also
+    true for a negative determinant.
+
+    Parameters
+    ----------
+    covariance : `~numpy.ndarray`
+        The ``(N, 2, 2)`` raw covariance matrices.
+
+    include_degenerate : bool
+        If `True`, also flag sources whose minor-axis variance (the
+        smaller eigenvalue) is less than ``PIXEL_VARIANCE``. This
+        catches rank-1 degenerate sources that are unresolved along only
+        one axis, which the determinant test alone misses.
+
+    Returns
+    -------
+    mask : `~numpy.ndarray`
+        The ``(N,)`` boolean mask. Sources with a non-finite determinant
+        or minor-axis variance are never flagged.
+    """
+    determinant = covariance_determinant(covariance)
+    point_like = determinant < PIXEL_VARIANCE**2
+    if not include_degenerate:
+        return point_like
+
+    min_eigval = covariance_min_eigval(covariance, determinant=determinant)
+    finite = np.isfinite(determinant) & np.isfinite(min_eigval)
+    return finite & (point_like | (min_eigval < PIXEL_VARIANCE))
+
+
 def pixel_cov_to_sky_cov(wcs, pix_cov, xycen):
     """
     Transport pixel covariance matrices to the local tangent plane.
