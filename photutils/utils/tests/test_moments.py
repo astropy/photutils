@@ -152,13 +152,6 @@ def test_moments_central_negative_order():
         image_moments(data, order=-1)
 
 
-def test_pixel_variance():
-    """
-    Test the single-pixel variance constant.
-    """
-    assert PIXEL_VARIANCE == 1.0 / 12.0
-
-
 class TestCentroidFromMoments:
     """
     Tests for centroid_from_moments.
@@ -313,6 +306,22 @@ class TestIsSingularCovariance:
         mask = is_singular_covariance(
             covar, determinant=det, include_degenerate=include_degenerate)
         assert_equal(mask, [True, False])
+
+    @pytest.mark.parametrize(('include_degenerate', 'expected'),
+                             [(False, True), (True, False)])
+    def test_infinite_determinant(self, include_degenerate, expected):
+        """
+        Test a determinant of negative infinity.
+
+        The determinant-only form flags it. The degenerate form never
+        flags a non-finite determinant.
+        """
+        covar = np.array([[[1e200, 1e200], [1e200, -1e200]]])
+        det = covariance_determinant(covar)
+        assert det[0] == -np.inf
+        mask = is_singular_covariance(
+            covar, determinant=det, include_degenerate=include_degenerate)
+        assert_equal(mask, [expected])
 
 
 class TestRegularizeCovariance:

@@ -3,11 +3,16 @@
 Tools for calculating image moments and the centroid, covariance, and
 shape quantities derived from them.
 
-The functions that take a moments array expect a leading source axis
-and the layout ``moments[:, i, j]`` equal to the sum of ``y**i * x**j``.
-The ``(0, 2)`` element is therefore the second moment along ``x`` and
-the ``(2, 0)`` element is the second moment along ``y``. They return
-plain `~numpy.ndarray` values without units.
+`image_moments` computes the moments of a single 2D image. The
+``*_from_moments`` functions take moments arrays with a leading source
+axis and the layout ``moments[:, i, j]`` equal to the sum of ``y**i *
+x**j``. The ``(0, 2)`` element is therefore the second moment along
+``x`` and the ``(2, 0)`` element is the second moment along ``y``. The
+remaining functions take ``(N, 2, 2)`` covariance matrices.
+
+Array inputs with a leading source axis must have a floating-point
+dtype. They are not validated or converted. Every function returns a
+plain `~numpy.ndarray` without units.
 """
 
 import numpy as np
@@ -254,7 +259,8 @@ def regularize_covariance(covariance, *, determinant):
     ----------
     covariance : `~numpy.ndarray`
         The ``(N, 2, 2)`` raw covariance matrices. This array is not
-        modified.
+        modified. It must have a floating-point dtype because invalid
+        matrices are set to NaN.
 
     determinant : `~numpy.ndarray`
         The ``(N,)`` determinants of ``covariance`` (see
@@ -330,8 +336,10 @@ def orientation_from_covariance(covariance):
         in the counter-clockwise direction and is in the range (-90,
         90].
     """
-    # Ignore floating-point errors from non-finite values in the
-    # covariance (e.g., the difference of two infinite variances)
+    # The `sky_orientation_from_covariance` function applies the same
+    # formula with the roles of the two axes swapped. Ignore
+    # floating-point errors from non-finite values in the covariance
+    # (e.g., the difference of two infinite variances).
     with np.errstate(all='ignore'):
         orient_radians = 0.5 * np.arctan2(2.0 * covariance[:, 0, 1],
                                           (covariance[:, 0, 0]
@@ -403,7 +411,7 @@ def sky_orientation_from_covariance(sky_covariance):
     # The tangent-plane axes are ordered (East, North). Measuring the
     # angle from North toward East makes North play the role of the x
     # axis and East the role of the y axis in the pixel orientation
-    # formula.
+    # formula (see `orientation_from_covariance`).
     orient_radians = 0.5 * np.arctan2(2.0 * sky_covariance[:, 0, 1],
                                       (sky_covariance[:, 1, 1]
                                        - sky_covariance[:, 0, 0]))

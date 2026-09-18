@@ -3864,7 +3864,8 @@ class SourceCatalog:
         A source is flagged as singular when the determinant of its raw
         (unregularized) covariance matrix is less than ``(1 / 12)**2``,
         the squared variance of a uniform distribution across a single
-        pixel. Sources with non-finite covariance are not flagged.
+        pixel. Sources with a NaN covariance determinant are not
+        flagged.
         """
         return is_singular_covariance(self._raw_covariance,
                                       determinant=self._raw_covariance_det,
