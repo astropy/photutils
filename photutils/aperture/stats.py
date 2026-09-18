@@ -52,13 +52,13 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import (centroid_from_moments,
                                       covariance_from_moments,
-                                      eigvals_from_cov, image_moments,
+                                      eigvals_from_covariance, image_moments,
                                       inertia_tensor_from_moments,
                                       is_singular_covariance,
-                                      orientation_from_cov,
-                                      pixel_cov_to_sky_cov,
+                                      orientation_from_covariance,
+                                      pixel_to_sky_covariance,
                                       regularize_covariance,
-                                      sky_orientation_from_cov)
+                                      sky_orientation_from_covariance)
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import process_quantities
 
@@ -2831,7 +2831,7 @@ class ApertureStats:
         The two eigenvalues of the `covariance` matrix in decreasing
         order.
         """
-        return eigvals_from_cov(self._covariance) * u.pix**2
+        return eigvals_from_covariance(self._covariance) * u.pix**2
 
     @cached_property
     def semimajor_axis(self):
@@ -2883,7 +2883,7 @@ class ApertureStats:
         The angle increases in the counter-clockwise direction and is
         in the range (-90, 90] degrees.
         """
-        return orientation_from_cov(self._covariance) * u.deg
+        return orientation_from_covariance(self._covariance) * u.deg
 
     @cached_property
     def sky_orientation(self):
@@ -2906,9 +2906,9 @@ class ApertureStats:
         """
         if self._wcs is None:
             return self._null_object
-        sky_cov = pixel_cov_to_sky_cov(self._wcs, self._covariance,
-                                       self._array('centroid'))
-        return sky_orientation_from_cov(sky_cov) * u.deg
+        sky_cov = pixel_to_sky_covariance(self._wcs, self._covariance,
+                                          self._array('centroid'))
+        return sky_orientation_from_covariance(sky_cov) * u.deg
 
     @cached_property
     def eccentricity(self):

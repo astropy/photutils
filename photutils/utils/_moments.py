@@ -281,7 +281,7 @@ def regularize_covariance(covariance):
     return covar
 
 
-def eigvals_from_cov(covariance):
+def eigvals_from_covariance(covariance):
     """
     Compute the two eigenvalues of each covariance matrix in decreasing
     order.
@@ -316,7 +316,7 @@ def eigvals_from_cov(covariance):
     return np.fliplr(eigvals)
 
 
-def orientation_from_cov(covariance):
+def orientation_from_covariance(covariance):
     """
     Compute the angle between the ``x`` axis and the major axis of the
     2D Gaussian function described by each covariance matrix.
@@ -339,13 +339,13 @@ def orientation_from_cov(covariance):
     return np.rad2deg(orient_radians)
 
 
-def pixel_cov_to_sky_cov(wcs, pix_cov, xycen):
+def pixel_to_sky_covariance(wcs, pixel_covariance, xycen):
     """
     Transport pixel covariance matrices to the local tangent plane.
 
     The pixel covariance of each source is mapped to the local tangent
     plane with the forward WCS Jacobian ``F`` evaluated at the source
-    position (``sky_cov = F pix_cov F^T``).
+    position (``sky_covariance = F pixel_covariance F^T``).
 
     Parameters
     ----------
@@ -353,7 +353,7 @@ def pixel_cov_to_sky_cov(wcs, pix_cov, xycen):
         A WCS object that implements the `astropy shared interface for
         WCS <https://docs.astropy.org/en/stable/wcs/wcsapi.html>`_.
 
-    pix_cov : `~numpy.ndarray`
+    pixel_covariance : `~numpy.ndarray`
         The ``(N, 2, 2)`` pixel covariance matrices.
 
     xycen : `~numpy.ndarray`
@@ -362,14 +362,14 @@ def pixel_cov_to_sky_cov(wcs, pix_cov, xycen):
 
     Returns
     -------
-    sky_cov : `~numpy.ndarray`
+    sky_covariance : `~numpy.ndarray`
         The ``(N, 2, 2)`` tangent-plane covariance matrices in
         arcsec**2, with rows and columns ordered ``(East, North)``.
         Matrices are NaN where the position or covariance is not finite.
     """
-    sky_cov = np.full(pix_cov.shape, np.nan)
+    sky_covariance = np.full(pixel_covariance.shape, np.nan)
     good = (np.all(np.isfinite(xycen), axis=1)
-            & np.all(np.isfinite(pix_cov), axis=(1, 2)))
+            & np.all(np.isfinite(pixel_covariance), axis=(1, 2)))
     if np.any(good):
         jac = compute_pixel_to_sky_jacobians(wcs, xycen[good, 0],
                                              xycen[good, 1])
@@ -377,19 +377,20 @@ def pixel_cov_to_sky_cov(wcs, pix_cov, xycen):
         # Jacobian, the pixel covariance, and the Jacobian transpose
         # for each source. The result is the sky covariance matrix in
         # the local tangent plane.
-        sky_cov[good] = np.einsum('nij,njk,nlk->nil', jac, pix_cov[good], jac)
+        sky_covariance[good] = np.einsum('nij,njk,nlk->nil', jac,
+                                         pixel_covariance[good], jac)
 
-    return sky_cov
+    return sky_covariance
 
 
-def sky_orientation_from_cov(sky_cov):
+def sky_orientation_from_covariance(sky_covariance):
     """
     Compute the sky position angle of the major axis from tangent-plane
     covariance matrices.
 
     Parameters
     ----------
-    sky_cov : `~numpy.ndarray`
+    sky_covariance : `~numpy.ndarray`
         The ``(N, 2, 2)`` tangent-plane covariance matrices, with rows
         and columns ordered ``(East, North)``.
 
@@ -403,6 +404,7 @@ def sky_orientation_from_cov(sky_cov):
     # angle from North toward East makes North play the role of the x
     # axis and East the role of the y axis in the pixel orientation
     # formula.
-    orient_radians = 0.5 * np.arctan2(2.0 * sky_cov[:, 0, 1],
-                                      sky_cov[:, 1, 1] - sky_cov[:, 0, 0])
+    orient_radians = 0.5 * np.arctan2(2.0 * sky_covariance[:, 0, 1],
+                                      (sky_covariance[:, 1, 1]
+                                       - sky_covariance[:, 0, 0]))
     return np.rad2deg(orient_radians)
