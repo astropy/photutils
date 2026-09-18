@@ -164,10 +164,19 @@ def covariance_min_eigval(covariance, *, determinant):
     Compute the smaller eigenvalue of each symmetric ``(2, 2)``
     covariance matrix.
 
-    The closed form ``lambda = tr/2 - sqrt((tr/2)**2 - det)`` is used.
-    The discriminant ``((lambda1 - lambda2) / 2)**2`` is non-negative
-    for a real symmetric matrix, so tiny negative rounding is clipped to
-    zero.
+    The smaller eigenvalue has two equivalent closed forms, ``tr/2 -
+    root`` and ``det / (tr/2 + root)``, where ``root = sqrt((tr/2)**2
+    - det)``. The discriminant ``((lambda1 - lambda2) / 2)**2`` is
+    non-negative for a real symmetric matrix, so tiny negative rounding
+    is clipped to zero.
+
+    The second form is used for a positive trace. The subtraction
+    in the first form cancels catastrophically when the matrix is
+    highly elongated. The first form is used otherwise, where it has no
+    cancellation and the second form can divide by zero. The accuracy is
+    limited by the accuracy of the input ``determinant``, which has its
+    own cancellation for an elongated matrix with a large off-diagonal
+    element.
 
     Parameters
     ----------
@@ -187,8 +196,9 @@ def covariance_min_eigval(covariance, *, determinant):
     # Ignore floating-point errors from NaN values in the covariance
     with np.errstate(all='ignore'):
         half_trace = 0.5 * (covariance[:, 0, 0] + covariance[:, 1, 1])
-        disc = np.maximum(half_trace**2 - determinant, 0.0)
-        return half_trace - np.sqrt(disc)
+        root = np.sqrt(np.maximum(half_trace**2 - determinant, 0.0))
+        return np.where(half_trace > 0, determinant / (half_trace + root),
+                        half_trace - root)
 
 
 def is_singular_covariance(covariance, *, determinant, include_degenerate):

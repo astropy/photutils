@@ -269,6 +269,29 @@ class TestCovarianceMinEigval:
         min_eig = covariance_min_eigval(covar, determinant=det)
         assert_allclose(min_eig, expected)
 
+    def test_non_positive_trace(self):
+        """
+        Test matrices with a zero or negative trace.
+        """
+        covar = np.array([[[0.0, 0.0], [0.0, 0.0]],
+                          [[-1.0, 0.0], [0.0, -2.0]],
+                          [[-2.0, 1.0], [1.0, -2.0]],
+                          [[1.0, 0.0], [0.0, -1.0]]])
+        det = covariance_determinant(covar)
+        min_eig = covariance_min_eigval(covar, determinant=det)
+        assert_allclose(min_eig, [0.0, -2.0, -3.0, -1.0], atol=1e-15)
+
+    @pytest.mark.parametrize('major', [1e6, 1e10, 1e14, 1e16])
+    def test_highly_elongated(self, major):
+        """
+        Test that a large major-axis variance does not degrade the
+        minor-axis variance through cancellation.
+        """
+        covar = np.array([[[major, 0.0], [0.0, 0.1]]])
+        det = covariance_determinant(covar)
+        min_eig = covariance_min_eigval(covar, determinant=det)
+        assert_allclose(min_eig, [0.1], rtol=1e-12)
+
 
 class TestIsSingularCovariance:
     """
