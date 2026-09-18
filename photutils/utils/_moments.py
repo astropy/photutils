@@ -279,6 +279,63 @@ def regularize_covariance(covariance):
     return covar
 
 
+def eigvals_from_cov(covariance):
+    """
+    Compute the two eigenvalues of each covariance matrix in decreasing
+    order.
+
+    Parameters
+    ----------
+    covariance : `~numpy.ndarray`
+        The ``(N, 2, 2)`` covariance matrices.
+
+    Returns
+    -------
+    eigvals : `~numpy.ndarray`
+        The ``(N, 2)`` eigenvalues, largest first. Both eigenvalues are
+        NaN for a matrix with any non-finite element or with a negative
+        eigenvalue (a matrix that is not positive semidefinite).
+    """
+    eigvals = np.full((covariance.shape[0], 2), np.nan)
+
+    # np.linalg.eigvalsh requires that every element of a covariance
+    # matrix be finite, so select only the wholly finite matrices.
+    idx = np.flatnonzero(np.isfinite(covariance).all(axis=(1, 2)))
+    eigvals[idx] = np.linalg.eigvalsh(covariance[idx])
+
+    # Check for negative variance (in case a covariance matrix is not
+    # positive semidefinite).
+    idx2 = np.unique(np.where(eigvals < 0)[0])
+    eigvals[idx2] = (np.nan, np.nan)
+
+    # Sort each eigenvalue pair in descending order (eigvalsh returns
+    # values in ascending order).
+    return np.fliplr(eigvals)
+
+
+def orientation_from_cov(covariance):
+    """
+    Compute the angle between the ``x`` axis and the major axis of the
+    2D Gaussian function described by each covariance matrix.
+
+    Parameters
+    ----------
+    covariance : `~numpy.ndarray`
+        The ``(N, 2, 2)`` pixel covariance matrices.
+
+    Returns
+    -------
+    orientation : `~numpy.ndarray`
+        The ``(N,)`` orientation angles in degrees. The angle increases
+        in the counter-clockwise direction and is in the range (-90,
+        90].
+    """
+    orient_radians = 0.5 * np.arctan2(2.0 * covariance[:, 0, 1],
+                                      (covariance[:, 0, 0]
+                                       - covariance[:, 1, 1]))
+    return np.rad2deg(orient_radians)
+
+
 def pixel_cov_to_sky_cov(wcs, pix_cov, xycen):
     """
     Transport pixel covariance matrices to the local tangent plane.

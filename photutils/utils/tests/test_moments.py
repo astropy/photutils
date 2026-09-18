@@ -5,15 +5,20 @@ Tests for the _moments module.
 
 import numpy as np
 import pytest
+from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_equal
 
 from photutils.utils._moments import (PIXEL_VARIANCE, centroid_from_moments,
                                       covariance_determinant,
                                       covariance_from_moments,
-                                      covariance_min_eigval, image_moments,
+                                      covariance_min_eigval, eigvals_from_cov,
+                                      image_moments,
                                       inertia_tensor_from_moments,
                                       is_singular_covariance,
-                                      regularize_covariance)
+                                      orientation_from_cov,
+                                      pixel_cov_to_sky_cov,
+                                      regularize_covariance,
+                                      sky_orientation_from_cov)
 
 
 @pytest.fixture
@@ -60,6 +65,22 @@ def covariances():
                      [[4.0, 0.0], [0.0, 0.05]],
                      [[1.0, 2.0], [2.0, 1.0]],
                      [[np.nan, 0.0], [0.0, 1.0]]])
+
+
+@pytest.fixture
+def tan_wcs():
+    """
+    A TAN WCS with a 1 arcsec pixel scale, North up and East left.
+
+    The forward Jacobian at the reference pixel maps ``+x`` to ``-East``
+    and ``+y`` to ``+North``.
+    """
+    wcs = WCS(naxis=2)
+    wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+    wcs.wcs.crpix = [50.0, 50.0]
+    wcs.wcs.crval = [10.0, 0.0]
+    wcs.wcs.cdelt = [-1.0 / 3600.0, 1.0 / 3600.0]
+    return wcs
 
 
 def test_moments():
@@ -334,3 +355,102 @@ class TestRegularizeCovariance:
         assert np.all(covariance_determinant(covar) < PIXEL_VARIANCE**2)
         det = covariance_determinant(regularize_covariance(covar))
         assert np.all(det >= PIXEL_VARIANCE**2 * (1 - 1e-12))
+
+
+class TestCovarianceEigvals:
+    """
+    Tests for eigvals_from_cov.
+    """
+
+    def test_values(self, covariances):
+        """
+        Test the descending order and the NaN cases.
+
+        Source 4 has eigenvalues 3 and -1. Source 5 is partially
+        non-finite.
+        """
+        eigvals = eigvals_from_cov(covariances)
+        assert eigvals.shape == (6, 2)
+        assert_allclose(eigvals[0], [4.0, 1.0])
+        assert_allclose(eigvals[3], [4.0, 0.05])
+        assert np.all(np.isnan(eigvals[4:]))
+
+    def test_tilted(self):
+        """
+        Test a matrix with a nonzero off-diagonal element.
+        """
+        covar = np.array([[[1.0, 0.5], [0.5, 1.0]]])
+        assert_allclose(eigvals_from_cov(covar), [[1.5, 0.5]])
+
+    def test_no_finite_matrices(self):
+        """
+        Test all-NaN and empty inputs.
+        """
+        eigvals = eigvals_from_cov(np.full((2, 2, 2), np.nan))
+        assert eigvals.shape == (2, 2)
+        assert np.all(np.isnan(eigvals))
+        assert eigvals_from_cov(np.empty((0, 2, 2))).shape == (0, 2)
+
+
+def test_orientation_from_cov(covariances):
+    """
+    Test the orientation in degrees, including the (-90, 90] range.
+    """
+    theta = orientation_from_cov(covariances)
+    assert theta.shape == (6,)
+    assert_allclose(theta[0], 0.0)
+    assert np.isnan(theta[5])
+
+    covar = np.array([[[1.0, 0.5], [0.5, 1.0]],
+                      [[1.0, -0.5], [-0.5, 1.0]],
+                      [[1.0, 0.0], [0.0, 4.0]]])
+    assert_allclose(orientation_from_cov(covar), [45.0, -45.0, 90.0])
+
+
+class TestPixelCovToSkyCov:
+    """
+    Tests for pixel_cov_to_sky_cov.
+    """
+
+    def test_values(self, tan_wcs):
+        """
+        Test the transport and the NaN cases.
+
+        The x-axis flip changes the sign of the off-diagonal element.
+        A non-finite covariance or position gives a NaN matrix.
+        """
+        pix_cov = np.array([[[4.0, 1.0], [1.0, 2.0]],
+                            [[np.nan, 1.0], [1.0, 2.0]],
+                            [[4.0, 1.0], [1.0, 2.0]]])
+        xycen = np.array([[49.0, 49.0], [49.0, 49.0], [np.nan, 49.0]])
+        sky_cov = pixel_cov_to_sky_cov(tan_wcs, pix_cov, xycen)
+        assert sky_cov.shape == (3, 2, 2)
+        assert_allclose(sky_cov[0], [[4.0, -1.0], [-1.0, 2.0]], rtol=1e-6)
+        assert np.all(np.isnan(sky_cov[1:]))
+
+    def test_no_finite_sources(self, tan_wcs):
+        """
+        Test that the WCS is not evaluated when no source is finite.
+        """
+        pix_cov = np.full((2, 2, 2), np.nan)
+        xycen = np.full((2, 2), 49.0)
+        sky_cov = pixel_cov_to_sky_cov(tan_wcs, pix_cov, xycen)
+        assert sky_cov.shape == (2, 2, 2)
+        assert np.all(np.isnan(sky_cov))
+
+
+def test_sky_orientation_from_cov():
+    """
+    Test the position angle, measured from North toward East.
+
+    The matrices are ordered (East, North).
+    """
+    sky_cov = np.array([[[4.0, 0.0], [0.0, 1.0]],
+                        [[1.0, 0.0], [0.0, 4.0]],
+                        [[1.0, 0.5], [0.5, 1.0]],
+                        [[1.0, -0.5], [-0.5, 1.0]],
+                        [[np.nan, 0.0], [0.0, 1.0]]])
+    angle = sky_orientation_from_cov(sky_cov)
+    assert angle.shape == (5,)
+    assert_allclose(angle[:4], [90.0, 0.0, 45.0, -45.0])
+    assert np.isnan(angle[4])
