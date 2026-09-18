@@ -444,6 +444,24 @@ class TestRegularizeCovariance:
         reg_det = covariance_determinant(reg)
         assert np.all(reg_det >= PIXEL_VARIANCE**2 * (1 - 1e-12))
 
+    def test_idempotent(self, covariances):
+        """
+        Test that regularizing a regularized matrix does not change it.
+
+        A point-like source is regularized to a determinant of exactly
+        ``PIXEL_VARIANCE**2``. The threshold comparisons are strict, so
+        that matrix is no longer singular and is not bumped again.
+        """
+        det = covariance_determinant(covariances)
+        reg = regularize_covariance(covariances, determinant=det)
+        reg_det = covariance_determinant(reg)
+        assert reg_det[1] == PIXEL_VARIANCE**2
+        mask = is_singular_covariance(reg, determinant=reg_det,
+                                      include_degenerate=False)
+        assert not np.any(mask)
+        reg2 = regularize_covariance(reg, determinant=reg_det)
+        assert_equal(reg2, reg)
+
 
 class TestCovarianceEigvals:
     """
