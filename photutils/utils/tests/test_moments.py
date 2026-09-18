@@ -269,6 +269,27 @@ class TestCovarianceMinEigval:
         min_eig = covariance_min_eigval(covar, determinant=det)
         assert_allclose(min_eig, expected)
 
+    def test_negative_discriminant(self):
+        """
+        Test that a discriminant rounded below zero is clipped.
+
+        For a nearly isotropic matrix the computed ``(tr/2)**2 - det``
+        is often slightly negative. Without the clip its square root is
+        NaN. Many random matrices are used because which of them round
+        below zero depends on the platform.
+        """
+        rng = np.random.default_rng(2)
+        var = rng.uniform(0.01, 100.0, size=1000)
+        cross = var * rng.uniform(-1e-9, 1e-9, size=1000)
+        covar = np.zeros((1000, 2, 2))
+        covar[:, 0, 0] = var
+        covar[:, 1, 1] = var
+        covar[:, 0, 1] = cross
+        covar[:, 1, 0] = cross
+        det = covariance_determinant(covar)
+        min_eig = covariance_min_eigval(covar, determinant=det)
+        assert_allclose(min_eig, var)
+
     def test_non_positive_trace(self):
         """
         Test matrices with a zero or negative trace.
