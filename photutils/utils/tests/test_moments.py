@@ -12,7 +12,8 @@ from photutils.utils._moments import (PIXEL_VARIANCE, centroid_from_moments,
                                       covariance_from_moments,
                                       covariance_min_eigval, image_moments,
                                       inertia_tensor_from_moments,
-                                      is_singular_covariance)
+                                      is_singular_covariance,
+                                      regularize_covariance)
 
 
 @pytest.fixture
@@ -277,3 +278,59 @@ class TestIsSingularCovariance:
         mask = is_singular_covariance(
             covar, include_degenerate=include_degenerate)
         assert_equal(mask, [True, False])
+
+
+class TestRegularizeCovariance:
+    """
+    Tests for regularize_covariance.
+    """
+
+    def test_values(self, covariances):
+        """
+        Test each shape case.
+
+        The elongated source 3 has a determinant above the threshold,
+        so it is not bumped even though its minor-axis variance is below
+        the single-pixel variance.
+        """
+        reg = regularize_covariance(covariances)
+        assert_equal(reg[0], covariances[0])
+        assert_allclose(reg[1], PIXEL_VARIANCE * np.eye(2))
+        assert_allclose(reg[2], [[4.0 + PIXEL_VARIANCE, 0.0],
+                                 [0.0, PIXEL_VARIANCE]])
+        assert_equal(reg[3], covariances[3])
+        assert np.all(np.isnan(reg[4]))
+        assert_equal(reg[5], covariances[5])
+
+    def test_negative_trace(self):
+        """
+        Test that a positive determinant with a negative trace is NaN.
+        """
+        covar = np.array([[[-1.0, 0.0], [0.0, -1.0]]])
+        assert np.all(np.isnan(regularize_covariance(covar)))
+
+    def test_input_not_modified(self, covariances):
+        """
+        Test that the input array is left untouched.
+        """
+        original = covariances.copy()
+        reg = regularize_covariance(covariances)
+        assert reg is not covariances
+        assert_equal(covariances, original)
+
+    def test_single_bump_clears_threshold(self):
+        """
+        Test that one bump lifts the determinant to the threshold.
+
+        Diagonal matrices are used so the determinant is an exact
+        non-negative product with no rounding below zero.
+        """
+        rng = np.random.default_rng(1)
+        var_x = rng.uniform(0.1, 10.0, size=50)
+        var_y = rng.uniform(0.0, 1.0, size=50) * PIXEL_VARIANCE**2 / var_x
+        covar = np.zeros((50, 2, 2))
+        covar[:, 0, 0] = var_x
+        covar[:, 1, 1] = var_y
+        assert np.all(covariance_determinant(covar) < PIXEL_VARIANCE**2)
+        det = covariance_determinant(regularize_covariance(covar))
+        assert np.all(det >= PIXEL_VARIANCE**2 * (1 - 1e-12))

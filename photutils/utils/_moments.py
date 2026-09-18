@@ -236,6 +236,49 @@ def is_singular_covariance(covariance, *, include_degenerate):
     return finite & (point_like | (min_eigval < PIXEL_VARIANCE))
 
 
+def regularize_covariance(covariance):
+    """
+    Regularize the raw covariance matrices of undefined and "infinitely"
+    thin sources.
+
+    A valid covariance is positive semidefinite (determinant and trace
+    both non-negative). Any matrix that is not (e.g., from net-negative
+    flux weighting) has an undefined shape and is set to NaN.
+
+    Sources whose determinant is less than ``PIXEL_VARIANCE**2`` then
+    have ``PIXEL_VARIANCE`` added to each diagonal element. A single
+    bump is sufficient. For a positive semidefinite matrix the bumped
+    determinant exceeds the raw determinant by ``PIXEL_VARIANCE`` times
+    the trace plus ``PIXEL_VARIANCE**2``. Since the raw determinant and
+    trace are both non-negative, the result is at least
+    ``PIXEL_VARIANCE**2``, so it clears the threshold in one step.
+
+    Parameters
+    ----------
+    covariance : `~numpy.ndarray`
+        The ``(N, 2, 2)`` raw covariance matrices. This array is not
+        modified.
+
+    Returns
+    -------
+    covariance : `~numpy.ndarray`
+        A new ``(N, 2, 2)`` array of regularized covariance matrices.
+    """
+    covar = covariance.copy()
+    covar_det = covariance_determinant(covar)
+    # Ignore RuntimeWarning from NaN values in the covariance
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        covar_trace = covar[:, 0, 0] + covar[:, 1, 1]
+        bad = (covar_det < 0) | (covar_trace < 0)
+        covar[bad] = np.nan
+
+        idx = np.where(covar_det < PIXEL_VARIANCE**2)[0]
+        covar[idx, 0, 0] += PIXEL_VARIANCE
+        covar[idx, 1, 1] += PIXEL_VARIANCE
+    return covar
+
+
 def pixel_cov_to_sky_cov(wcs, pix_cov, xycen):
     """
     Transport pixel covariance matrices to the local tangent plane.
