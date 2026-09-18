@@ -418,8 +418,10 @@ def sky_orientation_from_covariance(sky_covariance):
     # The tangent-plane axes are ordered (East, North). Measuring the
     # angle from North toward East makes North play the role of the x
     # axis and East the role of the y axis in the pixel orientation
-    # formula (see `orientation_from_covariance`).
-    orient_radians = 0.5 * np.arctan2(2.0 * sky_covariance[:, 0, 1],
-                                      (sky_covariance[:, 1, 1]
-                                       - sky_covariance[:, 0, 0]))
+    # formula (see `orientation_from_covariance`). Ignore floating-point
+    # errors from non-finite values in the covariance.
+    with np.errstate(all='ignore'):
+        orient_radians = 0.5 * np.arctan2(2.0 * sky_covariance[:, 0, 1],
+                                          (sky_covariance[:, 1, 1]
+                                           - sky_covariance[:, 0, 0]))
     return np.rad2deg(orient_radians)

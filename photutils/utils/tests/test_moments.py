@@ -529,3 +529,11 @@ def test_sky_orientation_from_covariance():
     assert angle.shape == (5,)
     assert_allclose(angle[:4], [90.0, 0.0, 45.0, -45.0])
     assert np.isnan(angle[4])
+
+
+def test_sky_orientation_from_covariance_infinite():
+    """
+    Test that two infinite variances give NaN without a warning.
+    """
+    sky_cov = np.array([[[np.inf, 0.0], [0.0, np.inf]]])
+    assert np.isnan(sky_orientation_from_covariance(sky_cov)[0])
