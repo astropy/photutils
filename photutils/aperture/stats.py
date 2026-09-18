@@ -51,6 +51,7 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import (centroid_from_moments,
+                                      covariance_determinant,
                                       covariance_from_moments,
                                       eigvals_from_covariance, image_moments,
                                       inertia_tensor_from_moments,
@@ -2130,6 +2131,7 @@ class ApertureStats:
         here. They are already reported by the overlap and masking bits.
         """
         return is_singular_covariance(self._raw_covariance,
+                                      determinant=self._raw_covariance_det,
                                       include_degenerate=True)
 
     @cached_property
@@ -2796,6 +2798,16 @@ class ApertureStats:
         return inertia_tensor_from_moments(moments) * u.pix**2
 
     @cached_property
+    def _raw_covariance_det(self):
+        """
+        The determinant of the raw ``(N, 2, 2)`` covariance matrix.
+
+        It is computed once and shared by `_covariance` and the masks
+        that test the raw covariance for singularity.
+        """
+        return covariance_determinant(self._raw_covariance)
+
+    @cached_property
     def _raw_covariance(self):
         """
         The raw ``(N, 2, 2)`` covariance matrix of the 2D Gaussian
@@ -2815,7 +2827,8 @@ class ApertureStats:
         The covariance matrix of the 2D Gaussian function that has the
         same second-order moments as the source, always as an iterable.
         """
-        return regularize_covariance(self._raw_covariance)
+        return regularize_covariance(
+            self._raw_covariance, determinant=self._raw_covariance_det)
 
     @cached_property
     def covariance(self):

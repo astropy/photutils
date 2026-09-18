@@ -56,6 +56,7 @@ from photutils.utils._deprecation import (_get_future_column_names,
 from photutils.utils._flags import update_flag_docstring
 from photutils.utils._misc import _get_meta
 from photutils.utils._moments import (PIXEL_VARIANCE, centroid_from_moments,
+                                      covariance_determinant,
                                       covariance_from_moments,
                                       eigvals_from_covariance,
                                       inertia_tensor_from_moments,
@@ -3866,6 +3867,7 @@ class SourceCatalog:
         pixel. Sources with non-finite covariance are not flagged.
         """
         return is_singular_covariance(self._raw_covariance,
+                                      determinant=self._raw_covariance_det,
                                       include_degenerate=False)
 
     @cached_property
@@ -3886,7 +3888,18 @@ class SourceCatalog:
         covariance are not flagged.
         """
         return is_singular_covariance(self._raw_covariance,
+                                      determinant=self._raw_covariance_det,
                                       include_degenerate=True)
+
+    @cached_property
+    def _raw_covariance_det(self):
+        """
+        The determinant of the raw ``(N, 2, 2)`` covariance matrix.
+
+        It is computed once and shared by `_covariance` and the masks
+        that test the raw covariance for singularity.
+        """
+        return covariance_determinant(self._raw_covariance)
 
     @cached_property
     def _raw_covariance(self):
@@ -3911,7 +3924,8 @@ class SourceCatalog:
         The covariance matrix of the 2D Gaussian function that has the
         same second-order moments as the source, always as an iterable.
         """
-        return regularize_covariance(self._raw_covariance)
+        return regularize_covariance(
+            self._raw_covariance, determinant=self._raw_covariance_det)
 
     @cached_property
     @use_detcat

@@ -159,7 +159,7 @@ def covariance_determinant(covariance):
         return np.linalg.det(covariance)
 
 
-def covariance_min_eigval(covariance, *, determinant=None):
+def covariance_min_eigval(covariance, *, determinant):
     """
     Compute the smaller eigenvalue of each symmetric ``(2, 2)``
     covariance matrix.
@@ -174,9 +174,9 @@ def covariance_min_eigval(covariance, *, determinant=None):
     covariance : `~numpy.ndarray`
         The ``(N, 2, 2)`` covariance matrices.
 
-    determinant : `~numpy.ndarray` or `None`, optional
-        The precomputed ``(N,)`` determinants. If `None`, they are
-        computed from ``covariance``.
+    determinant : `~numpy.ndarray`
+        The ``(N,)`` determinants of ``covariance`` (see
+        `covariance_determinant`).
 
     Returns
     -------
@@ -184,8 +184,6 @@ def covariance_min_eigval(covariance, *, determinant=None):
         The ``(N,)`` smaller eigenvalues (the minor-axis variances).
         Matrices with NaN elements give NaN.
     """
-    if determinant is None:
-        determinant = covariance_determinant(covariance)
     # Ignore floating-point errors from NaN values in the covariance
     with np.errstate(all='ignore'):
         half_trace = 0.5 * (covariance[:, 0, 0] + covariance[:, 1, 1])
@@ -193,7 +191,7 @@ def covariance_min_eigval(covariance, *, determinant=None):
         return half_trace - np.sqrt(disc)
 
 
-def is_singular_covariance(covariance, *, include_degenerate):
+def is_singular_covariance(covariance, *, determinant, include_degenerate):
     """
     Return a mask of sources whose raw covariance matrix is singular or
     nearly singular.
@@ -207,6 +205,10 @@ def is_singular_covariance(covariance, *, include_degenerate):
     ----------
     covariance : `~numpy.ndarray`
         The ``(N, 2, 2)`` raw covariance matrices.
+
+    determinant : `~numpy.ndarray`
+        The ``(N,)`` determinants of ``covariance`` (see
+        `covariance_determinant`).
 
     include_degenerate : bool
         If `True`, also flag sources whose minor-axis variance (the
@@ -222,7 +224,6 @@ def is_singular_covariance(covariance, *, include_degenerate):
         with any non-finite determinant or minor-axis variance are
         never flagged.
     """
-    determinant = covariance_determinant(covariance)
     point_like = determinant < PIXEL_VARIANCE**2
     if not include_degenerate:
         return point_like
@@ -232,7 +233,7 @@ def is_singular_covariance(covariance, *, include_degenerate):
     return finite & (point_like | (min_eigval < PIXEL_VARIANCE))
 
 
-def regularize_covariance(covariance):
+def regularize_covariance(covariance, *, determinant):
     """
     Regularize the raw covariance matrices of undefined and "infinitely"
     thin sources.
@@ -255,20 +256,23 @@ def regularize_covariance(covariance):
         The ``(N, 2, 2)`` raw covariance matrices. This array is not
         modified.
 
+    determinant : `~numpy.ndarray`
+        The ``(N,)`` determinants of ``covariance`` (see
+        `covariance_determinant`).
+
     Returns
     -------
     regularized : `~numpy.ndarray`
         A new ``(N, 2, 2)`` array of regularized covariance matrices.
     """
     covar = covariance.copy()
-    covar_det = covariance_determinant(covar)
     # Ignore floating-point errors from NaN values in the covariance
     with np.errstate(all='ignore'):
         covar_trace = covar[:, 0, 0] + covar[:, 1, 1]
-        bad = (covar_det < 0) | (covar_trace < 0)
+        bad = (determinant < 0) | (covar_trace < 0)
         covar[bad] = np.nan
 
-        idx = np.where(covar_det < PIXEL_VARIANCE**2)[0]
+        idx = np.where(determinant < PIXEL_VARIANCE**2)[0]
         covar[idx, 0, 0] += PIXEL_VARIANCE
         covar[idx, 1, 1] += PIXEL_VARIANCE
     return covar

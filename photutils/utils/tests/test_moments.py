@@ -254,7 +254,8 @@ class TestCovarianceMinEigval:
         """
         Test the closed-form smaller eigenvalue.
         """
-        min_eig = covariance_min_eigval(covariances)
+        det = covariance_determinant(covariances)
+        min_eig = covariance_min_eigval(covariances, determinant=det)
         assert min_eig.shape == (6,)
         assert_allclose(min_eig[:5], [1.0, 0.0, 0.0, 0.05, -1.0],
                         atol=1e-15)
@@ -268,15 +269,9 @@ class TestCovarianceMinEigval:
         arr = rng.normal(size=(20, 2, 2))
         covar = arr @ arr.swapaxes(1, 2)  # symmetric
         expected = np.linalg.eigvalsh(covar)[:, 0]
-        assert_allclose(covariance_min_eigval(covar), expected)
-
-    def test_precomputed_determinant(self, covariances):
-        """
-        Test that a precomputed determinant gives the same result.
-        """
-        det = covariance_determinant(covariances)
-        assert_equal(covariance_min_eigval(covariances, determinant=det),
-                     covariance_min_eigval(covariances))
+        det = covariance_determinant(covar)
+        min_eig = covariance_min_eigval(covar, determinant=det)
+        assert_allclose(min_eig, expected)
 
 
 class TestIsSingularCovariance:
@@ -291,7 +286,8 @@ class TestIsSingularCovariance:
         The elongated source 3 is not flagged. The source 4 with a
         negative determinant is flagged.
         """
-        mask = is_singular_covariance(covariances,
+        det = covariance_determinant(covariances)
+        mask = is_singular_covariance(covariances, determinant=det,
                                       include_degenerate=False)
         assert mask.dtype == bool
         assert_equal(mask, [False, True, True, False, True, False])
@@ -300,7 +296,8 @@ class TestIsSingularCovariance:
         """
         Test that the elongated source 3 is also flagged.
         """
-        mask = is_singular_covariance(covariances,
+        det = covariance_determinant(covariances)
+        mask = is_singular_covariance(covariances, determinant=det,
                                       include_degenerate=True)
         assert mask.dtype == bool
         assert_equal(mask, [False, True, True, True, True, False])
@@ -312,8 +309,9 @@ class TestIsSingularCovariance:
         """
         covar = np.array([(PIXEL_VARIANCE - 1e-9) * np.eye(2),
                           (PIXEL_VARIANCE + 1e-9) * np.eye(2)])
+        det = covariance_determinant(covar)
         mask = is_singular_covariance(
-            covar, include_degenerate=include_degenerate)
+            covar, determinant=det, include_degenerate=include_degenerate)
         assert_equal(mask, [True, False])
 
 
@@ -330,7 +328,8 @@ class TestRegularizeCovariance:
         so it is not bumped even though its minor-axis variance is below
         the single-pixel variance.
         """
-        reg = regularize_covariance(covariances)
+        det = covariance_determinant(covariances)
+        reg = regularize_covariance(covariances, determinant=det)
         assert_equal(reg[0], covariances[0])
         assert_allclose(reg[1], PIXEL_VARIANCE * np.eye(2))
         assert_allclose(reg[2], [[4.0 + PIXEL_VARIANCE, 0.0],
@@ -344,14 +343,18 @@ class TestRegularizeCovariance:
         Test that a positive determinant with a negative trace is NaN.
         """
         covar = np.array([[[-1.0, 0.0], [0.0, -1.0]]])
-        assert np.all(np.isnan(regularize_covariance(covar)))
+        det = covariance_determinant(covar)
+        assert det[0] > 0
+        reg = regularize_covariance(covar, determinant=det)
+        assert np.all(np.isnan(reg))
 
     def test_input_not_modified(self, covariances):
         """
         Test that the input array is left untouched.
         """
         original = covariances.copy()
-        reg = regularize_covariance(covariances)
+        det = covariance_determinant(covariances)
+        reg = regularize_covariance(covariances, determinant=det)
         assert reg is not covariances
         assert_equal(covariances, original)
 
@@ -368,9 +371,11 @@ class TestRegularizeCovariance:
         covar = np.zeros((50, 2, 2))
         covar[:, 0, 0] = var_x
         covar[:, 1, 1] = var_y
-        assert np.all(covariance_determinant(covar) < PIXEL_VARIANCE**2)
-        det = covariance_determinant(regularize_covariance(covar))
-        assert np.all(det >= PIXEL_VARIANCE**2 * (1 - 1e-12))
+        det = covariance_determinant(covar)
+        assert np.all(det < PIXEL_VARIANCE**2)
+        reg = regularize_covariance(covar, determinant=det)
+        reg_det = covariance_determinant(reg)
+        assert np.all(reg_det >= PIXEL_VARIANCE**2 * (1 - 1e-12))
 
 
 class TestCovarianceEigvals:
