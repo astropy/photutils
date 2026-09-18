@@ -223,8 +223,10 @@ def is_singular_covariance(covariance, *, include_degenerate):
     Returns
     -------
     mask : `~numpy.ndarray`
-        The ``(N,)`` boolean mask. Sources with a non-finite determinant
-        or minor-axis variance are never flagged.
+        The ``(N,)`` boolean mask. Sources with a NaN determinant are
+        never flagged. If ``include_degenerate`` is `True`, sources
+        with any non-finite determinant or minor-axis variance are
+        never flagged.
     """
     determinant = covariance_determinant(covariance)
     point_like = determinant < PIXEL_VARIANCE**2
@@ -261,7 +263,7 @@ def regularize_covariance(covariance):
 
     Returns
     -------
-    covariance : `~numpy.ndarray`
+    regularized : `~numpy.ndarray`
         A new ``(N, 2, 2)`` array of regularized covariance matrices.
     """
     covar = covariance.copy()
@@ -298,8 +300,9 @@ def eigvals_from_cov(covariance):
     """
     eigvals = np.full((covariance.shape[0], 2), np.nan)
 
-    # np.linalg.eigvalsh requires that every element of a covariance
-    # matrix be finite, so select only the wholly finite matrices.
+    # The np.linalg.eigvalsh function requires that every element of a
+    # covariance matrix be finite, so select only the wholly finite
+    # matrices.
     idx = np.flatnonzero(np.isfinite(covariance).all(axis=(1, 2)))
     eigvals[idx] = np.linalg.eigvalsh(covariance[idx])
 
