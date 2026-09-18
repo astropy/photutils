@@ -3861,11 +3861,11 @@ class SourceCatalog:
         sources whose raw covariance matrix is singular or nearly
         singular (i.e., point-like sources).
 
-        A source is flagged as singular when the determinant of its raw
-        (unregularized) covariance matrix is less than ``(1 / 12)**2``,
-        the squared variance of a uniform distribution across a single
-        pixel. Sources with a NaN covariance determinant are not
-        flagged.
+        A source is flagged as singular when the determinant of
+        its raw (unregularized) covariance matrix is less than
+        ``PIXEL_VARIANCE**2``, where ``PIXEL_VARIANCE`` (``1 / 12``) is
+        the variance of a uniform distribution across a single pixel.
+        Sources with a NaN covariance determinant are not flagged.
         """
         return is_singular_covariance(self._raw_covariance,
                                       determinant=self._raw_covariance_det,
@@ -3880,13 +3880,13 @@ class SourceCatalog:
 
         This is the mask used for the ``'singular_covariance'``
         flag. It matches the equivalent aperture flag (see
-        `~photutils.aperture.decode_aperture_flags`). In addition to
-        the determinant test used by ``_singular_covariance_mask``, a
-        source is flagged when its minor-axis variance (the smaller
-        eigenvalue of the raw covariance matrix) is less than ``1 /
-        12``. The determinant test alone misses elongated sources that
-        are unresolved along only one axis. Sources with non-finite
-        covariance are not flagged.
+        `~photutils.aperture.decode_aperture_flags`). In addition to the
+        determinant test used by ``_singular_covariance_mask``, a source
+        is flagged when its minor-axis variance (the smaller eigenvalue
+        of the raw covariance matrix) is less than ``PIXEL_VARIANCE``.
+        The determinant test alone misses elongated sources that are
+        unresolved along only one axis. Sources with a NaN covariance
+        determinant are not flagged.
         """
         return is_singular_covariance(self._raw_covariance,
                                       determinant=self._raw_covariance_det,

@@ -451,12 +451,11 @@ class TestCovarianceEigvals:
 
     def test_no_finite_matrices(self):
         """
-        Test all-NaN and empty inputs.
+        Test an all-NaN input.
         """
         eigvals = eigvals_from_covariance(np.full((2, 2, 2), np.nan))
         assert eigvals.shape == (2, 2)
         assert np.all(np.isnan(eigvals))
-        assert eigvals_from_covariance(np.empty((0, 2, 2))).shape == (0, 2)
 
 
 def test_orientation_from_covariance(covariances):
@@ -537,3 +536,28 @@ def test_sky_orientation_from_covariance_infinite():
     """
     sky_cov = np.array([[[np.inf, 0.0], [0.0, np.inf]]])
     assert np.isnan(sky_orientation_from_covariance(sky_cov)[0])
+
+
+def test_empty_inputs(tan_wcs):
+    """
+    Test that every helper accepts inputs with no sources.
+    """
+    moments = np.empty((0, 3, 3))
+    covar = np.empty((0, 2, 2))
+    det = covariance_determinant(covar)
+    assert det.shape == (0,)
+    assert centroid_from_moments(moments).shape == (0, 2)
+    assert inertia_tensor_from_moments(moments).shape == (0, 2, 2)
+    assert covariance_from_moments(moments).shape == (0, 2, 2)
+    assert covariance_min_eigval(covar, determinant=det).shape == (0,)
+    for include_degenerate in (False, True):
+        mask = is_singular_covariance(
+            covar, determinant=det, include_degenerate=include_degenerate)
+        assert mask.shape == (0,)
+        assert mask.dtype == bool
+    assert regularize_covariance(covar, determinant=det).shape == (0, 2, 2)
+    assert eigvals_from_covariance(covar).shape == (0, 2)
+    assert orientation_from_covariance(covar).shape == (0,)
+    sky_cov = pixel_to_sky_covariance(tan_wcs, covar, np.empty((0, 2)))
+    assert sky_cov.shape == (0, 2, 2)
+    assert sky_orientation_from_covariance(sky_cov).shape == (0,)

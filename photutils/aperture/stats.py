@@ -2121,14 +2121,16 @@ class ApertureStats:
         singular covariance matrix.
 
         A source is flagged when the minor-axis variance (the smaller
-        eigenvalue of its normalized second-moment covariance matrix)
-        falls below ``1/12``. This flags both unresolved, nearly
-        point-like sources, where the covariance determinant drops below
-        ``(1/12)**2``, and rank-1 degenerate sources, where one axis is
-        unresolved while the other is extended (which the determinant
-        alone would miss). Sources with undefined moments (no overlap or
-        fully masked) have a non-finite determinant and are not flagged
-        here. They are already reported by the overlap and masking bits.
+        eigenvalue of its normalized second-moment covariance
+        matrix) falls below ``PIXEL_VARIANCE`` (``1/12``, defined in
+        ``photutils.utils._moments``). This flags both unresolved,
+        nearly point-like sources, where the covariance determinant
+        drops below ``PIXEL_VARIANCE**2``, and rank-1 degenerate
+        sources, where one axis is unresolved while the other is
+        extended (which the determinant alone would miss). Sources
+        with undefined moments (no overlap or fully masked) have a NaN
+        determinant and are not flagged here. They are already reported
+        by the overlap and masking bits.
         """
         return is_singular_covariance(self._raw_covariance,
                                       determinant=self._raw_covariance_det,
@@ -2802,8 +2804,8 @@ class ApertureStats:
         """
         The determinant of the raw ``(N, 2, 2)`` covariance matrix.
 
-        It is computed once and shared by `_covariance` and the masks
-        that test the raw covariance for singularity.
+        It is computed once and shared by `_covariance` and
+        `_singular_covariance_mask`.
         """
         return covariance_determinant(self._raw_covariance)
 
