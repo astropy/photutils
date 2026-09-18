@@ -99,57 +99,60 @@ def tan_wcs():
     return wcs
 
 
-def test_moments():
+class TestImageMoments:
     """
-    Test image_moments with a simple 2x2 array (raw moments).
+    Tests for image_moments.
     """
-    data = np.array([[0, 1], [0, 1]])
-    moments = image_moments(data, order=2)
-    result = np.array([[2, 2, 2], [1, 1, 1], [1, 1, 1]])
 
-    assert_equal(moments, result)
-    assert_allclose(moments[0, 1] / moments[0, 0], 1.0)
-    assert_allclose(moments[1, 0] / moments[0, 0], 0.5)
+    def test_raw(self):
+        """
+        Test the raw moments of a simple 2x2 array.
+        """
+        data = np.array([[0, 1], [0, 1]])
+        moments = image_moments(data, order=2)
+        result = np.array([[2, 2, 2], [1, 1, 1], [1, 1, 1]])
 
+        assert_equal(moments, result)
+        assert_allclose(moments[0, 1] / moments[0, 0], 1.0)
+        assert_allclose(moments[1, 0] / moments[0, 0], 0.5)
 
-def test_moments_central():
-    """
-    Test image_moments with center=None (central moments).
-    """
-    data = np.array([[0, 1], [0, 1]])
-    moments = image_moments(data, center=None, order=2)
-    result = np.array([[2.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.5, 0.0, 0.0]])
-    assert_allclose(moments, result)
+    def test_central(self):
+        """
+        Test the central moments about the centroid.
+        """
+        data = np.array([[0, 1], [0, 1]])
+        moments = image_moments(data, center=(1.0, 0.5), order=2)
+        result = np.array([[2.0, 0.0, 0.0], [0.0, 0.0, 0.0],
+                           [0.5, 0.0, 0.0]])
+        assert_allclose(moments, result)
 
+    def test_central_nonsquare(self):
+        """
+        Test the central moments of a non-square array.
+        """
+        data = np.array([[0, 1], [0, 1], [0, 1]])
+        moments = image_moments(data, center=(1.0, 1.0), order=2)
+        result = np.array([[3.0, 0.0, 0.0], [0.0, 0.0, 0.0],
+                           [2.0, 0.0, 0.0]])
+        assert_allclose(moments, result)
 
-def test_moments_central_nonsquare():
-    """
-    Test image_moments with center=None and a non-square array.
-    """
-    data = np.array([[0, 1], [0, 1], [0, 1]])
-    moments = image_moments(data, center=None, order=2)
-    result = np.array([[3.0, 0.0, 0.0], [0.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
-    assert_allclose(moments, result)
+    def test_invalid_dim(self):
+        """
+        Test that non-2D data raises ValueError.
+        """
+        data = np.arange(27).reshape(3, 3, 3)
+        match = 'data must be a 2D array'
+        with pytest.raises(ValueError, match=match):
+            image_moments(data, order=3)
 
-
-def test_moments_central_invalid_dim():
-    """
-    Test that image_moments with non-2D data raises ValueError.
-    """
-    data = np.arange(27).reshape(3, 3, 3)
-    match = 'data must be a 2D array'
-    with pytest.raises(ValueError, match=match):
-        image_moments(data, order=3)
-
-
-def test_moments_central_negative_order():
-    """
-    Test that image_moments with negative order raises ValueError.
-    """
-    data = np.array([[0, 1], [0, 1]])
-    match = 'order must be non-negative'
-    with pytest.raises(ValueError, match=match):
-        image_moments(data, order=-1)
+    def test_negative_order(self):
+        """
+        Test that a negative order raises ValueError.
+        """
+        data = np.array([[0, 1], [0, 1]])
+        match = 'order must be non-negative'
+        with pytest.raises(ValueError, match=match):
+            image_moments(data, order=-1)
 
 
 class TestCentroidFromMoments:
