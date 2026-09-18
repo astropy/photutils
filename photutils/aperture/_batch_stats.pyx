@@ -883,7 +883,7 @@ def batch_moments(const double[::1] values, const int[::1] local_x,
     slice ``[starts[k]:starts[k] + counts[k]]``), ``v_p`` is the pixel
     value, ``(x_p, y_p)`` are its cutout coordinates, and ``(c_x, c_y) =
     (cx[k], cy[k])``. This uses exactly the same definition as
-    `photutils.utils._moments._image_moments`, so passing ``cx = cy =
+    `photutils.utils._moments.image_moments`, so passing ``cx = cy =
     0`` gives the raw moments and passing the cutout centroid gives the
     central moments.
 

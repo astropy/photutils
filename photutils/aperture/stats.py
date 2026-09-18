@@ -51,8 +51,8 @@ from photutils.utils._deprecation import (create_empty_deprecated_qtable,
                                           deprecated, deprecated_getattr,
                                           deprecated_positional_kwargs)
 from photutils.utils._misc import _get_meta
-from photutils.utils._moments import (_image_moments, _pixel_cov_to_sky_cov,
-                                      _sky_orientation_from_cov)
+from photutils.utils._moments import (image_moments, pixel_cov_to_sky_cov,
+                                      sky_orientation_from_cov)
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import process_quantities
 
@@ -2269,7 +2269,7 @@ class ApertureStats:
             mom[~overlap] = np.nan
             return mom
 
-        return np.array([_image_moments(arr, order=3)
+        return np.array([image_moments(arr, order=3)
                          for arr in self._moment_data_cutout])
 
     @cached_property
@@ -2294,7 +2294,7 @@ class ApertureStats:
             mom[gather.counts == 0] = np.nan
             return mom
 
-        return np.array([_image_moments(arr, center=(xcen_, ycen_), order=3)
+        return np.array([image_moments(arr, center=(xcen_, ycen_), order=3)
                          for arr, xcen_, ycen_ in
                          zip(self._moment_data_cutout, cutout_centroid[:, 0],
                              cutout_centroid[:, 1], strict=True)])
@@ -2992,9 +2992,9 @@ class ApertureStats:
         """
         if self._wcs is None:
             return self._null_object
-        sky_cov = _pixel_cov_to_sky_cov(self._wcs, self._covariance,
-                                        self._array('centroid'))
-        return _sky_orientation_from_cov(sky_cov) * u.deg
+        sky_cov = pixel_cov_to_sky_cov(self._wcs, self._covariance,
+                                       self._array('centroid'))
+        return sky_orientation_from_cov(sky_cov) * u.deg
 
     @cached_property
     def eccentricity(self):

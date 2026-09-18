@@ -8,7 +8,7 @@ import numpy as np
 from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 
 
-def _image_moments(data, *, center=(0, 0), order=1):
+def image_moments(data, *, center=(0, 0), order=1):
     """
     Calculate the image moments up to the specified order.
 
@@ -52,7 +52,7 @@ def _image_moments(data, *, center=(0, 0), order=1):
     return np.dot(np.dot(np.transpose(ypowers), data), xpowers)
 
 
-def _pixel_cov_to_sky_cov(wcs, pix_cov, xycen):
+def pixel_cov_to_sky_cov(wcs, pix_cov, xycen):
     """
     Transport pixel covariance matrices to the local tangent plane.
 
@@ -95,7 +95,7 @@ def _pixel_cov_to_sky_cov(wcs, pix_cov, xycen):
     return sky_cov
 
 
-def _sky_orientation_from_cov(sky_cov):
+def sky_orientation_from_cov(sky_cov):
     """
     Compute the sky position angle of the major axis from tangent-plane
     covariance matrices.

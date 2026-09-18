@@ -55,8 +55,8 @@ from photutils.utils._deprecation import (_get_future_column_names,
                                           deprecated_renamed_argument)
 from photutils.utils._flags import update_flag_docstring
 from photutils.utils._misc import _get_meta
-from photutils.utils._moments import (_pixel_cov_to_sky_cov,
-                                      _sky_orientation_from_cov)
+from photutils.utils._moments import (pixel_cov_to_sky_cov,
+                                      sky_orientation_from_cov)
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import CutoutImage
@@ -2364,7 +2364,7 @@ class SourceCatalog:
         Transport pixel error covariances to sky position errors.
 
         The returned errors are the square roots of the tangent-plane
-        variances along East and North (see ``_pixel_cov_to_sky_cov``
+        variances along East and North (see ``pixel_cov_to_sky_cov``
         in ``photutils.utils._moments``).
 
         Parameters
@@ -2383,7 +2383,7 @@ class SourceCatalog:
             columns ``(east_err, north_err)``. Rows are NaN where the
             position or covariance is not finite.
         """
-        sky_cov = _pixel_cov_to_sky_cov(self.wcs, pix_cov, xycen)
+        sky_cov = pixel_cov_to_sky_cov(self.wcs, pix_cov, xycen)
         sky_err = np.sqrt(np.stack((sky_cov[:, 0, 0], sky_cov[:, 1, 1]),
                                    axis=1))
         return sky_err << u.arcsec
@@ -4097,9 +4097,9 @@ class SourceCatalog:
         """
         if self.wcs is None:
             return self._null_objects
-        sky_cov = _pixel_cov_to_sky_cov(self.wcs, self._covariance,
-                                        self._array('centroid'))
-        return _sky_orientation_from_cov(sky_cov) * u.deg
+        sky_cov = pixel_cov_to_sky_cov(self.wcs, self._covariance,
+                                       self._array('centroid'))
+        return sky_orientation_from_cov(sky_cov) * u.deg
 
     @cached_property
     @use_detcat
