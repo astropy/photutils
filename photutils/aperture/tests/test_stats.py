@@ -326,7 +326,8 @@ class TestMasking(BaseApertureStatsData):
         # id=2 has masked pixels and id=3 is completely masked
         assert apstats[1].flags == APERTURE_FLAGS.MASKED_PIXELS
         assert apstats[2].flags == (APERTURE_FLAGS.MASKED_PIXELS
-                                    | APERTURE_FLAGS.ALL_MASKED)
+                                    | APERTURE_FLAGS.ALL_MASKED
+                                    | APERTURE_FLAGS.UNDEFINED_SHAPE)
 
         # Test that mask=None is the same as mask=np.ma.nomask
         apstats1 = ApertureStats(self.data, self.aperture, mask=None)
@@ -1945,7 +1946,7 @@ class TestSourceCatalogAgreement:
 
     The segments are the "center"-method aperture footprints. The two
     classes differ only in that SourceCatalog sets negative data values
-    to zero and in how they report fully masked sources.
+    to zero and in the central moments of fully masked sources.
     """
 
     # The image moments are excluded because each class measures them
@@ -2070,11 +2071,11 @@ class TestSourceCatalogAgreement:
 
     def test_fully_masked_source(self):
         """
-        Test the known differences for a fully masked source.
+        Test a fully masked source.
 
-        The shape properties are NaN in both classes, but only
-        SourceCatalog sets the undefined-shape flag and its zeroth
-        central moment is zero instead of NaN.
+        The shape properties are NaN and the undefined-shape flag is
+        set in both classes. The zeroth central moment is NaN in
+        ApertureStats and zero in SourceCatalog.
         """
         data = self._make_inputs()[0]
         data = np.where(data < 0, 0.0, data)
@@ -2085,6 +2086,6 @@ class TestSourceCatalogAgreement:
             assert cat.moments_central[0, 0, 0] == 0.0
 
             assert stats.flags[0] & APERTURE_FLAGS.ALL_MASKED
-            assert not stats.flags[0] & APERTURE_FLAGS.UNDEFINED_SHAPE
+            assert stats.flags[0] & APERTURE_FLAGS.UNDEFINED_SHAPE
             assert cat.flags[0] & SEGMENTATION_FLAGS.ALL_MASKED
             assert cat.flags[0] & SEGMENTATION_FLAGS.UNDEFINED_SHAPE

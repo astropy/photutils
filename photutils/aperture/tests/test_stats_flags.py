@@ -123,7 +123,8 @@ class TestMaskedAndNonFiniteFlags:
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_masked_pixels(self, unit_data):
         """
-        Test the masked_pixels and all_masked flags.
+        Test the masked_pixels and all_masked flags. A fully masked
+        aperture also has an undefined shape.
         """
         data = unit_data
         aper = CircularAperture((12, 12), r=3.0)
@@ -142,7 +143,8 @@ class TestMaskedAndNonFiniteFlags:
         mask = np.zeros(UNIT_SHAPE, dtype=bool)
         mask[8:17, 8:17] = True
         assert _stats_flags(data, aper, mask=mask) == (
-            APERTURE_FLAGS.MASKED_PIXELS | APERTURE_FLAGS.ALL_MASKED)
+            APERTURE_FLAGS.MASKED_PIXELS | APERTURE_FLAGS.ALL_MASKED
+            | APERTURE_FLAGS.UNDEFINED_SHAPE)
 
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_sum_footprint_masked(self, unit_data, unit_mask):
@@ -178,7 +180,8 @@ class TestMaskedAndNonFiniteFlags:
         # All-NaN aperture: auto-masked, so also all_masked
         data = np.full(UNIT_SHAPE, np.nan)
         assert _stats_flags(data, aper) == (APERTURE_FLAGS.NON_FINITE_DATA
-                                            | APERTURE_FLAGS.ALL_MASKED)
+                                            | APERTURE_FLAGS.ALL_MASKED
+                                            | APERTURE_FLAGS.UNDEFINED_SHAPE)
 
         # A pixel that is both input-masked and non-finite counts only as
         # masked
@@ -690,10 +693,9 @@ class TestUndefinedShape:
     @pytest.mark.usefixtures('maybe_mask_path')
     def test_array_and_guards(self):
         """
-        Test the undefined_shape bit for an array of sources, and that
-        sources with no valid pixels (no overlap or fully masked) are
-        not flagged (they are reported by the overlap and masking
-        bits).
+        Test the undefined_shape bit for an array of sources. A fully
+        masked source is flagged, and a source with no overlap is not
+        (it is reported by the overlap bits).
         """
         data = np.zeros(UNIT_SHAPE)
         data[16:21, 16:21] = 50.0  # positive-flux source at (18, 18)
@@ -706,7 +708,7 @@ class TestUndefinedShape:
         shape_flag = APERTURE_FLAGS.UNDEFINED_SHAPE
         assert (flags[0] & shape_flag) != 0  # zero-flux source
         assert (flags[1] & shape_flag) == 0  # positive-flux source
-        assert (flags[2] & shape_flag) == 0  # fully masked: not flagged
+        assert (flags[2] & shape_flag) != 0  # fully masked
         assert (flags[2] & APERTURE_FLAGS.ALL_MASKED) != 0
         assert (flags[3] & shape_flag) == 0  # no overlap: not flagged
         assert (flags[3] & APERTURE_FLAGS.NO_OVERLAP) != 0

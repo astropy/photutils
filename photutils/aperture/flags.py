@@ -161,15 +161,13 @@ class _ApertureFlags(FlagRegistry):
                                   'properties (e.g., ``centroid``, '
                                   '``semimajor_axis``, ``orientation``)'
                                   ' are undefined or unreliable. '
-                                  'Sources with no valid pixels (no '
-                                  'overlap, fully masked, or fully '
-                                  'sigma clipped) are not flagged '
-                                  'here. They are reported by the '
-                                  'overlap, masking, and clipping '
-                                  'flags. This differs from the '
-                                  'equivalent segmentation flag, '
-                                  'which is also set for fully '
-                                  'masked sources.'),
+                                  'Fully masked sources have a zero '
+                                  'net flux, so they are also '
+                                  'flagged. Sources with no overlap '
+                                  'and fully sigma-clipped sources '
+                                  'are not flagged here. They are '
+                                  'reported by the overlap and '
+                                  'clipping flags.'),
         ),
         FlagDefinition(
             bit_value=8192,

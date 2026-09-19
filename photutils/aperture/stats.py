@@ -2122,15 +2122,25 @@ class ApertureStats:
         The net flux is the zeroth image moment of the unmasked
         "center"-method pixels. When it is zero or negative, the
         centroid and the covariance-derived shape properties are
-        undefined or unreliable. Sources with no valid pixels (no
-        overlap, fully masked, or fully sigma clipped) are not flagged
-        here. They are already reported by the overlap, masking, and
-        clipping bits.
+        undefined or unreliable. A fully masked source has a zero net
+        flux, so it is also flagged, which matches the equivalent
+        `~photutils.segmentation.SourceCatalog` flag. Sources with
+        no overlap and fully sigma-clipped sources are not flagged
+        here. They are already reported by the overlap and clipping
+        bits.
         """
         m00 = self._array('moments')[:, 0, 0]
         # NaN where a source has no valid pixels
         n_pixels = self._center_n_pixels
-        return np.isfinite(m00) & (m00 <= 0) & np.isfinite(n_pixels)
+        non_positive = (np.isfinite(m00) & (m00 <= 0)
+                        & np.isfinite(n_pixels))
+
+        # The same definition as the ``'all_masked'`` flag on the
+        # "center"-method footprint
+        flag_counts, _, _ = self._footprint_flag_inputs('center')
+        all_masked = ((flag_counts[:, FLAG_COL_N_PIXELS] > 0)
+                      & (flag_counts[:, FLAG_COL_VALID] == 0))
+        return non_positive | all_masked
 
     @cached_property
     def _singular_covariance_mask(self):

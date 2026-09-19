@@ -135,10 +135,7 @@ class _SegmentationFlags(FlagRegistry):
                                   '``orientation``) are undefined or '
                                   'unreliable. Fully masked sources '
                                   'have a zero net flux, so they are '
-                                  'also flagged. This differs from '
-                                  'the equivalent aperture flag, '
-                                  'which is not set for sources with '
-                                  'no valid pixels.'),
+                                  'also flagged.'),
         ),
         FlagDefinition(
             bit_value=512,
