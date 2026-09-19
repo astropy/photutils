@@ -30,6 +30,8 @@ from photutils.aperture.rectangle import (RectangularAnnulus,
 from photutils.aperture.stats import _MAD_STD_SCALE, ApertureStats
 from photutils.aperture.tests.conftest import NoBatchCircularAperture
 from photutils.datasets import make_100gaussians_image, make_wcs
+from photutils.segmentation import (SEGMENTATION_FLAGS, SegmentationImage,
+                                    SourceCatalog)
 from photutils.utils._optional_deps import HAS_REGIONS
 from photutils.utils.exceptions import PhotutilsDeprecationWarning
 
@@ -1934,3 +1936,155 @@ class TestSkyOrientation:
         assert tbl.colnames == columns
         assert tbl['sky_orientation'].unit == u.deg
         assert_allclose(tbl['sky_orientation'], apstats.sky_orientation)
+
+
+class TestSourceCatalogAgreement:
+    """
+    Tests that ApertureStats and SourceCatalog give the same centroid
+    and shape properties for sources that cover the same pixels.
+
+    The segments are the "center"-method aperture footprints. The two
+    classes differ only in that SourceCatalog sets negative data values
+    to zero and in how they report fully masked sources.
+    """
+
+    # The image moments are excluded because each class measures them
+    # from the origin of its own cutout.
+    PROPERTIES = ('centroid', 'inertia_tensor', 'covariance',
+                  'covariance_eigvals', 'semimajor_axis', 'semiminor_axis',
+                  'fwhm', 'orientation', 'sky_orientation', 'eccentricity',
+                  'elongation', 'ellipticity', 'covariance_xx',
+                  'covariance_yy', 'covariance_xy', 'ellipse_cxx',
+                  'ellipse_cyy', 'ellipse_cxy')
+
+    # The aperture radii give resolved sources (6.0), sources of a few
+    # pixels (1.2), and single-pixel sources (0.6).
+    RADII = (6.0, 1.2, 0.6)
+
+    @staticmethod
+    def _make_inputs():
+        """
+        Make the data, mask, WCS, and one multi-position aperture per
+        radius.
+        """
+        rng = np.random.default_rng(0)
+        shape = (120, 160)
+        yy, xx = np.mgrid[:shape[0], :shape[1]]
+        data = rng.normal(0.0, 1.0, shape)
+        apertures = []
+        for i, radius in enumerate(TestSourceCatalogAgreement.RADII):
+            xypos = []
+            for xcen in range(20, 160, 20):
+                # The offsets keep a pixel center within the smallest
+                # aperture.
+                xpos = xcen + rng.uniform(-0.3, 0.3)
+                ypos = 20.0 + 40.0 * i + rng.uniform(-0.3, 0.3)
+                model = Gaussian2D(rng.uniform(20.0, 200.0), xpos, ypos,
+                                   rng.uniform(1.0, 4.0),
+                                   rng.uniform(1.0, 4.0),
+                                   rng.uniform(0.0, np.pi))
+                data += model(xx, yy)
+                xypos.append((xpos, ypos))
+            apertures.append(CircularAperture(xypos, radius))
+
+        # The first source of each aperture is fully masked, the
+        # second is partially masked, and the third has a NaN pixel.
+        mask = np.zeros(shape, dtype=bool)
+        for aperture in apertures:
+            xpos, ypos = np.round(aperture.positions).astype(int).T
+            mask[ypos[0] - 8:ypos[0] + 9, xpos[0] - 8:xpos[0] + 9] = True
+            mask[ypos[1], xpos[1] + 1] = True
+            data[ypos[2], xpos[2] + 1] = np.nan
+
+        return data, mask, make_wcs(shape), apertures
+
+    @staticmethod
+    def _make_segment_image(apertures, shape):
+        """
+        Make a segmentation image from the "center"-method footprints.
+
+        The labels are in aperture order, then position order.
+        """
+        segm = np.zeros(shape, dtype=int)
+        label = 0
+        for aperture in apertures:
+            for mask in aperture.to_mask(method='center'):
+                label += 1
+                segm[mask.to_image(shape) > 0] = label
+        return SegmentationImage(segm)
+
+    def _compare(self, aperture_data, catalog_data):
+        """
+        Compare the properties of the two classes and return them.
+        """
+        _, mask, wcs, apertures = self._make_inputs()
+        segm = self._make_segment_image(apertures, mask.shape)
+        catalog = SourceCatalog(catalog_data, segm, mask=mask, wcs=wcs)
+        n_positions = len(apertures[0])
+        all_stats = []
+        for i, aperture in enumerate(apertures):
+            stats = ApertureStats(aperture_data, aperture, mask=mask,
+                                  wcs=wcs)
+            cat = catalog[i * n_positions:(i + 1) * n_positions]
+            for name in self.PROPERTIES:
+                value = u.Quantity(getattr(stats, name)).value
+                expected = u.Quantity(getattr(cat, name)).value
+                assert_equal(np.isnan(value), np.isnan(expected))
+                assert_allclose(value, expected, rtol=1e-10, atol=1e-10,
+                                err_msg=name)
+            assert_equal(stats._singular_covariance_mask,
+                         cat._singular_covariance_mask)
+            all_stats.append((stats, cat))
+        return all_stats
+
+    def test_non_negative_data(self):
+        """
+        Test that the properties agree for non-negative data, where the
+        SourceCatalog zeroing does nothing.
+        """
+        data = self._make_inputs()[0]
+        data = np.where(data < 0, 0.0, data)
+        all_stats = self._compare(data, data)
+
+        # The single-pixel sources exercise the regularization.
+        stats, _ = all_stats[2]
+        assert np.all(stats._singular_covariance_mask[1:])
+
+    def test_negative_data_zeroing(self):
+        """
+        Test that zeroing the negative data values is the only numerical
+        difference between the two classes.
+        """
+        data = self._make_inputs()[0]
+        assert np.any(data < 0)
+        clipped = np.where(data < 0, 0.0, data)
+        self._compare(clipped, data)
+
+        # The properties differ without the zeroing.
+        _, mask, wcs, apertures = self._make_inputs()
+        segm = self._make_segment_image(apertures, mask.shape)
+        stats = ApertureStats(data, apertures[0], mask=mask, wcs=wcs)
+        cat = SourceCatalog(data, segm, mask=mask, wcs=wcs)[:len(stats)]
+        diff = np.abs(stats.fwhm[1:] - cat.fwhm[1:])
+        assert np.any(diff > 1e-3 * u.pix)
+
+    def test_fully_masked_source(self):
+        """
+        Test the known differences for a fully masked source.
+
+        The shape properties are NaN in both classes, but only
+        SourceCatalog sets the undefined-shape flag and its zeroth
+        central moment is zero instead of NaN.
+        """
+        data = self._make_inputs()[0]
+        data = np.where(data < 0, 0.0, data)
+        for stats, cat in self._compare(data, data):
+            assert np.all(np.isnan(stats.covariance[0]))
+            assert np.all(np.isnan(cat.covariance[0]))
+            assert np.isnan(stats.moments_central[0, 0, 0])
+            assert cat.moments_central[0, 0, 0] == 0.0
+
+            assert stats.flags[0] & APERTURE_FLAGS.ALL_MASKED
+            assert not stats.flags[0] & APERTURE_FLAGS.UNDEFINED_SHAPE
+            assert cat.flags[0] & SEGMENTATION_FLAGS.ALL_MASKED
+            assert cat.flags[0] & SEGMENTATION_FLAGS.UNDEFINED_SHAPE
