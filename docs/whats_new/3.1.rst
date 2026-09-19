@@ -983,6 +983,32 @@ for such sources, pass ``mode='linear'``. Note that this applies the
 linear spacing to every source, which is the only way to obtain the
 previous behavior.
 
+Covariance Regularization of Unresolved Sources
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``covariance`` matrix of
+:class:`~photutils.segmentation.SourceCatalog` and
+:class:`~photutils.aperture.ApertureStats` is regularized for unresolved
+sources, because a source cannot have a second moment smaller than
+``1/12`` pixel**2, the variance of a uniform distribution across a
+single pixel. Previously, ``1/12`` was added to both diagonal elements
+when the covariance determinant was below ``(1/12)**2``. It misses a
+thin source that is unresolved along only its minor axis if its major
+axis is long, it inflates the variance along a resolved axis, and it is
+discontinuous.
+
+The variance along each principal axis (each eigenvalue of the
+covariance matrix) is now raised to at least ``1/12`` while the
+orientation is kept. A resolved axis is not modified, and the result
+is a continuous function of the image moments. The sources that are
+regularized are exactly those with the ``singular_covariance`` flag,
+whose meaning is unchanged, apart from flagged sources whose
+second-order moments are not positive semidefinite, which have NaN
+shape properties. A source that is unresolved along both axes becomes
+isotropic with an orientation of zero. An exactly thin tilted source,
+whose covariance determinant is zero apart from rounding, is now
+regularized instead of having NaN shape properties.
+
 PSF ``decode_flags`` Methods Return a Dictionary
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
