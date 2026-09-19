@@ -131,9 +131,14 @@ class _SegmentationFlags(FlagRegistry):
                                   'centroid and the '
                                   'covariance-derived shape '
                                   'properties (e.g., ``centroid``, '
-                                  '``semimajor_sigma``, '
+                                  '``semimajor_axis``, '
                                   '``orientation``) are undefined or '
-                                  'unreliable.'),
+                                  'unreliable. Fully masked sources '
+                                  'have a zero net flux, so they are '
+                                  'also flagged. This differs from '
+                                  'the equivalent aperture flag, '
+                                  'which is not set for sources with '
+                                  'no valid pixels.'),
         ),
         FlagDefinition(
             bit_value=512,
@@ -148,10 +153,13 @@ class _SegmentationFlags(FlagRegistry):
                                   'single pixel), so '
                                   'covariance-derived shape '
                                   'properties (e.g., '
-                                  '``semimajor_sigma``, '
+                                  '``semimajor_axis``, '
                                   '``orientation``, '
                                   '``eccentricity``) are '
-                                  'ill-defined.'),
+                                  'ill-defined and have been '
+                                  'regularized. They are instead set '
+                                  'to NaN if the covariance matrix '
+                                  'is not positive semidefinite.'),
         ),
         FlagDefinition(
             bit_value=1024,

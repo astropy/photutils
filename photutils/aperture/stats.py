@@ -2150,8 +2150,9 @@ class ApertureStats:
         determinant and are not flagged here. They are already reported
         by the overlap and masking bits.
 
-        These are the sources whose covariance is modified by the
-        regularization, and they get the ``'singular_covariance'`` flag.
+        These sources get the ``'singular_covariance'`` flag. Their
+        covariance is regularized, or set to NaN if it is not positive
+        semidefinite.
         """
         return is_singular_covariance(self._raw_covariance,
                                       determinant=self._raw_covariance_det)

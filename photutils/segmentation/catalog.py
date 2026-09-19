@@ -3872,9 +3872,9 @@ class SourceCatalog:
         sources and thin sources that are unresolved along only one
         axis. Sources with a NaN covariance are not flagged.
 
-        These are the sources whose covariance is modified by the
-        regularization, and they get the ``'singular_covariance'``
-        flag. It matches the equivalent aperture flag (see
+        These sources get the ``'singular_covariance'`` flag. Their
+        covariance is regularized, or set to NaN if it is not positive
+        semidefinite. The flag matches the equivalent aperture flag (see
         `~photutils.aperture.decode_aperture_flags`).
         """
         return is_singular_covariance(self._raw_covariance,

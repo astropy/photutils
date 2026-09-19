@@ -160,7 +160,16 @@ class _ApertureFlags(FlagRegistry):
                                   'the covariance-derived shape '
                                   'properties (e.g., ``centroid``, '
                                   '``semimajor_axis``, ``orientation``)'
-                                  ' are undefined or unreliable.'),
+                                  ' are undefined or unreliable. '
+                                  'Sources with no valid pixels (no '
+                                  'overlap, fully masked, or fully '
+                                  'sigma clipped) are not flagged '
+                                  'here. They are reported by the '
+                                  'overlap, masking, and clipping '
+                                  'flags. This differs from the '
+                                  'equivalent segmentation flag, '
+                                  'which is also set for fully '
+                                  'masked sources.'),
         ),
         FlagDefinition(
             bit_value=8192,
@@ -174,8 +183,10 @@ class _ApertureFlags(FlagRegistry):
                                   'so covariance-derived shape '
                                   'properties (e.g., ``semimajor_axis``, '
                                   '``orientation``, ``eccentricity``) are '
-                                  'ill-defined and have been regularized '
-                                  'or set to NaN.'),
+                                  'ill-defined and have been regularized. '
+                                  'They are instead set to NaN if the '
+                                  'covariance matrix is not positive '
+                                  'semidefinite.'),
         ),
     ]
 
