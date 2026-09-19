@@ -1946,7 +1946,7 @@ class TestSourceCatalogAgreement:
 
     The segments are the "center"-method aperture footprints. The two
     classes differ only in that SourceCatalog sets negative data values
-    to zero and in the central moments of fully masked sources.
+    to zero.
     """
 
     # The image moments are excluded because each class measures them
@@ -2074,16 +2074,18 @@ class TestSourceCatalogAgreement:
         Test a fully masked source.
 
         The shape properties are NaN and the undefined-shape flag is
-        set in both classes. The zeroth central moment is NaN in
-        ApertureStats and zero in SourceCatalog.
+        set in both classes. The zeroth central moment equals the zeroth
+        raw moment, which is zero. The other central moments are NaN
+        because the centroid is undefined.
         """
         data = self._make_inputs()[0]
         data = np.where(data < 0, 0.0, data)
         for stats, cat in self._compare(data, data):
             assert np.all(np.isnan(stats.covariance[0]))
             assert np.all(np.isnan(cat.covariance[0]))
-            assert np.isnan(stats.moments_central[0, 0, 0])
-            assert cat.moments_central[0, 0, 0] == 0.0
+            assert_equal(stats.moments_central[0], cat.moments_central[0])
+            assert stats.moments_central[0, 0, 0] == 0.0
+            assert np.all(np.isnan(stats.moments_central[0].ravel()[1:]))
 
             assert stats.flags[0] & APERTURE_FLAGS.ALL_MASKED
             assert stats.flags[0] & APERTURE_FLAGS.UNDEFINED_SHAPE

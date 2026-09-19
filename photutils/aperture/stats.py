@@ -2310,8 +2310,12 @@ class ApertureStats:
                 gather.starts, gather.counts, per_source=(cen_x, cen_y))
             # Empty sources (no overlap or fully masked) have a NaN
             # centroid, so their central moments are NaN (matching the
-            # mask-based path).
-            mom[gather.counts == 0] = np.nan
+            # mask-based path). The zeroth central moment does not
+            # depend on the centroid, so it equals the zeroth raw
+            # moment (zero for a fully masked source).
+            empty = gather.counts == 0
+            mom[empty] = np.nan
+            mom[empty, 0, 0] = self._array('moments')[empty, 0, 0]
             return mom
 
         return np.array([image_moments(arr, center=(xcen_, ycen_), order=3)

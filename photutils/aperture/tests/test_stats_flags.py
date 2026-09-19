@@ -714,6 +714,32 @@ class TestUndefinedShape:
         assert (flags[3] & APERTURE_FLAGS.NO_OVERLAP) != 0
 
     @pytest.mark.usefixtures('maybe_mask_path')
+    def test_empty_source_central_moments(self):
+        """
+        Test the central moments of sources with no valid pixels.
+
+        The zeroth central moment does not depend on the centroid, so it
+        equals the zeroth raw moment (zero for a fully masked source and
+        NaN for a source with no overlap). The other central moments are
+        NaN because the centroid is undefined.
+        """
+        data = np.ones(UNIT_SHAPE)
+        mask = np.zeros(UNIT_SHAPE, dtype=bool)
+        mask[0:12, 0:12] = True  # fully mask the first aperture
+        aper = CircularAperture([(6.0, 6.0), (-50.0, 12.0), (18.0, 18.0)],
+                                r=4.0)
+        stats = ApertureStats(data, aper, mask=mask)
+        raw = stats.moments
+        central = stats.moments_central
+        assert_array_equal(central[:, 0, 0], raw[:, 0, 0])
+        assert central[0, 0, 0] == 0.0
+        assert np.isnan(central[1, 0, 0])
+        assert central[2, 0, 0] > 0
+        for i in (0, 1):
+            assert np.all(np.isnan(central[i].ravel()[1:]))
+        assert np.all(np.isfinite(central[2]))
+
+    @pytest.mark.usefixtures('maybe_mask_path')
     def test_in_default_table(self):
         """
         Test that the undefined_shape bit is reflected in the default
