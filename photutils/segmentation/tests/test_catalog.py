@@ -2933,11 +2933,15 @@ def test_centroid_win_err_sliced():
     assert_allclose(sub.centroid_win_err, errors[[1, 0]])
 
 
-def test_centroid_win_err_singularity():
+def test_centroid_win_err_peak_pixel_error():
     """
-    Test that the singularity correction in centroid_win_err is
-    applied for a source where non-zero error is limited to a single
-    pixel, causing a nearly singular error covariance.
+    Test centroid_win_err for a source where non-zero error is limited
+    to a single pixel, which makes the propagated error covariance
+    nearly singular.
+
+    The pixel-size (1/12) variance term is added to both variances, so
+    the errors are finite and non-zero. The source and the errors are
+    symmetric, so the two errors are equal.
     """
     data = np.zeros((21, 21))
     data[10, 10] = 10000.0
@@ -2946,8 +2950,8 @@ def test_centroid_win_err_singularity():
     data[10, 9] = 50.0
     data[9, 10] = 50.0
 
-    # Non-zero error only at center pixel: error covariance
-    # will be concentrated there, triggering the singularity check
+    # Non-zero error only at center pixel, where the propagated
+    # position error terms vanish
     error = np.zeros(data.shape)
     error[10, 10] = 10000.0
     segment_data = np.zeros(data.shape, dtype=int)
@@ -2958,10 +2962,10 @@ def test_centroid_win_err_singularity():
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')
 
-    errors = cat.centroid_win_err
-    # Errors should be finite (singularity correction applied)
+    errors = np.ravel(cat.centroid_win_err)
     assert np.all(np.isfinite(errors))
     assert np.all(errors > 0)
+    assert_allclose(errors[0], errors[1])
 
 
 def test_centroid_win_err_cov():
@@ -3093,18 +3097,14 @@ def test_centroid_err_scalar():
 
 def test_centroid_err_singularity():
     """
-    Test that the singularity correction in centroid_err is applied
-    for a source where the error covariance matrix is nearly singular.
-    This happens when error is concentrated at only the centroid pixel,
-    making det == esn^2 exactly, so we use <= in a modified check or
-    construct a case where floating-point rounding makes det < esn^2.
+    Test that the singularity correction in centroid_err is applied to
+    a point-like source.
+
+    The error is non-zero only at the centroid pixel, so the propagated
+    error covariance is zero apart from rounding. Both error variances
+    are raised to the floor ``sum(sigma**2) / (12 F**2)``, which is
+    1/12 here because the error equals the flux.
     """
-    # A source with flux concentrated at the centroid pixel, and
-    # error only at the centroid pixel. With this setup,
-    # err_var_x * err_var_y - err_cov_xy^2 == err_sum_norm^2 exactly
-    # for a perfectly centered source. By adding a tiny asymmetric
-    # flux offset, the centroid shifts slightly, breaking the exact
-    # equality and making det < esn^2 due to floating-point effects.
     data = np.zeros((11, 11))
     data[5, 5] = 10000.0
     data[5, 6] = 1e-10  # tiny asymmetry to shift centroid
@@ -3119,9 +3119,102 @@ def test_centroid_err_singularity():
     cat = SourceCatalog(data, segment_map, convolved_data=convolved_data,
                         error=error, aperture_mask_method='none')
 
-    errors = cat.centroid_err
-    assert np.all(np.isfinite(errors))
-    assert np.all(errors > 0)
+    assert cat.flags & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
+    assert_allclose(np.ravel(cat.centroid_err), np.sqrt(1 / 12))
+    assert_allclose(cat._centroid_err_cov[0], np.eye(2) / 12, atol=1e-12)
+
+
+def test_centroid_err_thin_source():
+    """
+    Test that the singularity correction in centroid_err is applied to
+    a thin source that is unresolved along only its minor axis.
+
+    The shape covariance determinant of this source exceeds
+    ``(1/12)**2`` because of its long major axis. The pixel errors are
+    concentrated in the bright row, so the error covariance matrix is
+    nearly singular along ``y``. Only the error along ``y`` is raised to
+    the floor. The error along the resolved ``x`` axis is unchanged.
+    """
+    data = np.zeros((15, 25))
+    data[7, 5:20] = 99.5
+    data[8, 5:20] = 0.5
+    error = np.full(data.shape, 1.0e-3)
+    error[7, :] = 1.0
+    segment_data = np.zeros(data.shape, dtype=int)
+    segment_data[7:9, 5:20] = 1
+    cat = SourceCatalog(data, SegmentationImage(segment_data), error=error)
+
+    assert cat.flags & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
+    flux = np.sum(data)
+    err_sum_norm = np.sum(error[7:9, 5:20]**2) / (12.0 * flux**2)
+    x_err, y_err = np.ravel(cat.centroid_err)
+    assert_allclose(y_err, np.sqrt(err_sum_norm))
+
+    # The x centroid is at the center of the 15-pixel rows, so the sum
+    # of (x - x_centroid)**2 over one row is 280
+    x_var = 280.0 * (1.0 + 1.0e-6) / flux**2
+    assert_allclose(x_err, np.sqrt(x_var))
+
+
+def test_centroid_err_resolved_source_singular_error():
+    """
+    Test that the singularity correction in centroid_err depends on the
+    error covariance and not on the source shape.
+
+    The source is well resolved, but the error is non-zero only in the
+    row of the centroid. The propagated error covariance is singular
+    along ``y``, so the error along ``y`` is raised to the floor. The
+    error along ``x`` is unchanged.
+    """
+    yy, xx = np.mgrid[:21, :21]
+    data = 100.0 * np.exp(-((xx - 10)**2 + (yy - 10)**2) / (2 * 2.0**2))
+    error = np.zeros(data.shape)
+    error[10, :] = 1.0
+    segment_data = (data > 1.0).astype(int)
+    cat = SourceCatalog(data, SegmentationImage(segment_data), error=error)
+
+    assert not cat.flags & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
+    segment = segment_data.astype(bool)
+    flux = np.sum(data[segment])
+    err_sum = np.sum(error[segment]**2)
+    x_offsets = xx[10][segment[10]] - 10.0
+    x_err, y_err = np.ravel(cat.centroid_err)
+    assert_allclose(y_err, np.sqrt(err_sum / (12.0 * flux**2)))
+    assert_allclose(x_err, np.sqrt(np.sum(x_offsets**2) / flux**2))
+
+
+def test_centroid_err_tilted_line():
+    """
+    Test the singularity correction for a tilted line that is one pixel
+    wide, which changes the off-diagonal error covariance term.
+
+    The propagated error covariance has rank 1 along the line. With a
+    uniform flux ``f`` and error ``sigma`` on nine pixels, its elements
+    are all ``60 sigma**2 / F**2``, where 60 is the sum of the squared
+    pixel offsets and ``F = 9 f``. The error variance across the line
+    is raised from zero to the floor ``9 sigma**2 / (12 F**2)``, and the
+    error variance along the line is unchanged.
+    """
+    flux_pix = 10.0
+    sigma = 2.0
+    data = np.zeros((15, 15))
+    error = np.zeros(data.shape)
+    segment_data = np.zeros(data.shape, dtype=int)
+    for i in range(9):
+        data[3 + i, 3 + i] = flux_pix
+        error[3 + i, 3 + i] = sigma
+        segment_data[3 + i, 3 + i] = 1
+    cat = SourceCatalog(data, SegmentationImage(segment_data), error=error)
+
+    scale = sigma**2 / (9 * flux_pix)**2
+    floor = 9.0 / 12.0
+    expected = scale * np.array([[60.0 + floor / 2, 60.0 - floor / 2],
+                                 [60.0 - floor / 2, 60.0 + floor / 2]])
+    cov = cat._centroid_err_cov[0]
+    assert_allclose(cov, expected)
+    assert_allclose(np.linalg.eigvalsh(cov), scale * np.array([floor, 120.0]))
+    assert_allclose(np.ravel(cat.centroid_err),
+                    np.sqrt(scale * (60.0 + floor / 2)))
 
 
 def test_centroid_err_formula():

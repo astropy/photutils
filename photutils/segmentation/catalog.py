@@ -59,6 +59,7 @@ from photutils.utils._moments import (PIXEL_VARIANCE, centroid_from_moments,
                                       covariance_determinant,
                                       covariance_from_moments,
                                       eigvals_from_covariance,
+                                      floor_covariance_eigvals,
                                       inertia_tensor_from_moments,
                                       is_singular_covariance,
                                       orientation_from_covariance,
@@ -2325,7 +2326,6 @@ class SourceCatalog:
 
         # The total flux is the zeroth raw moment of the moment data.
         total_flux = self._array('moments')[:, 0, 0]
-        is_singular = np.atleast_1d(self._singular_covariance_mask)
 
         # Ignore divide-by-zero and invalid-value RuntimeWarnings for
         # sources with non-positive or non-finite total flux. Those
@@ -2338,29 +2338,31 @@ class SourceCatalog:
             err_var_y = acc[:, 2] * norm
             err_cov_xy = acc[:, 3] * norm
 
-            # Singularity correction for point-like sources. If the
-            # error covariance matrix is nearly singular, add the
-            # variance of a uniform distribution across a single pixel
-            # (1/12) scaled by the summed pixel variance. The
-            # correction is added to the variances only, never to the
-            # covariance.
+            # The variance of a uniform distribution across a single
+            # pixel (1/12) scaled by the summed pixel variance.
             err_sum_norm = acc[:, 0] * PIXEL_VARIANCE * norm
-            singular = (is_singular
-                        & ((err_var_x * err_var_y - err_cov_xy**2)
-                           < err_sum_norm**2))
-            err_var_x[singular] += err_sum_norm[singular]
-            err_var_y[singular] += err_sum_norm[singular]
-
-            bad = ~np.isfinite(total_flux) | (total_flux <= 0)
-            err_var_x[bad] = np.nan
-            err_var_y[bad] = np.nan
-            err_cov_xy[bad] = np.nan
 
         cov = np.empty((len(err_var_x), 2, 2))
         cov[:, 0, 0] = err_var_x
         cov[:, 1, 1] = err_var_y
         cov[:, 0, 1] = err_cov_xy
         cov[:, 1, 0] = err_cov_xy
+        # Singularity correction. The pixels that carry the error can
+        # lie along a line or at a single point (e.g., an unresolved
+        # source), which gives a nearly singular error covariance with
+        # an error close to zero along one or both principal axes. The
+        # error variance along each principal axis is raised to at
+        # least ``err_sum_norm``. The principal axes are kept, and an
+        # axis whose error variance already exceeds the floor is not
+        # modified. The test is made on the error covariance itself, so
+        # it needs no knowledge of the source shape.
+        idx = np.flatnonzero(np.isfinite(cov).all(axis=(1, 2))
+                             & np.isfinite(err_sum_norm))
+        cov[idx] = floor_covariance_eigvals(cov[idx],
+                                            minimum=err_sum_norm[idx])
+
+        bad = ~np.isfinite(total_flux) | (total_flux <= 0)
+        cov[bad] = np.nan
         return cov
 
     def _sky_err_from_cov(self, pix_cov, xycen):
@@ -2410,10 +2412,13 @@ class SourceCatalog:
             \\text{Var}(x_c) = \\frac{\\sum_i (x_i - x_c)^2
             \\sigma_i^2}{F^2}
 
-        For point-like sources whose shape covariance determinant
-        is below :math:`(1/12)^2`, a singularity correction of
-        :math:`\\sum_i \\sigma_i^2 / (12 F^2)` is added to the variances
-        if the error covariance matrix is itself nearly singular.
+        The error variance along each principal axis of the error
+        covariance matrix is at least :math:`\\sum_i \\sigma_i^2 / (12
+        F^2)`, the variance of a uniform distribution across a single
+        pixel scaled by the summed pixel variance. This prevents an
+        error close to zero along an axis where the pixels that carry
+        the error span less than a pixel (e.g., an unresolved source).
+        An error variance that already exceeds this value is unchanged.
         """
         cov = self._centroid_err_cov
         return np.sqrt(np.stack((cov[:, 0, 0], cov[:, 1, 1]), axis=1))
@@ -2445,11 +2450,16 @@ class SourceCatalog:
         """
         Normalize the windowed centroid position-error variances.
 
-        Normalize by ``step_factor^2 / weighted_flux^2``, add the
-        pixel-size (1/12) variance correction, and apply the singularity
-        correction for point-like sources. All inputs are arrays with
-        one element per source. Sources with non-positive or non-finite
-        ``weighted_flux`` have ``np.nan`` variances.
+        Normalize by ``step_factor^2 / weighted_flux^2`` and add the
+        pixel-size (1/12) variance correction. All inputs are arrays
+        with one element per source. Sources with non-positive or
+        non-finite ``weighted_flux`` have ``np.nan`` variances.
+
+        No separate singularity correction is needed (compare
+        ``_centroid_err_cov``). The pixel-size correction is added to
+        both variances of a positive semidefinite matrix, so the error
+        variance along every principal axis is already at least that
+        correction.
 
         Parameters
         ----------
@@ -2477,8 +2487,8 @@ class SourceCatalog:
             Normalized error variance in ``y``.
 
         err_cov_xy : `~numpy.ndarray`
-            Normalized error covariance in ``xy``. The pixel-size and
-            singularity corrections are not applied to the covariance.
+            Normalized error covariance in ``xy``. The pixel-size
+            correction is not applied to the covariance.
         """
         step_factor = 2.0
         with warnings.catch_warnings():
@@ -2491,16 +2501,6 @@ class SourceCatalog:
             err_var_x = err_var_x * norm + err_sum_norm
             err_var_y = err_var_y * norm + err_sum_norm
             err_cov_xy = err_cov_xy * norm
-
-            # Handle fully correlated profiles of point-like sources
-            # that cause a singularity. The determinant check includes
-            # the pixel-size correction in the variances but not in the
-            # covariance.
-            singular = (self._singular_covariance_mask
-                        & ((err_var_x * err_var_y - err_cov_xy**2)
-                           < err_sum_norm**2))
-            err_var_x[singular] += err_sum_norm[singular]
-            err_var_y[singular] += err_sum_norm[singular]
 
             bad = ~np.isfinite(weighted_flux) | (weighted_flux <= 0)
             err_var_x[bad] = np.nan
