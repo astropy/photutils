@@ -616,8 +616,12 @@ class SourceCatalog:
     Negative values could occur, for example, if the segmentation
     image was defined from a different image (e.g., different
     bandpass) or if the background was oversubtracted. However,
-    `~photutils.segmentation.SourceCatalog.segment_flux` always includes
-    the contribution of negative ``data`` values.
+    `~photutils.segmentation.SourceCatalog.segment_flux` always
+    includes the contribution of negative ``data`` values. Note that
+    `~photutils.aperture.ApertureStats` does not set negative values to
+    zero, because an aperture on background-subtracted data contains
+    many negative sky pixels whose removal would bias the centroid and
+    the shape properties.
 
     Most properties are computed for all sources at once in compiled
     code that reads C-contiguous float64 copies of the ``data``,

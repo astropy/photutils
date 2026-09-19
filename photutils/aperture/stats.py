@@ -290,6 +290,24 @@ class ApertureStats:
     of ``sum_method``. The default is ``sum_method='exact'``, which
     produces exact aperture-weighted photometry.
 
+    The centroid and the morphological (shape) properties are calculated
+    from image moments of the ``data`` values, including negative
+    values. This differs from `~photutils.segmentation.SourceCatalog`,
+    which sets negative values to zero for these properties. A source
+    segment contains only pixels above the detection threshold, so
+    its few negative values can safely be ignored. In contrast, the
+    sky pixels within an aperture on background-subtracted data are
+    negative about half of the time. Including them lets the positive
+    and negative noise cancel on average, which keeps the centroid and
+    the shape properties nearly unbiased. Setting them to zero would
+    leave a positive noise pedestal across the aperture that pulls
+    the centroid toward the aperture center and inflates the measured
+    source size. The cost is that the image moments of a faint source
+    can be too noisy to define a shape. If the net flux within the
+    aperture is not positive, the ``'undefined_shape'`` flag is set.
+    If the second-order moments are not positive semidefinite, the
+    covariance-derived shape properties are NaN.
+
     The `flags` property reports quality conditions from both the
     "center"-method footprint and the ``sum_method`` footprint (see the
     `flags` docstring for the per-bit details).
