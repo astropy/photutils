@@ -366,8 +366,8 @@ def floor_covariance_eigvals(covariance, *, minimum):
     # lose precision for a highly elongated matrix. Its determinant can
     # overflow for huge variances. That gives a smaller eigenvalue that
     # is infinite or NaN, which compares false below, so the matrix is
-    # returned unchanged. The same holds for a matrix with a non-finite
-    # element.
+    # returned unchanged. A matrix with a non-finite element has a
+    # non-finite eigenvalue and is also returned unchanged.
     determinant = covariance_determinant(covariance)
     eig_min = covariance_min_eigval(covariance, determinant=determinant)
     eig_max = covariance_max_eigval(covariance)
@@ -382,8 +382,12 @@ def floor_covariance_eigvals(covariance, *, minimum):
     # minor axis is (eig_max * I - C) / (eig_max - eig_min), so adding
     # (minimum - eig_min) times the projector changes that eigenvalue
     # and keeps both eigenvectors. The three unique elements are updated
-    # directly, so the result is exactly symmetric.
-    idx = np.flatnonzero((eig_min < minimum) & (eig_max >= minimum))
+    # directly, so the result is exactly symmetric. An infinite
+    # off-diagonal element with a non-positive trace gives eigenvalues
+    # of negative and positive infinity, which pass the comparisons, so
+    # both eigenvalues must also be finite.
+    idx = np.flatnonzero((eig_min < minimum) & (eig_max >= minimum)
+                         & np.isfinite(eig_min) & np.isfinite(eig_max))
     eig_max = eig_max[idx]
     # Ignore floating-point errors from the overflow of a huge matrix
     # that is not positive semidefinite, whose eigenvalue difference can

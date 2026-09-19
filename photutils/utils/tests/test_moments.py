@@ -579,11 +579,17 @@ class TestFloorCovarianceEigvals:
         [[np.nan, 0.0], [0.0, 1.0]],
         [[np.inf, 0.0], [0.0, 0.01]],
         [[0.01, np.inf], [np.inf, 0.01]],
-        [[0.01, 0.0], [0.0, np.nan]]])
+        [[0.01, 0.0], [0.0, np.nan]],
+        [[0.0, np.inf], [np.inf, 0.0]],
+        [[0.0, -np.inf], [-np.inf, -1.0]],
+        [[-np.inf, 0.0], [0.0, 1.0]]])
     def test_non_finite_unchanged(self, covar):
         """
         Test that a matrix with a non-finite element is returned
         unchanged, without a warning.
+
+        An infinite off-diagonal element with a non-positive trace gives
+        eigenvalues of negative and positive infinity.
         """
         covar = np.array([covar, [[1.0, 0.0], [0.0, 0.01]]])
         floored = floor_covariance_eigvals(covar, minimum=PIXEL_VARIANCE)
