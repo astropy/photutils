@@ -31,6 +31,12 @@ has a SEP analogue ('none' and 'mask'):
    chain of measurements from a cold catalog against the same chain
    of SEP calls.
 
+3. Compares the two packages on a small scene of unresolved and thin
+   sources (``--which degenerate``), which the Gaussian scene does not
+   contain. The quantities that both packages define the same way
+   are checked strictly. The shape properties of singular sources
+   differ by design and are only printed (see below).
+
 SEP's ``segmap`` and positive ``seg_id`` inputs mask the pixels of
 neighboring sources, which corresponds to the photutils
 ``aperture_mask_method='mask'``; without them, neighboring sources
@@ -69,6 +75,18 @@ The following conventions make the two packages comparable:
 * The catalog has no ``background`` or ``wcs`` inputs, which have no
   SEP analogue.
 
+The two packages regularize a singular covariance matrix differently.
+SEP adds ``1/12`` to both variances when the determinant is below
+``0.00694``. ``SourceCatalog`` raises each eigenvalue to at least
+``1/12`` and keeps the eigenvectors. Both give a minor axis of
+``1/sqrt(12)`` for a source that SEP flags, but SEP also inflates the
+resolved major axis, and its determinant test misses a source whose
+minor-axis variance is below ``1/12`` while its determinant is not.
+The shape properties and centroid errors of singular sources therefore
+differ by design. The degenerate scene has no single-pixel segment
+because ``sep.extract`` returns invalid values for one when it is given
+an existing segmentation map (SEP 1.4.1).
+
 Requires the optional ``sep`` package. Run ``python
 benchmarks/bench_catalog_sep.py --help`` to see the available options.
 """
@@ -79,12 +97,14 @@ import time
 
 import astropy.units as u
 import numpy as np
+from astropy.modeling.models import Gaussian2D
 from astropy.stats import gaussian_fwhm_to_sigma
 from bench_helpers import print_environment, time_best
 from bench_segmentation import THRESHOLD, make_inputs
 from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.segmentation import SourceCatalog, make_2dgaussian_kernel
+from photutils.segmentation import (SEGMENTATION_FLAGS, SegmentationImage,
+                                    SourceCatalog, make_2dgaussian_kernel)
 
 try:
     import sep
@@ -104,6 +124,12 @@ SEP_RTOL = 1e-5
 SEP_ATOL = 1e-5
 FLUX_RADIUS_RTOL = 1e-2
 CENTROID_WIN_ATOL = 1e-5
+
+# The degenerate scene has unit errors, so this SEP threshold keeps
+# every segment pixel
+DEGENERATE_THRESHOLD = 0.1
+# The floored minor axis of a singular source in both packages
+MIN_SEMIMINOR_AXIS = np.sqrt(1.0 / 12.0)
 
 # The SourceCatalog properties that sep.extract also measures, in
 # the (name, SEP field) pairs used by the validation
@@ -707,6 +733,162 @@ def validate(scene, scenarios):
     return n_fail
 
 
+def make_degenerate_scene():
+    """
+    Make a small noiseless scene of unresolved and thin sources.
+
+    Returns
+    -------
+    scene : dict
+        The ``data``, ``error``, and int32 ``segm32`` arrays and the
+        source ``names`` in label order.
+    """
+    shape = (60, 200)
+    data = np.zeros(shape)
+    segm = np.zeros(shape, dtype=np.int32)
+    names = []
+
+    def add_source(name, pixels, values):
+        """
+        Add a source with the next label from its pixels and values.
+
+        Parameters
+        ----------
+        name : str
+            The source name.
+
+        pixels : list of tuple
+            The ``(y, x)`` pixel indices of the source segment.
+
+        values : list of float
+            The data value of each pixel.
+        """
+        names.append(name)
+        for (ypix, xpix), value in zip(pixels, values, strict=True):
+            data[ypix, xpix] = value
+            segm[ypix, xpix] = len(names)
+
+    profile = [10.0, 20.0, 40.0, 60.0, 80.0, 60.0, 40.0, 20.0, 10.0]
+    add_source('2 px horizontal', [(10, 30), (10, 31)], [50.0, 30.0])
+    add_source('2 px diagonal', [(10, 50), (11, 51)], [50.0, 30.0])
+    add_source('1x9 line', [(10, 70 + i) for i in range(9)], profile)
+    add_source('9 px line at 45 deg', [(5 + i, 95 + i) for i in range(9)],
+               profile)
+    add_source('2x2 block', [(10, 120), (10, 121), (11, 120), (11, 121)],
+               [50.0, 40.0, 30.0, 20.0])
+
+    # The minor-axis variance is below 1/12 but the determinant is
+    # above the SEP singularity limit
+    pixels = [(ypix, xpix) for ypix in (9, 10, 11) for xpix in (144, 145, 146)]
+    add_source('sharp 3x3', pixels,
+               [0.5, 4.0, 0.5, 10.0, 100.0, 10.0, 0.5, 4.0, 0.5])
+
+    yy, xx = np.mgrid[:shape[0], :shape[1]]
+    for name, model in (
+            ('thin tilted gaussian',
+             Gaussian2D(100.0, 170.4, 12.7, 0.3, 2.5, theta=0.5)),
+            ('resolved gaussian',
+             Gaussian2D(100.0, 30.2, 40.6, 3.0, 1.5, theta=0.7))):
+        image = model(xx, yy)
+        pixels = [tuple(idx) for idx in np.argwhere(image > 1.0)]
+        add_source(name, pixels, [image[idx] for idx in pixels])
+
+    return {'data': data, 'error': np.ones(shape), 'segm32': segm,
+            'names': names}
+
+
+def validate_degenerate():
+    """
+    Compare SourceCatalog with SEP on unresolved and thin sources.
+
+    The quantities that both packages define the same way are checked
+    strictly. The shape properties and centroid errors of singular
+    sources differ by design and are only printed.
+
+    Returns
+    -------
+    n_fail : int
+        The number of failed strict checks.
+    """
+    scene = make_degenerate_scene()
+    catalog = SourceCatalog(scene['data'],
+                            SegmentationImage(scene['segm32']),
+                            error=scene['error'])
+    objects, _ = sep.extract(scene['data'], DEGENERATE_THRESHOLD,
+                             err=scene['error'], filter_kernel=None,
+                             minarea=1, clean=False,
+                             segmentation_map=scene['segm32'])
+
+    singular = (catalog.flags & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE) > 0
+    sep_singular = (objects['flag'] & sep.OBJ_SINGU) > 0
+    either = singular | sep_singular
+
+    print('\n== Degenerate sources (unresolved and thin) ==')
+    print('\nStrict checks, all sources')
+    n_fail = 0
+    for name, field in (('x_centroid', 'x'), ('y_centroid', 'y'),
+                        ('segment_area', 'npix')):
+        ok = _check(name, property_values(catalog, name),
+                    sep_values(objects, field), rtol=SEP_RTOL,
+                    atol=SEP_ATOL)
+        n_fail += not ok
+
+    # Both packages floor the minor axis of a source that SEP flags
+    for label, values in (
+            ('minor-axis floor [phot]',
+             property_values(catalog, 'semiminor_axis')),
+            ('minor-axis floor [SEP]', sep_values(objects, 'b'))):
+        ok = _check(label, values[sep_singular],
+                    np.full(sep_singular.sum(), MIN_SEMIMINOR_AXIS),
+                    rtol=SEP_RTOL, atol=SEP_ATOL)
+        n_fail += not ok
+
+    # The SEP determinant test is implied by the minor-axis variance test
+    ok = bool(np.all(singular[sep_singular]))
+    print(f'  {"SEP singular => phot":26s} {"ok  " if ok else "FAIL"}  '
+          f'SEP flags {sep_singular.sum()}, photutils flags '
+          f'{singular.sum()} of {len(singular)}')
+    n_fail += not ok
+
+    print('\nStrict checks, sources that neither package flags as singular')
+    for name, field in ISOPHOTAL_PROPERTIES:
+        if name in ('x_centroid', 'y_centroid', 'segment_area'):
+            continue
+        ok = _check(name,
+                    property_values(catalog, name)[~either],
+                    sep_values(objects, field)[~either], rtol=SEP_RTOL,
+                    atol=SEP_ATOL)
+        n_fail += not ok
+
+    print('\nKnown differences for singular sources (informational; P = '
+          'photutils, S = SEP)')
+    columns = (('semimajor_axis', 'a', 'a'), ('semiminor_axis', 'b', 'b'),
+               ('covariance_xx', 'x2', 'cov_xx'),
+               ('covariance_yy', 'y2', 'cov_yy'),
+               ('covariance_xy', 'xy', 'cov_xy'),
+               ('x_centroid_err', 'errx2', 'x_err'),
+               ('y_centroid_err', 'erry2', 'y_err'))
+    header = f'  {"source":22s} {"flag":>5s}  ' + ''.join(
+        f'{label:>9s}' for _, _, label in columns)
+    print(header)
+    print('  ' + '-' * (len(header) - 2))
+    for idx in np.flatnonzero(either):
+        for tag, flagged, getter in (
+                ('P', singular, lambda name, _: property_values(catalog,
+                                                                name)),
+                ('S', sep_singular, lambda _, field: sep_values(objects,
+                                                                field))):
+            label = scene['names'][idx] if tag == 'P' else ''
+            row = ''.join(f'{getter(name, field)[idx]:9.4f}'
+                          for name, field, _ in columns)
+            print(f'  {label:22s} {tag} {"yes" if flagged[idx] else "no":>3s}'
+                  f'  {row}')
+
+    result = 'ALL PASS' if n_fail == 0 else f'{n_fail} FAILURE(S)'
+    print(f'\nDegenerate strict-check result: {result}')
+    return n_fail
+
+
 def time_step(make_fresh_catalog, step, *, prepare=None, repeats=3):
     """
     Return the best time of ``step`` on fresh catalogs whose
@@ -855,7 +1037,8 @@ def main():
                         help='random number generator seed '
                              '(default: %(default)s)')
     parser.add_argument('--which', default='all',
-                        choices=['all', 'validate', 'benchmark'],
+                        choices=['all', 'validate', 'degenerate',
+                                 'benchmark'],
                         help='which part to run (default: %(default)s)')
     args = parser.parse_args()
 
@@ -875,6 +1058,8 @@ def main():
     n_fail = 0
     if args.which in ('all', 'validate'):
         n_fail = validate(scene, scenarios)
+    if args.which in ('all', 'degenerate'):
+        n_fail += validate_degenerate()
     if args.which in ('all', 'benchmark'):
         benchmark(scene, scenarios, repeats=args.repeats)
 

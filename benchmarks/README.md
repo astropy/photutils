@@ -68,11 +68,21 @@ analogue (`'none'` and `'mask'`), the script:
   measurements from a cold catalog, reporting the photutils/SEP
   runtime ratio
 
+The script also compares the two packages on a small scene of
+unresolved and thin sources (`--which degenerate`), which the Gaussian
+scene does not contain. The centroids, the floored minor axis, and
+every property of the non-singular sources are checked strictly. The
+shape properties and centroid errors of singular sources differ by
+design, because `SourceCatalog` floors each covariance eigenvalue at
+`1/12` while SEP adds `1/12` to both variances, so they are only
+printed side by side.
+
 Requires the optional `sep` package.
 
 ```bash
 python benchmarks/bench_catalog_sep.py
 python benchmarks/bench_catalog_sep.py --which benchmark --n-sources 4000
+python benchmarks/bench_catalog_sep.py --which degenerate
 ```
 
 ## SourceCatalog cross-version validation (`validate_catalog_versions.py`)
