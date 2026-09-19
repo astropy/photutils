@@ -784,20 +784,21 @@ method::
 For `~photutils.aperture.ApertureStats`, the value statistics and
 the sum properties are measured on two different footprints, and
 the single :attr:`~photutils.aperture.ApertureStats.flags` property
-reports the quality conditions from both. The footprint-based flags
-(e.g., ``'masked_pixels'``, ``'non_finite_data'``, and the overlap
-flags) are evaluated on the union of the ``'center'``-method footprint
-used by the value statistics (e.g., ``mean``, ``median``, ``std``)
-and the ``sum_method`` footprint used by the sum properties (``sum``,
-``sum_err``, and ``sum_aper_area``). The ``'non_finite_error'``
-flag is evaluated on the ``sum_method`` footprint, while the
-``'sigma_clipped'``, ``'all_clipped'``, and ``'too_few_pixels'``
-flags are evaluated on the value-statistics footprint. The
-``'undefined_shape'`` and ``'singular_covariance'`` flags are always
-evaluated. Accessing ``flags`` computes the sum, moment, and covariance
-quantities if they have not already been computed (the results are
-cached and shared with the corresponding properties), so the flag values
-never depend on which properties were accessed first.
+reports the quality conditions from both. The footprint-based
+flags (e.g., ``'masked_pixels'``, ``'non_finite_data'``, and the
+overlap flags) are evaluated on the union of the ``'center'``-method
+footprint used by the value statistics (e.g., ``mean``, ``median``,
+``std``) and the ``sum_method`` footprint used by the sum
+properties (``sum``, ``sum_err``, and ``sum_aper_area``). The
+``'non_finite_error'`` flag is evaluated on the ``sum_method``
+footprint, while the ``'sigma_clipped'``, ``'all_clipped'``, and
+``'too_few_pixels'`` flags are evaluated on the value-statistics
+footprint. The ``'undefined_shape'``, ``'singular_covariance'``, and
+``'centroid_outside'`` flags are always evaluated. Accessing ``flags``
+computes the sum, moment, and covariance quantities if they have not
+already been computed (the results are cached and shared with the
+corresponding properties), so the flag values never depend on which
+properties were accessed first.
 
 Because non-finite values are automatically masked in
 both :class:`~photutils.aperture.AperturePhotometry` and
@@ -857,8 +858,12 @@ an aperture on background-subtracted data are negative about half of
 the time. Including them lets the positive and negative noise cancel
 on average, which keeps the centroid and the shape properties nearly
 unbiased. For a faint source the image moments can be too noisy to
-define a shape. In that case the ``'undefined_shape'`` flag is set or
-the covariance-derived shape properties are NaN.
+define a shape. The ``'undefined_shape'`` flag is set when the net
+flux is not positive or when the second-order moments are not positive
+semidefinite, in which case the covariance-derived shape properties are
+NaN. The centroid of such a source is not bounded by the aperture, and
+the ``'centroid_outside'`` flag is set when it lies outside the aperture
+bounding box.
 
 The input ``sum_method`` and ``subpixels`` keywords are used to
 determine the aperture-mask method only for the sum-related properties:

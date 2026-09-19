@@ -528,10 +528,12 @@ as:
 * sigma-clipped pixels within the aperture (``'sigma_clipped'``,
   ``'all_clipped'``) and too few pixels to compute a statistic
   (``'too_few_pixels'``) in `~photutils.aperture.ApertureStats`
-* sources whose net flux is not positive (``'undefined_shape'``)
-  or whose covariance matrix is singular or nearly singular
-  (``'singular_covariance'``), so that the centroid and shape
-  properties are undefined or unreliable, in
+* sources whose net flux is not positive or whose second-order
+  moments are not positive semidefinite (``'undefined_shape'``),
+  whose covariance matrix is singular or nearly singular
+  (``'singular_covariance'``), or whose centroid lies outside the
+  aperture bounding box (``'centroid_outside'``), so that the
+  centroid and shape properties are undefined or unreliable, in
   `~photutils.aperture.ApertureStats`
 
 The overlap flags are precise. They are based on the pixels with
@@ -1001,13 +1003,13 @@ The variance along each principal axis (each eigenvalue of the
 covariance matrix) is now raised to at least ``1/12`` while the
 orientation is kept. A resolved axis is not modified, and the result
 is a continuous function of the image moments. The sources that are
-regularized are exactly those with the ``singular_covariance`` flag,
-whose meaning is unchanged, apart from flagged sources whose
-second-order moments are not positive semidefinite, which have NaN
-shape properties. A source that is unresolved along both axes becomes
-isotropic with an orientation of zero. An exactly thin tilted source,
-whose covariance determinant is zero apart from rounding, is now
-regularized instead of having NaN shape properties.
+regularized are exactly those with the ``singular_covariance`` flag.
+Sources whose second-order moments are not positive semidefinite have
+NaN shape properties and the ``undefined_shape`` flag instead. A source
+that is unresolved along both axes becomes isotropic with an orientation
+of zero. An exactly thin tilted source, whose covariance determinant is
+zero apart from rounding, is now regularized instead of having NaN shape
+properties.
 
 PSF ``decode_flags`` Methods Return a Dictionary
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

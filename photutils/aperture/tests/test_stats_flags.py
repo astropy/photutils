@@ -10,7 +10,8 @@ import pytest
 from astropy.stats import SigmaClip
 from numpy.testing import assert_allclose, assert_array_equal
 
-from photutils.aperture import APERTURE_FLAGS, ApertureStats, CircularAperture
+from photutils.aperture import (APERTURE_FLAGS, ApertureStats, CircularAnnulus,
+                                CircularAperture)
 from photutils.aperture.tests.conftest import UNIT_SHAPE
 
 
@@ -668,6 +669,81 @@ class TestSingularCovariance:
         assert stats.flags == APERTURE_FLAGS.UNDEFINED_SHAPE
         assert np.isnan(stats.fwhm)
         assert_allclose(stats.centroid, (12.0, 12.0))
+
+
+class TestCentroidOutside:
+    """
+    Tests for the centroid_outside flag, which marks sources whose
+    centroid lies outside the aperture bounding box.
+    """
+
+    @staticmethod
+    def _make_data():
+        """
+        Make data with a small positive net flux from two pixels of
+        opposite sign, which puts the centroid far from both.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        data[12, 16] = 10.0
+        data[12, 8] = -9.9
+        return data
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_outside(self):
+        """
+        Test that a centroid far outside the aperture is flagged.
+        """
+        aper = CircularAperture((12.0, 12.0), r=6.0)
+        stats = ApertureStats(self._make_data(), aper)
+        assert stats.moments[0, 0] > 0
+        assert stats.centroid[0] > 100.0
+        assert (stats.flags & APERTURE_FLAGS.CENTROID_OUTSIDE) != 0
+        assert 'centroid_outside' in stats.decode_flags()[1]
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_array_and_guards(self):
+        """
+        Test an array of sources. A source with a centroid inside the
+        aperture and sources with a NaN centroid (zero flux or no
+        overlap) are not flagged.
+        """
+        data = self._make_data()
+        data[4, 20] = 50.0  # positive-flux source
+        aper = CircularAperture([(12.0, 12.0), (20.0, 4.0), (3.0, 21.0),
+                                 (-50.0, 12.0)], r=2.0)
+        aper0 = CircularAperture((12.0, 12.0), r=6.0)
+        assert (ApertureStats(data, aper0).flags
+                & APERTURE_FLAGS.CENTROID_OUTSIDE) != 0
+
+        stats = ApertureStats(data, aper)
+        outside = (stats.flags & APERTURE_FLAGS.CENTROID_OUTSIDE) != 0
+        assert_array_equal(outside, [False, False, False, False])
+        assert np.all(np.isnan(stats.centroid[[0, 2, 3]]))
+        assert_allclose(stats.centroid[1], (20.0, 4.0))
+
+    def test_bounding_box_edge(self):
+        """
+        Test that the bounding box includes the full extent of its edge
+        pixels.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        aper = CircularAperture([(12.0, 12.0)], r=3.0)
+        stats = ApertureStats(data, aper)
+        xmax = stats.bbox_xmax[0]
+        for xcen, expected in ((xmax + 0.49, False), (xmax + 0.51, True)):
+            stats = ApertureStats(data, aper)
+            stats.centroid = np.array([[xcen, 12.0]])
+            assert stats._centroid_outside_mask[0] == expected
+
+    def test_annulus_hole(self):
+        """
+        Test that a centroid in the hole of an annulus is not flagged.
+        """
+        data = np.ones(UNIT_SHAPE)
+        aper = CircularAnnulus((12.0, 12.0), r_in=4.0, r_out=8.0)
+        stats = ApertureStats(data, aper)
+        assert_allclose(stats.centroid, (12.0, 12.0))
+        assert (stats.flags & APERTURE_FLAGS.CENTROID_OUTSIDE) == 0
 
 
 class TestUndefinedShape:

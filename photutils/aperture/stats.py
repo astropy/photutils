@@ -2089,8 +2089,8 @@ class ApertureStats:
 
         These are the "center"-method footprint bits plus the sigma-clip
         and ``ddof`` bits. The `flags` property combines them with the
-        ``sum_method`` footprint bits and the ``undefined_shape`` and
-        ``singular_covariance`` bits.
+        ``sum_method`` footprint bits and the ``undefined_shape``,
+        ``singular_covariance``, and ``centroid_outside`` bits.
         """
         # The gather kernel and the center-method cutouts do not
         # evaluate error values, so the non-finite-error bit is stripped
@@ -2178,6 +2178,29 @@ class ApertureStats:
                                       determinant=self._raw_covariance_det)
 
     @cached_property
+    def _centroid_outside_mask(self):
+        """
+        Boolean mask (1D) marking sources whose centroid lies outside
+        the aperture bounding box.
+
+        The image moments include negative pixel values, so the
+        centroid is not bounded by the aperture when the net flux
+        is small compared to the noise. Sources with a non-finite
+        centroid are not flagged here. They are already reported by the
+        ``'undefined_shape'`` and overlap bits.
+        """
+        centroid = self._array('centroid')
+        # The inclusive integer pixel bounds span half a pixel beyond
+        # the first and last pixel centers.
+        xmin, xmax, ymin, ymax = np.transpose(self._bbox_bounds)
+        # A NaN centroid compares false
+        with np.errstate(invalid='ignore'):
+            return ((centroid[:, 0] < xmin - 0.5)
+                    | (centroid[:, 0] > xmax + 0.5)
+                    | (centroid[:, 1] < ymin - 0.5)
+                    | (centroid[:, 1] > ymax + 0.5))
+
+    @cached_property
     @_update_method_subpixels_docstring
     def flags(self):
         # numpydoc ignore: RT01
@@ -2191,8 +2214,9 @@ class ApertureStats:
         sum properties. The ``'non_finite_error'`` flag is evaluated
         on the ``sum_method`` footprint. The ``'sigma_clipped'``,
         ``'all_clipped'``, and ``'too_few_pixels'`` flags are evaluated
-        on the value-statistics footprint. The ``'undefined_shape'`` and
-        ``'singular_covariance'`` flags are always evaluated. Accessing
+        on the value-statistics footprint. The ``'undefined_shape'``,
+        ``'singular_covariance'``, and ``'centroid_outside'`` flags are
+        always evaluated. Accessing
         ``flags`` computes the moment and covariance properties if they
         have not already been computed (the results are cached and
         shared with the corresponding shape properties).
@@ -2209,6 +2233,8 @@ class ApertureStats:
             APERTURE_FLAGS.UNDEFINED_SHAPE)
         flags[self._singular_covariance_mask] |= (
             APERTURE_FLAGS.SINGULAR_COVARIANCE)
+        flags[self._centroid_outside_mask] |= (
+            APERTURE_FLAGS.CENTROID_OUTSIDE)
         return flags
 
     def decode_flags(self, *, return_bit_values=False):

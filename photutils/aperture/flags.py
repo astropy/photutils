@@ -191,6 +191,19 @@ class _ApertureFlags(FlagRegistry):
                                   'ill-defined and have been '
                                   'regularized.'),
         ),
+        FlagDefinition(
+            bit_value=16384,
+            name='centroid_outside',
+            description='centroid is outside the aperture bounding box',
+            detailed_description=('The ``centroid`` lies outside the '
+                                  'bounding box of the aperture. The '
+                                  'image moments include negative '
+                                  'pixel values, so the centroid is '
+                                  'not bounded by the aperture when '
+                                  'the net flux is small compared to '
+                                  'the noise. The centroid and the '
+                                  'shape properties are unreliable.'),
+        ),
     ]
 
     domain: ClassVar = 'aperture'
