@@ -2343,6 +2343,23 @@ def test_negative_covariance_eigvals(single_source_catalog):
     assert np.all(np.isnan(eigvals.value))
 
 
+def test_invalid_covariance_flag(single_source_catalog):
+    """
+    Test that a raw covariance matrix that is not positive semidefinite
+    sets the undefined_shape flag, not the singular_covariance flag,
+    and gives a NaN covariance.
+    """
+    data, segm, cat = single_source_catalog
+    assert not cat.flags[0] & SEGMENTATION_FLAGS.UNDEFINED_SHAPE
+
+    cat = SourceCatalog(data, segm)
+    # A covariance matrix with eigenvalues 3 and -1
+    cat.__dict__['_raw_covariance'] = np.array([[[1.0, 2.0], [2.0, 1.0]]])
+    assert cat.flags[0] & SEGMENTATION_FLAGS.UNDEFINED_SHAPE
+    assert not cat.flags[0] & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
+    assert np.all(np.isnan(cat.covariance))
+
+
 def test_partially_finite_covariance_eigvals(centroid_win_data):
     """
     Test that a covariance matrix with any non-finite element gives NaN

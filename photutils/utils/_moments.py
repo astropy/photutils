@@ -8,7 +8,8 @@ shape quantities derived from them.
 axis and the layout ``moments[:, i, j]`` equal to the sum of ``y**i *
 x**j``. The ``(0, 2)`` element is therefore the second moment along
 ``x`` and the ``(2, 0)`` element is the second moment along ``y``. The
-remaining functions take ``(N, 2, 2)`` covariance matrices.
+covariance functions take ``(N, 2, 2)`` covariance matrices, and
+`major_axis_angle` takes their ``(N,)`` elements.
 
 Array inputs with a leading source axis must have a floating-point
 dtype. They are not validated or converted. Every function returns a
@@ -247,6 +248,42 @@ def covariance_max_eigval(covariance):
                 + np.hypot(0.5 * (var_x - var_y), covariance[:, 0, 1]))
 
 
+def is_invalid_covariance(covariance, *, determinant):
+    """
+    Return a mask of sources whose raw covariance matrix is not positive
+    semidefinite.
+
+    A valid covariance is positive semidefinite (determinant and trace
+    both non-negative). A matrix that is not (e.g., from net-negative
+    flux weighting) does not describe a shape. The determinant of an
+    exactly thin source (a rank-1 matrix) is zero, but its computed
+    value can be slightly negative from rounding. A determinant is
+    therefore treated as negative only if it is below ``-PSD_RTOL``
+    times the squared trace.
+
+    Parameters
+    ----------
+    covariance : `~numpy.ndarray`
+        The ``(N, 2, 2)`` raw covariance matrices.
+
+    determinant : `~numpy.ndarray`
+        The ``(N,)`` determinants of ``covariance`` (see
+        `covariance_determinant`).
+
+    Returns
+    -------
+    mask : `~numpy.ndarray`
+        The ``(N,)`` boolean mask. Matrices with NaN elements are never
+        flagged.
+    """
+    # Ignore floating-point errors from non-finite values in the
+    # covariance and from the overflow of huge variances
+    with np.errstate(over='ignore', invalid='ignore'):
+        covar_trace = covariance[:, 0, 0] + covariance[:, 1, 1]
+        return ((determinant < -PSD_RTOL * covar_trace**2)
+                | (covar_trace < 0))
+
+
 def is_singular_covariance(covariance, *, determinant):
     """
     Return a mask of sources whose raw covariance matrix is singular or
@@ -255,12 +292,16 @@ def is_singular_covariance(covariance, *, determinant):
     A source is flagged when its minor-axis variance (the smaller
     eigenvalue of its raw, unregularized covariance matrix) is less than
     ``PIXEL_VARIANCE``, meaning that at least one axis is unresolved.
+
     This covers point-like sources, where both axes are unresolved,
     and thin sources that are unresolved along only one axis. A test
     of the determinant against ``PIXEL_VARIANCE**2`` is implied for a
-    symmetric matrix, because a determinant below that value requires
-    an eigenvalue below ``PIXEL_VARIANCE``. The mask is also true for a
-    covariance matrix that is not positive semidefinite.
+    symmetric matrix, because a determinant below that value requires an
+    eigenvalue below ``PIXEL_VARIANCE``. A covariance matrix that is not
+    positive semidefinite (see `is_invalid_covariance`) is not flagged.
+    It does not describe a shape, so it is set to NaN instead of being
+    regularized. The flagged sources are therefore exactly the ones that
+    `regularize_covariance` modifies and keeps finite.
 
     Parameters
     ----------
@@ -278,7 +319,8 @@ def is_singular_covariance(covariance, *, determinant):
         variance are never flagged.
     """
     min_eigval = covariance_min_eigval(covariance, determinant=determinant)
-    return min_eigval < PIXEL_VARIANCE
+    invalid = is_invalid_covariance(covariance, determinant=determinant)
+    return (min_eigval < PIXEL_VARIANCE) & ~invalid
 
 
 def floor_covariance_eigvals(covariance, *, minimum):
@@ -341,12 +383,16 @@ def floor_covariance_eigvals(covariance, *, minimum):
     # directly, so the result is exactly symmetric.
     idx = np.flatnonzero((eig_min < minimum) & (eig_max >= minimum))
     eig_max = eig_max[idx]
-    factor = (minimum[idx] - eig_min[idx]) / (eig_max - eig_min[idx])
-    covar_xy = factor * covariance[idx, 0, 1]
-    floored[idx, 0, 0] += factor * (eig_max - covariance[idx, 0, 0])
-    floored[idx, 1, 1] += factor * (eig_max - covariance[idx, 1, 1])
-    floored[idx, 0, 1] -= covar_xy
-    floored[idx, 1, 0] -= covar_xy
+    # Ignore floating-point errors from the overflow of a huge matrix
+    # that is not positive semidefinite, whose eigenvalue difference can
+    # exceed the largest finite value
+    with np.errstate(over='ignore', invalid='ignore'):
+        factor = (minimum[idx] - eig_min[idx]) / (eig_max - eig_min[idx])
+        covar_xy = factor * covariance[idx, 0, 1]
+        floored[idx, 0, 0] += factor * (eig_max - covariance[idx, 0, 0])
+        floored[idx, 1, 1] += factor * (eig_max - covariance[idx, 1, 1])
+        floored[idx, 0, 1] -= covar_xy
+        floored[idx, 1, 0] -= covar_xy
     return floored
 
 
@@ -355,13 +401,8 @@ def regularize_covariance(covariance, *, determinant):
     Regularize the raw covariance matrices of undefined and unresolved
     sources.
 
-    A valid covariance is positive semidefinite (determinant and trace
-    both non-negative). Any matrix that is not (e.g., from net-negative
-    flux weighting) has an undefined shape and is set to NaN. The
-    determinant of an exactly thin source (a rank-1 matrix) is zero, but
-    its computed value can be slightly negative from rounding. A
-    determinant is therefore treated as negative only if it is below
-    ``-PSD_RTOL`` times the squared trace.
+    A matrix that is not positive semidefinite (see
+    `is_invalid_covariance`) has an undefined shape and is set to NaN.
 
     The remaining finite matrices have each eigenvalue (the variance
     along a principal axis) raised to at least ``PIXEL_VARIANCE``, the
@@ -388,16 +429,10 @@ def regularize_covariance(covariance, *, determinant):
     regularized : `~numpy.ndarray`
         A new ``(N, 2, 2)`` array of regularized covariance matrices.
     """
-    # Ignore floating-point errors from non-finite values in the
-    # covariance and from the overflow of huge variances
-    with np.errstate(over='ignore', invalid='ignore'):
-        covar_trace = covariance[:, 0, 0] + covariance[:, 1, 1]
-        bad = ((determinant < -PSD_RTOL * covar_trace**2)
-               | (covar_trace < 0))
-
     # Matrices with a non-finite element are not changed by the floor
     covar = floor_covariance_eigvals(covariance, minimum=PIXEL_VARIANCE)
-    covar[bad] = np.nan
+    invalid = is_invalid_covariance(covariance, determinant=determinant)
+    covar[invalid] = np.nan
     return covar
 
 
@@ -405,6 +440,11 @@ def eigvals_from_covariance(covariance):
     """
     Compute the two eigenvalues of each covariance matrix in decreasing
     order.
+
+    The input is expected to be regularized (see
+    `regularize_covariance`). The smaller eigenvalue of a raw matrix
+    that is exactly singular can be slightly negative from rounding,
+    which gives NaN eigenvalues.
 
     Parameters
     ----------

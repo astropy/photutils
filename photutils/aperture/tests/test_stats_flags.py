@@ -639,14 +639,35 @@ class TestSingularCovariance:
 
     def test_not_positive_semidefinite(self):
         """
-        Test that a covariance matrix that is not positive semidefinite is
-        flagged as singular.
+        Test that a covariance matrix that is not positive semidefinite
+        is flagged as an undefined shape, not as singular, and gives NaN
+        shape properties.
         """
         stats = _stats_with_injected_covariance(cov_xx=1.0, cov_yy=1.0,
                                                 cov_xy=2.0)
         assert (1.0 * 1.0 - 2.0**2) < 0  # negative determinant
-        assert stats._singular_covariance_mask[0]
-        assert (stats.flags[0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+        assert not stats._singular_covariance_mask[0]
+        assert (stats.flags[0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) == 0
+        assert (stats.flags[0] & APERTURE_FLAGS.UNDEFINED_SHAPE) != 0
+        assert np.all(np.isnan(stats.covariance))
+
+    @pytest.mark.usefixtures('maybe_mask_path')
+    def test_not_positive_semidefinite_from_data(self):
+        """
+        Test a source with a positive net flux whose negative pixel
+        values make the x variance negative.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        data[12, 12] = 100.0
+        data[12, 8] = -20.0
+        data[12, 16] = -20.0
+        aper = CircularAperture((12.0, 12.0), r=6.0)
+        stats = ApertureStats(data, aper)
+        assert stats.moments[0, 0] > 0
+        assert stats._raw_covariance[0, 0, 0] < 0
+        assert stats.flags == APERTURE_FLAGS.UNDEFINED_SHAPE
+        assert np.isnan(stats.fwhm)
+        assert_allclose(stats.centroid, (12.0, 12.0))
 
 
 class TestUndefinedShape:

@@ -152,7 +152,8 @@ class _ApertureFlags(FlagRegistry):
         FlagDefinition(
             bit_value=4096,
             name='undefined_shape',
-            description='non-positive net flux (shape properties undefined)',
+            description=('non-positive net flux or invalid covariance '
+                         '(shape properties undefined)'),
             detailed_description=('The net flux within the aperture '
                                   '(the zeroth image moment of the '
                                   'unmasked "center"-method pixels) is '
@@ -160,7 +161,13 @@ class _ApertureFlags(FlagRegistry):
                                   'the covariance-derived shape '
                                   'properties (e.g., ``centroid``, '
                                   '``semimajor_axis``, ``orientation``)'
-                                  ' are undefined or unreliable. '
+                                  ' are undefined or unreliable. The '
+                                  'flag is also set when the '
+                                  'second-order moments are not '
+                                  'positive semidefinite (e.g., from '
+                                  'negative pixel values), in which '
+                                  'case the covariance-derived shape '
+                                  'properties are NaN. '
                                   'Fully masked sources have a zero '
                                   'net flux, so they are also '
                                   'flagged. Sources with no overlap '
@@ -181,10 +188,8 @@ class _ApertureFlags(FlagRegistry):
                                   'so covariance-derived shape '
                                   'properties (e.g., ``semimajor_axis``, '
                                   '``orientation``, ``eccentricity``) are '
-                                  'ill-defined and have been regularized. '
-                                  'They are instead set to NaN if the '
-                                  'covariance matrix is not positive '
-                                  'semidefinite.'),
+                                  'ill-defined and have been '
+                                  'regularized.'),
         ),
     ]
 

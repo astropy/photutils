@@ -55,6 +55,7 @@ from photutils.utils._moments import (centroid_from_moments,
                                       covariance_from_moments,
                                       eigvals_from_covariance, image_moments,
                                       inertia_tensor_from_moments,
+                                      is_invalid_covariance,
                                       is_singular_covariance,
                                       orientation_from_covariance,
                                       pixel_to_sky_covariance,
@@ -2117,17 +2118,21 @@ class ApertureStats:
     def _undefined_shape_mask(self):
         """
         Boolean mask (1D) marking sources whose net flux is not
-        positive.
+        positive or whose covariance matrix is not positive
+        semidefinite.
 
         The net flux is the zeroth image moment of the unmasked
         "center"-method pixels. When it is zero or negative, the
         centroid and the covariance-derived shape properties are
-        undefined or unreliable. A fully masked source has a zero net
+        undefined or unreliable. A source with a positive net flux
+        can still have second-order moments that are not positive
+        semidefinite (e.g., from negative pixel values), which
+        do not describe a shape. Its covariance-derived shape
+        properties are NaN. A fully masked source has a zero net
         flux, so it is also flagged, which matches the equivalent
-        `~photutils.segmentation.SourceCatalog` flag. Sources with
-        no overlap and fully sigma-clipped sources are not flagged
-        here. They are already reported by the overlap and clipping
-        bits.
+        `~photutils.segmentation.SourceCatalog` flag. Sources with no
+        overlap and fully sigma-clipped sources are not flagged here.
+        They are already reported by the overlap and clipping bits.
         """
         m00 = self._array('moments')[:, 0, 0]
         # NaN where a source has no valid pixels
@@ -2140,7 +2145,10 @@ class ApertureStats:
         flag_counts, _, _ = self._footprint_flag_inputs('center')
         all_masked = ((flag_counts[:, FLAG_COL_N_PIXELS] > 0)
                       & (flag_counts[:, FLAG_COL_VALID] == 0))
-        return non_positive | all_masked
+
+        invalid = is_invalid_covariance(
+            self._raw_covariance, determinant=self._raw_covariance_det)
+        return non_positive | all_masked | invalid
 
     @cached_property
     def _singular_covariance_mask(self):
@@ -2160,9 +2168,11 @@ class ApertureStats:
         determinant and are not flagged here. They are already reported
         by the overlap and masking bits.
 
-        These sources get the ``'singular_covariance'`` flag. Their
-        covariance is regularized, or set to NaN if it is not positive
-        semidefinite.
+        These sources get the ``'singular_covariance'`` flag, and they
+        are exactly the ones whose covariance is regularized. A source
+        whose covariance is not positive semidefinite is not flagged
+        here. Its covariance is NaN and it gets the
+        ``'undefined_shape'`` flag instead.
         """
         return is_singular_covariance(self._raw_covariance,
                                       determinant=self._raw_covariance_det)

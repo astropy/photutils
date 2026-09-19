@@ -19,6 +19,7 @@ from photutils.utils._moments import (PIXEL_VARIANCE, PSD_RTOL,
                                       eigvals_from_covariance,
                                       floor_covariance_eigvals, image_moments,
                                       inertia_tensor_from_moments,
+                                      is_invalid_covariance,
                                       is_singular_covariance, major_axis_angle,
                                       orientation_from_covariance,
                                       pixel_to_sky_covariance,
@@ -380,13 +381,13 @@ class TestIsSingularCovariance:
 
         The elongated source 3 has a determinant above ``(1/12)**2`` and
         is flagged only by its minor-axis variance. The source 4 is not
-        positive semidefinite. The partially non-finite source 5 is not
-        flagged.
+        positive semidefinite, so it is invalid instead of singular. The
+        partially non-finite source 5 is not flagged.
         """
         det = covariance_determinant(covariances)
         mask = is_singular_covariance(covariances, determinant=det)
         assert mask.dtype == bool
-        assert_equal(mask, [False, True, True, True, True, False])
+        assert_equal(mask, [False, True, True, True, False, False])
 
     def test_threshold(self):
         """
@@ -398,21 +399,11 @@ class TestIsSingularCovariance:
         mask = is_singular_covariance(covar, determinant=det)
         assert_equal(mask, [True, False])
 
-    def test_infinite_determinant(self):
-        """
-        Test that a matrix that is not positive semidefinite is flagged
-        when its determinant overflows to negative infinity.
-        """
-        covar = np.array([[[1e200, 1e200], [1e200, -1e200]]])
-        det = covariance_determinant(covar)
-        assert det[0] == -np.inf
-        mask = is_singular_covariance(covar, determinant=det)
-        assert_equal(mask, [True])
-
     def test_includes_determinant_test(self):
         """
         Test that every symmetric matrix with a determinant below
-        ``PIXEL_VARIANCE**2`` is flagged.
+        ``PIXEL_VARIANCE**2`` is flagged as singular or as invalid, and
+        never as both.
         """
         rng = np.random.default_rng(3)
         covar = rng.normal(scale=0.3, size=(5000, 2, 2))
@@ -420,8 +411,80 @@ class TestIsSingularCovariance:
         det = covariance_determinant(covar)
         small_det = det < PIXEL_VARIANCE**2
         assert 0 < np.count_nonzero(small_det) < len(det)
-        mask = is_singular_covariance(covar, determinant=det)
-        assert np.all(mask[small_det])
+        singular = is_singular_covariance(covar, determinant=det)
+        invalid = is_invalid_covariance(covar, determinant=det)
+        assert np.any(singular)
+        assert np.any(invalid)
+        assert not np.any(singular & invalid)
+        assert np.all((singular | invalid)[small_det])
+
+
+class TestIsInvalidCovariance:
+    """
+    Tests for is_invalid_covariance.
+    """
+
+    def test_values(self, covariances):
+        """
+        Test that only the source 4, which is not positive semidefinite,
+        is flagged.
+
+        The singular sources 1 to 3 are valid, and the partially
+        non-finite source 5 is not flagged.
+        """
+        det = covariance_determinant(covariances)
+        mask = is_invalid_covariance(covariances, determinant=det)
+        assert mask.dtype == bool
+        assert_equal(mask, [False, False, False, False, True, False])
+
+    def test_negative_trace(self):
+        """
+        Test that a negative definite matrix, whose determinant is
+        positive, is flagged by its trace.
+        """
+        covar = np.array([[[-1.0, 0.0], [0.0, -2.0]]])
+        det = covariance_determinant(covar)
+        assert det[0] > 0
+        assert_equal(is_invalid_covariance(covar, determinant=det), [True])
+
+    def test_infinite_determinant(self):
+        """
+        Test that a matrix that is not positive semidefinite is flagged
+        as invalid, and not as singular, when its determinant overflows
+        to negative infinity.
+        """
+        covar = np.array([[[1e200, 1e200], [1e200, -1e200]]])
+        det = covariance_determinant(covar)
+        assert det[0] == -np.inf
+        assert_equal(is_invalid_covariance(covar, determinant=det), [True])
+        assert_equal(is_singular_covariance(covar, determinant=det), [False])
+
+    def test_rank_one_rounding(self):
+        """
+        Test that an exactly thin tilted matrix is valid even when its
+        computed determinant is slightly negative.
+        """
+        rng = np.random.default_rng(5)
+        vec = rng.normal(size=(2000, 2)) * rng.uniform(0.1, 1e3, (2000, 1))
+        covar = vec[:, :, np.newaxis] * vec[:, np.newaxis, :]
+        det = covariance_determinant(covar)
+        assert np.any(det < 0)
+        assert not np.any(is_invalid_covariance(covar, determinant=det))
+        assert np.all(is_singular_covariance(covar, determinant=det))
+
+    def test_matches_regularized_nan(self):
+        """
+        Test that the invalid matrices are exactly the finite ones that
+        regularize_covariance sets to NaN.
+        """
+        rng = np.random.default_rng(6)
+        covar = rng.normal(scale=0.5, size=(5000, 2, 2))
+        covar[:, 1, 0] = covar[:, 0, 1]
+        det = covariance_determinant(covar)
+        invalid = is_invalid_covariance(covar, determinant=det)
+        reg = regularize_covariance(covar, determinant=det)
+        assert 0 < np.count_nonzero(invalid) < len(det)
+        assert_equal(np.isnan(reg).all(axis=(1, 2)), invalid)
 
 
 class TestFloorCovarianceEigvals:
@@ -526,6 +589,22 @@ class TestFloorCovarianceEigvals:
         floored = floor_covariance_eigvals(covar, minimum=PIXEL_VARIANCE)
         assert_equal(floored[0], covar[0])
         assert_allclose(floored[1], [[1.0, 0.0], [0.0, PIXEL_VARIANCE]])
+
+    @pytest.mark.parametrize('covar', [
+        [[1e308, 0.0], [0.0, -1e308]],
+        [[0.0, 1e308], [1e308, 0.0]]])
+    def test_overflow_indefinite(self, covar):
+        """
+        Test that a huge matrix that is not positive semidefinite, whose
+        eigenvalue difference overflows, does not emit a warning and is
+        set to NaN by the regularization.
+        """
+        covar = np.array([covar])
+        floored = floor_covariance_eigvals(covar, minimum=PIXEL_VARIANCE)
+        assert floored.shape == covar.shape
+        det = covariance_determinant(covar)
+        reg = regularize_covariance(covar, determinant=det)
+        assert np.all(np.isnan(reg))
 
     def test_overflow_thin(self):
         """
@@ -691,14 +770,15 @@ class TestRegularizeCovariance:
     def test_modified_matches_singular_mask(self):
         """
         Test that the regularization modifies exactly the matrices
-        selected by is_singular_covariance.
+        selected by is_singular_covariance and is_invalid_covariance.
 
-        The mask sets the ``'singular_covariance'`` flag but is not
-        passed to regularize_covariance, so this pins that the two use
-        the same criterion. The random symmetric matrices include ones
-        that are not positive semidefinite, which are selected by the
-        mask and set to NaN. Most have a minor-axis variance close to
-        ``PIXEL_VARIANCE``.
+        The masks set the ``'singular_covariance'`` and
+        ``'undefined_shape'`` flags but are not passed to
+        regularize_covariance, so this pins that they use the same
+        criteria. The singular matrices stay finite. The random
+        symmetric matrices include ones that are not positive
+        semidefinite, which are invalid and set to NaN. Most have a
+        minor-axis variance close to ``PIXEL_VARIANCE``.
         """
         rng = np.random.default_rng(4)
         n_matrices = 20000
@@ -714,12 +794,15 @@ class TestRegularizeCovariance:
         covar[:, 1, 0] = covar[:, 0, 1]
 
         det = covariance_determinant(covar)
-        mask = is_singular_covariance(covar, determinant=det)
+        singular = is_singular_covariance(covar, determinant=det)
+        invalid = is_invalid_covariance(covar, determinant=det)
         reg = regularize_covariance(covar, determinant=det)
         modified = np.any(reg != covar, axis=(1, 2))
-        assert 0 < np.count_nonzero(mask) < n_matrices
-        assert np.any(np.isnan(reg))
-        assert_equal(modified, mask)
+        assert 0 < np.count_nonzero(singular) < n_matrices
+        assert np.any(invalid)
+        assert_equal(modified, singular | invalid)
+        assert np.all(np.isfinite(reg[singular]))
+        assert np.all(np.isnan(reg[invalid]))
 
     def test_idempotent(self, covariances):
         """

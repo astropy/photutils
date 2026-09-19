@@ -61,6 +61,7 @@ from photutils.utils._moments import (PIXEL_VARIANCE, centroid_from_moments,
                                       eigvals_from_covariance,
                                       floor_covariance_eigvals,
                                       inertia_tensor_from_moments,
+                                      is_invalid_covariance,
                                       is_singular_covariance,
                                       orientation_from_covariance,
                                       pixel_to_sky_covariance,
@@ -2046,6 +2047,15 @@ class SourceCatalog:
         m00 = self._array('moments')[:, 0, 0]
         flags[~(m00 > 0)] |= SEGMENTATION_FLAGS.UNDEFINED_SHAPE
 
+        # Covariance matrix that is not positive semidefinite. The
+        # covariance-derived shape properties are NaN. This matches
+        # the equivalent aperture flag. It is not expected here because
+        # negative (convolved) data values are set to zero in the image
+        # moments.
+        invalid = is_invalid_covariance(
+            self._raw_covariance, determinant=self._raw_covariance_det)
+        flags[invalid] |= SEGMENTATION_FLAGS.UNDEFINED_SHAPE
+
         # Singular, nearly singular, or rank-1 degenerate source
         # covariance, evaluated on the raw (unregularized) covariance
         # matrix
@@ -3872,9 +3882,12 @@ class SourceCatalog:
         sources and thin sources that are unresolved along only one
         axis. Sources with a NaN covariance are not flagged.
 
-        These sources get the ``'singular_covariance'`` flag. Their
-        covariance is regularized, or set to NaN if it is not positive
-        semidefinite. The flag matches the equivalent aperture flag (see
+        These sources get the ``'singular_covariance'`` flag,
+        and they are exactly the ones whose covariance is
+        regularized. A source whose covariance is not positive
+        semidefinite is not flagged here. Its covariance is NaN
+        and it gets the ``'undefined_shape'`` flag instead.
+        The flag matches the equivalent aperture flag (see
         `~photutils.aperture.decode_aperture_flags`).
         """
         return is_singular_covariance(self._raw_covariance,

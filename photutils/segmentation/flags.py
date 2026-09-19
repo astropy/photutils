@@ -123,8 +123,8 @@ class _SegmentationFlags(FlagRegistry):
         FlagDefinition(
             bit_value=256,
             name='undefined_shape',
-            description=('non-positive net flux (shape properties '
-                         'undefined)'),
+            description=('non-positive net flux or invalid covariance '
+                         '(shape properties undefined)'),
             detailed_description=('The net source flux (the zeroth '
                                   'image moment over the source '
                                   'segment) is not positive, so the '
@@ -133,7 +133,12 @@ class _SegmentationFlags(FlagRegistry):
                                   'properties (e.g., ``centroid``, '
                                   '``semimajor_axis``, '
                                   '``orientation``) are undefined or '
-                                  'unreliable. Fully masked sources '
+                                  'unreliable. The flag is also set '
+                                  'when the second-order moments are '
+                                  'not positive semidefinite, in '
+                                  'which case the covariance-derived '
+                                  'shape properties are NaN. '
+                                  'Fully masked sources '
                                   'have a zero net flux, so they are '
                                   'also flagged.'),
         ),
@@ -154,9 +159,7 @@ class _SegmentationFlags(FlagRegistry):
                                   '``orientation``, '
                                   '``eccentricity``) are '
                                   'ill-defined and have been '
-                                  'regularized. They are instead set '
-                                  'to NaN if the covariance matrix '
-                                  'is not positive semidefinite.'),
+                                  'regularized.'),
         ),
         FlagDefinition(
             bit_value=1024,
