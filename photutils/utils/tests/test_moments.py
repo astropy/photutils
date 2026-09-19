@@ -294,16 +294,14 @@ class TestCovarianceMinEigval:
         below zero depends on the platform.
         """
         rng = np.random.default_rng(2)
-        var = rng.uniform(0.01, 100.0, size=1000)
-        cross = var * rng.uniform(-1e-9, 1e-9, size=1000)
+        var_x = rng.uniform(0.01, 100.0, size=1000)
+        var_y = var_x * (1.0 + rng.uniform(-1e-9, 1e-9, size=1000))
         covar = np.zeros((1000, 2, 2))
-        covar[:, 0, 0] = var
-        covar[:, 1, 1] = var
-        covar[:, 0, 1] = cross
-        covar[:, 1, 0] = cross
+        covar[:, 0, 0] = var_x
+        covar[:, 1, 1] = var_y
         det = covariance_determinant(covar)
         min_eig = covariance_min_eigval(covar, determinant=det)
-        assert_allclose(min_eig, var)
+        assert_allclose(min_eig, np.minimum(var_x, var_y), rtol=1e-7)
 
     def test_non_positive_trace(self):
         """
