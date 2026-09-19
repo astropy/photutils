@@ -2336,24 +2336,17 @@ def test_negative_covariance_eigvals(single_source_catalog):
     """
     _data, _segm, cat = single_source_catalog
 
-    # Patch np.linalg.eigvalsh to return negative eigenvalues
-    real_eigvalsh = np.linalg.eigvalsh
-
-    def mock_eigvalsh(a):
-        result = real_eigvalsh(a)
-        result[:] = -1.0  # force negative eigenvalues
-        return result
-
-    with patch('numpy.linalg.eigvalsh', mock_eigvalsh):
-        eigvals = cat.covariance_eigvals
+    # A covariance matrix with eigenvalues 3 and -1
+    covar = np.array([[[1.0, 2.0], [2.0, 1.0]]])
+    cat.__dict__['_covariance'] = covar
+    eigvals = cat.covariance_eigvals
     assert np.all(np.isnan(eigvals.value))
 
 
 def test_partially_finite_covariance_eigvals(centroid_win_data):
     """
-    Test that a covariance matrix with any non-finite element is
-    excluded from the eigenvalue solve and gives NaN eigenvalues, while
-    wholly finite matrices are unaffected.
+    Test that a covariance matrix with any non-finite element gives NaN
+    eigenvalues, while wholly finite matrices are unaffected.
     """
     data, segm, _convolved_data = centroid_win_data
     cat = SourceCatalog(data, segm)

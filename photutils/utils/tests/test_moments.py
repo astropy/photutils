@@ -14,11 +14,12 @@ from photutils.utils._moments import (PIXEL_VARIANCE, PSD_RTOL,
                                       centroid_from_moments,
                                       covariance_determinant,
                                       covariance_from_moments,
+                                      covariance_max_eigval,
                                       covariance_min_eigval,
                                       eigvals_from_covariance,
                                       floor_covariance_eigvals, image_moments,
                                       inertia_tensor_from_moments,
-                                      is_singular_covariance,
+                                      is_singular_covariance, major_axis_angle,
                                       orientation_from_covariance,
                                       pixel_to_sky_covariance,
                                       regularize_covariance,
@@ -335,6 +336,39 @@ class TestCovarianceMinEigval:
         assert_allclose(min_eig, [0.01], rtol=1e-12)
 
 
+class TestCovarianceMaxEigval:
+    """
+    Tests for covariance_max_eigval.
+    """
+
+    def test_values(self, covariances):
+        """
+        Test the closed-form larger eigenvalue, including NaN
+        propagation.
+        """
+        eig_max = covariance_max_eigval(covariances)
+        assert eig_max.shape == (6,)
+        assert_allclose(eig_max[:5], [4.0, 0.0, 4.0, 4.0, 3.0])
+        assert np.isnan(eig_max[5])
+
+    def test_matches_eigvalsh(self):
+        """
+        Test random symmetric matrices against np.linalg.eigvalsh.
+        """
+        rng = np.random.default_rng(0)
+        arr = rng.normal(size=(200, 2, 2))
+        covar = arr @ arr.transpose(0, 2, 1)
+        expected = np.linalg.eigvalsh(covar)[:, 1]
+        assert_allclose(covariance_max_eigval(covar), expected, rtol=1e-13)
+
+    def test_no_overflow(self):
+        """
+        Test that huge variances do not overflow.
+        """
+        covar = np.array([[[1e300, 0.0], [0.0, 1e290]]])
+        assert_allclose(covariance_max_eigval(covar), 1e300)
+
+
 class TestIsSingularCovariance:
     """
     Tests for is_singular_covariance.
@@ -477,6 +511,21 @@ class TestFloorCovarianceEigvals:
         covar = np.array([covar])
         floored = floor_covariance_eigvals(covar, minimum=PIXEL_VARIANCE)
         assert_equal(floored, covar)
+
+    @pytest.mark.parametrize('covar', [
+        [[np.nan, 0.0], [0.0, 1.0]],
+        [[np.inf, 0.0], [0.0, 0.01]],
+        [[0.01, np.inf], [np.inf, 0.01]],
+        [[0.01, 0.0], [0.0, np.nan]]])
+    def test_non_finite_unchanged(self, covar):
+        """
+        Test that a matrix with a non-finite element is returned
+        unchanged, without a warning.
+        """
+        covar = np.array([covar, [[1.0, 0.0], [0.0, 0.01]]])
+        floored = floor_covariance_eigvals(covar, minimum=PIXEL_VARIANCE)
+        assert_equal(floored[0], covar[0])
+        assert_allclose(floored[1], [[1.0, 0.0], [0.0, PIXEL_VARIANCE]])
 
     def test_overflow_thin(self):
         """
@@ -716,6 +765,61 @@ class TestCovarianceEigvals:
         eigvals = eigvals_from_covariance(np.full((2, 2, 2), np.nan))
         assert eigvals.shape == (2, 2)
         assert np.all(np.isnan(eigvals))
+
+    def test_matches_eigvalsh(self):
+        """
+        Test random positive definite matrices, including highly
+        elongated ones, against np.linalg.eigvalsh.
+        """
+        rng = np.random.default_rng(0)
+        arr = rng.normal(size=(200, 2, 2))
+        arr[::2, :, 1] *= 1e-6
+        covar = arr @ arr.transpose(0, 2, 1) + 1e-13 * np.eye(2)
+        expected = np.fliplr(np.linalg.eigvalsh(covar))
+        eigvals = eigvals_from_covariance(covar)
+        assert_allclose(eigvals[:, 0], expected[:, 0], rtol=1e-13)
+        # The closed form is limited only by the determinant rounding
+        atol = 10.0 * np.finfo(float).eps * expected[:, 0]
+        assert np.all(np.abs(eigvals[:, 1] - expected[:, 1]) <= atol)
+
+    def test_infinite_element(self):
+        """
+        Test that an infinite element gives NaN eigenvalues, without a
+        warning.
+        """
+        covar = np.array([[[np.inf, 0.0], [0.0, 1.0]],
+                          [[1.0, np.inf], [np.inf, 1.0]],
+                          [[np.inf, 0.0], [0.0, np.inf]]])
+        assert np.all(np.isnan(eigvals_from_covariance(covar)))
+
+    def test_determinant_overflow(self):
+        """
+        Test that both eigenvalues are accurate when the determinant
+        overflows.
+        """
+        covar = np.array([[[1e200, 0.0], [0.0, 1e190]],
+                          [[2e200, 1e200], [1e200, 2e200]]])
+        assert_allclose(eigvals_from_covariance(covar),
+                        [[1e200, 1e190], [3e200, 1e200]], rtol=1e-14)
+
+    def test_zero_matrix(self):
+        """
+        Test that an all-zero matrix has zero eigenvalues.
+        """
+        eigvals = eigvals_from_covariance(np.zeros((1, 2, 2)))
+        assert_equal(eigvals, [[0.0, 0.0]])
+
+
+def test_major_axis_angle():
+    """
+    Test the angle convention, the isotropic case, and NaN propagation.
+    """
+    var_a = np.array([4.0, 1.0, 1.0, 1.0, 1.0, np.inf])
+    var_b = np.array([1.0, 4.0, 1.0, 1.0, 1.0, np.inf])
+    covar_ab = np.array([0.0, 0.0, 0.5, -0.5, 0.0, 0.0])
+    angle = major_axis_angle(var_a, var_b, covar_ab)
+    assert_allclose(angle[:5], [0.0, 90.0, 45.0, -45.0, 0.0])
+    assert np.isnan(angle[5])
 
 
 def test_orientation_from_covariance(covariances):

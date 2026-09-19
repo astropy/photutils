@@ -89,7 +89,7 @@ def centroid_from_moments(moments):
         non-finite values.
     """
     # Ignore divide-by-zero floating-point errors
-    with np.errstate(all='ignore'):
+    with np.errstate(divide='ignore', invalid='ignore'):
         y_centroid = moments[:, 1, 0] / moments[:, 0, 0]
         x_centroid = moments[:, 0, 1] / moments[:, 0, 0]
     return np.transpose((x_centroid, y_centroid))
@@ -138,7 +138,7 @@ def covariance_from_moments(moments_central):
         elements.
     """
     # Ignore divide-by-zero floating-point errors
-    with np.errstate(all='ignore'):
+    with np.errstate(divide='ignore', invalid='ignore'):
         mu_norm = (moments_central
                    / moments_central[:, 0, 0][:, np.newaxis, np.newaxis])
     covar = np.array([mu_norm[:, 0, 2], mu_norm[:, 1, 1],
@@ -167,8 +167,8 @@ def covariance_determinant(covariance):
         The ``(N,)`` determinants. Matrices with NaN elements give NaN.
     """
     # Ignore floating-point errors from non-finite values in the
-    # covariance
-    with np.errstate(all='ignore'):
+    # covariance and from the overflow of huge variances
+    with np.errstate(over='ignore', invalid='ignore'):
         return (covariance[:, 0, 0] * covariance[:, 1, 1]
                 - covariance[:, 0, 1] * covariance[:, 1, 0])
 
@@ -207,14 +207,44 @@ def covariance_min_eigval(covariance, *, determinant):
         The ``(N,)`` smaller eigenvalues (the minor-axis variances).
         Matrices with NaN elements give NaN.
     """
-    # Ignore floating-point errors from NaN values in the covariance
-    with np.errstate(all='ignore'):
+    # Ignore floating-point errors from non-finite values in the
+    # covariance and from the unused branch of the np.where call
+    with np.errstate(divide='ignore', over='ignore', invalid='ignore'):
         var_x = covariance[:, 0, 0]
         var_y = covariance[:, 1, 1]
         half_trace = 0.5 * (var_x + var_y)
         root = np.hypot(0.5 * (var_x - var_y), covariance[:, 0, 1])
         return np.where(half_trace > 0, determinant / (half_trace + root),
                         half_trace - root)
+
+
+def covariance_max_eigval(covariance):
+    """
+    Compute the larger eigenvalue of each symmetric ``(2, 2)``
+    covariance matrix.
+
+    The closed form ``tr/2 + root`` is used (see
+    `covariance_min_eigval`). It has no cancellation and does not use
+    the determinant, which can overflow for huge variances.
+
+    Parameters
+    ----------
+    covariance : `~numpy.ndarray`
+        The ``(N, 2, 2)`` covariance matrices.
+
+    Returns
+    -------
+    max_eigval : `~numpy.ndarray`
+        The ``(N,)`` larger eigenvalues (the major-axis variances).
+        Matrices with NaN elements give NaN.
+    """
+    # Ignore floating-point errors from non-finite values in the
+    # covariance
+    with np.errstate(over='ignore', invalid='ignore'):
+        var_x = covariance[:, 0, 0]
+        var_y = covariance[:, 1, 1]
+        return (0.5 * (var_x + var_y)
+                + np.hypot(0.5 * (var_x - var_y), covariance[:, 0, 1]))
 
 
 def is_singular_covariance(covariance, *, determinant):
@@ -270,9 +300,8 @@ def floor_covariance_eigvals(covariance, *, minimum):
     Parameters
     ----------
     covariance : `~numpy.ndarray`
-        The ``(N, 2, 2)`` symmetric matrices. Every element must be
-        finite, and the array must have a floating-point dtype. This
-        array is not modified.
+        The ``(N, 2, 2)`` symmetric matrices. The array must have a
+        floating-point dtype. This array is not modified.
 
     minimum : float or `~numpy.ndarray`
         The minimum eigenvalue, either a scalar or an ``(N,)`` array
@@ -282,43 +311,42 @@ def floor_covariance_eigvals(covariance, *, minimum):
     -------
     floored : `~numpy.ndarray`
         A new ``(N, 2, 2)`` array. Matrices whose eigenvalues all reach
-        the minimum are returned unchanged.
+        the minimum are returned unchanged, as are matrices with any
+        non-finite element.
     """
     floored = covariance.copy()
 
     # Eigenvalues of each symmetric 2x2 matrix in closed form, which
     # avoids the per-matrix overhead of a general solver. The smaller
     # eigenvalue comes from `covariance_min_eigval`, which does not
-    # lose precision for a highly elongated matrix. The larger one does
-    # not use the determinant, which can overflow for huge variances.
-    # Ignore floating-point errors from such an overflow. It gives a
-    # smaller eigenvalue that is infinite or NaN, which compares false
-    # below, so the matrix is returned unchanged.
-    with np.errstate(all='ignore'):
-        var_x = covariance[:, 0, 0]
-        var_y = covariance[:, 1, 1]
-        determinant = covariance_determinant(covariance)
-        eig_min = covariance_min_eigval(covariance,
-                                        determinant=determinant)
-        eig_max = (0.5 * (var_x + var_y)
-                   + np.hypot(0.5 * (var_x - var_y), covariance[:, 0, 1]))
+    # lose precision for a highly elongated matrix. Its determinant can
+    # overflow for huge variances. That gives a smaller eigenvalue that
+    # is infinite or NaN, which compares false below, so the matrix is
+    # returned unchanged. The same holds for a matrix with a non-finite
+    # element.
+    determinant = covariance_determinant(covariance)
+    eig_min = covariance_min_eigval(covariance, determinant=determinant)
+    eig_max = covariance_max_eigval(covariance)
     minimum = np.broadcast_to(minimum, eig_min.shape)
 
     # A matrix with both eigenvalues below the minimum becomes exactly
     # isotropic.
-    isotropic = eig_max < minimum
-    floored[isotropic] = (minimum[isotropic, np.newaxis, np.newaxis]
-                          * np.eye(2))
+    idx = np.flatnonzero(eig_max < minimum)
+    floored[idx] = minimum[idx, np.newaxis, np.newaxis] * np.eye(2)
 
     # Otherwise raise only the smaller eigenvalue. The projector onto the
     # minor axis is (eig_max * I - C) / (eig_max - eig_min), so adding
     # (minimum - eig_min) times the projector changes that eigenvalue
-    # and keeps both eigenvectors. The result is exactly symmetric.
-    idx = np.flatnonzero((eig_min < minimum) & ~isotropic)
-    factor = (minimum[idx] - eig_min[idx]) / (eig_max[idx] - eig_min[idx])
-    minor_axis = (eig_max[idx, np.newaxis, np.newaxis] * np.eye(2)
-                  - covariance[idx])
-    floored[idx] += factor[:, np.newaxis, np.newaxis] * minor_axis
+    # and keeps both eigenvectors. The three unique elements are updated
+    # directly, so the result is exactly symmetric.
+    idx = np.flatnonzero((eig_min < minimum) & (eig_max >= minimum))
+    eig_max = eig_max[idx]
+    factor = (minimum[idx] - eig_min[idx]) / (eig_max - eig_min[idx])
+    covar_xy = factor * covariance[idx, 0, 1]
+    floored[idx, 0, 0] += factor * (eig_max - covariance[idx, 0, 0])
+    floored[idx, 1, 1] += factor * (eig_max - covariance[idx, 1, 1])
+    floored[idx, 0, 1] -= covar_xy
+    floored[idx, 1, 0] -= covar_xy
     return floored
 
 
@@ -360,17 +388,16 @@ def regularize_covariance(covariance, *, determinant):
     regularized : `~numpy.ndarray`
         A new ``(N, 2, 2)`` array of regularized covariance matrices.
     """
-    covar = covariance.copy()
-    # Ignore floating-point errors from NaN values in the covariance
-    with np.errstate(all='ignore'):
-        covar_trace = covar[:, 0, 0] + covar[:, 1, 1]
+    # Ignore floating-point errors from non-finite values in the
+    # covariance and from the overflow of huge variances
+    with np.errstate(over='ignore', invalid='ignore'):
+        covar_trace = covariance[:, 0, 0] + covariance[:, 1, 1]
         bad = ((determinant < -PSD_RTOL * covar_trace**2)
                | (covar_trace < 0))
-    covar[bad] = np.nan
 
-    idx = np.flatnonzero(np.isfinite(covar).all(axis=(1, 2)))
-    covar[idx] = floor_covariance_eigvals(covar[idx],
-                                          minimum=PIXEL_VARIANCE)
+    # Matrices with a non-finite element are not changed by the floor
+    covar = floor_covariance_eigvals(covariance, minimum=PIXEL_VARIANCE)
+    covar[bad] = np.nan
     return covar
 
 
@@ -391,22 +418,57 @@ def eigvals_from_covariance(covariance):
         NaN for a matrix with any non-finite element or with a negative
         eigenvalue (a matrix that is not positive semidefinite).
     """
-    eigvals = np.full((covariance.shape[0], 2), np.nan)
+    # Eigenvalues of each symmetric 2x2 matrix in closed form, which
+    # avoids the per-matrix overhead of a general solver. The
+    # determinant form of the smaller eigenvalue is accurate for a
+    # highly elongated matrix, but the determinant overflows for huge
+    # variances. In that case the determinant is divided by the larger
+    # eigenvalue one factor at a time, which cannot overflow.
+    determinant = covariance_determinant(covariance)
+    eig_min = covariance_min_eigval(covariance, determinant=determinant)
+    eig_max = covariance_max_eigval(covariance)
+    # Ignore floating-point errors from non-finite values in the
+    # covariance and from a zero larger eigenvalue
+    with np.errstate(divide='ignore', over='ignore', invalid='ignore'):
+        covar_xy = covariance[:, 0, 1]
+        scaled = (covariance[:, 0, 0] * (covariance[:, 1, 1] / eig_max)
+                  - covar_xy * (covar_xy / eig_max))
+    eig_min = np.where(np.isfinite(determinant), eig_min, scaled)
+    eigvals = np.transpose((eig_max, eig_min))
 
-    # The np.linalg.eigvalsh function requires that every element of a
-    # covariance matrix be finite, so select only the wholly finite
-    # matrices.
-    idx = np.flatnonzero(np.isfinite(covariance).all(axis=(1, 2)))
-    eigvals[idx] = np.linalg.eigvalsh(covariance[idx])
+    # A non-finite element gives a NaN or infinite eigenvalue, and a
+    # negative variance means that the matrix is not positive
+    # semidefinite
+    good = np.isfinite(eigvals).all(axis=1) & (eig_min >= 0)
+    eigvals[~good] = np.nan
+    return eigvals
 
-    # Check for negative variance (in case a covariance matrix is not
-    # positive semidefinite).
-    idx2 = np.unique(np.where(eigvals < 0)[0])
-    eigvals[idx2] = (np.nan, np.nan)
 
-    # Sort each eigenvalue pair in descending order (eigvalsh returns
-    # values in ascending order).
-    return np.fliplr(eigvals)
+def major_axis_angle(var_a, var_b, covar_ab):
+    """
+    Compute the angle from the ``a`` axis toward the ``b`` axis of the
+    major axis of a 2D Gaussian function.
+
+    Parameters
+    ----------
+    var_a, var_b : `~numpy.ndarray`
+        The ``(N,)`` variances along the two axes.
+
+    covar_ab : `~numpy.ndarray`
+        The ``(N,)`` covariances of the two axes.
+
+    Returns
+    -------
+    angle : `~numpy.ndarray`
+        The ``(N,)`` angles in degrees, in the range (-90, 90]. The
+        angle is zero for an isotropic matrix and NaN where the
+        difference of the variances is undefined.
+    """
+    # Ignore floating-point errors from non-finite values (e.g., the
+    # difference of two infinite variances)
+    with np.errstate(over='ignore', invalid='ignore'):
+        angle = 0.5 * np.arctan2(2.0 * covar_ab, var_a - var_b)
+    return np.rad2deg(angle)
 
 
 def orientation_from_covariance(covariance):
@@ -426,15 +488,8 @@ def orientation_from_covariance(covariance):
         in the counter-clockwise direction and is in the range (-90,
         90].
     """
-    # The `sky_orientation_from_covariance` function applies the same
-    # formula with the roles of the two axes swapped. Ignore
-    # floating-point errors from non-finite values in the covariance
-    # (e.g., the difference of two infinite variances).
-    with np.errstate(all='ignore'):
-        orient_radians = 0.5 * np.arctan2(2.0 * covariance[:, 0, 1],
-                                          (covariance[:, 0, 0]
-                                           - covariance[:, 1, 1]))
-    return np.rad2deg(orient_radians)
+    return major_axis_angle(covariance[:, 0, 0], covariance[:, 1, 1],
+                            covariance[:, 0, 1])
 
 
 def pixel_to_sky_covariance(wcs, pixel_covariance, xycen):
@@ -499,12 +554,7 @@ def sky_orientation_from_covariance(sky_covariance):
         toward East and in the range (-90, 90].
     """
     # The tangent-plane axes are ordered (East, North). Measuring the
-    # angle from North toward East makes North play the role of the x
-    # axis and East the role of the y axis in the pixel orientation
-    # formula (see `orientation_from_covariance`). Ignore floating-point
-    # errors from non-finite values in the covariance.
-    with np.errstate(all='ignore'):
-        orient_radians = 0.5 * np.arctan2(2.0 * sky_covariance[:, 0, 1],
-                                          (sky_covariance[:, 1, 1]
-                                           - sky_covariance[:, 0, 0]))
-    return np.rad2deg(orient_radians)
+    # angle from North toward East makes North play the role of the
+    # first axis and East the role of the second axis.
+    return major_axis_angle(sky_covariance[:, 1, 1], sky_covariance[:, 0, 0],
+                            sky_covariance[:, 0, 1])
