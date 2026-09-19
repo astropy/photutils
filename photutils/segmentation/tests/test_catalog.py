@@ -1514,7 +1514,9 @@ class TestSourceCatalogFlags:
 
         The covariance determinant of such a source exceeds
         ``(1/12)**2``, so it is flagged only by the minor-axis variance
-        test.
+        test. The minor-axis variance is raised to the 1/12 single-pixel
+        floor while the resolved major axis and the orientation are
+        unchanged.
         """
         data = np.zeros((11, 11))
         data[4, 2:9] = 0.04
@@ -1523,9 +1525,57 @@ class TestSourceCatalogFlags:
         segm_data = np.zeros((11, 11), dtype=int)
         segm_data[4:7, 2:9] = 1
         cat = SourceCatalog(data, SegmentationImage(segm_data))
-        # the minor-axis variance is below the 1/12 single-pixel floor
-        assert cat.semiminor_axis.value[0] < np.sqrt(1 / 12)
         assert cat.flags[0] & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
+
+        # The raw variances are 4 along x (seven pixels of equal flux)
+        # and 0.08 / 1.08 along y, which is below 1/12.
+        assert_allclose(cat.semiminor_axis.value[0], np.sqrt(1 / 12))
+        assert_allclose(cat.semimajor_axis.value[0], 2.0)
+        assert_allclose(cat.orientation.value[0], 0.0, atol=1e-12)
+        assert_allclose(cat.covariance.value[0],
+                        [[4.0, 0.0], [0.0, 1 / 12]], atol=1e-12)
+
+    @pytest.mark.parametrize(('step', 'angle'),
+                             [((1, 1), 45.0), ((3, 1), 18.434948822922),
+                              ((3, 2), 33.690067525980)])
+    def test_singular_covariance_tilted_line(self, step, angle):
+        """
+        Test a tilted line that is one pixel wide.
+
+        Its covariance matrix has rank 1, so its determinant is zero
+        apart from rounding, which can make it slightly negative. The
+        shape must be regularized and not set to NaN.
+        """
+        step_x, step_y = step
+        data = np.zeros((41, 41))
+        segm_data = np.zeros(data.shape, dtype=int)
+        for i in range(6):
+            data[5 + i * step_y, 5 + i * step_x] = 1.0 + i
+            segm_data[5 + i * step_y, 5 + i * step_x] = 1
+        cat = SourceCatalog(data, SegmentationImage(segm_data))
+        assert cat.flags[0] & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
+        assert_allclose(cat.semiminor_axis.value[0], np.sqrt(1 / 12))
+        assert cat.semimajor_axis.value[0] > 1.0
+        assert_allclose(cat.orientation.value[0], angle)
+
+    def test_singular_covariance_isotropic(self):
+        """
+        Test a tilted source that is unresolved along both axes.
+
+        Both variances are raised to the 1/12 floor, so the source is
+        isotropic and its orientation is exactly zero.
+        """
+        data = np.zeros((11, 11))
+        data[5, 5] = 97.0
+        data[6, 6] = 3.0
+        segm_data = np.zeros(data.shape, dtype=int)
+        segm_data[5, 5] = 1
+        segm_data[6, 6] = 1
+        cat = SourceCatalog(data, SegmentationImage(segm_data))
+        assert cat.flags[0] & SEGMENTATION_FLAGS.SINGULAR_COVARIANCE
+        assert_equal(cat.covariance.value[0], np.eye(2) / 12)
+        assert cat.orientation.value[0] == 0.0
+        assert cat.eccentricity[0] == 0.0
 
     def test_singular_covariance_not_set(self):
         """

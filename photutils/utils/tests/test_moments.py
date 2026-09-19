@@ -10,11 +10,13 @@ import pytest
 from astropy.wcs import WCS
 from numpy.testing import assert_allclose, assert_equal
 
-from photutils.utils._moments import (PIXEL_VARIANCE, centroid_from_moments,
+from photutils.utils._moments import (PIXEL_VARIANCE, PSD_RTOL,
+                                      centroid_from_moments,
                                       covariance_determinant,
                                       covariance_from_moments,
                                       covariance_min_eigval,
-                                      eigvals_from_covariance, image_moments,
+                                      eigvals_from_covariance,
+                                      floor_covariance_eigvals, image_moments,
                                       inertia_tensor_from_moments,
                                       is_singular_covariance,
                                       orientation_from_covariance,
@@ -284,14 +286,10 @@ class TestCovarianceMinEigval:
         min_eig = covariance_min_eigval(covar, determinant=det)
         assert_allclose(min_eig, expected)
 
-    def test_negative_discriminant(self):
+    def test_nearly_isotropic(self):
         """
-        Test that a discriminant rounded below zero is clipped.
-
-        For a nearly isotropic matrix the computed ``(tr/2)**2 - det``
-        is often slightly negative. Without the clip its square root is
-        NaN. Many random matrices are used because which of them round
-        below zero depends on the platform.
+        Test nearly isotropic matrices, whose two eigenvalues differ by
+        about the rounding error of the matrix elements.
         """
         rng = np.random.default_rng(2)
         var_x = rng.uniform(0.01, 100.0, size=1000)
@@ -326,73 +324,199 @@ class TestCovarianceMinEigval:
         min_eig = covariance_min_eigval(covar, determinant=det)
         assert_allclose(min_eig, [0.1], rtol=1e-12)
 
+    def test_no_overflow(self):
+        """
+        Test that a variance whose square overflows gives the correct
+        minor-axis variance.
+        """
+        covar = np.array([[[1e200, 0.0], [0.0, 0.01]]])
+        det = covariance_determinant(covar)
+        min_eig = covariance_min_eigval(covar, determinant=det)
+        assert_allclose(min_eig, [0.01], rtol=1e-12)
+
 
 class TestIsSingularCovariance:
     """
     Tests for is_singular_covariance.
     """
 
-    def test_determinant_only(self, covariances):
+    def test_values(self, covariances):
         """
-        Test the determinant-only form.
+        Test each shape case.
 
-        The elongated source 3 is not flagged. The source 4 with a
-        negative determinant is flagged.
+        The elongated source 3 has a determinant above ``(1/12)**2`` and
+        is flagged only by its minor-axis variance. The source 4 is not
+        positive semidefinite. The partially non-finite source 5 is not
+        flagged.
         """
         det = covariance_determinant(covariances)
-        mask = is_singular_covariance(covariances, determinant=det,
-                                      include_degenerate=False)
-        assert mask.dtype == bool
-        assert_equal(mask, [False, True, True, False, True, False])
-
-    def test_include_degenerate(self, covariances):
-        """
-        Test that the elongated source 3 is also flagged.
-        """
-        det = covariance_determinant(covariances)
-        mask = is_singular_covariance(covariances, determinant=det,
-                                      include_degenerate=True)
+        mask = is_singular_covariance(covariances, determinant=det)
         assert mask.dtype == bool
         assert_equal(mask, [False, True, True, True, True, False])
 
-    @pytest.mark.parametrize('include_degenerate', [False, True])
-    def test_threshold(self, include_degenerate):
+    def test_threshold(self):
         """
         Test that the threshold is the single-pixel variance.
         """
-        covar = np.array([(PIXEL_VARIANCE - 1e-9) * np.eye(2),
-                          (PIXEL_VARIANCE + 1e-9) * np.eye(2)])
+        covar = np.array([[[4.0, 0.0], [0.0, PIXEL_VARIANCE - 1e-9]],
+                          [[4.0, 0.0], [0.0, PIXEL_VARIANCE + 1e-9]]])
         det = covariance_determinant(covar)
-        mask = is_singular_covariance(
-            covar, determinant=det, include_degenerate=include_degenerate)
+        mask = is_singular_covariance(covar, determinant=det)
         assert_equal(mask, [True, False])
 
-    @pytest.mark.parametrize('include_degenerate', [False, True])
-    def test_infinite_determinant(self, include_degenerate):
+    def test_infinite_determinant(self):
         """
-        Test that both forms flag a determinant of negative infinity.
+        Test that a matrix that is not positive semidefinite is flagged
+        when its determinant overflows to negative infinity.
         """
         covar = np.array([[[1e200, 1e200], [1e200, -1e200]]])
         det = covariance_determinant(covar)
         assert det[0] == -np.inf
-        mask = is_singular_covariance(
-            covar, determinant=det, include_degenerate=include_degenerate)
+        mask = is_singular_covariance(covar, determinant=det)
         assert_equal(mask, [True])
 
-    def test_degenerate_includes_determinant_only(self, covariances):
+    def test_includes_determinant_test(self):
         """
-        Test that the degenerate mask includes the determinant-only
-        mask.
+        Test that every symmetric matrix with a determinant below
+        ``PIXEL_VARIANCE**2`` is flagged.
         """
-        covar = np.concatenate(
-            (covariances, [[[1e200, 1e200], [1e200, -1e200]],
-                           [[np.inf, 0.0], [0.0, np.inf]]]))
+        rng = np.random.default_rng(3)
+        covar = rng.normal(scale=0.3, size=(5000, 2, 2))
+        covar[:, 1, 0] = covar[:, 0, 1]
         det = covariance_determinant(covar)
-        point_like = is_singular_covariance(covar, determinant=det,
-                                            include_degenerate=False)
-        degenerate = is_singular_covariance(covar, determinant=det,
-                                            include_degenerate=True)
-        assert np.all(degenerate[point_like])
+        small_det = det < PIXEL_VARIANCE**2
+        assert 0 < np.count_nonzero(small_det) < len(det)
+        mask = is_singular_covariance(covar, determinant=det)
+        assert np.all(mask[small_det])
+
+
+class TestFloorCovarianceEigvals:
+    """
+    Tests for floor_covariance_eigvals.
+    """
+
+    def test_scalar_minimum(self):
+        """
+        Test that only an eigenvalue below the minimum is raised.
+        """
+        covar = np.array([[[4.0, 0.0], [0.0, 0.05]],
+                          [[0.0, 0.0], [0.0, 0.0]]])
+        floored = floor_covariance_eigvals(covar, minimum=0.1)
+        assert_allclose(floored[0], [[4.0, 0.0], [0.0, 0.1]])
+        assert_allclose(floored[1], 0.1 * np.eye(2))
+
+    def test_array_minimum(self):
+        """
+        Test a separate minimum for each matrix.
+        """
+        covar = np.array([[[4.0, 0.0], [0.0, 0.05]],
+                          [[4.0, 0.0], [0.0, 0.05]]])
+        floored = floor_covariance_eigvals(covar,
+                                           minimum=np.array([0.01, 0.2]))
+        assert_equal(floored[0], covar[0])
+        assert_allclose(floored[1], [[4.0, 0.0], [0.0, 0.2]])
+
+    def test_tilted(self):
+        """
+        Test that the eigenvectors of a tilted matrix are kept.
+        """
+        covar = np.array([[[2.0, 1.95], [1.95, 2.0]]])
+        floored = floor_covariance_eigvals(covar, minimum=0.5)
+        assert_allclose(eigvals_from_covariance(floored), [[3.95, 0.5]])
+        assert_allclose(orientation_from_covariance(floored), [45.0])
+        assert_equal(floored[:, 0, 1], floored[:, 1, 0])
+
+    @pytest.mark.parametrize('angle', [10.0, 30.0, 45.0, 77.0])
+    def test_both_below_minimum(self, angle):
+        """
+        Test that a tilted matrix with both eigenvalues below the
+        minimum becomes exactly isotropic, with no spurious orientation
+        from rounding.
+        """
+        theta = np.deg2rad(angle)
+        rot = np.array([[np.cos(theta), -np.sin(theta)],
+                        [np.sin(theta), np.cos(theta)]])
+        covar = (rot @ np.diag([0.05, 0.02]) @ rot.T)[np.newaxis]
+        floored = floor_covariance_eigvals(covar, minimum=0.1)
+        assert_equal(floored[0], 0.1 * np.eye(2))
+        assert_equal(orientation_from_covariance(floored), [0.0])
+
+    def test_floor_precision(self):
+        """
+        Test that a floored eigenvalue equals the minimum to within the
+        rounding error of the matrix elements, which scales with the
+        larger eigenvalue.
+        """
+        rng = np.random.default_rng(2)
+        n_matrices = 1000
+        theta = rng.uniform(0.0, np.pi, n_matrices)
+        eig_max = 10.0**rng.uniform(-0.5, 4.0, n_matrices)
+        eig_min = rng.uniform(0.0, PIXEL_VARIANCE, n_matrices)
+        cos, sin = np.cos(theta), np.sin(theta)
+        rot = np.stack([np.stack([cos, -sin], axis=-1),
+                        np.stack([sin, cos], axis=-1)], axis=-2)
+        eigvals = np.stack([eig_max, eig_min], axis=-1)
+        covar = np.einsum('nij,nj,nkj->nik', rot, eigvals, rot)
+        covar[:, 1, 0] = covar[:, 0, 1]
+
+        floored = floor_covariance_eigvals(covar, minimum=PIXEL_VARIANCE)
+        result = eigvals_from_covariance(floored)
+        tol = 10.0 * np.finfo(float).eps * eig_max
+        assert np.all(np.abs(result[:, 1] - PIXEL_VARIANCE) <= tol)
+        assert_allclose(result[:, 0], eig_max, rtol=1e-14)
+
+    @pytest.mark.parametrize('covar', [
+        [[1e200, 0.0], [0.0, 1e200]],
+        [[1e308, 0.0], [0.0, 1e308]],
+        [[1e308, 9e307], [9e307, 1e308]]])
+    def test_overflow_unchanged(self, covar):
+        """
+        Test that a resolved matrix is returned unchanged, without a
+        warning, when its determinant or its trace overflows.
+        """
+        covar = np.array([covar])
+        floored = floor_covariance_eigvals(covar, minimum=PIXEL_VARIANCE)
+        assert_equal(floored, covar)
+
+    def test_overflow_thin(self):
+        """
+        Test that only the unresolved axis is raised when the square of
+        the other variance overflows.
+        """
+        covar = np.array([[[1e200, 0.0], [0.0, 0.01]]])
+        floored = floor_covariance_eigvals(covar, minimum=PIXEL_VARIANCE)
+        assert_allclose(floored, [[[1e200, 0.0], [0.0, PIXEL_VARIANCE]]],
+                        rtol=1e-12)
+
+    def test_unchanged_and_not_modified(self):
+        """
+        Test that a matrix above the minimum is returned bit for bit
+        and that the input array is left untouched.
+        """
+        covar = np.array([[[2.0, 0.3], [0.3, 1.0]],
+                          [[2.0, 0.3], [0.3, 0.04]]])
+        original = covar.copy()
+        floored = floor_covariance_eigvals(covar, minimum=0.1)
+        assert floored is not covar
+        assert_equal(covar, original)
+        assert_equal(floored[0], covar[0])
+        assert not np.array_equal(floored[1], covar[1])
+
+    def test_empty(self):
+        """
+        Test an input with no matrices.
+        """
+        floored = floor_covariance_eigvals(np.empty((0, 2, 2)), minimum=0.1)
+        assert floored.shape == (0, 2, 2)
+
+
+def regularize(covariance):
+    """
+    Regularize covariance matrices with the determinant computed from
+    the same matrices.
+    """
+    det = covariance_determinant(covariance)
+    return regularize_covariance(covariance, determinant=det)
 
 
 class TestRegularizeCovariance:
@@ -404,76 +528,160 @@ class TestRegularizeCovariance:
         """
         Test each shape case.
 
-        The elongated source 3 has a determinant above the threshold,
-        so it is not bumped even though its minor-axis variance is below
-        the single-pixel variance.
+        Only an eigenvalue below the single-pixel variance is raised.
+        The resolved major axis of sources 2 and 3 is unchanged.
         """
-        det = covariance_determinant(covariances)
-        reg = regularize_covariance(covariances, determinant=det)
+        reg = regularize(covariances)
         assert_equal(reg[0], covariances[0])
         assert_allclose(reg[1], PIXEL_VARIANCE * np.eye(2))
-        assert_allclose(reg[2], [[4.0 + PIXEL_VARIANCE, 0.0],
-                                 [0.0, PIXEL_VARIANCE]])
-        assert_equal(reg[3], covariances[3])
+        assert_allclose(reg[2], [[4.0, 0.0], [0.0, PIXEL_VARIANCE]])
+        assert_allclose(reg[3], [[4.0, 0.0], [0.0, PIXEL_VARIANCE]])
         assert np.all(np.isnan(reg[4]))
         assert_equal(reg[5], covariances[5])
+
+    def test_tilted(self):
+        """
+        Test that the orientation and the resolved eigenvalue of a
+        tilted thin source are preserved.
+        """
+        covar = np.array([[[2.0, 1.95], [1.95, 2.0]]])
+        reg = regularize(covar)
+        assert_allclose(eigvals_from_covariance(reg),
+                        [[3.95, PIXEL_VARIANCE]])
+        assert_allclose(orientation_from_covariance(reg), [45.0])
+        assert_equal(reg[:, 0, 1], reg[:, 1, 0])
+
+    def test_continuous_at_threshold(self):
+        """
+        Test that the regularized matrix is continuous where the
+        minor-axis variance crosses the single-pixel variance.
+        """
+        covar = np.array([[[4.0, 0.0], [0.0, PIXEL_VARIANCE - 1e-9]],
+                          [[4.0, 0.0], [0.0, PIXEL_VARIANCE + 1e-9]]])
+        reg = regularize(covar)
+        assert_allclose(reg[0], reg[1], atol=2e-9)
+
+    def test_rank_one_rounding(self):
+        """
+        Test that an exactly thin tilted source is regularized when
+        rounding makes its computed determinant slightly negative.
+
+        The determinant of a rank-1 matrix is zero. A slightly negative
+        value is passed explicitly because whether rounding produces one
+        depends on the matrix elements.
+        """
+        covar = np.array([[[0.25, -0.25], [-0.25, 0.25]]])
+        det = np.array([-1.0e-17])
+        mask = is_singular_covariance(covar, determinant=det)
+        assert_equal(mask, [True])
+        reg = regularize_covariance(covar, determinant=det)
+        assert_allclose(eigvals_from_covariance(reg),
+                        [[0.5, PIXEL_VARIANCE]])
+        assert_allclose(orientation_from_covariance(reg), [-45.0])
+
+    def test_negative_determinant(self):
+        """
+        Test that a determinant that is negative beyond rounding still
+        gives NaN.
+        """
+        covar = np.array([[[0.25, -0.25], [-0.25, 0.25]]])
+        det = np.array([-1.0e-9])
+        reg = regularize_covariance(covar, determinant=det)
+        assert np.all(np.isnan(reg))
+
+    @pytest.mark.parametrize('scale', [1.0, 1.0e-6, 1.0e6])
+    def test_negative_determinant_tolerance(self, scale):
+        """
+        Test that the tolerance on a negative determinant is
+        ``PSD_RTOL`` times the squared trace, for any overall scale of
+        the matrix.
+        """
+        covar = scale * np.array([[[0.25, -0.25], [-0.25, 0.25]],
+                                  [[0.25, -0.25], [-0.25, 0.25]]])
+        trace = 0.5 * scale
+        det = -PSD_RTOL * trace**2 * np.array([0.5, 2.0])
+        reg = regularize_covariance(covar, determinant=det)
+        assert np.all(np.isfinite(reg[0]))
+        assert np.all(np.isnan(reg[1]))
 
     def test_negative_trace(self):
         """
         Test that a positive determinant with a negative trace is NaN.
         """
         covar = np.array([[[-1.0, 0.0], [0.0, -1.0]]])
-        det = covariance_determinant(covar)
-        assert det[0] > 0
-        reg = regularize_covariance(covar, determinant=det)
-        assert np.all(np.isnan(reg))
+        assert covariance_determinant(covar)[0] > 0
+        assert np.all(np.isnan(regularize(covar)))
 
     def test_input_not_modified(self, covariances):
         """
         Test that the input array is left untouched.
         """
         original = covariances.copy()
-        det = covariance_determinant(covariances)
-        reg = regularize_covariance(covariances, determinant=det)
+        reg = regularize(covariances)
         assert reg is not covariances
         assert_equal(covariances, original)
 
-    def test_single_bump_clears_threshold(self):
+    def test_no_singular_sources(self):
         """
-        Test that one bump lifts the determinant to the threshold.
+        Test that resolved sources are returned unchanged.
+        """
+        covar = np.array([[[4.0, 0.5], [0.5, 1.0]]])
+        assert_equal(regularize(covar), covar)
 
-        Diagonal matrices are used so the determinant is an exact
-        non-negative product with no rounding below zero.
+    def test_floor_is_minimum_eigenvalue(self):
+        """
+        Test that every regularized eigenvalue reaches the single-pixel
+        variance for random positive semidefinite matrices.
         """
         rng = np.random.default_rng(1)
-        var_x = rng.uniform(0.1, 10.0, size=50)
-        var_y = rng.uniform(0.0, 1.0, size=50) * PIXEL_VARIANCE**2 / var_x
-        covar = np.zeros((50, 2, 2))
-        covar[:, 0, 0] = var_x
-        covar[:, 1, 1] = var_y
+        arr = rng.normal(scale=0.3, size=(50, 2, 2))
+        covar = arr @ arr.swapaxes(1, 2)  # symmetric
+        eigvals = eigvals_from_covariance(regularize(covar))
+        assert np.all(eigvals >= PIXEL_VARIANCE * (1 - 1e-12))
+
+    def test_modified_matches_singular_mask(self):
+        """
+        Test that the regularization modifies exactly the matrices
+        selected by is_singular_covariance.
+
+        The mask sets the ``'singular_covariance'`` flag but is not
+        passed to regularize_covariance, so this pins that the two use
+        the same criterion. The random symmetric matrices include ones
+        that are not positive semidefinite, which are selected by the
+        mask and set to NaN. Most have a minor-axis variance close to
+        ``PIXEL_VARIANCE``.
+        """
+        rng = np.random.default_rng(4)
+        n_matrices = 20000
+        theta = rng.uniform(0.0, np.pi, n_matrices)
+        eig_max = 10.0**rng.uniform(-2.0, 3.0, n_matrices)
+        eig_min = PIXEL_VARIANCE * rng.uniform(-0.5, 2.0, n_matrices)
+        eig_min = np.minimum(eig_min, eig_max)
+        cos, sin = np.cos(theta), np.sin(theta)
+        covar = np.empty((n_matrices, 2, 2))
+        covar[:, 0, 0] = eig_max * cos**2 + eig_min * sin**2
+        covar[:, 1, 1] = eig_max * sin**2 + eig_min * cos**2
+        covar[:, 0, 1] = (eig_max - eig_min) * cos * sin
+        covar[:, 1, 0] = covar[:, 0, 1]
+
         det = covariance_determinant(covar)
-        assert np.all(det < PIXEL_VARIANCE**2)
+        mask = is_singular_covariance(covar, determinant=det)
         reg = regularize_covariance(covar, determinant=det)
-        reg_det = covariance_determinant(reg)
-        assert np.all(reg_det >= PIXEL_VARIANCE**2 * (1 - 1e-12))
+        modified = np.any(reg != covar, axis=(1, 2))
+        assert 0 < np.count_nonzero(mask) < n_matrices
+        assert np.any(np.isnan(reg))
+        assert_equal(modified, mask)
 
     def test_idempotent(self, covariances):
         """
-        Test that regularizing a regularized matrix does not change it.
+        Test that regularizing a regularized matrix does not change it
+        beyond rounding error.
 
-        A point-like source is regularized to a determinant of exactly
-        ``PIXEL_VARIANCE**2``. The threshold comparisons are strict, so
-        that matrix is no longer singular and is not bumped again.
+        A floored eigenvalue equals ``PIXEL_VARIANCE`` only to within
+        rounding, so it can be floored again by a tiny amount.
         """
-        det = covariance_determinant(covariances)
-        reg = regularize_covariance(covariances, determinant=det)
-        reg_det = covariance_determinant(reg)
-        assert reg_det[1] == PIXEL_VARIANCE**2
-        mask = is_singular_covariance(reg, determinant=reg_det,
-                                      include_degenerate=False)
-        assert not np.any(mask)
-        reg2 = regularize_covariance(reg, determinant=reg_det)
-        assert_equal(reg2, reg)
+        reg = regularize(covariances)
+        assert_allclose(regularize(reg), reg, rtol=1e-12)
 
 
 class TestCovarianceEigvals:
@@ -602,12 +810,10 @@ def test_empty_inputs(tan_wcs):
     assert inertia_tensor_from_moments(moments).shape == (0, 2, 2)
     assert covariance_from_moments(moments).shape == (0, 2, 2)
     assert covariance_min_eigval(covar, determinant=det).shape == (0,)
-    for include_degenerate in (False, True):
-        mask = is_singular_covariance(
-            covar, determinant=det, include_degenerate=include_degenerate)
-        assert mask.shape == (0,)
-        assert mask.dtype == bool
-    assert regularize_covariance(covar, determinant=det).shape == (0, 2, 2)
+    mask = is_singular_covariance(covar, determinant=det)
+    assert mask.shape == (0,)
+    assert mask.dtype == bool
+    assert regularize(covar).shape == (0, 2, 2)
     assert eigvals_from_covariance(covar).shape == (0, 2)
     assert orientation_from_covariance(covar).shape == (0,)
     sky_cov = pixel_to_sky_covariance(tan_wcs, covar, np.empty((0, 2)))

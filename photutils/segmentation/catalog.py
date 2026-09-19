@@ -2048,7 +2048,7 @@ class SourceCatalog:
         # Singular, nearly singular, or rank-1 degenerate source
         # covariance, evaluated on the raw (unregularized) covariance
         # matrix
-        flags[self._singular_covariance_flag_mask] |= (
+        flags[self._singular_covariance_mask] |= (
             SEGMENTATION_FLAGS.SINGULAR_COVARIANCE)
 
         # Windowed centroid is NaN or fell back to the isophotal
@@ -3863,46 +3863,30 @@ class SourceCatalog:
         """
         A boolean mask with a leading source axis that is `True` for
         sources whose raw covariance matrix is singular or nearly
-        singular (i.e., point-like sources).
+        singular.
 
-        A source is flagged as singular when the determinant of
-        its raw (unregularized) covariance matrix is less than
-        ``PIXEL_VARIANCE**2``, where ``PIXEL_VARIANCE`` (``1 / 12``) is
-        the variance of a uniform distribution across a single pixel.
-        Sources with a NaN covariance determinant are not flagged.
-        """
-        return is_singular_covariance(self._raw_covariance,
-                                      determinant=self._raw_covariance_det,
-                                      include_degenerate=False)
+        A source is flagged when its minor-axis variance (the smaller
+        eigenvalue of its raw, unregularized covariance matrix) is less
+        than ``PIXEL_VARIANCE`` (``1 / 12``), the variance of a uniform
+        distribution across a single pixel. This includes point-like
+        sources and thin sources that are unresolved along only one
+        axis. Sources with a NaN covariance are not flagged.
 
-    @cached_property
-    def _singular_covariance_flag_mask(self):
-        """
-        A boolean mask with a leading source axis that is `True` for
-        sources whose raw covariance matrix is singular or nearly
-        singular, including rank-1 degenerate sources.
-
-        This is the mask used for the ``'singular_covariance'``
+        These are the sources whose covariance is modified by the
+        regularization, and they get the ``'singular_covariance'``
         flag. It matches the equivalent aperture flag (see
-        `~photutils.aperture.decode_aperture_flags`). In addition to the
-        determinant test used by ``_singular_covariance_mask``, a source
-        is flagged when its minor-axis variance (the smaller eigenvalue
-        of the raw covariance matrix) is less than ``PIXEL_VARIANCE``.
-        The determinant test alone misses elongated sources that are
-        unresolved along only one axis. Sources with a NaN covariance
-        determinant are not flagged.
+        `~photutils.aperture.decode_aperture_flags`).
         """
         return is_singular_covariance(self._raw_covariance,
-                                      determinant=self._raw_covariance_det,
-                                      include_degenerate=True)
+                                      determinant=self._raw_covariance_det)
 
     @cached_property
     def _raw_covariance_det(self):
         """
         The determinant of the raw ``(N, 2, 2)`` covariance matrix.
 
-        It is computed once and shared by `_covariance` and the masks
-        that test the raw covariance for singularity.
+        It is computed once and shared by `_covariance` and
+        `_singular_covariance_mask`.
         """
         return covariance_determinant(self._raw_covariance)
 
@@ -3913,12 +3897,11 @@ class SourceCatalog:
         function that has the same normalized second-order moments as
         the source, before any regularization.
 
-        This unregularized matrix is shared by `_covariance`
-        (which regularizes a copy) and by the masks that test
-        it for singularity (``_singular_covariance_mask`` and
-        ``_singular_covariance_flag_mask``). Callers that modify the
-        matrix in place must operate on a copy so the cached value is
-        not corrupted.
+        This unregularized matrix is shared by `_covariance` (which
+        regularizes a copy) and by ``_singular_covariance_mask`` (which
+        tests it for singularity). Callers that modify the matrix
+        in place must operate on a copy so the cached value is not
+        corrupted.
         """
         return covariance_from_moments(self._array('moments_central'))
 
@@ -3938,6 +3921,16 @@ class SourceCatalog:
         """
         The covariance matrix of the 2D Gaussian function that has the
         same second-order moments as the source.
+
+        The variance along each principal axis is at least ``1/12``
+        pixel**2 (to within floating-point rounding), the variance of a
+        uniform distribution across a single pixel. For a source that
+        is unresolved along an axis (e.g., a point-like or a very thin
+        source), the variance along that axis is raised to ``1/12``
+        while the orientation and the variance along a resolved axis
+        are unchanged. A source that is unresolved along both axes is
+        isotropic, with an orientation of zero. The covariance is NaN if
+        the second-order moments are not positive semidefinite.
         """
         return self._covariance * (u.pix**2)
 

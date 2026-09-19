@@ -8,7 +8,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 from astropy.stats import SigmaClip
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 
 from photutils.aperture import APERTURE_FLAGS, ApertureStats, CircularAperture
 from photutils.aperture.tests.conftest import UNIT_SHAPE
@@ -579,6 +579,60 @@ class TestSingularCovariance:
         assert delta > 0.05  # minor-axis variance below the floor
         assert stats._singular_covariance_mask[0]
         assert (stats.flags[0] & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+
+    def test_single_pixel_regularization(self):
+        """
+        Test that a single-pixel source has a variance of ``1/12`` along
+        both axes.
+        """
+        aper = CircularAperture((12.0, 12.0), r=5.0)
+        stats = ApertureStats(_single_pixel_data(), aper)
+        assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+        assert_array_equal(stats.covariance.value, np.eye(2) / 12)
+        assert stats.orientation.value == 0.0
+
+    def test_tilted_line_regularization(self):
+        """
+        Test a tilted line that is one pixel wide.
+
+        Its covariance matrix has rank 1, so its determinant is zero
+        apart from rounding, which can make it slightly negative. The
+        shape must be regularized and not set to NaN.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        for i in range(7):
+            data[9 + i, 9 + i] = 1.0 + i
+        aper = CircularAperture((12.0, 12.0), r=6.0)
+        stats = ApertureStats(data, aper)
+        assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+        assert_allclose(stats.semiminor_axis.value, np.sqrt(1.0 / 12))
+        assert stats.semimajor_axis.value > 1.0
+        assert_allclose(stats.orientation.value, 45.0)
+
+    def test_isotropic_regularization(self):
+        """
+        Test that a tilted source that is unresolved along both axes
+        becomes exactly isotropic with a zero orientation.
+        """
+        data = np.zeros(UNIT_SHAPE)
+        data[12, 12] = 97.0
+        data[13, 13] = 3.0
+        aper = CircularAperture((12.0, 12.0), r=5.0)
+        stats = ApertureStats(data, aper)
+        assert (stats.flags & APERTURE_FLAGS.SINGULAR_COVARIANCE) != 0
+        assert_array_equal(stats.covariance.value, np.eye(2) / 12)
+        assert stats.orientation.value == 0.0
+
+    def test_rank1_regularization(self):
+        """
+        Test that only the unresolved axis of a rank-1 degenerate source
+        is raised to the ``1/12`` floor.
+        """
+        stats = _stats_with_injected_covariance(cov_xx=0.5, cov_yy=0.05,
+                                                cov_xy=0.0)
+        assert_allclose(stats.covariance_eigvals.value[0], [0.5, 1.0 / 12])
+        assert_allclose(stats.semimajor_axis.value[0], np.sqrt(0.5))
+        assert_allclose(stats.semiminor_axis.value[0], np.sqrt(1.0 / 12))
 
     def test_not_positive_semidefinite(self):
         """

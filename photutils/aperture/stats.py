@@ -2149,10 +2149,12 @@ class ApertureStats:
         with undefined moments (no overlap or fully masked) have a NaN
         determinant and are not flagged here. They are already reported
         by the overlap and masking bits.
+
+        These are the sources whose covariance is modified by the
+        regularization, and they get the ``'singular_covariance'`` flag.
         """
         return is_singular_covariance(self._raw_covariance,
-                                      determinant=self._raw_covariance_det,
-                                      include_degenerate=True)
+                                      determinant=self._raw_covariance_det)
 
     @cached_property
     @_update_method_subpixels_docstring
@@ -2855,6 +2857,16 @@ class ApertureStats:
         """
         The covariance matrix of the 2D Gaussian function that has the
         same second-order moments as the source.
+
+        The variance along each principal axis is at least ``1/12``
+        pixel**2 (to within floating-point rounding), the variance of a
+        uniform distribution across a single pixel. For a source that
+        is unresolved along an axis (e.g., a point-like or a very thin
+        source), the variance along that axis is raised to ``1/12``
+        while the orientation and the variance along a resolved axis
+        are unchanged. A source that is unresolved along both axes is
+        isotropic, with an orientation of zero. The covariance is NaN if
+        the second-order moments are not positive semidefinite.
         """
         return self._covariance * (u.pix**2)
 

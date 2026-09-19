@@ -24,6 +24,12 @@ from photutils.utils._wcs_helpers import compute_pixel_to_sky_jacobians
 # pixel size.
 PIXEL_VARIANCE = 1.0 / 12.0
 
+# The relative tolerance of the positive semidefinite test of a
+# covariance matrix. The determinant of a rank-1 matrix is computed with
+# a rounding error of a few times the machine epsilon relative to its
+# squared trace.
+PSD_RTOL = 1000.0 * np.finfo(float).eps
+
 
 def image_moments(data, *, center=(0, 0), order=1):
     """
@@ -173,10 +179,10 @@ def covariance_min_eigval(covariance, *, determinant):
     covariance matrix.
 
     The smaller eigenvalue has two equivalent closed forms, ``tr/2 -
-    root`` and ``det / (tr/2 + root)``, where ``root = sqrt((tr/2)**2
-    - det)``. The discriminant ``((lambda1 - lambda2) / 2)**2`` is
-    non-negative for a real symmetric matrix, so tiny negative rounding
-    is clipped to zero.
+    root`` and ``det / (tr/2 + root)``, where ``root`` is half of the
+    difference of the two eigenvalues. For a symmetric matrix ``[[a, b],
+    [b, d]]`` it is ``hypot((a - d) / 2, b)``, which is never negative
+    and does not overflow for large variances.
 
     The second form is used for a positive trace. The subtraction
     in the first form cancels catastrophically when the matrix is
@@ -203,69 +209,140 @@ def covariance_min_eigval(covariance, *, determinant):
     """
     # Ignore floating-point errors from NaN values in the covariance
     with np.errstate(all='ignore'):
-        half_trace = 0.5 * (covariance[:, 0, 0] + covariance[:, 1, 1])
-        root = np.sqrt(np.maximum(half_trace**2 - determinant, 0.0))
+        var_x = covariance[:, 0, 0]
+        var_y = covariance[:, 1, 1]
+        half_trace = 0.5 * (var_x + var_y)
+        root = np.hypot(0.5 * (var_x - var_y), covariance[:, 0, 1])
         return np.where(half_trace > 0, determinant / (half_trace + root),
                         half_trace - root)
 
 
-def is_singular_covariance(covariance, *, determinant, include_degenerate):
+def is_singular_covariance(covariance, *, determinant):
     """
     Return a mask of sources whose raw covariance matrix is singular or
     nearly singular.
 
-    A source is flagged when the determinant of its raw (unregularized)
-    covariance matrix is less than ``PIXEL_VARIANCE**2``. This is the
-    isotropic point-like case where both axes are unresolved. It is also
-    true for a negative determinant.
+    A source is flagged when its minor-axis variance (the smaller
+    eigenvalue of its raw, unregularized covariance matrix) is less than
+    ``PIXEL_VARIANCE``, meaning that at least one axis is unresolved.
+    This covers point-like sources, where both axes are unresolved,
+    and thin sources that are unresolved along only one axis. A test
+    of the determinant against ``PIXEL_VARIANCE**2`` is implied for a
+    symmetric matrix, because a determinant below that value requires
+    an eigenvalue below ``PIXEL_VARIANCE``. The mask is also true for a
+    covariance matrix that is not positive semidefinite.
 
     Parameters
     ----------
     covariance : `~numpy.ndarray`
-        The ``(N, 2, 2)`` raw covariance matrices. They are used only if
-        ``include_degenerate`` is `True`.
+        The ``(N, 2, 2)`` raw covariance matrices.
 
     determinant : `~numpy.ndarray`
         The ``(N,)`` determinants of ``covariance`` (see
         `covariance_determinant`).
 
-    include_degenerate : bool
-        If `True`, also flag sources whose minor-axis variance (the
-        smaller eigenvalue) is less than ``PIXEL_VARIANCE``. This
-        catches rank-1 degenerate sources that are unresolved along only
-        one axis, which the determinant test alone misses.
-
     Returns
     -------
     mask : `~numpy.ndarray`
-        The ``(N,)`` boolean mask. Sources with a NaN determinant are
-        never flagged. The mask for ``include_degenerate`` equal to
-        `True` always includes the determinant-only mask.
+        The ``(N,)`` boolean mask. Sources with a NaN minor-axis
+        variance are never flagged.
     """
-    point_like = determinant < PIXEL_VARIANCE**2
-    if not include_degenerate:
-        return point_like
-
     min_eigval = covariance_min_eigval(covariance, determinant=determinant)
-    return point_like | (min_eigval < PIXEL_VARIANCE)
+    return min_eigval < PIXEL_VARIANCE
+
+
+def floor_covariance_eigvals(covariance, *, minimum):
+    """
+    Raise the eigenvalues of each symmetric ``(2, 2)`` matrix to at
+    least a minimum value while keeping its eigenvectors.
+
+    The variance along each principal axis is floored independently,
+    so the orientation is unchanged and an axis whose variance already
+    exceeds the minimum is not modified. If both eigenvalues are below
+    the minimum, the result is exactly the minimum times the identity
+    matrix, which has no preferred axis. The result is a continuous
+    function of the input.
+
+    A floored eigenvalue equals the minimum only to within the rounding
+    error of the matrix elements, which is of order the machine epsilon
+    times the larger eigenvalue.
+
+    Parameters
+    ----------
+    covariance : `~numpy.ndarray`
+        The ``(N, 2, 2)`` symmetric matrices. Every element must be
+        finite, and the array must have a floating-point dtype. This
+        array is not modified.
+
+    minimum : float or `~numpy.ndarray`
+        The minimum eigenvalue, either a scalar or an ``(N,)`` array
+        with one finite value per matrix.
+
+    Returns
+    -------
+    floored : `~numpy.ndarray`
+        A new ``(N, 2, 2)`` array. Matrices whose eigenvalues all reach
+        the minimum are returned unchanged.
+    """
+    floored = covariance.copy()
+
+    # Eigenvalues of each symmetric 2x2 matrix in closed form, which
+    # avoids the per-matrix overhead of a general solver. The smaller
+    # eigenvalue comes from `covariance_min_eigval`, which does not
+    # lose precision for a highly elongated matrix. The larger one does
+    # not use the determinant, which can overflow for huge variances.
+    # Ignore floating-point errors from such an overflow. It gives a
+    # smaller eigenvalue that is infinite or NaN, which compares false
+    # below, so the matrix is returned unchanged.
+    with np.errstate(all='ignore'):
+        var_x = covariance[:, 0, 0]
+        var_y = covariance[:, 1, 1]
+        determinant = covariance_determinant(covariance)
+        eig_min = covariance_min_eigval(covariance,
+                                        determinant=determinant)
+        eig_max = (0.5 * (var_x + var_y)
+                   + np.hypot(0.5 * (var_x - var_y), covariance[:, 0, 1]))
+    minimum = np.broadcast_to(minimum, eig_min.shape)
+
+    # A matrix with both eigenvalues below the minimum becomes exactly
+    # isotropic.
+    isotropic = eig_max < minimum
+    floored[isotropic] = (minimum[isotropic, np.newaxis, np.newaxis]
+                          * np.eye(2))
+
+    # Otherwise raise only the smaller eigenvalue. The projector onto the
+    # minor axis is (eig_max * I - C) / (eig_max - eig_min), so adding
+    # (minimum - eig_min) times the projector changes that eigenvalue
+    # and keeps both eigenvectors. The result is exactly symmetric.
+    idx = np.flatnonzero((eig_min < minimum) & ~isotropic)
+    factor = (minimum[idx] - eig_min[idx]) / (eig_max[idx] - eig_min[idx])
+    minor_axis = (eig_max[idx, np.newaxis, np.newaxis] * np.eye(2)
+                  - covariance[idx])
+    floored[idx] += factor[:, np.newaxis, np.newaxis] * minor_axis
+    return floored
 
 
 def regularize_covariance(covariance, *, determinant):
     """
-    Regularize the raw covariance matrices of undefined and "infinitely"
-    thin sources.
+    Regularize the raw covariance matrices of undefined and unresolved
+    sources.
 
     A valid covariance is positive semidefinite (determinant and trace
     both non-negative). Any matrix that is not (e.g., from net-negative
-    flux weighting) has an undefined shape and is set to NaN.
+    flux weighting) has an undefined shape and is set to NaN. The
+    determinant of an exactly thin source (a rank-1 matrix) is zero, but
+    its computed value can be slightly negative from rounding. A
+    determinant is therefore treated as negative only if it is below
+    ``-PSD_RTOL`` times the squared trace.
 
-    Sources whose determinant is less than ``PIXEL_VARIANCE**2`` then
-    have ``PIXEL_VARIANCE`` added to each diagonal element. A single
-    bump is sufficient. For a positive semidefinite matrix the bumped
-    determinant exceeds the raw determinant by ``PIXEL_VARIANCE`` times
-    the trace plus ``PIXEL_VARIANCE**2``. Since the raw determinant and
-    trace are both non-negative, the result is at least
-    ``PIXEL_VARIANCE**2``, so it clears the threshold in one step.
+    The remaining finite matrices have each eigenvalue (the variance
+    along a principal axis) raised to at least ``PIXEL_VARIANCE``, the
+    smallest second moment a source can have given finite pixel size.
+    The eigenvectors are kept, so the orientation is unchanged and a
+    resolved axis is not modified. Only the sources selected by
+    `is_singular_covariance` have an eigenvalue below that value, so
+    every other matrix is returned unchanged. The regularized matrix is
+    a continuous function of the raw matrix.
 
     Parameters
     ----------
@@ -287,12 +364,13 @@ def regularize_covariance(covariance, *, determinant):
     # Ignore floating-point errors from NaN values in the covariance
     with np.errstate(all='ignore'):
         covar_trace = covar[:, 0, 0] + covar[:, 1, 1]
-        bad = (determinant < 0) | (covar_trace < 0)
-        covar[bad] = np.nan
+        bad = ((determinant < -PSD_RTOL * covar_trace**2)
+               | (covar_trace < 0))
+    covar[bad] = np.nan
 
-        idx = np.where(determinant < PIXEL_VARIANCE**2)[0]
-        covar[idx, 0, 0] += PIXEL_VARIANCE
-        covar[idx, 1, 1] += PIXEL_VARIANCE
+    idx = np.flatnonzero(np.isfinite(covar).all(axis=(1, 2)))
+    covar[idx] = floor_covariance_eigvals(covar[idx],
+                                          minimum=PIXEL_VARIANCE)
     return covar
 
 
