@@ -274,7 +274,9 @@ def is_invalid_covariance(covariance, *, determinant):
     -------
     mask : `~numpy.ndarray`
         The ``(N,)`` boolean mask. Matrices with NaN elements are never
-        flagged.
+        flagged. A matrix with an infinite element is flagged only if
+        its trace is negative or if its determinant is negative infinity
+        while its trace is finite.
     """
     # Ignore floating-point errors from non-finite values in the
     # covariance and from the overflow of huge variances
