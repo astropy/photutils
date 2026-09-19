@@ -241,6 +241,21 @@ def test_covariance_determinant(covariances):
     assert np.isnan(det[5])
 
 
+@pytest.mark.parametrize('index', [(0, 0), (0, 1), (1, 0), (1, 1)])
+def test_covariance_determinant_nan(index):
+    """
+    Test that a NaN in any element gives a NaN determinant.
+
+    The zero elements make the matrix singular if the NaN is ignored,
+    which is how a pivoted LU determinant can return zero.
+    """
+    covar = np.array([[[1.0, 0.0], [0.0, 1.0]]])
+    covar[0][index] = np.nan
+    assert np.isnan(covariance_determinant(covar)[0])
+    covar = np.full((1, 2, 2), np.nan)
+    assert np.isnan(covariance_determinant(covar)[0])
+
+
 class TestCovarianceMinEigval:
     """
     Tests for covariance_min_eigval.

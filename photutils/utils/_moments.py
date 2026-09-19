@@ -144,6 +144,12 @@ def covariance_determinant(covariance):
     """
     Compute the determinant of each ``(2, 2)`` covariance matrix.
 
+    The closed form ``a * d - b * c`` is used instead of
+    `numpy.linalg.det`. The LAPACK pivot search does not handle NaN
+    consistently across platforms, so a matrix with a NaN element can
+    give a determinant of zero instead of NaN. The closed form always
+    propagates NaN.
+
     Parameters
     ----------
     covariance : `~numpy.ndarray`
@@ -154,9 +160,11 @@ def covariance_determinant(covariance):
     determinant : `~numpy.ndarray`
         The ``(N,)`` determinants. Matrices with NaN elements give NaN.
     """
-    # Ignore floating-point errors from NaN values in the covariance
+    # Ignore floating-point errors from non-finite values in the
+    # covariance
     with np.errstate(all='ignore'):
-        return np.linalg.det(covariance)
+        return (covariance[:, 0, 0] * covariance[:, 1, 1]
+                - covariance[:, 0, 1] * covariance[:, 1, 0])
 
 
 def covariance_min_eigval(covariance, *, determinant):
