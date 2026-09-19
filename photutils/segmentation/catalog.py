@@ -55,8 +55,16 @@ from photutils.utils._deprecation import (_get_future_column_names,
                                           deprecated_renamed_argument)
 from photutils.utils._flags import update_flag_docstring
 from photutils.utils._misc import _get_meta
-from photutils.utils._moments import (_pixel_cov_to_sky_cov,
-                                      _sky_orientation_from_cov)
+from photutils.utils._moments import (PIXEL_VARIANCE, centroid_from_moments,
+                                      covariance_determinant,
+                                      covariance_from_moments,
+                                      eigvals_from_covariance,
+                                      inertia_tensor_from_moments,
+                                      is_singular_covariance,
+                                      orientation_from_covariance,
+                                      pixel_to_sky_covariance,
+                                      regularize_covariance,
+                                      sky_orientation_from_covariance)
 from photutils.utils._parameters import validate_table_columns
 from photutils.utils._quantity_helpers import process_quantities
 from photutils.utils.cutouts import CutoutImage
@@ -2245,14 +2253,7 @@ class SourceCatalog:
         The centroid is computed as the center of mass of the unmasked
         pixels within the source segment.
         """
-        moments = self._array('moments')
-
-        # Ignore divide-by-zero RuntimeWarning
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            y_centroid = moments[:, 1, 0] / moments[:, 0, 0]
-            x_centroid = moments[:, 0, 1] / moments[:, 0, 0]
-        return np.transpose((x_centroid, y_centroid))
+        return centroid_from_moments(self._array('moments'))
 
     @cached_property
     @use_detcat
@@ -2325,7 +2326,6 @@ class SourceCatalog:
         # The total flux is the zeroth raw moment of the moment data.
         total_flux = self._array('moments')[:, 0, 0]
         is_singular = np.atleast_1d(self._singular_covariance_mask)
-        pixel_var = 1.0 / 12.0
 
         # Ignore divide-by-zero and invalid-value RuntimeWarnings for
         # sources with non-positive or non-finite total flux. Those
@@ -2344,7 +2344,7 @@ class SourceCatalog:
             # (1/12) scaled by the summed pixel variance. The
             # correction is added to the variances only, never to the
             # covariance.
-            err_sum_norm = acc[:, 0] * pixel_var * norm
+            err_sum_norm = acc[:, 0] * PIXEL_VARIANCE * norm
             singular = (is_singular
                         & ((err_var_x * err_var_y - err_cov_xy**2)
                            < err_sum_norm**2))
@@ -2368,7 +2368,7 @@ class SourceCatalog:
         Transport pixel error covariances to sky position errors.
 
         The returned errors are the square roots of the tangent-plane
-        variances along East and North (see ``_pixel_cov_to_sky_cov``
+        variances along East and North (see ``pixel_to_sky_covariance``
         in ``photutils.utils._moments``).
 
         Parameters
@@ -2387,7 +2387,7 @@ class SourceCatalog:
             columns ``(east_err, north_err)``. Rows are NaN where the
             position or covariance is not finite.
         """
-        sky_cov = _pixel_cov_to_sky_cov(self.wcs, pix_cov, xycen)
+        sky_cov = pixel_to_sky_covariance(self.wcs, pix_cov, xycen)
         sky_err = np.sqrt(np.stack((sky_cov[:, 0, 0], sky_cov[:, 1, 1]),
                                    axis=1))
         return sky_err << u.arcsec
@@ -2487,7 +2487,7 @@ class SourceCatalog:
 
             # Add the pixel-size variance correction (1/12).
             # The finite-pixel term is added per pixel.
-            err_sum_norm = err_sum * (1.0 / 12) * norm
+            err_sum_norm = err_sum * PIXEL_VARIANCE * norm
             err_var_x = err_var_x * norm + err_sum_norm
             err_var_y = err_var_y * norm + err_sum_norm
             err_cov_xy = err_cov_xy * norm
@@ -3856,11 +3856,7 @@ class SourceCatalog:
         center of mass.
         """
         moments = self._array('moments_central')
-        mu_02 = moments[:, 0, 2]
-        mu_11 = -moments[:, 1, 1]
-        mu_20 = moments[:, 2, 0]
-        tensor = np.array([mu_02, mu_11, mu_11, mu_20]).swapaxes(0, 1)
-        return tensor.reshape((tensor.shape[0], 2, 2)) * u.pix**2
+        return inertia_tensor_from_moments(moments) * u.pix**2
 
     @cached_property
     def _singular_covariance_mask(self):
@@ -3869,12 +3865,15 @@ class SourceCatalog:
         sources whose raw covariance matrix is singular or nearly
         singular (i.e., point-like sources).
 
-        A source is flagged as singular when the determinant of its raw
-        (unregularized) covariance matrix is less than ``(1 / 12)**2``,
-        the squared variance of a uniform distribution across a single
-        pixel. Sources with non-finite covariance are not flagged.
+        A source is flagged as singular when the determinant of
+        its raw (unregularized) covariance matrix is less than
+        ``PIXEL_VARIANCE**2``, where ``PIXEL_VARIANCE`` (``1 / 12``) is
+        the variance of a uniform distribution across a single pixel.
+        Sources with a NaN covariance determinant are not flagged.
         """
-        return self._raw_covariance_det < (1.0 / 12.0)**2
+        return is_singular_covariance(self._raw_covariance,
+                                      determinant=self._raw_covariance_det,
+                                      include_degenerate=False)
 
     @cached_property
     def _singular_covariance_flag_mask(self):
@@ -3885,39 +3884,27 @@ class SourceCatalog:
 
         This is the mask used for the ``'singular_covariance'``
         flag. It matches the equivalent aperture flag (see
-        `~photutils.aperture.decode_aperture_flags`). In addition to
-        the determinant test used by ``_singular_covariance_mask``, a
-        source is flagged when its minor-axis variance (the smaller
-        eigenvalue of the raw covariance matrix) is less than ``1 /
-        12``. The determinant test alone misses elongated sources that
-        are unresolved along only one axis. Sources with non-finite
-        covariance are not flagged.
+        `~photutils.aperture.decode_aperture_flags`). In addition to the
+        determinant test used by ``_singular_covariance_mask``, a source
+        is flagged when its minor-axis variance (the smaller eigenvalue
+        of the raw covariance matrix) is less than ``PIXEL_VARIANCE``.
+        The determinant test alone misses elongated sources that are
+        unresolved along only one axis. Sources with a NaN covariance
+        determinant are not flagged.
         """
-        covar = self._raw_covariance
-        # Ignore RuntimeWarning from NaN values in the covariance
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            # Smaller eigenvalue (the minor-axis variance) of each
-            # 2x2 symmetric covariance matrix, via the closed form
-            # lambda = tr/2 -/+ sqrt((tr/2)**2 - det). The discriminant
-            # is non-negative for a real symmetric matrix. Clip tiny
-            # negative rounding to zero.
-            half_trace = 0.5 * (covar[:, 0, 0] + covar[:, 1, 1])
-            disc = np.maximum(half_trace**2 - self._raw_covariance_det, 0.0)
-            min_eigval = half_trace - np.sqrt(disc)
-            degenerate = (np.isfinite(min_eigval)
-                          & (min_eigval < 1.0 / 12.0))
-        return self._singular_covariance_mask | degenerate
+        return is_singular_covariance(self._raw_covariance,
+                                      determinant=self._raw_covariance_det,
+                                      include_degenerate=True)
 
     @cached_property
     def _raw_covariance_det(self):
         """
         The determinant of the raw ``(N, 2, 2)`` covariance matrix.
+
+        It is computed once and shared by `_covariance` and the masks
+        that test the raw covariance for singularity.
         """
-        # Ignore RuntimeWarning from NaN values in the covariance
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            return np.linalg.det(self._raw_covariance)
+        return covariance_determinant(self._raw_covariance)
 
     @cached_property
     def _raw_covariance(self):
@@ -3933,14 +3920,7 @@ class SourceCatalog:
         matrix in place must operate on a copy so the cached value is
         not corrupted.
         """
-        moments = self._array('moments_central')
-        # Ignore divide-by-zero RuntimeWarning
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            mu_norm = moments / moments[:, 0, 0][:, np.newaxis, np.newaxis]
-        covar = np.array([mu_norm[:, 0, 2], mu_norm[:, 1, 1],
-                          mu_norm[:, 1, 1], mu_norm[:, 2, 0]]).swapaxes(0, 1)
-        return covar.reshape((covar.shape[0], 2, 2))
+        return covariance_from_moments(self._array('moments_central'))
 
     @cached_property
     @use_detcat
@@ -3949,42 +3929,8 @@ class SourceCatalog:
         The covariance matrix of the 2D Gaussian function that has the
         same second-order moments as the source, always as an iterable.
         """
-        # Copy so the regularization below does not mutate the cached
-        # raw covariance shared with `_singular_covariance_mask`.
-        covar = self._raw_covariance.copy()
-
-        # Regularize the covariance matrix for "infinitely" thin
-        # detections by incrementally increasing the diagonal elements
-        # by 1/12, the variance of a uniform distribution across a
-        # single pixel (the smallest second moment a resolved source can
-        # have given finite pixel size).
-        delta = 1.0 / 12
-        delta2 = delta**2
-        # Ignore RuntimeWarning from NaN values in covar
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', RuntimeWarning)
-            covar_det = np.linalg.det(covar)
-            covar_trace = covar[:, 0, 0] + covar[:, 1, 1]
-
-            # A valid covariance is positive semidefinite (det >= 0
-            # and trace >= 0). Any matrix that is not (e.g., from
-            # net-negative flux weighting) has an undefined shape and is
-            # set to NaN.
-            bad = (covar_det < 0) | (covar_trace < 0)
-            covar[bad] = np.nan
-
-            # Regularize "infinitely" thin detections by adding 1/12
-            # (delta) to each diagonal. A single bump is sufficient.
-            # For a positive semidefinite matrix the bumped determinant
-            # exceeds the raw determinant by delta times the trace plus
-            # delta squared. Since the raw determinant and trace are
-            # both non-negative, the result is at least delta squared,
-            # which equals the delta2 threshold, so it clears the
-            # threshold in a single step.
-            idx = np.where(covar_det < delta2)[0]
-            covar[idx, 0, 0] += delta
-            covar[idx, 1, 1] += delta
-        return covar
+        return regularize_covariance(
+            self._raw_covariance, determinant=self._raw_covariance_det)
 
     @cached_property
     @use_detcat
@@ -4002,22 +3948,7 @@ class SourceCatalog:
         The two eigenvalues of the `covariance` matrix in decreasing
         order.
         """
-        eigvals = np.full((self.n_labels, 2), np.nan)
-        # np.linalg.eigvalsh requires that every element of a covariance
-        # matrix be finite, so select only the wholly finite matrices
-        idx = np.flatnonzero(np.isfinite(self._covariance).all(axis=(1, 2)))
-        eigvals[idx] = np.linalg.eigvalsh(self._covariance[idx])
-
-        # Check for negative variance (in case covariance matrix is not
-        # positive semidefinite).
-        idx2 = np.unique(np.where(eigvals < 0)[0])
-        eigvals[idx2] = (np.nan, np.nan)
-
-        # Sort each eigenvalue pair in descending order (eigvalsh
-        # returns values in ascending order).
-        eigvals = np.fliplr(eigvals)
-
-        return eigvals * u.pix**2
+        return eigvals_from_covariance(self._covariance) * u.pix**2
 
     @cached_property
     @use_detcat
@@ -4075,10 +4006,7 @@ class SourceCatalog:
         The angle increases in the counter-clockwise direction and is
         in the range (-90, 90] degrees.
         """
-        covar = self._covariance
-        orient_radians = 0.5 * np.arctan2(2.0 * covar[:, 0, 1],
-                                          (covar[:, 0, 0] - covar[:, 1, 1]))
-        return np.rad2deg(orient_radians) * u.deg
+        return orientation_from_covariance(self._covariance) * u.deg
 
     @cached_property
     @use_detcat
@@ -4101,9 +4029,9 @@ class SourceCatalog:
         """
         if self.wcs is None:
             return self._null_objects
-        sky_cov = _pixel_cov_to_sky_cov(self.wcs, self._covariance,
-                                        self._array('centroid'))
-        return _sky_orientation_from_cov(sky_cov) * u.deg
+        sky_cov = pixel_to_sky_covariance(self.wcs, self._covariance,
+                                          self._array('centroid'))
+        return sky_orientation_from_covariance(sky_cov) * u.deg
 
     @cached_property
     @use_detcat
