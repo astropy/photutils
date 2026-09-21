@@ -45,6 +45,8 @@ def calc_total_error(data, bkg_error, effective_gain):
         objects, then ``total_error`` will also be returned as a
         `~astropy.units.Quantity` object with the same units as the
         input ``data``. Otherwise, a `~numpy.ndarray` will be returned.
+        The dtype follows the NumPy type promotion of the floating-point
+        inputs (see Notes).
 
     Notes
     -----
@@ -90,6 +92,16 @@ def calc_total_error(data, bkg_error, effective_gain):
 
         \sigma_{\mathrm{tot}} = \sqrt{\sigma_{\mathrm{bkg}}^2 +
                   \frac{I}{g_{\mathrm{eff}}}}
+
+    The dtype of the returned array follows the NumPy type promotion of
+    the ``data`` and ``bkg_error`` arrays, and of ``effective_gain``
+    if it is an array, with a minimum of float32. For example, float32
+    ``data`` and ``bkg_error`` arrays give a float32 total error, while
+    float32 ``data`` with a float64 ``bkg_error`` array gives a float64
+    total error. A scalar ``effective_gain`` does not affect the dtype.
+    If any of the input arrays has a non-floating-point dtype (e.g.,
+    integer ``data``), the returned array is float64. The inputs are
+    converted to the output dtype before the calculation.
 
     ``effective_gain`` can either be a scalar value or a 2D image with
     the same shape as the ``data``. A 2D ``effective_gain`` image is
@@ -154,6 +166,7 @@ def calc_total_error(data, bkg_error, effective_gain):
         msg = ('bkg_error must have the same shape as the input data.')
         raise ValueError(msg)
 
+    unit = None
     if use_units:
         if data.unit != bkg_error.unit:
             msg = 'data and bkg_error must have the same units'
@@ -167,39 +180,79 @@ def calc_total_error(data, bkg_error, effective_gain):
                    '(e.g., u.electron or u.photon).')
             raise u.UnitsError(msg)
 
-    if not np.iterable(effective_gain):
-        effective_gain = np.zeros(data.shape) + effective_gain
-    else:
+        unit = data.unit
+        data = data.value
+        bkg_error = bkg_error.value
+        effective_gain = effective_gain.value
+
+    scalar_gain = np.ndim(effective_gain) == 0
+    if not scalar_gain:
         effective_gain = np.asanyarray(effective_gain)
         if effective_gain.shape != data.shape:
             msg = ('If input effective_gain is 2D, then it must have '
                    'the same shape as the input data.')
             raise ValueError(msg)
+
     if np.any(effective_gain < 0):
         msg = 'effective_gain must be non-negative everywhere'
         raise ValueError(msg)
 
-    if use_units:
-        unit = data.unit
-        data = data.value
-        effective_gain = effective_gain.value
+    # The arrays are converted to the output dtype before any
+    # arithmetic, so that the precision of the result is not limited by
+    # a lower-precision input.
+    arrays = [data, bkg_error]
+    if not scalar_gain:
+        arrays.append(effective_gain)
+    dtype = _total_error_dtype(*arrays)
 
-    # Do not include source variance where effective_gain = 0. Use a
-    # float array so that integer input data does not raise an error
-    # from the in-place division.
-    source_variance = data.astype(float)
-    mask = effective_gain != 0
-    source_variance[mask] /= effective_gain[mask]
-    source_variance[~mask] = 0.0
+    # Do not include source variance where effective_gain = 0.
+    # source_variance is a copy of data, which is not modified.
+    source_variance = data.astype(dtype)
+    if scalar_gain:
+        if effective_gain == 0:
+            source_variance[...] = 0.0
+        else:
+            source_variance /= dtype.type(effective_gain)
+    else:
+        effective_gain = effective_gain.astype(dtype, copy=False)
+        mask = effective_gain != 0
+        source_variance[mask] /= effective_gain[mask]
+        source_variance[~mask] = 0.0
 
     # Do not include source variance where data is negative (note that
     # effective_gain cannot be negative)
-    source_variance = np.maximum(source_variance, 0)
+    np.maximum(source_variance, 0, out=source_variance)
 
-    if use_units:
-        # source_variance is calculated to have units of (data.unit)**2
-        # so that it can be added with bkg_error**2 below. The returned
-        # total error will have units of data.unit.
-        source_variance <<= unit**2
+    # source_variance has units of (data.unit)**2 so that it can be
+    # added to bkg_error**2. The returned total error has the same units
+    # as the data.
+    total_error = source_variance
+    total_error += bkg_error.astype(dtype, copy=False) ** 2
+    np.sqrt(total_error, out=total_error)
 
-    return np.sqrt(bkg_error**2 + source_variance)
+    if unit is not None:
+        total_error <<= unit
+    return total_error
+
+
+def _total_error_dtype(*arrays):
+    """
+    Return the dtype of the total error calculated from the input
+    arrays.
+
+    Parameters
+    ----------
+    *arrays : `~numpy.ndarray`
+        The ``data`` and ``bkg_error`` arrays, and the
+        ``effective_gain`` array if it is not a scalar.
+
+    Returns
+    -------
+    dtype : `numpy.dtype`
+        The NumPy promotion of the input dtypes, with a minimum of
+        float32, if all of the arrays are floating-point arrays.
+        Otherwise, float64.
+    """
+    if any(array.dtype.kind != 'f' for array in arrays):
+        return np.dtype(np.float64)
+    return np.result_type(np.float32, *[array.dtype for array in arrays])
