@@ -1616,6 +1616,47 @@ class TestBoundedMemory:
         assert_equal(tbl4['mean'].value, stats3.mean)
         assert set(stats4._block_cache) == {'mean_var', 'minmax', 'meta'}
 
+    def test_shape_flags(self, monkeypatch):
+        """
+        Test that block processing gives identical results for sources
+        with the ``undefined_shape``, ``singular_covariance``, and
+        ``centroid_outside`` flags.
+        """
+        data = np.zeros((40, 110))
+        mask = np.zeros(data.shape, dtype=bool)
+        mask[14:27, 4:17] = True  # fully masked
+        data[16:25, 26:35] = -1.0  # negative flux
+        data[20, 50] = 100.0  # single pixel
+        data[20, 66] = 10.0  # centroid outside the bounding box
+        data[20, 74] = -9.0
+        data[17:24, 87:94] = 5.0
+        positions = [(10, 20), (30, 20), (50, 20), (70, 20), (90, 20)]
+        aper = CircularAperture(positions, r=6.0)
+
+        stats1, stats2 = self.make_stats_pair(monkeypatch, data, aper,
+                                              mask=mask)
+        expected = [APERTURE_FLAGS.MASKED_PIXELS
+                    | APERTURE_FLAGS.ALL_MASKED
+                    | APERTURE_FLAGS.UNDEFINED_SHAPE,
+                    APERTURE_FLAGS.UNDEFINED_SHAPE,
+                    APERTURE_FLAGS.SINGULAR_COVARIANCE,
+                    APERTURE_FLAGS.UNDEFINED_SHAPE
+                    | APERTURE_FLAGS.CENTROID_OUTSIDE,
+                    0]
+        assert_equal(stats2.flags, expected)
+        assert '_fast_gather' not in stats2.__dict__
+        TestNThreads.assert_stats_equal(stats1, stats2)
+
+        # to_table calculates the reductions in a single pass
+        stats3, stats4 = self.make_stats_pair(monkeypatch, data, aper,
+                                              mask=mask)
+        columns = list(stats3.default_columns)
+        columns.remove('sky_centroid')
+        tbl3 = stats3.to_table(columns=columns)
+        tbl4 = stats4.to_table(columns=columns)
+        for column in columns:
+            assert_equal(np.asarray(tbl3[column]), np.asarray(tbl4[column]))
+
     def test_local_bkg_ddof_sum_method(self, monkeypatch):
         """
         Test that the per-source local background values are divided
