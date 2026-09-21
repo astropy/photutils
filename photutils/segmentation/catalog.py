@@ -635,13 +635,18 @@ class SourceCatalog:
 
     Most properties are computed for all sources at once in compiled
     code that reads C-contiguous float64 copies of the ``data``,
-    ``error``, ``convolved_data``, and ``background`` arrays, a uint8
-    mask plane, and an intp copy of the segmentation array. These are
-    built on first use and kept for the lifetime of the catalog (they
-    are shared with sliced catalogs). Inputs that are already
-    C-contiguous float64 (or intp) arrays are used without a copy, so
-    for other input types (e.g., float32 or int32 arrays) the catalog
-    holds roughly twice the memory of its inputs.
+    ``error``, ``convolved_data``, and ``background`` arrays, a
+    uint8 mask plane, and an intp copy of the segmentation array.
+    These are built on first use and kept for the lifetime of the
+    catalog (they are shared with sliced catalogs). Inputs that
+    are already C-contiguous float64 (or intp) arrays are used
+    without a copy, so for other input types (e.g., float32 or
+    int32 arrays) the catalog holds roughly twice the memory of its
+    inputs. All calculations are performed in float64 regardless
+    of the input dtype, so float32 inputs give the same results as
+    the same values input as float64. If memory is a concern, call
+    `~photutils.segmentation.SourceCatalog.release_cache` after
+    calculating the desired properties to free these working arrays.
 
     The input ``error`` array is assumed to include *all* sources
     of error, including the Poisson error of the sources.
@@ -1368,6 +1373,57 @@ class SourceCatalog:
         catalog, so it is also released for them. A catalog input as the
         ``detection_catalog`` has its own cache, which is not released
         by this method.
+
+        Notes
+        -----
+        The working arrays need 8 bytes per pixel for each of the
+        ``data``, ``error``, ``background``, and ``convolved_data``
+        inputs that is not already a C-contiguous ``float64`` array,
+        8 bytes per pixel for the segmentation image (unless its data
+        array has the platform integer dtype, `numpy.intp`), and 1 byte
+        per pixel for the mask. For example, a 4096 x 4096 ``float32``
+        image input with ``error`` and ``convolved_data`` arrays caches
+        about 550 MB.
+
+        Calling this method is worthwhile when all of the following are
+        true:
+
+        * The image is large and the inputs are not C-contiguous
+          ``float64`` arrays, so the cache is a significant amount of
+          memory.
+
+        * All of the desired properties have been calculated, e.g.,
+          after calling
+          `~photutils.segmentation.SourceCatalog.to_table` or after
+          accessing the last property that is needed.
+
+        * The catalog object stays alive while other memory-intensive
+          work is performed. The cache is freed along with the catalog
+          when the catalog is deleted or goes out of scope, so there
+          is no need to call this method on a catalog that is about to
+          be discarded.
+
+        Avoid calling this method between property calculations.
+        The working arrays are then recreated for the next property,
+        which costs a full-image copy of each input and does not lower
+        the peak memory.
+
+        Inputting C-contiguous ``float64`` arrays avoids the copies
+        (the inputs are then used directly), but this reduces the total
+        memory only if the caller does not also keep the original
+        lower-precision arrays. The results do not depend on the input
+        dtype, because all calculations are performed in ``float64``.
+
+        Examples
+        --------
+        >>> from photutils.datasets import make_4gaussians_image
+        >>> from photutils.segmentation import (SourceCatalog,
+        ...                                     detect_sources)
+        >>> data = make_4gaussians_image().astype('float32')
+        >>> segment_img = detect_sources(data, 50.0, n_pixels=10)
+        >>> cat = SourceCatalog(data, segment_img)
+        >>> tbl = cat.to_table()
+        >>> cat.release_cache()
         """
         self._batch_arrays_cache.clear()
 

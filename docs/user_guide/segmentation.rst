@@ -896,6 +896,43 @@ source label::
     2 ['edge_touch', 'kron_partial_overlap']
 
 
+Memory Usage
+------------
+
+Most `~photutils.segmentation.SourceCatalog` properties are calculated
+for all sources at once in compiled code. That code reads C-contiguous
+``float64`` copies of the input ``data``, ``error``, ``background``, and
+``convolved_data`` arrays and an integer copy of the segmentation image.
+The copies are created the first time they are needed and are cached
+for the lifetime of the catalog, so that they are shared by all of the
+source properties. Inputs that are already C-contiguous ``float64``
+arrays are used directly, without a copy.
+
+All calculations are performed in ``float64`` regardless of the input
+dtype, so ``float32`` inputs give the same results as the same values
+input as ``float64``. However, each cached copy of a ``float32`` array
+is twice the size of the input. For example, a 4096 x 4096 ``float32``
+image input with ``error`` and ``convolved_data`` arrays caches about
+550 MB.
+
+If memory is a concern, call the
+:meth:`~photutils.segmentation.SourceCatalog.release_cache` method after
+calculating the properties that you need::
+
+    >>> cat = SourceCatalog(data, segm)
+    >>> tbl = cat.to_table()
+    >>> cat.release_cache()
+
+This is useful when the catalog object stays alive while other
+memory-intensive work is performed. It is not needed for a catalog
+that is about to be deleted or go out of scope, because the cache is
+freed along with the catalog. Source properties that were already
+calculated are unaffected, and the working arrays are recreated on
+demand if another property is later requested. For that reason, avoid
+calling the method between property calculations. A catalog input as the
+``detection_catalog`` has its own cache.
+
+
 API Reference
 -------------
 

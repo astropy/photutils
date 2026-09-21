@@ -379,7 +379,17 @@ class ApertureStats:
 
     The calculated statistics are always float64, regardless of the
     input ``data`` dtype (`~astropy.units.Quantity` values with float64
-    dtype if the input ``data`` has units).
+    dtype if the input ``data`` has units). The compiled code reads
+    C-contiguous float64 ``data`` and ``error`` arrays. Inputs that are
+    already C-contiguous float64 arrays are used without a copy. Other
+    inputs (e.g., float32 arrays) are copied, and the copies are kept
+    for the lifetime of the `ApertureStats` object. They are freed when
+    the object is deleted or goes out of scope.
+
+    The pixel values within the apertures are gathered into temporary
+    buffers. When the input contains many or large apertures, the
+    sources are processed in blocks so that the size of these buffers
+    does not grow with the number of sources. The results are identical.
 
     Examples
     --------
